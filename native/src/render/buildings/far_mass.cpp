@@ -15,7 +15,7 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float ROOF_EDGE_H = 0.85f, ATTIC_H = 1.5f, COPING = 0.3f;
+constexpr float ROOF_EDGE_H = 0.85f, ATTIC_H = 1.5f, COPING = 0.3f, COPING_H = 0.06f; // the coping's width in, and its lip (roof_emit.cpp LIP_H)
 constexpr float PLINTH_BURY = 0.8f, TEST_OUT = 0.03f, MACHINE_H = 3.f, MODULE = 3.f, SLAB_LIFT = 0.002f;
 constexpr float MASS_IN_M = 0.7f, HALF = 0.5f; // the plain side stands this far behind the bays: past the deepest opening
 constexpr uint32_t CELL_OFFSETS = 64; // bays the far level's grid starts from, by building: two buildings light other rooms
@@ -236,10 +236,10 @@ void walls(Shell &s, const Placed &pl, const Volume &v, int vol, bool roofs, Lev
 		float top = b.level_z(v.top());
 		if (parapet) {
 			s.rect(Basis{ sd.f.o + sd.f.e1 * top, sd.f.e0, sd.f.e1, sd.f.e2 }, 0, sd.length, 0, ph, 0, wall_lin(pl, v, v.storeys - 1, sd.side), fin);
-			if (!pl.lean) { // a strip the far level's distance cannot show
-				Basis cap{ sd.f.at(0, top + ph, 0), sd.f.e0, -sd.f.e2, sd.f.e1 };
-				s.rect(cap, 0, sd.length, 0, COPING, 0, paint_lin(mp), mp.finish);
-			}
+			// The coping, a strip the far level's distance cannot show: a thin box, so the mid level files it with its parts
+			// (Shell::box_sink) and draws it only while it is a pixel wide (the part bands' rule): a strip under a pixel drawn as
+			// a face is a dashed line round the roof wherever no filter runs.
+			if (!pl.lean) s.box(sd.f, 0, sd.length, top + ph - COPING_H, top + ph, -COPING, 0, paint_lin(mp), mp.finish, SKIP_E1_NEG);
 		}
 		if (v.base == 0 && !covered(b, v, 0, mid))
 			s.rect(sd.f, 0, sd.length, pl.ground_lo - PLINTH_BURY, 0, 0, paint_lin(pl.data->color("plinth")), FIN_STONE);

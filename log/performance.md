@@ -374,3 +374,31 @@ A defect, not a cost; recorded here because the line's measures are.
   and by day, the 24 km city at night from the street and from 2.6 km: lit windows stand in patches by room at every
   distance, white and warm lamps, shutters and dark panes on the mid bays, nothing garbled in the bays' walls, trims or
   openings. Still open (P11): from 2.6 km the far city reads as one tan field.
+
+## P4, P34, P43 to P45 (2026-11-10, night): halls on their lots, the lorry's way to its docks
+
+Defects, recorded here with the line's other closes; no measure of the 24 km city was taken for this batch yet.
+
+- P4 (sheds and roofs through one another on the industrial lots), named by a test, not by eye: `lot_overlap_test`
+  says no two lots of the town overlap (1,368 lots, 16,308 neighbouring pairs). What crossed was two things: every
+  body was built to its envelope rounded to the nearest half metre, so half of them stood up to 0.25 m past the room
+  their lot leaves (20.00 m halls on 19.80 m lots: P42, `massing_core.cpp` `make_body` now takes the envelope down to
+  the grid once and stands the body in the middle of its room); and every pitched roof reached 0.45 m past its block
+  on all sides (P41, `roof_pitched.cpp` `reach_of`: the eave takes the room the lot's line and the body's other blocks
+  leave, a side with none ends flush). The bays' census counts the pitched roofs' vertices past their lot: 5,776
+  before, 0 after.
+- P34 (slivers with no antialiasing): the mid level's coping is a part drawn while a pixel wide (`far_mass.cpp`), and
+  the blinds' slats, the curtains' folds and the sheers' weave fade to their mean under the pixels
+  (`building_pane.gdshaderinc` `stripes_lost`).
+- The bodies' new size moved the fleet (the digest was written again) and with it the two sites `yard_test` takes
+  from where vehicles stand; there, docks were left with no way. Three causes, each fixed at its owner: the yard's
+  docks, bollards and lamps were laid in the truck lane's run through the yard (P43, `lot_back.cpp`); the planner gave
+  a gate up when the coarse search found one way and the lane leg did not fit, never searching the other finer (P44,
+  `yard.cpp` `search_on`); and a gate's stop and join stood 1.5 m from the lane's end by the body's middle, so by the
+  end of a street with no way on half the lorry stood past the paving and the pose never fitted (P45,
+  `yard_input.cpp`). `yard_test`: 37 of 37 and 25 of 25 docks with a way.
+- `quick.sh --ready`: 50 tasks pass; `gates_changed` reports `TASKS.md`, the skill's own documents and name-likeness
+  findings that stood before.
+- Photos (`dist/trace/port-from-nov7/photos`, `analysis.md`): the industrial block from near (roofs meet along the
+  lots' lines), the loading yards at the town's edge (the docks in a row behind the hall, the lane clear to the yard).
+  Seen in them and recorded: people past the meshes' distance are drawn as black rectangles (P46).

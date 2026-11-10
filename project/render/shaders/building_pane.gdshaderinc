@@ -160,8 +160,12 @@ vec3 room_trace(vec3 o, vec3 d, float lot, vec3 lo, vec3 hi, float floor_kind) {
 	return c * shade * 0.9;
 }
 
+// How much of a sine's swing a pixel cannot hold: 0 while a period spans four pixels or more, 1 from two pixels down, where the
+// stripes could only beat with the pixels (a moire with no filter over the frames). What fades is the swing; the mean stays.
+float stripes_lost(float phase) { return smoothstep(0.25, 0.5, fwidth(phase) / TAU); }
+
 // What hangs 12 cm behind the glass, each room its own: curtains drawn to the sides, a roller blind, a Venetian blind, a
-// sheer. Mixes into `room`.
+// sheer. Mixes into `room`. Their folds and slats are stripes: each fades to its mean as it drops under the pixels.
 vec3 room_hung(vec3 room, vec3 o, vec3 d, vec2 size, float lot) {
 	float h1 = fract(lot * 13.71), h2 = fract(lot * 7.37), h3 = fract(lot * 3.13);
 	vec3 cq = o + d * ((0.12 - o.z) / d.z);
@@ -172,18 +176,21 @@ vec3 room_hung(vec3 room, vec3 o, vec3 d, vec2 size, float lot) {
 	if (h1 < 0.36) {
 		float side = 0.14 + 0.2 * h3, sway = 0.03 * sin(pu.y * 7.0 + h2 * 6.0);
 		cover = clamp(step(pu.x, side + sway) + step(1.0 - side - sway, pu.x), 0.0, 1.0);
-		float fold = sin(pu.x * size.x * 70.0 + h3 * 3.0);
+		float folds = pu.x * size.x * 70.0 + h3 * 3.0;
+		float fold = sin(folds) * (1.0 - stripes_lost(folds));
 		hung = cloth * (0.72 + 0.28 * (0.5 + 0.5 * fold) * (0.6 + 0.4 * fold)) * mix(0.82, 1.0, step(0.04, pu.y)) * daylight;
 	} else if (h1 < 0.56) {
 		float down = 0.15 + 0.65 * h3;
 		cover = step(1.0 - down, pu.y);
 		hung = mix(cloth * daylight * 0.92, vec3(0.2), step(abs(pu.y - (1.0 - down)), 0.012));
 	} else if (h1 < 0.68) {
-		float slat = 0.5 + 0.5 * sin(pu.y * size.y * 62.0);
-		cover = smoothstep(0.3, 0.6, slat) * 0.9;
+		float slats = pu.y * size.y * 62.0, lost = stripes_lost(slats);
+		float slat = 0.5 + 0.5 * sin(slats) * (1.0 - lost);
+		cover = mix(smoothstep(0.3, 0.6, slat) * 0.9, 0.55, lost); // under the pixels: the blind's mean cover (building_room_tone pane_tone)
 		hung = vec3(0.78, 0.77, 0.73) * (0.75 + 0.25 * slat) * daylight;
 	} else if (h1 < 0.8) {
-		cover = 0.4 + 0.2 * (0.5 + 0.5 * sin(pu.x * size.x * 55.0 + h3 * 5.0));
+		float weave = pu.x * size.x * 55.0 + h3 * 5.0;
+		cover = 0.4 + 0.2 * (0.5 + 0.5 * sin(weave) * (1.0 - stripes_lost(weave)));
 		hung = vec3(0.9, 0.89, 0.86) * daylight;
 	}
 	return mix(room, hung * 0.8, cover);

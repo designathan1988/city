@@ -57,8 +57,12 @@ void gates_of(const CityState &s, const LotAccess &acc, YardInput &out) {
 		YardGate yg;
 		yg.ds = spot.ds;
 		yg.lane = spot.lane;
-		yg.stop_at = std::max(p.gate_lane_end_m, foot - p.lorry_stop_before_m);
-		yg.join_at = std::min(d.len - p.gate_lane_end_m, foot + p.lorry_join_past_m);
+		// Both are where the body's middle stands, and the body stands whole on its lane: half its length and the lane's end margin
+		// from either end. A middle held only by the margin left half a lorry past the end of a street with no way on, where
+		// nothing is paved: a pose that never fits, and every dock of the lot without its way out.
+		const float whole = p.classes[int(VehicleType::TRUCK)].length * HALF + p.gate_lane_end_m;
+		yg.stop_at = std::max(whole, foot - p.lorry_stop_before_m);
+		yg.join_at = std::min(d.len - whole, foot + p.lorry_join_past_m);
 		Pose stop, join;
 		lane_pose(s, spot.ds, spot.lane, yg.stop_at, stop);
 		lane_pose(s, spot.ds, spot.lane, yg.join_at, join);

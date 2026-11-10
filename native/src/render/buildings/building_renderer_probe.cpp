@@ -3,6 +3,7 @@
 
 #include "core/grid.h"
 #include "render/buildings/facade_bay.h"
+#include "render/buildings/roof_util.h"
 #include "sim/buildings/b40/civic.h"
 
 #include <algorithm>
@@ -26,6 +27,24 @@ constexpr float BYTE_MAX = 255.f;
 // A pane's seed as one number: its room, its bay byte, the darker glass and the room's floor.
 uint32_t seed_key(uint32_t slot, uint32_t bay, bool dark, uint32_t floor) {
 	return slot | bay << SEED_BAY_BIT | uint32_t(dark) << SEED_DARK_BIT | floor << SEED_FLOOR_BIT;
+}
+
+constexpr float PAST_LOT_M = 0.02f; // how far past its lot's line a roof may be written and still stand on it
+
+// The vertices of a body's pitched roofs that lie past its lot's lines: a roof ends at its own lot, whatever its eaves.
+int64_t roof_past_lot(const b40::Placed &pl) {
+	const b40::Body &b = *pl.b;
+	if (b.plan.W <= 0 || b.plan.D <= 0) return 0; // a body with no lot known (a model, a design)
+	b40::Shell roofs;
+	for (const b40::Volume &v : b.volumes)
+		if (!b40::roof_flat(v.roof) && v.outline.empty()) b40::emit_pitched(roofs, pl, v, b.level_z(v.top()));
+	int64_t past = 0;
+	for (const Vector3 &p : roofs.pos) {
+		const Vector3 d = p - pl.lot.o;
+		const float x = d.dot(pl.lot.e0), y = d.dot(pl.lot.e1);
+		past += std::abs(x) > b.plan.W / 2 + PAST_LOT_M || y < -PAST_LOT_M || y > b.plan.D + PAST_LOT_M ? 1 : 0;
+	}
+	return past;
 }
 
 // The near level's panes of a body against the mid level's bays of the same body, each level laid as its job lays it.
@@ -93,7 +112,7 @@ Dictionary BuildingRenderer::bay_census() {
 	const CityState &s = *state_;
 	std::unordered_map<std::string, int64_t> fine, coarse;
 	std::array<int64_t, b40::BAY_COUNT> by_comp{};
-	int64_t bays = 0, buildings = 0;
+	int64_t bays = 0, buildings = 0, past_lot = 0;
 	PaneAgreement panes;
 	std::vector<Building> records;
 	{
@@ -120,6 +139,7 @@ Dictionary BuildingRenderer::bay_census() {
 			coarse[key(COARSE, c, o)]++;
 		});
 		panes.add(pl);
+		past_lot += roof_past_lot(pl);
 	}
 	const auto cover = [](const std::unordered_map<std::string, int64_t> &m, int64_t total) {
 		std::vector<int64_t> counts;
@@ -155,6 +175,7 @@ Dictionary BuildingRenderer::bay_census() {
 	d["panes_unmatched"] = panes.unmatched; // near panes whose room, bay byte, glass and floor no mid bay of the building carries
 	d["mid_shutters"] = panes.shutters; // mid bays with a roller shutter part way down
 	d["mid_rooms"] = panes.rooms; // the rooms the mid level's bays light by, a building at a time
+	d["roof_past_lot"] = past_lot; // vertices of pitched roofs written past their lot's lines
 	return d;
 }
 

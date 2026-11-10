@@ -66,8 +66,8 @@ struct DockWays {
 	int into_street = 0, away_street = 0;
 };
 
-// The searches of a plan by kind: the way in and the way out at the coarse grain; when neither was found, the way in at the
-// graduated grain, and when that one was not either, at the fine grain (WayGrain).
+// The searches of a plan by kind: the way in and the way out at the coarse grain; then, for a way still missing (the way in when
+// neither was found; the one missing when the other cannot be driven back along the lane), the graduated grain and the fine one.
 enum YardSearch { YARD_SEARCH_IN, YARD_SEARCH_OUT, YARD_SEARCH_GRADUATED, YARD_SEARCH_FINE, YARD_SEARCHES };
 
 // What a plan spent, probes never read by the simulation: the time filling its field (the lot, the streets, the shut rings and the
@@ -112,6 +112,10 @@ private:
 	std::vector<int> order_;
 	std::vector<AxlePose> onto_, away_;
 	bool found_in_ = false, found_out_ = false;
+	bool seek_out_ = false; // the search running looks for the way out
+	WayGrain in_grain_ = WayGrain::COARSE, out_grain_ = WayGrain::COARSE; // the finest grain each way was searched at, at this gate
+	std::vector<AxlePose> lane_; // the leg along the lane from this gate's stop to its join
+	int lane_fits_ = -1; // whether the body fits along it; -1: not worked out for this gate yet
 	void lay_step(int &work);
 	std::unique_ptr<RingFill> open_ring(size_t k);
 	void open_step(int &work);
@@ -122,6 +126,8 @@ private:
 	void search_step(int &work);
 	void search_for(const AxlePose &from, const AxlePose &to, bool reversing, WayGrain grain, Stage stage);
 	void close_dock();
+	bool search_on(const YardGate &g);
+	bool lane_holds(const YardGate &g);
 	bool join_ways(const YardGate &g);
 };
 

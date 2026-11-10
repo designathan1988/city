@@ -1,0 +1,69 @@
+## No two buildings of the generated city stand on the same ground: every record's lot (its centre, width, depth and turn, as
+## probe_building gives them) is a rectangle, and no two of them overlap by more than a hand's width. Two lots that share a line
+## touch; they do not overlap. And what is drawn over a lot stays on it: no pitched roof reaches past its lot's lines (probe
+## bay_census, roof_past_lot), so two halls on a shared line do not put their roofs through one another.
+extends TestCase
+
+const TOWN_MAP := 0
+const SEED := 1
+const CELL_M := 64.0 # the grid the lots are filed in to find neighbours
+const TOUCH_M := 0.1 # how far two rectangles may enter one another and still only touch
+const SHOWN := 8
+
+
+func _ready() -> void:
+	if not boot():
+		finish()
+		return
+	new_map(TOWN_MAP, SEED, true)
+	var lots: Array = []
+	var cells: Dictionary = {}
+	for id: int in CityStore.query(&"list_buildings"):
+		var b: Dictionary = CityStore.query(&"probe_building", [id])
+		var rot: float = b.rot
+		var along: Vector2 = Vector2(cos(rot), -sin(rot)) * (float(b.w) * 0.5)
+		var deep: Vector2 = Vector2(sin(rot), cos(rot)) * (float(b.d) * 0.5)
+		var centre := Vector2(b.position.x, b.position.z)
+		var reach: float = along.length() + deep.length()
+		var lot := {"id": id, "fn": b.fn, "zone": b.zone, "centre": centre, "along": along, "deep": deep}
+		for cx in range(int(floor((centre.x - reach) / CELL_M)), int(floor((centre.x + reach) / CELL_M)) + 1):
+			for cz in range(int(floor((centre.y - reach) / CELL_M)), int(floor((centre.y + reach) / CELL_M)) + 1):
+				var key := Vector2i(cx, cz)
+				if not cells.has(key):
+					cells[key] = []
+				cells[key].append(lots.size())
+		lots.append(lot)
+	var seen: Dictionary = {}
+	var crossing: Array = []
+	var worst := 0.0
+	for members: Array in cells.values():
+		for i in members.size():
+			for k in range(i + 1, members.size()):
+				var pair := Vector2i(mini(members[i], members[k]), maxi(members[i], members[k]))
+				if seen.has(pair):
+					continue
+				seen[pair] = true
+				var depth := _overlap(lots[pair.x], lots[pair.y])
+				if depth > TOUCH_M:
+					worst = maxf(worst, depth)
+					crossing.append([lots[pair.x].id, lots[pair.y].id, snappedf(depth, 0.01), lots[pair.x].zone, lots[pair.y].zone, lots[pair.x].fn, lots[pair.y].fn])
+	print("lots: %d, pairs looked at: %d, overlapping: %d, deepest %.2f m" % [lots.size(), seen.size(), crossing.size(), worst])
+	check(lots.size() > 0 and seen.size() > 0, "the town has lots side by side: %d lots, %d neighbouring pairs" % [lots.size(), seen.size()])
+	check(crossing.is_empty(), "no two lots overlap ([id, id, metres, zones, functions] of the first: %s)" % [crossing.slice(0, SHOWN)])
+	await get_tree().process_frame # the building levels know their map once the first frame drew it
+	await get_tree().process_frame
+	var past := int(CityStore.query(&"bay_census").get("roof_past_lot", -1))
+	check(past == 0, "no pitched roof is written past its lot's lines (its eaves take the room the lot leaves): %d vertices past" % past)
+	finish()
+
+
+## How far two turned rectangles enter one another: the least overlap over their four axes (separating axis theorem); 0 or
+## less when an axis separates them.
+func _overlap(a: Dictionary, b: Dictionary) -> float:
+	var least := INF
+	var apart: Vector2 = b.centre - a.centre
+	for axis: Vector2 in [a.along.normalized(), a.deep.normalized(), b.along.normalized(), b.deep.normalized()]:
+		var reach_a: float = absf(a.along.dot(axis)) + absf(a.deep.dot(axis))
+		var reach_b: float = absf(b.along.dot(axis)) + absf(b.deep.dot(axis))
+		least = minf(least, reach_a + reach_b - absf(apart.dot(axis)))
+	return least

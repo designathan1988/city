@@ -150,16 +150,19 @@ void make_body(const Data &data, Body &b, int zone, int floors, float W, float D
 	b.use = b.kind == KIND_WORKS ? USE_INDUSTRIAL : b.kind == KIND_SHOP || b.kind == KIND_OFFICE ? USE_COMMERCIAL : USE_RESIDENTIAL;
 	Xoshiro128 r(seed);
 	b.plan = plan_lot(data.lots, b.kind, W, D, r);
+	// The envelope the generator builds to is the room the plan leaves, taken down to the generator's grid: every kind lays its
+	// blocks in half metres (snap), and a size rounded up would stand past the lot's lines, in the neighbour's wall.
+	const float room_w = b.plan.x1 - b.plan.x0;
 	Envelope env;
-	env.W = b.plan.x1 - b.plan.x0;
-	env.D = b.plan.y1 - b.plan.y0;
+	env.W = half_down(room_w);
+	env.D = half_down(b.plan.y1 - b.plan.y0);
 	env.back_door = b.plan.back != BACK_NONE && b.plan.back != BACK_LOADING;
 	env.character = seed & CHARACTER_MASK;
 	env.era = int((seed >> ERA_SHIFT) % ERAS);
 	env.cap = floors;
 	env.low = zone == ZONE_COM_LOW;
 	made_to_measure(data, b, env, r);
-	float dx = b.plan.x0 - W / 2, dy = b.plan.y0;
+	float dx = b.plan.x0 - W / 2 + (room_w - env.W) / 2, dy = b.plan.y0; // in the middle of its room across, on its front line
 	for (Volume &v : b.volumes) { v.x += dx; v.y += dy; }
 	for (LotElement &e : b.elements) { e.x += dx; e.y += dy; }
 	for (Core &c : b.cores) { c.x += dx; c.y += dy; }

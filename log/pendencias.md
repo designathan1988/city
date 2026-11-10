@@ -91,12 +91,24 @@ O que falta fazer, por área.
     technique for every distance (four cascades of the drawn set each frame), the screen terms stacked as full-resolution
     passes, the ground's look worked out per pixel from noise, a person's pose worked out per vertex per pass.
   - The city opens in 23.6 s in the batch's measure (16.6 s before): not yet read for its cause.
-  - Defects seen in the photos and still open: the far walls at night (one tan glow with black squares), sheds standing
-    in one another on industrial lots, a dark blotch over a pale cross street.
-  - With no antialiasing at all (the low tier) the parapets' coping strips read as dashed lines round the roofs from mid
-    distance and the blinds' slats beat with the pixels (trace P34; the slats also show it on a still frame of the medium
-    tier): a coping under a pixel folded into the parapet at the levels that draw it so small, the slats filtered by the
-    pixel's footprint, and the owner's word on whether the low tier keeps no edge filter.
+  - Defects seen in the photos and still open: sheds standing in one another on industrial lots, a dark blotch over a
+    pale cross street.
+  - The far city at night (trace P11, closed 2026-11-10): since P36 every level lights by one rule, and past the
+    distance where a window is under a pixel a facade shows that rule's mean, as the reference game's far level does
+    (`massingMaterial.ts`: its own lot near, the share once a window is under a pixel); from 2.6 km the 24 km city is
+    one field of that mean. What would break the field up is in the rule, not in the levels: every building has the
+    same share of rooms awake, offices included, which are lit at 22:00 like homes. An hours-of-use curve by purpose
+    (offices by working hours) needs a source like the one `awake_by_hour` has (BLS ATUS) and the owner's word: it
+    changes what the game shows at every level.
+  - The shade of a street by day (the first line of this file: 7 to 37 % under the reference on the dark side): read
+    again on 2026-11-10 (`daylight.gd`, `canyon_light.gdshaderinc`, the reference's `canyonLight.ts`): the street's lost
+    sky is the same rule in both (the picture times `mix(1, vis, 0.85 - 0.35 x direct share)`, the same horizon search
+    and bounce fit); the difference was not found there. Not yet compared: where each multiplies (this game before the
+    tone curve, in the atmosphere pass).
+  - With no antialiasing at all (the low tier): the mid level's coping is now a part drawn only while a pixel wide and
+    the blinds' slats, the curtains' folds and the sheers' weave fade to their mean under the pixels (trace P34, closed
+    2026-11-10). Still the owner's word: whether the low tier keeps no edge filter at all (every other sliver of
+    geometry under a pixel, a thin tower's fins, a far railing, is drawn there by the pixels whose centres it covers).
   - The mid level's bay rows carry integers of 24 bits and, since P36, words of 30 bits as the bits of a float
     (`shell.cpp` `Shell::bay`): exact on the RD renderers, where a MultiMesh row is 32-bit floats; the Compatibility
     renderer packs colour and custom data in half floats, so there the bays' openings, colours and seeds were never exact

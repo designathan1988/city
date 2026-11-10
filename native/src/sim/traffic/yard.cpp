@@ -225,12 +225,39 @@ void YardPlanner::next_gate(int &work) {
 		return;
 	}
 	ways_.reached = std::max(ways_.reached, int(YARD_NO_WAY));
+	found_in_ = found_out_ = seek_out_ = false;
+	in_grain_ = out_grain_ = WayGrain::COARSE;
+	lane_fits_ = -1;
 	search_for(g.stop, pre_, true, WayGrain::COARSE, Stage::WAY_IN);
 }
 
-// The way in, then the way out, at the coarse grain; when neither was found, the way in at the graduated grain, then at the fine one
-// (WayGrain: the coarse grain finds most yards' ways fast, and loses a tight yard's, which the graduated one finds with some half the
-// poses of the fine one). A search keeps one pose to a cell, so it can lose a way that exists: one found holds for both.
+// Whether the body fits along the lane from this gate's stop to its join: the leg one way found is driven back along for the other.
+bool YardPlanner::lane_holds(const YardGate &g) {
+	if (lane_fits_ < 0) {
+		lane_ = settle(g.stop, g.join, false, in_.settle_step);
+		lane_fits_ = all_fit(field_, in_.body, lane_, in_.fit_margin) ? 1 : 0;
+	}
+	return lane_fits_ == 1;
+}
+
+// The search still worth making at this gate, begun (false: none): neither way found, the way in at the next grain; one found with
+// no lane to drive it back on, the missing one at the next grain, since a coarse search can lose a way that exists.
+bool YardPlanner::search_on(const YardGate &g) {
+	if (found_in_ && found_out_) return false;
+	if ((found_in_ || found_out_) && lane_holds(g)) return false;
+	const bool out = found_in_;
+	WayGrain &tried = out ? out_grain_ : in_grain_;
+	if (tried == WayGrain::FINE) return false;
+	tried = tried == WayGrain::COARSE ? WayGrain::GRADUATED : WayGrain::FINE;
+	const Stage stage = tried == WayGrain::GRADUATED ? Stage::WAY_GRADUATED : Stage::WAY_FINE;
+	seek_out_ = out;
+	if (out) search_for(pre_, g.join, false, tried, stage);
+	else search_for(g.stop, pre_, true, tried, stage);
+	return true;
+}
+
+// The way in, then the way out, at the coarse grain; then whatever search_on still finds worth making (WayGrain: the coarse grain
+// finds most yards' ways fast, and loses a tight yard's, which the graduated one finds with some half the poses of the fine one).
 void YardPlanner::search_step(int &work) {
 	if (!search_->advance(work)) return;
 	const YardGate &g = in_.gates[size_t(order_[gate_])];
@@ -240,23 +267,14 @@ void YardPlanner::search_step(int &work) {
 	plan.cost.searches[kind]++;
 	plan.cost.found[kind] += found ? 1 : 0;
 	plan.cost.search[kind].add(search_->cost());
-	if (stage_ == Stage::WAY_OUT) {
-		found_out_ = found && settled(in_, field_, search_->way(), g.join, false, away_);
-		if (!found_in_ && !found_out_) {
-			search_for(g.stop, pre_, true, WayGrain::GRADUATED, Stage::WAY_GRADUATED);
-			return;
-		}
-	} else {
-		found_in_ = found && settled(in_, field_, search_->way(), pre_, true, onto_);
-		if (stage_ == Stage::WAY_IN) {
-			search_for(pre_, g.join, false, WayGrain::COARSE, Stage::WAY_OUT);
-			return;
-		}
-		if (stage_ == Stage::WAY_GRADUATED && !found_in_) {
-			search_for(g.stop, pre_, true, WayGrain::FINE, Stage::WAY_FINE);
-			return;
-		}
+	if (seek_out_) found_out_ = found && settled(in_, field_, search_->way(), g.join, false, away_);
+	else found_in_ = found && settled(in_, field_, search_->way(), pre_, true, onto_);
+	if (stage_ == Stage::WAY_IN) {
+		seek_out_ = true;
+		search_for(pre_, g.join, false, WayGrain::COARSE, Stage::WAY_OUT);
+		return;
 	}
+	if (search_on(g)) return;
 	search_.reset();
 	work -= JOIN_WORK;
 	if (join_ways(g)) {
@@ -274,11 +292,10 @@ bool YardPlanner::join_ways(const YardGate &g) {
 	if (!found_in_ && !found_out_) return false;
 	if (!found_in_ || !found_out_) {
 		ways_.reached = std::max(ways_.reached, int(YARD_NO_LANE));
-		const std::vector<AxlePose> lane = settle(g.stop, g.join, false, in_.settle_step);
-		if (!all_fit(field_, in_.body, lane, in_.fit_margin)) return false;
+		if (!lane_holds(g)) return false;
 		ways_.reached = std::max(ways_.reached, int(YARD_ONE_WAY));
-		if (found_in_) joined(driven_back(onto_), lane, away_);
-		else joined(lane, driven_back(away_), onto_);
+		if (found_in_) joined(driven_back(onto_), lane_, away_);
+		else joined(lane_, driven_back(away_), onto_);
 	} else ways_.reached = std::max(ways_.reached, int(YARD_BOTH_WAYS));
 	ways_.into = onto_;
 	const std::vector<AxlePose> to_dock = straight(pre_, docked_, true, in_.settle_step);

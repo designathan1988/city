@@ -1,4 +1,4 @@
-// Pitched roofs: gable and hip with 0.45 m eaves all round, a 0.18 m roof
+// Pitched roofs: gable and hip with 0.45 m eaves where the lot and the body's other blocks leave the room, a 0.18 m roof
 // body (fascia trim x 0.92, soffit trim x 0.7), ridge cap (roof x 0.85), gable triangles in the wall paint; shed roofs
 // with their tall back wall and triangular end walls; sawtooth (north-light) roofs of glazed teeth. Built in a ridge frame: u along the ridge, s across, z up.
 #include "render/buildings/facade.h"
@@ -17,6 +17,33 @@ namespace {
 constexpr float EAVES = 0.45f, THICK = 0.18f, FASCIA = 0.92f, SOFFIT = 0.7f, CAP_W = 0.14f, CAP_LIFT = 0.07f, CAP_SHADE = 0.85f;
 constexpr float HALF = 0.5f, MULLION = 0.08f;
 
+// How far a roof may reach past each side of its block (lot frame: -x, +x, the front, the back): its eaves, but never past the
+// lot's own line (a wall on it ends flush, as a party wall does) nor into another block of the body that stands as high.
+struct Reach {
+	float left = EAVES, right = EAVES, front = EAVES, back = EAVES;
+};
+
+Reach reach_of(const Body &b, const Volume &v) {
+	Reach r;
+	auto room = [](float &side, float free) { side = std::clamp(free, 0.f, side); };
+	if (b.plan.W > 0 && b.plan.D > 0) { // the lot's lines, where the body knows its lot
+		room(r.left, v.x + b.plan.W / 2);
+		room(r.right, b.plan.W / 2 - (v.x + v.w));
+		room(r.front, v.y);
+		room(r.back, b.plan.D - (v.y + v.d));
+	}
+	const float eave_z = b.block_z(v, v.top());
+	for (const Volume &o : b.volumes) {
+		if (&o == &v || b.block_z(o, o.top()) < eave_z) continue; // a lower block: the eave passes over it
+		const bool beside_x = o.y < v.y + v.d && o.y + o.d > v.y, beside_y = o.x < v.x + v.w && o.x + o.w > v.x;
+		if (beside_x && o.x + o.w <= v.x + EPS) room(r.left, v.x - (o.x + o.w));
+		if (beside_x && o.x >= v.x + v.w - EPS) room(r.right, o.x - (v.x + v.w));
+		if (beside_y && o.y + o.d <= v.y + EPS) room(r.front, v.y - (o.y + o.d));
+		if (beside_y && o.y >= v.y + v.d - EPS) room(r.back, o.y - (v.y + v.d));
+	}
+	return r;
+}
+
 struct Pitch {
 	Shell &s;
 	Basis R;
@@ -25,6 +52,7 @@ struct Pitch {
 	int8_t roof_fin, trim_fin, wall_fin;
 	const RoofHide *hide = nullptr; // what a taller volume of a body cut open encloses is left out
 	bool lean = false; // the far level: the planes and the walls under them alone (no underside, edge board or cap: none shows from there)
+	float out_u0 = EAVES, out_u1 = EAVES, out_s0 = EAVES, out_s1 = EAVES; // the reach past each end of the ridge and each side across it
 	Vector3 p(float u, float sv, float z) const { return R.at(u, sv, z); }
 	void tri(const Vector3 &a, const Vector3 &b, const Vector3 &c, const Vector3 &out, const Lin &lin, int8_t fin) {
 		if (hide) hide->tri(s, a, b, c, out, lin, fin);
@@ -55,9 +83,10 @@ struct Pitch {
 			if (!lean) tri(q[0] + down, q[1] + down, q[2] + down, -out, soffit, trim_fin);
 		}
 	}
-	// The vertical face of the roof body under the edge a-b (eaves fascia, barge board).
-	void edge(const Vector3 &a, const Vector3 &b, const Vector3 &out) {
-		if (lean) return;
+	// The vertical face of the roof body under the edge a-b (eaves fascia, barge board); none on a side with no reach: the wall
+	// under it closes the roof there, in the same plane.
+	void edge(const Vector3 &a, const Vector3 &b, const Vector3 &out, float reach) {
+		if (lean || reach <= 0) return;
 		Vector3 down = -R.e2 * THICK;
 		quad(a, b, b + down, a + down, out, fascia, trim_fin);
 	}
@@ -67,39 +96,42 @@ struct Pitch {
 };
 
 void Pitch::gable_hip(bool hip) {
-	float ze = -EAVES * slope, H = S / 2, rise = H * slope;
-	float U0 = -EAVES, U1 = L + EAVES, S0 = -EAVES, S1 = S + EAVES;
-	float r0 = hip ? U0 + (H + EAVES) : U0, r1 = hip ? U1 - (H + EAVES) : U1;
+	// A hip's four planes meet at its corners only with one reach all round: the least room of its sides.
+	const float even = std::min({ out_u0, out_u1, out_s0, out_s1 });
+	const float u0 = hip ? even : out_u0, u1 = hip ? even : out_u1, s0 = hip ? even : out_s0, s1 = hip ? even : out_s1;
+	float z0 = -s0 * slope, z1 = -s1 * slope, H = S / 2, rise = H * slope;
+	float U0 = -u0, U1 = L + u1, S0 = -s0, S1 = S + s1;
+	float r0 = hip ? U0 + (H + even) : U0, r1 = hip ? U1 - (H + even) : U1;
 	if (r0 > r1) r0 = r1 = L / 2;
-	Vector3 a = p(U0, S0, ze), b = p(U1, S0, ze), c = p(U1, S1, ze), d = p(U0, S1, ze), k0 = p(r0, H, rise), k1 = p(r1, H, rise);
+	Vector3 a = p(U0, S0, z0), b = p(U1, S0, z0), c = p(U1, S1, z1), d = p(U0, S1, z1), k0 = p(r0, H, rise), k1 = p(r1, H, rise);
 	Vector3 front = (R.e2 - R.e1 * slope).normalized(), back = (R.e2 + R.e1 * slope).normalized();
 	Vector3 q[4] = { a, b, k1, k0 };
 	plane(q, 4, front);
 	Vector3 q2[4] = { d, c, k1, k0 };
 	plane(q2, 4, back);
-	edge(a, b, -R.e1);
-	edge(d, c, R.e1);
+	edge(a, b, -R.e1, s0);
+	edge(d, c, R.e1, s1);
 	if (hip) {
 		Vector3 t0[3] = { a, d, k0 }, t1[3] = { b, c, k1 };
 		plane(t0, 3, (R.e2 - R.e0 * slope).normalized());
 		plane(t1, 3, (R.e2 + R.e0 * slope).normalized());
-		edge(a, d, -R.e0);
-		edge(b, c, R.e0);
+		edge(a, d, -R.e0, u0);
+		edge(b, c, R.e0, u1);
 	} else {
 		tri(p(0, 0, 0), p(0, S, 0), p(0, H, rise), -R.e0, wall, wall_fin);
 		tri(p(L, 0, 0), p(L, S, 0), p(L, H, rise), R.e0, wall, wall_fin);
-		edge(a, k0, -R.e0); edge(d, k0, -R.e0); edge(b, k1, R.e0); edge(c, k1, R.e0);
+		edge(a, k0, -R.e0, u0); edge(d, k0, -R.e0, u0); edge(b, k1, R.e0, u1); edge(c, k1, R.e0, u1);
 	}
 	if (r1 > r0) along(r0, r1, H - CAP_W, H + CAP_W, rise, rise + CAP_LIFT, roof * CAP_SHADE, roof_fin);
 }
 
 void Pitch::shed() {
-	float rise = S * slope, hi = rise + EAVES * slope, lo = -EAVES * slope;
-	float U0 = -EAVES, U1 = L + EAVES, S0 = -EAVES, S1 = S + EAVES;
+	float rise = S * slope, hi = rise + out_s0 * slope, lo = -out_s1 * slope;
+	float U0 = -out_u0, U1 = L + out_u1, S0 = -out_s0, S1 = S + out_s1;
 	Vector3 a = p(U0, S0, hi), b = p(U1, S0, hi), c = p(U1, S1, lo), d = p(U0, S1, lo);
 	Vector3 q[4] = { a, b, c, d };
 	plane(q, 4, (R.e2 + R.e1 * slope).normalized());
-	edge(a, b, -R.e1); edge(d, c, R.e1); edge(a, d, -R.e0); edge(b, c, R.e0);
+	edge(a, b, -R.e1, out_s0); edge(d, c, R.e1, out_s1); edge(a, d, -R.e0, out_u0); edge(b, c, R.e0, out_u1);
 	quad(p(0, 0, 0), p(L, 0, 0), p(L, 0, rise), p(0, 0, rise), -R.e1, wall, wall_fin);
 	tri(p(0, 0, 0), p(0, S, 0), p(0, 0, rise), -R.e0, wall, wall_fin);
 	tri(p(L, 0, 0), p(L, S, 0), p(L, 0, rise), R.e0, wall, wall_fin);
@@ -137,18 +169,24 @@ void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves) 
 		return;
 	}
 	const Basis &lot = pl.lot;
+	const Reach room = reach_of(b, v);
+	// The frame's ridge along the lot's x, s running to the back (`flip`: to the front); or along its y, s to the right (`flip`: to the left).
+	auto frame_x = [&](bool flip) {
+		P.R = Basis{ lot.at(v.x, flip ? v.y + v.d : v.y, eaves), lot.e0, flip ? -lot.e1 : lot.e1, lot.e2 };
+		P.L = v.w; P.S = v.d;
+		P.out_u0 = room.left; P.out_u1 = room.right;
+		P.out_s0 = flip ? room.back : room.front; P.out_s1 = flip ? room.front : room.back;
+	};
+	auto frame_y = [&](bool flip) {
+		P.R = Basis{ lot.at(flip ? v.x + v.w : v.x, v.y, eaves), lot.e1, flip ? -lot.e0 : lot.e0, lot.e2 };
+		P.L = v.d; P.S = v.w;
+		P.out_u0 = room.front; P.out_u1 = room.back;
+		P.out_s0 = flip ? room.right : room.left; P.out_s1 = flip ? room.left : room.right;
+	};
 	if (v.roof == ROOF_SHED) {
 		int fall = std::max(0, v.fall);
-		bool along_y = fall % 2 == 0; // falls toward the front (0) or back (2): ridge along x
-		if (along_y) {
-			bool to_back = fall == 2;
-			P.R = Basis{ lot.at(v.x, to_back ? v.y : v.y + v.d, eaves), lot.e0, to_back ? lot.e1 : -lot.e1, lot.e2 };
-			P.L = v.w; P.S = v.d;
-		} else {
-			bool to_right = fall == 1;
-			P.R = Basis{ lot.at(to_right ? v.x : v.x + v.w, v.y, eaves), lot.e1, to_right ? lot.e0 : -lot.e0, lot.e2 };
-			P.L = v.d; P.S = v.w;
-		}
+		if (fall % 2 == 0) frame_x(fall != 2); // falls toward the front (0) or back (2): ridge along x
+		else frame_y(fall != 1);
 		P.shed();
 		return;
 	}
@@ -160,10 +198,8 @@ void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves) 
 		P.sawtooth(saw_step(v), paint_lin(g), g.finish);
 		return;
 	}
-	bool along_x = ridge_along_x(v);
-	P.R = along_x ? Basis{ lot.at(v.x, v.y, eaves), lot.e0, lot.e1, lot.e2 } : Basis{ lot.at(v.x, v.y, eaves), lot.e1, lot.e0, lot.e2 };
-	P.L = along_x ? v.w : v.d;
-	P.S = along_x ? v.d : v.w;
+	if (ridge_along_x(v)) frame_x(false);
+	else frame_y(false);
 	P.gable_hip(v.roof != ROOF_GABLE);
 }
 

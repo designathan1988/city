@@ -324,6 +324,7 @@
     {"name": "memory_test", "scene": "tests/core/memory_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "far_level_test", "scene": "tests/core/far_level_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "pane_seed_test", "scene": "tests/core/pane_seed_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "lot_overlap_test", "scene": "tests/core/lot_overlap_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "surface_data_test", "scene": "tests/core/surface_data_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "pipeline_test@forward_plus", "scene": "tests/core/pipeline_test", "renderer": "forward_plus", "test_fps": "-1", "timeout_s": 600},
     {"name": "shadow_reach_test", "scene": "tests/core/shadow_reach_test", "renderer": "gl_compatibility", "timeout_s": 600},

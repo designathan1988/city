@@ -110,6 +110,13 @@ void loading(LotSpace &s) {
 	const float dw = l.lorry_w + 2 * l.dock_margin, wall = std::max(s.B, s.loading_y);
 	const float depth = std::min(l.lorry_l + l.dock_margin, s.D - wall - YARD_BACK);
 	const int dock = s.paint("dock"), bollard = s.paint("lamp_post");
+	// The lorry's lane runs on through the yard, its one way to every dock: nothing stands in it and no dock lies across it.
+	float left = s.L, right = s.R;
+	for (const Strip &st : s.strips) {
+		if (st.drive.empty()) continue;
+		s.keep_clear({ st.drive.x0, s.B, st.drive.x1, s.D });
+		(st.left ? left : right) = st.left ? st.drive.x1 : st.drive.x0;
+	}
 	auto lay = [&](float x) {
 		if (!s.flat(EL_DOCK, { x - dw * HALF, wall, x + dw * HALF, wall + depth }, 0, dock, FACE_BACK)) return false;
 		for (float side : { -1.f, 1.f })
@@ -118,14 +125,16 @@ void loading(LotSpace &s) {
 	};
 	float last = -FAR_AWAY;
 	for (float door : s.loading_x) {
-		float x = std::clamp(door, s.L + DOCK_EDGE + dw * HALF, s.R - DOCK_EDGE - dw * HALF);
+		const float lo = left + DOCK_EDGE + dw * HALF, hi = right - DOCK_EDGE - dw * HALF;
+		if (hi < lo) break; // no room for a dock between the lanes
+		float x = std::clamp(door, lo, hi);
 		if (std::abs(x - door) > DOCK_ON_DOOR || x - last < dw + DOCK_APART) continue;
 		if (lay(x)) last = x;
 	}
 	if (last == -FAR_AWAY && !s.built_box.empty())
-		for (float x = s.built_box.x0 + dw * HALF; x + dw * HALF <= s.built_box.x1; x += dw + DOCK_APART + 2 * BOLLARD) lay(x);
+		for (float x = std::max(s.built_box.x0, left + DOCK_EDGE) + dw * HALF; x + dw * HALF <= std::min(s.built_box.x1, right - DOCK_EDGE); x += dw + DOCK_APART + 2 * BOLLARD) lay(x);
 	const int post = s.paint("lamp_post");
-	for (float x : { s.L + YARD_LAMP_IN, s.R - YARD_LAMP_IN }) s.put(EL_LAMP, Rect::around(x, (s.B + s.D) * HALF, LAMP, LAMP), YARD_LAMP_H, post);
+	for (float x : { left + YARD_LAMP_IN, right - YARD_LAMP_IN }) s.put(EL_LAMP, Rect::around(x, (s.B + s.D) * HALF, LAMP, LAMP), YARD_LAMP_H, post);
 }
 } // namespace
 
