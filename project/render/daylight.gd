@@ -38,6 +38,7 @@ var _fitted_for := []
 ## The values last given to the engine (it keeps them in single precision, so its own copy does not compare): each is set only
 ## when it moves.
 var _air_density := NAN
+var _sky_low := NAN # the sky's low band share last sent (follow_view)
 var _splits := PackedFloat64Array([NAN, NAN, NAN])
 ## The Effects panel's switches: bloom and the ambient light drawn or not.
 var glow_on := true
@@ -156,6 +157,10 @@ func follow_view(camera: Camera3D) -> void:
 	if camera == null:
 		return
 	var low := 1.0 - smoothstep(_d.low_from_m, _d.low_to_m, camera.global_position.y)
+	var band: float = _d.low_sky * low # the sky's deep band at this height: sent only when it moves (the sky's radiance is remade then)
+	if band != _sky_low:
+		_sky_low = band
+		_sky.set_shader_parameter("low", band)
 	var air: Color = _c("air_high").lerp(_c("low_horizon"), low) * (1.0 - _d.air_night_cut * _dark)
 	if _env.fog_light_color != air:
 		_env.fog_light_color = air
@@ -258,9 +263,6 @@ func _set_sky(elev: float) -> void:
 	_sky.set_shader_parameter("ground", _c("sky_ground").lerp(_c("horizon_night"), 1.0 - light))
 	_sky.set_shader_parameter("low_zenith", _c("low_zenith"))
 	_sky.set_shader_parameter("low_horizon", _c("low_horizon"))
-	_sky.set_shader_parameter("low", _d.low_sky)
 	_sky.set_shader_parameter("dark", 1.0 - light)
-	_sky.set_shader_parameter("low_from_m", _d.low_from_m)
-	_sky.set_shader_parameter("low_to_m", _d.low_to_m)
 	_sky.set_shader_parameter("sun_color", sun_col)
 	_sky.set_shader_parameter("gain", _d.sky_gain * (1.0 + _flash * _d.flash_sky))

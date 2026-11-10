@@ -54,11 +54,27 @@ void FarRoadRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb
 		}
 }
 
-void FarRoadRenderer::offer(const CityState &s, JobPool &pool, const Vector3 &cam, std::vector<FrameAdmission::Unit> &out) {
+void FarRoadRenderer::offer(const CityState &s, JobPool &pool, const Vector3 &cam, float reach, float drop, std::vector<FrameAdmission::Unit> &out) {
+	auto away = [&cam](int64_t key) {
+		const float dx = (float(key_x(key)) + MID) * SUPERCHUNK - cam.x, dz = (float(key_y(key)) + MID) * SUPERCHUNK - cam.z;
+		return std::sqrt(dx * dx + dz * dz);
+	};
+	const float within = reach + SUPERCHUNK * MID * std::sqrt(2.f); // from its middle: a superchunk with any ground within reach
+	for (auto it = supers_.begin(); it != supers_.end();) {
+		if (away(it->first) <= within * drop || busy(it->first)) {
+			++it;
+			continue;
+		}
+		it->second.surface.free(); // the eye left: its mesh goes, and it is made again when the eye comes back
+		dirty_.insert(it->first);
+		it = supers_.erase(it);
+	}
+	waiting_ = 0;
 	for (int64_t key : dirty_) {
 		if (busy(key)) continue; // its result lands first; the superchunk stays dirty and is asked again then
-		const float dx = (float(key_x(key)) + MID) * SUPERCHUNK - cam.x, dz = (float(key_y(key)) + MID) * SUPERCHUNK - cam.z;
-		const float d = std::sqrt(dx * dx + dz * dz);
+		const float d = away(key);
+		if (d > within) continue; // out of reach: it waits
+		waiting_++;
 		out.push_back(FrameAdmission::Unit{ supers_.count(key) ? 1 : 0, d, 1, [this, &s, &pool, key, d]() {
 					   dirty_.erase(key);
 					   submit_job(s, pool, JobKey{ JobLane::ROADS_FAR, key }, key, d, [this, &s, key](MeshBuilder &mb) { build_cpu(s, key, mb); });

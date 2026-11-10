@@ -1,7 +1,7 @@
-// Every road of the map at its far level: one mesh a superchunk, made once and for good, with the same pieces and the same material as the
-// detailed chunks but only their top faces. The detailed chunks stream round the camera; where one stands, its roads fold away here (`chunk_mask`,
-// road.gdshader), so the two swap with no hole and no overlap and the streets never end before the buildings do. An edit makes its superchunk again,
-// never the map.
+// The roads at their far level: one mesh a superchunk, with the same pieces and the same material as the detailed chunks but only their top
+// faces, streamed as far as the buildings' far level reaches (the streets never end before the buildings do) and let go past it, so what is
+// held follows the view and not the size of the map. The detailed chunks stream nearer; where one stands, its roads fold away here
+// (`chunk_mask`, road.gdshader), so the two swap with no hole and no overlap. An edit makes its superchunk again, never the map.
 #pragma once
 
 #include "render/chunk_queue.h"
@@ -23,10 +23,11 @@ public:
 	bool init(const RenderContext &ctx, const StreetLook &look, godot::PackedStringArray &errors);
 	void reset();
 	void mark(int64_t chunk); // the roads of this chunk changed
-	// The dirty superchunks as the frame's build units (frame_admission.h): nearest first in the frame's one order.
-	void offer(const CityState &s, JobPool &pool, const godot::Vector3 &cam, std::vector<FrameAdmission::Unit> &out);
+	// The dirty superchunks within `reach` of the eye as the frame's build units (frame_admission.h), nearest first in the frame's one
+	// order; one past `reach` x `drop` is let go and stands dirty until the eye comes back.
+	void offer(const CityState &s, JobPool &pool, const godot::Vector3 &cam, float reach, float drop, std::vector<FrameAdmission::Unit> &out);
 	void fold(const RoadChunks &detail); // the detailed chunks standing now: theirs fold away
-	int waiting_supers() const { return int(dirty_.size()); }
+	int waiting_supers() const { return waiting_; }
 
 protected:
 	void commit_one(BuiltMesh &b) override;
@@ -42,7 +43,8 @@ private:
 	const StreetLook *look_ = nullptr;
 	godot::RID scenario_, material_;
 	std::unordered_map<int64_t, Super> supers_;
-	std::unordered_set<int64_t> dirty_;
+	std::unordered_set<int64_t> dirty_; // to make: changed, never made, or let go
+	int waiting_ = 0; // of them, those within reach and not asked yet (the last offer): what the view still waits for
 	uint64_t folded_ = 0; // the detail's revision the masks were made from
 	bool fresh_ = false; // a mesh came since: its instance has not had its mask
 };
