@@ -7,6 +7,7 @@
 #include "sim/traffic/lane_shift.h"
 
 #include "sim/traffic/lane_closures.h"
+#include "sim/traffic/vehicle_overlaps.h"
 
 #include "core/units.h"
 
@@ -18,10 +19,13 @@ namespace traffic {
 
 namespace {
 
-// What the lane head sees beyond the stop line: the connector's last vehicle or the next lane's tail.
+// What the lane head sees beyond the stop line: the connector's last vehicle or the next lane's tail, and a stretch closed at the next
+// lane's start (a body off the lanes standing there: lane_closures.h), which it stops short of as of a queue.
 void lead_beyond(const CityState &s, int ci, float dist, Lead &l) {
 	const TrafficState &t = s.traffic;
 	const Conn &c = t.g.conns[ci];
+	if (!t.closures.empty())
+		if (const float shut = closure_ahead(t, c.to_ds * MAX_LANES + c.to_lane, -(dist + c.len)); shut >= 0) l.take(shut, 0.f);
 	const auto &on = t.conn_vehicles[ci];
 	if (!on.empty()) {
 		const Vehicle &b = t.vehicles[on.back()];
@@ -133,6 +137,7 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 			const float shut = closure_ahead(t, ds * MAX_LANES + v.lane, v.s);
 			if (shut >= 0) l.take(shut, 0.f);
 		}
+		if (!t.park.cars.empty() || !t.park.lorries.empty()) l.take(off_body_ahead(s, id, idm_reach(p.classes[int(v.type)], v.v)), 0.f); // a body off the lanes in its path
 		if (v.kerb >= 0) l.take(kerb_stop_gap(t, v) + p.classes[int(v.type)].min_gap, 0.f); // the IDM stops s0 short
 		const bool through = !v.ended && v.ri + 1 < v.route.len; // it crosses this lane's junction
 		if (const float hold = transit::hold_ahead(s, v, ds, through, head); hold >= 0) l.take(hold, 0.f);

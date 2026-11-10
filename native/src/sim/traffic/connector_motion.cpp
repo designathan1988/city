@@ -1,6 +1,8 @@
 // Vehicles across a junction, on its connectors: each follows the one ahead or the exit lane's tail, gives way to walkers on the exit
 // crosswalk and stops for the lights past it (motion_law.h); off the connector's end it is on its exit lane. What holds a vehicle in the
 // box (box_hold) is read by the junction's admission.
+#include "sim/traffic/lane_closures.h"
+#include "sim/traffic/vehicle_overlaps.h"
 #include "sim/traffic/motion_law.h"
 #include "sim/traffic/sight.h"
 
@@ -47,6 +49,9 @@ void step_connector(CityState &s, int ci, float dt) {
 		const LightStop lights = lights_ahead(s, v, v.ri + 1, c.to_lane, c.len - v.cs);
 		v.amber_hold = lights.amber_hold;
 		l.take(lights.gap, 0.f);
+		if (!t.park.cars.empty() || !t.park.lorries.empty()) l.take(off_body_ahead(s, list[k], idm_reach(p.classes[int(v.type)], v.v)), 0.f); // a body off the lanes in its path
+		if (!t.closures.empty()) // a stretch closed at its lane's start: it stops short of it, never into the closed stretch
+			if (const float shut = closure_ahead(t, c.to_ds * MAX_LANES + c.to_lane, v.cs - c.len); shut >= 0) l.take(shut, 0.f);
 		float acc = finish_accel(s, v, idm_accel(p.classes[int(v.type)], v.v, top, l.gap, l.v), l, dt);
 		integrate(s, v, acc, dt, v.cs);
 	}

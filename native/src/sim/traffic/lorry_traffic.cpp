@@ -5,6 +5,7 @@
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/traffic/lane_closures.h"
+#include "sim/traffic/vehicle_overlaps.h"
 
 #include "core/laps.h"
 #include "sim/traffic/yard.h"
@@ -39,9 +40,7 @@ Manoeuvre shunt(const TrafficParams &p, const std::vector<AxlePose> &way) {
 
 bool close_if_clear(CityState &s, Lorry &l, const std::vector<LaneClosure> &stretches) {
 	if (l.closed) return true;
-	for (const LaneClosure &c : stretches)
-		if (!lane_clear(s, c)) return false;
-	s.traffic.closures.insert(s.traffic.closures.end(), stretches.begin(), stretches.end());
+	if (!take_lanes(s, stretches)) return false;
 	l.closed = !stretches.empty();
 	return true;
 }
@@ -65,6 +64,7 @@ bool may_go(CityState &s, Lorry &l, float dt) {
 void forget(CityState &s, int index) {
 	ParkingState &pk = s.traffic.park;
 	open_lanes(s.traffic, pk.lorries[size_t(index)].id);
+	pk.let_access(pk.lorries[size_t(index)].building, pk.lorries[size_t(index)].id);
 	s.traffic.vehicles[size_t(pk.lorries[size_t(index)].id)].lorry = -1;
 	if (index + 1 != int(pk.lorries.size())) {
 		pk.lorries[size_t(index)] = std::move(pk.lorries.back());
@@ -104,7 +104,9 @@ void give_up(CityState &s, int index) {
 	if (v.ds < 0 || !new_trip(s, id, v.ds)) v.goal_s = 0;
 }
 
-// Stopped before the gate, it leaves the lanes where it stands: the way in starts from there.
+// Stopped before the gate: the way in starts from where it stands, and the street part is swept from there. It stays a vehicle
+// of its lane, standing at its stop, until the street it sweeps is its own (waiting): off the lane's list its followers would
+// have nothing to stop for.
 void coming(CityState &s, int index) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
@@ -112,7 +114,6 @@ void coming(CityState &s, int index) {
 	Vehicle &v = t.vehicles[size_t(l.id)];
 	if (!v.alive || !v.micro || l.t > p.lorry_call_timeout_s) { give_up(s, index); return; }
 	if (v.ds != l.gate.ds || v.conn >= 0 || v.lane != l.gate.lane || v.v > p.parker_stop_ms || v.s < v.stop_at - p.lorry_stop_slack_m) return;
-	v.stop_at = -1;
 	Pose at;
 	lane_pose(s, v.ds, v.lane, v.s - p.classes[int(v.type)].length * 0.5f, at);
 	const double angle = std::atan2(double(at.fz), double(at.fx));
@@ -121,15 +122,35 @@ void coming(CityState &s, int index) {
 	const bool behind = (start.x - here.x) * at.fx + (start.z - here.z) * at.fz < 0;
 	l.into.insert(l.into.begin(), { here.x, here.z, here.angle, behind });
 	l.into_street++;
+	l.close_in.clear();
+	sweep_lanes(s, l.into, 0, l.into_street, l.id, l.close_in);
+	l.phase = LorryPhase::WAITING;
+	l.t = 0;
+}
+
+// The street it sweeps clear and closed, it leaves the lanes where it stands and sets off along its way.
+void waiting(CityState &s, int index) {
+	TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
+	Lorry &l = t.park.lorries[size_t(index)];
+	Vehicle &v = t.vehicles[size_t(l.id)];
+	if (!v.alive || !v.micro || v.ds != l.gate.ds || v.conn >= 0 || l.t > p.lorry_call_timeout_s) { give_up(s, index); return; }
+	// the lot's way is its own for the whole visit (the lot's cars wait), then the street it sweeps
+	const float len = p.classes[int(VehicleType::TRUCK)].length;
+	if (!t.park.take_access(l.building, l.id, l.gate.ds * MAX_LANES + l.gate.lane, std::min(l.gate.stop_at, l.gate.join_at) - len, std::max(l.gate.stop_at, l.gate.join_at) + len) ||
+			!close_if_clear(s, l, l.close_in))
+		return;
+	v.stop_at = -1;
 	lane_del(s, v.ds * MAX_LANES + v.lane, l.id);
 	micro_remove(t, l.id);
 	v.off = true;
 	v.ds = -1;
 	v.v = 0;
 	t.vehicle_count--;
-	set_off_pose(s, v, body_at(p, here));
-	l.phase = LorryPhase::WAITING;
-	l.t = 0;
+	set_off_pose(s, v, body_at(p, l.into.front()));
+	l.path = shunt(p, l.into);
+	l.street_at = l.path.at_step(l.into_street);
+	l.phase = LorryPhase::ARRIVING;
 }
 
 void drive(CityState &s, int index, float dt) {
@@ -142,13 +163,15 @@ void drive(CityState &s, int index, float dt) {
 		if (!close_if_clear(s, l, l.close_out)) { v.v = 0; return; }
 		l.phase = LorryPhase::JOINING;
 	}
-	if (!may_go(s, l, dt)) { v.v = 0; return; }
 	const float was = l.path.s, speed = l.path.speed(speeds(p));
+	const OffPose next = l.path.pose_at(std::min(l.path.length(), l.path.s + speed * dt));
+	if (!may_go(s, l, dt) || !body_free(s, l.id, next.x, next.z, next.angle, BODY_TOUCH_M)) { v.v = 0; return; } // nobody walks or stands where it goes
 	l.path.advance(speed * dt);
 	if (leaving) l.path.s = std::min(l.path.s, l.street_at);
 	v.v = l.path.s > was ? speed : 0;
 	set_off_pose(s, v, l.path.pose());
-	if (l.phase == LorryPhase::ARRIVING && l.closed && l.path.s >= l.street_at) {
+	// the street is behind it once its whole body stands in the lot; in a lot too short for it, never while it is there
+	if (l.phase == LorryPhase::ARRIVING && l.closed && l.in_lot && l.path.s >= l.street_at) {
 		open_lanes(t, l.id);
 		l.closed = false;
 	}
@@ -170,13 +193,7 @@ void step_one(CityState &s, int index, float dt) {
 	l.t += dt;
 	switch (l.phase) {
 		case LorryPhase::COMING: coming(s, index); return;
-		case LorryPhase::WAITING:
-			v.v = 0;
-			if (!close_if_clear(s, l, l.close_in)) return;
-			l.path = shunt(p, l.into);
-			l.street_at = l.path.at_step(l.into_street);
-			l.phase = LorryPhase::ARRIVING;
-			return;
+		case LorryPhase::WAITING: waiting(s, index); return;
 		case LorryPhase::DOCKED:
 			v.v = 0;
 			l.stay -= dt;
@@ -282,9 +299,9 @@ void call(CityState &s) {
 	l.away = ways->away;
 	l.into_street = ways->into_street;
 	l.away_street = ways->away_street;
-	const int seg = gate.ds / 2;
-	sweep_lanes(s, l.into, 0, ways->into_street, seg, id, l.close_in);
-	sweep_lanes(s, l.away, ways->away_street, int(l.away.size()) - 1, seg, id, l.close_out);
+	l.in_lot = ways->in_lot;
+	sweep_lanes(s, l.into, 0, ways->into_street, id, l.close_in);
+	sweep_lanes(s, l.away, ways->away_street, int(l.away.size()) - 1, id, l.close_out);
 	pk.lorries.push_back(std::move(l));
 	pk.lorries_sent++;
 	pk.lorry_calls[CALL_SENT]++;

@@ -284,8 +284,13 @@ bool YardPlanner::join_ways(const YardGate &g) {
 	const std::vector<AxlePose> to_dock = straight(pre_, docked_, true, in_.settle_step);
 	ways_.into.insert(ways_.into.end(), to_dock.begin() + 1, to_dock.end());
 	ways_.into_street = int(ways_.into.size()) - 1;
+	ways_.in_lot = false;
 	for (size_t i = 0; i < ways_.into.size(); i++)
-		if (body_in_lot(in_, ways_.into[i])) { ways_.into_street = int(i); break; }
+		if (body_in_lot(in_, ways_.into[i])) {
+			ways_.into_street = int(i);
+			ways_.in_lot = true;
+			break;
+		}
 	ways_.away = straight(docked_, pre_, false, in_.settle_step);
 	ways_.away.insert(ways_.away.end(), away_.begin() + 1, away_.end());
 	ways_.away_street = int(ways_.away.size()) - 1;

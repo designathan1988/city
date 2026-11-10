@@ -3,6 +3,7 @@
 // its event is due: it picks the next lane (waiting at a red or behind a full queue), enters the micro window as a
 // drawn vehicle when it gets there, and otherwise queues on the next lane with a fresh event. The pace is the near
 // model's (meso_alpha) and a full lane slows it (meso_crowd), so the camera does not change how fast the city drives.
+#include "sim/traffic/vehicle_overlaps.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
@@ -241,6 +242,10 @@ void advance(CityState &s, int id) {
 		return;
 	}
 	const bool near = in_window(s, to);
+	if (near && !lane_free(s, to_key, s.catalog.traffic.classes[int(v.type)].length, int(v.type), id)) { // another body stands at the lane's start
+		schedule(t, id, t.time + double(p.meso_handover_retry_s));
+		return;
+	}
 	const int tail = t.lane_vehicles[size_t(to_key)].empty() ? -1 : t.lane_vehicles[size_t(to_key)].back();
 	if (near && tail >= 0) { // behind drawn vehicles: it waits to fit behind them (never passes them unseen)
 		const Vehicle &o = t.vehicles[size_t(tail)];

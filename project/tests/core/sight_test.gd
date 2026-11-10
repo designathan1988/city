@@ -29,7 +29,7 @@ func _ready() -> void:
 	print("after %d minutes: %d vehicles, %d people, %d trips arrived, %d walkers arrived; longest stood %.0f s" % [
 		MINUTES, p.vehicles, p.people, p.trips_arrived, p.people_arrived, p.stuck_longest_s])
 	check(int(p.people_arrived) > 0, "walks end meanwhile: %d" % p.people_arrived)
-	check(float(p.stuck_longest_s) < STOOD_MOST_S, "no near vehicle stands for good: the longest %.0f s" % p.stuck_longest_s)
+	check(float(p.stuck_longest_s) < STOOD_MOST_S, "no near vehicle stands for good: the longest %.0f s at %s, %s" % [p.stuck_longest_s, p.get("stuck_longest_at"), p.get("stuck_longest_why", "") + " closed by %s, whose step is blocked by %s; off body ahead %s" % [p.get("stuck_closed_by"), p.get("stuck_blocker"), p.get("stuck_off_body")]])
 	check(int(p.gone_in_sight[0]) == 0, "no vehicle taken away in sight: %d" % p.gone_in_sight[0])
 	check(int(p.gone_in_sight[1]) == 0, "no walker taken away in sight: %d" % p.gone_in_sight[1])
 	check(int(p.vehicles) > 0 and int(p.people) > 0, "the town keeps traffic and walkers: %d vehicles, %d people" % [p.vehicles, p.people])

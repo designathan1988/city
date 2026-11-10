@@ -3,6 +3,7 @@
 // drawn ones, each where its timing says it is and behind the queue already drawn. The far list is kept only as far
 // as `meso_window_out_m`, so the window never holds an invisible vehicle in a queue. Walkers exist only inside
 // `ped_window_m`, which also sets how many sidewalk metres demand may fill.
+#include "sim/traffic/vehicle_overlaps.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
@@ -83,6 +84,7 @@ void materialize(CityState &s, int key) {
 		const float len = s.catalog.traffic.classes[int(v.type)].length;
 		if (limit < len) break; // no room behind the drawn queue: it stays in the far model
 		const float at = std::max(len, std::min(est, limit));
+		if (!lane_free(s, key, at, int(v.type), id)) break; // another body stands there (off the lanes, or at the lane's mouth): it stays far
 		meso_unlink(s, id);
 		v.s = at;
 		v.conn = -1;

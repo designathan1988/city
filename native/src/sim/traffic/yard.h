@@ -65,6 +65,9 @@ struct DockWays {
 	int reached = YARD_NO_PRE;
 	std::vector<AxlePose> into, away;
 	int into_street = 0, away_street = 0;
+	// The body stands whole in the lot somewhere along the way in (from into_street on). False for a lot too short for it: docked,
+	// it still stands over the street, which stays closed under it.
+	bool in_lot = false;
 };
 
 // The searches of a plan by kind: the way in and the way out at the coarse grain; when neither was found, the way in at the

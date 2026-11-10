@@ -6,6 +6,7 @@
 #include "sim/state/city_state.h"
 #include "sim/transit/rail_run.h"
 #include "sim/transit/transit_plan.h"
+#include "sim/traffic/vehicle_overlaps.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
@@ -43,8 +44,9 @@ int spawn_bus(CityState &s, const TransitLine &l, Bus &b) {
 	const int key = lane.ds * MAX_LANES + lane.lane;
 	for (int id : t.lane_vehicles[size_t(key)]) {
 		const Vehicle &o = t.vehicles[size_t(id)];
-		if (o.s > start - len * 2 && o.s - p.classes[int(o.type)].length < lane.at + len) return -1; // not into another vehicle
+		if (o.s > start - len * 2 && o.s - p.classes[int(o.type)].length < lane.at + len) return -1; // room to its stop
 	}
+	if (!traffic::lane_free(s, key, start, int(VehicleType::BUS), -1)) return -1; // not into another body, on the lanes or off them
 	const std::vector<uint32_t> &colours = p.line_colours;
 	const int colour = int(std::find(colours.begin(), colours.end(), l.colour) - colours.begin());
 	const int id = traffic::new_vehicle(s, VehicleType::BUS, uint8_t(LINE_PAINT + (colour < int(colours.size()) ? colour : 0)));

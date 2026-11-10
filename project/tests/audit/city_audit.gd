@@ -65,6 +65,15 @@ func _traffic() -> void:
 	for pair: Array in p.get("people_overlap_pairs", []):
 		print("  walkers in one another: modes %d and %d at (%.1f, %.1f)%s" % [pair[0], pair[1], pair[2].x, pair[2].z, ", a party" if pair[3] else ""])
 	check(int(p.people_in_furniture) == 0, "no walker stands in the street's furniture: %d" % p.people_in_furniture)
+	check(int(p.vehicle_overlaps) == 0, "no vehicle stands inside another: %d pairs" % p.vehicle_overlaps)
+	for pair: Array in p.get("vehicle_overlap_pairs", []):
+		var at: Vector3 = pair[0]
+		var who: Array = pair[1]
+		var how: Array = pair[2] # each one's lane change still to cover and its speed
+		print("  vehicles in one another by %.2f m at (%.1f, %.1f): %s (change %.2f m, %.1f m/s) and %s (change %.2f m, %.1f m/s)" % [at.y, at.x, at.z,
+				_body(who[0], who[1]), how[0], how[1], _body(who[2], who[3]), how[2], how[3]])
+		print("    their step checks [wait a, blocker a, wait b, blocker b, a, b]: %s" % [pair[3]])
+		print("    driven at [class, ds, lane, arc, connector, arc on it]: %s and %s" % [pair[4], pair[5]])
 	check(int(p.red_from_stop) == 0, "no vehicle sets off through a red light: %d" % p.red_from_stop)
 
 
@@ -75,6 +84,12 @@ func _roads() -> void:
 	print("roads: seam %s" % [seam])
 	check(int(seam.refused) == 0, "no ground seam cell refused: %d" % seam.refused)
 	check(int(seam.unheighted) == 0, "no ground seam point without a height: %d" % seam.unheighted)
+
+
+## A body of a pair by where it is driven from (traffic::BodyPlace) and its lorry's or lot car's phase.
+static func _body(place: int, phase: int) -> String:
+	const PLACES: Array[String] = ["on a lane", "on a connector", "a lorry off the lanes", "a lot car off the lanes", "off the lanes", "parked in a bay"]
+	return PLACES[place] + ("" if phase < 0 else " (phase %d)" % phase)
 
 
 ## The worst places of a defect, as lot_audit lists them ([measure, where]).

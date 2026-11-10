@@ -28,12 +28,16 @@ void flows(const TrafficParams &p, PlaceKind kind, float hour, float &in, float 
 	out = std::max(0.f, -rise) + there / stay;
 }
 
-// A car standing in a gated bay drives out: a Vehicle again from where it stood, on its way to the lane, the bay left empty.
+// A car standing in a gated bay drives out: a Vehicle again from where it stood, on its way to the lane, the bay left empty. The
+// lot's way is its own from here to the lane (ParkingState::access): a car is sent out only when it has it (lot_depart), so no car
+// stands in its bay as a Vehicle waiting its turn, in the way of the one that drives.
 void take_row(CityState &s, int b) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	Bay &bay = t.park.bays[size_t(b)];
 	const int id = new_vehicle(s, VehicleType(bay.row_type), bay.row_paint);
+	const float len = p.classes[int(bay.row_type)].length;
+	t.park.take_access(bay.source, id, bay.lane.ds * MAX_LANES + bay.lane.lane, std::min(bay.lane.at, bay.lane.entry) - len, std::max(bay.lane.at, bay.lane.entry) + len);
 	Vehicle &v = t.vehicles[size_t(id)];
 	v.off = true;
 	t.vehicle_count--; // off the lanes it is not of the fleet until it joins one
@@ -50,6 +54,18 @@ void take_row(CityState &s, int b) {
 	bay.vacated = true;
 	bay.holder = id;
 	refile_bay(s, b, false);
+}
+
+// Nobody holds the lot's way nor the stretch of kerb its car would go over (ParkingState::take_access).
+bool way_free(const CityState &s, const Bay &bay) {
+	const ParkingState &pk = s.traffic.park;
+	if (pk.access.count(bay.source)) return false;
+	const float len = s.catalog.traffic.classes[int(bay.row_type)].length;
+	const int key = bay.lane.ds * MAX_LANES + bay.lane.lane;
+	const float from = std::min(bay.lane.at, bay.lane.entry) - len, to = std::max(bay.lane.at, bay.lane.entry) + len;
+	for (const ParkingState::Crossing &c : pk.crossings)
+		if (c.key == key && c.from < to && c.to > from) return false;
+	return true;
 }
 
 // The nearest passing car a bay at `at` can take, -1 for none.
@@ -94,7 +110,8 @@ void lot_depart(CityState &s, double target) {
 		if (pk.row_of[kind].empty()) continue;
 		const int b = pk.row_of[kind][size_t(t.rng.next() % uint32_t(pk.row_of[kind].size()))];
 		// a car that has not stood its stay is left there: the draw goes to another next look
-		if (t.time >= pk.bays[size_t(b)].stay_until && read_bay_way(s, b)) take_row(s, b);
+		// a lot whose way another vehicle drives sends nobody out: the draw goes to another next look
+		if (t.time >= pk.bays[size_t(b)].stay_until && way_free(s, pk.bays[size_t(b)]) && read_bay_way(s, b)) take_row(s, b);
 	}
 }
 

@@ -59,6 +59,7 @@ struct LotCar {
 	Manoeuvre path;
 	float t = 0, waited = 0; // seconds in the phase; seconds waited for walkers
 	bool reserved = false; // holding the ground of the rest of its way: it no longer stops for anybody
+	bool closed = false; // it holds the stretches of lane its way sweeps (lane_closures.h take_lanes)
 };
 
 // A stretch of lane closed while something off the lanes stands on it. `key`: ds * MAX_LANES + lane.
@@ -82,6 +83,7 @@ struct Lorry {
 	float street_at = 0; // along `path`, where the part on the street ends (arriving) or begins (leaving)
 	std::vector<LaneClosure> close_in, close_out;
 	bool closed = false;
+	bool in_lot = false; // DockWays::in_lot: the street is behind it once it is past street_at; else never while it is docked
 	Manoeuvre path;
 	float t = 0, stay = 0, waited = 0;
 };
@@ -110,6 +112,37 @@ struct ParkingState {
 	float lorry_clock = 0;
 	int lorries_sent = 0, lorries_docked = 0, lorries_left = 0; // probes
 	int lorry_calls[LORRY_CALLS] = {};
+	// By building: the vehicle using its lot's way between the gate and the bays now. That way is one body wide, so one mover holds it
+	// at a time (a car driving in, a car driving out, a lorry for its whole visit, as the 4.0's lots wait for a lorry shunting):
+	// two that took it together stood inside each other at the gate.
+	std::unordered_map<int, int> access;
+	// The stretches of kerb a mover goes over between its lane and a lot, each held by one mover: the gates of two lots side by side
+	// share their stretch (two movers there, one coming in and one going out, would each stand in the other's way for good).
+	struct Crossing {
+		int key = -1; // the lane, ds * MAX_LANES + lane
+		float from = 0, to = 0; // its arcs on that lane
+		int holder = -1;
+	};
+	std::vector<Crossing> crossings;
+	// The lot's way and its stretch of kerb, both or neither: whether `id` holds them now.
+	bool take_access(int building, int id, int key, float from, float to) {
+		const auto lot = access.find(building);
+		if (lot != access.end() && lot->second != id) return false;
+		bool mine = false;
+		for (const Crossing &c : crossings) {
+			if (c.holder == id) mine = true;
+			else if (c.key == key && c.from < to && c.to > from) return false;
+		}
+		access[building] = id;
+		if (!mine) crossings.push_back({ key, from, to, id });
+		return true;
+	}
+	void let_access(int building, int id) {
+		const auto it = access.find(building);
+		if (it != access.end() && it->second == id) access.erase(it);
+		for (size_t i = crossings.size(); i-- > 0;)
+			if (crossings[i].holder == id) crossings.erase(crossings.begin() + std::ptrdiff_t(i));
+	}
 };
 
 } // namespace city

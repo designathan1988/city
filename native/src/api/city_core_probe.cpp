@@ -6,6 +6,8 @@
 #include "sim/economy/road_economy.h"
 #include "sim/roads/geometry.h"
 #include "sim/traffic/traffic_system.h"
+#include "api/traffic_bodies_probe.h"
+#include "sim/traffic/lane_closures.h"
 
 #include <godot_cpp/variant/array.hpp>
 
@@ -77,48 +79,6 @@ Array crossing_kerb(const CityState &s, int n) {
 	return out;
 }
 
-// Walkers whose body overlaps another's (centres closer than `touch`): [walking, waiting at a kerb].
-// Two bodies side by side (their centres two radii apart, to the rounding of the sum) touch; they do not overlap.
-constexpr float TOUCH_EPS_M = 1e-3f;
-constexpr int OVERLAP_PAIRS_SHOWN = 16; // the pairs listed for the audit
-// The same, each overlapping pair said once: [the modes of the two (PedMode), where the first stands, whether they walk together (a
-// party)], the first `most` of them: what the audit reads a cause from.
-Array people_overlap_pairs(const TrafficState &t, float touch, int most) {
-	Array out;
-	for (size_t i = 0; i < t.peds.size() && out.size() < most; i++) {
-		const Pedestrian &a = t.peds[i];
-		if (!a.alive) continue;
-		for (size_t j = i + 1; j < t.peds.size() && out.size() < most; j++) {
-			const Pedestrian &b = t.peds[j];
-			const float dx = a.cur.x - b.cur.x, dz = a.cur.z - b.cur.z;
-			if (!b.alive || dx * dx + dz * dz >= touch * touch) continue;
-			out.push_back(Array::make(int(a.mode), int(b.mode), Vector3(a.cur.x, a.cur.y, a.cur.z), a.mate == int(j) || b.mate == int(i) || a.with == int(j) || b.with == int(i)));
-		}
-	}
-	return out;
-}
-
-Array people_overlaps(const TrafficState &t, float touch) {
-	std::vector<int> alive;
-	for (int i = 0; i < int(t.peds.size()); i++)
-		if (t.peds[size_t(i)].alive) alive.push_back(i);
-	int walking = 0, waiting = 0;
-	for (int i : alive) {
-		const Pedestrian &a = t.peds[size_t(i)];
-		for (int j : alive) {
-			const Pedestrian &b = t.peds[size_t(j)];
-			const float dx = a.cur.x - b.cur.x, dz = a.cur.z - b.cur.z;
-			if (i == j || dx * dx + dz * dz >= touch * touch) continue;
-			(a.mode == PedMode::WAIT ? waiting : walking)++;
-			break;
-		}
-	}
-	Array out;
-	out.push_back(walking);
-	out.push_back(waiting);
-	return out;
-}
-
 // The street furniture of the whole map by kind (signal posts, lamps, hydrants, bins, benches, trees).
 Array furniture_counts(const CityState &s) {
 	int count[FURNITURE_KINDS] = {};
@@ -175,10 +135,23 @@ namespace {
 // The parked side of the traffic: bays and sources read, scenery cars, the lots' cars.
 // What the sight rule (sim/traffic/sight.h) holds: the longest a near vehicle has stood (nothing takes a standing vehicle away, so a
 // gridlock shows here), and the vehicles and walkers taken away where they may be seen.
-void sight_probe(const TrafficState &t, Dictionary &d) {
+void sight_probe(const CityState &s, Dictionary &d) {
+	const TrafficState &t = s.traffic;
 	float stuck_longest = 0;
-	for (int id : t.micro_list) stuck_longest = std::max(stuck_longest, t.vehicles[size_t(id)].stuck);
+	int who = -1;
+	for (int id : t.micro_list)
+		if (t.vehicles[size_t(id)].stuck > stuck_longest) {
+			stuck_longest = t.vehicles[size_t(id)].stuck;
+			who = id;
+		}
 	d["stuck_longest_s"] = stuck_longest;
+	if (who >= 0) { // what it waits for, said the way the HUD says a held vehicle (jam_detail), and where
+		const Vehicle &v = t.vehicles[size_t(who)];
+		d["stuck_longest_why"] = jam_detail(s, who, v, int(traffic::hold_reason(s, who))) + String(" closure_ahead={0}").format(Array::make(
+				v.ds >= 0 ? traffic::closure_ahead(t, v.ds * MAX_LANES + v.lane, v.s) : -1.f));
+		d["stuck_longest_at"] = Vector3(v.cur.x, v.cur.y, v.cur.z);
+		bodies_holding(s, who, d);
+	}
 	d["gone_in_sight"] = Array::make(t.gone_in_sight, t.ped_gone_in_sight);
 }
 
@@ -221,13 +194,11 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["people"] = t.ped_count;
 	d["trips_arrived"] = t.arrived;
 	d["trips_lost"] = t.lost;
-	sight_probe(t, d);
+	sight_probe(*state_, d);
 	d["kerb"] = Array::make(t.kerb_planned, t.kerb_drops, t.kerb_picks, t.kerb_deliveries, t.kerb_abandoned); // at the kerb: stops planned; set down, picked up, delivered; given up
 	d["people_arrived"] = t.ped_arrived;
 	d["people_waiting"] = t.ped_waiting; // at a kerb for the walk phase or a gap
-	d["people_overlaps"] = people_overlaps(t, 2 * state_->catalog.traffic.ped_body_m - TOUCH_EPS_M); // walkers inside another's body: walking, waiting
-	if (sample > 0) d["people_overlap_pairs"] = people_overlap_pairs(t, 2 * state_->catalog.traffic.ped_body_m - TOUCH_EPS_M, OVERLAP_PAIRS_SHOWN);
-	d["people_in_furniture"] = traffic::walkers_in_furniture(*state_); // walkers whose body stands in a street piece
+	bodies_in_one_another(*state_, sample > 0, d); // walkers and vehicles in one another, walkers in the street's furniture
 	// pieces of the map by kind (signal, lamp, hydrant, bin, bench, tree): every segment placed again, so only with a sample
 	if (sample > 0) d["street_furniture"] = furniture_counts(*state_);
 	d["reroutes"] = t.reroutes;

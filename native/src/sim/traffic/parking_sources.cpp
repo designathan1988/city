@@ -1,6 +1,7 @@
 // The bays near the camera (parking_state.h): the kerbs of the streets that park and the lots, read a few a step as the
 // camera moves and dropped behind it, with the scenery cars that stand in them (seeded by where the bay is, so a bay
 // holds the same car whenever it comes back into view). The way out of a lot is asked only of a bay a car is sent to.
+#include "sim/traffic/vehicle_overlaps.h"
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/buildings/b40/record.h"
@@ -33,7 +34,7 @@ int take_bay(ParkingState &p) {
 	return b;
 }
 
-// A scenery car in the bay, by its seed: the share of bays that hold one, of a body the stall holds whole.
+// A scenery car in the bay, by its seed: the share of bays that hold one, of a body the stall holds whole, where no other body stands.
 void stand(CityState &s, int b) {
 	const TrafficParams &tp = s.catalog.traffic;
 	ParkingState &p = s.traffic.park;
@@ -46,7 +47,10 @@ void stand(CityState &s, int b) {
 	for (int t = 0; t < int(VehicleType::MOTO); t++)
 		if (tp.classes[t].length * 0.5f <= bay.room) fits[n++] = t;
 	if (n == 0) return;
-	bay.row_type = uint8_t(fits[int(r.next() % uint32_t(n))]);
+	const int type = fits[int(r.next() % uint32_t(n))];
+	// only where no body stands: a car driving the lot's way, the car of the facing stall, a lorry at the dock
+	if (!traffic::spot_free(s, -1, type, bay.at.x, bay.at.y, std::atan2(-bay.open.y, -bay.open.x), traffic::BODY_TOUCH_M)) return;
+	bay.row_type = uint8_t(type);
 	bay.row_paint = uint8_t(r.next() % PAINTS);
 	bay.row_id = p.next_row++;
 	add_row(p, b);

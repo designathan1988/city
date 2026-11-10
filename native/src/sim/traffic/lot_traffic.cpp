@@ -6,6 +6,8 @@
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/traffic/lane_closures.h"
+#include "sim/traffic/lot_wait.h"
+#include "sim/traffic/vehicle_overlaps.h"
 
 #include "core/laps.h"
 
@@ -18,6 +20,18 @@ namespace traffic {
 namespace {
 
 constexpr int DISCS = 3;
+
+// The lot's way and the stretch of kerb between the bay's lane and its gate, taken for car `id` (ParkingState::take_access): the
+// stretch reaches a body's length either side of where it turns in and joins.
+bool take_way(ParkingState &p, const Bay &bay, int id, float len) {
+	return p.take_access(bay.source, id, bay.lane.ds * MAX_LANES + bay.lane.lane, std::min(bay.lane.at, bay.lane.entry) - len, std::max(bay.lane.at, bay.lane.entry) + len);
+}
+
+// Whether the car may take this tick's step of `len` metres: where its body would stand then is clear of every other body.
+bool step_free(const CityState &s, const LotCar &car, float len) {
+	const OffPose q = car.path.pose_at(std::min(car.path.length(), car.path.s + len));
+	return body_free(s, car.id, q.x, q.z, q.angle, BODY_TOUCH_M);
+}
 
 ManoeuvreSpeeds speeds(const TrafficParams &p) { return { p.man_forward_ms, p.man_backward_ms, p.man_ramp_m, p.man_creep_ms }; }
 
@@ -38,6 +52,8 @@ void untrack(CityState &s, LotCar &car) {
 	if (car.phase == CarPhase::PARKING || car.phase == CarPhase::LEAVING) p.moving--;
 	Bay &bay = p.bays[size_t(car.bay)];
 	bay.holder = -1;
+	open_lanes(t, car.id); // whatever of the street its body closed
+	p.let_access(bay.source, car.id);
 	refile_bay(s, car.bay, false);
 	const int index = t.vehicles[size_t(car.id)].car;
 	t.vehicles[size_t(car.id)].car = -1;
@@ -68,15 +84,13 @@ bool may_go(CityState &s, LotCar &car, float dt) {
 	return false;
 }
 
-// Room in the traffic for a car joining `lane` at its joining point.
-bool gap_open(const CityState &s, const Vehicle &v, const LaneSpot &lane) {
-	const TrafficParams &p = s.catalog.traffic;
-	const float len = p.classes[int(v.type)].length, front = lane.at + len * 0.5f;
-	for (int id : s.traffic.lane_vehicles[size_t(lane.ds) * MAX_LANES + lane.lane]) {
-		const Vehicle &o = s.traffic.vehicles[size_t(id)];
-		const float rear = o.s - p.classes[int(o.type)].length;
-		if (o.s > front - len - p.parker_gap_behind_m && rear < front + p.parker_gap_ahead_m) return false;
-	}
+// The stretches of lane the rest of its way sweeps taken, when they are clear: whether it holds them (LotCar::closed). Taken once.
+bool take_way_lanes(CityState &s, LotCar &car) {
+	if (car.closed) return true;
+	std::vector<LaneClosure> sweep;
+	sweep_path(s, car.path, car.path.s, car.path.length(), s.traffic.vehicles[size_t(car.id)].type, car.id, sweep);
+	if (!take_lanes(s, sweep)) return false;
+	car.closed = true;
 	return true;
 }
 
@@ -104,7 +118,9 @@ void leave_road(CityState &s, LotCar &car) {
 	v.v = 0;
 	t.vehicle_count--;
 	car.path = bay_arrival(V2(at.x, at.z), std::atan2(at.fz, at.fx), bay.at, bay.open, bay.via, p.man_lead_m, p.man_across_m, p.man_least_m, p.man_tangent);
+	const bool closed = car.closed; // its way's stretches, taken in coming(): the phase keeps them
 	enter_phase(t.park, car, CarPhase::PARKING);
+	car.closed = closed;
 	set_off_pose(s, v, car.path.pose());
 }
 
@@ -128,6 +144,16 @@ void coming(CityState &s, LotCar &car) {
 		return;
 	}
 	if (v.ds != lane.ds || v.conn >= 0 || v.lane != lane.lane || v.v > p.parker_stop_ms || v.s < v.stop_at - p.parker_stop_slack_m) return;
+	if (!take_way(t.park, t.park.bays[size_t(car.bay)], car.id, p.classes[int(v.type)].length)) return; // another drives the lot's way or its kerb: it waits at its stop
+	const Bay &bay = t.park.bays[size_t(car.bay)];
+	Pose at;
+	lane_pose(s, v.ds, v.lane, v.s - p.classes[int(v.type)].length * 0.5f, at);
+	const Manoeuvre in = bay_arrival(V2(at.x, at.z), std::atan2(at.fz, at.fx), bay.at, bay.open, bay.via, p.man_lead_m, p.man_across_m, p.man_least_m, p.man_tangent);
+	const OffPose first = in.pose();
+	if (!body_free(s, car.id, first.x, first.z, first.angle, BODY_TOUCH_M)) return; // where its way in starts, another stands: it waits on its lane
+	// what its way in sweeps of the street, clear and taken, before it leaves its lane (as a lorry does): else it waits there
+	car.path = in;
+	if (!take_way_lanes(s, car)) return;
 	v.stop_at = -1;
 	leave_road(s, car);
 }
@@ -135,13 +161,16 @@ void coming(CityState &s, LotCar &car) {
 void parking(CityState &s, LotCar &car, float dt) {
 	const TrafficParams &p = s.catalog.traffic;
 	Vehicle &v = s.traffic.vehicles[size_t(car.id)];
-	if (!may_go(s, car, dt)) { v.v = 0; return; }
 	const float top = car.path.speed(speeds(p));
+	if (!may_go(s, car, dt) || !step_free(s, car, top * dt)) { v.v = 0; return; }
 	car.path.advance(top * dt);
 	v.v = car.path.done() ? 0 : top;
 	set_off_pose(s, v, car.path.pose());
 	if (!car.path.done()) return;
 	ParkingState &pk = s.traffic.park;
+	pk.let_access(pk.bays[size_t(car.bay)].source, car.id); // in its bay: the way and the street are free for the next
+	open_lanes(s.traffic, car.id);
+	car.closed = false;
 	pk.parked_in++;
 	enter_phase(pk, car, CarPhase::PARKED);
 }
@@ -171,9 +200,11 @@ void leaving(CityState &s, LotCar &car, float dt) {
 	const TrafficParams &p = s.catalog.traffic;
 	Vehicle &v = s.traffic.vehicles[size_t(car.id)];
 	const Bay &bay = s.traffic.park.bays[size_t(car.bay)];
-	const bool at_kerb = car.path.length() - car.path.s <= p.parker_lane_edge_m;
-	if (!may_go(s, car, dt) || (at_kerb && !gap_open(s, v, bay.lane))) { v.v = 0; return; }
+	if (!take_way(s.traffic.park, bay, car.id, p.classes[int(v.type)].length) || !may_go(s, car, dt)) { v.v = 0; return; }
 	const float top = car.path.speed(speeds(p));
+	const OffPose next = car.path.pose_at(std::min(car.path.length(), car.path.s + top * dt));
+	// onto the street only with what the rest of its way sweeps clear and taken (no car on it nor too near to stop short of it)
+	if (!step_free(s, car, top * dt) || (lanes_under_body(s, next, v.type) && !take_way_lanes(s, car))) { v.v = 0; return; }
 	car.path.advance(top * dt);
 	v.v = top;
 	set_off_pose(s, v, car.path.pose());
@@ -191,6 +222,38 @@ void set_off_pose(CityState &s, Vehicle &v, const OffPose &q) {
 	v.cur.fz = std::sin(q.angle);
 }
 
+
+int lot_car_wait(const CityState &s, int id) {
+	const TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
+	const Vehicle &v = t.vehicles[size_t(id)];
+	if (v.car < 0) return LOT_WAIT_NONE;
+	const LotCar &car = t.park.cars[size_t(v.car)];
+	const Bay &bay = t.park.bays[size_t(car.bay)];
+	const auto held = t.park.access.find(bay.source);
+	if (held != t.park.access.end() && held->second != id) return LOT_WAIT_ACCESS;
+	for (const ParkingState::Crossing &c : t.park.crossings)
+		if (c.holder != id && c.key == bay.lane.ds * MAX_LANES + bay.lane.lane && c.from < bay.lane.at + p.classes[int(v.type)].length && c.to > bay.lane.at - p.classes[int(v.type)].length) return LOT_WAIT_ACCESS;
+	const float top = car.path.speed(speeds(p));
+	const OffPose next = car.path.pose_at(std::min(car.path.length(), car.path.s + top * (1.f / s.catalog.tune.sim_tick_hz)));
+	if (!body_free(s, id, next.x, next.z, next.angle, BODY_TOUCH_M)) return LOT_WAIT_BODY;
+	if (car.closed || (car.phase == CarPhase::LEAVING && !lanes_under_body(s, next, v.type))) return LOT_WAIT_NONE;
+	std::vector<LaneClosure> sweep;
+	sweep_path(s, car.path, car.path.s, car.path.length(), v.type, id, sweep);
+	for (const LaneClosure &c : sweep)
+		if (!lane_clear(s, c)) return LOT_WAIT_LANES;
+	return LOT_WAIT_NONE;
+}
+
+int lot_car_blocker(const CityState &s, int id) {
+	const TrafficState &t = s.traffic;
+	const Vehicle &v = t.vehicles[size_t(id)];
+	if (v.car < 0) return -1;
+	const LotCar &car = t.park.cars[size_t(v.car)];
+	const float top = car.path.speed(speeds(s.catalog.traffic));
+	const OffPose next = car.path.pose_at(std::min(car.path.length(), car.path.s + top * (1.f / s.catalog.tune.sim_tick_hz)));
+	return spot_blocker(s, id, int(v.type), next.x, next.z, next.angle, BODY_TOUCH_M);
+}
 
 bool lot_car_at_rest(const CityState &s, int id) {
 	const Vehicle &v = s.traffic.vehicles[size_t(id)];

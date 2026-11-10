@@ -1,6 +1,8 @@
 // Demand and spawning (Roadcraft traffic.ts:954-1047): the fleet target follows lane-metres x density x the day
 // profile; trips start and end on directed segments weighted by the zones painted beside them (home -> work in the
 // morning, work -> home in the evening), 200-7000 m apart with an exponential preference for short trips.
+#include "sim/traffic/lane_closures.h"
+#include "sim/traffic/vehicle_overlaps.h"
 #include "sim/traffic/kerb_stops.h"
 #include "sim/traffic/sight.h"
 
@@ -64,10 +66,15 @@ VehicleType draw_type(CityState &s) {
 	return VehicleType::SEDAN;
 }
 
-// True when a vehicle of length `len` fits on the lane at `at` without touching anyone: those on it, and those changing out of it that
-// still stand in it (lane_shift.h).
-bool lane_free(const CityState &s, int key, float at, float len) {
+} // namespace
+
+// True when a vehicle of `type` fits on the lane with its front at `at` without touching anyone: those on it, those changing out of it
+// that still stand in it (lane_shift.h), and every other near body where it would stand (a lot's car or a lorry off the lanes, the
+// traffic on the connectors of a lane's mouth): the one check of every place a body is put on a lane (spawn_one, the far model's
+// materialize and handover). `skip`: the vehicle being put, -1 for one not made yet.
+bool lane_free(const CityState &s, int key, float at, int type, int skip) {
 	const TrafficState &t = s.traffic;
+	const float len = s.catalog.traffic.classes[type].length;
 	const auto touches = [&](int id) {
 		const Vehicle &o = t.vehicles[id];
 		const VehicleClass &oc = s.catalog.traffic.classes[int(o.type)];
@@ -77,8 +84,14 @@ bool lane_free(const CityState &s, int key, float at, float len) {
 		if (touches(id)) return false;
 	for (int id : t.lane_shadows[key])
 		if (touches(id)) return false;
-	return true;
+	for (const LaneClosure &c : t.closures) // a stretch a body off the lanes holds
+		if (c.key == key && c.to > at - len && c.from < at) return false;
+	Pose mid;
+	lane_pose(s, key / MAX_LANES, key % MAX_LANES, at - len * 0.5f, mid);
+	return spot_free(s, skip, type, mid.x, mid.z, std::atan2(mid.fz, mid.fx), BODY_TOUCH_M);
 }
+
+namespace {
 
 
 // One trip attempt; returns false on failure (no destination, no route or no room).
@@ -109,7 +122,7 @@ bool spawn_one(CityState &s) {
 	const VehicleClass &vc = p.classes[int(type)];
 	const int key = from * MAX_LANES + lane;
 	const float stop = d.len - d.stop_back - p.stop_margin_m; // it starts short of its stop line, able to stop there
-	if (at < vc.length + p.mouth_clear_m || at > stop || !lane_free(s, key, at, vc.length)) return false; // keep the lane mouth clear
+	if (at < vc.length + p.mouth_clear_m || at > stop || !lane_free(s, key, at, int(type), -1)) return false; // keep the lane mouth clear
 	if (float(lane_load(t, key) + 1) > d.len / p.slot_m) return false; // the lane is full, far vehicles included
 	std::vector<int> route;
 	if (!find_route(s, from, to, route, -1, -1, bike) || route.size() < 2) return false;

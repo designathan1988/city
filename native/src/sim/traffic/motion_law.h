@@ -22,6 +22,9 @@ struct Lead {
 
 inline float body(const CityState &s, const Vehicle &v) { return s.catalog.traffic.classes[int(v.type)].length; }
 
+// How far ahead a standing obstacle bears on idm_accel at speed v: its desired gap to it (vl 0), and a comfortable stop past that.
+inline float idm_reach(const VehicleClass &c, float v) { return c.min_gap + v * c.headway + v * v / (2 * std::sqrt(c.a * c.b)) + v * v / (2 * c.b); }
+
 // Acceleration after the emergency cap and the jerk limit.
 inline float finish_accel(const CityState &s, const Vehicle &v, float acc, const Lead &l, float dt) {
 	const TrafficParams &p = s.catalog.traffic;
