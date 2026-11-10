@@ -9,8 +9,6 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/vector2i.hpp>
 
-#include <cstring>
-
 using namespace godot;
 
 namespace city {
@@ -45,8 +43,7 @@ void TerrainBridge::write_region(const Heightfield &hf, Object *data, int bx, in
 	PackedByteArray bytes;
 	bytes.resize(int64_t(R) * R * BYTES_PER_SAMPLE);
 	float *dst = reinterpret_cast<float *>(bytes.ptrw());
-	for (int pz = 0; pz < R; pz++)
-		std::memcpy(dst + size_t(pz) * R, &hf.final_h[size_t(bz * R + pz) * hf.N + size_t(bx) * R], size_t(R) * BYTES_PER_SAMPLE);
+	for (int pz = 0; pz < R; pz++) hf.final_row(bx * R, bz * R + pz, R, dst + size_t(pz) * R);
 	region->call("set_height_map", Image::create_from_data(R, R, false, Image::FORMAT_RF, bytes));
 	if (create) {
 		PackedByteArray cb;

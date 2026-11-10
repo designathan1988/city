@@ -82,8 +82,7 @@ void Heightfield::recompose(int x0, int z0, int x1, int z1) {
 
 void Heightfield::compose_rect(const SampleRect &r) {
 	const int x0 = r.x0, z0 = r.z0, x1 = r.x1, z1 = r.z1;
-	for (int z = z0; z <= z1; z++)
-		for (int x = x0; x <= x1; x++) final_h[size_t(z) * N + x] = dequant(base_q[size_t(z) * N + x]);
+	finals.to_base(x0, z0, x1, z1, base_q); // the natural ground again, then what changes it
 	std::vector<float> best_w(size_t(x1 - x0 + 1) * (z1 - z0 + 1), 0.f), best_d(best_w.size(), 0.f); // best_d: how far the road that shaped it; 0: none has, a tie stays with what stands
 	float minx = x_of(x0), maxx = x_of(x1), minz = x_of(z0), maxz = x_of(z1);
 	std::vector<int> ids;
@@ -205,7 +204,7 @@ void Heightfield::apply_modifier(const TerrainModifier &m, int x0, int z0, int x
 			const size_t li = size_t(z - z0) * W + (x - x0);
 			if (w > best_w[li]) {
 				best_w[li] = w;
-				final_h[gi] = lerpf(base, n.surface - tune->terrain_road_sink_m, w); // terrain sits just under the road surface
+				set_final(x, z, lerpf(base, n.surface - tune->terrain_road_sink_m, w)); // terrain sits just under the road surface
 			}
 		}
 }

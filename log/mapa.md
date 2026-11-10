@@ -169,6 +169,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/state/city_take.cpp` — a city read aside taken into the live state (`take_city`) and the data's links to the channels (`CityState::bind`)
 - `native/src/sim/state/pose_buffer.h` — buffer triplo sem trava das poses (PoseFrame)
 - `native/src/sim/terrain/compose.cpp` — as alturas finais compostas (base, modificadores e chão das vias): a composição segurada de uma edição em massa (blocos fundidos, cada um composto uma vez) e o ponto mais perto de uma polilinha por regiões (faixa, cunha e pontas de cada peça)
+- `native/src/sim/terrain/final_heights.h` — the land's final heights kept by tile: the natural ground but where a road, a pad or the ground shaped to a road changed it; asked by column and row; the 16-bit form a height is stored in
 - `native/src/sim/terrain/height_patch.h` — amostrador bilinear único do terreno e cópia das alturas para os jobs
 - `native/src/sim/terrain/heightfield.cpp` · `native/src/sim/terrain/heightfield.h` — alturas, consultas, raycast, modificadores, formas das vias e o chão que se moveu
 - `native/src/sim/terrain/road_shape.cpp` · `native/src/sim/terrain/road_shape.h` — the ground shaped to a road by the resolved height: cut, fill, slope, the ground under the deck and the tunnel

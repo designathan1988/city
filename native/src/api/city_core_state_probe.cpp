@@ -68,7 +68,13 @@ uint64_t fleet_hash(const TrafficState &t) {
 
 Dictionary derived_of(const CityState &s) {
 	Dictionary d;
-	d["heights"] = String::num_uint64(fold(FNV_BASIS, s.terrain.final_h.data(), s.terrain.final_h.size() * sizeof(float)), HEX);
+	uint64_t heights = FNV_BASIS; // the final heights row by row, as the land hands them
+	std::vector<float> row(size_t(s.terrain.N));
+	for (int iz = 0; iz < s.terrain.N; iz++) {
+		s.terrain.final_row(0, iz, s.terrain.N, row.data());
+		heights = fold(heights, row.data(), row.size() * sizeof(float));
+	}
+	d["heights"] = String::num_uint64(heights, HEX);
 	std::vector<int64_t> cells;
 	for (const auto &kv : s.lots.by_cell) cells.push_back(kv.first);
 	std::sort(cells.begin(), cells.end());

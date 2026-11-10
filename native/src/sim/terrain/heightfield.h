@@ -6,6 +6,7 @@
 #include "core/grid.h"
 #include "sim/catalog/catalog.h"
 #include "sim/state/change_log.h"
+#include "sim/terrain/final_heights.h"
 #include "sim/terrain/height_patch.h"
 #include "sim/terrain/road_shape.h"
 
@@ -18,8 +19,6 @@ class JobPool;
 
 constexpr int TERRAIN_REGION_SIZE = 256; // samples per Terrain3D region side
 constexpr int TERRAIN_MAX_REGIONS = 32; // Terrain3D limit per side
-constexpr float HEIGHT_Q_OFFSET = 100.f, HEIGHT_Q_SCALE = 100.f; // 1 cm steps from -100 m
-constexpr float QUANT_LIMIT = 65535.f;
 
 struct TerrainModifier {
 	bool alive = false;
@@ -63,7 +62,7 @@ public:
 	uint32_t seed = 0;
 	const Tuning *tune = nullptr;
 	std::vector<uint16_t> base_q; // quantized 1 cm, -100..555 m
-	std::vector<float> final_h; // base + modifiers (rendered)
+	FinalHeights finals; // base + modifiers and road shapes (rendered): kept by tile, where the land is not the natural ground
 	std::vector<TerrainModifier> mods;
 	std::vector<int> free_mods;
 	SpatialHash mod_hash;
@@ -92,8 +91,8 @@ public:
 	void fill(TerrainGen &gen, float water_spacing);
 	float water_at(float x, float z) const; // nearest water sample's level
 	float half_size() const { return N * spacing * 0.5f; }
-	static uint16_t quant(float h) { return uint16_t(clampf((h + HEIGHT_Q_OFFSET) * HEIGHT_Q_SCALE, 0.f, QUANT_LIMIT)); }
-	static float dequant(uint16_t q) { return q / HEIGHT_Q_SCALE - HEIGHT_Q_OFFSET; }
+	static uint16_t quant(float h) { return height_quant(h); } // the base's 16-bit form (final_heights.h)
+	static float dequant(uint16_t q) { return height_dequant(q); }
 	int ix_of(float x) const { return int(std::floor(x / spacing + N * 0.5f)); }
 	float x_of(int ix) const { return (ix - N * 0.5f) * spacing; }
 	bool in_bounds(float x, float z, float margin = 0.f) const {
@@ -101,6 +100,10 @@ public:
 		return x > -h && x < h && z > -h && z < h;
 	}
 	float height_at(float x, float z) const; // final heights (with road corridors and pads)
+	// The final height of a sample, by column and row, and `count` of them along row `iz` from column `ix`, in metres.
+	float final_at(int ix, int iz) const { return finals.at(ix, iz, base_q); }
+	void set_final(int ix, int iz, float h) { finals.put(ix, iz, h, base_q); }
+	void final_row(int ix, int iz, int count, float *out) const { finals.row(iz, ix, count, out, base_q); }
 	// A copy of the final heights covering the box (plus the nodes its edges sample), for work done off the map lock.
 	HeightPatch patch(float minx, float minz, float maxx, float maxz) const;
 	float base_height_at(float x, float z) const; // natural ground, before modifiers

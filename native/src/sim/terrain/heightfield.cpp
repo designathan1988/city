@@ -25,7 +25,7 @@ void Heightfield::init(int tiles, float tile_m, float spacing_m, uint32_t p_seed
 	regions = clampi(tiles, 2, TERRAIN_MAX_REGIONS);
 	N = regions * region_size;
 	base_q.assign(size_t(N) * N, quant(0.f));
-	final_h.assign(size_t(N) * N, 0.f);
+	finals.reset(N);
 	mods.clear();
 	free_mods.clear();
 	mod_hash.clear();
@@ -49,8 +49,7 @@ void Heightfield::fill(TerrainGen &gen, float water_spacing) {
 	rows(size_t(N), [&](size_t iz) {
 		for (int ix = 0; ix < N; ix++) {
 			size_t i = iz * N + ix;
-			base_q[i] = quant(float(gen.base_height(x_of(ix), x_of(int(iz)))));
-			final_h[i] = dequant(base_q[i]);
+			base_q[i] = quant(float(gen.base_height(x_of(ix), x_of(int(iz))))); // the final heights are these until something changes them
 		}
 	});
 	// water: one sample per water_spacing, the river and lakes of the generator (the lakes made first: then it only reads)
@@ -72,18 +71,18 @@ float Heightfield::water_at(float x, float z) const {
 }
 
 float Heightfield::height_at(float x, float z) const {
-	return grid_sample(x, z, N, spacing, [&](size_t i) { return final_h[i]; });
+	return grid_sample(x, z, N, spacing, [&](int ix, int iz) { return final_at(ix, iz); });
 }
 
 float Heightfield::base_height_at(float x, float z) const {
-	return grid_sample(x, z, N, spacing, [&](size_t i) { return dequant(base_q[i]); });
+	return grid_sample(x, z, N, spacing, [&](int ix, int iz) { return dequant(base_q[size_t(iz) * size_t(N) + size_t(ix)]); });
 }
 
 HeightPatch Heightfield::patch(float minx, float minz, float maxx, float maxz) const {
 	HeightPatch p;
 	p.N = N;
 	p.spacing = spacing;
-	if (N < 2 || final_h.empty()) return p;
+	if (N < 2 || finals.empty()) return p;
 	// grid_sample reads nodes floor(f) and floor(f) + 1: one node of margin below, two above
 	p.x0 = clampi(ix_of(minx) - 1, 0, N - 1);
 	p.z0 = clampi(ix_of(minz) - 1, 0, N - 1);
@@ -91,8 +90,7 @@ HeightPatch Heightfield::patch(float minx, float minz, float maxx, float maxz) c
 	p.w = x1 - p.x0 + 1;
 	p.h = z1 - p.z0 + 1;
 	p.final_h.resize(size_t(p.w) * size_t(p.h));
-	for (int z = 0; z < p.h; z++)
-		std::copy_n(final_h.begin() + long(size_t(p.z0 + z) * size_t(N) + size_t(p.x0)), p.w, p.final_h.begin() + long(size_t(z) * size_t(p.w)));
+	for (int z = 0; z < p.h; z++) final_row(p.x0, p.z0 + z, p.w, p.final_h.data() + size_t(z) * size_t(p.w));
 	return p;
 }
 
@@ -209,8 +207,7 @@ void Heightfield::remove_modifier(int id) {
 }
 
 void Heightfield::finish_load() {
-	final_h.resize(base_q.size());
-	for (size_t i = 0; i < base_q.size(); i++) final_h[i] = dequant(base_q[i]);
+	finals.reset(N); // the natural ground everywhere: what changes it is read after
 	mods.clear();
 	free_mods.clear();
 	mod_hash.clear();
