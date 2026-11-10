@@ -17,6 +17,23 @@ not read and was not found.
 L="python .claude/skills/trace-fix/ledger.py"     # every command below is $L <command>
 ```
 
+## The rules of the game's world
+
+A game shows a world, and a world has rules every player takes for granted: a car is never inside another, nothing floats,
+nothing vanishes while it is looked at, a shadow touches what casts it. `$L rules` lists them (rules.json): each with what
+breaks it in a photo and the state it limits in the code. You know these rules; the skill makes you apply every one, both ways:
+
+- **In the code.** Every rule limits some state, and every function that writes that state must keep the rule.
+  `$L writers <Class::member> --rule "..."` gives, from the compiler, every function that writes it and every function that
+  reads it, and puts them on the flow. A writer that moves the state without the guard the rule needs is the cause: read each
+  one asking "what stops this from breaking the rule here?". Any defect of behaviour or of the picture is found this way, in
+  the code, before the game is ever run.
+- **In a photo.** Every photo is judged against every rule, one by one, never by a glance at the whole frame. What a rule
+  forbids and the photo shows is a problem, whoever caused it.
+
+A rule broken is a problem with a cause in the code. When its cause is fixed, the rule becomes a check of the core, run in a
+test of seconds, that fails while any writer breaks it.
+
 ## 0. First action, always: resume
 
 Run `$L resume` before anything else, in every session and after every compaction (a session hook also prints it).
@@ -118,6 +135,17 @@ Rules of the reading:
   library, look the call up with context7 (`resolve-library-id`, then `query-docs` for Godot 4.7) or the vendor's page
   before judging it: what it guarantees, on which thread it may run, what it costs, its known limits and known bugs. A hook
   logs every lookup, and `$L fix` refuses a cause that names an API no lookup names. Never judge such a call from memory.
+- **A claim is checked, never taken.** A document, a header comment, a test's own description or a log that says something is
+  checked, guarded or done is read against the code that should do it. A claim the code does not keep is a problem
+  (the document contradicts the code), recorded where the claim is.
+- **A check proves only what it can fail on.** Before taking a test, a probe, an audit or a gate as proof that a defect is
+  absent, read it: does it cover the entities the defect involves (not a sample, not one kind), is its threshold able to
+  catch it (a distance between centres does not catch two bodies crossing), does it run on the path the defect takes? A
+  check that cannot fail for this defect proves nothing; the missing check is a problem of its own.
+- **Every chunk is read against the rules of the world** (`$L rules`): for the state the chunk writes, which rules limit it
+  and what in this code keeps each. A write with no guard for a rule that applies is a problem, recorded at that line.
+  For a symptom the player reports, name the rule it breaks and the state, and `$L writers <state> --rule "..."` puts every
+  writer and reader on the flow.
 - Ask "why" of each problem until you reach the design decision; that goes in `"cause"`.
 - A problem that further reading proves not to be one: `$L drop <id> --why "..."`.
 
@@ -150,12 +178,15 @@ saves, tests, tiers and platforms see it; for each, what guards it. `$L cause li
    vehicles, people, light, shadows, sky), whether each is right for this game, and anything wrong, whoever caused it
    (floating or sunk things, gaps and seams, grass where a footway should be, overlaps, missing or stretched textures,
    wrong colours, flicker, hard level changes, shadows detached or missing, lights with no source, empty places). A problem
-   the fix brought goes back to the reading; any other is recorded with `$L problem`.
-5. `$L fix C<n> --how "what changed, why it cannot return" --commit <sha> [--tests <task> ...] [--photos dist/review-c<n> --seen "what each photo shows and every problem seen"]`,
+   the fix brought goes back to the reading; any other is recorded with `$L problem`. Then answer every rule of `$L rules`
+   from the photos, in a JSON sheet (`dist/review-c<n>/rules.json`): `"B1": "ok"`, `"not in view"`, or the id of the
+   problem recorded for it (`"P12"`). Zoom into the photo for the small things (vehicles, people, kerbs): crop and enlarge
+   the region and look at the crop, not at the whole frame.
+5. `$L fix C<n> --how "what changed, why it cannot return" --commit <sha> [--tests <task> ...] [--photos dist/review-c<n> --seen "what each photo shows and every problem seen" --checked dist/review-c<n>/rules.json]`,
    then commit and push by theme. The ledger checks on disk, and refuses otherwise: the cause's own flow read in whole, a
    documentation lookup for each API it names, its risks written, a test PASS recorded by the orchestrator after the last
    edit of the changed files, and, when a changed file can reach the screen, at least three photos taken after that edit
-   with their analysis.
+   with their analysis and every rule of the world answered.
 
 ## 6. Close
 
@@ -170,7 +201,7 @@ and the output do not show.
 |---|---|
 | Measure, profile or sample to find where the problem is | Read the flow. A measurement only checks a fix its cause already explains |
 | Run the suite or the game "to see what happens" | Read the flow. Run only the test that proves a fix |
-| Take captures to investigate | Read the code that draws it. Photos only prove a visual fix |
+| Take captures to investigate | The rule, the state it limits and its writers (`writers`); a check of the core in a test of seconds |
 | Write an analyser, a script or a tool to look for the cause | Read the flow |
 | Read the first 100 lines and the functions that look relevant | `$L next` until `gate read` passes |
 | Send agents to read and summarise | Read it yourself; agents cost credits and their summary is not a reading |

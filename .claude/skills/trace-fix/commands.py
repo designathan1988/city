@@ -216,6 +216,15 @@ def cmd_drop(args):
     print(f"{p['id']} dropped: {args.why}")
 
 
+def cmd_rules(_args):
+    out = views.Out()
+    for r in evidence.world_rules():
+        out.add(f"{r['id']}  {r['rule']}")
+        out.add(f"      in a photo: {r['photo']}")
+        out.add(f"      in the code: {r['state']}")
+    out.flush()
+
+
 def cmd_note(args):
     state = store.load()
     state["note"] = f"[{store.now()}] {args.text}"

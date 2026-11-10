@@ -177,6 +177,24 @@ def main():
                       (ledger('card', 'C1', '--include', fixture), 'Where to edit: 1 function(s)' in ledger.out, ', lines ' in ledger.out,
                        'called by' in ledger.out, os.path.exists(os.path.join(traces, 'route', 'card-C1.md'))), (0, True, True, True, True))
                 check('a card of a cause that does not exist', ledger('card', 'C9'), 1)
+                check('writers of a state name the functions that write it',
+                      (ledger('writers', 'NoteBook::notes', '--rule', 'a note is never lost', '--include', fixture, '--dry'),
+                       'NoteBook::add' in ledger.out, 'NoteBook::clear' in ledger.out), (0, True, True))
+                check('writers of a state that does not exist', ledger('writers', 'NoSuch::thing', '--rule', 'r', '--include', fixture), 1)
+
+            # ---- the rules of the world: listed, and a rule sheet is whole only with every rule answered
+            import evidence  # noqa: E402  (its checks read the trace folder of this run)
+            check("rules lists the world's rules", (ledger("rules"), "B1" in ledger.out, "in the code:" in ledger.out), (0, True, True))
+            ids = [r["id"] for r in evidence.world_rules()]
+            sheet = os.path.join(work, "sheet.json")
+            with open(sheet, "w", encoding="utf-8") as f:
+                json.dump({i: "ok" for i in ids[1:]}, f)
+            check("a rule sheet with a rule left out", len(evidence.unanswered({"problems": []}, sheet)), 1)
+            with open(sheet, "w", encoding="utf-8") as f:
+                json.dump({**{i: "ok" for i in ids[1:]}, ids[0]: "P7"}, f)
+            check("a rule answered with a problem that does not exist", len(evidence.unanswered({"problems": []}, sheet)), 1)
+            check("a whole rule sheet", evidence.unanswered({"problems": [{"id": "P7"}]}, sheet), [])
+            check("no rule sheet", len(evidence.unanswered({"problems": []}, None)), 1)
 
             # ---- every answer under the limit, on a ledger far larger than a real one
             made = {"slug": "huge", "request": "r " * 2000, "opened": "2026-01-01 00:00", "note": "n " * 2000,

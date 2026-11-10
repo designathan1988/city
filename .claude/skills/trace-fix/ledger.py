@@ -5,7 +5,7 @@ runs, the line ranges read with what each chunk does, the problems found, the ca
 the fixes. It survives compaction and new sessions (`resume`, always a short answer) and it can fail: `read`
 refuses a chunk the Read tool did not return, `gate read` a flow not read in whole, `gate plan` a problem without
 a cause or a cause without a plan, `fix` anything before those gates, `gate close` an open problem.
-What each command does: commands.py. The flow found by script: route.py. A cause's fix card: card.py. What a fix must show: evidence.py. The changes a trace accepts: operations.py. State and paths: store.py.
+What each command does: commands.py. The flow found by script: route.py. A cause's fix card: card.py. Every writer of a state: writers.py. What a fix must show: evidence.py. The changes a trace accepts: operations.py. State and paths: store.py.
 Proof of reading and notes kept by content: proof.py. Output: views.py.
 Usage: python ledger.py <command> -h
 """
@@ -23,6 +23,7 @@ import proof  # noqa: E402
 import store  # noqa: E402
 import card  # noqa: E402
 import route  # noqa: E402
+import writers  # noqa: E402
 
 
 def main():
@@ -57,6 +58,13 @@ def main():
     p.add_argument("id", help="C<n>")
     p.add_argument("--include", action="append", help="folders the tracer reads (default: the game and its tests)")
     p.set_defaults(fn=card.cmd_card)
+    p = sub.add_parser("writers", help="every place that writes a piece of state, on the flow, to check each keeps a rule")
+    p.add_argument("state", nargs="+", help="the state as the code names it: member, Class::member")
+    p.add_argument("--rule", required=True, help="the rule every writer must keep, as the player would say it")
+    p.add_argument("--include", action="append", help="folders the tracer reads (default: the game and its tests)")
+    p.add_argument("--dry", action="store_true", help="show them, record nothing")
+    p.set_defaults(fn=writers.cmd_writers)
+    sub.add_parser("rules", help="the rules of the game's world, each with what to look for in a photo and the state it limits in the code").set_defaults(fn=commands.cmd_rules)
     sub.add_parser("next", help="the next batch of chunks to read, in parallel").set_defaults(fn=commands.cmd_next)
     p = sub.add_parser("read", help="record one chunk that was read in whole")
     p.add_argument("path")
@@ -107,6 +115,7 @@ def main():
     p.add_argument("--tests", nargs="*", help="the orchestrator's tasks that failed before and pass now (a PASS after the last edit is checked)")
     p.add_argument("--photos", help="folder of the photos taken after the fix, when it can reach the screen")
     p.add_argument("--seen", help="what each photo shows and every problem seen")
+    p.add_argument("--checked", help="the rule sheet of the photos: a JSON with every rule of `rules` answered ok, not in view or P<n>")
     p.set_defaults(fn=commands.cmd_fix)
     p = sub.add_parser("drop", help="a recorded item that the code proved not to be a problem")
     p.add_argument("id")

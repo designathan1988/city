@@ -26,6 +26,21 @@ NATIVE = "native/src"  # the code the compiler reads (CLAUDE.md, the project's s
 SCAN_TIMEOUT_S = 1200  # one scan of the working tree by the architecture analyser; its own task has 1800
 
 
+def fresh_slices():
+    """The architecture analyser's published reading of the code on disk (dist/arch/worktree/slices.json), made again when a source is newer
+    than it; None where the repository has no analyser."""
+    arch = os.path.join(store.ROOT, "tools", "analysis", "arch.py")
+    if not os.path.isfile(arch):
+        return None
+    slices = os.path.join(store.ROOT, "dist", "arch", "worktree", "slices.json")
+    newest = max((os.path.getmtime(os.path.join(base, n)) for base, _, names in os.walk(os.path.join(store.ROOT, NATIVE)) for n in names), default=0.0)
+    if not os.path.isfile(slices) or os.path.getmtime(slices) < newest:
+        done = subprocess.run([sys.executable, arch, "scan", "--worktree"], cwd=store.ROOT, capture_output=True, timeout=SCAN_TIMEOUT_S)
+        if done.returncode != 0:
+            raise Refused("the architecture analyser could not scan the working tree: " + done.stderr.decode("utf-8", "replace")[-600:])
+    return slices
+
+
 def compiler_route(graph, seeds):
     """For the seeds the compiler knows (C and C++), what each runs, in program order, as the architecture analyser reads it from the compiler's own
     tree: calls through base classes, templates, lambdas and jobs included, which no lookup by name can promise. The analyser's scan of the working
@@ -34,12 +49,7 @@ def compiler_route(graph, seeds):
     native = [s for s in seeds if graph.nodes[s].path.startswith(NATIVE + "/") and graph.nodes[s].kind == "callable"]
     if not native or not os.path.isfile(arch):
         return []
-    slices = os.path.join(store.ROOT, "dist", "arch", "worktree", "slices.json")
-    newest = max((os.path.getmtime(os.path.join(base, n)) for base, _, names in os.walk(os.path.join(store.ROOT, NATIVE)) for n in names), default=0.0)
-    if not os.path.isfile(slices) or os.path.getmtime(slices) < newest:
-        done = subprocess.run([sys.executable, arch, "scan", "--worktree"], cwd=store.ROOT, capture_output=True, timeout=SCAN_TIMEOUT_S)
-        if done.returncode != 0:
-            raise Refused("the architecture analyser could not scan the working tree: " + done.stderr.decode("utf-8", "replace")[-600:])
+    fresh_slices()
     files = OrderedDict()
     for seed in native:
         node = graph.nodes[seed]

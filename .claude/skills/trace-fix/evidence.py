@@ -70,6 +70,28 @@ def passed_after(test, moment):
     return False
 
 
+def world_rules():
+    """The rules of the game's world (rules.json beside this file)."""
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "rules.json"), encoding="utf-8") as f:
+        return json.load(f)["rules"]
+
+
+def unanswered(state, path):
+    """Why a rule sheet is not whole: every rule of the world answered `ok`, `not in view` or with the id of a problem of this trace."""
+    if not path or not os.path.isfile(path if os.path.isabs(path) else os.path.join(store.ROOT, path)):
+        return ["`--checked <file.json>` is missing: a sheet with every rule of `rules` answered from the photos (ok, not in view, or P<n>)"]
+    with open(path if os.path.isabs(path) else os.path.join(store.ROOT, path), encoding="utf-8") as f:
+        sheet = json.load(f)
+    known = {p["id"] for p in state["problems"]}
+    out = []
+    for rule in world_rules():
+        answer = str(sheet.get(rule["id"], "")).strip()
+        if answer.lower() not in ("ok", "not in view") and answer not in known:
+            out.append(f"rule {rule['id']} ({rule['rule']}) is not answered: ok, not in view, or the problem recorded for it"
+                       + (f" (`{answer}` is no problem of this trace)" if answer else ""))
+    return out
+
+
 def missing(state, cause, args):
     """Why this fix is not accepted yet: an empty list when everything it must show is on disk."""
     out = []
@@ -106,4 +128,5 @@ def missing(state, cause, args):
                        f"(at least {PHOTOS_MIN}: near, mid, far; several angles, day and night)")
         if len((args.seen or "").strip()) < SEEN_MIN:
             out.append("`--seen` must say what each photo shows, element by element, and every problem seen (the skill's photo step)")
+        out += unanswered(state, getattr(args, "checked", None))
     return out
