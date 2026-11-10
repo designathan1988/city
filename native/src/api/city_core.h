@@ -203,6 +203,8 @@ public:
 	godot::Dictionary agent_cost() const; // vehicles by type and level: triangles, instances, draws (counts)
 	godot::Dictionary surface_probe(const godot::Array &arrays, const godot::Dictionary &lods, int64_t format) const; // tests: render/surface_data.h's surface of these arrays
 	godot::Dictionary memory_census() const; // where the process's memory is: its heaps and the core's largest owners, MiB (log/owner-review.md §8)
+	int memory_release(); // every thread of the core gives back what its heap holds freed: how many did (tests/perf/memory_probe)
+	godot::Dictionary memory_churn(int mib, int keep_one_in); // a thread takes, frees and ends: what the allocator held before, at most, thinned and after (tests/core/memory_test)
 	godot::Dictionary pose_stats(); // since the last call: pose publications, their gaps, frames shown past the newest pose
 
 protected:

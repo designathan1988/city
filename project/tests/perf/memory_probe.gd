@@ -30,6 +30,13 @@ func _ready() -> void:
 		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_BUFFER_MEM_USED) / MIB])
 	for key: String in census:
 		print("  census %s: %s" % [key, census[key]])
+	# what the core's allocator holds beyond what lives in it: every thread gives back, and the census is read again
+	var threads := int(CityStore.query(&"memory_release"))
+	var after: Dictionary = CityStore.query(&"memory_census")
+	print("  after %d threads gave back: working set %.0f MiB, private %.0f MiB, core live %.0f MiB, core held %.0f MiB" % [
+		threads, after.working_set, after.private, after.core_live, after.core_held])
+	print("  after, by thread: %s" % [after.core_by_thread])
+	print("  after, by size: %s" % [after.core_by_size])
 	check(float(census.working_set) > 0.0, "the census reads the process")
 	finish()
 

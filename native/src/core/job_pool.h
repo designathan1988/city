@@ -60,6 +60,7 @@ public:
 	// on the caller alone; wait_idle must not be asked in between.
 	void pause();
 	void resume();
+	size_t workers() const { return threads_.size(); } // the pool's threads (the caller of a parallel_for works beside them)
 	size_t tracked(); // keys with a job still queued: none once the pool is idle (a key is forgotten when its newest job is taken)
 	uint64_t replaced() const { return replaced_.load(); } // queued jobs a newer one of their key took the place of
 	// The job `seq` of `key` is still the newest submitted for its key (a running job polls it to stop early).

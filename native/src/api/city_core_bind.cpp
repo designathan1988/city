@@ -167,6 +167,8 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("wear_paint", "x0", "z0", "x1", "z1", "value"), &CityCore::wear_paint);
 	ClassDB::bind_method(D_METHOD("agent_cost"), &CityCore::agent_cost);
 	ClassDB::bind_method(D_METHOD("memory_census"), &CityCore::memory_census);
+	ClassDB::bind_method(D_METHOD("memory_release"), &CityCore::memory_release);
+	ClassDB::bind_method(D_METHOD("memory_churn", "mib", "keep_one_in"), &CityCore::memory_churn);
 	ClassDB::bind_method(D_METHOD("surface_probe", "arrays", "lods", "format"), &CityCore::surface_probe);
 	ClassDB::bind_method(D_METHOD("building_cost"), &CityCore::building_cost);
 	ClassDB::bind_method(D_METHOD("pose_stats"), &CityCore::pose_stats);

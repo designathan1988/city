@@ -78,6 +78,16 @@ set(MI_BUILD_OBJECT OFF CACHE BOOL "" FORCE)
 set(MI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(MI_OVERRIDE OFF CACHE BOOL "" FORCE)
 set(MI_WIN_REDIRECT OFF CACHE BOOL "" FORCE)
+# How the allocator learns that the library was loaded and that a thread ended. As a static library it registers both through
+# MSVC pragmas (src/prim/windows/prim.c: const_seg ".CRT$XLB", linker /INCLUDE), which clang for MinGW ignores: its callbacks
+# landed in .rdata and never ran. It then stayed in its loading state for good, where freed memory is only marked reusable
+# (MEM_RESET, src/os.c _mi_os_purge_ex) and never given back, and the heap of a thread that ended was never freed: the 24 km city
+# held 3.2 GiB for 2.0 GiB alive, and every save, opening and restart of the simulation left its thread's heap behind. MI_WIN_USE_FLS
+# is the allocator's own path outside MSVC: a constructor runs its start (src/prim/prim.c), a fiber-local callback each thread's
+# end. tests/core/memory_test holds it.
+if(WIN32)
+    set(MI_WIN_USE_FLS ON CACHE BOOL "" FORCE)
+endif()
 FetchContent_Declare(mimalloc GIT_REPOSITORY https://github.com/microsoft/mimalloc.git GIT_TAG v2.2.4 GIT_SHALLOW TRUE SYSTEM)
 FetchContent_MakeAvailable(mimalloc)
 # Its banner prints the hour it was compiled (src/options.c: __DATE__, __TIME__), which put the build's clock in the tests' DLL: its
@@ -105,6 +115,14 @@ file(GLOB_RECURSE CITYCORE_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR
 add_library(citycore SHARED ${CITYCORE_SOURCES} ${CITYCORE_HEADERS})
 target_link_libraries(citycore PRIVATE godot-cpp meshoptimizer mimalloc-static Clipper2)
 target_include_directories(citycore PRIVATE ${clipper2_SOURCE_DIR}/CPP/Clipper2Lib/include/clipper2) # <clipper.h>, as <meshoptimizer.h>: a library by its own name
+# A measuring build: every block of the core carries the place that asked for it, and memory_census names the owners of what the
+# core holds (src/core/memory.cpp, heap_sites), by their address from the library's base; the link's map (citycore.map in the build
+# folder) gives each address its function. Never the DLL that is committed: 16 bytes a block and two counters an allocation.
+option(CITY_HEAP_SITES "the core's blocks carry their asker (memory_census core_sites); a measuring build, never committed" OFF)
+if(CITY_HEAP_SITES)
+    set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/src/core/memory.cpp" PROPERTIES COMPILE_DEFINITIONS CITY_HEAP_SITES=1)
+    target_link_options(citycore PRIVATE "-Wl,-Map=${CMAKE_BINARY_DIR}/citycore.map")
+endif()
 city_profile_names(citycore "${CITY_REPO_ROOT}")
 city_profile_names(godot-cpp "${CITY_REPO_ROOT}") # its generated bindings keep the build folder: static functions that never ran
 cmake_path(GET meshoptimizer_SOURCE_DIR PARENT_PATH fetched) # the fetched libraries from their <name>-src folder on
