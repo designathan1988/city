@@ -50,9 +50,13 @@ public:
 	godot::RID mesh_with(int kind, const godot::RID &material);
 
 private:
+	static constexpr int RECORD_FLOATS = 10; // a look's floats in the file (signature_bodies.cpp names them)
 	struct Look {
 		godot::Ref<godot::ShaderMaterial> made;
-		size_t at = 0; // its record in the table
+		float v[RECORD_FLOATS] = {};
+		uint32_t flags = 0, width = 0, height = 0; // its picture's size, 0 when it has none
+		size_t at = 0; // its picture's stream in looks_file_
+		uint32_t packed = 0; // that stream's bytes
 	};
 	// A kind made ready off the main thread: each surface's arrays, levels and look, and the pictures of the looks it uses.
 	struct Surface {
@@ -71,7 +75,7 @@ private:
 	};
 	enum class State : uint8_t { NONE, ASKED, READY, FAILED };
 	bool read_table(); // any thread, once
-	std::shared_ptr<Prepared> prepare(int kind); // any thread
+	std::shared_ptr<Prepared> prepare(int kind, bool pictures); // any thread; `pictures`: its looks' pictures too
 	bool finish(Prepared &p); // main thread: the uploads
 	godot::Ref<godot::Image> picture(uint32_t index) const; // a look's picture with its mipmaps, any thread (after read_table)
 	godot::Ref<godot::ShaderMaterial> look(uint32_t index, const godot::Ref<godot::Image> &picture);
@@ -83,13 +87,12 @@ private:
 	JobPool *pool_ = nullptr;
 	std::mutex table_mutex_; // the table is read once, by whichever thread first needs it
 	bool table_read_ = false, table_ok_ = false;
-	godot::PackedByteArray table_; // materials.sig, unpacked
+	godot::PackedByteArray looks_file_; // materials.sig as it is on disk: the pictures packed, each in its own stream
 	std::vector<Look> looks_;
 	godot::Ref<godot::Shader> solid_, blended_;
-	// Each kind's mesh, made whole with its looks (surface_data.h: the engine has its pipelines as it is made), its prepared surfaces
-	// kept for another material (mesh_with), and that mesh.
+	// Each kind's mesh, made whole with its looks (surface_data.h: the engine has its pipelines as it is made), and its mesh in
+	// another material (mesh_with), made from the file again.
 	std::vector<OwnedMesh> meshes_;
-	std::vector<std::shared_ptr<Prepared>> made_;
 	std::vector<OwnedMesh> with_;
 	std::vector<godot::RID> with_material_;
 	std::vector<State> state_; // by kind

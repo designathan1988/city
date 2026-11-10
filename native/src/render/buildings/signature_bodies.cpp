@@ -1,4 +1,4 @@
-// The cooked designs of signature buildings as meshes and instances (signature_bodies.h). Layout: tools/assets/cook_signatures.py.
+// The cooked designs of signature buildings as meshes and instances (signature_bodies.h). Layout of the looks: tools/assets/pack_signature_looks.py.
 #include "render/buildings/signature_bodies.h"
 
 #include "render/mesh_levels.h"
@@ -27,11 +27,11 @@ namespace city {
 namespace {
 constexpr const char *FOLDER = "res://assets/lots/";
 constexpr const char *SOLID_SHADER = "res://render/shaders/signature.gdshader", *BLENDED_SHADER = "res://render/shaders/signature_glass.gdshader";
-constexpr uint32_t MAGIC_LOOKS = 0x4D534352u, MAGIC_BODY = 0x42534352u; // "RCSM", "RCSB"
+constexpr uint32_t MAGIC_LOOKS = 0x4C534352u, MAGIC_BODY = 0x42534352u; // "RCSL", "RCSB"
 // The signature files' format (tools/assets cooks them): a look's flags, the most surfaces and looks a file holds, a name's
 // bytes, a record's floats, a colour's channels, a normal's bytes.
 constexpr uint32_t FLAG_BLENDED = 1, FLAG_TWO_SIDED = 2, FLAG_WINDOWS = 4, FLAG_PAINTED_WINDOWS = 8, MOST_SURFACES = 64, MOST_LOOKS = 1024;
-constexpr int NAME_BYTES = 24, RECORD_FLOATS = 10, RGBA = 4, NORMAL_BYTES = 4;
+constexpr int NAME_BYTES = 24, RGBA = 4, NORMAL_BYTES = 4;
 constexpr size_t VERTEX_BYTES = 5 * sizeof(float) + NORMAL_BYTES; // position, normal, uv: what each vertex takes in the file
 constexpr int RED = 0, ROUGHNESS = 3, METALLIC = 4, GLOW = 5, OPACITY = 8, ALPHA_CUT = 9; // a record's floats
 constexpr float NORMAL_SCALE = 127.f; // a normal's component in a signed byte
@@ -51,7 +51,6 @@ void SignatureBodies::init(const RID &scenario, uint32_t layer) {
 	layer_ = layer;
 	meshes_.clear();
 	meshes_.resize(size_t(b40::SIGNATURE_COUNT) + 1);
-	made_.assign(size_t(b40::SIGNATURE_COUNT) + 1, nullptr);
 	with_.clear();
 	with_.resize(size_t(b40::SIGNATURE_COUNT) + 1);
 	with_material_.assign(size_t(b40::SIGNATURE_COUNT) + 1, RID());
@@ -66,38 +65,48 @@ void SignatureBodies::reset() {
 	shown_.clear();
 }
 
+// The looks' records read; the pictures stay packed in the file's bytes, each in its own stream (0.6 MiB for all of them).
 bool SignatureBodies::read_table() {
 	std::lock_guard<std::mutex> lk(table_mutex_);
 	if (table_read_) return table_ok_;
 	table_read_ = true;
-	table_ = unpacked(String(FOLDER) + "materials.sig", MAGIC_LOOKS);
-	ByteReader r{ table_.ptr(), size_t(table_.size()) };
-	const uint32_t count = r.get<uint32_t>();
-	if (!r.ok || count == 0 || count > MOST_LOOKS) {
+	looks_file_ = FileAccess::get_file_as_bytes(String(FOLDER) + "materials.sig");
+	ByteReader r{ looks_file_.ptr(), size_t(looks_file_.size()) };
+	const uint32_t magic = r.get<uint32_t>(), count = r.get<uint32_t>();
+	if (!r.ok || magic != MAGIC_LOOKS || count == 0 || count > MOST_LOOKS) {
 		UtilityFunctions::push_error("signature designs: materials.sig missing or bad");
 		return table_ok_ = false;
 	}
 	looks_.resize(count);
-	for (Look &l : looks_) { // the pictures stay packed in the table: a look is made when a building asks for it
-		l.at = r.o;
+	for (Look &l : looks_) {
 		r.o += NAME_BYTES;
-		for (int i = 0; i < RECORD_FLOATS; i++) r.get<float>();
-		r.get<uint32_t>();
-		const uint32_t w = r.get<uint32_t>(), h = r.get<uint32_t>();
-		r.o += size_t(w) * h * RGBA;
+		for (float &f : l.v) f = r.get<float>();
+		l.flags = r.get<uint32_t>();
+		l.width = r.get<uint32_t>();
+		l.height = r.get<uint32_t>();
+		l.packed = r.get<uint32_t>();
 	}
-	table_ok_ = r.ok;
+	for (Look &l : looks_) { // the streams follow the records, in the looks' order
+		l.at = r.o;
+		if (!r.claim(l.packed, 1)) break;
+		r.o += l.packed;
+	}
+	table_ok_ = r.ok && r.o == r.n;
 	if (!table_ok_) UtilityFunctions::push_error("signature designs: materials.sig truncated");
 	return table_ok_;
 }
 
-// A look's picture with its mipmaps (none when the look has no picture), any thread.
+// A look's picture with its mipmaps (none when the look has no picture), any thread: unpacked from its own stream.
 Ref<Image> SignatureBodies::picture(uint32_t index) const {
-	ByteReader r{ table_.ptr(), size_t(table_.size()) };
-	r.o = looks_[index].at + NAME_BYTES + RECORD_FLOATS * sizeof(float) + sizeof(uint32_t);
-	const uint32_t w = r.get<uint32_t>(), h = r.get<uint32_t>();
-	if (w == 0) return Ref<Image>();
-	Ref<Image> image = Image::create_from_data(int(w), int(h), false, Image::FORMAT_RGBA8, table_.slice(int64_t(r.o), int64_t(r.o) + int64_t(w) * h * RGBA));
+	const Look &l = looks_[index];
+	if (l.width == 0) return Ref<Image>();
+	const int64_t bytes = int64_t(l.width) * l.height * RGBA;
+	const PackedByteArray pixels = looks_file_.slice(int64_t(l.at), int64_t(l.at) + int64_t(l.packed)).decompress(bytes, FileAccess::COMPRESSION_DEFLATE);
+	if (pixels.size() != bytes) {
+		UtilityFunctions::push_error("signature designs: a look's picture does not unpack");
+		return Ref<Image>();
+	}
+	Ref<Image> image = Image::create_from_data(int(l.width), int(l.height), false, Image::FORMAT_RGBA8, pixels);
 	image->generate_mipmaps();
 	return image;
 }
@@ -105,11 +114,8 @@ Ref<Image> SignatureBodies::picture(uint32_t index) const {
 Ref<ShaderMaterial> SignatureBodies::look(uint32_t index, const Ref<Image> &image) {
 	Look &l = looks_[index];
 	if (l.made.is_valid()) return l.made;
-	ByteReader r{ table_.ptr(), size_t(table_.size()) };
-	r.o = l.at + NAME_BYTES;
-	float v[RECORD_FLOATS];
-	for (float &f : v) f = r.get<float>();
-	const uint32_t flags = r.get<uint32_t>();
+	const float *v = l.v;
+	const uint32_t flags = l.flags;
 	l.made.instantiate();
 	l.made->set_shader(flags & FLAG_BLENDED ? blended_ : solid_);
 	l.made->set_shader_parameter("albedo", Color(v[RED], v[RED + 1], v[RED + 2], v[OPACITY]));
@@ -135,8 +141,8 @@ int64_t SignatureBodies::Prepared::bytes() const {
 	return n;
 }
 
-// The file read, unpacked and made into arrays, levels and the pictures of looks not made yet: what the main thread then only uploads.
-std::shared_ptr<SignatureBodies::Prepared> SignatureBodies::prepare(int kind) {
+// The file read, unpacked and made into arrays, levels and (with `pictures`) the pictures of its looks: what the main thread then only uploads.
+std::shared_ptr<SignatureBodies::Prepared> SignatureBodies::prepare(int kind, bool pictures) {
 	auto out = std::make_shared<Prepared>();
 	out->kind = kind;
 	out->file = std::string(FOLDER) + b40::SIGNATURE_KINDS[kind - 1] + ".sig";
@@ -177,7 +183,7 @@ std::shared_ptr<SignatureBodies::Prepared> SignatureBodies::prepare(int kind) {
 		sf.look = material;
 		sf.bytes = int64_t(vertices) * int64_t(2 * sizeof(Vector3) + sizeof(Vector2)) + int64_t(indices) * int64_t(sizeof(int32_t));
 		out->surfaces.push_back(std::move(sf));
-		if (!out->pictures.count(material)) out->pictures[material] = picture(material);
+		if (pictures && !out->pictures.count(material)) out->pictures[material] = picture(material);
 	}
 	out->ok = r.ok;
 	return out;
@@ -203,17 +209,17 @@ RID SignatureBodies::mesh(int kind) {
 	if (kind <= 0 || kind > b40::SIGNATURE_COUNT) return RID();
 	if (state_[size_t(kind)] == State::FAILED) return RID();
 	if (meshes_[size_t(kind)].valid()) return meshes_[size_t(kind)].rid;
-	std::shared_ptr<Prepared> p = prepare(kind); // asked now (a job's may land later: it is then let go)
+	std::shared_ptr<Prepared> p = prepare(kind, true); // asked now (a job's may land later: it is then let go)
 	if (!finish(*p)) return RID();
-	made_[size_t(kind)] = p;
 	return meshes_[size_t(kind)].rid;
 }
 
 RID SignatureBodies::mesh_with(int kind, const RID &material) {
 	if (!mesh(kind).is_valid()) return RID();
 	if (with_[size_t(kind)].valid() && with_material_[size_t(kind)] == material) return with_[size_t(kind)].rid;
-	const std::shared_ptr<Prepared> &p = made_[size_t(kind)];
-	if (!p) return RID();
+	// The kind's file read again for the ghost: nothing of a kind is kept after its upload for a material the player may never hold.
+	const std::shared_ptr<Prepared> p = prepare(kind, false);
+	if (!p->ok) return RID();
 	TypedArray<Dictionary> surfaces;
 	for (const Surface &s : p->surfaces) surfaces.push_back(surface_data(s.arrays, s.lods, 0, material));
 	with_[size_t(kind)] = OwnedMesh::of(create_mesh(surfaces));
@@ -245,7 +251,7 @@ void SignatureBodies::set_chunk(int64_t key, const std::vector<SignaturePlace> &
 		if (st == State::NONE && pool_) {
 			st = State::ASKED;
 			const int kind = p.kind;
-			pool_->submit(JobKey{ JobLane::SIGNATURES, kind }, 0.f, [this, kind]() { inbox_.push(prepare(kind)); });
+			pool_->submit(JobKey{ JobLane::SIGNATURES, kind }, 0.f, [this, kind]() { inbox_.push(prepare(kind, true)); });
 		}
 	}
 	if (!pool_) // no pool (a test without one): made here
@@ -288,7 +294,7 @@ void SignatureBodies::sync(FrameAdmission &f) {
 			ready_[kept++] = std::move(ready_[i]);
 			continue;
 		}
-		if (finish(p)) made_[size_t(p.kind)] = ready_[i];
+		finish(p);
 		release(p.kind);
 	}
 	ready_.resize(kept);

@@ -147,7 +147,8 @@ float BuildingRenderer::near_reach() const { return near_end_ * detail_scale_ + 
 // follows at the next sync (near_reach).
 void BuildingRenderer::set_detail_scale(float scale) {
 	detail_scale_ = scale;
-	tell_cards(material_card_, band_end_[0] * detail_scale_);
+	// A tier applied before the renderer has its materials (a capture's look scene): the cards are told at init, with this scale.
+	if (material_card_.is_valid()) tell_cards(material_card_, band_end_[0] * detail_scale_);
 	for (auto &[key, ch] : chunks_) ranges(ch);
 }
 

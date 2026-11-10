@@ -336,3 +336,29 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
 - Cannot return: the asset has no member holding the palette; a new CPU reader must name its clip in `POSED_CLIPS`.
 - Check: `strike_test` (bodies struck down are posed from it) and `people_test` pass, gates OK. The palette's 55 MiB of video
   memory stand (every body has its own block of every clip): open under C4/C16.
+
+### P6 (C4): the signature looks' table is kept packed; a prepared kind is not kept
+- Cause: `materials.sig` was one deflate stream of every look's record and picture, so the game unpacked all of it (33.1 MiB for
+  127 looks, 92 pictures) and kept it to cut a picture from on demand; and each kind made kept its prepared surfaces (arrays,
+  levels, pictures with mipmaps) for the Build tool's ghost.
+- Change: `tools/assets/pack_signature_looks.py` (new) writes the records plain and each picture in a stream of its own
+  ("RCSL"; the file went from 587,033 to 569,660 bytes). `signature_bodies.cpp`: `read_table` keeps the file as it is on disk
+  and the records; `picture` unpacks one stream; `mesh_with` reads the kind's file again for the ghost (`made_` is gone).
+- Cannot return: nothing holds an unpacked table or a prepared kind after its upload; the only bytes kept are the packed file.
+- Also: `BuildingRenderer::set_detail_scale` tells the cards their range only once their material stands (a tier applied before
+  the boot logged "Parameter material is null" in every capture; `init` tells them with the stored scale).
+- Check: `model_test` (the church keeps its own design), `building_variety_test`, `photos`, `digest` pass; no signature error in
+  the logs. Open under C4: the pictures are uploaded as plain RGBA8 (a compressed form needs the cook).
+
+### Photos of the fixes that can reach the screen (dist/review-c4, 2026-11-10)
+- Before: a copy of `project/` with the tracked files of 2d53b55e laid over it (its DLL, scripts, shaders, assets). After: the
+  working tree at P6. Hidden, frozen, 1280x720, the town of seed 1: three streets from the kerb, three edges of the town where
+  the streets meet the land, the bare land far and in the hills, the whole town, the town in nine quadrants near enough for the
+  facades (every signature building stands in one), a street and the town at night: 20 pictures a side.
+- Result: 10 pictures equal pixel by pixel (both land views, the whole town, two streets, both night views, three quadrants);
+  the other 10 differ in 1 to 608 pixels of 921,600. The pixels that differ are the outlines of tree crowns (the leaf cards'
+  edges under TAA: two runs of the same build differ so, suites.json `quick`). Land, streets, kerbs, buildings and signature
+  facades are the same. So P49 (the final heights), C13 (the sky) and P6 (the signature looks) changed no picture.
+- Live (the clock running, 433 vehicles and 1,056 walkers, a strike of force 5): before and after show the same streets,
+  walkers and vehicles; no fallen body stood in the frame, so P1's posed frames are proven by `strike_test` (212 bodies posed
+  with no refusal) and by construction (the same bytes copied), not by a picture.
