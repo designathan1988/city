@@ -241,6 +241,14 @@
       "message": "render/ só lê o CityState; mutações só pela camada sim/commands"
     },
     {
+      "id": "RENDER_MAP_LOCK",
+      "paths": [
+        "native/src/render/"
+      ],
+      "pattern": "\\bmap_mutex\\b",
+      "message": "the render takes the map only through MapRead (sim/state/city_state.h), and a job only inside cut_city (sim/state/city_cut.h): what a thread builds under the map is counted (map_hold), and a job builds from its cut with the map let go"
+    },
+    {
       "id": "UM_DONO_DO_CORE",
       "paths": [
         "project/"

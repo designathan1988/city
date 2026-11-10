@@ -3,7 +3,9 @@
 
 #include "core/grid.h"
 #include "core/math.h"
+#include "render/trees/tree_place.h"
 #include "sim/nature/ecology.h"
+#include "sim/state/city_cut.h"
 
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/variant/vector3.hpp>
@@ -11,7 +13,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <shared_mutex>
 
 using namespace godot;
 
@@ -51,9 +52,10 @@ void EcologyRaster::work(const CityState &s, uint64_t generation, std::vector<in
 	Raster r;
 	const EcologyDef &d = s.catalog.nature.ecology;
 	{
-		std::shared_lock<std::shared_mutex> map(s.map_mutex);
+		MapRead map(s);
 		r.half = s.terrain.half_size();
 	}
+	const float reach = ground_reach(s.catalog); // how far past its chunk a chunk's ecosystem reads the land (tree_place.h)
 	r.step = d.grid_m;
 	r.side = int(std::lround(2.f * r.half / r.step)) + 1;
 	if (k->side != r.side || k->half != r.half || k->step != r.step) { // another map's raster: all of this one's corners again
@@ -75,15 +77,13 @@ void EcologyRaster::work(const CityState &s, uint64_t generation, std::vector<in
 		const float x0 = float(key_x(key)) * CHUNK, z0 = float(key_y(key)) * CHUNK;
 		const int i0 = int(std::lround((x0 + r.half) / r.step)), j0 = int(std::lround((z0 + r.half) / r.step));
 		if (i0 >= r.side || j0 >= r.side || i0 + n <= 0 || j0 + n <= 0) continue; // a neighbour past the map's edge
-		// The map is read shared a chunk at a time, so an edit waits for one chunk and not the whole map: what it changes marks
-		// its chunks again (touch), and the next job redoes them.
+		// The chunk's land and paint are copied under the map's shared lock (a cut: sim/state/city_cut.h) and its ecosystem worked
+		// out from the copy, so an edit never waits for a chunk's ecology: what it changes marks its chunks again (touch), and the
+		// next job redoes them.
+		const CityCut cut = cut_city(s, CUT_NATURE | CUT_GROUND_BASE | CUT_WATER, [&](const CityState &) { return CutBox{ x0, z0, x0 + CHUNK, z0 + CHUNK }.grown(reach); });
+		const bool grows = cut.nature.nature.region >= 0 || cut.nature.ground.any_cover();
 		EcologyField f;
-		bool grows = false;
-		{
-			std::shared_lock<std::shared_mutex> map(s.map_mutex);
-			grows = s.nature.nature.region >= 0 || s.nature.ground.any_cover();
-			if (grows) f = compute_ecology(s.terrain, s.nature.ground, s.nature.nature, d, x0, z0, CHUNK);
-		}
+		if (grows) f = compute_ecology(cut.ground, cut.nature.ground, cut.nature.nature, d, x0, z0, CHUNK);
 		const int side = grows ? f.side : n;
 		for (int j = 0; j < side; j++) {
 			const int z = j0 + j;

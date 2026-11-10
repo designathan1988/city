@@ -10,7 +10,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
-#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -57,9 +56,11 @@ Dictionary BuildingRenderer::bay_census() {
 	std::array<int64_t, b40::BAY_COUNT> by_comp{};
 	int64_t bays = 0, buildings = 0;
 	std::vector<Building> records;
-	std::shared_lock<std::shared_mutex> lk(s.map_mutex); // held to the end: the ground patches and the designs are the map's too
-	for (const Building &b : s.buildings.items)
-		if (b.alive && !(b.floors == 0 && b.body == 0 && !b40::is_open_lot(b.fn))) records.push_back(b);
+	{
+		MapRead lk(s); // for the copy of the records alone
+		for (const Building &b : s.buildings.items)
+			if (b.alive && !(b.floors == 0 && b.body == 0 && !b40::is_open_lot(b.fn))) records.push_back(b);
+	}
 	const auto key = [](float grain, const b40::BayCtx &c, const b40::Opening &o) {
 		char text[BAY_KEY_CHARS];
 		const auto q = [grain](float v) { return int(std::round(v * grain)); };
@@ -68,7 +69,13 @@ Dictionary BuildingRenderer::bay_census() {
 	};
 	for (const Building &rec : records) {
 		const float reach = rec.w + rec.d; // past the lot, whatever its turn
-		const HeightPatch ground = s.terrain.patch(rec.x - reach, rec.z - reach, rec.x + reach, rec.z + reach);
+		// The ground under the record copied under a lock of its own, and its body placed with the map let go (the designs are the
+		// session's tables): the census never holds the map while it places.
+		HeightPatch ground;
+		{
+			MapRead lk(s);
+			ground = s.terrain.patch(rec.x - reach, rec.z - reach, rec.x + reach, rec.z + reach);
+		}
 		b40::Placed pl;
 		bodies_.place(designs(), look_, ground, rec, pl);
 		buildings++;

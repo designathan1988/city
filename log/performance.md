@@ -552,3 +552,20 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
   day and at night, each carriageway one colour of the ramp (free green, middling yellow, jammed red) lying on its road,
   changing at the junctions; the zones beside the zoned sides and over the lots in their zone's colour.
 - Left in C9: transit (P34), the canyon, fog and ecology fields, the ruins' probe, P10's outline owner, the gate.
+
+### C9, sixth piece (2026-11-10 05:55): the fields, the bay census, and the gate that keeps the render off the raw map lock
+- The ecology raster worked each chunk's ecosystem out with the map held (`compute_ecology` under the shared lock, a chunk at
+  a time: some 6,100 holds after a new map of 20 km): each chunk now takes a cut of its land and paint
+  (`CUT_NATURE | CUT_GROUND_BASE | CUT_WATER`, the chunk grown by `ground_reach`) and works it out with the map let go.
+- The canyon, fog and shore fields already copied under a short lock and built after it: their copies are taken through
+  `MapRead`, so the count sees them. `bay_census` (the lab's census, a probe) placed every building of the map on the main
+  thread with the map held to its end (P81): it copies the records, then each record's ground under a lock of its own, and
+  places with the map let go.
+- The gate `RENDER_MAP_LOCK` (`tools/gates/rules.json`, with its passing and failing fixtures): `map_mutex` may not be named
+  in `native/src/render`. The render takes the map through `MapRead` (the frame's sync, the fields' copies, the probes) and a
+  job only inside `cut_city`. Cannot return: a new producer that locks the map itself fails the gates.
+- Check: `map_hold_test` names seventeen lanes (every chunk producer, the layers, the four fields): 0 built under the map;
+  the gates' selftest (72 cases) passes. The full gates fail only on what stood before this line (ESPELHO: the empty mirrors
+  table, log/pendencias.md; TASKS.md, another session's file).
+- The fields' whole-map and whole-window units (P31 shore, P32 ecology, P37 canyon) are C11's: their plans are in the ledger.
+- Left in C9: transit (P34, built on the main thread under the frame's `MapRead`), P10's outline owner, P73, P74.

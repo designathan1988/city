@@ -8,7 +8,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <shared_mutex>
 #include <vector>
 
 using namespace godot;
@@ -60,7 +59,7 @@ void ShoreField::work(const CityState &s, uint64_t generation) {
 	std::unique_ptr<Scratch> k = slot_.scratch(generation);
 	Raster r;
 	{
-		std::shared_lock<std::shared_mutex> map(s.map_mutex);
+		MapRead map(s); // for the copy alone: the ground and the water of every sample
 		const Heightfield &t = s.terrain;
 		r.side = t.water_n;
 		r.step = t.water_spacing_m;

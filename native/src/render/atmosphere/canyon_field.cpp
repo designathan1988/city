@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <shared_mutex>
 #include <vector>
 
 using namespace godot;
@@ -100,7 +99,7 @@ void CanyonField::work(const CityState &s, float ox, float oz, uint64_t generati
 	std::unique_ptr<Scratch> k = slot_.scratch(generation);
 	std::vector<StandingLot> lots;
 	{
-		std::shared_lock<std::shared_mutex> map(s.map_mutex);
+		MapRead map(s); // for the copy alone: the records and the ground under each
 		s.buildings.query(ox - EDGE_REACH_M, oz - EDGE_REACH_M, ox + FIELD_SPAN + EDGE_REACH_M, oz + FIELD_SPAN + EDGE_REACH_M, [&](int id) {
 			const Building &b = s.buildings.items[size_t(id)];
 			if (b.alive && b.floors > 0) lots.push_back({ b, s.terrain.height_at(b.x, b.z) });
