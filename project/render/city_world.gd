@@ -123,8 +123,7 @@ static func shader_value(v: Variant) -> Variant:
 	return v
 
 
-## What the ground's shader is told of the open map: its biome tints the grass (0 none, else the biome's index + 1), and `half`,
-## metres from its middle, is where the land ends (past it terrain.gdshader draws the end wall: untold, the default's 5120 m).
+## What the ground's shader is told of the open map: its biome (0 none, else its index + 1) and `half`, where the land ends (its end wall).
 func set_map_ground(region: int, half: float) -> void:
 	_terrain_material.set_shader_param("map_biome", region + 1)
 	_terrain_material.set_shader_param("map_half", half)
