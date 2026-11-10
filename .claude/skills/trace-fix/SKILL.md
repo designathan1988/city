@@ -27,7 +27,8 @@ same edit again):
 
 - an Edit or Write of an existing file is refused until this session has read that file whole, as it is now, since
   its last compaction;
-- while a file of the repository that you opened is left read in part, every edit is refused.
+- while a file that you opened is left read in part, every edit is refused: a file of the repository, or of a
+  reference tree outside it (`references.json`: the reference game, read for what the game must do, never copied).
 
 `cat`, `sed`, `grep` and an agent's reading are not a reading. Files are changed with Edit and Write, never by a shell
 command.

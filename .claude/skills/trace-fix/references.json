@@ -1,0 +1,4 @@
+{
+  "_doc": "Trees outside the repository whose files are read whole, like the repository's own: a file of one opened and left in part stops every edit (read_guard.py). The lab is the reference game (CLAUDE.md, the lab rule): read for what the game must do, never copied.",
+  "roots": ["C:/Users/Jonathan/Documents/Projects/lab/roadcraft"]
+}

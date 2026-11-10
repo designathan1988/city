@@ -44,6 +44,35 @@ ACTIVE = os.path.join(TRACES, "ACTIVE")
 PINNED = "TRACE_FIX_SLUG"  # a session that sets it works on that trace whatever the active one is (two sessions in one tree)
 
 
+def reference_roots():
+    """Trees outside the repository whose files are read whole too (a reference game the work is checked against):
+    references.json beside this file; TRACE_FIX_REFERENCES (paths joined by the system's separator) overrides it."""
+    given = os.environ.get("TRACE_FIX_REFERENCES")
+    if given is None:
+        listed = os.path.join(os.path.dirname(os.path.abspath(__file__)), "references.json")
+        if not os.path.exists(listed):
+            return []
+        with open(listed, encoding="utf-8") as f:
+            roots = json.load(f)["roots"]
+    else:
+        roots = [r for r in given.split(os.pathsep) if r]
+    return [os.path.normpath(r).replace("\\", "/") for r in roots]
+
+
+REFERENCES = reference_roots()
+
+
+def place(path):
+    """How a file is named in the Read records: its repository path; its absolute path when it is under a reference tree;
+    None anywhere else (a file this skill does not follow)."""
+    inside = rel(path)
+    if not inside.startswith(".."):
+        return inside
+    full = os.path.normpath(os.path.abspath(path)).replace("\\", "/")
+    # compared in lower case with forward slashes (os.path.normcase would turn them back on Windows)
+    return full if any(full.lower().startswith(root.lower() + "/") for root in REFERENCES) else None
+
+
 def fail(message):
     print("ERROR: " + message, file=sys.stderr)
     sys.exit(1)

@@ -34,7 +34,12 @@ def main():
     with tempfile.TemporaryDirectory() as work:
         traces = os.path.join(work, "trace")
         runs = os.path.join(work, 'tasks')
-        env = dict(os.environ, TRACE_FIX_DIR=traces, TRACE_FIX_TASKS=runs)
+        reference = os.path.join(work, "reference")  # a tree outside the repository, read whole like its own files
+        os.makedirs(reference)
+        for name in ("lab.ts", os.path.join("..", "elsewhere.txt")):
+            with open(os.path.join(reference, name), "w", encoding="utf-8") as f:
+                f.write("".join(f"line {i}" + chr(10) for i in range(1, 31)))
+        env = dict(os.environ, TRACE_FIX_DIR=traces, TRACE_FIX_TASKS=runs, TRACE_FIX_REFERENCES=reference)
         # the files under test live inside the repository (the ledger records repository paths), in a folder of their own
         files = tempfile.mkdtemp(prefix="trace_fix_selftest_", dir=os.path.join(root, "dist"))
         small, big, late, edited = (os.path.join(files, n) for n in ("small.txt", "big.txt", "late.txt", "edited.txt"))
@@ -222,6 +227,14 @@ def main():
             check("a compaction takes the reading away",
                   (hook("SessionStart", None, edited, "guard", source="compact"), edit(edited)), (0, 2))
             check("a broken event never stops a tool", hook("PreToolUse", "Edit", None, "guard"), 0)
+            tool_read(edited, session="reader")
+            tool_read(os.path.join(work, "elsewhere.txt"), 1, 5, session="reader")
+            check("a file outside the repository and the reference trees is not followed", edit(edited, "reader"), 0)
+            tool_read(os.path.join(reference, "lab.ts"), 1, 5, session="reader")
+            check("a reference file opened and left in part stops every edit",
+                  (edit(edited, "reader"), "lab.ts offset=6 limit=25" in hook.err), (2, True))
+            tool_read(os.path.join(reference, "lab.ts"), 6, 25, session="reader")
+            check("the reference file read to its end, the edit goes through", edit(edited, "reader"), 0)
 
             # ---- photos are cut into enlarged tiles
             try:

@@ -39,12 +39,13 @@ def reader_of(event):
 
 
 def target(event, store):
-    """(absolute path, repository path) of the file a tool call names, or (None, None) outside this repository."""
+    """(absolute path, name in the records) of the file a tool call names: a file of this repository or of a reference
+    tree (store.place); (None, None) anywhere else."""
     path = (event.get("tool_input") or {}).get("file_path")
     if not path:
         return None, None
-    relative = store.rel(path)
-    return (None, None) if relative.startswith("..") else (os.path.join(store.ROOT, relative), relative)
+    name = store.place(path)
+    return (None, None) if name is None else (os.path.join(store.ROOT, name), name)
 
 
 def log_read(event, proof, store):
@@ -122,7 +123,8 @@ def guard(event, proof, store):
     opened = [other for other in sorted(seen)
               if other != relative and not set(other.split("/")[:-1]) & store.SKIP_DIRS
               and os.path.isfile(os.path.join(store.ROOT, other)) and left_in_part(seen[other], store)]
-    ignored = ignored_by_git(opened, store) if opened else set()
+    mine = [other for other in opened if not os.path.isabs(other)]  # a reference tree's files are not this repository's to ask git of
+    ignored = ignored_by_git(mine, store) if mine else set()
     for other in opened:
         gaps = [] if other in ignored else unread_now(other, seen, store)
         if gaps:
