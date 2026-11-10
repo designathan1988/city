@@ -154,8 +154,9 @@ gates open again), read them, do not guess.
 it is found again: the function that holds each problem with its exact lines, who calls it, the state it writes and who
 reads that state, the test scenes that reach it, and whether the change can reach the screen. Read the line ranges the
 card names (not the whole files again), make the change, check every caller and reader the card lists, run the tests it
-lists. The card resolves by name: a caller reached only through a name built at run time is not on it, so a call by name
-you saw in the reading is checked by hand. The card is also written to `dist/trace/<slug>/card-C<n>.md`.
+lists. Under each function the card also lists every other place of the tree that writes its name and every quoted piece
+the name may be built from at run time: check each one (a call through a base class or by name shows there), so no caller
+is left out. The card is also written to `dist/trace/<slug>/card-C<n>.md`.
 
 Follow CLAUDE.md (its sections on fixing the cause and on the architecture rules): no threshold, timeout, tolerance or thread-count
 change, no special case, no swallowed error, no `--bless` to pass, no moved cost. If the right fix is a rewrite, rewrite.

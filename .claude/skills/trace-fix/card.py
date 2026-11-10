@@ -1,10 +1,12 @@
 """The fix card of a cause, for the trace-fix skill: what the reading knew and the fixing needs, computed instead of found again.
 For every problem under the cause: the function that holds it with its exact lines (read those, not the whole file), who
 calls it and who reads the state it writes (what a change there can break), the tests that reach it, and whether the
-change can reach the screen (then the photos of step 5 are due). Asked of the repository's feature tracer, which reads the
-tree on disk and resolves by name: a caller reached only through a name built at run time is not on the card.
+change can reach the screen (then the photos of step 5 are due). Callers come from the repository's feature tracer (the tree on disk); and so that no call by name is missed, every other
+place that writes the function's name, and every quoted piece the name may be built from, is listed to be checked.
 """
 import os
+import re
+import subprocess
 import sys
 
 import store
@@ -17,6 +19,34 @@ TESTS = "project/tests/"
 SCREEN = ("native/src/render/", "native/src/sim/terrain/", "project/render/", "project/data/render/", "project/data/game/", "project/ui/")
 FLOW = {"call", "string", "register"}
 LISTED = 14  # callers or readers named per function; the rest are counted
+PREFIX_MIN = 4  # a name's prefix shorter than this is a common word, not a piece of the name
+GREP_TIMEOUT_S = 60
+
+
+def grep(pattern, fixed):
+    """(path, line, text) of every line of the tree, tracked or not, that matches: git's own search, so nothing ignored is read."""
+    args = ["git", "-C", store.ROOT, "grep", "-n", "-I", "--untracked", "-F" if fixed else "-E", *(["-w"] if fixed else []), "-e", pattern]
+    out = subprocess.run(args, capture_output=True, timeout=GREP_TIMEOUT_S).stdout.decode("utf-8", "replace")
+    rows = []
+    for row in out.splitlines():
+        path, _, rest = row.partition(":")
+        line, _, text = rest.partition(":")
+        if line.isdigit():
+            rows.append((path, int(line), text.strip()))
+    return rows
+
+
+def other_mentions(graph, unit, explained):
+    """Every place that writes the function's name and is not the function itself nor a caller already on the card, and every text that is a
+    piece a name may be built from at run time (a prefix of it up to an underscore, in quotes): no call by name is left out by silence."""
+    node = graph.nodes[unit]
+    own = {(p, n) for p, a, b in node.locations for n in range(a, b + 1)}
+    whole = [(p, n, t) for p, n, t in grep(node.name, True) if (p, n) not in own and (p, n) not in explained]
+    pieces = [node.name[:i + 1] for i, c in enumerate(node.name) if c == "_" and PREFIX_MIN <= i + 1 < len(node.name)]
+    built = []
+    for piece in pieces:
+        built += [(p, n, t) for p, n, t in grep("[\"']" + re.escape(piece) + "[\"'%{]", False) if (p, n) not in own]
+    return whole, sorted(set(built))
 
 
 def graph_of(include=None):
@@ -71,6 +101,13 @@ def lines_of(state, graph, cause):
         if written:
             out.append(f"- writes {len(written)}: " + "; ".join(named(graph, written)))
             out.append(f"- that state is read by {len(readers)}: " + "; ".join(named(graph, readers)))
+        explained = {(e.where, e.line) for e in graph.inn[unit].values()}
+        whole, built = other_mentions(graph, unit, explained)
+        out.append(f"- its name is also written in {len(whole)} place(s) no caller above explains (a call by name, a table, a comment: check each):")
+        out += [f"    {p}:{n}: {views.clip(t, 140)}" for p, n, t in whole]
+        if built:
+            out.append(f"- {len(built)} text(s) are a piece its name may be built from at run time (check what is joined to each):")
+            out += [f"    {p}:{n}: {views.clip(t, 140)}" for p, n, t in built]
         tests |= reaching_tests(graph, unit)
     scenes = sorted(t[len("project/"):-3] + ".tscn" for t in tests if t.endswith("_test.gd") and os.path.isfile(os.path.join(store.ROOT, t[:-3] + ".tscn")))
     out += ["", f"## How to prove it: {len(scenes)} test scene(s) reach these functions"]
