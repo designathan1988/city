@@ -1188,3 +1188,15 @@ deterministic, its own cause to fix); gates of the changed files OK; surface_dat
   lot_place.cpp,block_lots.cpp}`, `native/src/sim/lots/lot_cache.cpp`, `native/src/sim/buildings/b40/{gen.h,data.h,record.cpp,
   facade_compose.cpp,massing_core.cpp}`, `native/src/api/city_core_audit.cpp`, `project/tests/audit/city_audit.gd`, `log/mapa.md`,
   `log/pendencias.md`.
+
+## 2026-11-09 22:00: the eye jolted in front of a tower (camera_feel_test, red since the lots' cut)
+- Problem: the ride jolted 1.0 to 1.47 % of the view (limit 1 %) at (240, 180) and (-38, -64), where towers now stand.
+- Causes, both read in the camera: (1) `camera_pull.gd settle` moved the share of the line of sight on one spring (`CameraDamp.to`)
+  though what is asked jumps (a tower comes into the line, the wait ends): one spring takes its whole acceleration in the first
+  frame, the taller the building the harder; the damper's own `ease_to` (two springs in a row) exists for a target that jumps and the
+  roof and the way out of a building already use it. (2) `city_camera.gd apply` took the larger of two shares, each on its own
+  springs (the pull, and the way out of a building): the larger of two smooth values turns a corner where one overtakes the other.
+- Fix: the pull moves by `ease_to`; the two shares are taken one after the other, (1 - pull) x (1 - out): at least as near as either
+  asks, and as smooth as they are. No time or limit changed.
+- Verification: camera_feel_test passes (worst jolt 0.65 %), camera_input_test, e2e.
+- Files: `project/game/camera/camera_pull.gd`, `project/game/camera/city_camera.gd`, `log/pendencias.md`.

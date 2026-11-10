@@ -210,8 +210,6 @@ O que falta fazer, por área.
 ## Found by the city's audit and the lot cut (2026-11-09 21:40, `python tools/tasks/cli.py run audit`)
 - One narrow lot (9.8 m wide) with its front 4.98 m off its footway at (-312, 24) on the town, seed 7: a run's last lot by a corner;
   to read in `lot_place.cpp to_paving` (a front point on the cross street's paving moves the whole front back by its gap).
-- camera_feel_test: the ride jolts 1.0 to 1.5 % of the view (limit 1 %) at (240, 180) and (-38, -64), where towers now stand: the pull
-  in front of a building (`project/game/camera/camera_pull.gd`) moves the eye faster than the test allows. Fails on main until read.
 - Walkers inside one another: 7 pairs after three minutes on the town (2 on the earlier lots): the walkers' crowd model (PEDS-4,
   PEDS-13 of dist/analysis/round1/PEDS.md).
 - The audit does not yet read: the buildings' levels against their error on the screen (BLDG-1), the eye inside a building, memory by

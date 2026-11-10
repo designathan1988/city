@@ -218,7 +218,10 @@ func apply() -> void:
 	_ground_y = _ground.x
 	focus.y = _ground.x + CameraProfile.eye_lift(cfg, half) + ahead.over.x
 	var basis := Basis.from_euler(Vector3(-pitch, yaw, 0.0))
-	var orbit_eye := focus.lerp(focus + basis.z * distance, 1.0 - maxf(pull.shown(), ahead.out.x))
+	# Two shares of the line of sight are taken off, each on its own springs: in front of a building (pull) and out of one (ahead.out).
+	# One after the other, what the second takes a share of what the first left: the eye is at least as near as either asks, and the
+	# sum moves as smoothly as they do (the larger of the two turned a corner, a jolt, wherever one overtook the other).
+	var orbit_eye := focus.lerp(focus + basis.z * distance, (1.0 - pull.shown()) * (1.0 - ahead.out.x))
 	var pos := orbit_eye
 	pos.y = maxf(pos.y + _rise.x, _eye_ground + cfg.ground_touch_m)
 	if pos.y != orbit_eye.y: # raised over the ground, still looking at the same point
