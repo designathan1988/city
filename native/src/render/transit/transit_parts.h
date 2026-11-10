@@ -3,7 +3,7 @@
 #pragma once
 
 #include "render/mesh_builder.h"
-#include "sim/state/city_state.h"
+#include "sim/state/city_cut.h"
 
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -63,10 +63,17 @@ struct TransitMeshes {
 // Lays a box: `base` the middle of its bottom, `dir` along its length, `tint` when it takes the line's colour.
 void transit_box(TransitMeshes &m, const TransitLook &look, int part, const godot::Vector3 &base, const V2 &dir, const godot::Vector3 &size, const godot::Color *tint = nullptr);
 
-// A track in stretches of look.run metres (a stretch a mesh of its own, so the view can leave the rest out).
-void transit_track_parts(const CityState &s, const TransitLook &look, const RailTrack &track, std::vector<TransitMeshes> &out);
+// The geometry reads a CityView: the live city (the run being laid, its caller holding the map) or a job's cut of what it stands on.
+// A track is laid in stretches of look.run metres (a stretch a mesh of its own, so the view can leave the rest out): the box of each
+// stretch's pieces on the map, from its points alone (what a job cuts the city by, grown by how far a piece reads the street).
+std::vector<CutBox> transit_track_stretches(const TransitLook &look, const RailTrack &track);
+// Stretch `stretch` of a track into its meshes.
+void transit_track_stretch(const CityView &s, const TransitLook &look, const RailTrack &track, size_t stretch, TransitMeshes &out);
 // A track whole into one mesh (the run being laid). Its pieces are the same as in stretches: each length of the track lays its own.
-void transit_track_whole(const CityState &s, const TransitLook &look, const RailTrack &track, TransitMeshes &out);
-void transit_stop_parts(const CityState &s, const TransitLook &look, const TransitStop &stop, TransitMeshes &out);
+void transit_track_whole(const CityView &s, const TransitLook &look, const RailTrack &track, TransitMeshes &out);
+// A stop's boxes. `track`: the track it stands on (null: none); `tint`: its line's colour (transit_line_colour).
+void transit_stop_parts(const CityView &s, const TransitLook &look, const TransitStop &stop, const RailTrack *track, const godot::Color &tint, TransitMeshes &out);
+// The colour of the first line of the plan that calls at `stop`, or the look's default.
+godot::Color transit_line_colour(const TransitData &plan, const TransitLook &look, int stop);
 
 } // namespace city

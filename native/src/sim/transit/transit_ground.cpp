@@ -1,8 +1,6 @@
 // See transit_ground.h.
 #include "sim/transit/transit_ground.h"
 
-#include "sim/state/city_state.h"
-
 #include <algorithm>
 #include <limits>
 
@@ -12,13 +10,13 @@ namespace {
 constexpr float HALF = 0.5f, NO_DISTANCE = std::numeric_limits<float>::max();
 } // namespace
 
-bool transit_on_road(const CityState &s, const V2 &p) {
+bool transit_on_road(const CityView &s, const V2 &p) {
 	float y = 0;
 	bool road = false;
 	return transit_paved(s, p, 0, y, road) && road;
 }
 
-bool transit_paved(const CityState &s, const V2 &p, float kerb, float &y, bool &carriageway) {
+bool transit_paved(const CityView &s, const V2 &p, float kerb, float &y, bool &carriageway) {
 	bool paved = false;
 	carriageway = false;
 	const float reach = s.catalog.widest_half(); // a segment counts only when the point is within its profile's half
@@ -36,16 +34,25 @@ bool transit_paved(const CityState &s, const V2 &p, float kerb, float &y, bool &
 	return paved;
 }
 
+const RailTrack *transit_track_of(const CityState &s, const TransitStop &q) {
+	for (const RailTrack &t : s.transit.tracks)
+		if (t.id == q.track) return &t;
+	return nullptr;
+}
+
 void transit_stop_frame(const CityState &s, const TransitStop &q, V2 &along, V2 &out) {
+	transit_stop_frame(CityView(s), q, transit_track_of(s, q), along, out);
+}
+
+void transit_stop_frame(const CityView &s, const TransitStop &q, const RailTrack *track, V2 &along, V2 &out) {
 	along = V2(1, 0);
-	for (const RailTrack &t : s.transit.tracks) {
-		if (t.id != q.track) continue;
+	if (track) {
 		float dist = NO_DISTANCE;
-		for (size_t i = 1; i < t.points.size(); i++) {
-			const float d = ((t.points[i] + t.points[i - 1]) * HALF - q.at).len();
+		for (size_t i = 1; i < track->points.size(); i++) {
+			const float d = ((track->points[i] + track->points[i - 1]) * HALF - q.at).len();
 			if (d < dist) {
 				dist = d;
-				along = (t.points[i] - t.points[i - 1]).norm();
+				along = (track->points[i] - track->points[i - 1]).norm();
 			}
 		}
 	}
@@ -61,7 +68,7 @@ void transit_stop_frame(const CityState &s, const TransitStop &q, V2 &along, V2 
 	out = from.len() > 0 ? from.norm() : V2(along.y, -along.x);
 }
 
-bool transit_built(const CityState &s, const V2 &p, float pad) {
+bool transit_built(const CityView &s, const V2 &p, float pad) {
 	bool built = false;
 	s.buildings.query(p.x - pad, p.y - pad, p.x + pad, p.y + pad, [&](int) { built = true; });
 	return built;

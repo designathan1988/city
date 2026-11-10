@@ -62,7 +62,7 @@ TransitBoxes boxes(const PartNames &names, DataReader r, const Array &list) {
 
 V2 left_of(const V2 &d) { return V2(d.y, -d.x); } // seen from above: x east, z south
 
-float ground(const CityState &s, const V2 &p) { return s.terrain.height_at(p.x, p.y); }
+float ground(const CityView &s, const V2 &p) { return s.terrain.height_at(p.x, p.y); }
 
 Vector3 on(const V2 &p, float y) { return Vector3(p.x, y, p.y); }
 
@@ -71,14 +71,8 @@ void place(TransitMeshes &m, const TransitLook &look, const TransitBoxes &list, 
 		transit_box(m, look, b.part, on(at + along * b.at.x + out * b.at.y, y + b.at.z), along, b.size, b.tint ? &tint : nullptr);
 }
 
-Color line_colour(const CityState &s, const TransitLook &look, int stop) {
-	for (const TransitLine &l : s.transit.lines)
-		if (std::find(l.stops.begin(), l.stops.end(), stop) != l.stops.end()) return rgb8_to_color(l.colour);
-	return look.default_line;
-}
-
 // Where a metro station with no footway near has its way down: at the station, or the nearest ground off the carriageway round it.
-void entrance_spot(const CityState &s, const TransitLook &look, const V2 &at, V2 &spot, V2 &along) {
+void entrance_spot(const CityView &s, const TransitLook &look, const V2 &at, V2 &spot, V2 &along) {
 	spot = at;
 	along = V2(1, 0);
 	if (!transit_on_road(s, at) && !transit_built(s, at, 0)) return;
@@ -94,9 +88,9 @@ void entrance_spot(const CityState &s, const TransitLook &look, const V2 &at, V2
 		}
 }
 
-void metro_parts(const CityState &s, const TransitLook &look, const TransitStop &q, const Color &tint, TransitMeshes &m) {
+void metro_parts(const CityView &s, const TransitLook &look, const TransitStop &q, const RailTrack *track, const Color &tint, TransitMeshes &m) {
 	V2 dir, side;
-	transit_stop_frame(s, q, dir, side);
+	transit_stop_frame(s, q, track, dir, side);
 	V2 at = q.entrance, along;
 	if (q.has_entrance && (q.entrance - q.at).len() > 0) {
 		const V2 from = (q.entrance - q.at).norm();
@@ -112,7 +106,7 @@ void metro_parts(const CityState &s, const TransitLook &look, const TransitStop 
 }
 
 // One piece of track, in the parts of its mode, on what is under it.
-void track_piece(const CityState &s, const TransitLook &look, bool metro, const V2 &a, const V2 &d, float d0, float piece, TransitMeshes &m) {
+void track_piece(const CityView &s, const TransitLook &look, bool metro, const V2 &a, const V2 &d, float d0, float piece, TransitMeshes &m) {
 	const V2 mid = a + d * (d0 + piece * HALF), n = left_of(d);
 	float y = ground(s, mid) - (metro ? look.depth : 0);
 	bool on_road = false;
@@ -136,7 +130,7 @@ void track_piece(const CityState &s, const TransitLook &look, bool metro, const 
 }
 
 // What a train track has under a point: 0 open ground, 1 a footway, 2 a carriageway.
-int under_track(const CityState &s, const TransitLook &look, const V2 &p) {
+int under_track(const CityView &s, const TransitLook &look, const V2 &p) {
 	float y = 0;
 	bool road = false;
 	return transit_paved(s, p, look.kerb, y, road) ? (road ? 2 : 1) : 0;
@@ -144,7 +138,7 @@ int under_track(const CityState &s, const TransitLook &look, const V2 &p) {
 
 // A train track's piece cut where what is under it changes, to a sleeper's step: whole, its bed would run on over the footway at the
 // height of the ground beyond, with the rails left in the air.
-void track_cut(const CityState &s, const TransitLook &look, const V2 &a, const V2 &d, float d0, float piece, TransitMeshes &m) {
+void track_cut(const CityView &s, const TransitLook &look, const V2 &a, const V2 &d, float d0, float piece, TransitMeshes &m) {
 	const float step = look.sleeper_step, end = d0 + piece;
 	float from = d0;
 	int was = under_track(s, look, a + d * (d0 + step * HALF));
@@ -258,10 +252,10 @@ void transit_box(TransitMeshes &m, const TransitLook &look, int part, const Vect
 }
 
 namespace {
-// Every piece of a track in its mode, each into the meshes `into(walked)` names for the metres walked to it.
-template <typename Into>
-void lay_track(const CityState &s, const TransitLook &look, const RailTrack &track, Into into) {
-	const bool metro = track.mode == TransitMode::METRO;
+// Every piece of a track, in order: fn(walked, a, d, d0, piece) with the metres walked to it, its run's start and direction, where
+// it starts along the run and its length. A stretch is look.run metres of that walk.
+template <typename F>
+void for_pieces(const TransitLook &look, const RailTrack &track, F &&fn) {
 	float walked = 0;
 	for (size_t i = 1; i < track.points.size(); i++) {
 		const V2 &a = track.points[i - 1], &b = track.points[i];
@@ -270,35 +264,54 @@ void lay_track(const CityState &s, const TransitLook &look, const RailTrack &tra
 		const V2 d = (b - a).norm();
 		const int pieces = std::max(1, int(std::ceil(len / look.piece)));
 		const float piece = len / float(pieces);
-		for (int k = 0; k < pieces; k++, walked += piece) {
-			TransitMeshes &m = into(walked);
-			if (metro) track_piece(s, look, true, a, d, float(k) * piece, piece, m);
-			else track_cut(s, look, a, d, float(k) * piece, piece, m);
-		}
+		for (int k = 0; k < pieces; k++, walked += piece) fn(walked, a, d, float(k) * piece, piece);
 	}
+}
+
+// One piece in its track's mode.
+void lay_piece(const CityView &s, const TransitLook &look, bool metro, const V2 &a, const V2 &d, float d0, float piece, TransitMeshes &m) {
+	if (metro) track_piece(s, look, true, a, d, d0, piece, m);
+	else track_cut(s, look, a, d, d0, piece, m);
 }
 } // namespace
 
-void transit_track_parts(const CityState &s, const TransitLook &look, const RailTrack &track, std::vector<TransitMeshes> &out) {
-	lay_track(s, look, track, [&](float walked) -> TransitMeshes & {
+Color transit_line_colour(const TransitData &plan, const TransitLook &look, int stop) {
+	for (const TransitLine &l : plan.lines)
+		if (std::find(l.stops.begin(), l.stops.end(), stop) != l.stops.end()) return rgb8_to_color(l.colour);
+	return look.default_line;
+}
+
+std::vector<CutBox> transit_track_stretches(const TransitLook &look, const RailTrack &track) {
+	std::vector<CutBox> out;
+	for_pieces(look, track, [&](float walked, const V2 &a, const V2 &d, float d0, float piece) {
 		const size_t stretch = size_t(walked / look.run);
-		if (out.size() <= stretch) out.resize(stretch + 1);
-		return out[stretch];
+		const V2 p0 = a + d * d0, p1 = a + d * (d0 + piece);
+		const CutBox box{ std::min(p0.x, p1.x), std::min(p0.y, p1.y), std::max(p0.x, p1.x), std::max(p0.y, p1.y) };
+		if (out.size() <= stretch) out.resize(stretch + 1, box);
+		out[stretch].take(box.minx, box.minz, box.maxx, box.maxz);
+	});
+	return out;
+}
+
+void transit_track_stretch(const CityView &s, const TransitLook &look, const RailTrack &track, size_t stretch, TransitMeshes &out) {
+	const bool metro = track.mode == TransitMode::METRO;
+	for_pieces(look, track, [&](float walked, const V2 &a, const V2 &d, float d0, float piece) {
+		if (size_t(walked / look.run) == stretch) lay_piece(s, look, metro, a, d, d0, piece, out);
 	});
 }
 
-void transit_track_whole(const CityState &s, const TransitLook &look, const RailTrack &track, TransitMeshes &out) {
-	lay_track(s, look, track, [&](float) -> TransitMeshes & { return out; });
+void transit_track_whole(const CityView &s, const TransitLook &look, const RailTrack &track, TransitMeshes &out) {
+	const bool metro = track.mode == TransitMode::METRO;
+	for_pieces(look, track, [&](float, const V2 &a, const V2 &d, float d0, float piece) { lay_piece(s, look, metro, a, d, d0, piece, out); });
 }
 
-void transit_stop_parts(const CityState &s, const TransitLook &look, const TransitStop &q, TransitMeshes &out) {
-	const Color tint = line_colour(s, look, q.id);
+void transit_stop_parts(const CityView &s, const TransitLook &look, const TransitStop &q, const RailTrack *track, const Color &tint, TransitMeshes &out) {
 	if (q.mode == TransitMode::METRO) {
-		metro_parts(s, look, q, tint, out);
+		metro_parts(s, look, q, track, tint, out);
 		return;
 	}
 	V2 along, side;
-	transit_stop_frame(s, q, along, side);
+	transit_stop_frame(s, q, track, along, side);
 	place(out, look, q.mode == TransitMode::TRAIN ? look.station : (q.terminal ? look.terminal : look.stop), q.at, ground(s, q.at), along, side, tint);
 }
 

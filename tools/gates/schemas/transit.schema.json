@@ -7,9 +7,6 @@
   "radius_m": {
    "type": "number"
   },
-  "items_per_frame": {
-   "type": "number"
-  },
   "run_m": {
    "type": "number"
   },
@@ -384,7 +381,6 @@
  "required": [
   "_doc",
   "radius_m",
-  "items_per_frame",
   "run_m",
   "default_line",
   "car_m",

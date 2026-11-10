@@ -45,6 +45,7 @@ public:
 	// (sim/state/map_hold.h); `counted` false in a DLL that does not count them (the export's).
 	godot::Dictionary map_hold(bool reset);
 	godot::Dictionary overlay_probe(); // tests: the map layers' chunks, meshes made, refreshes and levels (OverlayRenderer::probe)
+	int transit_drawn(); // tests: the tracks and stops of the transit plan that stand drawn
 	godot::Dictionary flow_replay(); // tests: the flow measure and the warrants alone through a fixed script (city_core_flow_probe.cpp)
 	godot::String flow_warrant(float major, float minor_max, float minor_total, int current) const; // tests: the rule alone, by AutoControl
 	int flow_junction(); // tests: a three-arm junction on automatic with no signal, or -1

@@ -127,6 +127,7 @@ const char *job_lane_name(JobLane lane) {
 		case JobLane::COVER: return "cover";
 		case JobLane::ZONES: return "zones";
 		case JobLane::CONGESTION: return "congestion";
+		case JobLane::TRANSIT: return "transit";
 		case JobLane::FOG: return "fog";
 		case JobLane::CANYON: return "canyon";
 		case JobLane::SHORE: return "shore";

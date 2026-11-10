@@ -266,7 +266,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam, doub
 		units_.clear();
 		offer_streams(s, cam, units_);
 		cost_.stream = laps.lap();
-		transit_.sync(s, f);
+		transit_.offer(s, cam, units_);
 		// The buildings first, with the frame's credits: a chunk they leave for the next frame is a hole in the city (rank 0 of the
 		// frame's order, which update_view keeps in its own); then every other producer's units in one order.
 		buildings_.update_view(cam, f.build);
@@ -294,8 +294,8 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam, doub
 	cost_.buildings = laps.lap();
 	cost_.building = buildings_.commit_times();
 	// Every other chunk queue in the frame's one order: the bakes the ledger admits, then the hand-overs while the deadline lasts.
-	enum Hand { ROADS, FAR_ROADS, SEAMS, STRUCTURES, PROPS, TREES_NEAR, TREES_FAR, COVER, WATER }; // the queues below, in their order
-	f.commit({ &roads_, &far_roads_, &seams_, &structures_, &props_, trees_.near_queue(), trees_.far_queue(), cover_.queue(), &water_ }, &hand_ms_);
+	enum Hand { ROADS, FAR_ROADS, SEAMS, STRUCTURES, PROPS, TREES_NEAR, TREES_FAR, COVER, WATER, TRANSIT }; // the queues below, in their order
+	f.commit({ &roads_, &far_roads_, &seams_, &structures_, &props_, trees_.near_queue(), trees_.far_queue(), cover_.queue(), &water_, transit_.queue() }, &hand_ms_);
 	far_roads_.fold(roads_);
 	cost_.roads = hand_ms_[ROADS] + hand_ms_[FAR_ROADS] + hand_ms_[SEAMS] + hand_ms_[STRUCTURES];
 	cost_.props = hand_ms_[PROPS];

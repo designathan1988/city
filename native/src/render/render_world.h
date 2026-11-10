@@ -72,6 +72,7 @@ public:
 		transit_.update(f, cam, at);
 	}
 	int drawn_cars() const { return transit_.drawn_cars(); }
+	int transit_drawn() const { return transit_.drawn_items(); }
 	void transit_xray(bool on) { transit_.set_xray(on); }
 	void transit_preview(const CityState &s, const std::vector<V2> &points, TransitMode mode) { transit_.set_preview(s, points, mode); }
 	// What the agents of a fresh publication wear (`ticks_s` simulated seconds since the last one), and the window round the view.
@@ -174,7 +175,7 @@ public:
 	void wear_paint(float x0, float z0, float x1, float z1, float value) { wear_.paint(x0, z0, x1, z1, value); }
 	int pending() const {
 		return road_stream_.pending + raised_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + far_roads_.pending() + far_roads_.waiting_supers() + seams_.pending() +
-				structures_.pending() + props_.pending() + buildings_.pending() + trees_.pending() + cover_.pending() + water_.pending() + overlays_.pending();
+				structures_.pending() + props_.pending() + buildings_.pending() + trees_.pending() + cover_.pending() + water_.pending() + overlays_.pending() + transit_.pending();
 	}
 
 private:

@@ -19,6 +19,9 @@ const CROSSING_STATION := 0.7
 const CROSSING_SAMPLES := 200
 const CROSSING_SAMPLE_TICKS := 20
 const LATER_TERMINAL := 3
+const DRAW_LIMIT_S := 50.0 # real time the plan may take to be drawn (3000 frames of the old 60 Hz loop): StateWait
+## Who draws the plan (core/job_pool.h job_lane_name; `outside`: a thread in no job, the frame's): none builds under the map.
+const OFF_LOCK := ["transit", "outside"]
 
 
 func _ready() -> void:
@@ -26,11 +29,28 @@ func _ready() -> void:
 		finish()
 		return
 	new_map(TOWN_MAP, SEED, true)
+	CityStore.query(&"map_hold", [true])
 	_buses()
 	_trains()
 	_level_crossing()
+	await _drawn_off_the_lock()
 	await _undo_and_save()
 	finish()
+
+
+## The plan's tracks and stops are drawn by jobs from their cut of the city: every one stands drawn, and nothing of them was built
+## while a thread held the map (probe map_hold: the jobs' lane, and `outside` for the frame's thread).
+func _drawn_off_the_lock() -> void:
+	var plan: Dictionary = CityStore.query(&"transit_plan")
+	var items := int(plan.stops.size()) + int(plan.tracks) # the plan gives its tracks as a count
+	await StateWait.until(get_tree(), func() -> bool: return int(CityStore.query(&"transit_drawn")) >= items and int(CityStore.query(&"render_pending")) == 0, DRAW_LIMIT_S)
+	var drawn := int(CityStore.query(&"transit_drawn"))
+	check(items > 0 and drawn >= items, "every track and stop of the plan is drawn (%d of %d)" % [drawn, items])
+	var held: Dictionary = CityStore.query(&"map_hold", [false])
+	check(held.counted, "this DLL counts what is built under the map (the tests' DLL)")
+	for lane: String in OFF_LOCK:
+		var built := int(held.built.get(lane, 0))
+		check(built == 0, "%s built nothing while it held the map (%d vertices)" % [lane, built])
 
 
 func _buses() -> void:

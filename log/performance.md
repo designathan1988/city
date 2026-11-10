@@ -569,3 +569,24 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
   table, log/pendencias.md; TASKS.md, another session's file).
 - The fields' whole-map and whole-window units (P31 shore, P32 ecology, P37 canyon) are C11's: their plans are in the ledger.
 - Left in C9: transit (P34, built on the main thread under the frame's `MapRead`), P10's outline owner, P73, P74.
+
+### C9, seventh piece (2026-11-10 06:10): the transit plan's tracks and stops are built by jobs (P34)
+- Cause: the transit renderer had no job path: up to `items_per_frame` tracks and stops a frame were laid on the frame's
+  thread inside `RenderWorld::sync`, with the map held (heights, the streets round every piece, the lots round a metro's way
+  down), their meshes made and their instances created there; any road or land change under an item queued it again.
+- The check first: `transit_test` gained the probe `transit_drawn` and the count of what is built under the map. Before:
+  the frame's thread (`outside`) built 30,620 vertices under the map for the test's 19 items. After: 0, and lane `transit` 0.
+- Change: `sim/transit/transit_ground` and `render/transit/transit_parts` read a `CityView` (a stop's track and its line's
+  colour are handed in, copied from the plan). `render/transit/transit_build.cpp` (new) is the job: the item's plan copied
+  under `MapRead`, then a track a stretch at a time, each stretch from its own cut (`transit_track_stretches` gives each
+  one's box, so a long track never copies the box of its whole run), a stop from a cut of its street and the lots as far as
+  a metro's entrance is looked for; the meshes baked on the worker. `TransitRenderer::offer` gives the waiting items as the
+  frame's build units (an item not drawn yet first), its queue is handed in the frame's one order, `hand` swaps the pieces.
+  `items_per_frame` left `transit.json`: the frame builds nothing. The run being laid stays the pointer's own picture, drawn
+  where the tool asks.
+- Cannot return: the renderer has no build on the frame's thread; the job holds no `CityState` while it lays.
+- Check: `transit_test`, `bus_riders_test`, `map_hold_test` pass; gates OK.
+- With this no producer of the render builds under the map: C9's decision is corrected. What stood beside it has its own
+  cause in the ledger: C21, the paving outline has no owner (P10's cost half: the seam still draws the neighbourhood's roads
+  to find it; with P82, `widest_half` written twice); P73 (walls keyed by the whole revision) and P74 (a section's pieces
+  made per segment) are C11's.
