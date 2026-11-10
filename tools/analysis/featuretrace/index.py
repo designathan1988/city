@@ -33,6 +33,8 @@ class Index:
         self.bases = {}
         self.engine_signals = {}
         self.virtual_quals = set()
+        self.includes = {}                        # file -> files its `#include "..."` names (resolved)
+        self._visible = {}
         autoloads, bindings = {}, []
         for facts in all_facts:
             self.offset[facts.path] = len(self.units)
@@ -53,6 +55,7 @@ class Index:
                 elif cls.lang == "cpp":
                     self.cpp_simple[cls.name].append(cls.key)
             self.usings[facts.path] = facts.usings
+            self.includes[facts.path] = facts.includes
             self.aliases.update(facts.aliases)
             autoloads.update(facts.autoloads)
             bindings += [(b, facts.path) for b in facts.bindings]
@@ -72,6 +75,37 @@ class Index:
                 cls.engine_visible = True
         for binding, path in bindings:
             self.bind(binding, path)
+        known = set(self.offset)
+        for path, names in self.includes.items():
+            self.includes[path] = [f for f in (self.include_file(path, n, known) for n in names) if f]
+
+    @staticmethod
+    def include_file(path: str, name: str, known: set) -> str | None:
+        """`#include "x"`: searched next to the including file, then from each folder above it."""
+        folders = path.split("/")[:-1]
+        for depth in range(len(folders), -1, -1):
+            parts = []
+            for piece in folders[:depth] + name.split("/"):
+                if piece == "..":
+                    parts = parts[:-1]
+                elif piece not in (".", ""):
+                    parts.append(piece)
+            candidate = "/".join(parts)
+            if candidate in known:
+                return candidate
+        return None
+
+    def visible(self, path: str) -> set:
+        """The translation unit of a file: itself and everything it includes, transitively."""
+        if path not in self._visible:
+            seen, todo = set(), [path]
+            while todo:
+                f = todo.pop()
+                if f not in seen:
+                    seen.add(f)
+                    todo += self.includes.get(f, [])
+            self._visible[path] = seen
+        return self._visible[path]
 
     # ---- classes -----------------------------------------------------------------------------------------------
     def base_keys(self, cls) -> list[str]:

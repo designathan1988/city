@@ -69,12 +69,17 @@ class Trace(unittest.TestCase):
     def test_is_narrows_the_receiver(self):
         self.assertEqual(self.edges("Controller.narrowed")["RoadTool._lay"].how, "exact")
 
-    def test_untyped_receiver_gives_candidates(self):
+    def test_untyped_parameter_holds_the_arguments_passed(self):
+        # `o` has no type: the only call passes RoadTool.new(), so o.click() is RoadTool.click and nothing else
         out = self.edges("Controller.untyped", "call")
-        self.assertEqual(set(out), {"ToolBase.click", "RoadTool.click"})
-        self.assertTrue(all(e.how.startswith("candidates") for e in out.values()))
-        exact = walk.forward(self.rs, [self.gid("Controller.untyped")], exact=True)
-        self.assertEqual(len(exact.reached), 1)
+        self.assertEqual({k: e.how for k, e in out.items()}, {"RoadTool.click": "exact"})
+
+    def test_untyped_container_holds_what_is_put_into_it(self):
+        self.assertEqual(self.edges("Controller._ready", "call")["RoadTool._lay"].how, "exact")
+
+    def test_a_receiver_no_value_reaches_is_said_so(self):
+        self.assertFalse(self.edges("Controller.never_called", "call"))
+        self.assertIn("click", self.rs.unreached[self.gid("Controller.never_called")])
 
     def test_signals_in_code_and_in_scene(self):
         self.assertIn("Controller.picked", self.edges("Controller._on_pressed", "emit"))

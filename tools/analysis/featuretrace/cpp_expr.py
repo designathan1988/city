@@ -5,7 +5,7 @@ call on a call's result (`get().f()`) keeps the first call as the receiver's ori
 """
 from __future__ import annotations
 
-from . import cpp_body
+from . import cpp_body, flows
 from .cpp_names import TYPED, strip_templates, template_call_type
 from .gd_body import CALLED, UNKNOWN
 from .model import STD_MUTATORS
@@ -44,7 +44,7 @@ def expression(r, node, unit, cond) -> None:
         recv, name = qualified(r.src.text(node))
         add(r, unit, "read", name, node, cond, recv=recv, qualified=True)
     elif kind in ("assignment_expression",):
-        target(r, field_of(node, "left"), unit, cond)
+        target(r, field_of(node, "left"), unit, cond, flows.cpp_mark(r, field_of(node, "right")))
         expression(r, field_of(node, "right"), unit, cond)
     elif kind == "update_expression":
         target(r, field_of(node, "argument"), unit, cond)
@@ -70,25 +70,28 @@ def expression(r, node, unit, cond) -> None:
             expression(r, child, unit, cond)
 
 
-def target(r, node, unit, cond) -> None:
-    """The left side of an assignment or an increment: the name written."""
+def target(r, node, unit, cond, value: str = "") -> None:
+    """The left side of an assignment or an increment: the name written, and the value that flows into it."""
     if node is None:
         return
     if node.type == "identifier":
-        add(r, unit, "write", r.src.text(node), node, cond)
+        name = r.src.text(node)
+        if name in unit.types and value:
+            unit.types[name].append(value)
+        add(r, unit, "write", name, node, cond, args=(value,))
     elif node.type == "qualified_identifier":
         recv, name = qualified(r.src.text(node))
-        add(r, unit, "write", name, node, cond, recv=recv, qualified=True)
+        add(r, unit, "write", name, node, cond, recv=recv, qualified=True, args=(value,))
     elif node.type == "field_expression":
         base = through(r, node, chain(r, field_of(node, "argument"), unit, cond))
-        add(r, unit, "write", r.src.text(field_of(node, "field")), node, cond, recv=base)
+        add(r, unit, "write", r.src.text(field_of(node, "field")), node, cond, recv=base, args=(value,))
     elif node.type == "subscript_expression":
-        target(r, field_of(node, "argument"), unit, cond)
+        target(r, field_of(node, "argument"), unit, cond, flows.element(value))
         for child in named_children(node)[1:]:
             expression(r, child, unit, cond)
     elif node.type in ("pointer_expression", "parenthesized_expression"):
         inner = field_of(node, "argument") or (named_children(node) or [None])[0]
-        target(r, inner, unit, cond)
+        target(r, inner, unit, cond, value)
     else:
         expression(r, node, unit, cond)
 
@@ -128,7 +131,7 @@ def chain(r, node, unit, cond) -> tuple:
         inner = field_of(node, "argument") or (named_children(node) or [None])[0]
         return chain(r, inner, unit, cond) if inner is not None else (UNKNOWN,)
     expression(r, node, unit, cond)
-    return (UNKNOWN,)
+    return (flows.cpp_mark(r, node) or UNKNOWN,)
 
 
 def call(r, node, unit, cond) -> tuple:
@@ -159,15 +162,18 @@ def call(r, node, unit, cond) -> tuple:
         return (UNKNOWN,)
     first = string_value(src, argv[0]) if argv else None
     if name == "emit_signal" and first is not None:
-        add(r, unit, "emit", first, node, cond, recv=recv)
         argv = argv[1:]
+        add(r, unit, "emit", first, node, cond, recv=recv, args=marks(r, argv))
     elif name in NAME_CALLS and is_identifier(first):
-        add(r, unit, "name", first, node, cond, recv=recv, text=first)
         argv = argv[1:]
+        add(r, unit, "name", first, node, cond, recv=recv, text=first, args=marks(r, argv))
     else:
-        add(r, unit, "call", name, node, cond, recv=recv, qualified=qual, argc=len(argv))
+        add(r, unit, "call", name, node, cond, recv=recv, qualified=qual, argc=len(argv), args=marks(r, argv))
         if name in STD_MUTATORS and recv and is_identifier(recv[-1]):
-            add(r, unit, "write", recv[-1], node, cond, recv=recv[:-1])
+            put = flows.element(flows.cpp_mark(r, argv[-1])) if argv else ""
+            if len(recv) == 1 and recv[0] in unit.types and put:
+                unit.types[recv[0]].append(put)
+            add(r, unit, "write", recv[-1], node, cond, recv=recv[:-1], args=(put,))
     thread = name in THREAD_NAMES
     for a in argv:
         before = len(unit.refs)
@@ -178,6 +184,10 @@ def call(r, node, unit, cond) -> tuple:
                     ref.kind = "thread" if ref.kind == "value" else ref.kind
     named = template_call_type(src.text(fn)) if fn.type != "field_expression" else None
     return (TYPED + named,) if named else recv + (CALLED + name,)
+
+
+def marks(r, argv) -> tuple:
+    return tuple(flows.cpp_mark(r, a) for a in argv)
 
 
 def registration(r, name, argv, unit, node, cond) -> bool:

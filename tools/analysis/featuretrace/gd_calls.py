@@ -3,8 +3,14 @@
 """
 from __future__ import annotations
 
-from . import gd_body
+from . import flows, gd_body
 from .rules import BIND_CALLS, NAME_CALLS
+
+PUTS = ("append", "push_back", "push_front", "insert", "append_array", "fill")   # Array: values into its elements
+
+
+def marks(r, argv) -> tuple:
+    return tuple(flows.gd_mark(r, a) for a in argv)
 from .source import field_of, is_identifier, named_children, string_value
 
 
@@ -65,13 +71,13 @@ def call(r, node, unit, cls, cond) -> None:
         r.add(unit, "load", "", node, cond, text=first)
         return
     if name == "super":
-        r.add(unit, "call", unit.name.split(".")[0], node, cond, recv=("super",))
+        r.add(unit, "call", unit.name.split(".")[0], node, cond, recv=("super",), args=marks(r, argv))
     elif name in NAME_CALLS and is_identifier(first):
-        r.add(unit, "name", first, node, cond, recv=("self",), text=first)
+        r.add(unit, "name", first, node, cond, recv=("self",), text=first, args=marks(r, argv[1:]))
         arguments(r, args, unit, cls, cond, skip=(0,))
         return
     elif name == "emit_signal" and first is not None:
-        r.add(unit, "emit", first, node, cond, recv=("self",))
+        r.add(unit, "emit", first, node, cond, recv=("self",), args=marks(r, argv[1:]))
         arguments(r, args, unit, cls, cond, skip=(0,))
         return
     elif name == "connect" and first is not None:
@@ -83,7 +89,7 @@ def call(r, node, unit, cls, cond) -> None:
         gd_body.expr(r, argv[0], unit, cls, cond)
         return
     elif callee.type == "identifier":
-        r.add(unit, "call", name, node, cond, argc=len(argv))
+        r.add(unit, "call", name, node, cond, argc=len(argv), args=marks(r, argv))
     else:
         gd_body.expr(r, callee, unit, cls, cond)
     arguments(r, args, unit, cls, cond)
@@ -95,7 +101,7 @@ def member_call(r, seg, name, chain, unit, cls, cond) -> None:
     argv = named_children(args) if args is not None else []
     first = string_value(src, argv[0]) if argv else None
     if name == "emit" and chain and is_identifier(chain[-1]):
-        r.add(unit, "emit", chain[-1], seg, cond, recv=chain[:-1])
+        r.add(unit, "emit", chain[-1], seg, cond, recv=chain[:-1], args=marks(r, argv))
     elif name == "connect" and chain and is_identifier(chain[-1]) and first is None:
         spec = handler(r, argv[0] if argv else None, unit, cls, cond)
         r.add(unit, "connect", chain[-1], seg, cond, recv=chain[:-1], handler=spec)
@@ -107,15 +113,20 @@ def member_call(r, seg, name, chain, unit, cls, cond) -> None:
     elif name in ("disconnect", "is_connected"):
         return
     elif name == "emit_signal" and first is not None:
-        r.add(unit, "emit", first, seg, cond, recv=chain)
+        r.add(unit, "emit", first, seg, cond, recv=chain, args=marks(r, argv[1:]))
         arguments(r, args, unit, cls, cond, skip=(0,))
         return
     elif name in NAME_CALLS and is_identifier(first):
-        r.add(unit, "name", first, seg, cond, recv=chain, text=first)
+        r.add(unit, "name", first, seg, cond, recv=chain, text=first, args=marks(r, argv[1:]))
         arguments(r, args, unit, cls, cond, skip=(0,))
         return
     elif name == "new":
         r.add(unit, "new", chain[-1] if chain else "", seg, cond, recv=chain[:-1])
     else:
-        r.add(unit, "call", name, seg, cond, recv=chain, argc=len(argv))
+        r.add(unit, "call", name, seg, cond, recv=chain, argc=len(argv), args=marks(r, argv))
+        if name in PUTS and argv and chain and is_identifier(chain[-1]):
+            put = flows.element(flows.gd_mark(r, argv[-1]))
+            if len(chain) == 1 and chain[0] in unit.types:
+                unit.types[chain[0]].append(put)
+            r.add(unit, "write", chain[-1], seg, cond, recv=chain[:-1], args=(put,))
     arguments(r, args, unit, cls, cond)

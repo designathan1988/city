@@ -6,7 +6,7 @@ class of `a`, then of `b`, then the definition of `c`.
 """
 from __future__ import annotations
 
-from . import gd_calls
+from . import flows, gd_calls
 from .rules import SIGNAL_OPS
 from .source import field_of, is_identifier, named_children, string_value
 
@@ -29,11 +29,11 @@ def statement(r, st, unit, cls, cond) -> None:
         value = field_of(st, "value")
         if value is not None and value.type == "lambda":
             unit.lambdas[name] = r.lambda_unit(value, unit, cls).local_id
-            unit.types[name] = ""
+            unit.types[name] = []
             return
         typ = field_of(st, "type")
-        unit.types[name] = src.text(typ) if typ is not None and typ.type == "type" else (
-            r.infer(value) if value is not None else "")
+        unit.types[name] = [src.text(typ)] if typ is not None and typ.type == "type" else (
+            [flows.gd_mark(r, value)] if value is not None else [])
         if value is not None:
             expr(r, value, unit, cls, cond)
     elif kind == "if_statement":
@@ -53,7 +53,7 @@ def statement(r, st, unit, cls, cond) -> None:
                 r.block(field_of(child, "body"), unit, cls, cond + ("else of if " + squash(src.text(test)),))
     elif kind == "for_statement":
         left, right = field_of(st, "left"), field_of(st, "right")
-        unit.types[src.text(left)] = ""
+        unit.types[src.text(left)] = [flows.walked(flows.gd_mark(r, right))]
         expr(r, right, unit, cls, cond)
         label = f"for {src.text(left)} in {squash(src.text(right))}"
         r.block(field_of(st, "body"), unit, cls, cond + (label,))
@@ -72,14 +72,15 @@ def statement(r, st, unit, cls, cond) -> None:
             for part in named_children(section):
                 if part.type == "pattern_binding":
                     for name in named_children(part):
-                        unit.types[src.text(name)] = ""
+                        unit.types[src.text(name)] = [flows.gd_mark(r, value)]
                 elif part.type == "pattern_guard":
                     expr(r, part, unit, cls, cond + (label,))
             if block is not None:
                 r.block(block, unit, cls, cond + (label,))
     elif kind == "return_statement":
         values = named_children(st)
-        unit.returns.append((src.line(st), squash(src.text(values[0])) if values else ""))
+        unit.returns.append((src.line(st), squash(src.text(values[0])) if values else "",
+                             flows.gd_mark(r, values[0]) if values else ""))
         for v in values:
             expr(r, v, unit, cls, cond)
     else:
@@ -129,12 +130,8 @@ def expr(r, node, unit, cls, cond) -> None:
         attribute(r, node, unit, cls, cond, write=False)
     elif kind in ("assignment", "augmented_assignment"):
         left, right = field_of(node, "left"), field_of(node, "right")
-        target(r, left, unit, cls, cond)
+        target(r, left, unit, cls, cond, flows.gd_mark(r, right))
         expr(r, right, unit, cls, cond)
-        hint = r.infer(right) if kind == "assignment" and right is not None else ""
-        name = r.src.text(left).removeprefix("self.") if left is not None else ""
-        if hint and is_identifier(name) and name not in unit.types:
-            r.assigned.setdefault((cls.key, name), hint)
     elif kind == "identifier":
         r.add(unit, "read", r.src.text(node), node, cond)
     elif kind == "lambda":
@@ -145,24 +142,27 @@ def expr(r, node, unit, cls, cond) -> None:
             expr(r, child, unit, cls, cond)
 
 
-def target(r, node, unit, cls, cond) -> None:
-    """The left side of an assignment: the name written."""
+def target(r, node, unit, cls, cond, value: str = "") -> None:
+    """The left side of an assignment: the name written, and the value that flows into it."""
     if node is None:
         return
     if node.type == "identifier":
-        r.add(unit, "write", r.src.text(node), node, cond)
+        name = r.src.text(node)
+        if name in unit.types and value:
+            unit.types[name].append(value)
+        r.add(unit, "write", name, node, cond, args=(value,))
     elif node.type == "attribute":
-        attribute(r, node, unit, cls, cond, write=True)
+        attribute(r, node, unit, cls, cond, write=True, value=value)
     elif node.type == "subscript":
         kids = named_children(node)
-        target(r, kids[0], unit, cls, cond)
+        target(r, kids[0], unit, cls, cond, flows.element(value))
         for k in kids[1:]:
             expr(r, k, unit, cls, cond)
     else:
         expr(r, node, unit, cls, cond)
 
 
-def attribute(r, node, unit, cls, cond, write: bool) -> None:
+def attribute(r, node, unit, cls, cond, write: bool, value: str = "") -> None:
     src = r.src
     kids = named_children(node)
     head, segs = kids[0], kids[1:]
@@ -180,7 +180,7 @@ def attribute(r, node, unit, cls, cond, write: bool) -> None:
         chain = [CALLED + src.text(named_children(head)[0])]
     else:
         expr(r, head, unit, cls, cond)
-        chain = [UNKNOWN]
+        chain = [flows.gd_mark(r, head) or UNKNOWN]
     for i, seg in enumerate(segs):
         last = i == len(segs) - 1
         nxt = segs[i + 1] if not last else None
@@ -188,7 +188,9 @@ def attribute(r, node, unit, cls, cond, write: bool) -> None:
             name = src.text(seg)
             ahead = src.text(named_children(nxt)[0]) if nxt is not None and nxt.type == "attribute_call" else ""
             if ahead not in SIGNAL_OPS:
-                r.add(unit, "write" if write and last else "read", name, seg, cond, recv=tuple(chain))
+                written = write and last
+                r.add(unit, "write" if written else "read", name, seg, cond, recv=tuple(chain),
+                      args=(value,) if written else ())
             chain.append(name)
         elif seg.type == "attribute_call":
             name = src.text(named_children(seg)[0])

@@ -3,28 +3,44 @@
 A call to a method also reaches the overrides below its class (every GDScript method; a C++ method declared
 `virtual` or overriding one). A `connect` makes an edge from the signal to the handler, so an `emit` of that signal
 reaches it; a signal no code declares is the engine's, and becomes an entry point. Scene connections are linked the
-same way. Names that no code defines (engine and standard-library calls) are kept per unit as its external uses.
+same way. Names that no code defines (engine and library calls) are kept per unit as its external uses.
+
+Values flow along the links (an argument into a parameter, an assignment into a field), and the links depend on the
+values (which class a receiver holds): the whole program is linked again with the values of the previous pass until
+a pass adds no link.
 """
 from __future__ import annotations
 
 from .model import FUNCTION_KINDS
-from .resolve import EXTERNAL, LOCAL, Resolver
+from .resolve import EXTERNAL, LOCAL, UNREACHED, Resolver
 
 WANT = {"call": "func", "value": "func", "thread": "func", "read": "read", "write": "state", "emit": "signal"}
+MAX_PASSES = 8
 
 
-def build(index) -> Resolver:
-    rs = Resolver(index)
-    for unit in list(index.units):
-        for ref in unit.refs:
-            link_ref(rs, unit, ref)
-    for signal, src_key, dst_key, method, file, line in index.connections:
-        handlers = rs.keep(index.lookup(dst_key, method), "func", "")
-        signals = rs.keep(index.lookup(src_key, signal), "signal", "") or [index.engine_signal(signal)]
-        for s in signals:
-            for h in handlers:
-                rs.link(s, h, "signal", _Site(line), "exact", file)
+def build(index, progress=None) -> Resolver:
+    previous = None
+    for number in range(1, MAX_PASSES + 1):
+        rs = Resolver(index, previous)
+        for unit in list(index.units):
+            for ref in unit.refs:
+                link_ref(rs, unit, ref)
+        for signal, src_key, dst_key, method, file, line in index.connections:
+            handlers = rs.keep(index.lookup(dst_key, method), "func", "")
+            signals = rs.keep(index.lookup(src_key, signal), "signal", "") or [index.engine_signal(signal)]
+            for s in signals:
+                for h in handlers:
+                    rs.link(s, h, "signal", _Site(line), "exact", file)
+        if progress:
+            progress(f"link pass {number}: {len(rs.edges)} links")
+        if previous is not None and edge_set(rs) == edge_set(previous):
+            return rs
+        previous = rs
     return rs
+
+
+def edge_set(rs) -> set:
+    return {(e.src, e.dst, e.kind, e.line) for e in rs.edges}
 
 
 class _Site:
@@ -33,6 +49,7 @@ class _Site:
     def __init__(self, line: int):
         self.line = line
         self.cond = ()
+        self.args = ()
 
 
 def with_overrides(rs, gids: list[int]) -> list[int]:
@@ -65,18 +82,19 @@ def link_ref(rs, unit, ref) -> None:
         return
     else:
         targets, how = rs.resolve(unit, ref.name, ref.recv, ref.qualified, WANT[kind])
-    if how in (EXTERNAL, LOCAL):
+    if how in (EXTERNAL, LOCAL, UNREACHED):
         if how == EXTERNAL and kind in ("call", "new", "name", "emit"):
             rs.external[unit.gid].add(ref.name)
+        elif how == UNREACHED and kind in ("call", "name", "emit"):
+            rs.unreached[unit.gid].add(ref.name)
         return
     if kind == "call" and ref.argc >= 0 and len(targets) > 1:
         targets = [g for g in targets if fits(ix.units[g], ref.argc)] or targets
-    how_text = how if how != "candidates" else f"candidates ({len(targets)})"
     for gid in targets:
         edge_kind = kind
         if kind == "read" and ix.units[gid].kind in FUNCTION_KINDS:
             edge_kind = "value"
-        rs.link(unit.gid, gid, edge_kind, ref, how_text)
+        rs.link(unit.gid, gid, edge_kind, ref, how)
     if kind in ("call", "name") and not (ref.recv and ref.recv[0] == "super"):
         for gid in with_overrides(rs, targets):
             rs.link(unit.gid, gid, "override", ref, "override")
@@ -118,12 +136,12 @@ def handler_targets(rs, unit, spec) -> list[int]:
 def connect(rs, unit, ref) -> None:
     ix = rs.ix
     signals, how = rs.resolve(unit, ref.name, ref.recv, False, "signal")
-    if not signals:
-        signals, how = [ix.engine_signal(ref.name)], "exact"
-    elif how == "candidates":
-        signals.append(ix.engine_signal(ref.name))   # an untyped receiver may as well be an engine object
-    how_text = how if how != "candidates" else f"candidates ({len(signals)})"
+    if how == EXTERNAL:
+        signals = [ix.engine_signal(ref.name)]     # the receiver is an engine object: the engine emits it
+    elif how == UNREACHED:
+        rs.unreached[unit.gid].add(ref.name)
+        return
     for handler in handler_targets(rs, unit, ref.handler):
         rs.link(unit.gid, handler, "connect", ref, "exact")
         for signal in signals:
-            rs.link(signal, handler, "signal", ref, how_text, unit.file)
+            rs.link(signal, handler, "signal", ref, "exact", unit.file)

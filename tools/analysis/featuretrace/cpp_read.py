@@ -7,7 +7,7 @@ Bodies are read by `cpp_body`.
 """
 from __future__ import annotations
 
-from . import cpp_body
+from . import cpp_body, flows
 from .model import ClassFact, FileFacts, Unit
 from .cpp_names import WRAPPERS, join, strip_templates, type_of, unwrap
 from .source import Source, field_of, named_children
@@ -56,6 +56,10 @@ class CppReader:
                 text = self.src.text(st)
                 if " namespace " in f" {text} ":
                     self.facts.usings.append(strip_templates(text.split("namespace", 1)[1].rstrip(";")))
+            elif kind == "preproc_include":
+                path = field_of(st, "path")
+                if path is not None and path.type == "string_literal":
+                    self.facts.includes.append(self.src.text(path).strip('"'))
             elif kind in ("alias_declaration", "type_definition"):
                 self.alias(st, prefix)
             elif kind in ("preproc_def", "preproc_function_def"):
@@ -159,7 +163,8 @@ class CppReader:
             text = self.src.text(name)
             unit.params.append(text)
             typ = field_of(p, "type")
-            unit.types[text] = type_of(self.src.text(typ)) if typ is not None else ""
+            declared = type_of(self.src.text(typ)) if typ is not None else ""
+            unit.types[text] = [] if cpp_body.deduced(declared) else [declared]
 
     def declaration(self, node, prefix: str, cls: ClassFact | None, anon: bool) -> None:
         typ = field_of(node, "type")
@@ -196,7 +201,10 @@ class CppReader:
             for j, sub in enumerate(node.children):
                 if node.field_name_for_child(j) == "default_value" and j > i:
                     value = value or sub
+            if cpp_body.deduced(type_text):
+                unit.type_text = ""
             if value is not None:
+                unit.values.append(flows.cpp_mark(self, value))
                 cpp_body.expr(self, value, unit, ())
 
 

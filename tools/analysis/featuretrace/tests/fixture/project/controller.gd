@@ -10,6 +10,11 @@ var active: ToolBase
 func _ready() -> void:
 	picked.connect(_on_picked)
 	$Button.pressed.connect(_on_pressed)
+	untyped(RoadTool.new())
+	var held = []
+	held.append(RoadTool.new())
+	for t in held:
+		t._lay(4.0)
 
 
 func _unhandled_input(_e: InputEvent) -> void:
@@ -36,3 +41,7 @@ func narrowed(x) -> void:
 
 func untyped(o) -> void:
 	o.click(3.0)
+
+
+func never_called(o) -> void:
+	o.click(5.0)

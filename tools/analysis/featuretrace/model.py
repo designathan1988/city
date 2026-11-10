@@ -44,6 +44,7 @@ class Ref:
     target: int = -1               # lambda: local id of the lambda unit in the same file
     text: str = ""                 # load: the path; name: the literal
     argc: int = -1                 # call: the number of arguments written (-1 when not a call)
+    args: tuple = ()               # call: each argument's value marker; write: the value assigned (see `flows`)
 
 
 @dataclass
@@ -62,11 +63,12 @@ class Unit:
     params: list = field(default_factory=list)
     required: int = -1             # parameters without a default (-1: not counted)
     variadic: bool = False
-    types: dict = field(default_factory=dict)      # local or parameter name -> type text
+    types: dict = field(default_factory=dict)      # local or parameter name -> [value markers that flow into it]
+    values: list = field(default_factory=list)     # a variable's or field's initializer markers
     lambdas: dict = field(default_factory=dict)    # local name -> lambda local id
     type_text: str = ""            # a variable's declared or inferred type, a function's return type
     refs: list = field(default_factory=list)
-    returns: list = field(default_factory=list)    # (line, expression text) of each return
+    returns: list = field(default_factory=list)    # (line, expression text, value marker) of each return
     static: bool = False
     file_local: bool = False       # C++ internal linkage: anonymous namespace or static free function
     decl_only: bool = False        # C++ declaration with no body
@@ -101,4 +103,5 @@ class FileFacts:
     connections: list = field(default_factory=list)  # tscn: (signal, from script, to script, method, line)
     autoloads: dict = field(default_factory=dict)  # project.godot: name -> res:// path
     mentions: list = field(default_factory=list)   # data: (string, line)
+    includes: list = field(default_factory=list)   # cpp: the paths `#include "..."` names
     errors: int = 0

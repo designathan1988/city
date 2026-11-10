@@ -9,7 +9,7 @@ writes a name as a value).
 """
 from __future__ import annotations
 
-from . import gd_body
+from . import flows, gd_body
 from .model import ClassFact, FileFacts, Ref, Unit
 from .source import Source, field_of, is_identifier, named_children, string_value
 
@@ -20,7 +20,6 @@ class GdReader:
         self.res = res_path
         self.facts = FileFacts(src.display, "gd")
         self.narrowed = {}           # names an enclosing `is` test proves the type of
-        self.assigned = {}           # (class, member) -> the type of what a body assigns to it
 
     # ---- definitions -------------------------------------------------------------------------------------------
     def run(self) -> FileFacts:
@@ -28,10 +27,6 @@ class GdReader:
         cls = ClassFact(self.res, "gd", "", self.src.display, 1)
         self.facts.classes.append(cls)
         self.class_body(root, cls)
-        # an untyped member holds what is assigned to it (`_core = ClassDB.instantiate(&"Core")`)
-        for unit in self.facts.units:
-            if unit.kind == "var" and not unit.type_text:
-                unit.type_text = self.assigned.get((unit.owner, unit.name), "")
         self.facts.errors = int(root.has_error)
         return self.facts
 
@@ -99,17 +94,12 @@ class GdReader:
         kind = "const" if node.type == "const_statement" else "var"
         unit = self.unit(kind, self.src.text(field_of(node, "name")), cls.key, node)
         unit.static = any(c.type == "static_keyword" for c in node.children)
-        unit.type_text = self.declared_type(node)
+        typ = field_of(node, "type")
+        unit.type_text = self.src.text(typ) if typ is not None and typ.type == "type" else ""
         value = field_of(node, "value")
         if value is not None:
+            unit.values.append(flows.gd_mark(self, value))
             self.expr(value, unit, cls, ())
-
-    def declared_type(self, node) -> str:
-        typ = field_of(node, "type")
-        if typ is not None and typ.type == "type":
-            return self.src.text(typ)
-        value = field_of(node, "value")
-        return self.infer(value) if value is not None else ""
 
     def infer(self, value) -> str:
         """The class a value is an instance (or the script) of, when the expression says it."""
@@ -149,7 +139,11 @@ class GdReader:
             name = self.src.text(ident)
             unit.params.append(name)
             typ = field_of(p, "type")
-            unit.types[name] = self.src.text(typ) if typ is not None and typ.type == "type" else ""
+            default = field_of(p, "value")
+            if typ is not None and typ.type == "type":
+                unit.types[name] = [self.src.text(typ)]
+            else:
+                unit.types[name] = [flows.gd_mark(self, default)] if default is not None else []
 
     def function(self, node, cls: ClassFact) -> None:
         unit = self.unit("func", self.src.text(field_of(node, "name")), cls.key, node)
@@ -165,7 +159,7 @@ class GdReader:
         lam = Unit("lambda", "gd", f"{owner.name}.<lambda:{line}>", f"{owner.qual}.<lambda:{line}>", cls.key,
                    self.src.display, line, self.src.end_line(node), local_id=len(self.facts.units))
         self.facts.units.append(lam)
-        lam.types = dict(owner.types)
+        lam.types = {k: list(v) for k, v in owner.types.items()}
         lam.lambdas = dict(owner.lambdas)
         self.params(node, lam)
         if field_of(node, "body") is not None:
