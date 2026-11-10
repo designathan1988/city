@@ -45,10 +45,9 @@
   },
   "resources": {
    "type": "object",
-   "additionalProperties": false,
+   "additionalProperties": {"type": "integer", "minimum": 1},
    "properties": {
     "cores": {"oneOf": [{"type": "integer", "minimum": 1}, {"const": "all"}]},
-    "gpu": {"type": "integer", "minimum": 1},
     "locks": {"type": "object", "additionalProperties": {"enum": ["shared", "exclusive"]}}
    }
   },
