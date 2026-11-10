@@ -110,3 +110,48 @@ The city opens in 20 to 25 s. The ranges are two runs with the views taken in a 
   outside the city and under far parks is dark (P10 of the trace); light and night to survey (P11). Gates on the changed
   files: what is left stands at the base, but `TAMANHO_ARQUIVO` on `building_renderer.cpp` (356 lines, 351 at the base)
   and `building_renderer.h` (264, 253 at the base), both over the limit before this change and to be split with P2.
+
+## P12, P14, P16, P17, P18, P19 (2026-11-10): code first, one measure at the end
+
+The owner's order: fix in code, then measure once. Each is in the trace `port-from-nov7` with its cause; the code of P17
+(C13), P18 (C20) and P19 (C9) was copied back from the work before the return (tag `antes-da-volta-2026-11-10`) and fitted
+to this tree.
+
+- P12 (`0ffc4fde`): the mid level's openings are instances only within their own reach (`building_bay_end_m`), a level of
+  their own; past it the walls' merged rectangles.
+- P14 (`9419745b`): the noise on the walls at the level change was the dissolve of two different levels over each other,
+  which TAA cannot resolve; the levels change at one distance, with no dissolve.
+- P16 (`a8a9d00f`): the roads' far level was built for every superchunk of the map and held for good; it follows the view
+  (the buildings' stream reach), dropped past it.
+- P17 / C13 (`a8a9d00f`): the sky shader read POSITION, so the engine rendered and filtered the radiance cube again for a
+  moved eye; the low band's share is a uniform.
+- P18 / C20 (`19338fc6`): the final heights were a float array of the whole map; they stand by tile, made where something
+  changed them.
+- P19 / C9 (`5fda1c98` to `cfa6faf1`): every mesh producer built while its thread held the map shared. A job now copies a
+  cut of its place under `MapRead` (`CityCut`, `cut_city`) and builds from it with the lock let go (`CityView`,
+  `MeshQueueOf::submit_cut`): roads, verges, structures, far roads, water, street furniture, trees, ground cover.
+  `tests/core/map_hold_test` (probe `map_hold`, counted by the tests' DLL) named, before: props 785,042, roads 262,589,
+  far roads 101,125, trees 10,714, verges 8,560 vertices and instances built under the map; after: none.
+  Not converted: the zone overlay's job (drawn only with the Zones layer on) and the transit plan built on the frame's
+  thread.
+
+Measured once, at `8ca7efe1`, the plan of P9 (`info` and 5 s of `usage` at each view once `render_pending` is 0):
+
+| 24 km city | 9 km out, base | P9 | now | Centre, base | P9 | now |
+|---|---|---|---|---|---|---|
+| Video memory | 3,773 MiB | 3,313 MiB | 2,230 MiB | 5,454 MiB | 4,469 MiB | 3,606 MiB |
+| of it buffers | 2,622 MiB | 2,161 MiB | 1,078 MiB | 4,281 MiB | 3,296 MiB | 2,436 MiB |
+| Godot static memory | 898 MiB | 861 MiB | 877 MiB | 1,351 MiB | 1,315 MiB | 1,077 MiB |
+| GPU a frame | 14.0 ms | 12.58 ms | 12.72 ms | 16.2 ms | 15.01 ms | 14.95 ms |
+| CPU a frame | 0.95 ms | 0.92 ms | 0.98 ms | 1.04 ms | 1.05 ms | 1.27 ms |
+| Primitives a frame | 3.74 M | 3.05 M | 2.83 M | 4.88 M | 4.19 M | 3.75 M |
+| Shadow primitives a frame | 12.55 M | 5.86 M | 5.86 M | 15.01 M | 8.61 M | 8.61 M |
+
+- Every number is under the base. Against the measure taken after P12 (854 and 1,056 MiB) the static memory is about 20 MiB
+  higher at both views, and the CPU frame at the centre 0.2 ms higher: not yet read for its cause.
+- Photos of this run: `dist/trace/port-from-nov7/photos/40-final_*.jpg`, read one by one in `analysis.md`. Nothing new is
+  broken by these changes (roads, verges, street trees, parks' trees and furniture stand); the defects already recorded
+  still show: the dark ground outside the city and under far parks (P10, P7), the night's flat far walls (P11).
+- Tests: `map_hold_test`, the digest (equal to the golden) and the scenes each piece reaches passed as each piece went in;
+  the whole suite ran at `cfa6faf1` (42 of 43; `camera_input_test` failed under six parallel processes and passes alone).
+  The suite has not been run whole since the test harness and the pool's sizing changed: it runs once at the close.
