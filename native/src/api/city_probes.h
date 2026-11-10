@@ -46,6 +46,9 @@ public:
 	godot::Dictionary map_hold(bool reset);
 	godot::Dictionary overlay_probe(); // tests: the map layers' chunks, meshes made, refreshes and levels (OverlayRenderer::probe)
 	int transit_drawn(); // tests: the tracks and stops of the transit plan that stand drawn
+	// Tests: a job's cut of the city reads what the live city reads: the trees of the chunks within `radius` of `at` placed from
+	// both and compared (TreeRenderer::probe_cut).
+	godot::Dictionary tree_cut_probe(const godot::Vector3 &at, float radius);
 	godot::Dictionary flow_replay(); // tests: the flow measure and the warrants alone through a fixed script (city_core_flow_probe.cpp)
 	godot::String flow_warrant(float major, float minor_max, float minor_total, int current) const; // tests: the rule alone, by AutoControl
 	int flow_junction(); // tests: a three-arm junction on automatic with no signal, or -1

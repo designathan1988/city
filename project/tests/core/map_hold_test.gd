@@ -8,6 +8,7 @@ const TOWN_MAP := 0
 const SEED := 1
 ## The views, metres from the town's middle at a pitch in degrees: the near levels, the street's props, and the far levels.
 const VIEWS := [[30.0, 25.0, 476.0], [120.0, 35.0, 300.0], [210.0, 15.0, 1400.0]]
+const CUT_PROBE_M := 900.0 # round the town's middle: every chunk of the town and its edge
 const SETTLE_LIMIT_S := 50.0 # real time a view may take to be built (3000 frames of the old 60 Hz loop): StateWait
 ## The producers that build off the lock: each lane (core/job_pool.h job_lane_name) must have built nothing under the map. The
 ## others are named as they are converted (log/performance.md C9); what they still build under it is printed.
@@ -34,4 +35,7 @@ func _ready() -> void:
 	for lane: String in OFF_LOCK:
 		var built := int(seen.built.get(lane, 0))
 		check(built == 0, "%s built nothing while it held the map (%d vertices and instances)" % [lane, built])
+	# A cut reads what the live city reads: the town's trees placed from both, tree by tree (TreeRenderer::probe_cut).
+	var same: Dictionary = CityStore.query(&"tree_cut_probe", [rig.focus, CUT_PROBE_M])
+	check(int(same.trees) > 0 and int(same.differ) == 0, "the trees placed from a job's cut are the live city's (%d trees of %d chunks, %d differ) %s" % [same.trees, same.chunks, same.differ, same.first])
 	finish()

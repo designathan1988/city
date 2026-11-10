@@ -7,6 +7,9 @@ extends RefCounted
 const FLEET_SAMPLE := 1000000 # every near vehicle
 const OVERLAPS_SHOWN := 8
 const OVERLAP_M := 1.5 # two vehicles' centres closer than this stand inside one another: narrower than any body (a motorbike beside a car is farther)
+const SETTLE_WINDOW_S := 0.5 # ten ticks of the core's 20 Hz clock (tuning sim.tick_hz): a window that holds publications while the clock runs
+const SETTLE_LIMIT_S := 10.0 # real time the publications may take to come back in step before the movement starts without them
+const MS_PER_S := 1000.0
 
 var lost_before := {}
 
@@ -58,12 +61,18 @@ func report() -> void:
 
 ## This report and the picture after it hold the simulation's locks and the main thread, so the tick they held back is published late:
 ## that gap is the report's, not the next movement's. Frames on `tree` until the publications are back in step (a wait on the state),
-## the pose count starting from there.
-func settle(tree: SceneTree) -> void:
-	CityStore.query(&"pose_stats")
-	while true:
-		await tree.process_frame
+## the pose count starting from there. Reading the count resets it, and the first publication after a reading only sets what the next
+## is measured from: so a window of several ticks is let pass between two readings, never a frame. True when a window held
+## publications and none late; false when none did within SETTLE_LIMIT_S (the caller says so: the count then starts out of step).
+func settle(tree: SceneTree) -> bool:
+	var started := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - started < SETTLE_LIMIT_S * MS_PER_S:
+		CityStore.query(&"pose_stats")
+		var window_end := Time.get_ticks_msec() + SETTLE_WINDOW_S * MS_PER_S
+		while Time.get_ticks_msec() < window_end:
+			await tree.process_frame
 		var back: Dictionary = CityStore.query(&"pose_stats")
 		if int(back.publications) > 0 and int(back.late) == 0:
-			return
+			return true
+	return false
 

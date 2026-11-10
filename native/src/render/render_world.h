@@ -150,6 +150,7 @@ public:
 	void show_every_zone(bool on) { overlays_.show_every_zone(on); }
 	bool overlay_on(Overlay o) const { return overlays_.is_on(o); }
 	godot::Dictionary overlay_probe() const { return overlays_.probe(); }
+	godot::Dictionary tree_cut_probe(const CityState &s, float minx, float minz, float maxx, float maxz) const { return trees_.probe_cut(s, minx, minz, maxx, maxz); }
 	BuildingInteriorCost interior_cost(const CityState &s, int id, int level, int dir) const { return buildings_.interior_cost(s, id, level, dir); }
 	// After sync, in the same frame's admission (its deadline, credits and ledger). Reads nothing of the map: no lock is held for it.
 	void update_overlays(const CityState &s, const PoseFrame &f, double dt) {

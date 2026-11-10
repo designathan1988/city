@@ -242,6 +242,40 @@ void TreeRenderer::submit(const CityState &s, int64_t key, float priority, bool 
 	});
 }
 
+Dictionary TreeRenderer::probe_cut(const CityState &s, float minx, float minz, float maxx, float maxz) const {
+	constexpr int SHOWN = 6; // differing trees described
+	int64_t chunks = 0, trees = 0, differ = 0;
+	PackedStringArray first;
+	for_chunks(minx, minz, maxx, maxz, [&](int64_t key) {
+		std::vector<TreeInstance> live, cut;
+		{
+			MapRead map(s);
+			place_trees(s, *look_, trees_, kit_, chunk_ground(s, key), key, live);
+		}
+		const CityCut c = gather(s, key, false);
+		place_trees(c, *look_, trees_, kit_, chunk_ground(c, key), key, cut);
+		chunks++;
+		trees += int64_t(live.size());
+		const size_t n = std::max(live.size(), cut.size());
+		for (size_t i = 0; i < n; i++) {
+			const bool both = i < live.size() && i < cut.size();
+			const bool same = both && live[i].p == cut[i].p && live[i].height == cut[i].height && live[i].width == cut[i].width && live[i].yaw == cut[i].yaw &&
+					live[i].lean_x == cut[i].lean_x && live[i].lean_z == cut[i].lean_z && live[i].species == cut[i].species && live[i].tint == cut[i].tint && live[i].depth == cut[i].depth;
+			if (same) continue;
+			differ++;
+			if (first.size() >= SHOWN) continue;
+			const auto say = [](const TreeInstance &t) { return String("p ") + String(t.p) + String(" h ") + String::num(t.height, 4) + String(" w ") + String::num(t.width, 4) + String(" lean ") + String::num(t.lean_x, 4) + String(",") + String::num(t.lean_z, 4) + String(" sp ") + String::num_int64(t.species); };
+			first.push_back(String("chunk ") + String::num_int64(key_x(key)) + String(",") + String::num_int64(key_y(key)) + String(" tree ") + String::num_int64(int64_t(i)) + String(" of ") + String::num_int64(int64_t(live.size())) + String("/") + String::num_int64(int64_t(cut.size())) + String(": live ") + (i < live.size() ? say(live[i]) : String("none")) + String(" | cut ") + (i < cut.size() ? say(cut[i]) : String("none")));
+		}
+	});
+	Dictionary d;
+	d["chunks"] = chunks;
+	d["trees"] = trees;
+	d["differ"] = differ;
+	d["first"] = first;
+	return d;
+}
+
 int TreeRenderer::pending() const {
 	return pending_ + tier_[TIER_NEAR].pending() + tier_[TIER_FAR].pending();
 }

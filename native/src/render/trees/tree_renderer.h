@@ -41,6 +41,9 @@ public:
 	int64_t baking() const { return tier_[1].baking(); }
 	int64_t waiting() const { return tier_[1].waiting(); }
 	int pending() const;
+	// Tests: the near trees of every chunk the box touches placed twice, from the live city and from the job's cut of it, and
+	// compared tree by tree: a cut must read what the live city reads. { chunks, trees, differ, first: what the first ones are }.
+	godot::Dictionary probe_cut(const CityState &s, float minx, float minz, float maxx, float maxz) const;
 	// The woods' trees a blow's clearing took within `radius` of (x, z) (tree_place.h felled_wild), for the effects to fell.
 	void felled(const CityState &s, float x, float z, float radius, int clearing, std::vector<TreeInstance> &out) const {
 		felled_wild(s, trees_, kit_, x, z, radius, clearing, out);

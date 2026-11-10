@@ -70,10 +70,15 @@ Dictionary CityProbes::overlay_probe() { return render_->overlay_probe(); }
 
 int CityProbes::transit_drawn() { return render_->transit_drawn(); }
 
+Dictionary CityProbes::tree_cut_probe(const Vector3 &at, float radius) {
+	return render_->tree_cut_probe(*state_, at.x - radius, at.z - radius, at.x + radius, at.z + radius);
+}
+
 void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("map_hold", "reset"), &CityProbes::map_hold);
 	ClassDB::bind_method(D_METHOD("overlay_probe"), &CityProbes::overlay_probe);
 	ClassDB::bind_method(D_METHOD("transit_drawn"), &CityProbes::transit_drawn);
+	ClassDB::bind_method(D_METHOD("tree_cut_probe", "at", "radius"), &CityProbes::tree_cut_probe);
 	ClassDB::bind_method(D_METHOD("park_sample"), &CityProbes::park_sample);
 	ClassDB::bind_method(D_METHOD("plan_all_yards"), &CityProbes::plan_all_yards);
 	ClassDB::bind_method(D_METHOD("camera_clear", "at", "radius", "vehicles"), &CityProbes::camera_clear, DEFVAL(true));

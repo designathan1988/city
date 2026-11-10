@@ -173,7 +173,8 @@ func _run(name: String, seconds: float, step: Callable) -> void:
 	cpu_ms.clear()
 	process_ms.clear()
 	costs.clear()
-	await core.settle(get_tree()) # the pose count starts once the publications are back in step
+	if not await core.settle(get_tree()): # the pose count starts once the publications are back in step
+		print("%s: the publications did not come back in step within %.0f s: the pose count below starts out of step" % [name, CoreReport.SETTLE_LIMIT_S])
 	var vp := get_viewport().get_viewport_rid()
 	var t := 0.0
 	var last := Time.get_ticks_usec()

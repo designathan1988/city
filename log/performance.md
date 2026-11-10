@@ -586,7 +586,30 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
   where the tool asks.
 - Cannot return: the renderer has no build on the frame's thread; the job holds no `CityState` while it lays.
 - Check: `transit_test`, `bus_riders_test`, `map_hold_test` pass; gates OK.
-- With this no producer of the render builds under the map: C9's decision is corrected. What stood beside it has its own
+- With this no producer of the render builds under the map: C9's decision is corrected (closed below). What stood beside it has its own
   cause in the ledger: C21, the paving outline has no owner (P10's cost half: the seam still draws the neighbourhood's roads
   to find it; with P82, `widest_half` written twice); P73 (walls keyed by the whole revision) and P74 (a section's pieces
   made per segment) are C11's.
+
+### C9 closed (2026-11-10 07:10): the measurement in the metropolis, and the probe that could not measure (P83)
+- P83 (new): `tests/perf/camera_pan` hung at its first movement on every map since 7d253447 (2026-11-09 20:23).
+  `CoreReport.settle` waited for a reading of `pose_stats` with a publication and none late, reading it every frame; a
+  reading resets the count and what the next publication is measured from, so the count was 0 at every reading, and the wait
+  had no limit. It now resets, lets a window of ten ticks pass, reads once, and gives up after 10 s saying so. Seen because
+  the first measurement of this close was sent to the background unwatched and sat there 40 minutes: from here on every run
+  is in the foreground or under a monitor, with a short deadline and its lines shown as they come.
+- The metropolis (map 5, seed 1, 7,280 buildings, 2,523 segments), `camera_pan` at 1600x900, the tests' DLLs, 79 s a run, the
+  project as it was before C9 (c4c5aeb8, its own DLL) against the tree at 96b2db93, movement by movement
+  (still, cross, circle, turn, zoom, close):
+
+| | frames past 33 ms | past 50 ms | GPU mean, still | core max | static memory, still |
+|---|---|---|---|---|---|
+| before C9 | 0 / 8 / 11 / 12 / 21 / 8 | 0 / 0 / 0 / 0 / 0 / 1 | 11.9 ms | 30 to 38 ms | 630 MiB |
+| after C9 | 0 / 7 / 10 / 13 / 20 / 8 | none | 11.0 ms | 29 to 40 ms | 595 MiB |
+
+- Read: the pan is no worse and no better, as it must be (it edits nothing and grows nothing: the lock was never waited for
+  there, `lock` 0.0 ms in both). Every frame past 33 ms in both runs is the `stream` section at 28 to 39 ms with 23 to 29 MiB
+  uploaded in that frame: the fine ground sent whole again when the eye crosses into a region (C1, P11). That is the hitch
+  the player feels moving over the big city, and the next cause taken.
+- C9's own check is the count: seventeen job lanes, the frame's thread and the transit build nothing under the map
+  (`map_hold_test`, `overlay_test`, `transit_test`).
