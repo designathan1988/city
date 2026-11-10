@@ -8,10 +8,10 @@ import sys
 from .core import digest, program_root, read_json, write_json
 
 
-def _base(path):
+def _base(path, worktree=False):
     from .repo import toplevel
     root = toplevel(path)
-    home = os.path.join(program_root(), "dist", "arch")
+    home = os.path.join(program_root(), "dist", "arch", *(["worktree"] if worktree else []))
     if os.path.normcase(root) == os.path.normcase(os.path.normpath(program_root())):
         return home
     return os.path.join(home, "repos", digest(root))
@@ -20,8 +20,13 @@ def _base(path):
 def scan(args):
     from .pipeline import analyse, publish
     from .scan import Run
-    base = _base(args.repo)
-    run = Run(args.repo, rev=args.rev, cache=not args.no_cache, out=os.path.join(program_root(), "dist", "arch"))
+    base = _base(args.repo, args.worktree)
+    repo = None
+    if args.worktree:
+        from .repo import Repo
+        from .worktree import Worktree
+        repo = Worktree(Repo(args.repo))
+    run = Run(args.repo, rev=args.rev, cache=not args.no_cache, out=os.path.join(program_root(), "dist", "arch"), repo=repo)
     try:
         run.read()
         result = analyse(run)
@@ -125,6 +130,11 @@ def status(args):
     return 0
 
 
+def trace(args):
+    from .route import main as route
+    return route(_base(args.repo, args.worktree), args.spec, args.json)
+
+
 def selfcheck(args):
     from .check.run import main as check
     return check(args)
@@ -139,7 +149,7 @@ def main(argv):
     parser = argparse.ArgumentParser(prog="arch.py", description="Finds causes of architecture and performance problems in a git repository.")
     sub = parser.add_subparsers(dest="command", required=True)
     for name, fn, extra in (("scan", scan, ()), ("explain", explain, ("id",)), ("next", next_cause, ()), ("predict", predict, ("id",)), ("done", done, ("id",)),
-                            ("status", status, ()), ("selfcheck", selfcheck, ())):
+                            ("status", status, ()), ("selfcheck", selfcheck, ()), ("trace", trace, ("spec",))):
         p = sub.add_parser(name)
         for e in extra:
             p.add_argument(e)
@@ -148,6 +158,10 @@ def main(argv):
         if name == "scan":
             p.add_argument("--no-cache", action="store_true")
             p.add_argument("--rev", default="HEAD")
+        if name in ("scan", "trace"):
+            p.add_argument("--worktree", action="store_true", help="the code as it stands on disk, uncommitted changes included (dist/arch/worktree)")
+        if name == "trace":
+            p.add_argument("--json", help="write the route there")
         if name == "selfcheck":
             p.add_argument("--only", default="")
     p = sub.add_parser("step", help=argparse.SUPPRESS)

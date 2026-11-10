@@ -229,8 +229,8 @@ O que falta fazer, por área.
 Built: `ledger.py trace` of the trace-fix skill (`.claude/skills/trace-fix/route.py`): the feature tracer's answer becomes the flow of
 a trace in run order, with why each file is there and the functions on the route named in the reading batches.
 Still to build, in this order, each closed with its tests:
-1. `tools/analysis/arch`: read the working tree (`Repo.overlay` is empty), publish each entry's slice (order, call paths, members read
-   and written, jobs, locks) and a `trace` command over it; the route then comes from the compiler's graph where there is one.
+1. Done 2026-11-10 (log/arquitetura.md): `scan --worktree`, `slices.json`, `arch.py trace`; the skill's `trace` uses it for C++.
+   Left of it: the members read and the locks held are not in the published slice yet.
 2. One graph, one owner: the tracer's query, upstream and consumers over the analyser's units; `causes.py`'s own frame reach removed.
 3. The documents checked against the code: every path, command and symbol CLAUDE.md and `log/*.md` name; passages on one subject paired.
 4. State ownership as a report and as rules: per member, who writes and reads it, on which thread, under which lock; CLAUDE.md's rules

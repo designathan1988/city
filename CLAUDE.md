@@ -116,7 +116,7 @@ e apagados.
 | Olhar o jogo por um plano | `godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<json> --capture-dir=<pasta>` |
 | Onde cada thread gasta | `python tools/analysis/sampler.py --hidden --cmd "<godot> --path project <cena>" --seconds 30 --symbolizer <llvm-symbolizer>` |
 | Causes by the code's shape; a feature traced | `python tools/tasks/cli.py run causes` (`tools/analysis/causes.py` under a deadline); `python tools/analysis/ftrace.py <tree> --query "words"` or `--seed Class::method` (who triggers it, what it runs and mutates, who reads that; the tree on disk) |
-| Causes by the architecture | `python tools/tasks/cli.py run arch_scan`, then `python tools/analysis/arch.py status`, `next`, `explain <id>`, `predict <id>`, `done <id>`, `selfcheck` (`--only x` redoes only what failed; the queue in `dist/arch/queue.json`) |
+| Causes by the architecture | `python tools/tasks/cli.py run arch_scan`, then `python tools/analysis/arch.py status`, `next`, `explain <id>`, `predict <id>`, `done <id>`, `selfcheck` (`--only x` redoes only what failed; the queue in `dist/arch/queue.json`); `scan --worktree` reads the code on disk and `trace <Class::method or file:line> --worktree` gives the entries that run it and the route in program order |
 | Perfil da DLL de release | `tools/build/pgo.sh` (refazer depois de mudar laços quentes) |
 
 **O que um clone precisa:** `native/godot-cpp` (API 4.7) e as DLLs em `project/bin` já vêm no repositório: o jogo abre sem

@@ -11,7 +11,7 @@ from ..catalogue import CLASSES
 from ..core import program_root, read_json, write_json
 from .gold import gold, recall, settings
 
-PUBLISHED = ("queue.json", "findings.json", "entries.json", "coverage.json")
+PUBLISHED = ("queue.json", "findings.json", "entries.json", "coverage.json", "slices.json")
 
 
 def _home():

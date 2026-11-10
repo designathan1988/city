@@ -11,7 +11,8 @@ TOOL_TIMEOUT_S = 120  # one ninja or compiler question; a hang is an error, not 
 
 SOURCE = re.compile(r"\.(c|cc|cpp|cxx)$")
 HEADER = re.compile(r"\.(h|hh|hpp|hxx|inl)$")
-KEEP_ONE = ("-D", "-U", "-I", "-std", "-f", "-m", "--target")
+KEEP_ONE = ("-D", "-U", "-I", "-std", "-f", "-m", "--target", "--sysroot")
+PLATFORM = ("--target", "--sysroot")  # what decides the driver's own target and search list: a cross build names another platform
 KEEP_TWO = ("-isystem", "-include", "-iquote", "-idirafter")
 _KNOWN = {}
 
@@ -55,13 +56,17 @@ def language_roots(flags):
     return tuple(roots)
 
 
-def _driver(compiler, memo):
-    """What the compiler driver adds by itself: its target and its include search list."""
+def _driver(compiler, memo, words=()):
+    """What the compiler driver adds by itself for the platform a command builds for: its target and its include search list. Asked with the
+    command's own target and sysroot, or a cross compiler answers for the machine it runs on."""
+    platform = tuple(w for w in words if w.startswith(PLATFORM))
+    asked = compiler
+    compiler = (compiler, platform)
     if compiler in memo:
         return memo[compiler]
     args = []
     try:
-        run = subprocess.run((compiler, "-E", "-v", "-x", "c++", "-"), input=b"", capture_output=True, check=False, timeout=TOOL_TIMEOUT_S)
+        run = subprocess.run((asked, *platform, "-E", "-v", "-x", "c++", "-"), input=b"", capture_output=True, check=False, timeout=TOOL_TIMEOUT_S)
         text = run.stderr.decode("utf8", "replace").replace("\r\n", "\n").replace("\\", "/")
         target = re.search(r"^Target: (\S+)", text, re.M)
         if target:
@@ -134,7 +139,7 @@ def compile_units(repo, tracked, export):
             words = _split_words(entry)
             if not words:
                 continue
-            flags = _driver(words[0], memo) + _flags(words, repo, export, known)
+            flags = _driver(words[0], memo, words) + _flags(words, repo, export, known)
             by_file[rel] = flags
             common[_home(rel)][tuple(flags)] += 1
         if not common:

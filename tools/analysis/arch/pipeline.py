@@ -4,8 +4,9 @@ import collections
 import os
 
 from . import catalogue, costmodel, work_queue
-from .core import write_json
-from .entries import enumerate_entries
+from .contracts import field_name
+from .core import digest, write_json
+from .entries import display, enumerate_entries
 from .slices import build_all
 from .summaries import Program
 
@@ -33,4 +34,25 @@ def publish(run, a, base):
         "entries": dict(sorted(collections.Counter(e["kind"] for e in a["entries"]).items())),
         "classes": [{"id": cid, "title": title, "found": found.get(cid, 0)} for cid, title, _ in catalogue.CLASSES],
         "adapters": {k: v for k, v in run.info.items() if k != "refused"}})
+    write_json(os.path.join(base, "slices.json"), slices_of(a))
     return base
+
+
+WRITES_KEPT = 60  # members named per slice: enough to say what state a flow touches
+
+
+def slices_of(a):
+    """Each entry's slice as a route: its functions in program order, each with the caller and line that first reaches it, and the members the
+    whole run writes. Functions are named once, in a table the slices index."""
+    prog, slices = a["program"], a["slices"]
+    ids = sorted({f for sl in slices.values() for f in sl.order})
+    at = {f: i for i, f in enumerate(ids)}
+    table = [[display(prog, f), prog.fn[f]["file"], prog.fn[f]["line"], prog.fn[f]["end"]] for f in ids]
+    out = []
+    for e in a["entries"]:
+        sl = slices[e["id"]]
+        reached = [[at[sl.first[f][-1][0]], sl.first[f][-1][1]] if sl.first[f] else None for f in sl.order]
+        out.append({"id": digest(e["id"]), "entry": e["name"], "kind": e["kind"], "freq": e["freq"], "why": e["why"], "via": e.get("via", []),
+                    "order": [at[f] for f in sl.order], "reached": reached, "jobs": len(sl.submits),
+                    "writes": sorted(field_name(prog, m) for m in prog.fields_of(sl.written))[:WRITES_KEPT]})
+    return {"functions": table, "slices": out}
