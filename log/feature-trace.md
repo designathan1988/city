@@ -164,3 +164,19 @@ definitions, 102655 links, 9 s; the road chain traced by hand above is all there
 `RenderWorld::drain_log`, `traffic::apply_network_changes`, `CityCore::snapshot`; 0 uses on an unreached receiver), and
 third-party code (`project/addons/terrain_3d`, 36 files: `_on_tool_changed` back through the `tool_changed` signal to the
 engine's `pressed`, exact where the old tool gave two candidates).
+
+## The tracer finished on the worklist solver (2026-11-10 17:50, commit d7bbdf91)
+Cause fixed: the program was linked again whole in passes and cycles advanced one hop per pass. Now links and values
+are nodes of one worklist solver with recorded dependencies (TD/RLD, research S5 in `log/trace-rules.md`): what read a
+value or the links into a unit is computed again when it grows, until nothing grows. From the whole reading of the
+code: a callable used as a value does not run where it is written (it runs where called, where a signal fires it, or
+in the engine/library function it is handed to); calling a value reaches `operator()` or the function it holds; `T{}`
+constructs; `=`, `++`, `--` on a class call its operators; only class types construct; match patterns are read.
+The tool names no project (tests/test_generic.py): it reads the folders given, or the current one.
+
+Verified in order: 70 tests on the fixture; third-party code (Terrain3D, 36 files, 0.2 s: back to the engine's
+`pressed` signal, 0 unreached); the city (1132 files, 25770 definitions, 97948 links, fixpoint in 217.7 s, exit 0, 0
+uses on an unreached receiver, 4 entry points, 1553 definitions ahead; every link of the road chain traced by hand
+above is present, consumers `RenderWorld::drain_log`, `traffic::apply_network_changes`, `CityCore::snapshot`).
+Open: speed at city scale (the last large cycles are recomputed whole; S2 difference propagation and S4 cycle collapse
+are researched, not implemented); validation against recorded executions of the game (not done).
