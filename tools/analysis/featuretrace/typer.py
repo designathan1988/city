@@ -31,49 +31,38 @@ class Typer:
         self.ix = index
         self.rs = resolver
         self._busy = set()           # trees being evaluated (a tree met again while busy is a cycle of flows)
-        self._memo = {}              # trees whose value is final
-        self._heads = set()          # trees a cycle came back to: their value is iterated to its fixpoint
-        self._approx = {}            # a cycle head's value so far
-        self._trail = []             # trees made final, in order (those made under a head's earlier value are redone)
+        self._memo = {}              # each tree's value in this pass
+        self.previous = {}           # each tree's value in the previous pass (where a cycle comes back)
 
     def class_of(self, unit) -> str | None:
         return unit.owner if unit.owner in self.ix.classes else None
 
     # ---- trees -------------------------------------------------------------------------------------------------
     def evaluate(self, tree, unit, depth: int = 0) -> list[tuple]:
-        """Every type a tree can hold. Values are unions, so they only grow: a value that comes back to itself (a
-        cycle of flows) is computed as a fixpoint — where it comes back it stands for its value so far, and it is
-        computed again until that value stops growing; what was computed from an earlier value is computed again."""
+        """Every type a tree can hold, computed once per link pass. Values are unions, so they only grow: where a
+        value comes back to itself (a cycle of flows) it stands for its value in the previous pass, and the passes
+        repeat until no value grows (round-robin iteration to the fixpoint; `link.build`)."""
         if not tree or unit is None:
             return []
         key = (tree, unit.gid)
         if key in self._memo:
             return self._memo[key]
         if key in self._busy:
-            self._heads.add(key)
-            return self._approx.get(key, [])
+            return self.previous.get(key, [])
         self._busy.add(key)
-        start = len(self._trail)
         try:
-            while True:
-                out = self._distinct(self._evaluate(tree, unit, depth + 1))
-                if key not in self._heads or self._same(out, self._approx.get(key, [])):
-                    break
-                self._approx[key] = out
-                for done in self._trail[start:]:
-                    self._memo.pop(done, None)
-                del self._trail[start:]
+            out = self._distinct(self._evaluate(tree, unit, depth + 1))
         finally:
             self._busy.discard(key)
-        self._heads.discard(key)
-        self._approx.pop(key, None)
         self._memo[key] = out
-        self._trail.append(key)
         return out
 
-    @staticmethod
-    def _same(a: list[tuple], b: list[tuple]) -> bool:
-        return {(t, c.gid) for t, c in a} == {(t, c.gid) for t, c in b}
+    def values(self) -> dict:
+        """This pass's values, for the next pass to start its cycles from."""
+        return self._memo
+
+    def signature(self) -> dict:
+        return {k: frozenset((t, c.gid) for t, c in v) for k, v in self._memo.items()}
 
     @staticmethod
     def _distinct(found: list[tuple]) -> list[tuple]:

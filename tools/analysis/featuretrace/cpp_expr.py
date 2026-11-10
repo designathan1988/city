@@ -95,7 +95,8 @@ def expression(r, node, unit, cond) -> None:
             # `: m(v)` writes member m; `: Base(args)` runs the base's constructor (C7)
             add(r, unit, "write", r.src.text(member), node, cond, args=trees[:1])
             scope, name = scoped(r.src.text(member))
-            add(r, unit, "new", name, node, cond, qualified=bool(scope), scope=scope, args=trees)
+            add(r, unit, "new", name, node, cond, qualified=bool(scope), scope=scope, args=trees,
+                text=cpp_implicit.IMPLICIT)
         expression(r, values, unit, cond)
     elif kind == "lambda_expression":
         add(r, unit, "lambda", "", node, cond, target=r.lambda_id(node, unit))

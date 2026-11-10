@@ -12,6 +12,7 @@ from __future__ import annotations
 from .cpp_names import strip_templates
 from .source import field_of, named_children
 
+IMPLICIT = "implicit"     # a call the language makes: reaching no class of the program is no external use
 OBJECT_DECLARATORS = ("identifier", "function_declarator", "init_declarator")
 ASSIGN_OPERATORS = ("+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=")
 
@@ -30,7 +31,8 @@ def declared_object(r, unit, declarator, type_text: str, node, cond, add) -> Non
             return                                      # `T x = v;` copies a value: FLOW, no constructor written
         args = tuple(r.ir(a, unit) for a in named_children(value))
     scope, _, name = strip_templates(type_text.replace("const ", "")).strip().rpartition("::")
-    add(r, unit, "new", name, node, cond, qualified=bool(scope), scope=scope, args=args)
+    # only a class type has a constructor (default-initialization of a non-class does nothing, C7)
+    add(r, unit, "new", name, node, cond, qualified=bool(scope), scope=scope, args=args, text=IMPLICIT)
     add(r, unit, "destroy", name, node, cond, qualified=bool(scope), scope=scope)
 
 

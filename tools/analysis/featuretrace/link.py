@@ -14,6 +14,7 @@ from __future__ import annotations
 from itertools import count
 
 from . import names
+from .cpp_implicit import IMPLICIT
 from .model import FUNCTION_KINDS
 from .rules import NAME_CALLS
 from .resolve import EXACT, EXTERNAL, LOCAL, UNREACHED, Resolver
@@ -43,8 +44,9 @@ def build(index, progress=None) -> Resolver:
                 rs.keep_edge(edge)                 # a link found once stays: the values that made it still flow
         if progress:
             progress(f"link pass {number}: {len(rs.edges)} links")
-        if previous is not None and len(rs.edges) == len(previous.edges):
-            return rs
+        same_links = previous is not None and len(rs.edges) == len(previous.edges)
+        if same_links and rs.typer.signature() == previous.typer.signature():
+            return rs                               # no link and no value grew: the fixpoint
         previous = rs
 
 
@@ -107,7 +109,7 @@ def link_ref(rs, unit, ref) -> None:
     if kind == "call" and ref.name in NAME_CALLS and ref.args:
         by_value(rs, unit, ref)
     if how in (EXTERNAL, LOCAL, UNREACHED):
-        if how == EXTERNAL and kind in ("call", "new", "name", "emit"):
+        if how == EXTERNAL and kind in ("call", "new", "name", "emit") and ref.text != IMPLICIT:
             rs.external[unit.gid].add(ref.name)
         elif how == UNREACHED and kind in ("call", "name", "emit", "read", "write"):
             rs.unreached[unit.gid].add(ref.name)
@@ -167,7 +169,8 @@ def implicit_construction(rs) -> None:
                 rs.link(unit.gid, gid, "call", site, EXACT)
         for gids in ix.members[cls.key].values():
             for member in (ix.units[g] for g in gids):
-                key = ix.cpp_class(member.type_text, cls.key, member.file) if member.kind == "field" and                     member.type_text and "*" not in member.type_text and "&" not in member.type_text else None
+                held = member.kind == "field" and member.type_text and not set("*&") & set(member.type_text)
+                key = ix.cpp_class(member.type_text, cls.key, member.file) if held else None
                 for gid in rs.keep(ix.members[key].get(ix.classes[key].name, []), "func", unit.file) if key else []:
                     rs.link(unit.gid, gid, "call", site, EXACT)
 

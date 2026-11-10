@@ -45,6 +45,7 @@ class Resolver:
         self.out = defaultdict(list)
         self.inn = defaultdict(list)
         self.flows = previous.inn if previous is not None else defaultdict(list)
+        self.typer.previous = previous.typer.values() if previous is not None else {}
         self.external = defaultdict(set)    # unit gid -> names it uses that no code defines (engine, library)
         self.unreached = defaultdict(set)   # unit gid -> members used on a receiver no value of the code reaches
 
