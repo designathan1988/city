@@ -26,11 +26,12 @@ void put_param(const RID &inst, const char *name, float value) {
 	if (has_them && inst.is_valid()) RenderingServer::get_singleton()->instance_geometry_set_shader_parameter(inst, name, value);
 }
 
-void range(const MeshDraw &d, float begin, float end, float begin_margin = 0) {
-	if (d.inst.is_valid())
-		RenderingServer::get_singleton()->instance_geometry_set_visibility_range(d.inst, begin, end, begin_margin, 0,
-				RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
+// The draws of one sub-chunk hand over to one another at a distance measured to its one box, with no margin on either side: with a margin and
+// the fade disabled the engine keeps a state for each instance (docs: a hysteresis), and of two that hand over both could stand drawn, or neither.
+void range(const RID &inst, float begin, float end) {
+	if (inst.is_valid()) RenderingServer::get_singleton()->instance_geometry_set_visibility_range(inst, begin, end, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
 }
+void range(const MeshDraw &d, float begin, float end) { range(d.inst, begin, end); }
 } // namespace
 
 void BuildingRenderer::set_ranges(const CityState &s) {
@@ -80,14 +81,16 @@ float BuildingRenderer::far_error_m() const {
 }
 
 // Chunk instances: near and mid hand over at the near end, once the near level stands: until then the mid level draws from
-// the eye, or a camera that jumps in sees a hole. The mid level has no end of its own (the chunk is shown or left to the far
-// mesh as a whole: show). The far instance keeps no range (its chunk_mask hides the detailed chunks).
+// the eye, or a camera that jumps in sees a hole. They change at that one distance, whole: a dissolve of the near level over the mid one by
+// screen noise stayed grain on every building of its band (the two levels differ pixel by pixel, and no temporal filter sums that away). The
+// mid level has no end of its own (the chunk is shown or left to the far mesh as a whole: show). The far instance keeps no range (its
+// chunk_mask hides the detailed chunks).
 void BuildingRenderer::ranges(Chunk &ch) const {
 	// A chunk with a building cut open draws its near level at any distance and hides its mid level (the far mesh stands aside).
 	for (int i = 0; i < SUB_COUNT; i++) {
 		range(ch.near[size_t(i)], 0, ch.cut ? 0 : near_end_ * detail_scale_);
 		range(ch.parts[size_t(i)], 0, parts_end_ * detail_scale_);
-		range(ch.mid[size_t(i)], ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ - look_.level_fade_m : 0, 0);
+		range(ch.mid[size_t(i)], ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ : 0, 0);
 	}
 	for (size_t i = 0; i < SUB_COUNT; i++) {
 		// a box throws its shadow as long as it stands; the balcony pieces, fine as they are, to lod.cast_props_m
@@ -95,12 +98,11 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 		// the parts stand on the near shell: past it the mid level draws its own, or they would hang in the air
 		for (size_t b = 0; b < BAND_DRAWS; b++) ch.bands[i][b].range(0, (ch.cut ? band_end_[b] : std::min(band_end_[b], near_end_)) * detail_scale_);
 	}
-	// the mid level stands up a band before the near one ends: the near one dissolves over it (fade_levels)
-	const float mid_from = ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ - look_.level_fade_m : 0;
+	const float mid_from = ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ : 0; // where the near level ends
 	for (auto &sub : ch.mid_draws) {
-		sub[MID_BAYS].range(mid_from, bay_end_);
-		sub[MID_BOXES].range(mid_from, band_end_[MID_SOLID_BAND - 1]); // the thin ones: as far as the widest of their band is drawn
-		sub[MID_SOLIDS].range(mid_from, 0);
+		range(sub[MID_BAYS].inst, mid_from, bay_end_);
+		range(sub[MID_BOXES].inst, mid_from, band_end_[MID_SOLID_BAND - 1]); // the thin ones: as far as the widest of their band is drawn
+		range(sub[MID_SOLIDS].inst, mid_from, 0);
 		for (const MultiMeshDraw &d : sub) put_param(d.inst, BACK_PARAM, look_.level_back_m);
 	}
 	for (const MeshDraw &d : ch.mid) put_param(d.inst, BACK_PARAM, look_.level_back_m);
@@ -108,11 +110,10 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 		for (const ShadowTwin &d : *casts)
 		if (d.inst.is_valid())
 			RenderingServer::get_singleton()->instance_geometry_set_visibility_range(d.inst, mid_from, 0, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
-	// Where the bays end, by the margin of theirs: the engine's hysteresis moves each edge by the way the eye comes, and with no margin here a
-	// camera coming in lost the flat before the bays were back, and for those metres the plain side behind them stood bare.
+	// The openings and the flat are the same cells of the same walls in one plane: exactly one of the two is drawn, by the same distance.
 	// Until the chunk's openings stand (their own level, streamed by their reach) the flat draws from the mid level's start: no wall is bare.
 	const float flat_from = ch.built[LEVEL_BAYS] ? bay_end_ : mid_from;
-	for (MeshDraw &d : ch.flat) range(d, ch.cut ? NEVER_M : flat_from, 0, flat_from * RANGE_LINGER_SHARE);
+	for (MeshDraw &d : ch.flat) range(d, ch.cut ? NEVER_M : flat_from, 0);
 	ch.flags.range(0, ch.cut ? 0 : near_end_ * detail_scale_); // the masts' cloths, with the near level they fly from
 }
 

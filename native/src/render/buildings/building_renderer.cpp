@@ -310,7 +310,6 @@ void BuildingRenderer::visit_super(int64_t key, Super &sp, const Vector3 &cam, f
 		else if (ch.built[LEVEL_BAYS] && dc > bay_reach * DROP_K) drop(ch, LEVEL_BAYS);
 		const bool drawn = ch.built[LEVEL_MID] && (ch.detail || far_missing);
 		if (drawn != ch.shown) show(ch, drawn);
-		if (drawn && ch.built[LEVEL_NEAR] && !ch.cut) fade_levels(ch, cam);
 		if (drawn) mask |= 1 << ((key_y(ck) - sz) * CHUNKS_PER_SUPER + (key_x(ck) - sx));
 		if (levels == 0) return;
 		std::lock_guard<std::mutex> lk(queue_mutex_);
