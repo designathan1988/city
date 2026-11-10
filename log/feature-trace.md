@@ -145,3 +145,22 @@ types (flagged `candidates`; `--exact` leaves them out).
 `gd_body`, `gd_calls`, `cpp_read`, `cpp_body`, `cpp_expr`, `cpp_names`, `engine_read`, `index`, `typer`, `resolve`, `link`,
 `program`, `seeds`, `walk`, `report`); tests `tools/analysis/featuretrace/tests/test_trace.py` (18, one per rule) on
 `tests/fixture`. **Changed:** `log/mapa.md`, this log. Tests: `python -m unittest discover -s tools/analysis/featuretrace/tests -t tools/analysis`.
+
+## The tracer rebuilt on the trace rules (2026-11-10 16:50, commits 9905aae2..HEAD)
+Owner's order: research every reserved word and construct first, record it in a table, then implement the general
+rule, no case-by-case fixes, for any project large or small. Research: `log/trace-rules.md` (Godot 4.7 GDScript and
+GDExtension docs, cppreference, through context7); plan: `log/trace-rules-plan.md`; progress and rulings:
+`log/trace-rules-progress.md`. Skills: executing-plans, test-driven-development, verification-before-completion.
+
+What changed, by rule: every construct of both grammars (85 + 206) has a row and a handler, enforced by tests; every
+expression is an expression tree built by its construct (no text markers); an untyped name holds every value that
+flows into it (assignments, arguments at each call site, returns, container puts, loop elements); a name no code
+defines is the engine's; C++ adds argument-dependent lookup and the translation unit; the engine's constructor by name
+(ClassDB.instantiate) was researched before it was coded (G6). There are no candidate links: a receiver no value reaches
+is reported as a fact of the code.
+
+Verified (51 tests, gates OK) and run on three codes: the fixture (every rule), the city (1128 files, 25673
+definitions, 102655 links, 9 s; the road chain traced by hand above is all there, back to `_unhandled_input`, consumers
+`RenderWorld::drain_log`, `traffic::apply_network_changes`, `CityCore::snapshot`; 0 uses on an unreached receiver), and
+third-party code (`project/addons/terrain_3d`, 36 files: `_on_tool_changed` back through the `tool_changed` signal to the
+engine's `pressed`, exact where the old tool gave two candidates).

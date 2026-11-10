@@ -89,6 +89,11 @@ class Trace(unittest.TestCase):
         handler = walk.back(self.rs, [self.gid("Store._on_built")])
         self.assertIn(self.gid("fx::Core::build_road"), handler.reached)
 
+    def test_constructor_is_init(self):
+        # GDScript: `func _init()` is the constructor; `T.new()` reaches it
+        self.assertEqual(seeds.label(self.ix, self.gid("ToolBase._init")), "ToolBase._init")
+        self.assertIn("ToolBase._init", self.edges("Controller.flows", "new"))
+
     def test_extends_an_inner_class_of_a_file(self):
         self.assertEqual(self.edges("menu.open")["outer.gd.Inner.greet"].how, "exact")
 

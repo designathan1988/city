@@ -119,7 +119,9 @@ class GdReader:
                 unit.types[name] = [self.ir(default, unit, cls)] if default is not None else []
 
     def function(self, node, cls: ClassFact) -> None:
-        unit = self.unit("func", self.src.text(field_of(node, "name")), cls.key, node)
+        name = field_of(node, "name")
+        # the constructor (`func _init()`): the grammar writes `_init` as a keyword, the language calls it `_init`
+        unit = self.unit("func", self.src.text(name) if name is not None else "_init", cls.key, node)
         unit.static = any(c.type == "static_keyword" for c in node.children)
         ret = field_of(node, "return_type")
         unit.type_text = self.src.text(ret) if ret is not None else ""
