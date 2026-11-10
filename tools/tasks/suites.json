@@ -285,6 +285,7 @@
     {"name": "model_test", "scene": "tests/core/model_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "city_mass_test", "scene": "tests/core/city_mass_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "job_pool_test", "scene": "tests/core/job_pool_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "map_hold_test", "scene": "tests/core/map_hold_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "memory_test", "scene": "tests/core/memory_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "far_level_test", "scene": "tests/core/far_level_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {

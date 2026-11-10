@@ -99,6 +99,16 @@ Dictionary CityProbes::job_pool_probe() const {
 	return d;
 }
 
+Dictionary CityProbes::map_hold(bool reset) {
+	Dictionary built;
+	for (const auto &[who, count] : map_hold::tally()) built[String(who.c_str())] = count;
+	if (reset) map_hold::clear();
+	Dictionary d;
+	d["counted"] = CHECKS;
+	d["built"] = built;
+	return d;
+}
+
 // Memory a thread used and freed is the system's again, also where live blocks stand beside it, and a thread that ended leaves no
 // heap behind: a thread takes blocks of a MiB and writes them, frees all but one in `keep_one_in` and gives back, then frees the
 // rest and ends.
@@ -140,6 +150,7 @@ Dictionary CityProbes::allocator_probe() const {
 }
 
 void CityProbes::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("map_hold", "reset"), &CityProbes::map_hold);
 	ClassDB::bind_method(D_METHOD("park_sample"), &CityProbes::park_sample);
 	ClassDB::bind_method(D_METHOD("plan_all_yards"), &CityProbes::plan_all_yards);
 	ClassDB::bind_method(D_METHOD("camera_clear", "at", "radius", "vehicles"), &CityProbes::camera_clear, DEFVAL(true));

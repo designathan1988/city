@@ -2,6 +2,7 @@
 // (simpler and more cache/thread friendly than a pointer quadtree).
 #pragma once
 
+#include "core/checks.h"
 #include "core/math.h"
 
 #include <algorithm>
@@ -40,8 +41,28 @@ struct SpatialHash {
 	};
 	float cell = 64.f;
 	std::unordered_map<int64_t, std::vector<Entry>> cells;
+	// A window of another hash (`window`): the box it answers for. A query that leaves the box would miss what is filed outside
+	// it, so it stops the tests' DLL (core/checks.h); the whole hash of the live city answers for everywhere.
+	bool windowed = false;
+	float win_x0 = 0, win_y0 = 0, win_x1 = 0, win_y1 = 0;
 
 	void clear() { cells.clear(); }
+	// The cells the box touches, copied as they are: a hash that answers for that box alone, each query inside it reporting the
+	// same ids in the same order as this one (what a job copies of the map: sim/state/city_cut.h).
+	SpatialHash window(float minx, float miny, float maxx, float maxy) const {
+		SpatialHash w;
+		w.cell = cell;
+		w.windowed = true;
+		w.win_x0 = minx;
+		w.win_y0 = miny;
+		w.win_x1 = maxx;
+		w.win_y1 = maxy;
+		for_cells(minx, miny, maxx, maxy, [&](int64_t k) {
+			auto it = cells.find(k);
+			if (it != cells.end()) w.cells.emplace(k, it->second);
+		});
+		return w;
+	}
 	void insert_aabb(int id, float minx, float miny, float maxx, float maxy) {
 		const Entry e{ id, cell_of(minx), cell_of(miny) };
 		for_cells(minx, miny, maxx, maxy, [&](int64_t k) { cells[k].push_back(e); });
@@ -58,6 +79,7 @@ struct SpatialHash {
 	// Calls fn(id) for every id in touched cells; an id can be reported more than once.
 	template <typename F>
 	void query(float minx, float miny, float maxx, float maxy, F &&fn) const {
+		answers_for(minx, miny, maxx, maxy);
 		for_cells(minx, miny, maxx, maxy, [&](int64_t k) {
 			auto it = cells.find(k);
 			if (it == cells.end()) return;
@@ -69,6 +91,7 @@ struct SpatialHash {
 	// on each axis, and the id is reported there only.
 	template <typename F>
 	void query_unique(float minx, float miny, float maxx, float maxy, F &&fn) const {
+		answers_for(minx, miny, maxx, maxy);
 		const int qx0 = cell_of(minx), qy0 = cell_of(miny);
 		for_cells(minx, miny, maxx, maxy, [&](int64_t k) {
 			auto it = cells.find(k);
@@ -80,6 +103,10 @@ struct SpatialHash {
 	}
 
 private:
+	void answers_for(float minx, float miny, float maxx, float maxy) const {
+		if (CHECKS && windowed && (minx < win_x0 || miny < win_y0 || maxx > win_x1 || maxy > win_y1))
+			city_stop("a query past the box of the map a job copied");
+	}
 	int cell_of(float v) const { return int(std::floor(v / cell)); }
 	template <typename F>
 	void for_cells(float minx, float miny, float maxx, float maxy, F &&fn) const {

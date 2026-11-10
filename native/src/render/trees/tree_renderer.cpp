@@ -192,7 +192,7 @@ void TreeRenderer::submit(const CityState &s, int64_t key, float priority, bool 
 	s.jobs->submit(job, priority, [this, &s, &t, key, job, ticket, priority, far]() {
 		std::shared_ptr<Built> b;
 		{
-			std::shared_lock<std::shared_mutex> map(s.map_mutex);
+			MapRead map(s);
 			b = far ? build_far(s, key) : build_near(s, key);
 		}
 		b->key = key;

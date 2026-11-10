@@ -36,6 +36,9 @@ public:
 	bool amber_stops(float v, float stop_m, float top, float left, int type) const;
 	float amber_wanted(float kmh) const;
 	godot::Dictionary job_pool_probe() const;
+	// Tests: the vertices and instances builders took while their thread held the map, by job lane, since the last `reset`
+	// (sim/state/map_hold.h); `counted` false in a DLL that does not count them (the export's).
+	godot::Dictionary map_hold(bool reset);
 	// Tests: a thread of its own takes `mib` MiB of the core's allocator, frees all but one block in `keep_one_in`, gives back,
 	// frees the rest and ends: what the allocator held before, at the most, thinned and after (MiB), and its threads.
 	godot::Dictionary memory_churn(int mib, int keep_one_in) const;

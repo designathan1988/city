@@ -97,7 +97,7 @@ void OverlayRenderer::submit_zone(const CityState &s, int64_t key, float priorit
 		b->ticket = ticket;
 		b->priority = priority;
 		{
-			std::shared_lock<std::shared_mutex> map(s.map_mutex);
+			MapRead map(s);
 			b->r = build_zone_cpu(s, key);
 		}
 		zone_queue_.push(std::move(b));

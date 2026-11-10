@@ -115,7 +115,7 @@ void FogField::work(const CityState &s, float ox, float oz, uint64_t revision, s
 	{
 		// What the job reads, copied while it holds the map: the dabs (when their revision moved), the ground under the texels
 		// it will make.
-		std::shared_lock<std::shared_mutex> map(s.map_mutex);
+		MapRead map(s);
 		def = s.catalog.nature.fog;
 		const Heightfield &hf = s.terrain;
 		half = hf.half_size();
