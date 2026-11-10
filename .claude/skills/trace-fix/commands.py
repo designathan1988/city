@@ -222,7 +222,7 @@ def cmd_rules(_args):
 
 
 def cmd_close(_args):
-    """Closes the trace once no problem is open; says which are, otherwise."""
+    """Closes the trace once no problem is open and the game was photographed and every photo analysed; says what is missing."""
     state = store.load()
     left = [p for p in state["problems"] if p["status"] == OPEN]
     if left:
@@ -233,6 +233,19 @@ def cmd_close(_args):
         out.add(f"{len(left)} problem(s) still open: fix them, or `drop` what the code proved not to be one.")
         out.flush(f"{len(left)} problem(s) still open.")
         sys.exit(1)
+    shots = os.path.join(store.trace_folder(state["slug"]), "photos")
+    names = sorted(n for n in os.listdir(shots) if n.lower().endswith(".png")) if os.path.isdir(shots) else []
+    analysis = os.path.join(shots, "analysis.md")
+    text = open(analysis, encoding="utf-8").read() if os.path.exists(analysis) else ""
+    unseen = [n for n in names if os.path.splitext(n)[0] not in text]
+    if getattr(_args, "no_photos", None):
+        state["no_photos"] = _args.no_photos.strip()
+    elif not names or unseen:
+        fail("a trace closes with the game photographed as it is now and every photo analysed: "
+             + ("no photo was taken: write a look plan and run `photos <plan.json>`" if not names else
+                f"{len(unseen)} photo(s) are not in photos/analysis.md ({', '.join(unseen[:6])}): for each photo, by its name, "
+                "the rules of `rules` one by one and what its crops show")
+             + ". Only a change that cannot reach the screen (a tool, a document) closes with `close --no-photos \"why\"`.")
     state["closed"] = store.now()
     store.save(state)
     print(f"trace {state['slug']} closed.")

@@ -178,6 +178,23 @@ def gaps(entry):
     return out
 
 
+def unnoted(ranges, saw):
+    """The lines of these ranges (read) that no note (`saw`) says anything of: a reading with nothing written down is lost
+    at the next compaction, so it does not count until it is recorded."""
+    noted, out = merged([[s["from"], s["to"]] for s in saw]), []
+    for a, b in merged(ranges):
+        at = a
+        for c, d in noted:
+            if d < at or c > b:
+                continue
+            if c > at:
+                out.append([at, c - 1])
+            at = max(at, d + 1)
+        if at <= b:
+            out.append([at, b])
+    return out
+
+
 def lines_read(entry):
     return sum(b - a + 1 for a, b in merged(entry["ranges"]))
 
@@ -224,8 +241,8 @@ def phase(state):
         return "closed"
     if not state["files"]:
         return "trace"
-    if any(gaps(e) for e in state["files"]):
-        return "read"
+    if any(gaps(e) or unnoted(e["ranges"], e["saw"]) for e in state["files"]):
+        return "read"  # until every line of the flow is read and has its note
     if any(p["status"] == OPEN for p in state["problems"]):
         return "fix"
     return "done"

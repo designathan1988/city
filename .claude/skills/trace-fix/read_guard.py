@@ -101,6 +101,26 @@ def left_in_part(versions, store):
     return all(store.gaps({"ranges": ranges, "lines": total}) for total, ranges in versions.values())
 
 
+def unrecorded(seen, store):
+    """(trace, file, first line, last line) of what this reader read on the flow of an open trace with no note of it."""
+    on_flow = {}  # file -> [first open trace that has it on its flow, every note any open trace holds of it]
+    for slug in sorted(os.listdir(store.TRACES)) if os.path.isdir(store.TRACES) else []:
+        if not os.path.exists(store.ledger_path(slug)):
+            continue
+        with open(store.ledger_path(slug), encoding="utf-8") as f:
+            state = json.load(f)
+        if state.get("closed"):
+            continue
+        for entry in state.get("files", []):
+            if entry["path"] in seen:
+                on_flow.setdefault(entry["path"], [slug, []])[1].extend(entry.get("saw", []))
+    out = []
+    for file, (slug, notes) in sorted(on_flow.items()):  # a reading is recorded once one open trace holds its note
+        mine = [r for _, ranges in seen[file].values() for r in ranges]
+        out += [(slug, file, a, b) for a, b in store.unnoted(mine, notes)]
+    return out
+
+
 def ignored_by_git(paths, store):
     """The ones of these paths git ignores (builds, fetched dependencies, outputs): not the repository's own files."""
     import subprocess
@@ -129,6 +149,16 @@ def guard(event, proof, store):
         gaps = [] if other in ignored else unread_now(other, seen, store)
         if gaps:
             missing.append((other, gaps, "opened and left in part"))
+    asked = os.path.abspath((event.get("tool_input") or {}).get("file_path") or "")
+    bare = [] if os.path.normcase(asked).startswith(os.path.normcase(os.path.abspath(store.TRACES)) + os.sep) else unrecorded(seen, store)
+    if bare:  # the record itself (a file of the trace folder) is always writable: it is how this is settled
+        print("trace-fix: this edit is refused. You read these lines of a trace's flow and recorded nothing of what they do; a "
+              "reading that is not written down is lost at the next compaction and has to be done again.\n"
+              "Record them now, in one `ledger.py record <file.json>`: for each, a `saw` (who calls it and from where, thread, "
+              "lock, state read and written, what it calls) and every problem seen there with its `fix`. Then send the edit again:\n"
+              + "\n".join(f"  trace {slug}: {file} lines {a}-{b}" for slug, file, a, b in bare[:store.BATCH_CHUNKS])
+              + (f"\n  ... and {len(bare) - store.BATCH_CHUNKS} more." if len(bare) > store.BATCH_CHUNKS else ""), file=sys.stderr)
+        return REFUSED
     if not missing:
         return 0
     calls = []

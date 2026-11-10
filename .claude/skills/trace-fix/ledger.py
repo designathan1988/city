@@ -2,8 +2,8 @@
 
 One trace per problem, in dist/trace/<slug>/ledger.json: the request, the files on the flow in the order the code
 runs, the line ranges read with what each chunk does, the problems found, the causes they are grouped under and
-the fixes. It survives compaction and new sessions (`resume`, always a short answer). It asks for nothing before a fix: it keeps the
-memory of the work, it does not police it.
+the fixes. It survives compaction and new sessions (`resume`, always a short answer). Two things it holds: a line read counts
+only once its note is recorded, and a trace closes with the game photographed and every photo analysed.
 What each command does: commands.py. The flow found by script: route.py. A cause's fix card: card.py. Every writer of a state: writers.py. The changes a trace accepts: operations.py. State and paths: store.py.
 Proof of reading and notes kept by content: proof.py. Output: views.py. Photos and their crops: photos.py. The hooks that
 record every Read and refuse an edit of what was not read whole: read_guard.py.
@@ -135,7 +135,9 @@ def main():
     p.add_argument("--all", action="store_true", help="fixed and dropped ones too")
     p.add_argument("--from", dest="start", type=int, default=1, help="continue at this problem of the listing")
     p.set_defaults(fn=commands.cmd_problems)
-    sub.add_parser("close", help="close the trace once no problem is open").set_defaults(fn=commands.cmd_close)
+    p = sub.add_parser("close", help="close the trace: no problem open, the game photographed and every photo analysed")
+    p.add_argument("--no-photos", help="why the change cannot reach the screen (a tool, a document)")
+    p.set_defaults(fn=commands.cmd_close)
     p = sub.add_parser("photos", help="photograph the game as it is now on a look plan (hidden, under a deadline) and crop every photo")
     p.add_argument("plan", help="a JSON plan of look.gd's steps: views from near, mid and far, by day and by night, a shot each")
     p.add_argument("--out", help="where the photos go (default: the trace's folder, photos/)")

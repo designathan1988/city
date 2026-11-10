@@ -80,8 +80,15 @@ def next_step(state, out):
                 "(one for what the player does, one for what the player sees), `writers`, or `flow <file> --why \"...\"`.")
     elif now == "read":
         batch = store.next_chunks(state)
+        bare = [(e["path"], a, b) for e in state["files"] for a, b in store.unnoted(e["ranges"], e["saw"])]
+        if bare:
+            out.add(f"RECORD NOW: {len(bare)} stretch(es) of the flow were read and nothing was written of them. A reading counts only "
+                    "once recorded: one `record <file.json>` with a `saw` for each (who calls it, thread, lock, state read and written, "
+                    "what it calls), and the problems seen there. Edits are refused until then.")
+            for path, a, b in bare:
+                if not out.add(f"  {path} lines {a}-{b}"):
+                    break
         if not batch:
-            out.add("DO NOW: the flow is read. Fix the problems recorded, in the code, at their cause; test at the end.")
             return
         lines = sum(b - a + 1 for _, a, b in batch)
         out.add(f"DO NOW: read the next batch ({len(batch)} chunk(s), {lines} lines): one Read call each, in parallel.")

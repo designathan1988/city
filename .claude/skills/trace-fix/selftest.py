@@ -149,7 +149,16 @@ def main():
             check("export", ledger("export"), 0)
             check("export wrote the report and the notes",
                   [os.path.exists(os.path.join(traces, "t", n)) for n in ("report.md", "notes.md")], [True, True])
-            check("close", ledger("close"), 0)
+            check("close without a photo of the game", ledger("close"), 1)
+            shots = os.path.join(traces, "t", "photos")
+            os.makedirs(shots)
+            open(os.path.join(shots, "01-street_near.png"), "wb").close()
+            with open(os.path.join(shots, "analysis.md"), "w", encoding="utf-8") as f:
+                f.write("# another photo")
+            check("close with a photo nobody analysed", ledger("close"), 1)
+            with open(os.path.join(shots, "analysis.md"), "w", encoding="utf-8") as f:
+                f.write("## 01-street_near: B1 no body in another: the three cars of crop r2c2 stand apart")
+            check("close with every photo analysed", ledger("close"), 0)
             check("resume --hook after the close is silent", (ledger("resume", "--hook"), ledger.out), (0, ""))
 
             # ---- reuse of a reading by another trace
@@ -235,6 +244,18 @@ def main():
                   (edit(edited, "reader"), "lab.ts offset=6 limit=25" in hook.err), (2, True))
             tool_read(os.path.join(reference, "lab.ts"), 6, 25, session="reader")
             check("the reference file read to its end, the edit goes through", edit(edited, "reader"), 0)
+
+            # ---- a reading counts only once it is recorded
+            check("a trace of its own for it", (ledger("open", "unwritten", "--request", "r"), ledger("flow", late, "--why", "w")), (0, 0))
+            tool_read(late, session="reader")
+            check("the flow read and nothing written: the trace still asks for the record",
+                  (ledger("status"), "RECORD NOW" in ledger.out, "phase: read" in ledger.out), (0, True, True))
+            check("and every edit is refused until it is", (edit(edited, "reader"), "recorded nothing" in hook.err, "late.txt lines 1-22" in hook.err),
+                  (2, True, True))
+            check("the record itself can always be written", hook("PreToolUse", "Write", os.path.join(traces, "unwritten", "rec.json"), "reader"), 0)
+            check("recorded, the trace moves on and the edit goes through",
+                  (ledger("read", late, "1", "22", "--saw", "twenty-two lines, called by nobody"), edit(edited, "reader")), (0, 0))
+            check("a change that cannot reach the screen closes with its reason", ledger("close", "--no-photos", "a text file"), 0)
 
             # ---- photos are cut into enlarged tiles
             try:

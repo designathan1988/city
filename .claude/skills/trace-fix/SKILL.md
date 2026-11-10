@@ -30,6 +30,9 @@ same edit again):
 - while a file that you opened is left read in part, every edit is refused: a file of the repository, or of a
   reference tree outside it (`references.json`: the reference game, read for what the game must do, never copied).
 
+- a line of the flow that you read counts only once its note is recorded: until then the trace says `RECORD NOW`
+  with the lines, and every edit is refused (the record file itself can always be written).
+
 `cat`, `sed`, `grep` and an agent's reading are not a reading. Files are changed with Edit and Write, never by a shell
 command.
 
@@ -154,7 +157,8 @@ When every problem of this trace is fixed:
    wrong colours, hard level changes, shadows detached, lights with no source, things missing), with the crop where a
    defect shows. "Looks fine" is not an analysis.
 4. **Every defect seen is a problem**, whoever caused it: `$L problem` it, trace it (step 2) and fix it. Then
-   `$L close`, the project's close (CLAUDE.md: both DLLs, `quick.sh --ready`, the gates, the executable, the record of
+   `$L close`: it closes only with photos taken and every photo named in `analysis.md` (a change that cannot reach
+   the screen, a tool or a document: `close --no-photos "why"`). Then the project's close (CLAUDE.md: both DLLs, `quick.sh --ready`, the gates, the executable, the record of
    the line), commit and push.
 
 ## Common mistakes
