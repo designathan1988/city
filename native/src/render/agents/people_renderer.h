@@ -2,8 +2,9 @@
 // level, refilled every frame. A body of the pedestrian's age, tints and phase come from its look hash (Roadcraft looks.ts);
 // the walk phase follows the metres walked over the variation's stride, and one standing plays the idle or what the simulation says
 // they are doing (PedAct), with what that holds in the hand (held_things.h). Past blob_from_m
-// a person casts no real shadow: a soft disc lies under it (material "people_blob"). Material "people"
-// (data/render/materials.json), settings in data/render/agents.json "people".
+// a person is its coarsest mesh casting no real shadow, a soft disc under it (material "people_blob"); where the whole figure
+// stands under card_below_px on the screen (render/detail.h, the frame's own lens) it is the card of its pictures
+// (material "people_far"). Material "people" (data/render/materials.json), settings in data/render/agents.json "people".
 #pragma once
 
 #include "render/agents/agent_meshes.h"
@@ -11,6 +12,7 @@
 #include "render/agents/helmets.h"
 #include "render/agents/body_renderer.h"
 #include "render/agents/people_asset.h"
+#include "render/detail.h"
 #include "render/row_keeper.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
@@ -64,9 +66,22 @@ public:
 	// Returns how many walkers were drawn.
 	int update(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius);
 	void set_floor(int level) { floor_ = level; } // the nearest level the graphics tier allows
+	void set_view(const DetailView &view) { view_ = view; } // the frame's lens, before seat and update
 	BodyRenderer &bodies() { return bodies_; }
 	int variation_of(uint32_t look, int age) const; // which body a walker is drawn with
-	int shown(int level) const; // people drawn at this level on the last frame
+	int shown(int level) const; // people drawn at this slot on the last frame
+	// The probes: how many slots a body has (its lods, the shadowless mesh, the card), and from how far a body `height` tall is a card
+	// on this frame's lens (0: at any distance or at none, an orthographic view).
+	int levels() const { return slots(); }
+	float card_from_m(float height) const { return view_.ready() && view_.ortho_px_per_m <= 0 ? float(height * view_.px_per_m_at_1m / card_below_px_) : 0.f; }
+	float blob_from_m() const { return blob_from_m_; }
+	float tallest_m() const;
+	// The probes, of the walkers of the last frame: the pixels the tallest-standing card takes and the fewest a mesh takes
+	// (0: none drawn), against the card's pixels and the hold of a slot's edge.
+	float card_px_most() const { return card_px_most_; }
+	float mesh_px_least() const { return mesh_px_least_; }
+	float card_below_px() const { return card_below_px_; }
+	float level_hold() const { return level_hold_; }
 	// For the tests and the captures: the file's clips, the first body's fit in each; and everybody at rest in clip `name`.
 	godot::Array clips() const;
 	bool show_clip(const godot::String &name);
@@ -75,12 +90,16 @@ private:
 	PeopleAsset asset_;
 	BodyRenderer bodies_;
 	godot::RID scenario_, material_, far_material_;
-	std::vector<MultiMeshDraw> draws_; // body * (lods + 1) + level; the last, the far card casting no shadow
+	std::vector<MultiMeshDraw> draws_; // body * slots() + level
 	std::vector<InstanceRows> bufs_;
-	// The slot of a variation's level in draws_ and bufs_: its lods, then the far mesh casting no shadow.
-	int held_level(uint64_t key, float dist);
+	// A walker's slot at `dist`, kept until it is past the edge by the hold; `height` the body's, for the card's pixels.
+	int held_level(uint64_t key, float dist, float height);
 	float level_hold_ = 0;
-	size_t slot(size_t variation, int level) const { return variation * size_t(asset_.lods + 1) + size_t(level); }
+	// A body's slots: its lods (casting), the coarsest mesh again casting nothing (past blob_from_m_), the card.
+	int shadowless() const { return asset_.lods; }
+	int card_slot() const { return asset_.lods + 1; }
+	int slots() const { return asset_.lods + 2; }
+	size_t slot(size_t variation, int level) const { return variation * size_t(slots()) + size_t(level); }
 	std::vector<float> lod_m_; // camera distance where each level ends
 	std::vector<int> by_age_[PED_AGES]; // the variations of each age
 	OwnedMesh blob_mesh_;
@@ -88,6 +107,11 @@ private:
 	InstanceRows blob_buf_;
 	godot::RID blob_material_;
 	float blob_from_m_ = 0, blob_radius_m_ = 0, blob_lift_m_ = 0;
+	float card_below_px_ = 0; // agents.json people.card.below_px
+	float card_px_most_ = 0, mesh_px_least_ = 0; // the last frame's walkers (probes)
+	DetailView view_;
+	// The slot a body `height` tall takes at `dist`: a mesh level, the shadowless mesh past blob_from_m_, or the card under card_below_px_.
+	int slot_at(float dist, float height) const;
 	float view_reach_m_ = 0; // agents.json people.view_reach_m
 	int seat_clips_[int(SeatPose::COUNT)] = {}, stop_clips_[int(SeatPose::COUNT)] = {}; // each pose's clip, in PeopleAsset::clips' order
 	void set_faces(const godot::RID &material) const;
@@ -101,7 +125,7 @@ private:
 	HeldThings held_;
 	Helmets helmets_;
 	void set_tables(const godot::RID &material) const; // what any material that poses a person reads
-	// A body's level by the distance; `blob`: past blob_from_m_, where the far mesh casts no shadow.
+	// A body's mesh level by the distance (lod_m_), from the tier's floor.
 	int level_at(float dist) const;
 	// The instance of a body at `p`.
 	void place(uint64_t key, int variation, int slot_level, const Pose &p, uint32_t look, float doing, float phase, float pose_code, bool frightened = false);

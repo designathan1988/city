@@ -306,6 +306,7 @@
      "timeout_s": 600
     },
     {"name": "people_test", "scene": "tests/core/people_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "people_levels_test", "scene": "tests/core/people_levels_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "strike_test", "scene": "tests/core/strike_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "shoot_test", "scene": "tests/core/shoot_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "transit_test", "scene": "tests/core/transit_test", "renderer": "gl_compatibility", "timeout_s": 600},

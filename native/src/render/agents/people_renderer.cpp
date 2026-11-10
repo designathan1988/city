@@ -1,6 +1,6 @@
-// Fills one instance buffer per (body, level) every frame. Look hash bits: body 24..31; the low ones spread the idles. INSTANCE_CUSTOM =
-// (body, walk frames, a seed, walk phase); on the far card (body, its height, the seed, 0). The instance colour's alpha: the share of the
-// walk in the pose, or from CLIP_CODE_BASE a clip held (somebody in a vehicle).
+// Fills one instance buffer per (body, slot) every frame. Look hash bits: body 24..31; the low ones spread the idles. INSTANCE_CUSTOM =
+// (body, walk frames, a seed, walk phase); on the card (body, its height, the seed, 0). The instance colour's alpha: the share of the
+// walk in the pose, or from CLIP_CODE_BASE a clip held (somebody in a vehicle). Which slot a person takes: people_levels.cpp.
 #include "render/agents/people_renderer.h"
 
 #include "core/color.h"
@@ -172,13 +172,14 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, co
 	rs->material_set_param(far_material_, "frames", float(asset_.card_frames));
 	const Dictionary blob = people["blob"];
 	blob_from_m_ = float(blob["from_m"]);
+	card_below_px_ = float(Dictionary(people["card"])["below_px"]);
 	view_reach_m_ = float(people["view_reach_m"]);
 	blob_radius_m_ = float(blob["radius_m"]);
 	blob_lift_m_ = float(blob["lift_m"]);
 	MeshBuilder disc;
 	disc_mesh(disc);
 	blob_mesh_ = disc.bake(blob_material_).shared();
-	size_t n = asset_.variations.size() * size_t(asset_.lods + 1);
+	size_t n = asset_.variations.size() * size_t(slots());
 	draws_.assign(n, MultiMeshDraw());
 	bufs_.assign(n, InstanceRows());
 	keeper_.clear();
@@ -232,20 +233,6 @@ void PeopleRenderer::begin() {
 	helmets_.begin();
 }
 
-int PeopleRenderer::level_at(float dist) const {
-	int lod = std::min(floor_, asset_.lods - 1);
-	while (lod < asset_.lods - 1 && dist > lod_m_[size_t(lod)]) lod++;
-	return lod;
-}
-
-// A walker keeps its level until it is past the edge by the hold, or it flickers there.
-int PeopleRenderer::held_level(uint64_t key, float dist) {
-	const auto at = [&](float d) { return d > blob_from_m_ ? asset_.lods : level_at(d); };
-	const int now = at(dist), place = keeper_.draw_of(key), was = place < 0 ? now : place % (asset_.lods + 1);
-	if (was == now) return now;
-	return now > was ? (at(dist / (1 + level_hold_)) > was ? now : was) : (at(dist * (1 + level_hold_)) < was ? now : was);
-}
-
 int PeopleRenderer::variation_of(uint32_t look, int age) const {
 	const std::vector<int> &bodies = by_age_[age >= 0 && age < PED_AGES ? age : int(PedAge::ADULT)];
 	return bodies.empty() ? 0 : bodies[size_t((look >> VARIATION_SHIFT) % uint32_t(bodies.size()))];
@@ -254,7 +241,7 @@ int PeopleRenderer::variation_of(uint32_t look, int age) const {
 void PeopleRenderer::place(uint64_t key, int v, int level, const Pose &p, uint32_t h, float doing, float phase, float pose_code, bool frightened) {
 	const PersonVariation &pv = asset_.variations[size_t(v)];
 	const size_t k = slot(size_t(v), level);
-	agent_row(keeper_.place(key, int(k), bufs_[k]), p, 1.f, float(v), level == asset_.lods ? pv.height : doing, frightened ? -(float(h & SEED_MASK) + FRIGHT_MARK) : float(h & SEED_MASK), phase, pose_code);
+	agent_row(keeper_.place(key, int(k), bufs_[k]), p, 1.f, float(v), level == card_slot() ? pv.height : doing, frightened ? -(float(h & SEED_MASK) + FRIGHT_MARK) : float(h & SEED_MASK), phase, pose_code);
 }
 
 void PeopleRenderer::seat(uint64_t key, const Pose &vehicle, const SeatSpot &spot, uint32_t look, float dist, float phase, bool stopped) {
@@ -270,19 +257,21 @@ void PeopleRenderer::seat(uint64_t key, const Pose &vehicle, const SeatSpot &spo
 	at.x += vehicle.fz * off.x - vehicle.fx * up * off.y + vehicle.fx * flat * off.z;
 	at.y += flat * off.y + up * off.z;
 	at.z += -vehicle.fx * off.x - vehicle.fz * up * off.y + vehicle.fz * flat * off.z;
-	const int level = dist > blob_from_m_ ? asset_.lods : level_at(dist);
+	// a rider stays a mesh at any distance: the card's pictures stand, they do not sit
+	const int level = dist > blob_from_m_ ? shadowless() : level_at(dist);
 	place(PEOPLE_DENSE_KEYS + key, v, level, at, look, 0.f, phase, CLIP_CODE_BASE + float(clip));
-	if (spot.pose == SeatPose::MOTO && level < asset_.lods) agent_row(helmets_.row(key), at, 1.f, float(v), 0.f, float(look & SEED_MASK), phase, CLIP_CODE_BASE + float(clip));
+	if (spot.pose == SeatPose::MOTO) agent_row(helmets_.row(key), at, 1.f, float(v), 0.f, float(look & SEED_MASK), phase, CLIP_CODE_BASE + float(clip));
 }
 
 int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius) {
 	if (draws_.empty()) return 0;
 	const float r2 = radius * radius;
-	const int nv = int(asset_.variations.size()), lods = asset_.lods, levels = lods + 1;
+	const int nv = int(asset_.variations.size()), lods = asset_.lods, levels = slots();
 	const float clock = float(std::fmod(double(f.stamp_ns[POSE_TRAIL - 1]) / NS_PER_S, CLOCK_WRAP_S));
 	RenderingServer::get_singleton()->material_set_param(material_, "idle_clock", clock);
 	RenderingServer::get_singleton()->material_set_param(held_.material(), "idle_clock", clock);
 	int drawn = 0;
+	card_px_most_ = mesh_px_least_ = 0;
 	for (const AgentRecord &rec : f.people) {
 		Pose p = record_pose(rec, at);
 		float dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z, d2 = dx * dx + dz * dz;
@@ -293,8 +282,13 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		int v = bodies[size_t((rec.look >> VARIATION_SHIFT) % uint32_t(bodies.size()))];
 		const PersonVariation &pv = asset_.variations[size_t(v)];
 		float phase = rec.walked / pv.walk_advance;
-		const int level = held_level(rec.id, dist);
-		const bool blob = level == lods;
+		const int level = held_level(rec.id, dist, pv.height);
+		const bool blob = level >= shadowless(); // nothing of it casts: a disc under it
+		if (view_.ready()) {
+			const float px = float(view_.px_of(pv.height, dist));
+			if (level == card_slot()) card_px_most_ = std::max(card_px_most_, px);
+			else mesh_px_least_ = mesh_px_least_ > 0 ? std::min(mesh_px_least_, px) : px;
+		}
 		if (blob) {
 			Pose under = p;
 			under.y += blob_lift_m_;
@@ -319,7 +313,8 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	for (int v = 0; v < nv; v++)
 		for (int l = 0; l < levels; l++) {
 			size_t k = slot(size_t(v), l);
-			draws_[k].set(scenario_, l < lods ? asset_.variations[size_t(v)].lods[size_t(l)].rid : asset_.card.rid, bufs_[k], box, l < lods, LAYER_PEOPLE);
+			const OwnedMesh &mesh = l == card_slot() ? asset_.card : asset_.variations[size_t(v)].lods[size_t(std::min(l, lods - 1))];
+			draws_[k].set(scenario_, mesh.rid, bufs_[k], box, l < lods, LAYER_PEOPLE);
 		}
 	blob_.set(scenario_, blob_mesh_.rid, blob_buf_, box, false, LAYER_PEOPLE);
 	held_.draw(scenario_, box, LAYER_PEOPLE);
@@ -336,12 +331,6 @@ PeopleRenderer::Played PeopleRenderer::crouch_at(int female, float since, float 
 	if (since < down.seconds[female]) return { crouch_down_, once(down, since / down.seconds[female]) };
 	const float turns = (since - down.seconds[female]) / stay.seconds[female];
 	return { act_clips_[int(PedAct::CROUCH)], turns - std::floor(turns) };
-}
-
-int PeopleRenderer::shown(int level) const {
-	int n = 0;
-	for (size_t v = 0; v < asset_.variations.size(); v++) n += bufs_[slot(v, level)].count();
-	return n;
 }
 
 } // namespace city

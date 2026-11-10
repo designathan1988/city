@@ -402,3 +402,31 @@ Defects, recorded here with the line's other closes; no measure of the 24 km cit
 - Photos (`dist/trace/port-from-nov7/photos`, `analysis.md`): the industrial block from near (roofs meet along the
   lots' lines), the loading yards at the town's edge (the docks in a row behind the hall, the lane clear to the yard).
   Seen in them and recorded: people past the meshes' distance are drawn as black rectangles (P46).
+
+## P46 (2026-11-10, night): a person far off is a figure, not a black card
+
+A defect the owner pointed at ("a face preta são as pessoas"); recorded here with the line's other closes.
+
+- Problem: every walker more than 90 m from the eye was drawn as an upright black rectangle. Two decisions:
+  1. `render/agents/people_renderer.cpp` gave a person the card of its pictures from `people.blob.from_m` (90 m), the
+     distance past which a person casts no real shadow; its own header called that slot "the far mesh casting no shadow".
+     A figure stands about 20 pixels tall there. The reference draws the mesh until the whole figure is under 8 device
+     pixels (read for the rule alone, `render/people/personImpostor.ts`).
+  2. `render/shaders/people_far.gdshader` sampled the card's strip (eight views of 32 x 64 texels at the foot of each
+     1,024 texel atlas, black with no coverage round the figure) with no bound on the mip and took the colour as filtered:
+     the brightest texel of a frame falls from 189 at mip 0 to 74 at mip 3 while the coverage spreads over the frame, so
+     the quad passed the alpha scissor nearly whole and nearly black.
+- Fix: a body's slots are its mesh levels, its coarsest mesh casting nothing past `blob.from_m` with the disc under it,
+  and the card only where the figure is under `people.card.below_px` (8) on the frame's own lens (`render/detail.h`
+  `DetailView::px_of`, handed by `RenderWorld::update_agents`); one function chooses (`PeopleRenderer::slot_at`); a rider
+  stays a mesh. The card's shader works the level out from the uv's derivatives, holds it two short of a frame's size in
+  texels and divides the colour by its coverage.
+- Test: `tests/core/people_levels_test` (probe `agent_cost`: `people_slots`, `people_card_px_most`,
+  `people_mesh_px_least`): from 30 m the finest mesh; from 200 m on a 1600 x 900 screen the coarsest mesh casting nothing
+  (81 walkers) and two cards, the tallest 7.15 px against the smallest mesh at 8.15 px; on a 320 x 180 screen 81 cards and
+  the card's distance 64 m. Before the fix every walker past 90 m was a card whatever its size.
+- Photos (`dist/trace/port-from-nov7/photos/00..05-p46_*`, read with their crops in `analysis.md`): the same street from
+  16 m, 120 m, 220 m and 270 m by day and from 120 m and 220 m at night: walkers in their clothes' colours on footways and
+  at crossings, lit by the street lamps at night, no black quad at any distance.
+- Not measured in the 24 km city yet (the batch's one measure comes at its close): the walkers between 90 m and the
+  card's distance are now skinned meshes of the coarsest level where they were two triangles each.

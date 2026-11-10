@@ -73,7 +73,8 @@
   "view_reach_m": 24,
   "asset": "res://assets/people/people.bin", "atlas": "res://assets/people/atlas.bin",
   "lod_m": [40, 1000000000],
-  "blob": {"_doc": "Past from_m a person casts no real shadow and a soft disc lies under it: where a person stands about 20 pixels tall on 1080 lines through a 40 degree lens, as far as the Roadcraft 4.0 draws its crowd with real shadows (radius_m its disc, lift_m clear of the ground).", "from_m": 90, "radius_m": 0.34, "lift_m": 0.03},
+  "blob": {"_doc": "Past from_m a person casts no real shadow and a soft disc lies under it: where a person stands about 20 pixels tall on 1080 lines through a 40 degree lens, as far as the Roadcraft 4.0 draws its crowd with real shadows (radius_m its disc, lift_m clear of the ground). The body is still its coarsest mesh there.", "from_m": 90, "radius_m": 0.34, "lift_m": 0.03},
+  "card": {"_doc": "A person is drawn as the card of its pictures (people_far.gdshader) only where the whole figure stands under below_px pixels on the screen: the Roadcraft 4.0's IMPOSTOR_PIXELS, where the coarsest mesh's error is past a pixel anyway. Measured by the frame's own lens (render/detail.h).", "below_px": 8},
   "clothes": ["#1d2433", "#2b2b2e", "#6d7177", "#e6e4df", "#3b5a8a", "#7d2a2a", "#2f5a3b", "#b79c74", "#5a3d6e", "#cf7a2c", "#8a8f5a", "#9a3c5a", "#2d6f7a", "#d8c9a3", "#4a4f8c", "#c23b32"]
   }
 }

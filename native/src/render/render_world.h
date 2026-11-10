@@ -67,6 +67,7 @@ public:
 	const DetailView &view() const { return view_; }
 	// Vehicles and people near the camera, at the moment `at` of the published poses.
 	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at) {
+		agents_.people().set_view(view_); // the people's card by the pixels a figure takes on this frame's lens
 		agents_.update(f, cam, view, at);
 		transit_.update(f, cam, at);
 	}
