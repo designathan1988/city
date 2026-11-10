@@ -46,11 +46,16 @@ public:
 		}
 	}
 	std::vector<ElementItem> all() const;
+	// What a reader of the box needs (sim/state/city_cut.h): the items of the chunks the box touches. A chunk asked of the copy
+	// past them stops the tests' DLL.
+	Elements cut(float minx, float minz, float maxx, float maxz) const;
 
 private:
 	std::vector<int64_t> chunks_near(float x, float z, float r) const;
 	std::unordered_map<int64_t, std::vector<ElementItem>> cells_;
 	size_t count_ = 0;
+	bool windowed_ = false; // a cut: the chunks it answers for (their columns and rows)
+	int win_x0_ = 0, win_z0_ = 0, win_x1_ = -1, win_z1_ = -1;
 };
 
 } // namespace city

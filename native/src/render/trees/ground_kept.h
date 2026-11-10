@@ -5,7 +5,7 @@
 
 #include "render/kept_by_revision.h"
 #include "render/trees/tree_place.h"
-#include "sim/state/city_state.h"
+#include "sim/state/city_view.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -16,8 +16,9 @@ namespace city {
 class GroundKept {
 public:
 	void set_budget(size_t bytes) { kept_.set_budget(bytes); }
-	// Chunk `key`'s ground; the caller holds the map's shared lock.
-	std::shared_ptr<const ChunkGround> of(const CityState &s, int64_t key) {
+	// Chunk `key`'s ground, of the city `s` reads at its revision: the live one (its caller holds the map) or a job's cut, whose
+	// ids are the city's own, so a ground made from a cut serves every job of that revision.
+	std::shared_ptr<const ChunkGround> of(const CityView &s, int64_t key) {
 		return kept_.of(s.revision, key, [&]() { return std::make_shared<const ChunkGround>(chunk_ground(s, key)); },
 				[](const ChunkGround &g) { return g.bytes(); });
 	}

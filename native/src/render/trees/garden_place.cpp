@@ -44,7 +44,7 @@ int flowering(const TreeLook &T, Draws &r) { return T.flowering_species[size_t(r
 
 // Where a plant of the garden stands, on the ground under it.
 struct Stand {
-	const CityState &s;
+	const CityView &s;
 	const b40::LotFrame f;
 	std::vector<TreeInstance> &out;
 	Vector3 ground(float x, float y) const {
@@ -104,8 +104,8 @@ void plant_bed(const Stand &at, const TreeLook &T, const b40::LotElement &p, Dra
 bool is_plant(b40::Element kind) { return kind == b40::EL_TREE || kind == b40::EL_SHRUB || kind == b40::EL_HEDGE || kind == b40::EL_FLOWERS; }
 } // namespace
 
-void place_garden(const CityState &s, const TreeLook &T, const Building &rec, GardenView view, std::vector<TreeInstance> &out) {
-	const std::shared_ptr<const std::vector<b40::LotElement>> elements = b40::record_elements(s.buildings.designs, rec);
+void place_garden(const CityView &s, const TreeLook &T, const Building &rec, GardenView view, std::vector<TreeInstance> &out) {
+	const std::shared_ptr<const std::vector<b40::LotElement>> elements = b40::record_elements(s.designs, rec);
 	const Stand at{ s, b40::lot_frame(rec), out };
 	uint32_t k = 0; // the plant's index among the body's plants: its draws
 	for (const b40::LotElement &p : *elements) {

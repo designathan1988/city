@@ -11,7 +11,7 @@ const VIEWS := [[30.0, 25.0, 476.0], [120.0, 35.0, 300.0], [210.0, 15.0, 1400.0]
 const SETTLE_LIMIT_S := 50.0 # real time a view may take to be built (3000 frames of the old 60 Hz loop): StateWait
 ## The producers that build off the lock: each lane (core/job_pool.h job_lane_name) must have built nothing under the map. The
 ## others are named as they are converted (log/performance.md C9); what they still build under it is printed.
-const OFF_LOCK := ["building", "building_super", "roads", "roads_far", "structures", "water", "seams", "props"]
+const OFF_LOCK := ["building", "building_super", "roads", "roads_far", "structures", "water", "seams", "props", "trees_near", "trees_far", "cover"]
 
 
 func _ready() -> void:

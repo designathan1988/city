@@ -19,15 +19,17 @@ CityCut cut_held(const CityState &s, const CutBox &box, unsigned parts) {
 	c.marking_style = s.marking_style;
 	c.revision = s.revision;
 	c.street_revision = s.street_revision;
+	c.seed = s.seed;
 	unsigned ground = GROUND_FINAL;
 	if (parts & CUT_GROUND_BASE) ground |= GROUND_BASE;
 	if (parts & CUT_WATER) ground |= GROUND_WATER;
 	c.ground = s.terrain.ground_patch(box.minx, box.minz, box.maxx, box.maxz, ground);
 	const auto of = [&](unsigned part) { return parts & part ? box : NOWHERE; };
-	const CutBox roads = of(CUT_ROADS), street = of(CUT_STREET), buildings = of(CUT_BUILDINGS);
+	const CutBox roads = of(CUT_ROADS), street = of(CUT_STREET), buildings = of(CUT_BUILDINGS), nature = of(CUT_NATURE);
 	c.roads = s.roads.cut(roads.minx, roads.minz, roads.maxx, roads.maxz);
 	c.street = s.street.cut(street.minx, street.minz, street.maxx, street.maxz);
 	c.buildings = s.buildings.cut(buildings.minx, buildings.minz, buildings.maxx, buildings.maxz);
+	c.nature = s.nature.cut(nature.minx, nature.minz, nature.maxx, nature.maxz);
 	return c;
 }
 

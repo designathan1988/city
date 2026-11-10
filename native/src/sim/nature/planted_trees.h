@@ -4,6 +4,7 @@
 #pragma once
 
 #include "core/grid.h"
+#include "core/id_table.h"
 #include "core/slot_ids.h"
 #include "sim/catalog/nature_types.h"
 
@@ -39,9 +40,12 @@ struct TreeBrush {
 
 class PlantedTrees {
 public:
-	std::vector<PlantedTree> trees;
-	std::vector<TreeClearing> clearings;
+	IdTable<PlantedTree> trees;
+	IdTable<TreeClearing> clearings;
 	void clear();
+	// What a reader of the box needs (sim/state/city_cut.h): the trees and the clearings filed in the cells the box touches,
+	// under their own slots, the copy's hashes answering for the box alone.
+	PlantedTrees cut(float minx, float minz, float maxx, float maxz) const;
 	int live_trees() const { return live_trees_; }
 	int live_clearings() const { return live_clearings_; }
 	int add(const PlantedTree &t); // the slot it took

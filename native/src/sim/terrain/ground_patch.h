@@ -76,6 +76,7 @@ public:
 		return x > -half && x < half && z > -half && z < half;
 	}
 	float x_of(int ix) const { return (float(ix) - float(n()) * 0.5f) * spacing(); }
+	int ix_of(float x) const { return int(std::floor(x / spacing() + float(n()) * 0.5f)); } // as Heightfield::ix_of
 	float height_at(float x, float z) const { return patch_ ? patch_->height_at(x, z) : live_->height_at(x, z); }
 	float final_at(int ix, int iz) const { return patch_ ? patch_->final_at(ix, iz) : live_->final_at(ix, iz); }
 	float base_height_at(float x, float z) const { return patch_ ? patch_->base_height_at(x, z) : live_->base_height_at(x, z); }

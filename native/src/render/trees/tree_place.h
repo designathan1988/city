@@ -37,9 +37,12 @@ struct ChunkGround {
 	} seg_grid, lot_grid;
 	size_t bytes() const; // what it holds, for the memory it is kept by
 };
-ChunkGround chunk_ground(const CityState &s, int64_t key);
-bool near_road(const CityState &s, const ChunkGround &l, float x, float z, float r);
-bool in_lot(const CityState &s, const ChunkGround &l, float margin, float x, float z);
+ChunkGround chunk_ground(const CityView &s, int64_t key);
+bool near_road(const CityView &s, const ChunkGround &l, float x, float z, float r);
+bool in_lot(const CityView &s, const ChunkGround &l, float margin, float x, float z);
+// How far past its chunk a chunk's ground reads the roads and the lots (ChunkGround's margin), and the land (the ecosystem's
+// margin of corners round the square).
+float ground_reach(const Catalog &catalog);
 
 struct SpeciesMix {
 	std::vector<int> species;
@@ -105,14 +108,16 @@ struct FarCard {
 };
 
 // The trees of 256 m chunk `key` on its ground `l` (chunk_ground), near models.
-void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key,
+void place_trees(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key,
 		std::vector<TreeInstance> &out);
 // The far cards of chunk `key` on its ground `l`: the same trees, one card each.
-void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key,
+void place_far(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key,
 		std::vector<FarCard> &out);
+// How far past its chunk the trees of a chunk read the land: the woods' neighbours and jitter, the grade's probes.
+float tree_reach(const TreeLook &T);
 // The trees of the woods within `radius` of (x, z) that clearing `clearing` took (a blow's: they stood before it, they are gone
 // now): what the effects fell there (render/effects EffectWorld TREES).
-void felled_wild(const CityState &s, const TreeLook &T, const TreeKit &kit, float x, float z, float radius, int clearing,
+void felled_wild(const CityView &s, const TreeLook &T, const TreeKit &kit, float x, float z, float radius, int clearing,
 		std::vector<TreeInstance> &out);
 
 } // namespace city

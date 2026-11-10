@@ -443,7 +443,7 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
   crossings, trees, wires and posts drawn; footways meet the lot fronts in paving. Seen, not from this change: no pool of
   light under the street lamps at night (recorded in the ledger).
 
-### C9, first piece (2026-11-10 04:35): the measure of the cause, and what a cut of the city stands on
+### C9, first piece (2026-11-10 04:30, 4e5d2bea): the measure of the cause, and what a cut of the city stands on
 - The check that fails because of C9: `tests/core/map_hold_test` (new). `MapRead` (`sim/state/city_state.h`) is the render's one
   guard of the map's shared lock and counts how deep its thread holds it; in the tests' DLL (`CITY_CHECKS`, `core/checks.h`)
   `MeshBuilder::add` and `mm_push` count every vertex and instance taken while the thread holds the map, by the lane of the job
@@ -466,7 +466,7 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
   `street_power_test`, `street_works_test`, `map_hold_test` pass; gates OK on the changed files. No picture can change yet (the
   jobs still read the live city); photos at the close of C9.
 
-### C9, second piece (2026-11-10 05:10): the roads, the structures, the far roads and the water build off the map lock
+### C9, second piece (2026-11-10 04:51, b9fedc5d): the roads, the structures, the far roads and the water build off the map lock
 - Change: `sim/state/city_view.h` `CityView` (references to the stores a job-path function reads; a `CityState` converts to
   it, so a reader that holds the map calls the same functions) and `sim/state/city_cut.h` `CityCut` with `cut_city` (the one
   place a job takes the map, shared, for the copy alone): the ground of the box as a `GroundPatch`, the roads by
@@ -490,7 +490,7 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
   stops on one that has. Cannot return: a padded record written raw stops the first test that saves.
 - Check: the 55 test scenes and `digest` (equal to the golden) pass; gates OK on the changed files. Photos at the close of C9.
 
-### C9, third piece (2026-11-10 05:40): the ground seams and the street furniture build off the map lock
+### C9, third piece (2026-11-10 05:02, 4c927115 and 97f4a22d): the ground seams and the street furniture build off the map lock
 - Seams (4c927115): `cut_for_seams` (`render/roads/road_cut.h`): the chunk and, whole, the segments whose paving can come
   within a terrain cell of it, with the ground under them. 473,416 -> 0 vertices built under the map. P10's other half (the
   paving outline has no owner: the seam still draws the neighbourhood's roads to find it) stays open.
@@ -508,3 +508,23 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
 - Check: the test scenes and `digest` pass, the scenic capture ran on the tests' DLL with no read past a cut; gates OK.
 - Left in C9: the producers with a queue of their own, which the count does not see yet (cover, trees: P33; overlays: P35;
   transit on the main thread: P34; the shore, canyon, fog and ecology fields; the ruins), and P10's outline owner.
+
+### C9, fourth piece (2026-11-10 05:20): the trees and the ground cover build off the map lock (P33)
+- Cause here: the tree jobs (a chunk's models, a superchunk's cards of sixteen chunks) and the cover job placed every plant with
+  the map held shared: the woods' lattice with its neighbours, the gardens of every lot, the ecosystem, the shore's search.
+- What a cut gained (`CUT_NATURE`, `NatureState::cut`): the paint (`GroundPaint`: its tiles are shared, a brush stroke copies the
+  tile a cut still holds, so a cut costs pointers and no texel), the planted trees and the clearings (`PlantedTrees` on `IdTable`,
+  their hashes windowed), the laid elements of the box's chunks, the nature settings; and the city's seed. `GroundRead` answers
+  the ecosystem and the shore (`compute_ecology`, `shore_level`, `shore_near`). `tree_place`, `garden_place` and `GroundKept`
+  read a `CityView`: a chunk's ground made from a cut serves every job of that revision (the ids are the city's own).
+- `CoverRenderer::submit`: the chunk grown by the ground's reach (`ground_reach`: the lists' margin and the ecosystem's corners)
+  or the shore's search. `TreeRenderer::gather`: the chunk or the superchunk, the segments its chunks own (street trees stand
+  along the whole segment; their furniture kept as a fact) and the lots that stand in it by their half diagonal (a garden is
+  planted over the whole lot), grown by the farthest of `ground_reach`, `tree_reach` (the woods' neighbours, a cell's jitter,
+  the grade's probes) and `road_reach`.
+- Cannot return for these three: the job holds no `CityState` while it places; a read past its cut stops the tests' DLL.
+- Check: `map_hold_test` names trees_near, trees_far and cover: 0 built under the map, the town streamed from three views with no
+  stop; the 56 tasks of `tests`, `digest` (equal to the golden) and the scenic capture pass; gates OK on the changed files.
+- P78 (new, C11's kind, open): the shore field copies and spreads the whole map's water grid again at any change of the land.
+- Left in C9: the overlays (P35), transit (P34), the canyon, fog and ecology fields, the ruins' probe, P10's outline owner, and
+  the gate that forbids `map_mutex` in `native/src/render`.

@@ -7,7 +7,7 @@
 
 #include "sim/catalog/nature_types.h"
 #include "sim/nature/ground_paint.h"
-#include "sim/terrain/heightfield.h"
+#include "sim/terrain/ground_patch.h"
 
 #include <cstdint>
 #include <vector>
@@ -30,7 +30,8 @@ struct EcologyField {
 
 // The ecosystem over the square from (x0, z0), `span` metres a side, in cells of `def.cell_m` (a margin of
 // `def.mean_cells` is read round it so valleys and ridges see past the edge).
-EcologyField compute_ecology(const Heightfield &hf, const GroundPaint &paint, const NatureSettings &nature, const EcologyDef &def,
+// `hf`: the land, the live one or a job's copy of the square and its margin with its natural ground and its water.
+EcologyField compute_ecology(const GroundRead &hf, const GroundPaint &paint, const NatureSettings &nature, const EcologyDef &def,
 		float x0, float z0, float span);
 
 // How much a corner makes a wood: the strata that stand as trees.

@@ -31,7 +31,7 @@ float distance_to(int64_t key, const Vector3 &cam) {
 
 // How much of a kind grows at a point: what the player painted; the grass stands up among the painted scrub and flowers;
 // cactus is the biome's own.
-float density(const CityState &s, const CoverKit &kit, CoverPiece p, const EcologyField &eco, float x, float z) {
+float density(const CityView &s, const CoverKit &kit, CoverPiece p, const EcologyField &eco, float x, float z) {
 	const GroundPaint &g = s.nature.ground;
 	switch (p) {
 		case CoverPiece::ROCKS: return g.cover_at(CoverKind::ROCKS, x, z);
@@ -99,7 +99,7 @@ void CoverRenderer::reset() {
 	pending_ = 0;
 }
 
-void CoverRenderer::place(const CityState &s, int64_t key, const ChunkGround &l, Built &out) const {
+void CoverRenderer::place(const CityView &s, int64_t key, const ChunkGround &l, Built &out) const {
 	if (l.eco.side == 0) return;
 	const bool painted = s.nature.ground.any_cover(), cactus = any_cactus(l.eco);
 	for (int p = 0; p < COVER_PIECES; p++) {
@@ -124,7 +124,7 @@ void CoverRenderer::place(const CityState &s, int64_t key, const ChunkGround &l,
 	}
 }
 
-void CoverRenderer::place_elements(const CityState &s, int64_t key, Built &out) const {
+void CoverRenderer::place_elements(const CityView &s, int64_t key, Built &out) const {
 	const std::vector<ElementItem> *items = s.nature.elements.in_chunk(key);
 	if (!items) return;
 	for (const ElementItem &e : *items) {
@@ -138,7 +138,7 @@ void CoverRenderer::place_elements(const CityState &s, int64_t key, Built &out) 
 }
 
 // The stones of a river, a lake or the coast, on the same lattice rule as the cover and with its rocks' models, drawn apart: they reach further.
-void CoverRenderer::place_shore(const CityState &s, int64_t key, const ChunkGround &l, Built &out) const {
+void CoverRenderer::place_shore(const CityView &s, int64_t key, const ChunkGround &l, Built &out) const {
 	const CoverLook &k = kit_.look(CoverPiece::ROCKS);
 	const int n = int(CHUNK / shore_.spacing_m), cx = key_x(key), cz = key_y(key), first = draws_ + int(models_.all().size());
 	const float step = CHUNK / float(n);
@@ -161,7 +161,7 @@ void CoverRenderer::place_shore(const CityState &s, int64_t key, const ChunkGrou
 }
 
 // The chunk's roads, lots and ecosystem gathered once for both lattices (the shore's stones read no ecosystem).
-std::shared_ptr<CoverRenderer::Built> CoverRenderer::build(const CityState &s, int64_t key) const {
+std::shared_ptr<CoverRenderer::Built> CoverRenderer::build(const CityView &s, int64_t key) const {
 	auto out = std::make_shared<Built>();
 	out->bufs.resize(size_t(draws_) + models_.all().size() + kit_.look(CoverPiece::ROCKS).variants.size());
 	const bool plants = s.nature.nature.region >= 0 || s.nature.ground.any_cover();
@@ -205,11 +205,14 @@ void CoverRenderer::submit(const CityState &s, int64_t key, float priority) {
 	const uint64_t ticket = queue_.revs.ask(key);
 	const JobKey job{ JobLane::COVER, key };
 	s.jobs->submit(job, priority, [this, &s, key, job, ticket, priority]() {
-		std::shared_ptr<Built> b;
-		{
-			std::shared_lock<std::shared_mutex> map(s.map_mutex);
-			b = build(s, key);
-		}
+		// The job copies what its chunk's cover reads (the roads and lots it keeps off, the land with its natural ground and its
+		// water as far as the ecosystem and the shore's search look, the paint, the elements) and places from the copy, the map let go.
+		const CityCut cut = cut_city(s, CUT_ROADS | CUT_BUILDINGS | CUT_NATURE | CUT_GROUND_BASE | CUT_WATER, [&](const CityState &live) {
+			const float x0 = float(key_x(key)) * CHUNK, z0 = float(key_y(key)) * CHUNK;
+			const float reach = std::max(ground_reach(live.catalog), shore_.search_m) + live.terrain.water_spacing_m;
+			return CutBox{ x0, z0, x0 + CHUNK, z0 + CHUNK }.grown(reach);
+		});
+		std::shared_ptr<Built> b = build(cut, key);
 		b->key = key;
 		b->job = job;
 		b->ticket = ticket;

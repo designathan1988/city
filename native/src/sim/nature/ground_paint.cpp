@@ -3,6 +3,7 @@
 // the same dab lays its own (Roadcraft render/terrain.ts rasterPaint, rasterGeology: every layer moves towards the dab's at once).
 #include "sim/nature/ground_paint.h"
 
+#include "core/checks.h"
 #include "core/math.h"
 
 #include <algorithm>
@@ -54,15 +55,42 @@ void GroundPaint::count(const PaintTile &t, int sign) {
 	for (const PaintCell &c : t) count(c, sign);
 }
 
+GroundPaint GroundPaint::cut(float minx, float minz, float maxx, float maxz) const {
+	GroundPaint c;
+	c.n_ = n_;
+	c.across_ = across_;
+	c.spacing_ = spacing_;
+	c.def_ = def_;
+	c.biome_cells_ = biome_cells_; // the whole map's: any_cover says whether the map holds paint the plants read
+	c.cover_cells_ = cover_cells_;
+	c.windowed_ = true;
+	if (minx > maxx || minz > maxz) return c; // a box that holds nothing: the copy answers for no sample
+	// cover_at reads the nearest sample and the ecology the sample a point falls in: one sample of margin each side
+	const auto sample = [&](float v, float (*round)(float)) { return int(round(v / spacing_ + float(n_) * 0.5f)); };
+	c.win_x0_ = sample(minx, std::floor) - 1;
+	c.win_z0_ = sample(minz, std::floor) - 1;
+	c.win_x1_ = sample(maxx, std::ceil) + 1;
+	c.win_z1_ = sample(maxz, std::ceil) + 1;
+	if (across_ == 0) return c;
+	const auto tile_of = [&](int i) { return clampi(i, 0, n_ - 1) / PAINT_TILE; };
+	for (int j = tile_of(c.win_z0_); j <= tile_of(c.win_z1_); j++)
+		for (int i = tile_of(c.win_x0_); i <= tile_of(c.win_x1_); i++) {
+			const auto it = tiles_.find(j * across_ + i);
+			if (it != tiles_.end()) c.tiles_.emplace(it->first, it->second);
+		}
+	return c;
+}
+
 const PaintCell &GroundPaint::cell(int ix, int iz) const {
 	if (ix < 0 || iz < 0 || ix >= n_ || iz >= n_) return EMPTY_CELL;
+	if (CHECKS && windowed_ && (ix < win_x0_ || iz < win_z0_ || ix > win_x1_ || iz > win_z1_)) city_stop("a painted cell past the box of the map a job copied");
 	auto it = tiles_.find((iz / PAINT_TILE) * across_ + ix / PAINT_TILE);
 	if (it == tiles_.end()) return EMPTY_CELL;
 	return (*it->second)[size_t((iz % PAINT_TILE) * PAINT_TILE + ix % PAINT_TILE)];
 }
 
 float GroundPaint::cover_at(CoverKind kind, float x, float z) const {
-	if (tiles_.empty()) return 0;
+	if (tiles_.empty() && !windowed_) return 0;
 	int ix = int(std::floor(x / spacing_ + n_ * 0.5f + 0.5f)), iz = int(std::floor(z / spacing_ + n_ * 0.5f + 0.5f));
 	return cell(ix, iz).cover[size_t(kind)] / BYTE_MAX;
 }
@@ -76,9 +104,12 @@ void GroundPaint::tiles_under(float x, float z, float radius, std::vector<int> &
 		for (int i = x0; i <= x1; i++) out.push_back(j * across_ + i);
 }
 
+// The cell to write: its tile made when it has none, and copied first when a cut still holds it (a job reads that one off the
+// map lock: it is never written). A writer holds the map exclusively, so nobody can take a tile while it looks.
 PaintCell &GroundPaint::touch(int ix, int iz) {
-	std::unique_ptr<PaintTile> &t = tiles_[(iz / PAINT_TILE) * across_ + ix / PAINT_TILE];
-	if (!t) t = std::make_unique<PaintTile>();
+	std::shared_ptr<PaintTile> &t = tiles_[(iz / PAINT_TILE) * across_ + ix / PAINT_TILE];
+	if (!t) t = std::make_shared<PaintTile>();
+	else if (t.use_count() > 1) t = std::make_shared<PaintTile>(*t);
 	return (*t)[size_t((iz % PAINT_TILE) * PAINT_TILE + ix % PAINT_TILE)];
 }
 
@@ -176,12 +207,12 @@ void GroundPaint::put_tile(int key, const PaintTile *from) {
 			tiles_.erase(it);
 			return;
 		}
-		*it->second = *from;
+		it->second = std::make_shared<PaintTile>(*from); // a tile of its own: a cut may still hold the one that stood
 		count(*from, 1);
 		return;
 	}
 	if (!from || blank(*from)) return;
-	tiles_.emplace(key, std::make_unique<PaintTile>(*from));
+	tiles_.emplace(key, std::make_shared<PaintTile>(*from));
 	count(*from, 1);
 }
 
