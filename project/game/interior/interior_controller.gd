@@ -50,7 +50,7 @@ func set_enabled(on: bool) -> bool:
 	if id < 0:
 		_say(tr("game.toast.insideNone"))
 		return false
-	_open(id, 0)
+	open(id, 0)
 	return true
 
 
@@ -71,9 +71,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if id < 0:
 			_send(false, -1, 0)
 		else:
-			_open(id, 0)
+			open(id, 0)
 	elif id >= 0 and id != _state.target:
-		_open(id, _state.level)
+		open(id, _state.level)
 
 
 func _process(_delta: float) -> void:
@@ -88,7 +88,7 @@ func _process(_delta: float) -> void:
 
 
 ## Opens building `id` at `level`; the camera stays.
-func _open(id: int, level: int) -> void:
+func open(id: int, level: int) -> void:
 	_send(true, id, level)
 
 
@@ -97,7 +97,7 @@ func see_inside(id: int) -> void:
 	if is_on() and _state.target == id:
 		_send(false, -1, 0)
 	elif id >= 0:
-		_open(id, 0)
+		open(id, 0)
 
 
 func step_floor(delta: int) -> void:

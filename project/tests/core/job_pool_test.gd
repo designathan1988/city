@@ -1,31 +1,25 @@
 ## The job pool's rule: a key is a lane and an id, so two users' jobs for the same chunk both run, and a key's newest job replaces a queued one.
 ## And its memory: jobs that come one after the other stay on one worker, and what they built, freed by their caller afterwards, is
 ## the system's again once the pool rests.
-extends Node
+extends TestCase
 
 const LEFT_MIB := 32.0 # the most the allocator may still hold of the serial jobs' memory: one of its segments
 
 
 func _ready() -> void:
-	var world := CityWorld.new()
-	add_child(world)
-	if not CityStore.boot(world.terrain, world.materials()).is_empty():
-		get_tree().quit(1)
+	if not boot():
+		finish()
 		return
 	var seen: Dictionary = CityStore.query(&"job_pool_probe")
-	print("fila: ", seen)
-	var failures := 0
-	failures += _check(seen.older == 0 and seen.newer == 1 and seen.other_lane == 1 and seen.replaced == 1 and seen.keys_left == 0,
-		"a key's newest job replaces a queued one, another lane's job for the same chunk runs, no key is kept")
-	failures += _check(int(seen.serial_threads) == 1, "jobs that come one after the other stay on one worker: %d used" % seen.serial_threads)
-	failures += _check(float(seen.serial_left_mib) <= LEFT_MIB,
+	print("queue: ", seen)
+	check(seen.older == 0, "the queued job its key's newer one replaced never ran: %d" % seen.older)
+	check(seen.newer == 1, "the newer job of the key ran once: %d" % seen.newer)
+	check(seen.other_lane == 1, "the other lane's job for the same chunk ran: %d" % seen.other_lane)
+	check(seen.replaced == 1, "one job replaced: %d" % seen.replaced)
+	check(seen.keys_left == 0, "no key kept once its job ran: %d" % seen.keys_left)
+	check(int(seen.serial_threads) == 1, "jobs that come one after the other stay on one worker: %d used" % seen.serial_threads)
+	check(float(seen.serial_left_mib) <= LEFT_MIB,
 		"what the jobs built and their caller freed went back to the system: %.0f MiB still held" % seen.serial_left_mib)
-	failures += _check(float(seen.late_left_mib) <= LEFT_MIB,
+	check(float(seen.late_left_mib) <= LEFT_MIB,
 		"memory freed long after its job, with the worker at rest, went back to the system too: %.0f MiB still held" % seen.late_left_mib)
-	print("FAILURES: ", failures)
-	get_tree().quit(0 if failures == 0 else 1)
-
-
-func _check(good: bool, what: String) -> int:
-	print(("ok   " if good else "FAIL ") + what)
-	return 0 if good else 1
+	finish()

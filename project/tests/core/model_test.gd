@@ -2,7 +2,7 @@
 ## road's edge, is refused on a road, is set down in one undo step and welds with what it lands on; the player's own models keep; a
 ## picture has something in it.
 ## Run: godot --path project res://tests/core/model_test.tscn -- --no-flow
-extends Node3D
+extends TestCase
 
 const TOWN_MAP := 0
 const SEED := 1
@@ -13,24 +13,21 @@ const REACH_M := 12.0
 const WAIT_FRAMES := 240
 const SEARCH_STEP_M := 36.0
 
-const LOT_PROJECTS := 38
 const LOT_TRIES := 12
 const LOT_TRY_M := 10.0
 const OPEN_OFF_M := 300.0 # past a lot of the lot lab, the church 125 m deep: it stands clear of the ring road
 const OPEN_ROAD_M := 200.0
 const OPEN_REACH_M := 40.0
 const OPEN_PX := 0.25
-var failures := 0
 
 
 func _ready() -> void:
-	var world := CityWorld.new()
-	add_child(world)
 	var rig := CityCamera.new()
 	add_child(rig)
-	_check(CityStore.boot(world.terrain, world.materials()).is_empty(), "boot")
-	CityStore.new_map(TOWN_MAP, SEED, true)
-	CityStore.dispatch(&"set_speed", [0])
+	if not boot():
+		finish()
+		return
+	new_map(TOWN_MAP, SEED, true)
 	var tools := ToolController.new(rig)
 	add_child(tools)
 	await get_tree().process_frame
@@ -43,29 +40,34 @@ func _ready() -> void:
 	_weld(road)
 	_library()
 	await _picture(tools)
-	print("FAILURES: ", failures)
-	get_tree().quit(1 if failures > 0 else 0)
+	finish()
 
 
 func _catalogue() -> void:
 	var list: Array = CityStore.query(&"model_list")
-	_check(list.size() == 53, "the catalogue has 42 city models and 11 generic: %d" % list.size())
+	var table: Array = DataTables.style_of(DataTables.RENDER_TABLES.models, DataTables.REGIONAL_STYLE).models
+	var listed: Array = list.map(func(m: Dictionary) -> String: return m.id)
+	var written: Array = table.map(func(m: Dictionary) -> String: return m.id)
+	listed.sort()
+	written.sort()
+	check(not written.is_empty() and listed == written, "the catalogue lists every model of models.json and no other: %d of %d" % [listed.size(), written.size()])
 	for m: Dictionary in list:
 		var a: PackedByteArray = CityStore.query(&"model_bytes", [m.id])
-		_check(not a.is_empty() and a == CityStore.query(&"model_bytes", [m.id]), "%s: the same bytes in both builds" % m.id)
+		check(not a.is_empty() and a == CityStore.query(&"model_bytes", [m.id]), "%s: the same bytes in both builds" % m.id)
 		var size: Vector3 = CityStore.query(&"body_size", [a])
-		_check(size.x > 0.0 and size.y > 0.0, "%s: has lot %s" % [m.id, size])
-		_check(TranslationServer.translate("model.%s" % m.id) != "model.%s" % m.id, "%s: has a name" % m.id)
+		check(size.x > 0.0 and size.y > 0.0, "%s: has lot %s" % [m.id, size])
+		check(TranslationServer.translate("model.%s" % m.id) != "model.%s" % m.id, "%s: has a name" % m.id)
 		var problem: String = CityStore.query(&"place_check", [a, 0.0, 0.0, 0.0])
-		_check(not problem in ["building.problem.size", "building.problem.footprint", "building.problem.support"], "%s: a valid body: %s" % [m.id, problem])
+		check(not problem in ["building.problem.size", "building.problem.footprint", "building.problem.support"], "%s: a valid body: %s" % [m.id, problem])
 
 
 ## The lots of the lot lab: all made into bodies, and one set down.
 func _lots(at: Vector3) -> void:
 	var lots := LotProjects.entries()
-	_check(lots.size() == LOT_PROJECTS, "every lot project becomes a body: %d" % lots.size())
+	var files := DataTables.lot_projects().size()
+	check(files > 0 and lots.size() == files, "every lot project becomes a body: %d of %d files" % [lots.size(), files])
 	for e: Dictionary in lots:
-		_check(not (e.bytes as PackedByteArray).is_empty() and e.label != "lot." + e.key.trim_prefix("lot:"), "%s has a body and a name" % e.key)
+		check(not (e.bytes as PackedByteArray).is_empty() and e.label != "lot." + e.key.trim_prefix("lot:"), "%s has a body and a name" % e.key)
 	var church: Dictionary = lots.filter(func(e: Dictionary) -> bool: return e.key == "lot:church")[0]
 	var size: Vector3 = CityStore.query(&"body_size", [church.bytes])
 	var fit: Dictionary = {}
@@ -77,9 +79,9 @@ func _lots(at: Vector3) -> void:
 		where += Vector3(0, 0, LOT_TRY_M)
 	var before: int = CityStore.query(&"list_buildings").size()
 	var r: Dictionary = CityStore.dispatch(&"place_model", [church.bytes, fit.x, fit.z, fit.rot, church.function, church.zone])
-	print("igreja: ", r.get("error", "ok"), " tamanho ", size)
-	_check(r.get("ok", false) and CityStore.query(&"list_buildings").size() > before, "the church is placed on the street: %s" % [r])
-	_check(CityStore.query(&"body_info", [r.get("placed", -1)]).get("signature", 0) > 0, "the church keeps its own design")
+	print("church: ", r.get("error", "ok"), " size ", size)
+	check(r.get("ok", false) and CityStore.query(&"list_buildings").size() > before, "the church is placed on the street: %s" % [r])
+	check(CityStore.query(&"body_info", [r.get("placed", -1)]).get("signature", 0) > 0, "the church keeps its own design")
 	CityStore.dispatch(&"undo")
 
 
@@ -91,7 +93,7 @@ func _a_road() -> Vector3:
 	var edge: Dictionary = CityStore.query(&"city_bounds")
 	var a := Vector3(edge.max.x + OPEN_OFF_M, 0, 0)
 	var laid: Dictionary = CityStore.dispatch(&"build_road", [a, a + Vector3(0, 0, OPEN_ROAD_M), false, Vector3.ZERO, CityStore.first_road(), OPEN_PX])
-	_check(laid.get("ok", false), "a road in the open: %s" % [laid])
+	check(laid.get("ok", false), "a road in the open: %s" % [laid])
 	var bounds := {"min": a - Vector3(OPEN_REACH_M, 0, 0), "max": a + Vector3(OPEN_REACH_M, 0, OPEN_ROAD_M)}
 	var x: float = bounds.min.x
 	while x < bounds.max.x:
@@ -106,7 +108,7 @@ func _a_road() -> Vector3:
 					return at
 			z += SEARCH_STEP_M
 		x += SEARCH_STEP_M
-	_check(false, "found a street with free ground")
+	check(false, "found a street with free ground")
 	return Vector3.ZERO
 
 
@@ -114,13 +116,13 @@ func _snap_and_refuse(road: Vector3) -> void:
 	var bytes: PackedByteArray = CityStore.query(&"model_bytes", [HOUSE])
 	var size: Vector3 = CityStore.query(&"body_size", [bytes])
 	var fit: Dictionary = CityStore.query(&"place_fit", [road, Vector2(size.x, size.y), 0.0])
-	_check(fit.kind == SNAP_ROAD, "it snaps to the street")
+	check(fit.kind == SNAP_ROAD, "it snaps to the street")
 	var into := Vector3(-sin(fit.rot), 0, -cos(fit.rot))
 	var over_road := Vector3(fit.x, 0, fit.z) - into * (size.y + REACH_M)
 	var problem: String = CityStore.query(&"place_check", [bytes, over_road.x, over_road.z, fit.rot])
-	_check(problem == "building.problem.road", "on the street is refused: %s" % problem)
+	check(problem == "building.problem.road", "on the street is refused: %s" % problem)
 	var far: String = CityStore.query(&"place_check", [bytes, 1.0e6, 0.0, 0.0])
-	_check(far == "building.problem.bounds", "off the world is refused: %s" % far)
+	check(far == "building.problem.bounds", "off the world is refused: %s" % far)
 
 
 func _place_undo_redo(tool: BuildingTool, road: Vector3) -> void:
@@ -129,18 +131,18 @@ func _place_undo_redo(tool: BuildingTool, road: Vector3) -> void:
 	tool.key(KEY_R)
 	tool.hover(road)
 	tool.click(road)
-	_check(tool.hand.is_empty(), "the hand is empty after placing")
-	_check(not tool.picked.is_empty(), "the placed building stays picked")
+	check(tool.hand.is_empty(), "the hand is empty after placing")
+	check(not tool.picked.is_empty(), "the placed building stays picked")
 	var id: int = tool.picked.get("id", -1)
 	var info: Dictionary = CityStore.query(&"body_info", [id])
-	_check(info.get("edited", false) and info.volumes.size() == 1 and info.volumes[0].storeys == 2, "the house has a block of two storeys: %s" % info)
+	check(info.get("edited", false) and info.volumes.size() == 1 and info.volumes[0].storeys == 2, "the house has a block of two storeys: %s" % info)
 	var digest: int = info.digest
 	var grown: int = CityStore.query(&"list_buildings").size()
 	CityStore.dispatch(&"undo")
-	_check(CityStore.query(&"list_buildings").size() < grown, "undo takes the building away")
+	check(CityStore.query(&"list_buildings").size() < grown, "undo takes the building away")
 	CityStore.dispatch(&"redo")
-	_check(CityStore.query(&"list_buildings").size() == grown and CityStore.query(&"body_info", [id]).digest == digest, "redo gives the same bytes back")
-	_check(grown >= before, "a coherent count: %d after %d" % [grown, before])
+	check(CityStore.query(&"list_buildings").size() == grown and CityStore.query(&"body_info", [id]).digest == digest, "redo gives the same bytes back")
+	check(grown >= before, "a coherent count: %d after %d" % [grown, before])
 	tool.picked = {}
 
 
@@ -150,34 +152,34 @@ func _weld(road: Vector3) -> void:
 	var size: Vector3 = CityStore.query(&"body_size", [shop])
 	var fit: Dictionary = CityStore.query(&"place_fit", [road, Vector2(size.x, size.y), 0.0])
 	var r: Dictionary = CityStore.dispatch(&"place_model", [shop, fit.x, fit.z, fit.rot, 0, 2])
-	_check(r.get("ok", false) and r.buildings_removed >= 1, "the shop falls on the house and merges: %s" % r)
+	check(r.get("ok", false) and r.buildings_removed >= 1, "the shop falls on the house and merges: %s" % r)
 	var info: Dictionary = CityStore.query(&"body_info", [r.get("placed", -1)])
-	_check(info.volumes.size() >= 2, "the merged building has the blocks of both: %d" % info.volumes.size())
+	check(info.volumes.size() >= 2, "the merged building has the blocks of both: %d" % info.volumes.size())
 	CityStore.dispatch(&"undo")
 	var again: Dictionary = CityStore.query(&"body_info", [r.get("placed", -1)])
-	_check(again.is_empty() or again.get("digest", 0) != info.digest, "undo parts the two")
-	_check(house.size() > 0, "the house stays in the catalogue")
+	check(again.is_empty() or again.get("digest", 0) != info.digest, "undo parts the two")
+	check(house.size() > 0, "the house stays in the catalogue")
 
 
 func _library() -> void:
 	var id: int = CityStore.query(&"list_buildings")[0]
 	var entry: Dictionary = CityStore.query(&"building_bytes", [id])
-	_check(ModelLibrary.save("Minha casa", entry), "the model is saved")
-	_check(ModelLibrary.save("Minha casa", entry), "another of the same name is saved")
+	check(ModelLibrary.save("My house", entry), "the model is saved")
+	check(ModelLibrary.save("My house", entry), "another of the same name is saved")
 	var list := ModelLibrary.list()
-	_check(list.size() >= 2, "both are on the list: %d" % list.size())
+	check(list.size() >= 2, "both are on the list: %d" % list.size())
 	var got: Vector3 = CityStore.query(&"body_size", [list[0].bytes])
-	_check(got.x > 0.0, "the file keeps the body: %s" % got)
+	check(got.x > 0.0, "the file keeps the body: %s" % got)
 	for m in list:
-		_check(ModelLibrary.remove(m.key), "remove %s" % m.key)
-	_check(ModelLibrary.list().is_empty(), "the list is empty")
+		check(ModelLibrary.remove(m.key), "remove %s" % m.key)
+	check(ModelLibrary.list().is_empty(), "the list is empty")
 
 
 func _picture(tools: ToolController) -> void:
 	var seen: int = CityStore.query(&"stage_show", [CityStore.query(&"model_bytes", [HOUSE]), get_viewport().find_world_3d().scenario, false])
 	var triangles: int = CityStore.query(&"stage_triangles", [seen])
-	_check(triangles > 0, "the stage's mesh has triangles: %d" % triangles)
-	print("palco: ", triangles, " triangles")
+	check(triangles > 0, "the stage's mesh has triangles: %d" % triangles)
+	print("stage: ", triangles, " triangles")
 	CityStore.query(&"stage_free", [seen])
 	var studio := ModelStudio.new()
 	tools.add_child(studio)
@@ -188,15 +190,8 @@ func _picture(tools: ToolController) -> void:
 		if got.has(HOUSE):
 			break
 		await get_tree().process_frame
-	_check(got.has(HOUSE), "the picture came")
+	check(got.has(HOUSE), "the picture came")
 	if got.has(HOUSE):
 		var image: Image = got[HOUSE].get_image()
-		image.save_png("user://model_test_house.png")
-		_check(not image.is_invisible(), "the picture has the building: %s %s used %s middle %s" % [image.get_size(), image.get_format(), image.get_used_rect(), image.get_pixel(image.get_width() / 2, image.get_height() / 2)])
-
-
-func _check(ok: bool, what: String) -> void:
-	if ok:
-		return
-	failures += 1
-	printerr("FAIL: ", what)
+		image.save_png(scratch("model_test_house.png"))
+		check(not image.is_invisible(), "the picture has the building: %s %s used %s middle %s" % [image.get_size(), image.get_format(), image.get_used_rect(), image.get_pixel(image.get_width() / 2, image.get_height() / 2)])

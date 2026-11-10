@@ -17,7 +17,7 @@ const STREET_M := 300.0
 const PROFILE := 0
 const STEP_TICKS := 200
 const GROW_STEPS := 60 # yard_test's growth at each site, every step of it (yard_test stops at the first dock)
-const SLOT := "bancada_patios"
+const SLOT := "yard_bench"
 
 
 func _ready() -> void:
@@ -68,7 +68,7 @@ func _make(slot: String) -> void:
 	CityStore.saves.save_game(slot)
 	while CityStore.saves.save_busy():
 		await get_tree().process_frame
-	print("bench saved at ", slot, " ", outcome, " docas ", CityStore.query(&"dock_count", []))
+	print("bench saved at ", slot, " ", outcome, " docks ", CityStore.query(&"dock_count", []))
 
 
 ## The vehicle farthest out inside a slice of the compass (yard_test).

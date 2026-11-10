@@ -15,7 +15,6 @@
 #include "render/render_context.h"
 #include "sim/state/city_state.h"
 
-#include <chrono>
 #include <unordered_map>
 #include <vector>
 
@@ -34,7 +33,7 @@ public:
 	void touch_terrain(const CityState &s, const std::vector<int> &rects);
 	// One frame, the caller holding the map shared: plays what happened since the last, then steps the effects; the ruins' pieces
 	// it hands the server come within the frame's admission (its deadline and byte ledger).
-	void sync(CityState &s, FrameAdmission &admission);
+	void sync(CityState &s, FrameAdmission &admission, double frame_s);
 	float shake() const { return shake_; } // metres the camera moves now
 	float since_blast() const { return blast_at_ < 0 ? -1.f : float(now_ - blast_at_); } // effect seconds since the last blast (-1 none)
 	bool busy() const { return puffs_.active(now_) || !sources_.empty() || debris_.moving() || ruins_.moving() || flash_left_ > 0; }
@@ -100,8 +99,6 @@ private:
 	std::vector<Geyser> geysers_;
 	std::vector<godot::Color> skins_, clothes_;
 	std::unordered_map<int, float> fire_carry_;
-	std::chrono::steady_clock::time_point last_;
-	bool started_ = false;
 	double now_ = 0, blast_at_ = -1;
 	float shake_ = 0, flash_left_ = 0, flash_energy_ = 0, flash_range_ = 0;
 	godot::Vector3 flash_at_;

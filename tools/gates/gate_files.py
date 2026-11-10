@@ -8,8 +8,10 @@ from source import language_of
 
 
 def check_root(ctx, err):
+    """The root's entries as git lists them (scope.py: tracked plus untracked-not-ignored): what git ignores never enters the
+    repository, so a folder the owner keeps beside it (.git/info/exclude) is not an entry of its root."""
     allowed = set(ctx.rules["root_allowed"])
-    for entry in sorted(os.listdir(ctx.root)):
+    for entry in sorted({p.split("/", 1)[0] for p in ctx.listed}):
         if entry not in allowed and not entry.startswith(".git"):
             err("RAIZ_LIMPA", entry, "entry outside rules.json/root_allowed at the repository root")
 

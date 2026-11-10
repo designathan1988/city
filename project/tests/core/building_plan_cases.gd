@@ -20,15 +20,15 @@ const RUN_LEG_M := 5.0
 
 
 static func run(id: int, made: int, check: Callable) -> void:
-	var vol: int = _info(id).volumes.size() - 1
+	var vol: int = BuildingProbe.info(id).volumes.size() - 1
 	for shape: int in SHAPE_SIDES:
 		var r: Dictionary = CityStore.dispatch(&"body_set_plan", [id, vol, shape])
-		var sides: int = _info(id).volumes[vol].bays.size()
+		var sides: int = BuildingProbe.info(id).volumes[vol].bays.size()
 		check.call(r.get("ok", false) and sides == SHAPE_SIDES[shape], "shape %d with %d walls: %s" % [shape, sides, r])
-		var once: int = _info(id).digest
+		var once: int = BuildingProbe.info(id).digest
 		CityStore.dispatch(&"body_set_plan", [id, vol, shape])
-		check.call(_info(id).digest == once, "shape %d again does not change the block" % shape)
-		_back_to(made, id, check, "forma %d" % shape)
+		check.call(BuildingProbe.info(id).digest == once, "shape %d again does not change the block" % shape)
+		BuildingProbe.back_to(made, id, check, "shape %d" % shape)
 	_walls_carried(id, vol, made, check)
 	_relief_first(id, vol, made, check)
 	_shaped_block_grows(id, vol, made, check)
@@ -40,32 +40,32 @@ static func _walls_carried(id: int, vol: int, made: int, check: Callable) -> voi
 	CityStore.dispatch(&"body_set_bay", [id, vol, 0, 0, 0, BAY_BALCONY, SCOPE_BAY])
 	CityStore.dispatch(&"body_set_face", [id, vol, 0, {"bays": FACE_BAYS}])
 	CityStore.dispatch(&"body_set_plan", [id, vol, CHAMFERED])
-	var bays: int = _info(id).volumes[vol].bays[0]
+	var bays: int = BuildingProbe.info(id).volumes[vol].bays[0]
 	check.call(bays == int(round(FACE_BAYS * CHAMFERED_FRONT)), "the chamfered front has %d bays" % bays)
 	check.call(CityStore.query(&"body_bay", [id, vol, 0, 0, 0]) == BAY_BALCONY, "the balcony followed the front")
-	_back_to(made, id, check, "paredes levadas")
+	BuildingProbe.back_to(made, id, check, "walls moved")
 
 
 static func _relief_first(id: int, vol: int, made: int, check: Callable) -> void:
 	CityStore.dispatch(&"body_set_relief", [id, vol, {"side": 0, "depth": RELIEF_M}, true])
-	var before: int = _info(id).digest
+	var before: int = BuildingProbe.info(id).digest
 	var r: Dictionary = CityStore.dispatch(&"body_set_plan", [id, vol, CHAMFERED])
-	check.call(not r.get("ok", false) and r.get("error", "") == "building.reshapeRelief" and _info(id).digest == before, "relief asks to align first: %s" % r)
-	_back_to(made, id, check, "relevo")
+	check.call(not r.get("ok", false) and r.get("error", "") == "building.reshapeRelief" and BuildingProbe.info(id).digest == before, "relief asks to align first: %s" % r)
+	BuildingProbe.back_to(made, id, check, "relief")
 
 
 static func _shaped_block_grows(id: int, vol: int, made: int, check: Callable) -> void:
 	CityStore.dispatch(&"body_set_plan", [id, vol, CHAMFERED])
-	var blocks: int = _info(id).volumes.size()
+	var blocks: int = BuildingProbe.info(id).volumes.size()
 	var r: Dictionary = CityStore.dispatch(&"body_add_setback", [id, vol, -1.0, SETBACK_STOREYS])
-	check.call(r.get("ok", false) and _info(id).volumes.size() == blocks + 1, "a setback on a shaped block: %s" % r)
-	var up: Dictionary = _info(id).volumes[blocks]
+	check.call(r.get("ok", false) and BuildingProbe.info(id).volumes.size() == blocks + 1, "a setback on a shaped block: %s" % r)
+	var up: Dictionary = BuildingProbe.info(id).volumes[blocks]
 	check.call(up.bays.size() == SHAPE_SIDES[CHAMFERED], "the setback has the block's shape: %d walls" % up.bays.size())
-	_back_to(made, id, check, "recuo")
+	BuildingProbe.back_to(made, id, check, "setback")
 	CityStore.dispatch(&"body_set_plan", [id, vol, CHAMFERED])
 	r = CityStore.dispatch(&"body_add_wing", [id, vol, 1, 0.0, 0.0])
-	check.call(r.get("ok", false) and _info(id).volumes.size() == blocks + 1, "a wing on a wall of a shaped block: %s" % r)
-	_back_to(made, id, check, "ala")
+	check.call(r.get("ok", false) and BuildingProbe.info(id).volumes.size() == blocks + 1, "a wing on a wall of a shaped block: %s" % r)
+	BuildingProbe.back_to(made, id, check, "wing")
 
 
 ## A rectangle dragged against the block: a wing, a block on the roof and a cut; the void leaves the solid split, and a block can change how it counts.
@@ -75,17 +75,17 @@ static func _masses(id: int, vol: int, made: int, check: Callable) -> void:
 	var a: Vector3 = box[0]
 	var c: Vector3 = box[corners / 2]
 	var mid := (a + c) * 0.5
-	var blocks: int = _info(id).volumes.size()
+	var blocks: int = BuildingProbe.info(id).volumes.size()
 	var r: Dictionary = CityStore.dispatch(&"body_add_mass", [id, vol, mid, c, ROOF_MASS])
-	check.call(r.get("ok", false) and _info(id).volumes.size() == blocks + 1, "block on the roof: %s" % r)
-	_back_to(made, id, check, "block on the roof")
+	check.call(r.get("ok", false) and BuildingProbe.info(id).volumes.size() == blocks + 1, "block on the roof: %s" % r)
+	BuildingProbe.back_to(made, id, check, "block on the roof")
 	r = CityStore.dispatch(&"body_add_mass", [id, vol, a.lerp(c, CUT_FROM), a.lerp(c, CUT_TO), CUT_MASS])
-	var info := _info(id)
+	var info := BuildingProbe.info(id)
 	check.call(r.get("ok", false) and info.volumes[blocks].mode == VOID_MODE, "a cut is an empty block: %s" % r)
 	check.call(info.solids > blocks, "the cut splits the block: %d solids from %d blocks" % [info.solids, blocks])
 	var mode: Dictionary = CityStore.dispatch(&"body_set_block_mode", [id, blocks, 0])
-	check.call(mode.get("ok", false) and _info(id).volumes[blocks].mode == 0, "the void adds again: %s" % mode)
-	_back_to(made, id, check, "recorte")
+	check.call(mode.get("ok", false) and BuildingProbe.info(id).volumes[blocks].mode == 0, "the void adds again: %s" % mode)
+	BuildingProbe.back_to(made, id, check, "cut-out")
 	r = CityStore.dispatch(&"body_add_mass", [id, vol, a + (a - c) * OFF_BLOCK, a + (a - c) * (OFF_BLOCK + 1.0), CUT_MASS])
 	check.call(not r.get("ok", false) and r.get("error", "") == "building.problem.cut", "a cut off the block is refused: %s" % r)
 
@@ -98,17 +98,7 @@ static func _runs(id: int, made: int, check: Callable) -> void:
 	for spec: Dictionary in DataTables.ui("builder").tabs.parts.sections[1].tools:
 		if spec.do != "run":
 			continue
-		var parts: int = _info(id).parts
+		var parts: int = BuildingProbe.info(id).parts
 		var r: Dictionary = CityStore.dispatch(&"body_add_run", [id, 0, 0, path, spec])
-		check.call(r.get("ok", false) and _info(id).parts == parts + path.size() - 1, "%s: one piece a stretch: %s" % [spec.id, r])
-		check.call(CityStore.dispatch(&"undo") and _info(id).digest == made, "%s desfeito num passo" % spec.id)
-
-
-static func _back_to(made: int, id: int, check: Callable, what: String) -> void:
-	while _info(id).digest != made and CityStore.dispatch(&"undo"):
-		pass
-	check.call(_info(id).digest == made, "%s desfeito" % what)
-
-
-static func _info(id: int) -> Dictionary:
-	return CityStore.query(&"body_info", [id])
+		check.call(r.get("ok", false) and BuildingProbe.info(id).parts == parts + path.size() - 1, "%s: one piece a stretch: %s" % [spec.id, r])
+		check.call(CityStore.dispatch(&"undo") and BuildingProbe.info(id).digest == made, "%s undone in one step" % spec.id)

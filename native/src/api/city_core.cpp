@@ -191,7 +191,7 @@ void CityCore::_process(double delta) {
 		render_.full_rebuild(*state_, terrain3d());
 		need_full_rebuild_ = false;
 	}
-	render_.sync(*state_, terrain3d(), cam_); // takes the map shared (never exclusive: render_world.h)
+	render_.sync(*state_, terrain3d(), cam_, delta); // takes the map shared (never exclusive: render_world.h)
 	laps.lap();
 	{
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
@@ -247,8 +247,8 @@ Dictionary CityCore::overlays() const {
 	return d;
 }
 
-void CityCore::step_ticks(int ticks) {
-	for (int i = 0; i < ticks; i++) sim_.step(*state_);
+bool CityCore::step_ticks(int ticks) {
+	return sim_.step(*state_, ticks);
 }
 
 } // namespace city

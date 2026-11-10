@@ -97,8 +97,20 @@ void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 	}
 }
 
-void Simulation::step(CityState &s) {
-	tick(s, 1, now_ns());
+bool Simulation::hold_still() {
+	std::unique_lock<std::mutex> lk(wake_mutex_);
+	const SimSpeed sp = speed_.load();
+	if (sp == SimSpeed::STOPPED) return true; // no thread
+	if (sp != SimSpeed::PAUSED) return false;
+	// set_speed(PAUSED) returns while the thread may still be inside a tick: its steps would land among the caller's.
+	parked_cv_.wait(lk, [this]() { return parked_ || !running_; });
+	return true;
+}
+
+bool Simulation::step(CityState &s, int ticks) {
+	if (!hold_still()) return false;
+	for (int k = 0; k < ticks; k++) tick(s, 1, now_ns());
+	return true;
 }
 
 void Simulation::run() {
@@ -108,7 +120,10 @@ void Simulation::run() {
 		wakeups_++;
 		if (speed_.load() == SimSpeed::PAUSED) { // nothing to step: wait for the speed or stop(), not for the clock
 			std::unique_lock<std::mutex> lk(wake_mutex_);
+			parked_ = true;
+			parked_cv_.notify_all();
 			wake_.wait(lk, [this]() { return !running_ || speed_.load() != SimSpeed::PAUSED; });
+			parked_ = false;
 			deadline = now_ns(); // the clock goes on from now, not from where it stopped
 			continue;
 		}

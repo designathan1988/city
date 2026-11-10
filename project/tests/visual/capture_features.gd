@@ -38,8 +38,7 @@ func _ready() -> void:
 		push_error("boot: %s" % errors)
 		get_tree().quit(1)
 		return
-	CityStore.new_map(TOWN_MAP, SEED, true)
-	CityStore.dispatch(&"set_speed", [0])
+	CityStore.new_map(TOWN_MAP, SEED, true, true)
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	tools = ToolController.new(rig)
 	add_child(tools)
@@ -170,7 +169,7 @@ func _build(a: Vector3, e: Vector3) -> void:
 	var cards := hud.drawer.strip.get_children().filter(func(c: Node) -> bool: return c.has_meta(&"pick"))
 	var b0: int = CityStore.snapshot.buildings
 	await ui.press(cards[1]) # parque
-	await ui.drag(mid + Vector3(-30, 0, 16), mid + Vector3(30, 0, 56))
+	await ui.drag(mid + Vector3(-30, 0, 16), mid + Vector3(30, 0, 56), func() -> void: await ui.shot("feat_build_previa"))
 	await ui.press(cards[2]) # escola
 	await ui.drag(mid + Vector3(-30, 0, -16), mid + Vector3(20, 0, -50))
 	await ui.drawn()

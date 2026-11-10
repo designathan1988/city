@@ -60,7 +60,7 @@ public:
 		effects_.release();
 	}
 	void full_rebuild(CityState &s, godot::Object *terrain3d); // after a new map / load (caller holds the map shared)
-	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam);
+	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam, double frame_s); // frame_s: the frame's own time, what the effects move by
 	// The frame's level-of-detail view (render/detail.h), set by CityCore before the frame's updates: every family reads its
 	// levels from it.
 	void set_view(const DetailView &v) { view_ = v; }

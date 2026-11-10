@@ -9,7 +9,7 @@ const MS_PER_S := 1000.0
 ## What asks first (Roadcraft window.confirm): the map on screen is saved, then the new one takes its place.
 const CONFIRM := {"new_empty": "confirm.newMap", "new_city": "confirm.newWorld", "new_large": "confirm.newLargeWorld"}
 
-@onready var _failed_at := -INF # when a failed save last said so
+var _failed_at := -INF # when a failed save last said so
 
 ## The HUD this node is a child of.
 func _hud() -> RoadcraftHud:
@@ -45,17 +45,18 @@ func menu(action: String) -> void:
 ## The confirmed new map: what the player had is written first, as the question says.
 func new_city(action: String) -> void:
 	var map := _large_map() if action == "new_large" else TOWN_MAP
-	_open_new(map, randi_range(1, int(DataTables.game("start").seed_max)), action != "new_empty")
+	open_new(map, randi_range(1, int(DataTables.game("start").seed_max)), action != "new_empty")
 	if action == "new_empty":
 		_hud().flash(tr("hint.newMap"), true)
 
 
 ## The city the title screen's form asks for.
 func new_city_at(map: int, seed: int) -> void:
-	_open_new(map, seed, true)
+	open_new(map, seed, true)
 
 
-func _open_new(map: int, seed: int, with_city: bool) -> void:
+## A new city on screen, as the start screen's form opens one: the city standing is saved first.
+func open_new(map: int, seed: int, with_city: bool) -> void:
 	CityStore.saves.save_on_close()
 	_hud().drawer.close()
 	CityStore.new_map(map, seed, with_city)

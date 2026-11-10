@@ -2,7 +2,7 @@
 ## another): the city on screen is written to a slot of its own, cidade-<seed> (cidade-<seed>-2... when another city
 ## holds that name); "Save map" copies it to mapa-<seed>, a copy that opens as a new city; the index names the
 ## player's last city (what "Load the last game" opens). Runs driven by tests (GameFlow.tests_drive) keep their files
-## in a folder of their own, so they never touch the player's saves.
+## in a folder of their own process, so they never touch the player's saves nor each other's.
 class_name SaveSlots
 extends RefCounted
 
@@ -19,8 +19,10 @@ const INDEX_LAST := "last"
 const QUARANTINE_DIR := "quarentena"
 
 
+## Runs driven by tests save in a folder of their own process: the suite runs its tests in parallel, each its own Godot, and in
+## one shared folder a test read or set aside another's city, index or quarantine (log/pendencias.md, save_undo_test).
 static func dir() -> String:
-	return TEST_SAVES_DIR if GameFlow.tests_drive else SAVES_DIR
+	return "%s/%d" % [TEST_SAVES_DIR, OS.get_process_id()] if GameFlow.tests_drive else SAVES_DIR
 
 
 static func path(slot: String) -> String:

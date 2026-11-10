@@ -44,7 +44,7 @@ static func bring(rig: CityCamera, screen: Vector2, point: Vector3, h: float, mo
 		most -= step.length()
 		rig.focus.x += step.x
 		rig.focus.z += step.y
-		rig._apply()
+		rig.apply()
 		if most <= CityCamera.PARALLEL:
 			return
 

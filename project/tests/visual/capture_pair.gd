@@ -43,11 +43,10 @@ func _ready() -> void:
 	Settings.apply(world, get_viewport()) # what the player's preset shows: its antialiasing and shadows
 	lights = InteriorLights.new(DataTables.game("interior").lights) # the room lights, as the Interior controller gives them
 	add_child(lights)
-	CityStore.new_map(TOWN_MAP, SEED, buildings_file.is_empty())
+	CityStore.new_map(TOWN_MAP, SEED, buildings_file.is_empty(), true)
 	var views: Array = JSON.parse_string(FileAccess.get_file_as_string(views_file))
 	if not buildings_file.is_empty():
 		_lay_buildings(_named_in(views))
-	CityStore.dispatch(&"set_speed", [0])
 	CityStore.dispatch(&"set_day_hour", [DAY_HOUR])
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	for v: Dictionary in views:

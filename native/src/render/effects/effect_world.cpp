@@ -145,11 +145,11 @@ void EffectWorld::step_geysers(float dt) {
 	geysers_.erase(std::remove_if(geysers_.begin(), geysers_.end(), [&](const Geyser &g) { return now_ > g.until; }), geysers_.end());
 }
 
-void EffectWorld::sync(CityState &s, FrameAdmission &admission) {
-	const auto t = std::chrono::steady_clock::now();
-	const float dt = started_ ? std::min(MAX_FRAME_S, std::chrono::duration<float>(t - last_).count()) : 0.f;
-	started_ = true;
-	last_ = t;
+// `frame_s`: the frame's own time (the engine's, CityCore::_process): the effects move by the clock everything on the screen moves by.
+// They kept a wall clock of their own, so in a run in simulated time (the tests', a recording's) a second of theirs took hundreds of
+// frames, and a body fell in slow motion beside a street at full speed.
+void EffectWorld::sync(CityState &s, FrameAdmission &admission, double frame_s) {
+	const float dt = std::min(MAX_FRAME_S, float(std::max(frame_s, 0.0)));
 	now_ += dt;
 	{
 		std::lock_guard<std::mutex> lk(s.log.mutex);

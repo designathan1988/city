@@ -2,5 +2,5 @@
 
 [ext_resource type="Script" path="res://tests/perf/tier_gpu.gd" id="1"]
 
-[node name="CameraPan" type="Node3D"]
+[node name="TierGpu" type="Node3D"]
 script = ExtResource("1")

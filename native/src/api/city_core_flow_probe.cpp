@@ -3,6 +3,7 @@
 // `flow_junction`, `flow_push` and `flow_state` work on the city.
 #include "api/city_probes.h"
 
+#include "sim/simulation/simulation.h"
 #include "sim/state/city_state.h"
 #include "sim/traffic/flow_control.h"
 #include "sim/traffic/traffic_system.h"
@@ -79,6 +80,7 @@ int CityProbes::flow_junction() {
 }
 
 Dictionary CityProbes::flow_push(int n, int seconds) {
+	if (!sim_->hold_still()) return Dictionary(); // beside a running clock its ticks would land among these seconds
 	CityState &s = *state_;
 	const RoadNode &node = s.roads.nodes[size_t(n)];
 	s.camera_x.store(float(node.x));

@@ -218,7 +218,7 @@ void RenderWorld::offer_streams(const CityState &s, const Vector3 &cam, std::vec
 			[this](int64_t k) { buildings_.drop_chunk(k); });
 }
 
-void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
+void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam, double frame_s) {
 	const Tuning &t = s.catalog.tune;
 	using clock = std::chrono::steady_clock;
 	// One deadline from here: the drain, the fields, the flush of the uploads and every commit are inside it.
@@ -239,7 +239,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 		cost_.lock = laps.lap();
 		drain_log(s);
 		effects_.touch_terrain(s, terrain_rects_);
-		effects_.sync(s, f);
+		effects_.sync(s, f, frame_s);
 		const std::vector<int64_t> repaint = effects_.take_repaint();
 		if (!repaint.empty()) {
 			buildings_.set_broken(effects_.broken());
