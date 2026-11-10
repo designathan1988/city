@@ -162,7 +162,8 @@ def main():
     if slug and os.path.exists(store.ledger_path(slug)) and args.cmd not in ("open", "list", "switch"):
         state = store.load(slug)
         me = os.environ.get("CLAUDE_CODE_SESSION_ID", "")  # the session that works on a trace is the one held to its record
-        mine = bool(me) and me not in state["sessions"] and not getattr(args, "hook", False)
+        looks = ("resume", "status", "list", "notes", "problems", "export", "report", "rules", "card", "crops")  # they change nothing
+        mine = bool(me) and me not in state["sessions"] and args.cmd not in looks
         if mine:
             state["sessions"].append(me)
         if not state.get("closed") and (proof.absorb(state) or mine):  # what was read since the last command counts before anything is asked
