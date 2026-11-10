@@ -104,6 +104,10 @@ def next_step(state, out):
                 "call, problems with their `fix`, new flow files, the note), and `next`.")
     elif now == "fix":
         left = sum(1 for p in state["problems"] if p["status"] == OPEN)
+        blind = [p["id"] for p in state["problems"] if p["status"] == OPEN and not p.get("fix")]
+        if blind:
+            out.add(f"PLAN FIRST: {len(blind)} open problem(s) have no fix planned ({', '.join(blind[:20])}): `plan P<n> --fix \"what "
+                    "changes, where, who else to check, the test\"` for each, from the notes and the code, before changing anything.")
         out.add(f"DO NOW: fix the {left} open problem(s) in the code, at their cause (`card C<n>` gives a cause's exact lines, callers and "
                 "tests); `fix <P or C> --how \"...\"` as each is done; test at the end.")
     elif now == "done":

@@ -49,12 +49,16 @@ def do_flow(state, paths, why, after=None):
     return added
 
 
-def do_read(state, path, start, end, saw):
+def do_read(state, path, start, end, saw, called_by="", uses=""):
     entry = store.find_file(state, path)
     if not entry:
         raise Refused(f"{store.rel(path)} is not on the flow: add it with `flow <path> --why \"who calls it\"`")
-    if not str(saw or "").strip():
-        raise Refused(f"{entry['path']}: a chunk is recorded with what it does (--saw)")
+    if not all(str(v or "").strip() for v in (saw, called_by, uses)):
+        raise Refused(f"{entry['path']} {start}-{end}: a chunk is recorded with the three things a fix needs later, so the file is not "
+                      "opened again to find them: `saw` (what each function there does and what it calls), `called_by` (who calls "
+                      "it or what triggers it, with file:line, and on which thread) and `state` (what it reads and writes, under "
+                      "which lock). For a document or data: who reads it, and what it sets")
+    saw = f"{str(saw).strip()} CALLED BY: {str(called_by).strip()} STATE: {str(uses).strip()}"
     start, end = int(start), int(end)
     entry["lines"] = store.line_count(entry["path"])
     if not (1 <= start <= end <= entry["lines"]):
@@ -79,8 +83,9 @@ def do_problem(state, where, what, cause, symptom="", of="", fix=""):
     entry = store.find_file(state, path)
     if not entry:
         raise Refused(f"{store.rel(path)} is not on the flow: a problem is recorded where it was read")
-    if not str(what or "").strip() or not str(cause or "").strip():
-        raise Refused(f"{where}: a problem says what it is (--what) and the design decision behind it (--cause)")
+    if not all(str(v or "").strip() for v in (what, cause, fix)):
+        raise Refused(f"{where}: a problem says what it is (what), the design decision behind it (cause) and the fix planned (fix: what "
+                      "will change, where, who else must be checked, the test that will prove it), while the code is in front of you")
     if of:
         of = store.cause_of(state, of)["id"]
     pid = f"P{len(state['problems']) + 1}"
@@ -88,6 +93,15 @@ def do_problem(state, where, what, cause, symptom="", of="", fix=""):
                               "cause": str(cause).strip(), "symptom": str(symptom or "").strip(), "status": OPEN,
                               "cause_id": of or "", "fix": str(fix or "").strip(), "how": "", "commit": "", "found": store.now()})
     return pid
+
+
+def do_plan(state, pid, fix):
+    """The fix planned for a problem recorded before one was asked, or planned again after more reading."""
+    if not str(fix or "").strip():
+        raise Refused("the fix planned says what will change, where, who else must be checked and the test that will prove it")
+    problem = store.problem_of(state, pid)
+    problem["fix"] = str(fix).strip()
+    return problem
 
 
 def do_off(state, path, why):

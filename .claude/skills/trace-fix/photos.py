@@ -55,6 +55,31 @@ def photos_in(where):
     return sorted(os.path.join(where, n) for n in os.listdir(where) if n.lower().endswith(".png"))
 
 
+def not_looked_at(state):
+    """What a trace still lacks to close: photos of the game, every photo and crop opened with the Read tool (the mark
+    read_guard.py leaves beside each, in .seen), and every photo named in photos/analysis.md. '' when nothing is missing."""
+    shots = os.path.join(store.trace_folder(state["slug"]), "photos")
+    names = [os.path.basename(p) for p in photos_in(shots)] if os.path.isdir(shots) else []
+    if not names:
+        return ("a trace closes with the game photographed as it is now and every photo analysed: no photo was taken. Write a look "
+                "plan and run `photos <plan.json>`. Only a change that cannot reach the screen (a tool, a document) closes with "
+                "`close --no-photos \"why\"`.")
+    crops = os.path.join(shots, "crops")
+    pictures = [os.path.join(shots, n) for n in names] + (photos_in(crops) if os.path.isdir(crops) else [])
+    unopened = [os.path.relpath(p, shots).replace("\\", "/") for p in pictures
+                if not os.path.exists(os.path.join(os.path.dirname(p), ".seen", os.path.basename(p)))]
+    if unopened:
+        return (f"{len(unopened)} photo(s) and crop(s) of this trace were never opened with the Read tool ({', '.join(unopened[:8])}"
+                + (", ..." if len(unopened) > 8 else "") + "): look at every one, then write what each shows in photos/analysis.md.")
+    analysis = os.path.join(shots, "analysis.md")
+    text = open(analysis, encoding="utf-8").read() if os.path.exists(analysis) else ""
+    unseen = [n for n in names if os.path.splitext(n)[0] not in text]
+    if unseen:
+        return (f"{len(unseen)} photo(s) are not in photos/analysis.md ({', '.join(unseen[:6])}): for each photo, by its name, the "
+                "rules of `rules` one by one and what its crops show.")
+    return ""
+
+
 def show(photos):
     """Crops every photo and prints what to look at."""
     if not photos:

@@ -27,6 +27,7 @@ EDITS = ("Edit", "Write", "MultiEdit")  # the tools that change a file by its pa
 REFUSED = 2  # Claude Code's hooks reference: exit code 2 of a PreToolUse hook blocks the call and gives stderr to Claude
 # How much of a file is looked at to tell text from binary. Source: git's own rule (a NUL in the first 8000 bytes).
 BINARY_PROBE = 8000
+SEEN = ".seen"  # beside a trace's photos: one empty file for each photo or crop the Read tool opened (commands.cmd_close asks for them)
 
 
 def lines_of(data):
@@ -101,15 +102,16 @@ def left_in_part(versions, store):
     return all(store.gaps({"ranges": ranges, "lines": total}) for total, ranges in versions.values())
 
 
-def unrecorded(seen, store):
-    """(trace, file, first line, last line) of what this reader read on the flow of an open trace with no note of it."""
+def unrecorded(seen, store, session):
+    """(trace, file, first line, last line) of what this reader read on the flow of an open trace it works on (it ran the
+    ledger on it), with no note of it."""
     on_flow = {}  # file -> [first open trace that has it on its flow, every note any open trace holds of it]
     for slug in sorted(os.listdir(store.TRACES)) if os.path.isdir(store.TRACES) else []:
         if not os.path.exists(store.ledger_path(slug)):
             continue
         with open(store.ledger_path(slug), encoding="utf-8") as f:
             state = json.load(f)
-        if state.get("closed"):
+        if state.get("closed") or session not in state.get("sessions", []):
             continue
         for entry in state.get("files", []):
             if entry["path"] in seen:
@@ -132,6 +134,9 @@ def ignored_by_git(paths, store):
 
 def guard(event, proof, store):
     """0 to let the edit through, REFUSED with the missing Read calls on stderr otherwise."""
+    asked = os.path.abspath((event.get("tool_input") or {}).get("file_path") or "")
+    if os.path.normcase(asked).startswith(os.path.normcase(os.path.abspath(store.TRACES)) + os.sep):
+        return 0  # the trace folder is the memory of the work (a record, an analysis): writing it is never held back
     path, relative = target(event, store)
     seen = proof.seen_by(reader_of(event))
     missing = []
@@ -149,13 +154,13 @@ def guard(event, proof, store):
         gaps = [] if other in ignored else unread_now(other, seen, store)
         if gaps:
             missing.append((other, gaps, "opened and left in part"))
-    asked = os.path.abspath((event.get("tool_input") or {}).get("file_path") or "")
-    bare = [] if os.path.normcase(asked).startswith(os.path.normcase(os.path.abspath(store.TRACES)) + os.sep) else unrecorded(seen, store)
-    if bare:  # the record itself (a file of the trace folder) is always writable: it is how this is settled
+    bare = unrecorded(seen, store, str(event.get("session_id", "")))
+    if bare:
         print("trace-fix: this edit is refused. You read these lines of a trace's flow and recorded nothing of what they do; a "
               "reading that is not written down is lost at the next compaction and has to be done again.\n"
-              "Record them now, in one `ledger.py record <file.json>`: for each, a `saw` (who calls it and from where, thread, "
-              "lock, state read and written, what it calls) and every problem seen there with its `fix`. Then send the edit again:\n"
+              "Record them now, in one `ledger.py record <file.json>`: for each, `saw` (what it does and calls), `called_by` (who "
+              "calls it, file:line, which thread) and `state` (what it reads and writes, which lock), and every problem seen "
+              "there with its `fix`. Then send the edit again:\n"
               + "\n".join(f"  trace {slug}: {file} lines {a}-{b}" for slug, file, a, b in bare[:store.BATCH_CHUNKS])
               + (f"\n  ... and {len(bare) - store.BATCH_CHUNKS} more." if len(bare) > store.BATCH_CHUNKS else ""), file=sys.stderr)
         return REFUSED
@@ -201,7 +206,12 @@ def main():
     elif name == "PreToolUse" and tool in EDITS:
         return guard(event, proof, store)
     elif tool == "Read":
-        log_read(event, proof, store)
+        asked = os.path.abspath((event.get("tool_input") or {}).get("file_path") or "")
+        if asked.lower().endswith(".png") and os.path.normcase(asked).startswith(os.path.normcase(os.path.abspath(store.TRACES)) + os.sep):
+            os.makedirs(os.path.join(os.path.dirname(asked), SEEN), exist_ok=True)  # a photo of a trace that was looked at
+            open(os.path.join(os.path.dirname(asked), SEEN, os.path.basename(asked)), "w").close()
+        else:
+            log_read(event, proof, store)
     elif tool in EDITS:
         log_edit(event, proof, store)
     return 0

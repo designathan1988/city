@@ -6,10 +6,11 @@ import json
 import os
 import sys
 
+import photos
 import proof
 import store
 import views
-from operations import do_doc, do_flow, do_link, do_off, do_problem, do_read, keep_notes
+from operations import do_doc, do_flow, do_link, do_off, do_plan, do_problem, do_read, keep_notes
 from store import DROPPED, FIXED, OPEN, Refused, fail
 
 
@@ -72,7 +73,7 @@ def cmd_next(_args):
 
 def cmd_read(args):
     state = store.load()
-    entry = run(do_read, state, args.path, args.start, args.end, args.saw)
+    entry = run(do_read, state, args.path, args.start, args.end, args.saw, args.called_by, args.state)
     store.save(state)
     keep_notes(state, [entry])
     print(f"{entry['path']}: {store.lines_read(entry)}/{entry['lines']} lines read.")
@@ -121,7 +122,7 @@ def cmd_record(args):
     for item in batch.get("flow", []):
         added += attempt("flow", item, lambda i: do_flow(trial, i["paths"], i["why"], i.get("after"))) or []
     for item in batch.get("reads", []):
-        entry = attempt("read", item, lambda i: do_read(trial, i["path"], i["from"], i["to"], i["saw"]))
+        entry = attempt("read", item, lambda i: do_read(trial, i["path"], i["from"], i["to"], i.get("saw"), i.get("called_by"), i.get("state")))
         if entry:
             touched.append(entry)
     for item in batch.get("docs", []):
@@ -157,6 +158,13 @@ def cmd_problem(args):
     entry = store.find_file(state, state["problems"][-1]["path"])
     keep_notes(state, [entry])
     print(f"{pid} recorded at {state['problems'][-1]['path']}:{state['problems'][-1]['line']}")
+
+
+def cmd_plan(args):
+    state = store.load()
+    problem = run(do_plan, state, args.id, args.fix)
+    store.save(state)
+    print(f"{problem['id']}: fix planned.")
 
 
 def cmd_cause_add(args):
@@ -233,19 +241,12 @@ def cmd_close(_args):
         out.add(f"{len(left)} problem(s) still open: fix them, or `drop` what the code proved not to be one.")
         out.flush(f"{len(left)} problem(s) still open.")
         sys.exit(1)
-    shots = os.path.join(store.trace_folder(state["slug"]), "photos")
-    names = sorted(n for n in os.listdir(shots) if n.lower().endswith(".png")) if os.path.isdir(shots) else []
-    analysis = os.path.join(shots, "analysis.md")
-    text = open(analysis, encoding="utf-8").read() if os.path.exists(analysis) else ""
-    unseen = [n for n in names if os.path.splitext(n)[0] not in text]
     if getattr(_args, "no_photos", None):
         state["no_photos"] = _args.no_photos.strip()
-    elif not names or unseen:
-        fail("a trace closes with the game photographed as it is now and every photo analysed: "
-             + ("no photo was taken: write a look plan and run `photos <plan.json>`" if not names else
-                f"{len(unseen)} photo(s) are not in photos/analysis.md ({', '.join(unseen[:6])}): for each photo, by its name, "
-                "the rules of `rules` one by one and what its crops show")
-             + ". Only a change that cannot reach the screen (a tool, a document) closes with `close --no-photos \"why\"`.")
+    else:
+        missing = photos.not_looked_at(state)
+        if missing:
+            fail(missing)
     state["closed"] = store.now()
     store.save(state)
     print(f"trace {state['slug']} closed.")

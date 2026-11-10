@@ -75,8 +75,14 @@ def main():
     p.add_argument("path")
     p.add_argument("start", type=int)
     p.add_argument("end", type=int)
-    p.add_argument("--saw", required=True, help="what the chunk does and what it calls (the memory of the reading)")
+    p.add_argument("--saw", required=True, help="what each function of the chunk does and what it calls")
+    p.add_argument("--called-by", required=True, help="who calls it or what triggers it (file:line), on which thread")
+    p.add_argument("--state", required=True, help="what it reads and writes, under which lock")
     p.set_defaults(fn=commands.cmd_read)
+    p = sub.add_parser("plan", help="write or rewrite the fix planned for a problem")
+    p.add_argument("id", help="P<n>")
+    p.add_argument("--fix", required=True, help="what will change, where, who else must be checked, the test that will prove it")
+    p.set_defaults(fn=commands.cmd_plan)
     p = sub.add_parser("record", help="record a batch (flow, reads, problems, note) from a JSON file, whole or not at all")
     p.add_argument("file", help="the JSON file, or - for stdin")
     p.set_defaults(fn=commands.cmd_record)
@@ -90,7 +96,7 @@ def main():
     p.add_argument("--cause", required=True, help="the design decision that produces it, as seen there")
     p.add_argument("--symptom", help="what the player sees because of it")
     p.add_argument("--of", help="the cause (C<n>) it belongs to, when already known")
-    p.add_argument("--fix", help="what will change, where, who else must be checked, and the test that will prove it")
+    p.add_argument("--fix", required=True, help="what will change, where, who else must be checked, and the test that will prove it")
     p.set_defaults(fn=commands.cmd_problem)
     p = sub.add_parser("cause", help="the design decisions the problems are grouped under")
     cause = p.add_subparsers(dest="cause_cmd", required=True)
@@ -155,7 +161,11 @@ def main():
     slug = store.active_slug()
     if slug and os.path.exists(store.ledger_path(slug)) and args.cmd not in ("open", "list", "switch"):
         state = store.load(slug)
-        if not state.get("closed") and proof.absorb(state):  # what was read since the last command counts before anything is asked
+        me = os.environ.get("CLAUDE_CODE_SESSION_ID", "")  # the session that works on a trace is the one held to its record
+        mine = bool(me) and me not in state["sessions"] and not getattr(args, "hook", False)
+        if mine:
+            state["sessions"].append(me)
+        if not state.get("closed") and (proof.absorb(state) or mine):  # what was read since the last command counts before anything is asked
             store.save(state)
     args.fn(args)
     slug = store.active_slug()

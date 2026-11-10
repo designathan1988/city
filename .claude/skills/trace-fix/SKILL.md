@@ -77,7 +77,9 @@ next, record what it showed in one call, `$L record <file.json>` (a new file und
 {
   "reads": [
     {"path": "native/src/sim/x/mover.cpp", "from": 40, "to": 96,
-     "saw": "Mover::step: called by Sim::tick (sim.cpp:88) on the simulation thread under traffic_mutex. Reads lane lists, writes Body::pose. Calls gap_ahead (same file:20), which sees only bodies on the lane list. Sends poses with RenderingServer.multimesh_set_buffer (see docs)."}
+     "saw": "Mover::step moves each body along its lane by the gap gap_ahead (same file:20) gives; gap_ahead sees only bodies on the lane list. Sends poses with RenderingServer.multimesh_set_buffer (see docs).",
+     "called_by": "Sim::tick (sim.cpp:88), on the simulation thread, once a tick",
+     "state": "reads the lane lists; writes Body::pose; under traffic_mutex"}
   ],
   "docs": [
     {"api": "RenderingServer.multimesh_set_buffer", "source": "context7 /godotengine/godot-docs",
@@ -96,16 +98,18 @@ next, record what it showed in one call, `$L record <file.json>` (a new file und
 
 A record is complete when someone who never read the code could make the fix from it alone:
 
-- **`saw`, per function on the flow:** who calls it and from where, on which thread and under which lock, what state it
-  reads and writes, what it calls, and what guards it relies on.
+- **Every read has three fields, all required** (a batch without one is refused): `saw`, what each function there does,
+  what it calls and what guards it relies on; `called_by`, who calls it or what triggers it, with file:line, and on
+  which thread; `state`, what it reads and writes, and under which lock. For a document or data: who reads it, what it
+  sets. These are what a fix asks of a file later: written now, the file is not opened again to find them.
 - **`docs`, one entry for every call into Godot, godot-cpp, Terrain3D or a library that the chunk makes or the fix
   will make:** look it up before judging it, always, never from memory: context7 (`resolve-library-id` once a
   library, then `query-docs` with the class, the method and the question); when context7 lacks it, the vendor's page;
   the vendored source in the tree is the last word. Write what it guarantees, on which thread, what it costs, its
   known issues. `"docs": []` only when the batch calls nothing from outside.
 - **`problems`, every one seen, not only the one reported:** the exact line; what is wrong; the design decision behind
-  it (ask "why" until you reach it); what the player sees; and `fix`: what will change, where, who else must be
-  checked, and the test that will prove it.
+  it (ask "why" until you reach it); what the player sees; and `fix`, required: what will change, where, who else must
+  be checked, and the test that will prove it (`$L plan P<n> --fix "..."` rewrites it after more reading).
 - A claim in a comment, a document or a test ("this is checked", "this cannot happen") is read against the code that
   should keep it. A claim the code does not keep is a problem.
 - `note`: the next action, as you would tell it to someone taking over now.
@@ -157,7 +161,8 @@ When every problem of this trace is fixed:
    wrong colours, hard level changes, shadows detached, lights with no source, things missing), with the crop where a
    defect shows. "Looks fine" is not an analysis.
 4. **Every defect seen is a problem**, whoever caused it: `$L problem` it, trace it (step 2) and fix it. Then
-   `$L close`: it closes only with photos taken and every photo named in `analysis.md` (a change that cannot reach
+   `$L close`: it closes only with photos taken, every photo and crop opened with the Read tool, and every photo
+   named in `analysis.md` (a change that cannot reach
    the screen, a tool or a document: `close --no-photos "why"`). Then the project's close (CLAUDE.md: both DLLs, `quick.sh --ready`, the gates, the executable, the record of
    the line), commit and push.
 
@@ -184,7 +189,7 @@ When every problem of this trace is fixed:
 | `resume`, `status` | where the trace is |
 | `open`, `list`, `switch`, `close` | one trace a problem |
 | `trace`, `writers`, `flow`, `off` | finding the flow |
-| `next`, `record`, `read`, `problem`, `note` | reading and recording |
+| `next`, `record`, `read`, `problem`, `plan`, `note` | reading and recording |
 | `notes <file>`, `problems`, `export` | what was recorded, in full |
 | `cause add`, `cause link`, `card C<n>` | grouping problems; exact lines, callers, tests |
 | `fix`, `drop` | closing a problem |

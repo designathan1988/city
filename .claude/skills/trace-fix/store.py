@@ -128,7 +128,7 @@ def set_active(slug):
 
 def new_state(slug, request, reuse):
     return {"slug": slug, "request": request, "opened": now(), "since": time.strftime("%Y-%m-%d %H:%M:%S"), "since_ns": time.time_ns(), "note": "", "reuse": bool(reuse),
-            "closed": None, "files": [], "problems": [], "causes": [], "docs": [], "off": []}
+            "closed": None, "files": [], "problems": [], "causes": [], "docs": [], "off": [], "sessions": []}
 
 
 def load(slug=None):

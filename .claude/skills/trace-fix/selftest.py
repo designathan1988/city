@@ -40,7 +40,7 @@ def main():
         for name in ("lab.ts", os.path.join("..", "elsewhere.txt")):
             with open(os.path.join(reference, name), "w", encoding="utf-8") as f:
                 f.write("".join(f"line {i}" + chr(10) for i in range(1, 31)))
-        env = dict(os.environ, TRACE_FIX_DIR=traces, TRACE_FIX_TASKS=runs, TRACE_FIX_REFERENCES=reference)
+        env = dict(os.environ, TRACE_FIX_DIR=traces, TRACE_FIX_TASKS=runs, TRACE_FIX_REFERENCES=reference, CLAUDE_CODE_SESSION_ID="reader")
         # the files under test live inside the repository (the ledger records repository paths), in a folder of their own
         files = tempfile.mkdtemp(prefix="trace_fix_selftest_", dir=os.path.join(root, "dist"))
         small, big, late, edited = (os.path.join(files, n) for n in ("small.txt", "big.txt", "late.txt", "edited.txt"))
@@ -48,10 +48,15 @@ def main():
             with open(path, "w", encoding="utf-8") as f:
                 f.write("".join(f"line {i}\n" for i in range(1, lines + 1)))
 
-        def ledger(*args, stdin=None):
+        def ledger(*args, stdin=None, bare=False):
+            """One ledger command; unless `bare`, a read and a problem are given the fields every record must have."""
+            if not bare and args[0] == "read":
+                args += ("--called-by", "nobody: a test file", "--state", "none")
+            if not bare and args[0] == "problem":
+                args += ("--fix", "change the line; test: the count")
             done = subprocess.run([sys.executable, os.path.join(HERE, "ledger.py"), *args], env=env, cwd=root,
                                   capture_output=True, text=True, encoding="utf-8", input=stdin)
-            ledger.out = done.stdout
+            ledger.out, ledger.err = done.stdout, done.stderr
             return done.returncode
 
         def state(slug):
@@ -72,8 +77,13 @@ def main():
         def tool_read(path, offset=None, limit=None, session="selftest"):
             assert hook("PostToolUse", "Read", path, session, offset, limit) == 0
 
-        def batch(value):
-            path = os.path.join(work, "batch.json")
+        def batch(value, bare=False):
+            for read in value.get("reads", []) if not bare else []:
+                read.update(called_by="nobody: a test file", state="none")
+            for problem in value.get("problems", []) if not bare else []:
+                problem.setdefault("fix", "change the line; test: the count")
+            batch.made = getattr(batch, "made", 0) + 1  # a file of its own: an earlier batch stays what it was
+            path = os.path.join(work, f"batch{batch.made}.json")
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(value, f)
             return path
@@ -109,7 +119,14 @@ def main():
                           "problems": [{"where": small + ":3", "what": "w1", "cause": "c1", "symptom": "s", "fix": "change line 3"},
                                        {"where": big + ":500", "what": "w2", "cause": "c2"}],
                           "note": "go on"})
+            check("a read with no caller and no state is refused: the fix would have to open the file again",
+                  (ledger("record", batch({"reads": [{"path": big, "from": 1, "to": 400, "saw": "first"}]}, bare=True)),
+                   "called_by" in ledger.out), (1, True))
+            check("a problem with no fix planned is refused",
+                  ledger("record", batch({"problems": [{"where": small + ":3", "what": "w", "cause": "c"}]}, bare=True)), 1)
             check("a whole batch is recorded", ledger("record", good), 0)
+            check("the note keeps who calls and the state", "CALLED BY: nobody" in state("t")["files"][-1]["saw"][0]["text"], True)
+            check("a fix is planned again after more reading", (ledger("plan", "P1", "--fix", "change line 3"), ledger("plan", "P9", "--fix", "x")), (0, 1))
             now = state("t")
             check("flow --after puts the file in run order", [os.path.basename(e["path"]) for e in now["files"]],
                   ["small.txt", "late.txt", "big.txt"])
@@ -159,7 +176,9 @@ def main():
             check("close with a photo nobody analysed", ledger("close"), 1)
             with open(os.path.join(shots, "analysis.md"), "w", encoding="utf-8") as f:
                 f.write("## 01-street_near: B1 no body in another: the three cars of crop r2c2 stand apart")
-            check("close with every photo analysed", ledger("close"), 0)
+            check("analysed on paper, never opened: still refused", (ledger("close"), "never opened" in ledger.out + ledger.err), (1, True))
+            hook("PostToolUse", "Read", os.path.join(shots, "01-street_near.png"))
+            check("close with every photo opened and analysed", ledger("close"), 0)
             check("resume --hook after the close is silent", (ledger("resume", "--hook"), ledger.out), (0, ""))
 
             # ---- reuse of a reading by another trace
