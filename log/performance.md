@@ -411,3 +411,14 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
   revision: they read the ground held beside the road, which a building's pad may move.
 - Check: `digest`, `road_grade_test`, `road_commands_test` pass; gates OK; the frozen review plan (dist/review-c11b) equal
   but leaf-edge noise (7 of 20 pictures equal pixel by pixel).
+
+### P56, P58 (C12): the seams, the atmosphere pass and the sky send a value when it moved
+- Cause: `CityTerrain.feed_seams` set every look uniform of the seam material and eight server values every frame,
+  `SkyView._light` six values of the atmosphere pass and four shader globals, whatever had changed; a value set makes the
+  engine write the material's uniforms again and remake its set of textures.
+- Change: `project/render/sent_params.gd` (new, the one owner of "sent when it moved": a material's values and the shader
+  globals as last sent); the seams, `SkyView._light` and `Daylight` (its `_sky_set` is gone) send through it.
+- Cannot return: these owners have no direct set left for the values they work out every frame.
+- Check: `scripts`, `photos`, `digest` pass; gates OK; the frozen review plan (dist/review-c12): 9 of 20 pictures equal pixel by
+  pixel; the others differ on tree-crown outlines, and in `05-edge_low` on a striped paving seen through leaves at the
+  picture's corner (1,646 pixels: the same leaf and thin-line noise of two runs, there larger).

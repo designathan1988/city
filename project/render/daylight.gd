@@ -29,7 +29,7 @@ var _dark := 0.0
 var _flash := 0.0
 ## The values last given to the engine (it keeps them in single precision, so its own copy does not compare): each is set only
 ## when it moves.
-var _sky_sent := {} # the sky shader's values as last sent (_sky_set)
+var _sky_sent: SentParams # the sky's values go through it: a value set remakes the sky's radiance map, so only the ones that moved are
 var _air_density := NAN
 var cascades: SunCascades # the sun's shadow cascades fitted to the view (render/sun_cascades.gd)
 ## The Effects panel's switches: bloom and the ambient light drawn or not.
@@ -45,6 +45,7 @@ func _init(day: Dictionary, sun: DirectionalLight3D, fill: DirectionalLight3D, t
 	_under = under
 	_env = env
 	_sky = sky
+	_sky_sent = SentParams.new(sky)
 	cascades = SunCascades.new(day, sun)
 	RenderingServer.global_shader_parameter_set(&"rooms_in_use", day.rooms_in_use)
 	var kinds := WorldMaterials.uniform_kinds(sky.shader)
@@ -182,7 +183,7 @@ func follow_view(camera: Camera3D) -> void:
 	var low: float = _d.low_sky * (1.0 - smoothstep(_d.low_from_m, _d.low_to_m, camera.global_position.y))
 	var low_band: Color = _c("low_horizon") * (1.0 - float(_d.sky_shader.low_dark[0]) * _dark)
 	var air: Color = _horizon.lerp(low_band, low)
-	_sky_set("low", low)
+	_sky_sent.send("low", low)
 	if _env.fog_light_color != air:
 		_env.fog_light_color = air
 	var y: float = maxf(camera.global_position.y, 1.0)
@@ -226,22 +227,13 @@ func _set_sky(elev: float) -> void:
 	var flash := _c("flash_colour") # a bolt's flash: the sky lit cold white at once
 	zenith = zenith.lerp(flash, _flash * _d.flash_zenith)
 	horizon = horizon.lerp(flash, _flash * _d.flash_horizon)
-	_sky_set("zenith", zenith)
-	_sky_set("horizon", horizon)
+	_sky_sent.send("zenith", zenith)
+	_sky_sent.send("horizon", horizon)
 	_horizon = horizon
 	horizon_linear = horizon.srgb_to_linear()
-	_sky_set("ground", _c("sky_ground").lerp(_c("horizon_night"), 1.0 - light))
-	_sky_set("low_zenith", _c("low_zenith"))
-	_sky_set("low_horizon", _c("low_horizon"))
-	_sky_set("dark", 1.0 - light)
-	_sky_set("sun_color", sun_col)
-	_sky_set("gain", _d.sky_gain) # a flash lights the sky by its colours (flash_colour above), as the lab's setWeather does
-
-
-## A value of the sky's shader, sent when it differs from the one it has: the engine draws the sky again into its radiance map and
-## filters it whenever a value of its material is set, so the map follows the light, not the frames.
-func _sky_set(key: String, value: Variant) -> void:
-	if _sky_sent.get(key) == value:
-		return
-	_sky_sent[key] = value
-	_sky.set_shader_parameter(key, value)
+	_sky_sent.send("ground", _c("sky_ground").lerp(_c("horizon_night"), 1.0 - light))
+	_sky_sent.send("low_zenith", _c("low_zenith"))
+	_sky_sent.send("low_horizon", _c("low_horizon"))
+	_sky_sent.send("dark", 1.0 - light)
+	_sky_sent.send("sun_color", sun_col)
+	_sky_sent.send("gain", _d.sky_gain) # a flash lights the sky by its colours (flash_colour above), as the lab's setWeather does
