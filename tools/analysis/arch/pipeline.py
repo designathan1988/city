@@ -43,9 +43,10 @@ WRITES_KEPT = 60  # members named per slice: enough to say what state a flow tou
 
 def slices_of(a):
     """Each entry's slice as a route: its functions in program order, each with the caller and line that first reaches it, and the members the
-    whole run writes. Functions are named once, in a table the slices index."""
+    whole run writes; and for every member of the program's state, the functions that read it and the functions that write it, as the compiler
+    resolved each access. Functions are named once, in a table the rest indexes."""
     prog, slices = a["program"], a["slices"]
-    ids = sorted({f for sl in slices.values() for f in sl.order})
+    ids = sorted(prog.fn)  # every function, run by an entry or not: a writer no entry reaches is still a writer
     at = {f: i for i, f in enumerate(ids)}
     table = [[display(prog, f), prog.fn[f]["file"], prog.fn[f]["line"], prog.fn[f]["end"]] for f in ids]
     out = []
@@ -55,4 +56,10 @@ def slices_of(a):
         out.append({"id": digest(e["id"]), "entry": e["name"], "kind": e["kind"], "freq": e["freq"], "why": e["why"], "via": e.get("via", []),
                     "order": [at[f] for f in sl.order], "reached": reached, "jobs": len(sl.submits),
                     "writes": sorted(field_name(prog, m) for m in prog.fields_of(sl.written))[:WRITES_KEPT]})
-    return {"functions": table, "slices": out}
+    members = {}
+    for i, f in enumerate(ids):
+        reads, writes, _ = prog.direct(prog.fn[f])
+        for kind, bits in (("r", reads), ("w", writes)):
+            for m in prog.fields_of(bits):
+                members.setdefault(field_name(prog, m), {"r": [], "w": []})[kind].append(i)
+    return {"functions": table, "slices": out, "members": dict(sorted(members.items()))}
