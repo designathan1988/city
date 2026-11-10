@@ -61,6 +61,12 @@ public:
 	uint64_t submit(JobKey key, float priority, std::function<void()> work);
 	void parallel_for(size_t n, const std::function<void(size_t)> &fn); // blocks until done
 	void wait_idle(); // blocks until the queue is empty and no worker is running
+	// Hands out no more work and returns once no job runs, until resume(): what the caller changes then, no job sees half done (a
+	// city taken in whole moves the catalogue and the tables, which a mesh job reads after it let the map go). Asked before the
+	// caller takes a lock a running job may still need. parallel_for still finishes, on the caller alone; wait_idle must not be
+	// asked in between.
+	void pause();
+	void resume();
 	// Told by whoever freed what jobs built (the frame, after it dropped or replaced results): the resting workers whose heaps
 	// hold pages look at them and give back what was freed there.
 	void freed();
@@ -99,7 +105,7 @@ private:
 	};
 	void loop(Worker &me);
 	bool idle() const { return q_.empty() && helpers_.empty() && busy_ == 0; }
-	bool ready() const { return stop_ || !q_.empty() || !helpers_.empty(); } // a worker has something to take
+	bool ready() const { return stop_ || (!paused_ && (!q_.empty() || !helpers_.empty())); } // a worker has something to take
 	// Up to `count` workers for new work (m_ held): the idle ones are woken, the one that worked last first; for the rest a
 	// place with no thread is taken, and returned for start() to run once the lock is let go.
 	std::vector<Worker *> call(size_t count);
@@ -119,6 +125,7 @@ private:
 	uint64_t seq_ = 0;
 	uint64_t freed_ = 0; // moves each time the pool is told of a free (freed())
 	bool stop_ = false;
+	bool paused_ = false; // pause(): the queue keeps what is submitted, nobody takes it
 };
 
 } // namespace city

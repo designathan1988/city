@@ -137,6 +137,9 @@ Dictionary CityCore::load_city(const String &path, bool paused) {
 	Dictionary spent;
 	Laps laps;
 	sim_.stop();
+	// No job in flight while the city is taken in: take_city moves the catalogue and the tables, which a mesh job reads after it
+	// let the map go (its cut refers to them). Paused before the map is taken: a job still gathering needs it shared to end.
+	state_->jobs->pause();
 	{
 		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
 		state_->interior = InteriorView(); // the layer closes with the city it showed
@@ -145,6 +148,7 @@ Dictionary CityCore::load_city(const String &path, bool paused) {
 		traffic::reset_traffic(*state_); // a load: full lane graph and an empty fleet
 		spent["traffic"] = laps.lap();
 	}
+	state_->jobs->resume();
 	read.reset(); // the old city, freed with the lock let go
 	spent["read"] = times.read;
 	spent["grade"] = times.grade;

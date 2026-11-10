@@ -54,6 +54,8 @@ private:
 	int layer_of(int bx, int bz) const { return (bz % window_) * window_ + bx % window_; }
 	bool held(const Heightfield &hf, int bx, int bz) const { return window_ > 0 && held_[size_t(layer_of(bx, bz))] == bz * hf.regions + bx; }
 	void tell_held(godot::Object *terrain3d) const; // the shader's fine_held: which region each fine layer holds
+	template <typename Layer>
+	int64_t rewrite(const Heightfield &hf, const std::vector<int> &rects, MapStack &fine, MapStack &far, Layer &&layer);
 	MapStack fine_heights_, fine_controls_, far_heights_, far_controls_;
 	std::vector<int> held_; // by fine layer: the region it holds (bz x regions + bx), NO_REGION while none
 	int window_ = 0; // the fine window's side, regions

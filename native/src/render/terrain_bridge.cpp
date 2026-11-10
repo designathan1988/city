@@ -47,7 +47,7 @@ constexpr int FAR_TILE = 128; // a far map's tile, samples a side: what an edit 
 constexpr float HEIGHT_MOST_M = QUANT_LIMIT / HEIGHT_Q_SCALE - HEIGHT_Q_OFFSET;
 // terrain.gdshader's uniforms of the land
 const char *const FINE_HEIGHTS = "fine_heights", *const FINE_CONTROLS = "fine_controls", *const FINE_HELD = "fine_held", *const FINE_SIDE = "fine_side";
-const char *const FAR_HEIGHTS = "far_heights", *const FAR_CONTROLS = "far_controls", *const FAR_CELLS = "far_cells", *const FAR_TILES = "far_tiles";
+const char *const FAR_HEIGHTS = "far_heights", *const FAR_CONTROLS = "far_controls", *const FAR_STRIDE = "far_stride",*const FAR_TILES = "far_tiles";
 const char *const FAR_TILE_SIDE = "far_tile", *const LAND_SIDE = "land_side", *const LAND_REGION = "land_region";
 
 PackedByteArray samples(int count) {
@@ -178,7 +178,7 @@ void TerrainBridge::make(const Heightfield &hf, Object *terrain3d, float reach_m
 	material->call("set_shader_param", FINE_SIDE, window_);
 	material->call("set_shader_param", LAND_SIDE, hf.N);
 	material->call("set_shader_param", LAND_REGION, hf.region_size);
-	material->call("set_shader_param", FAR_CELLS, far_cells_);
+	material->call("set_shader_param", FAR_STRIDE, far_cells_);
 	material->call("set_shader_param", FAR_TILES, far_tiles_);
 	material->call("set_shader_param", FAR_TILE_SIDE, FAR_TILE);
 }
@@ -245,7 +245,10 @@ int64_t TerrainBridge::follow(const Heightfield &hf, const GroundPaint &paint, O
 	return bytes;
 }
 
-int64_t TerrainBridge::push_rects(const Heightfield &hf, const std::vector<int> &rects) {
+// The fine regions that stand and the far tiles under the rectangles written again, each once: `layer(x0, z0, step, count)` gives a
+// map's layer of those samples (heights_of or controls_of) and the stacks are the heights' or the painted ground's.
+template <typename Layer>
+int64_t TerrainBridge::rewrite(const Heightfield &hf, const std::vector<int> &rects, MapStack &fine, MapStack &far, Layer &&layer) {
 	if (!made_ || rects.empty()) return 0;
 	std::vector<int64_t> regions, tiles;
 	for (size_t i = 0; i + 3 < rects.size(); i += 4) {
@@ -259,28 +262,17 @@ int64_t TerrainBridge::push_rects(const Heightfield &hf, const std::vector<int> 
 	int64_t bytes = 0;
 	const int R = hf.region_size, reach = FAR_TILE * far_cells_;
 	for (const int64_t k : regions)
-		if (held(hf, key_x(k), key_y(k))) bytes += fine_heights_.write(layer_of(key_x(k), key_y(k)), heights_of(hf, key_x(k) * R, key_y(k) * R, 1, R));
-	for (const int64_t k : tiles) bytes += far_heights_.write(key_y(k) * far_tiles_ + key_x(k), heights_of(hf, key_x(k) * reach, key_y(k) * reach, far_cells_, FAR_TILE));
+		if (held(hf, key_x(k), key_y(k))) bytes += fine.write(layer_of(key_x(k), key_y(k)), layer(key_x(k) * R, key_y(k) * R, 1, R));
+	for (const int64_t k : tiles) bytes += far.write(key_y(k) * far_tiles_ + key_x(k), layer(key_x(k) * reach, key_y(k) * reach, far_cells_, FAR_TILE));
 	return bytes;
 }
 
+int64_t TerrainBridge::push_rects(const Heightfield &hf, const std::vector<int> &rects) {
+	return rewrite(hf, rects, fine_heights_, far_heights_, [&](int x0, int z0, int step, int count) { return heights_of(hf, x0, z0, step, count); });
+}
+
 int64_t TerrainBridge::push_paint(const Heightfield &hf, const GroundPaint &paint, const std::vector<int> &rects) {
-	if (!made_ || rects.empty()) return 0;
-	std::vector<int64_t> regions, tiles;
-	for (size_t i = 0; i + 3 < rects.size(); i += 4) {
-		cells_under(rects[i], rects[i + 1], rects[i + 2], rects[i + 3], hf.region_size, hf.regions - 1, regions);
-		cells_under((rects[i] + far_cells_ - 1) / far_cells_, (rects[i + 1] + far_cells_ - 1) / far_cells_, rects[i + 2] / far_cells_, rects[i + 3] / far_cells_, FAR_TILE,
-				far_tiles_ - 1, tiles);
-	}
-	once(regions);
-	once(tiles);
-	int64_t bytes = 0;
-	const int R = hf.region_size, reach = FAR_TILE * far_cells_;
-	for (const int64_t k : regions)
-		if (held(hf, key_x(k), key_y(k))) bytes += fine_controls_.write(layer_of(key_x(k), key_y(k)), controls_of(hf, paint, key_x(k) * R, key_y(k) * R, 1, R));
-	for (const int64_t k : tiles)
-		bytes += far_controls_.write(key_y(k) * far_tiles_ + key_x(k), controls_of(hf, paint, key_x(k) * reach, key_y(k) * reach, far_cells_, FAR_TILE));
-	return bytes;
+	return rewrite(hf, rects, fine_controls_, far_controls_, [&](int x0, int z0, int step, int count) { return controls_of(hf, paint, x0, z0, step, count); });
 }
 
 Dictionary TerrainBridge::drawn(const Heightfield &hf, float x, float z) const {

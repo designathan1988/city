@@ -20,7 +20,7 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr float HALF = 0.5f, DROP_K = 1.25f;
+constexpr float HALF = 0.5f, FREED_PAST = 1.25f; // a level is freed past its reach times this
 constexpr int BAND_BIT_NEAR = 2, BAND_BIT_MID = 4, BAND_BIT_BAYS = 8;
 constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
 
@@ -109,8 +109,7 @@ void BuildingRenderer::reset() {
 // A dirty chunk keeps its meshes on screen until the new ones land: its built levels turn stale and its version moves
 // on, so update_view remeshes it and a job already in flight (it may have read the map before the change) still lands
 // but leaves the chunk stale (commit_one).
-void BuildingRenderer::rebuild_chunk(const CityState &s, int64_t key) {
-	(void)s;
+void BuildingRenderer::rebuild_chunk(const CityState &, int64_t key) {
 	auto [found, fresh] = chunks_.try_emplace(key);
 	Chunk &ch = found->second;
 	ch.centre = Vector3((float(key_x(key)) + HALF) * CHUNK, 0, (float(key_y(key)) + HALF) * CHUNK);
@@ -297,18 +296,18 @@ void BuildingRenderer::visit_super(int64_t key, Super &sp, const Vector3 &cam, f
 		ch.detail = ch.cut || (ch.detail ? d < leave : d < mid_end_);
 		uint8_t levels = 0;
 		if ((!ch.built[LEVEL_NEAR] || ch.stale[LEVEL_NEAR]) && (dc < near_reach() || ch.cut)) levels = uint8_t(levels | BAND_BIT_NEAR);
-		else if (ch.built[LEVEL_NEAR] && !ch.cut && dc > near_reach() * DROP_K) drop(ch, LEVEL_NEAR);
+		else if (ch.built[LEVEL_NEAR] && !ch.cut && dc > near_reach() * FREED_PAST) drop(ch, LEVEL_NEAR);
 		// a chunk drawn in detail keeps its mid level current even in the hysteresis band past mid_reach
 		if ((!ch.built[LEVEL_MID] || ch.stale[LEVEL_MID]) && (dc < mid_reach || ch.detail)) {
 			levels = uint8_t(levels | BAND_BIT_MID);
-		} else if (ch.built[LEVEL_MID] && !ch.detail && dc > mid_reach * DROP_K) {
+		} else if (ch.built[LEVEL_MID] && !ch.detail && dc > mid_reach * FREED_PAST) {
 			drop(ch, LEVEL_MID);
 			drop_bands(ch);
 		}
 		// the mid level's openings stand only where they are drawn: with a mid level, built or asked now, within their own reach
 		const bool mid_up = ch.built[LEVEL_MID] || (levels & BAND_BIT_MID) != 0;
 		if ((!ch.built[LEVEL_BAYS] || ch.stale[LEVEL_BAYS]) && mid_up && dc < bay_reach) levels = uint8_t(levels | BAND_BIT_BAYS);
-		else if (ch.built[LEVEL_BAYS] && dc > bay_reach * DROP_K) drop(ch, LEVEL_BAYS);
+		else if (ch.built[LEVEL_BAYS] && dc > bay_reach * FREED_PAST) drop(ch, LEVEL_BAYS);
 		const bool drawn = ch.built[LEVEL_MID] && (ch.detail || far_missing);
 		if (drawn != ch.shown) show(ch, drawn);
 		if (drawn) mask |= 1 << ((key_y(ck) - sz) * CHUNKS_PER_SUPER + (key_x(ck) - sx));
@@ -332,7 +331,7 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 		// the far reach from the superchunk's centre, as the chunks are streamed (a nearest-point reach would hold a
 		// ring of extra far meshes, a quarter more memory, for buildings past building_far_end_m)
 		const float ground = horizontal(cam, super_centre(key));
-		if (ground > far_reach * DROP_K && sp.far.inst.is_valid()) drop_far(key, sp);
+		if (ground > far_reach * FREED_PAST && sp.far.inst.is_valid()) drop_far(key, sp);
 		visit_super(key, sp, cam, eye, want);
 		// the first far mesh at once (nothing stands in yet); a rebuild of a built one on its clock
 		const bool due = !sp.built || now >= std::max(sp.due, sp.asked + look_.far_rebuild_interval_s);

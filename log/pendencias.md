@@ -77,3 +77,16 @@ O que falta fazer, por área.
   - `look.gd` does not count incomplete photos (`failures += CaptureWait.incomplete`): left out because the file holds the
     user's uncommitted work; `tools/ports/landscape/plan-poses.json` takes zero shots and now fails.
   - `dist/cache/tasks` grows without a bound (tools/tasks keeps every result).
+- Performance, open after the batch of 2026-11-10 (numbers in `log/performance.md`, trace `port-from-nov7`):
+  - Of the tag `antes-da-volta-2026-11-10`, not brought, each to be written for this tree: the pipelines made when a mesh
+    is made (16cd2653: every mesh created whole with its surfaces' materials, so the engine compiles then and not on the
+    frame it is first drawn); the map layers built from a cut and the congestion as a texture of levels (908b3d3d); the
+    transit plan's tracks and stops built by jobs (96b2db93); a city opened aside while frames go on (9944dde5); what the
+    render jobs derive for a place made once (2f1d3570: its design, kept by revision under the shared lock, is replaced
+    here by the jobs' cuts; a chunk's ground is still gathered by the near trees, the far cards and the cover apart).
+  - The GPU's frame at km24 (11.75 and 13.67 ms): the causes written in the older trace and not yet fixed: one shadow
+    technique for every distance (four cascades of the drawn set each frame), the screen terms stacked as full-resolution
+    passes, the ground's look worked out per pixel from noise, a person's pose worked out per vertex per pass.
+  - The city opens in 23.6 s in the batch's measure (16.6 s before): not yet read for its cause.
+  - Defects seen in the photos and still open: the far walls at night (one tan glow with black squares), sheds standing
+    in one another on industrial lots, a dark blotch over a pale cross street.

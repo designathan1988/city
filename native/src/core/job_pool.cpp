@@ -204,6 +204,22 @@ void JobPool::wait_idle() {
 	idle_cv_.wait(lk, [&]() { return idle(); });
 }
 
+void JobPool::pause() {
+	std::unique_lock<std::mutex> lk(m_);
+	paused_ = true;
+	idle_cv_.wait(lk, [&]() { return busy_ == 0; });
+}
+
+void JobPool::resume() {
+	std::vector<Worker *> places;
+	{
+		std::lock_guard<std::mutex> lk(m_);
+		paused_ = false;
+		places = call(q_.size() + helpers_.size()); // what was submitted meanwhile
+	}
+	start(places);
+}
+
 void JobPool::loop(Worker &me) {
 	in_pool = true;
 	// A look at its heap is due when it holds pages and something may have been freed there since the last look: its own work
@@ -246,7 +262,7 @@ void JobPool::loop(Worker &me) {
 			q_.pop();
 			auto it = slots_.find(item.key);
 			if (it == slots_.end() || it->second.seq != item.seq) { // superseded while queued: its work went with the newer submit
-				if (idle()) idle_cv_.notify_all();
+				if (busy_ == 0) idle_cv_.notify_all();
 				continue;
 			}
 			work = std::move(it->second.work);
@@ -274,7 +290,7 @@ void JobPool::loop(Worker &me) {
 		me.holds = true;
 		fresh = true;
 		next_look = std::chrono::steady_clock::now() + linger_;
-		if (idle()) idle_cv_.notify_all();
+		if (busy_ == 0) idle_cv_.notify_all(); // wait_idle and pause wake on it, each on its own state
 	}
 }
 

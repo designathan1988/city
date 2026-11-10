@@ -160,7 +160,6 @@ func _overcast() -> float:
 
 
 func _light(way: Vector2) -> void:
-	# Worked out every frame, sent when they moved (SentParams): a still wind and a still sun set nothing.
 	SentParams.send_global(&"wind_x", way.x)
 	SentParams.send_global(&"wind_z", way.y)
 	SentParams.send_global(&"wind_ms", float(weather.get("wind", 0.0)))
@@ -169,8 +168,7 @@ func _light(way: Vector2) -> void:
 	_sent.send(&"sun_dir", _world.sun.global_basis.z.normalized())
 	var c := _world.sun.light_color
 	_sent.send(&"sun_light", Vector3(c.r, c.g, c.b) * _world.sun.light_energy * _d.sun_gain)
-	# The air takes the sky's colour at the horizon, overcast with it; the pass works in linear light.
-	var horizon := _world.daylight.horizon_linear
+	var horizon := _world.daylight.horizon_linear # the air takes the sky's colour there, overcast with it, in linear light
 	_sent.send(&"sky_light", Vector3(horizon.r, horizon.g, horizon.b))
 	_sent.send(&"mist_color", Vector3(horizon.r, horizon.g, horizon.b))
 	_sent.send(&"dark", _world.daylight.night)

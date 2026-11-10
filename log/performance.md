@@ -155,3 +155,56 @@ Measured once, at `8ca7efe1`, the plan of P9 (`info` and 5 s of `usage` at each 
 - Tests: `map_hold_test`, the digest (equal to the golden) and the scenes each piece reaches passed as each piece went in;
   the whole suite ran at `cfa6faf1` (42 of 43; `camera_input_test` failed under six parallel processes and passes alone).
   The suite has not been run whole since the test harness and the pool's sizing changed: it runs once at the close.
+
+## P25 to P31 (2026-11-10, night): the tag's performance and optimisation fixes, written or fitted for this tree in one batch
+
+The owner's order: every performance and optimisation fix of the tag at once, nothing of the ports, tested, photographed
+and measured once at the end. The tag's line could not be transplanted (it stands on the ports); each was written for this
+tree or applied three-way and resolved to this tree's forms. Commits `0fbba89a` to the batch's close.
+
+- P25 (`0fbba89a`): the people's clip palette is not kept on the CPU beside its texture; the three clips a fallen body
+  is posed from are cut out at load.
+- P26 (`1ec9d556`): every region of the land was made in Terrain3D when a map opened (576 regions of height, painted
+  ground and colour for the 24 km land, on the CPU and again on the GPU), and a region added or removed made its texture
+  arrays again whole. `TerrainBridge` owns the land's maps as layer stacks on the GPU alone: the fine ground for a window of
+  regions round the eye (a region entering takes the layer of the one that left, nearest first, within the frame's upload
+  room) and the far ground, the whole map every `render.far_land_cells` samples in tiles, read by
+  `terrain_land.gdshaderinc` wherever no fine region stands. Terrain3D keeps no region. `probes/ground_drawn` reads a height
+  back from the maps; `render_pending` counts the fine regions still to write.
+- P27 (`d70c450b`, the tag's C7 with ec7b1925, 2d53b55e, 3e3c48e2): a record's body was made again by every reader and kept
+  in four private caches by count. `b40::BodyCache` (the tables' own, `sim.body_cache_mb`) is the one owner; the render's
+  rooms and cut bodies are kept in bytes, a rooms entry costing the body it pins (`render.rooms_cache_mb`); the far level
+  derives no rooms; a lot's plants, gates and bays are a list of their own; one antialiasing filter a tier.
+- P28 (`a9ebda4c`): the sky, the weather and the daylight send a shader value only when it moved (`SentParams`).
+- P29 (`e9a2af66`): the signature looks stay packed (0.6 MiB), a picture unpacked when a building asks for it (33 MiB
+  were kept unpacked).
+- P30 (`2a27512c`): growth decides each building under the shared map lock and takes the exclusive one only to add it;
+  the looks moved from an unbounded map in the store to the body cache.
+- P31 (`4c1d932d`, the rest of the tag's C7): the profiles' derived values have an owner, a segment's street furniture is
+  placed once and kept for the streets' revision (a building that grows no longer drops it), the transit reads its own
+  list of the change log, the tools and panels ask the core once.
+
+Measured once, at `4c1d932d`, the same plan (`info` and 5 s of `usage` at each view once `render_pending` is 0):
+
+| 24 km city | 9 km out, base | before the batch | now | Centre, base | before the batch | now |
+|---|---|---|---|---|---|---|
+| Video memory | 3,773 MiB | 2,230 MiB | 1,770 MiB | 5,454 MiB | 3,606 MiB | 3,132 MiB |
+| of it buffers | 2,622 MiB | 1,078 MiB | 1,078 MiB | 4,281 MiB | 2,436 MiB | 2,436 MiB |
+| of it textures | | | 604 MiB | | | 608 MiB |
+| Godot static memory | 898 MiB | 877 MiB | 382 MiB | 1,351 MiB | 1,077 MiB | 582 MiB |
+| GPU a frame (mean of 5 s) | 14.0 ms | 12.72 ms | 11.75 ms | 16.2 ms | 14.95 ms | 13.67 ms |
+| CPU a frame (mean of 5 s) | 0.95 ms | 0.98 ms | 1.07 ms | 1.04 ms | 1.27 ms | 1.03 ms |
+| Primitives a frame | 3.74 M | 2.83 M | 2.88 M | 4.88 M | 3.75 M | 3.79 M |
+| Shadow primitives a frame | 12.55 M | 5.86 M | 5.86 M | 15.01 M | 8.61 M | 8.61 M |
+
+- The static memory fell by 495 MiB at both views and the video memory by 460 to 474 MiB: the land's regions, on the CPU
+  and on the GPU, were most of it. The city opens in 23.6 s in this run (16.6 s before): not yet read for its cause.
+- Tests: the whole suite, once, two Godot at most: 42 of 42. Photos of this run, the commit and the date written on each:
+  `dist/trace/port-from-nov7/photos/60-batch_*.jpg`, read one by one in `analysis.md`: the land runs whole from the street
+  to the horizon with no ring where the fine ground ends, the rooms stand behind the panes, the lamp pools on the avenue
+  at night; the night's flat far walls (P11) still show.
+- Not brought from the tag, with why (also in `log/pendencias.md`): 2f1d3570 (the render jobs' derived places kept by
+  revision under the shared lock: this tree's cuts replace that design), 9944dde5 (a city opens aside: the opening, not the
+  running game), 16cd2653 (pipelines made when a mesh is made: stands on the ports, to be written for this tree),
+  908b3d3d and 96b2db93 (the map layers and the transit plan off the frame's thread: stand on the lab's flow levels and
+  transit parts, to be written for this tree), 98a14171 (lock protocol fixes, no wait removed).

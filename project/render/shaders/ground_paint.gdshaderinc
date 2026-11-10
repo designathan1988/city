@@ -2,7 +2,7 @@
 // them, laid out as Terrain3D's control map: https://terrain3d.readthedocs.io controlmap_format): base id the surface, blend
 // how much of it; overlay id the biome and the uv bits how much of it; the reserved bits the gullies. Each corner of the
 // painted ground's cell holds one of each, read at the four corners and mixed by distance (ids cannot be filtered).
-// Needs: ground_control (terrain.gdshader), land_triplanar, the uniforms below.
+// Needs: ground_control (terrain_land.gdshaderinc), land_triplanar, the uniforms below.
 
 uniform vec3 biome_tint[7] : source_color; // none, then the biomes of data/catalog/nature.json
 uniform int map_biome = 0; // 0 none, else the biome's index + 1

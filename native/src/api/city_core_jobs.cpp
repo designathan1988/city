@@ -97,6 +97,23 @@ Dictionary CityProbes::job_pool_probe() const {
 	late->clear();
 	serial.freed(); // as the frame tells the pool once it freed what jobs built
 	d["late_left_mib"] = left(back);
+	// A paused pool hands out nothing: pause returns with no job running, what is submitted meanwhile runs only after resume.
+	std::atomic<int> ran{ 0 }, running{ 0 };
+	serial.submit(JobKey{ JobLane::WATER, SERIAL_JOBS + 1 }, 0.f, [&ran, &running]() {
+		running++;
+		std::this_thread::sleep_for(SERIAL_LINGER);
+		running--;
+		ran++;
+	});
+	serial.pause();
+	d["pause_left_running"] = running.load();
+	const int ran_by_pause = ran.load();
+	serial.submit(JobKey{ JobLane::WATER, SERIAL_JOBS + 2 }, 0.f, [&ran]() { ran++; });
+	std::this_thread::sleep_for(SERIAL_LINGER * LATE_LINGERS);
+	d["ran_while_paused"] = ran.load() - ran_by_pause;
+	serial.resume();
+	serial.wait_idle();
+	d["ran_after_resume"] = ran.load();
 	return d;
 }
 
