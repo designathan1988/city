@@ -27,9 +27,10 @@ int zone_density(int zone_id);
 bool lot_occupied(const CityState &s, const Lot &l);
 // Record for lot i of a cell's lot list: a middling block answers its neighbours' height, the body says the storeys, and of the
 // lot's candidates the one least like what stands round it is kept (likeness.h).
-Building record_for(CityState &s, const std::vector<Lot> &cell_lots, int i);
-// How a record's body looks, read once (BuildingStore::looks).
-BodyLook look_of(CityState &s, const Building &rec);
+// It only reads the city (the looks and the candidates' bodies are the tables' own cache): the caller holds the map shared.
+Building record_for(const CityState &s, const std::vector<Lot> &cell_lots, int i);
+// How a record's standing body looks, kept with the body (b40/body_cache.h).
+BodyLook look_of(const CityState &s, const Building &rec);
 // A building on every free lot (generated city); returns how many were added.
 int fill_all(CityState &s);
 // City minutes before `now` a generated building was built: spread over one tenth of the decay span.

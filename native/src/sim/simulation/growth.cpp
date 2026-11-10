@@ -90,18 +90,11 @@ bool lot_occupied(const CityState &s, const Lot &l) {
 	return hit;
 }
 
-BodyLook look_of(CityState &s, const Building &rec) {
-	const b40::BodyKey key = b40::body_key(rec);
-	auto it = s.buildings.looks.find(key);
-	if (it != s.buildings.looks.end()) return it->second;
-	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
-	const b40::Body &body = *body_held;
-	return s.buildings.looks[key] = body_look(body, rec.fn);
-}
+BodyLook look_of(const CityState &s, const Building &rec) { return *s.buildings.designs.made->look(s.buildings.designs, rec); }
 
 namespace {
 // What stands within LOOK_REACH_M of the point, and how far.
-std::vector<NearLook> looks_near(CityState &s, float x, float z) {
+std::vector<NearLook> looks_near(const CityState &s, float x, float z) {
 	std::vector<int> ids;
 	s.buildings.query(x - LOOK_REACH_M, z - LOOK_REACH_M, x + LOOK_REACH_M, z + LOOK_REACH_M, [&](int id) { ids.push_back(id); });
 	std::vector<NearLook> near;
@@ -135,7 +128,7 @@ Candidate draw_candidate(const CityState &s, const Building &lot, uint32_t seed)
 
 // The lot's body: the first when nothing stands near to look like, else the candidate least like its neighbours. A candidate's seed is
 // the lot's own, then hashes of it, so a city is the same every time.
-Candidate best_candidate(CityState &s, const Building &lot) {
+Candidate best_candidate(const CityState &s, const Building &lot) {
 	const std::vector<NearLook> near = looks_near(s, lot.x, lot.z);
 	if (near.empty()) return draw_candidate(s, lot, lot.seed);
 	std::array<Candidate, LOOK_CANDIDATES> c;
@@ -153,7 +146,7 @@ Candidate best_candidate(CityState &s, const Building &lot) {
 }
 } // namespace
 
-Building record_for(CityState &s, const std::vector<Lot> &cell_lots, int i) {
+Building record_for(const CityState &s, const std::vector<Lot> &cell_lots, int i) {
 	const Lot &l = cell_lots[i];
 	const GrowthDef &g = s.catalog.growth;
 	MapCell cell = map_cell_of(s, l.x, l.z);
@@ -177,7 +170,6 @@ Building record_for(CityState &s, const std::vector<Lot> &cell_lots, int i) {
 	b.seed = kept.seed;
 	b.style = uint16_t(kept.seed & BUILDING_AUTO_STYLE_MASK);
 	b.floors = uint16_t(kept.storeys); // the body is the height: a record never says another
-	s.buildings.looks[b40::body_key(b)] = kept.look;
 	return b;
 }
 

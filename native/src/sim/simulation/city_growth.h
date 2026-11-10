@@ -15,7 +15,7 @@ struct CityState;
 struct GrowthQueue {
 	std::vector<int64_t> cells; // CHUNK keys with lots that may be free
 	std::unordered_set<int64_t> members; // same keys, O(1) membership
-	double acc = 0; // buildings owed
+	double acc = 0; // buildings owed: the simulation thread's alone (neither saved nor read elsewhere)
 	bool has_last = false;
 	double last_x = 0, last_z = 0;
 	int grown = 0; // buildings grown since the map began (probe for tests and the UI)
@@ -25,7 +25,10 @@ struct GrowthQueue {
 	void assign(std::vector<int64_t> keys); // the queue as saved: cells and their members (each key once)
 };
 
-// One simulation step of growth (caller holds map_mutex exclusively).
+// One simulation step of growth. It takes the map itself (the caller holds nothing): shared while it decides each building (the
+// scan of the queued lots, its neighbours' looks, the candidate bodies), beside the mesh jobs and the frame, and exclusively only
+// to add what it decided, a building at a time, so each is decided on the city the last one already stands in. A building decided
+// on a map a command edited meanwhile (CityState::revision) is not added: it stays owed to the next step.
 void grow_step(CityState &s, double dt);
 
 } // namespace city

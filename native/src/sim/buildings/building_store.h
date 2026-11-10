@@ -71,9 +71,7 @@ public:
 	// Residents and jobs of the alive records (occupancy), kept by place/remove, the one way a record comes or goes: never
 	// counted again over every record, and right after growth, edits and loads alike (the snapshot reads them).
 	int residents = 0, jobs = 0;
-	b40::Data designs; // the generator's tables (set once at boot, read-only after): every body is made from them
-	// How each body looks (likeness.h), by b40::body_key: derived, never saved. Only growth writes it, under the map's exclusive lock.
-	std::unordered_map<b40::BodyKey, BodyLook, b40::BodyKeyHash> looks;
+	b40::Data designs; // the generator's tables (set once at boot, read-only after): every body is made from them, and kept by them
 
 	void init(ChangeLog *l, const OccupancyDef *occupancy);
 	// The same links set again, nothing cleared: the store moved in with a city read aside (CityState::bind).

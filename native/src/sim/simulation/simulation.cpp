@@ -78,10 +78,9 @@ void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 			traffic::apply_flow_control(s);
 		}
 		s.clock.minutes.store(s.clock.minutes.load() + dt * s.catalog.tune.sim_minutes_per_second);
-		if (growing) { // waits its turn: a mesh job's short hold must not decide on which tick a building grows
-			std::unique_lock<std::shared_mutex> map(s.map_mutex);
-			grow_step(s, dt);
-		}
+		// It takes the map itself: shared to decide, exclusive only to add (city_growth.h). The add waits its turn: a mesh job's
+		// short hold must not decide on which tick a building grows.
+		if (growing) grow_step(s, dt);
 		{
 			std::unique_lock<std::shared_mutex> map(s.map_mutex, std::try_to_lock); // mesh jobs may hold it shared: the damage clock is owed what it missed
 			if (map.owns_lock()) {

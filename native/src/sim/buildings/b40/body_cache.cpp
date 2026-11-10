@@ -27,6 +27,11 @@ std::shared_ptr<const Body> BodyCache::mass(const Data &data, const Building &re
 	}, cost_of);
 }
 
+std::shared_ptr<const BodyLook> BodyCache::look(const Data &data, const Building &rec) {
+	return looks_.get(body_key(rec), [&]() { return std::make_shared<const BodyLook>(body_look(*body(data, rec), rec.fn)); },
+			[](const BodyLook &) { return sizeof(BodyLook); });
+}
+
 std::shared_ptr<const std::vector<LotElement>> BodyCache::elements(const Data &data, const Building &rec) {
 	if (rec.body) { // the version itself holds them
 		const std::shared_ptr<const Body> own = rec.body.shared();

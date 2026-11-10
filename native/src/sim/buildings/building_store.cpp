@@ -19,7 +19,6 @@ void BuildingStore::init(ChangeLog *l, const OccupancyDef *occupancy) {
 }
 
 void BuildingStore::clear() {
-	looks.clear();
 	items.clear();
 	free_ids.clear();
 	hash.clear();

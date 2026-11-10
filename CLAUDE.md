@@ -181,10 +181,14 @@ compilar. Meshoptimizer e Clipper2 vêm pelo CMake na primeira compilação. À 
 ## Fluxo de dados e threads
 - `DataTables` lê `data/**` → `CityStore.boot` envia o catálogo ao `CityCore`, que rejeita chave ausente.
 - `Simulation` roda em thread própria com tick fixo (`sim_tick_hz`), sob `map_mutex` compartilhado e `traffic_mutex`.
-- Comandos, crescimento e relógio tomam `map_mutex` exclusivo.
+- Comandos e relógio tomam `map_mutex` exclusivo. Growth decides each building under the shared lock, beside the frame and
+  the mesh jobs, and takes the exclusive one only to add it (`grow_step`).
 - `ChangeLog` é o único canal de "sujo", drenado sob trava compartilhada e o mutex do log.
 - `RenderWorld.sync` nunca toma o mapa exclusivo. Manda as malhas ao `JobPool`, que leem só o mapa, nunca o tráfego.
-- O job de prédio copia o que lê sob trava curta (`HeightPatch`).
+- A mesh job copies what it reads under a short shared lock (`MapRead`, `CityCut`, `HeightPatch`) and builds with the lock let go.
+- The land's maps are the game's (`TerrainBridge`: the fine ground for a window of regions round the view, the far ground whole
+  and sparse); Terrain3D draws the clipmap and keeps no region.
+- A record's derived body has one owner, the tables' `BodyCache` (`record_body`, `record_mass`, `record_elements`), bounded in bytes.
 - A conversão de malha entra em `render.upload_budget_mb` por quadro; o commit só troca malhas, em `render.commit_budget_ms`.
 - Poses por `PoseBuffer`. O save grava em thread própria.
 
