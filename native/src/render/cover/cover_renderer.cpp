@@ -190,7 +190,7 @@ void CoverRenderer::submit(const CityState &s, int64_t key, float priority) {
 	s.jobs->submit(job, priority, [this, &s, key, job, ticket, priority]() {
 		std::shared_ptr<Built> b;
 		{
-			std::shared_lock<std::shared_mutex> map(s.map_mutex);
+			MapRead map(s);
 			b = build(s, key);
 		}
 		b->key = key;

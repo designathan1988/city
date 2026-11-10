@@ -235,7 +235,7 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam) {
 	Laps laps;
 	{
 		// Only reads the map: shared, so a frame never waits for the mesh jobs (they read it shared too).
-		std::shared_lock<std::shared_mutex> lk(s.map_mutex);
+		MapRead lk(s);
 		cost_.lock = laps.lap();
 		drain_log(s);
 		effects_.touch_terrain(s, terrain_rects_);

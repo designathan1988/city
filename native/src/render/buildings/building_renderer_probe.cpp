@@ -52,7 +52,7 @@ Dictionary BuildingRenderer::bay_census() {
 	int64_t bays = 0, buildings = 0;
 	std::vector<Building> records;
 	{
-		std::shared_lock<std::shared_mutex> lk(s.map_mutex);
+		MapRead lk(s); // for the copy of the records alone
 		for (const Building &b : s.buildings.items)
 			if (b.alive && !(b.floors == 0 && b.body == 0 && !b40::is_open_lot(b.fn))) records.push_back(b);
 	}
@@ -116,7 +116,7 @@ Dictionary BuildingRenderer::far_form() const {
 	const CityState &s = *state_;
 	std::unordered_set<int64_t> supers;
 	{
-		std::shared_lock<std::shared_mutex> lk(s.map_mutex);
+		MapRead lk(s);
 		for (const Building &b : s.buildings.items)
 			if (b.alive) supers.insert(chunk_of(b.x, b.z, SUPERCHUNK));
 	}
@@ -126,7 +126,7 @@ Dictionary BuildingRenderer::far_form() const {
 		const SuperChunks chunks = chunks_of(key);
 		Inputs in;
 		{
-			std::shared_lock<std::shared_mutex> lk(s.map_mutex);
+			MapRead lk(s);
 			in = gather(s, chunks.data(), int(chunks.size()));
 		}
 		const SuperBuilt built = build_super_cpu(in, key);
