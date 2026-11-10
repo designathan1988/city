@@ -162,6 +162,13 @@ def main():
                        len(on_flow) == len(set(on_flow)), len(on_flow) >= 3), (True, True, True, True))
                 check('every file of the route says why', all(e['why'] for e in state('route')['files']), True)
                 check('next names the functions on the route', (ledger('next'), 'on the route:' in ledger.out), (0, True))
+                store_note = next(p for p in on_flow if p.endswith('native/notes_api.cpp'))
+                ledger('problem', store_note + ':20', '--what', 'w', '--cause', 'c')
+                ledger('cause', 'add', '--what', 'd', '--owner', 'o', '--plan', 'p', '--problems', 'P1')
+                check('the fix card names the function, its lines and its callers',
+                      (ledger('card', 'C1', '--include', fixture), 'Where to edit: 1 function(s)' in ledger.out, ', lines ' in ledger.out,
+                       'called by' in ledger.out, os.path.exists(os.path.join(traces, 'route', 'card-C1.md'))), (0, True, True, True, True))
+                check('a card of a cause that does not exist', ledger('card', 'C9'), 1)
 
             # ---- every answer under the limit, on a ledger far larger than a real one
             made = {"slug": "huge", "request": "r " * 2000, "opened": "2026-01-01 00:00", "note": "n " * 2000,
