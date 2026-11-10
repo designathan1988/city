@@ -3,11 +3,12 @@
 
 #include "render/rs_util.h"
 
+#include <utility>
+
 namespace city {
 
-// A mesh made by a job, off the main thread: mesh_add_surface_from_arrays converts the arrays on the calling thread and
-// the RenderingServer queues the surface's upload for the main thread's next call into it (Godot rendering_server.cpp /
-// server_wrap_mt_common.h), so the conversion never lands on the frame and the uploads are paced by the bakes the frame
+// A mesh made by a job, off the main thread, whole with its materials (surface_data.h: mesh_create_from_surfaces, whose pipelines the
+// engine makes then, in the background): the conversion never lands on the frame and the uploads are paced by the bakes the frame
 // admits (chunk_jobs.h). Freed unless handed over (a result dropped as stale frees its mesh); bake_multimesh fills a
 // MultiMesh the same way.
 struct OwnedMesh {
@@ -15,25 +16,65 @@ struct OwnedMesh {
 	OwnedMesh() = default;
 	OwnedMesh(const OwnedMesh &) = delete;
 	OwnedMesh &operator=(const OwnedMesh &) = delete;
-	OwnedMesh(OwnedMesh &&o) noexcept : rid(o.rid) { o.rid = godot::RID(); }
+	OwnedMesh(OwnedMesh &&o) noexcept : rid(o.rid), held_(o.held_), held_cast_(o.held_cast_) { o.rid = o.held_ = o.held_cast_ = godot::RID(); }
 	OwnedMesh &operator=(OwnedMesh &&o) noexcept {
 		if (this != &o) {
 			reset();
 			rid = o.rid;
-			o.rid = godot::RID();
+			held_ = o.held_;
+			held_cast_ = o.held_cast_;
+			o.rid = o.held_ = o.held_cast_ = godot::RID();
 		}
 		return *this;
 	}
 	~OwnedMesh() { reset(); }
 	bool valid() const { return rid.is_valid(); }
 	void reset() {
+		let_go();
 		if (rid.is_valid()) godot::RenderingServer::get_singleton()->free_rid(rid);
 		rid = godot::RID();
 	}
-	godot::RID release() {
+	godot::RID release() { // handed to who draws it: its instance is the one that holds it from then on
+		let_go();
 		godot::RID r = rid;
 		rid = godot::RID();
 		return r;
+	}
+	static OwnedMesh of(const godot::RID &made) { // takes `made` over (surface_data.h mesh_of_arrays, create_mesh)
+		OwnedMesh m;
+		m.rid = made;
+		return m;
+	}
+	// For a mesh kept and drawn by instances made later (a vehicle's model, a tree's species, a kit's piece): it is given an instance of
+	// its own, in no scenario and so never culled nor drawn. The engine makes a mesh's pipelines when the mesh is made, for the passes
+	// the frames drawn so far have asked for, and when a frame asks for more (the first one drawn, a graphics tier changed) it makes
+	// them again only for the surfaces some instance holds (Godot render_forward_clustered.cpp: mesh_generate_pipelines reads
+	// global_pipeline_data_required, _update_dirty_geometry_pipelines walks the instances' surfaces). A shared mesh made at the start,
+	// with no instance until one of its kind comes into view, would have the rest of its pipelines made on that frame.
+	// `cast_in`: the material its shadow twins wear as an override (ShadowTwin, rs_util.h); a second instance wears it here, so the
+	// pipelines of that pair are made the same way and no twin's first frame makes one.
+	OwnedMesh shared(const godot::RID &cast_in = godot::RID()) && {
+		if (!rid.is_valid()) return std::move(*this);
+		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
+		if (!held_.is_valid()) {
+			held_ = rs->instance_create();
+			rs->instance_set_base(held_, rid);
+		}
+		if (cast_in.is_valid() && !held_cast_.is_valid()) {
+			held_cast_ = rs->instance_create();
+			rs->instance_set_base(held_cast_, rid);
+			rs->instance_geometry_set_material_override(held_cast_, cast_in);
+		}
+		return std::move(*this);
+	}
+
+private:
+	godot::RID held_, held_cast_; // shared(): the instances that keep the mesh's pipelines as the frames ask for them
+	void let_go() {
+		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
+		if (held_.is_valid()) rs->free_rid(held_);
+		if (held_cast_.is_valid()) rs->free_rid(held_cast_);
+		held_ = held_cast_ = godot::RID();
 	}
 };
 
@@ -56,20 +97,8 @@ inline OwnedMesh bake_multimesh(const godot::RID &mesh, const godot::PackedFloat
 struct MeshDraw {
 	godot::RID mesh, inst;
 	// Shows `next` (a mesh a job made, now owned here): swap_base.
-	void adopt(const godot::RID &scenario, const godot::RID &material, bool shadows, const godot::RID &next, RenderLayer layer) {
-		swap_base(inst, mesh, next, scenario, material, shadows, layer);
-	}
-	void reset(const godot::RID &scenario, const godot::RID &material, bool shadows, RenderLayer layer) {
-		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
-		if (!mesh.is_valid()) {
-			mesh = rs->mesh_create();
-			inst = rs->instance_create2(mesh, scenario);
-			rs->instance_set_layer_mask(inst, layer);
-			rs->instance_geometry_set_cast_shadows_setting(inst,
-					shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF);
-		}
-		rs->mesh_clear(mesh);
-		if (material.is_valid()) rs->instance_geometry_set_material_override(inst, material);
+	void adopt(const godot::RID &scenario, bool shadows, const godot::RID &next, RenderLayer layer) {
+		swap_base(inst, mesh, next, scenario, shadows, layer);
 	}
 	void visible(bool on) const {
 		if (inst.is_valid()) godot::RenderingServer::get_singleton()->instance_set_visible(inst, on);

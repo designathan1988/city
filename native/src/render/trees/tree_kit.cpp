@@ -88,7 +88,8 @@ void limbs(MeshBuilder &mb, const Dictionary &l, const Vector3 &from, const Tone
 	}
 }
 
-TreeSpecies make_species(const Dictionary &d, int row, float caster_error_m, TreePictures &pictures, PackedStringArray &errors) {
+TreeSpecies make_species(const Dictionary &d, int row, float caster_error_m, TreePictures &pictures, const RID &body_material, const RID &card_material,
+		PackedStringArray &errors) {
 	TreeSpecies sp;
 	static const char *const KEYS[] = { "name", "seed", "trunk", "limbs", "crowns", "dark", "lit", "jitter", "shade_bottom", "heart_shade",
 		"heart_shrink", "crown_reach", "cards_cast" };
@@ -121,16 +122,16 @@ TreeSpecies make_species(const Dictionary &d, int row, float caster_error_m, Tre
 	if (d.has("cone")) sp.far_tone = tree_cone(body, cards, cone_of(d["cone"]), sh, r);
 	sp.far_tone.a = 1;
 	pictures.draw(row, body, cards, sp.far_tone);
-	sp.body = body.commit();
-	sp.caster = simplify_whole(body, caster_error_m).commit();
-	if (!cards.empty()) sp.cards = cards.commit();
+	sp.body = body.bake(body_material, false).shared(); // a unit model: its attributes as they are; shared by every chunk's draw
+	sp.caster = simplify_whole(body, caster_error_m).bake(body_material, false).shared();
+	if (!cards.empty()) sp.cards = cards.bake(card_material, false).shared();
 	sp.crown_reach = d["crown_reach"];
 	sp.cards_cast = d["cards_cast"];
 	return sp;
 }
 } // namespace
 
-bool TreeKit::build(const Dictionary &trees, PackedStringArray &errors) {
+bool TreeKit::build(const Dictionary &trees, const RID &body_material, const RID &card_material, PackedStringArray &errors) {
 	species_.clear();
 	if (!trees.has("atlas") || !atlas_.build(trees["atlas"], errors)) {
 		errors.push_back("streets.json trees: atlas das folhas inválido");
@@ -139,7 +140,7 @@ bool TreeKit::build(const Dictionary &trees, PackedStringArray &errors) {
 	Array list = trees.get("species", Array());
 	if (list.is_empty()) errors.push_back("streets.json trees: sem espécies");
 	if (!pictures_.begin(trees.get("pictures", Dictionary()), int(list.size()), atlas_.take_image(), errors)) return false;
-	for (int i = 0; i < list.size(); i++) species_.push_back(make_species(list[i], i, trees["caster_error_m"], pictures_, errors));
+	for (int i = 0; i < list.size(); i++) species_.push_back(make_species(list[i], i, trees["caster_error_m"], pictures_, body_material, card_material, errors));
 	pictures_.finish();
 	return errors.is_empty();
 }

@@ -20,11 +20,30 @@ struct HeldCost {
 	}
 };
 
-// A level surface the job made (bake: the arrays converted on the job's thread, rs_util.h OwnedMesh); no mesh when the shell held no triangle.
+// A level's mesh a job made, whole with its materials (bake: the arrays converted on the job's thread, mesh_draw.h OwnedMesh); no mesh when
+// its shells held no triangle.
 struct LevelSurface {
 	OwnedMesh mesh;
 	godot::AABB box;
-	int glass_at = -1, sheer_at = -1, card_at = -1, lawn_at = -1, wash_at = -1; // the mesh surfaces of the panes, the glass guards, the railings, the lawns and the lanterns' light, -1: none
+};
+
+// The materials a level's mesh is made with, a surface each: its walls, its panes or far walls, its glass guards, its railings, its lawns
+// and the lanterns' light.
+struct LevelMaterials {
+	godot::RID walls, glass, sheer, card, lawn, wash;
+	static LevelMaterials of_walls(const godot::RID &material) { // a mesh of one surface
+		LevelMaterials m;
+		m.walls = material;
+		return m;
+	}
+};
+
+// What a chunk's meshes are made with, the renderer's one set (made at init, copied into each job's result): the near and the mid level's
+// surfaces (the mid level's panes are far walls in the walls' own material, and it has no guards nor lantern light), the near level's
+// fine pieces (the walls' material) and the mid level's hull (the shadow caster's).
+struct ChunkMaterials {
+	LevelMaterials near, mid;
+	godot::RID parts, cast;
 };
 
 // A superchunk's far mesh, and when it is made again.

@@ -20,6 +20,7 @@ const TEMPORAL_NONE := 0
 const TEMPORAL_TAA := 1
 const TEMPORAL_FSR2 := 2
 const FALLBACK_AA := 1 # where SMAA does not exist the same tier asks for this entry of MSAA_MODES
+const MSAA_SETTING := "rendering/anti_aliasing/quality/msaa_3d" # what the engine's pipeline precompilation reads (apply)
 ## pedestrian_detail 0: the people's nearest level is this one (their far level).
 const PEOPLE_FAR := 1
 
@@ -109,6 +110,10 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	# one filter resolves the edges: where the frames do (TAA, FSR2), SMAA over them was a second full-screen pass that only softened
 	var smaa: bool = q.smaa and has_smaa() and temporal == TEMPORAL_NONE
 	viewport.msaa_3d = Viewport.MSAA_DISABLED if temporal == TEMPORAL_FSR2 else MSAA_MODES[maxi(int(q.msaa), FALLBACK_AA if q.smaa and not has_smaa() else 0)]
+	# The engine precompiles every mesh's pipelines for the project's MSAA (Godot render_forward_clustered.cpp update():
+	# _update_global_pipeline_data_requirements_from_project reads this setting each frame), never the viewport's: told the same here, or at a
+	# tier with MSAA no precompiled pipeline fits the frame and each is made on the frame its mesh is first drawn.
+	ProjectSettings.set_setting(MSAA_SETTING, viewport.msaa_3d)
 	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_SMAA if smaa else Viewport.SCREEN_SPACE_AA_DISABLED
 	viewport.anisotropic_filtering_level = FILTER_LEVELS[int(q.anisotropy)]
 	viewport.use_taa = temporal == TEMPORAL_TAA

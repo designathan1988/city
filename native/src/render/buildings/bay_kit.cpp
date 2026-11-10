@@ -28,7 +28,7 @@ void wall(MeshBuilder &mb, float x0, float x1, float y0, float y1) {
 }
 } // namespace
 
-Ref<ArrayMesh> bay_mesh() {
+OwnedMesh bay_mesh(const RID &material) {
 	MeshBuilder mb;
 	wall(mb, LEFT, JAMB_LEFT, WALL_FOOT, TOP);
 	wall(mb, JAMB_RIGHT, RIGHT, WALL_FOOT, TOP);
@@ -44,7 +44,7 @@ Ref<ArrayMesh> bay_mesh() {
 	const Vector3 sl(SILL_LEFT, SILL, WALL_PLANE), sr(SILL_RIGHT, SILL, WALL_PLANE), lip(0, 0, SILL_PLANE), drop(0, UNDER_SILL - SILL, 0);
 	piece(mb, sl, sr, sr + lip, sl + lip, UP, PIECE_SILL);
 	piece(mb, sl + lip + drop, sr + lip + drop, sr + lip, sl + lip, OUT, PIECE_SILL);
-	return mb.commit();
+	return mb.bake(material, false).shared(); // its positions are indices, not metres: kept as they are; shared by every chunk's draw
 }
 
 } // namespace city::b40

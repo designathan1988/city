@@ -2,6 +2,7 @@
 #include "render/buildings/body_stage.h"
 
 #include "render/buildings/pane_rooms.h"
+#include "render/surface_data.h"
 #include "sim/buildings/interior/interior.h"
 #include "sim/persistence/body_codec.h"
 
@@ -45,8 +46,8 @@ int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const 
 	shell.glass = &glass;
 	shell.sheer = &sheer;
 	shell.cards = &cards;
-	const Ref<ArrayMesh> design = designs_ ? designs_->mesh(body.signature) : Ref<ArrayMesh>();
-	if (design.is_null()) {
+	const RID design = designs_ ? designs_->mesh(body.signature) : RID();
+	if (!design.is_valid()) {
 		b40::emit_facades(shell, shell, pl);
 		b40::emit_roofs(shell, shell, pl);
 	}
@@ -57,9 +58,18 @@ int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const 
 	shell.cards = nullptr;
 	const int handle = next_++;
 	RenderingServer *rs = RenderingServer::get_singleton();
-	const RID mesh = rs->mesh_create();
-	for (b40::Shell *part : { &shell, &glass, &sheer, &cards }) // a design of its own leaves the shell with no more than its lot, or nothing
-		if (part->triangles() > 0) part->commit_to(mesh, true);
+	// The mesh made whole, each surface with its material (surface_data.h): as the city's chunks are drawn, the walls, the panes, the glass
+	// guards and the railings each in their own; a ghost in the ghost's on every surface. A design of its own leaves the shell with no more
+	// than its lot, or nothing.
+	const struct {
+		const b40::Shell *shell;
+		RID material;
+		bool blends;
+	} parts[] = { { &shell, solid_, false }, { &glass, glass_, false }, { &sheer, sheer_, true }, { &cards, card_, false } };
+	TypedArray<Dictionary> surfaces;
+	for (const auto &part : parts)
+		if (part.shell->triangles() > 0) surfaces.push_back(part.shell->surface(ghost ? ghost_ : part.material, true, part.blends));
+	const RID mesh = surfaces.is_empty() ? RID() : create_mesh(surfaces);
 	Vector3 lo, hi, glass_lo, glass_hi;
 	shell.bounds(lo, hi);
 	for (const b40::Shell *more : { &glass, &sheer, &cards }) {
@@ -69,19 +79,12 @@ int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const 
 		hi = hi.max(glass_hi);
 	}
 	MeshDraw &draw = shown_[handle];
-	if (!ghost) { // as the city's chunks are drawn: the walls and the panes each with their material
-		int surface = 0;
-		if (shell.triangles() > 0) rs->mesh_surface_set_material(mesh, surface++, solid_);
-		if (glass.triangles() > 0) rs->mesh_surface_set_material(mesh, surface++, glass_);
-		if (sheer.triangles() > 0) rs->mesh_surface_set_material(mesh, surface++, sheer_);
-		if (cards.triangles() > 0) rs->mesh_surface_set_material(mesh, surface, card_);
-	}
-	draw.adopt(scenario, ghost ? ghost_ : RID(), !ghost, mesh, LAYER_BASE);
-	rs->instance_set_custom_aabb(draw.inst, AABB(lo, hi - lo));
+	draw.adopt(scenario, !ghost, mesh, LAYER_BASE);
+	if (draw.inst.is_valid()) rs->instance_set_custom_aabb(draw.inst, AABB(lo, hi - lo));
 	draw.visible(true);
 	drawn_[handle] = int(shell.triangles() + glass.triangles() + sheer.triangles() + cards.triangles());
 	if (design.is_valid()) { // the lot's frame here is the world's: its y runs along -z, as the design's own
-		const Design own{ rs->instance_create2(design->get_rid(), scenario), Transform3D(Basis(), pl.lot.at(-body.signature_x, -body.signature_y, 0)) };
+		const Design own{ rs->instance_create2(design, scenario),Transform3D(Basis(), pl.lot.at(-body.signature_x, -body.signature_y, 0)) };
 		rs->instance_set_layer_mask(own.inst, LAYER_BASE);
 		rs->instance_set_transform(own.inst, own.local);
 		if (ghost) rs->instance_geometry_set_material_override(own.inst, ghost_);

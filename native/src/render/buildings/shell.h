@@ -9,6 +9,7 @@
 #include "sim/buildings/b40/types.h"
 
 #include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/rid.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/vector3.hpp>
@@ -156,8 +157,10 @@ struct Shell {
 	// The light of a lantern on its wall: a quad over a..b, at c off it. UV over the quad, UV2 the lantern's place (x, z).
 	void wash(const Basis &f, float a0, float a1, float b0, float b1, float c);
 	void far_wall(const godot::Vector3 p[4], const godot::Vector3 &out, const godot::Vector2 cell[4], const Lin &lin, int8_t fin, uint32_t seed, const FarWindows &w);
-	void commit_to(const godot::RID &mesh, bool with_uv2 = true, bool blends = false) const; // a surface that blends keeps its order
-	int64_t bytes(bool with_uv2) const; // of the arrays commit_to hands over (chunk_jobs.h UploadBudget)
+	// The surface as mesh_create_from_surfaces takes it, `material` on it (render/surface_data.h: a mesh made whole with its materials has
+	// its pipelines made then); an empty dictionary when it holds no triangle. A surface that blends keeps its triangles' order.
+	godot::Dictionary surface(const godot::RID &material, bool with_uv2 = true, bool blends = false) const;
+	int64_t bytes(bool with_uv2) const; // of the arrays surface() hands over (chunk_jobs.h UploadBudget)
 	void bounds(godot::Vector3 &mn, godot::Vector3 &mx) const;
 
 private:

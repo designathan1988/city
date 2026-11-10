@@ -54,10 +54,7 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	bodies_.set_budget(size_t(ctx.catalog->tune.render_rooms_cache_mb * BYTES_PER_MIB));
 	signatures_.init(ctx.scenario, LAYER_BUILDING_SHELLS);
 	material_ = ctx.material("building", errors);
-	material_fade_ = ctx.material("building_fade", errors);
 	material_glass_ = ctx.material("building_glass", errors);
-	material_glass_fade_ = ctx.material("building_glass_fade", errors);
-	material_parts_fade_ = ctx.material("building_parts_fade", errors);
 	material_sheer_ = ctx.material("building_sheer", errors);
 	material_card_ = ctx.material("building_card", errors);
 	material_props_ = ctx.material("building_props", errors);
@@ -66,15 +63,18 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	material_lawn_ = ctx.material("verge", errors);
 	material_wash_ = ctx.material("building_wash", errors);
 	material_parts_ = ctx.material("building_parts", errors);
+	chunk_materials_ = ChunkMaterials{ { material_, material_glass_, material_sheer_, material_card_, material_lawn_, material_wash_ }, { material_, material_, RID(), material_card_, material_lawn_, RID() }, material_, material_cast_ };
 	Dictionary t = ctx.table("buildings", errors);
 	if (!errors.is_empty()) return false;
 	if (!look_.load(t, errors) || !look_.bay.load(ctx.tables.get("bay_props", Dictionary()), errors) || !look_.interior.load(ctx.table("furniture", errors), errors)) return false;
-	for (int k = 0; k < b40::BAY_PROPS; k++) prop_mesh_[size_t(k)] = look_.bay.models[size_t(k)].commit();
+	// the unit meshes every chunk's draws share (mesh_draw.h shared): a chunk's draws are made when it streams in; the boxes and the
+	// balcony pieces also throw their shadow through twins in the shadow material (commit_one)
+	for (int k = 0; k < b40::BAY_PROPS; k++) prop_mesh_[size_t(k)] = look_.bay.models[size_t(k)].bake(material_props_, false).shared(material_cast_);
 	MeshBuilder unit;
 	unit.box(Vector3(-HALF, -HALF, -HALF), Vector3(HALF, HALF, HALF), Color(1, 1, 1, 1), Vector2(), true);
-	unit_box_ = unit.commit();
-	unit_bay_ = b40::bay_mesh();
-	unit_flag_ = b40::cloth_mesh();
+	unit_box_ = unit.bake(material_parts_, false).shared(material_cast_);
+	unit_bay_ = b40::bay_mesh(material_);
+	unit_flag_ = b40::cloth_mesh(material_parts_);
 	return true;
 }
 
@@ -91,10 +91,6 @@ void BuildingRenderer::reset() {
 	baking_.clear();
 	super_baking_.clear();
 	waiting_ = super_waiting_ = 0;
-	for (RID &w : fade_warmers_) {
-		if (w.is_valid()) RenderingServer::get_singleton()->free_rid(w);
-		w = RID();
-	}
 	for (auto &kv : chunks_) {
 		drop(kv.second, LEVEL_NEAR);
 		drop(kv.second, LEVEL_MID);

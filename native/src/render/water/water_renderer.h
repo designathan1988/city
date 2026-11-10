@@ -35,7 +35,7 @@ private:
 		godot::RID inst, mesh;
 	};
 	static void build(const GroundRead &ground, int64_t key, MeshBuilder &mb);
-	godot::RID scenario_, material_;
+	godot::RID scenario_;
 	std::unordered_set<int64_t> dirty_;
 	std::unordered_map<int64_t, Draw> chunks_;
 };

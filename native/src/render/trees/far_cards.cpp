@@ -1,6 +1,8 @@
 // Bakes a superchunk's far cards into one mesh (see far_cards.h).
 #include "render/trees/far_cards.h"
 
+#include "render/surface_data.h"
+
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -27,9 +29,8 @@ int64_t far_cards_bytes(size_t cards) {
 	return n * CORNERS * int64_t(sizeof(Vector3) + sizeof(Color) + CUSTOM_HALFS * sizeof(uint16_t)) + n * CARD_INDICES * int64_t(sizeof(int32_t));
 }
 
-OwnedMesh bake_far_cards(const std::vector<FarCard> &cards, float centre, float half_tall) {
-	OwnedMesh m;
-	if (cards.empty()) return m;
+OwnedMesh bake_far_cards(const std::vector<FarCard> &cards, float centre, float half_tall, const RID &material) {
+	if (cards.empty()) return OwnedMesh();
 	const int64_t n = int64_t(cards.size());
 	PackedVector3Array pos;
 	PackedColorArray col;
@@ -63,12 +64,8 @@ OwnedMesh bake_far_cards(const std::vector<FarCard> &cards, float centre, float 
 	arrays[RenderingServer::ARRAY_COLOR] = col;
 	arrays[RenderingServer::ARRAY_CUSTOM0] = custom;
 	arrays[RenderingServer::ARRAY_INDEX] = idx;
-	RenderingServer *rs = RenderingServer::get_singleton();
-	m.rid = rs->mesh_create();
-	const int64_t format = int64_t(RenderingServer::ARRAY_CUSTOM_RGBA_HALF) << RenderingServer::ARRAY_FORMAT_CUSTOM0_SHIFT;
-	rs->mesh_add_surface_from_arrays(m.rid, RenderingServer::PRIMITIVE_TRIANGLES, arrays, Array(), Dictionary(),
-			BitField<RenderingServer::ArrayFormat>(format));
-	return m;
+	const uint64_t format = uint64_t(RenderingServer::ARRAY_CUSTOM_RGBA_HALF) << RenderingServer::ARRAY_FORMAT_CUSTOM0_SHIFT;
+	return OwnedMesh::of(mesh_of_arrays(arrays, material, format));
 }
 
 } // namespace city

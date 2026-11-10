@@ -114,8 +114,8 @@ void BuildingRenderer::file_parts(Built &out, std::array<b40::Shell, SUB_COUNT> 
 		for (int b = 0; b < BAND_COUNT; b++) out.bands[i][size_t(b)] = bake_band(boxes[size_t(b)]);
 		for (int k = 0; k < b40::BAY_PROPS; k++) out.bands[i][size_t(BAND_COUNT + k)] = bake_props(props[size_t(k)]);
 	}
-	for (int b = 0; b < BAND_COUNT; b++) out.band_mesh[size_t(b)] = unit_box_->get_rid();
-	for (int k = 0; k < b40::BAY_PROPS; k++) out.band_mesh[size_t(BAND_COUNT + k)] = prop_mesh_[size_t(k)]->get_rid();
+	for (int b = 0; b < BAND_COUNT; b++) out.band_mesh[size_t(b)] = unit_box_.rid;
+	for (int k = 0; k < b40::BAY_PROPS; k++) out.band_mesh[size_t(BAND_COUNT + k)] = prop_mesh_[size_t(k)].rid;
 }
 
 // Each shell of a chunk told where what it does not hold goes.
@@ -149,6 +149,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	Built out;
 	out.key = key;
 	if (!near && !mid && !bays) return out;
+	out.with = chunk_materials_;
 	std::array<b40::Shell, SUB_COUNT> &near_shells = out.near_shell, &parts_shells = out.parts_shell, &mid_shells = out.mid_shell;
 	std::array<b40::Shell, SUB_COUNT> mid_parts;
 	link_shells(out, mid_parts);
@@ -207,7 +208,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 			s.flags.clear();
 		}
 		out.flags = b40::bake_flags(flags);
-		out.unit_flag = unit_flag_->get_rid();
+		out.unit_flag = unit_flag_.rid;
 		out.has_near = true;
 	}
 	out.has_mid = mid;
@@ -215,7 +216,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	out.hull_error_m = look_.hull_error_m;
 	if (bays) {
 		for (size_t i = 0; i < SUB_COUNT; i++) out.mid_buf[i][MID_BAYS] = bake_bays(mid_shells[i].bays);
-		out.mid_mesh[MID_BAYS] = unit_bay_->get_rid();
+		out.mid_mesh[MID_BAYS] = unit_bay_.rid;
 	}
 	for (b40::Shell &m : mid_shells) m.bays = {};
 	if (mid) {
@@ -226,7 +227,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 			out.mid_buf[i][MID_SOLIDS] = bake_band(solid);
 			mid_shells[i].flat = nullptr;
 		}
-		out.mid_mesh[MID_BOXES] = out.mid_mesh[MID_SOLIDS] = unit_box_->get_rid();
+		out.mid_mesh[MID_BOXES] = out.mid_mesh[MID_SOLIDS] = unit_box_.rid;
 	}
 	return out;
 }
@@ -258,6 +259,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	BuildingBodies &bodies = bodies_;
 	SuperBuilt out;
 	out.key = super_key;
+	out.far_material = material_far_;
 	b40::Shell &far = out.far_shell;
 	far.far_tones = &look_.finish_far;
 	far.rooms = true; // each side's windows, as the other levels code them
@@ -290,17 +292,17 @@ void BuildingRenderer::Built::bake() {
 			held[HELD_NEAR_GUARDS].add(near_sheer[size_t(i)], true);
 			held[HELD_NEAR_CARDS].add(near_cards[size_t(i)], true);
 			held[HELD_NEAR_PIECES].add(parts_shell[size_t(i)], true);
-			near[size_t(i)] = BuildingRenderer::bake(near_shell[size_t(i)], true, &near_glass[size_t(i)], &near_sheer[size_t(i)], &near_cards[size_t(i)], &near_lawns[size_t(i)], &near_washes[size_t(i)]);
-			parts[size_t(i)] = BuildingRenderer::bake(parts_shell[size_t(i)], true);
+			near[size_t(i)] = BuildingRenderer::bake(near_shell[size_t(i)], true, with.near, &near_glass[size_t(i)], &near_sheer[size_t(i)], &near_cards[size_t(i)], &near_lawns[size_t(i)], &near_washes[size_t(i)]);
+			parts[size_t(i)] = BuildingRenderer::bake(parts_shell[size_t(i)], true, LevelMaterials::of_walls(with.parts));
 		}
 		if (has_mid) {
 			held[HELD_MID_WALLS].add(mid_shell[size_t(i)], true);
 			held[HELD_MID_PANES].add(mid_glass[size_t(i)], true);
 			held[HELD_MID_CARDS].add(mid_cards[size_t(i)], true);
-			mid[size_t(i)] = BuildingRenderer::bake(mid_shell[size_t(i)], true, &mid_glass[size_t(i)], nullptr, &mid_cards[size_t(i)], &mid_lawns[size_t(i)]);
-			mid_hull[size_t(i)] = cast_hull(mid_shell[size_t(i)], mid_glass[size_t(i)], hull_error_m);
+			mid[size_t(i)] = BuildingRenderer::bake(mid_shell[size_t(i)], true, with.mid, &mid_glass[size_t(i)], nullptr, &mid_cards[size_t(i)], &mid_lawns[size_t(i)]);
+			mid_hull[size_t(i)] = cast_hull(mid_shell[size_t(i)], mid_glass[size_t(i)], hull_error_m, with.cast);
 			held[HELD_MID_PANES].add(flat_glass[size_t(i)], true);
-			flat[size_t(i)] = BuildingRenderer::bake(flat_shell[size_t(i)], true, &flat_glass[size_t(i)]);
+			flat[size_t(i)] = BuildingRenderer::bake(flat_shell[size_t(i)], true, with.mid, &flat_glass[size_t(i)]);
 		}
 		// each moved from a new shell: a copy of an empty one keeps the arrays' memory, then freed on the main thread
 		near_shell[size_t(i)] = b40::Shell();

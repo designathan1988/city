@@ -11,7 +11,7 @@ namespace city {
 
 bool StructureRenderer::init(const RenderContext &ctx, const StreetLook &look, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
-	material_ = ctx.material("transit", errors);
+	surface_material_ = ctx.material("transit", errors);
 	casts_ = true;
 	look_ = &look;
 	return errors.is_empty();

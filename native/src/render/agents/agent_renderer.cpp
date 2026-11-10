@@ -8,6 +8,7 @@
 #include "render/agents/agent_lod.h"
 
 #include "render/agents/agent_meshes.h"
+#include "render/surface_data.h"
 
 #include "core/grid.h"
 #include "core/random.h"
@@ -117,7 +118,6 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 }
 
 void AgentRenderer::commit_mesh(int model, int draw, const MeshBuilder &mb) {
-	RenderingServer *rs = RenderingServer::get_singleton();
 	// with the cabin, the glass is see-through over it; past it, it stays in the body, opaque
 	const bool cabin = draw == CABIN_LEVEL || draw == MID_DRAW;
 	MeshBuilder shell, glass;
@@ -125,15 +125,14 @@ void AgentRenderer::commit_mesh(int model, int draw, const MeshBuilder &mb) {
 	const MeshBuilder &body = cabin ? shell : mb;
 	body_tris_[model][draw] = int(body.idx.size() / 3);
 	glass_tris_[model][draw] = int(glass.idx.size() / 3);
-	OwnedMesh &m = meshes_[model][draw];
-	m.reset();
-	m.rid = rs->mesh_create();
-	body.commit_to(m.rid);
-	rs->mesh_surface_set_material(m.rid, 0, material_);
-	if (!glass.empty()) {
-		glass.commit_to(m.rid);
-		rs->mesh_surface_set_material(m.rid, 1, glass_);
-	}
+	// made whole, each surface with its material (surface_data.h): the engine has their pipelines before a vehicle of the model is drawn
+	TypedArray<Dictionary> surfaces;
+	surfaces.push_back(body.surface(material_));
+	if (!glass.empty()) surfaces.push_back(glass.surface(glass_));
+	// shared (mesh_draw.h): a model's draw is made when its first vehicle comes into view
+	meshes_[model][draw] = OwnedMesh::of(create_mesh(surfaces)).shared();
+	// what the nearer level casts with (draw_rows), in the shadow material: an override on the drawn mesh could not be compiled with it
+	if (draw == BODY_LEVEL || draw == FAR_LEVEL) casters_[model][draw] = mb.bake(shadow_).shared();
 }
 
 void AgentRenderer::riders(int type, uint32_t id, float &passengers, float &order) const {
@@ -357,12 +356,12 @@ void AgentRenderer::draw_rows(const Vector3 &cam) {
 	for (int i = 0; i < AGENT_MODELS; i++)
 		for (int level = 0; level < DRAWS; level++) {
 			MultiMeshDraw &d = draws_[i][level];
-			d.set(scenario_, meshes_[i][level].rid, RID(), bufs[i][level], box, false, LAYER_VEHICLES);
+			d.set(scenario_, meshes_[i][level].rid, bufs[i][level], box, false, LAYER_VEHICLES);
 			shown_[i][level] = d.count;
 			if (level == FAR_LEVEL) continue;
 			casts[i][level].append(bufs[i][level]);
 			shadow_draws_[i][level].shadow_only = true;
-			shadow_draws_[i][level].set(scenario_, meshes_[i][level == BODY_LEVEL ? FAR_LEVEL : BODY_LEVEL].rid, shadow_, casts[i][level], box, true, LAYER_VEHICLES);
+			shadow_draws_[i][level].set(scenario_, casters_[i][level == BODY_LEVEL ? FAR_LEVEL : BODY_LEVEL].rid, casts[i][level], box, true, LAYER_VEHICLES);
 		}
 	fleet_shadow_.draw();
 }

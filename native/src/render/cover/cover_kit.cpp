@@ -77,7 +77,7 @@ void flower(MeshBuilder &mb, const Dictionary &k, const Color &bloom, uint32_t s
 	static_cast<void>(tree_crown(mb, none, c, sh, r)); // its mean tone is for a tree's far card; ground pieces have none
 }
 
-Ref<ArrayMesh> variant(CoverPiece p, const Dictionary &k, int i, Rng &r) {
+MeshBuilder variant(CoverPiece p, const Dictionary &k, int i, Rng &r) {
 	MeshBuilder mb;
 	uint32_t seed = uint32_t(int(k["seed"]) + i);
 	switch (p) {
@@ -87,11 +87,11 @@ Ref<ArrayMesh> variant(CoverPiece p, const Dictionary &k, int i, Rng &r) {
 		case CoverPiece::TUFTS: tuft(mb, k, r); break;
 		default: flower(mb, k, hexc(Array(k["blooms"])[i]), seed, r); break;
 	}
-	return mb.commit();
+	return mb;
 }
 } // namespace
 
-bool CoverKit::build(const Dictionary &t, PackedStringArray &errors) {
+bool CoverKit::build(const Dictionary &t, const CoverMaterials &with, PackedStringArray &errors) {
 	static const char *const TOP[] = { "reach_m", "fade_m", "tuft_share" };
 	for (const char *key : TOP)
 		if (!t.has(key)) errors.push_back(String("cover.json: falta ") + key);
@@ -110,7 +110,12 @@ bool CoverKit::build(const Dictionary &t, PackedStringArray &errors) {
 		Rng r{ uint32_t(int(k["seed"])) };
 		int n = k["variants"];
 		c.variants.clear();
-		for (int v = 0; v < n; v++) c.variants.push_back(variant(CoverPiece(i), k, v, r));
+		c.shore.clear();
+		for (int v = 0; v < n; v++) { // unit models: their attributes as they are
+			const MeshBuilder mb = variant(CoverPiece(i), k, v, r);
+			c.variants.push_back(mb.bake(c.sways ? with.plant : with.rock, false).shared());
+			if (CoverPiece(i) == CoverPiece::ROCKS) c.shore.push_back(mb.bake(with.shore, false).shared());
+		}
 	}
 	return errors.is_empty();
 }

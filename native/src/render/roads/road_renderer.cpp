@@ -16,7 +16,7 @@ namespace city {
 
 bool RoadRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
-	material_ = ctx.material("road", errors);
+	surface_material_ = ctx.material("road", errors);
 	Dictionary t = ctx.table("streets", errors);
 	if (!errors.is_empty()) return false;
 	if (!ctx.catalog) {
@@ -24,7 +24,7 @@ bool RoadRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 		return false;
 	}
 	RenderingServer *rs = RenderingServer::get_singleton();
-	rs->material_set_param(material_, "pool_step", ctx.catalog->furniture.lamps.span_m);
+	rs->material_set_param(surface_material_, "pool_step", ctx.catalog->furniture.lamps.span_m);
 	if (!look_.load(t, errors)) return false;
 	look_.ramp_full = ctx.catalog->furniture.crossing.zebra_from_m; // a dropped kerb is the zebra's: its ramp lands where the zebra does
 	look_.ramp_flat = ctx.catalog->furniture.crossing.zebra_to_m;
@@ -52,7 +52,7 @@ AABB chunk_bounds(int64_t key, float size, const AABB &emitted) {
 void RoadChunks::commit_one(BuiltMesh &b) {
 	Chunk &c = chunks_[b.key];
 	const bool any = b.mesh.valid();
-	c.surface.adopt(scenario_, material_, casts_, b.mesh.release(), LAYER_ROADS);
+	c.surface.adopt(scenario_, casts_, b.mesh.release(), LAYER_ROADS);
 	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(c.surface.inst, chunk_bounds(b.key, CHUNK, b.bounds));
 	c.surface.visible(any && drawn_);
 	c.made = b.count;

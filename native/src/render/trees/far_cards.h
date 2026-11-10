@@ -17,9 +17,9 @@
 
 namespace city {
 
-// The mesh of these cards (none when there are none); `centre` and `half_tall` are the card's height and half height as
-// shares of the tree's.
-OwnedMesh bake_far_cards(const std::vector<FarCard> &cards, float centre, float half_tall);
+// The mesh of these cards, made with `material` (none when there are none); `centre` and `half_tall` are the card's height and half
+// height as shares of the tree's.
+OwnedMesh bake_far_cards(const std::vector<FarCard> &cards, float centre, float half_tall, const godot::RID &material);
 // The bytes of the arrays bake_far_cards hands to the RenderingServer for that many cards (the upload ledger's price).
 int64_t far_cards_bytes(size_t cards);
 

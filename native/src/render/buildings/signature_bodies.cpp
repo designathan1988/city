@@ -3,6 +3,7 @@
 #include "render/buildings/signature_bodies.h"
 
 #include "render/mesh_levels.h"
+#include "render/surface_data.h"
 
 #include "core/bytes.h"
 #include "sim/buildings/b40/signature_kinds.h"
@@ -47,7 +48,8 @@ PackedByteArray unpacked(const String &path, uint32_t magic) {
 void SignatureBodies::init(const RID &scenario, uint32_t layer) {
 	scenario_ = scenario;
 	layer_ = layer;
-	meshes_.assign(size_t(b40::SIGNATURE_COUNT) + 1, Ref<ArrayMesh>());
+	meshes_.clear();
+	meshes_.resize(size_t(b40::SIGNATURE_COUNT) + 1);
 	state_.assign(size_t(b40::SIGNATURE_COUNT) + 1, State::NONE);
 }
 
@@ -184,7 +186,8 @@ std::shared_ptr<SignatureBodies::Prepared> SignatureBodies::prepare(int kind) {
 	return out;
 }
 
-// The prepared kind uploaded: its surfaces into one mesh, each with its look. False (said once) for a file that could not be read.
+// The prepared kind uploaded: its surfaces into one mesh made whole, each with its look (surface_data.h: the engine makes its pipelines
+// then, not on the frame the landmark is first drawn). False (said once) for a file that could not be read.
 bool SignatureBodies::finish(Prepared &p) {
 	if (solid_.is_null()) solid_ = ResourceLoader::get_singleton()->load(SOLID_SHADER);
 	if (blended_.is_null()) blended_ = ResourceLoader::get_singleton()->load(BLENDED_SHADER);
@@ -193,28 +196,32 @@ bool SignatureBodies::finish(Prepared &p) {
 		UtilityFunctions::push_error(String("signature design unreadable: ") + String(p.file.c_str()));
 		return false;
 	}
-	Ref<ArrayMesh> m;
-	m.instantiate();
-	for (size_t s = 0; s < p.surfaces.size(); s++) {
-		m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, p.surfaces[s].arrays, Array(), p.surfaces[s].lods);
-		m->surface_set_material(int(s), look(p.surfaces[s].look, p.pictures[p.surfaces[s].look]));
+	TypedArray<Dictionary> surfaces;
+	for (const Surface &sf : p.surfaces) {
+		const Dictionary made = surface_data(sf.arrays, sf.lods, 0, look(sf.look, p.pictures[sf.look])->get_rid());
+		if (!made.is_empty()) surfaces.push_back(made); // a surface with no vertex is none
 	}
-	meshes_[size_t(p.kind)] = m;
+	if (surfaces.is_empty()) {
+		state_[size_t(p.kind)] = State::FAILED;
+		UtilityFunctions::push_error(String("signature design with no surface: ") + String(p.file.c_str()));
+		return false;
+	}
+	meshes_[size_t(p.kind)] = OwnedMesh::of(create_mesh(surfaces)).shared(); // kept while its chunks' instances come and go
 	state_[size_t(p.kind)] = State::READY;
 	return true;
 }
 
-Ref<ArrayMesh> SignatureBodies::mesh(int kind) {
-	if (kind <= 0 || kind > b40::SIGNATURE_COUNT) return Ref<ArrayMesh>();
-	if (state_[size_t(kind)] == State::FAILED) return Ref<ArrayMesh>();
-	if (meshes_[size_t(kind)].is_valid()) return meshes_[size_t(kind)];
+RID SignatureBodies::mesh(int kind) {
+	if (kind <= 0 || kind > b40::SIGNATURE_COUNT) return RID();
+	if (state_[size_t(kind)] == State::FAILED) return RID();
+	if (meshes_[size_t(kind)].valid()) return meshes_[size_t(kind)].rid;
 	std::shared_ptr<Prepared> p = prepare(kind); // asked now (a job's may land later: it is then let go)
-	return finish(*p) ? meshes_[size_t(kind)] : Ref<ArrayMesh>();
+	return finish(*p) ? meshes_[size_t(kind)].rid : RID();
 }
 
 void SignatureBodies::place(int64_t key, const SignaturePlace &p, bool on) {
 	RenderingServer *rs = RenderingServer::get_singleton();
-	const RID inst = rs->instance_create2(meshes_[size_t(p.kind)]->get_rid(), scenario_);
+	const RID inst = rs->instance_create2(meshes_[size_t(p.kind)].rid, scenario_);
 	rs->instance_set_layer_mask(inst, layer_);
 	rs->instance_set_transform(inst, p.at);
 	if (!on) rs->instance_set_visible(inst, false);

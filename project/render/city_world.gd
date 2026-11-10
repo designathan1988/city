@@ -19,7 +19,7 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/signature_glass.gdshader",
 	"res://render/shaders/transit.gdshader", "res://render/shaders/transit_glass.gdshader", "res://render/shaders/transit_xray.gdshader",
 	"res://render/shaders/building_props.gdshader", "res://render/shaders/shadow_caster.gdshader",
-	"res://render/shaders/road_far.gdshader", "res://render/shaders/building_fade.gdshader", "res://render/shaders/building_ruin.gdshader", "res://render/shaders/people_body.gdshader", "res://render/shaders/building_glass_fade.gdshader", "res://render/shaders/building_parts_fade.gdshader",
+	"res://render/shaders/road_far.gdshader", "res://render/shaders/building_ruin.gdshader", "res://render/shaders/people_body.gdshader",
 ]
 const WIND_FULL_WAVES_MS := 40.0 # a wind this fast alone makes the roughest water
 
@@ -76,7 +76,7 @@ func materials() -> Dictionary:
 			elif key == "agent":
 				LampRadiance.vehicles(m, environment)
 			_materials[key] = m
-			if table[key].has("fade_shader"): # the same material for what is handing over to another level (building_level.gdshaderinc)
+			if table[key].has("fade_shader"): # the same material for the level drawn from afar (the road's: road_far.gdshader)
 				var fade: ShaderMaterial = m.duplicate()
 				fade.shader = load(table[key].fade_shader)
 				_materials[key + "_fade"] = fade
@@ -203,7 +203,7 @@ func follow_clock(hour: float) -> void:
 	daylight.follow_clock(hour)
 
 
-## The clock of the dissolves' noise back to its start: with the game's time stopped, the same picture every run.
+## The clock of the screen grain (dither_clock) back to its start: with the game's time stopped, the same picture every run.
 func still_dither() -> void:
 	_dither = 0.0
 	RenderingServer.global_shader_parameter_set(&"dither_clock", 0.0)

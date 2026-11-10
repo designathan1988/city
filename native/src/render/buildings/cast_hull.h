@@ -7,7 +7,8 @@
 
 namespace city {
 
-// The walls and panes of a sub-chunk as one mesh; no mesh when they hold nothing. `error_m`: how far a surface may move, in metres.
-OwnedMesh cast_hull(const b40::Shell &walls, const b40::Shell &panes, float error_m);
+// The walls and panes of a sub-chunk as one mesh made with `material` (the shadow caster's); no mesh when they hold nothing. `error_m`: how
+// far a surface may move, in metres.
+OwnedMesh cast_hull(const b40::Shell &walls, const b40::Shell &panes, float error_m, const godot::RID &material);
 
 } // namespace city

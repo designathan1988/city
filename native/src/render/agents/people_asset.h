@@ -7,8 +7,8 @@
 #pragma once
 
 #include "core/bytes.h"
+#include "render/rs_util.h"
 
-#include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/texture2d_array.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -42,7 +42,7 @@ struct PersonVariation {
 	float helmet[PALM_FLOATS] = {}; // three rows, a shell of width 1 fitted to this head, at rest
 	float palm[PALM_FLOATS] = {}; // three rows, the palm at rest: X along the fingers, Y to the thumb, Z out of the back of the hand
 	float joints[JOINT_FLOATS] = {}; // where the ragdoll's joints stand at rest
-	std::vector<godot::Ref<godot::ArrayMesh>> lods; // 0 = near
+	std::vector<OwnedMesh> lods; // 0 = near; each made with the people's material (surface_data.h)
 	float reach = 0; // the near level's farthest vertex from the bind origin, metres: how far a bone carries skin (body_renderer.cpp)
 	std::vector<PersonFit> fits; // one a clip, in PeopleAsset::clips' order
 };
@@ -52,7 +52,7 @@ struct PeopleAsset {
 	godot::Ref<godot::ImageTexture> palette;
 	godot::Ref<godot::ImageTexture> faces; // where each face vertex moves, by channel (people_face.gdshaderinc)
 	godot::Ref<godot::Texture2DArray> atlas; // a layer a body
-	godot::Ref<godot::ArrayMesh> card; // the quad of the far off
+	OwnedMesh card; // the quad of the far off, made with the far material
 	int card_frames = 1;
 	godot::Color card_strip; // the strip in the atlas: x, y, a frame's width and height, in uv
 	int lods = 0;
@@ -70,8 +70,9 @@ struct PeopleAsset {
 	void read_ragdoll(ByteReader &r, uint32_t bones);
 	// The clip of that name, as its index in `clips`; -1 when the file has none.
 	int clip(const char *name) const;
-	// Reads and checks the file; false (with a message) when it is missing or malformed.
-	bool load(const godot::String &path, const godot::String &atlas_path, godot::PackedStringArray &errors);
+	// Reads and checks the file; false (with a message) when it is missing or malformed. `material`, `far_material`: what the bodies'
+	// meshes and the far card are made with.
+	bool load(const godot::String &path, const godot::String &atlas_path, const godot::RID &material, const godot::RID &far_material, godot::PackedStringArray &errors);
 };
 
 } // namespace city

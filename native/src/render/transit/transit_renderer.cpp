@@ -3,6 +3,7 @@
 
 #include "core/grid.h"
 #include "render/agents/people_renderer.h"
+#include "render/surface_data.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 
@@ -58,11 +59,9 @@ uint64_t signature_of(const CityState &s, const TransitStop &q) {
 	return h;
 }
 
-// Each surface's material, in the order they were added.
-void add_surface(RenderingServer *rs, const RID &mesh, const MeshBuilder &mb, const RID &material, int &surface) {
-	if (mb.empty()) return;
-	mb.commit_to(mesh);
-	rs->mesh_surface_set_material(mesh, surface++, material);
+// A surface with its material (surface_data.h), in the order they are added; nothing of an empty builder.
+void add_surface(TypedArray<Dictionary> &surfaces, const MeshBuilder &mb, const RID &material) {
+	if (!mb.empty()) surfaces.push_back(mb.surface(material));
 }
 } // namespace
 
@@ -79,11 +78,7 @@ bool TransitRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	per_frame_ = t["items_per_frame"];
 	TransitMeshes car;
 	transit_box(car, look_, look_.part("car"), Vector3(0, look_.car_up, 0), V2(0, 1), look_.car);
-	RenderingServer *rs = RenderingServer::get_singleton();
-	car_.reset();
-	car_.rid = rs->mesh_create();
-	int surface = 0;
-	add_surface(rs, car_.rid, car.solid, material_, surface);
+	car_ = car.solid.bake(material_).shared();
 	return true;
 }
 
@@ -161,20 +156,17 @@ int64_t TransitRenderer::draw(const TransitMeshes &m, Piece &out) {
 	drop(out);
 	int64_t bytes = m.solid.bytes() + m.glass.bytes();
 	for (const MeshBuilder &x : m.xray) bytes += x.bytes();
-	if (!m.solid.empty() || !m.glass.empty()) {
-		out.mesh.rid = rs->mesh_create();
-		int surface = 0;
-		add_surface(rs, out.mesh.rid, m.solid, material_, surface);
-		add_surface(rs, out.mesh.rid, m.glass, glass_, surface);
+	// each mesh made whole, its surfaces with their materials: the engine makes their pipelines then, not on the frame the piece appears
+	TypedArray<Dictionary> solid, cut;
+	add_surface(solid, m.solid, material_);
+	add_surface(solid, m.glass, glass_);
+	if (!solid.is_empty()) {
+		out.mesh = OwnedMesh::of(create_mesh(solid));
 		out.instance = rs->instance_create2(out.mesh.rid, scenario_);
 	}
-	int surface = 0;
-	for (int i = 0; i < TRANSIT_XRAY_LAYERS; i++) {
-		if (m.xray[i].empty()) continue;
-		if (!out.cut.valid()) out.cut.rid = rs->mesh_create();
-		add_surface(rs, out.cut.rid, m.xray[i], xray_[i], surface);
-	}
-	if (!out.cut.valid()) return bytes;
+	for (int i = 0; i < TRANSIT_XRAY_LAYERS; i++) add_surface(cut, m.xray[i], xray_[i]);
+	if (cut.is_empty()) return bytes;
+	out.cut = OwnedMesh::of(create_mesh(cut));
 	out.cut_instance = rs->instance_create2(out.cut.rid, scenario_);
 	rs->instance_geometry_set_cast_shadows_setting(out.cut_instance, RenderingServer::SHADOW_CASTING_SETTING_OFF);
 	rs->instance_set_visible(out.cut_instance, xray_on_);
@@ -265,7 +257,7 @@ void TransitRenderer::update(const PoseFrame &f, const Vector3 &cam, const PoseS
 		drawn_cars_++;
 	}
 	const AABB box(Vector3(cam.x - radius_, cam.y - AABB_HALF_H, cam.z - radius_), Vector3(radius_ * 2, AABB_HALF_H * 2, radius_ * 2));
-	cars_.set(scenario_, car_.rid, RID(), buf, box, true, LAYER_VEHICLES);
+	cars_.set(scenario_, car_.rid, buf, box, true, LAYER_VEHICLES);
 }
 
 } // namespace city

@@ -14,7 +14,6 @@
 #include "render/trees/tree_part.h"
 #include "render/trees/tree_pictures.h"
 
-#include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 
@@ -27,8 +26,9 @@ constexpr float FAR_CARD_CENTRE = 0.5f;
 
 struct TreeSpecies {
 	godot::String name;
-	godot::Ref<godot::ArrayMesh> body, cards; // cards empty when the species has none
-	godot::Ref<godot::ArrayMesh> caster; // the body simplified: what it throws on the ground, swaying as it does
+	// Each made whole with the material it is drawn in (surface_data.h): the body and its caster in the body's, the cards in the cards'.
+	OwnedMesh body, cards; // no cards mesh when the species has none
+	OwnedMesh caster; // the body simplified: what it throws on the ground, swaying as it does
 	float crown_reach = 0; // crown radius as a share of the height (keeps trees off the roads)
 	bool cards_cast = false; // a palm's fronds are its crown and throw its shadow; other cards do not
 	godot::Color far_tone; // the crown's mean tone (sRGB), for its far card
@@ -36,7 +36,8 @@ struct TreeSpecies {
 
 class TreeKit {
 public:
-	bool build(const godot::Dictionary &trees, godot::PackedStringArray &errors);
+	// `body_material`, `card_material`: what the species' meshes are made with.
+	bool build(const godot::Dictionary &trees, const godot::RID &body_material, const godot::RID &card_material, godot::PackedStringArray &errors);
 	int count() const { return int(species_.size()); }
 	const TreeSpecies &species(int i) const { return species_[size_t(i)]; }
 	int find(const godot::String &name) const; // -1 when absent

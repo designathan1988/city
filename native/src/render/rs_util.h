@@ -18,10 +18,10 @@ namespace city {
 // The vertical span every chunk's and every camera-wide box is given: the map's lowest ground to past its tallest building.
 constexpr float AABB_MIN_Y = -100.f, AABB_H = 700.f, AABB_HALF_H = 500.f;
 
-// `inst` (made on first use in `scenario`, on render `layer`, with `material` when valid, casting shadows or not) shows
-// `next` in place of `current`, which is freed; an invalid `next` empties the instance but keeps it for the next base.
-inline void swap_base(godot::RID &inst, godot::RID &current, const godot::RID &next, const godot::RID &scenario,
-		const godot::RID &material, bool shadows, RenderLayer layer) {
+// `inst` (made on first use in `scenario`, on render `layer`, casting shadows or not) shows `next` in place of `current`, which is
+// freed; an invalid `next` empties the instance but keeps it for the next base. No drawn instance carries a material of its own: a mesh
+// is made with its materials (surface_data.h), so the engine has its pipelines before it is drawn.
+inline void swap_base(godot::RID &inst, godot::RID &current, const godot::RID &next, const godot::RID &scenario, bool shadows, RenderLayer layer) {
 	godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
 	if (!inst.is_valid()) {
 		if (!next.is_valid()) return;
@@ -29,7 +29,6 @@ inline void swap_base(godot::RID &inst, godot::RID &current, const godot::RID &n
 		rs->instance_set_layer_mask(inst, layer);
 		rs->instance_geometry_set_cast_shadows_setting(inst,
 				shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF);
-		if (material.is_valid()) rs->instance_geometry_set_material_override(inst, material);
 	} else {
 		rs->instance_set_base(inst, next);
 	}
@@ -38,13 +37,16 @@ inline void swap_base(godot::RID &inst, godot::RID &current, const godot::RID &n
 }
 
 // A second instance of what a draw shows, in the shadow maps alone and only out to `end`: what stops being wider than a texel of the
-// sun stops being drawn four times over, and the picture keeps it. The draw itself casts nothing.
+// sun stops being drawn four times over, and the picture keeps it. The draw itself casts nothing. `cast_in`, when valid, is the material
+// it casts in (shadow_caster: the engine's own depth shader, where the base's material has a vertex() the silhouette does not need, which
+// every shadow pass would run): the one override left, and its pipelines are still made off the frame, because the unit mesh the base
+// draws holds an instance wearing it (OwnedMesh::shared, mesh_draw.h). A base whose mesh was made in its casting material passes none.
 // A range holds this share of itself either way of its edge (Godot: margins with the fade disabled are a hysteresis): a camera standing at the edge does not flicker.
 constexpr float RANGE_LINGER_SHARE = 0.03f;
 
 struct ShadowTwin {
 	godot::RID inst;
-	void bind(const godot::RID &scenario, const godot::RID &base, const godot::RID &material, const godot::AABB &bounds, RenderLayer layer) {
+	void bind(const godot::RID &scenario, const godot::RID &base, const godot::RID &cast_in, const godot::AABB &bounds, RenderLayer layer) {
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
 		if (!base.is_valid()) {
 			free();
@@ -54,7 +56,7 @@ struct ShadowTwin {
 			inst = rs->instance_create2(base, scenario);
 			rs->instance_set_layer_mask(inst, layer);
 			rs->instance_geometry_set_cast_shadows_setting(inst, godot::RenderingServer::SHADOW_CASTING_SETTING_SHADOWS_ONLY);
-			rs->instance_geometry_set_material_override(inst, material);
+			if (cast_in.is_valid()) rs->instance_geometry_set_material_override(inst, cast_in);
 		} else {
 			rs->instance_set_base(inst, base);
 		}
@@ -90,11 +92,12 @@ struct MultiMeshDraw {
 	bool coloured_ = true; // the layout allocated
 	bool shadow_only = false; // drawn into the shadow maps alone: another draw shows what it stands for
 
-	void set(const godot::RID &scenario, const godot::RID &mesh, const godot::RID &material, const godot::PackedFloat32Array &buf,
-			const godot::AABB &bounds, bool shadows, RenderLayer layer, bool coloured = true) {
+	// `mesh` carries its materials (surface_data.h).
+	void set(const godot::RID &scenario, const godot::RID &mesh, const godot::PackedFloat32Array &buf, const godot::AABB &bounds, bool shadows,
+			RenderLayer layer, bool coloured = true) {
 		const int stride = coloured ? MM_STRIDE : MM_PLAIN_STRIDE;
 		const int n = int(buf.size() / stride);
-		if (!make_room(scenario, mesh, material, n, shadows, layer, coloured)) return;
+		if (!make_room(scenario, mesh, n, shadows, layer, coloured)) return;
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
 		if (n > 0 && n == capacity) {
 			rs->multimesh_set_buffer(mm, buf);
@@ -106,17 +109,15 @@ struct MultiMeshDraw {
 		show(n, bounds);
 	}
 	// The same from rows kept between frames: the room is the array's own size, nothing is copied on this side.
-	void set(const godot::RID &scenario, const godot::RID &mesh, const godot::RID &material, InstanceRows &rows, const godot::AABB &bounds,
-			bool shadows, RenderLayer layer) {
+	void set(const godot::RID &scenario, const godot::RID &mesh, InstanceRows &rows, const godot::AABB &bounds, bool shadows, RenderLayer layer) {
 		const int n = rows.count();
-		if (!make_room(scenario, mesh, material, n, shadows, layer, rows.stride() == MM_STRIDE)) return;
+		if (!make_room(scenario, mesh, n, shadows, layer, rows.stride() == MM_STRIDE)) return;
 		if (n > 0) godot::RenderingServer::get_singleton()->multimesh_set_buffer(mm, rows.fitted(capacity));
 		show(n, bounds);
 	}
 	// Shows `next` (a MultiMesh of `count` instances a job filled, bake_multimesh, now owned here): swap_base.
-	void adopt(const godot::RID &scenario, const godot::RID &material, bool shadows, const godot::RID &next, int count_in,
-			const godot::AABB &bounds, RenderLayer layer) {
-		swap_base(inst, mm, next, scenario, material, shadows, layer);
+	void adopt(const godot::RID &scenario, bool shadows, const godot::RID &next, int count_in, const godot::AABB &bounds, RenderLayer layer) {
+		swap_base(inst, mm, next, scenario, shadows, layer);
 		capacity = count = mm.is_valid() ? count_in : 0;
 		coloured_ = false; // bake_multimesh's layout
 		forget_told(); // another multimesh, and maybe another instance: nothing was told to them
@@ -134,21 +135,20 @@ struct MultiMeshDraw {
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
 		if (inst.is_valid()) rs->free_rid(inst);
 		if (mm.is_valid()) rs->free_rid(mm);
-		inst = mm = material_ = godot::RID();
+		inst = mm = godot::RID();
 		capacity = -1;
 		count = 0;
 		forget_told();
 	}
 
 private:
-	godot::RID material_; // the override the instance has
 	void forget_told() {
 		told_ = UNTOLD;
 		box_told_ = false;
 		drawn_ = true;
 	}
 	// False when there is nothing to draw and nothing drawn yet.
-	bool make_room(const godot::RID &scenario, const godot::RID &mesh, const godot::RID &material, int n, bool shadows, RenderLayer layer, bool coloured) {
+	bool make_room(const godot::RID &scenario, const godot::RID &mesh, int n, bool shadows, RenderLayer layer, bool coloured) {
 		if (n == 0 && !mm.is_valid()) return false;
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
 		if (!mm.is_valid()) {
@@ -157,10 +157,6 @@ private:
 			rs->instance_set_layer_mask(inst, layer);
 			rs->instance_geometry_set_cast_shadows_setting(inst, shadow_only ? godot::RenderingServer::SHADOW_CASTING_SETTING_SHADOWS_ONLY :
 					(shadows ? godot::RenderingServer::SHADOW_CASTING_SETTING_ON : godot::RenderingServer::SHADOW_CASTING_SETTING_OFF));
-		}
-		if (material != material_) {
-			material_ = material;
-			if (material.is_valid()) rs->instance_geometry_set_material_override(inst, material);
 		}
 		if (n > capacity || n + 2 * MM_ROOM_STEP < capacity || coloured != coloured_) {
 			capacity = (n + MM_ROOM_STEP - 1) / MM_ROOM_STEP * MM_ROOM_STEP;

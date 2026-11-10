@@ -58,7 +58,7 @@ void BodyRenderer::make_ready() {
 	rs->material_set_param(material_->get_rid(), "alpha_test", asset.variations.front().alpha_test);
 	layers_.resize(asset.variations.size());
 	for (size_t v = 0; v < layers_.size(); v++) {
-		layers_[v].init_owned(scenario_, asset.variations[v].lods.front(), material_->get_rid(), MOST_BODIES, true); // the bones place the skin
+		layers_[v].init_owned(scenario_, asset.variations[v].lods.front().rid, material_->get_rid(), MOST_BODIES, true); // the bones place the skin
 		layers_[v].count(0);
 	}
 }

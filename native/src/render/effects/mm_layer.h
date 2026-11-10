@@ -36,7 +36,7 @@ enum class LayerBounds { FIXED, SHAPED, OWNED };
 
 struct MmLayer {
 	godot::RID mm, inst;
-	godot::Ref<godot::Mesh> mesh; // held: the MultiMesh draws its RID
+	godot::Ref<godot::Mesh> mesh; // held when the layer was given a resource: the MultiMesh draws its RID
 	int capacity = 0;
 	godot::PackedFloat32Array buf;
 	LayerBounds bounds_kind = LayerBounds::FIXED;
@@ -48,19 +48,21 @@ struct MmLayer {
 	// A FIXED layer: `bounds` is the box of the MultiMesh (so uploads never walk the instances, rs_util.h MultiMeshDraw) and of the instance.
 	void init(const godot::RID &scenario, const godot::Ref<godot::Mesh> &shape, const godot::RID &material, int count, bool shadows,
 			const godot::AABB &bounds) {
-		create(scenario, shape, material, count, shadows, bounds);
+		mesh = shape;
+		create(scenario, shape->get_rid(), material, count, shadows, bounds);
 		bounds_kind = LayerBounds::FIXED;
 	}
 	// A SHAPED layer: its box follows what put() writes (`local`: the shape's box as the shader may stretch it; `margin`: what it may move past it).
 	void init_shaped(const godot::RID &scenario, const godot::Ref<godot::Mesh> &shape, const godot::RID &material, int count, bool shadows,
 			const godot::AABB &local, float margin) {
-		create(scenario, shape, material, count, shadows, world_box());
+		mesh = shape;
+		create(scenario, shape->get_rid(), material, count, shadows, world_box());
 		bounds_kind = LayerBounds::SHAPED;
 		shape_box = local;
 		reach = margin;
 	}
-	// An OWNED layer: its box is what the owner sets.
-	void init_owned(const godot::RID &scenario, const godot::Ref<godot::Mesh> &shape, const godot::RID &material, int count, bool shadows) {
+	// An OWNED layer: its box is what the owner sets. `shape`: a mesh its owner keeps alive (the cooked people's), drawn here in `material`.
+	void init_owned(const godot::RID &scenario, const godot::RID &shape, const godot::RID &material, int count, bool shadows) {
 		create(scenario, shape, material, count, shadows, world_box());
 		bounds_kind = LayerBounds::OWNED;
 	}
@@ -114,13 +116,14 @@ struct MmLayer {
 	}
 
 private:
-	void create(const godot::RID &scenario, const godot::Ref<godot::Mesh> &shape, const godot::RID &material, int count, bool shadows, const godot::AABB &bounds) {
+	// The effects' layers are made once, when the game or a city starts, and wear their material as an instance override: their
+	// pipelines are made on that first frame, not in play (the streamed meshes carry their materials: surface_data.h).
+	void create(const godot::RID &scenario, const godot::RID &shape, const godot::RID &material, int count, bool shadows, const godot::AABB &bounds) {
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
-		mesh = shape;
 		capacity = count;
 		mm = rs->multimesh_create();
 		rs->multimesh_allocate_data(mm, count, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, true, true);
-		rs->multimesh_set_mesh(mm, mesh->get_rid());
+		rs->multimesh_set_mesh(mm, shape);
 		rs->multimesh_set_custom_aabb(mm, bounds);
 		inst = rs->instance_create2(mm, scenario);
 		rs->instance_geometry_set_cast_shadows_setting(

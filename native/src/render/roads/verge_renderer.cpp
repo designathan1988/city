@@ -12,7 +12,7 @@ namespace city {
 
 bool VergeRenderer::init(const RenderContext &ctx, const StreetLook &look, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
-	material_ = ctx.material("verge", errors);
+	surface_material_ = ctx.material("verge", errors);
 	look_ = &look;
 	return errors.is_empty();
 }

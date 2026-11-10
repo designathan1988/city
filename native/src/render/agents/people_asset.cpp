@@ -3,6 +3,7 @@
 #include "render/agents/people_asset.h"
 
 #include "core/bytes.h"
+#include "render/surface_data.h"
 
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/image.hpp>
@@ -46,8 +47,8 @@ struct LodSize {
 
 float linear(uint32_t c, int shift) { return std::pow(float((c >> shift) & BYTE_MAX) / float(BYTE_MAX), SRGB_GAMMA); }
 
-// The level's mesh; `reach`: its farthest vertex from the bind origin.
-Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz, float &reach) {
+// The level's mesh, made with `material`; `reach`: its farthest vertex from the bind origin.
+OwnedMesh read_mesh(ByteReader &r, const LodSize &sz, float &reach, const RID &material) {
 	PackedVector3Array pos, nor;
 	PackedColorArray col;
 	PackedVector2Array uv, uv2;
@@ -55,7 +56,7 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz, float &reach) {
 	PackedFloat32Array weights;
 	PackedInt32Array idx;
 	// every count is claimed against what is left of the file before anything is sized by it (core/bytes.h)
-	if (!r.claim(sz.vertices, VERTEX_BYTES)) return Ref<ArrayMesh>();
+	if (!r.claim(sz.vertices, VERTEX_BYTES)) return OwnedMesh();
 	pos.resize(sz.vertices);
 	nor.resize(sz.vertices);
 	col.resize(sz.vertices);
@@ -89,10 +90,10 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz, float &reach) {
 		uv.set(i, Vector2(t[0], t[1]));
 		uv2.set(i, Vector2(float(look >> REGION_SHIFT) + FACE_ROW_STEP * float(face), float(look & ROUGHNESS_MASK) / float(ROUGHNESS_MASK)));
 	}
-	if (!r.claim(sz.indices, sizeof(uint16_t))) return Ref<ArrayMesh>();
+	if (!r.claim(sz.indices, sizeof(uint16_t))) return OwnedMesh();
 	idx.resize(sz.indices);
 	for (uint32_t i = 0; i < sz.indices; i++) idx.set(i, int32_t(r.get<uint16_t>()));
-	if (!r.ok) return Ref<ArrayMesh>();
+	if (!r.ok) return OwnedMesh();
 	Array arr;
 	arr.resize(Mesh::ARRAY_MAX);
 	arr[Mesh::ARRAY_VERTEX] = pos;
@@ -106,10 +107,7 @@ Ref<ArrayMesh> read_mesh(ByteReader &r, const LodSize &sz, float &reach) {
 	// no skeleton is bound (the MultiMesh is skinned by people.gdshader from the palette), so the bone attributes stay as
 	// data. Not CUSTOM0/1: Godot 4.7.2's Compatibility renderer gives an RGBA8 custom attribute one component
 	// (drivers/gles3/storage/mesh_storage.cpp: size = fmtsize / sizeof(float)), so g, b, a read 0, 0, 1
-	Ref<ArrayMesh> m;
-	m.instantiate();
-	m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arr);
-	return m;
+	return OwnedMesh::of(mesh_of_arrays(arr, material)).shared(); // a body's draw is made when the first of them walks into view
 }
 // The atlases of atlas.bin (tools/assets/compress_atlas.gd), compressed and with their mipmaps as they are to be drawn: nothing to decode.
 Ref<Texture2DArray> read_atlas(const String &path, uint32_t count) {
@@ -130,7 +128,7 @@ Ref<Texture2DArray> read_atlas(const String &path, uint32_t count) {
 }
 
 // One quad, x and y in -0.5..0.5: people_far.gdshader turns it to the eye.
-Ref<ArrayMesh> card_mesh() {
+OwnedMesh card_mesh(const RID &material) {
 	PackedVector3Array pos, nor;
 	PackedVector2Array uv;
 	PackedInt32Array idx;
@@ -146,10 +144,7 @@ Ref<ArrayMesh> card_mesh() {
 	arr[Mesh::ARRAY_NORMAL] = nor;
 	arr[Mesh::ARRAY_TEX_UV] = uv;
 	arr[Mesh::ARRAY_INDEX] = idx;
-	Ref<ArrayMesh> m;
-	m.instantiate();
-	m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arr);
-	return m;
+	return OwnedMesh::of(mesh_of_arrays(arr, material)).shared();
 }
 void read_fit(ByteReader &r, PersonFit &f) {
 	f.pelvis.x = r.get<float>();
@@ -228,7 +223,7 @@ void PeopleAsset::clip_rows(int variation, int clip_index, int frame, float *row
 		}
 }
 
-bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStringArray &errors) {
+bool PeopleAsset::load(const String &path, const String &atlas_path, const RID &material, const RID &far_material, PackedStringArray &errors) {
 	PackedByteArray raw = FileAccess::get_file_as_bytes(path);
 	ByteReader r{ raw.ptr(), size_t(raw.size()) };
 	uint32_t magic = r.get<uint32_t>(), version = r.get<uint32_t>(), count = r.get<uint32_t>(), bones = r.get<uint32_t>();
@@ -256,7 +251,8 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 	}
 	read_card(r);
 	lods = int(lod_count);
-	variations.assign(count, PersonVariation());
+	variations.clear(); // a variation owns its meshes: made in place, never copied
+	variations.resize(count);
 	std::vector<LodSize> sizes(size_t(count) * lod_count);
 	for (uint32_t v = 0; v < count; v++) {
 		PersonVariation &pv = variations[v];
@@ -281,7 +277,7 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 		else {
 			PersonVariation &pv = variations[i / lod_count];
 			float reach = 0;
-			pv.lods.push_back(read_mesh(r, sizes[i], reach));
+			pv.lods.push_back(read_mesh(r, sizes[i], reach, material));
 			if (i % lod_count == 0) pv.reach = reach;
 		}
 	}
@@ -304,7 +300,7 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, PackedStrin
 	keep_posed(texels.ptr()); // the few rows the CPU reads; the rest goes with `texels` once the texture has them
 	palette = ImageTexture::create_from_image(Image::create_from_data(int(pal_w) * TEXELS_PER_VALUE, int(pal_h), false, Image::FORMAT_RGBA8, texels));
 	faces = ImageTexture::create_from_image(Image::create_from_data(int(FACE_TEXELS), int(face_lines), false, Image::FORMAT_RGBAH, face_bytes));
-	card = card_mesh();
+	card = card_mesh(far_material);
 	atlas = read_atlas(atlas_path, count);
 	if (atlas.is_null()) {
 		errors.push_back("pessoas: atlas ausente ou inválido: " + atlas_path);

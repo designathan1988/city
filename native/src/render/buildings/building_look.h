@@ -33,7 +33,6 @@ struct BuildingLook {
 	float far_fov_deg = 0; // the camera's far lens (mirrors data/game/camera.json far_fov_deg)
 	float cast_props_m = 0; // how far the balcony pieces throw a shadow
 	float hull_error_m = 0; // how far the mid level's shadow hull may stray from its walls
-	float level_fade_m = 0, level_back_m = 0; // the near level's hand-over (building_level.gdshaderinc)
 	float far_per_eye = 0; // metres of far reach each metre of eye height adds: the view from up there runs that much further
 	float far_hysteresis = 0; // superchunk far switch band around building_mid_end_m (a share of it)
 	float far_rebuild_delay_s = 0, far_rebuild_interval_s = 0; // deferred far rebuilds

@@ -4,6 +4,7 @@
 #include "render/mesh_levels.h"
 
 #include "render/mesh_order.h"
+#include "render/surface_data.h"
 #include "sim/state/map_hold.h"
 
 #include <algorithm>
@@ -148,12 +149,7 @@ static Array surface_arrays(const MeshBuilder &b) {
 	return arr;
 }
 
-Ref<ArrayMesh> MeshBuilder::commit() const {
-	Ref<ArrayMesh> m;
-	m.instantiate();
-	if (!empty()) m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, surface_arrays(*this));
-	return m;
-}
+Array MeshBuilder::arrays() const { return surface_arrays(*this); }
 
 int64_t MeshBuilder::bytes() const {
 	return int64_t((v.size() + n.size()) * sizeof(Vector3) + c.size() * sizeof(Color) + (uv.size() + uv2.size()) * sizeof(Vector2) +
@@ -182,20 +178,21 @@ void MeshBuilder::tag(uint8_t value) {
 	}
 }
 
-OwnedMesh MeshBuilder::bake() const {
+OwnedMesh MeshBuilder::bake(const RID &material, bool packed) const {
 	OwnedMesh m;
 	if (empty()) return m;
-	m.rid = RenderingServer::get_singleton()->mesh_create();
-	commit_to(m.rid);
+	TypedArray<Dictionary> surfaces;
+	surfaces.push_back(surface(material, packed));
+	m.rid = create_mesh(surfaces);
 	return m;
 }
 
-void MeshBuilder::commit_to(const RID &mesh) const {
-	if (empty()) return;
-	uint64_t format = RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES;
+Dictionary MeshBuilder::surface(const RID &material, bool packed) const {
+	if (empty()) return Dictionary();
+	uint64_t format = packed ? uint64_t(RenderingServer::ARRAY_FLAG_COMPRESS_ATTRIBUTES) : 0;
 	if (!tags.is_empty()) format |= uint64_t(RenderingServer::ARRAY_CUSTOM_RGBA8_UNORM) << RenderingServer::ARRAY_FORMAT_CUSTOM0_SHIFT;
 	const Dictionary lods = levels ? mesh_levels(v, idx, STREET_LEVELS_M) : Dictionary();
-	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(mesh, RenderingServer::PRIMITIVE_TRIANGLES, surface_arrays(*this), Array(), lods, format);
+	return surface_data(surface_arrays(*this), lods, format, material);
 }
 
 } // namespace city

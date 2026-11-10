@@ -51,8 +51,8 @@ AgentWreck agent_wreck(const MeshBuilder &mb, uint32_t seed) {
 	}
 	AgentWreck w;
 	w.size = box.size;
-	w.mesh.instantiate();
-	out.commit_to(w.mesh->get_rid());
+	w.mesh.instantiate(); // a resource: the effects' layer holds it and draws it in the pieces' material (effects/mm_layer.h)
+	if (!out.empty()) w.mesh->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, out.arrays());
 	return w;
 }
 

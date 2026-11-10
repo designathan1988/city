@@ -78,9 +78,12 @@ O que falta fazer, por área.
     user's uncommitted work; `tools/ports/landscape/plan-poses.json` takes zero shots and now fails.
   - `dist/cache/tasks` grows without a bound (tools/tasks keeps every result).
 - Performance, open after the batch of 2026-11-10 (numbers in `log/performance.md`, trace `port-from-nov7`):
-  - Of the tag `antes-da-volta-2026-11-10`, not brought, each to be written for this tree: the pipelines made when a mesh
-    is made (16cd2653: every mesh created whole with its surfaces' materials, so the engine compiles then and not on the
-    frame it is first drawn); the map layers built from a cut and the congestion as a texture of levels (908b3d3d); the
+  - Pipelines still made on the frame a thing first appears, once a kind (the rest is done, `log/performance.md` P35): the
+    effects' layers wear their material as an instance override (`render/effects/mm_layer.h`), a ghost of a signature
+    design overrides its material (`render/buildings/body_stage.cpp`), and a fallen building's pieces, a burnt vehicle and
+    the rubble mounds are filled after creation (`ruin_fracture.cpp`, `agent_wreck.cpp`, `mounds.cpp`).
+  - Of the tag `antes-da-volta-2026-11-10`, not brought, each to be written for this tree: the map layers built from a
+    cut and the congestion as a texture of levels (908b3d3d); the
     transit plan's tracks and stops built by jobs (96b2db93); a city opened aside while frames go on (9944dde5); what the
     render jobs derive for a place made once (2f1d3570: its design, kept by revision under the shared lock, is replaced
     here by the jobs' cuts; a chunk's ground is still gathered by the near trees, the far cards and the cover apart).
@@ -90,6 +93,10 @@ O que falta fazer, por área.
   - The city opens in 23.6 s in the batch's measure (16.6 s before): not yet read for its cause.
   - Defects seen in the photos and still open: the far walls at night (one tan glow with black squares), sheds standing
     in one another on industrial lots, a dark blotch over a pale cross street.
-  - Railings and brise veils with no filter over the frames (the low tier, Mobile and Compatibility): the card's coverage
-    is a screen noise a temporal filter resolves (`building_card.gdshader`), so there every roof edge and balcony front is
-    a dotted line (trace P33): the tier with no such filter needs the coverage blended.
+  - With no antialiasing at all (the low tier) the parapets' coping strips read as dashed lines round the roofs from mid
+    distance and the blinds' slats beat with the pixels (trace P34; the slats also show it on a still frame of the medium
+    tier): a coping under a pixel folded into the parapet at the levels that draw it so small, the slats filtered by the
+    pixel's footprint, and the owner's word on whether the low tier keeps no edge filter.
+  - At night the near level and the mid level do not agree on which rooms are lit (a near pane's lamp by its room's seed,
+    a mid bay's by a hash of the bay), so a window can change where the levels hand over (trace P36): one owner of the
+    lit rooms both levels read.

@@ -2,6 +2,8 @@
 // (each its own normal and colour), which to the simplifier are borders it may not move: they are welded by position first.
 #include "render/buildings/cast_hull.h"
 
+#include "render/surface_data.h"
+
 #include <meshoptimizer.h>
 
 #include <godot_cpp/variant/array.hpp>
@@ -14,7 +16,7 @@ using namespace godot;
 
 namespace city {
 
-OwnedMesh cast_hull(const b40::Shell &walls, const b40::Shell &panes, float error_m) {
+OwnedMesh cast_hull(const b40::Shell &walls, const b40::Shell &panes, float error_m, const RID &material) {
 	OwnedMesh out;
 	std::vector<Vector3> points;
 	std::vector<unsigned> corners;
@@ -50,9 +52,7 @@ OwnedMesh cast_hull(const b40::Shell &walls, const b40::Shell &panes, float erro
 	arrays.resize(RenderingServer::ARRAY_MAX);
 	arrays[RenderingServer::ARRAY_VERTEX] = vertices;
 	arrays[RenderingServer::ARRAY_INDEX] = indices;
-	out.rid = RenderingServer::get_singleton()->mesh_create();
-	RenderingServer::get_singleton()->mesh_add_surface_from_arrays(out.rid, RenderingServer::PRIMITIVE_TRIANGLES, arrays);
-	return out;
+	return OwnedMesh::of(mesh_of_arrays(arrays, material));
 }
 
 } // namespace city

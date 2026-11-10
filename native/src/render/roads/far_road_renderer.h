@@ -41,7 +41,7 @@ private:
 	void send(Super &sp) const;
 
 	const StreetLook *look_ = nullptr;
-	godot::RID scenario_, material_;
+	godot::RID scenario_;
 	std::unordered_map<int64_t, Super> supers_;
 	std::unordered_set<int64_t> dirty_; // to make: changed, never made, or let go
 	int waiting_ = 0; // of them, those within reach and not asked yet (the last offer): what the view still waits for

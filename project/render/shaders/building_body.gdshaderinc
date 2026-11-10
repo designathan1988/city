@@ -6,8 +6,6 @@
 // that the vertex stage places and turns into these same faces (building_bay.gdshaderinc).
 render_mode cull_back;
 
-const int KIND_GROUND = 7; // shell.h SK_GROUND
-
 global uniform float night;
 global uniform float building_recess; // 0 turns the worked-out recess off: an A/B of what it costs
 global uniform vec3 sun_direction; // towards the sun, world space (daylight.gd)
@@ -43,7 +41,6 @@ varying flat vec3 v_turn2;
 #endif
 
 #include "res://render/shaders/building_bay.gdshaderinc"
-#include "res://render/shaders/building_level.gdshaderinc"
 
 void vertex() {
 	v_room0 = CUSTOM0;
@@ -76,8 +73,6 @@ void vertex() {
 	v_turn1 = r1.xyz;
 	v_turn2 = r2.xyz;
 #endif
-	// What lies on the lot stays there: stepped back it sinks under the lawn, which is drawn by another material and stands still.
-	if (level_back > 0.0 && !IN_SHADOW_PASS && int(COLOR.a * 255.0 + 0.5) != KIND_GROUND) VERTEX += level_local(MODEL_MATRIX, normalize(v_world - CAMERA_POSITION_WORLD) * level_back);
 }
 
 #include "res://render/shaders/building_colour.gdshaderinc"
@@ -88,9 +83,6 @@ void vertex() {
 #include "res://render/shaders/building_far_window.gdshaderinc"
 
 void fragment() {
-#ifdef LEVEL_FADE
-	if (!IN_SHADOW_PASS && level_noise(FRAGCOORD.xy) >= level_keep) discard;
-#endif
 	int kind = int(COLOR.a * 255.0 + 0.5);
 	vec3 n = normalize(v_wn);
 	vec3 V = normalize(v_world - CAMERA_POSITION_WORLD);

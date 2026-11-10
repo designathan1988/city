@@ -43,13 +43,15 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 	}
 	if (!furniture_.load(t, errors) || !barriers_.load(t, errors) || !signs_.load(t, errors) || !kit_.build(t["props"], t["wires"], Dictionary(t["barriers"])["beam_section"], errors)) return false;
 	atlas_.configure(signs_.sheet_w, signs_.sheet_h, signs_.cell, signs_.blade_w, signs_.blade_h);
-	pole_mesh_ = kit_.pole_levels().bake();
-	pole_cast_mesh_ = kit_.pole_cast_levels().bake();
-	wire_near_mesh_ = kit_.wire(true).bake();
-	wire_far_mesh_ = kit_.wire(false).bake();
-	box_mesh_ = kit_.unit_box().bake();
-	beam_mesh_ = kit_.w_beam().bake();
-	light_mesh_ = kit_.light().bake();
+	surface_material_ = material_; // every chunk's mesh, and each unit mesh below, is made with the material it is drawn in
+	// the unit meshes are shared (mesh_draw.h): a chunk's draws of them are made when it streams in
+	pole_mesh_ = kit_.pole_levels().bake(material_).shared();
+	pole_cast_mesh_ = kit_.pole_cast_levels().bake(material_).shared();
+	wire_near_mesh_ = kit_.wire(true).bake(material_).shared();
+	wire_far_mesh_ = kit_.wire(false).bake(material_).shared();
+	box_mesh_ = kit_.unit_box().bake(material_).shared();
+	beam_mesh_ = kit_.w_beam().bake(material_).shared();
+	light_mesh_ = kit_.light().bake(glow_material_).shared();
 	kit_.drop_baked();
 	lamps_.init(scenario_, material_, kit_);
 	lights_.init(scenario_, ctx.catalog->tune, RenderingServer::get_singleton()->material_get_param(glow_material_, "glow_color"));
@@ -84,17 +86,17 @@ void PropRenderer::show(Draws &d, StreetInstances &inst, const AABB &box) {
 	instances_ -= d.count;
 	d.count = int((inst.poles.size() + inst.wires.size() + inst.light.size()) / MM_PLAIN_STRIDE + (inst.boxes.size() + inst.beams.size()) / MM_STRIDE);
 	instances_ += d.count;
-	d.poles.set(scenario_, pole_mesh_.rid, material_, inst.poles, box, false, LAYER_FURNITURE, false);
+	d.poles.set(scenario_, pole_mesh_.rid, inst.poles, box, false, LAYER_FURNITURE, false);
 	d.pole_shadow_near.shadow_only = d.pole_shadow_far.shadow_only = true;
-	d.pole_shadow_near.set(scenario_, pole_mesh_.rid, material_, inst.poles, box, true, LAYER_FURNITURE, false);
-	d.pole_shadow_far.set(scenario_, pole_cast_mesh_.rid, material_, inst.poles, box, true, LAYER_FURNITURE, false);
+	d.pole_shadow_near.set(scenario_, pole_mesh_.rid, inst.poles, box, true, LAYER_FURNITURE, false);
+	d.pole_shadow_far.set(scenario_, pole_cast_mesh_.rid, inst.poles, box, true, LAYER_FURNITURE, false);
 	d.pole_shadow_near.range(NEVER_END, kit_.cast_from());
 	d.pole_shadow_far.range(kit_.cast_from(), shadow_end());
-	d.wires_near.set(scenario_, wire_near_mesh_.rid, material_, inst.wires, box, true, LAYER_FURNITURE, false);
-	d.wires_far.set(scenario_, wire_far_mesh_.rid, material_, inst.wires, box, false, LAYER_FURNITURE, false);
-	d.boxes.set(scenario_, box_mesh_.rid, material_, inst.boxes, box, true, LAYER_FURNITURE);
-	d.beams.set(scenario_, beam_mesh_.rid, material_, inst.beams, box, true, LAYER_FURNITURE);
-	d.light.set(scenario_, light_mesh_.rid, glow_material_, inst.light, box, false, LAYER_FURNITURE, false);
+	d.wires_near.set(scenario_, wire_near_mesh_.rid, inst.wires, box, true, LAYER_FURNITURE, false);
+	d.wires_far.set(scenario_, wire_far_mesh_.rid, inst.wires, box, false, LAYER_FURNITURE, false);
+	d.boxes.set(scenario_, box_mesh_.rid, inst.boxes, box, true, LAYER_FURNITURE);
+	d.beams.set(scenario_, beam_mesh_.rid, inst.beams, box, true, LAYER_FURNITURE);
+	d.light.set(scenario_, light_mesh_.rid, inst.light, box, false, LAYER_FURNITURE, false);
 	d.wires_near.range(NEVER_END, furniture_.wire.near_end);
 	d.wires_far.range(furniture_.wire.near_end, furniture_.wire.far_end);
 }
@@ -112,7 +114,6 @@ void PropRenderer::cast_chunk(Draws &d, const RID &mesh, const AABB &box) {
 	if (!mesh.is_valid()) return;
 	d.cast = rs->instance_create2(mesh, scenario_);
 	rs->instance_set_layer_mask(d.cast, LAYER_FURNITURE);
-	rs->instance_geometry_set_material_override(d.cast, material_);
 	rs->instance_geometry_set_cast_shadows_setting(d.cast, RenderingServer::SHADOW_CASTING_SETTING_SHADOWS_ONLY);
 	rs->instance_set_custom_aabb(d.cast, box);
 	rs->instance_geometry_set_visibility_range(d.cast, 0, shadow_end(), 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
@@ -122,7 +123,7 @@ void PropRenderer::commit_one(Built &b) {
 	MeshDraw &d = chunks_[b.key];
 	const bool any = b.mesh.valid();
 	cast_chunk(draws_[b.key], RID(), AABB()); // before the mesh it shows goes
-	d.adopt(scenario_, material_, false, b.mesh.release(), LAYER_FURNITURE);
+	d.adopt(scenario_, false, b.mesh.release(), LAYER_FURNITURE);
 	const float pad = furniture_.wire.max_span, x0 = key_x(b.key) * CHUNK - pad, z0 = key_y(b.key) * CHUNK - pad;
 	const AABB box(Vector3(x0, AABB_MIN_Y, z0), Vector3(CHUNK + pad * 2, AABB_H, CHUNK + pad * 2));
 	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(d.inst, box);

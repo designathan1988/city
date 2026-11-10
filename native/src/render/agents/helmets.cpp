@@ -39,7 +39,7 @@ bool Helmets::init(const RenderContext &ctx, const Dictionary &helmet, PackedStr
 	rs->material_set_param(material_, "helmet_roughness", float(helmet["roughness"]));
 	MeshBuilder b;
 	b.blob(Vector3(), Vector3(SHELL_RADIUS, SHELL_RADIUS, SHELL_RADIUS), Color(1, 1, 1));
-	mesh_ = b.bake();
+	mesh_ = b.bake(material_).shared();
 	keeper_.clear();
 	keeper_.draws(1);
 	return true;
@@ -56,7 +56,7 @@ void Helmets::begin() {
 
 void Helmets::draw(const RID &scenario, const AABB &box, RenderLayer layer) {
 	keeper_.sweep([&](int) -> InstanceRows & { return rows_; });
-	draw_.set(scenario, mesh_.rid, material_, rows_, box, true, layer);
+	draw_.set(scenario, mesh_.rid, rows_, box, true, layer);
 }
 
 } // namespace city

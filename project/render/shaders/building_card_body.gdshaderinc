@@ -21,14 +21,18 @@ const float BRISE_PITCH = 1.0 / 6.0; // part_models.cpp BRISE_FINS
 const float TOP_RAIL = 0.97, TOP_RAIL_H = 0.06;
 const float BRISE_FILTER_PX = 2.0;
 
-#include "res://render/shaders/building_level.gdshaderinc"
+global uniform float dither_clock; // a new pattern a frame for the temporal filter, and one that stands still in a frozen picture (TIME stops wherever it was)
 
 varying vec3 v_world;
 
 void vertex() {
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	if (level_back > 0.0) VERTEX += level_local(MODEL_MATRIX, normalize(v_world - CAMERA_POSITION_WORLD) * level_back);
 	if (IN_SHADOW_PASS) VERTEX = vec3(0.0); // every corner on one point: nothing is drawn
+}
+
+// The grain a pixel is kept or left by: interleaved gradient noise (Jimenez 2014), moved each frame by the clock.
+float grain(vec2 px) {
+	return fract(52.9829189 * fract(dot(px + dither_clock * 61.0, vec2(0.06711056, 0.00583715))));
 }
 
 #include "res://render/shaders/building_colour.gdshaderinc"
@@ -57,7 +61,6 @@ float cover(int kind, vec2 q, vec2 fw, float share) {
 
 void fragment() {
 	int kind = int(UV2.x + 0.5);
-	if (level_noise(FRAGCOORD.xy) >= level_keep) discard;
 	if (kind == BRISE_KIND && length(v_world - CAMERA_POSITION_WORLD) < veil_from_m) discard;
 	vec2 fw = max(fwidth(UV), vec2(1e-5));
 	float covered = cover(kind, UV, fw, UV2.y);
@@ -67,7 +70,7 @@ void fragment() {
 	ALPHA = covered;
 #else
 	// the share of the pixel kept as a share of the pixels that stay: a screen of bars under a pixel is a veil and no moire; the frames resolve the grain
-	if (covered <= level_noise(FRAGCOORD.xy)) discard;
+	if (covered <= grain(FRAGCOORD.xy)) discard;
 #endif
 	ALBEDO = surface_out(to_linear(COLOR.rgb));
 	ROUGHNESS = roughness;

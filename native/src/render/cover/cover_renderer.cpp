@@ -56,7 +56,7 @@ bool CoverRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	rock_material_ = ctx.material("cover_rock", errors);
 	shore_material_ = ctx.material("cover_shore", errors);
 	Dictionary t = ctx.table("cover", errors);
-	if (!errors.is_empty() || !kit_.build(t, errors) || !models_.load(t.get("elements", Dictionary()), errors) || !shore_.load(t.get("shore", Dictionary()), errors)) return false;
+	if (!errors.is_empty() || !kit_.build(t, CoverMaterials{ plant_material_, rock_material_, shore_material_ }, errors) ||!models_.load(t.get("elements", Dictionary()), errors) || !shore_.load(t.get("shore", Dictionary()), errors)) return false;
 	draws_ = 0;
 	for (int i = 0; i < COVER_PIECES; i++) {
 		first_[size_t(i)] = draws_;
@@ -167,17 +167,17 @@ void CoverRenderer::commit_one(Built &b) {
 		const CoverLook &k = kit_.look(CoverPiece(p));
 		for (size_t v = 0; v < k.variants.size(); v++) {
 			size_t at = size_t(first_[size_t(p)]) + v;
-			ch[at].set(scenario_, k.variants[v]->get_rid(), k.sways ? plant_material_ : rock_material_, b.bufs[at], box, k.casts, LAYER_VEGETATION);
+			ch[at].set(scenario_, k.variants[v].rid, b.bufs[at], box, k.casts, LAYER_VEGETATION);
 			ch[at].range(0, end);
 		}
 	}
 	for (size_t i = 0; i < models_.all().size(); i++) {
 		size_t at = size_t(draws_) + i;
-		ch[at].set(scenario_, models_.all()[i].mesh->get_rid(), RID(), b.bufs[at], box, false, LAYER_VEGETATION);
+		ch[at].set(scenario_, models_.all()[i].mesh->get_rid(), b.bufs[at], box, false, LAYER_VEGETATION); // a loaded model: its own materials
 		ch[at].range(0, end);
 	}
 	for (size_t v = 0; v < rocks.variants.size(); v++) {
-		ch[stones + v].set(scenario_, rocks.variants[v]->get_rid(), shore_material_, b.bufs[stones + v], box, rocks.casts, LAYER_VEGETATION);
+		ch[stones + v].set(scenario_, rocks.shore[v].rid, b.bufs[stones + v], box, rocks.casts, LAYER_VEGETATION);
 		ch[stones + v].range(0, shore_.reach_m + kit_.fade_m + CHUNK * DIAGONAL * HALF);
 	}
 }

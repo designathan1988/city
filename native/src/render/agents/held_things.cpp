@@ -38,7 +38,7 @@ bool HeldThings::init(const RenderContext &ctx, const Dictionary &held, const ch
 			const Vector3 at = triple(d["at"]), half = triple(d["size"]) * .5f;
 			b.box(at - half, at + half, rgba8_to_color(parse_hex_color(String(d["colour"]).utf8().get_data())), upright, true);
 		}
-		things_[size_t(n)].mesh = b.bake();
+		things_[size_t(n)].mesh = b.bake(material_).shared();
 		thing_of_[act] = n++;
 	}
 	if (n != kinds.size()) {
@@ -66,7 +66,7 @@ float *HeldThings::row(uint64_t key, int act) {
 
 void HeldThings::draw(const RID &scenario, const AABB &box, RenderLayer layer) {
 	keeper_.sweep([&](int k) -> InstanceRows & { return things_[size_t(k)].rows; });
-	for (Thing &t : things_) t.draw.set(scenario, t.mesh.rid, material_, t.rows, box, true, layer);
+	for (Thing &t : things_) t.draw.set(scenario, t.mesh.rid, t.rows, box, true, layer);
 }
 
 } // namespace city

@@ -28,7 +28,7 @@ int bit_of(int64_t chunk, int64_t super) {
 
 bool FarRoadRenderer::init(const RenderContext &ctx, const StreetLook &look, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
-	material_ = ctx.material("road_fade", errors); // road_far.gdshader, by the road material's fade_shader
+	surface_material_ = ctx.material("road_fade", errors); // road_far.gdshader, by the road material's fade_shader
 	look_ = &look;
 	return errors.is_empty();
 }
@@ -88,7 +88,7 @@ void FarRoadRenderer::offer(const CityState &s, JobPool &pool, const Vector3 &ca
 void FarRoadRenderer::commit_one(BuiltMesh &b) {
 	Super &sp = supers_[b.key];
 	const bool any = b.mesh.valid();
-	sp.surface.adopt(scenario_, material_, false, b.mesh.release(), LAYER_ROADS);
+	sp.surface.adopt(scenario_, false, b.mesh.release(), LAYER_ROADS);
 	sp.surface.visible(any);
 	sp.sent = -1;
 	fresh_ = true;

@@ -2,6 +2,7 @@
 #include "render/overlays/overlay_renderer.h"
 
 #include "core/color.h"
+#include "render/surface_data.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -104,16 +105,18 @@ void OverlayRenderer::submit_zone(const CityState &s, int64_t key, float priorit
 	});
 }
 
+// The chunk's ribbon as a mesh made whole with the overlay's material (surface_data.h), in place of the one it showed; none when empty.
 void OverlayRenderer::upload(MeshDraw &d, Ribbon &r, bool on) {
-	d.reset(scenario_, material_, false, LAYER_OVERLAYS);
+	RID mesh;
 	if (!r.v.is_empty()) {
 		Array arrays;
 		arrays.resize(RenderingServer::ARRAY_MAX);
 		arrays[RenderingServer::ARRAY_VERTEX] = r.v;
 		arrays[RenderingServer::ARRAY_COLOR] = r.c;
-		RenderingServer::get_singleton()->mesh_add_surface_from_arrays(d.mesh, RenderingServer::PRIMITIVE_TRIANGLES, arrays);
+		mesh = mesh_of_arrays(arrays, material_);
 	}
-	d.visible(on && !r.v.is_empty());
+	d.adopt(scenario_, false, mesh, LAYER_OVERLAYS);
+	d.visible(on && mesh.is_valid());
 }
 
 // The chunks in reach coloured by this publication's speeds: their ribbons laid once (lay_congestion), coloured here; each

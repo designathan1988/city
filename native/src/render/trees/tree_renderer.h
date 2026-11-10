@@ -58,6 +58,7 @@ private:
 		int64_t upload = 0; // bytes the near buffers send, every draw of each
 		std::vector<FarCard> cards; // far, until baked
 		float centre = 0, half_tall = 0;
+		godot::RID card_material; // far: what the cards' mesh is made with
 		OwnedMesh far_mesh; // far: the superchunk's cards
 		bool bakes() const { return far; }
 		int64_t bytes() const { return upload; }

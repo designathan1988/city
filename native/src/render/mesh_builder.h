@@ -46,13 +46,15 @@ struct MeshBuilder {
 	bool empty() const { return idx.is_empty(); }
 	int64_t bytes() const; // of the arrays handed to the RenderingServer (frame_admission.h UploadBudget)
 	godot::AABB bounds() const; // of every vertex added (an empty box when there is none)
-	godot::Ref<godot::ArrayMesh> commit() const;
-	// Adds the surface to an existing mesh RID (RenderingServer) instead of creating a resource.
-	void commit_to(const godot::RID &mesh) const;
+	godot::Array arrays() const; // the surface's arrays as the RenderingServer takes them, the triangles ordered for the vertex cache
+	// The surface as mesh_create_from_surfaces takes it, `material` on it (surface_data.h: a mesh made whole with its materials is one the
+	// engine makes the pipelines of as it makes it, not on the frame it is first drawn); an empty dictionary when the builder is empty.
+	// `packed`: the attributes compressed (positions in the box, sixteen-bit UVs); else as they are.
+	godot::Dictionary surface(const godot::RID &material, bool packed = true) const;
 	bool levels = false; // the surface goes with fewer triangles for the distance (mesh_levels.h)
-	// The surface converted on the calling thread into a mesh of its own (rs_util.h OwnedMesh: a job bakes, the main
+	// The surface converted on the calling thread into a mesh of its own with `material` (mesh_draw.h OwnedMesh: a job bakes, the main
 	// thread only hands it to an instance); no mesh when the builder is empty.
-	OwnedMesh bake() const;
+	OwnedMesh bake(const godot::RID &material, bool packed = true) const;
 };
 
 godot::Color rgba8_to_color(uint32_t rgba);
