@@ -115,7 +115,7 @@ e apagados.
 | Captures | `tools/build/build.sh capture [folder]` (= `cli.py run capture`, hidden, one task per plan) |
 | Olhar o jogo por um plano | `godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<json> --capture-dir=<pasta>` |
 | Onde cada thread gasta | `python tools/analysis/sampler.py --hidden --cmd "<godot> --path project <cena>" --seconds 30 --symbolizer <llvm-symbolizer>` |
-| Causes by the code's shape | `python tools/tasks/cli.py run causes` (`tools/analysis/causes.py` under a deadline) |
+| Causes by the code's shape; a feature traced | `python tools/tasks/cli.py run causes` (`tools/analysis/causes.py` under a deadline); `python tools/analysis/ftrace.py <tree> --query "words"` or `--seed Class::method` (who triggers it, what it runs and mutates, who reads that; the tree on disk) |
 | Causes by the architecture | `python tools/tasks/cli.py run arch_scan`, then `python tools/analysis/arch.py status`, `next`, `explain <id>`, `predict <id>`, `done <id>`, `selfcheck` (`--only x` redoes only what failed; the queue in `dist/arch/queue.json`) |
 | Perfil da DLL de release | `tools/build/pgo.sh` (refazer depois de mudar laços quentes) |
 
@@ -167,7 +167,7 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
 - `build/`: `build.sh`, `android.sh` (the Android library and APK), `quick.sh` (a thin call of `tools/tasks`), `pgo.sh`, `free_dll.sh`,
   `check_scripts.gd` (scripts that do not compile), `shader_contracts.py` (what shaders, core and scripts share, from its JSON).
 - `analysis/`: `sampler.py` with `sampler_report.py`, `unwind.py` and `win_process.py`, `causes.py` with `detectors.py` and `code_parse.py`,
-  `arch.py` and `arch/` (the architecture analyser), `arch_eval/` (answer keys only its selfcheck reads).
+  `arch.py` and `arch/` (the architecture analyser), `arch_eval/` (answer keys only its selfcheck reads), `ftrace.py` and `ftrace/` (the feature tracer).
 - `assets/`: what makes this game's assets: noise tiles, furniture parts, flag icons, texture fixes.
 - `converter/`: the port tool, pointed at the lab (`Documents/Projects/lab/roadcraft`); record and use in `log/conversor.md`.
   The 4.0 source copies and the old porting records (`oracle-4.0`, `converter-slice`, `ports`, `process`) left

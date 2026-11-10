@@ -7,7 +7,9 @@ import subprocess
 import sys
 
 TOOLS_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-FIXTURES = "tools/gates/tests/fixtures/"  # the self-test's inputs: deliberately failing files, never the real scope
+# The tools' test inputs, never the real scope: the gates' own deliberately failing files, and the feature tracer's small
+# foreign tree (other languages, a layout file, prose, a minified library: what it must read is what the rules forbid).
+FIXTURES = ("tools/gates/tests/fixtures/", "tools/analysis/ftrace/tests/fixtures/")
 _HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", re.M)
 
 

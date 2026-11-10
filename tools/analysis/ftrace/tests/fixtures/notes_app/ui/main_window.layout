@@ -1,0 +1,5 @@
+# Main window: one row of buttons and a counter.
+[window id="main" title="Notes"]
+[button id="save" label="Save note" on_click="handle_save_clicked"]
+[button id="clear" label="Clear all" on_click="handle_clear_clicked"]
+[label id="count" bind="note_count"]

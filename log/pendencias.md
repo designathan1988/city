@@ -217,3 +217,10 @@ O que falta fazer, por área.
 - Still open from the round's reports (dist/analysis/round1): BLDG-1/2 levels by error on the screen, BLDG-4 the designs' cooked
   meshes, BLDG-6/9 a building's own slice and the draws by kind, REC-3 mesh jobs reading snapshots, REC-4 the land near the view,
   PEDS-1..7 the lab's walking network, ROAD-1/3/6/8/13 the road's levels, shared vertices, painted marks, the seam from the outline.
+
+## Feature tracer: what stayed outside the repository (2026-11-09 23:55, log/feature-trace.md)
+- `C:\Users\Jonathan\Desktop\feature-trace` still holds `cbmtrace/` (the variant on the third-party `codebase-memory-mcp` binary, 367 MB
+  under `vendor/`), the npm evaluation (`eval/npm_eval.py`, `cbm_eval.py`, `v8_oracle.py`, `stats.py`, with a 17 MB copy of npm's source)
+  and `tests/test_cbmtrace.py`. They cannot run without those copies, which the repository does not take. To decide: drop the variant, or
+  make its evaluation fetch its subject at run time into `dist/`.
+- The tracer and `tools/analysis/arch` are two graphs of the same program (names against the compiler's AST): one owner is still to be made.
