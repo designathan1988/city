@@ -144,6 +144,7 @@ func _read() -> void:
 	clouds = land.clouds
 	_shape_clouds()
 	_world.set_map_biome(land.biome)
+	_world.set_map_half(land.map_half)
 	_world.set_water_look(weather)
 	# Rain thickens the air: what the player set, or the rain's own mist if that is more.
 	var rain: float = weather.get("rain", 0.0)

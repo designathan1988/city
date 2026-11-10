@@ -130,6 +130,14 @@ func set_map_biome(region: int) -> void:
 		_materials.verge.set_shader_parameter("map_biome", region + 1)
 
 
+## Where the map ends, metres from its middle: past it the ground's shader draws the land's end wall (terrain.gdshader map_half).
+## It is the map's, not the look's: a map of another size told nothing would shade its own ground past the default as that wall.
+func set_map_half(half: float) -> void:
+	_terrain_material.set_shader_param("map_half", half)
+	if _materials.has("verge"):
+		_materials.verge.set_shader_parameter("map_half", half)
+
+
 ## How rough the water is, how much foam and how fast it runs; the wind's own ripples add to the waves.
 func set_water_look(weather: Dictionary) -> void:
 	water.own.set_shader_parameter("waves", minf(1.0, weather.waves + weather.wind / WIND_FULL_WAVES_MS))

@@ -15,7 +15,7 @@ uniform float dirt_m = 13.6;
 uniform float rock_m = 23.2;
 uniform float dirt_from; // 1 - normal.y where soil starts to show; data/render/palette.json terrain (angle of repose)
 uniform float dirt_to; // ... and where it has replaced the grass
-uniform float map_half = 5120.0;
+uniform float map_half = 5120.0; // the open map's half side, set by CityWorld.set_map_half when a map is read
 uniform float past_map_y_m; // past the map the land lies under the sea
 uniform sampler2D grass_detail : filter_linear_mipmap_anisotropic, repeat_enable; // data, not colour: mean 0.5, doubled in the shader
 uniform float detail_m = 1.6; // metres one tile of the grain covers

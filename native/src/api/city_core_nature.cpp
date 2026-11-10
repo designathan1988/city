@@ -222,6 +222,7 @@ Dictionary CityLandscape::landscape() const {
 	d["weather"] = w;
 	d["clouds"] = clouds;
 	d["biome"] = n.nature.region;
+	d["map_half"] = state_->map_half; // where the land ends: the ground's shader draws its end wall there
 	d["revision"] = int64_t(n.sky_revision);
 	d["fog_dabs"] = int64_t(n.fog.size());
 	d["planted"] = n.planted.live_trees();
