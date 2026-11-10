@@ -68,8 +68,7 @@ EditResult edit_body(CityState &s, int id, const BodyOp &op) {
 		return r;
 	}
 	Building rec = s.buildings.items[id];
-	Body body;
-	record_body(s.buildings.designs, rec, body);
+	Body body = *record_body(s.buildings.designs, rec); // a copy: the edit becomes a version of its own
 	ByteWriter before; // the body's canonical bytes (body_codec.h): an edit that leaves them so changed nothing
 	write_body(before, body);
 	r.error = op(body);

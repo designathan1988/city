@@ -1,5 +1,4 @@
 // A building's body for the Build tools: what it holds, and its edits (sim/commands/body_ops.h) as script commands.
-#include "sim/buildings/b40/blocks.h"
 #include "api/body_api.h"
 #include "api/city_builder.h"
 #include "core/color.h"
@@ -30,8 +29,8 @@ Dictionary CityBuilder::body_info(int id) const {
 	const CityState &s = *state_;
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return d;
 	const Building &rec = s.buildings.items[id];
-	b40::Body body;
-	b40::record_body(s.buildings.designs, rec, body);
+	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
+	const b40::Body &body = *body_held;
 	d["edited"] = rec.body != 0;
 	d["signature"] = int(body.signature);
 	d["digest"] = int64_t(body_digest(body));
@@ -62,8 +61,7 @@ Dictionary CityBuilder::body_info(int id) const {
 		volumes.push_back(e);
 	}
 	d["volumes"] = volumes;
-	b40::resolve_blocks(body);
-	d["solids"] = int(body.volumes.size());
+	d["solids"] = int(b40::record_mass(s.buildings.designs, rec)->volumes.size());
 	return d;
 }
 
@@ -89,8 +87,8 @@ PackedVector3Array CityBuilder::body_outline(int id, int vol) const {
 	const CityState &s = *state_;
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return out;
 	const Building &rec = s.buildings.items[id];
-	b40::Body body;
-	b40::record_body(s.buildings.designs, rec, body);
+	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
+	const b40::Body &body = *body_held;
 	if (vol < 0 || vol >= int(body.volumes.size())) return out;
 	const b40::Volume &v = body.volumes[size_t(vol)];
 	b40::LotFrame f = b40::lot_frame(rec);
@@ -108,8 +106,8 @@ Vector3 CityBuilder::body_at(int id, float x, float y) const {
 	const CityState &s = *state_;
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return Vector3();
 	const Building &rec = s.buildings.items[id];
-	b40::Body body;
-	b40::record_body(s.buildings.designs, rec, body);
+	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
+	const b40::Body &body = *body_held;
 	b40::LotFrame f = b40::lot_frame(rec);
 	float floor = b40::lot_floor(body, rec, f, [&](float hx, float hz) { return s.terrain.height_at(hx, hz); });
 	V2 at = f.at(x, y);
@@ -181,8 +179,8 @@ int CityBuilder::body_bay(int id, int vol, int storey, int side, int bay) const 
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return b40::BAY_NONE;
-	b40::Body body;
-	b40::record_body(s.buildings.designs, s.buildings.items[id], body);
+	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, s.buildings.items[id]);
+	const b40::Body &body = *body_held;
 	if (vol < 0 || vol >= int(body.volumes.size())) return b40::BAY_NONE;
 	const b40::Volume &v = body.volumes[size_t(vol)];
 	return storey >= 0 && storey < v.storeys ? b40::bay_at(v, storey, side, bay) : int(b40::BAY_NONE);
@@ -286,8 +284,8 @@ Dictionary CityBuilder::body_paint_at(int id, int vol, int side, int storey) con
 	Dictionary d;
 	const CityState &s = *state_;
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return d;
-	b40::Body body;
-	b40::record_body(s.buildings.designs, s.buildings.items[id], body);
+	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, s.buildings.items[id]);
+	const b40::Body &body = *body_held;
 	if (vol < 0 || vol >= int(body.volumes.size())) return d;
 	const b40::Volume &v = body.volumes[size_t(vol)];
 	auto own = v.storey_paint.find(b40::side_key(storey, side));

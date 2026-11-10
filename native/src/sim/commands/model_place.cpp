@@ -110,8 +110,8 @@ EditResult place_body(CityState &s, const Body &src, double ax, double az, doubl
 	for (int id : landed) {
 		const Building &other = s.buildings.items[size_t(id)];
 		if (other.floors == 0 && other.body == 0 && !is_open_lot(other.fn)) continue;
-		Body theirs;
-		record_body(s.buildings.designs, other, theirs);
+		const std::shared_ptr<const Body> theirs_held = record_body(s.buildings.designs, other);
+		const Body &theirs = *theirs_held;
 		weld_body(body, frame, theirs, lot_frame(other), other.rot - b.rot);
 	}
 	if (!landed.empty()) {

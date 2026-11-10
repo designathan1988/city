@@ -28,14 +28,13 @@ constexpr int PRIMITIVE_ZONE = 1;
 
 float on_grid(const Tuning &t, float x) { return std::round(x / float(t.build_grid_m)) * float(t.build_grid_m); }
 
-// The body of a building that stands, or why not.
-bool standing(const CityState &s, int id, Body &body, EditResult &r) {
+// The body of a building that stands, held, or none and why.
+std::shared_ptr<const Body> standing(const CityState &s, int id, EditResult &r) {
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[size_t(id)].alive) {
 		r.error = NO_BLOCK;
-		return false;
+		return nullptr;
 	}
-	record_body(s.buildings.designs, s.buildings.items[size_t(id)], body);
-	return true;
+	return record_body(s.buildings.designs, s.buildings.items[size_t(id)]);
 }
 
 // The biggest piece of `box` standing on the block: a mass on a roof is kept to the roof.
@@ -163,8 +162,9 @@ std::string op_handle(Body &b, const Tuning &t, const HandleEdit &e) {
 // Out of where it stood and into the new place, as a body lands: on another building it welds, and it may leave a road behind it.
 EditResult move_building(CityState &s, int id, double x, double z, double rot) {
 	EditResult r;
-	Body body;
-	if (!standing(s, id, body, r)) return r;
+	const std::shared_ptr<const Body> held = standing(s, id, r); // kept past the record's removal below
+	if (!held) return r;
+	const Body &body = *held;
 	const Building rec = s.buildings.items[size_t(id)];
 	r.error = place_problem(s, body, x, z, rot);
 	if (!r.error.empty()) return r;
@@ -215,8 +215,9 @@ std::string op_primitive_on(Body &b, const Tuning &t, int vol, int side, int sto
 // The block and what stands on it taken out into a building of its own, in the same place, as one step of undo.
 EditResult detach_block(CityState &s, int id, int vol) {
 	EditResult r;
-	Body body;
-	if (!standing(s, id, body, r)) return r;
+	const std::shared_ptr<const Body> held = standing(s, id, r);
+	if (!held) return r;
+	const Body &body = *held;
 	const Building rec = s.buildings.items[size_t(id)];
 	if (vol < 0 || vol >= int(body.volumes.size())) {
 		r.error = NO_BLOCK;

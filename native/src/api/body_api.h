@@ -33,11 +33,10 @@ inline PartSpec part_spec(const godot::Dictionary &d) {
 
 inline PrimitiveSpec primitive_of(const godot::Dictionary &spec) { return { int(spec.get("value", 0)), int(spec.get("top_kind", 0)), float(spec.get("top_deg", 0.0)) }; }
 
-// The body of a building that stands; false when there is none by that id.
-inline bool body_of_record(const CityState &s, int id, b40::Body &body) {
-	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return false;
-	b40::record_body(s.buildings.designs, s.buildings.items[id], body);
-	return true;
+// The body of a building that stands, held; none when there is none by that id.
+inline std::shared_ptr<const b40::Body> body_of_record(const CityState &s, int id) {
+	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return nullptr;
+	return b40::record_body(s.buildings.designs, s.buildings.items[id]);
 }
 
 inline V2 lot_point(const CityState &s, int id, const godot::Vector3 &at) {

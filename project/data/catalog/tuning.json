@@ -6,7 +6,8 @@
   "speed_fastest": 4,
   "day_start_min": 390,
   "growth_per_s": 25,
-  "growth_tries": 8
+  "growth_tries": 8,
+  "body_cache_mb": 128
  },
  "economy": {
   "start_money": 20000000,
@@ -50,7 +51,8 @@
   "max_chunk_rebuilds_per_frame": 6,
   "commit_budget_ms": 4,
   "upload_budget_mb": 64,
-  "pose_delay_ticks": 2
+  "pose_delay_ticks": 2,
+  "rooms_cache_mb": 64
  },
  "terrain": {
   "min_height_m": -64,

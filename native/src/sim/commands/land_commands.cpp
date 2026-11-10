@@ -184,8 +184,7 @@ EditResult edit_building(CityState &s, int id, int fn, int floors) {
 	}
 	if (floors != b.floors && floors > 0) {
 		// Another height is the body's: its tallest block grows or shrinks by the difference.
-		b40::Body body;
-		b40::record_body(s.buildings.designs, b, body);
+		b40::Body body = *b40::record_body(s.buildings.designs, b); // a copy: the new height becomes a version of its own
 		int tallest = -1;
 		for (size_t i = 0; i < body.volumes.size(); i++)
 			if (tallest < 0 || body.volumes[i].top() > body.volumes[size_t(tallest)].top()) tallest = int(i);

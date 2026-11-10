@@ -110,7 +110,7 @@ void CanyonField::work(const CityState &s, float ox, float oz, uint64_t generati
 	if (!slot_.current(generation)) return; // a reset came: nothing of this window is kept
 	k->cells.assign(size_t(RES) * RES, NOTHING_Y);
 	for (const StandingLot &l : lots) {
-		const std::shared_ptr<const b40::Body> held = k->bodies.body(s.buildings.designs, l.rec);
+		const std::shared_ptr<const b40::Body> held = b40::record_mass(s.buildings.designs, l.rec);
 		const b40::Body &b = *held;
 		const b40::LotFrame f = b40::lot_frame(l.rec);
 		for (const b40::Volume &v : b.volumes) {

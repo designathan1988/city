@@ -87,7 +87,6 @@ private:
 	Debris debris_;
 	RuinPieces ruins_;
 	PeopleRenderer *people_ = nullptr; // whose bodies fall (render_world.cpp)
-	BodyWalls walls_;
 	Rng rng_{ 0xb1a57ULL };
 	godot::RID scenario_, light_, light_inst_;
 	std::vector<DamageEvent> events_, events_played_; // to play; played this frame

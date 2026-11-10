@@ -61,8 +61,8 @@ Dictionary body_probe(const b40::Body &body) {
 
 // What the lot of a record holds and how its traffic reaches it (tests: every house parks, every bay is reachable).
 Dictionary lot_probe(const CityState &s, const Building &rec) {
-	b40::Body body;
-	b40::record_body(s.buildings.designs, rec, body);
+	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
+	const b40::Body &body = *body_held;
 	LotAccess acc;
 	lot_access(s.buildings.designs, body, b40::lot_frame(rec), car_half_width(s.catalog.traffic), lorry_half_width(s.catalog.traffic), acc);
 	int trees = 0, car_gates = 0, docks = 0, garages = 0;
@@ -226,8 +226,8 @@ Dictionary CityCore::body_census(int kind) {
 	Dictionary covers; // the ground the lot lays, by colour: its area
 	for (const Building &rec : s.buildings.items) {
 		if (!rec.alive) continue;
-		b40::Body body;
-		b40::record_body(s.buildings.designs, rec, body);
+		const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
+		const b40::Body &body = *body_held;
 		if (int(body.kind) != kind) continue;
 		n++;
 		lot_w += body.plan.W;
@@ -280,8 +280,8 @@ Dictionary CityCore::road_census() {
 	Array open; // what has no building: where, how big, what function, how many trees and surfaces
 	for (const Building &rec : state_->buildings.items) {
 		if (!rec.alive || (rec.fn != FN_SQUARE && rec.fn != FN_PARK)) continue;
-		b40::Body body;
-		b40::record_body(state_->buildings.designs, rec, body);
+		const std::shared_ptr<const b40::Body> body_held = b40::record_body(state_->buildings.designs, rec);
+		const b40::Body &body = *body_held;
 		int trees = 0, covers = 0;
 		for (const b40::LotElement &e : body.elements) {
 			trees += e.kind == b40::EL_TREE ? 1 : 0;

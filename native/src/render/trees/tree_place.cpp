@@ -241,11 +241,11 @@ void wild(const CityView &s, const TreeLook &T, const TreeKit &kit, const ChunkG
 }
 
 // The lots' plants: each lot's garden, and the grove of a park or a square that has not been edited.
-void parks(const CityView &s, const TreeLook &T, GardenBook &book, const ChunkGround &l, int64_t key, GardenView view, std::vector<TreeInstance> &out) {
+void parks(const CityView &s, const TreeLook &T, const ChunkGround &l, int64_t key, GardenView view, std::vector<TreeInstance> &out) {
 	for (int id : l.lots) {
 		const Building &b = s.buildings.items[size_t(id)];
 		if (chunk_of(b.x, b.z) != key) continue;
-		place_garden(s, T, book, b, view, out);
+		place_garden(s, T, b, view, out);
 		if (b.body != 0 || !b40::is_open_lot(b.fn)) continue;
 		int n = std::min(T.park_max, int(b.w * b.d / T.park_m2_per_tree));
 		Vector3 ax(std::cos(b.rot), 0, -std::sin(b.rot)), az(std::sin(b.rot), 0, std::cos(b.rot));
@@ -289,21 +289,19 @@ void planted(const CityView &s, const TreeLook &T, int64_t key, std::vector<Tree
 }
 } // namespace
 
-void place_trees(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
-		std::vector<TreeInstance> &out) {
+void place_trees(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key, std::vector<TreeInstance> &out) {
 	ChunkGround l = chunk_ground(s, key);
 	street(s, L, T, key, out);
-	parks(s, T, book, l, key, GardenView::NEAR, out);
+	parks(s, T, l, key, GardenView::NEAR, out);
 	planted(s, T, key, out);
 	wild(s, T, kit, l, key, out);
 }
 
-void place_far(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
-		std::vector<FarCard> &out) {
+void place_far(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key, std::vector<FarCard> &out) {
 	ChunkGround l = chunk_ground(s, key);
 	std::vector<TreeInstance> trees;
 	street(s, L, T, key, trees);
-	parks(s, T, book, l, key, GardenView::FAR, trees);
+	parks(s, T, l, key, GardenView::FAR, trees);
 	planted(s, T, key, trees);
 	wild(s, T, kit, l, key, trees);
 	for (const TreeInstance &t : trees) out.push_back(far_of(t));

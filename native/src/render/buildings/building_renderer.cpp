@@ -51,6 +51,7 @@ void each_chunk_of(Map &chunks, int64_t super_key, F &&fn) {
 
 bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	scenario_ = ctx.scenario;
+	bodies_.set_budget(size_t(ctx.catalog->tune.render_rooms_cache_mb * BYTES_PER_MIB));
 	signatures_.init(ctx.scenario, LAYER_BUILDING_SHELLS);
 	material_ = ctx.material("building", errors);
 	material_fade_ = ctx.material("building_fade", errors);

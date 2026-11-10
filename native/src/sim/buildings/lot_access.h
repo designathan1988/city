@@ -52,7 +52,7 @@ inline void street_gates(const RoadNetwork &net, const BuildingStore &lots, int 
 }
 
 // The lot's gates and bays alone, without their ways (a few elements read, no grid): what standing cars need.
-void lot_bays(const b40::Body &b, const b40::LotFrame &f, LotAccess &out);
+void lot_bays(const std::vector<b40::LotElement> &elements, const b40::LotFrame &f, LotAccess &out);
 // What is solid in the lot under `headroom`, in the world: volumes and elements, the docks and bays left open.
 // `kinds`, when asked: each ring's element kind, -1 for a volume.
 void lot_solids(const b40::Data &data, const b40::Body &b, const b40::LotFrame &f, float headroom, std::vector<std::vector<V2>> &out, std::vector<int> *kinds = nullptr);

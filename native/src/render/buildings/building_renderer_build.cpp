@@ -267,7 +267,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	const int sx = key_x(super_key) * CHUNKS_PER_SUPER_AXIS, sz = key_y(super_key) * CHUNKS_PER_SUPER_AXIS;
 	for (const Building &rec : in.records) {
 		b40::Placed pl;
-		bodies.place(designs(), look_, in.ground, rec, pl);
+		bodies.place(designs(), look_, in.ground, rec, pl, nullptr, false); // the far level lays no pane: no rooms
 		pl.lean = true;
 		const size_t first = far.col.size();
 		b40::emit_far(far, pl, true);

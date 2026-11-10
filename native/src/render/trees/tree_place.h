@@ -107,14 +107,10 @@ struct FarCard {
 	int species = 0;
 };
 
-class GardenBook; // the plants of the lots' bodies (garden_place.h)
-
 // The trees of 256 m chunk `key`, near models.
-void place_trees(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
-		std::vector<TreeInstance> &out);
+void place_trees(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key, std::vector<TreeInstance> &out);
 // The far cards of chunk `key`: the same trees, one card each.
-void place_far(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
-		std::vector<FarCard> &out);
+void place_far(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key, std::vector<FarCard> &out);
 // How far past its chunk the trees of a chunk read the land: the woods' neighbours and jitter, the grade's probes.
 float tree_reach(const TreeLook &T);
 

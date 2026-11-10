@@ -50,8 +50,7 @@ int CityBuilder::body_piece_at(int id, int level, const Vector3 &at) const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return -1;
-	b40::Body body;
-	b40::record_body(s.buildings.designs, s.buildings.items[id], body);
+	b40::Body body = *b40::record_body(s.buildings.designs, s.buildings.items[id]); // a copy: piece_at works the floor's pieces out into it
 	const V2 p = lot_point(s, id, at);
 	return piece_at(body, floor_of(s, body, id, level), p.x, p.y);
 }
@@ -71,8 +70,8 @@ double CityBuilder::body_floor_y(int id, int level) const {
 	const CityState &s = *state_;
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return 0;
 	const Building &rec = s.buildings.items[id];
-	b40::Body body;
-	b40::record_body(s.buildings.designs, rec, body);
+	const std::shared_ptr<const b40::Body> body_held = b40::record_body(s.buildings.designs, rec);
+	const b40::Body &body = *body_held;
 	const b40::LotFrame f = b40::lot_frame(rec);
 	return b40::lot_floor(body, rec, f, [&](float x, float z) { return s.terrain.height_at(x, z); }) + body.level_z(level);
 }
