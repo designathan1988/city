@@ -20,7 +20,7 @@ measured (memory, CPU, GPU, frame) and photographed in the 24 km city (map `km24
 3. **Compreenda:** ligue problema, causa e solução pelo código e, quando houve, pela pesquisa.
 4. **Planeje** a correção da causa, com dono único. O esforço não entra na decisão, nem para menos nem para mais.
 5. **Codifique** sem tentativa e erro: se não deu certo, volte à leitura até entender.
-6. **Verify what the change reaches**, once (the table under "Execução e verificação"). A photo is judged on its own (nothing broken,
+6. **Verify what the change reaches**, once (the table of what each kind of change asks for, below). A photo is judged on its own (nothing broken,
    out of shape, overlapping or missing), never made equal pixel for pixel to another run, an older commit or a kept reference.
 7. **Pare e confira:** passou ou deu erro? Se deu erro, volte ao passo 1 com o que o erro mostrou.
 
