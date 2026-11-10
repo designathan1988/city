@@ -10,20 +10,23 @@
 namespace city {
 
 struct CityCut;
+struct CutFacts;
 
 struct CityView {
 	const Catalog &catalog;
 	GroundRead terrain;
 	const RoadNetwork &roads;
+	const StreetWorks &street;
 	const BuildingRecords &buildings;
 	const b40::Data &designs; // the generator's tables: the session's, read beside the records
 	const CarriedAtomic<int> &marking_style;
 	uint64_t revision, street_revision;
 	const CityState *live; // the city read in place (its reader holds the map); null for a cut
+	const CutFacts *facts; // what a cut carries of the live city's kept facts (city_cut.h); null for the live city
 
 	CityView(const CityState &s) :
-			catalog(s.catalog), terrain(s.terrain), roads(s.roads), buildings(s.buildings), designs(s.buildings.designs),
-			marking_style(s.marking_style), revision(s.revision), street_revision(s.street_revision), live(&s) {}
+			catalog(s.catalog), terrain(s.terrain), roads(s.roads), street(s.street), buildings(s.buildings), designs(s.buildings.designs),
+			marking_style(s.marking_style), revision(s.revision), street_revision(s.street_revision), live(&s), facts(nullptr) {}
 	CityView(const CityCut &cut); // city_cut.h
 };
 

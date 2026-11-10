@@ -489,3 +489,22 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
   them for an older file) and, in the tests' DLL, `ByteWriter::whole` asks the compiler whether a type written has padding and
   stops on one that has. Cannot return: a padded record written raw stops the first test that saves.
 - Check: the 55 test scenes and `digest` (equal to the golden) pass; gates OK on the changed files. Photos at the close of C9.
+
+### C9, third piece (2026-11-10 05:40): the ground seams and the street furniture build off the map lock
+- Seams (4c927115): `cut_for_seams` (`render/roads/road_cut.h`): the chunk and, whole, the segments whose paving can come
+  within a terrain cell of it, with the ground under them. 473,416 -> 0 vertices built under the map. P10's other half (the
+  paving outline has no owner: the seam still draws the neighbourhood's roads to find it) stays open.
+- Props: `StreetWorks::cut` (the items, poles, barriers and cuts filed in the box, the poles up to two spans from its poles
+  with the spans between, the name plates of its chunks; `StreetTable` holds an `IdTable`). A cut carries facts
+  (`CutFacts`, `sim/state/city_cut.h`): what a box of records cannot give, read from the live city while the map is held
+  (`keep_furniture`: a segment's kept furniture, whose placement reads the hydrant squares round its ends; `keep_node`: a
+  junction's control and the plates its rules put up, the traffic's). The job-path readers `furniture_of`, `node_signalled`
+  and `node_signs` answer from the live city or from the cut's facts, so a job writes none of the caches the simulation reads
+  (`FurnitureKept`): a cut can never put a placement made from a piece of the network into the walkers' state.
+  `PropRenderer::gather`: the chunk, its owned segments and the poles a span away, grown by `road_reach`, the footway's reach
+  and a barrier's piece. 706,682 -> 0 vertices and instances built under the map.
+- `MeshQueueOf::submit_job` (the build under the map) is gone: no queue of single-surface chunks can hold the map while it
+  builds. `map_hold_test` names roads, far roads, structures, water, seams, props and the buildings: all 0.
+- Check: the test scenes and `digest` pass, the scenic capture ran on the tests' DLL with no read past a cut; gates OK.
+- Left in C9: the producers with a queue of their own, which the count does not see yet (cover, trees: P33; overlays: P35;
+  transit on the main thread: P34; the shore, canyon, fog and ecology fields; the ruins), and P10's outline owner.

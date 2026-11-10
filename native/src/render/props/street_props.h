@@ -7,7 +7,7 @@
 #include "render/data_reader.h"
 #include "render/props/prop_kit.h"
 #include "render/roads/road_look.h"
-#include "sim/state/city_state.h"
+#include "sim/state/city_view.h"
 
 #include <godot_cpp/variant/packed_float32_array.hpp>
 
@@ -57,12 +57,12 @@ struct StreetInstances {
 };
 
 // The height of what stands on the footway at (x, z), or on the ground off it.
-float street_ground(const CityState &s, const StreetLook &L, double x, double z);
+float street_ground(const CityView &s, const StreetLook &L, double x, double z);
 // Props, poles, wires and signal posts of everything owned by chunk `key` (segments by midpoint, nodes and records by place).
-void place_street_props(const CityState &s, const StreetLook &L, const FurnitureLook &F, int64_t key, std::vector<PropPlace> &out, StreetInstances &inst);
+void place_street_props(const CityView &s, const StreetLook &L, const FurnitureLook &F, int64_t key, std::vector<PropPlace> &out, StreetInstances &inst);
 // A planned run (Roadcraft poleLayer.ts buildPolePreview): the new poles and every span, as they will stand.
-void place_pole_preview(const CityState &s, const StreetLook &L, const FurnitureLook &F, const std::vector<PreviewPole> &poles, StreetInstances &inst);
+void place_pole_preview(const CityView &s, const StreetLook &L, const FurnitureLook &F, const std::vector<PreviewPole> &poles, StreetInstances &inst);
 // Street trees on the footways of the segments owned by chunk `key`.
-void place_street_trees(const CityState &s, const StreetLook &L, int64_t key, std::vector<TreeSpot> &out);
+void place_street_trees(const CityView &s, const StreetLook &L, int64_t key, std::vector<TreeSpot> &out);
 
 } // namespace city

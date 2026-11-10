@@ -1,7 +1,8 @@
-// The job queue of a renderer whose chunk results are one surface each (roads, verges, structures, far roads, furniture): a job
-// fills the chunk's builder while it holds the map shared (submit_job), its bake is admitted by the frame's upload ledger and its
-// hand-over by the frame's deadline, in the frame's one order (chunk_results.h ChunkResults). What a result carries besides its
-// surface (`Extra`: the furniture's instances) travels inside it, so it is drawn with the mesh of the same build or not at all.
+// The job queue of a renderer whose chunk results are one surface each (roads, seams, structures, far roads, water, furniture): a
+// job copies what it reads of the map and fills the chunk's builder from the copy with no lock held (submit_cut), its bake is
+// admitted by the frame's upload ledger and its hand-over by the frame's deadline, in the frame's one order (chunk_results.h
+// ChunkResults). What a result carries besides its surface (`Extra`: the furniture's instances) travels inside it, so it is
+// drawn with the mesh of the same build or not at all.
 #pragma once
 
 #include "render/chunk_results.h"
@@ -43,7 +44,7 @@ struct BuiltMeshOf {
 };
 using BuiltMesh = BuiltMeshOf<NoExtra>;
 
-// The queue of such a renderer: it fills a chunk's builder (submit_job) and hands the baked mesh to its instance (commit_one).
+// The queue of such a renderer: it fills a chunk's builder (submit_cut) and hands the baked mesh to its instance (commit_one).
 template <typename Extra>
 class MeshQueueOf : public ChunkResults<BuiltMeshOf<Extra>> {
 public:
@@ -58,26 +59,6 @@ protected:
 	godot::RID surface_material_; // every chunk's mesh is made with it (set by the renderer at init)
 	virtual ~MeshQueueOf() = default;
 	virtual void commit_one(Built &b) = 0;
-	// `build(mb)` (or `build(mb, extra)`) fills the chunk's builder; it runs on a worker, the map held shared while it reads.
-	template <typename Build>
-	void submit_job(const CityState &s, JobPool &pool, JobKey job, int64_t key, float priority, Build &&build) {
-		this->set_pool(&pool);
-		const uint64_t ticket = this->revs.ask(key);
-		pool.submit(job, priority, [&s, this, key, job, ticket, priority, build]() {
-			auto b = std::make_shared<Built>();
-			b->key = key;
-			b->job = job;
-			b->ticket = ticket;
-			b->priority = priority;
-			b->material = surface_material_;
-			{
-				MapRead map(s);
-				if constexpr (std::is_same_v<Extra, NoExtra>) build(b->mb);
-				else build(b->mb, b->extra);
-			}
-			this->push(std::move(b));
-		});
-	}
 	// A job in two steps: `gather()` copies what the build reads of the map (it takes the map itself, shared, for the copy alone:
 	// sim/state/city_cut.h cut_city) and `build(cut, mb)` (or `build(cut, mb, extra)`) fills the chunk's builder from the copy,
 	// on the same worker, with no lock held.

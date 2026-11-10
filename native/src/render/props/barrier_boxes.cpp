@@ -28,7 +28,7 @@ void box(PackedFloat32Array &buf, int64_t key, const Piece &p, float y, float le
 }
 
 struct Run {
-	const CityState &s;
+	const CityView &s;
 	const StreetLook &L;
 	const BarrierLook &B;
 	int64_t key;
@@ -128,7 +128,7 @@ bool BarrierLook::load(const DataValue &t, PackedStringArray &errors) {
 	return errors.size() == before;
 }
 
-void place_barriers(const CityState &s, const StreetLook &L, const BarrierLook &B, int64_t key, PackedFloat32Array &buf, PackedFloat32Array &beams) {
+void place_barriers(const CityView &s, const StreetLook &L, const BarrierLook &B, int64_t key, PackedFloat32Array &buf, PackedFloat32Array &beams) {
 	const float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
 	const Run run{ s, L, B, key, buf, beams };
 	s.street.barriers_in(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int id) { place_run(run, s.street.barriers.items[size_t(id)]); });

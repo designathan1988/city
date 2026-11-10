@@ -25,6 +25,6 @@ struct SignLook {
 	bool load(const DataValue &t, godot::PackedStringArray &errors);
 };
 
-void place_signs(const CityState &s, const StreetLook &L, const SignLook &K, SignAtlas &atlas, int64_t key, MeshBuilder &mb);
+void place_signs(const CityView &s, const StreetLook &L, const SignLook &K, SignAtlas &atlas, int64_t key, MeshBuilder &mb);
 
 } // namespace city
