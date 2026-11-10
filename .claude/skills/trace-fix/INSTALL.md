@@ -2,6 +2,7 @@
 
 1. Copy this folder to `<project>/.claude/skills/trace-fix/` (`SKILL.md`, `ledger.py`, `commands.py`, `operations.py`,
    `route.py`, `card.py`, `writers.py`, `photos.py`, `rules.json`, `store.py`, `proof.py`, `views.py`, `read_guard.py`, `references.json`,
+   `owed.py`, `sessions.py`, `resume.py`, `trace_files.py`,
    `selftest.py`, `selftest_guard.py`). The skill is then listed in every session of the project and is invoked by `/trace-fix` or by itself
    when a problem is reported.
 2. Required: the hooks, all one script (`read_guard.py`, told apart by the event it is given). In the user's
@@ -21,7 +22,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Read|Edit|Write|MultiEdit",
+        "matcher": "Read|Edit|Write|MultiEdit|mcp__.*context7.*",
         "hooks": [
           { "type": "command", "command": "python \"<project>/.claude/skills/trace-fix/read_guard.py\"" }
         ]
@@ -48,6 +49,8 @@
      the repository it opened is left read in part (outputs and vendored code, `store.SKIP_DIRS`, are looked up, not
      studied: they never stop an edit of another file).
    - `PostToolUse` on `Edit|Write`: the file the session has just changed itself stays known to it.
+   - `PostToolUse` on context7's tools: each documentation lookup is kept; a file that calls the engine is changed only
+     after one since the session's last compaction (owed.py, with what else a session working on a trace owes).
    - `SessionStart`: after a compaction, what was read before no longer counts for an edit; and every session start
      and compaction prints the open trace (a short answer, silent when nothing is open or in another project), so the
      reading is never restarted or lost.

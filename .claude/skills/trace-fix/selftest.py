@@ -48,14 +48,14 @@ def main():
             with open(path, "w", encoding="utf-8") as f:
                 f.write("".join(f"line {i}\n" for i in range(1, lines + 1)))
 
-        def ledger(*args, stdin=None, bare=False):
+        def ledger(*args, stdin=None, bare=False, session="reader"):
             """One ledger command; unless `bare`, a read and a problem are given the fields every record must have."""
             if not bare and args[0] == "read":
                 args += ("--called-by", "nobody: a test file", "--state", "none")
             if not bare and args[0] == "problem":
                 args += ("--fix", "change the line; test: the count")
-            done = subprocess.run([sys.executable, os.path.join(HERE, "ledger.py"), *args], env=env, cwd=root,
-                                  capture_output=True, text=True, encoding="utf-8", input=stdin)
+            done = subprocess.run([sys.executable, os.path.join(HERE, "ledger.py"), *args], env=dict(env, CLAUDE_CODE_SESSION_ID=session),
+                                  cwd=root, capture_output=True, text=True, encoding="utf-8", input=stdin if stdin is not None else "")
             ledger.out, ledger.err = done.stdout, done.stderr
             return done.returncode
 
@@ -120,10 +120,12 @@ def main():
                                        {"where": big + ":500", "what": "w2", "cause": "c2"}],
                           "note": "go on"})
             check("a read with no caller and no state is refused: the fix would have to open the file again",
-                  (ledger("record", batch({"reads": [{"path": big, "from": 1, "to": 400, "saw": "first"}]}, bare=True)),
+                  (ledger("record", batch({"reads": [{"path": big, "from": 1, "to": 400, "saw": "first"}], "note": "n"}, bare=True)),
                    "called_by" in ledger.out), (1, True))
             check("a problem with no fix planned is refused",
                   ledger("record", batch({"problems": [{"where": small + ":3", "what": "w", "cause": "c"}]}, bare=True)), 1)
+            check("a batch of readings without its note (the next action) is refused",
+                  ledger("record", batch({"reads": [{"path": big, "from": 1, "to": 400, "saw": "first"}]})), 1)
             check("a whole batch is recorded", ledger("record", good), 0)
             check("the note keeps who calls and the state", "CALLED BY: nobody" in state("t")["files"][-1]["saw"][0]["text"], True)
             check("a fix is planned again after more reading", (ledger("plan", "P1", "--fix", "change line 3"), ledger("plan", "P9", "--fix", "x")), (0, 1))

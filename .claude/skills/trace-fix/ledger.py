@@ -19,10 +19,13 @@ import os  # noqa: E402
 
 import commands  # noqa: E402
 import proof  # noqa: E402
+import sessions  # noqa: E402
 import store  # noqa: E402
 import views  # noqa: E402
 import card  # noqa: E402
 import photos  # noqa: E402
+import resume  # noqa: E402
+import trace_files  # noqa: E402
 import route  # noqa: E402
 import writers  # noqa: E402
 
@@ -48,7 +51,7 @@ def main():
     p.add_argument("--why", required=True, help="who calls it or which data it reads or writes on this flow")
     p.add_argument("--after", help="a file already on the flow: the new ones run right after it")
     p.set_defaults(fn=commands.cmd_flow)
-    p = sub.add_parser("off", help="take off the flow a file that no call or data of this problem reaches")
+    p = sub.add_parser("off", help="take off the flow a file no call or data of this problem reaches, or account for one read and never on it")
     p.add_argument("path")
     p.add_argument("--why", required=True, help="what shows it is not of this flow")
     p.set_defaults(fn=commands.cmd_off)
@@ -128,10 +131,10 @@ def main():
     p = sub.add_parser("note", help="the next action, for whoever resumes")
     p.add_argument("text")
     p.set_defaults(fn=commands.cmd_note)
-    sub.add_parser("status", help="where the trace is, in a short answer").set_defaults(fn=commands.cmd_status)
+    sub.add_parser("status", help="where the trace is, in a short answer").set_defaults(fn=resume.cmd_status)
     p = sub.add_parser("resume", help="the same, to continue after a compaction or in a new session")
     p.add_argument("--hook", action="store_true", help="called by a session hook: silent when there is nothing open")
-    p.set_defaults(fn=commands.cmd_resume)
+    p.set_defaults(fn=resume.cmd_resume)
     p = sub.add_parser("notes", help="what was read in a file or a folder of the flow")
     p.add_argument("where")
     p.add_argument("--from", dest="start", type=int, default=1, help="continue at this file of the listing")
@@ -158,20 +161,18 @@ def main():
                                   "folder, to read with the Read tool").set_defaults(fn=commands.cmd_export)
 
     args = ap.parse_args()
+    hook = getattr(args, "hook", False)
     slug = store.active_slug()
-    if slug and os.path.exists(store.ledger_path(slug)) and args.cmd not in ("open", "list", "switch"):
+    if slug and os.path.exists(store.ledger_path(slug)) and args.cmd not in ("open", "list", "switch") and not hook:
         state = store.load(slug)
-        me = os.environ.get("CLAUDE_CODE_SESSION_ID", "")  # the session that works on a trace is the one held to its record
-        looks = ("resume", "status", "list", "notes", "problems", "export", "report", "rules", "card", "crops")  # they change nothing
-        mine = bool(me) and me not in state["sessions"] and args.cmd not in looks
-        if mine:
-            state["sessions"].append(me)
-        if not state.get("closed") and (proof.absorb(state) or mine):  # what was read since the last command counts before anything is asked
+        # the session running a command on a trace works on it: held to its record (owed.py), its commands go there
+        bound = sessions.bind(state, sessions.current_session())
+        if not state.get("closed") and (proof.absorb(state) or bound):  # what was read since the last command counts first
             store.save(state)
     args.fn(args)
     slug = store.active_slug()
-    if slug and os.path.exists(store.ledger_path(slug)):
-        views.write_files(store.load(slug))  # the flow and the problems are on disk, whole, after every command
+    if slug and os.path.exists(store.ledger_path(slug)) and not hook:
+        trace_files.write_files(store.load(slug))  # the flow and the problems are on disk, whole, after every command
 
 
 if __name__ == "__main__":

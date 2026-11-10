@@ -1,13 +1,17 @@
 """Hooks of the trace-fix skill on reading and editing: one script, called by Claude Code with the event on stdin.
 
-PostToolUse Read: every Read of a file of this repository becomes one record (path, first and last line returned, the
-  content's hash and line count, the session), the proof of a reading (proof.py).
+PostToolUse Read: every Read of a file of this repository or of a reference tree becomes one record (path, first and last
+  line returned, the content's hash and line count, the session), the proof of a reading (proof.py); a photo of a trace
+  that is opened leaves a mark beside it, which the trace's close asks for (photos.py).
 PostToolUse Edit, Write: the file the session has just changed itself stays known to it, whole.
+PostToolUse of context7's query-docs: the lookup is kept, the proof the documentation was read (owed.py).
 SessionStart, source compact: what the session read before the compaction left its context and no longer counts.
 PreToolUse Edit, Write: REFUSED (exit 2, the reason goes to Claude) unless
-  1. the file to change, when it exists, was read whole by this session since its last compaction, as it is now; and
-  2. no file of the repository that this session opened is left read in part.
-  The refusal lists the Read calls that are missing, ready to send in parallel.
+  1. the file to change, when it exists, was read whole by this session since its last compaction, as it is now;
+  2. no file it opened (of the repository or a reference tree) is left read in part; and
+  3. it owes nothing to the traces it works on (owed.py: its readings recorded by itself, the code it read on a flow, the
+     plan of the problems in the file, the documentation of a file that calls the engine).
+  The refusal lists everything missing at once. The trace folder (records, analysis) is always writable.
 
 Only the PreToolUse answer can stop a tool; a failure of the hook itself never does (it is kept in
 read_guard_errors.txt beside this file). A session of another project is left alone.
@@ -27,7 +31,8 @@ EDITS = ("Edit", "Write", "MultiEdit")  # the tools that change a file by its pa
 REFUSED = 2  # Claude Code's hooks reference: exit code 2 of a PreToolUse hook blocks the call and gives stderr to Claude
 # How much of a file is looked at to tell text from binary. Source: git's own rule (a NUL in the first 8000 bytes).
 BINARY_PROBE = 8000
-SEEN = ".seen"  # beside a trace's photos: one empty file for each photo or crop the Read tool opened (commands.cmd_close asks for them)
+SEEN = ".seen"  # beside a trace's photos: one empty file for each photo or crop the Read tool opened (photos.not_looked_at)
+DOCS_TOOLS = ("query-docs", "get-library-docs")  # context7's tool that returns documentation (its MCP server's names)
 
 
 def lines_of(data):
@@ -47,6 +52,10 @@ def target(event, store):
         return None, None
     name = store.place(path)
     return (None, None) if name is None else (os.path.join(store.ROOT, name), name)
+
+
+def in_traces(path, store):
+    return os.path.normcase(os.path.abspath(path)).startswith(os.path.normcase(os.path.abspath(store.TRACES)) + os.sep)
 
 
 def log_read(event, proof, store):
@@ -72,6 +81,13 @@ def log_read(event, proof, store):
     proof.write_read({"t": time.strftime("%Y-%m-%d %H:%M:%S"), "session": event.get("session_id", ""), "reader": reader_of(event),
                       "path": relative, "from": start, "to": end, "total": total, "sha": hashlib.sha1(data).hexdigest(),
                       "ns": time.time_ns()})
+
+
+def log_photo(asked):
+    """A photo or crop of a trace opened with the Read tool: an empty mark beside it."""
+    folder = os.path.join(os.path.dirname(asked), SEEN)
+    os.makedirs(folder, exist_ok=True)
+    open(os.path.join(folder, os.path.basename(asked)), "w").close()
 
 
 def log_edit(event, proof, store):
@@ -102,27 +118,6 @@ def left_in_part(versions, store):
     return all(store.gaps({"ranges": ranges, "lines": total}) for total, ranges in versions.values())
 
 
-def unrecorded(seen, store, session):
-    """(trace, file, first line, last line) of what this reader read on the flow of an open trace it works on (it ran the
-    ledger on it), with no note of it."""
-    on_flow = {}  # file -> [first open trace that has it on its flow, every note any open trace holds of it]
-    for slug in sorted(os.listdir(store.TRACES)) if os.path.isdir(store.TRACES) else []:
-        if not os.path.exists(store.ledger_path(slug)):
-            continue
-        with open(store.ledger_path(slug), encoding="utf-8") as f:
-            state = json.load(f)
-        if state.get("closed") or session not in state.get("sessions", []):
-            continue
-        for entry in state.get("files", []):
-            if entry["path"] in seen:
-                on_flow.setdefault(entry["path"], [slug, []])[1].extend(entry.get("saw", []))
-    out = []
-    for file, (slug, notes) in sorted(on_flow.items()):  # a reading is recorded once one open trace holds its note
-        mine = [r for _, ranges in seen[file].values() for r in ranges]
-        out += [(slug, file, a, b) for a, b in store.unnoted(mine, notes)]
-    return out
-
-
 def ignored_by_git(paths, store):
     """The ones of these paths git ignores (builds, fetched dependencies, outputs): not the repository's own files."""
     import subprocess
@@ -132,13 +127,8 @@ def ignored_by_git(paths, store):
     return set(done.stdout.decode("utf-8", "replace").splitlines())
 
 
-def guard(event, proof, store):
-    """0 to let the edit through, REFUSED with the missing Read calls on stderr otherwise."""
-    asked = os.path.abspath((event.get("tool_input") or {}).get("file_path") or "")
-    if os.path.normcase(asked).startswith(os.path.normcase(os.path.abspath(store.TRACES)) + os.sep):
-        return 0  # the trace folder is the memory of the work (a record, an analysis): writing it is never held back
-    path, relative = target(event, store)
-    seen = proof.seen_by(reader_of(event))
+def unread_calls(relative, path, seen, store):
+    """The Read calls this reader still has to make: the file to change whole, and every file it opened to its end."""
     missing = []
     if path and os.path.isfile(path):
         gaps = unread_now(relative, seen, store)
@@ -154,18 +144,6 @@ def guard(event, proof, store):
         gaps = [] if other in ignored else unread_now(other, seen, store)
         if gaps:
             missing.append((other, gaps, "opened and left in part"))
-    bare = unrecorded(seen, store, str(event.get("session_id", "")))
-    if bare:
-        print("trace-fix: this edit is refused. You read these lines of a trace's flow and recorded nothing of what they do; a "
-              "reading that is not written down is lost at the next compaction and has to be done again.\n"
-              "Record them now, in one `ledger.py record <file.json>`: for each, `saw` (what it does and calls), `called_by` (who "
-              "calls it, file:line, which thread) and `state` (what it reads and writes, which lock), and every problem seen "
-              "there with its `fix`. Then send the edit again:\n"
-              + "\n".join(f"  trace {slug}: {file} lines {a}-{b}" for slug, file, a, b in bare[:store.BATCH_CHUNKS])
-              + (f"\n  ... and {len(bare) - store.BATCH_CHUNKS} more." if len(bare) > store.BATCH_CHUNKS else ""), file=sys.stderr)
-        return REFUSED
-    if not missing:
-        return 0
     calls = []
     for file, gaps, why in missing:
         where = os.path.join(store.ROOT, file).replace("\\", "/")
@@ -173,12 +151,31 @@ def guard(event, proof, store):
         for a, b in cut:  # a file that fits one call whole is asked for by its path alone
             alone = len(cut) == 1 and a == 1 and b == store.line_count(file)
             calls.append(f"  {where}" + ("" if alone else f" offset={a} limit={b - a + 1}") + f"   ({why})")
-    shown = calls[:store.BATCH_CHUNKS]
-    print("trace-fix: this edit is refused. A file is read whole, with the Read tool, before it is changed, and every file "
-          "opened is read to its end (what was read before a compaction no longer counts).\n"
-          "Read these now, one Read call each, all in one message, then send the same edit again:\n" + "\n".join(shown)
-          + (f"\n  ... and {len(calls) - len(shown)} more call(s): the next refusal lists them." if len(calls) > len(shown) else ""),
-          file=sys.stderr)
+    return calls
+
+
+def guard(event, proof, store, owed):
+    """0 to let the edit through; REFUSED with everything missing on stderr otherwise."""
+    tool_input = event.get("tool_input") or {}
+    if tool_input.get("file_path") and in_traces(tool_input["file_path"], store):
+        return 0  # the trace folder is the memory of the work (a record, an analysis): writing it is never held back
+    reader = reader_of(event)
+    path, relative = target(event, store)
+    calls = unread_calls(relative, path, proof.seen_by(reader), store)
+    content = str(tool_input.get("content") or tool_input.get("new_string") or "").encode("utf-8")
+    debts = owed.owed(reader, relative, content)
+    if not calls and not debts:
+        return 0
+    text = ["trace-fix: this edit is refused. Do all of this first, then send the same edit again."]
+    if calls:
+        text.append("READ, one Read call each, all in one message (a file is read whole before it is changed, and every file opened "
+                    "is read to its end; what was read before a compaction no longer counts):")
+        text += calls[:store.BATCH_CHUNKS] + ([f"  ... and {len(calls) - store.BATCH_CHUNKS} more call(s): the next refusal lists them."]
+                                              if len(calls) > store.BATCH_CHUNKS else [])
+    if debts:
+        text.append("OWED to your trace (python .claude/skills/trace-fix/ledger.py; `status` lists the same). " + owed.explain())
+        text += owed.shown(debts)
+    print("\n".join(text), file=sys.stderr)
     return REFUSED
 
 
@@ -192,26 +189,27 @@ def main():
         os.chdir(cwd)
     here = os.path.dirname(os.path.abspath(__file__))
     sys.path.insert(0, here)
+    import owed  # what a session owes its traces
     import proof  # the one owner of the Read records
     import store  # the one owner of the repository root and the trace folder
 
     if not os.path.normcase(here).startswith(os.path.normcase(store.ROOT)) and not os.environ.get("TRACE_FIX_DIR"):
         return 0  # a session of another project: this skill's hooks are of the repository it is installed in
-    name, tool = event.get("hook_event_name"), event.get("tool_name")
+    name, tool = event.get("hook_event_name"), str(event.get("tool_name") or "")
+    asked = str((event.get("tool_input") or {}).get("file_path") or "")
     if name == "SessionStart":
         if event.get("source") == "compact":
             proof.forget(reader_of(event))
     elif name == "PreToolUse" and tool in EDITS:
-        return guard(event, proof, store)
+        return guard(event, proof, store, owed)
+    elif tool == "Read" and asked.lower().endswith(".png") and in_traces(asked, store):
+        log_photo(asked)
     elif tool == "Read":
-        asked = os.path.abspath((event.get("tool_input") or {}).get("file_path") or "")
-        if asked.lower().endswith(".png") and os.path.normcase(asked).startswith(os.path.normcase(os.path.abspath(store.TRACES)) + os.sep):
-            os.makedirs(os.path.join(os.path.dirname(asked), SEEN), exist_ok=True)  # a photo of a trace that was looked at
-            open(os.path.join(os.path.dirname(asked), SEEN, os.path.basename(asked)), "w").close()
-        else:
-            log_read(event, proof, store)
+        log_read(event, proof, store)
     elif tool in EDITS:
         log_edit(event, proof, store)
+    elif "context7" in tool and tool.endswith(DOCS_TOOLS):
+        owed.record_lookup(reader_of(event), event.get("tool_input") or {})
     return 0
 
 

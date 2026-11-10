@@ -1,9 +1,9 @@
 """Proof and memory of a reading, for the trace-fix skill.
 
-Proof: every Read tool call of this repository is one record under dist/trace/reads/<key of the path>/, written by
-the read_guard.py hook; a line counts as read only where these records cover it, for the file as it is now. The same
-record is kept under dist/trace/readers/<session>/, with the session's own edits: what one session holds of each file
-(`seen_by`), which is what its edits are allowed by.
+Proof: every Read tool call of this repository or of a reference tree is one record under dist/trace/reads/<key of the path>/,
+written by the read_guard.py hook; a line counts as read only where these records cover it, for the file as it is now. The
+same record is kept under dist/trace/readers/<session>/, with the session's own edits: what one session holds of each file
+(`seen_by`, `rows_of`), which is what its edits are allowed by. A compaction mark there (since.json) ends what it holds.
 Memory: the notes of a file read in whole are kept by the hash of its content under dist/trace/notes/, so another
 trace may carry them over (`carry`) while the file has not changed.
 """
@@ -23,7 +23,7 @@ NOTES = "notes"
 
 
 def reads_folder(path):
-    """Where the Read records of one repository path are kept."""
+    """Where the Read records of one path are kept."""
     return os.path.join(store.TRACES, READS, hashlib.sha1(path.encode("utf-8")).hexdigest()[:16])
 
 
@@ -54,21 +54,33 @@ def forget(reader):
     write_whole(os.path.join(reader_folder(reader), SINCE), {"ns": time.time_ns()})
 
 
-def seen_by(reader):
-    """What a reader holds since its last compaction: {path: {content hash: [lines of that content, merged ranges]}}."""
+def since_of(reader):
+    """The moment (ns) of this reader's last compaction; 0 when it had none."""
+    mark = os.path.join(reader_folder(reader), SINCE)
+    if not os.path.exists(mark):
+        return 0
+    with open(mark, encoding="utf-8") as f:
+        return json.load(f)["ns"]
+
+
+def rows_of(reader):
+    """Every record of this reader since its last compaction, oldest first: its Reads, and its edits (by: edit)."""
     folder = reader_folder(reader)
     if not os.path.isdir(folder):
-        return {}
-    since = 0
-    if os.path.exists(os.path.join(folder, SINCE)):
-        with open(os.path.join(folder, SINCE), encoding="utf-8") as f:
-            since = json.load(f)["ns"]
-    out = {}
-    for name in os.listdir(folder):
+        return []
+    since, out = since_of(reader), []
+    for name in sorted(os.listdir(folder)):
         if not name[0].isdigit() or not name.endswith(".json") or int(name.split("-")[0]) <= since:
-            continue  # the compaction mark, a record still being written, or a reading the compaction took away
+            continue  # the compaction mark, a lookup, a record still being written, or a reading the compaction took away
         with open(os.path.join(folder, name), encoding="utf-8") as f:
-            row = json.load(f)
+            out.append(json.load(f))
+    return out
+
+
+def seen_by(reader):
+    """What a reader holds since its last compaction: {path: {content hash: [lines of that content, merged ranges]}}."""
+    out = {}
+    for row in rows_of(reader):
         version = out.setdefault(row["path"], {}).setdefault(row["sha"], [row.get("total", row["to"]), []])
         version[1].append([row["from"], row["to"]])
     for versions in out.values():
@@ -112,7 +124,9 @@ def unproven(path, start, end):
 
 
 def absorb(state):
-    """Counts as read every line of the flow the Read tool returned since this trace opened (for the file as it is now): the reading is recorded by reading, with no command of its own; a reading made for another trace is not this one's. What is absorbed stays read when the file is edited later."""
+    """Counts as read every line of the flow the Read tool returned since this trace opened (for the file as it is now): the
+    reading is recorded by reading, with no command of its own; a reading made for another trace is not this one's. What is
+    absorbed stays read when the file is edited later."""
     changed = 0
     for entry in state["files"]:
         if not store.gaps(entry) or not os.path.isdir(reads_folder(entry["path"])) or not os.path.isfile(os.path.join(store.ROOT, entry["path"])):

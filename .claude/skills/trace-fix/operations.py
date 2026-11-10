@@ -7,6 +7,7 @@ import glob
 import os
 
 import proof
+import sessions
 import store
 from store import OPEN, Refused
 
@@ -37,9 +38,9 @@ def do_flow(state, paths, why, after=None):
         at = state["files"].index(anchor) + 1
     added = []
     for full in found:
-        path = store.rel(full)
-        if path.startswith(".."):
-            raise Refused(f"{path} is outside the repository")
+        path = store.place(full)
+        if path is None:
+            raise Refused(f"{store.rel(full)} is outside the repository and the reference trees (references.json)")
         if store.find_file(state, path):
             continue
         state["files"].insert(at, {"path": path, "lines": store.line_count(path), "why": str(why).strip(),
@@ -72,7 +73,8 @@ def do_read(state, path, start, end, saw, called_by="", uses=""):
             f"tool for the file as it is now. Read them with the Read tool (at most {store.CHUNK_LINES} lines a call; "
             "cat, sed, grep and a subagent's reading do not count; a file changed since is read again), then record.")
     entry["ranges"] = store.merged(entry["ranges"] + [[start, end]])
-    entry["saw"].append({"from": start, "to": end, "text": str(saw).strip(), "t": store.now(), "proved": True})
+    entry["saw"].append({"from": start, "to": end, "text": str(saw).strip(), "t": store.now(), "proved": True,
+                         "session": sessions.current_session()})
     return entry
 
 
@@ -106,11 +108,16 @@ def do_plan(state, pid, fix):
 
 def do_off(state, path, why):
     """Takes off the flow a file the tracer brought by a name alone: no call and no data of this problem reaches it."""
-    entry = store.find_file(state, path)
-    if not entry:
-        raise Refused(f"{store.rel(path)} is not on the flow")
     if not str(why or "").strip():
         raise Refused("a file leaves the flow with what shows that no call or data of this problem reaches it (--why)")
+    entry = store.find_file(state, path)
+    if not entry:  # a file read and never put on the flow: kept off it with why, so the reading is accounted for (owed.py)
+        full = path if os.path.isabs(path) else os.path.join(store.ROOT, path)
+        name = store.place(full) if os.path.isfile(full) else None
+        if name is None:
+            raise Refused(f"{store.rel(path)}: no such file in the repository or a reference tree")
+        state["off"].append({"path": name, "why": str(why).strip(), "was": "read, never on the flow", "t": store.now()})
+        return {"path": name}
     if any(p["path"] == entry["path"] for p in state["problems"]):
         raise Refused(f"{entry['path']} has a problem recorded on it: it is of this flow")
     state["files"].remove(entry)

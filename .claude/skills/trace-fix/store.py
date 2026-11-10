@@ -115,8 +115,12 @@ def ledger_path(slug):
 
 
 def active_slug():
+    """The trace a command goes to: TRACE_FIX_SLUG; else the session's own; else, outside any session, the repository's ACTIVE."""
+    import sessions  # here: sessions reads the traces this module owns, and this module asks it whose they are
     if os.environ.get(PINNED):
         return os.environ[PINNED]
+    if sessions.current_session():
+        return sessions.session_slug(sessions.current_session())
     if not os.path.exists(ACTIVE):
         return None
     with open(ACTIVE, encoding="utf-8") as f:
@@ -124,11 +128,14 @@ def active_slug():
 
 
 def set_active(slug):
-    if os.environ.get(PINNED):
-        return  # a pinned session works on its own trace and leaves the repository's active one alone
-    os.makedirs(TRACES, exist_ok=True)
-    with open(ACTIVE, "w", encoding="utf-8") as f:
-        f.write(slug)
+    """Makes a trace the one this session works on and, unless a command chose its trace, the repository's ACTIVE."""
+    import sessions  # here: see active_slug
+    if sessions.current_session():
+        sessions.set_session_slug(sessions.current_session(), slug)
+    if not os.environ.get(PINNED):
+        os.makedirs(TRACES, exist_ok=True)
+        with open(ACTIVE, "w", encoding="utf-8") as f:
+            f.write(slug)
 
 
 def new_state(slug, request, reuse):
@@ -139,7 +146,8 @@ def new_state(slug, request, reuse):
 def load(slug=None):
     slug = slug or active_slug()
     if not slug or not os.path.exists(ledger_path(slug)):
-        fail("no active trace: open one with `open <slug> --request \"...\"`")
+        fail("no trace for this session: `open <slug> --request \"...\"` for a new problem, or `TRACE_FIX_SLUG=<slug> ... resume` "
+             "once to take up an open one (`list` shows them)")
     with open(ledger_path(slug), encoding="utf-8") as f:
         state = json.load(f)
     state.setdefault("since_ns", 0)  # a ledger older than the exact moment: its opening minute decides
@@ -205,7 +213,7 @@ def lines_read(entry):
 
 
 def find_file(state, path):
-    path = rel(path)
+    path = place(path) or rel(path)
     for entry in state["files"]:
         if entry["path"] == path:
             return entry

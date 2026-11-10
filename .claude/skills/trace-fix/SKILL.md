@@ -18,22 +18,26 @@ L="python .claude/skills/trace-fix/ledger.py"     # every command below is $L <c
 **The ledger is your memory.** `$L resume` first, in every session and after every compaction; continue from what it
 shows. All you record is on disk at once, whole, in two files: `dist/trace/<slug>/notes.md` (the flow in the order the
 code runs, what every chunk does, the documentation consulted) and `report.md` (the problems, their causes, the fix
-planned and the fix made). After a compaction Read those two files: the code is not read twice.
+planned and the fix made). After a compaction Read those two files (`export` gives the Read calls): the code is not
+read twice. The trace you open, switch to or run a command on is yours: the ledger's commands go to it with no prefix;
+`TRACE_FIX_SLUG=<slug> $L resume` once takes up a trace another session left.
 
-**Everything is read whole, with the Read tool:** the records of the area in `log/`, every file of the flow, every
-file you change, from the first line to the last (CLAUDE.md is already in your context: its rules bind every step).
-Two hooks hold this, and their refusal lists the Read calls that are missing (send them all in one message, then the
-same edit again):
+**Everything is read whole, with the Read tool, and everything read is recorded by you.** The records of the area in
+`log/`, every file of the flow, every file you change, from the first line to the last (CLAUDE.md is already in your
+context: its rules bind every step). The edit hook refuses any Edit or Write and lists, all at once, what is missing:
 
-- an Edit or Write of an existing file is refused until this session has read that file whole, as it is now, since
-  its last compaction;
-- while a file that you opened is left read in part, every edit is refused: a file of the repository, or of a
-  reference tree outside it (`references.json`: the reference game, read for what the game must do, never copied).
+- READ: the file to change, read whole as it is now since your last compaction; every file you opened (of the
+  repository or of a reference tree, `references.json`: the reference game, read for what the game must do, never
+  copied) read to its end.
+- RECORD: every line of the flow you read has a note **you** wrote (saw, called_by, state). A note an earlier session
+  wrote does not count for your reading: what you understood is lost at your next compaction unless you write it.
+- FLOW: every code file you read is on the flow of your trace (`flow`, then recorded) or taken off it with why (`off`).
+- PLAN: an open problem in the file you change has its fix planned (`plan P<n> --fix`).
+- DOCS: a file that calls the engine (a script, shader or scene; C++ that includes godot-cpp or Terrain3D) is changed
+  only after you looked up its calls since your last compaction: context7 (`resolve-library-id`, then `query-docs`;
+  the hook keeps each lookup), or the vendored source in `native/godot-cpp` and `project/addons/terrain_3d`.
 
-- a line of the flow that you read counts only once its note is recorded: until then the trace says `RECORD NOW`
-  with the lines, and every edit is refused (the record file itself can always be written).
-
-`cat`, `sed`, `grep` and an agent's reading are not a reading. Files are changed with Edit and Write, never by a shell
+`status` shows the same list (OWED). The trace folder (records, analysis) is always writable. `cat`, `sed`, `grep` and an agent's reading are not a reading. Files are changed with Edit and Write, never by a shell
 command.
 
 **Speed comes from order, never from skipping:** Reads go in parallel, in one message (the batches of `$L next`); one
@@ -112,7 +116,8 @@ A record is complete when someone who never read the code could make the fix fro
   be checked, and the test that will prove it (`$L plan P<n> --fix "..."` rewrites it after more reading).
 - A claim in a comment, a document or a test ("this is checked", "this cannot happen") is read against the code that
   should keep it. A claim the code does not keep is a problem.
-- `note`: the next action, as you would tell it to someone taking over now.
+- `note`, required in a batch with reads or problems: the next action, as you would tell it to someone
+  taking over now (it is what a compaction leaves of where you are).
 
 ## 4. Fix the cause
 
@@ -180,6 +185,7 @@ When every problem of this trace is fixed:
 | Fixing the place the symptom shows | Follow the state back to the decision that writes it wrong |
 | A second attempt when a fix fails | Read again; record what was missed |
 | Reading the code again after a compaction | `resume`, then `notes.md` and `report.md` |
+| Re-reading files another session noted, writing nothing | Your own note: the hook counts only yours |
 | Photos looked at whole and called fine | Every crop, rule by rule, written in `analysis.md` |
 
 ## Commands

@@ -8,7 +8,9 @@ import sys
 
 import photos
 import proof
+import sessions
 import store
+import trace_files
 import views
 from operations import do_doc, do_flow, do_link, do_off, do_plan, do_problem, do_read, keep_notes
 from store import DROPPED, FIXED, OPEN, Refused, fail
@@ -24,13 +26,17 @@ def run(operation, *args, **kwargs):
 def cmd_open(args):
     if os.path.exists(store.ledger_path(args.slug)):
         fail(f"trace {args.slug} exists: `switch {args.slug}` and `resume`")
-    store.save(store.new_state(args.slug, args.request, args.reuse))
+    state = store.new_state(args.slug, args.request, args.reuse)
+    sessions.bind(state, sessions.current_session())
+    store.save(state)
     store.set_active(args.slug)
     print(f"opened {args.slug}. Next: find the entry point of the symptom and add it with `flow`.")
 
 
 def cmd_switch(args):
-    store.load(args.slug)
+    state = store.load(args.slug)
+    if sessions.bind(state, sessions.current_session()):
+        store.save(state)
     store.set_active(args.slug)
     print("active:", args.slug)
 
@@ -108,6 +114,9 @@ def cmd_record(args):
     unknown = set(batch) - {"flow", "reads", "docs", "problems", "note"} if isinstance(batch, dict) else {"not an object"}
     if unknown:
         fail(f"a batch is an object with flow, reads, docs, problems and note; unknown: {sorted(unknown)}")
+    if (batch.get("reads") or batch.get("problems")) and not str(batch.get("note") or "").strip():
+        fail("a batch with reads or problems ends with its `note`: the next action, as you would tell it to someone taking over now "
+             "(it is what a compaction leaves of where you are)")
     trial, errors, touched, pids, added = copy.deepcopy(state), [], [], [], []
 
     def attempt(label, item, call):
@@ -148,6 +157,7 @@ def cmd_record(args):
             + (f" ({pids[0]}-{pids[-1]})" if pids else "")
             + f", {len(added)} file(s) added to the flow.")
     views.next_step(trial, out)
+    views.owed_block(out, sessions.current_session())
     out.flush()
 
 
@@ -259,27 +269,6 @@ def cmd_note(args):
     print("noted")
 
 
-def cmd_status(_args):
-    views.show(store.load())
-
-
-def cmd_resume(args):
-    if args.hook and not os.path.normcase(os.path.abspath(__file__)).startswith(os.path.normcase(store.ROOT) + os.sep):
-        return  # a session of another project: this skill speaks only in the repository it is installed in
-    slug = store.active_slug()
-    if not slug or not os.path.exists(store.ledger_path(slug)):
-        if not args.hook:
-            print("trace-fix: no active trace.")
-        return
-    state = store.load(slug)
-    if state.get("closed"):
-        if not args.hook:
-            print(f"trace-fix: last trace {slug} is closed.")
-        return
-    views.show(state, "trace-fix: A TRACE IS OPEN. Continue it from here (skill trace-fix); do not read again what "
-                      "the ledger shows as read: `notes <file or folder>` gives what was read there.")
-
-
 def cmd_notes(args):
     views.notes(store.load(), args.where, args.start, args.prior)
 
@@ -290,4 +279,4 @@ def cmd_problems(args):
 
 
 def cmd_export(_args):
-    views.export(store.load())
+    trace_files.export(store.load())
