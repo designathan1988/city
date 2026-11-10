@@ -1,7 +1,7 @@
 """Self-test of the trace-fix tools, in a throwaway trace folder: refusals, proof, batches, causes, reuse, limits.
 
-Runs ledger.py and read_log.py as the skill does (the hook fed the event a Read produces) against small files made
-for the test, and a made-up ledger of 1000 files and 200 problems for the output limit. Exits non-zero on any
+Runs ledger.py and read_guard.py as the skill does (the hook fed the events Claude Code produces) against small files made
+for the test: the proof of a reading, and the edit that is refused until its file is read whole, and a made-up ledger of 1000 files and 200 problems for the output limit. Exits non-zero on any
 miss, and a run that checked nothing fails. Usage: python selftest.py
 """
 import sys
@@ -37,8 +37,8 @@ def main():
         env = dict(os.environ, TRACE_FIX_DIR=traces, TRACE_FIX_TASKS=runs)
         # the files under test live inside the repository (the ledger records repository paths), in a folder of their own
         files = tempfile.mkdtemp(prefix="trace_fix_selftest_", dir=os.path.join(root, "dist"))
-        small, big, late = (os.path.join(files, n) for n in ("small.txt", "big.txt", "late.txt"))
-        for path, lines in ((small, 15), (big, 900), (late, 20)):
+        small, big, late, edited = (os.path.join(files, n) for n in ("small.txt", "big.txt", "late.txt", "edited.txt"))
+        for path, lines in ((small, 15), (big, 900), (late, 20), (edited, 30)):
             with open(path, "w", encoding="utf-8") as f:
                 f.write("".join(f"line {i}\n" for i in range(1, lines + 1)))
 
@@ -52,13 +52,19 @@ def main():
             with open(os.path.join(traces, slug, "ledger.json"), encoding="utf-8") as f:
                 return json.load(f)
 
-        def tool_read(path, offset=None, limit=None):
+        def hook(event, tool, path, session="selftest", offset=None, limit=None, **top):
+            """One call of the hook, as Claude Code makes it; the exit code (2 refuses the tool), stderr kept in hook.err."""
             tool_input = {"file_path": path}
             if offset:
                 tool_input.update(offset=offset, limit=limit)
-            event = {"tool_name": "Read", "session_id": "selftest", "cwd": root, "tool_input": tool_input}
-            subprocess.run([sys.executable, os.path.join(HERE, "read_log.py")], input=json.dumps(event), env=env,
-                           cwd=root, text=True, check=True)
+            doc = {"hook_event_name": event, "tool_name": tool, "session_id": session, "cwd": root, "tool_input": tool_input, **top}
+            done = subprocess.run([sys.executable, os.path.join(HERE, "read_guard.py")], input=json.dumps(doc), env=env,
+                                  cwd=root, capture_output=True, text=True, encoding="utf-8")
+            hook.err = done.stderr
+            return done.returncode
+
+        def tool_read(path, offset=None, limit=None, session="selftest"):
+            assert hook("PostToolUse", "Read", path, session, offset, limit) == 0
 
         def batch(value):
             path = os.path.join(work, "batch.json")
@@ -79,8 +85,6 @@ def main():
             tool_read(big, 1, 400)
             check("read past what the Read returned", ledger("read", big, "401", "800", "--saw", "x"), 1)
             check("a chunk above the limit", ledger("read", big, "1", "900", "--saw", "x"), 1)
-            tool_read(big)  # one call of 900 lines: not a chunk, proves nothing
-            check("a Read of the whole big file is not a chunk", ledger("read", big, "401", "800", "--saw", "x"), 1)
 
             # ---- batches: whole or not at all
             tool_read(big, 401, 400)
@@ -95,6 +99,7 @@ def main():
                           "reads": [{"path": big, "from": 1, "to": 400, "saw": "first"},
                                     {"path": big, "from": 401, "to": 800, "saw": "second"},
                                     {"path": big, "from": 801, "to": 900, "saw": "third"}],
+                          "docs": [{"api": "Node.add_child", "source": "context7 /godotengine/godot-docs", "says": "main thread only"}],
                           "problems": [{"where": small + ":3", "what": "w1", "cause": "c1", "symptom": "s", "fix": "change line 3"},
                                        {"where": big + ":500", "what": "w2", "cause": "c2"}],
                           "note": "go on"})
@@ -104,6 +109,18 @@ def main():
                   ["small.txt", "late.txt", "big.txt"])
             check("the batch's problems", [p["id"] for p in now["problems"]], ["P1", "P2"])
             check("a problem keeps what its fix will be", now["problems"][0]["fix"], "change line 3")
+            check("the batch's documentation note", [d["api"] for d in now["docs"]], ["Node.add_child"])
+            with open(os.path.join(traces, "t", "notes.md"), encoding="utf-8") as f:
+                flow_file = f.read()
+            check("the flow is on disk, whole, after the command: notes, order and documentation",
+                  ("first" in flow_file, "Node.add_child" in flow_file, flow_file.index("small.txt") < flow_file.index("big.txt")),
+                  (True, True, True))
+            check("a documentation note without what it says", ledger("record", batch({"docs": [{"api": "x", "source": "y", "says": ""}]})), 1)
+            check("a file with a problem on it stays on the flow", ledger("off", small, "--why", "x"), 1)
+            check("a file no call reaches leaves the flow, with why",
+                  (ledger("off", late, "--why", "named alike, never called"), [os.path.basename(e["path"]) for e in state("t")["files"]],
+                   state("t")["off"][0]["why"]), (0, ["small.txt", "big.txt"], "named alike, never called"))
+            ledger("flow", late, "--why", "called by small", "--after", small)
             check("a batch from stdin", ledger("record", "-", stdin=json.dumps({"note": "from stdin"})), 0)
             check("an unknown key in a batch", ledger("record", batch({"read": []})), 1)
 
@@ -169,6 +186,57 @@ def main():
                        'NoteBook::add' in ledger.out, 'NoteBook::clear' in ledger.out), (0, True, True))
                 check('writers of a state that does not exist', ledger('writers', 'NoSuch::thing', '--rule', 'r', '--include', fixture), 1)
 
+            # ---- the edit guard: a file is read whole before it is changed, and every file opened is read to its end
+            def edit(path, session="guard"):
+                return hook("PreToolUse", "Edit", path, session)
+
+            check("an edit of a file never read is refused, with the Read call to make",
+                  (edit(edited), "edited.txt" in hook.err, "the file to change" in hook.err), (2, True, True))
+            check("a new file is written freely", hook("PreToolUse", "Write", os.path.join(files, "new.txt"), "guard"), 0)
+            tool_read(edited, session="another")
+            check("another session's reading is not this one's", edit(edited), 2)
+            tool_read(edited, 1, 10, session="guard")
+            check("a file read in part is not read: the refusal names the lines left",
+                  (edit(edited), "offset=11 limit=20" in hook.err), (2, True))
+            tool_read(edited, 11, 20, session="guard")
+            check("read whole, the edit goes through", edit(edited), 0)
+            tool_read(big, 1, 400, session="guard")
+            check("the lines left of a big file come in chunks", (edit(big), "offset=401 limit=400" in hook.err, "offset=801 limit=100" in hook.err),
+                  (2, True, True))
+            check("an output left in part does not stop an edit elsewhere", edit(edited), 0)
+            doc = os.path.join(root, "CLAUDE.md")
+            tool_read(doc, 1, 50, session="guard")
+            check("a file of the repository opened and left in part stops every edit",
+                  (edit(edited), "CLAUDE.md" in hook.err, "opened and left in part" in hook.err), (2, True, True))
+            tool_read(doc, 51, 400, session="guard")
+            check("read to its end, the edit goes through", edit(edited), 0)
+            with open(edited, "a", encoding="utf-8") as f:
+                f.write("line 31\n")
+            check("the session's own change keeps the file known",
+                  (hook("PostToolUse", "Edit", edited, "guard"), edit(edited)), (0, 0))
+            with open(edited, "a", encoding="utf-8") as f:
+                f.write("line 32\n")
+            check("a file someone else changed is read again", edit(edited), 2)
+            tool_read(edited, session="guard")
+            check("read again, the edit goes through", edit(edited), 0)
+            check("a compaction takes the reading away",
+                  (hook("SessionStart", None, edited, "guard", source="compact"), edit(edited)), (0, 2))
+            check("a broken event never stops a tool", hook("PreToolUse", "Edit", None, "guard"), 0)
+
+            # ---- photos are cut into enlarged tiles
+            try:
+                from PIL import Image
+            except ImportError:
+                Image = None
+            if Image:
+                shots = os.path.join(work, "shots")
+                os.makedirs(shots)
+                Image.new("RGB", (1920, 1080), (40, 90, 60)).save(os.path.join(shots, "a.png"))
+                check("crops cuts a photo into its tiles", (ledger("crops", shots), len(os.listdir(os.path.join(shots, "crops")))), (0, 6))
+                with Image.open(os.path.join(shots, "crops", "a-r1c1.png")) as tile:
+                    check("a tile is enlarged and overlaps its neighbour", tile.size, (1408, 1188))
+                check("crops of nothing fails", ledger("crops", os.path.join(work, "none")), 1)
+
             check("rules lists the world's rules", (ledger("rules"), "B1" in ledger.out, "in the code:" in ledger.out), (0, True, True))
 
             # ---- every answer under the limit, on a ledger far larger than a real one
@@ -199,7 +267,7 @@ def main():
             ledger("notes", "native")
             check("a cut listing says where to continue", "Continue: `notes native --from" in ledger.out, True)
         finally:
-            for path in (small, big, late):
+            for path in (small, big, late, edited):
                 os.remove(path)
             os.rmdir(files)
     print(f"FAILURES: {failures}")

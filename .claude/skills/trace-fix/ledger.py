@@ -5,7 +5,8 @@ runs, the line ranges read with what each chunk does, the problems found, the ca
 the fixes. It survives compaction and new sessions (`resume`, always a short answer). It asks for nothing before a fix: it keeps the
 memory of the work, it does not police it.
 What each command does: commands.py. The flow found by script: route.py. A cause's fix card: card.py. Every writer of a state: writers.py. The changes a trace accepts: operations.py. State and paths: store.py.
-Proof of reading and notes kept by content: proof.py. Output: views.py.
+Proof of reading and notes kept by content: proof.py. Output: views.py. Photos and their crops: photos.py. The hooks that
+record every Read and refuse an edit of what was not read whole: read_guard.py.
 Usage: python ledger.py <command> -h
 """
 import sys
@@ -19,7 +20,9 @@ import os  # noqa: E402
 import commands  # noqa: E402
 import proof  # noqa: E402
 import store  # noqa: E402
+import views  # noqa: E402
 import card  # noqa: E402
+import photos  # noqa: E402
 import route  # noqa: E402
 import writers  # noqa: E402
 
@@ -45,6 +48,10 @@ def main():
     p.add_argument("--why", required=True, help="who calls it or which data it reads or writes on this flow")
     p.add_argument("--after", help="a file already on the flow: the new ones run right after it")
     p.set_defaults(fn=commands.cmd_flow)
+    p = sub.add_parser("off", help="take off the flow a file that no call or data of this problem reaches")
+    p.add_argument("path")
+    p.add_argument("--why", required=True, help="what shows it is not of this flow")
+    p.set_defaults(fn=commands.cmd_off)
     p = sub.add_parser("trace", help="ask the repository's feature tracer for the flow of a symptom and put it on the flow, in run order")
     p.add_argument("--query", help="words of the symptom or of the feature")
     p.add_argument("--seed", action="append", default=[], help="Class::method, path/file or file:line (may repeat)")
@@ -129,6 +136,15 @@ def main():
     p.add_argument("--from", dest="start", type=int, default=1, help="continue at this problem of the listing")
     p.set_defaults(fn=commands.cmd_problems)
     sub.add_parser("close", help="close the trace once no problem is open").set_defaults(fn=commands.cmd_close)
+    p = sub.add_parser("photos", help="photograph the game as it is now on a look plan (hidden, under a deadline) and crop every photo")
+    p.add_argument("plan", help="a JSON plan of look.gd's steps: views from near, mid and far, by day and by night, a shot each")
+    p.add_argument("--out", help="where the photos go (default: the trace's folder, photos/)")
+    p.add_argument("--resolution", default=photos.RESOLUTION)
+    p.add_argument("--timeout", type=float, default=600, help="the look's own deadline, in seconds")
+    p.set_defaults(fn=photos.cmd_photos)
+    p = sub.add_parser("crops", help="cut a photo, or every photo of a folder, into enlarged tiles to look at")
+    p.add_argument("where")
+    p.set_defaults(fn=photos.cmd_crops)
     for name in ("export", "report"):
         sub.add_parser(name, help="write report.md (causes and problems) and notes.md (every chunk) in the trace's "
                                   "folder, to read with the Read tool").set_defaults(fn=commands.cmd_export)
@@ -140,6 +156,9 @@ def main():
         if not state.get("closed") and proof.absorb(state):  # what was read since the last command counts before anything is asked
             store.save(state)
     args.fn(args)
+    slug = store.active_slug()
+    if slug and os.path.exists(store.ledger_path(slug)):
+        views.write_files(store.load(slug))  # the flow and the problems are on disk, whole, after every command
 
 
 if __name__ == "__main__":

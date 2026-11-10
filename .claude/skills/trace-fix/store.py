@@ -41,6 +41,7 @@ def repo_root():
 ROOT = repo_root()
 TRACES = os.environ.get("TRACE_FIX_DIR") or os.path.join(ROOT, "dist", "trace")
 ACTIVE = os.path.join(TRACES, "ACTIVE")
+PINNED = "TRACE_FIX_SLUG"  # a session that sets it works on that trace whatever the active one is (two sessions in one tree)
 
 
 def fail(message):
@@ -80,6 +81,8 @@ def ledger_path(slug):
 
 
 def active_slug():
+    if os.environ.get(PINNED):
+        return os.environ[PINNED]
     if not os.path.exists(ACTIVE):
         return None
     with open(ACTIVE, encoding="utf-8") as f:
@@ -87,6 +90,8 @@ def active_slug():
 
 
 def set_active(slug):
+    if os.environ.get(PINNED):
+        return  # a pinned session works on its own trace and leaves the repository's active one alone
     os.makedirs(TRACES, exist_ok=True)
     with open(ACTIVE, "w", encoding="utf-8") as f:
         f.write(slug)
@@ -94,7 +99,7 @@ def set_active(slug):
 
 def new_state(slug, request, reuse):
     return {"slug": slug, "request": request, "opened": now(), "since": time.strftime("%Y-%m-%d %H:%M:%S"), "since_ns": time.time_ns(), "note": "", "reuse": bool(reuse),
-            "closed": None, "files": [], "problems": [], "causes": []}
+            "closed": None, "files": [], "problems": [], "causes": [], "docs": [], "off": []}
 
 
 def load(slug=None):

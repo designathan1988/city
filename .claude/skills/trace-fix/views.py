@@ -108,7 +108,7 @@ def progress(state, out):
     word = sum(1 for s in saws if not s.get("proved") and not s.get("carried"))
     carried = sum(1 for s in saws if s.get("carried"))
     out.add(f"READ: {done}/{len(files)} files, {sum(store.lines_read(e) for e in files)}/"
-            f"{sum(e['lines'] for e in files)} lines")
+            f"{sum(e['lines'] for e in files)} lines | DOCUMENTATION: {len(state['docs'])} call(s) looked up")
     if word or carried:
         out.add(f"  ({word} chunk(s) stand on the session's word, recorded before the Read proof; {carried} carried "
                 "over from another trace)")
@@ -217,10 +217,10 @@ def report_md(state):
             f"Files read in whole: {sum(1 for e in state['files'] if not store.gaps(e))} of {len(state['files'])}.", ""]
 
     def table(items):
-        out = ["| # | Where | Problem | Cause seen | Symptom | State | Fix |", "|---|---|---|---|---|---|---|"]
+        out = ["| # | Where | Problem | Cause seen | Symptom | Fix planned | State | Fix made |", "|---|---|---|---|---|---|---|---|"]
         for p in items:
             out.append("| " + " | ".join(cell(c) for c in (
-                p["id"], f"{p['path']}:{p['line']}", p["what"], p["cause"], p["symptom"], p["status"],
+                p["id"], f"{p['path']}:{p['line']}", p["what"], p["cause"], p["symptom"], p.get("fix", ""), p["status"],
                 (p["how"] + " " + p.get("commit", "")).strip())) + " |")
         return out
 
@@ -236,22 +236,35 @@ def report_md(state):
 
 
 def notes_md(state):
-    rows = [f"# Notes of trace {state['slug']}: what each chunk read does", ""]
+    rows = [f"# The flow of trace {state['slug']}, in the order the code runs: what each chunk read does", "",
+            f"Request: {state['request']}", ""]
     for i, e in enumerate(state["files"], 1):
         rows += [f"## {i}. {e['path']} ({store.lines_read(e)}/{e['lines']} lines)", "",
                  f"On the flow because: {e['why']}", ""]
         rows += [f"- {s['from']}-{s['to']}: {s['text']}" for s in e["saw"]] + [""]
+    if state["off"]:
+        rows += ["## Taken off the flow", ""] + [f"- {o['path']} (was there because: {o['was']}): {o['why']}" for o in state["off"]] + [""]
+    if state["docs"]:
+        rows += ["## Documentation consulted", ""] + [f"- {d['api']} ({d['source']}): {d['says']}" for d in state["docs"]] + [""]
     return "\n".join(rows) + "\n"
 
 
-def export(state):
-    folder = store.trace_folder(state["slug"])
-    out = Out()
-    out.add("Written whole, to read with the Read tool:")
+def write_files(state):
+    """The trace as two files, whole: the flow with every chunk's note (notes.md) and the problems, causes and fixes (report.md).
+    Written after every command (ledger.py), so what was found is on disk in full at any moment; returns (path, lines) of each."""
+    folder, done = store.trace_folder(state["slug"]), []
     for name, text in (("report.md", report_md(state)), ("notes.md", notes_md(state))):
         path = os.path.join(folder, name)
         with open(path + ".tmp", "w", encoding="utf-8", newline="\n") as f:
             f.write(text)
         os.replace(path + ".tmp", path)
-        out.add(f"  {path.replace(chr(92), '/')} ({text.count(chr(10))} lines)")
+        done.append((path.replace(chr(92), "/"), text.count(chr(10))))
+    return done
+
+
+def export(state):
+    out = Out()
+    out.add("Written whole, to read with the Read tool:")
+    for path, lines in write_files(state):
+        out.add(f"  {path} ({lines} lines)")
     out.flush()

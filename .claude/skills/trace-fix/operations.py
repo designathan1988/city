@@ -1,5 +1,6 @@
 """The changes a trace accepts, for the trace-fix skill: a file put on the flow, a chunk recorded as read (only where the
-Read tool returned it), a problem recorded where it was read, problems put under a cause. Each changes the state it is
+Read tool returned it), a problem recorded where it was read, what the
+documentation says of an outside call, problems put under a cause. Each changes the state it is
 given or raises Refused with what to do instead; nothing is saved here, so a batch can be tried whole (commands.py).
 """
 import glob
@@ -87,6 +88,28 @@ def do_problem(state, where, what, cause, symptom="", of="", fix=""):
                               "cause": str(cause).strip(), "symptom": str(symptom or "").strip(), "status": OPEN,
                               "cause_id": of or "", "fix": str(fix or "").strip(), "how": "", "commit": "", "found": store.now()})
     return pid
+
+
+def do_off(state, path, why):
+    """Takes off the flow a file the tracer brought by a name alone: no call and no data of this problem reaches it."""
+    entry = store.find_file(state, path)
+    if not entry:
+        raise Refused(f"{store.rel(path)} is not on the flow")
+    if not str(why or "").strip():
+        raise Refused("a file leaves the flow with what shows that no call or data of this problem reaches it (--why)")
+    if any(p["path"] == entry["path"] for p in state["problems"]):
+        raise Refused(f"{entry['path']} has a problem recorded on it: it is of this flow")
+    state["files"].remove(entry)
+    state["off"].append({"path": entry["path"], "why": str(why).strip(), "was": entry["why"], "t": store.now()})
+    return entry
+
+
+def do_doc(state, api, source, says):
+    """What the official documentation says of one outside call (an engine's, a library's) the flow or the fix uses."""
+    if not all(str(v or "").strip() for v in (api, source, says)):
+        raise Refused("a documentation note names the call (api), where it was read (source: context7 id, URL or vendored file) and "
+                      "what it says (says: guarantees, thread, cost, known issues)")
+    state["docs"].append({"api": str(api).strip(), "source": str(source).strip(), "says": str(says).strip(), "t": store.now()})
 
 
 def do_link(state, cid, pids):

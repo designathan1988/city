@@ -77,10 +77,12 @@ def cmd_writers(args):
         for name, file, line, end in (readers or [])[:views.FOLDER_ROWS]:
             out.add(f"  reads it:  {name}, {file}:{line}-{end}")
     names = sorted({label.split(" (")[0].rsplit("::", 1)[-1].rsplit(".", 1)[-1] for label, _, _ in [*members, *[(a, b, None) for a, b in scripts]]})
+    # a member of the compiled core is written only by compiled code (a script reaches it through a bound function, a writer above);
+    # a script's variable only by scripts: a line of the other kind writes another thing of the same name
     loose = [(p, n, t) for name in names for p, n, t in grep(WRITE.format(name=re.escape(name)), False)
-             if (p, n) not in spans and (p, n) not in elsewhere]
-    out.add(f"{len(loose)} other line(s) assign to a member of that name and the compiler places them in no writer of any class (a script, a "
-            "macro, a file it does not read): check each:")
+             if (p, n) not in spans and (p, n) not in elsewhere and (bool(members) if p.startswith(COMPILED) else bool(scripts))]
+    out.add(f"{len(loose)} other line(s) assign to a member of that name in no writer above (a macro, a file the compiler does not read, "
+            "a script): check each:")
     for path, line, text in loose:
         on_flow.append((path, f"assigns to .{'/'.join(names)} at line {line}; rule: {args.rule}"))
         out.add(f"  {path}:{line}: {views.clip(text, 140)}")

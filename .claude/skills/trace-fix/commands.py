@@ -9,7 +9,7 @@ import sys
 import proof
 import store
 import views
-from operations import do_flow, do_link, do_problem, do_read, keep_notes
+from operations import do_doc, do_flow, do_link, do_off, do_problem, do_read, keep_notes
 from store import DROPPED, FIXED, OPEN, Refused, fail
 
 
@@ -57,6 +57,13 @@ def cmd_flow(args):
     out.flush(f"{len(added)} file(s) were added; `status` shows the flow by folder.")
 
 
+def cmd_off(args):
+    state = store.load()
+    entry = run(do_off, state, args.path, args.why)
+    store.save(state)
+    print(f"{entry['path']} is off the flow ({len(state['files'])} file(s) on it); kept in the flow file with why.")
+
+
 def cmd_next(_args):
     out = views.Out()
     views.next_step(store.load(), out)
@@ -90,16 +97,16 @@ def cmd_carry(args):
 
 
 def cmd_record(args):
-    """A batch from a JSON file (or - for stdin): flow, reads, problems and a note, recorded whole or not at all."""
+    """A batch from a JSON file (or - for stdin): flow, reads, docs, problems and a note, recorded whole or not at all."""
     state = store.load()
     try:
         text = sys.stdin.read() if args.file == "-" else open(args.file, encoding="utf-8").read()
         batch = json.loads(text)
     except (OSError, json.JSONDecodeError) as error:
         fail(f"the batch is not readable JSON: {error}")
-    unknown = set(batch) - {"flow", "reads", "problems", "note"} if isinstance(batch, dict) else {"not an object"}
+    unknown = set(batch) - {"flow", "reads", "docs", "problems", "note"} if isinstance(batch, dict) else {"not an object"}
     if unknown:
-        fail(f"a batch is an object with flow, reads, problems and note; unknown: {sorted(unknown)}")
+        fail(f"a batch is an object with flow, reads, docs, problems and note; unknown: {sorted(unknown)}")
     trial, errors, touched, pids, added = copy.deepcopy(state), [], [], [], []
 
     def attempt(label, item, call):
@@ -117,6 +124,8 @@ def cmd_record(args):
         entry = attempt("read", item, lambda i: do_read(trial, i["path"], i["from"], i["to"], i["saw"]))
         if entry:
             touched.append(entry)
+    for item in batch.get("docs", []):
+        attempt("doc", item, lambda i: do_doc(trial, i["api"], i["source"], i["says"]))
     for item in batch.get("problems", []):
         pid = attempt("problem", item, lambda i: do_problem(
             trial, i["where"], i["what"], i["cause"], i.get("symptom", ""), i.get("of", ""), i.get("fix", "")))
@@ -134,7 +143,8 @@ def cmd_record(args):
     store.save(trial)
     keep_notes(trial, touched)
     out = views.Out()
-    out.add(f"recorded: {len(touched)} chunk(s), {len(pids)} problem(s)" + (f" ({pids[0]}-{pids[-1]})" if pids else "")
+    out.add(f"recorded: {len(touched)} chunk(s), {len(batch.get('docs', []))} documentation note(s), {len(pids)} problem(s)"
+            + (f" ({pids[0]}-{pids[-1]})" if pids else "")
             + f", {len(added)} file(s) added to the flow.")
     views.next_step(trial, out)
     out.flush()

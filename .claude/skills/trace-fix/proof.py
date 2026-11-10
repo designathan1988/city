@@ -1,18 +1,24 @@
 """Proof and memory of a reading, for the trace-fix skill.
 
 Proof: every Read tool call of this repository is one record under dist/trace/reads/<key of the path>/, written by
-the read_log.py hook; a chunk counts as read only where these records cover it, for the file as it is now.
+the read_guard.py hook; a line counts as read only where these records cover it, for the file as it is now. The same
+record is kept under dist/trace/readers/<session>/, with the session's own edits: what one session holds of each file
+(`seen_by`), which is what its edits are allowed by.
 Memory: the notes of a file read in whole are kept by the hash of its content under dist/trace/notes/, so another
 trace may carry them over (`carry`) while the file has not changed.
 """
 import hashlib
 import json
 import os
+import re
 import time
 
 import store
 
 READS = "reads"
+READERS = "readers"
+SINCE = "since.json"  # a reader's last compaction: what it read before left its context
+EDIT = "edit"  # a record of the reader's own change: it knows the file whole, and it is not a reading of the flow
 NOTES = "notes"
 
 
@@ -30,13 +36,49 @@ def write_whole(path, value):
     os.replace(tmp, path)
 
 
+def reader_folder(reader):
+    """Where what one session (or one of its agents) read and changed is kept."""
+    return os.path.join(store.TRACES, READERS, re.sub(r"[^A-Za-z0-9_.-]", "_", reader) or "_")
+
+
 def write_read(row):
-    """One Read tool call as a record of its own: parallel Reads never share a file, so none is torn or lost."""
-    write_whole(os.path.join(reads_folder(row["path"]), f"{time.time_ns()}-{os.getpid()}.json"), row)
+    """One Read tool call (or one edit) as a record of its own: parallel calls never share a file, so none is torn or lost."""
+    name = f"{time.time_ns()}-{os.getpid()}.json"
+    write_whole(os.path.join(reads_folder(row["path"]), name), row)
+    if row.get("reader"):
+        write_whole(os.path.join(reader_folder(row["reader"]), name), row)
+
+
+def forget(reader):
+    """A compaction: what this reader read before now is no longer in its context."""
+    write_whole(os.path.join(reader_folder(reader), SINCE), {"ns": time.time_ns()})
+
+
+def seen_by(reader):
+    """What a reader holds since its last compaction: {path: {content hash: [lines of that content, merged ranges]}}."""
+    folder = reader_folder(reader)
+    if not os.path.isdir(folder):
+        return {}
+    since = 0
+    if os.path.exists(os.path.join(folder, SINCE)):
+        with open(os.path.join(folder, SINCE), encoding="utf-8") as f:
+            since = json.load(f)["ns"]
+    out = {}
+    for name in os.listdir(folder):
+        if not name[0].isdigit() or not name.endswith(".json") or int(name.split("-")[0]) <= since:
+            continue  # the compaction mark, a record still being written, or a reading the compaction took away
+        with open(os.path.join(folder, name), encoding="utf-8") as f:
+            row = json.load(f)
+        version = out.setdefault(row["path"], {}).setdefault(row["sha"], [row.get("total", row["to"]), []])
+        version[1].append([row["from"], row["to"]])
+    for versions in out.values():
+        for version in versions.values():
+            version[1] = store.merged(version[1])
+    return out
 
 
 def proven(path, since="", since_ns=0):
-    """Line ranges of a file, as it is now, that the Read tool returned in calls of at most CHUNK_LINES, from a moment on."""
+    """Line ranges of a file, as it is now, that the Read tool returned, from a moment on."""
     folder = reads_folder(path)
     if not os.path.isdir(folder):
         return []
@@ -47,7 +89,7 @@ def proven(path, since="", since_ns=0):
             continue  # a record still being written: it counts once it is renamed into place
         with open(os.path.join(folder, name), encoding="utf-8") as f:
             row = json.load(f)
-        if row.get("path") == path and row.get("sha") == sha and row["to"] - row["from"] + 1 <= store.CHUNK_LINES and (
+        if row.get("path") == path and row.get("sha") == sha and row.get("by") != EDIT and (
                 row["ns"] > since_ns if since_ns and "ns" in row else row.get("t", "") > since):
             out.append([row["from"], row["to"]])
     return store.merged(out)
@@ -70,8 +112,7 @@ def unproven(path, start, end):
 
 
 def absorb(state):
-    """Counts as read every line of the flow the Read tool returned since this trace opened (for the file as it is now, in calls of a
-    chunk at most): the reading is recorded by reading, with no command of its own; a reading made for another trace is not this one's. What is absorbed stays read when the file is edited later."""
+    """Counts as read every line of the flow the Read tool returned since this trace opened (for the file as it is now): the reading is recorded by reading, with no command of its own; a reading made for another trace is not this one's. What is absorbed stays read when the file is edited later."""
     changed = 0
     for entry in state["files"]:
         if not store.gaps(entry) or not os.path.isdir(reads_folder(entry["path"])) or not os.path.isfile(os.path.join(store.ROOT, entry["path"])):
