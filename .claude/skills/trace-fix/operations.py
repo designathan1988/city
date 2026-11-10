@@ -82,6 +82,10 @@ def do_problem(state, where, what, cause, symptom="", of=""):
         raise Refused(f"{store.rel(path)} is not on the flow: a problem is recorded where it was read")
     if not str(what or "").strip() or not str(cause or "").strip():
         raise Refused(f"{where}: a problem says what it is (--what) and the design decision behind it (--cause)")
+    import evidence  # here, not at the top: evidence reads the trace this operation is changing
+    unread = evidence.not_looked_up(state, [(entry["path"], int(line))])
+    if unread:
+        raise Refused(f"{where}: " + evidence.docs_refusal(unread))
     if of:
         of = store.cause_of(state, of)["id"]
     elif state.get("plan_gate"):

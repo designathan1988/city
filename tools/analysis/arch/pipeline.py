@@ -34,17 +34,17 @@ def publish(run, a, base):
         "entries": dict(sorted(collections.Counter(e["kind"] for e in a["entries"]).items())),
         "classes": [{"id": cid, "title": title, "found": found.get(cid, 0)} for cid, title, _ in catalogue.CLASSES],
         "adapters": {k: v for k, v in run.info.items() if k != "refused"}})
-    write_json(os.path.join(base, "slices.json"), slices_of(a))
+    write_json(os.path.join(base, "slices.json"), slices_of(a, run.api.values))
     return base
 
 
 WRITES_KEPT = 60  # members named per slice: enough to say what state a flow touches
 
 
-def slices_of(a):
+def slices_of(a, values=frozenset()):
     """Each entry's slice as a route: its functions in program order, each with the caller and line that first reaches it, and the members the
     whole run writes; and for every member of the program's state, the functions that read it and the functions that write it, as the compiler
-    resolved each access. Functions are named once, in a table the rest indexes."""
+    resolved each access; and the classes of the outside each function calls. Functions are named once, in a table the rest indexes."""
     prog, slices = a["program"], a["slices"]
     ids = sorted(prog.fn)  # every function, run by an entry or not: a writer no entry reaches is still a writer
     at = {f: i for i, f in enumerate(ids)}
@@ -62,4 +62,13 @@ def slices_of(a):
         for kind, bits in (("r", reads), ("w", writes)):
             for m in prog.fields_of(bits):
                 members.setdefault(field_name(prog, m), {"r": [], "w": []})[kind].append(i)
-    return {"functions": table, "slices": out, "members": dict(sorted(members.items()))}
+        for m in sorted({e[3] for e in prog.fn[f]["ev"] if e[0] == "wp"}):  # written in one of its parts: a writer of the whole
+            row = members.setdefault(field_name(prog, m), {"r": [], "w": []})["w"]
+            if i not in row:
+                row.append(i)
+    outside = {}
+    for i, f in enumerate(ids):  # the classes of the outside (the engine, a library) a function calls, value types of the caller's memory left out
+        owners = sorted({e[3][4:].split(".", 1)[0] for e in prog.fn[f]["ev"] if e[0] == "call" and e[3].startswith("ext:")} - set(values) - {""})
+        if owners:
+            outside[str(i)] = owners
+    return {"functions": table, "slices": out, "members": dict(sorted(members.items())), "outside": outside}

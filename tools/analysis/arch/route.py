@@ -49,6 +49,30 @@ def below(sl, position):
     return [sl["order"][i] for i in sorted(under)]
 
 
+def state_of(data, functions):
+    """The members the functions of a run write, by name."""
+    run = set(functions)
+    return sorted(m for m, uses in data.get("members", {}).items() if run & set(uses["w"]))
+
+
+def consumers(data, functions):
+    """Who picks up later what a run writes: every function outside the run that reads a member the run writes, with the members it reads and the
+    entries that run it; the most frequent entries first, then the readers of the most."""
+    run, written = set(functions), set(state_of(data, functions))
+    reads = collections.defaultdict(list)
+    for member in sorted(written):
+        for f in data["members"][member]["r"]:
+            if f not in run:
+                reads[f].append(member)
+    entries = collections.defaultdict(list)
+    for sl in data["slices"]:
+        for f in set(sl["order"]) & set(reads):
+            entries[f].append([sl["entry"], sl["freq"]])
+    rank = lambda f: max((FREQ_RANK.get(freq, 0) for _, freq in entries[f]), default=-1)  # noqa: E731
+    return [{"function": f, "reads": reads[f], "entries": sorted(entries[f], key=lambda e: (-FREQ_RANK.get(e[1], 0), e[0]))}
+            for f in sorted(reads, key=lambda f: (-rank(f), -len(reads[f]), f))]
+
+
 def by_file(table, functions):
     files = collections.OrderedDict()
     for f in functions:
@@ -83,8 +107,16 @@ def main(base, spec, out_json=None):
     best = hits[0][0]
     files = by_file(table, best["order"])
     position = hits[0][1]
-    down = by_file(table, below(best, position))
-    print(f"what it runs itself: {sum(len(v) for v in down.values())} functions in {len(down)} files (the whole is in --json)")
+    under = below(best, position)
+    down = by_file(table, under)
+    state, used = state_of(data, under), consumers(data, under)
+    scripts = [v for sl, _ in hits for v in sl.get("via", [])]
+    print(f"what it runs itself: {len(under)} functions in {len(down)} files; it writes {len(state)} member(s) of the state, read afterwards by "
+          f"{len(used)} function(s) outside it; {len(scripts)} script path(s) lead to its entries (the whole is in --json)")
+    for c in used[:SHOWN]:
+        name, file, line, _ = table[c["function"]]
+        print(f"  reads it later: {name} ({file}:{line}) [{', '.join(sorted({f for _, f in c['entries']})) or 'no entry'}]: {', '.join(c['reads'][:4])}"
+              + (" ..." if len(c["reads"]) > 4 else ""))
     print(f"\nroute of {best['entry']} [{best['freq']}]: {len(best['order'])} functions in {len(files)} files, {best['jobs']} job(s) submitted; in program order:")
     for n, (file, fns) in enumerate(files.items(), 1):
         if n > ROUTE_FILES:
@@ -98,6 +130,8 @@ def main(base, spec, out_json=None):
         route = {"spec": spec, "entry": best["entry"], "freq": best["freq"], "entries": [[sl["entry"], sl["freq"], sl["kind"]] for sl, _ in hits],
                  "chain": [[table[f][0], table[f][1], line] for f, line in chain(best, position)], "below": listed(down),
                  "targets": [[table[i][0], table[i][1], table[i][2], table[i][3]] for i in sorted(targets)],
+                 "state": state, "scripts": scripts,
+                 "consumers": [{"function": table[c["function"]], "reads": c["reads"], "entries": c["entries"]} for c in used],
                  "files": [{"file": file, "functions": [[table[f][0], table[f][2], table[f][3]] for f in fns]} for file, fns in files.items()],
                  "writes": best["writes"]}
         with open(out_json, "w", encoding="utf8", newline="\n") as f:

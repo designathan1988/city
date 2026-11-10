@@ -133,8 +133,10 @@ Rules of the reading:
   or of the readers of what they write is unread (the fix card puts those on the flow).
 - **Outside API in the chunk: the official documentation, always.** When the chunk calls Godot, godot-cpp, Terrain3D or any
   library, look the call up with context7 (`resolve-library-id`, then `query-docs` for Godot 4.7) or the vendor's page
-  before judging it: what it guarantees, on which thread it may run, what it costs, its known limits and known bugs. A hook
-  logs every lookup, and `$L fix` refuses a cause that names an API no lookup names. Never judge such a call from memory.
+  before judging it: what it guarantees, on which thread it may run, what it costs, its known limits and known bugs. This is
+  checked, not asked: the compiler knows every outside class each function calls, a hook logs every lookup, and the ledger
+  **refuses to record a problem or to accept a fix** in a function that calls an outside class no lookup of this trace names.
+  The refusal lists the classes; look each up and record again. Never judge such a call from memory.
 - **A claim is checked, never taken.** A document, a header comment, a test's own description or a log that says something is
   checked, guarded or done is read against the code that should do it. A claim the code does not keep is a problem
   (the document contradicts the code), recorded where the claim is.

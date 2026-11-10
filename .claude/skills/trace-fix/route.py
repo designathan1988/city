@@ -44,13 +44,14 @@ def fresh_slices():
 def compiler_route(graph, seeds):
     """For the seeds the compiler knows (C and C++), what each runs, in program order, as the architecture analyser reads it from the compiler's own
     tree: calls through base classes, templates, lambdas and jobs included, which no lookup by name can promise. The analyser's scan of the working
-    tree is made again when a source is newer than it. Returns [(path, [(line, last line, name)])], or [] where there is no analyser or no such seed."""
+    tree is made again when a source is newer than it. Three lists of (path, [(line, last line, name, role)]): the script steps that lead to the seeds'
+    entries, what the seeds run, and the functions outside that run that read the state it writes; empty where there is no analyser or no such seed."""
     arch = os.path.join(store.ROOT, "tools", "analysis", "arch.py")
     native = [s for s in seeds if graph.nodes[s].path.startswith(NATIVE + "/") and graph.nodes[s].kind == "callable"]
     if not native or not os.path.isfile(arch):
-        return []
+        return [], [], []
     fresh_slices()
-    files = OrderedDict()
+    files, before, after = OrderedDict(), OrderedDict(), OrderedDict()
     for seed in native:
         node = graph.nodes[seed]
         out = os.path.join(tempfile.gettempdir(), f"trace_fix_route_{os.getpid()}.json")
@@ -62,8 +63,16 @@ def compiler_route(graph, seeds):
             route = json.load(f)
         os.remove(out)
         for group in route.get("below", []):
-            files.setdefault(group["file"], []).extend((fn[1], fn[2], fn[0]) for fn in group["functions"])
-    return list(files.items())
+            files.setdefault(group["file"], []).extend((fn[1], fn[2], fn[0], "runs (the compiler's route)") for fn in group["functions"])
+        for path in route.get("scripts", []):  # the script callbacks that reach its entries: file:line steps, the engine's callback first
+            for step in path["path"]:
+                file, _, line = step.rpartition(":")
+                before.setdefault(file, []).append((int(line), int(line), path["script"], f"leads to it from the script callback ({path['freq']})"))
+        for c in route.get("consumers", []):
+            name, file, line, end = c["function"]
+            often = ", ".join(sorted({freq for _, freq in c["entries"]})) or "run by no entry"
+            after.setdefault(file, []).append((line, end, name, f"reads what it writes ({often}): {', '.join(c['reads'][:3])}"))
+    return list(before.items()), list(files.items()), list(after.items())
 
 
 def run_tracer(query, seeds, include):
@@ -140,19 +149,24 @@ def cmd_trace(args):
     first = next((i for i, step in enumerate(found) if step[1] == "seed"), len(found))
     files = files_of(graph, found[:first])  # what leads to the seeds, then what the compiler says they run, then the rest of the tracer's answer
     try:
-        compiled = compiler_route(graph, result.seeds) if not args.include else []
+        crossing = [n for n in result.feature if graph.nodes[n].path.startswith(NATIVE + "/") and result.down_prev.get(n)
+                    and not graph.nodes[result.down_prev[n][0]].path.startswith(NATIVE + "/")]  # where a script's call enters the core
+        before, compiled, after = compiler_route(graph, [*result.seeds, *crossing]) if not args.include else ([], [], [])
     except Refused as refusal:
         fail(str(refusal))
-    for path, functions in compiled:
-        files.setdefault(path, []).extend((line, end, name, "runs (the compiler's route)", "") for line, end, name in functions)
+    for group in (before, compiled):
+        for path, functions in group:
+            files.setdefault(path, []).extend((line, end, name, role, "") for line, end, name, role in functions)
     for path, units in files_of(graph, found[first:]).items():
         files.setdefault(path, []).extend(units)
+    for path, functions in after:  # who picks the state up later, as the compiler read each access
+        files.setdefault(path, []).extend((line, end, name, role, "") for line, end, name, role in functions)
     out = views.Out()
     out.add(f"ROUTE of {'seeds ' + ', '.join(args.seed) if args.seed else 'query ' + repr(args.query)}: "
             f"{len(result.seeds)} seed(s), {len(result.entries)} entry point(s), {len(result.feature)} unit(s) it runs, "
             f"{len(result.shared)} of infrastructure, {len(result.mutated)} state written, {len(result.consumers)} consumer(s), "
             f"{len(result.executed)} more inside its calls by name{'' if args.deep else ' (--deep adds them)'}; "
-            f"the compiler's route of the C++ seeds adds {len(compiled)} file(s) in program order.")
+            f"the compiler's route adds {len(compiled)} file(s) run in program order and {len(after)} of readers of the state it writes.")
     out.add("SEEDS: " + "; ".join(graph.label(s) for s in result.seeds[:8]) + (" ..." if len(result.seeds) > 8 else ""))
     added = shown = 0
     for path, units in files.items():

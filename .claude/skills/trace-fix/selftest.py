@@ -196,6 +196,16 @@ def main():
             check("a whole rule sheet", evidence.unanswered({"problems": [{"id": "P7"}]}, sheet), [])
             check("no rule sheet", len(evidence.unanswered({"problems": []}, None)), 1)
 
+            # ---- outside classes: a class no documentation lookup of the trace names is reported, one that a lookup names is not
+            import proof  # noqa: E402
+            import store as st  # noqa: E402
+            st.TRACES = traces  # the lookups of this run's own trace folder
+            evidence.outside_classes = lambda places: {"RenderingServer": {"Draw::send"}, "Terrain3D": {"Land::follow"}}
+            check("an outside class with no lookup is reported", sorted(evidence.not_looked_up({"opened": ""}, [("a.cpp", 1)])), ["RenderingServer", "Terrain3D"])
+            proof.write_whole(os.path.join(traces, "docs", "1.json"), {"t": "2099-01-01 00:00", "tool": "query-docs", "input": {"query": "RenderingServer multimesh"}})
+            check("a class a lookup names is not", sorted(evidence.not_looked_up({"opened": ""}, [("a.cpp", 1)])), ["Terrain3D"])
+            check("a lookup older than the trace does not count", sorted(evidence.not_looked_up({"opened": "2100-01-01 00:00"}, [("a.cpp", 1)])), ["RenderingServer", "Terrain3D"])
+
             # ---- every answer under the limit, on a ledger far larger than a real one
             made = {"slug": "huge", "request": "r " * 2000, "opened": "2026-01-01 00:00", "note": "n " * 2000,
                     "read_gate": None, "closed": None,

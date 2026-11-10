@@ -22,17 +22,21 @@ WRITE = r"(\.|->){name}[[:space:]]*(=[^=]|\+=|-=|\*=|/=|\+\+|--)"
 
 
 def compiled(specs):
-    """(member, writers, readers) of the members the compiler knows by these names; writers and readers as (name, file, line, last line)."""
+    """(member, writers, readers) of the members the compiler knows by these names, writers and readers as (name, file, line, last line); and the
+    lines of the functions that write another class's member of the same name (the compiler says those writes are not of this state)."""
     slices = fresh_slices()
     if slices is None:
-        return []
+        return [], set()
     with open(slices, encoding="utf-8") as f:
         data = json.load(f)
-    table, out = data["functions"], []
+    table, out, others = data["functions"], [], set()
+    short = {spec.rsplit("::", 1)[-1] for spec in specs}
     for member, uses in data.get("members", {}).items():
         if any(member == spec or member.endswith("::" + spec) for spec in specs):
             out.append((member, [tuple(table[i]) for i in uses["w"]], [tuple(table[i]) for i in uses["r"]]))
-    return out
+        elif member.rsplit("::", 1)[-1] in short:  # another class's member of the same name: its writers write that one, not this
+            others.update((table[i][1], n) for i in uses["w"] for n in range(table[i][2], table[i][3] + 1))
+    return out, others
 
 
 def scripted(graph, specs):
@@ -54,7 +58,7 @@ def cmd_writers(args):
     """Puts every writer of a piece of state on the flow of the active trace, with the rule they must keep."""
     state = store.load()
     try:
-        members = compiled(args.state)
+        members, elsewhere = compiled(args.state)
         scripts = scripted(graph_of(args.include), args.state) if args.include or not members else []
     except Refused as refusal:
         fail(str(refusal))
@@ -73,9 +77,10 @@ def cmd_writers(args):
         for name, file, line, end in (readers or [])[:views.FOLDER_ROWS]:
             out.add(f"  reads it:  {name}, {file}:{line}-{end}")
     names = sorted({label.split(" (")[0].rsplit("::", 1)[-1].rsplit(".", 1)[-1] for label, _, _ in [*members, *[(a, b, None) for a, b in scripts]]})
-    loose = [(p, n, t) for name in names for p, n, t in grep(WRITE.format(name=re.escape(name)), False) if (p, n) not in spans]
-    out.add(f"{len(loose)} other line(s) assign to a member of that name outside the writers above (another class's member of the same "
-            "name, a script, a macro): check each:")
+    loose = [(p, n, t) for name in names for p, n, t in grep(WRITE.format(name=re.escape(name)), False)
+             if (p, n) not in spans and (p, n) not in elsewhere]
+    out.add(f"{len(loose)} other line(s) assign to a member of that name and the compiler places them in no writer of any class (a script, a "
+            "macro, a file it does not read): check each:")
     for path, line, text in loose:
         on_flow.append((path, f"assigns to .{'/'.join(names)} at line {line}; rule: {args.rule}"))
         out.add(f"  {path}:{line}: {views.clip(text, 140)}")

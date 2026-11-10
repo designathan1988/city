@@ -70,6 +70,35 @@ def passed_after(test, moment):
     return False
 
 
+def outside_classes(places):
+    """The classes of the outside (the engine, a library) called by the functions that hold these (path, line) places, as the compiler read them
+    (the architecture analyser's reading of the code on disk); {} where the repository has no such reading."""
+    slices = os.path.join(store.ROOT, "dist", "arch", "worktree", "slices.json")
+    if not os.path.isfile(slices):
+        return {}
+    with open(slices, encoding="utf-8") as f:
+        data = json.load(f)
+    out = {}
+    for index, owners in data.get("outside", {}).items():
+        name, file, start, end = data["functions"][int(index)]
+        if any(path == file and start <= line <= end for path, line in places):
+            for owner in owners:
+                out.setdefault(owner, set()).add(name)
+    return out
+
+
+def not_looked_up(state, places):
+    """The outside classes called at these places that no documentation lookup names since this trace opened, each with who calls it."""
+    seen = lookups(state["opened"])
+    return {owner: sorted(by) for owner, by in sorted(outside_classes(places).items()) if not any(owner.lower() in text for text in seen)}
+
+
+def docs_refusal(unread):
+    return ("the code here calls outside classes whose official documentation was not looked up in this trace: "
+            + "; ".join(f"{owner} (called by {', '.join(by[:3])})" for owner, by in unread.items())
+            + ". Look each up (context7 `resolve-library-id` then `query-docs` naming the class, or the vendor's page) and record again.")
+
+
 def world_rules():
     """The rules of the game's world (rules.json beside this file)."""
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "rules.json"), encoding="utf-8") as f:
@@ -106,6 +135,9 @@ def missing(state, cause, args):
             if words and not any(words[-1] in text for text in seen):
                 out.append(f"no documentation lookup names `{name}` since this trace opened: read the official documentation "
                            "(context7 `resolve-library-id` and `query-docs`, or the vendor's page) before changing code that calls it")
+    unread = not_looked_up(state, [(p["path"], p["line"]) for p in state["problems"] if p["cause_id"] == cause["id"]])
+    if unread:
+        out.append(docs_refusal(unread))
     if not risks:
         out.append(f"{cause['id']} does not say what the fix can break and what guards each: `cause set {cause['id']} --risks \"...\"`")
     files, problem = changed_files(state, cause, args.commit)
