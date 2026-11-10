@@ -2,7 +2,8 @@
 
 A unit is anything the language lets one define with a name: a function, method, lambda, variable, field, constant,
 signal, class, enum or enumerator. A reference is a name used inside a unit, with the construct that uses it (call, read,
-write, emit, connect, a name carried by a string). Nothing here knows a project: only language and engine rules.
+write, emit, connect, a name carried by a string). Every value is kept as an expression tree (`ir`): the receiver of a
+reference, the arguments of a call, the value written, a local's values, a return. Nothing here knows a project.
 """
 from __future__ import annotations
 
@@ -20,7 +21,7 @@ ENGINE_CALLBACKS = frozenset({
 })
 
 # C++ standard-library container members that change the container they are called on (ISO C++ [containers]).
-# A call to one of them on a field writes that field.
+# A call to one of them on a field writes that field; its last argument is a value put into the container.
 STD_MUTATORS = frozenset({
     "push_back", "emplace_back", "push_front", "emplace_front", "pop_back", "pop_front", "insert", "emplace",
     "emplace_hint", "try_emplace", "insert_or_assign", "erase", "clear", "resize", "assign", "swap", "push", "pop",
@@ -36,14 +37,16 @@ class Ref:
     """One use of a name inside a unit."""
     kind: str                      # call, read, write, value, name, emit, connect, new, load, lambda, thread
     name: str                      # the simple name used ("" for a load or lambda)
-    recv: tuple = ()               # receiver chain before the name: ("self",), ("_core",), ("state", "log"), ("A",)
+    base: tuple | None = None      # the receiver's expression tree (`a` in `a.f()`), None for a plain name
     line: int = 0
     cond: tuple = ()               # enclosing branch conditions, outermost first
-    qualified: bool = False        # C++ A::name: recv holds the scope parts
-    handler: tuple = ()            # connect: ("bare", name) | ("member", recv, name) | ("unit", local id) | ("name", recv, str)
+    qualified: bool = False        # C++ `A::name`: `scope` holds A
+    scope: str = ""                # C++ qualified scope written before the name
+    handler: tuple | None = None   # connect: the handler's expression tree
     target: int = -1               # lambda: local id of the lambda unit in the same file
     text: str = ""                 # load: the path; name: the literal
     argc: int = -1                 # call: the number of arguments written (-1 when not a call)
+    args: tuple = ()               # call: each argument's tree; write: (the value written,)
 
 
 @dataclass
@@ -62,11 +65,12 @@ class Unit:
     params: list = field(default_factory=list)
     required: int = -1             # parameters without a default (-1: not counted)
     variadic: bool = False
-    types: dict = field(default_factory=dict)      # local or parameter name -> type text
+    types: dict = field(default_factory=dict)      # local or parameter name -> [trees of the values it holds]
+    values: list = field(default_factory=list)     # a variable's or field's initializer trees
     lambdas: dict = field(default_factory=dict)    # local name -> lambda local id
-    type_text: str = ""            # a variable's declared or inferred type, a function's return type
+    type_text: str = ""            # a variable's declared type, a function's declared return type
     refs: list = field(default_factory=list)
-    returns: list = field(default_factory=list)    # (line, expression text) of each return
+    returns: list = field(default_factory=list)    # (line, expression text, tree) of each return
     static: bool = False
     file_local: bool = False       # C++ internal linkage: anonymous namespace or static free function
     decl_only: bool = False        # C++ declaration with no body
@@ -96,9 +100,10 @@ class FileFacts:
     units: list = field(default_factory=list)
     classes: list = field(default_factory=list)
     usings: list = field(default_factory=list)     # cpp: namespaces opened with `using namespace`
-    aliases: dict = field(default_factory=dict)    # cpp: using X = Y / typedef; gd: const X = preload(path)
+    aliases: dict = field(default_factory=dict)    # cpp: using X = Y / typedef
     bindings: list = field(default_factory=list)   # cpp: (bound name, target text, class qual, line, kind)
     connections: list = field(default_factory=list)  # tscn: (signal, from script, to script, method, line)
     autoloads: dict = field(default_factory=dict)  # project.godot: name -> res:// path
     mentions: list = field(default_factory=list)   # data: (string, line)
+    includes: list = field(default_factory=list)   # cpp: the paths `#include "..."` names
     errors: int = 0

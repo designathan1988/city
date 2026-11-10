@@ -134,3 +134,6 @@ BUILDERS = {
     "base_call": _base_call,
     **{kind: (lambda t: (lambda s, n, l: ("literal", t)))(t) for kind, t in LITERAL_TYPES.items()},
 }
+
+
+step = _segment   # one member-chain step on a receiver tree (used by the reader walking a chain)

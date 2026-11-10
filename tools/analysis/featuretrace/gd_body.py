@@ -1,19 +1,20 @@
-"""GDScript bodies: each statement and expression read by its rule, with the branch conditions that guard it.
+"""GDScript bodies: each statement and expression read by its rule (log/trace-rules.md, GDScript rows).
 
-Branches (`if`/`elif`/`else`, `match`, `for`, `while`) are all followed; the condition of each is carried on every
-reference written under it. A member chain `a.b.c()` keeps its receiver names in order, so the resolver can find the
-class of `a`, then of `b`, then the definition of `c`.
+Branches (`if`/`elif`/`else`, `match` with `when` guards, `for`, `while`) are all followed, the condition carried on
+every reference under them (BRANCH). Each name that receives a value records the value's tree (FLOW): `var`
+initializers and assignments, `for` (the elements walked), `match` bindings (the value matched), `return`. An `is` test
+narrows the tested name inside its branch. Member chains are walked step by step, each step's receiver kept as a tree.
 """
 from __future__ import annotations
 
-from . import gd_calls
+from . import gd_calls, ir_gd
+from .ir import put
 from .rules import SIGNAL_OPS
-from .source import field_of, is_identifier, named_children, string_value
+from .source import field_of, is_identifier, named_children
 
 COND_WIDTH = 90
-UNKNOWN = "<?>"
-TYPED = "<type>"   # a receiver whose type the expression itself names (a cast)
-CALLED = "<call>"
+STATEMENTS = ("if_statement", "for_statement", "while_statement", "match_statement", "return_statement",
+              "variable_statement", "const_statement")
 
 
 def squash(text: str) -> str:
@@ -26,16 +27,16 @@ def statement(r, st, unit, cls, cond) -> None:
     kind = st.type
     if kind in ("variable_statement", "const_statement"):
         name = src.text(field_of(st, "name"))
-        value = field_of(st, "value")
+        value, typ = field_of(st, "value"), field_of(st, "type")
         if value is not None and value.type == "lambda":
-            unit.lambdas[name] = r.lambda_unit(value, unit, cls).local_id
-            unit.types[name] = ""
+            unit.lambdas[name] = r.lambda_id(value, unit, cls)
+            unit.types[name] = [("callable", unit.lambdas[name])]
             return
-        typ = field_of(st, "type")
-        unit.types[name] = src.text(typ) if typ is not None and typ.type == "type" else (
-            r.infer(value) if value is not None else "")
-        if value is not None:
-            expr(r, value, unit, cls, cond)
+        if typ is not None and typ.type == "type":
+            unit.types[name] = [("cast", src.text(typ))]
+        else:
+            unit.types[name] = [r.ir(value, unit, cls)] if value is not None else []
+        expr(r, value, unit, cls, cond)
     elif kind == "if_statement":
         test = field_of(st, "condition")
         expr(r, test, unit, cls, cond)
@@ -53,66 +54,61 @@ def statement(r, st, unit, cls, cond) -> None:
                 r.block(field_of(child, "body"), unit, cls, cond + ("else of if " + squash(src.text(test)),))
     elif kind == "for_statement":
         left, right = field_of(st, "left"), field_of(st, "right")
-        unit.types[src.text(left)] = ""
+        unit.types[src.text(left)] = [("elements", r.ir(right, unit, cls))]
         expr(r, right, unit, cls, cond)
-        label = f"for {src.text(left)} in {squash(src.text(right))}"
-        r.block(field_of(st, "body"), unit, cls, cond + (label,))
+        r.block(field_of(st, "body"), unit, cls, cond + (f"for {src.text(left)} in {squash(src.text(right))}",))
     elif kind == "while_statement":
         test = field_of(st, "condition")
         expr(r, test, unit, cls, cond)
         r.block(field_of(st, "body"), unit, cls, cond + ("while " + squash(src.text(test)),))
     elif kind == "match_statement":
-        value = field_of(st, "value")
-        expr(r, value, unit, cls, cond)
-        body = field_of(st, "body")
-        for section in named_children(body) if body is not None else []:
-            block = field_of(section, "body")
-            pattern = ", ".join(src.text(c) for c in named_children(section) if c is not block)
-            label = f"match {squash(src.text(value))}: {squash(pattern)}"
-            for part in named_children(section):
-                if part.type == "pattern_binding":
-                    for name in named_children(part):
-                        unit.types[src.text(name)] = ""
-                elif part.type == "pattern_guard":
-                    expr(r, part, unit, cls, cond + (label,))
-            if block is not None:
-                r.block(block, unit, cls, cond + (label,))
+        match(r, st, unit, cls, cond)
     elif kind == "return_statement":
         values = named_children(st)
-        unit.returns.append((src.line(st), squash(src.text(values[0])) if values else ""))
+        unit.returns.append((src.line(st), squash(src.text(values[0])) if values else "",
+                             r.ir(values[0], unit, cls) if values else ("literal", "void")))
         for v in values:
             expr(r, v, unit, cls, cond)
     else:
         expr(r, st, unit, cls, cond)
 
 
-def type_test(r, node) -> tuple[str, str] | None:
-    """`x is T` / `x as T`: (the name tested, the type), else None."""
-    if node is None or node.type != "binary_operator":
-        return None
-    op = field_of(node, "op")
-    left, right = field_of(node, "left"), field_of(node, "right")
-    if op is None or left is None or right is None or r.src.text(op) not in ("is", "as"):
-        return None
-    return r.src.text(left), r.src.text(right)
+def match(r, st, unit, cls, cond) -> None:
+    """`match v:` each pattern a branch; a `var x` binding holds v; a `when` guard is read under its branch."""
+    src = r.src
+    value = field_of(st, "value")
+    expr(r, value, unit, cls, cond)
+    matched = r.ir(value, unit, cls)
+    body = field_of(st, "body")
+    for section in named_children(body) if body is not None else []:
+        block = field_of(section, "body")
+        pattern = ", ".join(src.text(c) for c in named_children(section) if c is not block)
+        label = f"match {squash(src.text(value))}: {squash(pattern)}"
+        for part in named_children(section):
+            if part.type == "pattern_binding":
+                for name in named_children(part):
+                    unit.types[src.text(name)] = [matched]
+            elif part.type == "pattern_guard":
+                expr(r, part, unit, cls, cond + (label,))
+        if block is not None:
+            r.block(block, unit, cls, cond + (label,))
 
 
 def narrow(r, test) -> dict:
-    """Inside the branch, a name an `is` test proves (alone or joined by `and`) is of that type; the references read
-    there carry it. Returns the narrowing to put back after the branch."""
+    """Inside the branch, a name an `is` test proves (alone or joined by `and`) is of that type. Returns the
+    narrowing to put back after the branch."""
     saved, todo = dict(r.narrowed), [test]
     r.narrowed = dict(r.narrowed)
     while todo:
         node = todo.pop()
-        if node is None:
+        if node is None or node.type != "binary_operator":
             continue
-        op = field_of(node, "op") if node.type == "binary_operator" else None
-        if op is not None and r.src.text(op) in ("and", "&&"):
-            todo += [field_of(node, "left"), field_of(node, "right")]
-            continue
-        found = type_test(r, node)
-        if found and r.src.text(field_of(node, "op")) == "is" and is_identifier(found[0]):
-            r.narrowed[found[0]] = found[1]
+        op = r.src.text(field_of(node, "op")).strip()
+        left, right = field_of(node, "left"), field_of(node, "right")
+        if op in ("and", "&&"):
+            todo += [left, right]
+        elif op == "is" and left is not None and is_identifier(r.src.text(left)):
+            r.narrowed[r.src.text(left)] = r.src.text(right)
     return saved
 
 
@@ -120,80 +116,68 @@ def expr(r, node, unit, cls, cond) -> None:
     if node is None:
         return
     kind = node.type
-    if kind in ("if_statement", "for_statement", "while_statement", "match_statement", "return_statement",
-                "variable_statement", "const_statement"):
+    if kind in STATEMENTS:
         statement(r, node, unit, cls, cond)
     elif kind == "call":
         gd_calls.call(r, node, unit, cls, cond)
     elif kind == "attribute":
-        attribute(r, node, unit, cls, cond, write=False)
+        attribute(r, node, unit, cls, cond, value=None)
     elif kind in ("assignment", "augmented_assignment"):
         left, right = field_of(node, "left"), field_of(node, "right")
-        target(r, left, unit, cls, cond)
+        value = r.ir(right, unit, cls) if kind == "assignment" else r.ir(left, unit, cls)
+        target(r, left, unit, cls, cond, value)
         expr(r, right, unit, cls, cond)
-        hint = r.infer(right) if kind == "assignment" and right is not None else ""
-        name = r.src.text(left).removeprefix("self.") if left is not None else ""
-        if hint and is_identifier(name) and name not in unit.types:
-            r.assigned.setdefault((cls.key, name), hint)
     elif kind == "identifier":
-        r.add(unit, "read", r.src.text(node), node, cond)
+        if r.src.text(node) not in ("self", "super"):
+            r.add(unit, "read", r.src.text(node), node, cond)
     elif kind == "lambda":
-        lam = r.lambda_unit(node, unit, cls)
-        r.add(unit, "lambda", lam.name, node, cond, target=lam.local_id)
-    elif kind not in ("string", "string_name", "get_node", "comment"):
+        r.add(unit, "lambda", "", node, cond, target=r.lambda_id(node, unit, cls))
+    elif kind not in ("string", "string_name", "get_node", "comment", "node_path"):
         for child in named_children(node):
             expr(r, child, unit, cls, cond)
 
 
-def target(r, node, unit, cls, cond) -> None:
-    """The left side of an assignment: the name written."""
+def target(r, node, unit, cls, cond, value: tuple) -> None:
+    """The left side of an assignment: the name written and the value that flows into it."""
     if node is None:
         return
     if node.type == "identifier":
-        r.add(unit, "write", r.src.text(node), node, cond)
+        name = r.src.text(node)
+        if name in unit.types:
+            unit.types[name].append(value)
+        r.add(unit, "write", name, node, cond, args=(value,))
     elif node.type == "attribute":
-        attribute(r, node, unit, cls, cond, write=True)
+        attribute(r, node, unit, cls, cond, value=value)
     elif node.type == "subscript":
         kids = named_children(node)
-        target(r, kids[0], unit, cls, cond)
+        target(r, kids[0], unit, cls, cond, put(value))
         for k in kids[1:]:
             expr(r, k, unit, cls, cond)
     else:
         expr(r, node, unit, cls, cond)
 
 
-def attribute(r, node, unit, cls, cond, write: bool) -> None:
+def attribute(r, node, unit, cls, cond, value: tuple | None) -> None:
+    """A member chain, step by step; with `value`, the chain is the left side of an assignment."""
     src = r.src
     kids = named_children(node)
     head, segs = kids[0], kids[1:]
-    if head.type == "identifier":
-        chain = [src.text(head)]
-        if chain[0] not in ("self", "super"):
-            r.add(unit, "read", chain[0], head, cond)
-        if chain[0] in r.narrowed:
-            chain = [TYPED + r.narrowed[chain[0]]]
-    elif head.type == "parenthesized_expression" and type_test(r, named_children(head)[0]):
-        expr(r, head, unit, cls, cond)
-        chain = [TYPED + type_test(r, named_children(head)[0])[1]]
-    elif head.type == "call" and named_children(head)[0].type == "identifier":
-        gd_calls.call(r, head, unit, cls, cond)
-        chain = [CALLED + src.text(named_children(head)[0])]
-    else:
-        expr(r, head, unit, cls, cond)
-        chain = [UNKNOWN]
+    expr(r, head, unit, cls, cond)
+    base = r.ir(head, unit, cls)
     for i, seg in enumerate(segs):
         last = i == len(segs) - 1
         nxt = segs[i + 1] if not last else None
+        name = src.text(seg) if seg.type == "identifier" else src.text(named_children(seg)[0])
         if seg.type == "identifier":
-            name = src.text(seg)
             ahead = src.text(named_children(nxt)[0]) if nxt is not None and nxt.type == "attribute_call" else ""
             if ahead not in SIGNAL_OPS:
-                r.add(unit, "write" if write and last else "read", name, seg, cond, recv=tuple(chain))
-            chain.append(name)
+                written = value is not None and last
+                r.add(unit, "write" if written else "read", name, seg, cond, base=base,
+                      args=(value,) if written else ())
         elif seg.type == "attribute_call":
-            name = src.text(named_children(seg)[0])
-            gd_calls.member_call(r, seg, name, tuple(chain), unit, cls, cond)
-            chain.append(CALLED + name)
-        else:
-            expr(r, seg, unit, cls, cond)
-            chain.append(UNKNOWN)
+            gd_calls.member_call(r, seg, name, base, unit, cls, cond)
+        elif seg.type == "attribute_subscript":
+            r.add(unit, "read", name, seg, cond, base=base)
+            for part in named_children(seg)[1:]:
+                expr(r, part, unit, cls, cond)
+        base = ir_gd.step(src, base, seg, lambda n: r.lambda_id(n, unit, cls))

@@ -1,20 +1,25 @@
 """C++ reader: the definitions a file makes, in their namespaces and classes, as the language declares them.
 
 `namespace`, `class`/`struct`/`union` (with bases), `enum` (scoped or not), functions (inline in a class, or out of line
-as `A::f`), declarations (methods, fields, variables), `using namespace`, `using X = Y` and `typedef` are each read by
-their grammar rule. An anonymous namespace or a `static` free function has internal linkage: visible only in its file.
-Bodies are read by `cpp_body`.
+as `A::f`), declarations (methods, fields, variables), `using namespace`, `using X = Y`, `typedef` and `#include` are each
+read by their grammar rule (log/trace-rules.md, C++ rows). An anonymous namespace or a `static` free function has
+internal linkage. Bodies are read by `cpp_body`; every value is kept as an expression tree built by `ir_cpp`.
 """
 from __future__ import annotations
 
-from . import cpp_body
-from .model import ClassFact, FileFacts, Unit
+from . import cpp_body, ir_cpp
 from .cpp_names import WRAPPERS, join, strip_templates, type_of, unwrap
+from .model import ClassFact, FileFacts, Unit
 from .source import Source, field_of, named_children
 
 CLASS_NODES = ("class_specifier", "struct_specifier", "union_specifier")
-RECURSE = ("template_declaration", "preproc_ifdef", "preproc_if", "preproc_else", "preproc_elif",
-           "field_declaration_list", "declaration_list", "linkage_specification", "export_declaration")
+RECURSE = ("preproc_ifdef", "preproc_if", "preproc_else", "preproc_elif", "preproc_elifdef", "field_declaration_list",
+           "declaration_list", "linkage_specification", "export_declaration")
+
+
+def deduced(declared: str) -> bool:
+    """A placeholder type (`auto`, `auto &`, `const auto *`, `decltype(auto)`): the type comes from the value (C5)."""
+    return declared.replace("const", "").replace("&", "").replace("*", "").strip() in ("auto", "", "decltype(auto)")
 
 
 class CppReader:
@@ -22,6 +27,7 @@ class CppReader:
         self.src = src
         self.facts = FileFacts(src.display, "cpp")
         self.template = []           # the type parameters of the template being read
+        self._lambdas = {}           # lambda node start byte -> local id (each lambda one unit)
 
     def run(self) -> FileFacts:
         root = self.src.parse("cpp")
@@ -35,12 +41,20 @@ class CppReader:
         self.facts.units.append(unit)
         return unit
 
+    def ir(self, node, unit: Unit) -> tuple:
+        return ir_cpp.build(self.src, node, lambda n: self.lambda_id(n, unit))
+
+    def lambda_id(self, node, owner: Unit) -> int:
+        """The lambda's unit (made once, whether met while building a tree or while walking the body)."""
+        if node.start_byte not in self._lambdas:
+            self._lambdas[node.start_byte] = cpp_body.lambda_unit(self, node, owner).local_id
+        return self._lambdas[node.start_byte]
+
     def scope(self, node, prefix: str, cls: ClassFact | None, anon: bool) -> None:
         for st in named_children(node):
             kind = st.type
             if kind == "namespace_definition":
-                name = field_of(st, "name")
-                body = field_of(st, "body")
+                name, body = field_of(st, "name"), field_of(st, "body")
                 if body is not None:
                     inner = join(prefix, self.src.text(name)) if name is not None else prefix
                     self.scope(body, inner, None, anon or name is None)
@@ -56,6 +70,10 @@ class CppReader:
                 text = self.src.text(st)
                 if " namespace " in f" {text} ":
                     self.facts.usings.append(strip_templates(text.split("namespace", 1)[1].rstrip(";")))
+            elif kind == "preproc_include":
+                path = field_of(st, "path")
+                if path is not None and path.type == "string_literal":
+                    self.facts.includes.append(self.src.text(path).strip('"'))
             elif kind in ("alias_declaration", "type_definition"):
                 self.alias(st, prefix)
             elif kind in ("preproc_def", "preproc_function_def"):
@@ -104,12 +122,12 @@ class CppReader:
                     self.facts.aliases[join(prefix, name)] = join(owner, name)
 
     def alias(self, node, prefix: str) -> None:
+        typ = field_of(node, "type")
         if node.type == "alias_declaration":
-            name, typ = field_of(node, "name"), field_of(node, "type")
+            name = field_of(node, "name")
             if name is not None and typ is not None:
                 self.facts.aliases[join(prefix, self.src.text(name))] = type_of(self.src.text(typ))
             return
-        typ = field_of(node, "type")
         for i, child in enumerate(node.children):
             if node.field_name_for_child(i) == "declarator" and typ is not None:
                 name = unwrap(child)
@@ -130,7 +148,8 @@ class CppReader:
                          file_local=anon or (static and cls is None and "::" not in raw))
         unit.virtual = self.is_virtual(node, decl)
         typ = field_of(node, "type")
-        unit.type_text = type_of(self.src.text(typ)) if typ is not None else ""
+        declared = type_of(self.src.text(typ)) if typ is not None else ""
+        unit.type_text = "" if deduced(declared) else declared
         self.params(decl, unit)
         for child in named_children(node):
             if child.type == "field_initializer_list":
@@ -159,7 +178,10 @@ class CppReader:
             text = self.src.text(name)
             unit.params.append(text)
             typ = field_of(p, "type")
-            unit.types[text] = type_of(self.src.text(typ)) if typ is not None else ""
+            declared = type_of(self.src.text(typ)) if typ is not None else ""
+            pointer = self.src.text(field_of(p, "declarator")).lstrip().startswith("*")
+            declared = f"{declared} *" if pointer and declared else declared
+            unit.types[text] = [] if deduced(declared) else [("cast", declared)]
 
     def declaration(self, node, prefix: str, cls: ClassFact | None, anon: bool) -> None:
         typ = field_of(node, "type")
@@ -182,7 +204,7 @@ class CppReader:
                 unit = self.unit("func", name, qual, owner, node, decl_only=True, static=static,
                                  file_local=anon or (static and cls is None))
                 unit.virtual = self.is_virtual(node, inner)
-                unit.type_text = type_text
+                unit.type_text = "" if deduced(type_text) else type_text
                 self.params(inner, unit)
                 continue
             name = unwrap(child)
@@ -191,12 +213,13 @@ class CppReader:
             text = self.src.text(name)
             unit = self.unit("field" if cls is not None else "var", text, join(prefix, text), prefix, node,
                              static=static, file_local=anon or (static and cls is None))
-            unit.type_text = type_text
+            unit.type_text = "" if deduced(type_text) else type_text
             value = field_of(child, "value") if child.type == "init_declarator" else None
             for j, sub in enumerate(node.children):
                 if node.field_name_for_child(j) == "default_value" and j > i:
                     value = value or sub
             if value is not None:
+                unit.values.append(self.ir(value, unit))
                 cpp_body.expr(self, value, unit, ())
 
 

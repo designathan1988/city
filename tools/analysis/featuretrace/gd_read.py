@@ -1,17 +1,14 @@
 """GDScript reader: the definitions a script makes and every name used inside each of them.
 
 Definitions are recognised by the language's own markers (`class_name`, `extends`, `func`, `var`, `const`, `signal`,
-`enum`, `class`, parameters, `for` bindings, lambdas). Inside a body every construct is read by its rule: a call, a
-member access (`a.b.c()`), an assignment, a branch (`if`/`elif`/`else`, `match`, `for`, `while`, with its condition kept),
-a `return`. The engine's calls by name are kept as references too: `emit`, `connect`, `emit_signal`, `call*`,
-`Callable(obj, "name")`, `preload`/`load`, `X.new()`, and every `&"name"` handed to a call (a StringName is how GDScript
-writes a name as a value).
+`enum`, `class`, parameters, `for` bindings, lambdas). Bodies are read by `gd_body`. Every value is kept as an
+expression tree built by `ir_gd` (log/trace-rules.md: VALUE, FLOW).
 """
 from __future__ import annotations
 
-from . import gd_body
+from . import gd_body, ir_gd
 from .model import ClassFact, FileFacts, Ref, Unit
-from .source import Source, field_of, is_identifier, named_children, string_value
+from .source import Source, field_of, named_children, string_value
 
 
 class GdReader:
@@ -20,7 +17,8 @@ class GdReader:
         self.res = res_path
         self.facts = FileFacts(src.display, "gd")
         self.narrowed = {}           # names an enclosing `is` test proves the type of
-        self.assigned = {}           # (class, member) -> the type of what a body assigns to it
+        self._lambdas = {}           # lambda node start byte -> local id (each lambda one unit)
+        self._scope = []             # (unit, class) the expression being built belongs to
 
     # ---- definitions -------------------------------------------------------------------------------------------
     def run(self) -> FileFacts:
@@ -28,10 +26,6 @@ class GdReader:
         cls = ClassFact(self.res, "gd", "", self.src.display, 1)
         self.facts.classes.append(cls)
         self.class_body(root, cls)
-        # an untyped member holds what is assigned to it (`_core = ClassDB.instantiate(&"Core")`)
-        for unit in self.facts.units:
-            if unit.kind == "var" and not unit.type_text:
-                unit.type_text = self.assigned.get((unit.owner, unit.name), "")
         self.facts.errors = int(root.has_error)
         return self.facts
 
@@ -51,9 +45,10 @@ class GdReader:
                         cls.bases.append(self.extends_spec(sub))
             elif kind == "extends_statement":
                 cls.bases.append(self.extends_spec(st))
-            elif kind == "function_definition":
+            elif kind in ("function_definition", "constructor_definition"):
                 self.function(st, cls)
-            elif kind in ("variable_statement", "const_statement"):
+            elif kind in ("variable_statement", "const_statement", "onready_variable_statement",
+                          "export_variable_statement"):
                 self.member(st, cls)
             elif kind == "signal_statement":
                 self.unit("signal", self.src.text(field_of(st, "name")), cls.key, st)
@@ -99,45 +94,14 @@ class GdReader:
         kind = "const" if node.type == "const_statement" else "var"
         unit = self.unit(kind, self.src.text(field_of(node, "name")), cls.key, node)
         unit.static = any(c.type == "static_keyword" for c in node.children)
-        unit.type_text = self.declared_type(node)
+        typ = field_of(node, "type")
+        unit.type_text = self.src.text(typ) if typ is not None and typ.type == "type" else ""
         value = field_of(node, "value")
         if value is not None:
+            unit.values.append(self.ir(value, unit, cls))
             self.expr(value, unit, cls, ())
 
-    def declared_type(self, node) -> str:
-        typ = field_of(node, "type")
-        if typ is not None and typ.type == "type":
-            return self.src.text(typ)
-        value = field_of(node, "value")
-        return self.infer(value) if value is not None else ""
-
-    def infer(self, value) -> str:
-        """The class a value is an instance (or the script) of, when the expression says it."""
-        cast = gd_body.type_test(self, value)
-        if cast is not None and value is not None:
-            return cast[1]
-        if value.type == "call":
-            callee = self.src.text(named_children(value)[0])
-            args = named_children(field_of(value, "arguments")) if field_of(value, "arguments") is not None else []
-            if callee in ("preload", "load") and args and string_value(self.src, args[0]) is not None:
-                return "path:" + string_value(self.src, args[0])
-            return gd_body.CALLED + callee if is_identifier(callee) else ""
-        if value.type == "attribute":
-            kids = named_children(value)
-            last = kids[-1]
-            if last.type == "attribute_call" and self.src.text(named_children(last)[0]) == "new":
-                head = kids[0]
-                if head.type == "call":
-                    return self.infer(head)
-                return ".".join(self.src.text(k) for k in kids[:-1])
-            if last.type == "attribute_call" and self.src.text(named_children(last)[0]) == "instantiate":
-                args = field_of(last, "arguments")
-                first = named_children(args)[0] if args is not None and named_children(args) else None
-                name = string_value(self.src, first)
-                return name or ""
-        return ""
-
-    def params(self, node, unit: Unit) -> None:
+    def params(self, node, unit: Unit, cls: ClassFact) -> None:
         params = field_of(node, "parameters")
         unit.required = 0
         for p in named_children(params) if params is not None else []:
@@ -148,43 +112,61 @@ class GdReader:
                 continue
             name = self.src.text(ident)
             unit.params.append(name)
-            typ = field_of(p, "type")
-            unit.types[name] = self.src.text(typ) if typ is not None and typ.type == "type" else ""
+            typ, default = field_of(p, "type"), field_of(p, "value")
+            if typ is not None and typ.type == "type":
+                unit.types[name] = [("cast", self.src.text(typ))]
+            else:
+                unit.types[name] = [self.ir(default, unit, cls)] if default is not None else []
 
     def function(self, node, cls: ClassFact) -> None:
         unit = self.unit("func", self.src.text(field_of(node, "name")), cls.key, node)
         unit.static = any(c.type == "static_keyword" for c in node.children)
         ret = field_of(node, "return_type")
         unit.type_text = self.src.text(ret) if ret is not None else ""
-        self.params(node, unit)
+        self.params(node, unit, cls)
         if field_of(node, "body") is not None:
             self.block(field_of(node, "body"), unit, cls, ())
 
-    def lambda_unit(self, node, owner: Unit, cls: ClassFact) -> Unit:
+    def lambda_id(self, node, owner: Unit, cls: ClassFact) -> int:
+        """The lambda's unit (made once, whether met while building a tree or while walking the body)."""
+        if node.start_byte in self._lambdas:
+            return self._lambdas[node.start_byte]
         line = self.src.line(node)
         lam = Unit("lambda", "gd", f"{owner.name}.<lambda:{line}>", f"{owner.qual}.<lambda:{line}>", cls.key,
                    self.src.display, line, self.src.end_line(node), local_id=len(self.facts.units))
         self.facts.units.append(lam)
-        lam.types = dict(owner.types)
+        self._lambdas[node.start_byte] = lam.local_id
+        lam.types = {k: list(v) for k, v in owner.types.items()}
         lam.lambdas = dict(owner.lambdas)
-        self.params(node, lam)
+        self.params(node, lam, cls)
         if field_of(node, "body") is not None:
             self.block(field_of(node, "body"), lam, cls, ())
-        return lam
+        return lam.local_id
 
     # ---- bodies ------------------------------------------------------------------------------------------------
+    def ir(self, node, unit: Unit, cls: ClassFact) -> tuple:
+        """The expression tree of a node; a name an enclosing `is` test proves is read as that type."""
+        tree = ir_gd.build(self.src, node, lambda n: self.lambda_id(n, unit, cls))
+        return narrowed(tree, self.narrowed) if self.narrowed else tree
+
     def add(self, unit: Unit, kind: str, name: str, node, cond, **extra) -> None:
         unit.refs.append(Ref(kind, name, line=self.src.line(node), cond=cond, **extra))
 
     def block(self, node, unit: Unit, cls: ClassFact, cond: tuple) -> None:
         for st in named_children(node):
-            self.statement(st, unit, cls, cond)
-
-    def statement(self, st, unit: Unit, cls: ClassFact, cond: tuple) -> None:
-        gd_body.statement(self, st, unit, cls, cond)
+            gd_body.statement(self, st, unit, cls, cond)
 
     def expr(self, node, unit: Unit, cls: ClassFact, cond: tuple) -> None:
         gd_body.expr(self, node, unit, cls, cond)
+
+
+def narrowed(tree, names: dict):
+    """The tree with each name an `is` test narrowed replaced by a value of the tested type."""
+    if not isinstance(tree, tuple) or not tree:
+        return tree
+    if tree[0] == "name" and tree[1] in names:
+        return ("cast", names[tree[1]])
+    return tuple(narrowed(t, names) if isinstance(t, tuple) else t for t in tree)
 
 
 def read_gd(src: Source, res_path: str) -> FileFacts:
