@@ -25,6 +25,7 @@
   "allowed_docs": [
     "CLAUDE.md",
     ".claude/REGISTRO-GOAL.md",
+    ".claude/skills/",
     "log/"
   ],
   "doc_exempt_names": [
