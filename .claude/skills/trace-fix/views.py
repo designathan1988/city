@@ -87,7 +87,9 @@ def next_step(state, out):
         for entry, a, b in batch:
             known = proof.prior_note(entry["path"], state["slug"]) if state.get("reuse") and os.path.isfile(
                 os.path.join(store.ROOT, entry["path"])) else None
+            on_route = [f"{u[2]}@{u[0]}" for u in entry.get("units", ()) if u[0] <= b and u[1] >= a]
             out.add(f"  {os.path.join(store.ROOT, entry['path']).replace(chr(92), '/')} offset={a} limit={b - a + 1}"
+                    + (f"  [on the route: {clip(', '.join(on_route), 160)}]" if on_route else "")
                     + (f"  [read in trace {known['trace']}, unchanged: `notes {entry['path']} --prior`, then `carry`]"
                        if known else ""))
         out.add("  then record them in one call: `record <file.json>` (reads, problems, new flow files), and `next`.")

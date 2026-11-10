@@ -46,7 +46,15 @@ everything is read anew.
 State the symptom as the player sees it. Find where that flow **starts** (the player's action, the tick, the
 frame sync, the load).
 
-**Locate with the code's own index, not by guessing.** In the C++ core use the LSP tool (clangd; `native/.clangd` names
+**Start with the route the script finds.** `$L trace --query "words of the symptom"` (or `--seed Class::method`,
+`--seed path/file`, `--seed file:line`; `--dry` only shows it) asks the repository's feature tracer and puts on the flow,
+in the order the code runs, every file involved: the entries that trigger it, the seeds, what they run, the
+infrastructure they use, the state they write and who reads that state later, each file with why it is there. `next`
+then gives the reading batches along that route and names, per chunk, the functions of it that are on the route.
+The tracer resolves by name and leaves out what only runs inside the calls (`--deep` adds it) and the tests
+(`--include project/tests`): the route is where to start, in order, not the whole truth. Complete it as you read.
+
+**Locate what the route misses with the code's own index, not by guessing.** In the C++ core use the LSP tool (clangd; `native/.clangd` names
 the compilation database it indexes): go to definition, find references, incoming and outgoing calls.
 That gives who really calls a function and what it really calls, through overloads, templates and virtual calls that
 a text search misses. Grep and Glob locate what clangd does not index: GDScript (`CityStore.dispatch`, the `CityCore`

@@ -5,7 +5,7 @@ runs, the line ranges read with what each chunk does, the problems found, the ca
 the fixes. It survives compaction and new sessions (`resume`, always a short answer) and it can fail: `read`
 refuses a chunk the Read tool did not return, `gate read` a flow not read in whole, `gate plan` a problem without
 a cause or a cause without a plan, `fix` anything before those gates, `gate close` an open problem.
-What each command does: commands.py. The changes a trace accepts: operations.py. State and paths: store.py.
+What each command does: commands.py. The flow found by script: route.py. The changes a trace accepts: operations.py. State and paths: store.py.
 Proof of reading and notes kept by content: proof.py. Output: views.py.
 Usage: python ledger.py <command> -h
 """
@@ -16,6 +16,7 @@ sys.dont_write_bytecode = True  # the skill's files are swapped in place: no sta
 import argparse  # noqa: E402
 
 import commands  # noqa: E402
+import route  # noqa: E402
 
 
 def main():
@@ -39,6 +40,13 @@ def main():
     p.add_argument("--why", required=True, help="who calls it or which data it reads or writes on this flow")
     p.add_argument("--after", help="a file already on the flow: the new ones run right after it")
     p.set_defaults(fn=commands.cmd_flow)
+    p = sub.add_parser("trace", help="ask the repository's feature tracer for the flow of a symptom and put it on the flow, in run order")
+    p.add_argument("--query", help="words of the symptom or of the feature")
+    p.add_argument("--seed", action="append", default=[], help="Class::method, path/file or file:line (may repeat)")
+    p.add_argument("--include", action="append", help="folders the tracer reads (default: the shipped game, tests left out)")
+    p.add_argument("--deep", action="store_true", help="also everything that runs inside its calls")
+    p.add_argument("--dry", action="store_true", help="show the route, record nothing")
+    p.set_defaults(fn=route.cmd_trace)
     sub.add_parser("next", help="the next batch of chunks to read, in parallel").set_defaults(fn=commands.cmd_next)
     p = sub.add_parser("read", help="record one chunk that was read in whole")
     p.add_argument("path")

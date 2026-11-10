@@ -1,6 +1,6 @@
 # Installing trace-fix
 
-1. Copy this folder to `<project>/.claude/skills/trace-fix/` (`SKILL.md`, `ledger.py`, `commands.py`, `operations.py`,
+1. Copy this folder to `<project>/.claude/skills/trace-fix/` (`SKILL.md`, `ledger.py`, `commands.py`, `operations.py`, `route.py`,
    `store.py`, `proof.py`, `views.py`, `read_log.py`, `selftest.py`).
    The skill is then listed in every session of the project and is invoked by `/trace-fix` or by itself when a problem
    is reported.

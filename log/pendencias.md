@@ -224,3 +224,18 @@ O que falta fazer, por área.
   and `tests/test_cbmtrace.py`. They cannot run without those copies, which the repository does not take. To decide: drop the variant, or
   make its evaluation fetch its subject at run time into `dist/`.
 - The tracer and `tools/analysis/arch` are two graphs of the same program (names against the compiler's AST): one owner is still to be made.
+
+## Analysis tools: what is built and what is still to build (2026-11-10 00:30, the user's order: build it all)
+Built: `ledger.py trace` of the trace-fix skill (`.claude/skills/trace-fix/route.py`): the feature tracer's answer becomes the flow of
+a trace in run order, with why each file is there and the functions on the route named in the reading batches.
+Still to build, in this order, each closed with its tests:
+1. `tools/analysis/arch`: read the working tree (`Repo.overlay` is empty), publish each entry's slice (order, call paths, members read
+   and written, jobs, locks) and a `trace` command over it; the route then comes from the compiler's graph where there is one.
+2. One graph, one owner: the tracer's query, upstream and consumers over the analyser's units; `causes.py`'s own frame reach removed.
+3. The documents checked against the code: every path, command and symbol CLAUDE.md and `log/*.md` name; passages on one subject paired.
+4. State ownership as a report and as rules: per member, who writes and reads it, on which thread, under which lock; CLAUDE.md's rules
+   (only commands and the simulation write the state, render only reads) as checks.
+5. The detectors the rework of 2026-11-07 dropped, recovered from the commit before `bd7ce441`: god by responsibility, scattered,
+   repeated rule and decision, no reader, no effect, locks, per-frame boundary and query, shader and texture cost; layer crossings and
+   cycles between modules; each with a precision judge (a read sample), not recall alone.
+6. The names the linker could not resolve published, and a slice's findings handed to the trace as candidates to confirm by reading.

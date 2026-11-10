@@ -148,6 +148,21 @@ def main():
                 f.write("line 22\n")
             check("carry a file changed since", ledger("carry", late, "--saw", "x"), 1)
 
+            # ---- the flow found by script: the repository's tracer on its own small fixture
+            fixture = 'tools/analysis/ftrace/tests/fixtures/notes_app'
+            if os.path.isdir(os.path.join(root, fixture)):
+                check('open for a route', ledger('open', 'route', '--request', 'storing a note'), 0)
+                check('trace with a seed nothing matches', ledger('trace', '--seed', 'NoSuch::thing', '--include', fixture), 1)
+                check('trace --dry records nothing', (ledger('trace', '--seed', 'NotesApi::store_note', '--include', fixture, '--dry'),
+                                                      len(state('route')['files'])), (0, 0))
+                check('trace puts the route on the flow', ledger('trace', '--seed', 'NotesApi::store_note', '--include', fixture), 0)
+                on_flow = [e['path'] for e in state('route')['files']]
+                check('the seed file and what it runs are on the flow, each once',
+                      (any(p.endswith('native/notes_api.cpp') for p in on_flow), any(p.endswith('native/note_book.cpp') for p in on_flow),
+                       len(on_flow) == len(set(on_flow)), len(on_flow) >= 3), (True, True, True, True))
+                check('every file of the route says why', all(e['why'] for e in state('route')['files']), True)
+                check('next names the functions on the route', (ledger('next'), 'on the route:' in ledger.out), (0, True))
+
             # ---- every answer under the limit, on a ledger far larger than a real one
             made = {"slug": "huge", "request": "r " * 2000, "opened": "2026-01-01 00:00", "note": "n " * 2000,
                     "read_gate": None, "closed": None,
