@@ -181,7 +181,7 @@ bool cell_seam(const CityState &s, const Grid &g, const Paving &pv, int i, int j
 	if (ground.empty()) return true; // the cell lies under the paving
 	// The height of every point of the cut polygon: a grid corner the terrain's, a point of the outline the paving's.
 	auto own_height = [&](const Point64 &q) {
-		if (g.corner(q.x) && g.corner(q.y)) return double(s.terrain.final_h[size_t(g.index_of_mm(q.y)) * size_t(g.N) + size_t(g.index_of_mm(q.x))]);
+		if (g.corner(q.x) && g.corner(q.y)) return double(s.terrain.final_at(g.index_of_mm(q.x), g.index_of_mm(q.y)));
 		return paving_at(pv, g, double(q.x) / MM, double(q.y) / MM);
 	};
 	std::vector<std::vector<double>> heights(ground.size());

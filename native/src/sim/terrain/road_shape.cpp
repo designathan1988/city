@@ -98,7 +98,7 @@ void Heightfield::apply_road_shape(const RoadShape &r, int x0, int z0, int x1, i
 			if (w < best_w[li] || (w == best_w[li] && n.d >= best_d[li])) continue;
 			best_w[li] = w;
 			best_d[li] = n.d;
-			final_h[gi] = lerpf(natural, height, w);
+			final_h.put(x, z, lerpf(natural, height, w), base_q);
 		}
 }
 

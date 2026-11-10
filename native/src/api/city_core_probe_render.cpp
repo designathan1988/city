@@ -77,7 +77,7 @@ Dictionary CityCore::memory_census() const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	const Heightfield &h = s.terrain;
-	d["terrain"] = vec_mib(h.base_q) + vec_mib(h.final_h) + vec_mib(h.ground_moved) + vec_mib(h.water) + vec_mib(h.tile_dirty);
+	d["terrain"] = vec_mib(h.base_q) + double(h.final_h.bytes()) / BYTES_PER_MIB + vec_mib(h.ground_moved) + vec_mib(h.water) + vec_mib(h.tile_dirty);
 	d["terrain_samples"] = int64_t(h.N) * h.N;
 	d["body_cache"] = double(s.buildings.designs.made->used()) / BYTES_PER_MIB;
 	d["buildings"] = vec_mib(s.buildings.items);

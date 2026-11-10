@@ -53,8 +53,7 @@ void TerrainBridge::write_region(const Heightfield &hf, Object *data, int bx, in
 	PackedByteArray bytes;
 	bytes.resize(int64_t(R) * R * BYTES_PER_SAMPLE);
 	float *dst = reinterpret_cast<float *>(bytes.ptrw());
-	for (int pz = 0; pz < R; pz++)
-		std::memcpy(dst + size_t(pz) * R, &hf.final_h[size_t(bz * R + pz) * hf.N + size_t(bx) * R], size_t(R) * BYTES_PER_SAMPLE);
+	for (int pz = 0; pz < R; pz++) hf.final_row(bz * R + pz, bx * R, R, dst + size_t(pz) * R);
 	region->call("set_height_map", Image::create_from_data(R, R, false, Image::FORMAT_RF, bytes));
 	if (create) {
 		PackedByteArray cb;
@@ -86,7 +85,7 @@ void TerrainBridge::far_heights_in(const Heightfield &hf, int x0, int z0, int x1
 	float *h = reinterpret_cast<float *>(far_h_.ptrw());
 	for (int j = std::max(0, (z0 + far_cells_ - 1) / far_cells_); j < far_side_ && j * far_cells_ <= z1; j++)
 		for (int i = std::max(0, (x0 + far_cells_ - 1) / far_cells_); i < far_side_ && i * far_cells_ <= x1; i++)
-			h[size_t(j) * far_side_ + i] = hf.final_h[size_t(j * far_cells_) * hf.N + size_t(i * far_cells_)];
+			h[size_t(j) * far_side_ + i] = hf.final_at(i * far_cells_, j * far_cells_);
 }
 
 void TerrainBridge::far_controls_in(const GroundPaint &paint, int x0, int z0, int x1, int z1) {
