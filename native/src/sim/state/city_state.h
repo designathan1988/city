@@ -18,6 +18,7 @@
 #include "sim/simulation/city_growth.h"
 #include "sim/state/change_log.h"
 #include "sim/state/edit_history.h"
+#include "sim/state/map_hold.h"
 #include "sim/street/furniture_kept.h"
 #include "sim/street/pole_routes.h"
 #include "sim/street/street_works.h"
@@ -129,6 +130,24 @@ struct CityState : CityData {
 	// mutable: const readers (the simulation step and render mesh jobs) take it shared through a const state
 	mutable std::shared_mutex map_mutex;
 	mutable std::mutex traffic_mutex;
+};
+
+// The render's one way to read the map: map_mutex shared for the guard's scope, and how deep its thread holds the map counted
+// (map_hold.h), so what a builder takes under it is seen. `release` lets the map go before the scope ends.
+class MapRead {
+public:
+	explicit MapRead(const CityState &s) : lock_(s.map_mutex) { map_hold::enter(); }
+	~MapRead() { release(); }
+	MapRead(const MapRead &) = delete;
+	MapRead &operator=(const MapRead &) = delete;
+	void release() {
+		if (!lock_.owns_lock()) return;
+		lock_.unlock();
+		map_hold::leave();
+	}
+
+private:
+	std::shared_lock<std::shared_mutex> lock_;
 };
 
 // Takes in the city read aside into `read` (caller holds live.map_mutex exclusively, the simulation stopped): the live state

@@ -41,6 +41,9 @@ public:
 	bool amber_stops(float v, float stop_m, float top, float left, int type) const;
 	float amber_wanted(float kmh) const;
 	godot::Dictionary job_pool_probe() const;
+	// Tests: the vertices and instances builders took while their thread held the map, by job lane, since the last `reset`
+	// (sim/state/map_hold.h); `counted` false in a DLL that does not count them (the export's).
+	godot::Dictionary map_hold(bool reset);
 	godot::Dictionary flow_replay(); // tests: the flow measure and the warrants alone through a fixed script (city_core_flow_probe.cpp)
 	godot::String flow_warrant(float major, float minor_max, float minor_total, int current) const; // tests: the rule alone, by AutoControl
 	int flow_junction(); // tests: a three-arm junction on automatic with no signal, or -1

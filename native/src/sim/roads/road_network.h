@@ -5,6 +5,7 @@
 #pragma once
 
 #include "core/grid.h"
+#include "core/id_table.h"
 #include "core/slot_ids.h"
 #include "sim/catalog/catalog.h"
 #include "sim/roads/geometry.h"
@@ -80,19 +81,25 @@ struct RoadSegment {
 // The street a segment is drawn along (its texture's V, a bridge's piers and towers): the run of segments through joints
 // (two arms in line), each laid on from the one before (its a node the other's b). `start`: the arc from the run's first
 // segment to this one's a node; `total`: the run's length. In a ring every segment starts where the ring comes back to it.
+// `face`: the face (0 right, 1 left of a -> b) the segment's main lamp row takes when both faces have a sidewalk
+// (sim/roads/street_furniture.h row_face): its chain's through every node of two arms (RoadNetwork::going_on), whichever way each
+// piece was drawn, the east or south face of the chain's lowest-numbered segment. Settled with the runs, so no reader of a segment
+// walks its street.
 struct StreetRun {
 	int run = -1; // the run's first segment (in a ring, the lowest id)
 	double start = 0, total = 0;
+	int8_t face = 0;
 };
 
 constexpr int ROAD_ARC_STEPS = 48; // chords a road's arc table holds
+constexpr int STREET_JOINT_ARMS = 2; // a node where a street goes on: only its two segments meet there
 constexpr int CROSSWALK_ARMS = 3; // crosswalks are painted at nodes of this many arms or more
 constexpr float ROAD_HASH_CELL = 64.f; // the cells roads are filed in, for the queries near a point
 
 class RoadNetwork {
 public:
-	std::vector<RoadNode> nodes;
-	std::vector<RoadSegment> segs;
+	IdTable<RoadNode> nodes;
+	IdTable<RoadSegment> segs;
 	SlotIds free_nodes, free_segs;
 	SpatialHash seg_hash, node_hash;
 	int version = 0; // bumps on every topology change
@@ -181,6 +188,14 @@ public:
 	}
 	// The street of segment s (StreetRun), as the last settle left it.
 	const StreetRun &street_run(int s) const { return runs_[size_t(s)]; }
+	// The piece going on from segment `from` through node `n` when only the two meet there (alive, not a loop on one node), else -1:
+	// the chain a street's lamp row and power line follow.
+	int going_on(int n, int from) const;
+	// What a reader of the box needs of the network, copied under its own ids (sim/state/city_cut.h): every segment and node the
+	// hashes file in the cells the box touches (the copy's hashes answer for the box alone), then twice the arms of the nodes of
+	// what was taken and their far nodes (a node's shape, its crossings and a joint's shared pole read every arm; an arm stands
+	// between its nodes), each segment with its street and the heights of its solved profile.
+	RoadNetwork cut(float minx, float minz, float maxx, float maxz) const;
 	int alive_segments() const { return live_segs_; }
 	int alive_nodes() const { return live_nodes_; }
 	int zoned_sides() const { return zoned_sides_; } // sides of live roads with a zone
@@ -202,15 +217,16 @@ private:
 	std::vector<ChangedBox> shape_boxes_;
 	std::vector<int> edited_segs_;
 	std::vector<ChangedBox> edited_boxes_;
-	std::vector<StreetRun> runs_; // by segment
+	IdTable<StreetRun> runs_; // by segment
 	std::vector<int> run_dirty_; // segments whose run may have changed: an arm of a node whose arms or joint changed
 	void settle_runs();
+	void settle_faces(const std::vector<int> &dirty); // StreetRun::face of every chain a dirty segment is on
 	int live_segs_ = 0, live_nodes_ = 0, zoned_sides_ = 0;
 
 	void update_bounds(int s);
 	void shape_changed(int s); // segment s's box and its two nodes
 	template <typename T>
-	static void take_id(std::vector<T> &items, SlotIds &free_list, int id);
+	static void take_id(IdTable<T> &items, SlotIds &free_list, int id);
 	bool bulb_clear(int n) const;
 };
 

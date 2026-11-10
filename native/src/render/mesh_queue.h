@@ -71,7 +71,7 @@ protected:
 			b->priority = priority;
 			b->material = surface_material_;
 			{
-				std::shared_lock<std::shared_mutex> map(s.map_mutex);
+				MapRead map(s);
 				if constexpr (std::is_same_v<Extra, NoExtra>) build(b->mb);
 				else build(b->mb, b->extra);
 			}

@@ -56,7 +56,18 @@ Dictionary CityProbes::job_pool_probe() const {
 	return d;
 }
 
+Dictionary CityProbes::map_hold(bool reset) {
+	Dictionary built;
+	for (const auto &[who, count] : map_hold::tally()) built[String(who.c_str())] = count;
+	if (reset) map_hold::clear();
+	Dictionary d;
+	d["counted"] = CHECKS;
+	d["built"] = built;
+	return d;
+}
+
 void CityProbes::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("map_hold", "reset"), &CityProbes::map_hold);
 	ClassDB::bind_method(D_METHOD("park_sample"), &CityProbes::park_sample);
 	ClassDB::bind_method(D_METHOD("plan_all_yards"), &CityProbes::plan_all_yards);
 	ClassDB::bind_method(D_METHOD("camera_clear", "at", "radius", "vehicles"), &CityProbes::camera_clear, DEFVAL(true));

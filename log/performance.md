@@ -442,3 +442,26 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
   16 h and 22 h, near, street, mid, far): vehicles on the lanes with their lamps at night, walkers on the footways and the
   crossings, trees, wires and posts drawn; footways meet the lot fronts in paving. Seen, not from this change: no pool of
   light under the street lamps at night (recorded in the ledger).
+
+### C9, first piece (2026-11-10 04:35): the measure of the cause, and what a cut of the city stands on
+- The check that fails because of C9: `tests/core/map_hold_test` (new). `MapRead` (`sim/state/city_state.h`) is the render's one
+  guard of the map's shared lock and counts how deep its thread holds it; in the tests' DLL (`CITY_CHECKS`, `core/checks.h`)
+  `MeshBuilder::add` and `mm_push` count every vertex and instance taken while the thread holds the map, by the lane of the job
+  (`sim/state/map_hold.h`, probe `map_hold`). The town of seed 1 streamed in from three views, before any conversion: roads
+  230,708, far roads 69,196, seams 473,416, props 706,682 built under the map; buildings 0 (they gather, then build). The test
+  names the producers that must build nothing under the map; a lane is added to it as its producer is converted.
+- P76 (new, `sim/roads/street_furniture_posts.cpp row_face`): `lamp_row` walked the whole street both ways through every node of
+  two arms at every call (and again for the other arm of each joint), in every road, far road, seam and prop job and every
+  furniture placement: n walks of n pieces for a street of n. The face is now a fact of the street the network settles with its
+  runs (`StreetRun::face`, `RoadNetwork::settle_faces`: one walk a chain a settle, for the chains a dirty segment is on);
+  `row_face` reads it; `RoadNetwork::going_on` is the chain's one definition. Cannot return: no reader of a segment has a walk
+  of its street left to call.
+- P75 (new, `sim/roads/road_network_shape.cpp settle_runs`): the settle allocated and zeroed a flag for every segment id of the
+  map at every road command; it keeps the segments it wrote in a small sorted list.
+- What a cut stands on (no producer uses it yet): `core/id_table.h` `IdTable` (the id tables of `RoadNetwork` and `RoadGrade`:
+  a vector by id in the live city, a box's records under the same ids in a cut; an id a cut does not hold stops the tests'
+  DLL), `SpatialHash::window` (the cells of a box, answering for that box alone; a query past it stops the tests' DLL),
+  `RoadNetwork::cut` (`sim/roads/road_network_cut.cpp`), `sim/terrain/ground_patch.h` (`GroundPatch`, `GroundRead`).
+- Check: `digest` equal to the golden, `traffic_hash_test`, `road_commands_test`, `road_edit_test`, `road_grade_test`,
+  `street_power_test`, `street_works_test`, `map_hold_test` pass; gates OK on the changed files. No picture can change yet (the
+  jobs still read the live city); photos at the close of C9.

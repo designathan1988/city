@@ -54,6 +54,8 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/core/shape_fields.h` — the fields of a block of shapes (a float, a count, a double, lists of them) and the macro that makes them a block's members: one owner for every family of shapes
 - `native/src/core/ring_triangles.cpp` · `native/src/core/ring_triangles.h` — the one triangulator of plans: a ring cut on its own points by ear clipping, then Lawson's flips to constrained Delaunay (the lab's earcut and `refine`); a junction's plate and a lot's ring
 - `native/src/core/grid.h` — chunks, chaves de célula, hash espacial e orçamento de build
+- `native/src/core/checks.h` — the checks the tests' DLL makes and the export's leaves out (`CITY_CHECKS`), and `city_stop`, which names the rule broken and ends the process where it broke
+- `native/src/core/id_table.h` — a table of records under stable ids (`IdTable`): a vector by id in the live city, only a place's records under the same ids in a cut a job copies; a record a cut does not hold stops the tests' DLL
 - `native/src/core/job_pool.cpp` · `native/src/core/job_pool.h` — pool de jobs por prioridade e `parallel_for`; a chave do job é tipada (`JobKey`: uma `JobLane` por usuário e um id), então dois usuários não se substituem na fila
 - `native/src/core/lru_cache.h` — a bounded cache of shared values made from their keys, safe from any thread: made once outside the lock, the least recently asked pushed out by cost (the bodies, the render's rooms and cut bodies)
 - `native/src/core/math.h` — vetores 2D no plano XZ
@@ -186,6 +188,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/roads/junction_outline.cpp` — the outlines of a node: a transition's cubic axis, a turning bulb's line, a squared footway corner, the ring the ground, the lots and the drawing take
 - `native/src/sim/roads/profiles.cpp` · `native/src/sim/roads/profiles.h` — derivação do perfil (faixas, linhas, calçadas, preço)
 - `native/src/sim/roads/road_network.cpp` · `native/src/sim/roads/road_network.h` · `native/src/sim/roads/road_network_deck.cpp` · `native/src/sim/roads/road_network_node.cpp` — armazenamento e consultas do grafo viário; onde um raio pousa num tabuleiro (`ray_deck`); o que um nó é para quem passa nele (faixa, retorno, movimento proibido)
+- `native/src/sim/roads/road_network_cut.cpp` — a cut of the road network (`RoadNetwork::cut`): the segments and nodes filed in a box, the arms of their nodes twice over, each with its street and its solved heights, under their own ids, for a job that builds off the map lock
 - `native/src/sim/roads/segment_flags.h` — what a segment's flags say: its furniture set and how it is lit (power line or lighting columns), the generator's, the zoned sides, the cutting's walls, where it runs on, the plates on its approaches, how it is built; the flags of a segment laid the other way round
 - `native/src/sim/roads/road_network_shape.cpp` — a node's shape and the streets through it: arm setbacks, dead-end bulbs, straight joints and the runs along them
 - `native/src/sim/roads/road_grade.cpp` · `native/src/sim/roads/road_grade.h` · `native/src/sim/roads/road_grade_internal.h` · `native/src/sim/roads/road_grade_profile.cpp` · `native/src/sim/roads/road_grade_solve.cpp` · `native/src/sim/roads/road_grade_rounds.cpp` · `native/src/sim/roads/road_grade_rounds.h` · `native/src/sim/roads/road_grade_tune.cpp` — single owner of road heights: the stations of each segment, ground read at 7 points, junction and transition plates, the ground, variable, elevated and sunken solvers, the rounds until the nodes settle; a segment's structure (ground, elevated, bridge, tunnel)
@@ -207,9 +210,11 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/state/city_state.h` — fonte única da verdade, travas, poses, jobs e revisões
 - `native/src/sim/state/city_take.cpp` — a city read aside taken into the live state (`take_city`) and the data's links to the channels (`CityState::bind`)
 - `native/src/sim/state/pose_buffer.h` — buffer triplo sem trava das poses (PoseFrame)
+- `native/src/sim/state/map_hold.cpp` · `native/src/sim/state/map_hold.h` — what a thread builds while it holds the map through `MapRead`: vertices and instances counted by job lane in the tests' DLL (the `map_hold` probe)
 - `native/src/sim/terrain/compose.cpp` — as alturas finais compostas (base, modificadores e chão das vias): a composição segurada de uma edição em massa (blocos fundidos, cada um composto uma vez) e o ponto mais perto de uma polilinha por regiões (faixa, cunha e pontas de cada peça)
 - `native/src/sim/terrain/final_heights.h` — the land's final heights kept by tile (only where a road or a pad changed the ground) and a height's 16-bit form
 - `native/src/sim/terrain/height_patch.h` — amostrador bilinear único do terreno e cópia das alturas para os jobs
+- `native/src/sim/terrain/ground_patch.h` — the ground as a reader off the map lock takes it: `GroundPatch` (a window's final heights and, when asked, natural ground and water samples) and `GroundRead`, the one handle over the live land or a patch
 - `native/src/sim/terrain/heightfield.cpp` · `native/src/sim/terrain/heightfield.h` — alturas, consultas, raycast, modificadores, formas das vias e o chão que se moveu
 - `native/src/sim/terrain/road_shape.cpp` · `native/src/sim/terrain/road_shape.h` — the ground shaped to a road by the resolved height: cut, fill, slope, the ground under the deck and the tunnel
 - `native/src/sim/terrain/terrain_brush.cpp` — pincel de relevo e formas
@@ -518,6 +523,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/tests/core/signal_demand_test.gd` · `project/tests/core/signal_demand_test.tscn` — the actuated signals run on demand: with nobody on the streets a signal rests in its green, and the city's calls change its stages
 - `project/tests/visual/capture_traffic_cases.gd` · `project/tests/visual/capture_traffic_cases.tscn` — the car traffic photographed where the city has it: zebras on busy streets while a car stands for somebody, the busiest junction with no signal
 - `project/tests/core/job_pool_test.gd` · `project/tests/core/job_pool_test.tscn` — a regra da fila de jobs: chaves de usuários diferentes convivem, a mais nova substitui a mesma
+- `project/tests/core/map_hold_test.gd` · `project/tests/core/map_hold_test.tscn` — no producer named in it builds while its thread holds the map: the town streamed in, the core's count of what was built under the map by job lane
 - `project/tests/core/flow_control_test.gd` · `project/tests/core/flow_control_test.tscn` — control by flow: the measure at known rates, the MUTCD's warrant points and the step down, real vehicles counted and a crossing that becomes a signal
 - `project/tests/core/lab_test.gd` · `project/tests/core/lab_test.tscn` — the Diagnostics: expected verdicts, the A/B arithmetic and a city measurement from the panel button
 - `project/tests/core/model_test.gd` · `project/tests/core/model_test.tscn` — Modelos pelo store e pela ferramenta: catálogo, encaixe, recusas, desfazer, fusão, biblioteca e foto

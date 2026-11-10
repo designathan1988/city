@@ -5,6 +5,7 @@
 
 #include "render/mesh_order.h"
 #include "render/surface_data.h"
+#include "sim/state/map_hold.h"
 
 #include <algorithm>
 
@@ -42,6 +43,7 @@ Color rgb8_to_color(uint32_t c) {
 }
 
 int MeshBuilder::add(const Vector3 &p, const Vector3 &nn, const Color &col, const Vector2 &t, const Vector2 &t2) {
+	map_hold::built(); // a vertex taken while the thread holds the map is counted (the tests' DLL)
 	v.push_back(p);
 	n.push_back(nn);
 	c.push_back(col);

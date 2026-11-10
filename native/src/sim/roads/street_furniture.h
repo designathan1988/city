@@ -50,11 +50,11 @@ struct LampRow {
 	}
 };
 LampRow lamp_row(const RoadNetwork &net, int sid);
-constexpr int STREET_JOINT_ARMS = 2; // a node where a street goes on: only its two segments meet there
 // The face (0 right, 1 left of a -> b) the main row of segment `sid` takes when both faces have a sidewalk: its street's,
 // kept through every node of two arms whichever way each segment was drawn (so the power line goes on pole to pole there,
-// Roadcraft powerLine.ts join), the east or south face of the street's lowest-numbered segment (NPIP-1 5.2).
-int row_face(const RoadNetwork &net, int sid);
+// Roadcraft powerLine.ts join), the east or south face of the street's lowest-numbered segment (NPIP-1 5.2). The network settles
+// it with its streets (StreetRun::face): read, never walked.
+inline int row_face(const RoadNetwork &net, int sid) { return net.street_run(sid).face; }
 // The share of a road (0 at a, 1 at b) that is not buried, by its ends' authored heights (Roadcraft 4.0 powerLine.ts openStretch): false when none is.
 bool open_stretch(const RoadNetwork &net, const RoadSegment &g, float &from, float &to);
 

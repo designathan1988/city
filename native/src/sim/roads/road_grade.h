@@ -6,6 +6,8 @@
 // The ground is handed in (sim/roads does not include sim/terrain): the natural ground, water standing as a floor.
 #pragma once
 
+#include "core/id_table.h"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -82,8 +84,8 @@ struct GradeNode {
 
 class RoadGrade {
 public:
-	std::vector<GradeProfile> prof; // by segment id
-	std::vector<GradeNode> node; // by node id
+	IdTable<GradeProfile> prof; // by segment id
+	IdTable<GradeNode> node; // by node id
 
 	// What changed since the last solve (RoadNetwork calls these on every edit).
 	void seg_changed(int s) { segs_.push_back(s); }

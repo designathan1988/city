@@ -190,7 +190,7 @@ void BuildingRenderer::submit(const CityState &s, int64_t key, bool, bool near, 
 	s.jobs->submit(job, priority, [this, &s, key, job, seq, version, near, mid, priority]() {
 		Inputs in;
 		{
-			std::shared_lock<std::shared_mutex> map(s.map_mutex); // only while copying: the build reads the copy
+			MapRead map(s); // only while copying: the build reads the copy
 			in = gather(s, &key, 1);
 		}
 		Built b = build_cpu(in, key, near, mid);
@@ -223,7 +223,7 @@ void BuildingRenderer::submit_super(const CityState &s, int64_t key, float prior
 			for (int i = 0; i < CHUNKS_PER_SUPER; i++) chunks[size_t(j * CHUNKS_PER_SUPER + i)] = cell_key(sx + i, sz + j);
 		Inputs in;
 		{
-			std::shared_lock<std::shared_mutex> map(s.map_mutex); // only while copying: the build reads the copy
+			MapRead map(s); // only while copying: the build reads the copy
 			in = gather(s, chunks.data(), int(chunks.size()));
 		}
 		size_t kept = 0; // the far level has no lots: a building in pieces is not in it at all (kept in order, each moved once)

@@ -113,6 +113,65 @@ void RoadNetwork::refresh_all() {
 	settle_runs();
 }
 
+int RoadNetwork::going_on(int n, int from) const {
+	const std::vector<int> &arms = nodes[size_t(n)].segs;
+	if (int(arms.size()) != STREET_JOINT_ARMS) return -1;
+	const int next = arms[0] == from ? arms[1] : arms[0];
+	const RoadSegment &g = segs[size_t(next)];
+	return next != from && g.alive && g.a != g.b ? next : -1;
+}
+
+namespace {
+// The segments a settle already wrote, kept sorted: a run or a chain is walked once, and nothing is sized by the map.
+bool settled_has(const std::vector<int> &settled, int s) { return std::binary_search(settled.begin(), settled.end(), s); }
+void settled_add(std::vector<int> &settled, std::vector<int> more) {
+	std::sort(more.begin(), more.end());
+	const size_t held = settled.size();
+	settled.insert(settled.end(), more.begin(), more.end());
+	std::inplace_merge(settled.begin(), settled.begin() + std::ptrdiff_t(held), settled.end());
+}
+} // namespace
+
+// The face of each chain a dirty segment is on (StreetRun::face): the chain walked once both ways from the segment through every
+// node of two arms, each piece with whether it runs the other way from it; the chain's lowest-numbered piece gives the face, its
+// east or south one, turned for every piece that runs the other way from that one.
+void RoadNetwork::settle_faces(const std::vector<int> &dirty) {
+	struct Piece {
+		int seg;
+		bool flip;
+	};
+	std::vector<Piece> chain;
+	std::vector<int> settled;
+	for (int s : dirty) {
+		if (s < 0 || s >= int(segs.size()) || !segs[size_t(s)].alive || settled_has(settled, s)) continue;
+		chain.clear();
+		chain.push_back({ s, false });
+		for (const bool toward_b : { true, false }) {
+			int at = s, n = toward_b ? segs[size_t(s)].b : segs[size_t(s)].a;
+			bool flip = false;
+			for (int next = going_on(n, at); next >= 0 && next != s; next = going_on(n, at)) {
+				const RoadSegment &here = segs[size_t(at)], &on = segs[size_t(next)];
+				flip = flip != ((here.b == n) != (on.a == n)); // the same way: it leaves the node the other arrives at
+				chain.push_back({ next, flip });
+				n = on.a == n ? on.b : on.a;
+				at = next;
+			}
+		}
+		Piece lowest = chain.front();
+		for (const Piece &p : chain)
+			if (p.seg < lowest.seg) lowest = p;
+		const RoadSegment &g = segs[size_t(lowest.seg)];
+		const RoadNode &a = nodes[size_t(g.a)], &b = nodes[size_t(g.b)];
+		const int8_t face = (b.x - a.x) - (b.z - a.z) >= 0 ? 0 : 1; // the right face looks to (-dz, dx): east is +x, south +z
+		std::vector<int> written;
+		for (const Piece &p : chain) {
+			runs_[size_t(p.seg)].face = p.flip != lowest.flip ? int8_t(1 - face) : face;
+			written.push_back(p.seg);
+		}
+		settled_add(settled, std::move(written));
+	}
+}
+
 void RoadNetwork::settle_runs() {
 	runs_.resize(segs.size());
 	std::vector<int> dirty;
@@ -131,10 +190,10 @@ void RoadNetwork::settle_runs() {
 		const int next = n.segs[0] == at ? n.segs[1] : n.segs[0];
 		return segs[size_t(next)].a == segs[size_t(at)].b ? next : -1;
 	};
-	std::vector<char> done(segs.size(), 0);
+	std::vector<int> settled; // the segments whose run this settle wrote
 	std::vector<int> run;
 	for (int s : dirty) {
-		if (s < 0 || s >= int(segs.size()) || done[size_t(s)]) continue;
+		if (s < 0 || s >= int(segs.size()) || settled_has(settled, s)) continue;
 		if (!segs[size_t(s)].alive) {
 			runs_[size_t(s)] = StreetRun();
 			continue;
@@ -151,7 +210,6 @@ void RoadNetwork::settle_runs() {
 		run.clear();
 		for (int at = head; at >= 0; at = after(at)) {
 			run.push_back(at);
-			done[size_t(at)] = 1;
 			const int next = after(at);
 			if (next == head) break;
 		}
@@ -160,10 +218,15 @@ void RoadNetwork::settle_runs() {
 		const int id = ring ? *std::min_element(run.begin(), run.end()) : head;
 		double start = 0;
 		for (int at : run) {
-			runs_[size_t(at)] = { id, ring ? total - segs[size_t(at)].len : start, total };
+			StreetRun &r = runs_[size_t(at)]; // its face is the chain's, settled below
+			r.run = id;
+			r.start = ring ? total - segs[size_t(at)].len : start;
+			r.total = total;
 			start += segs[size_t(at)].len;
 		}
+		settled_add(settled, run);
 	}
+	settle_faces(dirty);
 }
 
 } // namespace city

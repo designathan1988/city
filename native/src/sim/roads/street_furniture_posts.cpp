@@ -34,41 +34,6 @@ int straight_on(const RoadNetwork &net, int n, int approach) {
 	return best;
 }
 
-// The arm going on from segment `from` through node `n` when only the two meet there, else -1.
-int going_on(const RoadNetwork &net, int n, int from) {
-	const std::vector<int> &arms = net.nodes[size_t(n)].segs;
-	if (int(arms.size()) != STREET_JOINT_ARMS) return -1;
-	const int next = arms[0] == from ? arms[1] : arms[0];
-	const RoadSegment &g = net.segs[size_t(next)];
-	return next != from && g.alive && g.a != g.b ? next : -1;
-}
-
-} // namespace
-
-int row_face(const RoadNetwork &net, int sid) {
-	int lowest = sid;
-	bool flipped = false; // the lowest-numbered segment runs the other way from `sid`
-	for (const bool toward_b : { true, false }) {
-		int at = sid, n = toward_b ? net.segs[size_t(sid)].b : net.segs[size_t(sid)].a;
-		bool flip = false;
-		for (int next = going_on(net, n, at); next >= 0 && next != sid; next = going_on(net, n, at)) {
-			const RoadSegment &here = net.segs[size_t(at)], &on = net.segs[size_t(next)];
-			flip = flip != ((here.b == n) != (on.a == n)); // the same way: it leaves the node the other arrives at
-			if (next < lowest) {
-				lowest = next;
-				flipped = flip;
-			}
-			n = on.a == n ? on.b : on.a;
-			at = next;
-		}
-	}
-	const RoadSegment &g = net.segs[size_t(lowest)];
-	const RoadNode &a = net.nodes[size_t(g.a)], &b = net.nodes[size_t(g.b)];
-	const int face = (b.x - a.x) - (b.z - a.z) >= 0 ? 0 : 1; // the right face looks to (-dz, dx): east is +x, south +z
-	return flipped ? 1 - face : face;
-}
-
-namespace {
 // The face segment `seg`'s power line stands on, or -1 when it has none (lit by columns, no sidewalk, rails, a ring).
 int line_face(const RoadNetwork &net, int seg) {
 	const RoadSegment &g = net.segs[size_t(seg)];
@@ -84,7 +49,7 @@ int line_face(const RoadNetwork &net, int seg) {
 // line coming in carries on from its last pole, not two poles a few metres apart), `other` the segment it goes on into and
 // `other_face` the face its line takes.
 bool line_joint(const RoadNetwork &net, int sid, int n, int face, int &other, int &other_face) {
-	other = going_on(net, n, sid);
+	other = net.going_on(n, sid);
 	if (other < 0 || net.nodes[size_t(n)].crossing != CROSSING_NONE) return false;
 	const bool same_way = (net.segs[size_t(sid)].b == n) == (net.segs[size_t(other)].a == n); // the faces keep their names
 	other_face = line_face(net, other);
