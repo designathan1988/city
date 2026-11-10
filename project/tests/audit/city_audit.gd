@@ -62,6 +62,8 @@ func _traffic() -> void:
 	check(int(p.trips_lost) == 0, "no trip lost: %d" % p.trips_lost)
 	var inside: Array = p.people_overlaps
 	check(int(inside[0]) == 0 and int(inside[1]) == 0, "no walker stands inside another: %s" % [inside])
+	for pair: Array in p.get("people_overlap_pairs", []):
+		print("  walkers in one another: modes %d and %d at (%.1f, %.1f)%s" % [pair[0], pair[1], pair[2].x, pair[2].z, ", a party" if pair[3] else ""])
 	check(int(p.people_in_furniture) == 0, "no walker stands in the street's furniture: %d" % p.people_in_furniture)
 	check(int(p.red_from_stop) == 0, "no vehicle sets off through a red light: %d" % p.red_from_stop)
 

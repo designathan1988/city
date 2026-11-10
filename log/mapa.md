@@ -29,6 +29,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/api/script_enums.cpp` · `native/src/api/script_enums.h` — the core's enums by name for the scripts (constants "enums"): each enumerator's own name and value, a list the compiler checks against the enum's count
 - `native/src/api/frame_sections.h` — the parts of a frame's render CPU render_cost gives, in the panels' order (constants "frame_sections")
 - `native/src/sim/citygen/block_box.h` — a block's least-area rectangle, which its rows and columns are cut along (block_lots.cpp)
+- `project/tests/perf/memory_probe.gd` · `project/tests/perf/memory_probe.tscn` — what a map holds in memory by owner (working set, Godot's allocator, video by kind, the core's census), for a bare land or with its city
 - `native/src/api/city_core_audit.cpp` — the lots' defects read from the state (lot_audit): fronts off their footway, buildings on the paving or in one another, lots mostly lawn, ground by kind
 - `project/tests/audit/city_audit.gd` · `project/tests/audit/city_audit.tscn` — the city's audit: every defect a rule can state, by count and place (tools/tasks `audit`)
 - `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` · `native/src/api/city_core_probe_render.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas do núcleo: custo do quadro, chegada das poses e tráfego

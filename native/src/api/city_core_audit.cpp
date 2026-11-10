@@ -24,17 +24,21 @@ constexpr double FAR_M = 1e9; // no street within reach
 constexpr int WORST_KEPT = 8; // the worst places of each defect, listed with where they stand
 constexpr float TOUCH_M = 0.05f; // two bodies this far into one another only touch (the rounding of their corners)
 
-// From (x, z) to the nearest street's paving edge on the point's side (under 0: on the paving), or FAR_M with no street in reach.
+// From (x, z) to the nearest paving edge of the streets within reach, each on the point's side of it (under 0: on the paving), or
+// FAR_M with none. The least over the streets, not the nearest centre line's: beside a wide avenue a narrow cross street's line is
+// the nearer and its paving the farther.
 double paving_gap(const RoadNetwork &roads, double x, double z) {
-	double t = 0, dist = 0;
-	const int sid = roads.find_segment_near(x, z, REACH_M, t, dist);
-	if (sid < 0) return FAR_M;
-	const RoadSegment &g = roads.segs[size_t(sid)];
-	double px, pz, dx, dz;
-	g.q.at(t, px, pz);
-	g.q.deriv(t, dx, dz);
-	const Profile &p = roads.profile_of(sid);
-	return dist - ((x - px) * dz - (z - pz) * dx > 0 ? p.left : p.right);
+	double least = FAR_M;
+	roads.for_segments_near(x - REACH_M, z - REACH_M, x + REACH_M, z + REACH_M, [&](int sid) {
+		const RoadSegment &g = roads.segs[size_t(sid)];
+		double t = 0, dist = 0, px, pz, dx, dz;
+		closest_t(g.q, x, z, t, dist);
+		g.q.at(t, px, pz);
+		g.q.deriv(t, dx, dz);
+		const Profile &p = roads.profile_of(sid);
+		least = std::min(least, dist - ((x - px) * dz - (z - pz) * dx > 0 ? p.left : p.right));
+	});
+	return least;
 }
 
 // A place and its measure, the worst first.
