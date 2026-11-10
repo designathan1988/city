@@ -7,9 +7,32 @@
 #include <atomic>
 #include <memory>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#else
+#include <sched.h>
+#endif
+
 namespace city {
 
 namespace {
+// The logical processors this process may run on: its affinity, not the machine's count. A process confined to a few (a test
+// under the orchestrator, tools/tasks/pool.py) has places for those, never one a core of the machine.
+unsigned usable_processors() {
+#ifdef _WIN32
+	DWORD_PTR mine = 0, system = 0;
+	if (GetProcessAffinityMask(GetCurrentProcess(), &mine, &system) && mine) return unsigned(__builtin_popcountll(mine));
+#else
+	cpu_set_t set;
+	CPU_ZERO(&set);
+	if (sched_getaffinity(0, sizeof(set), &set) == 0 && CPU_COUNT(&set) > 0) return unsigned(CPU_COUNT(&set));
+#endif
+	return std::thread::hardware_concurrency();
+}
+
+
 thread_local bool in_pool = false;
 // The keyed job running on this thread (running_current).
 thread_local JobPool *running_pool = nullptr;
@@ -18,7 +41,7 @@ thread_local uint64_t running_seq = 0;
 } // namespace
 
 JobPool::JobPool(unsigned threads, std::chrono::milliseconds linger) : linger_(linger) {
-	const unsigned hw = std::thread::hardware_concurrency();
+	const unsigned hw = usable_processors();
 	const unsigned n = threads ? threads : std::max(2u, hw > 1 ? hw - 1 : 2u);
 	workers_.reserve(n);
 	idle_.reserve(n);
