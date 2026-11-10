@@ -1,5 +1,6 @@
 // The core's allocator as its threads use it (core/memory.cpp: new and delete on mimalloc, a heap a thread): a thread about to
-// sleep gives back to the system what its work freed.
+// sleep gives back to the system what its work freed. A heap's segment is committed as it is used, never whole (CMakeLists.txt,
+// MI_DEFAULT_EAGER_COMMIT): what the process holds follows what its threads hold.
 #pragma once
 
 namespace city {

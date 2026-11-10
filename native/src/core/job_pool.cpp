@@ -22,15 +22,30 @@ JobPool::JobPool(unsigned threads) {
 	const unsigned hw = std::thread::hardware_concurrency();
 	const unsigned n = threads ? threads : std::max(2u, hw > 1 ? hw - 1 : 2u);
 	threads_.reserve(n);
-	for (unsigned i = 0; i < n; i++) threads_.emplace_back([this]() { loop(); });
+	workers_.reserve(n);
+	idle_.reserve(n);
+	for (unsigned i = 0; i < n; i++) workers_.push_back(std::make_unique<Worker>());
+	for (unsigned i = 0; i < n; i++) threads_.emplace_back([this, i]() { loop(*workers_[i]); });
+}
+
+void JobPool::wake_one() {
+	if (idle_.empty()) return; // every worker is at work: the first to finish looks at the queue before it waits
+	Worker *w = idle_.back();
+	idle_.pop_back();
+	w->cv.notify_one();
+}
+
+void JobPool::wake_all() {
+	for (Worker *w : idle_) w->cv.notify_one();
+	idle_.clear();
 }
 
 JobPool::~JobPool() {
 	{
 		std::lock_guard<std::mutex> lk(m_);
 		stop_ = true;
+		wake_all();
 	}
-	cv_.notify_all();
 	for (std::thread &t : threads_)
 		if (t.joinable()) t.join();
 }
@@ -50,8 +65,8 @@ uint64_t JobPool::submit(JobKey key, float priority, std::function<void()> work)
 		slot.work = std::move(work);
 		newest_[key] = seq;
 		q_.push(Item{ priority, seq, key });
+		wake_one();
 	}
-	cv_.notify_one();
 	return seq;
 }
 
@@ -99,8 +114,8 @@ void JobPool::parallel_for(size_t n, const std::function<void(size_t)> &fn) {
 				std::lock_guard<std::mutex> lk(batch->m);
 				if (--batch->running == 0) batch->cv.notify_all();
 			});
+		for (size_t k = 0; k < helpers; k++) wake_one(); // a worker a helper, never the whole pool
 	}
-	cv_.notify_all();
 	for (size_t i = batch->next++; i < n; i = batch->next++) fn(i);
 	std::unique_lock<std::mutex> lk(batch->m);
 	batch->closed = true;
@@ -122,8 +137,8 @@ void JobPool::resume() {
 	{
 		std::lock_guard<std::mutex> lk(m_);
 		paused_ = false;
+		wake_all();
 	}
-	cv_.notify_all();
 }
 
 void JobPool::wait_idle() {
@@ -131,61 +146,70 @@ void JobPool::wait_idle() {
 	idle_cv_.wait(lk, [&]() { return idle(); });
 }
 
-void JobPool::loop() {
+void JobPool::loop(Worker &me) {
 	in_pool = true;
+	// This worker ran a keyed job since it last gave its freed memory back: its heap holds what the job built and freed. Only then
+	// has it anything to return (core/memory.h); a parallel_for helper, woken at the simulation's tick, leaves nothing behind.
+	bool owes = false;
+	// It ran something already: it waits above the workers that never did (a thread that starts late must not stand over the one at work).
+	bool worked = false;
+	const auto delay = std::chrono::milliseconds(std::max(1L, freed_memory_wait_ms()));
+	std::unique_lock<std::mutex> lk(m_); // held but while a job runs or memory is given back: a worker that finishes is on the idle stack before anybody can submit again
 	for (;;) {
+		while (!ready()) {
+			if (worked) idle_.push_back(&me);
+			else idle_.insert(idle_.begin(), &me);
+			const bool timed_out = owes ? me.cv.wait_for(lk, delay) == std::cv_status::timeout : (me.cv.wait(lk), false);
+			const auto at = std::find(idle_.begin(), idle_.end(), &me); // whoever woke it took it off; a timeout or a spurious wake did not
+			if (at != idle_.end()) idle_.erase(at);
+			if (timed_out && !ready()) { // idle for longer than the allocator keeps freed memory: nothing came to use it again
+				lk.unlock();
+				release_freed_memory();
+				owes = false;
+				lk.lock();
+			}
+		}
+		if (stop_ && q_.empty() && helpers_.empty()) return;
 		std::function<void()> work;
 		bool keyed = false;
 		JobKey key;
 		uint64_t seq = 0;
-		{
-			std::unique_lock<std::mutex> lk(m_);
-			const auto ready = [&]() { return stop_ || (!paused_ && (!q_.empty() || !helpers_.empty())); };
-			// With nothing to do for longer than the allocator keeps freed memory, the worker gives its own back before it sleeps for
-			// good (core/memory.h): what its jobs built was freed by the frame's thread, and nobody else can return it.
-			if (!cv_.wait_for(lk, std::chrono::milliseconds(std::max(1L, freed_memory_wait_ms())), ready)) {
-				lk.unlock();
-				release_freed_memory();
-				lk.lock();
-				cv_.wait(lk, ready);
+		if (!helpers_.empty()) {
+			work = std::move(helpers_.front());
+			helpers_.pop_front();
+		} else {
+			const Item item = q_.top();
+			q_.pop();
+			auto it = slots_.find(item.key);
+			if (it == slots_.end() || it->second.seq != item.seq) { // superseded while queued: its work went with the newer submit
+				if (idle()) idle_cv_.notify_all();
+				continue;
 			}
-			if (stop_ && q_.empty() && helpers_.empty()) return;
-			if (!helpers_.empty()) {
-				work = std::move(helpers_.front());
-				helpers_.pop_front();
-			} else {
-				const Item item = q_.top();
-				q_.pop();
-				auto it = slots_.find(item.key);
-				if (it == slots_.end() || it->second.seq != item.seq) { // superseded while queued: its work went with the newer submit
-					if (idle()) idle_cv_.notify_all();
-					continue;
-				}
-				work = std::move(it->second.work);
-				slots_.erase(it); // its newest job runs: an older heap entry finds no slot of its seq and is dropped
-				keyed = true;
-				key = item.key;
-				seq = item.seq;
-			}
-			++busy_;
+			work = std::move(it->second.work);
+			slots_.erase(it); // its newest job runs: an older heap entry finds no slot of its seq and is dropped
+			keyed = true;
+			key = item.key;
+			seq = item.seq;
 		}
+		++busy_;
+		worked = true;
+		lk.unlock();
 		if (keyed) {
 			running_pool = this;
 			running_key = key;
 			running_seq = seq;
+			owes = true;
 		}
 		work();
 		running_pool = nullptr;
 		work = nullptr; // the closure's captures go before the pool's lock is taken
-		{
-			std::lock_guard<std::mutex> lk(m_);
-			if (keyed) {
-				auto it = newest_.find(key);
-				if (it != newest_.end() && it->second == seq) newest_.erase(it);
-			}
-			--busy_;
-			if (busy_ == 0) idle_cv_.notify_all(); // wait_idle and pause wake on it
+		lk.lock();
+		if (keyed) {
+			auto it = newest_.find(key);
+			if (it != newest_.end() && it->second == seq) newest_.erase(it);
 		}
+		--busy_;
+		if (busy_ == 0) idle_cv_.notify_all(); // wait_idle and pause wake on it
 	}
 }
 

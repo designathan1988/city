@@ -84,6 +84,10 @@ FetchContent_MakeAvailable(mimalloc)
 # sources compile with the clock at the epoch (SOURCE_DATE_EPOCH, read by Clang, https://reviews.llvm.org/D135045, and by GCC), so
 # the DLL does not change with the hour it was built.
 set_target_properties(mimalloc-static PROPERTIES POSITION_INDEPENDENT_CODE ON C_COMPILER_LAUNCHER "${CMAKE_COMMAND};-E;env;SOURCE_DATE_EPOCH=0")
+# A segment (32 MiB, include/mimalloc/types.h) is committed as its pages are used. Its default (src/options.c, eager_commit with
+# eager_commit_delay 1) commits whole every segment of a thread but its first: 32 MiB of private bytes a thread whose first segment
+# was ever freed, on every worker of the pool, whatever the city holds (log/performance.md P-01: 22 segments, 704 MiB).
+target_compile_definitions(mimalloc-static PRIVATE MI_DEFAULT_EAGER_COMMIT=0)
 
 # Polygon booleans in integers (the lots cut against the paving), the same on every machine.
 set(CLIPPER2_UTILS OFF CACHE BOOL "" FORCE)

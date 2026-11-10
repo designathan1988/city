@@ -282,3 +282,20 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
 - Cannot return: no index is formed to be taken apart; the store has no entry by flat index.
 - Leaves with it: the 105 MiB second whole-map copy of a 20 km land (tiles stand only where a road or a pad changed the ground).
 - Check: `cli.py run digest` PASS, the state digest equal to the golden; gates OK on the changed files.
+
+### C3 (P41, P47): the pool's memory follows the work that runs at once
+- Cause: every thread of the core has a heap of its own (mimalloc) and the pool handed work to any of its workers (one shared
+  condition, `notify_one`): a thin stream of jobs went round all 23, each keeping the pages its turn touched; mimalloc's default
+  committed whole every segment of a thread but its first; and 2d53b55e made a worker collect after 10 ms without work, which the
+  simulation's `parallel_for` (20 Hz) turned into a forced purge on every worker twenty times a second.
+- Change: `core/job_pool.cpp`: idle workers wait in a stack, each on its own condition; a submit wakes the one that worked last
+  (a thread that never worked waits at the bottom), `parallel_for` wakes a worker a helper, never the whole pool; a worker that
+  finishes is on the stack before it lets the lock go. A worker gives its freed memory back only when a keyed job ran on it since
+  it last did (`owes`), so a helper woken by the tick collects nothing. `native/CMakeLists.txt`: `MI_DEFAULT_EAGER_COMMIT=0`, a
+  segment is committed as its pages are used.
+- Cannot return: the heaps that hold pages are the workers that ran at once, by construction of the stack; a collect needs a job
+  that allocated; no segment is committed ahead of use.
+- Left, under C19: a mesh's vertex data built by a job is freed by the frame's thread after the upload, so it returns to the
+  worker's heap only when that worker works again (now the same warm worker). It leaves when a job hands engine-owned bytes.
+- Check: `job_pool_test` (twelve jobs one after the other on a pool of four run on one thread; 3 threads before the never-worked
+  rule), `cli.py run digest` PASS, gates OK on the changed files. Memory itself not measured (the owner's order).

@@ -6,6 +6,9 @@
 // The heap holds only (priority, seq, key); a key's queued work lives in its slot, so a newer submit destroys the older
 // closure at once (outside the pool's lock) instead of keeping it until the heap reaches it. A running job asks current()
 // at its natural boundaries and returns early once a newer job of its key was submitted.
+// Work goes to the worker that worked last: the idle ones wait in a stack, each on a condition of its own, and a submit wakes the
+// top one. A thin stream of jobs therefore stays on one worker, whose heap and caches are warm, and the memory the pool's threads
+// hold follows the work that runs at once, not the machine's core count (every thread has a heap of its own, core/memory.cpp).
 #pragma once
 
 #include "core/random.h"
@@ -16,6 +19,7 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <thread>
@@ -79,11 +83,20 @@ private:
 		uint64_t seq = 0;
 		std::function<void()> work;
 	};
-	void loop();
+	// A worker's own condition: it waits on it while it stands in idle_.
+	struct Worker {
+		std::condition_variable cv;
+	};
+	void loop(Worker &me);
 	bool idle() const { return q_.empty() && helpers_.empty() && busy_ == 0; }
+	bool ready() const { return stop_ || (!paused_ && (!q_.empty() || !helpers_.empty())); } // a worker has something to take
+	void wake_one(); // the worker that went idle last, if any (m_ held)
+	void wake_all(); // every idle worker looks again (m_ held)
 	std::vector<std::thread> threads_;
+	std::vector<std::unique_ptr<Worker>> workers_;
+	std::vector<Worker *> idle_; // the workers waiting: the last to go idle on top, the ones that never worked at the bottom
 	std::mutex m_;
-	std::condition_variable cv_, idle_cv_;
+	std::condition_variable idle_cv_;
 	std::priority_queue<Item, std::vector<Item>, Later> q_;
 	std::deque<std::function<void()>> helpers_; // parallel_for helpers, taken before any keyed job
 	size_t busy_ = 0;

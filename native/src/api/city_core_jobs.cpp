@@ -10,6 +10,8 @@
 
 #include <atomic>
 #include <mutex>
+#include <set>
+#include <thread>
 
 using namespace godot;
 
@@ -37,6 +39,20 @@ Dictionary CityProbes::job_pool_probe() const {
 	d["replaced"] = int64_t(pool.replaced());
 	d["keys_left"] = int64_t(pool.tracked()); // forgotten once run: the bookkeeping does not grow with the map
 	d["game_keys"] = int64_t(state_->jobs->tracked()); // the game's pool now: keys with a job queued
+	// Jobs that come one after the other stay on one worker of several: the one that worked last is woken first.
+	constexpr unsigned SERIAL_WORKERS = 4; // more than one, so a job has other workers it could go to
+	constexpr int SERIAL_JOBS = 12; // enough turns for a rotation among the workers to show
+	std::mutex ids_lock;
+	std::set<std::thread::id> ids;
+	JobPool several(SERIAL_WORKERS);
+	for (int i = 0; i < SERIAL_JOBS; i++) {
+		several.submit(JobKey{ JobLane::PROBE_KEY, i }, 0.f, [&]() {
+			std::lock_guard<std::mutex> lk(ids_lock);
+			ids.insert(std::this_thread::get_id());
+		});
+		several.wait_idle();
+	}
+	d["serial_threads"] = int64_t(ids.size());
 	return d;
 }
 
