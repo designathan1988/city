@@ -113,8 +113,9 @@ endif()
 
 # The tests' DLL: an index out of a container stops there, the first time, with its place (libc++ Hardening.rst, fast mode): the
 # bug shows in any ordinary run, not when the heap happens to make it visible.
+# CITY_CHECKS: the core's own rules checked there too (src/core/checks.h), where the export's DLL carries no branch for them.
 if(GODOTCPP_TARGET STREQUAL "template_debug")
-    target_compile_definitions(citycore PRIVATE _LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_FAST)
+    target_compile_definitions(citycore PRIVATE _LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_FAST CITY_CHECKS=1)
 endif()
 
 get_target_property(GODOTCPP_SUFFIX godot-cpp GODOTCPP_SUFFIX)
