@@ -1,187 +1,175 @@
-"""C++ expressions: calls, member chains, assignments, addresses of functions, lambdas, `new`, and Godot's registrations.
-
-Each construct is read by its grammar rule. A member chain records its receivers in order and returns them, so a
-call on a call's result (`get().f()`) keeps the first call as the receiver's origin.
+"""C++ expressions (log/trace-rules.md: CALL, FLOW, BIND): calls, member access, assignments, addresses of functions,
+lambdas, `new`, and Godot's registrations. Receivers, arguments and written values are kept as expression trees; a
+member reached with `->` has as receiver what the pointer points at.
 """
 from __future__ import annotations
 
 from . import cpp_body
-from .cpp_names import TYPED, strip_templates, template_call_type
-from .gd_body import CALLED, UNKNOWN
+from .cpp_names import strip_templates
+from .ir import put
 from .model import STD_MUTATORS
 from .rules import GDEXT_BIND as BIND_CALLS, GDEXT_PROPERTY, GDEXT_SIGNAL, NAME_CALLS
 from .source import field_of, is_identifier, named_children, string_value
 
-ITEM = "<item>"      # a subscript's result: a container's element
-ITER = "<iter>"      # what a range-for walks: a container's element (a map's key and value pair)
-DEREF = "<deref>"    # `->`: the object a pointer, smart pointer, optional or iterator stands for
 THREAD_NAMES = ("thread", "jthread", "async")
+LITERALS = ("string_literal", "raw_string_literal", "number_literal", "char_literal", "this", "true", "false", "null",
+            "nullptr", "comment", "type_descriptor", "primitive_type", "sizeof_expression", "concatenated_string")
+STATEMENTS = ("compound_statement", "if_statement", "for_statement", "for_range_loop", "while_statement",
+              "do_statement", "switch_statement", "return_statement", "declaration", "try_statement")
 
 
 def add(r, unit, kind, name, node, cond, **extra) -> None:
     cpp_body.add(r, unit, kind, name, node, cond, **extra)
 
 
-def qualified(text: str) -> tuple[tuple, str]:
-    parts = strip_templates(text).split("::")
-    return tuple(parts[:-1]), parts[-1]
+def scoped(text: str) -> tuple[str, str]:
+    """`ns::A::f` as ("ns::A", "f")."""
+    scope, _, name = strip_templates(text).rpartition("::")
+    return scope, name
+
+
+def receiver(r, node, unit) -> tuple:
+    """The receiver of a member access: the object written, or what it points at for `->`."""
+    base = r.ir(field_of(node, "argument"), unit)
+    op = field_of(node, "operator")
+    return ("deref", base) if op is not None and r.src.text(op) == "->" else base
+
+
+def owner_of(base: tuple | None) -> tuple[tuple | None, str]:
+    """A receiver tree as (its own receiver, member name): `a.b` -> (a, "b"), `x` -> (None, "x")."""
+    if base is None:
+        return None, ""
+    if base[0] == "member":
+        return (("deref", base[1]) if base[3] else base[1]), base[2]
+    if base[0] == "name":
+        return None, base[1]
+    return base, ""
 
 
 def expression(r, node, unit, cond) -> None:
     if node is None:
         return
     kind = node.type
-    if kind in ("compound_statement", "if_statement", "for_statement", "for_range_loop", "while_statement",
-                "do_statement", "switch_statement", "return_statement", "declaration", "try_statement"):
+    if kind in STATEMENTS:
         cpp_body.statement(r, node, unit, cond)
     elif kind == "call_expression":
         call(r, node, unit, cond)
-    elif kind in ("field_expression", "subscript_expression"):
-        chain(r, node, unit, cond)
+    elif kind == "field_expression":
+        expression(r, field_of(node, "argument"), unit, cond)
+        add(r, unit, "read", strip_templates(r.src.text(field_of(node, "field"))), node, cond,
+            base=receiver(r, node, unit))
     elif kind == "identifier":
         add(r, unit, "read", r.src.text(node), node, cond)
     elif kind == "qualified_identifier":
-        recv, name = qualified(r.src.text(node))
-        add(r, unit, "read", name, node, cond, recv=recv, qualified=True)
-    elif kind in ("assignment_expression",):
-        target(r, field_of(node, "left"), unit, cond)
+        scope, name = scoped(r.src.text(node))
+        add(r, unit, "read", name, node, cond, qualified=True, scope=scope)
+    elif kind == "assignment_expression":
+        value = r.ir(field_of(node, "right"), unit)
+        op = field_of(node, "operator")
+        target(r, field_of(node, "left"), unit, cond, value if op is None or r.src.text(op) == "=" else None)
         expression(r, field_of(node, "right"), unit, cond)
     elif kind == "update_expression":
-        target(r, field_of(node, "argument"), unit, cond)
+        target(r, field_of(node, "argument"), unit, cond, None)
     elif kind == "pointer_expression" and r.src.text(node).lstrip().startswith("&"):
         inner = field_of(node, "argument")
         if inner is not None and inner.type in ("identifier", "qualified_identifier"):
-            recv, name = qualified(r.src.text(inner))
-            add(r, unit, "value", name, inner, cond, recv=recv, qualified=bool(recv))
+            scope, name = scoped(r.src.text(inner))
+            add(r, unit, "value", name, inner, cond, qualified=bool(scope), scope=scope)
         else:
             expression(r, inner, unit, cond)
     elif kind == "lambda_expression":
-        lam = cpp_body.lambda_unit(r, node, unit)
-        add(r, unit, "lambda", lam.name, node, cond, target=lam.local_id)
+        add(r, unit, "lambda", "", node, cond, target=r.lambda_id(node, unit))
     elif kind == "new_expression":
-        recv, name = qualified(r.src.text(field_of(node, "type")))
-        add(r, unit, "new", name, node, cond, recv=recv, qualified=bool(recv))
-        for child in named_children(node):
-            if child.type in ("argument_list", "initializer_list"):
-                expression(r, child, unit, cond)
-    elif kind not in ("string_literal", "raw_string_literal", "number_literal", "char_literal", "this", "true",
-                      "false", "null", "nullptr", "comment", "type_descriptor", "primitive_type", "sizeof_expression"):
+        scope, name = scoped(r.src.text(field_of(node, "type")))
+        args = next((c for c in named_children(node) if c.type in ("argument_list", "initializer_list")), None)
+        add(r, unit, "new", name, node, cond, qualified=bool(scope), scope=scope,
+            args=tuple(r.ir(a, unit) for a in named_children(args)) if args is not None else ())
+        expression(r, args, unit, cond)
+    elif kind not in LITERALS:
         for child in named_children(node):
             expression(r, child, unit, cond)
 
 
-def target(r, node, unit, cond) -> None:
-    """The left side of an assignment or an increment: the name written."""
+def target(r, node, unit, cond, value: tuple | None) -> None:
+    """The left side of an assignment or an increment: the name written and the value that flows into it
+    (None for a compound assignment or an increment: the value keeps its type)."""
     if node is None:
         return
+    args = (value,) if value is not None else ()
     if node.type == "identifier":
-        add(r, unit, "write", r.src.text(node), node, cond)
+        name = r.src.text(node)
+        if name in unit.types and value is not None:
+            unit.types[name].append(value)
+        add(r, unit, "write", name, node, cond, args=args)
     elif node.type == "qualified_identifier":
-        recv, name = qualified(r.src.text(node))
-        add(r, unit, "write", name, node, cond, recv=recv, qualified=True)
+        scope, name = scoped(r.src.text(node))
+        add(r, unit, "write", name, node, cond, qualified=True, scope=scope, args=args)
     elif node.type == "field_expression":
-        base = through(r, node, chain(r, field_of(node, "argument"), unit, cond))
-        add(r, unit, "write", r.src.text(field_of(node, "field")), node, cond, recv=base)
+        expression(r, field_of(node, "argument"), unit, cond)
+        add(r, unit, "write", r.src.text(field_of(node, "field")), node, cond, base=receiver(r, node, unit), args=args)
     elif node.type == "subscript_expression":
-        target(r, field_of(node, "argument"), unit, cond)
+        target(r, field_of(node, "argument"), unit, cond, put(value) if value is not None else None)
         for child in named_children(node)[1:]:
             expression(r, child, unit, cond)
     elif node.type in ("pointer_expression", "parenthesized_expression"):
-        inner = field_of(node, "argument") or (named_children(node) or [None])[0]
-        target(r, inner, unit, cond)
+        target(r, field_of(node, "argument") or (named_children(node) or [None])[0], unit, cond, value)
     else:
         expression(r, node, unit, cond)
 
 
-def through(r, node, base: tuple) -> tuple:
-    """A member reached with `->` is reached through what the receiver points at."""
-    op = field_of(node, "operator")
-    return base + (DEREF,) if op is not None and r.src.text(op) == "->" else base
-
-
-def chain(r, node, unit, cond) -> tuple:
-    """The receiver names of a member access, in order; every name and call met on the way is recorded."""
-    kind = node.type
-    if kind == "identifier":
-        name = r.src.text(node)
-        add(r, unit, "read", name, node, cond)
-        return (name,)
-    if kind == "this":
-        return ("this",)
-    if kind == "qualified_identifier":
-        recv, name = qualified(r.src.text(node))
-        add(r, unit, "read", name, node, cond, recv=recv, qualified=True)
-        return ("::".join(recv + (name,)),)
-    if kind == "field_expression":
-        base = through(r, node, chain(r, field_of(node, "argument"), unit, cond))
-        name = r.src.text(field_of(node, "field"))
-        add(r, unit, "read", name, node, cond, recv=base)
-        return base + (name,)
-    if kind == "call_expression":
-        return call(r, node, unit, cond)
-    if kind == "subscript_expression":
-        base = chain(r, field_of(node, "argument"), unit, cond)
-        for child in named_children(node)[1:]:
-            expression(r, child, unit, cond)
-        return base + (ITEM,)
-    if kind in ("parenthesized_expression", "pointer_expression"):
-        inner = field_of(node, "argument") or (named_children(node) or [None])[0]
-        return chain(r, inner, unit, cond) if inner is not None else (UNKNOWN,)
-    expression(r, node, unit, cond)
-    return (UNKNOWN,)
-
-
-def call(r, node, unit, cond) -> tuple:
-    """A call; returns the receiver chain its result stands for."""
+def call(r, node, unit, cond) -> None:
     src = r.src
     fn = field_of(node, "function")
     args = field_of(node, "arguments")
     argv = named_children(args) if args is not None else []
+    base, scope = None, ""
     if fn.type == "field_expression":
-        recv = through(r, fn, chain(r, field_of(fn, "argument"), unit, cond))
+        expression(r, field_of(fn, "argument"), unit, cond)
+        base = receiver(r, fn, unit)
         name = strip_templates(src.text(field_of(fn, "field")))
-        qual = False
     elif fn.type in ("identifier", "qualified_identifier", "template_function"):
-        recv, name = qualified(src.text(fn))
-        qual = bool(recv)
-        if fn.type == "template_function":
-            targs = field_of(fn, "arguments")
+        scope, name = scoped(src.text(fn))
+        if fn.type == "template_function" or "<" in src.text(fn):
+            targs = field_of(fn, "arguments") or next((c for c in named_children(fn)
+                                                        if c.type == "template_argument_list"), None)
             for t in named_children(targs) if targs is not None else []:
-                tr, tn = qualified(src.text(t))
-                if is_identifier(tn):
-                    add(r, unit, "new", tn, t, cond, recv=tr, qualified=bool(tr))
+                tscope, tname = scoped(src.text(t))
+                if is_identifier(tname):
+                    add(r, unit, "new", tname, t, cond, qualified=bool(tscope), scope=tscope)
     else:
         expression(r, fn, unit, cond)
         for a in argv:
             expression(r, a, unit, cond)
-        return (UNKNOWN,)
+        return
     if registration(r, name, argv, unit, node, cond):
-        return (UNKNOWN,)
+        return
     first = string_value(src, argv[0]) if argv else None
+    trees = tuple(r.ir(a, unit) for a in argv)
     if name == "emit_signal" and first is not None:
-        add(r, unit, "emit", first, node, cond, recv=recv)
-        argv = argv[1:]
+        add(r, unit, "emit", first, node, cond, base=base, args=trees[1:])
     elif name in NAME_CALLS and is_identifier(first):
-        add(r, unit, "name", first, node, cond, recv=recv, text=first)
-        argv = argv[1:]
+        add(r, unit, "name", first, node, cond, base=base, text=first, args=trees[1:])
     else:
-        add(r, unit, "call", name, node, cond, recv=recv, qualified=qual, argc=len(argv))
-        if name in STD_MUTATORS and recv and is_identifier(recv[-1]):
-            add(r, unit, "write", recv[-1], node, cond, recv=recv[:-1])
+        add(r, unit, "call", name, node, cond, base=base, qualified=bool(scope), scope=scope, argc=len(argv),
+            args=trees)
+        owner, member = owner_of(base)
+        if name in STD_MUTATORS and member:
+            value = put(trees[-1]) if trees else None
+            if owner is None and member in unit.types and value is not None:
+                unit.types[member].append(value)
+            add(r, unit, "write", member, node, cond, base=owner, args=(value,) if value is not None else ())
     thread = name in THREAD_NAMES
     for a in argv:
         before = len(unit.refs)
         expression(r, a, unit, cond)
         if thread:
             for ref in unit.refs[before:]:
-                if ref.kind in ("value", "lambda"):
-                    ref.kind = "thread" if ref.kind == "value" else ref.kind
-    named = template_call_type(src.text(fn)) if fn.type != "field_expression" else None
-    return (TYPED + named,) if named else recv + (CALLED + name,)
+                if ref.kind == "value":
+                    ref.kind = "thread"
 
 
 def registration(r, name, argv, unit, node, cond) -> bool:
-    """Godot's bindings: a name the engine calls a method by, a signal, a property's accessors."""
+    """Godot's bindings: a name the engine calls a method by, a signal, a property's accessors (BIND)."""
     src = r.src
     line = src.line(node)
     if name in BIND_CALLS:

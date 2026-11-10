@@ -38,3 +38,16 @@ void Derived::run() {}
 int reader(const State &s) { return s.revision + int(s.log.road_chunks.size()); }
 
 } // namespace fx
+
+namespace fx2 {
+struct Arg {};
+int adl_target(Arg a) { return 0; }
+} // namespace fx2
+
+namespace fx {
+auto deduced() { return Node2(); }
+int callers() {
+	deduced().touch();
+	return adl_target(fx2::Arg{});
+}
+} // namespace fx

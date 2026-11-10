@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from .ir import LITERAL, name, union
 from .rules import BIND_CALLS
+from .rules import GD_RULES
 from .source import field_of, named_children, string_value
 
 TESTS = ("is", "in", "not", "and", "or", "&&", "||", "==", "!=", "<", ">", "<=", ">=")
@@ -18,7 +19,13 @@ def build(src, node, lam) -> tuple:
     """The IR of an expression node; `lam(node)` gives the local id of a lambda's unit."""
     if node is None:
         return LITERAL
-    return BUILDERS[node.type](src, node, lam)
+    builder = BUILDERS.get(node.type)
+    if builder is not None:
+        return builder(src, node, lam)
+    # a construct of another role in an expression's place (log/trace-rules.md): a type names a value of that
+    # type (a functional cast `T(x)`); anything else carries no value of the program
+    roles = GD_RULES.get(node.type, ())
+    return ("cast", " ".join(src.text(node).split())) if "TYPE" in roles else LITERAL
 
 
 def _args(src, node, lam) -> tuple:

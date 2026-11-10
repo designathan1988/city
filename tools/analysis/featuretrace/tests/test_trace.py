@@ -69,12 +69,10 @@ class Trace(unittest.TestCase):
     def test_is_narrows_the_receiver(self):
         self.assertEqual(self.edges("Controller.narrowed")["RoadTool._lay"].how, "exact")
 
-    def test_untyped_receiver_gives_candidates(self):
+    def test_untyped_receiver_holds_what_flows_into_it(self):
+        # FLOW: `o` has no type; its only caller passes a RoadTool (no candidates by name)
         out = self.edges("Controller.untyped", "call")
-        self.assertEqual(set(out), {"ToolBase.click", "RoadTool.click"})
-        self.assertTrue(all(e.how.startswith("candidates") for e in out.values()))
-        exact = walk.forward(self.rs, [self.gid("Controller.untyped")], exact=True)
-        self.assertEqual(len(exact.reached), 1)
+        self.assertEqual({k: e.how for k, e in out.items()}, {"RoadTool.click": "exact"})
 
     def test_signals_in_code_and_in_scene(self):
         self.assertIn("Controller.picked", self.edges("Controller._on_pressed", "emit"))

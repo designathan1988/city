@@ -54,5 +54,21 @@ class RuleTable(unittest.TestCase):
         self.assertTrue(all(ids for table in (rules.GD_RULES, rules.CPP_RULES) for ids in table.values()))
 
 
+
+class Handlers(unittest.TestCase):
+    def test_every_rule_has_a_handler(self):
+        import importlib
+        used = {r for table in (rules.GD_RULES, rules.CPP_RULES) for ids in table.values() for r in ids} - {"NONE"}
+        self.assertLessEqual(used, set(rules.HANDLERS))
+        for rule, paths in rules.HANDLERS.items():
+            self.assertTrue(paths, rule)
+            for path in paths:
+                module, _, attr = path.partition(":")
+                target = importlib.import_module(f"featuretrace.{module}")
+                for part in attr.split("."):
+                    target = getattr(target, part)
+                self.assertTrue(callable(target), path)
+
+
 if __name__ == "__main__":
     unittest.main()

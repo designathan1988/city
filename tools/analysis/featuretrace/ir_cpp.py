@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from .cpp_names import strip_templates, template_call_type, type_of
 from .ir import LITERAL, name, union
+from .rules import CPP_RULES
 from .source import field_of, named_children
 
 
@@ -15,7 +16,13 @@ def build(src, node, lam) -> tuple:
     """The IR of an expression node; `lam(node)` gives the local id of a lambda's unit."""
     if node is None:
         return LITERAL
-    return BUILDERS[node.type](src, node, lam)
+    builder = BUILDERS.get(node.type)
+    if builder is not None:
+        return builder(src, node, lam)
+    # a construct of another role in an expression's place (log/trace-rules.md): a type names a value of that
+    # type (a functional cast `T(x)`); anything else carries no value of the program
+    roles = CPP_RULES.get(node.type, ())
+    return ("cast", " ".join(src.text(node).split())) if "TYPE" in roles else LITERAL
 
 
 def _inner(src, node, lam):
@@ -32,7 +39,10 @@ def _call(src, node, lam):
     named = template_call_type(src.text(fn)) if fn.type != "field_expression" else None
     if named:
         return ("cast", named)
-    return ("call", build(src, fn, lam), _args(src, field_of(node, "arguments"), lam))
+    callee = build(src, fn, lam)
+    if callee[0] == "cast":
+        return callee                    # calling a type is a functional cast: a value of that type
+    return ("call", callee, _args(src, field_of(node, "arguments"), lam))
 
 
 def _field(src, node, lam):

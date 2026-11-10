@@ -1,52 +1,30 @@
-"""The class behind a receiver: `x` in `x.f()`, `a.b` in `a.b.c()`, `get()` in `get().f()`.
+"""VALUE, LOOK and FLOW (log/trace-rules.md): the types an expression tree can hold.
 
-The type comes from what the code declares: a parameter's or local's type, a field's or variable's type, a function's
-return type, the class named by `self`/`this`/`super`, a class name used directly (static access, an autoload, a
-`class_name`, a `preload` const), what an `auto` is initialised with. A class template's parameters are replaced by the
-arguments written (`IdTable<RoadNode>`: `T` is `RoadNode`); a subscript or `->` on a class of the program goes through
-its `operator[]` / `operator->`. A type that is no class of the program (engine, standard library) answers by the
-library's own rules: `->` and `get()`/`value()` give what it holds, a subscript or `at()` an element, a range-for its
-elements (a map's key and value pair), `find()`/`begin()` an iterator. When nothing declares a type the receiver is
-unknown, and the resolver falls back to every definition of the name.
+`evaluate(tree, unit)` gives every (type text, unit it is read in) the tree can stand for, one rule per tree shape (the
+EXPR rows). A name is looked up in its language's order (local, member with bases, outer class or namespaces, global);
+a name with no declared type holds every value that flows into it (initializer, assignments, the arguments at each call
+site, the values a function returns, the values put into a container). A name no code of the program defines is the
+engine's or the library's. A class template's parameters are replaced by the arguments written; `[]`, `->`, `begin`
+and operators on a class of the program go through its operator; a library type answers by the library's rules.
+
+Type texts: a type as written, CLASS + key (a class of the program), FN + gid (a callable of a function), ELEM + type
+(a value put into a container: what its elements hold), ENGINE (a value of the engine or the language).
 """
 from __future__ import annotations
 
 import re
 
-from .cpp_body import OF
-from .cpp_expr import DEREF, ITEM, ITER
-from .cpp_names import TYPED, strip_templates, template_args
-from .gd_body import CALLED, UNKNOWN
+from .cpp_names import template_args
+from .library import DEREF, ENGINE, ITEM, ITER, clean, library_step
+from .model import FUNCTION_KINDS
+from .rules import NAME_CONSTRUCTORS
 
-CLASS = "#"
-ENGINE = "<engine>"     # a type the code declares that is no class of the program (engine, standard library)
-ITERATOR = "std::__iterator"
-QUALIFIERS = re.compile(r"\b(const|volatile|static|constexpr|inline|mutable|typename|struct|class|unsigned)\b|[&*]")
-STEP = re.compile(r"\[[^\]]*\]|->|\.|[^.\-\[\]]+")
-ITERATOR_CALLS = ("find", "begin", "end", "cbegin", "cend", "rbegin", "rend", "lower_bound", "upper_bound")
-HELD_CALLS = ("get", "value", "front", "back", "top", "lock")
+CLASS, FN, ELEM = "#", "<fn>", "<elem>"
+CALLABLE_CALLS = ("call", "callv", "call_deferred")
 OPERATORS = {ITEM: "operator[]", DEREF: "operator->", ITER: "begin"}
-
-
-def parse_chain(text: str) -> tuple:
-    """`a.b->c[i]` -> ("a", "b", "c", "<item>")."""
-    out = []
-    for token in STEP.findall(text):
-        if token.startswith("["):
-            out.append(ITEM)
-        elif token == "->":
-            out.append(DEREF)
-        elif token != ".":
-            out.append(token.strip())
-    return tuple(t for t in out if t)
-
-
-def clean(text: str) -> str:
-    return " ".join(QUALIFIERS.sub(" ", text).split())
-
-
-def declared(text: str | None) -> bool:
-    return bool(text) and not text.startswith((CALLED, OF))
+COMPARISONS = ("==", "!=", "<", ">", "<=", ">=", "<=>", "&&", "||", "!", "and", "or", "not", "in", "is")
+NO_VALUE = ("void", "Variant", "auto", "decltype(auto)", "")
+DEPTH = 24
 
 
 class Typer:
@@ -54,29 +32,158 @@ class Typer:
         self.ix = index
         self.rs = resolver
         self._busy = set()
+        self._memo = {}
 
     def class_of(self, unit) -> str | None:
-        """The class a unit is written in (its `self` / `this`)."""
         return unit.owner if unit.owner in self.ix.classes else None
 
-    def settle(self, text, ctx) -> tuple:
-        """An expression's type (`<of>a.b`, `<call>f`) worked out to a declared type."""
-        for _ in range(8):
-            if not text or ctx is None or declared(text):
-                return text, ctx
-            key = (text, ctx.gid)
-            if key in self._busy:
-                return None, None
-            self._busy.add(key)
-            try:
-                text, ctx = self.expression_type(text, ctx)
-            finally:
-                self._busy.discard(key)
-        return None, None
+    # ---- trees -------------------------------------------------------------------------------------------------
+    def evaluate(self, tree, unit, depth: int = 0) -> list[tuple]:
+        if not tree or unit is None or depth > DEPTH:
+            return []
+        key = (tree, unit.gid)
+        if key in self._memo:
+            return self._memo[key]
+        if key in self._busy:
+            return []
+        self._busy.add(key)
+        try:
+            found = self._evaluate(tree, unit, depth + 1)
+        finally:
+            self._busy.discard(key)
+        out, seen = [], set()
+        for text, ctx in found:
+            if text and (text, ctx.gid) not in seen:
+                seen.add((text, ctx.gid))
+                out.append((text, ctx))
+        self._memo[key] = out
+        return out
 
-    def type_class(self, text: str | None, ctx) -> str | None:
-        text, ctx = self.settle(text, ctx)
-        if not text or text == ENGINE:
+    def _evaluate(self, tree, unit, depth: int) -> list[tuple]:
+        kind = tree[0]
+        if kind == "name":
+            return self.named(tree[1], unit, depth)
+        if kind == "member":
+            base = self.evaluate(tree[1], unit, depth)
+            if tree[3]:
+                base = [v for t, c in base for v in self.step(DEREF, t, c, depth)]
+            return [v for t, c in base for v in self.member(t, c, tree[2], False, depth)]
+        if kind == "call":
+            return self.call(tree[1], tree[2], unit, depth)
+        if kind in ("index", "elements", "deref"):
+            step = {"index": ITEM, "elements": ITER, "deref": DEREF}[kind]
+            return [v for t, c in self.evaluate(tree[1], unit, depth) for v in self.step(step, t, c, depth)]
+        if kind == "op":
+            return [v for t, c in self.evaluate(tree[2], unit, depth) for v in self.operator(tree[1], t, c, depth)]
+        if kind == "unary":
+            return [v for t, c in self.evaluate(tree[2], unit, depth) for v in self.operator(tree[1], t, c, depth)]
+        if kind in ("cast", "new"):
+            return [(tree[1], unit)] if tree[1] else [(ENGINE, unit)]
+        if kind == "callable":
+            return [(FN + str(self.ix.offset[unit.file] + tree[1]), unit)]
+        if kind == "union":
+            return self.evaluate(tree[1], unit, depth) + self.evaluate(tree[2], unit, depth)
+        if kind == "collection":
+            return [(ENGINE, unit)] + [(ELEM + t, c) for v in tree[1] for t, c in self.evaluate(v, unit, depth)
+                                       if not t.startswith(ELEM)]
+        if kind == "put":
+            return [(ELEM + t, c) for t, c in self.evaluate(tree[1], unit, depth) if not t.startswith(ELEM)]
+        if kind in ("await", "addr"):
+            return self.evaluate(tree[1], unit, depth)
+        if kind == "self":
+            key = self.class_of(unit)
+            return [(CLASS + key, unit)] if key else []
+        if kind == "super":
+            key = self.class_of(unit)
+            bases = self.ix.base_keys(self.ix.classes[key]) if key else []
+            return [(CLASS + bases[0], unit)] if bases else [(ENGINE, unit)]
+        return [(ENGINE, unit)]      # literal, strname, node: the engine's or the language's values
+
+    def call(self, callee, args, unit, depth: int) -> list[tuple]:
+        made = self.made_by_name(callee, args, unit)
+        if made is not None:
+            return made
+        if callee[0] == "member":
+            base = self.evaluate(callee[1], unit, depth)
+            if callee[3]:
+                base = [v for t, c in base for v in self.step(DEREF, t, c, depth)]
+            return [v for t, c in base for v in self.member(t, c, callee[2], True, depth)]
+        if callee[0] == "name":
+            name = callee[1]
+            key = self.ix.gd_class(name, unit.owner) if unit.lang == "gd" else self.ix.cpp_class(name, unit.owner,
+                                                                                                    unit.file)
+            if key:
+                return [(CLASS + key, unit)]            # a class called constructs it
+            if unit.lang == "gd" and name[:1].isupper() and not self.rs.function_targets(unit, name):
+                return [(name, unit)]                   # an engine type constructed (Godot names types in PascalCase)
+        out = []
+        for text, ctx in self.evaluate(callee, unit, depth):
+            if text.startswith(FN):
+                out += self.returns(self.ix.units[int(text[len(FN):])], depth)
+            elif not text.startswith(ELEM):
+                out.append((ENGINE, ctx))       # calling what the engine gives: the engine's value
+        return out
+
+    def made_by_name(self, callee, args, unit) -> list[tuple] | None:
+        """The engine's constructors by name (NAME, G6): `ClassDB.instantiate(&"C")` is an object of class C."""
+        if callee[0] != "member" or callee[1][0] != "name":
+            return None
+        index = NAME_CONSTRUCTORS.get((callee[1][1], callee[2]))
+        if index is None or self.named(callee[1][1], unit, 0) != [(ENGINE, unit)] or index >= len(args):
+            return None
+        if args[index][0] != "strname":
+            return [(ENGINE, unit)]
+        key = self.ix.engine_class(args[index][1]) if unit.lang == "gd" else None
+        return [(CLASS + key, unit)] if key else [(args[index][1], unit)]
+
+    # ---- names -------------------------------------------------------------------------------------------------
+    def named(self, name: str, unit, depth: int) -> list[tuple]:
+        """LOOK: local -> member (with bases) -> outer class / namespaces -> global; else the engine's."""
+        if name in unit.lambdas:
+            return [(FN + str(self.ix.offset[unit.file] + unit.lambdas[name]), unit)]
+        if name in unit.types:
+            return self.local(name, unit, depth)
+        targets = self.rs.state_targets(unit, name)
+        if targets:
+            return [v for t in targets for v in self.held(self.ix.units[t], depth)]
+        key = self.ix.gd_class(name, unit.owner) if unit.lang == "gd" else self.ix.cpp_class(name, unit.owner,
+                                                                                                unit.file)
+        if key:
+            return [(CLASS + key, unit)]
+        functions = self.rs.function_targets(unit, name)
+        if functions:
+            return [(FN + str(f), unit) for f in functions]
+        return [(ENGINE, unit)]
+
+    def local(self, name: str, unit, depth: int) -> list[tuple]:
+        """A local or parameter: its declared type, else every value that flows into it (for a parameter, the
+        argument written at every site that calls the function)."""
+        trees = unit.types.get(name, [])
+        found = [v for t in trees for v in self.evaluate(t, unit, depth)]
+        if name in unit.params and not any(t[0] == "cast" for t in trees):
+            found += self.rs.argument_values(unit, unit.params.index(name), depth)
+        return found
+
+    def held(self, unit, depth: int) -> list[tuple]:
+        """What a variable or field holds: its declared type, else every value that flows into it."""
+        if unit.kind in FUNCTION_KINDS:
+            return [(FN + str(unit.gid), unit)]
+        if unit.type_text and unit.type_text not in NO_VALUE:
+            return [(unit.type_text, unit)]
+        found = [v for t in unit.values for v in self.evaluate(t, unit, depth)]
+        return found + self.rs.assigned_values(unit, depth)
+
+    def returns(self, unit, depth: int) -> list[tuple]:
+        """What a call of the function yields: its declared return type, else what its `return`s carry."""
+        if unit.type_text == "void":
+            return []
+        if unit.type_text and unit.type_text not in NO_VALUE:
+            return [(unit.type_text, unit)]
+        return [v for _, _, tree in unit.returns for v in self.evaluate(tree, unit, depth)]
+
+    # ---- types -------------------------------------------------------------------------------------------------
+    def type_class(self, text: str, ctx) -> str | None:
+        if not text or text == ENGINE or text.startswith((FN, ELEM)):
             return None
         if text.startswith(CLASS):
             return text[1:]
@@ -84,120 +191,89 @@ class Typer:
             return self.ix.gd_class(text, ctx.owner)
         return self.ix.cpp_class(clean(text), ctx.owner, ctx.file)
 
-    def library_step(self, step: str, text: str) -> str:
-        """What a library type yields (the standard library's rules); nothing known without template arguments."""
-        args = [a for a in template_args(clean(text)) if not a.strip().isdigit()]
-        if strip_templates(clean(text)) == ITERATOR and args:
-            return self.library_step(ITER, args[0]) if step in (DEREF, ITEM) else ENGINE
-        if not args:
-            return ENGINE
-        name = step[len(CALLED):] if step.startswith(CALLED) else ""
-        if name in ITERATOR_CALLS:
-            return f"{ITERATOR}<{text}>"
-        if step in (DEREF, ITER) and len(args) == 1 or name in HELD_CALLS:
-            return args[0]
-        if step == ITER:
-            return f"std::pair<{args[0]}, {args[1]}>"
-        if step == ITEM or name == "at":
-            return args[-1]
-        if step in ("first", "second") and len(args) >= 2:
-            return args[0] if step == "first" else args[1]
-        return ENGINE
-
-    def substitute(self, key: str, outer_text: str, member_text: str) -> tuple[str, bool]:
-        """A member's type with the class template's parameters replaced by the arguments written."""
-        params = self.ix.classes[key].params
-        args = template_args(clean(outer_text)) if params else []
-        if not params or not args:
-            return member_text, False
-        out = member_text
-        for param, arg in zip(params, args):
-            out = re.sub(rf"\b{re.escape(param)}\b", arg, out)
-        return out, out != member_text
-
-    def expression_type(self, text: str, ctx) -> tuple:
-        if text.startswith(OF):
-            return self.chain_type(parse_chain(text[len(OF):]), ctx)
-        body = text[len(CALLED):]
-        steps = parse_chain(body)
-        if len(steps) > 1:
-            return self.chain_type(steps[:-1] + (CALLED + steps[-1],), ctx)
-        key = self.ix.gd_class(body, ctx.owner) if ctx.lang == "gd" else self.ix.cpp_class(body, ctx.owner, ctx.file)
-        if key:
-            return CLASS + key, ctx
-        targets = [t for t in self.rs.function_targets(ctx, body) if self.ix.units[t].kind != "lambda"]
-        if targets:
-            target = self.ix.units[targets[0]]
-            return target.type_text or None, target
-        # Not the program's: an engine type constructed (Godot names types in PascalCase, functions in snake_case)
-        # is that type; what an engine function returns is not declared here.
-        return (body, ctx) if ctx.lang == "gd" and body[:1].isupper() else (None, None)
-
-    def head_type(self, head: str, unit) -> tuple:
-        if head in ("self", "this"):
-            key = self.class_of(unit)
-            return (CLASS + key, unit) if key else (None, None)
-        if head == "super":
-            key = self.class_of(unit)
-            bases = self.ix.base_keys(self.ix.classes[key]) if key else []
-            return (CLASS + bases[0], unit) if bases else (None, None)
-        if head in (UNKNOWN, ITEM):
-            return None, None
-        if head.startswith(CALLED):
-            return self.expression_type(head, unit)
-        if head.startswith(TYPED):
-            return head[len(TYPED):], unit
-        if head in unit.types:
-            return unit.types[head] or None, unit
-        state = self.rs.state_targets(unit, head)
-        if state:
-            target = self.ix.units[state[0]]
-            return target.type_text or None, target
-        key = self.ix.gd_class(head, unit.owner) if unit.lang == "gd" else self.ix.cpp_class(head, unit.owner, unit.file)
-        return (CLASS + key, unit) if key else (None, None)
-
-    def member_step(self, key: str, text: str, ctx, step: str) -> tuple:
-        """One step into a class of the program: a member's type, or an operator's result."""
-        name = OPERATORS.get(step) or (step[len(CALLED):] if step.startswith(CALLED) else step)
+    def member(self, text: str, ctx, name: str, called: bool, depth: int) -> list[tuple]:
+        """A member of a value: its field's value, its method's callable, or (called) the method's result."""
+        if text.startswith(FN):
+            target = self.ix.units[int(text[len(FN):])]
+            return self.returns(target, depth) if called and name in CALLABLE_CALLS else [(text, ctx)] \
+                if name in ("bind", "unbind", "bindv") else [(ENGINE, ctx)]
+        if text.startswith(ELEM):
+            return []
+        key = self.type_class(text, ctx)
+        if called and name == "new":
+            return [(CLASS + key, ctx)] if key else [(text, ctx)]     # `T.new()` constructs a T (EXPR: new)
+        if key is None:
+            return [(library_step(name, text, called), ctx)] if text != ENGINE else [(ENGINE, ctx)]
         found = self.ix.lookup(key, name)
+        if ctx.lang == "gd" and self.ix.classes[key].lang == "cpp":
+            found = self.rs.engine_members(key, name, "func" if called else "read")
         if not found:
             inner = self.ix.inner[key].get(name)
-            if inner:
-                return CLASS + inner, ctx
-            # a raw pointer's `->` and an operator the class does not define leave the class as it is
-            return (text, ctx) if step in (DEREF, ITEM, ITER) else (ENGINE, ctx)
-        target = self.ix.units[self.ix.definitions(found)[0]]
-        result, replaced = self.substitute(key, text, target.type_text or "")
-        if step == ITER and result:
-            result = self.library_step(DEREF, result) if template_args(clean(result)) else result
-        return (result or None), (ctx if replaced else target)
+            return [(CLASS + inner, ctx)] if inner else [(ENGINE, ctx)]   # an engine or library base's member
+        out = []
+        for gid in self.ix.definitions(found):
+            target = self.ix.units[gid]
+            values = self.returns(target, depth) if called else self.held(target, depth)
+            for value, where in values:
+                value, replaced = self.substitute(key, text, value)
+                out.append((value, ctx if replaced else where))
+        return out
 
-    def chain_type(self, recv: tuple, unit) -> tuple:
-        """The type text (and the unit it is read in) of a receiver chain."""
-        if not recv:
-            return None, None
-        text, ctx = self.settle(*self.head_type(recv[0], unit))
-        for step in recv[1:]:
-            if text is None:
-                return None, None
-            key = self.type_class(text, ctx)
-            if key is not None and text.startswith(CLASS) and step in (DEREF, ITEM, ITER):
-                continue
-            if key is not None:
-                text, ctx = self.settle(*self.member_step(key, text, ctx, step))
-            elif text == ENGINE:
-                continue
-            else:
-                text = self.library_step(step, text)
-        return text, ctx
-
-    def receiver(self, recv: tuple, unit) -> tuple:
-        """(project class key or None, the declared type text when it is no class of the program, else None)."""
-        text, ctx = self.settle(*self.chain_type(recv, unit))
+    def step(self, step: str, text: str, ctx, depth: int) -> list[tuple]:
+        """`[]`, a range-for, `->`: an element of a container, what a pointer points at."""
+        if text.startswith(ELEM):
+            return [(text[len(ELEM):], ctx)] if step in (ITEM, ITER) else []
+        if text == ENGINE or text.startswith(FN):
+            return [(ENGINE, ctx)]
         key = self.type_class(text, ctx)
-        if key:
-            return key, None
-        return None, (text if declared(text) else None)
+        if key is None:
+            return [(library_step(step, text, False), ctx)]
+        found = self.ix.lookup(key, OPERATORS[step])
+        if not found:
+            return [(text, ctx)]           # a raw pointer's `->`, `*` on a pointer: the object itself
+        out = []
+        for gid in self.ix.definitions(found):
+            for value, where in self.returns(self.ix.units[gid], depth):
+                value, replaced = self.substitute(key, text, value)
+                if step == ITER:
+                    value = library_step(DEREF, value, False) if template_args(clean(value)) else value
+                out.append((value, ctx if replaced else where))
+        return out
 
-    def receiver_class(self, recv: tuple, unit) -> str | None:
-        return self.receiver(recv, unit)[0]
+    def operator(self, op: str, text: str, ctx, depth: int) -> list[tuple]:
+        if op in COMPARISONS:
+            return [(ENGINE, ctx)]
+        if op == "*":
+            return self.step(DEREF, text, ctx, depth)
+        key = self.type_class(text, ctx)
+        if key and ctx.lang == "cpp":
+            found = self.ix.lookup(key, "operator" + op)
+            if found:
+                return self.returns(self.ix.units[self.ix.definitions(found)[0]], depth)
+        return [(text, ctx)]
+
+    def substitute(self, key: str, outer: str, member: str) -> tuple[str, bool]:
+        params = self.ix.classes[key].params
+        args = template_args(clean(outer)) if params and not outer.startswith(CLASS) else []
+        if not params or not args or member.startswith((CLASS, FN, ELEM, ENGINE)):
+            return member, False
+        out = member
+        for param, arg in zip(params, args):
+            out = re.sub(rf"\b{re.escape(param)}\b", arg, out)
+        return out, out != member
+
+    def receiver(self, tree, unit) -> tuple[list[str], bool, list[int]]:
+        """(classes of the program the receiver can be, whether it can be an engine value, callables it can be)."""
+        keys, engine, functions = [], False, []
+        for text, ctx in self.evaluate(tree, unit):
+            if text.startswith(ELEM):
+                continue
+            if text.startswith(FN):
+                functions.append(int(text[len(FN):]))
+                continue
+            key = self.type_class(text, ctx)
+            if key:
+                keys.append(key)
+            else:
+                engine = True
+        return list(dict.fromkeys(keys)), engine, list(dict.fromkeys(functions))

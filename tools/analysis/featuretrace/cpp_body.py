@@ -1,24 +1,17 @@
-"""C++ bodies: each statement and expression read by its rule, with the branch conditions that guard it.
+"""C++ bodies: each statement read by its rule (log/trace-rules.md, C++ rows), with the branch conditions that guard it.
 
-Locals and parameters are recorded with their declared type, so the resolver can find the class behind `x.f()`.
-A member chain keeps its receivers in order (`state.log.road_chunks.push_back` -> receiver state, log, road_chunks).
-Godot's registrations are read where they are written: `bind_method(D_METHOD("name"), &C::m)` binds a name the engine
-calls, `ADD_SIGNAL(MethodInfo("name"))` declares a signal, `ADD_PROPERTY(PropertyInfo(.., "p"), "set", "get")` binds a
-property to its accessors, `emit_signal("name")` fires one.
+Locals record the trees of the values they hold (FLOW): a declared type as a value of that type; `auto` from its
+initializer; `T x(args);` in a block declares an object (direct-initialization); `auto [a, b] = v` binds v's parts; a
+range-for variable holds the range's elements; each assignment adds its value. Every path of `if`, `switch`, loops and
+`try` is followed (BRANCH); a `return` keeps its value's tree (JUMP).
 """
 from __future__ import annotations
 
 from . import cpp_expr
-from .cpp_names import strip_templates, template_call_type, type_of, unwrap
-from .gd_body import CALLED, squash
+from .cpp_names import type_of, unwrap
+from .gd_body import squash
 from .model import Ref, Unit
 from .source import field_of, named_children
-
-OF = "<of>"
-
-
-def strip(text: str) -> str:
-    return strip_templates(text)
 
 
 def add(r, unit: Unit, kind: str, name: str, node, cond, **extra) -> None:
@@ -30,8 +23,17 @@ def block(r, node, unit, cond) -> None:
         statement(r, st, unit, cond)
 
 
+def bind_parts(r, node, unit, source: tuple | None) -> None:
+    """`auto [a, b] = v`: a and b are v's first and second parts (a pair's or a map entry's)."""
+    names = [r.src.text(c) for c in named_children(node) if c.type == "identifier"]
+    for i, name in enumerate(names):
+        part = ("first", "second")[i] if len(names) == 2 else ""
+        unit.types[name] = [("member", source, part, False)] if source is not None and part else []
+
+
 def local(r, node, unit, cond) -> None:
-    """A local declaration: each declarator's name and type; a lambda kept by its name."""
+    """A local declaration: each declarator's name and the value it holds."""
+    from .cpp_read import deduced
     typ = field_of(node, "type")
     type_text = type_of(r.src.text(typ)) if typ is not None else ""
     for i, child in enumerate(node.children):
@@ -39,52 +41,26 @@ def local(r, node, unit, cond) -> None:
             continue
         name = unwrap(child)
         value = field_of(child, "value") if child.type == "init_declarator" else None
+        if name is not None and name.type == "function_declarator":
+            # in a block, `T x(args);` declares an object initialised with args (direct-initialization)
+            expr(r, field_of(name, "parameters"), unit, cond)
+            name = field_of(name, "declarator")
         if name is not None and name.type == "structured_binding_declarator":
-            bind_names(r, name, unit, OF + one_line(r, value) if value is not None else "")
-            if value is not None:
-                expr(r, value, unit, cond)
+            bind_parts(r, name, unit, r.ir(value, unit) if value is not None else None)
+            expr(r, value, unit, cond)
             continue
         if name is None:
             continue
         text = r.src.text(name)
         if value is not None and value.type == "lambda_expression":
-            unit.lambdas[text] = lambda_unit(r, value, unit).local_id
-            unit.types[text] = ""
+            unit.lambdas[text] = r.lambda_id(value, unit)
+            unit.types[text] = [("callable", unit.lambdas[text])]
             continue
-        deduced = type_text.replace("const", "").replace("&", "").replace("*", "").strip() in ("auto", "")
-        unit.types[text] = infer(r, value) if deduced and value is not None else type_text
-        if value is not None:
-            expr(r, value, unit, cond)
-        elif child.type not in ("identifier",):
-            expr(r, child, unit, cond)
-
-
-def one_line(r, node) -> str:
-    return " ".join(r.src.text(node).split())
-
-
-def bind_names(r, node, unit, source: str) -> None:
-    """`auto [a, b] = x`: a and b are x's first and second (a pair's or a map entry's parts)."""
-    names = [r.src.text(c) for c in named_children(node) if c.type == "identifier"]
-    for i, name in enumerate(names):
-        unit.types[name] = f"{source}.{('first', 'second')[i]}" if source and len(names) == 2 else ""
-
-
-def infer(r, value) -> str:
-    """The type an `auto` takes from its initialiser, when the expression names it."""
-    if value is None:
-        return ""
-    if value.type == "call_expression":
-        fn = field_of(value, "function")
-        named = template_call_type(r.src.text(fn))
-        return named if named else CALLED + strip(r.src.text(fn))
-    if value.type == "new_expression":
-        return type_of(r.src.text(field_of(value, "type")))
-    if value.type == "compound_literal_expression":
-        return type_of(r.src.text(field_of(value, "type")))
-    if value.type in ("identifier", "field_expression", "subscript_expression", "pointer_expression"):
-        return OF + " ".join(r.src.text(value).split())
-    return ""
+        if deduced(type_text):
+            unit.types[text] = [r.ir(value, unit)] if value is not None else []
+        else:
+            unit.types[text] = [("cast", type_text)]
+        expr(r, value, unit, cond)
 
 
 def statement(r, st, unit, cond) -> None:
@@ -100,9 +76,8 @@ def statement(r, st, unit, cond) -> None:
         label = "if " + squash(src.text(test))
         statement(r, field_of(st, "consequence"), unit, cond + (label,))
         alt = field_of(st, "alternative")
-        if alt is not None:
-            for sub in named_children(alt):
-                statement(r, sub, unit, cond + ("else of " + label,))
+        for sub in named_children(alt) if alt is not None else []:
+            statement(r, sub, unit, cond + ("else of " + label,))
     elif kind in ("for_statement", "for_range_loop", "while_statement", "do_statement"):
         loop(r, st, unit, cond)
     elif kind == "switch_statement":
@@ -115,9 +90,10 @@ def statement(r, st, unit, cond) -> None:
             for sub in named_children(case):
                 if sub is not value:
                     statement(r, sub, unit, cond + (label,))
-    elif kind == "return_statement":
+    elif kind in ("return_statement", "co_return_statement"):
         values = named_children(st)
-        unit.returns.append((src.line(st), squash(src.text(values[0])) if values else ""))
+        unit.returns.append((src.line(st), squash(src.text(values[0])) if values else "",
+                             r.ir(values[0], unit) if values else ("literal", "void")))
         for v in values:
             expr(r, v, unit, cond)
     elif kind == "try_statement":
@@ -133,19 +109,19 @@ def statement(r, st, unit, cond) -> None:
 
 
 def loop(r, st, unit, cond) -> None:
+    from .cpp_read import deduced
     src = r.src
     body = field_of(st, "body")
     if st.type == "for_range_loop":
         right = field_of(st, "right")
-        walked = OF + one_line(r, right) + "." + cpp_expr.ITER
+        walked = ("elements", r.ir(right, unit))
         name = unwrap(field_of(st, "declarator"))
         typ = field_of(st, "type")
         declared = type_of(src.text(typ)) if typ is not None else ""
-        deduced = declared.replace("const", "").replace("&", "").replace("*", "").strip() in ("auto", "")
         if name is not None and name.type == "structured_binding_declarator":
-            bind_names(r, name, unit, walked)
+            bind_parts(r, name, unit, walked)
         elif name is not None:
-            unit.types[src.text(name)] = walked if deduced else declared
+            unit.types[src.text(name)] = [walked] if deduced(declared) else [("cast", declared)]
         expr(r, right, unit, cond)
         label = f"for ({squash(src.text(field_of(st, 'declarator')))} : {squash(src.text(right))})"
     else:
@@ -170,7 +146,7 @@ def lambda_unit(r, node, owner: Unit) -> Unit:
     lam = Unit("lambda", "cpp", f"{owner.name}.<lambda:{line}>", f"{owner.qual}.<lambda:{line}>", owner.owner,
                r.src.display, line, r.src.end_line(node), local_id=len(r.facts.units))
     r.facts.units.append(lam)
-    lam.types = dict(owner.types)
+    lam.types = {k: list(v) for k, v in owner.types.items()}
     lam.lambdas = dict(owner.lambdas)
     decl = field_of(node, "declarator")
     if decl is not None:

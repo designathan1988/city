@@ -80,10 +80,11 @@ def text(ix, rs, spec: str, seeds: list[int], up, down) -> str:
     named = mentions(ix, up.reached | down.reached)
     if named:
         lines += ["", "== Named by data, scene and project files ==", ""] + named
-    candidates = sum(1 for r in down.rows if r.edge is not None and r.edge.how.startswith("candidates"))
+    unreached = sorted({f"{label(ix, g)}: {name}" for g in down.reached for name in rs.unreached.get(g, ())})
     lines += ["", "== Totals ==",
               f"  entry points: {len(up.entries)}; definitions behind: {len(up.reached)}; ahead: {len(down.reached)}",
-              f"  links taken on a receiver no code types (candidates): {candidates}",
+              f"  uses on a receiver no value of the code reaches: {len(unreached)}",
+              *(f"    {u}" for u in unreached),
               f"  state written: {len(down.writes)}"]
     return "\n".join(lines) + "\n"
 

@@ -7,7 +7,7 @@ follows every branch, and comes back through each return; then goes up from the 
 
     python tools/analysis/trace_feature.py CityCore::build_road_path
     python tools/analysis/trace_feature.py project/game/tools/road_tool.gd:230 --out dist/trace/road.txt
-    python tools/analysis/trace_feature.py RoadTool._lay --exact --depth 6 --json dist/trace/road.json
+    python tools/analysis/trace_feature.py RoadTool._lay --depth 6 --json dist/trace/road.json
 
 Exit code: 0 traced, 2 the starting point names no definition, 1 the code could not be read.
 """
@@ -32,8 +32,6 @@ def main(argv=None) -> int:
     parser.add_argument("start", help="file:line, Class.method, ns::Class::method or a bare name")
     parser.add_argument("--root", action="append", type=Path, help="folders or files to read (default: project and "
                         "native/src)")
-    parser.add_argument("--exact", action="store_true", help="follow only links whose target the code types; "
-                        "leave out candidates reached by name alone")
     parser.add_argument("--depth", type=int, default=None, help="stop the forward walk this deep")
     parser.add_argument("--back-depth", type=int, default=None, help="stop the walk back this deep")
     parser.add_argument("--out", type=Path, help="write the text report here as well")
@@ -58,8 +56,8 @@ def main(argv=None) -> int:
     if not start:
         print(f"'{args.start}' names no definition in the code read", file=sys.stderr)
         return 2
-    up = walk.back(rs, start, args.exact, args.back_depth)
-    down = walk.forward(rs, start, args.exact, args.depth)
+    up = walk.back(rs, start, args.back_depth)
+    down = walk.forward(rs, start, args.depth)
     text = report.text(index, rs, args.start, start, up, down)
     sys.stdout.reconfigure(encoding="utf-8")
     print(text, end="")

@@ -1,24 +1,28 @@
-"""Name resolution: every reference linked to the definitions it reaches, by the rule of its construct.
+"""LOOK, CALL, NAME (log/trace-rules.md): every reference linked to the definitions it reaches.
 
-- a plain name: the local scope, then the class and its bases, then outer classes or enclosing namespaces,
-  `using namespace`, globals (class_name, autoloads); an internal-linkage C++ name only inside its file;
-- a member `x.f`: the class of `x` (see `typer`), then its bases; a virtual call also reaches every override below;
-- a qualified `A::f`: the scope named, seen from the enclosing scopes;
-- a name carried as a value (`&"f"`, `call("f")`, `Callable(o, "f")`, a bound name): the definitions with that name
-  that the engine can call (script methods and signals, C++ methods bound with `D_METHOD`);
-- a signal: `emit` reaches the signal, the signal reaches every handler `connect`ed to it (in code or in a scene).
-When the receiver's class is declared nowhere, every definition of the name is a candidate, and the edge says so.
+- a plain name: the local scope (a local holding a callable reaches that function), then the class and its bases,
+  outer classes or enclosing namespaces, `using namespace`, globals; a C++ name with internal linkage only inside the
+  translation unit that declares it (its file and the files it includes); C++ argument-dependent lookup adds the
+  namespaces of the arguments' classes;
+- a member `x.f`: the classes of every value that flows into `x` (`typer`), then their bases; `c.call()` on a callable
+  reaches the function it holds; a receiver no value of the code reaches is recorded as such (a fact, no guess);
+- a qualified `A::f`: the scope named, seen from the enclosing scopes and the translation unit;
+- a name carried as a string: on the receiver's classes, or (handed to a call) every script method or signal and every
+  bound method with that name — what the engine resolves by it.
+A parameter holds the arguments written at every call site, a field what every assignment puts in it: the values come
+from the links of the previous pass (`link.build` repeats until no link changes).
 """
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from .model import FUNCTION_KINDS, STATE_KINDS
-from .typer import Typer
+from .model import ENGINE_CALLBACKS, FUNCTION_KINDS, STATE_KINDS
+from .typer import CALLABLE_CALLS, ENGINE, Typer
 
 SIGNAL_KINDS = ("signal", "engine_signal")
-EXACT, CANDIDATES, LOCAL, EXTERNAL = "exact", "candidates", "local", "external"
+CALLING = ("call", "override", "name", "thread")
+EXACT, LOCAL, EXTERNAL, UNREACHED = "exact", "local", "external", "unreached"
 
 
 @dataclass
@@ -28,35 +32,37 @@ class Edge:
     kind: str          # call, value, name, emit, signal, connect, lambda, new, override, thread, read, write
     line: int
     cond: tuple
-    how: str = EXACT   # exact | candidates (n) | by name
+    how: str = EXACT   # exact | by name | override
     file: str = ""     # where the link is written (the source unit's file unless a scene or a connect)
+    args: tuple = field(default_factory=tuple)   # the trees written at the site (arguments, the value written)
 
 
 class Resolver:
-    def __init__(self, index):
+    def __init__(self, index, previous=None):
         self.ix = index
         self.typer = Typer(index, self)
         self.edges: list[Edge] = []
         self.out = defaultdict(list)
         self.inn = defaultdict(list)
-        self.external = defaultdict(set)   # unit gid -> names it uses that no code defines (engine, std)
+        self.flows = previous.inn if previous is not None else defaultdict(list)
+        self.external = defaultdict(set)    # unit gid -> names it uses that no code defines (engine, library)
+        self.unreached = defaultdict(set)   # unit gid -> members used on a receiver no value of the code reaches
 
-    # ---- filters -----------------------------------------------------------------------------------------------
     def keep(self, gids, want: str, file: str) -> list[int]:
-        units = self.ix.units
+        units, visible = self.ix.units, self.ix.visible(file) if file else set()
         kinds = {"func": FUNCTION_KINDS, "state": STATE_KINDS | {"enumerator"}, "signal": SIGNAL_KINDS,
                  "read": STATE_KINDS | {"enumerator"} | FUNCTION_KINDS}[want]
-        found = [g for g in gids if units[g].kind in kinds and (not units[g].file_local or units[g].file == file)]
+        found = [g for g in gids if units[g].kind in kinds and (not units[g].file_local or units[g].file in visible)]
         return self.ix.definitions(found) if want == "func" else found
 
-    # ---- the rules -----------------------------------------------------------------------------------------------
+    # ---- the rules ---------------------------------------------------------------------------------------------
     def bare(self, unit, name: str, want: str) -> tuple[list[int], str]:
         if name in unit.lambdas:
             return [self.ix.offset[unit.file] + unit.lambdas[name]], EXACT
         if name in unit.types:
-            return [], LOCAL
-        key = self.typer.class_of(unit)
-        scope = key
+            held = self.typer.receiver(("name", name), unit)[2] if want == "func" else []
+            return (held, EXACT) if held else ([], LOCAL)
+        scope = self.typer.class_of(unit)
         while scope:
             found = self.keep(self.ix.lookup(scope, name), want, unit.file)
             if found:
@@ -72,7 +78,7 @@ class Resolver:
 
     def cpp_scoped(self, unit, name: str, want: str) -> tuple[list[int], str]:
         ix = self.ix
-        for scope in ix.scopes(unit.owner) + ix.usings.get(unit.file, []):
+        for scope in ix.scopes(unit.owner) + ix.tu_usings(unit.file):
             qual = f"{scope}::{name}" if scope else name
             found = self.keep(ix.by_qual.get(qual, []), want, unit.file)
             if not found and qual in ix.aliases:
@@ -82,14 +88,11 @@ class Resolver:
         cls = ix.cpp_class(name, unit.owner, unit.file)
         if cls and want == "func":
             return self.keep(ix.members[cls].get(name.split("::")[-1], []), want, unit.file), EXACT
-        free = [g for g in ix.by_name.get(name, []) if ix.units[g].owner not in ix.classes]
-        free = self.keep(free, want, unit.file)
-        return (free, CANDIDATES) if free else ([], EXTERNAL)
+        return [], EXTERNAL
 
-    def qualified(self, unit, recv: tuple, name: str, want: str) -> tuple[list[int], str]:
+    def qualified(self, unit, scope_text: str, name: str, want: str) -> tuple[list[int], str]:
         ix = self.ix
-        scope_text = "::".join(p for p in recv if p)
-        for scope in ix.scopes(unit.owner) + ix.usings.get(unit.file, []):
+        for scope in ix.scopes(unit.owner) + ix.tu_usings(unit.file):
             qual = "::".join(p for p in (scope, scope_text, name) if p)
             found = self.keep(ix.by_qual.get(qual, []), want, unit.file)
             if found:
@@ -99,30 +102,40 @@ class Resolver:
             found = self.keep(ix.lookup(cls, name), want, unit.file)
             if found:
                 return found, EXACT
-        suffix = f"::{scope_text}::{name}"
-        found = [g for g in ix.by_name.get(name, []) if ix.units[g].qual.endswith(suffix)]
-        found = self.keep(found, want, unit.file)
-        return (found, CANDIDATES if len(found) > 1 else EXACT) if found else ([], EXTERNAL)
+        return [], EXTERNAL
 
-    def member(self, unit, recv: tuple, name: str, want: str) -> tuple[list[int], str]:
+    def adl(self, unit, name: str, args: tuple) -> list[int]:
+        """Argument-dependent lookup: `f(x)` also looks in the namespaces of the classes of its arguments (C3)."""
+        found = []
+        for arg in args:
+            for key in self.typer.receiver(arg, unit)[0]:
+                namespace = key.rpartition("::")[0]
+                while namespace and namespace in self.ix.classes:
+                    namespace = namespace.rpartition("::")[0]
+                found += self.keep(self.ix.by_qual.get(f"{namespace}::{name}" if namespace else name, []), "func",
+                                   unit.file)
+        return list(dict.fromkeys(found))
+
+    def member(self, unit, base, name: str, want: str) -> tuple[list[int], str]:
         ix = self.ix
-        if recv and recv[0] == "super":
+        if base == ("super",):
             key = self.typer.class_of(unit)
             bases = ix.base_keys(ix.classes[key]) if key else []
             found = self.keep(ix.lookup(bases[0], name), want, unit.file) if bases else []
             return (found, EXACT) if found else ([], EXTERNAL)
-        key, engine_type = self.typer.receiver(recv, unit)
-        if key:
-            cls = ix.classes[key]
-            if unit.lang == "gd" and cls.lang == "cpp":
-                found = self.engine_members(key, name, want)
+        keys, engine, callables = self.typer.receiver(base, unit)
+        if name in CALLABLE_CALLS and callables and want == "func":
+            return callables, EXACT
+        found = []
+        for key in keys:
+            if unit.lang == "gd" and ix.classes[key].lang == "cpp":
+                found += self.engine_members(key, name, want)
             else:
-                found = self.keep(ix.lookup(key, name), want, unit.file)
-            return (found, EXACT) if found else ([], EXTERNAL)
-        if engine_type:
-            # the receiver's type is declared and is the engine's or the library's: so is the member
-            return [], EXTERNAL
-        return self.by_name(unit, name, want)
+                found += self.keep(ix.lookup(key, name), want, unit.file)
+        found = list(dict.fromkeys(found))
+        if found:
+            return found, EXACT
+        return ([], EXTERNAL) if keys or engine or callables else ([], UNREACHED)
 
     def engine_members(self, key: str, name: str, want: str) -> list[int]:
         """What GDScript reaches on a C++ object: its bound methods, signals and property accessors (with bases)."""
@@ -141,37 +154,18 @@ class Resolver:
             todo += ix.base_keys(ix.classes[k]) if k in ix.classes else []
         return [g for g in found if want != "signal" or ix.units[g].kind in SIGNAL_KINDS]
 
-    def by_name(self, unit, name: str, want: str) -> tuple[list[int], str]:
-        """No class declared for the receiver: every definition the construct can reach by this name."""
+    def by_string(self, unit, base, text: str) -> tuple[list[int], str]:
+        """A name written as a string the engine resolves at run time (NAME)."""
         ix = self.ix
-        if unit.lang == "gd":
-            pool = [g for g in ix.by_name.get(name, []) if ix.units[g].lang == "gd"]
-            pool = self.keep(pool, want, unit.file)
-            if want in ("func", "read"):
-                pool += ix.bound.get(name, [])
-            if want in ("read", "state"):
-                pool += [g for _, s, gt in ix.props.get(name, []) for g in ix.bound.get(gt if want == "read" else s, [])]
-            if want == "signal":
-                pool += [g for g in ix.by_name.get(name, []) if ix.units[g].lang == "cpp" and ix.units[g].kind == "signal"]
-        else:
-            pool = [g for g in ix.by_name.get(name, []) if ix.units[g].lang == "cpp" and ix.units[g].owner in ix.classes]
-            pool = self.keep(pool, want, unit.file)
-        pool = list(dict.fromkeys(pool))
-        if not pool:
-            return [], EXTERNAL
-        return pool, (EXACT if len(pool) == 1 else CANDIDATES)
-
-    def by_string(self, unit, recv: tuple, text: str) -> tuple[list[int], str]:
-        """A name written as a string the engine resolves at run time: script methods and signals, bound methods."""
-        ix = self.ix
-        if recv and recv != ("self",):
-            key, engine_type = self.typer.receiver(recv, unit)
-            if key:
-                return self.member(unit, recv, text, "func")
-            if engine_type == "Callable":
-                return [], EXTERNAL     # Callable.call(args) runs the callable itself: the string is an argument
-        if recv == ("self",) and unit.lang == "gd":
-            found, how = self.member(unit, recv, text, "func")
+        if base is not None and base != ("self",):
+            keys, engine, callables = self.typer.receiver(base, unit)
+            if callables:
+                return callables, EXACT        # Callable.call("x", ...): the callable runs, "x" is an argument
+            if keys:
+                return self.member(unit, base, text, "func")
+            return ([], EXTERNAL) if engine else ([], UNREACHED)
+        if base == ("self",):
+            found, how = self.member(unit, base, text, "func")
             if found:
                 return found, how
         pool = [g for g in ix.by_name.get(text, []) if ix.units[g].lang == "gd"
@@ -179,29 +173,54 @@ class Resolver:
         pool = list(dict.fromkeys(pool))
         return (pool, "by name") if pool else ([], EXTERNAL)
 
-    # ---- entry for typer -------------------------------------------------------------------------------------------
+    # ---- values for the typer ----------------------------------------------------------------------------------
+    def argument_values(self, unit, index: int, depth: int) -> list[tuple]:
+        """A parameter's values: the argument at that position at every site that calls the function; the engine's
+        values when the engine calls it (a callback, a handler of an engine signal, a lambda the library runs)."""
+        ix, out = self.ix, []
+        incoming = self.flows.get(unit.gid, [])
+        if unit.name in ENGINE_CALLBACKS or unit.bound_as:
+            out.append((ENGINE, unit))
+        for edge in incoming:
+            if edge.kind in CALLING and index < len(edge.args):
+                out += self.typer.evaluate(edge.args[index], ix.units[edge.src], depth + 1)
+            elif edge.kind == "signal":
+                signal = ix.units[edge.src]
+                if signal.kind == "engine_signal":
+                    out.append((ENGINE, unit))
+                for emit in self.flows.get(signal.gid, []):
+                    if emit.kind == "emit" and index < len(emit.args):
+                        out += self.typer.evaluate(emit.args[index], ix.units[emit.src], depth + 1)
+        if unit.kind == "lambda" and not any(e.kind in CALLING for e in incoming):
+            out.append((ENGINE, unit))     # handed to the library or the engine, which calls it
+        return out
+
+    def assigned_values(self, unit, depth: int) -> list[tuple]:
+        """A variable's or field's values: what every assignment anywhere in the code puts into it."""
+        return [v for e in self.flows.get(unit.gid, []) if e.kind == "write" and e.args
+                for v in self.typer.evaluate(e.args[0], self.ix.units[e.src], depth + 1)]
+
     def function_targets(self, unit, text: str) -> list[int]:
         if "::" in text:
-            parts = text.split("::")
-            return self.qualified(unit, tuple(parts[:-1]), parts[-1], "func")[0]
+            scope, _, name = text.rpartition("::")
+            return self.qualified(unit, scope, name, "func")[0]
         return self.bare(unit, text, "func")[0]
 
     def state_targets(self, unit, name: str) -> list[int]:
         if "::" in name:
-            parts = name.split("::")
-            return self.qualified(unit, tuple(parts[:-1]), parts[-1], "state")[0]
-        found, _ = self.bare(unit, name, "state")
-        return found
+            scope, _, last = name.rpartition("::")
+            return self.qualified(unit, scope, last, "state")[0]
+        return self.bare(unit, name, "state")[0]
 
-    def resolve(self, unit, name: str, recv: tuple, qualified: bool, want: str) -> tuple[list[int], str]:
-        if qualified:
-            return self.qualified(unit, recv, name, want)
-        if recv:
-            return self.member(unit, recv, name, want)
-        return self.bare(unit, name, want)
+    def resolve(self, unit, ref, want: str) -> tuple[list[int], str]:
+        if ref.qualified:
+            return self.qualified(unit, ref.scope, ref.name, want)
+        if ref.base is not None:
+            return self.member(unit, ref.base, ref.name, want)
+        return self.bare(unit, ref.name, want)
 
     def link(self, src, dst, kind, ref, how, file="") -> None:
-        edge = Edge(src, dst, kind, ref.line, ref.cond, how, file or self.ix.units[src].file)
+        edge = Edge(src, dst, kind, ref.line, ref.cond, how, file or self.ix.units[src].file, getattr(ref, "args", ()))
         self.edges.append(edge)
         self.out[src].append(edge)
         self.inn[dst].append(edge)

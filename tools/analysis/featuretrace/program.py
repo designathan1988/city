@@ -64,5 +64,5 @@ def load(roots: list[Path], base: Path, cache_dir: Path | None, progress=None):
     index = Index(all_facts)
     if progress:
         progress(f"indexed {len(index.units)} definitions; linking")
-    resolver = link.build(index)
+    resolver = link.build(index, progress)
     return index, resolver, len(files), broken

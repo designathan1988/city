@@ -36,3 +36,28 @@ func narrowed(x) -> void:
 
 func untyped(o) -> void:
 	o.click(3.0)
+
+
+func flows() -> void:
+	untyped(RoadTool.new())
+	mixed(RoadTool.new())
+	mixed(ToolBase.new())
+	var held = []
+	held.append(RoadTool.new())
+	for t in held:
+		t._lay(4.0)
+	made()._lay(1.0)
+	var n = name
+	n.length()
+
+
+func mixed(x) -> void:
+	x.click(6.0)
+
+
+func never_called(o) -> void:
+	o.click(5.0)
+
+
+func made():
+	return RoadTool.new()

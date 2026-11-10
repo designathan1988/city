@@ -33,6 +33,8 @@ class Index:
         self.bases = {}
         self.engine_signals = {}
         self.virtual_quals = set()
+        self.includes = {}                        # file -> files its `#include "..."` names (resolved)
+        self._visible = {}
         autoloads, bindings = {}, []
         for facts in all_facts:
             self.offset[facts.path] = len(self.units)
@@ -53,6 +55,7 @@ class Index:
                 elif cls.lang == "cpp":
                     self.cpp_simple[cls.name].append(cls.key)
             self.usings[facts.path] = facts.usings
+            self.includes[facts.path] = facts.includes
             self.aliases.update(facts.aliases)
             autoloads.update(facts.autoloads)
             bindings += [(b, facts.path) for b in facts.bindings]
@@ -61,6 +64,9 @@ class Index:
             if facts.lang in ("data", "project", "scene"):
                 for text, line in facts.mentions:
                     self.mentions[text].append((facts.path, line))
+        known = set(self.offset)
+        for path, names in self.includes.items():
+            self.includes[path] = [f for f in (self.include_file(path, n, known) for n in names) if f]
         for name, path in autoloads.items():
             if path in self.classes:
                 self.gd_globals[name] = path
@@ -72,6 +78,38 @@ class Index:
                 cls.engine_visible = True
         for binding, path in bindings:
             self.bind(binding, path)
+
+    # ---- the translation unit (C6) -----------------------------------------------------------------------------
+    @staticmethod
+    def include_file(path: str, name: str, known: set) -> str | None:
+        """`#include "x"`: searched next to the including file, then from each folder above it."""
+        folders = path.split("/")[:-1]
+        for depth in range(len(folders), -1, -1):
+            parts = []
+            for piece in folders[:depth] + name.split("/"):
+                if piece == "..":
+                    parts = parts[:-1]
+                elif piece not in (".", ""):
+                    parts.append(piece)
+            if "/".join(parts) in known:
+                return "/".join(parts)
+        return None
+
+    def visible(self, path: str) -> set:
+        """A file and everything it includes, transitively."""
+        if path not in self._visible:
+            seen, todo = set(), [path]
+            while todo:
+                f = todo.pop()
+                if f not in seen:
+                    seen.add(f)
+                    todo += self.includes.get(f, [])
+            self._visible[path] = seen
+        return self._visible[path]
+
+    def tu_usings(self, path: str) -> list[str]:
+        """The `using namespace` directives the translation unit carries (its own and its headers')."""
+        return list(dict.fromkeys(u for f in self.visible(path) for u in self.usings.get(f, [])))
 
     # ---- classes -----------------------------------------------------------------------------------------------
     def base_keys(self, cls) -> list[str]:
@@ -127,8 +165,9 @@ class Index:
     def const_alias(self, key: str, name: str) -> str | None:
         for gid in self.members[key].get(name, []):
             unit = self.units[gid]
-            if unit.kind == "const" and unit.type_text.startswith("path:"):
-                return self.gd_path(unit.type_text[5:], key)
+            for value in unit.values if unit.kind == "const" else []:
+                if value[0] == "cast" and value[1].startswith("path:"):
+                    return self.gd_path(value[1][5:], key)
         return None
 
     def engine_class(self, name: str) -> str | None:
@@ -145,16 +184,17 @@ class Index:
         name = strip_templates(text).replace("struct ", "").replace("class ", "").lstrip(":")
         if not name or depth > len(self.aliases):
             return None
-        for scope in self.scopes(prefix) + self.usings.get(file, []):
+        for scope in self.scopes(prefix) + self.tu_usings(file):
             key = f"{scope}::{name}" if scope else name
             if key in self.classes and self.classes[key].lang == "cpp":
                 return key
             if key in self.aliases:
                 return self.cpp_class(self.aliases[key], scope, file, depth + 1)
-        simple = name.split("::")[-1]
-        keys = self.cpp_simple.get(simple, [])
-        matching = [k for k in keys if k == name or k.endswith("::" + name)]
-        return matching[0] if len(matching) == 1 else None
+        # declared in the translation unit under a namespace the code reaches through its own scopes
+        visible = self.visible(file) if file else set()
+        keys = [k for k in self.cpp_simple.get(name.split("::")[-1], []) if (k == name or k.endswith("::" + name))
+                and self.classes[k].file in visible]
+        return keys[0] if len(keys) == 1 else None
 
     def lookup(self, key: str, name: str, seen=None) -> list[int]:
         """A member by name in a class, then up its bases (the language's inheritance rule)."""

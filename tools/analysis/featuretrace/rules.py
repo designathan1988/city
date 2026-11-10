@@ -66,6 +66,28 @@ GDEXT_BIND = ("bind_method", "bind_static_method", "bind_vararg_method")  # Clas
 GDEXT_SIGNAL = "ADD_SIGNAL"                                           # ADD_SIGNAL(MethodInfo("name", ...))
 GDEXT_PROPERTY = "ADD_PROPERTY"                                       # ADD_PROPERTY(PropertyInfo(.., "p"), set, get)
 
+# Where each rule of log/trace-rules.md is handled ("module:Qualified.name"); tests/test_rules.py imports each one.
+HANDLERS = {
+    "DEF": ("gd_read:GdReader.unit", "cpp_read:CppReader.unit", "index:Index"),
+    "LOOK": ("resolve:Resolver.bare", "resolve:Resolver.qualified", "resolve:Resolver.adl", "index:Index.visible",
+             "typer:Typer.named"),
+    "VALUE": ("typer:Typer.evaluate", "ir_gd:build", "ir_cpp:build"),
+    "EXPR": ("ir_gd:build", "ir_cpp:build", "typer:Typer.evaluate"),
+    "FLOW": ("typer:Typer.local", "typer:Typer.held", "typer:Typer.returns", "resolve:Resolver.argument_values",
+             "resolve:Resolver.assigned_values"),
+    "CALL": ("link:link_ref", "link:with_overrides", "link:fits", "resolve:Resolver.member"),
+    "BRANCH": ("gd_body:statement", "cpp_body:statement"),
+    "JUMP": ("gd_body:statement", "cpp_body:statement"),
+    "NAME": ("resolve:Resolver.by_string", "typer:Typer.made_by_name"),
+    "SIGNAL": ("link:connect",),
+    "BIND": ("cpp_expr:registration", "index:Index.bind", "resolve:Resolver.engine_members"),
+    "ENTRY": ("walk:entry_reason",),
+    "TYPE": ("typer:Typer.type_class",),
+}
+
+# The engine's constructors by name (G6): (global receiver, method) -> index of the argument naming the class.
+NAME_CONSTRUCTORS = {("ClassDB", "instantiate"): 0}
+
 # C++ casts and the library's makers: the type a templated call yields.
 CASTS = ("static_cast", "dynamic_cast", "const_cast", "reinterpret_cast", "bit_cast", "any_cast", "get", "get_if")
 MAKERS = {"make_shared": "std::shared_ptr", "make_unique": "std::unique_ptr", "make_optional": "std::optional"}

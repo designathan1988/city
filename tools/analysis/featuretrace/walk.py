@@ -32,8 +32,8 @@ class Walk:
     writes: dict = field(default_factory=dict)   # state gid -> [(writer gid, edge)]
 
 
-def keep(edge, exact: bool) -> bool:
-    return edge.kind in RUNS and not (exact and edge.how.startswith("candidates"))
+def keep(edge) -> bool:
+    return edge.kind in RUNS
 
 
 def ordered(edges, side: str) -> list:
@@ -48,14 +48,14 @@ def ordered(edges, side: str) -> list:
     return out
 
 
-def forward(rs, seeds: list[int], exact: bool = False, max_depth: int | None = None) -> Walk:
+def forward(rs, seeds: list[int], max_depth: int | None = None) -> Walk:
     ix, walk = rs.ix, Walk()
     numbers = {}
     stack = [("visit", gid, 0, None) for gid in reversed(seeds)]
     while stack:
         action, gid, depth, edge = stack.pop()
         if action == "returns":
-            for line, text in ix.units[gid].returns:
+            for line, text, _ in ix.units[gid].returns:
                 walk.rows.append(Row(depth, gid, None, "returns", f"{text}  (line {line})"))
             continue
         if gid in numbers:
@@ -74,7 +74,7 @@ def forward(rs, seeds: list[int], exact: bool = False, max_depth: int | None = N
         if rs.external.get(gid):
             walk.rows.append(Row(depth + 1, gid, None, "external", ", ".join(sorted(rs.external[gid]))))
         stack.append(("returns", gid, depth + 1, None))
-        for e in reversed(ordered([e for e in outs if keep(e, exact)], "dst")):
+        for e in reversed(ordered([e for e in outs if keep(e)], "dst")):
             stack.append(("visit", e.dst, depth + 1, e))
     return walk
 
@@ -91,7 +91,7 @@ def entry_reason(rs, gid: int) -> str:
     return "no caller in the code"
 
 
-def back(rs, seeds: list[int], exact: bool = False, max_depth: int | None = None) -> Walk:
+def back(rs, seeds: list[int], max_depth: int | None = None) -> Walk:
     ix, walk = rs.ix, Walk()
     numbers = {}
     stack = [(gid, 0, None) for gid in reversed(seeds)]
@@ -105,7 +105,7 @@ def back(rs, seeds: list[int], exact: bool = False, max_depth: int | None = None
             continue
         numbers[gid] = len(numbers) + 1
         walk.reached.add(gid)
-        callers = ordered([e for e in rs.inn.get(gid, []) if keep(e, exact)], "src")
+        callers = ordered([e for e in rs.inn.get(gid, []) if keep(e)], "src")
         unit = ix.units[gid]
         is_entry = not callers or unit.kind == "engine_signal" or ix.is_engine_callback(unit)
         note = ""

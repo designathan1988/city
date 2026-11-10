@@ -18,6 +18,8 @@ Sources (read through context7):
 - G5 GDExtension: GDCLASS, GDREGISTER_CLASS, `_bind_methods`, ClassDB::bind_method(D_METHOD), ADD_SIGNAL(MethodInfo),
   ADD_PROPERTY(PropertyInfo, setter, getter), callable_mp, connect(name, Callable), emit_signal (object_class,
   gdextension_cpp_example).
+- G6 ClassDB.instantiate(class: StringName): "Instantiates a new object of the given class"; engine and GDExtension
+  classes are in ClassDB, script `class_name` classes are not (class_classdb).
 - C1 C++ keywords, identifiers with special meaning, preprocessor tokens (cppreference keyword, preprocessor).
 - C2 Expressions: primary expressions, operator precedence, value categories (expressions, operator_precedence,
   value_category, operator_member_access, operator_incdec).
@@ -39,7 +41,7 @@ Sources (read through context7):
 | CALL | A call resolves its callee (LOOK on the name, VALUE on the receiver), links caller -> callee, binds each argument to its parameter (FLOW), and the callee's result returns to the call site (FLOW). A method call also reaches the overrides in every class below the receiver's (GDScript: every method; C++: `virtual` or overriding, not when qualified) (C4). Overloads are chosen by the arguments (arity first) (C4). |
 | BRANCH | Every path of a branch or loop is followed; the condition is carried on everything under it. |
 | JUMP | `return` carries a value back to the call site; `break`/`continue`/`goto`/`throw` end a path; `await` resumes when the signal fires or the coroutine returns, with its value. |
-| NAME | A name carried as a string reaches what the engine calls by that name: Callable(obj, "m"), call/call_deferred/callv("m"), connect("s", ...), emit_signal("s"), `&"m"` handed to a call, D_METHOD("m") bindings (G4, G5). The string's values follow FLOW like any value. |
+| NAME | A name carried as a string reaches what the engine calls or creates by that name: ClassDB.instantiate(&"C") is an object of class C (G6); Callable(obj, "m"), call/call_deferred/callv("m"), connect("s", ...), emit_signal("s"), `&"m"` handed to a call, D_METHOD("m") bindings (G4, G5). The string's values follow FLOW like any value. |
 | SIGNAL | `emit` reaches the signal; the signal reaches every handler connected to it in code (connect) or in a scene ([connection]); a signal no code declares is the engine's and the engine emits it (entry) (G4). |
 | BIND | GDExtension: bind_method binds a script-visible name to a C++ method; ADD_SIGNAL declares a signal; ADD_PROPERTY binds a property to setter/getter (a read calls the getter, a write the setter); GDCLASS / GDREGISTER_CLASS make the class visible to scripts by its name; callable_mp(obj, &C::m) is a callable of C::m (G5). |
 | ENTRY | The engine calls: engine callbacks (`_ready`, `_process`, `_input`, `_notification`, `_init`, ... `_bind_methods`), handlers of engine signals, scene-connected handlers, bound methods called by name, GDExtension init functions, the main loop. These end the walk back. |
