@@ -159,8 +159,16 @@ For each cause: the test that fails before and passes after, the change, the che
 meshes, light, the camera or the data that feeds them (`project/data/render`, `project/data/game`), whatever its purpose
 (a performance fix on the land's heights can still move the land): photos of the element before the change and after it,
 from near and from several angles, by day and by night where light is involved, into `dist/review-c<n>/before` and
-`/after`; compare them (`tools/build/photodiff.py`), look at each picture yourself and explain every difference by its
-cause. A difference with no cause is a defect: back to the reading. No photos, no `fix`.
+`/after`. Look at each picture yourself.
+- **The before photo is not the reference.** It may show the very defect being fixed, or another one. It only shows what
+  changed. Never make the after match the before, and never count "equal to before" as correct.
+- **The after photo is judged on its own:** is what the player sees right? The reference of right is the Roadcraft lab in
+  the same view and the project's own rules (CLAUDE.md, the user's memory on street edges), not the old picture.
+- **Every difference is explained by its cause** (`tools/build/photodiff.py` says where to look): the ones the fix was
+  meant to make, and any other. A fix meant to change nothing on the screen that changed something is explained too: it
+  is either a defect the fix brought (back to the reading) or a defect the before had (say which, with the code).
+- A defect seen in either picture that this cause does not own is recorded as a problem, not ignored.
+No photos, no `fix`.
 
 `$L fix C<n> --how "what changed, why it cannot return" --commit <sha>` and commit and push by theme. A fix goes by
 cause: it closes every problem under that cause, so before it check each of them in the changed code. A problem the
