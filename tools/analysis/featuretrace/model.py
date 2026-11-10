@@ -136,4 +136,9 @@ class FileFacts:
     autoloads: dict = field(default_factory=dict)  # project.godot: name -> res:// path
     mentions: list = field(default_factory=list)   # data: (string, line)
     includes: list = field(default_factory=list)   # cpp: the paths `#include "..."` names
+    imports: dict = field(default_factory=dict)    # js: local name -> (specifier, imported name | "default" | "*")
+    exports: dict = field(default_factory=dict)    # js: exported name -> local name | ("from", specifier, name)
+    star_exports: list = field(default_factory=list)   # js: specifiers of `export * from`
+    config: dict = field(default_factory=dict)     # tsconfig (paths, baseUrl) / package.json (name, exports, main)
+    script: bool = False           # js: no import or export: its top-level names are global (J7)
     errors: int = 0

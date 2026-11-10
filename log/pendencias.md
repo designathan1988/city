@@ -115,3 +115,4 @@ O que falta fazer, por área.
     (so before P36 too). A row for that renderer, if the game is to be drawn by it, is still to be designed.
   - Godot's static memory at km24 rose 3 to 4 MiB from one run to the next with no change between them (613, 614,
     617 MiB at the centre, `log/performance.md` P36): not read for a cause.
+- Feature tracer at scale on JavaScript/TypeScript with three.js read as code: the lab (145k definitions) did not reach the fixpoint in 600 s. Cause (`typer.Typer.compute`, `solver.Solver.grew`): expression nodes are evaluated again in full on every growth of what they read, and their readers again in full; values of hundreds of TSL node classes meet in the same parameters, so the work is quadratic. To do: difference propagation on the expression nodes too (each tree shape a transfer function over the new values only), as the places already have (`log/feature-trace.md`, 2026-11-10 21:40).

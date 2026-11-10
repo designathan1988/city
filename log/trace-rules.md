@@ -247,3 +247,102 @@ and `keep_edge` (the side-effected unknown "links into a unit"), `link.build` (r
   the same class counted once per reading unit and the sets grew with the program). On 1132 files / 25770
   definitions the fixpoint takes 16 s (191 s before the identity; 118 s with whole-program passes). S4 (collapsing
   cycles) is not needed at this cost and is not implemented.
+
+## JavaScript and TypeScript: sources (read through context7, 2026-11-10)
+
+- J1 ECMAScript functions and parameters: default values, rest parameters, `arguments`; destructuring assignment and
+  binding patterns (MDN Functions, Default parameters, Rest parameters, Destructuring).
+- J2 `this`: in a method, the object the method was called on; in a class method, the instance; arrow functions take
+  `this` from the enclosing lexical context and ignore `call`/`apply`/`bind`'s thisArg; `call(thisArg, ...args)`,
+  `apply(thisArg, args)`, `bind(thisArg, ...args)` call or bind the function (MDN this, Arrow functions,
+  Function.prototype.call/apply/bind).
+- J3 Modules: `import` forms (named, default, namespace `* as`, side-effect), `export` forms (named, default, `export
+  { a as b } from`, `export * from`), dynamic `import()`, `import.meta`; a module's top-level code runs once when it is
+  first imported (MDN import, export, Modules guide). Module resolution: relative specifiers with extension
+  substitution (`./a.js` -> `a.ts`), extensionless paths and directory `index` files under `bundler`/`node10`,
+  `paths`/`baseUrl`, `node_modules` packages with package.json `exports`/`module`/`main`/`types` (TypeScript handbook,
+  Modules reference: moduleResolution node16/nodenext/bundler).
+- J4 Classes: `constructor`, `extends` and `super(...)` (a derived class without a constructor gets the default one,
+  which calls the base's), `super.m()`, static members and `static {}` blocks (run when the class is evaluated),
+  public fields (initialized in the constructor; `this` the instance), private `#` members, getters and setters (MDN
+  Classes, constructor, extends, static, Public class fields, Private elements).
+- J5 Calls the language makes: a getter on a read, a setter on a write; `for...of`, spread and array destructuring
+  call `[Symbol.iterator]()` and `next()`; `+`, comparisons and template literals call `valueOf`/`toString`/
+  `[Symbol.toPrimitive]`; a tagged template calls its tag; `yield` resumes on `next()` (MDN Symbol.iterator,
+  Object.prototype.valueOf, Addition, Template literals).
+- J6 The host's callbacks: EventTarget `addEventListener(type, listener)` (a function or an object with
+  `handleEvent`), `on<type>` handler properties, `dispatchEvent(event)`, `setTimeout`/`setInterval`,
+  `requestAnimationFrame`, `queueMicrotask`, Promise `then`/`catch`/`finally` and `await` (a thenable's `then`),
+  Worker `postMessage` delivering a `message` event to the other side (MDN addEventListener, Microtask guide, Using
+  promises, Worker message event, postMessage).
+- J7 Scope: `var` is function-scoped and hoisted, `let`/`const` block-scoped (temporal dead zone), function
+  declarations hoisted whole; closures see the enclosing functions' names; a script (no import/export) puts its
+  top-level names in the global scope (MDN var, let, Grammar and types, Closures; TypeScript Modules theory).
+- J8 TypeScript: contextual keywords (`abstract`, `declare`, `enum`, `namespace`, `module`, `readonly`, `type`,
+  `keyof`, `infer`, `satisfies`, `as`, `is`, `asserts`, `override`, `accessor`, `implements`, `interface`);
+  interfaces and namespaces merge with declarations of the same name; `declare global` and `declare module "m"`
+  augment the global scope and a module; types are erased: `as`, `satisfies`, `!` keep the value (TypeScript
+  handbook, release notes 1.8, 2.0, 4.3, 4.9, 6.0; Declaration merging).
+- J9 Object literals: method shorthand, getters and setters, `this` in a method is the object; an anonymous function
+  takes the name of the variable or property it is assigned to (MDN Object initializer, Working with objects,
+  Function.name).
+- J10 JSX: a lowercase tag is intrinsic (the host's); a capitalized tag is a value in scope, a function component
+  `(props) => Element` or a class component; `react-jsx` emits `_jsx(Component, props)` (TypeScript handbook 4.6,
+  5.1 JSX.ElementType).
+- J11 three.js (r160-r186 docs): `EventDispatcher.addEventListener/dispatchEvent/removeEventListener`; Object3D events
+  `added`, `removed`, `childadded`, `childremoved`, `dispose`; `Object3D.onBeforeRender/onAfterRender` callbacks,
+  `traverse(callback)`; `WebGLRenderer.setAnimationLoop(callback)`; `Material.onBeforeCompile`,
+  `customProgramCacheKey`; `Loader.load(url, onLoad, onProgress, onError)`; TSL `Fn()` and node update callbacks
+  (`onFrameUpdate`, `onRenderUpdate`, `onObjectUpdate`); `dispose()` dispatches `dispose`. All of them are the general
+  rules J6 (a callable handed to, or written into, an object of a library) and SIGNAL by event type: nothing is
+  written for three.js by name. When the library's own source is among the folders read, it is code like any other
+  and its calls are followed through it.
+- J12 Grammar: tree-sitter-typescript 0.23.2, `typescript` for `.ts`/`.mts`/`.cts`, `tsx` for `.tsx` and for
+  JavaScript (`.js`, `.jsx`, `.mjs`, `.cjs`: TypeScript's grammar extends JavaScript's; the TSX variant reads JSX).
+
+## JavaScript and TypeScript: the general rules applied
+
+| Id | Rule |
+|---|---|
+| LOOK | A bare name: the block and function scopes outward (closures, J7), then the module's top-level names, then its imports (each followed to the exporting module through `export ... from` and `export *`), then the global scope (scripts, `declare global`), else the host's or a library's. Never a class member without `this.` (J4). A member: on the classes every value of the receiver can be, then up `extends` (the prototype chain); an interface or abstract declaration reaches the members of every class that implements or extends it. A type name in an annotation is looked up the same way. |
+| FLOW | As for the other languages: a declared type names the class; every value written to a name flows into it; arguments to parameters (rest parameters take the elements); destructuring binds parts; a callable value stays a callable (FN). `as`/`satisfies`/`!` keep the value. |
+| CALL | A call reaches the functions its callee can hold and the overrides below (every JS method is virtual). `new C` reaches C's `constructor` or the inherited one, and the field initializers. Getters, setters, `[Symbol.iterator]`, `valueOf`/`toString`, `then` on `await`, decorators, tagged templates and JSX components are calls (J5, J8, J10). `f.call/apply` call f; `f.bind` is f. |
+| ENTRY | A module's top-level code (runs on import; an HTML entry or a bundler entry starts it); a static block; a callable handed to the host or a library (event listeners, timers, animation frames, promise reactions, library callbacks, J6, J11); handlers of events by type (SIGNAL). |
+| SIGNAL | An event by its type: `addEventListener("t", h)`, `on("t", h)`, `on<t> = h` subscribe h; `dispatchEvent({type: "t"})`, `dispatchEvent(new Event("t"))`, `emit("t", ...)`, `postMessage(data)` ("message") fire it; with no class of the program defining these methods, the event is the host's or the library's and links by its type. |
+
+## JavaScript and TypeScript: every construct of the grammar (tree-sitter-typescript 0.23.2, TSX, 184 named kinds)
+
+| Kind | Role | Rule |
+|---|---|---|
+| program | a module: its top-level code runs once when the module is first imported (J3) | DEF, ENTRY |
+| class_declaration, abstract_class_declaration, class, class_body | a class: its key, its members; `abstract` classes the same (J4) | DEF |
+| class_heritage, extends_clause, implements_clause | `extends X` / `implements I`: the bases, looked up as values (J4, J8) | DEF, LOOK |
+| class_static_block | `static { }`: runs when the class is evaluated, with the module (J4) | DEF, ENTRY |
+| function_declaration, generator_function_declaration, function_expression, generator_function, arrow_function | a function: declaration, expression, generator, arrow (an arrow keeps the enclosing `this`, J2); named after the variable or property it is written to (J9) | DEF, FLOW |
+| method_definition | a method, getter or setter (a getter runs on every read, a setter on every write, J5) | DEF, CALL |
+| abstract_method_signature, method_signature, function_signature, call_signature, construct_signature, index_signature, property_signature | a member or signature declared without a body (TS interfaces, `abstract`, overloads, `declare`): a declaration the calls through the type reach, overridden by the classes below (J8) | DEF, TYPE |
+| public_field_definition | a field: its initializer runs in the constructor (instance) or with the class (static) (J4) | DEF, FLOW |
+| interface_declaration, interface_body, enum_declaration, enum_body, enum_assignment, internal_module, module, type_alias_declaration, ambient_declaration | TS interface, enum, namespace, type alias, ambient `declare` and `declare global`/`declare module` (merged with the declarations of the same name, J8) | DEF, TYPE |
+| lexical_declaration, variable_declaration, variable_declarator, formal_parameters, required_parameter, optional_parameter | a variable (`var` function-scoped and hoisted, `let`/`const`/`using` block-scoped, J7), its initializer's value; a parameter, with its default value and the arguments of every call (J1) | DEF, FLOW |
+| object_pattern, array_pattern, pair_pattern, object_assignment_pattern, assignment_pattern, rest_pattern, shorthand_property_identifier_pattern | destructuring: each name bound to its part of the value (a property, an element, the rest) (J1) | FLOW |
+| assignment_expression, augmented_assignment_expression | an assignment: the value flows into the name or member written; a member with a setter calls it; a callable written to a member of a value the program does not define is handed to that library (J6) | FLOW, CALL |
+| import_statement, import_clause, named_imports, namespace_import, import_specifier, import_require_clause, import_alias, import_attribute | `import`: a binding of a name exported by another module, resolved by the module resolution rules (relative path with extension substitution, index files, tsconfig paths, package.json exports, J3) | LOOK, FLOW |
+| export_statement, export_clause, export_specifier, namespace_export | `export`: a name of the module made visible, renamed, defaulted or re-exported from another module (`export * from`, `export { a as b } from`) (J3) | LOOK, DEF |
+| identifier, statement_identifier, this, super, nested_identifier | a name: block -> enclosing functions (closures) -> module -> imports -> global (J7); `this` is the class instance in a method and the enclosing `this` in an arrow (J2); `super` the base class | LOOK |
+| member_expression, subscript_expression, optional_chain, property_identifier, private_property_identifier, shorthand_property_identifier, computed_property_name | a member `a.b`, `a?.b`, `a[k]`, `a.#p`: looked up on the classes of every value of `a` (prototype chain = bases); with a getter it is a call (J5); a computed key holding text values names the members those texts are | LOOK, CALL |
+| call_expression, arguments | a call: callee resolved (a name, a member, any expression holding a function), arguments to parameters, the result back; `f.call(t, ...)`/`f.apply(t, a)`/`f.bind(t)` call f (J2); a callable handed to a function the program does not define runs there (host and library callbacks, J6); a tagged template calls its tag (J5) | CALL, FLOW |
+| new_expression | `new C(args)`: C's constructor (inherited when C has none: the default constructor calls the base's, J4) and its instance field initializers | CALL, FLOW |
+| decorator | `@dec`: the decorator is called with the class or member when the class is evaluated (J8) | CALL |
+| jsx_element, jsx_opening_element, jsx_closing_element, jsx_self_closing_element, jsx_attribute, jsx_expression, jsx_namespace_name | JSX: a lowercase tag is the host's; a capitalized tag is a value in scope (a function or class component) handed to the JSX runtime, which calls it with the props (J10) | CALL, VALUE |
+| binary_expression, unary_expression, update_expression, template_substitution, template_string | operators: a value of a class used by `+`, comparisons, a template `${x}` calls its `valueOf`/`toString`/`[Symbol.toPrimitive]` (J5); `in`, `instanceof`, `typeof`, `delete`, `void` give the language's values | EXPR, CALL |
+| ternary_expression, sequence_expression, parenthesized_expression, as_expression, satisfies_expression, non_null_expression, instantiation_expression, spread_element | a value built from its parts: the ternary is either branch; a sequence its last; parentheses the inner; `as`/`satisfies`/`!`/`<T>` keep the value (type-only) with the type named (J8) | EXPR |
+| await_expression, yield_expression | `await x`: the value x resolves to (a thenable's `then` is called, J6); `yield`: a value out of a generator, resumed by `next()` (J5) | EXPR, JUMP |
+| object, pair, array | a container literal: an object literal is a class of its own (its methods, getters and fields; `this` in its methods is the object, J9); an array holds its elements | EXPR |
+| string, string_fragment, escape_sequence, number, regex, regex_pattern, regex_flags, true, false, null, undefined, html_character_reference, jsx_text, meta_property | a literal: the language's value | VALUE |
+| import | `import("m")`: the module, loaded later (a promise of its namespace); `import.meta` (J3) | LOOK, CALL |
+| if_statement, else_clause, switch_statement, switch_body, switch_case, switch_default, try_statement, catch_clause, finally_clause, labeled_statement, with_statement, statement_block | every path is followed with its condition: `if`/`else`, `switch`, `try`/`catch`/`finally`, labels, `with` (its object's members are names in scope) | BRANCH |
+| for_statement, for_in_statement, while_statement, do_statement | loops: `for`, `while`, `do`; `for...of` calls the iterable's `[Symbol.iterator]()` and the iterator's `next()`, `for...in` walks the keys (J5) | BRANCH, CALL |
+| return_statement, throw_statement, break_statement, continue_statement | `return` carries a value back; `throw`, `break`, `continue` end a path | JUMP |
+| expression_statement | a statement made of an expression | VALUE |
+| type_annotation, type_arguments, type_parameters, type_parameter, type_identifier, nested_type_identifier, generic_type, predefined_type, array_type, tuple_type, union_type, intersection_type, function_type, constructor_type, object_type, parenthesized_type, literal_type, lookup_type, index_type_query, type_query, conditional_type, infer_type, mapped_type_clause, template_type, template_literal_type, readonly_type, rest_type, optional_type, this_type, existential_type, flow_maybe_type, default_type, constraint, type_predicate, type_predicate_annotation, asserts, asserts_annotation, adding_type_annotation, omitting_type_annotation, opting_type_annotation, extends_type_clause | a TS type: names the type a declared name holds (for VALUE of a declared name, and the receiver's class of a call through it); no link by itself (J8) | TYPE |
+| comment, html_comment, hash_bang_line, debugger_statement, empty_statement, accessibility_modifier, override_modifier | no role in a trace: comments, `debugger`, `;`, modifiers checked only by the compiler | NONE |

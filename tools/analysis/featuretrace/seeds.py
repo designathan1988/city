@@ -32,6 +32,9 @@ def label(ix, gid: int) -> str:
         return f"engine signal '{unit.name}'"
     if unit.lang == "cpp":
         return unit.qual
+    if unit.lang == "js":
+        owner = unit.owner.split("#", 1)[1] if "#" in unit.owner else unit.owner.rsplit("/", 1)[-1]
+        return f"{owner}.{unit.name}"
     return f"{class_label(ix, unit.owner)}.{unit.name}"
 
 
@@ -75,8 +78,10 @@ def in_scope(ix, spec: str, name: str, scope: list[str]) -> list[int]:
     found = []
     for gid in candidates:
         unit = ix.units[gid]
-        owner = class_label(ix, unit.owner) if unit.lang == "gd" else unit.owner.replace("::", ".")
-        stem = unit.owner.rsplit("/", 1)[-1].removesuffix(".gd") if unit.lang == "gd" else ""
+        owner = class_label(ix, unit.owner) if unit.lang == "gd" else unit.owner.split("#", 1)[-1] \
+            if unit.lang == "js" else unit.owner.replace("::", ".")
+        stem = unit.owner.rsplit("/", 1)[-1].removesuffix(".gd") if unit.lang == "gd" else \
+            unit.owner.rsplit("/", 1)[-1].split(".")[0] if unit.lang == "js" else ""
         if owner == want or owner.endswith("." + want) or stem == want or unit.qual.endswith(spec):
             found.append(gid)
     functions = [g for g in found if ix.units[g].kind in FUNCTION_KINDS]

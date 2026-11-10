@@ -6,6 +6,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 from .cpp_names import strip_templates
+from .js_modules import JsModules
 from .model import ENGINE_CALLBACKS, FUNCTION_KINDS, Unit
 
 ENGINE_SIGNAL = "engine_signal"
@@ -55,6 +56,8 @@ class Index:
                     self.gd_globals[cls.name] = cls.key
                 elif cls.lang == "cpp":
                     self.cpp_simple[cls.name].append(cls.key)
+                elif cls.lang == "js" and cls.outer and cls.name:
+                    self.inner[cls.outer].setdefault(cls.name, cls.key)
             self.usings[facts.path] = facts.usings
             self.includes[facts.path] = facts.includes
             self.aliases.update(facts.aliases)
@@ -68,6 +71,7 @@ class Index:
         known = set(self.offset)
         for path, names in self.includes.items():
             self.includes[path] = [f for f in (self.include_file(path, n, known) for n in names) if f]
+        self.js = JsModules(all_facts, self)
         for name, path in autoloads.items():
             if path in self.classes:
                 self.gd_globals[name] = path
@@ -119,7 +123,9 @@ class Index:
         self.bases[cls.key] = []
         found = []
         for spec in cls.bases:
-            key = self.gd_class(spec, cls.key) if cls.lang == "gd" else self.cpp_class(spec, cls.outer, cls.file)
+            key = self.gd_class(spec, cls.key) if cls.lang == "gd" else \
+                self.js.class_of(spec, cls.file, cls.outer) if cls.lang == "js" else \
+                self.cpp_class(spec, cls.outer, cls.file)
             if key:
                 found.append(key)
         self.bases[cls.key] = found
@@ -206,6 +212,8 @@ class Index:
         if not key or key in seen:
             return []
         seen.add(key)
+        if self.js.is_module(key):            # a module namespace: what it exports (J3)
+            return list(self.js.export(key, name)[0])
         found = list(self.members[key].get(name, []))
         if found:
             return found

@@ -11,19 +11,23 @@ sys.path.insert(0, str(HERE.parents[1]))
 from featuretrace import program, seeds, walk  # noqa: E402
 
 FIXTURE = HERE / "fixture"
-_LOADED = []
+_LOADED = {}
 
 
-def loaded():
-    if not _LOADED:
-        _LOADED.append(program.load([FIXTURE / "project", FIXTURE / "native"], FIXTURE, None))
-    return _LOADED[0]
+def loaded(roots: tuple = ("project", "native"), base: str = "") -> tuple:
+    """The fixture read from these roots (relative to the fixture folder), once per set of roots."""
+    if (roots, base) not in _LOADED:
+        _LOADED[(roots, base)] = program.load([FIXTURE / r for r in roots], FIXTURE / base, None)
+    return _LOADED[(roots, base)]
 
 
 class FixtureCase(unittest.TestCase):
+    ROOTS = ("project", "native")      # what the case reads, from the fixture folder
+    BASE = ""                          # where the files' displayed paths start
+
     @classmethod
     def setUpClass(cls):
-        cls.ix, cls.rs, cls.files, cls.broken = loaded()
+        cls.ix, cls.rs, cls.files, cls.broken = loaded(cls.ROOTS, cls.BASE)
 
     def gid(self, spec: str) -> int:
         found = seeds.find(self.ix, spec)

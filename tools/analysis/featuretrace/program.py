@@ -8,6 +8,8 @@ from pathlib import Path
 from . import engine_read, link
 from .cpp_read import read_cpp
 from .gd_read import read_gd
+from .js_config import read_package, read_tsconfig
+from .js_read import read_js
 from .index import Index
 from .source import PROJECT_FILE, cached_facts, discover, reader_version
 
@@ -34,6 +36,12 @@ def reader_for(path: Path):
             return read_gd(src, res_path(path))
         if lang == "cpp":
             return read_cpp(src)
+        if lang == "js":
+            return read_js(src)
+        if lang == "tsconfig":
+            return read_tsconfig(src)
+        if lang == "package":
+            return read_package(src)
         if lang == "scene":
             facts = engine_read.read_scene(src)
             root = godot_root(path)

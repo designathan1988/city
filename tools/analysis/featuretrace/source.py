@@ -16,24 +16,43 @@ from pathlib import Path
 import tree_sitter
 import tree_sitter_cpp
 import tree_sitter_gdscript
+import tree_sitter_typescript
 
 LANG_BY_EXT = {
     ".gd": "gd", ".cpp": "cpp", ".cc": "cpp", ".cxx": "cpp", ".h": "cpp", ".hpp": "cpp", ".hh": "cpp",
     ".inl": "cpp", ".inc": "cpp", ".tscn": "scene", ".json": "data",
+    ".ts": "js", ".mts": "js", ".cts": "js", ".tsx": "js", ".js": "js", ".jsx": "js", ".mjs": "js", ".cjs": "js",
 }
+# JavaScript and TypeScript (J12): TypeScript's grammar for .ts/.mts/.cts; the TSX grammar (TypeScript's, with JSX) for
+# .tsx and every JavaScript file. A `.d.ts` file only declares.
+TYPESCRIPT_EXTS = (".ts", ".mts", ".cts")
+CONFIG_FILES = ("tsconfig.json", "jsconfig.json")
+PACKAGE_FILE = "package.json"
+LIBRARY_DIRS = {"node_modules"}       # read only when a root points inside them
 PROJECT_FILE = "project.godot"
-SKIP_DIRS = {".git", ".godot", "__pycache__", ".import"}
+SKIP_DIRS = {".git", ".godot", "__pycache__", ".import"} | LIBRARY_DIRS
 
 _GRAMMARS = {
     "gd": tree_sitter.Language(tree_sitter_gdscript.language()),
     "cpp": tree_sitter.Language(tree_sitter_cpp.language()),
+    "ts": tree_sitter.Language(tree_sitter_typescript.language_typescript()),
+    "tsx": tree_sitter.Language(tree_sitter_typescript.language_tsx()),
 }
 
 
 def language_of(path: Path) -> str:
     if path.name == PROJECT_FILE:
         return "project"
+    if path.name in CONFIG_FILES or path.name.startswith("tsconfig.") and path.suffix == ".json":
+        return "tsconfig"
+    if path.name == PACKAGE_FILE:
+        return "package"
     return LANG_BY_EXT.get(path.suffix.lower(), "")
+
+
+def grammar_of(path: Path) -> str:
+    """The grammar a JavaScript or TypeScript file is parsed with (J12)."""
+    return "ts" if path.suffix.lower() in TYPESCRIPT_EXTS else "tsx"
 
 
 def discover(roots: list[Path]) -> list[tuple[Path, str]]:
@@ -89,11 +108,15 @@ def named_children(node) -> list:
 
 def string_value(src: Source, node) -> str | None:
     """The text inside a string literal node (GDScript string or &"name", C++ string_literal), else None."""
-    if node is None or node.type not in ("string", "string_name", "string_literal", "raw_string_literal"):
+    if node is None or node.type not in ("string", "string_name", "string_literal", "raw_string_literal",
+                                         "template_string"):
         return None
     text = src.text(node)
-    start = text.find('"')
-    end = text.rfind('"')
+    quote = next((q for q in ('"', "'", "`") if text.rstrip().endswith(q)), '"')   # JS: ' and ` quote too
+    if node.type == "template_string" and any(c.is_named and c.type != "string_fragment" for c in node.children):
+        return None                                                            # a template with substitutions
+    start = text.find(quote)
+    end = text.rfind(quote)
     if start < 0 or end <= start:
         return None
     return text[start + 1:end]

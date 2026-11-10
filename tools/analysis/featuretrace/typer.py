@@ -18,7 +18,7 @@ from .library import DEREF, HELD_CALLS, ITEM, ITER, ITERATOR_CALLS, PAIR_PARTS, 
 from .model import FUNCTION_KINDS
 from .solver import CLASS, ELEM, ENGINE, FN, TEXT, Solver, identity
 
-CALLABLE_CALLS = ("call", "callv", "call_deferred")
+CALLABLE_CALLS = ("call", "callv", "call_deferred", "apply")
 NO_VALUE = ("void", "Variant", "auto", "decltype(auto)", "")
 
 
@@ -124,6 +124,9 @@ class Typer(Solver):
             return [(CLASS + bases[0], unit)] if bases else [(ENGINE, unit)]
         if kind == "strname":
             return [(TEXT + tree[1], unit)]
+        if kind == "module":                     # import("m"): the module's namespace (J3)
+            key = self.ix.js.resolve(unit.file, tree[1])
+            return [(CLASS + key, unit)] if key else [(ENGINE, unit)]
         return [(ENGINE, unit)]      # literal, node: the engine's or the language's values
 
     def call(self, callee, args, unit, depth: int) -> list[tuple]:
@@ -140,8 +143,8 @@ class Typer(Solver):
             return [v for t, c in base for v in self.member(t, c, callee[2], True, depth)]
         if callee[0] == "name":
             name = callee[1]
-            key = self.ix.gd_class(name, unit.owner) if unit.lang == "gd" else self.ix.cpp_class(name, unit.owner,
-                                                                                                    unit.file)
+            key = self.ix.gd_class(name, unit.owner) if unit.lang == "gd" else None if unit.lang == "js" else \
+                self.ix.cpp_class(name, unit.owner, unit.file)
             if key:
                 return [(CLASS + key, unit)]            # a class called constructs it
             if unit.lang == "gd" and name[:1].isupper() and not self.rs.function_targets(unit, name):
@@ -161,6 +164,8 @@ class Typer(Solver):
             return [(FN + str(self.ix.offset[unit.file] + unit.lambdas[name]), unit)]
         if name in unit.types:
             return self.local(name, unit, depth)
+        if unit.lang == "js":
+            return self.js_named(name, unit, depth)
         targets = self.rs.state_targets(unit, name)
         if targets:
             return [v for t in targets for v in self.held(self.ix.units[t], depth)]
@@ -172,6 +177,16 @@ class Typer(Solver):
         if functions:
             return [(FN + str(f), unit) for f in functions]
         return [(ENGINE, unit)]
+
+    def js_named(self, name: str, unit, depth: int) -> list[tuple]:
+        """A JS name past the locals: what the variables it names hold, the functions it names, the class,
+        namespace or module it names (J7, J3)."""
+        out = [v for t in self.rs.state_targets(unit, name) for v in self.held(self.ix.units[t], depth)]
+        out += [(FN + str(f), unit) for f in self.rs.function_targets(unit, name)]
+        key = self.ix.js.class_of(name, unit.file, unit.owner)
+        if key:
+            out.append((CLASS + key, unit))
+        return out or [(ENGINE, unit)]
 
     def local(self, name: str, unit, depth: int) -> list[tuple]:
         """A local or parameter: its declared type, else every value that flows into it (for a parameter, the
@@ -208,6 +223,7 @@ class Typer(Solver):
         key = (text, ctx.lang, ctx.owner, ctx.file)       # a type names the same class from the same scope
         if key not in self._classes:
             self._classes[key] = self.ix.gd_class(text, ctx.owner) if ctx.lang == "gd" else \
+                self.ix.js.class_of(text, ctx.file, ctx.owner) if ctx.lang == "js" else \
                 self.ix.cpp_class(clean(text), ctx.owner, ctx.file)
         return self._classes[key]
 
@@ -227,6 +243,16 @@ class Typer(Solver):
         key = self.type_class(text, ctx)
         if called and name == "new":
             return [(CLASS + key, ctx)] if key else [(text, ctx)]     # `T.new()` constructs a T (EXPR: new)
+        if key is not None and self.ix.js.is_module(key):             # a namespace's member: what it exports (J3)
+            gids, modules = self.ix.js.export(key, name)
+            out = [(CLASS + m, ctx) for m in modules]
+            for gid in gids:
+                target = self.ix.units[gid]
+                if target.kind == "class":
+                    out.append((CLASS + target.qual, ctx))
+                else:
+                    out += self.returns(target, depth) if called else self.held(target, depth)
+            return out or [(ENGINE, ctx)]
         if key is None:
             return [(library_step(name, text, called), ctx)] if text != ENGINE else [(ENGINE, ctx)]
         found = self.ix.lookup(key, name)
@@ -256,6 +282,7 @@ class Typer(Solver):
         keys, engine, functions = [], False, []
         for text, ctx in self.evaluate(tree, unit):
             if text.startswith(ELEM):
+                engine = True              # a container's elements: the container is the language's or the library's
                 continue
             if text.startswith(FN):
                 functions.append(int(text[len(FN):]))

@@ -7,7 +7,7 @@ range-for variable holds the range's elements; each assignment adds its value. E
 """
 from __future__ import annotations
 
-from . import cpp_expr, cpp_implicit
+from . import c_family, cpp_expr, cpp_implicit
 from .cpp_names import type_of, unwrap
 from .gd_body import squash
 from .model import Ref, Unit, declare, enclose
@@ -72,13 +72,7 @@ def statement(r, st, unit, cond) -> None:
     elif kind == "declaration":
         local(r, st, unit, cond)
     elif kind == "if_statement":
-        test = field_of(st, "condition")
-        expr(r, test, unit, cond)
-        label = "if " + squash(src.text(test))
-        statement(r, field_of(st, "consequence"), unit, cond + (label,))
-        alt = field_of(st, "alternative")
-        for sub in named_children(alt) if alt is not None else []:
-            statement(r, sub, unit, cond + ("else of " + label,))
+        c_family.if_statement(r, st, unit, cond, statement, expr)
     elif kind in ("for_statement", "for_range_loop", "while_statement", "do_statement"):
         loop(r, st, unit, cond)
     elif kind == "switch_statement":

@@ -10,7 +10,7 @@ from tokens import CODE_KINDS
 LANGUAGES = {
     ".cpp": "cpp", ".h": "cpp", ".hpp": "cpp", ".c": "cpp", ".cc": "cpp", ".inl": "cpp",
     ".gdshader": "glsl", ".gdshaderinc": "glsl", ".glsl": "glsl",
-    ".js": "js", ".mjs": "js", ".cjs": "js", ".ts": "js",
+    ".js": "js", ".mjs": "js", ".cjs": "js", ".ts": "js", ".mts": "js", ".cts": "js", ".tsx": "js", ".jsx": "js",
     ".gd": "gd", ".py": "py", ".sh": "sh", ".ps1": "ps1",
     ".tscn": "godot_res", ".tres": "godot_res", ".import": "godot_res", ".cfg": "godot_res", ".godot": "godot_res",
     ".svg": "xml", ".xml": "xml",

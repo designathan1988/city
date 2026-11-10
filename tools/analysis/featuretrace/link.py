@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import time
 
-from . import names
+from . import js_link, names
 from .cpp_implicit import IMPLICIT
 from .model import FUNCTION_KINDS
 from .rules import NAME_CALLS
@@ -21,6 +21,7 @@ from .typer import CLASS
 
 REF = "#ref"
 PROGRESS_SECONDS = 5.0      # a line of progress this often, however long the work
+JS_KINDS = {"import": js_link.module_run, "listen": js_link.listen, "fire": js_link.fire, "jsx": js_link.jsx}
 WANT = {"call": "func", "value": "func", "thread": "func", "read": "read", "write": "state", "emit": "signal",
         "operator": "func"}
 
@@ -107,6 +108,9 @@ def link_ref(rs, unit, ref) -> None:
         return
     if kind == "load":
         return
+    if kind in JS_KINDS:
+        JS_KINDS[kind](rs, unit, ref)
+        return
     if kind == "connect":
         connect(rs, unit, ref)
         return
@@ -130,6 +134,8 @@ def link_ref(rs, unit, ref) -> None:
         targets, how = constructors(rs, unit, ref)
     else:
         targets, how = rs.resolve(unit, ref, WANT[kind])
+        if kind == "write" and unit.lang == "js" and how in (EXTERNAL, UNREACHED):
+            handed(rs, unit, ref)          # a callable written into a library's object: it calls it (J6, J11)
         if how == EXTERNAL and kind == "call" and unit.lang == "cpp" and ref.base is None and not ref.qualified:
             targets = rs.adl(unit, ref.name, ref.args)
             how = EXACT if targets else EXTERNAL
@@ -138,6 +144,9 @@ def link_ref(rs, unit, ref) -> None:
     if kind == "call" and ref.base is None and not ref.qualified and how in (EXTERNAL, LOCAL):
         targets = invoked(rs, unit, ("name", ref.name))      # the name holds a value that is called
         how = EXACT if targets else how
+    elif kind == "call" and ref.base is not None and ref.base != ("super",) and how in (EXTERNAL, UNREACHED):
+        held = invoked(rs, unit, ("member", ref.base, ref.name, False))   # a member holding a value that is called
+        targets, how = (held, EXACT) if held else (targets, how)
     if how == EXTERNAL and kind in ("call", "new", "name"):
         handed(rs, unit, ref)
     if how in (EXTERNAL, LOCAL, UNREACHED):
@@ -171,9 +180,10 @@ def invoked(rs, unit, tree) -> list[int]:
 def handed(rs, unit, ref) -> None:
     """A callable given to a function of the engine or the library is run by it (a comparator, a deferred call, a
     thread's body); given to a function of the program it runs only where the program calls it."""
+    site = js_link.Site(ref, js_link.callback_args(unit, ref))   # what the callback receives, when the language says
     for arg in ref.args:
         for gid in rs.typer.receiver(arg, unit)[2]:
-            rs.link(unit.gid, gid, "handed", ref, EXACT)
+            rs.link(unit.gid, gid, "handed", site, EXACT)
 
 
 def by_value(rs, unit, ref) -> None:
@@ -248,6 +258,9 @@ def fits(unit, argc: int) -> bool:
 def constructors(rs, unit, ref) -> tuple[list[int], str]:
     """`X.new()` reaches `_init`; `new T` / `make_unique<T>` reach T's constructors."""
     ix = rs.ix
+    if unit.lang == "js":
+        found = js_link.constructors(rs, unit, ref)
+        return (found, EXACT) if found else ([], EXTERNAL)
     if unit.lang == "gd":
         keys = [t[len(CLASS):] for t, _ in rs.typer.evaluate(ref.base, unit) if t.startswith(CLASS)] \
             if ref.base is not None else []

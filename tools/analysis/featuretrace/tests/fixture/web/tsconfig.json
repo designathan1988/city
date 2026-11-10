@@ -1,0 +1,7 @@
+{
+  // paths are resolved from baseUrl (JSONC: comments and trailing commas)
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "@app/*": ["src/*"], },
+  },
+}

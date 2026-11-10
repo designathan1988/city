@@ -90,6 +90,13 @@ def entry_reason(rs, gid: int) -> str:
         return "the engine calls this callback"
     if unit.bound_as:
         return f"bound for the engine as {', '.join(sorted(set(unit.bound_as)))}; no caller in the code"
+    if unit.lang == "js" and unit.name == "<module>":
+        return "a module's top-level code: runs when it is first imported, or as an entry of the page or bundler"
+    if unit.lang == "js" and unit.name == "<static>":
+        return "runs when its class is evaluated"
+    cls = ix.classes.get(unit.owner)
+    if unit.lang == "js" and cls is not None and len(ix.base_keys(cls)) < len(cls.bases):
+        return "a member of a class whose base the code read does not define: the library may call it"
     return "no caller in the code"
 
 

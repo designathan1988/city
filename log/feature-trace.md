@@ -224,3 +224,31 @@ holding `(anonymous namespace)` and cut object paths at the column width; a made
 Files: created `trace_validate.py`, `featuretrace/runtime.py`, `native_frames.py`, `validate.py`, `operators.py`
 (step/operator moved out of `typer.py`); changed `model.py`, `typer.py`, `library.py`, `rules.py`, `cpp_body.py`,
 `cpp_read.py`, `cpp_expr.py`, `gd_body.py`, `gd_read.py`, `gd_calls.py`; 70 tests OK, gates OK.
+
+## JavaScript, TypeScript and three.js in the tracer (2026-11-10 21:40)
+**Order:** research JS, TS and three.js (context7: MDN, TypeScript handbook, three.js docs), write it down, code, test at the
+end; generic. **Research:** `log/trace-rules.md`, sources J1-J12, the general rules applied to JS/TS, and every construct of
+the TSX grammar (tree-sitter-typescript 0.23.2, 184 named kinds, one row each, equal to `rule_table.JS_RULES`).
+**Plan:** `log/trace-rules-js-plan.md`. **Design:** one more reader family on the same IR and solver; three.js is never named:
+it is code when its package folder is a root, else a library (callables handed to it or written into its objects run there).
+**Rules coded:** modules (`<module>` top-level code run on import), imports/exports through `export ... from`/`export *`,
+TypeScript module resolution (relative with `.js`->`.ts`, extensionless, `index`, tsconfig `paths`/`baseUrl`, package.json
+`exports` conditions/`module`/`main`, ambient `declare module`), the global scope (scripts, `declare global`), classes
+(default constructor calling the base's, field initializers in the constructor, `<static>`, getters/setters as accessors,
+properties made by `this.x = v`), object literals as classes, closures, destructuring, `this` (arrows keep it),
+`call`/`apply`/`bind`, implicit calls (`[Symbol.iterator]`, `then` on await, coercion), decorators, JSX components, events by
+type (`addEventListener`/`on`/`on<type> =` and `dispatchEvent`/`emit`/`postMessage`), callbacks of array and promise methods
+receiving the elements / the value awaited. **Found while testing, fixed as rules for every language:** a member holding a
+value that is called calls what it holds (`this._loop(t)`, a `std::function` member); a container's receiver is the
+language's (a call on it is the library's, not unreached).
+**Tests:** 85 OK (15 new on `tests/fixture/web`: TS, JS, TSX over a small JS library package); gates OK (39 files); the gate
+tool learned `.tsx/.jsx/.mts/.cts` (its own self-test OK).
+**Real run (the lab, roadcraft: `src` + three r186 `build` and `examples/jsm`, start `src/frameLoop.ts:30`):** 145,626
+definitions read in 28 s, 249k links on the first pass, then the solver slowed down to a few thousand nodes per 5 s and the
+600 s deadline stopped it (exit 124) with 583k links and 25k nodes still waiting. **Cause, read in the code (`typer.Typer.compute`,
+`solver.Solver.grew`):** difference propagation is applied to the places (parameters, fields) but not to the expression nodes:
+a node is evaluated again in full, and its whole value list rebuilt, each time anything it read grew, and then every reader of
+it is computed again in full. With three.js's node system (TSL) values of hundreds of classes flow through the same
+parameters, so a union of thousands of values grows one value at a time and each step recomputes every reader at full
+size: quadratic work. **To do (log/pendencias.md):** each tree shape as a transfer function over new values only (a node keeps
+its value set and passes on only what is new), the same difference propagation the places already have.
