@@ -119,10 +119,11 @@ struct MultiMeshDraw {
 		swap_base(inst, mm, next, scenario, material, shadows, layer);
 		capacity = count = mm.is_valid() ? count_in : 0;
 		coloured_ = false; // bake_multimesh's layout
+		forget_told(); // another multimesh, and maybe another instance: nothing was told to them
 		if (inst.is_valid()) godot::RenderingServer::get_singleton()->instance_set_custom_aabb(inst, bounds);
 	}
 	void visible(bool on) const {
-		if (inst.is_valid()) godot::RenderingServer::get_singleton()->instance_set_visible(inst, on && count > 0);
+		if (inst.is_valid()) tell_drawn(on && count > 0);
 	}
 	void range(float begin, float end) const {
 		if (inst.is_valid())
@@ -136,10 +137,16 @@ struct MultiMeshDraw {
 		inst = mm = material_ = godot::RID();
 		capacity = -1;
 		count = 0;
+		forget_told();
 	}
 
 private:
 	godot::RID material_; // the override the instance has
+	void forget_told() {
+		told_ = UNTOLD;
+		box_told_ = false;
+		drawn_ = true;
+	}
 	// False when there is nothing to draw and nothing drawn yet.
 	bool make_room(const godot::RID &scenario, const godot::RID &mesh, const godot::RID &material, int n, bool shadows, RenderLayer layer, bool coloured) {
 		if (n == 0 && !mm.is_valid()) return false;
@@ -160,17 +167,38 @@ private:
 			coloured_ = coloured;
 			rs->multimesh_allocate_data(mm, capacity, godot::RenderingServer::MULTIMESH_TRANSFORM_3D, coloured, true);
 			rs->multimesh_set_mesh(mm, mesh);
+			told_ = UNTOLD; // a new allocation: its count and box are told again
+			box_told_ = false;
 		}
 		return true;
 	}
+	// The count, the box and whether it is drawn, each told to the engine when it differs from what it was told last: a draw set
+	// every frame costs its buffer alone, and one that stays empty nothing.
 	void show(int n, const godot::AABB &bounds) {
 		godot::RenderingServer *rs = godot::RenderingServer::get_singleton();
-		rs->multimesh_set_custom_aabb(mm, bounds);
-		rs->multimesh_set_visible_instances(mm, n);
+		if (!box_told_ || bounds != box_) {
+			rs->multimesh_set_custom_aabb(mm, bounds);
+			rs->instance_set_custom_aabb(inst, bounds);
+			box_ = bounds;
+			box_told_ = true;
+		}
+		if (n != told_) {
+			rs->multimesh_set_visible_instances(mm, n);
+			told_ = n;
+		}
 		count = n;
-		rs->instance_set_custom_aabb(inst, bounds);
-		rs->instance_set_visible(inst, n > 0);
+		tell_drawn(n > 0);
 	}
+	void tell_drawn(bool on) const {
+		if (on == drawn_) return;
+		godot::RenderingServer::get_singleton()->instance_set_visible(inst, on);
+		drawn_ = on;
+	}
+	godot::AABB box_; // as the engine was told last (show)
+	bool box_told_ = false;
+	int told_ = UNTOLD; // the visible instances as told last
+	mutable bool drawn_ = true; // an instance is made drawn
+	static constexpr int UNTOLD = -2; // no count the engine takes (-1 is all of them)
 };
 
 } // namespace city
