@@ -45,8 +45,6 @@ def do_flow(state, paths, why, after=None):
                                    "ranges": [], "saw": []})
         at += 1
         added.append(path)
-    if added:
-        state["read_gate"] = state["plan_gate"] = None  # a new file is unread: both gates have to pass again
     return added
 
 
@@ -73,7 +71,7 @@ def do_read(state, path, start, end, saw):
     return entry
 
 
-def do_problem(state, where, what, cause, symptom="", of=""):
+def do_problem(state, where, what, cause, symptom="", of="", fix=""):
     path, _, line = str(where).rpartition(":")
     if not path or not line.isdigit():
         raise Refused(f"{where}: a problem is recorded at <file>:<line>")
@@ -82,18 +80,12 @@ def do_problem(state, where, what, cause, symptom="", of=""):
         raise Refused(f"{store.rel(path)} is not on the flow: a problem is recorded where it was read")
     if not str(what or "").strip() or not str(cause or "").strip():
         raise Refused(f"{where}: a problem says what it is (--what) and the design decision behind it (--cause)")
-    import evidence  # here, not at the top: evidence reads the trace this operation is changing
-    unread = evidence.not_looked_up(state, [(entry["path"], int(line))])
-    if unread:
-        raise Refused(f"{where}: " + evidence.docs_refusal(unread))
     if of:
         of = store.cause_of(state, of)["id"]
-    elif state.get("plan_gate"):
-        state["plan_gate"] = None  # a problem without a cause: the plan has to be made whole again
     pid = f"P{len(state['problems']) + 1}"
     state["problems"].append({"id": pid, "path": entry["path"], "line": int(line), "what": str(what).strip(),
                               "cause": str(cause).strip(), "symptom": str(symptom or "").strip(), "status": OPEN,
-                              "cause_id": of or "", "how": "", "commit": "", "found": store.now()})
+                              "cause_id": of or "", "fix": str(fix or "").strip(), "how": "", "commit": "", "found": store.now()})
     return pid
 
 

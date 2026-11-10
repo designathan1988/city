@@ -1,12 +1,11 @@
 """What each command of the trace-fix ledger does: it loads the active trace, applies the operation (operations.py),
-saves, and answers through the bounded views (views.py). The gates are gates.py.
+saves, and answers through the bounded views (views.py). 
 """
 import copy
 import json
 import os
 import sys
 
-import evidence
 import proof
 import store
 import views
@@ -120,7 +119,7 @@ def cmd_record(args):
             touched.append(entry)
     for item in batch.get("problems", []):
         pid = attempt("problem", item, lambda i: do_problem(
-            trial, i["where"], i["what"], i["cause"], i.get("symptom", ""), i.get("of", "")))
+            trial, i["where"], i["what"], i["cause"], i.get("symptom", ""), i.get("of", ""), i.get("fix", "")))
         if pid:
             pids.append(pid)
     if errors:
@@ -143,7 +142,7 @@ def cmd_record(args):
 
 def cmd_problem(args):
     state = store.load()
-    pid = run(do_problem, state, args.where, args.what, args.cause, args.symptom, args.of)
+    pid = run(do_problem, state, args.where, args.what, args.cause, args.symptom, args.of, args.fix)
     store.save(state)
     entry = store.find_file(state, state["problems"][-1]["path"])
     keep_notes(state, [entry])
@@ -154,7 +153,6 @@ def cmd_cause_add(args):
     state = store.load()
     cid = f"C{len(state['causes']) + 1}"
     state["causes"].append({"id": cid, "what": args.what.strip(), "owner": args.owner.strip(), "plan": args.plan.strip(),
-                            "api": (args.api or "").strip(), "risks": (args.risks or "").strip(),
                             "status": OPEN, "how": "", "commit": "", "made": store.now()})
     run(do_link, state, cid, args.problems or [])
     store.save(state)
@@ -171,7 +169,7 @@ def cmd_cause_link(args):
 def cmd_cause_set(args):
     state = store.load()
     cause = run(store.cause_of, state, args.id)
-    for key in ("what", "owner", "plan", "api", "risks"):
+    for key in ("what", "owner", "plan"):
         if getattr(args, key):
             cause[key] = getattr(args, key).strip()
     store.save(state)
@@ -179,33 +177,19 @@ def cmd_cause_set(args):
 
 
 def cmd_fix(args):
+    """Marks a cause (with its open problems) or one problem fixed. Nothing is asked here: the fix is in the code, the test is at the end."""
     state = store.load()
-    if args.id[:1].lower() == "p":
-        fail("a fix goes by cause, not by problem: `cause add --what --owner --plan --problems P..` (or `cause link`), "
-             "`gate plan`, then `fix C<n> --how \"...\" --commit <sha>` closes every problem of that cause")
-    cause = run(store.cause_of, state, args.id)
-    if not (cause["owner"] and cause["plan"]):
-        fail(f"{cause['id']} has no owner or no plan: `cause set {cause['id']} --owner ... --plan ...`")
-    if "needs" not in cause:
-        fail(f"{cause['id']} has no fix card yet: `card {cause['id']}` says where to edit and puts on the flow who calls and reads it")
-    held = {p["path"] for p in state["problems"] if p["cause_id"] == cause["id"]} | set(cause["needs"])
-    unread = [f"{e['path']} lines {a}-{b}" for e in state["files"] if e["path"] in held for a, b in store.gaps(e)]
-    if unread:
-        fail(f"{cause['id']} cannot be fixed before its own flow is read in whole (the files of its problems, their callers and "
-             "readers): " + "; ".join(unread[:12]) + (f" and {len(unread) - 12} more" if len(unread) > 12 else ""))
-    lacking = evidence.missing(state, cause, args)
-    if lacking:
-        fail(f"{cause['id']} is not accepted as fixed yet: " + " | ".join(lacking))
-    cause.update(status=FIXED, how=args.how.strip(), commit=args.commit or "", closed=store.now())
-    closed = 0
-    for p in state["problems"]:
-        if p["cause_id"] == cause["id"] and p["status"] == OPEN:
-            p.update(status=FIXED, how=f"by {cause['id']}: {args.how.strip()}", commit=args.commit or "",
-                     closed=store.now())
-            closed += 1
+    how, commit = args.how.strip(), args.commit or ""
+    if args.id[:1].lower() == "c":
+        cause = run(store.cause_of, state, args.id)
+        cause.update(status=FIXED, how=how, commit=commit, closed=store.now())
+        mine = [p for p in state["problems"] if p["cause_id"] == cause["id"] and p["status"] == OPEN]
+    else:
+        mine = [run(store.problem_of, state, args.id)]
+    for p in mine:
+        p.update(status=FIXED, how=how, commit=commit, closed=store.now())
     store.save(state)
-    print(f"{cause['id']} fixed: {closed} problem(s) closed. "
-          f"Open: {sum(1 for q in state['problems'] if q['status'] == OPEN)}")
+    print(f"{args.id.upper()} fixed: {len(mine)} problem(s) closed. Open: {sum(1 for q in state['problems'] if q['status'] == OPEN)}")
 
 
 def cmd_drop(args):
@@ -217,12 +201,31 @@ def cmd_drop(args):
 
 
 def cmd_rules(_args):
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "rules.json"), encoding="utf-8") as f:
+        rules = json.load(f)["rules"]
     out = views.Out()
-    for r in evidence.world_rules():
+    for r in rules:
         out.add(f"{r['id']}  {r['rule']}")
         out.add(f"      in a photo: {r['photo']}")
         out.add(f"      in the code: {r['state']}")
     out.flush()
+
+
+def cmd_close(_args):
+    """Closes the trace once no problem is open; says which are, otherwise."""
+    state = store.load()
+    left = [p for p in state["problems"] if p["status"] == OPEN]
+    if left:
+        out = views.Out()
+        for p in left:
+            if not out.add(f"open: {p['id']} {p['path']}:{p['line']} {views.clip(p['what'], 90)}"):
+                break
+        out.add(f"{len(left)} problem(s) still open: fix them, or `drop` what the code proved not to be one.")
+        out.flush(f"{len(left)} problem(s) still open.")
+        sys.exit(1)
+    state["closed"] = store.now()
+    store.save(state)
+    print(f"trace {state['slug']} closed.")
 
 
 def cmd_note(args):

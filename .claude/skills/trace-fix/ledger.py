@@ -2,10 +2,9 @@
 
 One trace per problem, in dist/trace/<slug>/ledger.json: the request, the files on the flow in the order the code
 runs, the line ranges read with what each chunk does, the problems found, the causes they are grouped under and
-the fixes. It survives compaction and new sessions (`resume`, always a short answer) and it can fail: `read`
-refuses a chunk the Read tool did not return, `gate read` a flow not read in whole, `gate plan` a problem without
-a cause or a cause without a plan, `fix` anything before those gates, `gate close` an open problem.
-What each command does: commands.py. The flow found by script: route.py. A cause's fix card: card.py. Every writer of a state: writers.py. What a fix must show: evidence.py. The changes a trace accepts: operations.py. State and paths: store.py.
+the fixes. It survives compaction and new sessions (`resume`, always a short answer). It asks for nothing before a fix: it keeps the
+memory of the work, it does not police it.
+What each command does: commands.py. The flow found by script: route.py. A cause's fix card: card.py. Every writer of a state: writers.py. The changes a trace accepts: operations.py. State and paths: store.py.
 Proof of reading and notes kept by content: proof.py. Output: views.py.
 Usage: python ledger.py <command> -h
 """
@@ -18,7 +17,6 @@ import argparse  # noqa: E402
 import os  # noqa: E402
 
 import commands  # noqa: E402
-import gates  # noqa: E402
 import proof  # noqa: E402
 import store  # noqa: E402
 import card  # noqa: E402
@@ -85,6 +83,7 @@ def main():
     p.add_argument("--cause", required=True, help="the design decision that produces it, as seen there")
     p.add_argument("--symptom", help="what the player sees because of it")
     p.add_argument("--of", help="the cause (C<n>) it belongs to, when already known")
+    p.add_argument("--fix", help="what will change, where, who else must be checked, and the test that will prove it")
     p.set_defaults(fn=commands.cmd_problem)
     p = sub.add_parser("cause", help="the design decisions the problems are grouped under")
     cause = p.add_subparsers(dest="cause_cmd", required=True)
@@ -93,8 +92,6 @@ def main():
     q.add_argument("--owner", required=True, help="the one file or module that owns the correction")
     q.add_argument("--plan", required=True, help="the correction, and why the symptoms cannot return another way")
     q.add_argument("--problems", nargs="*", help="P<n> ... that come from it")
-    q.add_argument("--api", help="the outside APIs the fix touches (Godot, godot-cpp, Terrain3D, a library), comma separated, or none")
-    q.add_argument("--risks", help="what the fix can break, and the test or photo that guards each")
     q.set_defaults(fn=commands.cmd_cause_add)
     q = cause.add_parser("link", help="put problems under a cause")
     q.add_argument("id")
@@ -105,17 +102,11 @@ def main():
     q.add_argument("--what")
     q.add_argument("--owner")
     q.add_argument("--plan")
-    q.add_argument("--api")
-    q.add_argument("--risks")
     q.set_defaults(fn=commands.cmd_cause_set)
-    p = sub.add_parser("fix", help="mark a cause fixed: closes its problems (only after `gate read` and `gate plan`)")
-    p.add_argument("id", help="C<n>")
+    p = sub.add_parser("fix", help="mark a problem (P<n>) or a cause with its problems (C<n>) fixed")
+    p.add_argument("id", help="P<n> or C<n>")
     p.add_argument("--how", required=True, help="what changed and why the symptoms cannot return another way")
     p.add_argument("--commit")
-    p.add_argument("--tests", nargs="*", help="the orchestrator's tasks that failed before and pass now (a PASS after the last edit is checked)")
-    p.add_argument("--photos", help="folder of the photos taken after the fix, when it can reach the screen")
-    p.add_argument("--seen", help="what each photo shows and every problem seen")
-    p.add_argument("--checked", help="the rule sheet of the photos: a JSON with every rule of `rules` answered ok, not in view or P<n>")
     p.set_defaults(fn=commands.cmd_fix)
     p = sub.add_parser("drop", help="a recorded item that the code proved not to be a problem")
     p.add_argument("id")
@@ -137,10 +128,7 @@ def main():
     p.add_argument("--all", action="store_true", help="fixed and dropped ones too")
     p.add_argument("--from", dest="start", type=int, default=1, help="continue at this problem of the listing")
     p.set_defaults(fn=commands.cmd_problems)
-    p = sub.add_parser("gate", help="read: the flow is read in whole; plan: every problem has a planned cause; "
-                                    "close: every problem is fixed")
-    p.add_argument("which", choices=["read", "plan", "close"])
-    p.set_defaults(fn=gates.cmd_gate)
+    sub.add_parser("close", help="close the trace once no problem is open").set_defaults(fn=commands.cmd_close)
     for name in ("export", "report"):
         sub.add_parser(name, help="write report.md (causes and problems) and notes.md (every chunk) in the trace's "
                                   "folder, to read with the Read tool").set_defaults(fn=commands.cmd_export)

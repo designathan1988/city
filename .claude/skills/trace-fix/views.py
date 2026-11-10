@@ -80,7 +80,7 @@ def next_step(state, out):
     elif now == "read":
         batch = store.next_chunks(state)
         if not batch:
-            out.add("DO NOW: every file on the flow is read in whole. Run `gate read`.")
+            out.add("DO NOW: the flow is read. Fix the problems recorded, in the code, at their cause; test at the end.")
             return
         lines = sum(b - a + 1 for _, a, b in batch)
         out.add(f"DO NOW: read the next batch ({len(batch)} chunk(s), {lines} lines): one Read call each, in parallel.")
@@ -93,15 +93,12 @@ def next_step(state, out):
                     + (f"  [read in trace {known['trace']}, unchanged: `notes {entry['path']} --prior`, then `carry`]"
                        if known else ""))
         out.add("  then record them in one call: `record <file.json>` (reads, problems, new flow files), and `next`.")
-    elif now == "plan":
-        loose = sum(1 for p in state["problems"] if p["status"] == OPEN and not p["cause_id"])
-        out.add(f"DO NOW: group the problems by cause ({loose} open without one): `problems`, "
-                "`cause add --what --owner --plan --problems P..`, `cause link`, then `gate plan`.")
     elif now == "fix":
-        out.add("DO NOW: fix cause by cause: the failing test, the change, the check, "
-                "`fix C<n> --how \"...\" --commit <sha>`.")
-    elif now == "close":
-        out.add("DO NOW: `gate close`, then the project's close (CLAUDE.md) and `report`.")
+        left = sum(1 for p in state["problems"] if p["status"] == OPEN)
+        out.add(f"DO NOW: fix the {left} open problem(s) in the code, at their cause (`card C<n>` gives a cause's exact lines, callers and "
+                "tests); `fix <P or C> --how \"...\"` as each is done; test at the end.")
+    elif now == "done":
+        out.add("DO NOW: every problem is fixed. Run the tests of what changed, then `close`.")
 
 
 def progress(state, out):
@@ -111,8 +108,7 @@ def progress(state, out):
     word = sum(1 for s in saws if not s.get("proved") and not s.get("carried"))
     carried = sum(1 for s in saws if s.get("carried"))
     out.add(f"READ: {done}/{len(files)} files, {sum(store.lines_read(e) for e in files)}/"
-            f"{sum(e['lines'] for e in files)} lines | read gate: {state.get('read_gate') or 'not passed'}"
-            f" | plan gate: {state.get('plan_gate') or 'not passed'}")
+            f"{sum(e['lines'] for e in files)} lines")
     if word or carried:
         out.add(f"  ({word} chunk(s) stand on the session's word, recorded before the Read proof; {carried} carried "
                 "over from another trace)")
@@ -195,6 +191,8 @@ def problems(state, everything, start):
                 f"     what: {p['what']}", f"     cause seen: {p['cause']}"]
         if p["symptom"]:
             text.append(f"     symptom: {p['symptom']}")
+        if p.get("fix"):
+            text.append(f"     fix planned: {p['fix']}")
         if p["how"]:
             text.append(f"     {p['status']}: {p['how']} {p.get('commit', '')}".rstrip())
         if out.size + sum(len(r) + 1 for r in text) > OUTPUT_CAP - TAIL_ROOM and i > start:
@@ -215,8 +213,7 @@ def cell(text):
 
 def report_md(state):
     rows = [f"# Trace {state['slug']}", "", f"Request: {state['request']}", "",
-            f"Opened {state['opened']}; read gate {state.get('read_gate') or 'not passed'}; plan gate "
-            f"{state.get('plan_gate') or 'not passed'}; closed {state.get('closed') or 'no'}.",
+            f"Opened {state['opened']}; closed {state.get('closed') or 'no'}.",
             f"Files read in whole: {sum(1 for e in state['files'] if not store.gaps(e))} of {len(state['files'])}.", ""]
 
     def table(items):

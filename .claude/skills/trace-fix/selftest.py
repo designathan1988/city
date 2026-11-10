@@ -68,10 +68,9 @@ def main():
 
         try:
             # ---- reading and its proof
-            check("gate without a trace", ledger("gate", "read"), 1)
+            check("status without a trace", ledger("status"), 1)
             check("resume --hook with nothing open is silent", (ledger("resume", "--hook"), ledger.out), (0, ""))
             check("open", ledger("open", "t", "--request", "selftest"), 0)
-            check("gate read on an empty flow", ledger("gate", "read"), 1)
             check("flow", ledger("flow", small, big, "--why", "selftest"), 0)
             check("read without a Read call", ledger("read", small, "1", "15", "--saw", "x"), 1)
             tool_read(small)
@@ -96,7 +95,7 @@ def main():
                           "reads": [{"path": big, "from": 1, "to": 400, "saw": "first"},
                                     {"path": big, "from": 401, "to": 800, "saw": "second"},
                                     {"path": big, "from": 801, "to": 900, "saw": "third"}],
-                          "problems": [{"where": small + ":3", "what": "w1", "cause": "c1", "symptom": "s"},
+                          "problems": [{"where": small + ":3", "what": "w1", "cause": "c1", "symptom": "s", "fix": "change line 3"},
                                        {"where": big + ":500", "what": "w2", "cause": "c2"}],
                           "note": "go on"})
             check("a whole batch is recorded", ledger("record", good), 0)
@@ -104,6 +103,7 @@ def main():
             check("flow --after puts the file in run order", [os.path.basename(e["path"]) for e in now["files"]],
                   ["small.txt", "late.txt", "big.txt"])
             check("the batch's problems", [p["id"] for p in now["problems"]], ["P1", "P2"])
+            check("a problem keeps what its fix will be", now["problems"][0]["fix"], "change line 3")
             check("a batch from stdin", ledger("record", "-", stdin=json.dumps({"note": "from stdin"})), 0)
             check("an unknown key in a batch", ledger("record", batch({"read": []})), 1)
 
@@ -112,35 +112,22 @@ def main():
             with open(late, "a", encoding="utf-8") as f:
                 f.write("line 21\n")
             check("a file changed since the Read", ledger("read", late, "1", "21", "--saw", "x"), 1)
-            check("gate read with unread lines", ledger("gate", "read"), 1)
             tool_read(late)
             check("read again", ledger("read", late, "1", "21", "--saw", "twenty-one lines"), 0)
 
-            # ---- gates, causes, fixes
-            check("fix before the read gate", ledger("fix", "C1", "--how", "h"), 1)
-            check("gate plan before the read gate", ledger("gate", "plan"), 1)
-            check("gate read", ledger("gate", "read"), 0)
-            check("fix by problem is refused", ledger("fix", "P1", "--how", "h"), 1)
-            check("gate plan with problems without a cause", ledger("gate", "plan"), 1)
-            check("cause add", ledger("cause", "add", "--what", "one decision", "--owner", "small.txt", "--plan",
-                                      "change it", "--problems", "P1", "--api", "none", "--risks", "nothing reads it"), 0)
-            check("gate plan with one problem still loose", ledger("gate", "plan"), 1)
-            check("cause link", ledger("cause", "link", "C1", "P2"), 0)
-            check("fix before the cause's card", ledger("fix", "C1", "--how", "h"), 1)
-            check("gate plan", ledger("gate", "plan"), 0)
-            check("gate close with open problems", ledger("gate", "close"), 1)
-            check("the card of the cause", ledger("card", "C1", "--include", "tools/analysis/ftrace/tests/fixtures/notes_app"), 0)
-            check("fix with no test passed after the last edit", ledger("fix", "C1", "--how", "h"), 1)
-            os.makedirs(os.path.join(runs, "run1"))
-            with open(os.path.join(runs, "run1", "events.jsonl"), "w", encoding="utf-8") as f:
-                f.write(json.dumps({"event": "finish", "task": "small_test", "status": "PASS", "t": 4102444800.0}) + chr(10))
-            check("fix naming a test that did not pass", ledger("fix", "C1", "--how", "h", "--tests", "other_test"), 1)
-            check("fix by cause", ledger("fix", "C1", "--how", "changed the decision"), 0)
-            check("the fix closed both problems", [p["status"] for p in state("t")["problems"]], ["fixed", "fixed"])
+            # ---- problems, causes, fixes: nothing is asked before a fix
+            tool_read(late)
+            check("close with open problems", ledger("close"), 1)
+            check("fix one problem", ledger("fix", "P1", "--how", "changed it"), 0)
+            check("a cause groups problems", ledger("cause", "add", "--what", "one decision", "--owner", "big.txt", "--plan",
+                                                    "change it", "--problems", "P2"), 0)
+            check("fix a cause closes its problems", ledger("fix", "C1", "--how", "changed the decision", "--commit", "abc"), 0)
+            check("both problems are fixed", [p["status"] for p in state("t")["problems"]], ["fixed", "fixed"])
+            check("fix of what does not exist", ledger("fix", "P9", "--how", "h"), 1)
             check("export", ledger("export"), 0)
             check("export wrote the report and the notes",
                   [os.path.exists(os.path.join(traces, "t", n)) for n in ("report.md", "notes.md")], [True, True])
-            check("gate close", ledger("gate", "close"), 0)
+            check("close", ledger("close"), 0)
             check("resume --hook after the close is silent", (ledger("resume", "--hook"), ledger.out), (0, ""))
 
             # ---- reuse of a reading by another trace
@@ -182,29 +169,7 @@ def main():
                        'NoteBook::add' in ledger.out, 'NoteBook::clear' in ledger.out), (0, True, True))
                 check('writers of a state that does not exist', ledger('writers', 'NoSuch::thing', '--rule', 'r', '--include', fixture), 1)
 
-            # ---- the rules of the world: listed, and a rule sheet is whole only with every rule answered
-            import evidence  # noqa: E402  (its checks read the trace folder of this run)
             check("rules lists the world's rules", (ledger("rules"), "B1" in ledger.out, "in the code:" in ledger.out), (0, True, True))
-            ids = [r["id"] for r in evidence.world_rules()]
-            sheet = os.path.join(work, "sheet.json")
-            with open(sheet, "w", encoding="utf-8") as f:
-                json.dump({i: "ok" for i in ids[1:]}, f)
-            check("a rule sheet with a rule left out", len(evidence.unanswered({"problems": []}, sheet)), 1)
-            with open(sheet, "w", encoding="utf-8") as f:
-                json.dump({**{i: "ok" for i in ids[1:]}, ids[0]: "P7"}, f)
-            check("a rule answered with a problem that does not exist", len(evidence.unanswered({"problems": []}, sheet)), 1)
-            check("a whole rule sheet", evidence.unanswered({"problems": [{"id": "P7"}]}, sheet), [])
-            check("no rule sheet", len(evidence.unanswered({"problems": []}, None)), 1)
-
-            # ---- outside classes: a class no documentation lookup of the trace names is reported, one that a lookup names is not
-            import proof  # noqa: E402
-            import store as st  # noqa: E402
-            st.TRACES = traces  # the lookups of this run's own trace folder
-            evidence.outside_classes = lambda places: {"RenderingServer": {"Draw::send"}, "Terrain3D": {"Land::follow"}}
-            check("an outside class with no lookup is reported", sorted(evidence.not_looked_up({"opened": ""}, [("a.cpp", 1)])), ["RenderingServer", "Terrain3D"])
-            proof.write_whole(os.path.join(traces, "docs", "1.json"), {"t": "2099-01-01 00:00", "tool": "query-docs", "input": {"query": "RenderingServer multimesh"}})
-            check("a class a lookup names is not", sorted(evidence.not_looked_up({"opened": ""}, [("a.cpp", 1)])), ["Terrain3D"])
-            check("a lookup older than the trace does not count", sorted(evidence.not_looked_up({"opened": "2100-01-01 00:00"}, [("a.cpp", 1)])), ["RenderingServer", "Terrain3D"])
 
             # ---- every answer under the limit, on a ledger far larger than a real one
             made = {"slug": "huge", "request": "r " * 2000, "opened": "2026-01-01 00:00", "note": "n " * 2000,
@@ -224,7 +189,7 @@ def main():
                                ("next", ["next"]), ("notes of everything", ["notes", "native"]),
                                ("notes continued", ["notes", "native", "--from", "400"]),
                                ("problems", ["problems"]), ("problems continued", ["problems", "--from", "150"]),
-                               ("gate read", ["gate", "read"]), ("gate plan", ["gate", "plan"])):
+                               ("close", ["close"])):
                 ledger(*args)
                 check(f"{name} stays under the limit and says something",
                       0 < len(ledger.out) <= views.OUTPUT_CAP, True)

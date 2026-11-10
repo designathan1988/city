@@ -93,8 +93,8 @@ def set_active(slug):
 
 
 def new_state(slug, request, reuse):
-    return {"slug": slug, "request": request, "opened": now(), "since": time.strftime("%Y-%m-%d %H:%M:%S"), "since_ns": time.time_ns(), "note": "", "reuse": bool(reuse), "read_gate": None,
-            "plan_gate": None, "closed": None, "files": [], "problems": [], "causes": []}
+    return {"slug": slug, "request": request, "opened": now(), "since": time.strftime("%Y-%m-%d %H:%M:%S"), "since_ns": time.time_ns(), "note": "", "reuse": bool(reuse),
+            "closed": None, "files": [], "problems": [], "causes": []}
 
 
 def load(slug=None):
@@ -105,7 +105,7 @@ def load(slug=None):
         state = json.load(f)
     state.setdefault("since_ns", 0)  # a ledger older than the exact moment: its opening minute decides
     state.setdefault("since", state.get("opened", ""))  # a ledger older than the moment: its opening minute
-    # a ledger written before causes, the plan gate and reuse existed
+    # a ledger written before causes and reuse existed
     for key, value in new_state(slug, "", False).items():
         state.setdefault(key, value)
     for problem in state["problems"]:
@@ -190,10 +190,8 @@ def phase(state):
         return "closed"
     if not state["files"]:
         return "trace"
-    if not state.get("read_gate"):
+    if any(gaps(e) for e in state["files"]):
         return "read"
-    if not state.get("plan_gate"):
-        return "plan"
     if any(p["status"] == OPEN for p in state["problems"]):
         return "fix"
-    return "close"
+    return "done"
