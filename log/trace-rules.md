@@ -23,6 +23,9 @@ Sources (read through context7):
 - G7 Callable(object, method: StringName) and Object.call(method: StringName, ...) take the method's name as a value; a
   String passed where a StringName is expected is converted (class_callable, class_object, class_stringname): a name
   held in a string value follows FLOW like any value.
+- G8 Properties: `var x: set(value): ... get: ...` or `set = f, get = g`; set and get are always called, even inside
+  the class (with or without `self.`), except for the variable's initializer and the variable's own name inside its own
+  setter or getter, which reach the member directly (gdscript_basics, Properties).
 - C1 C++ keywords, identifiers with special meaning, preprocessor tokens (cppreference keyword, preprocessor).
 - C2 Expressions: primary expressions, operator precedence, value categories (expressions, operator_precedence,
   value_category, operator_member_access, operator_incdec).
@@ -31,6 +34,10 @@ Sources (read through context7):
 - C4 Overload resolution; virtual functions and the final overrider; a qualified call is never virtual (virtual).
 - C5 `auto` deduced from the initializer; generic lambda parameters from the call's arguments; deduced return type from
   the `return` statements; templates: parameters replaced by the arguments (auto, template_argument_deduction, lambda).
+- C7 Implicit calls: declaring an object of class type calls its constructor (`T x;`, `T x(args);`, `T x{args};`), a
+  member initializer list writes the members; an automatic object's destructor runs at the end of its scope, `delete`
+  runs it; an expression with an overloaded operator calls `operator<op>`; a range-for calls `begin()`/`end()` of the
+  range (constructor, default_constructor, destructor, operators, range-for).
 - C6 Translation unit: a file plus every file its `#include` brings in (preprocessor/include).
 
 ## The general rules (one each; every row below names which applies)
@@ -41,7 +48,7 @@ Sources (read through context7):
 | LOOK | A name used is resolved by its language's lookup order. GDScript (G1, G3): local -> class member (own, then each base, the engine's base members included) -> outer class -> global (class_name, autoload, @GlobalScope, @GDScript, built-in types, engine classes). C++ (C3, C6): block -> class and bases -> enclosing namespaces -> using-directives -> global, limited to the translation unit; plus argument-dependent lookup in the namespaces of the arguments' classes. A name found nowhere in the program is the engine's or the library's. |
 | VALUE | The type of an expression is computed from its construct, recursively over its children (the EXPR rows), never from its text. |
 | FLOW | A name with no declared type (GDScript untyped / Variant; C++ `auto`, generic lambda parameter, deduced return) holds the union of the types of every value that flows into it: initializer, each assignment, for a parameter the argument at each call site (callers, emitters of a signal it handles, the engine for engine callbacks and engine signals), for a call the values its `return`s carry, for a container the values put into it, for a loop variable the elements walked (G2, C5). |
-| CALL | A call resolves its callee (LOOK on the name, VALUE on the receiver), links caller -> callee, binds each argument to its parameter (FLOW), and the callee's result returns to the call site (FLOW). A method call also reaches the overrides in every class below the receiver's (GDScript: every method; C++: `virtual` or overriding, not when qualified) (C4). Overloads are chosen by the arguments (arity first) (C4). |
+| CALL | Calls the language makes without a call written are calls too (C7, G8): a property's set/get on a write/read, an object's constructor at its declaration and its destructor at scope end or `delete`, `operator<op>` for an operator on a class, `begin`/`end` for a range-for. A call resolves its callee (LOOK on the name, VALUE on the receiver), links caller -> callee, binds each argument to its parameter (FLOW), and the callee's result returns to the call site (FLOW). A method call also reaches the overrides in every class below the receiver's (GDScript: every method; C++: `virtual` or overriding, not when qualified) (C4). Overloads are chosen by the arguments (arity first) (C4). |
 | BRANCH | Every path of a branch or loop is followed; the condition is carried on everything under it. |
 | JUMP | `return` carries a value back to the call site; `break`/`continue`/`goto`/`throw` end a path; `await` resumes when the signal fires or the coroutine returns, with its value. |
 | NAME | A name carried as a string reaches what the engine calls or creates by that name: ClassDB.instantiate(&"C") is an object of class C (G6); Callable(obj, "m"), call/call_deferred/callv("m"), connect("s", ...), emit_signal("s"), `&"m"` handed to a call, D_METHOD("m") bindings (G4, G5). The string's values follow FLOW like any value. |

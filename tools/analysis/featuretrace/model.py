@@ -76,6 +76,8 @@ class Unit:
     decl_only: bool = False        # C++ declaration with no body
     virtual: bool = False
     bound_as: list = field(default_factory=list)   # names the engine can call it by (D_METHOD)
+    accessors: dict = field(default_factory=dict)  # gd property: "get"/"set" -> local unit id or function name
+    accessor_of: str = ""          # gd: the property whose set/get this function is (its own name is direct)
 
 
 @dataclass

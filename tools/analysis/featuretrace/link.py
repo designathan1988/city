@@ -18,7 +18,8 @@ from .rules import NAME_CALLS
 from .resolve import EXACT, EXTERNAL, LOCAL, UNREACHED, Resolver
 from .typer import CLASS
 
-WANT = {"call": "func", "value": "func", "thread": "func", "read": "read", "write": "state", "emit": "signal"}
+WANT = {"call": "func", "value": "func", "thread": "func", "read": "read", "write": "state", "emit": "signal",
+        "operator": "func"}
 
 
 def build(index, progress=None) -> Resolver:
@@ -28,6 +29,7 @@ def build(index, progress=None) -> Resolver:
         for unit in list(index.units):
             for ref in unit.refs:
                 link_ref(rs, unit, ref)
+        implicit_construction(rs)
         for signal, src_key, dst_key, method, file, line in index.connections:
             handlers = rs.keep(index.lookup(dst_key, method), "func", "")
             signals = rs.keep(index.lookup(src_key, signal), "signal", "") or [index.engine_signal(signal)]
@@ -82,8 +84,18 @@ def link_ref(rs, unit, ref) -> None:
     if kind == "connect":
         connect(rs, unit, ref)
         return
+    if kind == "destroy":
+        destructors(rs, unit, ref)
+        return
     if kind == "name":
         targets, how = rs.by_string(unit, ref.base, ref.text or ref.name)
+    elif kind == "operator":
+        targets, how = rs.resolve(unit, ref, "func")
+        if not targets and ref.args:
+            targets = rs.adl(unit, ref.name, ((ref.base,) if ref.base is not None else ()) + ref.args)
+            how = EXACT if targets else how
+        if not targets:
+            return
     elif kind == "new":
         targets, how = constructors(rs, unit, ref)
     else:
@@ -102,8 +114,11 @@ def link_ref(rs, unit, ref) -> None:
     if kind == "call" and ref.argc >= 0 and len(targets) > 1:
         targets = [g for g in targets if fits(ix.units[g], ref.argc)] or targets
     for gid in targets:
-        edge_kind = "value" if kind == "read" and ix.units[gid].kind in FUNCTION_KINDS else kind
+        edge_kind = "value" if kind == "read" and ix.units[gid].kind in FUNCTION_KINDS else \
+            "call" if kind == "operator" else kind
         rs.link(unit.gid, gid, edge_kind, ref, how)
+        if kind in ("read", "write"):
+            accessor(rs, unit, ix.units[gid], kind, ref)
     if kind in ("call", "name") and ref.base != ("super",) and not ref.qualified:
         for gid in with_overrides(rs, targets):
             rs.link(unit.gid, gid, "override", ref, "override")
@@ -122,6 +137,52 @@ class _Shifted:
 
     def __init__(self, ref):
         self.line, self.cond, self.args = ref.line, ref.cond, ref.args[1:]
+
+
+def accessor(rs, unit, prop, kind: str, ref) -> None:
+    """A property's getter on a read, its setter on a write (G8), except inside its own accessors."""
+    which = "get" if kind == "read" else "set"
+    target = prop.accessors.get(which)
+    if target is None or (unit.accessor_of == prop.name and unit.owner == prop.owner):
+        return
+    if isinstance(target, int):
+        gids = [rs.ix.offset[prop.file] + target]
+    else:
+        gids = rs.bare(prop, target, "func")[0]
+    for gid in gids:
+        rs.link(unit.gid, gid, "call", ref, EXACT)
+
+
+def implicit_construction(rs) -> None:
+    """A constructor runs its bases' constructors and its object members' constructors (C7)."""
+    ix = rs.ix
+    for unit in list(ix.units):
+        cls = ix.classes.get(unit.owner)
+        if cls is None or cls.lang != "cpp" or unit.name != cls.name or unit.decl_only:
+            continue
+        site = _Site(unit.line)
+        for base in ix.base_keys(cls):
+            for gid in rs.keep(ix.members[base].get(ix.classes[base].name, []), "func", unit.file):
+                rs.link(unit.gid, gid, "call", site, EXACT)
+        for gids in ix.members[cls.key].values():
+            for member in (ix.units[g] for g in gids):
+                key = ix.cpp_class(member.type_text, cls.key, member.file) if member.kind == "field" and                     member.type_text and "*" not in member.type_text and "&" not in member.type_text else None
+                for gid in rs.keep(ix.members[key].get(ix.classes[key].name, []), "func", unit.file) if key else []:
+                    rs.link(unit.gid, gid, "call", site, EXACT)
+
+
+def destructors(rs, unit, ref) -> None:
+    """An object's destructor at the end of its scope, or `delete` (C7)."""
+    ix = rs.ix
+    if ref.base is not None:
+        keys = rs.typer.receiver(ref.base, unit)[0]
+    else:
+        key = ix.cpp_class("::".join(p for p in (ref.scope, ref.name) if p), unit.owner, unit.file)
+        keys = [key] if key else []
+    for key in keys:
+        simple = ix.classes[key].name
+        for gid in rs.keep(ix.members[key].get("~" + simple, []), "func", unit.file):
+            rs.link(unit.gid, gid, "call", ref, EXACT)
 
 
 def fits(unit, argc: int) -> bool:

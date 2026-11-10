@@ -100,6 +100,27 @@ class GdReader:
         if value is not None:
             unit.values.append(self.ir(value, unit, cls))
             self.expr(value, unit, cls, ())
+        setget = field_of(node, "setget")
+        if setget is not None:
+            self.accessors(setget, unit, cls)
+
+    def accessors(self, setget, prop: Unit, cls: ClassFact) -> None:
+        """A property's `get:`/`set(value):` bodies, or `get = f`/`set = g` (G8): run on every read and write."""
+        for i, part in enumerate(setget.children):
+            which = setget.field_name_for_child(i)
+            if which not in ("get", "set"):
+                continue
+            if part.type in ("getter", "setter"):
+                prop.accessors[which] = self.src.text(part)
+                continue
+            body = Unit("func", "gd", f"{prop.name}.{which}", f"{prop.qual}.{which}", cls.key, self.src.display,
+                        self.src.line(part), self.src.end_line(part), local_id=len(self.facts.units),
+                        accessor_of=prop.name)
+            self.facts.units.append(body)
+            prop.accessors[which] = body.local_id
+            self.params(part, body, cls)
+            if field_of(part, "body") is not None:
+                self.block(field_of(part, "body"), body, cls, ())
 
     def params(self, node, unit: Unit, cls: ClassFact) -> None:
         params = field_of(node, "parameters")

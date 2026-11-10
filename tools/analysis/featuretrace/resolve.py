@@ -50,8 +50,9 @@ class Resolver:
 
     def keep(self, gids, want: str, file: str) -> list[int]:
         units, visible = self.ix.units, self.ix.visible(file) if file else set()
-        kinds = {"func": FUNCTION_KINDS, "state": STATE_KINDS | {"enumerator"}, "signal": SIGNAL_KINDS,
-                 "read": STATE_KINDS | {"enumerator"} | FUNCTION_KINDS}[want]
+        # a macro use is a reference to the macro (`#define`, C1 preprocessor), as a call or as a value
+        kinds = {"func": FUNCTION_KINDS | {"macro"}, "state": STATE_KINDS | {"enumerator"}, "signal": SIGNAL_KINDS,
+                 "read": STATE_KINDS | {"enumerator", "macro"} | FUNCTION_KINDS}[want]
         found = [g for g in gids if units[g].kind in kinds and (not units[g].file_local or units[g].file in visible)]
         return self.ix.definitions(found) if want == "func" else found
 

@@ -7,7 +7,7 @@ range-for variable holds the range's elements; each assignment adds its value. E
 """
 from __future__ import annotations
 
-from . import cpp_expr
+from . import cpp_expr, cpp_implicit
 from .cpp_names import type_of, unwrap
 from .gd_body import squash
 from .model import Ref, Unit
@@ -60,6 +60,7 @@ def local(r, node, unit, cond) -> None:
             unit.types[text] = [r.ir(value, unit)] if value is not None else []
         else:
             unit.types[text] = [("cast", type_text)]
+            cpp_implicit.declared_object(r, unit, child, type_text, node, cond, add)
         expr(r, value, unit, cond)
 
 
@@ -123,6 +124,7 @@ def loop(r, st, unit, cond) -> None:
         elif name is not None:
             unit.types[src.text(name)] = [walked] if deduced(declared) else [("cast", declared)]
         expr(r, right, unit, cond)
+        cpp_implicit.range_calls(r, unit, right, st, cond, add)
         label = f"for ({squash(src.text(field_of(st, 'declarator')))} : {squash(src.text(right))})"
     else:
         parts = []

@@ -4,7 +4,7 @@ member reached with `->` has as receiver what the pointer points at.
 """
 from __future__ import annotations
 
-from . import cpp_body
+from . import cpp_body, cpp_implicit
 from .cpp_names import strip_templates
 from .ir import put
 from .model import STD_MUTATORS
@@ -64,6 +64,7 @@ def expression(r, node, unit, cond) -> None:
         scope, name = scoped(r.src.text(node))
         add(r, unit, "read", name, node, cond, qualified=True, scope=scope)
     elif kind == "assignment_expression":
+        cpp_implicit.operator(r, unit, node, cond, add)
         value = r.ir(field_of(node, "right"), unit)
         op = field_of(node, "operator")
         target(r, field_of(node, "left"), unit, cond, value if op is None or r.src.text(op) == "=" else None)
@@ -77,6 +78,25 @@ def expression(r, node, unit, cond) -> None:
             add(r, unit, "value", name, inner, cond, qualified=bool(scope), scope=scope)
         else:
             expression(r, inner, unit, cond)
+    elif kind in ("binary_expression", "unary_expression", "subscript_expression"):
+        cpp_implicit.operator(r, unit, node, cond, add)
+        for child in named_children(node):
+            expression(r, child, unit, cond)
+    elif kind == "delete_expression":
+        cpp_implicit.destroyed(r, unit, node, cond, add)
+        for child in named_children(node):
+            expression(r, child, unit, cond)
+    elif kind == "field_initializer":
+        member = next((c for c in named_children(node) if c.type in ("field_identifier", "identifier",
+                                                                      "qualified_identifier", "template_type")), None)
+        values = next((c for c in named_children(node) if c.type in ("argument_list", "initializer_list")), None)
+        trees = tuple(r.ir(v, unit) for v in named_children(values)) if values is not None else ()
+        if member is not None:
+            # `: m(v)` writes member m; `: Base(args)` runs the base's constructor (C7)
+            add(r, unit, "write", r.src.text(member), node, cond, args=trees[:1])
+            scope, name = scoped(r.src.text(member))
+            add(r, unit, "new", name, node, cond, qualified=bool(scope), scope=scope, args=trees)
+        expression(r, values, unit, cond)
     elif kind == "lambda_expression":
         add(r, unit, "lambda", "", node, cond, target=r.lambda_id(node, unit))
     elif kind == "new_expression":
