@@ -36,7 +36,6 @@ def join(*parts: str) -> str:
 
 from .rules import CASTS, MAKERS  # noqa: E402
 
-TYPED = "<type>"   # a receiver whose type the expression itself names
 
 
 def template_call_type(text: str) -> str | None:
