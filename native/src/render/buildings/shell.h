@@ -113,6 +113,7 @@ struct Shell {
 	std::vector<int32_t> idx;
 	std::vector<BoxInstance> boxes; // box() collects instances instead of triangles when `instanced`
 	std::vector<BayInstance> bays; // the mid level's openings (bay())
+	bool keep_bays = true; // false: bay() writes nothing (a mid level built without its openings: they are a level of their own)
 	std::vector<PropInstance> props; // what hangs on the bays and stands on their balconies
 	std::vector<FlagInstance> flags; // the flags of the masts it drew (roof_gear.cpp)
 	std::vector<uint32_t> custom[CUSTOM_ARRAYS]; // RGBA8 per vertex, in the near and mid shells (`rooms`)

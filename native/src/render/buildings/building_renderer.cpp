@@ -21,7 +21,7 @@ namespace city {
 
 namespace {
 constexpr float HALF = 0.5f, DROP_K = 1.25f;
-constexpr int BAND_BIT_NEAR = 2, BAND_BIT_MID = 4;
+constexpr int BAND_BIT_NEAR = 2, BAND_BIT_MID = 4, BAND_BIT_BAYS = 8;
 constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
 
 int64_t super_of(const Vector3 &centre) { return chunk_of(centre.x, centre.z, SUPERCHUNK); }
@@ -159,6 +159,8 @@ void BuildingRenderer::drop(Chunk &ch, Level level) {
 		if (level == LEVEL_NEAR) {
 			ch.near[size_t(i)].free();
 			ch.parts[size_t(i)].free();
+		} else if (level == LEVEL_BAYS) {
+			ch.mid_draws[size_t(i)][MID_BAYS].free();
 		} else {
 			ch.mid_hulls[size_t(i)].free();
 			ch.mid_hull_meshes[size_t(i)].reset();
@@ -180,10 +182,10 @@ void BuildingRenderer::drop_bands(Chunk &ch) {
 	for (ShadowTwin &d : ch.mid_casts) d.free();
 	for (MeshDraw &d : ch.flat) d.free();
 	ch.flags.free();
+	ch.built[LEVEL_BAYS] = ch.stale[LEVEL_BAYS] = false; // the openings went with the mid level's draws
 }
 
-void BuildingRenderer::submit(const CityState &s, int64_t key, bool far, bool near, bool mid, float priority) {
-	(void)far;
+void BuildingRenderer::submit(const CityState &s, int64_t key, bool near, bool mid, bool bays, float priority) {
 	auto ch = chunks_.find(key);
 	if (!s.jobs || ch == chunks_.end()) return;
 	const uint32_t version = ch->second.version;
@@ -192,16 +194,16 @@ void BuildingRenderer::submit(const CityState &s, int64_t key, bool far, bool ne
 		std::lock_guard<std::mutex> lk(queue_mutex_);
 		seq = ++seq_;
 		requested_[key] = seq;
-		requested_mask_[key] = uint8_t((near ? BAND_BIT_NEAR : 0) | (mid ? BAND_BIT_MID : 0));
+		requested_mask_[key] = uint8_t((near ? BAND_BIT_NEAR : 0) | (mid ? BAND_BIT_MID : 0) | (bays ? BAND_BIT_BAYS : 0));
 	}
 	const JobKey job{ JobLane::BUILDING, key };
-	s.jobs->submit(job, priority, [this, &s, key, job, seq, version, near, mid, priority]() {
+	s.jobs->submit(job, priority, [this, &s, key, job, seq, version, near, mid, bays, priority]() {
 		Inputs in;
 		{
 			std::shared_lock<std::shared_mutex> map(s.map_mutex); // only while copying: the build reads the copy
 			in = gather(s, &key, 1);
 		}
-		Built b = build_cpu(in, key, near, mid);
+		Built b = build_cpu(in, key, near, mid, bays);
 		b.job = job;
 		b.seq = seq;
 		b.version = version;
@@ -284,6 +286,7 @@ void BuildingRenderer::commit(UploadBudget &upload, const std::chrono::steady_cl
 // once its mid level is up, and shows itself whatever the distance while no far mesh stands in).
 void BuildingRenderer::visit_super(int64_t key, Super &sp, const Vector3 &cam, float eye, std::vector<Want> &want) {
 	const float leave = mid_end_ * (1 + look_.far_hysteresis), mid_reach = mid_end_ + CHUNK * REACH_PAD;
+	const float bay_reach = bay_end_ + CHUNK * HALF; // a sub-chunk's range is measured to its own middle, up to half a chunk from the chunk's
 	const bool far_missing = !sp.built || !sp.has_content;
 	const int sx = key_x(key) * CHUNKS_PER_SUPER, sz = key_y(key) * CHUNKS_PER_SUPER;
 	int mask = 0;
@@ -301,6 +304,10 @@ void BuildingRenderer::visit_super(int64_t key, Super &sp, const Vector3 &cam, f
 			drop(ch, LEVEL_MID);
 			drop_bands(ch);
 		}
+		// the mid level's openings stand only where they are drawn: with a mid level, built or asked now, within their own reach
+		const bool mid_up = ch.built[LEVEL_MID] || (levels & BAND_BIT_MID) != 0;
+		if ((!ch.built[LEVEL_BAYS] || ch.stale[LEVEL_BAYS]) && mid_up && dc < bay_reach) levels = uint8_t(levels | BAND_BIT_BAYS);
+		else if (ch.built[LEVEL_BAYS] && dc > bay_reach * DROP_K) drop(ch, LEVEL_BAYS);
 		const bool drawn = ch.built[LEVEL_MID] && (ch.detail || far_missing);
 		if (drawn != ch.shown) show(ch, drawn);
 		if (drawn && ch.built[LEVEL_NEAR] && !ch.cut) fade_levels(ch, cam);
@@ -342,7 +349,7 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 	std::sort(want.begin(), want.end(), [](const Want &a, const Want &b) { return a.d < b.d; });
 	for (const Want &w : want) {
 		if (!budget.take()) break;
-		submit(*state_, w.key, false, (w.mask & BAND_BIT_NEAR) != 0, (w.mask & BAND_BIT_MID) != 0, w.d);
+		submit(*state_, w.key, (w.mask & BAND_BIT_NEAR) != 0, (w.mask & BAND_BIT_MID) != 0, (w.mask & BAND_BIT_BAYS) != 0, w.d);
 		need_.unmet--;
 	}
 	std::sort(want_super.begin(), want_super.end(), [](const Want &a, const Want &b) { return a.d < b.d; });

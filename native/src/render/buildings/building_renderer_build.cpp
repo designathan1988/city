@@ -144,14 +144,15 @@ void BuildingRenderer::link_shells(Built &out, std::array<b40::Shell, SUB_COUNT>
 	}
 }
 
-BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const {
+BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t key, bool near, bool mid, bool bays) const {
 	BuildingBodies &bodies = bodies_;
 	Built out;
 	out.key = key;
-	if (!near && !mid) return out;
+	if (!near && !mid && !bays) return out;
 	std::array<b40::Shell, SUB_COUNT> &near_shells = out.near_shell, &parts_shells = out.parts_shell, &mid_shells = out.mid_shell;
 	std::array<b40::Shell, SUB_COUNT> mid_parts;
 	link_shells(out, mid_parts);
+	for (b40::Shell &m : mid_shells) m.keep_bays = bays; // the openings are a level of their own (LEVEL_BAYS)
 	for (size_t r = 0; r < in.records.size(); r++) {
 		const Building &rec = in.records[r];
 		// The near level draws a building the Interior layer opens cut; the coarse levels draw it whole (the camera is close).
@@ -174,10 +175,14 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 			if (lots_drawn_.load()) b40::emit_lot(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			if (!broken) out.walls.add(pl, int(state_->catalog.tune.render_occluder_min_storeys));
 			out.cut = out.cut || cut;
-			if (!mid) continue; // both asked (first build close to the camera): the coarse mid level follows
+			if (!mid && !bays) continue; // both asked (first build close to the camera): the coarse mid level follows
 			if (cut) bodies.place(designs(), look_, in.ground, rec, pl);
 		}
 		pl.coarse = true;
+		if (!mid) { // the openings alone: the mid level they belong to stands already
+			if (!own_design && !broken) b40::emit_mid_bays(mid_shells[size_t(sub)], pl);
+			continue;
+		}
 		mid_shells[size_t(sub)].flat = &out.flat_shell[size_t(sub)];
 		if (!own_design && !broken) {
 			b40::emit_far(mid_shells[size_t(sub)], pl, true);
@@ -206,18 +211,21 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		out.has_near = true;
 	}
 	out.has_mid = mid;
+	out.has_bays = bays;
 	out.hull_error_m = look_.hull_error_m;
+	if (bays) {
+		for (size_t i = 0; i < SUB_COUNT; i++) out.mid_buf[i][MID_BAYS] = bake_bays(mid_shells[i].bays);
+		out.mid_mesh[MID_BAYS] = unit_bay_->get_rid();
+	}
+	for (b40::Shell &m : mid_shells) m.bays = {};
 	if (mid) {
 		for (size_t i = 0; i < SUB_COUNT; i++) {
-			out.mid_buf[i][MID_BAYS] = bake_bays(mid_shells[i].bays);
 			std::vector<b40::BoxInstance> thin, solid;
 			for (const b40::BoxInstance &inst : mid_parts[i].boxes) (inst.thick > look_.part_bands[size_t(MID_SOLID_BAND - 1)].thick_max ? solid : thin).push_back(inst);
 			out.mid_buf[i][MID_BOXES] = bake_band(thin);
 			out.mid_buf[i][MID_SOLIDS] = bake_band(solid);
-			mid_shells[i].bays = {};
 			mid_shells[i].flat = nullptr;
 		}
-		out.mid_mesh[MID_BAYS] = unit_bay_->get_rid();
 		out.mid_mesh[MID_BOXES] = out.mid_mesh[MID_SOLIDS] = unit_box_->get_rid();
 	}
 	return out;

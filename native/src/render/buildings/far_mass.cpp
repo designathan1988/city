@@ -106,16 +106,17 @@ void flat_bays(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int 
 
 // The mid level's wall of a side, bay by bay as the near level has it: each opening an instance (bay_kit.h), the blank bays in
 // rectangles of one push, and behind them all the plain side, which no eye reaches and which throws the building's shadow.
-void bay_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int n, float W, int8_t fin) {
+// The openings of a side, each an instance (bay_kit.h); `done` (storeys x bays), when given, gets the cells that are not blank wall:
+// the covered ones and those with an opening.
+void side_bays(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int n, float W, int8_t fin, std::vector<char> *done) {
 	const Body &b = *pl.b;
 	const OpenCell open{ b, v, sd, W };
-	std::vector<char> done(size_t(n) * size_t(v.storeys), 0);
-	auto cell_of = [&](int k, int i) -> char & { return done[size_t(k) * size_t(n) + size_t(i)]; };
 	for (int k = 0; k < v.storeys; k++) {
 		const float H = b.level_h(v.base + k), z = b.level_z(v.base + k);
 		for (int i = 0; i < n; i++) {
+			const size_t cell = size_t(k) * size_t(n) + size_t(i);
 			if (!open(k, i)) {
-				cell_of(k, i) = 1;
+				if (done) (*done)[cell] = 1;
 				continue;
 			}
 			BayCtx c;
@@ -123,11 +124,19 @@ void bay_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int 
 			c.comp = bay_at(v, k, sd.side, i);
 			const Opening o = opening_of(*pl.data, c);
 			if (!o.has) continue;
-			cell_of(k, i) = 1;
+			if (done) (*done)[cell] = 1;
 			const Basis f{ sd.f.at(W * float(i), z, relief_push(v, sd.side, i, k)), sd.f.e0, sd.f.e1, sd.f.e2 };
 			s.bay(f, W, H, wall_lin(pl, v, k, sd.side), fin, hash_combine(pl.id, uint32_t(k * n + i)), windows_of(pl, v, k, sd.side, W, H, c.comp), o.depth);
 		}
 	}
+}
+
+void bay_walls(Shell &s, const Placed &pl, const Volume &v, const Side &sd, int n, float W, int8_t fin) {
+	const Body &b = *pl.b;
+	const OpenCell open{ b, v, sd, W };
+	std::vector<char> done(size_t(n) * size_t(v.storeys), 0);
+	auto cell_of = [&](int k, int i) -> char & { return done[size_t(k) * size_t(n) + size_t(i)]; };
+	side_bays(s, pl, v, sd, n, W, fin, &done);
 	if (s.flat) flat_bays(*s.flat, pl, v, sd, n, W, fin, open);
 	auto blank = [&](int k, int i, int k0, int i0) {
 		return !cell_of(k, i) && relief_push(v, sd.side, i, k) == relief_push(v, sd.side, i0, k0) && b.level_h(v.base + k) == b.level_h(v.base + k0);
@@ -219,6 +228,17 @@ void roof(Shell &s, const Placed &pl, const Volume &v, int vol) {
 	}
 }
 } // namespace
+
+void emit_mid_bays(Shell &shell, const Placed &whole) {
+	for (const Volume &v : whole.b->volumes) {
+		Placed raised;
+		const Placed &pl = block_frame(whole, v, raised);
+		for (const Side &sd : sides_of(pl, v, 0)) {
+			const int n = bays_of(v, sd.side);
+			side_bays(shell, pl, v, sd, n, sd.length / float(n), whole.b->wall_of(v).finish, nullptr);
+		}
+	}
+}
 
 void emit_far(Shell &shell, const Placed &whole, bool roofs) {
 	for (size_t i = 0; i < whole.b->volumes.size(); i++) {

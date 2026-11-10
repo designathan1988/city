@@ -52,7 +52,7 @@ public:
 	// A chunk whose near level is drawn again with the same buildings (the Interior layer cut some open or closed them): the
 	// far mesh draws them whole either way, so its superchunk stays.
 	void restyle_chunk(int64_t key);
-	void submit(const CityState &s, int64_t key, bool far, bool near, bool mid, float priority);
+	void submit(const CityState &s, int64_t key, bool near, bool mid, bool bays, float priority);
 	void commit(UploadBudget &upload, const std::chrono::steady_clock::time_point &until, double &chunk_max, double &super_max); // chunk_max, super_max: the slowest commit, ms
 	void drop_chunk(int64_t key); // frees every level of a chunk the camera left
 	float far_end() const { return far_end_; }
@@ -80,7 +80,8 @@ public:
 	SignatureBodies *own_designs() { return &signatures_; }
 
 private:
-	enum Level { LEVEL_NEAR, LEVEL_MID, LEVELS };
+	// LEVEL_BAYS: the mid level's openings as instances, drawn only to render.building_bay_end_m: streamed by that reach, not the mid level's
+	enum Level { LEVEL_NEAR, LEVEL_MID, LEVEL_BAYS, LEVELS };
 	static constexpr int SUBS = 2; // CHUNK / SUBCHUNK: sub-chunks per axis inside a 256 m chunk
 	static constexpr int SUB_COUNT = SUBS * SUBS;
 	static constexpr int BAND_COUNT = 5; // of boxes; the kinds of bay_props.h follow them
@@ -157,7 +158,7 @@ private:
 		int flag_count = 0;
 		godot::RID unit_flag; // the flags' cloth
 		OccluderWalls walls;
-		bool has_near = false, has_mid = false, baked = false;
+		bool has_near = false, has_mid = false, has_bays = false, baked = false;
 		bool cut = false; // a building of the near level is cut open
 		std::array<Held, HELD_KINDS> held;
 		int64_t bytes() const;
@@ -203,7 +204,7 @@ private:
 	std::shared_ptr<const std::unordered_set<uint32_t>> broken_ = std::make_shared<const std::unordered_set<uint32_t>>();
 	void file_parts(Built &out, std::array<b40::Shell, SUB_COUNT> &parts_shells) const;
 	static void link_shells(Built &out, std::array<b40::Shell, SUB_COUNT> &mid_parts);
-	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const;
+	Built build_cpu(const Inputs &in, int64_t key, bool near, bool mid, bool bays) const;
 	SuperBuilt build_super_cpu(const Inputs &in, int64_t super_key) const;
 	static Surface bake(const b40::Shell &shell, bool with_uv2, const b40::Shell *glass = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr, const b40::Shell *lawns = nullptr, const b40::Shell *washes = nullptr);
 	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, const godot::RID &material, bool shadows, bool shown,

@@ -163,8 +163,13 @@ Dictionary BuildingRenderer::building_cost() const {
 	static const char *const NAMES[HELD_KINDS] = { "near_walls", "near_panes", "near_guards", "near_cards", "near_pieces", "mid_walls", "mid_panes", "mid_cards" };
 	std::array<Held, HELD_KINDS> sum;
 	Held far;
-	int64_t near_chunks = 0, mid_chunks = 0, instances = 0, props = 0, fading = 0;
+	int64_t near_chunks = 0, mid_chunks = 0, bay_chunks = 0, bay_rows = 0, mid_rows = 0, instances = 0, props = 0, fading = 0;
 	for (const auto &[key, ch] : chunks_) {
+		bay_chunks += ch.built[LEVEL_BAYS] ? 1 : 0;
+		for (const auto &sub : ch.mid_draws) {
+			bay_rows += sub[MID_BAYS].count;
+			mid_rows += sub[MID_BOXES].count + sub[MID_SOLIDS].count;
+		}
 		fading += std::count(ch.fading.begin(), ch.fading.end(), true);
 		near_chunks += ch.built[LEVEL_NEAR] ? 1 : 0;
 		mid_chunks += ch.built[LEVEL_MID] ? 1 : 0;
@@ -192,6 +197,9 @@ Dictionary BuildingRenderer::building_cost() const {
 	d["near_chunks"] = near_chunks;
 	d["fading"] = fading; // sub-chunks in the band of the hand-over
 	d["mid_chunks"] = mid_chunks;
+	d["bay_chunks"] = bay_chunks; // chunks whose openings stand as instances (within their own reach)
+	d["bay_rows"] = bay_rows; // the instances of the mid level's openings held
+	d["mid_rows"] = mid_rows; // and of what stands out of its walls
 	d["instances"] = instances;
 	d["props"] = props;
 	return d;

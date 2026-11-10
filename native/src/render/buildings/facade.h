@@ -89,6 +89,8 @@ bool emit_lot_prop(Shell &shell, Shell &parts, const Placed &pl, const LotElemen
 void emit_roof_terrace(Shell &shell, Shell &parts, const Placed &pl, const Volume &v, int vol, float z);
 // Far walls with painted windows; `roofs`: also slabs, parapets and machine rooms (the mid level lays emit_roofs).
 void emit_far(Shell &shell, const Placed &pl, bool roofs);
+// The mid level's openings alone, as emit_far lays them into a shell that keeps them (Shell::keep_bays): a level with its own reach.
+void emit_mid_bays(Shell &shell, const Placed &pl);
 // The mid level's relief, from the same bays the near level draws (facade_emit.cpp).
 void emit_relief(Shell &shell, Shell &parts, const Placed &pl);
 float relief_push(const Volume &v, int side, int bay, int k); // how far a bay is pushed out of its wall

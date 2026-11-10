@@ -99,7 +99,7 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 	const float mid_from = ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ - look_.level_fade_m : 0;
 	for (auto &sub : ch.mid_draws) {
 		sub[MID_BAYS].range(mid_from, bay_end_);
-		sub[MID_BOXES].range(mid_from, 0);
+		sub[MID_BOXES].range(mid_from, band_end_[MID_SOLID_BAND - 1]); // the thin ones: as far as the widest of their band is drawn
 		sub[MID_SOLIDS].range(mid_from, 0);
 		for (const MultiMeshDraw &d : sub) put_param(d.inst, BACK_PARAM, look_.level_back_m);
 	}
@@ -110,7 +110,9 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 			RenderingServer::get_singleton()->instance_geometry_set_visibility_range(d.inst, mid_from, 0, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
 	// Where the bays end, by the margin of theirs: the engine's hysteresis moves each edge by the way the eye comes, and with no margin here a
 	// camera coming in lost the flat before the bays were back, and for those metres the plain side behind them stood bare.
-	for (MeshDraw &d : ch.flat) range(d, ch.cut ? NEVER_M : bay_end_, 0, bay_end_ * RANGE_LINGER_SHARE);
+	// Until the chunk's openings stand (their own level, streamed by their reach) the flat draws from the mid level's start: no wall is bare.
+	const float flat_from = ch.built[LEVEL_BAYS] ? bay_end_ : mid_from;
+	for (MeshDraw &d : ch.flat) range(d, ch.cut ? NEVER_M : flat_from, 0, flat_from * RANGE_LINGER_SHARE);
 	ch.flags.range(0, ch.cut ? 0 : near_end_ * detail_scale_); // the masts' cloths, with the near level they fly from
 }
 

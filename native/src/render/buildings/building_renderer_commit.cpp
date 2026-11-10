@@ -193,14 +193,19 @@ void BuildingRenderer::commit_one(Built &b) {
 			put_level(ch.flat[size_t(i)], b.flat[size_t(i)], material_, ch.shown, LAYER_BUILDING_FACADES, false); // the plain side behind throws the shadow
 		}
 		for (size_t i = 0; i < SUB_COUNT; i++)
-			for (size_t k = 0; k < MID_DRAWS; k++) // no shadow of their own: the plain side behind the bays throws it
-				ch.mid_draws[i][k].adopt(scenario_, k == MID_BAYS ? material_ : material_parts_, false, b.mid_mm[i][k].release(), b.mid_count[i][k],
-						b.mid_box[i][k], LAYER_BUILDING_FACADES);
+			for (size_t k = MID_BOXES; k < MID_DRAWS; k++) // no shadow of their own: the plain side behind the bays throws it
+				ch.mid_draws[i][k].adopt(scenario_, material_parts_, false, b.mid_mm[i][k].release(), b.mid_count[i][k], b.mid_box[i][k], LAYER_BUILDING_FACADES);
 		for (size_t i = 0; i < SUB_COUNT; i++)
 			ch.mid_casts[i].bind(scenario_, ch.mid_draws[i][MID_SOLIDS].mm, material_cast_, b.mid_box[i][MID_SOLIDS], LAYER_BUILDING_FACADES);
 		std::copy(b.held.begin() + HELD_MID_WALLS, b.held.end(), ch.held.begin() + HELD_MID_WALLS);
 		ch.built[LEVEL_MID] = true;
 		ch.stale[LEVEL_MID] = !current;
+	}
+	if (b.has_bays) { // the mid level's openings, in the walls' own material
+		for (size_t i = 0; i < SUB_COUNT; i++)
+			ch.mid_draws[i][MID_BAYS].adopt(scenario_, material_, false, b.mid_mm[i][MID_BAYS].release(), b.mid_count[i][MID_BAYS], b.mid_box[i][MID_BAYS], LAYER_BUILDING_FACADES);
+		ch.built[LEVEL_BAYS] = true;
+		ch.stale[LEVEL_BAYS] = !current;
 	}
 	fit_reach(ch, b);
 	ranges(ch);
@@ -221,8 +226,9 @@ void BuildingRenderer::fit_reach(Chunk &ch, const Built &b) {
 		if (b.has_mid) {
 			grow(box, b.mid[i].box);
 			grow(box, b.flat[i].box);
-			for (const AABB &drawn : b.mid_box[i]) grow(box, drawn);
 		}
+		if (b.has_mid || b.has_bays)
+			for (const AABB &drawn : b.mid_box[i]) grow(box, drawn); // of the draws this result made: the others' boxes are empty
 		if (box.size == Vector3()) continue;
 		for (const MeshDraw *d : { &ch.near[i], &ch.parts[i], &ch.mid[i], &ch.flat[i] })
 			if (d->inst.is_valid()) rs->instance_set_custom_aabb(d->inst, box);
