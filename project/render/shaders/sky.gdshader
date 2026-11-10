@@ -9,9 +9,9 @@ uniform vec3 low_zenith : source_color;
 uniform vec3 low_horizon : source_color;
 uniform vec3 ground : source_color;
 uniform vec3 sun_color : source_color;
+// The low band's share at the eye's height (daylight.gd follow_view works it out, with the air's colour). The shader reads no
+// POSITION: a sky that does is drawn again into its radiance map, and that map filtered, at every move of the camera.
 uniform float low;
-uniform float low_from_m;
-uniform float low_to_m;
 uniform float dark = 0.0; // 1 at night: the street-level sky stays, dimmed
 uniform float gain = 1.0;
 uniform float sun_disc = 1.0;
@@ -33,7 +33,7 @@ void sky() {
 	vec3 sunward = mix(low_horizon, low_horizon * sun_warm, pow(sd, 3.0) * 0.5) * (1.0 - low_dark.x * dark);
 	vec3 low_col = mix(sunward, low_zenith * (1.0 - low_dark.y * dark), smoothstep(0.0, 0.5, up));
 	// The reflections read the plain day sky: only the eye at street level sees the deep band.
-	if (!AT_CUBEMAP_PASS) col = mix(col, low_col, low * (1.0 - smoothstep(low_from_m, low_to_m, POSITION.y)));
+	if (!AT_CUBEMAP_PASS) col = mix(col, low_col, low);
 	col = mix(ground, col, smoothstep(ground_edge.x, ground_edge.y, h));
 	float glow = (pow(sd, sun_glow.x) * sun_glow.y + pow(sd, sun_glow.z) * sun_glow.w * sun_disc) * smoothstep(glow_edge.x, glow_edge.y, h);
 	COLOR = (col + sun_color * glow) * gain;

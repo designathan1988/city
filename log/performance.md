@@ -299,3 +299,16 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
   worker's heap only when that worker works again (now the same warm worker). It leaves when a job hands engine-owned bytes.
 - Check: `job_pool_test` (twelve jobs one after the other on a pool of four run on one thread; 3 threads before the never-worked
   rule), `cli.py run digest` PASS, gates OK on the changed files. Memory itself not measured (the owner's order).
+
+### C13 (P61): the sky's radiance follows the light, not the camera
+- Cause: `render/shaders/sky.gdshader` read `POSITION.y` for the low band's share. A sky shader that reads POSITION is drawn again
+  into its radiance cubemap, and the map filtered, whenever the camera's position changes (Godot's sky shader reference: POSITION,
+  and the Sky's automatic process mode); and `Daylight._set_sky` set every value of the material at every call, changed or not
+  (a set value does the same).
+- Change: the share is worked out by `Daylight.follow_view` (it already did, for the air's colour) and handed as the uniform
+  `low`; the shader reads no POSITION and lost `low_from_m`/`low_to_m`. `Daylight._sky_set` sends a value only when it differs
+  from the one sent.
+- Cannot return: nothing in the sky depends on where the eye stands but one number, which moves only while the eye crosses the
+  band between `low_from_m` and `low_to_m` (100 to 260 m); a still light sets nothing.
+- Check: scripts and gates OK; the sky photographed hidden and frozen before and after from the street (16 h and 22 h), mid and
+  high: at most 934 of 921,600 pixels differ, on leaf and wire edges (two runs differ so: suites.json, `quick`).
