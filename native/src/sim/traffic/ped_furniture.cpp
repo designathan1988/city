@@ -106,7 +106,7 @@ void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vecto
 	}
 	// The kinds only choose among the pieces placed (segment_furniture, merge_street and the knocked-out ones filter each piece
 	// by itself), so the kept placement of every kind, filtered, is the placement of these kinds.
-	const FurnitureKept::Spots all = s.furniture_kept.of(s.revision, sid, [&](std::vector<FurnitureSpot> &made) {
+	const FurnitureKept::Spots all = s.furniture_kept.of(s.street_revision, sid, [&](std::vector<FurnitureSpot> &made) {
 		place_street_furniture(s, sid, FURNITURE_ALL, made);
 	});
 	for (const FurnitureSpot &f : *all)

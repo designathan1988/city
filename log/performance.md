@@ -388,3 +388,17 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
   candidates (P43) and the sight solids.
 - Check: `digest` (the state's hash), `traffic_hash_test`, `yard_test` pass; the frozen review plan (dist/review-c5b): the
   gardens' trees stand where they stood (6 of 20 pictures equal, the others the leaf-edge noise of two runs); gates OK.
+
+### P48, the growth's part (C11): a grown building no longer drops the kept street furniture
+- Cause: `FurnitureKept` was keyed by the city's whole revision, which `city_growth.cpp` moves at each building it adds
+  (`growth_per_s` 25): with the city growing, every render job and the walkers placed the furniture of every street in reach
+  again, all the time (`segment_furniture`, `merge_street`), through one mutex.
+- Read: a placement's inputs are the network, the junctions' control (`network_arms`, the node's fields), the player's items
+  and cuts (`s.street`) and the pieces knocked out (`s.damage.gone`): no building.
+- Change: `CityData::street_revision`, moved by `touch()` (every command, undo, redo, a new or opened map) and not by
+  `touch_grown()`, which growth now calls; `street_furniture_of` keeps by it; `take_city` carries it on; the snapshot shows it.
+- Cannot return: growth has no call that moves the furniture's key. Left under C11: any command still drops every
+  segment's furniture (the key is not yet the segment's own inputs).
+- Check: `growth_pick_test` (new check: buildings grew and the streets' revision stood), `digest`, `traffic_hash_test`,
+  `street_works_test` pass; gates OK; the frozen review plan (dist/review-c11): lamps, trees and benches where they stood
+  (8 of 20 pictures equal, the others leaf-edge noise).

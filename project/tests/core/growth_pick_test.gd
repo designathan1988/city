@@ -54,6 +54,7 @@ func _grow() -> Array[Vector3]:
 	var order: Array[Vector3] = []
 	var seen := {}
 	var quiet := 0
+	var streets: int = CityStore.snapshot.street_revision
 	for step in MOST_STEPS:
 		ticks(STEP_TICKS)
 		var fresh := false
@@ -66,4 +67,5 @@ func _grow() -> Array[Vector3]:
 		quiet = 0 if fresh else quiet + 1
 		if quiet >= QUIET_STEPS:
 			break
+	check(order.size() > 0 and CityStore.snapshot.street_revision == streets, "the buildings that grew left the streets' revision where it was: the kept furniture stands")
 	return order

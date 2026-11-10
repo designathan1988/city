@@ -119,6 +119,7 @@ Dictionary CityCore::snapshot() {
 	d["segments"] = s.roads.alive_segments();
 	d["marking_style"] = s.marking_style.load();
 	d["edit_revision"] = int64_t(s.edit_revision);
+	d["street_revision"] = int64_t(s.street_revision); // what the kept street furniture is made for (tests)
 	d["profiles_revision"] = int64_t(s.catalog.profiles_stamp()); // the road list (CityStore.cached)
 	d["player_zones"] = s.roads.player_sides;
 	d["style"] = String(s.style.c_str());

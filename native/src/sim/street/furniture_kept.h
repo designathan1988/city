@@ -1,7 +1,9 @@
-// The street furniture of each segment, placed once and kept while the city stays as it was (traffic::street_furniture_of is its
-// front): every reader of a segment's kit, what the player put up and cut, and what a blow left standing reads one placement
-// instead of placing it again. The entries are made for the city's revision (CityData::revision, which every change to the map
-// moves: touch(), a new map, a load) and dropped together when it moves. Only a reader under the map's shared lock reads kept
+// The street furniture of each segment, placed once and kept while the streets stay as they were (traffic::street_furniture_of is
+// its front): every reader of a segment's kit, what the player put up and cut, and what a blow left standing reads one placement
+// instead of placing it again. The entries are made for the streets' revision (CityData::street_revision, which every change to
+// the map moves but a building that grew: touch(), a new map, a load) and dropped together when it moves. A grown building is no
+// input of a placement (the network, the junctions' control, the player's items and cuts, the pieces knocked out), and the city
+// grows many a second: keyed by the city's whole revision, the furniture of every street in view was placed again all the time. Only a reader under the map's shared lock reads kept
 // furniture (the render's jobs, the walkers, previews and probes): nothing changes while it reads, so what it keeps holds. An edit,
 // which may read a segment before and after changing it, has it placed anew (FurnitureRead::PLACED).
 #pragma once
@@ -16,7 +18,7 @@
 
 namespace city {
 
-// Who asks for a segment's furniture: a reader under the map's shared lock reads the placement kept for the city's revision; an
+// Who asks for a segment's furniture: a reader under the map's shared lock reads the placement kept for the streets' revision; an
 // edit, which may read a segment before and after changing it, has it placed anew.
 enum class FurnitureRead : uint8_t { KEPT, PLACED };
 
