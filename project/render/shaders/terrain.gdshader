@@ -10,33 +10,12 @@ render_mode blend_mix,depth_draw_opaque,cull_back,skip_vertex_transform;
 // Vertex
 ////////////////////////
 
-// Takes in world space XZ (UV) coordinates and returns if the coordinate should be part of the NONE background.
-bool is_none_bg(const vec2 uv) {
-	ivec4 regions = ivec4(
-		get_index_coord(uv - vec2(0.5, 0.0)).z,
-		get_index_coord(uv - vec2(0.0, 0.5)).z,
-		get_index_coord(uv + vec2(1.0, 0.0)).z,
-		get_index_coord(uv + vec2(0.0, 1.0)).z);
-	return any(equal(regions, ivec4(-1)));
-}
-
+// The land's height between the grid's points (the nearest level's sub-texel vertices).
 float interpolated_height(vec2 pos) {
-	const vec2 offsets = vec2(0, 1);
-	vec2 index_id = floor(pos);
-	ivec3 index[4];
-	index[0] = get_index_coord(index_id + offsets.xy);
-	index[1] = get_index_coord(index_id + offsets.yy);
-	index[2] = get_index_coord(index_id + offsets.yx);
-	index[3] = get_index_coord(index_id + offsets.xx);
-	float h0 = texelFetch(_height_maps, index[0], 0).r;
-	float h1 = texelFetch(_height_maps, index[1], 0).r;
-	float h2 = texelFetch(_height_maps, index[2], 0).r;
-	float h3 = texelFetch(_height_maps, index[3], 0).r;
-	vec2 f = fract(pos);
-	vec2 i = 1.0 - f;
-	vec4 w = vec4(i.x * f.y, f.x * f.y, f.x * i.y, i.x * i.y);
-	float h = h0 * w[0] + h1 * w[1] + h2 * w[2] + h3 * w[3];
-	return h;
+	vec2 at = floor(pos), f = fract(pos);
+	float low = mix(ground_height(at), ground_height(at + vec2(1.0, 0.0)), f.x);
+	float high = mix(ground_height(at + vec2(0.0, 1.0)), ground_height(at + vec2(1.0, 1.0)), f.x);
+	return mix(low, high, f.y);
 }
 
 void vertex() {
@@ -77,13 +56,12 @@ void vertex() {
 	// Terrain3D's own hole bit, as its minimum.gdshader reads it. The game holes nothing under the roads: a hole follows the
 	// mesher's levels and transition strips (terrain_3d_mesher.cpp snap), which a seam cannot match, and opened gaps onto the water
 	// below; the ground seams lie over this terrain instead, which stands lower than them there (road_shape.cpp). 1 lookup
-	ivec3 v_region = get_index_coord(start_pos);
-	uint control = floatBitsToUint(texelFetch(_control_maps, v_region, 0)).r;
+	uint control = ground_control(start_pos);
 	bool hole = bool(control >>2u & 0x1u);
+	bool past = past_map(v_vertex.xz);
 
 	// Show holes to all cameras except mouse camera (on exactly 1 layer)
-	if ( !(CAMERA_VISIBLE_LAYERS == _mouse_layer) &&
-			(hole || (_background_mode == 0u && is_none_bg(UV)))) {
+	if ( !(CAMERA_VISIBLE_LAYERS == _mouse_layer) && hole) {
 		v_vertex.x = 0. / 0.;
 	} else {
 		// Set final vertex height.
@@ -93,13 +71,11 @@ void vertex() {
 		if (scale < _vertex_spacing) {
 			h = interpolated_height(UV);
 		} else {
-			ivec3 coord_a = get_index_coord(start_pos);
-			ivec3 coord_b = get_index_coord(end_pos);
-			h = mix(texelFetch(_height_maps, coord_a, 0).r,texelFetch(_height_maps, coord_b, 0).r,vertex_lerp);
+			h = mix(ground_height(start_pos), ground_height(end_pos), vertex_lerp);
 		}
-		v_vertex.y = v_region.z < 0 ? past_map_y_m : h;
+		v_vertex.y = past ? past_map_y_m : h;
 		// past the map a vertex stands at its end: the clipmap follows the camera, and the wall it makes must not
-		if (v_region.z < 0) v_vertex.xz = clamp(v_vertex.xz, vec2(-map_half), vec2(map_half));
+		if (past) v_vertex.xz = clamp(v_vertex.xz, vec2(-map_half), vec2(map_half));
 		v_ground_n = ground_normal_at(round(UV), max(1.0, scale * _vertex_density));
 	}
 

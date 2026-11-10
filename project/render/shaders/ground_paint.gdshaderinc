@@ -2,7 +2,7 @@
 // it; https://terrain3d.readthedocs.io controlmap_format): base id the surface, blend how much of it; overlay id the
 // biome and the uv bits how much of it; the reserved bits the gullies. Each corner of the height grid holds one of each,
 // read at the four corners and mixed by distance (ids cannot be filtered).
-// Needs: _control_maps, get_index_coord, land_triplanar, the uniforms below.
+// Needs: ground_control (terrain_common.gdshaderinc), land_triplanar, the uniforms below.
 #include "res://render/shaders/contracts/land.gdshaderinc"
 
 uniform vec3 biome_tint[1 << PAINT_ID_BITS] : source_color; // by the overlay id: none, then the biomes of data/catalog/nature.json
@@ -42,8 +42,8 @@ struct PaintCorner {
 	float wipe;
 };
 
-PaintCorner read_paint(ivec3 at) {
-	uint c = floatBitsToUint(texelFetch(_control_maps, at, 0)).r;
+PaintCorner read_paint(vec2 grid) {
+	uint c = ground_control(grid);
 	PaintCorner p;
 	p.surface = int(c >> uint(PAINT_BASE_SHIFT) & ID_MASK);
 	p.biome = int(c >> uint(PAINT_OVERLAY_SHIFT) & ID_MASK);

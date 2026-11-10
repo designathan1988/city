@@ -16,9 +16,8 @@ void vertex() {
 	v_ground_n = (MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	if (UV2.x > 0.5) { // a corner of the grid: the terrain's own height and normal there
 		vec2 at = round(UV);
-		ivec3 c = get_index_coord(at);
-		if (c.z >= 0) {
-			v_vertex.y = texelFetch(_height_maps, c, 0).r;
+		if (!past_map(v_vertex.xz)) {
+			v_vertex.y = ground_height(at);
 			v_ground_n = ground_normal_at(at, 1.0);
 		}
 	}

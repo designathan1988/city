@@ -105,9 +105,8 @@ e apagados.
 | Rodar o jogo | `godot --path project` (sem Vulkan: `--rendering-method gl_compatibility`) |
 | Compilar as duas DLLs | `MINGW=... tools/build/build.sh core-windows` (Linux: `core`) |
 | Check a change | `tools/build/quick.sh [task,task]` (= `python tools/tasks/cli.py run quick`: only the tasks whose inputs changed; `--ready` at a theme's close, `--all` nothing from the cache, `--bless` only for an understood visual change) |
-| Run one test | `python tools/tasks/cli.py run fast <scene>` |
+| Run one test | `python tools/tasks/cli.py run fast <scene>`; the city's defects by rule, from the state, in seconds: `cli.py run audit` (`tests/audit/city_audit.gd`) |
 | Suite in parallel | `python tools/tasks/cli.py run tests` (logs in `dist/tasks/<run>`, `cli.py status`; every task has its own deadline and is killed by PID) |
-| The city's defects by rule | `python tools/tasks/cli.py run audit` (`project/tests/audit/city_audit.gd`: lots, traffic and roads read from the state, each line a rule with its count and worst places; seconds) |
 | Gates | `python tools/gates/run_gates.py` (`--file X`, `--files-from F`, `--summary`, `--selftest`); changed files only: `python tools/tasks/cli.py run gates_changed` |
 | Scripts that do not compile | `python tools/tasks/cli.py run scripts` (`tools/build/check_scripts.gd`) |
 | Orchestrator | `python tools/tasks/cli.py run <suite or task> [--list]`, `serve` (JSON lines, for Node tools), `status`, `var <name>` (a machine's tool, for scripts); its tests: `python -m unittest discover tools/tasks/tests` |
@@ -187,6 +186,7 @@ the same sources give the same bytes, so a rebuild of unchanged sources leaves t
 - A building's body is made once and kept by the generator tables' cache (`sim/buildings/b40/body_cache.h`, through
   `record_body`/`record_mass`), read by the simulation and the render alike.
 - A conversão de malha entra em `render.upload_budget_mb` por quadro; o commit só troca malhas, em `render.commit_budget_ms`.
+- The fine ground follows the view (`TerrainBridge::follow`: Terrain3D's regions near the eye); past them the shader reads the map's far maps.
 - Poses through `PoseBuffer`. A save writes and an opening reads on threads of their own (the main thread takes the city in whole).
 
 ## Luz e relógio

@@ -28,6 +28,7 @@
   "_doc": "What the renderer draws and how far: occluder buildings, where roads, props and each building level end, the street lamps' and headlamps' lights, the level-of-detail error, and the per-frame budgets of chunk rebuilds, mesh commits and uploads. ground_cache_mb: the memory the chunks' ground (roads, lots and ecosystem the trees and the cover plant on: render/trees/ground_kept.h) may keep for the city as it stands; past it the least recently read are gathered again.",
   "occluder_min_storeys": 2,
   "road_end_m": 2200,
+  "far_land_cells": 8,
   "props_end_m": 900,
   "lamp_energy": 6,
   "lamp_range_m": 26,

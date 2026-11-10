@@ -255,6 +255,8 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam, doub
 		}
 		// The terrain an edit changed is sent this frame (the roads and the shore of the same edit stand on it): paid into the
 		// ledger, into debt if it must, which the deferrable uploads of the next frames repay.
+		// the fine ground reaches as far as the detailed roads that lie on it
+		if (terrain3d) f.upload.charge(terrain_.follow(s.terrain, s.nature.ground, terrain3d, cam.x, cam.z, t.render_road_end_m, t.render_far_land_cells));
 		if (terrain3d && !terrain_rects_.empty()) f.upload.charge(terrain_.push_rects(s.terrain, terrain3d, terrain_rects_));
 		if (terrain3d && !paint_rects_.empty()) f.upload.charge(terrain_.push_paint(s.terrain, s.nature.ground, terrain3d, paint_rects_));
 		paint_rects_.clear();

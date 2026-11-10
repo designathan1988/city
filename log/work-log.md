@@ -1219,3 +1219,26 @@ deterministic, its own cause to fix); gates of the changed files OK; surface_dat
 - Files: `native/src/render/effects/effect_world.{h,cpp}`, `native/src/render/render_world.{h,cpp}`, `native/src/api/{city_core.h,
   city_core.cpp,city_core_bind.cpp}`, `native/src/render/agents/{ragdoll.h,ragdoll.cpp,body_renderer.h,body_renderer.cpp}`,
   `project/game/camera/{camera_pull.gd,city_camera.gd}`, `project/game/store/store_api.gd`, `project/tests/core/shoot_test.gd`.
+
+## 2026-11-09 23:10: the fine ground follows the view (the owner's review, problem 8: memory)
+- Cause (the bisect of 2026-11-09, `c3dd7b97`: +494 MiB private, +260 MiB of textures; read in `terrain_bridge.cpp push_all`): every
+  region of the land was made in Terrain3D when a map opened, 400 for 20 km, each with its height, control and colour maps on the CPU
+  and again on the GPU, whatever the view: a 640 m town held the ground of 400 km2.
+- Research: Terrain3D's API (Context7 /tokisangames/terrain3d, Terrain3DData): `add_region_blank`, `remove_regionl`, `update_maps`
+  "regenerates the region map and the TextureArrays" from the regions that stand; `cull_margin` for a shader that moves vertices
+  past the regions' height range.
+- Fix: `TerrainBridge::follow` keeps the regions within `render.road_end_m` of the eye (the fine ground reaches as far as the detailed
+  roads that lie on it; one leaves a region's side later). The whole map stands under them as two maps, its heights and its painted
+  ground every `render.far_land_cells` (8) samples: 640 x 640 for 20 km, 3 MiB in all. The terrain's and the seams' shaders read every
+  height and control word through `ground_height` / `ground_control` (terrain_common.gdshaderinc): the region's where one stands,
+  the far maps' anywhere else, on the same clipmap, so no seam between them. Edits write the regions that stand and the far maps.
+- Result (memory_probe, 1600x900, high; before -> after): the 20 km land alone, Godot's allocator 607 -> 304 MiB, textures 503 -> 192
+  MiB, working set 2039 -> 1742 MiB; the town, allocator 765 -> 455, textures 509 -> 205, working set 2678 -> 2390 MiB.
+- Cost to know: a region entering or leaving sends the standing regions' arrays again (Terrain3D makes them whole), some 0.8 MiB a
+  region, once a kilometre of the eye's travel: charged to the frame's upload ledger, not yet seen in a frame-time run.
+- Photos (dist/analysis/round7): the town from far, from above, its edge, a district, a street, the night: the land runs whole from
+  near to far, no ring where the regions end.
+- Still the land's, in the core: the heights of the whole map (175 MiB at 20 km, `Heightfield`), the shore field, the ecology.
+- Files: `native/src/render/terrain_bridge.{h,cpp}`, `native/src/render/render_world.cpp`, `native/src/sim/catalog/tuning_fields.h`,
+  `project/data/catalog/tuning.json`, `project/render/shaders/{terrain.gdshader,terrain_common.gdshaderinc,terrain_seam.gdshader,
+  terrain_ground.gdshaderinc,ground_paint.gdshaderinc}`.

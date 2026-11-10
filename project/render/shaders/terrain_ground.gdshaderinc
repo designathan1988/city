@@ -4,17 +4,13 @@
 // space), v_vertex, v_ground_n and v_camera_pos.
 	vec2 uv = UV; // Terrain3D injects editor overlays that read `uv`
 	vec2 index_id = floor(uv);
-	ivec3 i0 = get_index_coord(index_id + vec2(0, 1));
-	ivec3 i2 = get_index_coord(index_id + vec2(1, 0));
-	ivec3 i3 = get_index_coord(index_id);
 	vec3 w_normal = normalize(v_ground_n);
 	vec2 past = abs(v_vertex.xz);
 	if (max(past.x, past.y) >= map_half - 0.5) { // the wall at the end of the map: rock on its own plane
 		w_normal = past.x > past.y ? vec3(sign(v_vertex.x), 0.0, 0.0) : vec3(0.0, 0.0, sign(v_vertex.z));
 	}
-	ivec3 i1 = get_index_coord(index_id + vec2(1, 1));
 	vec2 fc = fract(uv);
-	PaintCorner p00 = read_paint(i3), p10 = read_paint(i2), p01 = read_paint(i0), p11 = read_paint(i1);
+	PaintCorner p00 = read_paint(index_id), p10 = read_paint(index_id + vec2(1, 0)), p01 = read_paint(index_id + vec2(0, 1)), p11 = read_paint(index_id + vec2(1, 1));
 	vec4 cw = vec4((1.0 - fc.x) * (1.0 - fc.y), fc.x * (1.0 - fc.y), (1.0 - fc.x) * fc.y, fc.x * fc.y);
 	float slope = 1.0 - w_normal.y;
 	float gully = gully_weight(dot(cw, vec4(p00.gully, p10.gully, p01.gully, p11.gully)), dot(cw, vec4(p00.wipe, p10.wipe, p01.wipe, p11.wipe)), slope);

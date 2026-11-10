@@ -1,7 +1,8 @@
 // What the terrain (terrain.gdshader, Terrain3D's override) and the ground seams beside the roads (terrain_seam.gdshader) share: the
 // private uniforms Terrain3D sets on its material (copied onto the seams' by render/city_world.gd), the look's uniforms, the varyings
-// the ground's fragment reads, a world point's texel in the region maps, and the reach of the nearest level, where the terrain leaves
-// a holed cell out and the seams draw it. Vertex stage adapted from Terrain3D's minimum.gdshader (MIT, (c) Cory Petkovsek, Roope
+// the ground's fragment reads, a world point's texel in the region maps, and the land's height and painted ground at a point of the
+// grid (ground_height, ground_control): a region's where one stands, the far maps' anywhere else (the fine ground follows the view,
+// native/src/render/terrain_bridge.h). Vertex stage adapted from Terrain3D's minimum.gdshader (MIT, (c) Cory Petkovsek, Roope
 // Palmroos and contributors).
 
 // Defined Constants
@@ -72,13 +73,49 @@ ivec3 get_index_coord(const vec2 uv) {
 	return ivec3(ivec2(mod(r_uv, _region_size)), layer_index);
 }
 
-// The ground's normal at grid corner `at` (region texels), from its four neighbours `cells` apart (the terrain's own, per vertex).
+// The whole map every `far_cells` vertices, one texel each: its heights and its painted ground (control words, as a region's). What
+// the land is read from where no region stands (native/src/render/terrain_bridge.cpp make_far).
+uniform highp sampler2D far_heights : repeat_disable, filter_nearest;
+uniform highp sampler2D far_controls : repeat_disable, filter_nearest;
+uniform float far_cells; // set with the maps (tuning render.far_land_cells)
+
+// A grid point (vertices from the map's middle) in the far maps' texels: texel i holds the vertex i x far_cells from the map's corner.
+vec2 far_texel(vec2 grid) {
+	return (grid + map_half * _vertex_density) / far_cells;
+}
+
+// Whether a world point lies at the map's end or past it: the land stops there (the wall and the sea's floor).
+bool past_map(vec2 xz) {
+	return max(abs(xz.x), abs(xz.y)) >= map_half;
+}
+
+// The land's height at a grid point: its region's sample, or between the far map's four round it.
+float ground_height(vec2 grid) {
+	ivec3 at = get_index_coord(grid);
+	if (at.z >= 0) return texelFetch(_height_maps, at, 0).r;
+	vec2 t = far_texel(round(grid));
+	ivec2 last = textureSize(far_heights, 0) - 1;
+	ivec2 a = clamp(ivec2(floor(t)), ivec2(0), last), b = min(a + 1, last);
+	vec2 f = clamp(t - vec2(a), 0.0, 1.0);
+	float low = mix(texelFetch(far_heights, a, 0).r, texelFetch(far_heights, ivec2(b.x, a.y), 0).r, f.x);
+	float high = mix(texelFetch(far_heights, ivec2(a.x, b.y), 0).r, texelFetch(far_heights, b, 0).r, f.x);
+	return mix(low, high, f.y);
+}
+
+// The land's painted ground at a grid point (Terrain3D's control word): its region's, or the far map's nearest.
+uint ground_control(vec2 grid) {
+	ivec3 at = get_index_coord(grid);
+	if (at.z >= 0) return floatBitsToUint(texelFetch(_control_maps, at, 0)).r;
+	ivec2 last = textureSize(far_controls, 0) - 1;
+	return floatBitsToUint(texelFetch(far_controls, clamp(ivec2(floor(far_texel(round(grid)) + 0.5)), ivec2(0), last), 0)).r;
+}
+
+// The ground's normal at grid corner `at` (vertices), from its four neighbours `cells` apart (the terrain's own, per vertex); level
+// at the map's end.
 vec3 ground_normal_at(vec2 at, float cells) {
-	ivec3 left = get_index_coord(at - vec2(cells, 0.0)), right = get_index_coord(at + vec2(cells, 0.0));
-	ivec3 back = get_index_coord(at - vec2(0.0, cells)), ahead = get_index_coord(at + vec2(0.0, cells));
-	return min(min(left.z, right.z), min(back.z, ahead.z)) < 0 ? vec3(0.0, 1.0, 0.0)
-			: vec3(texelFetch(_height_maps, left, 0).r - texelFetch(_height_maps, right, 0).r, 2.0 * cells * _vertex_spacing,
-			texelFetch(_height_maps, back, 0).r - texelFetch(_height_maps, ahead, 0).r);
+	if (max(abs(at.x), abs(at.y)) + cells >= map_half * _vertex_density) return vec3(0.0, 1.0, 0.0);
+	return vec3(ground_height(at - vec2(cells, 0.0)) - ground_height(at + vec2(cells, 0.0)), 2.0 * cells * _vertex_spacing,
+			ground_height(at - vec2(0.0, cells)) - ground_height(at + vec2(0.0, cells)));
 }
 
 #include "res://render/shaders/terrain_layers.gdshaderinc"
