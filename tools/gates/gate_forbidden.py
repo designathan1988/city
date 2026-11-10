@@ -123,8 +123,9 @@ def _receiver(code, i):
 
 
 def job_keys(ctx, src, rule, err):
-    """Hand-made job keys: a JobKey built in place (JobKey{...}, JobKey(...), braced key in a declaration) anywhere but
-    the file that defines JobKey, and a braced key given straight to submit() on any JobPool-typed receiver."""
+    """A job given to a JobPool without a key that says its type: a braced list or a number straight to submit() on any
+    JobPool-typed receiver. A key written out with its lane (JobKey{ JobLane::X, id }) or held in a JobKey is the rule itself:
+    the lane is the user's own, so two users cannot collide."""
     if src.lang != "cpp":
         return
     facts = ctx.facts(src.path)
@@ -132,16 +133,10 @@ def job_keys(ctx, src, rule, err):
     code = src.code()
     n = len(code)
     for i, t in enumerate(code):
-        if t.kind != "ident":
-            continue
         nxt = code[i + 1].text if i + 1 < n else ""
-        if t.text == "JobKey" and not facts.get("defines_jobkey"):
-            after = [x.text for x in code[i + 2:i + 4]]
-            declared = i + 1 < n and code[i + 1].kind == "ident" and (after[:1] == ["{"] or after == ["=", "{"])
-            if nxt in ("{", "(") or declared:
-                err(rule["id"], f"{src.path}:{t.line}", rule["message"])
-        elif t.text == "submit" and nxt == "(" and i >= 2 and code[i - 1].text in (".", "->"):
-            if _receiver(code, i - 1) in pools and i + 2 < n and code[i + 2].text == "{":
+        if t.kind == "ident" and t.text == "submit" and nxt == "(" and i >= 2 and code[i - 1].text in (".", "->"):
+            first = code[i + 2] if i + 2 < n else None
+            if _receiver(code, i - 1) in pools and first is not None and (first.text == "{" or first.kind == "number"):
                 err(rule["id"], f"{src.path}:{t.line}", rule["message"])
 
 

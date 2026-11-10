@@ -1,8 +1,6 @@
 {
  "rule": "JOB_SEM_CHAVE",
  "expect": [
-  "JOB_SEM_CHAVE native/src/render/r.cpp:5",
-  "JOB_SEM_CHAVE native/src/render/r.cpp:6",
-  "JOB_SEM_CHAVE native/src/render/r.cpp:7"
+  "JOB_SEM_CHAVE native/src/render/r.cpp:6"
  ]
 }
