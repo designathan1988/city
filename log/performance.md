@@ -362,3 +362,14 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
 - Live (the clock running, 433 vehicles and 1,056 walkers, a strike of force 5): before and after show the same streets,
   walkers and vehicles; no fallen body stood in the frame, so P1's posed frames are proven by `strike_test` (212 bodies posed
   with no refusal) and by construction (the same bytes copied), not by a picture.
+
+### P4 (C5): the rooms behind the panes are budgeted in bytes, with the bodies they keep alive
+- Cause: `BuildingBodies` kept up to 8192 `PaneRooms` and 1024 cut bodies "each counted as one"; a `PaneRooms` holds its whole
+  body, so every building the near or mid level ever placed stayed in memory past the body cache's own budget.
+- Change: tuning `render.rooms_cache_mb` (64); `BuildingBodies::set_budget` gives it to both caches; a rooms entry costs its
+  body's bytes (`sizeof(Body) + heap_bytes`), a cut body its own.
+- Cannot return: nothing in the render keeps bodies by count; what the rooms pin is bounded by the budget.
+- Left under C5: the floors and rooms a `PaneRooms` works out after it is kept are not in its cost; they leave when the rooms
+  read a facet instead of the body.
+- Check: `model_test`, `digest`, `photos` pass; the frozen review plan again (dist/review-c5): 7 of 20 pictures equal pixel by
+  pixel, the others differ in 1 to 934 pixels on leaf and wire edges (the same counts two runs of one build give).

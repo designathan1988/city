@@ -3,7 +3,8 @@
 // and the body cut open at a floor. The body itself is the simulation's (sim/buildings/b40/body_cache.h, through record_mass),
 // made once for every reader. Rooms and cuts are kept exactly (the body's key and the tables' generation; a cut also by its
 // floor, the camera's step and the lot's turn), the least recently drawn pushed out first; entries are shared, so a placement
-// holds what it draws past an eviction.
+// holds what it draws past an eviction. Both are bounded by memory (tuning render.rooms_cache_mb): a building's rooms keep its
+// body alive, so they are counted with it, and what the rooms hold never passes the budget whatever the buildings seen.
 #pragma once
 
 #include "core/lru_cache.h"
@@ -22,7 +23,7 @@ namespace city {
 
 class BuildingBodies {
 public:
-	BuildingBodies();
+	void set_budget(size_t bytes); // of the rooms, and as much again of the cut bodies
 	// Fills `pl` for the record; pl.hold keeps its bodies and rooms alive while it is used. `ground` is the job's copy of the
 	// terrain under its lots (pl.ground samples it: it must outlive pl). `cut`: the building cut open at a floor (the Interior
 	// layer): its body is the cut one and its panes show no room behind them. `with_rooms` false for a level that lays no pane (the

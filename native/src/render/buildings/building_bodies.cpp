@@ -13,18 +13,16 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr size_t ROOMS_KEPT = 8192, CUTS_KEPT = 1024; // bodies' rooms and cut bodies kept, each counted as one
 // The body's shade from its id: Knuth's multiplicative hash, taken in thousandths.
 constexpr float SHADE_MOD = 1000.f;
 constexpr uint32_t GOLDEN = 2654435761u;
 
-template <typename T>
-size_t one(const T &) { return 1; }
+size_t body_cost(const b40::Body &b) { return sizeof(b40::Body) + b40::heap_bytes(b); }
 } // namespace
 
-BuildingBodies::BuildingBodies() {
-	rooms_.set_budget(ROOMS_KEPT);
-	cuts_.set_budget(CUTS_KEPT);
+void BuildingBodies::set_budget(size_t bytes) {
+	rooms_.set_budget(bytes);
+	cuts_.set_budget(bytes);
 }
 
 size_t BuildingBodies::KeyHash::operator()(const Key &k) const {
@@ -44,7 +42,7 @@ void BuildingBodies::clear() {
 std::shared_ptr<b40::PaneRooms> BuildingBodies::rooms(const b40::Data &data, const Key &k, const std::shared_ptr<const b40::Body> &whole, const Building &rec) {
 	return rooms_.get(k, [&]() {
 		return std::make_shared<b40::PaneRooms>(data, whole, b40::purpose_of(*whole, rec.fn, rec.seed)); // it holds the body it reads
-	}, one<b40::PaneRooms>);
+	}, [&](const b40::PaneRooms &) { return sizeof(b40::PaneRooms) + body_cost(*whole); }); // the body it keeps alive is its cost
 }
 
 std::shared_ptr<const b40::Body> BuildingBodies::cut_body(const Key &k, const b40::Body &whole, const Building &rec, const b40::LotFrame &f, const b40::CutView &cut) {
@@ -54,7 +52,7 @@ std::shared_ptr<const b40::Body> BuildingBodies::cut_body(const Key &k, const b4
 		const V2 world = b40::cut_direction(cut.dir);
 		const V2 local{ world.x * f.e0.x + world.y * f.e0.y, world.x * f.e1.x + world.y * f.e1.y }; // the camera's way in the lot's frame
 		return std::shared_ptr<const b40::Body>(std::make_shared<b40::Body>(b40::cut_open(whole, cut.level, local)));
-	}, one<b40::Body>);
+	}, body_cost);
 }
 
 void BuildingBodies::place(const b40::Data &data, const b40::BuildingLook &look, const HeightPatch &ground, const Building &rec, b40::Placed &pl,
