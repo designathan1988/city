@@ -190,3 +190,14 @@ tool prints a line of progress every 5 s. Verified in order: 70 tests on the fix
 files) 0.2 s; the city (1132 files, 25770 definitions, 99492 links) fixpoint in 16.1 s, exit 0, 0 uses on an
 unreached receiver, 4 entry points, 1556 definitions ahead, every link of the road chain present. Gates OK (50 files).
 Not done: comparing the trace with calls recorded from a running game (the validation the literature recommends).
+
+## Validation against a real run: tried, blocked by the build (2026-11-10 18:20)
+Method (literature: recall against dynamic call graphs): sample the stacks of a real run and check every caller ->
+callee pair of the program against the tracer's links. Done: one hidden run of `tests/core/road_commands_test.tscn`
+(Vulkan driver, 40 s, 5 ms) through `tools/analysis/sampler.py`, with a symbolizer front that answers "no symbol" for
+system DLLs (the sampler stops on `d3d12.dll`/`ntdll.dll`, which have no debug file; the tool was not changed).
+Blocked: `project/bin/libcitycore.windows.template_debug.x86_64.dll` carries no debug information (only `.text`;
+llvm-symbolizer returns the nearest export, `citycore_library_init`, with no file or line), so the sampled frames of
+the core have no function names. The comparison needs a core DLL built with debug information (`-g`), which means
+building the DLLs from a tree that holds another session's uncommitted C++ changes: not done without the owner's word.
+The GDScript side has no call recorder in the engine build used here.
