@@ -19,9 +19,8 @@ constexpr double LOT_END_IN_CELLS = 1.5; // a cell and a half: past any rounding
 constexpr int MIN_THROUGH_ARMS = 3; // a junction: three arms or more
 } // namespace
 
-lot_gen::LotSize lot_gen::lot_size(const LotsShape &P, const GenZones &zones, const GrownPlans &grown, int zone) {
+lot_gen::LotSize lot_gen::lot_size(const LotsShape &P, const GenZones &zones, int zone) {
 	if (zone == zones.industrial) return { P.works_frontage, P.works_depth, true };
-	if (zone >= 0 && size_t(zone) < grown.size() && grown[size_t(zone)].w > 0) return { grown[size_t(zone)].w + P.width_trim, grown[size_t(zone)].d, true };
 	return { P.frontage_m, P.depth_m, false };
 }
 

@@ -67,12 +67,22 @@ struct LotGround {
 	std::function<bool(double, double)> closed;
 };
 
-// By zone code, the room a lot of that zone is laid to hold the designs of their own it may grow (b40 Data::grown_plan: the least
-// frontage every one fits, the deepest of their plans); (0, 0) where none does.
+// The lot a design of its own asks for: its plan's width and depth.
 struct GrownPlan {
 	double w = 0, d = 0;
 };
-using GrownPlans = std::vector<GrownPlan>;
+// The designs of their own the lots grow (b40 Data, the one owner of what they are and how big): by zone code the plans of the
+// designs a lot of that zone may grow, and `pick`, the one of them the lot `l` grows by where its front stands (the draw its building
+// is made by: b40 quarter_of, grown_pick), its place in by_zone[l.zone], or -1 for a lot that grows none. A lot is cut to the plan of
+// the design it grows, every other to the street's size (lot_place.cpp, block_lots.cpp cut_run): a design stands on a lot it fills.
+struct GrownPlans {
+	std::vector<std::vector<GrownPlan>> by_zone;
+	std::function<int(const Lot &l)> pick;
+	const std::vector<GrownPlan> &of(int zone) const {
+		static const std::vector<GrownPlan> none;
+		return pick && zone >= 0 && size_t(zone) < by_zone.size() ? by_zone[size_t(zone)] : none;
+	}
+};
 
 std::vector<Lot> build_lots(const GenShapes &S, const LotGraph &g, const std::vector<Profile> &profiles, const GenZones &zones, const GrownPlans &grown,
 	const LotGround &ground, double cell_x0, double cell_z0);
@@ -84,18 +94,21 @@ struct BlockLot {
 	int zone, profile;
 };
 using Facing = std::function<void(double fx, double fz, double ox, double oz, int &zone, int &profile)>;
-// A lot's size by the zone it faces: a works lot's room for a lorry to turn in its yard (growth.json shapes.lots works_*); a lot of a
-// zone whose building grows designs of its own, the room those designs need (`grown`, by zone code: b40 Data::grown_plan, the one
-// owner of how big they are), the width its trim takes added; any other the street's (shapes.lots). `whole` when that size is room
-// its building needs: its lots are never cut narrower than the frontage, and a block lays one row of them rather than two too shallow.
+// A lot's size by the zone it faces: a works lot's room for a lorry to turn in its yard (growth.json shapes.lots works_*), any other
+// the street's (shapes.lots; a lot that grows a design of its own is cut to that design's plan instead: GrownPlans). `whole` when that
+// size is room its building needs: its lots are never cut narrower than the frontage, and a block lays one row of them rather than two
+// too shallow.
 struct LotSize {
 	double frontage = 0, depth = 0;
 	bool whole = false;
 	bool same(const LotSize &o) const { return frontage == o.frontage && depth == o.depth && whole == o.whole; }
 };
-LotSize lot_size(const LotsShape &P, const GenZones &zones, const GrownPlans &grown, int zone);
+LotSize lot_size(const LotsShape &P, const GenZones &zones, int zone);
+// Which design of its own the block lot laid as `l` grows (its place in GrownPlans::of(l.zone)), or -1: asked by the blocks' cutter of
+// the strips' (lot_place.cpp), which knows where the lot's front stands once it is brought to the paving.
+using DesignAt = std::function<int(const BlockLot &l)>;
 std::vector<BlockLot> block_lots(const GenShapes &S, const LotGraph &g, const std::vector<Profile> &profiles, const std::vector<std::vector<double>> &tables,
-		double x0, double z0, const Facing &facing, const GenZones &zones, const GrownPlans &grown);
+		double x0, double z0, const Facing &facing, const GenZones &zones, const GrownPlans &grown, const DesignAt &design_at);
 // Distance from a point to a curve (12 samples, then halving the step).
 double curve_distance(const Quad &q, double x, double z);
 } // namespace lot_gen

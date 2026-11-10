@@ -27,7 +27,7 @@ private:
 	const LotGraph &g_;
 	const std::vector<Profile> &prof_;
 	const GenZones &zones_; // the catalogue's: works stand on its industrial zone
-	const GrownPlans &grown_; // by zone code, the room the designs its lots grow need (lot_gen::lot_size)
+	const GrownPlans &grown_; // the designs of their own the lots grow, and which one a lot grows (lot_gen.h)
 	const LotGround &ground_;
 	double cx0_, cz0_, ax_, az_;
 	int W_;
@@ -46,6 +46,8 @@ private:
 	void mark_lot(const Frame &f);
 	bool lot_free(double x, double z) const; // no paving and no lot there
 	void keep(const Frame &f, int zone, int profile);
+	Lot lot_of(const Frame &at_paving, int zone, int profile) const; // the lot of a frame already brought to the paving
+	int grows(const Frame &laid, int zone) const; // the design of its own the lot laid there grows (GrownPlans::pick), or -1
 	double edge_gap(int s, double x, double z) const; // from a point to street s's paving edge on the point's side (< 0: on it)
 	int street_off(double x, double z, double dx, double dz, int skip) const; // the street whose paving lies within reach that way
 	double gap_along(int s, const Frame &f, double side, double along) const;

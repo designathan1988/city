@@ -16,6 +16,13 @@ LotFrame lot_frame(const Building &rec) {
 	return LotFrame{ V2(rec.x + rec.d / 2 * sn, rec.z + rec.d / 2 * cs), V2(cs, -sn), V2(-sn, -cs) };
 }
 
+int Data::grown_pick_at(float x, float z, float d, float rot, int zone) const {
+	Building rec;
+	rec.x = x; rec.z = z; rec.d = d; rec.rot = rot;
+	const LotFrame f = lot_frame(rec);
+	return grown_pick(*this, kind_of_zone(zone), quarter_of(*this, f.o, f.e1));
+}
+
 std::shared_ptr<const Body> record_body(const Data &data, const Building &rec) { return data.made->body(data, rec); }
 
 std::shared_ptr<const Body> record_mass(const Data &data, const Building &rec) { return data.made->mass(data, rec); }

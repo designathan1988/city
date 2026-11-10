@@ -19,7 +19,7 @@ constexpr float DEFAULT_BAY = 3.f, BEST_WITHIN = 0.75f;
 // Bob Jenkins' 0x27d4eb2d, folded by MurmurHash3's fmix32 (its 0x85ebca6b and its shifts of 15 and 13); a facing's salt and the
 // era's, and the facings of a quarter turn.
 constexpr uint32_t QH_A = 0x27d4eb2dU, QH_B = 0x165667b1U, QH_C = 0x3c6ef372U, QH_FOLD = 0x85ebca6bU;
-constexpr uint32_t QH_SHIFT_15 = 15, QH_SHIFT_13 = 13, FACING_SALT = 11, ERA_SALT = 5, LOT_SALT = 7;
+constexpr uint32_t QH_SHIFT_15 = 15, QH_SHIFT_13 = 13, FACING_SALT = 11, ERA_SALT = 5, LOT_SALT = 7, DESIGN_SALT = 13;
 constexpr float LOT_CELL_M = 1; // a lot's own draw reads its front's metre: no two lots' fronts stand within one (lots are metres wide)
 constexpr double QUARTER_TURN = 1.5707963267948966; // pi / 2
 uint32_t quarter_hash(int a, int b, int c) {
@@ -74,6 +74,7 @@ Quarter quarter_of(const Data &data, V2 front, V2 inward) {
 	const double old_share = central ? K.central_old : K.rim_old, middle_share = central ? K.central_middle : K.rim_middle;
 	q.era = at < old_share ? 0 : at < middle_share ? 1 : 2;
 	q.lot = double(quarter_hash(int(std::floor(front.x / LOT_CELL_M)), int(std::floor(front.y / LOT_CELL_M)), int(LOT_SALT))) / U32;
+	q.design = double(quarter_hash(int(std::floor(front.x / LOT_CELL_M)), int(std::floor(front.y / LOT_CELL_M)), int(DESIGN_SALT))) / U32;
 	return q;
 }
 

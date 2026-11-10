@@ -8,7 +8,8 @@ O que falta fazer, por área.
   2. Vehicles standing in the lanes, driving over one another and onto the footways (the town centre, seed 7; the owner's photo
      of 2026-11-09: a sedan across the kerb onto the footway, people beside it); cars that vanish all at once.
   3. Grass between the footway and the lot fronts: the buildings stand back where they should stand on the front.
-  4. Car parks that do not cover their lot (grass round the asphalt).
+  4. Car parks that do not cover their lot (grass round the asphalt). Fixed 2026-11-09 21:40 with 6's lawns (a lot cut to the design
+     it grows, log/work-log.md): to confirm in the owner's own look.
   5. Buildings drawn as boxes with no detail at mid distance, and balconies without their parapet even close.
   6. The glass designs of their own look wrong; large lawns round the grown designs.
   7. Streets that are not the game's (to name, from the owner's photos).
@@ -206,3 +207,15 @@ O que falta fazer, por área.
   traffic step behind it: the pose gaps of 400-550 ms measured on 2026-11-09 (camera_pan metro 4x). Each job needs a snapshot of what it
   reads taken under a short lock, as `BuildingRenderer::gather` does.
 
+## Found by the city's audit and the lot cut (2026-11-09 21:40, `python tools/tasks/cli.py run audit`)
+- One narrow lot (9.8 m wide) with its front 4.98 m off its footway at (-312, 24) on the town, seed 7: a run's last lot by a corner;
+  to read in `lot_place.cpp to_paving` (a front point on the cross street's paving moves the whole front back by its gap).
+- camera_feel_test: the ride jolts 1.0 to 1.5 % of the view (limit 1 %) at (240, 180) and (-38, -64), where towers now stand: the pull
+  in front of a building (`project/game/camera/camera_pull.gd`) moves the eye faster than the test allows. Fails on main until read.
+- Walkers inside one another: 7 pairs after three minutes on the town (2 on the earlier lots): the walkers' crowd model (PEDS-4,
+  PEDS-13 of dist/analysis/round1/PEDS.md).
+- The audit does not yet read: the buildings' levels against their error on the screen (BLDG-1), the eye inside a building, memory by
+  owner against a budget, the fleet's and the people's draws by cascade.
+- Still open from the round's reports (dist/analysis/round1): BLDG-1/2 levels by error on the screen, BLDG-4 the designs' cooked
+  meshes, BLDG-6/9 a building's own slice and the draws by kind, REC-3 mesh jobs reading snapshots, REC-4 the land near the view,
+  PEDS-1..7 the lab's walking network, ROAD-1/3/6/8/13 the road's levels, shared vertices, painted marks, the seam from the outline.

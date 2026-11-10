@@ -1165,3 +1165,26 @@ deterministic, its own cause to fix); gates of the changed files OK; surface_dat
   `project/game/settings/quality.gd`, `project/game/store/store_api.gd`, `project/data/{game/daylight.json,game/settings.json,
   render/materials.json,render/streets.json}`, their schemas, `tools/build/shader_contracts.json` and what it generates,
   `tools/tasks/suites.json`, `log/mapa.md`, `CLAUDE.md`.
+
+## 2026-11-09 21:40: a lot cut to the design it grows (the owner's review, problems 4 and 6: lawns round towers and car parks)
+- Problem, read by the audit (town seed 7): 13,745 m2 of office lots and 4,662 m2 of tower lots with no cover at all, lots that are
+  no house's 62 to 82 % lawn.
+- Cause: `lot_gen::lot_size` cut every lot of a zone that grows designs of its own to the room of the largest of them (43-58 m wide,
+  42 m deep), while a share of the lots grows one, each design "stands no larger than drawn", and the kit's tower is at most 22 m deep:
+  most of such a lot was lawn or bare ground. The lab's lots are the street's size (lots.ts LOT_DEPTH 32, LOT_FRONTAGE 22).
+- Fix (the flow traced: cut -> the lot's draw -> the body): which design a lot grows is the lot's own, from where its front stands
+  (`Quarter::lot` and a second draw `design`; `grown_pick`, by the designs' weights alone), so the cutter can ask it
+  (`GrownPlans::pick`, answered by `b40::Data::grown_pick_at` as the building is made). `lot_place.cpp cut_run` and
+  `block_lots.cpp cut_run` walk a run a frontage at a time: a lot laid to a design's plan is that design's when its own draw picks it;
+  every other lot is the street's size. In a block the design's lot goes through the rows when its plan is deeper than one, and the
+  land behind it is lots of the street behind. A design on a lot larger than its plan (stood smaller, or a lot the player drew) has
+  the ground round it paved. `Data::grown_plan` (the largest design's room) is deleted.
+- Result (audit, same town): bare ground of tower and office lots 0 m2 (was 18,407), no lot but a house's mostly lawn, 1,232 lots
+  (were 999); building_variety_test (designs of many kinds stand) and yard_test pass.
+- Open, in log/pendencias.md: one narrow lot's front 4.98 m off its footway; camera_feel_test's ride jolts past 1 % at two of its
+  places now that towers stand there; walkers inside one another (7 pairs).
+- Digest: `lots` and the fleet moved with the lots (understood: blessed); grades, graph and heights equal.
+- Files: created `native/src/sim/citygen/block_box.h`; changed `native/src/sim/citygen/{lot_gen.h,lot_gen.cpp,lot_strips.h,
+  lot_place.cpp,block_lots.cpp}`, `native/src/sim/lots/lot_cache.cpp`, `native/src/sim/buildings/b40/{gen.h,data.h,record.cpp,
+  facade_compose.cpp,massing_core.cpp}`, `native/src/api/city_core_audit.cpp`, `project/tests/audit/city_audit.gd`, `log/mapa.md`,
+  `log/pendencias.md`.

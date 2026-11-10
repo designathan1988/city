@@ -45,6 +45,8 @@ func _lots() -> void:
 		if all > 0.0:
 			print("  %-6s %7d / %7d / %7d / %7d   lawn and bare %.0f%% of the lots' ground" % [KINDS[k], g[0], g[1], g[2], g[3], 100.0 * (int(g[2]) + int(g[3])) / all])
 	check(int(a.fronts_off) == 0, "every lot's front stands on its footway's edge: %d off it%s" % [a.fronts_off, _worst(a.front_gap_m, "m")])
+	for off: Array in a.front_gap_m:
+		print("  front off by %.2f m at (%.1f, %.1f), a lot %.1f m wide" % [off[0], off[1].x, off[1].z, off[1].y])
 	check(int(a.on_paving) == 0, "no building stands on a street's paving: %d%s" % [a.on_paving, _worst(a.on_paving_m, "m in")])
 	check(int(a.in_another) == 0, "no building stands in another: %d pairs%s" % [a.in_another, _worst(a.in_another_at, "m apart")])
 	check((a.lawn_lots as Array).is_empty(), "no lot but a house's is mostly lawn%s" % _worst(a.lawn_lots, "of the lot"))

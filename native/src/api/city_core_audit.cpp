@@ -132,14 +132,18 @@ Dictionary CityCore::lot_audit() {
 		};
 		// the front line's ends and middle against the paving they face
 		double gap = 0;
+		Vector3 gap_at;
 		for (const float x : { -rec.w / 2, 0.f, rec.w / 2 }) {
 			const Vector3 p = world(x, 0);
 			const double here = paving_gap(s.roads, p.x, p.z);
-			if (here < FAR_M) gap = std::max(gap, here);
+			if (here < FAR_M && here > gap) {
+				gap = here;
+				gap_at = p;
+			}
 		}
 		if (gap > s.catalog.growth.shapes.lots.paving_gap + TOUCH_M) {
 			off_front++;
-			gaps.add(gap, world(0, 0));
+			gaps.add(gap, Vector3(gap_at.x, rec.w, gap_at.z)); // the point of the front that is off, and (y) the lot's width
 		}
 		const Ground g = ground_of(*body, rec.w, rec.d);
 		Ground &sum = by_kind[size_t(body->kind)];

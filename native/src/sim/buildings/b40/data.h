@@ -107,16 +107,10 @@ struct Data {
 	// The least share of its size a design may stand at: where its storeys come down to the least floor-to-floor (b40 massing_core.cpp
 	// design_fit; over 1, a design that never stands smaller).
 	float grown_least_share(const Body &b) const { return b.storey_h > 0 ? grown_least_storey_m / b.storey_h : 1.f; }
-	// The room a lot of kind `k` is laid to hold its designs (sim/citygen lot_gen.h lot_size): x the least frontage every one of them
-	// fits, each at its least share (a frontage of the largest plan whole cut 104 m of street into one lot for one tower), y the deepest
-	// of their plans, so each stands whole in depth; (0, 0) for a kind that grows none.
-	V2 grown_plan(Kind k) const {
-		V2 most(0, 0);
-		if (grown_share[k] <= 0) return most;
-		for (const GrownDesign &g : grown_designs)
-			if (g.kind == k) most = V2(std::max(most.x, g.body->plan.W * std::min(1.f, grown_least_share(*g.body))), std::max(most.y, g.body->plan.D));
-		return most;
-	}
+	// The design of its own the lot of a zone standing so (its middle, depth and turn, as a record's: record.h lot_frame) grows, by the
+	// draws of where its front stands (gen.h quarter_of, grown_pick): its place in grown_designs, or -1. What the lots' cutter asks
+	// (sim/lots lot_cache.cpp), the same answer its building is made by (record.cpp make_seed_body).
+	int grown_pick_at(float x, float z, float d, float rot, int zone) const;
 
 	// A named colour of "colors" (magenta when missing: the loader rejects a table without the names asked for).
 	const Paint &color(const char *name) const {

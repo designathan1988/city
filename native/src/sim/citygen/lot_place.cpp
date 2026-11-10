@@ -19,6 +19,8 @@ namespace {
 constexpr double KEY_SCALE = 4, SEED_SCALE = 2;
 constexpr uint32_t SIDE_KEY = 77;
 
+constexpr double RUN_EPS = 1e-6; // two places of a run under this apart are one (the rounding of its sums)
+
 // JavaScript Math.round (halves go up).
 int32_t js_round(double v) { return int32_t(std::floor(v + 0.5)); }
 } // namespace
@@ -95,25 +97,44 @@ LotStrips::Frame LotStrips::to_paving(const Frame &f) const {
 	return g;
 }
 
-void LotStrips::keep(const Frame &laid, int zone, int profile) {
-	const Frame f = to_paving(laid);
-	mark_lot(f);
-	if (std::floor((f.cx - cx0_) / LOT_CELL) != 0 || std::floor((f.cz - cz0_) / LOT_CELL) != 0) return;
+Lot LotStrips::lot_of(const Frame &f, int zone, int profile) const {
 	Lot l;
 	l.x = f.cx; l.z = f.cz; l.w = f.w - P.width_trim; l.d = f.d;
 	l.rot = std::atan2(-f.lx, -f.lz);
 	l.zone = zone;
 	l.profile = profile;
 	l.seed = hash2(js_round(f.cx * SEED_SCALE), js_round(f.cz * SEED_SCALE), uint32_t(zone));
-	out_.push_back(l);
+	return l;
+}
+
+int LotStrips::grows(const Frame &laid, int zone) const { return grown_.pick ? grown_.pick(lot_of(to_paving(laid), zone, 0)) : -1; }
+
+void LotStrips::keep(const Frame &laid, int zone, int profile) {
+	const Frame f = to_paving(laid);
+	mark_lot(f);
+	if (std::floor((f.cx - cx0_) / LOT_CELL) != 0 || std::floor((f.cz - cz0_) / LOT_CELL) != 0) return;
+	out_.push_back(lot_of(f, zone, profile));
 }
 
 void LotStrips::place_blocks() {
 	auto facing_fn = [this](double fx, double fz, double ox, double oz, int &zone, int &profile) { facing(fx, fz, ox, oz, zone, profile); };
-	for (const lot_gen::BlockLot &b : lot_gen::block_lots(S, g_, prof_, tables_, cx0_, cz0_, facing_fn, zones_, grown_)) {
-		double lx = -std::sin(b.rot), lz = -std::cos(b.rot);
-		Frame f{ b.x, b.z, lz, -lx, lx, lz, b.w, b.d };
+	const auto frame_of = [](const lot_gen::BlockLot &b) {
+		const double lx = -std::sin(b.rot), lz = -std::cos(b.rot);
+		return Frame{ b.x, b.z, lz, -lx, lx, lz, b.w, b.d };
+	};
+	const lot_gen::DesignAt design_at = [&](const lot_gen::BlockLot &b) {
+		const Frame f = frame_of(b);
+		return unfit(f) ? -1 : grows(f, b.zone);
+	};
+	for (const lot_gen::BlockLot &b : lot_gen::block_lots(S, g_, prof_, tables_, cx0_, cz0_, facing_fn, zones_, grown_, design_at)) {
+		const Frame f = frame_of(b);
+		// A lot is its street's: one whose front, brought to the paving, still stands off it at its middle (the land behind a design's
+		// lot on a side of the block no street runs along; a narrow rest of a row where the block's side is not its rectangle's) is no lot.
 		if (unfit(f)) continue;
+		const Frame g = to_paving(f);
+		const double fx = g.cx - g.lx * g.d / 2, fz = g.cz - g.lz * g.d / 2;
+		const int street = street_off(fx, fz, -g.lx, -g.lz, -1);
+		if (street < 0 || edge_gap(street, fx, fz) > P.paving_gap + RUN_EPS) continue;
 		keep(f, b.zone, b.profile);
 	}
 }
@@ -151,7 +172,7 @@ LotStrips::Along LotStrips::along(int s, double at, double sign) const {
 void LotStrips::place_side(int s, int side, int zone) {
 	const Profile &info = prof_[g_.profile[s]];
 	const double sign = side == 0 ? 1 : -1, face = (side == 0 ? info.left : info.right) + P.front_pad, length = len(s);
-	const lot_gen::LotSize size = lot_gen::lot_size(P, zones_, grown_, zone);
+	const lot_gen::LotSize size = lot_gen::lot_size(P, zones_, zone);
 	const double depth = size.depth, frontage = size.frontage;
 	const auto clear = [&](double at) {
 		const Along a = along(s, at, sign);
@@ -172,19 +193,60 @@ void LotStrips::place_side(int s, int side, int zone) {
 	}
 }
 
-// A run cut in equal lots, each kept where its ground will take it: as many as its length rounds to, or for whole lots as many as fit
-// whole (each at least its frontage wide, the room its building needs; a shorter run is one lot, its building one that fits it).
+// A run cut in lots, each kept where its ground will take it. First the lots that grow a design of their own: walking the run a
+// frontage at a time, a lot laid there to a design's plan is that design's when its own draw picks that design (grows: where its front
+// then stands, the draw its building is made by), its back free as the run's is; such a lot is its design's size, so the design stands
+// on a lot it fills and every other lot of the zone is the street's size (on lots all laid for the largest design, a smaller design or
+// the kit's own building left most of the lot a lawn). Then the stretches between them in equal lots: as many as a stretch's length
+// rounds to, or for whole lots (lot_gen::LotSize::whole) as many as fit whole (each at least its frontage wide, the room its building
+// needs; a shorter run is one lot, its building one that fits it).
 void LotStrips::cut_run(const Strip &strip, double from, double to) {
 	if (to - from < P.least_m) return;
-	const double count = (to - from) / strip.frontage;
-	const int parts = std::max(1, strip.whole ? int(std::floor(count)) : int(js_round(count)));
-	const double w = (to - from) / parts;
-	for (int k = 0; k < parts; k++) {
-		const Along a = along(strip.s, from + (k + 0.5) * w, strip.sign);
-		const double middle = strip.face + strip.depth / 2;
-		const Frame f{ a.px + a.lx * middle, a.pz + a.lz * middle, a.tx, a.tz, a.lx, a.lz, w, strip.depth };
-		if (!unfit(f)) keep(f, strip.zone, g_.profile[strip.s]);
+	const int profile = g_.profile[strip.s];
+	const auto frame = [&](double a, double b, double depth) {
+		const Along at = along(strip.s, (a + b) / 2, strip.sign);
+		const double middle = strip.face + depth / 2;
+		return Frame{ at.px + at.lx * middle, at.pz + at.lz * middle, at.tx, at.tz, at.lx, at.lz, b - a, depth };
+	};
+	const auto equal = [&](double a, double b) {
+		if (b - a < P.least_m) return;
+		const double count = (b - a) / strip.frontage;
+		const int parts = std::max(1, strip.whole ? int(std::floor(count)) : int(js_round(count)));
+		const double w = (b - a) / parts;
+		for (int k = 0; k < parts; k++) {
+			const Frame f = frame(a + k * w, a + (k + 1) * w, strip.depth);
+			if (!unfit(f)) keep(f, strip.zone, profile);
+		}
+	};
+	// the land at a deeper lot's back, read as the run's own was (place_side)
+	const auto back_free = [&](double a, double b, double depth) {
+		for (double at = a; at <= b + RUN_EPS; at += P.along_step) {
+			const Along p = along(strip.s, std::min(at, b), strip.sign);
+			const double far = strip.face + depth - P.back_in;
+			if (!lot_free(p.px + p.lx * far, p.pz + p.lz * far)) return false;
+		}
+		return true;
+	};
+	const std::vector<GrownPlan> &designs = grown_.of(strip.zone);
+	double open = from; // where the stretch of the street's own lots not yet cut begins
+	for (double at = from; !designs.empty() && at < to;) {
+		int grown = -1;
+		for (size_t k = 0; k < designs.size() && grown < 0; k++) {
+			const double end = at + designs[k].w + P.width_trim, left = to - end;
+			if (left < -RUN_EPS || (left > RUN_EPS && left < P.least_m)) continue; // the lot whole in the run, what is left of it a lot or nothing
+			const Frame f = frame(at, end, designs[k].d);
+			if (!unfit(f) && grows(f, strip.zone) == int(k) && (designs[k].d <= strip.depth || back_free(at, end, designs[k].d))) grown = int(k);
+		}
+		if (grown < 0) {
+			at += strip.frontage;
+			continue;
+		}
+		const double end = at + designs[size_t(grown)].w + P.width_trim;
+		equal(open, at);
+		keep(frame(at, end, designs[size_t(grown)].d), strip.zone, profile);
+		at = open = end;
 	}
+	equal(open, to);
 }
 
 } // namespace city

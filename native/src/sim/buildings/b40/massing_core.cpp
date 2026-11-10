@@ -18,35 +18,41 @@ bool closed_roof(Roof r) { return r == ROOF_FLAT || r == ROOF_TERRACE; }
 // The share of its size a design stands at on a lot of W x D: the whole, or less on a smaller lot, down to where its storeys keep the
 // least floor-to-floor (buildings.json grown_designs least_storey_m); 0 when it does not fit even so, or is not of the lot's kind.
 float design_fit(const Data &data, const GrownDesign &g, Kind kind, float W, float D) {
+	constexpr float CUT_ROUNDING = 1e-4f; // a lot cut to the plan is the plan's size but for the rounding of its corners' sums
 	const Body &b = *g.body;
 	if (g.kind != kind || b.plan.W <= 0 || b.plan.D <= 0 || b.storey_h <= 0) return 0;
 	const float s = std::min({ 1.f, W / b.plan.W, D / b.plan.D });
+	if (s >= 1 - CUT_ROUNDING) return 1;
 	return s >= data.grown_least_share(b) ? s : 0;
 }
 
-// The design of its own the lot grows and the share of its size it stands at, or none: whether it grows one is the lot's own draw
-// (Quarter::lot, the same for each candidate the growth draws; drawn on each candidate's stream, the contest of looks threw most of the
-// designs away and the kind's share was never the lots'), which one is drawn on the record's stream among the designs of the lot's kind
-// that fit it, by their weights times the share of the lot each fills (a design stands no larger than drawn, and on a lot laid for the
-// kind's largest a small one drawn as often left most of it bare lawn).
-const Body *grown_design(const Data &data, Kind kind, float W, float D, double lot_draw, Xoshiro128 &r, float &scale) {
-	if (data.grown_share[kind] <= 0 || lot_draw >= data.grown_share[kind]) return nullptr;
-	const auto chance = [&](const GrownDesign &g, float &s) {
-		s = design_fit(data, g, kind, W, D);
-		return s > 0 ? g.weight * std::min(1.f, s * g.body->plan.W * s * g.body->plan.D / (W * D)) : 0.f;
-	};
-	float total = 0, s = 0;
-	for (const GrownDesign &g : data.grown_designs) total += chance(g, s);
-	if (total <= 0) return nullptr;
-	float at = float(r.f()) * total;
-	for (const GrownDesign &g : data.grown_designs) {
-		const float c = chance(g, scale);
-		if (c > 0 && (at -= c) < 0) return g.body.get();
-	}
-	return nullptr;
+// The design of its own the lot grows and the share of its size it stands at, or none: the lot's own (grown_pick: its draws, from
+// where its front stands), stood where it fits. A lot the streets cut for it is its plan's size (sim/citygen cut_run); on any other
+// (a lot the player drew, a run too short for the plan) it stands smaller down to its least share, or the kit's building does.
+const Body *grown_design(const Data &data, Kind kind, float W, float D, const Quarter &q, float &scale) {
+	const int pick = grown_pick(data, kind, q);
+	if (pick < 0) return nullptr;
+	const GrownDesign &g = data.grown_designs[size_t(pick)];
+	scale = design_fit(data, g, kind, W, D);
+	return scale > 0 ? g.body.get() : nullptr;
 }
 
 } // namespace
+
+int grown_pick(const Data &data, Kind kind, const Quarter &q) {
+	if (data.grown_share[kind] <= 0 || q.lot >= data.grown_share[kind]) return -1;
+	float total = 0;
+	int last = -1;
+	for (size_t i = 0; i < data.grown_designs.size(); i++)
+		if (data.grown_designs[i].kind == kind && data.grown_designs[i].weight > 0) {
+			total += data.grown_designs[i].weight;
+			last = int(i);
+		}
+	float at = float(q.design) * total;
+	for (size_t i = 0; i < data.grown_designs.size(); i++)
+		if (data.grown_designs[i].kind == kind && data.grown_designs[i].weight > 0 && (at -= data.grown_designs[i].weight) < 0) return int(i);
+	return last; // the last of them when the sum's rounding leaves the draw past it; -1 when the kind has none
+}
 
 void scale_body(Body &b, float k) {
 	for (Volume &v : b.volumes) {
@@ -189,13 +195,23 @@ void make_body(const Data &data, Body &b, int zone, int floors, float W, float D
 	b.use = b.kind == KIND_WORKS ? USE_INDUSTRIAL : b.kind == KIND_SHOP || b.kind == KIND_OFFICE ? USE_COMMERCIAL : USE_RESIDENTIAL;
 	Xoshiro128 r(seed);
 	float scale = 1;
-	if (const Body *design = grown_design(data, b.kind, W, D, quarter.lot, r, scale)) { // stood as drawn, its own lot laid with it, the lot's kind and use kept
+	if (const Body *design = grown_design(data, b.kind, W, D, quarter, scale)) { // stood as drawn, its own lot laid with it, the lot's kind and use kept
 		const Kind kind = b.kind;
 		const Use use = b.use;
 		b = *design;
 		if (scale < 1) scale_body(b, scale);
 		b.kind = b.plan.kind = kind;
 		b.use = use;
+		// The design's own lot is laid with it, as wide and deep as its plan: on a lot larger than that (a design stood smaller, a lot the
+		// player drew) the ground round it is paved, under its own covers, so no bare ground is left between it and the lot's sides.
+		if (W > b.plan.W + EPS || D > b.plan.D + EPS) {
+			LotElement ground;
+			ground.kind = EL_SURFACE;
+			ground.x = 0; ground.y = D / 2; ground.w = W; ground.d = D; ground.z = 0;
+			ground.h = data.shapes.parts.cover_h * data.shapes.fit.lawn_under;
+			ground.paint = b.add_paint(data.color("paving"));
+			b.elements.insert(b.elements.begin(), ground);
+		}
 		return;
 	}
 	b.plan = plan_lot(data, b.kind, W, D, r, corner);

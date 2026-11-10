@@ -38,14 +38,29 @@ std::vector<Lot> with_player_lots(std::vector<Lot> lots, int64_t key, const LotB
 }
 } // namespace
 
-// By zone code, the room the designs of their own a lot of the zone grows need (b40 Data::grown_plan): what such a lot is laid to hold.
+// The designs of their own the lots grow, for the lots' cutter (sim/citygen lot_gen.h GrownPlans): by zone code the plans of its
+// kind's designs, and the one a lot grows, asked as its building will be made (b40 Data::grown_pick_at), so the lot cut for a design
+// is the lot that grows it.
 static GrownPlans grown_plans(const CityState &s) {
 	const b40::Data &designs = s.buildings.designs;
-	GrownPlans out(ZONE_CODES);
-	for (int code = 0; code < ZONE_CODES; code++) {
-		const V2 most = designs.grown_plan(designs.kind_of_zone(code));
-		out[size_t(code)] = { double(most.x), double(most.y) };
+	GrownPlans out;
+	out.by_zone.resize(ZONE_CODES);
+	std::vector<int> place(designs.grown_designs.size(), -1); // each design's place among its kind's, as by_zone lists them
+	for (int kind = 0; kind < b40::KIND_COUNT; kind++) {
+		int next = 0;
+		for (size_t i = 0; i < designs.grown_designs.size(); i++)
+			if (designs.grown_designs[i].kind == b40::Kind(kind)) place[i] = next++;
 	}
+	for (int code = 0; code < ZONE_CODES; code++) {
+		const b40::Kind kind = designs.kind_of_zone(code);
+		if (designs.grown_share[kind] <= 0) continue;
+		for (const b40::GrownDesign &g : designs.grown_designs)
+			if (g.kind == kind) out.by_zone[size_t(code)].push_back({ double(g.body->plan.W), double(g.body->plan.D) });
+	}
+	out.pick = [&designs, place](const Lot &l) {
+		const int pick = designs.grown_pick_at(float(l.x), float(l.z), float(l.d), float(l.rot), l.zone);
+		return pick < 0 ? -1 : place[size_t(pick)];
+	};
 	return out;
 }
 
