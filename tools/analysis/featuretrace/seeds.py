@@ -53,11 +53,18 @@ def find(ix, spec: str) -> list[int]:
         if found:
             return found
     parts = re.split(r"::|\.", spec)
-    name, scope = parts[-1], parts[:-1]
+    # a definition's own name may hold a dot (a property's `x.get`, a lambda): the longest name that matches wins
+    for cut in range(1, len(parts)):
+        found = in_scope(ix, spec, ".".join(parts[cut:]), parts[:cut])
+        if found:
+            return found
+    candidates = ix.by_name.get(parts[-1], [])
+    functions = [g for g in candidates if ix.units[g].kind in FUNCTION_KINDS]
+    return ix.definitions(functions) if functions else list(candidates)
+
+
+def in_scope(ix, spec: str, name: str, scope: list[str]) -> list[int]:
     candidates = ix.by_name.get(name, [])
-    if not scope:
-        functions = [g for g in candidates if ix.units[g].kind in FUNCTION_KINDS]
-        return ix.definitions(functions) if functions else list(candidates)
     want = ".".join(scope)
     found = []
     for gid in candidates:

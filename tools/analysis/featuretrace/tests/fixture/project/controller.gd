@@ -82,3 +82,36 @@ func go_by_name() -> void:
 
 func go_routed() -> void:
 	pass
+
+
+var watched: int:
+	get:
+		return watched
+	set(value):
+		watched = value
+		picked.emit()
+
+var named_prop: int: set = _set_named
+
+
+func _set_named(v: int) -> void:
+	named_prop = v
+
+
+func uses_props() -> void:
+	watched = 1
+	var w = watched
+	named_prop = 2
+
+
+func cyc_start() -> void:
+	cyc_a(RoadTool.new())
+
+
+func cyc_a(x) -> void:
+	cyc_b(x)
+
+
+func cyc_b(y) -> void:
+	cyc_a(y)
+	y.click(7.0)

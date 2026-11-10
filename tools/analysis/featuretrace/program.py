@@ -1,6 +1,8 @@
 """The program read whole: every file under the roots turned into facts (cached per content), indexed and linked."""
 from __future__ import annotations
 
+import sys
+import threading
 from pathlib import Path
 
 from . import engine_read, link
@@ -8,6 +10,9 @@ from .cpp_read import read_cpp
 from .gd_read import read_gd
 from .index import Index
 from .source import PROJECT_FILE, cached_facts, discover, reader_version
+
+RECURSION = 200_000
+STACK_BYTES = 255 << 20         # under 256 MiB, the most CPython gives a thread on Windows: room for deep chains
 
 
 def godot_root(path: Path) -> Path | None:
@@ -64,5 +69,31 @@ def load(roots: list[Path], base: Path, cache_dir: Path | None, progress=None):
     index = Index(all_facts)
     if progress:
         progress(f"indexed {len(index.units)} definitions; linking")
-    resolver = link.build(index, progress)
+    resolver = deep(lambda: link.build(index, progress))
     return index, resolver, len(files), broken
+
+
+def deep(work):
+    """Runs `work` with a stack as deep as the code's chains of values need (flows nest as deep as the program
+    calls): a thread with a large stack and a recursion limit to match, instead of a cut at a fixed depth."""
+    result, failure = [], []
+
+    def run():
+        try:
+            result.append(work())
+        except BaseException as error:      # handed back to the caller's thread unchanged
+            failure.append(error)
+
+    old_limit, old_size = sys.getrecursionlimit(), threading.stack_size()
+    sys.setrecursionlimit(RECURSION)
+    threading.stack_size(STACK_BYTES)
+    try:
+        worker = threading.Thread(target=run)
+        worker.start()
+        worker.join()
+    finally:
+        threading.stack_size(old_size)
+        sys.setrecursionlimit(old_limit)
+    if failure:
+        raise failure[0]
+    return result[0]

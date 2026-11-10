@@ -80,7 +80,7 @@ HANDLERS = {
              "cpp_implicit:range_calls", "cpp_implicit:destroyed", "gd_read:GdReader.accessors"),
     "BRANCH": ("gd_body:statement", "cpp_body:statement"),
     "JUMP": ("gd_body:statement", "cpp_body:statement"),
-    "NAME": ("resolve:Resolver.by_string", "typer:Typer.made_by_name"),
+    "NAME": ("resolve:Resolver.by_string", "names:made_by_name", "names:callable_of", "names:texts"),
     "SIGNAL": ("link:connect",),
     "BIND": ("cpp_expr:registration", "index:Index.bind", "resolve:Resolver.engine_members"),
     "ENTRY": ("walk:entry_reason",),

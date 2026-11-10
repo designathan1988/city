@@ -51,3 +51,30 @@ int callers() {
 	return adl_target(fx2::Arg{});
 }
 } // namespace fx
+
+namespace fx {
+struct Vec {
+	Vec();
+	~Vec();
+	Vec operator+(const Vec &o) const;
+	int *begin();
+	int *end();
+};
+struct Holder : public Base {
+	Vec v;
+	Holder();
+};
+Vec::Vec() {}
+Vec::~Vec() {}
+Vec Vec::operator+(const Vec &o) const { return *this; }
+int *Vec::begin() { return nullptr; }
+int *Vec::end() { return nullptr; }
+Holder::Holder() {}
+#define TWICE(x) ((x) * 2)
+int implicit_calls() {
+	Vec a;
+	Vec c = a + a;
+	for (int i : a) {}
+	return TWICE(1);
+}
+} // namespace fx

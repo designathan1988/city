@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from itertools import count
 
+from . import names
 from .model import FUNCTION_KINDS
 from .rules import NAME_CALLS
 from .resolve import EXACT, EXTERNAL, LOCAL, UNREACHED, Resolver
@@ -126,7 +127,7 @@ def link_ref(rs, unit, ref) -> None:
 
 def by_value(rs, unit, ref) -> None:
     """`obj.call(name, ...)` with the name held in a value (G7): each text it can hold names a method."""
-    for text in rs.typer.texts(ref.args[0], unit):
+    for text in names.texts(rs.typer, ref.args[0], unit):
         targets, how = rs.by_string(unit, ref.base if ref.base is not None else ("self",), text)
         for gid in targets:
             rs.link(unit.gid, gid, "name", _Shifted(ref), how)
