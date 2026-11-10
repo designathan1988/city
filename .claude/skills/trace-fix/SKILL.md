@@ -50,7 +50,8 @@ step that changes the state, the state itself and everyone who reads it, to what
 
 - **By script:** `$L trace --query "words of the symptom"` or `--seed Class::method | path/file | file:line`. It puts on
   the flow, in the order the code runs: the script steps that lead in, what runs (from the compiler), the state it
-  writes, and who reads that state afterwards.
+  writes, and who reads that state afterwards. A symptom has two ends, what the player does and what the player sees:
+  run one `trace` for each (`"store a note"` and `"note count"`), then join them by hand where they do not meet.
 - **By the state, for a wrong behaviour or a wrong picture:** say the rule the player expects (`$L rules` lists them: no
   body in another, nothing floats, nothing vanishes in sight, ...), name the state it limits, and
   `$L writers Class::member --rule "..."` gives every function that writes it and every one that reads it.
@@ -107,8 +108,10 @@ A record is complete when someone who never read the code could make the fix fro
 
 ## 4. Fix the cause
 
-`$L problems` shows what you recorded; `$L card C<n>` (after `$L cause add`, for problems of one decision) gives the
-exact lines, the callers, the readers and the tests that reach them.
+`$L problems` shows what you recorded. Problems of one decision go under one cause,
+`$L cause add --what "the decision" --owner "its one owner" --plan "the correction" --problems P1 P2`, and `$L card C1`
+gives the exact lines, the callers, the readers and the tests that reach them; a caller the card names that is not on
+the flow is read before the change.
 
 1. Name the check that fails now because of this cause: a test of the area, a rule of the audit
    (`python tools/tasks/cli.py run audit`), a probe of the core. If none fails, write it first and see it fail.

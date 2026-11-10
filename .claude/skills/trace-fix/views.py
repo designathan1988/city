@@ -76,7 +76,8 @@ def head(state, out):
 def next_step(state, out):
     now = store.phase(state)
     if now == "trace":
-        out.add("DO NOW: find where the symptom starts and put it on the flow: `flow <file> --why \"...\"`.")
+        out.add("DO NOW: put the flow of the symptom on the trace, from its trigger to what the player sees: `trace --query \"...\"` "
+                "(one for what the player does, one for what the player sees), `writers`, or `flow <file> --why \"...\"`.")
     elif now == "read":
         batch = store.next_chunks(state)
         if not batch:
@@ -92,7 +93,8 @@ def next_step(state, out):
                     + (f"  [on the route: {clip(', '.join(on_route), 160)}]" if on_route else "")
                     + (f"  [read in trace {known['trace']}, unchanged: `notes {entry['path']} --prior`, then `carry`]"
                        if known else ""))
-        out.add("  then record them in one call: `record <file.json>` (reads, problems, new flow files), and `next`.")
+        out.add("  then record them in one call, before the next batch: `record <file.json>` (reads with their `saw`, docs of every outside "
+                "call, problems with their `fix`, new flow files, the note), and `next`.")
     elif now == "fix":
         left = sum(1 for p in state["problems"] if p["status"] == OPEN)
         out.add(f"DO NOW: fix the {left} open problem(s) in the code, at their cause (`card C<n>` gives a cause's exact lines, callers and "
