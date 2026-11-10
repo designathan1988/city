@@ -217,7 +217,7 @@ void RenderWorld::offer_streams(const CityState &s, const Vector3 &cam, std::vec
 	raised_stream_.offer(cam.x, cam.z, buildings_.stream_reach(s, cam), STREAM_DROP_K, one, units,
 			[this, &s, &pool](int64_t k, float d) { structures_.submit(s, k, pool, d); }, [this](int64_t k) { structures_.drop_chunk(k); },
 			[this](int64_t k) { return structures_.busy(k); });
-	far_roads_.offer(s, pool, cam, units);
+	far_roads_.offer(s, pool, cam, buildings_.stream_reach(s, cam), STREAM_DROP_K, units); // as far as the buildings: the streets end where they do
 	props_stream_.offer(cam.x, cam.z, t.render_props_end_m, STREAM_DROP_K, one, units, [this, &s, &pool](int64_t k, float d) { props_.submit(s, k, pool, d); },
 			[this](int64_t k) { props_.drop_chunk(k); }, [this](int64_t k) { return props_.busy(k); });
 	// a building chunk's "build" only registers it (its levels are meshed and admitted by update_view), so no credit is spent

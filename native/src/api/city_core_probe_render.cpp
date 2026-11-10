@@ -151,6 +151,7 @@ Dictionary CityCore::road_mesh_counts() const {
 	Dictionary d;
 	d["roads"] = count_of(render_.road_count());
 	d["seams"] = count_of(render_.seam_count());
+	d["far_supers"] = render_.far_road_supers(); // the far level follows the view: only the superchunks in reach are held
 	d["wear_bytes"] = render_.wear_bytes();
 	return d;
 }

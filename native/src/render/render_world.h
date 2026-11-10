@@ -167,6 +167,7 @@ public:
 	RoadChunks::Count road_count() const { return roads_.count(); }
 	const StreetLook &street_look() const { return roads_.look(); } // what the road meshes are drawn by (road_surface_probe)
 	GroundSeamLayer::Count seam_count() const { return seams_.count(); }
+	int far_road_supers() const { return far_roads_.drawn_supers(); } // the far road level's superchunks held now
 	int seam_refused() const { return seams_.refused(); }
 	void draw_seams(bool on) { seams_.draw(on); }
 	// What the ground seam of chunk `key` is (ground_seam.h), built anew from the state (the probe's own reading).

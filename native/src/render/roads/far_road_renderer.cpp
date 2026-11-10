@@ -17,6 +17,7 @@ namespace city {
 
 namespace {
 constexpr float MID = 0.5f;
+constexpr float HALF_DIAGONAL = 0.7071f; // of a superchunk, from its middle to a corner
 
 int64_t super_of(int64_t chunk) { return chunk_of((float(key_x(chunk)) + MID) * CHUNK, (float(key_y(chunk)) + MID) * CHUNK, SUPERCHUNK); }
 
@@ -38,12 +39,18 @@ void FarRoadRenderer::reset() {
 	clear_queue();
 	for (auto &kv : supers_) kv.second.surface.free();
 	supers_.clear();
+	known_.clear();
 	dirty_.clear();
+	waiting_ = 0;
 	folded_ = 0;
 	fresh_ = false;
 }
 
-void FarRoadRenderer::mark(int64_t chunk) { dirty_.insert(super_of(chunk)); }
+void FarRoadRenderer::mark(int64_t chunk) {
+	const int64_t key = super_of(chunk);
+	known_.insert(key);
+	dirty_.insert(key);
+}
 
 void FarRoadRenderer::build_cpu(const CityView &s, int64_t key, MeshBuilder &mb) const {
 	const RoadEmit e{ s, *look_, mb, *shapes_, true };
@@ -56,12 +63,26 @@ void FarRoadRenderer::build_cpu(const CityView &s, int64_t key, MeshBuilder &mb)
 		}
 }
 
-void FarRoadRenderer::offer(const CityState &s, JobPool &pool, const Vector3 &cam, std::vector<FrameAdmission::Unit> &out) {
-	for (int64_t key : dirty_) {
-		if (busy(key)) continue; // its result lands first; the superchunk stays dirty and is asked again then
+void FarRoadRenderer::offer(const CityState &s, JobPool &pool, const Vector3 &cam, float reach, float drop_k, std::vector<FrameAdmission::Unit> &out) {
+	waiting_ = 0;
+	const float corner = SUPERCHUNK * HALF_DIAGONAL; // a superchunk is in reach when any of it is
+	for (int64_t key : known_) {
 		const float dx = (float(key_x(key)) + MID) * SUPERCHUNK - cam.x, dz = (float(key_y(key)) + MID) * SUPERCHUNK - cam.z;
 		const float d = std::sqrt(dx * dx + dz * dz);
-		out.push_back(FrameAdmission::Unit{ supers_.count(key) ? 1 : 0, d, 1, [this, &s, &pool, key, d]() {
+		const auto stands = supers_.find(key);
+		if (d > reach + corner) { // past the view: what it holds is let go (a result still on its way is dropped when it lands)
+			if (stands != supers_.end() && d > reach * drop_k + corner) {
+				stands->second.surface.free();
+				supers_.erase(stands);
+				forget(key);
+			}
+			continue;
+		}
+		if (busy(key)) continue; // its result lands first; a dirty superchunk stays dirty and is asked again then
+		if (stands != supers_.end() && !dirty_.count(key)) continue;
+		waiting_++;
+		out.push_back(FrameAdmission::Unit{ stands != supers_.end() ? 1 : 0, d, 1, [this, &s, &pool, key, d]() {
+					   waiting_--;
 					   dirty_.erase(key);
 					   // the job copies its superchunk's roads and their ground, then builds from the copy with the map let go
 					   submit_cut(pool, JobKey{ JobLane::ROADS_FAR, key }, key, d, [this, &s, key]() { return cut_for_roads(s, *look_, key, SUPERCHUNK, CUT_ROADS); },
