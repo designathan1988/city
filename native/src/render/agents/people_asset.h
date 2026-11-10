@@ -59,8 +59,12 @@ struct PeopleAsset {
 	std::vector<PersonClip> clips;
 	int block_rows = 0, hand_bone = 0, head_bone = 0; // each variation's rows of the palette; the bone of the hand that holds things; the head's
 	std::vector<uint8_t> bone_part, joint_bone; // the ragdoll: which part each bone follows, which bone each joint sits on
-	godot::PackedByteArray palette_bytes; // the palette as the file has it
-	// A body's bones in a frame of a clip, bind -> pose rows, twelve floats a bone.
+	// The palette's rows the CPU poses a body from (clip_rows: a body struck down stands in a clip's first frame and rises by
+	// another's frames), of every variation, cut from the palette at load; the palette itself lives in its texture alone.
+	std::vector<uint8_t> posed_bytes;
+	std::vector<int> posed_at, posed_frames; // by clip: the first of its kept frames in posed_bytes, and how many are kept
+	void keep_posed(const uint8_t *texels); // fills them from the palette's bytes
+	// A body's bones in a frame of a clip, bind -> pose rows, twelve floats a bone: of the frames kept (keep_posed).
 	void clip_rows(int variation, int clip_index, int frame, float *rows) const;
 	void read_card(ByteReader &r);
 	void read_ragdoll(ByteReader &r, uint32_t bones);
