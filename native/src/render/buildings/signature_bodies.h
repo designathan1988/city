@@ -48,9 +48,13 @@ public:
 	godot::Ref<godot::ArrayMesh> mesh(int kind);
 
 private:
+	static constexpr int RECORD_FLOATS = 10; // a look's floats in the file (signature_bodies.cpp names them)
 	struct Look {
 		godot::Ref<godot::ShaderMaterial> made;
-		size_t at = 0; // its record in the table
+		float v[RECORD_FLOATS] = {};
+		uint32_t flags = 0, width = 0, height = 0; // its picture's size, 0 when it has none
+		size_t at = 0; // its picture's stream in looks_file_
+		uint32_t packed = 0; // that stream's bytes
 	};
 	// A kind made ready off the main thread: each surface's arrays, levels and look, and the pictures of the looks it uses.
 	struct Surface {
@@ -81,7 +85,7 @@ private:
 	JobPool *pool_ = nullptr;
 	std::mutex table_mutex_; // the table is read once, by whichever thread first needs it
 	bool table_read_ = false, table_ok_ = false;
-	godot::PackedByteArray table_; // materials.sig, unpacked
+	godot::PackedByteArray looks_file_; // materials.sig as it is on disk: the pictures packed, each in its own stream
 	std::vector<Look> looks_;
 	godot::Ref<godot::Shader> solid_, blended_;
 	std::vector<godot::Ref<godot::ArrayMesh>> meshes_;
