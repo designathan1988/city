@@ -1,5 +1,6 @@
 // What render jobs derive from the city for one place (a chunk, a node, a segment), made once for the city's revision and read by
-// every job that needs it. The revision is CityData::revision, which every change to the map moves (touch(), a new map, a load), and
+// every job that needs it. The revision is the one its inputs move with: CityData::revision, which every change to the map moves
+// (touch(), a new map, a load, a building grown), or CityData::street_revision for what reads the streets alone, and
 // the jobs ask under the map's shared lock, when it cannot move, so a kept value is the one the place has now. Bounded by
 // core/lru_cache.h: the least recently read pushed out first, older revisions with them; a job holds what it reads.
 #pragma once

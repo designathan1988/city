@@ -167,9 +167,10 @@ bool is_plate(const NodeOutlineShape &K, const std::vector<End> &ends) {
 	return any;
 }
 
-// The node's shape for the city's revision (road_shapes.h): its ends, and for a plate each corner's kerb and outer lines.
+// The node's shape for the streets' revision (road_shapes.h; CityData::street_revision: a node's shape reads the network, its grade
+// and the profiles, no building, so the city growing round it keeps it): its ends, and for a plate each corner's kerb and outer lines.
 std::shared_ptr<const NodeShape> node_shape(const RoadEmit &e, int n) {
-	return e.shapes.nodes.of(e.s.revision, n, [&]() {
+	return e.shapes.nodes.of(e.s.street_revision, n, [&]() {
 		auto shape = std::make_shared<NodeShape>();
 		shape->ends = ends_of(e, n);
 		const std::vector<End> &ends = shape->ends;

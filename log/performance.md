@@ -402,3 +402,12 @@ sky POSITION 022b734d; atmosphere 1c604b47; occlusion c978aeeb; lot_access e7346
 - Check: `growth_pick_test` (new check: buildings grew and the streets' revision stood), `digest`, `traffic_hash_test`,
   `street_works_test` pass; gates OK; the frozen review plan (dist/review-c11): lamps, trees and benches where they stood
   (8 of 20 pictures equal, the others leaf-edge noise).
+
+### P22, the node shapes (C11): a grown building no longer drops the kept shapes of the road nodes
+- Cause: `node_shape` kept each node's ends and plate corners for the city's whole revision, moved by every grown building;
+  the road jobs of every chunk in reach made them again while the city grew.
+- Read: `ends_of` and the corners read the network, the segments' frames (curve and grade), the profiles and the tuning.
+- Change: `road_shapes.cpp node_shape` keeps by `CityData::street_revision`. The walls of a cut (`walls_of`) stay on the whole
+  revision: they read the ground held beside the road, which a building's pad may move.
+- Check: `digest`, `road_grade_test`, `road_commands_test` pass; gates OK; the frozen review plan (dist/review-c11b) equal
+  but leaf-edge noise (7 of 20 pictures equal pixel by pixel).

@@ -66,7 +66,7 @@ struct RoadShapes {
 	KeptByRevision<SegWalls> walls;
 };
 
-// The node's shape for the city's revision: its ends, and for a plate each corner's kerb and outer lines.
+// The node's shape for the streets' revision (no building is in it): its ends, and for a plate each corner's kerb and outer lines.
 std::shared_ptr<const NodeShape> node_shape(const RoadEmit &e, int n);
 
 } // namespace city
