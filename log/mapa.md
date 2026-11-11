@@ -580,7 +580,8 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `tools/assets/calm_stone.py` — o tom dos blocos da pedra de fachada a poucos por cento, sem tocar juntas e grão
 - `tools/assets/make_furniture.py` — furniture.json: do que cada móvel é feito, parte por parte, nos tamanhos de interiors.json
 - `tools/assets/make_pole_parts.py` — the poles of each style in streets.json: urban (cross-arm over the street, B1, and the S1 rack) and rural (cross-arm on top, N1), the wire seats and the light height, from CELESC E-313.0002
-- `tools/build/build.sh` — build the two DLLs, export and package; tests and captures run through `tools/tasks` (hidden, on a private desktop: never a window on the user's screen)
+- `tools/build/build.sh` — build the two DLLs; export and package through `tools/build/deliver.sh`; tests and captures run through `tools/tasks` (hidden, on a private desktop: never a window on the user's screen)
+- `tools/build/deliver.sh` — the game delivered to the owner: each export in a folder of its own (dist/builds/<date>_<commit>[-dirty], with latest.txt there naming the newest), so a game left open never blocks the next; the Desktop's Roadcraft shortcut pointed at the newest; the zip of the newest export with the source as committed
 - `tools/build/free_dll.sh` — a DLL presa por um jogo aberto vai para `dist/held`, e a compilação segue sem fechar o jogo
 - `tools/build/pgo.sh` — o perfil da DLL de release: uma DLL instrumentada joga escondida e as contagens vão para `native/pgo/citycore.profdata`
 - `tools/build/quick.sh` · `tools/build/check_scripts.gd` · `tools/build/photodiff.py` · `tools/build/rename_english.py` — a change checked in one command (a thin call of `tools/tasks`: only the tasks whose inputs changed); every GDScript compiled at once; the difference of two photo runs; the English rename of the tool folders (pending: the plan without `--apply`)

@@ -42,33 +42,7 @@ capture() { # [dir]: one folder per capture task under it
 	CAPTURE_DIR="${1:-$OUT/captures}" "${PY:-python}" "$ROOT/tools/tasks/cli.py" run capture
 }
 
-export_all() {
-	mkdir -p "$OUT/windows"
-	"$GODOT" --headless --path "$ROOT/project" --export-release "Windows" "$OUT/windows/Roadcraft.exe"
-}
-
-readme() {
-	cat > "$OUT/READ-ME.txt" <<'TXT'
-Roadcraft - city builder (Godot 4.7 + nucleo C++)
-Windows 10/11 64 bits: abra jogo/Roadcraft.exe
-Camera (como no Roadcraft): botao direito arrastado gira/inclina; botao do meio (ou Shift+direito) arrasta o mapa;
-roda = zoom no cursor; WASD/setas andam; Q/E giram; PgUp/PgDn inclinam; Shift acelera; Home volta.
-Clique direito sem arrastar ou Esc cancela a ferramenta. Ctrl+S salva, Ctrl+O abre, Ctrl+Z desfaz.
-Vias: clique no inicio e no fim (V alterna curva). Zonas/terreno: segure o botao esquerdo.
-Fonte: pasta fonte/ (leia fonte/CLAUDE.md: regras, comandos e mapa do codigo).
-TXT
-}
-
-package() {
-	readme
-	local stage="$OUT/stage"
-	rm -rf "$stage" "$OUT/Roadcraft.zip" && mkdir -p "$stage/jogo" "$stage/fonte"
-	cp -r "$OUT/windows/." "$stage/jogo/" && cp "$OUT/READ-ME.txt" "$stage/"
-	git -C "$ROOT" archive --format=tar HEAD | tar -x -C "$stage/fonte" # the source as committed, in one pass
-	(cd "$stage" && python3 -c "import shutil; shutil.make_archive('../Roadcraft', 'zip', '.')") # a tar with a .zip name is what Git Bash's tar.exe -a writes
-	rm -rf "$stage"
-	echo "$OUT/Roadcraft.zip"
-}
+deliver() { bash "$ROOT/tools/build/deliver.sh" "$@"; } # the export, the Desktop's shortcut and the zip
 
 case "${1:-}" in
 	core) core_linux ;; # so para testes/capturas neste ambiente; o jogo e Windows
@@ -78,8 +52,8 @@ case "${1:-}" in
 	gates) gates ;;
 	e2e) e2e ;;
 	capture) capture "${2:-}" ;;
-	export) export_all ;;
-	package) package ;;
-	all) core_linux; core_windows; gates; e2e; export_all; package ;;
+	export) deliver export ;;
+	package) deliver package ;;
+	all) core_linux; core_windows; gates; e2e; deliver export; deliver package ;;
 	*) echo "targets: core | core-windows | dll-debug | dll-release | gates | e2e | capture [dir] | export | package | all"; exit 2 ;;
 esac
