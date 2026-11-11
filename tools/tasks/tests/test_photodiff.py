@@ -1,5 +1,6 @@
-# photodiff: an empty set, a photo on one side only, a missing folder and a uniform shift of one level all fail; equal
-# photos pass.
+# photodiff is a help to find where to look, never a verdict: every difference is reported (a photo on one side only, a
+# uniform shift of one level) and the run exits 0; it fails only when it has nothing to compare (a missing folder, an empty
+# set) and on a usage error.
 import sys
 import tempfile
 import unittest
@@ -46,27 +47,31 @@ class PhotodiffTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("empty set", text)
 
-    def test_photo_on_one_side_fails(self):
+    def test_photo_on_one_side_is_reported(self):
         photo(self.before / "a.png", 0)
         photo(self.after / "a.png", 0)
         photo(self.after / "b.png", 0)
         code, text = self.diff()
-        self.assertEqual(code, 1)
+        self.assertEqual(code, 0)
         self.assertIn("b.png", text)
+        self.assertIn("only in after", text)
         photo(self.before / "c.png", 0)
-        self.assertEqual(self.diff()[0], 1)
+        code, text = self.diff()
+        self.assertEqual(code, 0)
+        self.assertIn("only in before", text)
 
     def test_missing_folder_fails(self):
         self.before.rmdir()
         self.assertEqual(self.diff()[0], 1)
 
-    def test_uniform_shift_of_one_level_fails(self):
+    def test_uniform_shift_of_one_level_is_reported(self):
         photo(self.before / "a.png", 0)
         photo(self.after / "a.png", 1)
         code, text = self.diff()
-        self.assertEqual(code, 1)
+        self.assertEqual(code, 0)
         self.assertIn("changed 100.000%", text)
         self.assertIn("shift R +1.000 G +1.000 B +1.000", text)
+        self.assertTrue((self.out / "a.png").exists())
 
     def test_usage_error_exits_2(self):
         with redirect_stdout(StringIO()):

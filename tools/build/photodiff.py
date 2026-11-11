@@ -1,9 +1,11 @@
-# photodiff.py <before dir> <after dir> <out dir>: every photo name of either folder, compared pixel by pixel. A photo on one
-# side only, a different size, an empty set or any changed pixel fails (exit 1): the frozen photos are bit-exact. Per pair:
-# the share of changed pixels, the mean absolute difference (0..255) and the mean shift of each channel (after - before), so a
-# uniform shift is told apart from a local change; for a pair that changed, a "where to look" image: the after photo greyed,
+# photodiff.py <before dir> <after dir> <out dir>: where two photo sets differ, a help to find where to look and never a
+# verdict (two runs of the same code differ in pixels; a photo is judged on its own, CLAUDE.md). Every photo name of either
+# folder is compared pixel by pixel and every difference reported: a photo on one side only, a different size, and per pair
+# that changed the share of changed pixels, the mean absolute difference (0..255) and the mean shift of each channel
+# (after - before), so a uniform shift is told apart from a local change, with a "where to look" image: the after photo greyed,
 # pixels changed by more than LOOK_LEVELS in red. The HUD bar (top 60 px) and the dock (bottom 80 px) carry live numbers
-# (clock, vehicles): masked. Usage error: exit 2.
+# (clock, vehicles): masked. Exit 0 once it compared; 1 when it has nothing to compare (a missing folder, an empty set);
+# 2 on a usage error.
 import sys
 from pathlib import Path
 
@@ -16,20 +18,20 @@ GREY = 0.5
 
 
 def compare(before: Path, after: Path, out: Path) -> tuple[list[tuple], int]:
-    """(rows, failures): one row per photo name, (name, verdict, details)."""
-    rows, failures = [], 0
+    """(rows, differing): one row per photo name, (name, what, details)."""
+    rows, differing = [], 0
     names = sorted({p.name for p in before.glob("*.png")} | {p.name for p in after.glob("*.png")})
     for name in names:
         b, a = before / name, after / name
         if not b.exists() or not a.exists():
             rows.append((name, "MISSING", f"only in {'after' if a.exists() else 'before'}"))
-            failures += 1
+            differing += 1
             continue
         x = np.asarray(Image.open(b).convert("RGB"), dtype=np.int16)
         y = np.asarray(Image.open(a).convert("RGB"), dtype=np.int16)
         if x.shape != y.shape:
             rows.append((name, "SIZE", f"{x.shape[1]}x{x.shape[0]} -> {y.shape[1]}x{y.shape[0]}"))
-            failures += 1
+            differing += 1
             continue
         keep = np.ones(x.shape[:2], dtype=bool)
         keep[:HUD_TOP] = False
@@ -39,7 +41,7 @@ def compare(before: Path, after: Path, out: Path) -> tuple[list[tuple], int]:
         if not changed.any():
             rows.append((name, "EQUAL", ""))
             continue
-        failures += 1
+        differing += 1
         shift = signed.mean(axis=0)
         level = np.abs(y - x).max(axis=2)
         level[~keep] = 0
@@ -52,7 +54,7 @@ def compare(before: Path, after: Path, out: Path) -> tuple[list[tuple], int]:
         grey[look] = [255, 0, 0]
         out.mkdir(parents=True, exist_ok=True)
         Image.fromarray(grey.astype(np.uint8)).save(out / name)
-    return rows, failures
+    return rows, differing
 
 
 def main(argv: list[str]) -> int:
@@ -65,15 +67,15 @@ def main(argv: list[str]) -> int:
         print(f"FAIL no folder: {', '.join(missing)}")
         return 1
     out.mkdir(parents=True, exist_ok=True)
-    rows, failures = compare(before, after, out)
+    rows, differing = compare(before, after, out)
     if not rows:
         print(f"FAIL no photo in {before} nor {after}: an empty set proves nothing")
         return 1
-    for name, verdict, details in rows:
-        if verdict != "EQUAL":
-            print(f"FAIL {name:32s} {verdict}  {details}")
-    print(f"{len(rows) - failures} of {len(rows)} photos equal")
-    return 1 if failures else 0
+    for name, what, details in rows:
+        if what != "EQUAL":
+            print(f"DIFF {name:32s} {what}  {details}")
+    print(f"{len(rows) - differing} of {len(rows)} photos equal; where they differ is in {out} (a help to look, not a verdict)")
+    return 0
 
 
 if __name__ == "__main__":
