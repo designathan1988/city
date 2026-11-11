@@ -201,6 +201,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/traffic/astar.h` — A* único de carros e pedestres
 - `native/src/sim/traffic/demand.cpp` — frota e viagens por zona
 - `native/src/sim/traffic/junction_admission.cpp` — antitravamento: saída livre, caixa livre, reserva e governador
+- `native/src/sim/traffic/junction_gate.cpp` — the gate of a junction: whether a vehicle may enter its connector now (its light, a Stop taken from a stand, room past the junction, walkers in its way, the conflicting movements by rank, movement and the right, a claim after waiting its share), why a head is held, the connector a vehicle takes off its lane
 - `native/src/sim/traffic/junction_control.cpp` · `native/src/sim/traffic/signal_timing.cpp` · `native/src/sim/traffic/light_rule.cpp` · `native/src/sim/traffic/light_rule.h` — controle de cruzamento, estágios e preferência; plano no tempo pelo MBST V (entreverdes, luz, janela de pedestres, tempo fixo no relógio comum); regra única do semáforo para os veículos (âmbar: para quem ainda para na linha como o entreverdes supõe, mantido até o verde) e a parada que cada um vê pela rota
 - `native/src/sim/traffic/cycling.cpp` · `native/src/sim/traffic/vehicle_speed.cpp` — bicicletas: no bordo da pista, ciclofaixa junto à faixa da guia e quem fica fora do caminho; velocidade de cada veículo (limite, conector, curva, deriva)
 - `native/src/sim/traffic/green_wave.cpp` — onda verde: ciclo comum e defasagens pelo tempo de viagem na via principal

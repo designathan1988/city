@@ -1,12 +1,11 @@
-// Junction control: the control a node gets (signals, priority or none), its signal stages (opposite approaches
-// together, the intergreens and greens of signal_timing.cpp) and the gate rules: which approaches may enter a
-// connector now. A blocked entry acts as a stopped obstacle at the stop line (see vehicle_motion.cpp).
+// Junction control: the control a node gets (signals, priority or none), the road it is on (its main arms) and each approach's
+// rank and rule, its signal stages (opposite approaches together, the intergreens and greens of signal_timing.cpp). Who may enter a
+// connector now is junction_gate.cpp.
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/roads/junction.h"
-#include "sim/traffic/light_rule.h"
 
-#include <cmath>
+#include <algorithm>
 
 namespace city {
 namespace traffic {
@@ -15,9 +14,7 @@ namespace {
 
 constexpr int RANK_MAIN = 3, RANK_YIELD = 1; // free arms keep DirSeg::rank's default
 constexpr int RING_PRIORITY = 100; // over every class of road: whoever circulates has the way, whatever comes in
-constexpr size_t MAIN_LEGS = 2; // the road that goes through a junction
 constexpr uint32_t OFFSET_HASH = 2654435761u, OFFSET_STEPS = 1000; // where in its first green each junction starts
-constexpr float STOPPED_MS = 0.5f, FIRST_COME_S = 0.3f; // stopped vehicles go first come, first served
 
 constexpr float STOP_SETBACK_SHARE = 0.5f; // a short lane keeps at least half of itself in front of its stop line
 
@@ -70,6 +67,49 @@ std::vector<Arm> network_arms(const CityState &s, int n) {
 	return arms;
 }
 
+// The arms that carry the road a junction is on (the reference game's rule): of every pair of arms at least through_pair_dot apart (one
+// road going on through), those whose lesser priority is the highest; `straightest`: the pair most nearly in line of those alone (one road
+// chosen: the player's signs, the flows, the green wave), else every such pair (an automatic junction: every road of that rank going on
+// through it has the way). None when no two arms are in line.
+std::vector<char> main_arms(const std::vector<Arm> &arms, float through_dot, bool straightest) {
+	std::vector<char> on(arms.size(), 0);
+	bool found = false;
+	int best = 0;
+	float best_dot = 0;
+	size_t pa = 0, pb = 0;
+	for (size_t i = 0; i < arms.size(); i++)
+		for (size_t k = i + 1; k < arms.size(); k++) {
+			const float dot = arms[i].out.dot(arms[k].out);
+			const int rank = std::min(arms[i].priority, arms[k].priority);
+			if (dot >= through_dot || (found && (rank < best || (rank == best && dot >= best_dot)))) continue;
+			found = true;
+			best = rank;
+			best_dot = dot;
+			pa = i;
+			pb = k;
+		}
+	if (!found) return on;
+	on[pa] = on[pb] = 1;
+	for (size_t i = 0; !straightest && i < arms.size(); i++)
+		for (size_t k = i + 1; k < arms.size(); k++)
+			if (arms[i].out.dot(arms[k].out) < through_dot && std::min(arms[i].priority, arms[k].priority) == best) on[i] = on[k] = 1;
+	return on;
+}
+
+// The segments of the road the junction is on (main_arms over the network's arms, what both the traffic and the render read).
+std::vector<int> main_segs(const CityState &s, int n, bool straightest) {
+	const std::vector<Arm> arms = network_arms(s, n);
+	const std::vector<char> on = main_arms(arms, s.catalog.traffic.through_pair_dot, straightest);
+	std::vector<int> out;
+	for (size_t k = 0; k < arms.size(); k++)
+		if (on[k]) out.push_back(arms[k].seg);
+	return out;
+}
+
+// Whether the road the junction is on is chosen by the player's signs (its straightest pair) or by the junction itself on automatic
+// (every road of the highest rank going on through it).
+bool signed_main(const RoadNode &node) { return node.ctl != CTL_AUTO; }
+
 Control decide(const RoadNode &node, const std::vector<Arm> &arms, const TrafficParams &tp) {
 	if (node.crossing != CROSSING_NONE && arms.size() == 2) return node.crossing == CROSSING_SIGNAL ? Control::SIGNAL : Control::PRIORITY;
 	if (node.uturn != UTURN_NONE && arms.size() == 2) return Control::PRIORITY; // who turns back gives way to who goes on (outranks)
@@ -80,13 +120,13 @@ Control decide(const RoadNode &node, const std::vector<Arm> &arms, const Traffic
 		if (a.priority == RING_PRIORITY) return Control::PRIORITY; // a roundabout's entry gives way, and never takes a signal by itself
 	if (node.auto_signal == AUTO_SIGNAL) return Control::SIGNAL; // the flows measured there chose: the geometry only speaks before they do
 	if (node.auto_signal == AUTO_ALL_STOP) return Control::PRIORITY;
-	int lo = arms[0].priority, hi = lo, widest = 0;
-	for (const Arm &a : arms) {
-		lo = std::min(lo, a.priority);
-		hi = std::max(hi, a.priority);
-		widest = std::max(widest, a.lanes);
-	}
-	const Control by_rank = hi > lo ? Control::PRIORITY : Control::NONE;
+	int widest = 0;
+	for (const Arm &a : arms) widest = std::max(widest, a.lanes);
+	// the road the junction is on has the way and whatever joins it gives way; with every arm on it (a crossing of equal roads) or none in
+	// line, nobody has it: by movement and from the right (CTB art. 29 III c)
+	const std::vector<char> on = main_arms(arms, tp.through_pair_dot, false);
+	const bool joined = std::find(on.begin(), on.end(), 1) != on.end() && std::find(on.begin(), on.end(), 0) != on.end();
+	const Control by_rank = joined ? Control::PRIORITY : Control::NONE;
 	if (node.auto_signal == 0) return by_rank;
 	// Before the flows speak: a crossing of signal_arms arms or more runs on signals, and so does a T where one road carries
 	// signal_lanes lanes or more (two each way); a T of narrower streets goes by rank.
@@ -156,25 +196,6 @@ void make_stages(CityState &s, int n, const std::vector<Arm> &arms, Junction &j)
 	j.run_start = s.traffic.time - double((uint32_t(n) * OFFSET_HASH) % OFFSET_STEPS) / OFFSET_STEPS * j.green[0];
 }
 
-int movement(Turn t) {
-	switch (t) {
-		case Turn::STRAIGHT: return 2;
-		case Turn::RIGHT: return 1;
-		case Turn::LEFT: return 0;
-		default: return -1;
-	}
-}
-
-// True when connector `o` goes before connector `c` (rule rank, movement, then whoever comes from the right).
-bool outranks(const LaneGraph &g, const Conn &o, const Conn &c) {
-	int ro = g.ds[o.from_ds].rank, rc = g.ds[c.from_ds].rank;
-	if (ro != rc) return ro > rc;
-	int mo = movement(o.turn), mc = movement(c.turn);
-	if (mo != mc) return mo > mc;
-	V2 hc(c.x1 - c.x0, c.z1 - c.z0), ho(o.cx - o.x0, o.cz - o.z0);
-	return ho.dot(V2(hc.y, -hc.x)) > 0;
-}
-
 } // namespace
 
 void build_junction(CityState &s, int n) {
@@ -196,37 +217,28 @@ void build_junction(CityState &s, int n) {
 	if (j.ctl == Control::SIGNAL) make_stages(s, n, arms, j);
 	file_signal(g, n);
 	if (j.ctl != Control::PRIORITY) return;
-	std::vector<int> order;
-	for (size_t i = 0; i < arms.size(); i++) order.push_back(int(i));
-	std::stable_sort(order.begin(), order.end(), [&](int a, int b) { return arms[a].priority > arms[b].priority; });
-	const int everyone = leg_rule(s.roads.nodes[size_t(n)]);
-	for (size_t k = 0; k < order.size(); k++) {
-		const Arm &a = arms[order[k]];
+	const RoadNode &node = s.roads.nodes[size_t(n)];
+	const std::vector<int> main = main_segs(s, n, signed_main(node)); // the arms the signs read (approach_rule), from the same network
+	const int everyone = leg_rule(node);
+	for (const Arm &a : arms) {
 		if (a.in < 0) continue;
 		const int plate = plate_rule(s.roads, a.seg, n);
-		g.ds[a.in].rank = k < 2 && !plate && !everyone ? RANK_MAIN : RANK_YIELD;
+		const bool on = std::find(main.begin(), main.end(), a.seg) != main.end();
+		g.ds[a.in].rank = on && !plate && !everyone ? RANK_MAIN : RANK_YIELD;
 		g.ds[a.in].must_stop = everyone == RULE_STOP || plate == RULE_STOP;
 	}
 }
 
-std::vector<int> main_legs(const CityState &s, int n) {
-	std::vector<Arm> arms = network_arms(s, n); // build_junction's ranking of arms_of, without the lane graph
-	std::stable_sort(arms.begin(), arms.end(), [](const Arm &a, const Arm &b) { return a.priority > b.priority; });
-	std::vector<int> out;
-	for (size_t k = 0; k < arms.size() && k < MAIN_LEGS; k++) out.push_back(arms[k].seg);
-	return out;
-}
+std::vector<int> main_legs(const CityState &s, int n) { return main_segs(s, n, true); }
 
 int approach_rule(const CityState &s, int n, int seg) {
 	if (control_of(s, n) != Control::PRIORITY) return RULE_NONE;
 	const int plate = plate_rule(s.roads, seg, n);
 	if (plate) return plate;
-	if (const int everyone = leg_rule(s.roads.nodes[size_t(n)])) return everyone;
-	std::vector<Arm> arms = network_arms(s, n); // build_junction's ranking of arms_of, without the lane graph
-	std::stable_sort(arms.begin(), arms.end(), [](const Arm &a, const Arm &b) { return a.priority > b.priority; });
-	for (size_t k = 0; k < arms.size(); k++)
-		if (arms[k].seg == seg) return k < 2 ? RULE_NONE : RULE_YIELD;
-	return RULE_NONE;
+	const RoadNode &node = s.roads.nodes[size_t(n)];
+	if (const int everyone = leg_rule(node)) return everyone;
+	const std::vector<int> main = main_segs(s, n, signed_main(node));
+	return std::find(main.begin(), main.end(), seg) != main.end() ? RULE_NONE : RULE_YIELD;
 }
 
 void replan_signal(CityState &s, int n) {
@@ -255,88 +267,6 @@ void build_junctions(CityState &s) {
 	s.traffic.g.signal_at.assign(s.roads.nodes.size(), 0);
 	for (int n = 0; n < int(s.roads.nodes.size()); n++)
 		if (s.roads.nodes[n].alive) build_junction(s, n);
-}
-
-bool may_enter(const CityState &s, int vid, int ci, float dist) {
-	const TrafficState &t = s.traffic;
-	const TrafficParams &tp = s.catalog.traffic;
-	const Conn &c = t.g.conns[ci];
-	const Vehicle &me = t.vehicles[vid];
-	// road joint (two-way node without control): no junction to block; IDM follows whoever is beyond it
-	if (is_splice(s, c.node)) return true;
-	const float line = dist - t.g.ds[c.from_ds].stop_back;
-	if (light_stops(s, me, c.from_ds, stop_room(tp, line), ci)) return false;
-	if (t.g.ds[c.from_ds].must_stop && me.stood_at != c.from_ds) return false; // a Stop is more than a lower rank: it is taken from a stand
-	if (!has_exit(s, c, vid)) return false;
-	const float top = top_speed(s, me, conn_speed(s, c));
-	if (peds_in_way(s, ci, front_time(s, me, line, top), front_time(s, me, dist + c.len, top))) return false;
-	bool claim = me.wait > tp.claim_after_s;
-	// whoever has waited its share claims the turn: those who can still stop comfortably let it through
-	const bool can_stop = line > me.v * me.v / (2 * tp.claim_brake) + 1;
-	const int mine = body_class(tp, me.type);
-	for (size_t k = 0; k < c.conflicts.size(); k++) {
-		if (conflict_busy(s, c, k, mine)) return false;
-		int holder = pass_holder(s, c.conflicts[k]);
-		if (holder >= 0 && holder != vid) return false; // someone over its line for a crossing connector
-		int oc = c.conflicts[k];
-		if (!claim && can_stop && t.time - t.conn_claim_t[oc] < tp.claim_hold_s) return false;
-		const Conn &o = t.g.conns[oc];
-		if (claim || !outranks(t.g, o, c) || light_for(s, o.from_ds) == Light::RED) continue;
-		const auto &lane = t.lane_vehicles[size_t(o.from_ds) * MAX_LANES + o.from_lane];
-		if (lane.empty()) continue;
-		const Vehicle &head = t.vehicles[lane.back()];
-		float to_line = t.g.ds[o.from_ds].len - head.s;
-		if (to_line >= std::max(tp.yield_near_m, head.v * tp.yield_look_s) || pick_connector(s, head) != oc) continue;
-		if (head.v < STOPPED_MS && !has_exit(s, o, lane.back())) continue; // it cannot go anyway
-		bool both_stopped = head.v < STOPPED_MS && me.v < STOPPED_MS;
-		if (both_stopped && me.wait > head.wait + FIRST_COME_S) continue; // first come, first served
-		return false;
-	}
-	return true;
-}
-
-Hold hold_reason(const CityState &s, int vid) {
-	const TrafficState &t = s.traffic;
-	const Vehicle &v = t.vehicles[vid];
-	if (v.conn >= 0) return Hold::ON_CONNECTOR;
-	const auto &lane = t.lane_vehicles[size_t(v.ds) * MAX_LANES + v.lane];
-	if (lane.empty() || lane.back() != vid) return Hold::QUEUED;
-	int ci = pick_connector(s, v);
-	if (ci < 0) return Hold::FREE;
-	const Conn &c = t.g.conns[ci];
-	if (c.from_lane != v.lane) return Hold::WRONG_LANE;
-	if (light_for(s, c.from_ds) != Light::GREEN) return Hold::RED;
-	if (!is_splice(s, c.node) && !has_exit(s, c, vid)) return Hold::EXIT_ROOM;
-	if (peds_in_way(s, ci)) return Hold::CROSSING;
-	for (size_t k = 0; k < c.conflicts.size(); k++)
-		if (conflict_busy(s, c, k, body_class(s.catalog.traffic, v.type))) return Hold::CONFLICT_BUSY;
-	return may_enter(s, vid, ci, t.g.ds[v.ds].len - v.s) ? Hold::FREE : Hold::YIELD;
-}
-
-int lane_head(const CityState &s, int vid) {
-	const Vehicle &v = s.traffic.vehicles[vid];
-	if (v.ds < 0) return -1;
-	const auto &lane = s.traffic.lane_vehicles[size_t(v.ds) * MAX_LANES + v.lane];
-	return lane.empty() ? -1 : lane.back();
-}
-
-int connector_to(const CityState &s, int ds, int lane, int next, int cls) {
-	const LaneGraph &g = s.traffic.g;
-	const size_t key = size_t(ds) * MAX_LANES + lane;
-	if (ds < 0 || key >= g.lane_conn.size()) return -1;
-	int best = -1, bd = MAX_LANES * 2;
-	for (int ci = g.lane_conn[key]; ci >= 0; ci = g.conns[size_t(ci)].next_from) {
-		const Conn &c = g.conns[size_t(ci)];
-		if (!c.alive || c.to_ds != next || c.max_class < cls) continue;
-		int d = std::abs(c.from_lane - lane);
-		if (d < bd) { bd = d; best = ci; }
-	}
-	return best;
-}
-
-int pick_connector(const CityState &s, const Vehicle &v) {
-	if (v.ds < 0 || v.ri + 1 >= v.route.len) return -1;
-	return connector_to(s, v.ds, v.lane, route_at(s.traffic.route_pool, v.route, v.ri + 1), body_class(s.catalog.traffic, v.type));
 }
 
 } // namespace traffic

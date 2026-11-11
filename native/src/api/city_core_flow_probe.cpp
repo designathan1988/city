@@ -76,6 +76,7 @@ Dictionary CityProbes::flow_push(int n, int seconds) {
 	s.camera_x.store(float(node.x));
 	s.camera_z.store(float(node.z));
 	const std::vector<int> main = traffic::main_legs(s, n);
+	if (main.size() < 2) return flow_state(n); // no road goes through it: no major flow to push
 	int minor = -1;
 	for (int seg : node.segs)
 		if (seg != main[0] && seg != main[1]) minor = seg;
@@ -101,6 +102,10 @@ Dictionary CityProbes::flow_state(int n) {
 	out["advised"] = c.advised.size();
 	out["choice"] = n >= 0 ? name_of(c.advisor->choice(n)) : "none";
 	out["signal"] = n >= 0 && traffic::control_of(s, n) == Control::SIGNAL;
+	int giving_way = 0; // the arms whose traffic gives way there (a yield or a stop plate: approach_rule), the others have the way
+	if (n >= 0 && n < int(s.roads.nodes.size()))
+		for (int seg : s.roads.nodes[size_t(n)].segs) giving_way += traffic::approach_rule(s, n, seg) != RULE_NONE ? 1 : 0;
+	out["giving_way"] = giving_way;
 	return out;
 }
 

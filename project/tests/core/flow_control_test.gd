@@ -30,6 +30,8 @@ const PX := 0.25
 const SETTLE_TICKS := 4
 const SIGNAL_POST := 0 # furniture_types.h FurnitureKind::SIGNAL
 const FURNITURE_SAMPLE := 1 # traffic_probe counts the street furniture only with a sample
+const T_ARMS := 3
+const T_JOINING := 1 # at a T the stem joins the road the junction is on
 
 func _ready() -> void:
 	var rig := CityCamera.new()
@@ -87,8 +89,9 @@ func _road(a: Vector3, e: Vector3, profile: int) -> void:
 	check(r.get("ok", false), "road %s -> %s laid: %s" % [a, e, r])
 
 
-## The junction at `at`: its arms as the inspector counts them, and whether the core runs it on signals. Returns its node (-1:
-## no junction of those arms there).
+## The junction at `at`: its arms as the inspector counts them, and whether the core runs it on signals. Without one, the road
+## the junction is on has the way and every arm joining it gives way (the reference game's rule): at a T the stem alone. Returns
+## its node (-1: no junction of those arms there).
 func _signal_at(at: Vector3, arms: int, signalled: bool, what: String) -> int:
 	ticks(SETTLE_TICKS)
 	var node: Dictionary = CityStore.query(&"inspect", [at])
@@ -96,6 +99,8 @@ func _signal_at(at: Vector3, arms: int, signalled: bool, what: String) -> int:
 		return -1
 	var state: Dictionary = CityStore.query(&"flow_state", [node.id])
 	check(state.signal == signalled, "%s: %s" % [what, "a signal" if signalled else "no signal"])
+	if not signalled and arms == T_ARMS:
+		check(int(state.giving_way) == T_JOINING, "%s: the stem gives way, the road it meets has the way: %d arms give way" % [what, state.giving_way])
 	return node.id
 
 
