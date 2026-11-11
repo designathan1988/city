@@ -10,7 +10,7 @@ written to (J9). Module-level statements are read by `js_decl`, statements by `j
 """
 from __future__ import annotations
 
-from . import ir_js, js_body, js_class, js_decl, scopes
+from . import ir_js, js_body, js_class, js_decl, js_types, scopes
 from .model import ClassFact, FileFacts, Unit, add_ref, declare, enclose
 from .rules import CONSTRUCTOR
 from .source import Source, field_of, grammar_of, named_children
@@ -18,7 +18,6 @@ from .source import Source, field_of, grammar_of, named_children
 FUNCTION_NODES = ir_js.FUNCTIONS
 
 STATIC_UNIT, MODULE_UNIT = "<static>", "<module>"
-NO_TYPES = ("null", "undefined", "void", "never", "any", "unknown")
 
 
 class JsReader:
@@ -31,6 +30,7 @@ class JsReader:
         self.declaration_file = src.display.endswith((".d.ts", ".d.mts", ".d.cts"))
         self.scopes = []                 # the blocks of the function being read (`scopes`)
         self.base = 0                    # the index of the function's own scope among them
+        self.type_params = []            # the type parameters of the generic declarations being read, innermost last
 
     def run(self) -> FileFacts:
         root = self.src.parse(grammar_of(self.src.path))
@@ -64,6 +64,7 @@ class JsReader:
         if node.start_byte in self._lambdas:
             return self.facts.units[self._lambdas[node.start_byte]]
         unit = self.unit(kind, name, owner, node)
+        unit.generator = any(c.type == "*" for c in node.children)     # `function*`, `*name()`, `async *name()` (J5)
         self._lambdas[node.start_byte] = unit.local_id
         nested = outer is not None and outer.name != MODULE_UNIT
         if nested:
@@ -73,9 +74,11 @@ class JsReader:
         if nested:
             scopes.open_scope(self)
             self.base = len(self.scopes) - 1                    # its own scope: where its `var`s go
+        self.type_params.append(js_types.parameters(self, node))
         try:
             self.function_body(node, unit)
         finally:
+            self.type_params.pop()
             if nested:
                 scopes.close_scope(self)
             self.scopes, self.base = saved, base
@@ -84,6 +87,7 @@ class JsReader:
     def function_body(self, node, unit: Unit) -> None:
         ret = field_of(node, "return_type")
         unit.type_text = self.type_text(ret) if ret is not None else ""
+        unit.declared = js_types.values(self, ret, unit) if ret is not None else []      # T3
         self.params(field_of(node, "parameters") or field_of(node, "parameter"), unit)
         body = field_of(node, "body")
         if body is None:
@@ -119,7 +123,7 @@ class JsReader:
                 unit.variadic = True
             slot = self.src.text(pattern) if pattern.type == "identifier" else f"<arg{i}>"
             unit.params.append(slot)
-            declared = self.type_values(field_of(p, "type"))
+            declared = self.type_values(field_of(p, "type"), unit)
             declare(self, unit, slot, declared + ([self.ir(default, unit)] if default is not None else []), param=True)
             if pattern.type != "identifier":
                 self.bind(pattern, ("name", slot), unit, None, ())
@@ -161,7 +165,7 @@ class JsReader:
         elif write_cond is not None:                            # a member or element written through a pattern
             js_body.target(self, pattern, unit, cond, tree)
 
-    # ---- types (J8): a declared type names the classes a value can be ---------------------------------------------
+    # ---- types (J8, T1-T3): a declared type names the values it allows; the text is kept for display only ---------
     def type_text(self, annotation) -> str:
         node = annotation
         if node is not None and node.type in ("type_annotation", "opting_type_annotation", "omitting_type_annotation",
@@ -169,18 +173,13 @@ class JsReader:
             node = (named_children(node) or [None])[0]
         return " ".join(self.src.text(node).split()) if node is not None else ""
 
-    def type_values(self, annotation) -> list[tuple]:
-        """A type annotation as the values it allows: each member of a union; `T[]` as an array of T."""
-        text = self.type_text(annotation)
-        out = []
-        for part in split_union(text):
-            part = part.strip().strip("()").strip()
-            if not part or part in NO_TYPES:
-                continue
-            if part.endswith("[]"):
-                part = f"Array<{part[:-2]}>"
-            out.append(("cast", part))
-        return out
+    def type_values(self, annotation, unit: Unit) -> list[tuple]:
+        """A type annotation as the value trees it allows (`js_types`)."""
+        return js_types.values(self, annotation, unit) if annotation is not None else []
+
+    def type_scope(self) -> set:
+        """The type parameters visible where the reader is (every enclosing generic declaration's)."""
+        return set().union(*self.type_params) if self.type_params else set()
 
     # ---- classes and objects ----------------------------------------------------------------------------------
     def class_value(self, node, unit: Unit) -> str:
@@ -210,21 +209,6 @@ class JsReader:
             if unit.owner == key and unit.name == STATIC_UNIT:
                 return unit
         return self.unit("func", STATIC_UNIT, key, node)
-
-
-def split_union(text: str) -> list[str]:
-    """`A | B<C | D>` as ["A", "B<C | D>"]: the union's members outside every bracket."""
-    parts, depth, start = [], 0, 0
-    for i, c in enumerate(text):
-        if c in "<([{":
-            depth += 1
-        elif c in ">)]}":
-            depth -= 1
-        elif c == "|" and depth == 0:
-            parts.append(text[start:i])
-            start = i + 1
-    parts.append(text[start:])
-    return parts
 
 
 def read_js(src: Source) -> FileFacts:

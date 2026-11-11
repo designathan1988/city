@@ -52,6 +52,9 @@ class Pending(FixtureCase):
     def test_direct_initialization_carries_the_arguments(self):
         self.assertIn("fx::use.<lambda:78>", self.names("fx::Facing::run"))
 
+    def test_binary_star_is_multiplication(self):
+        self.assertIn("fx::W::go", self.names("fx::scale"))   # (a * b) is what V::operator* returns (O2)
+
     def test_destruction(self):
         owner = self.names("fx::Owner::~Owner")
         self.assertTrue({"fx::Pool::~Pool", "fx::Part::~Part", "fx::Base::~Base"} <= owner)

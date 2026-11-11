@@ -4,7 +4,7 @@ namespaces, type aliases and ambient declarations (`declare`, `declare global`, 
 """
 from __future__ import annotations
 
-from . import ir_js, js_body, js_class
+from . import ir_js, js_body, js_class, js_types
 from .model import ClassFact
 from .source import field_of, named_children, string_value
 
@@ -123,7 +123,11 @@ def declaration(r, node, owner: str, holder) -> list[str]:
         key = new_class(r, node, name, owner)
         for clause in (c for c in named_children(node) if c.type == "extends_type_clause"):
             r.facts.classes[-1].bases += [r.src.text(t) for t in named_children(clause)]
-        js_class.members(r, field_of(node, "body"), key, None)
+        r.type_params.append(js_types.parameters(r, node))           # its type parameters are erased (T1)
+        try:
+            js_class.members(r, field_of(node, "body"), key, None)
+        finally:
+            r.type_params.pop()
         return [name]
     if kind == "enum_declaration":
         key = new_class(r, node, name, owner)
@@ -196,7 +200,7 @@ def variables(r, node, owner: str, holder) -> list[str]:
             continue
         unit = r.unit("const" if const else "var", name, owner, declarator)
         unit.type_text = r.type_text(field_of(declarator, "type"))
-        unit.values += r.type_values(field_of(declarator, "type"))
+        unit.values += r.type_values(field_of(declarator, "type"), unit)
         if value is not None:
             unit.values.append(r.ir(value, unit))
             js_body.expr(r, value, holder, ())

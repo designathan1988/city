@@ -113,7 +113,10 @@ HANDLERS = {
     "SIGNAL": ("link:connect", "js_link:listen", "js_link:fire", "js_expr:events"),
     "BIND": ("cpp_expr:registration", "index:Index.bind", "resolve:Resolver.engine_members"),
     "ENTRY": ("walk:entry_reason", "js_decl:module_body"),
-    "TYPE": ("typer:Typer.type_class", "js_read:JsReader.type_values"),
+    "TYPE": ("typer:Typer.type_class", "js_read:JsReader.type_values", "js_types:values", "js_types:written",
+             "js_library:canonical", "js_library:step", "js_library:member", "js_library:awaited",
+             "types_of:TypeNames.canon", "transfer:awaits", "transfer:constructs", "transfer:indexed",
+             "transfer:iterated"),
 }
 
 # Callables built from an object and a method name (G7): constructor -> (object argument, name argument).

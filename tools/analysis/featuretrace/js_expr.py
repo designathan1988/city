@@ -3,7 +3,7 @@
 Every name read, member read or written, call and `new` becomes a reference with its receiver and arguments kept as
 trees. The language's own calls are references too, marked implicit (silent when nothing of the program answers):
 `[Symbol.iterator]` for spread and `yield*`, `then` for `await`, `valueOf`/`toString`/`[Symbol.toPrimitive]` for
-arithmetic, comparison and template substitutions (J5). Events by type: subscribing (`addEventListener`, `on`, ...)
+arithmetic, comparison and template substitutions (J5). A `yield` records what its generator gives. Events by type: subscribing (`addEventListener`, `on`, ...)
 and firing (`dispatchEvent`, `emit`, `postMessage`) (J6). A capitalized JSX tag is a component handed to the JSX
 runtime (J10). `f.call(t, ...)` / `f.apply(t, a)` call f with the arguments after t (J2).
 """
@@ -93,8 +93,11 @@ def expression(r, node, unit, cond) -> None:
     elif kind in ("spread_element", "yield_expression"):
         inner = (named_children(node) or [None])[0]
         expression(r, inner, unit, cond)
-        if kind == "spread_element" or any(c.type == "*" for c in node.children):
+        delegated = any(c.type == "*" for c in node.children)
+        if kind == "spread_element" or delegated:
             implicit(r, node, ITERATOR_MEMBER, inner, unit, cond)
+        if kind == "yield_expression" and inner is not None:    # what the generator gives (J5): `yield* e` e's elements
+            unit.yields.append(("elements", r.ir(inner, unit)) if delegated else r.ir(inner, unit))
     elif kind in FUNCTION_VALUES:
         r.add(unit, "lambda", "", node, cond, target=r.lambda_id(node, unit))
     elif kind == "class":

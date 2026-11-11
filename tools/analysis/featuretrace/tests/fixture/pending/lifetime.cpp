@@ -79,4 +79,15 @@ void use() {
 	Holder h;
 }
 
+// Binary `*` is multiplication: the operator* of two operands, whatever it returns (O2).
+struct W {
+	void go() {}
+};
+
+struct V {
+	W operator*(const V &o) const { return W(); }
+};
+
+void scale(V a, V b) { (a * b).go(); }
+
 }  // namespace fx

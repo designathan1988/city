@@ -71,6 +71,9 @@ class Unit:
     values: list = field(default_factory=list)     # a variable's or field's initializer trees
     lambdas: dict = field(default_factory=dict)    # local name -> lambda local id
     type_text: str = ""            # a variable's declared type, a function's declared return type
+    declared: list = field(default_factory=list)   # js: the value trees a function's return annotation allows (T3)
+    generator: bool = False        # js: `function*`: a call gives a generator object, whose iteration gives its yields
+    yields: list = field(default_factory=list)     # js: what each `yield` gives (`yield* e`: e's elements)
     refs: list = field(default_factory=list)
     returns: list = field(default_factory=list)    # (line, expression text, tree) of each return
     static: bool = False

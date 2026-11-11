@@ -1,9 +1,11 @@
 """TYPE (log/trace-rules.md): the class a type text names, seen from where it is read, and a value's one canonical
 form (a type naming a class of the program is that class). A class template's member has its parameters replaced by
-the arguments written. The typer (`typer.Typer`) is built on this.
+the arguments written. A JavaScript text is resolved when the value is made (T1-T3): a class, a container of the
+language with its arguments resolved (`js_library`), or nothing. The typer (`typer.Typer`) is built on this.
 """
 from __future__ import annotations
 
+from . import js_library
 from .cpp_names import strip_templates
 from .library import clean, substitute
 from .solver import CLASS, ELEM, ENGINE, FN, TEXT
@@ -12,11 +14,15 @@ from .solver import CLASS, ELEM, ENGINE, FN, TEXT
 class TypeNames:
     def canon(self, text: str, ctx) -> tuple:
         """A value in its one form: a type that names a class of the program (and carries no template argument) is
-        that class, whatever unit it was read in."""
+        that class, whatever unit it was read in; a JavaScript type with no runtime value is no value ("")."""
         if text.startswith(ELEM):
             inner, where = self.canon(text[len(ELEM):], ctx)
-            return ELEM + inner, where
-        if text == ENGINE or text.startswith((CLASS, FN, TEXT)) or "<" in text or "[" in text:
+            return (ELEM + inner if inner else ""), where
+        if text == ENGINE or text.startswith((CLASS, FN, TEXT)):
+            return text, ctx
+        if ctx.lang == "js":
+            return js_library.canonical(text, lambda name: self.type_class(name, ctx)), ctx
+        if "<" in text or "[" in text:
             return text, ctx
         key = self.type_class(text, ctx)
         return (CLASS + key, ctx) if key else (text, ctx)
@@ -26,6 +32,8 @@ class TypeNames:
             return None
         if text.startswith(CLASS):
             return text[1:]
+        if ctx.lang == "js" and js_library.is_container(text):
+            return None                                     # a container of the language, never a class of the program
         if ctx.lang == "cpp" and ctx.local_types:          # a class of the function it is read in ([class.local])
             local = ctx.local_types.get(strip_templates(clean(text)))
             if local:

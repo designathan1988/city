@@ -8,12 +8,14 @@ Shapes (tuples, so facts stay picklable and comparable):
   ("op", op, left, right)        a binary operator
   ("unary", op, operand)
   ("cast", type_text)            a value of that type (casts, `as`, makers, `preload`: "path:<file>")
-  ("new", type_text)             a constructed object of that type
+  ("new", type_text)             a constructed object of that type (C++, GDScript)
+  ("construct", e)               JS `new e(...)`: e evaluated (a class's instance, a function's returned objects)
   ("callable", lambda_local_id)  a lambda as a value
   ("literal", type_text)         a literal ("" when the language's own)
   ("union", a, b)                either value (a ternary)
   ("collection", values)         a container literal holding these values
   ("elements", e)                what walking `e` yields (a loop variable)
+  ("each", e)                    what a container's own iteration hands a callback (forEach, map: a Map's values)
   ("put", e)                     a value put into a container (an element)
   ("await", e)                   what awaiting `e` gives
   ("strname", s)                 a name written as a string (NAME)

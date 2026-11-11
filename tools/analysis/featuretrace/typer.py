@@ -14,6 +14,7 @@ Type texts: a type as written, CLASS + key (a class of the program), FN + gid (a
 from __future__ import annotations
 
 from . import names, transfer
+from .js_library import EACH
 from .library import DEREF, ITEM, ITER, passes_through
 from .model import ENGINE_CALLBACKS, FUNCTION_KINDS
 from .rules import CALLABLE_CONSTRUCTORS, NAME_CONSTRUCTORS
@@ -24,7 +25,7 @@ CALLABLE_CALLS = transfer.CALLABLE_CALLS
 NO_VALUE = ("void", "Variant", "auto", "decltype(auto)", "")
 ARG, HELD, ENGINE_CALLED, HOLD, RET = "#arg", "#held", "#engine", "#hold", "#ret"
 COMPUTED = "#computed"
-STEPS = {"index": ITEM, "elements": ITER, "deref": DEREF}
+STEPS = {"index": ITEM, "elements": ITER, "deref": DEREF, "each": EACH}
 CONSTANT_SHAPES = ("cast", "new", "callable", "self", "super", "strname", "module")
 
 
@@ -72,10 +73,18 @@ class Typer(TypeNames, Solver):
             self.wire_call(node, tree[1], tree[2], unit)
         elif kind == "#plain":                    # a by-name call's ordinary reading, its fallback
             self.wire_plain_call(node, tree[1], tree[2], unit)
+        elif kind == "index" and unit.lang == "js":   # `o[k]`: the object's and the key's values together (T4')
+            base, key = self.node_of(tree[1], unit), self.node_of(tree[2], unit)
+            self.subscribe(base, node, ("index", key), transfer.indexed(self, key, True))
+            self.subscribe(key, node, ("index", base), transfer.indexed(self, base, False))
         elif kind in STEPS:
             self.subscribe(self.node_of(tree[1], unit), node, ("step", STEPS[kind]), transfer.steps(self, STEPS[kind]))
+        elif kind in ("op", "unary") and unit.lang == "js":
+            self.add(node, [(ENGINE, unit)])      # a number, a BigInt or a string: the language's value (O1)
         elif kind in ("op", "unary"):
             self.subscribe(self.node_of(tree[2], unit), node, ("op", tree[1]), transfer.operators(self, tree[1]))
+        elif kind == "construct":                 # JS `new X(...)`: X evaluated (N1)
+            self.subscribe(self.node_of(tree[1], unit), node, ("construct",), transfer.constructs(self))
         elif kind == "union":
             self.follow(self.node_of(tree[1], unit), node)
             self.follow(self.node_of(tree[2], unit), node)
@@ -85,8 +94,10 @@ class Typer(TypeNames, Solver):
                 self.subscribe(self.node_of(value, unit), node, ("elem",), transfer.elements(self))
         elif kind == "put":
             self.subscribe(self.node_of(tree[1], unit), node, ("elem",), transfer.elements(self))
-        elif kind in ("await", "addr"):
+        elif kind == "addr":
             self.follow(self.node_of(tree[1], unit), node)
+        elif kind == "await":                     # what the value resolves to (a JS promise's type argument, T2)
+            self.subscribe(self.node_of(tree[1], unit), node, ("await",), transfer.awaits(self))
         elif kind in CONSTANT_SHAPES:
             self.add(node, self.constant(tree, unit))
         else:
@@ -224,8 +235,8 @@ class Typer(TypeNames, Solver):
             if unit.kind in FUNCTION_KINDS:
                 self.add(node, [(FN + str(unit.gid), unit)])
                 return node
-            if unit.type_text and unit.type_text not in NO_VALUE:
-                self.add(node, [(unit.type_text, unit)])
+            if unit.type_text and unit.type_text not in NO_VALUE and unit.lang != "js":
+                self.add(node, [(unit.type_text, unit)])      # a JS annotation's values are trees in `values` (T3)
             for tree in unit.values:
                 self.follow(self.node_of(tree, unit), node)
             self.follow((HELD, unit.gid), node)
@@ -239,8 +250,14 @@ class Typer(TypeNames, Solver):
             self.value.setdefault(node, [])
             if unit.type_text == "void":
                 return node
-            if unit.type_text and unit.type_text not in NO_VALUE:
+            if unit.type_text and unit.type_text not in NO_VALUE and unit.lang != "js":
                 self.add(node, [(unit.type_text, unit)])
+            for tree in unit.declared:                    # a JS return annotation's values (T3)
+                self.follow(self.node_of(tree, unit), node)
+            if unit.generator:                            # the generator object: its iteration gives the yields (J5)
+                for tree in unit.yields:
+                    self.subscribe(self.node_of(tree, unit), node, ("elem",), transfer.elements(self))
+                return node
             for _, _, tree in unit.returns:
                 self.follow(self.node_of(tree, unit), node)
         return node

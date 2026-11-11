@@ -24,9 +24,10 @@ SAME = ("same",)           # the key of an identity subscription: the target hol
 
 def identity(text: str, ctx) -> tuple:
     """What makes two values the same: a class, a function, a text or an engine value is itself; a type as written
-    is itself in the scope it is read in (the class and file, not each unit)."""
+    is itself in the scope it is read in (the class and file, not each unit); a JavaScript value is itself, its names
+    resolved when it was made (T3)."""
     core = text[len(ELEM):] if text.startswith(ELEM) else text
-    if core == ENGINE or core.startswith((CLASS, FN, TEXT)):
+    if core == ENGINE or core.startswith((CLASS, FN, TEXT)) or ctx.lang == "js":
         return (text,)
     return (text, ctx.lang, ctx.owner, ctx.file)
 
@@ -77,6 +78,8 @@ class Solver:
             if not text:
                 continue
             text, ctx = self.canon(text, ctx)
+            if not text:
+                continue                   # a type with no runtime value (erased, T1)
             key = identity(text, ctx)
             if key not in known:
                 known.add(key)
@@ -141,6 +144,10 @@ class Solver:
             if reads == self.substitution[2]:
                 return list(self.substitution[1])
         return list(held)
+
+    def held(self, node) -> list:
+        """A node's values as a transfer reads another node beside its source (no consumer reads it)."""
+        return list(self.value.get(self.find(node), ()))
 
     def take_deltas(self, consumer) -> dict:
         """The values each node the consumer read gained since it read it (values only grow: the tail of the list),

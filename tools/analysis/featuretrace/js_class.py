@@ -8,7 +8,7 @@ class of its own whose values are read where it is written (J9); a spread adds t
 """
 from __future__ import annotations
 
-from . import ir_js, js_body, js_decl
+from . import ir_js, js_body, js_decl, js_types
 from .model import ClassFact, declare, enclose
 from .rules import CONSTRUCTOR
 from .source import field_of, named_children
@@ -37,12 +37,16 @@ def class_declaration(r, node, name: str, owner: str, holder) -> str:
     body = field_of(node, "body")
     explicit = next((m for m in named_children(body) if m.type == "method_definition"
                      and ir_js.member_name(r.src, field_of(m, "name")) == CONSTRUCTOR), None) if body else None
-    if explicit is not None:
-        r.function(explicit, CONSTRUCTOR, key, outer)
-    r.constructor_of(key, node)
-    for decorator in (c for c in named_children(node) if c.type == "decorator"):
-        js_body.decorator(r, decorator, r.static_of(key, node))
-    members(r, body, key, outer, node)
+    r.type_params.append(js_types.parameters(r, node))      # the class's type parameters are erased (T1)
+    try:
+        if explicit is not None:
+            r.function(explicit, CONSTRUCTOR, key, outer)
+        r.constructor_of(key, node)
+        for decorator in (c for c in named_children(node) if c.type == "decorator"):
+            js_body.decorator(r, decorator, r.static_of(key, node))
+        members(r, body, key, outer, node)
+    finally:
+        r.type_params.pop()
     return key
 
 
@@ -70,7 +74,7 @@ def members(r, body, key: str, outer, class_node=None) -> None:
             field = field_unit(r, key, name, member, outer)
             field.static = static
             field.type_text = r.type_text(field_of(member, "type"))
-            field.values += r.type_values(field_of(member, "type"))
+            field.values += r.type_values(field_of(member, "type"), field)
             if value is not None:
                 field.values.append(r.ir(value, field))
                 runner = r.static_of(key, member) if static else r.constructor_of(key, class_node or member)

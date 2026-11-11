@@ -46,7 +46,8 @@ class Index:
                 self.units.append(unit)
                 self.by_name[unit.name].append(unit.gid)
                 self.by_qual[unit.qual].append(unit.gid)
-                self.members[unit.owner][unit.name].append(unit.gid)
+                if unit.kind != "lambda":         # a function written in a function is its local, no member (L1)
+                    self.members[unit.owner][unit.name].append(unit.gid)
                 if unit.lang == "cpp" and unit.virtual:
                     self.virtual_quals.add(unit.qual)
             for cls in facts.classes:

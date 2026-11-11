@@ -8,6 +8,7 @@ and the ternary hold either side; `as`/`satisfies`/`!`/`<T>` keep the value with
 """
 from __future__ import annotations
 
+from . import js_types
 from .ir import LITERAL, name, union
 from .rules import BIND_FORMS, CALL_FORMS
 from .source import field_of, named_children, string_value
@@ -92,10 +93,9 @@ def _call(r, node, unit):
 
 
 def _new(r, node, unit):
-    ctor = field_of(node, "constructor")
-    if ctor is not None and ctor.type in ("identifier", "member_expression", "nested_identifier"):
-        return ("new", " ".join(r.src.text(ctor).split()))
-    return build(r, ctor, unit)
+    """`new X(...)`: X is an expression; its value decides what is made (N1: a class's instance, what a function
+    called as a constructor returns, the host's object)."""
+    return ("construct", build(r, field_of(node, "constructor"), unit))
 
 
 def _binary(r, node, unit):
@@ -116,11 +116,13 @@ def _unary(r, node, unit):
 
 
 def _typed(r, node, unit):
-    """`x as T`, `x satisfies T`, `<T>x`: the value itself, and a value of the type named (types are erased, J8)."""
+    """`x as T`, `x satisfies T`, `<T>x`: the value itself, and what the type named allows (erased, J8, T1-T2)."""
     kids = named_children(node)
     value = build(r, kids[0], unit) if kids else LITERAL
     types = [k for k in kids[1:] if k.type not in ("comment",)]
-    return union(value, ("cast", " ".join(r.src.text(types[0]).split()))) if types else value
+    for tree in js_types.values(r, types[0], unit) if types else []:
+        value = union(value, tree)
+    return value
 
 
 def _inner(r, node, unit):

@@ -21,18 +21,12 @@ class Site:
         self.line, self.cond, self.args = ref.line, ref.cond, tuple(args)
 
 
-def classes_of(rs, tree, unit) -> list[str]:
-    keys = []
-    for text, ctx in rs.typer.evaluate(tree, unit):
-        key = rs.typer.type_class(text, ctx)
-        if key and key not in keys:
-            keys.append(key)
-    return keys
-
-
 def constructors(rs, unit, ref) -> list[int]:
-    """`new C(...)`: C's `constructor`, or the nearest base's (the default constructor calls it, J4)."""
-    return [g for key in classes_of(rs, ref.base, unit) for g in rs.keep(rs.ix.lookup(key, CONSTRUCTOR), "func", unit.file)]
+    """`new C(...)`: C's `constructor`, or the nearest base's (the default constructor calls it, J4); a function
+    used with `new` is called as a constructor (N1)."""
+    keys, _, functions = rs.typer.receiver(ref.base, unit)
+    found = [g for key in keys for g in rs.keep(rs.ix.lookup(key, CONSTRUCTOR), "func", unit.file)]
+    return list(dict.fromkeys(found + functions))
 
 
 def module_run(rs, unit, ref) -> None:
@@ -91,11 +85,11 @@ def callback_args(unit, ref) -> tuple:
     spec = HIGHER_ORDER.get(ref.name) if unit.lang == "js" and ref.base is not None else None
     if spec is None:
         return ()
-    values = {ELEMENTS: ("elements", ref.base), AWAITED: ("await", ref.base), ENGINE_VALUE: LITERAL}
+    values = {ELEMENTS: ("each", ref.base), AWAITED: ("await", ref.base), ENGINE_VALUE: LITERAL}
     out = []
-    for part in spec:
+    for part in spec:                     # `each`: the element a container's own iteration hands (a Map's value, T2)
         if part == ACCUMULATOR:
-            out.append(("union", ref.args[1], ("elements", ref.base)) if len(ref.args) > 1 else ("elements", ref.base))
+            out.append(("union", ref.args[1], ("each", ref.base)) if len(ref.args) > 1 else ("each", ref.base))
         else:
             out.append(values[part])
     return tuple(out)

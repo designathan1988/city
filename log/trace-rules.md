@@ -494,3 +494,47 @@ factories and the methods that read their products are analysed per context (arg
 product of Agesen's CPA, selected by flow patterns as Zipper does). That is a new value model for the tracer, not a rule
 added to the present one; the decision is the owner's (systematic-debugging: a fix that needs an architectural change
 is discussed first).
+
+## JavaScript and TypeScript values by the languages' own rules (research, 2026-11-11 07:20)
+
+Found by reading the solver's state on the lab (probe of the links at 0.5, 1.0 and 1.5 M): at 1.5 M, 1 175 689 links
+are `handed` links to draco's minified inner functions (`x`, `z`, `h`, `b`, ...), 21 228 value nodes hold 1 000 or more
+values, and a parameter that holds one class (`b: Building`) holds 2 279: raw annotation texts (`Building | null`, `T`,
+`unknown`, `Frame`), each a value of its own in every file and class it is written in, and `std::pair<Building, void>`
+made by the C++ library's rule. Read in the code: `JsModules.globals` takes every unit a script owns (its inner
+functions too); `Index.members` takes every unit, lambdas included; `Typer.hold_node`/`ret_node` add a unit's raw
+`type_text`; `transfer.operator_one` treats a binary `*` as dereference and passes the operands of JS arithmetic
+through; `new X()` in JS is the text `X` (a variable holding classes, or a function, gives nothing).
+
+Sources: MDN `new` (a function is called as a constructor with `this` a new object; a non-primitive it returns is the
+result, https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/new); MDN Global object, `var`,
+`function` (only top-level `var` and function declarations of a script are global; a declaration in a function is its
+local; modules have their own scope); MDN arithmetic and bitwise operators (operands coerced to numeric or string
+values: the result is a number, a BigInt or, for `+`, a string); MDN Map (iteration yields `[key, value]` arrays,
+`get` the value); TypeScript handbook, "Erased Types" (annotations are removed and never change the program's behaviour;
+interfaces, aliases and type parameters have no runtime value).
+
+| Rule | What the tracer does |
+|---|---|
+| L1 A function written inside a function is that function's local (C++ [expr.prim.lambda], GDScript lambdas, JS function declarations and expressions) | a lambda unit is never a member of the class, namespace or module around it: it is reached through the enclosing function's local (`unit.lambdas`) or the value that holds it |
+| L2 A classic script's global scope | its top-level declarations only (`var`, `let`, `const`, `function`, `class`), never a function written inside a function |
+| T1 Types are erased | an annotation gives what it names that has a runtime value: a class of the program, each member of a union or intersection, `typeof x` the value of `x`; containers of the language as containers of their element type (below); a type parameter, primitive, literal, function, object or tuple type, `keyof`, an indexed, conditional or mapped type, or a name that names no class gives no value: the values come from the flows |
+| T2 The language's containers (ECMAScript built-ins) | `T[]`, `readonly T[]`, `Array`, `ReadonlyArray`, `Set`, `ReadonlySet`, `WeakSet`, `Iterable`, `IterableIterator`, `Iterator`, `Generator`, `AsyncIterable`, `AsyncIterableIterator`, `AsyncGenerator`, `ArrayLike` of T: index, iteration and the element calls give T; a tuple `[A, B]`: A or B; `Map`, `ReadonlyMap`, `WeakMap` of K, V: `get` and `values` give V, `keys` K, iteration and `entries` give `[K, V]` arrays; `Record<K, V>` and an index signature: a member or index gives V; `Promise`/`PromiseLike` of T: `await` and `then`'s callback give T; `Partial`, `Readonly`, `Required`, `NonNullable`, `Awaited`, `Pick`, `Omit` of T: T |
+| T3 A declared return type | the function's returns hold what T1 and T2 give for it; a unit's annotation text is never itself a value, and a JS value never depends on the file it is read in (its names are resolved when it is made) |
+| O1 JS operators | arithmetic, bitwise, exponent and unary numeric operators give the language's primitive value; `valueOf`/`toString` stay implicit calls (J5); `??`, `||`, `&&` and the ternary keep their operands (already) |
+| O2 Binary `*` | multiplication in every language (C++ `operator*` of two operands); dereference is the unary form (`deref`) only |
+| N1 `new X(...)` | X is evaluated: a class gives its instance (and its constructor is called, as before); a function is called as a constructor (linked as `new`, its arguments flow) and gives the objects it returns; anything else is the host's constructor (the language's value) |
+| T4 A computed property `o[k]` (MDN property accessors) | on an object of the program: any of its class's (and bases') properties; a string key written is a member read (already) |
+| J5' The iteration protocol (MDN Iteration protocols, `function*`) | for-of, spread and `yield*` over an object of the program give its `[Symbol.iterator]()`'s `next().value`; a generator call gives its generator object, whose iteration and `next().value` give what it `yield`s (`yield* e`: e's elements); an iterator result's `value` is an element |
+
+Measured, then corrected (2026-11-11 09:30): T4 above, "`o[k]` any property", fed every method of every class into
+three's computed reads (`BufferAttribute.getX`: `this.array[index * this.itemSize]` returned 3 570 functions,
+`getConstNode`'s `value` held 3 632) and the lab's first propagation passed 13 M values in 30 s without ending. Sources:
+Sridharan, Dolby, Chandra, Schäfer, Tip, "Correlation Tracking for Points-To Analysis of JavaScript" (ECOOP 2012):
+dynamic property accesses read as any property are the main obstacle to analysing JS frameworks; Feldthaus, Schäfer,
+Sridharan, Dolby, Tip, "Efficient Construction of Approximate Call Graphs for JavaScript IDE Services" (ICSE 2013):
+dynamic property reads with an unknown name are left out, and the call graphs keep a high recall.
+
+| Rule | What the tracer does |
+|---|---|
+| T4' A computed property `o[k]` (replaces T4) | the members named by each string value `k` can hold (G7, the key's values beside the object's, both growing); a key that is no known string reads no property of an object of the program; the language's containers and the program's own (ELEM) give their elements by index as before |

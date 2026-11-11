@@ -130,7 +130,7 @@ def local(r, declarator, unit, cond, function_scope: bool = False) -> None:
         js_class.class_declaration(r, value, r.src.text(target), unit.owner, unit)
         return
     tree = r.ir(value, unit) if value is not None else ("literal", "undefined")
-    declared = r.type_values(field_of(declarator, "type"))
+    declared = r.type_values(field_of(declarator, "type"), unit)
     if target.type == "identifier":
         declare(r, unit, r.src.text(target), declared + ([tree] if value is not None else []),
                 function_scope=function_scope)

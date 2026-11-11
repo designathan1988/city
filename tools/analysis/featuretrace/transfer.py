@@ -9,11 +9,13 @@ calling a callable: what its function returns.
 """
 from __future__ import annotations
 
+from . import js_library
 from .cpp_names import template_args
 from .library import (DEREF, HELD_CALLS, ITEM, ITER, ITERATOR_CALLS, PAIR_PARTS, clean, library_step)
-from .solver import CLASS, ELEM, ENGINE, FN
+from .rules import ITERATOR_MEMBER
+from .solver import CLASS, ELEM, ENGINE, FN, TEXT
 
-OPERATORS = {ITEM: "operator[]", DEREF: "operator->", ITER: "begin"}
+OPERATORS = {ITEM: "operator[]", DEREF: "operator->", ITER: "begin", js_library.EACH: "begin"}
 COMPARISONS = ("==", "!=", "<", ">", "<=", ">=", "<=>", "&&", "||", "!", "and", "or", "not", "in", "is")
 CALLABLE_CALLS = ("call", "callv", "call_deferred", "apply")
 BIND_CALLS = ("bind", "unbind", "bindv")
@@ -53,11 +55,17 @@ def member_one(t, target, text: str, ctx, name: str, called: bool) -> None:
             t.add(target, [(text, ctx) if name in BIND_CALLS else (ENGINE, ctx)])
         return
     if text.startswith(ELEM):
-        # what a container holds: its access calls give an element, its search calls an iterator over them
-        if called and name in HELD_CALLS + ("at",):
-            t.add(target, [(text[len(ELEM):], ctx)])
-        elif called and name in ITERATOR_CALLS:
+        # what a container holds: its access calls give an element, its search calls an iterator over them (JS: the
+        # element calls give an element, the calls that give the container give it again, T2)
+        element = js_library.ELEMENT_CALLS if ctx.lang == "js" else HELD_CALLS + ("at",)
+        same = js_library.SAME_CALLS if ctx.lang == "js" else ITERATOR_CALLS
+        if called and name in element or ctx.lang == "js" and not called and name == js_library.RESULT_VALUE:
+            t.add(target, [(text[len(ELEM):], ctx)])    # (an iterator's `next()` is the container: its `value` one)
+        elif called and name in same:
             t.add(target, [(text, ctx)])
+        return
+    if ctx.lang == "js" and js_library.is_container(text):
+        t.add(target, [(v, ctx) for v in js_library.member(name, text, called)])
         return
     key = t.type_class(text, ctx)
     if called and name == "new":
@@ -110,9 +118,16 @@ def step_one(t, target, step: str, text: str, ctx) -> None:
     if text == ENGINE or text.startswith(FN):
         t.add(target, [(ENGINE, ctx)])
         return
+    if ctx.lang == "js" and js_library.is_container(text):
+        t.add(target, [(v, ctx) for v in js_library.step(step, text)])     # the language's containers (T2)
+        return
     key = t.type_class(text, ctx)
     if key is None:
         t.add(target, [(library_step(step, text, False), ctx)])
+        return
+    if ctx.lang == "js":    # an object of the program: `o[k]` the members its key names (`indexed`, T4'); its
+        if step == ITER:    # iteration what its own iterator gives (J5); a callback handed to its own forEach gets
+            t.follow(iterated(t, key), target)      # what that method passes
         return
     found = t.ix.lookup(key, OPERATORS[step])
     if not found:
@@ -123,6 +138,38 @@ def step_one(t, target, step: str, text: str, ctx) -> None:
                     substituted(t, key, text, ctx, step == ITER))
 
 
+def iterated(t, key: str):
+    """What iterating a JS object of class `key` gives (J5): its `[Symbol.iterator]()`'s `next().value`."""
+    node = ("#iterated", key)
+    if node not in t.wired:
+        t.wired.add(node)
+        t.value.setdefault(node, [])
+        iterator = ("#iterator", key)
+        for gid in t.ix.definitions(t.ix.lookup(key, ITERATOR_MEMBER)):
+            t.subscribe(t.ret_node(t.ix.units[gid]), iterator, ("member", "next", True), members(t, "next", True))
+        t.subscribe(iterator, node, ("member", "value", False), members(t, "value", False))
+    return node
+
+
+def indexed(t, other, from_base: bool):
+    """JS `o[k]` with a computed key (T4'): each object value with each string value of the key gives that member;
+    a container gives its elements. `from_base`: the new values are the object's (`other` the key), else the key's."""
+    def named(values) -> list[str]:
+        return [text[len(TEXT):] for text, _ in values if text.startswith(TEXT)]
+
+    def transfer(target, values):
+        objects, names = (values, named(t.held(other))) if from_base else (t.held(other), named(values))
+        if not from_base and not names:
+            return                                      # a key that is no known string reads no property
+        for text, ctx in objects:
+            if t.type_class(text, ctx):                 # an object of the program: the members the key names
+                for name in names:
+                    member_one(t, target, text, ctx, name, False)
+            elif from_base:                             # a container: its elements, whatever the key
+                step_one(t, target, ITEM, text, ctx)
+    return transfer
+
+
 def operators(t, op: str):
     def transfer(target, values):
         for text, ctx in values:
@@ -131,13 +178,10 @@ def operators(t, op: str):
 
 
 def operator_one(t, target, op: str, text: str, ctx) -> None:
-    """An operator on a value: a comparison is the language's; `*` dereferences; on a class of the program its
-    operator's result."""
+    """A binary or unary operator on a value (its left operand): a comparison is the language's; on a class of the
+    program its operator's result (`*` too: multiplication, O2; dereference is the `deref` shape); else the value."""
     if op in COMPARISONS:
         t.add(target, [(ENGINE, ctx)])
-        return
-    if op == "*":
-        step_one(t, target, DEREF, text, ctx)
         return
     key = t.type_class(text, ctx)
     if key and ctx.lang == "cpp":
@@ -162,4 +206,26 @@ def elements(t):
     """A value put into a container: what its elements hold."""
     def transfer(target, values):
         t.add(target, [(ELEM + text, ctx) for text, ctx in values if not text.startswith(ELEM)])
+    return transfer
+
+
+def awaits(t):
+    """`await x`, `then`'s callback: what each value resolves to (a JS promise's type argument, T2; else itself)."""
+    def transfer(target, values):
+        t.add(target, [(v, ctx) for text, ctx in values
+                       for v in (js_library.awaited(text) if ctx.lang == "js" else [text])])
+    return transfer
+
+
+def constructs(t):
+    """`new X(...)` in JS (N1): a class gives its instance, a function called as a constructor the objects it
+    returns, anything else the host's constructor (the language's value)."""
+    def transfer(target, values):
+        for text, ctx in values:
+            if text.startswith(FN):
+                t.follow(t.ret_node(t.ix.units[int(text[len(FN):])]), target)
+            elif text.startswith(CLASS):
+                t.add(target, [(text, ctx)])
+            else:
+                t.add(target, [(ENGINE, ctx)])
     return transfer

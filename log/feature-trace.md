@@ -365,3 +365,23 @@ that lost every call after the first on a line, which three's shading language w
 `tests/fixture/pending/sites.js`, `log/trace-rules-cycles-plan.md`, `log/trace-rules-cycles-progress.md`. **Changed:**
 `solver.py`, `typer.py`, `resolve.py`, `flows.py`, `rules.py`, `tests/test_pending.py`, `log/trace-rules.md`,
 `log/mapa.md`, `log/pendencias.md`, `log/trace-rules-pending-progress.md`.
+
+## JavaScript and TypeScript values by the languages' rules (2026-11-11 10:00)
+`superpowers:systematic-debugging` (probes of the solver's state on the lab: links by call site at 0.5/1/1.5 M, values
+passed by subscription) → research (MDN, TypeScript handbook, ECOOP 2012, ICSE 2013; `log/trace-rules.md`, "JavaScript
+and TypeScript values by the languages' own rules") → `superpowers:writing-plans` (`log/trace-rules-js-values-plan.md`)
+→ `superpowers:executing-plans` (ledger `log/trace-rules-js-values-progress.md`). **Causes found:** a script's inner
+functions were globals and every lambda a member of its class or module (draco's minified `x`, `z`, `h` reached 78% of
+the links as `handed`); TypeScript annotations were values as raw text, one per file (`Building | null`, `T`); the C++
+library's rules ran on TS generics (`std::pair<…>`); a binary `*` was a dereference; JS arithmetic passed its operands
+on; `new F()` on a function or a variable gave a text. **Rules now (L1, L2, T1-T4', O1, O2, N1, J5'):** lambdas are
+locals; types are erased (a class named, the ECMAScript containers as canonical texts, `typeof x`; nothing else);
+values resolved where they are made; `js_library` for Array/Set/Map/Record/Promise/iterators; JS operators give the
+language's value; `new` evaluates its constructor; for-of over an object is its iterator's `next().value`, a generator
+gives its yields; `o[k]` reads the members the key's strings name. **Tests:** 118 OK (14 new, failing on 1951d8b4);
+city identical (100 290 links). **Lab with three.js:** fixpoint in 104.5 s, 356 186 links (before: 383 s, 785 524, and
+no fixpoint within 840 s once every call site carried its arguments). **Created:** `js_types.py`, `js_library.py`,
+`tests/test_js_values.py`, `tests/fixture/jsvalues/**`, the plan and ledger. **Changed:** `index.py`, `js_modules.py`,
+`js_read.py`, `js_decl.py`, `js_class.py`, `js_body.py`, `js_expr.py`, `js_link.py`, `ir.py`, `ir_js.py`, `model.py`,
+`solver.py`, `types_of.py`, `typer.py`, `transfer.py`, `rules.py`, `tests/test_pending.py`,
+`tests/fixture/pending/lifetime.cpp`, `log/trace-rules.md`, `log/mapa.md`, `log/pendencias.md`.

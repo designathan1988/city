@@ -45,9 +45,9 @@ class JsModules:
         self.namespaces = {k for f in self.files.values() for k in f.config.get("namespaces", [])}
         self.globals = defaultdict(list)          # name -> gids of the global scope
         for path, facts in self.files.items():
-            if facts.script:
+            if facts.script:                      # a script's top-level declarations, never an inner function (L2)
                 for unit in facts.units:
-                    if unit.owner == path and unit.name != "<module>":
+                    if unit.owner == path and unit.name != "<module>" and unit.kind != "lambda":
                         self.globals[unit.name].append(unit.gid)
         for name, gids in index.members.get(GLOBAL_KEY, {}).items():
             self.globals[name] += gids
