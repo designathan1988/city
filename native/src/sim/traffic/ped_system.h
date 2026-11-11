@@ -20,7 +20,11 @@ void despawn_party(CityState &s, int id, bool arrived); // with the one it walks
 
 // ped_door_walk.cpp: the first and last steps at a lot's door
 void aim_at_door(CityState &s, Pedestrian &w); // on the last street of its route: a door ahead to go in at
-void go_in(CityState &s, int id); // at its door's place on the sidewalk: across to the foot of the way in, then the door
+void go_in(CityState &s, int id); // at its door's place on the sidewalk: across to the foot of the way in, its bends, then the door
+// Standing at door `d` (w.seg and w.side its sidewalk): its way out, through the way's bends to the foot on the sidewalk, the first line begun.
+void door_way_out(const CityState &s, Pedestrian &w, const PedDoor &d);
+// From the door it came out of (out_x, out_y, out_z), onto the first line of its way out (ways[0..wn)).
+void leave_door(Pedestrian &w);
 void walk_lot(CityState &s, int id, float dt); // between a door and the sidewalk
 
 // pedestrians.cpp

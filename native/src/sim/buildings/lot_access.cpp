@@ -237,6 +237,54 @@ void street_gates(const RoadNetwork &net, const BuildingRecords &lots, const Dat
 	});
 }
 
+namespace {
+// Whether a gate (a car's, else a person's) may open onto the street nearest `p` (within `reach` of its centre line) where `p` faces it;
+// true with no street near. `street` and `at`: that street and the arc along it.
+bool kerb_open_at(const RoadNetwork &net, const V2 &p, double reach, bool car, int &street, double &at) {
+	street = -1;
+	at = 0;
+	double best = reach;
+	net.for_segments_near(p.x - reach, p.y - reach, p.x + reach, p.y + reach, [&](int seg) {
+		const RoadSegment &g = net.segs[size_t(seg)];
+		if (!g.alive) return;
+		double t, dist;
+		closest_t(g.q, p.x, p.y, t, dist);
+		if (dist >= best) return;
+		best = dist;
+		street = seg;
+		at = arc_of_t(g, t);
+	});
+	return street < 0 || (car ? kerb_standing(net, street, at) : kerb_walkable(net, street, at));
+}
+} // namespace
+
+int gates_on_junctions(const RoadNetwork &net, const BuildingRecords &lots, const Data &designs, GateOnJunction *first) {
+	const double reach = net.cat->widest_half() + net.cat->traffic.kerb_gate_reach_m;
+	int count = 0;
+	for (size_t id = 0; id < lots.items.size(); id++) {
+		const Building &rec = lots.items[id];
+		if (!rec.alive) continue;
+		const std::shared_ptr<const std::vector<LotElement>> elements = record_elements(designs, rec);
+		const LotFrame f = lot_frame(rec);
+		for (const LotElement &e : *elements) {
+			if (e.kind != EL_GATE && e.kind != EL_CAR_GATE) continue;
+			for (float end : { -e.w * HALF, e.w * HALF }) {
+				int street;
+				double at;
+				if (kerb_open_at(net, f.at(e.x + end, e.y), reach, e.kind == EL_CAR_GATE, street, at)) continue;
+				if (first && count == 0) {
+					const V2 w = f.at(e.x, e.y);
+					*first = GateOnJunction{ 0, int(id), int(e.kind), street, w.x, w.y, e.x, e.w, at, rec.edges };
+				}
+				if (first && e.kind == EL_CAR_GATE) first->cars++;
+				count++;
+				break;
+			}
+		}
+	}
+	return count;
+}
+
 void lot_bays(const std::vector<LotElement> &elements, const LotFrame &f, LotAccess &out) {
 	out = LotAccess{};
 	for (const LotElement &e : elements) {

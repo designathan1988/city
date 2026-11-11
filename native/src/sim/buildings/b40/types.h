@@ -4,6 +4,8 @@
 // Lengths in metres in the lot frame: x along the street front from the lot's middle, y away from the street, z up.
 #pragma once
 
+#include "sim/buildings/b40/lot_edges.h"
+
 #include <cstdint>
 #include <unordered_map>
 #include <map>
@@ -65,6 +67,7 @@ struct LotPlan {
 	float back_depth = 0;
 	int rows = 0;
 	float x0 = 0, y0 = 0, x1 = 0, y1 = 0; // building envelope, x from the lot's left edge
+	LotEdges edges; // what the lot's edges meet: the gates keep off its shut stretches, its street sides are closed as fronts
 };
 
 // The composed geometry of one face: bay count, opening shares, sill, piers.
@@ -93,9 +96,10 @@ enum FlagPattern : uint8_t {
 	FLAG_DIAGONAL, FLAG_SALTIRE, FLAG_CANTON, FLAG_STRIPES, FLAG_BORDER, FLAG_DISC, FLAG_CHEVRON, FLAG_COUNT
 };
 constexpr int FLAG_COLOURS = 3, FLAG_NONE = -1;
+constexpr uint32_t FLAG_FIELD_BLUE = 0x0b5ea8, FLAG_WHITE = 0xffffff, FLAG_RED = 0xc8102e; // the default design's three colours
 struct FlagDesign {
 	int8_t pattern = FLAG_NONE; // a FlagPattern; FLAG_NONE: no flag flown
-	uint32_t rgb[FLAG_COLOURS] = { 0x0b5ea8, 0xffffff, 0xc8102e }; // the Roadcraft's default design (flags.ts DEFAULT_FLAG)
+	uint32_t rgb[FLAG_COLOURS] = { FLAG_FIELD_BLUE, FLAG_WHITE, FLAG_RED }; // the Roadcraft's default design (flags.ts DEFAULT_FLAG)
 };
 constexpr FlagDesign DEFAULT_FLAG{ FLAG_TRICOLOUR_V }; // what a new lantern flies (buildingRoofs.ts); a spire flies none until set
 struct RoofPart {

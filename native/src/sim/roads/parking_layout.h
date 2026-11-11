@@ -38,6 +38,11 @@ void kerb_layout(const RoadNetwork &net, int sid, const std::vector<ArcSpan> gat
 // Whether a car may stand at the kerb at arc `v` of `sid`: past both ends' corners and crosswalks (CTB art. 181 I), the stretch
 // the kerb's bays are laid in; a lot's gate opens onto the street only there (sim/traffic/parking_lanes.cpp gate_lane).
 bool kerb_standing(const RoadNetwork &net, int sid, double v);
+// Whether a lot's person's gate may open onto the footway at arc `v` of `sid`: off each end's crosswalk landing and the signal post that
+// stands just past it, with a walker's body round the post (from the mouth to the crossing's far edge, the post's footprint and
+// traffic.json ped_body_m). A junction's plate and a car's corner clearance are no bar to a person's gate: a lot across a T's stem
+// opens onto the footway between its two crosswalks.
+bool kerb_walkable(const RoadNetwork &net, int sid, double v);
 // The arc of curve point `t` on segment `sid` (the inverse of t_at_length).
 double arc_of_t(const RoadSegment &g, double t);
 

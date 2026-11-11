@@ -50,23 +50,15 @@ bool beside(CityState &s, Pedestrian &w, const Pedestrian &l) {
 	return stands_clear(s, w, l.s, w.u) || stands_clear(s, w, l.s + back, l.u);
 }
 
-// Out of the door its leader came out of, onto the leader's line to the sidewalk (which the leader keeps until its next line),
-// once nobody stands at the door: the leader has walked the room walkers keep, on that line or on along the sidewalk.
+// Out of the door its leader came out of, by the leader's way to the sidewalk (which the leader keeps until its first corner), once
+// nobody stands at the door: the leader has walked the room walkers keep, on that way or on along the sidewalk.
 bool out_of_door(const CityState &s, Pedestrian &w, const Pedestrian &l) {
-	const Waypoint &foot = l.ways[0];
-	const V2 way = V2(foot.x - l.lx, foot.z - l.lz).norm();
-	w.mode = PedMode::LOT;
-	w.ways[0] = foot;
-	w.wn = 1;
-	w.wi = 0;
-	w.cur.x = w.lx = l.lx;
-	w.cur.y = w.ly = l.ly;
-	w.cur.z = w.lz = l.lz;
-	w.cur.fx = w.way_x = way.x;
-	w.cur.fz = w.way_z = way.y;
-	w.llen = l.llen;
-	w.ls = 0;
-	onto_line(w);
+	for (int k = 0; k < l.wn; k++) w.ways[k] = l.ways[k];
+	w.wn = l.wn;
+	w.cur.x = w.out_x = l.out_x;
+	w.cur.y = w.out_y = l.out_y;
+	w.cur.z = w.out_z = l.out_z;
+	leave_door(w);
 	return !walker_near(s.traffic, w.cur, company_gap(s.catalog.traffic));
 }
 

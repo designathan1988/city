@@ -13,6 +13,8 @@
 
 namespace city::b40 {
 
+constexpr float BOUNDARY_WALL_T = 0.2f, FENCE_THICK = 0.12f, HEDGE_THICK = 0.7f; // thickness of a wall, a fence or railing, a hedge
+
 struct Rect {
 	float x0 = 0, y0 = 0, x1 = 0, y1 = 0;
 	float w() const { return x1 - x0; }
@@ -26,15 +28,18 @@ struct Rect {
 };
 
 // The lot's boundary as open_boundary plans it and lay_boundary, last, lays it: the front's style and paint, the sides' and the back's
-// kind, paint and heights, each edge's band (its thickness, held from every other part) and the front's stretches its gates take.
+// kind, paint and heights, each edge's band (its thickness, held from every other part) and the front's stretches its gates take. A side
+// a street runs along (LotEdges) is closed as the front is: its style, its paint, its band.
 struct BoundaryPlan {
 	BoundaryStyle front;
 	Element side = EL_WALL;
 	int front_paint = -1, side_paint = -1;
 	float front_t = 0, side_t = 0; // the bands: the front's, and the sides' and the back's
 	float party = 0, low = 0; // the sides' and the back's height, and the sides' beside the front zone
+	bool street[2] = { false, false }; // the left side, the right side: a street runs along it
 	std::vector<std::pair<float, float>> gates; // the front's stretches the gates take, with the gap a run keeps from them
 	int pieces = 0; // the most pieces the runs can take: kept from the lot's budget until they are laid
+	float band(int side) const { return street[side] ? front_t : side_t; } // a side's band: 0 left, 1 right
 };
 
 // A side strip of the lot (between the front zone and the back zone) and what it is used for.
@@ -62,6 +67,11 @@ public:
 	size_t own_parts = 0; // how many of `built` are the building's own volumes
 	Rect built_box; // their bounds (empty when the lot has no building)
 	float door_x = 0; // the front door
+	float door_wall = 0; // the front wall the door stands in (y)
+	// The people's gate on the front: in line with the door, else (the door's gate would open on a crosswalk's landing or a signal post's
+	// place: LotEdges) the nearest place along the front where it opens off them, clear of the side bands and the drives; then the way
+	// bends along the middle of the front zone (people_way; sim/buildings/lot_doors.h reads the same bend for the walkers).
+	float gate_x = 0;
 	bool back_door = false;
 	float back_door_x = 0;
 	std::vector<float> loading_x; // loading doors on the back faces, and the wall they stand in
@@ -85,11 +95,15 @@ public:
 	// Room kept for a part laid later (the boundary's bands): nothing is put there meanwhile.
 	void hold(const Rect &r) { solid_.push_back(r); }
 	// The lot's land inside its boundary's bands: where a structure that is not the boundary (a carport) stands.
-	Rect inner() const { return { L + bounds.side_t, bounds.front_t, R - bounds.side_t, D - bounds.side_t }; }
+	Rect inner() const { return { L + bounds.band(0), bounds.front_t, R - bounds.band(1), D - bounds.side_t }; }
 	bool clear(const Rect &r) const; // nothing solid, no way, no building there, inside the lot
 	bool on_building(const Rect &r) const;
 	// The deepest built edge over the x span [x0, x1] (F when nothing is built there).
 	float built_back(float x0, float x1) const;
+	// The people's way from their gate to the door, `half` either side of its line, reaching `depth` in at the door: one strip straight in
+	// when the gate stands in line with the door, else three that meet without overlapping, in from the gate to the middle of the front
+	// zone (half the door's wall), along it, and in to the door.
+	std::vector<Rect> people_way(float half, float depth) const;
 	Rect yard() const { return { L, B, R, D }; }
 	Rect front() const { return { L, 0, R, F }; }
 
@@ -97,9 +111,11 @@ private:
 	std::vector<Rect> ways_, solid_;
 	std::vector<std::pair<const char *, int>> paints_;
 	void add(Element k, const Rect &r, float h, int paint, int facing, float z, float base);
+	float people_gate_x() const; // gate_x
 };
 
-// A narrow house's car pad in its front garden (lot_cars.cpp); empty for every other lot.
+// A narrow house's car pad in its front garden (lot_cars.cpp), its gate off the front's shut stretches (LotEdges); empty for every
+// other lot, and where neither side has room for one off them.
 Rect car_pad(const LotSpace &s);
 
 // The zones, in the order lay_out_lot runs them (each file's own rules).

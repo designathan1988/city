@@ -1,10 +1,12 @@
 // The lot's boundary, made whole: every edge is closed once along its whole length, by its run (a wall, fence, railing or hedge),
 // by its gates or by a ground block of the lot standing on it (within buildings.json lots.block_closes_m: the block's wall closes
 // it), never by two of them. open_boundary plans it before the zones lay their parts: the front takes one of its kind's styles (buildings.json
-// lots.boundary), the sides and back are party walls (a works' fence), low beside a front garden; the gates are laid (the people's
-// at the door, a car's on every drive, the car pad's and the works visitors'; with no front zone the side strips' own), each standing open
-// with the room of its leaves held, and every edge's band is held, so no part is put where the boundary or a leaf will stand, its pieces
-// kept from the lot's budget. lay_boundary lays the
+// lots.boundary), the sides and back are party walls (a works' fence), low beside a front garden, and a side a street runs along is
+// closed as the front is (LotEdges: a corner lot's second street sees no blind wall); the gates are laid (the people's at the door, a
+// car's on every drive, the car pad's and the works visitors'; with no front zone the side strips' own), none on a stretch of the front a
+// junction's kerb takes (LotEdges: the plan and the entrance keep the drives and the door off it, the other gates are not laid there),
+// each standing open with the room of its leaves held, and every edge's band is held, so no part is put where the boundary or a leaf will
+// stand, its pieces kept from the lot's budget. lay_boundary lays the
 // runs last, when every block is known (a garage on the drive's strip closes its stretch of the side): each edge less its gates less
 // the stretches its blocks close.
 #include "sim/buildings/b40/lot_layout.h"
@@ -14,7 +16,6 @@
 namespace city::b40 {
 
 namespace {
-constexpr float BOUNDARY_WALL_T = 0.2f, FENCE_THICK = 0.12f, HEDGE_THICK = 0.7f; // thickness of a wall, a fence or railing, a hedge
 constexpr float GATE_POST = 0.2f; // a car gate is its drive less a post each side; an open leaf's room across, at the opening's side
 constexpr float GATE_GAP = 0.05f; // a run stops this short of a gate
 constexpr float SHORTEST_RUN = 0.3f; // shorter stretches are left to the posts and the corners
@@ -51,7 +52,7 @@ std::vector<Gate> planned_gates(LotSpace &s); // where the people's, the cars' a
 // side wall stands): a gate and its open leaves never stand in a side wall.
 std::vector<Gate> front_gates(LotSpace &s) {
 	std::vector<Gate> g = planned_gates(s);
-	const float lo = s.L + s.bounds.side_t, hi = s.R - s.bounds.side_t;
+	const float lo = s.L + s.bounds.band(0), hi = s.R - s.bounds.band(1);
 	for (Gate &one : g) {
 		one.x0 = std::max(one.x0, lo);
 		one.x1 = std::min(one.x1, hi);
@@ -66,7 +67,7 @@ std::vector<Gate> planned_gates(LotSpace &s) {
 	std::vector<Gate> g;
 	if (s.F > 0) {
 		float pg = l.person_gate[house ? 0 : 1] * HALF;
-		g.push_back({ s.door_x - pg, s.door_x + pg, false });
+		g.push_back({ s.gate_x - pg, s.gate_x + pg, false });
 		for (const Strip &st : s.strips)
 			if (!st.drive.empty()) g.push_back({ st.drive.x0 + GATE_POST, st.drive.x1 - GATE_POST, true });
 		Rect pad = car_pad(s);
@@ -75,7 +76,7 @@ std::vector<Gate> planned_gates(LotSpace &s) {
 			// The visitors' gate onto the apron, as wide as its aisle, on the side away from the door.
 			float x = s.door_x > 0 ? s.L + l.aisle * HALF + GATE_POST : s.R - l.aisle * HALF - GATE_POST;
 			Gate v{ x - l.aisle * HALF, x + l.aisle * HALF, true };
-			bool free = true;
+			bool free = !s.plan.edges.shut(LotEdges::CAR, v.x0, v.x1);
 			for (const Gate &o : g) free = free && (v.x1 < o.x0 || o.x1 < v.x0);
 			if (free) g.push_back(v);
 		}
@@ -83,7 +84,8 @@ std::vector<Gate> planned_gates(LotSpace &s) {
 	}
 	for (const Strip &st : s.strips) {
 		if (!st.drive.empty()) g.push_back({ st.drive.x0 + GATE_POST, st.drive.x1 - GATE_POST, true });
-		if (!st.walk.empty()) g.push_back({ st.walk.x0 + WALK_TRIM * HALF, st.walk.x1 - WALK_TRIM * HALF, false });
+		const Gate walk{ st.walk.x0 + WALK_TRIM * HALF, st.walk.x1 - WALK_TRIM * HALF, false };
+		if (!st.walk.empty() && !s.plan.edges.shut(LotEdges::WALK, walk.x0, walk.x1)) g.push_back(walk); // onto a crosswalk's landing: closed
 	}
 	return g;
 }
@@ -106,7 +108,7 @@ std::vector<Span> edge_runs(const LotSpace &s, LotEdge e) {
 		cuts.insert(cuts.end(), s.bounds.gates.begin(), s.bounds.gates.end());
 		return runs(s.L, s.R, cuts);
 	}
-	if (e == EDGE_BACK) return runs(s.L + s.bounds.side_t, s.R - s.bounds.side_t, cuts);
+	if (e == EDGE_BACK) return runs(s.L + s.bounds.band(0), s.R - s.bounds.band(1), cuts);
 	return runs(0, s.D, cuts);
 }
 
@@ -135,6 +137,7 @@ void open_boundary(LotSpace &s) {
 	p.side_t = thickness(p.side);
 	p.party = works ? p.front.h : l.party_wall[house ? 0 : 1];
 	p.low = homes ? std::min(l.front_low, p.party) : p.party;
+	for (int side = 0; side < 2; side++) p.street[side] = s.plan.edges.on_street(side);
 	const float top = p.front.h + p.front.base;
 	for (const Gate &g : front_gates(s)) {
 		// As deep as the front's band, so its leaves stand open past the run (a hedge's 0.7 m, a wall's 0.2 m), each in a strip a post's width
@@ -148,8 +151,8 @@ void open_boundary(LotSpace &s) {
 	}
 	// The bands the runs will stand on, held from every part the zones lay meanwhile.
 	s.hold({ s.L, 0, s.R, p.front_t });
-	s.hold({ s.L, 0, s.L + p.side_t, s.D });
-	s.hold({ s.R - p.side_t, 0, s.R, s.D });
+	s.hold({ s.L, 0, s.L + p.band(0), s.D });
+	s.hold({ s.R - p.band(1), 0, s.R, s.D });
 	s.hold({ s.L, s.D - p.side_t, s.R, s.D });
 	p.pieces = pieces_of(s) + LATE_BLOCK_PIECES;
 }
@@ -159,8 +162,13 @@ void lay_boundary(LotSpace &s) {
 	p.pieces = 0; // the budget kept for the runs is theirs now
 	for (const Span &r : edge_runs(s, EDGE_FRONT)) s.edge(p.front.kind, { r.first, 0, r.second, p.front_t }, p.front.h, p.front_paint, p.front.base);
 	for (LotEdge e : { EDGE_LEFT, EDGE_RIGHT }) {
-		const float x0 = e == EDGE_LEFT ? s.L : s.R - p.side_t, x1 = x0 + p.side_t;
+		const int side = e == EDGE_LEFT ? 0 : 1;
+		const float x0 = e == EDGE_LEFT ? s.L : s.R - p.band(side), x1 = x0 + p.band(side);
 		for (const Span &r : edge_runs(s, e)) {
+			if (p.street[side]) { // along a street: closed as the front is
+				s.edge(p.front.kind, { x0, r.first, x1, r.second }, p.front.h, p.front_paint, p.front.base);
+				continue;
+			}
 			if (r.first < s.F) s.edge(p.side, { x0, r.first, x1, std::min(r.second, s.F) }, p.low, p.side_paint);
 			if (r.second > s.F) s.edge(p.side, { x0, std::max(r.first, s.F), x1, r.second }, p.party, p.side_paint);
 		}

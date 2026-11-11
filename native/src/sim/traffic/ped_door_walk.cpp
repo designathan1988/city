@@ -14,20 +14,50 @@ void aim_at_door(CityState &s, Pedestrian &w) {
 	pick_door(s, now, w.seg, w.side, false, w.dir == 0 ? w.s : arc_lo(g), w.dir == 0 ? arc_hi(g) : w.s, w.door);
 }
 
-// At its door's place on the sidewalk: across to the foot of the way in, then to the door.
+// At its door's place on the sidewalk: across to the foot of the way in, through its bends from the gate's line, then to the door.
 void go_in(CityState &s, int id) {
 	Pedestrian &w = s.traffic.peds[size_t(id)];
 	w.company_due = false; // the line it came out by is gone with this one
 	Pose foot;
 	sidewalk_pose(s, w.seg, w.side, w.door.s, w.door.u, foot);
-	w.ways[0] = Waypoint{ foot.x, foot.y, foot.z, -1 };
-	w.ways[1] = Waypoint{ w.door.x, w.door.y, w.door.z, -1 };
-	w.wn = 2;
+	int n = 0;
+	w.ways[n++] = Waypoint{ foot.x, foot.y, foot.z, -1 };
+	for (int k = int(w.door.bends) - 1; k >= 0; k--) w.ways[n++] = w.door.bend[k];
+	w.ways[n++] = Waypoint{ w.door.x, w.door.y, w.door.z, -1 };
+	w.wn = n;
 	w.wi = 0;
 	w.way_node = -1;
 	w.mode = PedMode::LOT;
 	w.entering = true;
 	aim_line(w);
+}
+
+void door_way_out(const CityState &s, Pedestrian &w, const PedDoor &d) {
+	Pose foot;
+	sidewalk_pose(s, w.seg, w.side, d.s, d.u, foot);
+	int n = 0;
+	for (int k = 0; k < int(d.bends); k++) w.ways[n++] = d.bend[k];
+	w.ways[n++] = Waypoint{ foot.x, foot.y, foot.z, -1 };
+	w.wn = n;
+	w.out_x = d.x;
+	w.out_y = d.y;
+	w.out_z = d.z;
+	leave_door(w);
+}
+
+void leave_door(Pedestrian &w) {
+	w.wi = 0;
+	w.mode = PedMode::LOT;
+	w.lx = w.out_x;
+	w.ly = w.out_y;
+	w.lz = w.out_z;
+	const Waypoint &first = w.ways[0];
+	w.llen = std::hypot(first.x - w.lx, first.z - w.lz);
+	w.ls = 0;
+	const V2 way = V2(first.x - w.lx, first.z - w.lz).norm();
+	w.cur.fx = w.way_x = way.x;
+	w.cur.fz = w.way_z = way.y;
+	onto_line(w);
 }
 
 // Its door reached. The one it walks with, near on that sidewalk, goes in at the same door from where it stands; one farther

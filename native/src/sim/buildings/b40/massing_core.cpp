@@ -102,6 +102,22 @@ void look(Body &b, const Paint &wall, const Paint &roof, const Paint &trim) {
 	b.trim = b.add_paint(trim);
 }
 
+namespace {
+// The bay of the front volume nearest `bay` whose person's gate, in line with its door, opens off the front's shut stretches (a junction's
+// kerb: Envelope::shut): `bay` itself when the lot has no gate or no bay's gate opens off them.
+int open_bay(const Envelope &env, const Volume &fv, int across, int bay) {
+	if (env.gate_half <= 0) return bay;
+	const auto opens = [&](int k) {
+		const float x = fv.x + (float(k) + HALF) * fv.w / float(across);
+		return !env.shut.shut(LotEdges::WALK, x - env.gate_half, x + env.gate_half);
+	};
+	for (int d = 0; d < across; d++)
+		for (int k : { bay - d, bay + d })
+			if (k >= 0 && k < across && opens(k)) return k;
+	return bay;
+}
+} // namespace
+
 void finish_body(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r, uint8_t door_kind, int door_block) {
 	for (Volume &v : b.volumes)
 		if (v.pitch < 0) roof_shape(v, r);
@@ -121,7 +137,7 @@ void finish_body(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r, 
 	Volume &fv = b.volumes[size_t(front)];
 	int across = bays_of(fv, 0);
 	float want = std::clamp(env.W / 2, fv.x, fv.x + fv.w);
-	int bay = std::clamp(int(std::floor((want - fv.x) / fv.w * float(across))), 0, across - 1);
+	const int bay = open_bay(env, fv, across, std::clamp(int(std::floor((want - fv.x) / fv.w * float(across))), 0, across - 1));
 	fv.bays[bay_key(0, 0, bay)] = door_kind;
 	float entrance = fv.x + (float(bay) + HALF) * fv.w / float(across);
 	if (env.back_door && back >= 0) {
@@ -144,12 +160,12 @@ void made_to_measure(const Data &data, Body &b, const Envelope &env, Xoshiro128 
 	}
 }
 
-void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed) {
+void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed, const LotEdges &edges) {
 	b = Body{};
 	b.kind = kind_of(zone);
 	b.use = b.kind == KIND_WORKS ? USE_INDUSTRIAL : b.kind == KIND_SHOP || b.kind == KIND_OFFICE ? USE_COMMERCIAL : USE_RESIDENTIAL;
 	Xoshiro128 r(seed);
-	b.plan = plan_lot(data.lots, b.kind, W, D, r);
+	b.plan = plan_lot(data.lots, b.kind, W, D, r, edges);
 	// The envelope the generator builds to is the room the plan leaves, taken down to the generator's grid: every kind lays its
 	// blocks in half metres (snap), and a size rounded up would stand past the lot's lines, in the neighbour's wall.
 	const float room_w = b.plan.x1 - b.plan.x0;
@@ -161,8 +177,12 @@ void make_body(const Data &data, Body &b, int zone, int floors, float W, float D
 	env.era = int((seed >> ERA_SHIFT) % ERAS);
 	env.cap = floors;
 	env.low = zone == ZONE_COM_LOW;
+	const float dx = b.plan.x0 - W / 2 + (room_w - env.W) / 2, dy = b.plan.y0; // in the middle of its room across, on its front line
+	if (b.plan.front_depth > 0) { // a front zone: the person's gate stands in line with the door (lot_boundary.cpp)
+		env.shut = edges.moved(-dx);
+		env.gate_half = data.lots.person_gate[b.kind == KIND_HOUSE ? 0 : 1] * HALF;
+	}
 	made_to_measure(data, b, env, r);
-	float dx = b.plan.x0 - W / 2 + (room_w - env.W) / 2, dy = b.plan.y0; // in the middle of its room across, on its front line
 	for (Volume &v : b.volumes) { v.x += dx; v.y += dy; }
 	for (LotElement &e : b.elements) { e.x += dx; e.y += dy; }
 	for (Core &c : b.cores) { c.x += dx; c.y += dy; }

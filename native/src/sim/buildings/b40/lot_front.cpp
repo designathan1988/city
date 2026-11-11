@@ -27,7 +27,7 @@ constexpr float VISITOR_FROM = 0.3f, VISITOR_DOOR = 2.2f, HALF = 0.5f;
 void garden(LotSpace &s) {
 	const bool house = s.b.kind == KIND_HOUSE;
 	const char *walk = house ? "house_path" : "pavers";
-	s.cover({ s.door_x - PATH_W * HALF, 0, s.door_x + PATH_W * HALF, s.F }, walk, COVER_OWN);
+	for (const Rect &r : s.people_way(PATH_W * HALF, s.F)) s.cover(r, walk, COVER_OWN);
 	for (const Strip &st : s.strips) {
 		if (st.walk.empty() || !st.drive.empty()) continue;
 		float a = st.walk.x0 < s.door_x ? st.walk.x0 : s.door_x + PATH_W * HALF;
@@ -80,7 +80,7 @@ void plaza(LotSpace &s) {
 
 void apron(LotSpace &s) {
 	const LotRules &l = s.rules;
-	s.cover({ s.door_x - APRON_PATH * HALF, 0, s.door_x + APRON_PATH * HALF, s.F }, "path", COVER_OWN);
+	for (const Rect &r : s.people_way(APRON_PATH * HALF, s.F)) s.cover(r, "path", COVER_OWN);
 	if (s.F >= l.row_depth(1) && !s.built_box.empty()) {
 		const int line = s.paint("stall_line");
 		for (float x = s.built_box.x0 + VISITOR_FROM; x + l.stall_w <= s.built_box.x1; x += l.stall_w) {

@@ -31,11 +31,15 @@ constexpr int MAX_WAYS = 12;
 enum class PedMode : uint8_t { SIDEWALK, WAY, WAIT, KERB, LOT };
 
 
-// A front door as the walkers use it: the sidewalk's arc and place across at the foot of its way, and the door itself.
+// A front door as the walkers use it: the sidewalk's arc and place across at the foot of its way, the door itself, and the way's bends
+// between them from the door out (none: one straight line; sim/buildings/lot_doors.h).
 struct PedDoor {
+	static constexpr int MAX_BENDS = 2;
 	int building = -1; // -1: no door
 	uint32_t seed = 0; // of the record it was read from: a building that went takes its door with it
 	float s = 0, u = 0, x = 0, y = 0, z = 0;
+	Waypoint bend[MAX_BENDS];
+	uint8_t bends = 0;
 	uint8_t kind = 0; // PlaceKind
 };
 
@@ -124,6 +128,8 @@ struct Pedestrian {
 	PedDoor door; // the door it goes in at, on the last street of its route
 	int goal_side = -1; // the sidewalk of that street it heads for (-1: either)
 	bool entering = false, company_due = false; // on its way in at a door; its company comes out of the door after it
+	// The door it came out of: its company comes out there after it, by the same way (ways[0..wn) until its first corner).
+	float out_x = 0, out_y = 0, out_z = 0;
 	// Walking with somebody (ped_party.cpp): the walker it came out with, and the one that came out with it. Each walks its own way.
 	int with = -1, mate = -1;
 	PoseTrail trail;

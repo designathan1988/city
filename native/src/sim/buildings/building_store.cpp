@@ -96,6 +96,15 @@ void BuildingStore::tally(const Building &b, int sign) {
 
 void BuildingStore::mark(int id) {
 	sites_due.push_back(id);
+	changed(id);
+}
+
+void BuildingStore::set_edges(int id, const b40::LotEdges &edges) {
+	items[size_t(id)].edges = edges;
+	changed(id);
+}
+
+void BuildingStore::changed(int id) {
 	const Building &b = items[size_t(id)];
 	const float r = reach(b);
 	if (furniture) furniture->forget_meeting({ b.x - r, b.z - r, b.x + r, b.z + r }); // under the exclusive lock, before any reader places again

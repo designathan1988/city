@@ -54,6 +54,21 @@ inline void street_gates(const RoadNetwork &net, const BuildingStore &lots, int 
 	street_gates(net, lots, lots.designs, sid, margin, gates, walk_margin);
 }
 
+// How many lots' gates open onto a junction's kerb: either end of the gate on the street it faces (the nearest, as the traffic's
+// gate_lane takes it) where a car's gate may not open (parking_layout.h kerb_standing: a corner, a crosswalk, the clearance past them)
+// or a person's (kerb_walkable: a crosswalk's landing, the signal post past it). The probes' count; none when the lots keep their gates
+// off those stretches (b40::LotEdges). `first`, when
+// given, names the first: its lot, its kind (b40::Element), its middle in the world, the street and the arc along it of its end there,
+// its middle and width along the lot's front, and the lot's edges as settled.
+struct GateOnJunction {
+	int cars = 0; // how many of them are cars' gates
+	int lot = -1, kind = 0, street = -1;
+	float x = 0, z = 0, front_x = 0, w = 0;
+	double at = 0;
+	b40::LotEdges edges;
+};
+int gates_on_junctions(const RoadNetwork &net, const BuildingRecords &lots, const b40::Data &designs, GateOnJunction *first = nullptr);
+
 // The lot's gates and bays alone, without their ways (a few elements read, no grid): what standing cars need.
 void lot_bays(const std::vector<b40::LotElement> &elements, const b40::LotFrame &f, LotAccess &out);
 // What is solid in the lot under `headroom`, in the world: volumes and elements, the docks and bays left open.

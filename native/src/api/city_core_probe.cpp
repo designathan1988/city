@@ -3,6 +3,7 @@
 
 #include "core/math.h"
 #include "core/units.h"
+#include "sim/buildings/lot_access.h"
 #include "sim/economy/road_economy.h"
 #include "sim/roads/geometry.h"
 #include "sim/traffic/traffic_system.h"
@@ -191,6 +192,15 @@ void furniture_probe(const CityState &s, Dictionary &d) {
 	d["street_furniture"] = furniture_counts(s);
 	d["furniture_in_gates"] = traffic::furniture_in_gates(s, false); // pieces standing in front of a lot's gate
 	d["signals_in_gates"] = traffic::furniture_in_gates(s, true); // ... of them signal posts, which the signals' rule places
+	GateOnJunction first;
+	d["gates_on_junctions"] = gates_on_junctions(s.roads, s.buildings, s.buildings.designs, &first); // lots' gates opening onto a junction's kerb
+	// lot, kind, x, z, street, arc; the gate's middle and width along the front; the lot's shut stretches and street sides
+	Array named = Array::make(first.lot, first.kind, first.x, first.z, first.street, first.at, first.front_x, first.w);
+	for (int kind = 0; kind < b40::LotEdges::KINDS; kind++)
+		for (int k = 0; k < b40::LotEdges::SPANS; k++) named.append_array(Array::make(first.edges.from[kind][k], first.edges.to[kind][k]));
+	named.push_back(int(first.edges.street));
+	d["gates_on_junctions_first"] = named;
+	d["car_gates_on_junctions"] = first.cars; // of them, cars' gates
 }
 } // namespace
 

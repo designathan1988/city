@@ -67,27 +67,13 @@ bool crowded(const TrafficState &t, const TrafficParams &p, const Pose &at) {
 	return walker_near(t, at, 2 * p.ped_body_m + p.ped_gap_m) || on_a_swath(t, at.x, at.z, p.ped_body_m);
 }
 
-// Standing at the door, its way out to the sidewalk at `d`.
+// Standing at the door, its way out to the sidewalk at `d` (ped_door_walk.cpp).
 void at_door(const CityState &s, Pedestrian &w, const PedDoor &d) {
-	Pose foot;
-	sidewalk_pose(s, w.seg, w.side, d.s, d.u, foot);
 	w.s = d.s;
 	w.cur.x = d.x;
 	w.cur.y = d.y;
 	w.cur.z = d.z;
-	w.ways[0] = Waypoint{ foot.x, foot.y, foot.z, -1 };
-	w.wn = 1;
-	w.wi = 0;
-	w.mode = PedMode::LOT;
-	w.lx = d.x;
-	w.ly = d.y;
-	w.lz = d.z;
-	w.llen = std::hypot(foot.x - d.x, foot.z - d.z);
-	w.ls = 0;
-	const V2 way = V2(foot.x - d.x, foot.z - d.z).norm();
-	w.cur.fx = w.way_x = way.x;
-	w.cur.fz = w.way_z = way.y;
-	onto_line(w);
+	door_way_out(s, w, d);
 }
 
 } // namespace

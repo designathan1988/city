@@ -1,6 +1,7 @@
 // The ground of every zone (lawn, paving, drive surfaces) and the ways kept clear before anything stands on the lot:
 // each drive from its gate to the back of its strip, a car park's aisle across the yard, a works' visitors' aisle and a
-// loading yard's turning ground, and the people's way from the front gate to the door.
+// loading yard's turning ground, and the people's way from the front gate to the door (LotSpace::people_way: straight, or bent along the
+// front zone where the gate stands off the door's line).
 #include "sim/buildings/b40/lot_layout.h"
 
 #include <algorithm>
@@ -53,7 +54,7 @@ void lay_ground(LotSpace &s) {
 	s.cover(env, house || s.b.kind == KIND_FLATS || s.b.kind == KIND_TOWER ? "lawn" : "paving");
 	if (s.F > 0) {
 		float g = s.rules.person_gate[house ? 0 : 1] * HALF + DOOR_WAY_PAD;
-		s.keep_clear({ s.door_x - g, 0, s.door_x + g, std::max(s.F, DOOR_WAY_MIN) });
+		for (const Rect &r : s.people_way(g, std::max(s.F, DOOR_WAY_MIN))) s.keep_clear(r);
 	}
 	const LotRules &l = s.rules;
 	if (s.plan.back == BACK_PARKING) {

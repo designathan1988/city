@@ -2,12 +2,15 @@
 #include "sim/commands/lot_sites.h"
 
 #include "sim/buildings/b40/record.h"
+#include "sim/roads/parking_layout.h"
 #include "sim/state/city_state.h"
 #include "sim/street/footway.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <limits>
+#include <utility>
 
 namespace city {
 
@@ -20,6 +23,114 @@ constexpr float LEVEL_STEP_M = 2.f; // a lot's level is taken from the footway t
 constexpr float FRONT_SHARES[] = { 0.f, -0.25f, 0.25f, -0.45f, 0.45f };
 // A lot's middle stands at most this far from the street its front meets: no lot is deeper than twice it.
 constexpr float FRONT_REACH_M = 100.f;
+constexpr float SHUT_STEP_M = 0.5f; // a front is read for a junction's kerb this often where its ends and middle disagree
+constexpr float SHUT_EDGE_M = 0.02f; // a shut stretch's ends are found to this, the stretch taken the larger
+constexpr float BESIDE_M = 1.f; // a point this far past a street's band, or nearer, lies beside that street
+constexpr float SIDE_SHARES[] = { 0.25f, 0.5f, 0.75f }; // where along a side, in depths from the front, a street beside it is looked for
+
+// What the street outside a lot's front is at a point: the segment the point lies beside (the one whose band is nearest, -1 none), and
+// whether a car's gate (open[CAR]: a car may stand at its kerb there) and a person's (open[WALK]: off a crosswalk's landing and its post)
+// may open onto it; a point ahead of a street's end with no street beside it lies in a junction.
+struct FrontRead {
+	int seg = -1;
+	bool open[b40::LotEdges::KINDS] = { true, true };
+};
+FrontRead front_read(const RoadNetwork &net, const V2 &p) {
+	const double reach = footway_reach(net, BESIDE_M);
+	FrontRead r;
+	float nearest = BESIDE_M;
+	double at = 0;
+	bool ahead = false;
+	net.for_segments_near(p.x - reach, p.y - reach, p.x + reach, p.y + reach, [&](int seg) {
+		if (!net.segs[size_t(seg)].alive) return;
+		double v;
+		float u, past;
+		segment_place(net, seg, p.x, p.y, v, u, past);
+		const float off = std::fabs(u) - net.profile_of(seg).half(); // past the band's outer edge (< 0: on it)
+		if (off > BESIDE_M) return;
+		if (past > BESIDE_M) {
+			ahead = true;
+			return;
+		}
+		if (r.seg >= 0 && off >= nearest) return;
+		nearest = off;
+		r.seg = seg;
+		at = v;
+	});
+	if (r.seg >= 0) {
+		r.open[b40::LotEdges::CAR] = kerb_standing(net, r.seg, at);
+		r.open[b40::LotEdges::WALK] = kerb_walkable(net, r.seg, at);
+	} else {
+		r.open[b40::LotEdges::CAR] = r.open[b40::LotEdges::WALK] = !ahead;
+	}
+	return r;
+}
+
+// The stretches of a front no gate of `kind` opens on, as lot x from its middle (`read`: the street outside the front at x): read every
+// SHUT_STEP_M, each change found to SHUT_EDGE_M, the stretch taken the larger; more than SPANS stretches, the two nearest joined.
+template <typename Read>
+void front_shut(const Read &read, float w, int kind, b40::LotEdges &out) {
+	const float a = -w * HALF, b = w * HALF;
+	std::vector<std::pair<float, float>> shut;
+	const int n = std::max(1, int(std::ceil(w / SHUT_STEP_M)));
+	float x0 = a, from = a;
+	bool open0 = read(a).open[kind];
+	for (int k = 1; k <= n; k++) {
+		const float x1 = a + w * float(k) / float(n);
+		const bool open1 = read(x1).open[kind];
+		if (open1 != open0) {
+			float lo = x0, hi = x1; // the change lies between
+			while (hi - lo > SHUT_EDGE_M) {
+				const float mid = (lo + hi) * HALF;
+				(read(mid).open[kind] == open0 ? lo : hi) = mid;
+			}
+			if (open0) from = lo; // a shut stretch starts, from the last open point
+			else shut.push_back({ from, hi }); // it ends, at the first open point
+		}
+		x0 = x1;
+		open0 = open1;
+	}
+	if (!open0) shut.push_back({ from, b });
+	while (shut.size() > size_t(b40::LotEdges::SPANS)) { // a gate keeps off both and what lies between
+		size_t join = 0;
+		for (size_t k = 1; k + 1 < shut.size(); k++)
+			if (shut[k + 1].first - shut[k].second < shut[join + 1].first - shut[join].second) join = k;
+		shut[join].second = shut[join + 1].second;
+		shut.erase(shut.begin() + std::ptrdiff_t(join + 1));
+	}
+	for (size_t k = 0; k < shut.size(); k++) {
+		out.from[kind][k] = shut[k].first;
+		out.to[kind][k] = shut[k].second;
+	}
+}
+
+// The front's stretches of both kinds. Its ends and middle settle a front beside one street whose kerb is open along it all for both (each
+// kind's open kerb is one stretch of each street, the front straight); else each kind is read along it.
+void front_stretches(const RoadNetwork &net, const b40::LotFrame &f, float w, b40::LotEdges &out) {
+	const auto read = [&](float x) { return front_read(net, f.at(x, -FRONT_LOOK_M)); };
+	const FrontRead ra = read(-w * HALF), rm = read(0), rb = read(w * HALF);
+	bool open = ra.seg == rm.seg && rm.seg == rb.seg;
+	for (int kind = 0; kind < b40::LotEdges::KINDS; kind++) open = open && ra.open[kind] && rm.open[kind] && rb.open[kind];
+	if (open) return;
+	for (int kind = 0; kind < b40::LotEdges::KINDS; kind++) front_shut(read, w, kind, out);
+}
+
+// The sides of a lot a street runs along: a sidewalk, or a road's surface, just outside it.
+uint8_t street_sides(const RoadNetwork &net, const b40::LotFrame &f, float w, float d) {
+	uint8_t out = 0;
+	for (int side = 0; side < 2; side++) {
+		const float x = (side == 0 ? -1.f : 1.f) * (w * HALF + FRONT_LOOK_M);
+		for (float share : SIDE_SHARES) {
+			const V2 p = f.at(x, share * d);
+			const FootwayHit hit = footway_at(net, p.x, p.y, FOOTWAY_FIND_M);
+			if ((hit.ok && hit.side >= 0) || on_road(net, p.x, p.y)) {
+				out |= side == 0 ? b40::LotEdges::LEFT_ON_STREET : b40::LotEdges::RIGHT_ON_STREET;
+				break;
+			}
+		}
+	}
+	return out;
+}
 
 // The graded ground of building `id`'s lot, or false: no building there, or no sidewalk in front of it (a lot on a corner's mouth or
 // off every street keeps the land).
@@ -97,6 +208,15 @@ void mark_stands(CityState &s, float minx, float minz, float maxx, float maxz) {
 }
 } // namespace
 
+b40::LotEdges lot_edges(const CityState &s, const Building &rec) {
+	b40::LotEdges e;
+	if (!rec.alive) return e;
+	const b40::LotFrame f = b40::lot_frame(rec);
+	front_stretches(s.roads, f, rec.w, e);
+	e.street = street_sides(s.roads, f, rec.w, rec.d);
+	return e;
+}
+
 void settle_sites(CityState &s, const std::vector<int> &streets) {
 	std::vector<int> due;
 	due.swap(s.buildings.sites_due);
@@ -110,6 +230,11 @@ void settle_sites(CityState &s, const std::vector<int> &streets) {
 	ComposeHold hold(s.terrain); // every lot graded, composed once where they overlap
 	for (int id : due) {
 		if (id < 0 || id >= int(s.buildings.items.size())) continue;
+		const Building &rec = s.buildings.items[size_t(id)];
+		if (rec.alive) { // what its edges meet, as the streets now stand: its body is made to them
+			const b40::LotEdges edges = lot_edges(s, rec);
+			if (edges != rec.edges) s.buildings.set_edges(id, edges);
+		}
 		const std::vector<LotShape> &shapes = s.terrain.lots.shapes;
 		const LotShape *was = id < int(shapes.size()) && shapes[size_t(id)].alive ? &shapes[size_t(id)] : nullptr;
 		if (was) mark_stands(s, was->minx, was->minz, was->maxx, was->maxz);

@@ -132,11 +132,12 @@ void civic_faces(const Data &data, Body &b) {
 		}
 }
 
-LotPlan civic_plan(float W, float D) {
+LotPlan civic_plan(float W, float D, const LotEdges &edges) {
 	LotPlan p;
 	p.kind = KIND_SHOP;
 	p.W = W;
 	p.D = D;
+	p.edges = edges;
 	p.front = FRONT_PLAZA;
 	p.front_depth = std::clamp(D * FRONT_SHARE, FRONT_MIN, FRONT_MAX);
 	p.left = p.right = SidePlan{ SIDE_PATH, PLAN_SIDE_PATH };
@@ -165,16 +166,19 @@ void put(Body &b, Element k, float x0, float y0, float x1, float y1, float h, in
 bool is_civic(int fn) { return fn == FN_SCHOOL || fn == FN_CHURCH || fn == FN_HOSPITAL || fn == FN_CLINIC || is_service(fn); }
 bool is_open_lot(int fn) { return fn == FN_SQUARE || fn == FN_PARK || fn == FN_SPORTS_COURT; }
 
-void civic_body(const Data &data, Body &b, int fn, int floors, float W, float D, uint32_t seed) {
+void civic_body(const Data &data, Body &b, int fn, int floors, float W, float D, uint32_t seed, const LotEdges &edges) {
 	b = Body{};
 	b.kind = KIND_SHOP;
 	b.use = USE_COMMERCIAL;
 	b.ground = GROUND_LOBBY;
 	Xoshiro128 r(seed);
-	b.plan = civic_plan(W, D);
+	b.plan = civic_plan(W, D, edges);
 	Envelope env;
 	env.W = b.plan.x1 - b.plan.x0;
 	env.D = b.plan.y1 - b.plan.y0;
+	const float dx = b.plan.x0 - W / 2, dy = b.plan.y0; // the envelope into the lot frame
+	env.shut = edges.moved(-dx); // the plaza in front: a person's gate at the door
+	env.gate_half = data.lots.person_gate[1] * HALF;
 	bool modern = fn == FN_HOSPITAL || fn == FN_CLINIC || fn == FN_SUPERMARKET || fn == FN_MALL || fn == FN_GAS_STATION || fn == FN_POLICE;
 	b.style = modern ? STYLE_MODERNIST : STYLE_COLONIAL;
 	Paint wall, trim;
@@ -196,7 +200,6 @@ void civic_body(const Data &data, Body &b, int fn, int floors, float W, float D,
 	}
 	civic_faces(data, b);
 	finish_body(data, b, env, r, door_kind, door);
-	float dx = b.plan.x0 - W / 2, dy = b.plan.y0;
 	for (Volume &v : b.volumes) { v.x += dx; v.y += dy; }
 	for (LotElement &e : b.elements) { e.x += dx; e.y += dy; }
 	b.entrance_x += dx;

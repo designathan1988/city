@@ -5,14 +5,23 @@
 // settled after every edit (sync_grade), the city's generation and growth, and the load.
 #pragma once
 
+#include "sim/buildings/b40/types.h"
+
 #include <vector>
 
 namespace city {
 
+struct Building;
 struct CityState;
 
 // The lots whose ground is due (the buildings that came, went or changed: BuildingStore::sites_due) and those facing a segment in
-// `streets` (its heights moved, or it went), graded again under one held composition; what stands on that ground is marked.
+// `streets` (its heights moved, or it went), graded again under one held composition; what stands on that ground is marked. Each
+// one's edges (lot_edges) are settled with it: a record whose edges changed is drawn again, its body made to them.
 void settle_sites(CityState &s, const std::vector<int> &streets);
+// What the edges of building `rec`'s lot meet (b40::LotEdges), read from the streets: the stretches of its front where the street
+// outside it has no kerb a car may stand at (sim/roads/parking_layout.h kerb_standing: a junction's corner, its crosswalks, the place
+// of its signal posts) or where the front faces a junction ahead of every street's end; and the sides a street runs along. The one
+// reading of them: settle_sites keeps every record's own (Building::edges) so, and the probes hold the bodies against it.
+b40::LotEdges lot_edges(const CityState &s, const Building &rec);
 
 } // namespace city

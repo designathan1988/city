@@ -35,6 +35,14 @@ double end_clear(const RoadNetwork &net, int node, double mouth) {
 	return mouth + std::max(double(tp.kerb_corner_clear_m), crossing);
 }
 
+// How far past the mouth at `node` the crosswalk's landing and the signal post just past it reach, a walker's body round the post; nothing
+// at an end with no crosswalk.
+double crossing_reach(const RoadNetwork &net, int node) {
+	if (!net.has_crosswalks(node)) return 0;
+	const StreetFurnitureDef &d = net.cat->furniture;
+	return d.crossing.zebra_to_m + d.footprint[int(FurnitureKind::SIGNAL)].z_m + net.cat->traffic.ped_body_m;
+}
+
 } // namespace
 
 double arc_of_t(const RoadSegment &g, double t) {
@@ -46,6 +54,12 @@ double arc_of_t(const RoadSegment &g, double t) {
 bool kerb_standing(const RoadNetwork &net, int sid, double v) {
 	const RoadSegment &g = net.segs[size_t(sid)];
 	return v >= end_clear(net, g.a, g.retreat_a) && v <= g.len - end_clear(net, g.b, g.retreat_b);
+}
+
+bool kerb_walkable(const RoadNetwork &net, int sid, double v) {
+	const RoadSegment &g = net.segs[size_t(sid)];
+	const double a = g.retreat_a, b = g.len - g.retreat_b;
+	return !(v >= a && v <= a + crossing_reach(net, g.a)) && !(v <= b && v >= b - crossing_reach(net, g.b));
 }
 
 bool parks_along(const RoadNetwork &net, int sid) {

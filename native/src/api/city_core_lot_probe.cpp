@@ -6,11 +6,13 @@
 // of the lot over the footway. Its neighbours: a lot beside it in a row shares its side, no strip of bare land between the two.
 // Its edges closed once (CityProbes::lot_bounds): every edge of a lot laid round a building (sim/buildings/b40 lot_boundary.cpp)
 // is closed along its whole length by its boundary (a wall, fence, railing, hedge or gate on the line) or by a ground block that
-// stands on the edge, never by both (a boundary in front of a block's face, or through it) and never by neither.
+// stands on the edge, never by both (a boundary in front of a block's face, or through it) and never by neither; and a side a street runs
+// along (sim/commands/lot_sites.h lot_edges) is closed as a front, never by a party wall.
 #include "api/city_probes.h"
 
 #include "sim/buildings/b40/civic.h"
 #include "sim/buildings/b40/record.h"
+#include "sim/commands/lot_sites.h"
 #include "sim/state/city_state.h"
 #include "sim/street/footway.h"
 
@@ -171,8 +173,8 @@ Dictionary CityProbes::lot_fronts() {
 namespace {
 // What lot_bounds finds: how many of each, the first of each, and how many by "edge kind lot-kind front-use".
 struct BoundsTally {
-	int lots = 0, pieces = 0, doubled = 0, open = 0, samples = 0, parts_in = 0, parts_meet = 0;
-	Array doubled_first, open_first, parts_first, meet_first;
+	int lots = 0, pieces = 0, doubled = 0, open = 0, samples = 0, parts_in = 0, parts_meet = 0, street_sides = 0, street_walls = 0;
+	Array doubled_first, open_first, parts_first, meet_first, street_first;
 	Dictionary doubled_by, open_by, parts_by, meet_by;
 	static void count(Dictionary &by, int edge, int kind, const b40::Body &b) {
 		const String key = String::num_int64(edge) + " " + String::num_int64(kind) + " " + String::num_int64(int(b.plan.kind)) + " " + String::num_int64(int(b.plan.front));
@@ -244,6 +246,28 @@ void parts_in_parts(const b40::Body &b, const b40::LotFrame &f, int id, float de
 	}
 }
 
+// A lot's sides a street runs along (lot_edges, read from the streets as they stand) and the party walls standing on them: a wall of a
+// party wall's height (the lot rules' lower one) on a side that faces a street is a blind wall along it.
+void street_walls(const CityState &s, const Building &rec, const b40::Body &b, const b40::LotFrame &f, int id, BoundsTally &t) {
+	const b40::LotEdges edges = lot_edges(s, rec);
+	const b40::LotRules &l = s.buildings.designs.lots;
+	const float party = std::min(l.party_wall[0], l.party_wall[1]);
+	for (int k : { EDGE_LEFT, EDGE_RIGHT }) {
+		if (!edges.on_street(k == EDGE_LEFT ? 0 : 1)) continue;
+		t.street_sides++;
+		for (const b40::LotElement &e : b.elements) {
+			float lo, hi;
+			if (e.kind != b40::EL_WALL || e.z != 0 || e.h < party - MEET_M) continue;
+			if (std::fabs(inside_edge(plan_box(e), k, b.plan.W, b.plan.D, lo, hi)) > EDGE_LINE_M) continue;
+			t.street_walls++;
+			if (t.street_first.is_empty()) {
+				const V2 w = f.at(e.x, e.y);
+				t.street_first = Array::make(id, k, w.x, w.y, e.h, int(b.plan.kind));
+			}
+		}
+	}
+}
+
 // One edge of a lot: its boundary pieces along a block's face (in front of it or through it), and its points no piece and no
 // block closes.
 void judge_edge(const b40::Body &b, const b40::LotFrame &f, int id, int k, const std::vector<EdgeSpan> &on, const std::vector<EdgeSpan> &blocks, BoundsTally &t) {
@@ -295,6 +319,7 @@ Dictionary CityProbes::lot_bounds() {
 		edges_of(*body, closes, on, blocks);
 		parts_in_boundary(*body, f, id, t);
 		parts_in_parts(*body, f, id, s.buildings.designs.lots.pool_deck, t);
+		street_walls(s, rec, *body, f, id, t);
 		for (int k = 0; k < LOT_EDGES; k++) judge_edge(*body, f, id, k, on[k], blocks[k], t);
 	}
 	Dictionary d;
@@ -313,6 +338,9 @@ Dictionary CityProbes::lot_bounds() {
 	d["parts_meet"] = t.parts_meet; // pairs of a lot's standing parts in one another (a pool with its deck)
 	d["meet_first"] = t.meet_first; // building, the two parts' kinds, x, z, metres in
 	d["meet_by"] = t.meet_by; // "kind kind lot-kind front-use": how many
+	d["street_sides"] = t.street_sides; // lots' sides a street runs along
+	d["street_walls"] = t.street_walls; // party walls standing on them
+	d["street_first"] = t.street_first; // building, edge, x, z, the wall's height, the lot's kind
 	d["step_m"] = EDGE_STEP_M;
 	return d;
 }

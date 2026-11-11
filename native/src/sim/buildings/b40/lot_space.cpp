@@ -13,6 +13,7 @@ constexpr float PART_GAP = 0.05f; // two solid parts never touch
 constexpr uint32_t BYTE = 0xff;
 constexpr int STOREY_SHIFT = KEY_STOREY_SHIFT, SIDE_SHIFT = KEY_SIDE_SHIFT, BACK_SIDE = 2;
 constexpr float HALF = 0.5f;
+constexpr float GATE_STEP = 0.1f; // a people's gate moved off the door's line is looked for along the front this often
 
 Rect footprint(const Volume &v) { return { v.x, v.y, v.x + v.w, v.y + v.d }; }
 } // namespace
@@ -55,6 +56,37 @@ LotSpace::LotSpace(const Data &d, Body &body, Xoshiro128 &rng) : data(d), b(body
 	std::sort(loading_x.begin(), loading_x.end());
 	own_parts = built.size();
 	door_x = b.entrance_x;
+	door_wall = F;
+	bool walled = false;
+	for (const Rect &f : built)
+		if (door_x >= f.x0 && door_x <= f.x1 && (!walled || f.y0 < door_wall)) {
+			door_wall = f.y0;
+			walled = true;
+		}
+	gate_x = people_gate_x();
+}
+
+float LotSpace::people_gate_x() const {
+	if (F <= 0) return door_x; // no front zone: no people's gate
+	const float g = rules.person_gate[b.kind == KIND_HOUSE ? 0 : 1] * HALF;
+	if (!plan.edges.shut(LotEdges::WALK, door_x - g, door_x + g)) return door_x;
+	const auto opens = [&](float x) {
+		if (x - g < L + HEDGE_THICK || x + g > R - HEDGE_THICK || plan.edges.shut(LotEdges::WALK, x - g, x + g)) return false;
+		for (const Strip &st : strips)
+			if (!st.drive.empty() && x - g < st.drive.x1 && st.drive.x0 < x + g) return false;
+		return true;
+	};
+	for (float d = GATE_STEP; d < R - L; d += GATE_STEP)
+		for (float x : { door_x - d, door_x + d })
+			if (opens(x)) return x;
+	return door_x;
+}
+
+std::vector<Rect> LotSpace::people_way(float half, float depth) const {
+	if (gate_x == door_x) return { { door_x - half, 0, door_x + half, depth } };
+	const float link = door_wall * HALF;
+	return { { gate_x - half, 0, gate_x + half, link - half }, { std::min(gate_x, door_x) - half, link - half, std::max(gate_x, door_x) + half, link + half },
+		{ door_x - half, link + half, door_x + half, depth } };
 }
 
 int LotSpace::paint(const char *name) {

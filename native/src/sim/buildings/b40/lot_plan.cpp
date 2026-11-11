@@ -1,6 +1,10 @@
-// The plan of a grown lot: front, sides and back uses and the building envelope, by the lot's kind and size.
+// The plan of a grown lot: front, sides and back uses and the building envelope, by the lot's kind and size, and by what its edges
+// meet (LotEdges): a drive whose gate would open onto a junction's kerb (its corner, crosswalk, the place of its signal posts) goes to
+// the other side, else gives way to a path; a side a street runs along keeps a garden strip where it would stand attached.
 #include "sim/buildings/b40/gen.h"
 #include "sim/buildings/b40/paint.h"
+
+#include <utility>
 
 namespace city::b40 {
 
@@ -19,6 +23,7 @@ constexpr float WORKPLACE_MIN = 14.f, OFFICE_SERVICE = 16.f, OFFICE_SERVICE_D = 
 constexpr float NARROW_LOT = 6.f, HOUSE_PATHS_W = 8.5f, HOUSE_PATH = 1.f, SERVICE_MAX = 6.f, HALF = 0.5f;
 constexpr float APRON_D = 22.f, APRON_DEEP = 40.f, APRON = 6.f, WORKS_W = 20.f, WORKS_D = 30.f, WORKS_PATH_W = 26.f;
 constexpr float LOADING_FULL = 22.f, LOADING_EXTRA = 14.f, LOADING_MAX = 16.f, LOADING_MIN = 12.f, LOADING_SHARE = 0.35f;
+constexpr float STREET_GARDEN = 2.f; // a side along a street: a garden strip where it would stand attached
 
 float gap(Xoshiro128 &r, float lo, float hi) { return (hi - lo) * float(r.f()) + lo; }
 void sides(LotPlan &p, bool flip, SidePlan a, SidePlan b) {
@@ -111,8 +116,45 @@ void plan_industry(const LotRules &l, LotPlan &p, bool flip) {
 
 bool drives(const SidePlan &s) { return s.use == SIDE_DRIVE || s.use == SIDE_DRIVE_PATH; }
 
+// The front's stretch the drive on `side` (0 left, 1 right) opens on, its gate with its posts, as lot x from the middle: where the drive
+// meets the street (lot_space.cpp: the side's strip less its walk).
+void drive_span(const LotPlan &p, int side, float width, float &x0, float &x1) {
+	x0 = side == 0 ? -p.W * HALF : p.W * HALF - width;
+	x1 = x0 + width;
+}
+
+// A drive whose gate would open onto a junction's kerb goes to the other side when that one has none and its gate would open off it;
+// else that side keeps a path where the drive was.
+void drives_off_corners(LotPlan &p) {
+	for (int side = 0; side < 2; side++) {
+		SidePlan &here = side == 0 ? p.left : p.right, &there = side == 0 ? p.right : p.left;
+		if (!drives(here)) continue;
+		const float width = here.use == SIDE_DRIVE_PATH ? here.width - here.walk : here.width;
+		float x0, x1, o0, o1;
+		drive_span(p, side, width, x0, x1);
+		if (!p.edges.shut(LotEdges::CAR, x0, x1)) continue;
+		drive_span(p, 1 - side, width, o0, o1);
+		if (!drives(there) && !p.edges.shut(LotEdges::CAR, o0, o1)) std::swap(here, there);
+		else here = SidePlan{ SIDE_PATH, FOOTPATH };
+	}
+}
+
+// A side a street runs along: a garden strip where it would stand attached, when the building keeps its width.
+void street_gardens(LotPlan &p) {
+	for (int side = 0; side < 2; side++) {
+		SidePlan &here = side == 0 ? p.left : p.right;
+		const SidePlan &other = side == 0 ? p.right : p.left;
+		if (p.edges.on_street(side) && here.use == SIDE_ATTACHED && p.W - other.width - STREET_GARDEN >= NARROW_LOT)
+			here = SidePlan{ SIDE_GARDEN, STREET_GARDEN };
+	}
+}
+
 void settle(LotPlan &p) {
-	if (p.back == BACK_PARKING && !drives(p.left) && !drives(p.right)) { p.back = BACK_SERVICE; p.back_depth = std::min(SERVICE_MAX, p.back_depth); }
+	// A car park or a loading yard behind is reached by a drive: without one, a paved service yard.
+	if ((p.back == BACK_PARKING || p.back == BACK_LOADING) && !drives(p.left) && !drives(p.right)) {
+		p.back = BACK_SERVICE;
+		p.back_depth = std::min(SERVICE_MAX, p.back_depth);
+	}
 	if (p.W - p.left.width - p.right.width >= NARROW_LOT) return;
 	if (p.kind == KIND_HOUSE && p.W >= HOUSE_PATHS_W) {
 		p.left = p.right = SidePlan{ SIDE_PATH, HOUSE_PATH };
@@ -123,9 +165,10 @@ void settle(LotPlan &p) {
 }
 } // namespace
 
-LotPlan plan_lot(const LotRules &l, Kind kind, float W, float D, Xoshiro128 &r) {
+LotPlan plan_lot(const LotRules &l, Kind kind, float W, float D, Xoshiro128 &r, const LotEdges &edges) {
 	LotPlan p;
 	p.kind = kind; p.W = W; p.D = D;
+	p.edges = edges;
 	bool flip = r.f() < HALF;
 	switch (kind) {
 		case KIND_HOUSE: plan_house(p, r, flip); break;
@@ -135,6 +178,8 @@ LotPlan plan_lot(const LotRules &l, Kind kind, float W, float D, Xoshiro128 &r) 
 		case KIND_OFFICE: plan_office(l, p, r, flip); break;
 		default: plan_industry(l, p, flip); break;
 	}
+	drives_off_corners(p);
+	street_gardens(p);
 	settle(p);
 	p.x0 = p.left.width; p.y0 = p.front_depth; p.x1 = W - p.right.width; p.y1 = D - p.back_depth;
 	return p;

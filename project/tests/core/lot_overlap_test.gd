@@ -4,7 +4,9 @@
 ## bay_census, roof_past_lot), so two halls on a shared line do not put their roofs through one another; nor does its ground or its
 ## boundary (lot_past_lot: a wall's plinth and coping), so two lots' walls on one line do not stand in one another. And every lot's gate
 ## stands open (gates_shut): nothing of it in the passage a car or a person goes through; and no street piece stands in front of it
-## (traffic_probe furniture_in_gates: the kerb's strip holds the vehicles' ramps and the furniture alike, NBR 9050).
+## (traffic_probe furniture_in_gates: the kerb's strip holds the vehicles' ramps and the furniture alike, NBR 9050), a traffic signal's
+## post neither (signals_in_gates): no lot opens a gate onto a junction's kerb, its corner, crosswalk and the place of its posts
+## (gates_on_junctions). A lot's side a street runs along is closed as its front, never by a blind party wall (lot_bounds street_walls).
 extends TestCase
 
 const TOWN_MAP := 0
@@ -69,10 +71,22 @@ func _ready() -> void:
 	var blocked := int(census.get("leaves_blocked", -1))
 	check(blocked == 0, "nothing of a lot stands where its open gates' leaves stand: %d parts or blocks in a leaf, the first (seed, gate kind, kind or -1 a block, x, y, w, d) %s"
 			% [blocked, census.get("leaves_blocked_first", [])])
-	var street: Dictionary = CityStore.query(&"traffic_probe", [FURNITURE_SAMPLE])
-	print("signal posts in front of a gate (the signals' rule places them): %d" % street.signals_in_gates)
-	check(street.furniture_in_gates == 0, "no street piece stands in front of a lot's gate: %d" % street.furniture_in_gates)
+	_street_checks()
 	finish()
+
+
+## What stands between the lots and their streets: no street piece and no signal post in front of a gate, no gate on a junction's kerb,
+## no party wall along a street.
+func _street_checks() -> void:
+	var street: Dictionary = CityStore.query(&"traffic_probe", [FURNITURE_SAMPLE])
+	check(street.furniture_in_gates == 0, "no street piece stands in front of a lot's gate: %d" % street.furniture_in_gates)
+	check(street.signals_in_gates == 0, "no traffic signal's post stands in front of a lot's gate: %d" % street.signals_in_gates)
+	check(street.gates_on_junctions == 0, "no lot's gate opens onto a junction's kerb (its corner, crosswalk, the place of its signal posts): %d (%d a car's), the first (lot, kind, x, z, street, arc, front x, w, shut stretches, street sides) %s"
+			% [street.gates_on_junctions, street.car_gates_on_junctions, street.gates_on_junctions_first])
+	var bounds: Dictionary = CityStore.query(&"lot_bounds")
+	check(int(bounds.street_sides) > 0 and int(bounds.street_walls) == 0,
+			"a lot's side on a street is closed as its front, never by a party wall: %d sides on a street, %d party walls on them, the first (building, edge, x, z, height, kind) %s"
+			% [bounds.street_sides, bounds.street_walls, bounds.street_first])
 
 
 ## How far two turned rectangles enter one another: the least overlap over their four axes (separating axis theorem); 0 or

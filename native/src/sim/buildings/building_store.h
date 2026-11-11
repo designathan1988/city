@@ -37,6 +37,9 @@ struct Building {
 	bool alive = false;
 	b40::BodyRef body; // the version the player edited, held by the record (b40::BodyTable); none = made from the seed
 	double built = 0; // city minute it was built (decay and renovation)
+	// What the lot's edges meet (b40::LotEdges): derived from the streets, settled with the lot's site (sim/commands/lot_sites.h) after
+	// every edit, the generation, growth and the load, never saved; a body made from the seed is made to it (b40/record.h body_key).
+	b40::LotEdges edges;
 };
 
 // The records and their filing by place: what a reader takes of the buildings, the live city's store or a cut of it (a job's
@@ -96,6 +99,9 @@ public:
 	// The record changed: its chunks drawn again, the traffic and the render told (the streets it faces lay their furniture off its
 	// gates again), its lot due to be graded.
 	void mark(int id);
+	// The lot's edges settled (sim/commands/lot_sites.h): a body made from the seed is made to them, so the record is drawn again and the
+	// traffic and the furniture told, as by `mark`, its ground left to the site that settles it now.
+	void set_edges(int id, const b40::LotEdges &edges);
 	void mark_look(int id) const; // its chunks drawn again though it did not change: another look (Interior layer)
 	// Residents and jobs from the floor area.
 	static void occupancy(const Building &b, float floor_share, const float per_m2[4], int &residents, int &jobs);
@@ -104,6 +110,7 @@ private:
 	const OccupancyDef *occupancy_ = nullptr; // the catalogue's, set by init
 	void place(int id, const Building &b);
 	void tally(const Building &b, int sign); // the record's residents and jobs into (+1) or out of (-1) the totals
+	void changed(int id); // what `mark` tells but the site: its chunks, the traffic, the render's lot boxes, the kept furniture
 	static float reach(const Building &b); // how far the lot's turned rectangle reaches from its centre: half its diagonal
 	void mark_into(int id, std::vector<int64_t> &out) const; // the chunks the lot's rectangle may touch
 };

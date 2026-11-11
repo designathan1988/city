@@ -17,9 +17,14 @@ struct Envelope {
 	int era = 0;
 	int cap = 0; // the most storeys its neighbours allow a middling block (0: no limit)
 	bool low = false; // a low-density commercial lot
+	// The front's stretches no gate opens on (LotEdges) in the envelope's frame (x from its left edge), and half the person's gate that
+	// stands in line with the door: the entrance is put where that gate opens off a person's shut stretches. 0: no front zone, no gate.
+	LotEdges shut;
+	float gate_half = 0;
 };
 
-LotPlan plan_lot(const LotRules &l, Kind kind, float W, float D, Xoshiro128 &r);
+// The plan of a lot by its kind and size, its drives' gates kept off the front's shut stretches and its street sides kept open (`edges`).
+LotPlan plan_lot(const LotRules &l, Kind kind, float W, float D, Xoshiro128 &r, const LotEdges &edges);
 // The building for the envelope of `b.plan` (volumes in the envelope frame, x from its left edge).
 void made_to_measure(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r);
 // Facade grammar (facade_compose.cpp).
@@ -33,7 +38,8 @@ void dress_building(const Data &data, Body &b, Xoshiro128 &r, float entrance, in
 // The lot round the building (lot_layout.h): grounds, drives and garages, yards, bays and docks, boundary, gates; lot frame.
 void lay_out_lot(const Data &data, Body &b, Xoshiro128 &r);
 // The whole body of a record: kind from the zone, all steps, shifted to the lot frame (x from the lot's middle). It chooses its own
-// storeys; `floors` only caps a middling block, so the storeys it answers with give the same body back.
-void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed);
+// storeys; `floors` only caps a middling block, so the storeys it answers with give the same body back. `edges`: what the lot's edges
+// meet (Building::edges).
+void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed, const LotEdges &edges);
 
 } // namespace city::b40

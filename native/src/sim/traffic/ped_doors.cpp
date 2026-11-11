@@ -1,7 +1,8 @@
 // The front doors the walkers use, filed by the sidewalk each one opens onto. The lots of the walking window are read a few a
 // step (a door needs the lot's body, sim/buildings/lot_doors.h), so nothing stalls and nothing far off is ever read; a door
 // whose building went is dropped when it is drawn, and one that grew is found at the next look round the window. A door's foot
-// stands clear of the street furniture (ped_furniture.cpp clear_foot), so its doors are read again when its furniture changes.
+// stands clear of the street furniture (ped_furniture.cpp clear_foot), so its doors are read again when its furniture changes; a way
+// that bends to a gate off the door's line keeps its bends (lot_doors.h).
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/buildings/b40/civic.h"
@@ -63,15 +64,19 @@ void file_door(CityState &s, int id) {
 	PedDoor d;
 	int seg = -1, side = 0;
 	if (!sidewalk_under(s, way.foot, frame.e0, d, seg, side)) return;
-	// the foot is where a walker steps onto the sidewalk and off it: clear of the street furniture, its way from the door too; moved
-	// across only (along, the way from the door would no longer pass through the lot's gate)
-	if (!clear_foot(s, seg, side, d.s, d.u, way.door, false)) return;
+	// the foot is where a walker steps onto the sidewalk and off it: clear of the street furniture, its way from the gate's line too (the
+	// last bend, else the door); moved across only (along, that way would no longer pass through the lot's gate)
+	const V2 &from = way.bends > 0 ? way.bend[way.bends - 1] : way.door;
+	if (!clear_foot(s, seg, side, d.s, d.u, from, false)) return;
 	d.building = id;
 	d.seed = rec.seed;
 	d.kind = uint8_t(kind_of(rec, body));
 	d.x = way.door.x;
 	d.z = way.door.y;
 	d.y = s.terrain.height_at(way.door.x, way.door.y);
+	static_assert(int(PedDoor::MAX_BENDS) == int(LotDoor::MAX_BENDS), "a door's way keeps every bend the lot's way has");
+	d.bends = uint8_t(way.bends);
+	for (int k = 0; k < way.bends; k++) d.bend[k] = Waypoint{ way.bend[k].x, s.terrain.height_at(way.bend[k].x, way.bend[k].y), way.bend[k].y, -1 };
 	auto &list = t.doors[size_t(seg * 2 + side)];
 	if (list.empty()) t.door_sides.push_back(seg * 2 + side);
 	list.push_back(d);

@@ -104,11 +104,18 @@ void side_garden(LotSpace &s, const Rect &g) {
 } // namespace
 
 Rect car_pad(const LotSpace &s) {
-	if (s.plan.front != FRONT_CARPAD || s.b.kind != KIND_HOUSE) return {};
+	// a people's way bent along the front garden (its gate off a crosswalk's landing) leaves no room in it for a pad
+	if (s.plan.front != FRONT_CARPAD || s.b.kind != KIND_HOUSE || s.gate_x != s.door_x) return {};
 	const float w = s.rules.stall_w + 2 * PAD_MARGIN;
-	// On the side away from the door, clear of the side wall.
-	return s.door_x > (s.L + s.R) * HALF ? Rect{ s.L + PAD_MARGIN, 0, s.L + PAD_MARGIN + w, s.F }
-										 : Rect{ s.R - PAD_MARGIN - w, 0, s.R - PAD_MARGIN, s.F };
+	const Rect left{ s.L + PAD_MARGIN, 0, s.L + PAD_MARGIN + w, s.F }, right{ s.R - PAD_MARGIN - w, 0, s.R - PAD_MARGIN, s.F };
+	const bool door_right = s.door_x > (s.L + s.R) * HALF;
+	// On the side away from the door, clear of the side wall; on the door's side when the other's gate would open onto a junction's
+	// kerb and this one's opens off it and off the person's gate; none when neither does.
+	const Rect &away = door_right ? left : right, &near = door_right ? right : left;
+	if (!s.plan.edges.shut(LotEdges::CAR, away.x0, away.x1)) return away;
+	const float gate = s.rules.person_gate[0] * HALF;
+	if (!s.plan.edges.shut(LotEdges::CAR, near.x0, near.x1) && (near.x1 < s.door_x - gate || near.x0 > s.door_x + gate)) return near;
+	return {};
 }
 
 void lay_cars(LotSpace &s) {
