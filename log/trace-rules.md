@@ -463,3 +463,34 @@ and at 827 s 2 009 318 links with 169 225 consumers still waiting (785 524 at th
 The earlier numbers were those of a flow that lost every call after the first on a line: three's shading language is
 written that way (`add( mul( a, b ), mul( c, d ) )`), and its helpers' parameters now hold what every call gives them.
 The size of that context-insensitive flow, not cycles, is what the lab costs: the next item (`log/pendencias.md`).
+
+## Why the lab with three.js grows (cause read in the code, 2026-11-11 06:00)
+
+three's shading language (TSL) makes its functions with factories, and the tracer's values cannot tell the products of
+one factory apart:
+- `ShaderNodeProxy(NodeClass, scope, factor, settings)` (three.webgpu.js 4290-4389) returns one of three arrow functions
+  (4344, 4354, 4362) capturing `NodeClass`; 164 functions (`add`, `mul`, ...) are made by `nodeProxy`/`nodeProxyIntent`.
+  A closure is valued by its body (`FN + gid`) and a captured name is read from the enclosing function's one local node,
+  so the 164 are three functions whose `NodeClass` is every node class given to any of them, whose `params` are what
+  every call passes: every call builds every node class with every argument.
+- `Fn(jsFunc)` (5066) keeps `jsFunc` in `new FnNode` -> `new ShaderNode` -> `ShaderNodeInternal.jsFunc` (4762), called at
+  4544. An object is valued by its class (`CLASS + key`), so that field holds all 221 shader bodies and each such call
+  reaches all of them. `ConvertType(type)` (4839) is the same shape for `float`, `vec3`, `color`, ...
+- The call-site rule fed these hubs what was lost before; links grow as calls x classes. Both builds of the node system
+  (`three.webgpu.js`, `three.webgpu.nodes.js`) are roots and solved whole, as is every module of `examples/jsm`.
+
+Research: Li, Tan, Møller, Smaragdakis, "Precision-Guided Context Sensitivity for Pointer Analysis" (OOPSLA 2018,
+https://cs.au.dk/~amoeller/papers/zipper/paper.pdf): precision is lost in few methods, found by their value-flow
+patterns after a context-insensitive pass, and context sensitivity is applied to them only. Wei, Ryder, "Adaptive
+Context-sensitive Analysis for JavaScript" (ECOOP 2015, https://core.ac.uk/download/62920104.pdf): per function, call
+site, object or parameter sensitivity. Andreasen et al. / Wei et al. (FSE 2016,
+https://static.aminer.org/pdf/20170130/pdfs/sigsoft/a1sexadxiwfthg5rq4mpftjc2rdloyin.pdf): the root causes are under 2%
+of a JavaScript application's functions. Andreasen, Møller, "Determinacy in static analysis for jQuery" (TAJS): nested
+closures need the outer frame's context. Lhoták, Hendren, SPARK (https://plg.uwaterloo.ca/~olhotak/pubs/cc03.pdf): the
+call graph built on the fly, only reachable methods analysed.
+
+What the cause asks for: a closure or an object made in a call carries that call's context (heap cloning), and the
+factories and the methods that read their products are analysed per context (arguments and receiver, the Cartesian
+product of Agesen's CPA, selected by flow patterns as Zipper does). That is a new value model for the tracer, not a rule
+added to the present one; the decision is the owner's (systematic-debugging: a fix that needs an architectural change
+is discussed first).
