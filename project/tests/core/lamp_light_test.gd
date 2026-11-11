@@ -1,5 +1,5 @@
 ## The street lamps' light, on each renderer: by day none is on and the sun casts; by night the lamps near the eye have a real light,
-## as many as the tier pays for, the road takes over past them (`lamp_lit`) and the moon's shadow pass is gone; on Compatibility, and
+## as many as the tier pays for, the road takes over past them (`lamp_lit`) and the moon casts the city's shadows; on Compatibility, and
 ## on a tier with no lights, the road draws every pool itself.
 extends TestCase
 
@@ -34,7 +34,10 @@ func _ready() -> void:
 	check(world.sun.shadow_enabled, "by day the sun casts")
 	world.set_hour(daylight.night_hour)
 	await _settled()
-	check(not world.sun.shadow_enabled, "under the lamps the moon's shadow pass is gone")
+	# the moon is the sun's light at night and keeps its cascades, as the reference's does (environment.ts setTimeOfDay): the city's
+	# shadows fall from it, faint as its light, whole
+	check(world.sun.shadow_enabled and is_equal_approx(world.sun.shadow_opacity, 1.0), "by night the moon casts the city's shadows: %s, %.2f" % [
+			world.sun.shadow_enabled, world.sun.shadow_opacity])
 	var budget: int = Settings.current().lamp_lights
 	_check_casting(Settings.current())
 	var lit := _handed_over()
