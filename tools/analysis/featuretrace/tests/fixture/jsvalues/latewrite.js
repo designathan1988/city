@@ -8,3 +8,16 @@ export function lateWrite() {
   fill();
   return kept;
 }
+
+// Two locals of one name in two blocks (scopes): the block's is read in the block, though the function declares a
+// function of that name later.
+export function scopedLocal() {
+  let got;
+  {
+    const chosen = { r: [1] };
+    got = chosen.r;
+  }
+  const chosen = () => 2;
+  chosen();
+  return got;
+}

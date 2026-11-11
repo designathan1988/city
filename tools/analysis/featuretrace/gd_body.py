@@ -11,7 +11,7 @@ from __future__ import annotations
 from . import gd_calls, gd_guards, ir_gd, narrowing, scopes
 from .ir import put
 from .rules import SIGNAL_OPS
-from .model import assign, declare
+from .model import assign, declare, declare_function
 from .source import field_of, named_children
 
 COND_WIDTH = 90
@@ -31,8 +31,7 @@ def statement(r, st, unit, cls, cond) -> None:
         name = src.text(field_of(st, "name"))
         value, typ = field_of(st, "value"), field_of(st, "type")
         if value is not None and value.type == "lambda":
-            unit.lambdas[name] = r.lambda_id(value, unit, cls)
-            declare(r, unit, name, [("callable", unit.lambdas[name])])
+            declare_function(r, unit, name, r.lambda_id(value, unit, cls))
             return
         if typ is not None and typ.type == "type":
             declare(r, unit, name, [("cast", src.text(typ))])

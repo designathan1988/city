@@ -13,7 +13,7 @@ from .cpp_implicit import IMPLICIT
 from .gd_body import squash
 from .ir import put
 from .ir_js import FUNCTIONS, member_name
-from .model import assign, declare
+from .model import assign, declare, declare_function
 from .rules import HANDLER_PREFIX, ITERATOR_MEMBER
 from .source import field_of, named_children, string_value
 
@@ -51,11 +51,13 @@ def guarded(r, facts: list, nodes: list, unit, cond) -> None:
 
 
 def local_function(r, node, unit) -> int:
+    """A function declaration in a function: a local of its block (hoisted: visible in the whole block, J7), the same
+    one when the block's hoisting already declared it."""
     name = r.src.text(field_of(node, "name"))
-    if name not in unit.lambdas:
-        unit.lambdas[name] = r.function(node, name, unit.owner, unit, kind="lambda").local_id
-        declare(r, unit, name, [("callable", unit.lambdas[name])])
-    return unit.lambdas[name]
+    lam = r.function(node, name, unit.owner, unit, kind="lambda").local_id
+    if unit.lambdas.get(scopes.visible(r, name)) != lam:
+        declare_function(r, unit, name, lam)
+    return lam
 
 
 def statement(r, st, unit, cond) -> list | None:
@@ -148,8 +150,8 @@ def local(r, declarator, unit, cond, function_scope: bool = False) -> None:
     target, value = field_of(declarator, "name"), field_of(declarator, "value")
     if target.type == "identifier" and value is not None and value.type in FUNCTIONS:
         name = r.src.text(target)
-        unit.lambdas[name] = r.function(value, name, unit.owner, unit, kind="lambda").local_id
-        declare(r, unit, name, [("callable", unit.lambdas[name])], function_scope=function_scope)
+        lam = r.function(value, name, unit.owner, unit, kind="lambda").local_id
+        declare_function(r, unit, name, lam, function_scope=function_scope)
         return
     if target.type == "identifier" and value is not None and value.type == "class":
         js_class.class_declaration(r, value, r.src.text(target), unit.owner, unit)

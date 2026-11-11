@@ -35,11 +35,13 @@ COUNTS = ("length", "size")       # an array's, a Map's or a Set's count of elem
 HEADS = frozenset(CANONICAL.values())
 OBJECT = "Object"                     # the language's `Object` and its readers of own enumerable properties (P3)
 OBJECT_READS = ("keys", "values", "entries")
+OBJECT_CREATE = "create"              # `Object.create(p)`: an object whose prototype is p (N1'')
 
 
 def object_read(callee: tuple) -> str | None:
-    """`Object.keys` / `Object.values` / `Object.entries` as written (the caller checks `Object` is the language's)."""
-    if callee[0] == "member" and callee[1] == ("name", OBJECT) and callee[2] in OBJECT_READS:
+    """`Object.keys` / `Object.values` / `Object.entries` / `Object.create` as written (the caller checks `Object` is
+    the language's)."""
+    if callee[0] == "member" and callee[1] == ("name", OBJECT) and callee[2] in OBJECT_READS + (OBJECT_CREATE,):
         return callee[2]
     return None
 

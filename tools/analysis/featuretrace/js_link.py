@@ -81,14 +81,19 @@ def jsx(rs, unit, ref) -> None:
 
 def expando_writes(rs, unit, ref) -> bool:
     """`o.p = v` (V2): for each class of the program the receiver can be that declares no `p`, v is what `p` holds on
-    that class's objects (`js_transfer.prop_node`). Returns whether the receiver can be a value the program does not
-    define, or holds nothing yet: only then is a callable written into it handed to a library (J6, J11)."""
+    that class's objects (`js_transfer.prop_node`); for each function of the program it can be, what `p` holds on that
+    function (`f.prototype = o` among them, N1''). Returns whether the receiver can be a value the program does not
+    define: only then is a callable written into it handed to a library (J6, J11). A receiver that holds nothing yet
+    decides nothing: the write is linked again when its values arrive, and one no value ever reaches is an unreached
+    use, as a call on it is."""
     typer = rs.typer
-    keys, engine, _ = typer.receiver(ref.base, unit)
+    keys, engine, functions = typer.receiver(ref.base, unit)
     for key in keys:
         if ref.args and not rs.ix.lookup(key, ref.name):
             typer.follow(typer.node_of(ref.args[0], unit), js_transfer.prop_node(key, ref.name))
-    return engine or not keys
+    for gid in functions if ref.args else []:
+        typer.follow(typer.node_of(ref.args[0], unit), js_transfer.fn_prop_node(gid, ref.name))
+    return engine
 
 
 def callback_args(unit, ref) -> tuple:

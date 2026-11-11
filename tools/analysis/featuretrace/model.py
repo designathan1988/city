@@ -99,8 +99,11 @@ class Unit:
     bound: tuple = ()              # js: a field's, variable's or alias's declared type's bound; a function's result's
     late_writes: dict = field(default_factory=dict)    # js: name -> what a closure writes to a variable its enclosing
                                                         # function declares later in the text (J7')
-    constructs: str = ""           # js: the class of the objects `new` on this function makes (what it writes on
-                                   # `this`, N1')
+    constructs: str = ""           # js: the class of the objects `new` on this function makes, its prototype object's
+                                   # (N1', N1''): an ordinary function's (no arrow, method, async function, generator)
+    this_of: str = ""              # js: what its `this` is (J2'''): "arrow" (its enclosing function's), "method" (the
+                                   # receiver, of its class), "function" (what its calls give)
+    strict: bool = False           # js: strict code (a module, a class, "use strict"): a plain call's `this` is undefined
 
     def runs(self, which: str, reader) -> int | str | None:
         """The accessor (`get` or `set`) an access of this property written in `reader` runs (G8, G8'): none inside
@@ -134,6 +137,15 @@ def declare(r, unit: Unit, name: str, trees: list, param: bool = False, function
         r.scopes[-1][name] = name               # the function's own scope (a lambda opens one of its own)
     unit.types[key] = trees
     unit.captured.discard(key)
+    return key
+
+
+def declare_function(r, unit: Unit, name: str, local_id: int, function_scope: bool = False) -> str:
+    """A local whose value is a function written in `unit` (a lambda, an arrow, a nested function declaration):
+    declared as `declare` does, and known as that function under the key its block gives the name, as every read of
+    it is (`scopes`): a local of the same name in another block is another local. Returns the key."""
+    key = declare(r, unit, name, [("callable", local_id)], function_scope=function_scope)
+    unit.lambdas[key] = local_id
     return key
 
 

@@ -157,20 +157,20 @@ def function_member(t, target, text: str, ctx, name: str, called: bool, caller, 
     """A member of a JS function of the program (J2''; MDN Function.prototype): `call` gives what the function returns
     for the arguments after `this`, `apply` for the elements of its array in every place, `bind` the function bound
     with the arguments after `this` put first; read uncalled, each is a function of the language; any other member
-    the language's value."""
+    the function's own property (`js_transfer.function_property`, N1'')."""
     gid, lead = fn_of(text)
     unit = t.ix.units[gid]
-    if not called:
-        t.add(target, [(FUNCTION if name in FUNCTION_FORMS else ENGINE, ctx)])
+    if name not in FUNCTION_FORMS:
+        js_transfer.function_property(t, target, unit, ctx, name, called, caller, args)
+    elif not called:
+        t.add(target, [(FUNCTION, ctx)])
     elif name == "call":
         result(t, target, unit, caller if not lead else None, args[1:])
     elif name == "apply":
         spread = (("elements", args[1]),) * max(len(unit.params) - lead, 0) if len(args) > 1 else ()
         result(t, target, unit, caller if not lead else None, spread)
-    elif name == "bind":
-        t.add(target, [(bound(gid, lead + max(len(args) - 1, 0)), ctx)])
     else:
-        t.add(target, [(ENGINE, ctx)])
+        t.add(target, [(bound(gid, lead + max(len(args) - 1, 0)), ctx)])
 
 
 def steps(t, step: str):

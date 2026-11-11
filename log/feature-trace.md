@@ -439,3 +439,24 @@ forms.js,bounded.ts,jsdoc.js,ctor.js,hostbase.ts,defineprops.js,latewrite.js,new
 `tests/test_js_values.py`, `log/trace-rules.md`, `log/mapa.md`, `log/pendencias.md`. **Open:** arrays without identity
 (`push` is no write; a parameter's container content not written back), function types' signatures, local type
 aliases, `keyof` names (`log/pendencias.md`).
+
+## The final review of S2 and the fixpoint's rules (2026-11-11 night)
+`superpowers:requesting-code-review` (`code-reviewer.md`, performed as a self-review: no agent) over `209e8823^..e3048cac`
+-> `superpowers:test-driven-development` (each finding's test failing first) -> `superpowers:systematic-debugging` (the
+measurement's lost links read on their lines; first-arrival probes on the polluted nodes; a bisection by tracer copy).
+**Findings fixed:** `Function` refused a class, `Iterable`/`ArrayLike`/`Iterator`/`PromiseLike` admitted only the
+tracer's value forms, the structural check ignored Object.prototype's members and expandos (S2''); JSDoc comments
+matched over the bytes (S2'''); `Object.defineProperty` lost shorthand members, accessors by reference, descriptors in
+variables, keys no literal names (J14'); `this` of a plain function or function expression not decided by its calls,
+`F.prototype` the engine's value, constructors only when writing `this` (J2''', N1''). **Found by the measurement:**
+an arrow in an object literal read the literal as `this`; a callable written on a receiver that held nothing yet was
+handed for good (J6''); a property call gave `this` every receiver (J2''''); a block's local read as a function the
+function declares later under its name, and a second nested declaration of a name never read (L4). **Tests:** 230 OK.
+**City:** 100,571 links, identical. **Lab app:** 225,088 links, 176 unreached uses (211). **Lab with three.js:**
+fixpoint, 435,615 links in 457 s (177 s before); bisected to N1'' meeting closures valued by their body (`Fn(...)`,
+`identityMemo`): the next theme (`log/pendencias.md`). **Created:** `js_functions.py` (split from `js_read.py`), `tests/fixture/jsvalues/sloppy.js`.
+**Changed:** `bounds.py`, `js_bounds.py`, `jsdoc.py`, `source.py`, `js_defines.py`, `js_transfer.py`, `transfer.py`,
+`typer.py`, `js_library.py`, `js_link.py`, `receivers.py`, `resolve.py`, `model.py`, `js_read.py`, `js_body.py`,
+`gd_body.py`, `cpp_body.py`, `js_primitives.py`, `rules.py`, `tests/test_bounds.py`, `tests/test_mixed.py`, fixtures
+`bounded.ts`, `jsdoc.js`, `defineprops.js`, `newfn.js`, `latewrite.js`, `log/trace-rules.md`, `log/mapa.md`,
+`log/pendencias.md`.

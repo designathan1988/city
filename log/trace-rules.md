@@ -987,3 +987,21 @@ what has `length`, `Iterator<T>` what has `next`, `PromiseLike<T>` what has `the
 | J14' A descriptor's members by their values | `Object.defineProperty(o, k, d)` reads d's `value`, `get` and `set` as the values the descriptor holds, written by name, shorthand, a method or a reference to a function; a descriptor no literal writes gives what its members hold; a key no literal names puts the value into o, as `o[k] = v` does; `Object.defineProperties(o, m)` with a map no literal writes puts what its descriptors' `value` and getters give into o |
 | J2''' `this` of a function by its calls | a function with a `this` of its own (a declaration or an expression: no arrow) holds, as a method does (J2'), the objects its calls give: the receiver of a member call, the object `new` makes, the object `call`, `apply` or `bind` gives, `undefined` for a plain call in strict code (a module, a TypeScript file, a `"use strict"` file) or the global object in sloppy code, the engine's value when the engine or a library is handed it; one no call reaches holds the engine's value (an entry point the host calls) |
 | N1'' A function's prototype | an ordinary function (no arrow, method, async function or generator) is a constructor: it has a prototype object, a class of its own (`<new f@line>`) that `new f()` makes and `f.prototype` gives, its members what code writes on it (`f.prototype.m = ...`, V2) and what `f.prototype = o` puts there; `Object.create(p)` gives an object whose members are p's (p's values: a write on it is a write on p, an over-approximation the tracer keeps); an arrow's, a method's or an async function's `prototype` is `undefined` |
+| J2'''' `this` of a function called as a property | `x.f()` reaching a function with a `this` of its own gives its `this` the values of x whose `f` can hold that function (the object the property belongs to), never every receiver of the call: `{ put: function (v) { this.mark = v } }` writes its own object's `mark` alone (`receivers.holders`; the link keeps the member it names, `Edge.name`) |
+| J6'' A receiver that holds nothing yet decides nothing | a write on a receiver no value reached yet is linked again when its values arrive; only a receiver that can be the engine's value hands a callable written into it to the engine (`this.slots.onGrow = (n) => ...` in a constructor ran before `this` held its objects and was handed for good) |
+| L4 A function local by its block | a function written to a local (`const f = () => ...`, a nested declaration, a C++ or GDScript lambda local) is known under the key its block gives the name, as every read of it is (`model.declare_function`): a block's `const records = ...` is not a `const records = () => ...` the function declares later, and a declaration of the same name in another block is read too |
+
+### What the review's fixes measured (2026-11-11)
+
+The city (same sources): 100,571 links, identical. The lab app: 225,088 links (224,909), 176 uses on a receiver no
+value reaches (211); every link lost was read on its line: arrows in object literals that read the literal as `this`
+(J2'''), callables handed because their receiver held nothing yet (J6''), names read as a later function of their
+name (L4). The lab with three.js: fixpoint, 435,615 links in 457 s (421,076 in 177 s); with the first group alone
+(S2'', S2''', J14') 421,164 links in 190 s. Bisected: with a function's own properties read as the engine's value
+(the rule before N1''), 419,626 links in 243 s. The growth is the language's rule meeting a merge the tracer already
+made: a closure is valued by its body, so every function one factory returns is one value, and what code writes on
+any of them is on all: three's shading language makes its functions with `Fn(...)` (its `fn.shaderNode`,
+`fn.setLayout` written on the one closure), and the app's `identityMemo(compute)` returns one arrow for its 19 memos,
+whose `compute(key)` gives every memo's result to every caller (`closedBlocks` holds `trackCells`' map of track
+stretches, `Building.volumes` reaches them, and the records' writer walks them). Recorded in `log/pendencias.md`:
+a closure valued by the call that makes it (its captured variables' values), the next theme.

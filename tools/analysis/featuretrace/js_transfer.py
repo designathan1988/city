@@ -1,7 +1,8 @@
-"""The transfers of the JavaScript value rules (log/trace-rules.md: N1, T4', P1-P3, J5, V2), one value at a time, as
-`transfer` has the language-independent ones: `new X(...)` evaluated, `o[k]` with a computed key, the iteration of an
-object of the program, `for (k in o)` and `Object.keys/values/entries(o)` over its enumerable properties, and a
-property no class declares (an index signature's, written outside the class, on its prototype, or nowhere).
+"""The transfers of the JavaScript value rules (log/trace-rules.md: N1, N1'', T4', P1-P3, J5, V2), one value at a
+time, as `transfer` has the language-independent ones: `new X(...)` evaluated, `o[k]` with a computed key, the
+iteration of an object of the program, `for (k in o)` and `Object.keys/values/entries(o)` over its enumerable
+properties, a property no class declares (an index signature's, written outside the class, on its prototype, or
+nowhere), a function's own properties and prototype, `Object.create(p)`.
 """
 from __future__ import annotations
 
@@ -10,7 +11,7 @@ from . import transfer as common          # the language-independent transfers
 from .library import ITEM
 from .model import ALIAS_KIND
 from .rules import INDEX_MEMBER, ITERATOR_MEMBER
-from .solver import CLASS, ELEM, ENGINE, FN, TEXT, UNDEFINED, fn_of
+from .solver import CLASS, ELEM, ENGINE, FN, OBJECT, TEXT, UNDEFINED, fn_of
 
 PROTOTYPE = "prototype"
 # What every object has from the language (MDN Object.prototype), and every function besides (MDN Function.prototype,
@@ -26,6 +27,41 @@ BUILT_IN = OBJECT_MEMBERS | FUNCTION_MEMBERS
 def prop_node(key: str, name: str) -> tuple:
     """What JS code writes to property `name` of class `key`'s objects where no class of its chain declares it (V2)."""
     return ("#prop", key, name)
+
+
+def fn_prop_node(gid: int, name: str) -> tuple:
+    """What JS code writes to property `name` of function `gid` (a function is an object; `f.prototype = o`, N1'')."""
+    return ("#fnprop", gid, name)
+
+
+def function_property(t, target, unit, ctx, name: str, called: bool, caller=None, args: tuple = ()) -> None:
+    """A property of a JS function of the program other than `call`, `apply`, `bind` (N1''; MDN Function): what code
+    writes on it under that name; `prototype` its prototype object (an ordinary function's class of its own, a
+    generator's the language's, `undefined` on an arrow, a method or an async function); one every function has the
+    language's value; any other `undefined` (calling it throws: nothing)."""
+    written = name in written_names(t)
+    if written:
+        source = fn_prop_node(unit.gid, name)
+        if called:
+            t.subscribe(source, target, ("call",), common.calls(t, caller, args))
+        else:
+            t.follow(source, target)
+    if name == PROTOTYPE and not called:
+        t.add(target, [(CLASS + unit.constructs if unit.constructs else ENGINE if unit.generator else UNDEFINED, ctx)])
+    elif name in BUILT_IN:
+        t.add(target, [(ENGINE, ctx)])
+    elif not written and not called:
+        t.add(target, [(UNDEFINED, ctx)])
+
+
+def prototypes(t, key: str) -> list:
+    """The prototype objects code wrote for the functions whose objects class `key` or a base is (`f.prototype = o`,
+    N1''): where a member none of them declares is looked up next."""
+    if PROTOTYPE not in written_names(t):
+        return []
+    if t.constructors is None:
+        t.constructors = {u.constructs: u.gid for u in t.ix.units if u.constructs}
+    return [fn_prop_node(t.constructors[k], PROTOTYPE) for k in chain(t.ix, key) if k in t.constructors]
 
 
 def chain(ix, key: str) -> list[str]:
@@ -72,9 +108,12 @@ def undeclared(t, target, key: str, ctx, name: str, called: bool, caller=None, a
             t.subscribe(source, target, ("call",), common.calls(t, caller, args))
         else:
             t.follow(source, target)
+    protos = prototypes(t, key)
+    for proto in protos:                            # the members of the prototype objects code wrote (N1'')
+        t.subscribe(proto, target, ("proto", name, called), common.members(t, name, called, caller, args))
     if name in BUILT_IN or not chain_read(t.ix, key):
         t.add(target, [(ENGINE, ctx)])              # one every object has, or a base the tracer did not read holds it,
-    elif not called and (indexes or not sources):   # whatever code writes under its name (V2')
+    elif not called and (indexes or not sources) and not protos:     # whatever code writes under its name (V2')
         t.add(target, [(UNDEFINED, ctx)])           # found nowhere, or a key an index signature does not hold
 
 
@@ -172,6 +211,15 @@ def wrapped(t, mode: str, name: str, ctx):
             t.add(target, [(ELEM + v, c) for v, c in plain])
         else:
             t.add(target, [(ELEM + ELEM + TEXT + name, ctx)] + [(ELEM + ELEM + v, c) for v, c in plain])
+    return transfer
+
+
+def created(t):
+    """`Object.create(p)` (N1''; MDN Object.create): an object whose members are p's, read as p's objects (a write on
+    it is a write on p: an over-approximation); with no prototype (`null`), an object of the language."""
+    def transfer(target, values):
+        t.add(target, [(OBJECT if js_primitives.kind(text) == js_primitives.NULLISH else text, ctx)
+                       for text, ctx in values])
     return transfer
 
 

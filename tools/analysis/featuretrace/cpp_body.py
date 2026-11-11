@@ -10,7 +10,7 @@ from __future__ import annotations
 from . import c_family, cpp_ambig, cpp_expr, cpp_implicit, scopes
 from .cpp_names import type_of, unwrap
 from .gd_body import squash
-from .model import Unit, add_ref, declare, enclose
+from .model import Unit, add_ref, declare, declare_function, enclose
 from .source import field_of, named_children
 
 
@@ -56,8 +56,7 @@ def local(r, node, unit, cond) -> None:
             continue
         text = r.src.text(name)
         if value is not None and value.type == "lambda_expression":
-            unit.lambdas[text] = r.lambda_id(value, unit)
-            declare(r, unit, text, [("callable", unit.lambdas[text])])
+            declare_function(r, unit, text, r.lambda_id(value, unit))
             continue
         if deduced(type_text):
             declare(r, unit, text, [r.ir(value, unit)] if value is not None else [])

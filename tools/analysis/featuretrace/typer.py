@@ -43,6 +43,7 @@ class Typer(Places, TypeNames, Solver):
         self.joined = set()                # (class, interface) whose properties are one (`structural`, S1)
         self.unreceived = []               # methods' `this` nodes no call with a receiver reached yet (`receivers`)
         self.bound_members = {}            # class or interface key -> the members it requires (`bounds`, S2)
+        self.constructors = None           # a function's prototype class -> the function (`js_transfer`, N1'')
 
     def class_of(self, unit) -> str | None:
         return unit.owner if unit.owner in self.ix.classes else None
@@ -150,7 +151,10 @@ class Typer(Places, TypeNames, Solver):
     def wire_call(self, node, callee, args, unit) -> None:
         read = js_library.object_read(callee) if unit.lang == "js" and args else None
         if read and "Object" not in unit.types and not self.rs.state_targets(unit, "Object"):
-            self.subscribe(self.node_of(args[0], unit), node, ("own", read), js_transfer.owns(self, read))  # P3
+            if read == js_library.OBJECT_CREATE:            # an object whose members are p's (N1'')
+                self.subscribe(self.node_of(args[0], unit), node, ("created",), js_transfer.created(self))
+            else:
+                self.subscribe(self.node_of(args[0], unit), node, ("own", read), js_transfer.owns(self, read))  # P3
             return
         if self.by_name(callee, args, unit):
             plain = self.node_of(("#plain",) + (callee, args), unit)
@@ -209,9 +213,13 @@ class Typer(Places, TypeNames, Solver):
 
     def member(self, text: str, ctx, name: str, called: bool, depth: int = 0) -> list[tuple]:
         """A member of one value (for the consumers that need it whole)."""
+        return self.values_of(self.member_node(text, ctx, name, called))
+
+    def member_node(self, text: str, ctx, name: str, called: bool = False):
+        """The node of a member of one value, wired once."""
         node = ("#member", text, ctx.gid, name, called)
         if node not in self.wired:
             self.wired.add(node)
             self.value.setdefault(node, [])
             transfer.member_one(self, node, text, ctx, name, called)
-        return self.values_of(node)
+        return node

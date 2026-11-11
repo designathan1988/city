@@ -38,6 +38,7 @@ class Edge:
     args: tuple = field(default_factory=tuple)   # the trees written at the site (arguments, the value written)
     argc: int = -1     # a call's arguments written (-1: a link no call writes, or a call whose count is unknown)
     base: tuple | None = None    # the receiver written at the site (`x` of `x.m()`), what `this` is there (J2')
+    name: str = ""     # the member a call names on its receiver (`m` of `x.m()`): the property holding what runs (J2''')
 
 
 class Resolver(Flows):
@@ -244,7 +245,8 @@ class Resolver(Flows):
             self.reached.add(self.typer.stack[-1])
             self.status.pop(self.typer.stack[-1], None)
         self.keep_edge(Edge(src, dst, kind, ref.line, ref.cond, how, file or self.ix.units[src].file,
-                            getattr(ref, "args", ()), getattr(ref, "argc", -1), getattr(ref, "base", None)))
+                            getattr(ref, "args", ()), getattr(ref, "argc", -1), getattr(ref, "base", None),
+                            getattr(ref, "name", "")))
 
     def keep_edge(self, edge: Edge) -> None:
         """One link per line for the report; the values flow from every call site (two calls of one function on one
@@ -255,7 +257,7 @@ class Resolver(Flows):
             self.edges.append(edge)
             self.out[edge.src].append(edge)
             self.inn[edge.dst].append(edge)
-        site = key + (edge.args, edge.base)
+        site = key + (edge.args, edge.base, edge.name)
         if site not in self.carried:
             self.carried.add(site)
             self.flows_of(edge)

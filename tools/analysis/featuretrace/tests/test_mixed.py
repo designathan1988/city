@@ -11,7 +11,7 @@ sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
 
 from support import FixtureCase, Solved  # noqa: E402
-from featuretrace.solver import CLASS, ENGINE, NUMBER, TEXT  # noqa: E402
+from featuretrace.solver import CLASS, ENGINE, NUMBER, TEXT, UNDEFINED  # noqa: E402
 
 
 class Mixed(FixtureCase):
@@ -99,6 +99,11 @@ class LateWrites(Solved, FixtureCase):
     def test_hoisted_closure_writes_the_enclosing_variable(self):
         self.assertIn(CLASS + "latewrite.js#LateBox", self.returned("lateWrite"))
 
+    def test_a_block_local_is_not_a_later_function_of_its_name(self):
+        found = self.returned("scopedLocal")                         # the block's `chosen`, not the function's arrow
+        self.assertNotIn(UNDEFINED, found)
+        self.assertTrue(any(v.startswith("Array<") for v in found), found)
+
 
 class FunctionConstructors(Solved, FixtureCase):
     """N1': `new F()` on a function makes the object F writes on `this` (fixture `jsvalues/newfn.js`)."""
@@ -110,6 +115,27 @@ class FunctionConstructors(Solved, FixtureCase):
         self.assertTrue(made and all("Counter2" in v for v in made), made)
         self.assertEqual({NUMBER}, self.returned("madeCount"))
         self.assertEqual({NUMBER}, self.returned("madeBump"))
+        self.assertEqual(set(), self.names("Counter2", ("handed",)))     # written on `this` before it held a value
+
+    def test_prototype_of_a_function(self):
+        self.assertEqual({NUMBER}, self.returned("protoArea"))           # `F.prototype.m = ...` (N1'')
+        made = self.returned("protoSelf")
+        self.assertTrue(made and all("Shape2" in v for v in made), made)
+        self.assertEqual({TEXT + "legacy"}, self.returned("protoReplaced"))     # `F.prototype = {...}`
+        self.assertEqual({NUMBER}, self.returned("protoInherited"))      # `Object.create(Base.prototype)`
+        self.assertEqual({TEXT + "x"}, self.returned("fnExpando"))       # a property written on a function
+        self.assertEqual({UNDEFINED}, self.returned("arrowProto"))       # an arrow has no prototype
+
+    def test_this_of_a_function_by_its_calls(self):
+        self.assertIn(UNDEFINED, self.returned("thisPlain"))             # a plain call in strict code
+        self.assertFalse(any("newfn.js" == v.lstrip("#") for v in self.returned("thisPlain")))
+        made = self.returned("thisCall")                                 # `f.call(o)`
+        self.assertTrue(any("Shape2" in v for v in made), made)
+        self.assertEqual({ENGINE}, self.returned("thisHanded"))          # the engine decides it
+        self.assertEqual({ENGINE}, self.returned("sloppyRead"))          # sloppy code: the global object
+        self.assertEqual({UNDEFINED}, self.returned("strictRead"))       # "use strict"
+        self.assertEqual({NUMBER}, self.returned("heldRun"))             # the object whose `run` holds it
+        self.assertNotIn(NUMBER, self.returned("heldWrite"))             # `this.mark = v` writes heldC's alone
 
 
 class StaticReceiver(FixtureCase):

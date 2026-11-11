@@ -88,7 +88,7 @@ GDEXT_PROPERTY = "ADD_PROPERTY"                                       # ADD_PROP
 HANDLERS = {
     "DEF": ("gd_read:GdReader.unit", "cpp_read:CppReader.unit", "index:Index", "js_read:JsReader.unit",
             "js_decl:declaration", "js_class:class_declaration", "js_class:object_literal",
-            "js_class:members", "js_read:JsReader.parameter_property", "js_read:JsReader.late_writes", "js_read:JsReader.constructor_function"),
+            "js_class:members", "js_read:JsReader.parameter_property", "js_functions:late_writes", "js_functions:constructor_function", "js_functions:made", "js_functions:module_code"),
     "LOOK": ("resolve:Resolver.bare", "resolve:Resolver.qualified", "resolve:Resolver.adl", "index:Index.visible",
              "places:Places.named", "places:Places.wire_name", "resolve:Resolver.js_scoped", "scopes:local_key", "scopes:visible",
              "scopes:scoped_tree", "cpp_lifetime:class_named", "js_specifiers:Specifiers.resolve",
@@ -108,6 +108,9 @@ HANDLERS = {
              "structural:typed", "structural:join", "structural:declared_trees", "structural:fields",
              "places:Places.own_parts", "receivers:runs_on", "receivers:this_node",
              "receivers:carry", "receivers:below", "receivers:settle", "transfer:of_language",
+             "receivers:own_this", "receivers:lexical", "receivers:holders", "receivers:holding",
+             "typer:Typer.member_node", "model:declare_function", "js_functions:says_strict",
+             "js_functions:in_class",
              "js_bounds:of", "js_bounds:result", "js_bounds:one", "js_bounds:named", "js_bounds:generic",
              "js_bounds:object_type", "bounds:flow", "bounds:admitting", "bounds:admits", "bounds:passes",
              "bounds:named", "bounds:has_members", "bounds:required", "bounds:optional", "bounds:is_array",
@@ -154,7 +157,8 @@ HANDLERS = {
              "js_types:admitted", "js_types:language_values", "js_types:literal_string", "js_class:object_type",
              "js_read:JsReader.shape_class", "js_read:JsReader.type_holder", "typer:Typer.expand",
              "types_of:TypeNames.alias_marker", "js_modules:JsModules.alias_of", "js_transfer:index_nodes",
-             "js_transfer:index_units", "truth:operator_values", "js_types:is_primitive"),
+             "js_transfer:index_units", "truth:operator_values", "js_types:is_primitive", "js_transfer:fn_prop_node",
+             "js_transfer:function_property", "js_transfer:prototypes", "js_transfer:created"),
 }
 
 # Callables built from an object and a method name (G7): constructor -> (object argument, name argument).
