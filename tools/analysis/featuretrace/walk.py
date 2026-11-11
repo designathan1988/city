@@ -39,11 +39,13 @@ def keep(edge) -> bool:
 
 
 def ordered(edges, side: str) -> list:
-    """One edge per (other end, kind), in the order they are written."""
+    """One edge per (other end, kind), in the order they are written; an override is not shown again for an end the
+    same definition already reaches by another link that runs (the graph keeps both)."""
     seen, out = set(), []
+    direct = {e.dst if side == "dst" else e.src for e in edges if e.kind != "override"}
     for edge in sorted(edges, key=lambda e: (e.file, e.line)):
         other = edge.dst if side == "dst" else edge.src
-        if (other, edge.kind) in seen:
+        if (other, edge.kind) in seen or (edge.kind == "override" and other in direct):
             continue
         seen.add((other, edge.kind))
         out.append(edge)

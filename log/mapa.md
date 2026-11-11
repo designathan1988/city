@@ -526,6 +526,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `tools/analysis/featuretrace/cpp_lifetime.py` — C++ object lifetime: constructors and destructors the language runs (members, bases, what library owners own), local classes in constructors and destructors
 - `tools/analysis/featuretrace/tests/test_pending.py` · `tools/analysis/featuretrace/tests/fixture/pending/**` — block scope (C++, GDScript, JS), local class, direct-initialization and destruction checked on their links
 - `log/trace-rules-pending-plan.md` — the plan of the tracer's pending items found against a real run
+- `log/trace-rules-delta-progress.md` · `log/trace-rules-pending-progress.md` — the execution ledgers of those two plans (each task's commits and tests, the rulings, the final review), copied from `.superpowers/sdd/`
 - `tools/analysis/featuretrace/tests/test_js.py` · `tools/analysis/featuretrace/tests/fixture/web/**` — the JS/TS/TSX fixture over a small JavaScript library package in its `node_modules`, and the JS rule table checked against the grammar and the log
 - `log/trace-rules-js-plan.md` — the plan of the JavaScript/TypeScript reading
 - `tools/assets/bleed_alpha.py` · `tools/assets/cook_people.py` · `tools/assets/cook_ragdoll.py` · `tools/assets/compress_atlas.gd` · `tools/assets/export_builder_ui.py` · `tools/assets/make_flag_icons.py` · `tools/assets/ktx2_to_png.mjs` · `tools/assets/make_blue_noise.py` · `tools/assets/make_road_profiles.py` — the colour under the holes of a cut-out texture; baked people

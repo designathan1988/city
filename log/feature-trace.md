@@ -332,3 +332,12 @@ implicit calls silent; `scopes.local_key` uses the function's own scope (`JsRead
 **Tests:** 94 OK; city on a fixed snapshot (HEAD): the same caller-callee pairs as 93b903ed (the 107/148 seen before came
 from another session's uncommitted edits between runs); lab: fixpoint in 428 s, 785,524 links, uses on a receiver no value
 reaches 407 (634 before the day's changes), report `dist/trace/lab_frame_done.txt`.
+
+## Plans checked task by task; report rows merged (2026-11-11 01:45)
+`superpowers:verification-before-completion`: fresh runs — 94 tracer tests OK; gates OK on the tracer's 86 files; local
+main = origin/main (09972b1e); the runtime check again on the recorded run: 236 of 236 calls linked (exit 0); the lab
+report's totals (407 unreached uses). `superpowers:executing-plans`: both plans checked against the commits, every task
+complete; ledgers with their rulings in `log/trace-rules-delta-progress.md` and `log/trace-rules-pending-progress.md`;
+final review done by the author (agents are forbidden). The report shows one row per end when a call and an override
+reach it (`walk.ordered`); the city report from `road_tool.gd:229` now reaches 2,830 definitions ahead (2,217 before the
+day's rules) with 1,527 pieces of state written (1,058).
