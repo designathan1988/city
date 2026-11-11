@@ -4,7 +4,7 @@ namespaces, type aliases and ambient declarations (`declare`, `declare global`, 
 """
 from __future__ import annotations
 
-from . import ir_js, js_body, js_class, js_types
+from . import ir_js, js_body, js_bounds, js_class, js_types
 from .model import ALIAS_KIND, ClassFact
 from .source import field_of, named_children, string_value
 
@@ -143,6 +143,7 @@ def declaration(r, node, owner: str, holder) -> list[str]:
         r.type_params.append(js_types.parameters(r, node))           # its type parameters are erased (T1)
         try:
             alias.values += js_types.values(r, field_of(node, "value"), alias)
+            alias.bound = js_bounds.of(r, field_of(node, "value"))     # what a place of this type admits (S2)
         finally:
             r.type_params.pop()
         return [name]
@@ -208,6 +209,7 @@ def variables(r, node, owner: str, holder) -> list[str]:
         unit = r.unit("const" if const else "var", name, owner, declarator)
         unit.type_text = r.type_text(field_of(declarator, "type"))
         unit.values += r.type_values(field_of(declarator, "type"), unit)
+        unit.bound = js_bounds.of(r, field_of(declarator, "type"))               # S2
         if value is not None:
             unit.values.append(r.ir(value, unit))
             js_body.expr(r, value, holder, ())

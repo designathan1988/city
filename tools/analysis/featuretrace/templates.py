@@ -154,8 +154,8 @@ def route(t, target, unit, args: list, keys: tuple, deliver, receiver=None) -> N
         for index in keys:                      # the other key parameters: what this call writes (C2')
             if index != k and index in nodes:
                 t.add(t.arg_node(frame, index), t.held(nodes[index]))
-        for part in t.ret_parts(frame):         # the template's own parts, and the unit's shared ones
-            t.follow(part, families[k])
+        for part in t.ret_parts(frame):         # the template's own parts, and the unit's shared ones (bounded, S2)
+            t.result_flow(part, families[k], frame)
 
     def keyed(k: int):
         def transfer(_, values):

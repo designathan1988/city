@@ -8,7 +8,7 @@ captured local reaches the enclosing function's (closures share their variables,
 """
 from __future__ import annotations
 
-from . import c_family, js_class, js_decl, js_expr, js_guards, narrowing, scopes
+from . import c_family, js_bounds, js_class, js_decl, js_expr, js_guards, narrowing, scopes
 from .cpp_implicit import IMPLICIT
 from .gd_body import squash
 from .ir import put
@@ -157,8 +157,10 @@ def local(r, declarator, unit, cond, function_scope: bool = False) -> None:
     tree = r.ir(value, unit) if value is not None else ("literal", "undefined")
     declared = r.type_values(field_of(declarator, "type"), unit)
     if target.type == "identifier":
-        declare(r, unit, r.src.text(target), declared + ([tree] if value is not None else []),
-                function_scope=function_scope)
+        key = declare(r, unit, r.src.text(target), declared + ([tree] if value is not None else []),
+                      function_scope=function_scope)
+        if field_of(declarator, "type") is not None:
+            unit.bounds[key] = js_bounds.of(r, field_of(declarator, "type"))      # what it can hold (S2)
     else:
         r.bind(target, tree, unit, None, cond)
     expr(r, value, unit, cond)

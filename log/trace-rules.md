@@ -917,3 +917,25 @@ a `bind` was read as (now `bound` links where it binds, calls where the bound fu
 `buildingMesh.ts`), elements of array literals that were the engine's (`Ring`'s edges no longer `PlacedFurniture`);
 60 gained: the calls of `apply`/`call` methods of the program (`LotStore.apply` from ten functions of `lots.ts`,
 `Walkways.apply`, `LotTraffic.call`, `StoreOrder.apply`, `TimingVariant.apply`), 5 `bound` links, 2 `handed`.
+
+## Declared types bound their places (S2) (2026-11-11)
+
+The values that reached `Vector3.x` after G1'' and J2'' came through places whose declared type does not admit them:
+three's `Color.set(r, g, b)` takes a string, a `Color` or three numbers, and its `else` branch calls
+`setRGB(r, g, b)` (`@param {number} r`), which writes `this.r` (`@type {number}`): read without the call that made
+each value, `Color.r` held palette strings and `Color` objects, and every vector component read through it. A
+context-insensitive analysis mixes the calls of one function; the program's declarations say what each place can hold.
+The tracer read declared types to add the values they admit (T1'), never to bound them.
+
+Sources: TypeScript handbook, Type Compatibility (structural typing: a class or interface type admits any object whose
+members match, private and protected members excepted; `any`/`unknown` admit everything; `object` admits non-primitive
+values; under strictNullChecks an object type excludes `null` and `undefined`), Everyday Types (unions, literal types),
+JSDoc Reference and Type Checking JavaScript Files (in a JavaScript file `@param {T} x`, `[x]`, `[x=v]`, `@type {T}` on
+a variable, a field or `this.x = v` in a constructor, `@returns {T}` declare types as annotations do; Closure forms
+`{?T}`, `{!T}`, `{T=}`, `{*}`, `{Array.<T>}`, `{function(A): R}`), ECMAScript (an async function returns a promise of
+what it returns).
+
+| Rule | What the tracer does |
+|---|---|
+| S2 A declared type bounds its place | what flows into a parameter, an annotated local or variable, a field (an interface's property too) or a function's result declared with a type passes only if the type admits it: `number`, `string`, `boolean`, `bigint`, `symbol`, `null`, `undefined` and literal types their values (a string literal type its string, or any string the tracer cannot tell); `object` and an object type or interface any value but `null` and `undefined` that has its required members; a class of the program an object of it or below, or of a class that declares all its members (structural); an array or tuple type an array, a container type a container of its kind or (`Record`) any object; a function type a function; a union what any member admits; `Partial`, `Pick`, `Omit` any object; `any`, `unknown`, a type parameter, a host type the tracer did not read (H1), a mapped, conditional, lookup or `typeof` type every value; the engine's value (the tracer cannot tell it) passes every bound; an optional parameter or property admits `undefined`; an async function's result is bounded by its `Promise`'s type argument, a generator's is not bounded. A bound is a filter, not an identity: a typed field no longer merges with what flows past it (`js_bounds`, `bounds`) |
+| S2' JSDoc in JavaScript | a JavaScript file's `@param`, `@type` and `@returns` written right before a declaration bound its places as TypeScript annotations do, each type read with TypeScript's grammar (`jsdoc`) |

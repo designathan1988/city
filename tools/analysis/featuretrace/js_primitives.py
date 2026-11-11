@@ -75,6 +75,15 @@ def member(text: str, name: str, called: bool) -> list[str]:
     return list(found) if called else [FUNCTION]
 
 
+def apparent(text: str, name: str) -> bool:
+    """Whether a primitive's wrapper has member `name` (its apparent type; TypeScript handbook, Type Compatibility)."""
+    k = kind(text)
+    if k is None or k == NULLISH:
+        return False
+    _, methods, properties = KINDS[k]
+    return name in methods or name in properties or name in OBJECT_PROTOTYPE or name in OBJECT_PROPERTIES         or name == CONSTRUCTOR or k == "string" and name.isdigit()
+
+
 def step(text: str, kind_of_step: str) -> list[str]:
     """An index (`ITEM`) or the iteration of a value of the language."""
     k = kind(text)

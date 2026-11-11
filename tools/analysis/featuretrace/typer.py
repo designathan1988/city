@@ -42,6 +42,7 @@ class Typer(Places, TypeNames, Solver):
         self.undecided = []                # a property guard on an object whose property no value reached yet (N1)
         self.joined = set()                # (class, interface) whose properties are one (`structural`, S1)
         self.unreceived = []               # methods' `this` nodes no call with a receiver reached yet (`receivers`)
+        self.bound_members = {}            # class or interface key -> the members it requires (`bounds`, S2)
 
     def class_of(self, unit) -> str | None:
         return unit.owner if unit.owner in self.ix.classes else None

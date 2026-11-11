@@ -95,6 +95,8 @@ class Unit:
     predicate: tuple = ()          # js: a return type `[asserts] x is T`: (x's index, T's value trees, asserts) (G1)
     defaults: set = field(default_factory=set)     # js: parameters written with a default (an omitted argument's)
     optional: bool = False         # js: a method declared optional (`m?(): T`): reading it may give undefined (T1')
+    bounds: dict = field(default_factory=dict)     # js: parameter or local -> its declared type's bound (S2)
+    bound: tuple = ()              # js: a field's, variable's or alias's declared type's bound; a function's result's
 
     def runs(self, which: str, reader) -> int | str | None:
         """The accessor (`get` or `set`) an access of this property written in `reader` runs (G8, G8'): none inside

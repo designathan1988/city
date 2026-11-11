@@ -10,7 +10,7 @@ written to (J9). Module-level statements are read by `js_decl`, statements by `j
 """
 from __future__ import annotations
 
-from . import ir_js, js_body, js_class, js_decl, js_types, narrowing, scopes, ts_tree
+from . import ir_js, js_body, js_bounds, js_class, js_decl, js_types, narrowing, scopes, ts_tree
 from .model import ALIAS_KIND, ClassFact, FileFacts, Unit, add_ref, declare, enclose
 from .rules import CONSTRUCTOR
 from .solver import UNDEFINED
@@ -93,6 +93,7 @@ class JsReader:
         ret = field_of(node, "return_type")
         unit.type_text = self.type_text(ret) if ret is not None else ""
         unit.declared = js_types.values(self, ret, unit) if ret is not None else []      # T3
+        unit.bound = js_bounds.result(self, ret, node)                                  # S2
         self.params(field_of(node, "parameters") or field_of(node, "parameter"), unit)
         unit.predicate = js_types.predicate(self, ret, unit)                       # `x is T`, `asserts x is T`
         body = field_of(node, "body")
@@ -130,6 +131,8 @@ class JsReader:
             slot = self.src.text(pattern) if pattern.type == "identifier" else f"<arg{i}>"
             unit.params.append(slot)
             declared = self.type_values(field_of(p, "type"), unit)
+            if pattern.type != "rest_pattern":                   # what a declared type admits bounds it (S2)
+                unit.bounds[slot] = js_bounds.of(self, field_of(p, "type"), p.type == "optional_parameter")
             if default is not None:
                 unit.defaults.add(len(unit.params) - 1)          # an argument left out takes it (MDN Default parameters)
             elif p.type == "optional_parameter":
@@ -149,6 +152,7 @@ class JsReader:
         field = js_class.field_unit(self, ctor.owner, name, p, None)
         field.type_text = self.type_text(field_of(p, "type"))
         field.values += self.type_values(field_of(p, "type"), field)
+        field.bound = js_bounds.of(self, field_of(p, "type"), p.type == "optional_parameter")     # S2
         self.add(ctor, "write", name, p, (), base=("self",), args=(("name", name),))
 
     # ---- patterns (J1): each name bound to its part of the value --------------------------------------------------

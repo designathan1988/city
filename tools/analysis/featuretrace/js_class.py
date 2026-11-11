@@ -9,7 +9,7 @@ object type is an interface without a name (T1'); an optional property (`p?: T`)
 """
 from __future__ import annotations
 
-from . import ir_js, js_body, js_decl, js_types
+from . import ir_js, js_body, js_bounds, js_decl, js_types
 from .model import ClassFact, declare, enclose
 from .rules import CONSTRUCTOR, INDEX_MEMBER
 from .solver import UNDEFINED
@@ -80,7 +80,10 @@ def members(r, body, key: str, outer, class_node=None) -> None:
             field.static = static
             field.type_text = r.type_text(field_of(member, "type"))
             field.values += r.type_values(field_of(member, "type"), field)
-            if any(c.type == "?" for c in member.children):
+            optional = any(c.type == "?" for c in member.children)
+            if field_of(member, "type") is not None:
+                field.bound = js_bounds.of(r, field_of(member, "type"), optional)   # what it can hold (S2)
+            if optional:
                 field.values.append(("cast", UNDEFINED))        # `p?: T`: undefined added to its type (T1')
             if value is not None:
                 field.values.append(r.ir(value, field))
@@ -94,6 +97,7 @@ def members(r, body, key: str, outer, class_node=None) -> None:
             try:
                 field = field_unit(r, key, INDEX_MEMBER, member, outer)
                 field.values += r.type_values(field_of(member, "type"), field)
+                field.bound = js_bounds.of(r, field_of(member, "type"))
             finally:
                 r.type_params.pop()
         elif kind == "class_static_block":

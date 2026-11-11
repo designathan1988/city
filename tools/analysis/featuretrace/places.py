@@ -9,8 +9,8 @@ the others are the unit's (`templates`, C2'''). The typer (`typer.Typer`) is bui
 """
 from __future__ import annotations
 
-from . import receivers, structural, templates, transfer
-from .model import ENGINE_CALLBACKS, FUNCTION_KINDS
+from . import bounds, receivers, structural, templates, transfer
+from .model import ENGINE_CALLBACKS, FUNCTION_KINDS, STATE_KINDS
 from .solver import CLASS, ENGINE, FN, UNDEFINED
 
 NO_VALUE = ("void", "Variant", "auto", "decltype(auto)", "")
@@ -52,26 +52,30 @@ class Places:
         template's key parameter holds its key value alone, its other key parameters what its calls write and their
         defaults: never a declared type, never the engine's calls, which are the unit's (`templates`, C2', C2'')."""
         param = unit.params.index(name) if name in unit.params else -1
+        tokens = unit.bounds.get(name, ()) if unit.lang == "js" else ()
+
+        def flow(source):                                       # through its declared type's bound (S2)
+            bounds.flow(self, source, node, tokens, unit)
         if param >= 0 and param == unit.fixed:
-            self.follow(self.arg_node(unit, param), node)
+            flow(self.arg_node(unit, param))
             return
         bound = param >= 0 and unit.key != unit.gid               # a template's parameter
         for tree in unit.types.get(name, []):
             if not (bound and tree[0] == "cast"):
-                self.follow(self.node_of(tree, unit), node)
+                flow(self.node_of(tree, unit))
         if not bound:
             structural.typed(self, node, unit.types.get(name, []), unit)    # what reaches it is of its type (S1)
         if param >= 0:
-            self.follow(self.arg_node(unit, param), node)
+            flow(self.arg_node(unit, param))
         if param >= 0 and not bound:
-            self.follow((ENGINE_CALLED, unit.key), node)
+            flow((ENGINE_CALLED, unit.key))
             if unit.name in ENGINE_CALLBACKS or unit.bound_as:
                 self.add(node, [(ENGINE, unit)])
         if name in unit.captured and unit.outer >= 0:
             outer = self.ix.units[self.ix.offset[unit.file] + unit.outer]
-            self.follow(self.node_of(("name", name), outer), node)
+            flow(self.node_of(("name", name), outer))
         for writer in unit.written_by.get(name, ()):      # what closures sharing it write, read where written
-            self.follow(self.node_of(("name", name), self.ix.units[self.ix.offset[unit.file] + writer]), node)
+            flow(self.node_of(("name", name), self.ix.units[self.ix.offset[unit.file] + writer]))
 
     def arg_node(self, unit, index: int):
         """What the calls write in a parameter: of the unit (every call's), or of one of its templates; for
@@ -92,9 +96,10 @@ class Places:
                 return node
             if unit.type_text and unit.type_text not in NO_VALUE and unit.lang != "js":
                 self.add(node, [(unit.type_text, unit)])      # a JS annotation's values are trees in `values` (T3)
+            tokens = unit.bound if unit.lang == "js" and unit.kind in STATE_KINDS else ()    # its type admits (S2)
             for tree in unit.values:
-                self.follow(self.node_of(tree, unit), node)
-            self.follow((HELD, unit.gid), node)
+                bounds.flow(self, self.node_of(tree, unit), node, tokens, unit)
+            bounds.flow(self, (HELD, unit.gid), node, tokens, unit)
             structural.typed(self, node, unit.values, unit)                 # what it holds is of its type (S1)
         return node
 
@@ -127,9 +132,13 @@ class Places:
             self.wired.add(node)
             self.value.setdefault(node, [])
             for part in self.ret_parts(unit):
-                self.follow(part, node)
+                self.result_flow(part, node, unit)
             structural.typed(self, node, unit.declared, unit)               # what it returns is of its type (S1)
         return node
+
+    def result_flow(self, part, node, unit) -> None:
+        """A part of a function's result into its call: through its declared result's bound (S2)."""
+        bounds.flow(self, part, node, unit.bound if unit.lang == "js" else (), unit)
 
     def ret_parts(self, unit) -> list:
         """The nodes a call's result is made of: its declared return type, a JS return annotation's values (T3), the
