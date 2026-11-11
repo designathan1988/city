@@ -14,7 +14,7 @@ from ..languages import GETTER, PROTOTYPE, PROTOTYPE_CONSTRUCTOR, SETTER
 from ..model import STATE_KINDS
 from ..vocab import CALL, ELEMENTS_FIELD, READ, SITE_CLASS, SITE_DECLARED, SITE_LITERAL, SITE_PROTOTYPE, WRITE
 
-from . import typesys, values  # noqa: E402  (they read members: imported once it is defined)
+from . import contexts, names, typesys, values  # noqa: E402  (they read members: imported once it is defined)
 
 ALL, ACCESSOR, PROTOTYPES, PROPERTY = 9, 11, 12, 13    # nodes: every property of one object; an accessor's call; a
                                                      # prototype; a site: a declared property's
@@ -49,7 +49,7 @@ def declared_read(an, target, obj: int, key: str, name: str) -> bool:
         unit = ix.units[gid]
         if an.is_function_unit(gid):
             if unit.owner != own:                     # an object literal's own methods are its properties
-                an.solver.add(target, [an.function_object(gid)])
+                an.solver.add(target, [an.function_object(gid, method_env(an, obj, gid))])
         elif unit.kind in STATE_KINDS and not unit.static:
             getter = unit.runs(GETTER, None)
             if getter is not None:
@@ -60,6 +60,18 @@ def declared_read(an, target, obj: int, key: str, name: str) -> bool:
             else:
                 an.solver.follow(an.initial(gid), target)
     return bool(found)
+
+
+def method_env(an, obj: int, gid: int):
+    """The environment of a class's method read on `obj` (an instance, or the class itself): the run its class was
+    evaluated in, seen from the function the method is written in; ROOT for a class of a module."""
+    unit, objects = an.ix.units[gid], an.objects
+    cls = obj if objects.kind(obj) == SITE_CLASS else objects.maker(obj)
+    found = objects.class_env(cls) if cls is not None and unit.outer >= 0 else None
+    if found is None:
+        return contexts.ROOT
+    env, holder = found
+    return names.scope(an, an.ix.units[holder], env, unit.outer)
 
 
 def environment(an, obj: int, owner: str):
@@ -80,7 +92,7 @@ def statics(an, target, obj: int, name: str) -> None:
         if not ix.units[gid].static:
             continue
         if an.is_function_unit(gid):
-            an.solver.add(target, [an.function_object(gid)])
+            an.solver.add(target, [an.function_object(gid, method_env(an, obj, gid))])
         elif ix.units[gid].kind in STATE_KINDS:
             an.solver.follow(an.hold(gid), target)
     if name != PROTOTYPE:

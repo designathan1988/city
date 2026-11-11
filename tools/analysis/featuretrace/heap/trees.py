@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from .. import truth
 from ..ir_js import CLASS_VALUE
+from ..js_class import MADE_CLASS as CLASS_MADE, MADE_LITERAL as LITERAL_MADE
 from ..js_functions import ARROW as ARROW_THIS
 from ..solver import LANG, STRING
 from ..vocab import (AWAIT, CALL, CALLABLE, CAST, COLLECTION, CONSTRUCT, EACH, ELEMENTS, ELEMENTS_FIELD, INDEX,
@@ -15,7 +16,6 @@ from ..vocab import (AWAIT, CALL, CALLABLE, CAST, COLLECTION, CONSTRUCT, EACH, E
                      UNION)
 from . import contexts, members, names, protocols
 
-LITERAL_MADE, CLASS_MADE = 1, 2           # `ClassFact.made` (js_class): an object literal, a class expression
 STRING_KIND = truth.KINDS[STRING]
 
 
@@ -133,8 +133,8 @@ def wire_cast(an, node, text: str, unit, ctx) -> None:
         obj = an.objects.literal(key, ctx)
         an.solver.add(node, [obj])
         literal_methods(an, obj, key, unit, ctx)
-    elif made == CLASS_MADE:
-        an.solver.add(node, [an.objects.make(SITE_CLASS, key)])
+    elif made == CLASS_MADE:                       # evaluated in this run: its methods are closures of it
+        an.solver.add(node, [an.objects.class_value(key, ctx, unit.gid)])
 
 
 def literal_methods(an, obj: int, key: str, unit, ctx) -> None:
@@ -187,8 +187,11 @@ def wire_local(an, node, unit, name: str, ctx) -> None:
 
 
 def made(an, obj: int, file: str, site: int, ctx) -> int:
-    """The object `new` on `obj` makes at a site in a context (a constructor function's knows its function)."""
-    return an.objects.instance(an.made_by(obj), file, site, obj if an.objects.function(obj) is not None else -1, ctx)
+    """The object `new` on `obj` makes at a site in a context (one a constructor function or a class evaluated in a
+    run made knows that function or class object)."""
+    objects = an.objects
+    maker = obj if objects.function(obj) is not None or objects.class_env(obj) is not None else -1
+    return objects.instance(an.made_by(obj), file, site, maker, ctx)
 
 
 def is_made(an, text: str) -> bool:

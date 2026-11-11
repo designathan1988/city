@@ -139,3 +139,4 @@ O que falta fazer, por área.
 - Open (feature tracer, new core, Task 6): a package a program imports gives its own declaration files only when the import resolves to a file the program reads; `js_libs` reads the lib and the @types packages.
 - Open (feature tracer): tree-sitter-typescript 0.23.2 does not parse `global { }` inside an ambient module (TS global augmentation); `js_decl` reads it where the grammar's error recovery leaves it, and the file stays counted as broken.
 - Open (feature tracer, Task 7): the readers' changes for Task 4 (an ambient field holds no `undefined`, construct and call signatures are units, global augmentations are read) move the old core's numbers on the lab; measured with the acceptance.
+- Resolved 2026-11-11 (evening), the open item above on classes written in a function: the class is a value made in each run, its object carries the run, and its methods are closures of it (ECMA-262 ClassDefinitionEvaluation; heap.members.method_env).

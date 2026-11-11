@@ -25,8 +25,8 @@ def class_declaration(r, node, name: str, owner: str, holder) -> str:
     """A class: its bases (`extends`, `implements`), its constructor (written or default), members, `<static>`."""
     local = holder is not None and holder.name != "<module>" and holder.kind in ("func", "lambda")
     key = f"{r.key}#{holder.name}.{name}@{r.src.line(node)}" if local else js_decl.scoped(owner, name)
-    if local:
-        r.facts.classes.append(ClassFact(key, "js", name, r.key, r.src.line(node)))
+    if local:                       # evaluated where it is written, each run: a value made there
+        r.facts.classes.append(ClassFact(key, "js", name, r.key, r.src.line(node), made=MADE_CLASS))
         r.unit("class", name, holder.owner, node, qual=key)
         declare(r, holder, name, [("cast", ir_js.CLASS_VALUE + key)])
     else:

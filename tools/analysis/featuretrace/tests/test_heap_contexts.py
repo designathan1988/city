@@ -58,6 +58,12 @@ class HeapContexts(unittest.TestCase):
     def test_an_object_literal_method_is_a_closure_of_the_run_that_made_it(self):
         self.assertEqual({"Apple"}, self.classes("literalApple"))
 
+    def test_a_class_method_is_a_closure_of_the_run_that_made_the_class(self):
+        self.assertEqual({"Apple"}, self.classes("localApple"))
+
+    def test_a_class_value_method_is_a_closure_of_the_run_that_made_it(self):
+        self.assertEqual({"Apple"}, self.classes("classValueApple"))
+
 
 if __name__ == "__main__":
     unittest.main()

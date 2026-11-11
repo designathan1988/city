@@ -59,6 +59,16 @@ class Objects:
         key = self.keys[obj]
         return key[4] if key[0] == SITE_NEW and key[4] >= 0 else None
 
+    def class_value(self, key: str, env, holder: int) -> int:
+        """A class evaluated in a run of the function `holder` (ECMA-262 ClassDefinitionEvaluation runs each time):
+        its methods are closures of that run."""
+        return self.make(SITE_CLASS, key, env, holder)
+
+    def class_env(self, obj: int):
+        """The run a class value was evaluated in: (its context, the function), None for a module's class."""
+        key = self.keys[obj]
+        return (key[2], key[3]) if key[0] == SITE_CLASS and len(key) > 3 else None
+
     def class_itself(self, obj: int) -> str | None:
         """The class an object is (a class as a value: its constructor and its static members)."""
         key = self.keys[obj]

@@ -58,7 +58,8 @@ def construct(an, unit, ref, ctx) -> None:
             if an.objects.function(obj) is not None:
                 ctors = [obj]
             else:
-                ctors = [an.function_object(g) for g in an.ix.lookup(key, CONSTRUCTOR) if an.is_function_unit(g)]
+                ctors = [an.function_object(g, members.method_env(an, obj, g)) for g in an.ix.lookup(key, CONSTRUCTOR)
+                         if an.is_function_unit(g)]
             for fn in ctors:
                 an.call(call, fn, made, args, NEW)
     an.solver.subscribe(ctor, (CONSTRUCTED, unit.gid, ref.site, ctx), (NEW,), by_class)

@@ -72,3 +72,11 @@ export function kindApple() { return new AppleKind().build(); }
 
 function holderOf(v) { return { get() { return v; } }; }
 export function literalApple() { holderOf(new Pear()); return holderOf(new Apple()).get(); }
+
+function boxOf(v) {
+  class Box { get() { return v; } }
+  return new Box();
+}
+export function localApple() { boxOf(new Pear()); return boxOf(new Apple()).get(); }
+function kindOf(v) { return class { get() { return v; } }; }
+export function classValueApple() { kindOf(new Pear()); const K = kindOf(new Apple()); return new K().get(); }
