@@ -9,7 +9,6 @@ namespace city {
 namespace {
 
 constexpr float EPS_BAY = 1e-4f; // a run exactly a whole number of bays long holds them all
-constexpr int RIGHT = 0, LEFT = 1;
 
 // `from` less every span of `cut`.
 void subtract(std::vector<ArcSpan> &from, const std::vector<ArcSpan> &cut) {
@@ -63,8 +62,8 @@ void kerb_layout(const RoadNetwork &net, int sid, const std::vector<ArcSpan> gat
 	const double from = end_clear(net, g.a, g.retreat_a), to = g.len - end_clear(net, g.b, g.retreat_b);
 	for (const StripEdge &e : p.edges) {
 		if (e.strip.kind != StripKind::PARKING) continue;
-		const int side = e.u0 + e.u1 > 0 ? LEFT : RIGHT;
-		const float kerb = side == LEFT ? e.u1 : e.u0, inner = side == LEFT ? e.u0 : e.u1;
+		const int side = street_side(e.u0 + e.u1);
+		const float kerb = side == STREET_LEFT ? e.u1 : e.u0, inner = side == STREET_LEFT ? e.u0 : e.u1;
 		std::vector<ArcSpan> free{ { from, to } }, parked;
 		subtract(free, gates[side]);
 		for (const ArcSpan &s : free) {

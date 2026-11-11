@@ -27,6 +27,10 @@ struct KerbLayout {
 
 using ArcSpan = std::pair<double, double>;
 
+// The sides of a street in its frame: +u is on the left of a -> b. The one owner of which side a band, a lot's gate or a kerb is on.
+constexpr int STREET_RIGHT = 0, STREET_LEFT = 1;
+inline int street_side(double u) { return u > 0 ? STREET_LEFT : STREET_RIGHT; }
+
 // Whether the profile of `sid` has a parking band at all.
 bool parks_along(const RoadNetwork &net, int sid);
 // `gates`: what keeps bays off each side (sim/buildings/lot_access.h street_gates).

@@ -231,7 +231,7 @@ void street_gates(const RoadNetwork &net, const BuildingRecords &lots, const Dat
 			if (dist > reach) continue;
 			g.q.at(t, x, z);
 			g.q.deriv(t, dx, dz);
-			const int side = dz * (w.x - x) - dx * (w.y - z) > 0 ? 1 : 0;
+			const int side = street_side(dz * (w.x - x) - dx * (w.y - z)); // the gate across the street's frame: +u on the left of a -> b
 			const double at = arc_of_t(g, t), half = e.w * 0.5 + tp.kerb_gate_margin_m;
 			gates[side].emplace_back(at - half, at + half);
 		}
