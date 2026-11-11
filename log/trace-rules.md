@@ -346,3 +346,35 @@ and `keep_edge` (the side-effected unknown "links into a unit"), `link.build` (r
 | expression_statement | a statement made of an expression | VALUE |
 | type_annotation, type_arguments, type_parameters, type_parameter, type_identifier, nested_type_identifier, generic_type, predefined_type, array_type, tuple_type, union_type, intersection_type, function_type, constructor_type, object_type, parenthesized_type, literal_type, lookup_type, index_type_query, type_query, conditional_type, infer_type, mapped_type_clause, template_type, template_literal_type, readonly_type, rest_type, optional_type, this_type, existential_type, flow_maybe_type, default_type, constraint, type_predicate, type_predicate_annotation, asserts, asserts_annotation, adding_type_annotation, omitting_type_annotation, opting_type_annotation, extends_type_clause | a TS type: names the type a declared name holds (for VALUE of a declared name, and the receiver's class of a call through it); no link by itself (J8) | TYPE |
 | comment, html_comment, hash_bang_line, debugger_statement, empty_statement, accessibility_modifier, override_modifier | no role in a trace: comments, `debugger`, `;`, modifiers checked only by the compiler | NONE |
+
+## Difference propagation on every value (research, 2026-11-10 22:30)
+
+Sources: D. J. Pearce, P. H. J. Kelly, C. Hankin, "Online Cycle Detection and Difference Propagation for Pointer
+Analysis", SCAM 2003 (whileydave.com/publications/pkh03_scam): propagate only the change of a variable's solution, not
+the whole solution; B. Hardekopf, C. Lin, PLDI 2007 (cycle detection, the same worklist); F. Pereira, D. Berlin, "Wave
+Propagation and Deep Propagation for Pointer Analysis", CGO 2009; semi-naive evaluation of Datalog (each iteration joins
+only the facts new since the last one; a rule with several recursive atoms takes the delta at each position in turn;
+strata solved in order) (arXiv 1812.03975, 2108.11212).
+
+The rule taken: a value node is a set that only grows. Its contributions are subscriptions: a source node, and a transfer
+applied to each value of the source. When a source gains new values, only those go through each of its subscriptions; a
+value already in the target is dropped (the set's identity). This is exact when the transfer is distributive over the
+source's values, f(A u B) = f(A) u f(B): then the union of the transfers of the deltas is the transfer of the union, and
+the least fixpoint is the same as recomputing everything. The links (references) and the two shapes below that are not
+distributive stay consumers computed again in full, but only after every pending delta has propagated (a stratum).
+
+| IR shape | Distributive | Delta rule |
+|---|---|---|
+| name (local, parameter, capture, global, member of the class) | yes: a union of sources | the sources' new values pass unchanged |
+| member(base, s) | yes over the base's values | each new base value: its member's held values or returns (subscriptions), template parameters replaced |
+| call(callee, args) | yes over the callee's values | each new callable: its returns (subscription); anything else: the engine's value |
+| call by a constructor's name, std::move/forward | yes | the class (constant); the argument's values unchanged |
+| call of Callable(obj, name) / ClassDB.instantiate(name) | no: pairs of two growing sets | a consumer computed again in full |
+| index, elements, deref | yes over the base | each new value: the element, or the operator's returns |
+| op, unary | yes over the operand | each new value: the operator's returns, or the value |
+| union, await, addr | yes | both sides / the inner value unchanged |
+| collection, put | yes | each new value as an element |
+| cast, new, callable, self, super, strname, module, literal | constant | added once |
+| parameter (place) | yes: a union of the arguments of every link into the function | each link subscribes its argument tree |
+| variable or field (place) | yes: a union of every value written | each write subscribes its value tree |
+| signal handler parameter | yes | subscribes the signal's carried values |

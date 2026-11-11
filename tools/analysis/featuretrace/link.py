@@ -16,7 +16,7 @@ from . import js_link, names
 from .cpp_implicit import IMPLICIT
 from .model import FUNCTION_KINDS
 from .rules import NAME_CALLS
-from .resolve import EXACT, EXTERNAL, FLOW, LOCAL, UNREACHED, Resolver
+from .resolve import EXACT, EXTERNAL, LOCAL, UNREACHED, Resolver
 from .typer import CLASS
 
 REF = "#ref"
@@ -44,16 +44,17 @@ def build(index, progress=None) -> Resolver:
     if progress:
         progress(f"linked every reference once: {len(rs.edges)} links; {len(typer.work)} to compute again")
     done, told = 0, time.monotonic()
-    while typer.work:
+    while True:
+        typer.propagate()                  # every pending difference first: a consumer then reads settled values
+        if not typer.work:
+            break
         node = typer.work.popleft()
         if node not in typer.dirty:
             continue
         if node[0] == REF:
             link_node(rs, node)
-        elif node[0] == FLOW:
-            rs.flow(node)
         else:
-            typer.compute(node)
+            typer.recompute(node)
         done += 1
         if progress and time.monotonic() - told >= PROGRESS_SECONDS:
             told = time.monotonic()

@@ -10,8 +10,8 @@
 - a name carried as a string: on the receiver's classes, or (handed to a call) every script method or signal and every
   bound method with that name — what the engine resolves by it.
 A parameter holds the arguments written at every call site, a field what every assignment puts in it: the values come
-from the links found so far: each argument of each link is carried to its parameter once, and again only when it
-grows (difference propagation, S2).
+from the links found so far: each link subscribes its arguments to the parameters, and only new values pass (`flows`,
+difference propagation, S2).
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 
 from .model import FUNCTION_KINDS, STATE_KINDS
-from .flows import FLOW, Flows  # noqa: F401  (FLOW: the solver's flow nodes, read by the linker)
+from .flows import Flows
 from .typer import CALLABLE_CALLS, Typer
 
 SIGNAL_KINDS = ("signal", "engine_signal")
@@ -47,8 +47,6 @@ class Resolver(Flows):
         self.out = defaultdict(list)
         self.inn = defaultdict(list)
         self.status = {}                    # reference node -> ("external" | "unreached", name), its last outcome
-        self.carried = {}                   # place (parameter, variable) -> the values the links carried into it
-        self.engine_called = set()          # units the engine or the library calls (handed to it, engine signals)
         self.external = defaultdict(set)    # unit gid -> names it uses that no code defines (engine, library)
         self.unreached = defaultdict(set)   # unit gid -> members used on a receiver no value of the code reaches
 

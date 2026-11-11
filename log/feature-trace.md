@@ -252,3 +252,26 @@ it is computed again in full. With three.js's node system (TSL) values of hundre
 parameters, so a union of thousands of values grows one value at a time and each step recomputes every reader at full
 size: quadratic work. **To do (log/pendencias.md):** each tree shape as a transfer function over new values only (a node keeps
 its value set and passes on only what is new), the same difference propagation the places already have.
+
+## Difference propagation on every value node: the tracer finishes on large programs (2026-11-10 22:55)
+**Cause (read in the code):** `typer.Typer.compute` evaluated an expression node again in full each time anything it read
+grew, rebuilt its whole value list, and woke every reader to do the same; only parameters and fields had difference
+propagation. With thousands of values meeting in one parameter (three.js's node system), the work was quadratic: the
+lab did not reach its fixpoint in 600 s. **Research:** `log/trace-rules.md`, "Difference propagation on every value"
+(Pearce, Kelly, Hankin SCAM 2003; Hardekopf & Lin PLDI 2007; Pereira & Berlin CGO 2009; semi-naive Datalog) with the
+table of every IR shape, its distributivity and its delta rule. **Plan:** `log/trace-rules-delta-plan.md`.
+**Code:** `solver.py` (value nodes as growing sets, subscriptions source -> target with a per-value transfer, a queue of
+differences, consumers), `transfer.py` (the per-value rules of member, call, step, operator, substitution), `typer.py`
+(each tree wired once by its shape; `#hold`, `#ret`, `#arg`, `#held`, `#engine` nodes; the two non-distributive shapes,
+Callable(obj, name) and ClassDB.instantiate(name), are consumers computed whole), `types_of.py` (type naming, out of the
+typer), `flows.py` (a link subscribes its arguments to the parameters, a write its value, a signal its carried values),
+`link.py` (the differences drain before each consumer); `operators.py` removed (its rules are in `transfer.py`).
+**Tests at the end:** 85 tracer tests OK; gates OK. City (`--root project --root native/src`), old solver against new on
+the same tree, every link compared: 0 links only in the old, 39 only in the new, all of them the same caller -> callee
+pairs the old has, labelled `override` besides `call` (with_overrides excludes the targets present at that relink, and the
+order of relinks changed); 19.7 s -> 14.5 s, 387,347 -> 44,832 recomputations. Lab (roadcraft `src` + three r186
+`build`, `examples/jsm`, start `src/frameLoop.ts:30`): fixpoint in 325 s (did not finish in 600 s before), 145,846
+definitions, 595,715 links, report written (2,266 entry points, 11,641 definitions behind, 13,171 ahead).
+**Still whole:** a reference is linked again over its receiver's whole value when it grows (after the differences have
+drained); on the lab that is 658k relinks and most of the 325 s. Its delta form (each grown node substituted by its
+difference in turn, as semi-naive evaluation does) is the next step for speed; the result is already complete.
