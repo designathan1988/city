@@ -1,14 +1,15 @@
 """TYPE (log/trace-rules.md): the class a type text names, seen from where it is read, and a value's one canonical
 form (a type naming a class of the program is that class). A class template's member has its parameters replaced by
-the arguments written. A JavaScript text is resolved when the value is made (T1-T3): a class, a container of the
-language with its arguments resolved (`js_library`), or nothing. The typer (`typer.Typer`) is built on this.
+the arguments written. A JavaScript text is resolved when the value is made (T1-T3, T1'): a class, a type alias's
+marker (the values it admits, `Typer.expand`), a container of the language with its arguments resolved
+(`js_library`), or nothing. The typer (`typer.Typer`) is built on this.
 """
 from __future__ import annotations
 
 from . import js_library
 from .cpp_names import strip_templates, template_args
 from .library import clean, substitute
-from .solver import CLASS, ELEM, ENGINE, FN, LANG, TEXT, is_language
+from .solver import ALIAS, CLASS, ELEM, ENGINE, FN, LANG, TEXT, is_language
 
 
 class TypeNames:
@@ -22,11 +23,20 @@ class TypeNames:
             return text, ctx
         if ctx.lang == "js":
             return js_library.canonical(text, lambda name: self.type_class(name, ctx),
-                                        lambda name: self.ix.js.declares_type(name, ctx.file, ctx.owner)), ctx
+                                        lambda name: self.ix.js.declares_type(name, ctx.file, ctx.owner),
+                                        lambda name: self.alias_marker(name, ctx)), ctx
         if "<" in text or "[" in text:
             return text, ctx
         key = self.type_class(text, ctx)
         return (CLASS + key, ctx) if key else (text, ctx)
+
+    def alias_marker(self, name: str, ctx) -> str | None:
+        """The marker of the type alias a JS name names where it is read, or of a reader's marker of its own file (a
+        type written inside a container's arguments, `js_types.written`): the values it admits (T1')."""
+        if name.startswith(js_library.ALIAS_LOCAL):
+            return ALIAS + str(self.ix.offset[ctx.file] + int(name[len(js_library.ALIAS_LOCAL):]))
+        gid = self.ix.js.alias_of(name, ctx.file, ctx.owner)
+        return ALIAS + str(gid) if gid is not None else None
 
     def type_class(self, text: str, ctx) -> str | None:
         if not text or is_language(text) or text.startswith((FN, ELEM, TEXT)):

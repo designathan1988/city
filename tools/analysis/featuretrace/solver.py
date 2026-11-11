@@ -19,8 +19,11 @@ from . import cycles
 from .library import ENGINE
 
 CLASS, FN, ELEM, TEXT = "#", "<fn>", "<elem>", "<text>"   # value forms; TEXT + s: a string value carrying s (G7)
-LANG = "<lang>"            # a constant of the language (V1): `true`, `false`, `null`, `undefined`
+LANG = "<lang>"            # a value of the language (V1, T1''): a constant, or any value of one kind
 TRUE, FALSE, NULL, UNDEFINED = LANG + "true", LANG + "false", LANG + "null", LANG + "undefined"
+NUMBER, STRING, BIGINT, SYMBOL = LANG + "number", LANG + "string", LANG + "bigint", LANG + "symbol"
+OBJECT, FUNCTION = LANG + "object", LANG + "function"     # an object, a function the program does not name (T1')
+ALIAS = "<alias>"          # ALIAS + gid: the values a type alias admits, taken where a value would be (T1')
 SAME = ("same",)           # the key of an identity subscription: the target holds every value of the source
 
 
@@ -63,6 +66,9 @@ class Solver:
     def canon(self, text: str, ctx) -> tuple:
         return text, ctx
 
+    def expand(self, text: str, node) -> None:
+        """A value that stands for others (a type alias, T1'): the node takes those (the typer's)."""
+
     def find(self, node):
         """The node that holds `node`'s values: itself, or the node of the cycle it was merged into."""
         parent = self.parent
@@ -88,6 +94,9 @@ class Solver:
             text, ctx = self.canon(text, ctx)
             if not text:
                 continue                   # a type with no runtime value (erased, T1)
+            if text.startswith(ALIAS):
+                self.expand(text, node)    # a type alias: the values it admits (T1')
+                continue
             key = identity(text, ctx)
             if key not in known:
                 known.add(key)

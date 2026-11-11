@@ -12,7 +12,7 @@ sys.path.insert(0, str(HERE))
 
 from support import FixtureCase  # noqa: E402
 from featuretrace import js_library  # noqa: E402
-from featuretrace.solver import CLASS, ELEM, ENGINE, FN, LANG, TEXT  # noqa: E402
+from featuretrace.solver import BIGINT, CLASS, ELEM, ENGINE, FN, LANG, NULL, NUMBER, TEXT  # noqa: E402
 
 BOX = CLASS + "types.ts#Box"
 
@@ -34,7 +34,7 @@ class JsValues(FixtureCase):
         self.assertNotIn("K.helper", self.names("viaMember"))   # `m`'s local, not a member of K (L1)
 
     def test_union_with_null_is_the_class(self):
-        self.assertEqual({CLASS + "types.ts#Building"}, self.values("levelOf", ("name", "b")))
+        self.assertEqual({CLASS + "types.ts#Building", NULL}, self.values("levelOf", ("name", "b")))   # and null (T1')
 
     def test_type_parameters_are_erased(self):
         self.assertEqual(set(), self.values("levelOf", ("name", "t")))
@@ -51,7 +51,7 @@ class JsValues(FixtureCase):
         self.assertIn("Box.open", self.names("later"))
 
     def test_js_arithmetic_is_a_primitive(self):
-        self.assertEqual({ENGINE}, self.values("scaled", ("name", "n")))
+        self.assertEqual({NUMBER, BIGINT}, self.values("scaled", ("name", "n")))        # a number or a BigInt (T1'')
 
     def test_values_do_not_depend_on_the_file(self):
         typer = self.rs.typer
@@ -89,7 +89,9 @@ class JsValues(FixtureCase):
 
     def test_host_type_is_the_host_value(self):
         self.assertEqual({ENGINE}, self.values("draw", ("name", "c")))   # HTMLCanvasElement: the host's (H1)
-        self.assertEqual(set(), self.values("draw", ("name", "p")))      # an alias of the program: erased (T1)
+        point = self.values("draw", ("name", "p"))                       # an alias of the program: what its type admits,
+        self.assertEqual(1, len(point), point)                           # here an object type (T1')
+        self.assertTrue(next(iter(point)).startswith(CLASS + "props.ts#<type@"), point)
 
     def test_closure_write_is_read_where_written(self):
         # `shown` is the closure's parameter (a Box), not script.js's global function of that name

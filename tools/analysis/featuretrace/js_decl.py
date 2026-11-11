@@ -5,7 +5,7 @@ namespaces, type aliases and ambient declarations (`declare`, `declare global`, 
 from __future__ import annotations
 
 from . import ir_js, js_body, js_class, js_types
-from .model import ClassFact
+from .model import ALIAS_KIND, ClassFact
 from .source import field_of, named_children, string_value
 
 GLOBAL_KEY = "<global>"            # the global scope's names (scripts, `declare global`): one class for the program
@@ -121,6 +121,7 @@ def declaration(r, node, owner: str, holder) -> list[str]:
         return variables(r, node, owner, holder)
     if kind == "interface_declaration":
         key = new_class(r, node, name, owner)
+        r.facts.classes[-1].shape = True                             # no object of its own (`structural`)
         for clause in (c for c in named_children(node) if c.type == "extends_type_clause"):
             r.facts.classes[-1].bases += [r.src.text(t) for t in named_children(clause)]
         r.type_params.append(js_types.parameters(r, node))           # its type parameters are erased (T1)
@@ -138,6 +139,12 @@ def declaration(r, node, owner: str, holder) -> list[str]:
         return [name]
     if kind == "type_alias_declaration":
         r.facts.aliases[scoped(owner, name)] = " ".join(r.src.text(field_of(node, "value")).split())
+        alias = r.unit(ALIAS_KIND, name, owner, node, scoped(owner, name))   # the values its type admits (T1')
+        r.type_params.append(js_types.parameters(r, node))           # its type parameters are erased (T1)
+        try:
+            alias.values += js_types.values(r, field_of(node, "value"), alias)
+        finally:
+            r.type_params.pop()
         return [name]
     if kind in ("internal_module", "module"):
         spec = string_value(r.src, name_node)

@@ -18,7 +18,7 @@ from .js_library import EACH
 from .library import DEREF, ITEM, ITER, passes_through
 from .places import Places
 from .rules import CALLABLE_CONSTRUCTORS, NAME_CONSTRUCTORS
-from .solver import CLASS, ENGINE, FN, TEXT, Solver
+from .solver import ALIAS, CLASS, ENGINE, FN, TEXT, Solver
 from .types_of import TypeNames
 
 CALLABLE_CALLS = transfer.CALLABLE_CALLS
@@ -40,6 +40,7 @@ class Typer(Places, TypeNames, Solver):
         self.template_depends = {}         # (gid, tree) -> whether its key parameters reach the tree (C2''')
         self.js_written = None             # the property names JS code writes on a receiver (`js_transfer`, V2)
         self.undecided = []                # a property guard on an object whose property no value reached yet (N1)
+        self.joined = set()                # (class, interface) whose properties are one (`structural`, S1)
 
     def class_of(self, unit) -> str | None:
         return unit.owner if unit.owner in self.ix.classes else None
@@ -70,10 +71,10 @@ class Typer(Places, TypeNames, Solver):
         kind = tree[0]
         if kind == "name":
             self.wire_name(node, tree[1], unit)
-        elif kind == "member":
+        elif kind == "member":                    # read where it is written: in its own accessors or not (G8')
             base = self.node_of(tree[1], unit)
             base = self.stepped(base, DEREF) if tree[3] else base
-            self.subscribe(base, node, ("member", tree[2], False), transfer.members(self, tree[2], False))
+            self.subscribe(base, node, ("member", tree[2], False), transfer.members(self, tree[2], False, unit))
         elif kind == "call":
             self.wire_call(node, tree[1], tree[2], unit)
         elif kind == "#plain":                    # a by-name call's ordinary reading, its fallback
@@ -84,8 +85,8 @@ class Typer(Places, TypeNames, Solver):
             self.subscribe(key, node, ("index", base), js_transfer.indexed(self, base, False))
         elif kind in STEPS:
             self.subscribe(self.node_of(tree[1], unit), node, ("step", STEPS[kind]), transfer.steps(self, STEPS[kind]))
-        elif kind in ("op", "unary") and unit.lang == "js":
-            self.add(node, [(ENGINE, unit)])      # a number, a BigInt or a string: the language's value (O1)
+        elif kind in ("op", "unary") and unit.lang == "js":    # a number, a BigInt or a string (O1, T1'')
+            self.add(node, [(v, unit) for v in truth.operator_values(tree[1], kind == "unary")])
         elif kind in ("op", "unary"):
             self.subscribe(self.node_of(tree[2], unit), node, ("op", tree[1]), transfer.operators(self, tree[1]))
         elif kind == "construct":                 # JS `new X(...)`: X evaluated (N1)
@@ -111,6 +112,8 @@ class Typer(Places, TypeNames, Solver):
             narrow_values.wire(self, node, tree, unit)
         elif kind == "literal" and unit.lang == "js" and tree[1] in truth.JS_CONSTANTS:
             self.add(node, [(truth.JS_CONSTANTS[tree[1]], unit)])    # `true`, `false`, `null`, `undefined` (V1)
+        elif kind == "literal" and unit.lang == "js" and tree[1] in truth.LITERAL_VALUES:
+            self.add(node, [(v, unit) for v in truth.LITERAL_VALUES[tree[1]]])     # a number, a string, ... (T1'')
         else:
             self.add(node, [(ENGINE, unit)])      # literal, node: the engine's or the language's values
 
@@ -131,6 +134,10 @@ class Typer(Places, TypeNames, Solver):
             return [(TEXT + tree[1], unit)]
         key = self.ix.js.resolve(unit.file, tree[1])                     # import("m"): the namespace (J3)
         return [(CLASS + key, unit)] if key else [(ENGINE, unit)]
+
+    def expand(self, text: str, node) -> None:
+        """A type alias where a value would be: the values its type admits, read where it is declared (T1')."""
+        self.follow(self.hold_node(self.ix.units[int(text[len(ALIAS):])]), node)
 
     def stepped(self, base, step: str):
         node = ("#step", base, step)

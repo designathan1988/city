@@ -13,7 +13,8 @@ sys.path.insert(0, str(HERE))
 
 from support import FixtureCase  # noqa: E402
 from featuretrace import narrow_values  # noqa: E402
-from featuretrace.solver import CLASS, ELEM, ENGINE, NULL, TEXT, TRUE, UNDEFINED  # noqa: E402
+from featuretrace.solver import (BIGINT, CLASS, ELEM, ENGINE, FALSE, NULL, NUMBER, OBJECT, STRING, SYMBOL,  # noqa: E402
+                                 TEXT, TRUE, UNDEFINED)
 
 BOX, TILE, V3 = CLASS + "types.ts#Box", CLASS + "helpers.ts#Tile", CLASS + "guards.js#V3"
 CAN, SHAPE = CLASS + "guards.js#Can", CLASS + "guards.js#<object@"
@@ -84,8 +85,8 @@ class Narrowing(Solved, FixtureCase):
 
     def test_ternary_and_logical(self):
         self.assertEqual({BOX, NULL}, self.returned("ternary"))
-        self.assertEqual({ENGINE, TILE}, self.returned("andRight"))
-        self.assertEqual({ENGINE, TILE}, self.returned("orRight"))
+        self.assertEqual({FALSE, TILE}, self.returned("andRight"))     # the test's value where it is falsy (MDN `&&`)
+        self.assertEqual({TRUE, TILE}, self.returned("orRight"))       # where it is truthy (MDN `||`)
 
     def test_typeof_and_equality(self):
         self.assertEqual({TEXT + "s", NULL}, self.returned("textOnly"))
@@ -96,7 +97,7 @@ class Narrowing(Solved, FixtureCase):
         self.assertEqual({BOX, NULL}, self.returned("hasOpen"))
         found = self.returned("arrayOnly")
         self.assertNotIn(BOX, found)
-        self.assertIn(ELEM + ENGINE, found)
+        self.assertIn(ELEM + NUMBER, found)                       # `[1]`: an array of numbers (T1'')
 
     def test_discriminant(self):
         for spec in ("discriminant", "bySwitch"):
@@ -124,6 +125,108 @@ class Narrowing(Solved, FixtureCase):
 
     def test_unknown_value_is_the_tested_class(self):
         self.assertEqual({BOX, NULL}, self.returned("hostValue"))   # the host's value that is a Box is a Box
+
+
+class Declared(Solved, FixtureCase):
+    """T1', T1'', G8' and the argument a call leaves out (fixture `jsvalues/declared.ts`)."""
+    ROOTS = ("jsvalues",)
+    BASE = "jsvalues"
+    RUNNER, BAG = CLASS + "declared.ts#Runner", CLASS + "declared.ts#Bag"
+    PACK, SCOPED = CLASS + "declared.ts#Pack", CLASS + "declared.ts#Scoped"
+
+    def test_interface_object_keeps_what_its_types_admit(self):
+        self.assertTrue({self.RUNNER, NULL} <= self.returned("declLive"))       # `done: boolean` can be false
+        self.assertTrue({self.RUNNER, NULL} <= self.returned("declWalking"))    # `mode: 'walk' | 'run'`
+
+    def test_optional_property(self):
+        self.assertEqual({STRING, UNDEFINED}, self.returned("declNote"))
+
+    def test_primitive_and_literal_types(self):
+        self.assertEqual({NUMBER, STRING, TRUE, FALSE, NULL, UNDEFINED, SYMBOL, BIGINT, OBJECT},
+                         self.returned("declKinds"))
+        self.assertEqual(set(), self.returned("declNever"))
+        self.assertEqual({self.PACK, UNDEFINED}, self.returned("declOptional"))
+
+    def test_alias_lookup_and_conditional_types(self):
+        found = self.returned("declLookup")                                     # `Runner['act']` through an alias
+        self.assertIn(NULL, found)
+        self.assertTrue(any(v.startswith(CLASS + "declared.ts#<type@") for v in found), found)
+        self.assertEqual({self.PACK, NULL}, self.returned("declConditional"))
+
+    def test_typeof_on_a_declared_number(self):
+        self.assertEqual({NUMBER, NULL}, self.returned("declTypeof"))
+
+    def test_literals_and_operators_by_kind(self):
+        self.assertEqual({NUMBER}, self.returned("declNumber"))
+        self.assertEqual({STRING}, self.returned("declTemplate"))
+        self.assertEqual({TRUE, FALSE}, self.returned("declNot"))
+        self.assertEqual({STRING}, self.returned("declTypeofText"))
+        self.assertEqual({NUMBER, BIGINT}, self.returned("declMinus"))
+
+    def test_getter_and_setter_values(self):
+        self.assertEqual({self.SCOPED, NULL}, self.returned("declGetter"))      # the getter's `!==` can be true
+        self.assertEqual({UNDEFINED}, self.returned("declSetterOnly"))
+
+    def test_index_signature(self):
+        self.assertTrue({self.BAG, NULL} <= self.returned("declIndexed"))
+        self.assertEqual({self.PACK, UNDEFINED}, self.returned("declIndexValue"))
+
+    def test_member_call_reaches_a_held_function_beside_a_method(self):
+        self.assertTrue(any(n.endswith("flip") for n in self.names("declFieldCall")), self.names("declFieldCall"))
+
+    def test_logical_operands_where_they_are_the_value(self):
+        self.assertEqual({NULL, NUMBER}, self.returned("declAndValue"))
+        self.assertEqual({self.PACK, TEXT + "none"}, self.returned("declOrValue"))
+        self.assertEqual({self.PACK, TEXT + "none"}, self.returned("declNullishValue"))
+
+    def test_literal_typed_as_interface_shares_its_properties(self):
+        found = self.returned("declShadowRead")                     # `c.shadow` truthy: written through the Car
+        self.assertTrue(any("<object@" in v for v in found), found)
+
+    def test_no_arity_overloads_in_javascript(self):
+        found = self.names("declArity")
+        self.assertTrue(any("<object@" in n and n.endswith(".emitted") for n in found), found)
+
+    def test_satisfies_is_the_value_alone(self):
+        found = self.returned("declSatisfies")
+        self.assertEqual(1, len(found), found)
+        self.assertIn("<object@", next(iter(found)))
+
+    def test_satisfies_keeps_the_spread_base(self):
+        written = self.names("declSpreadBase", ("write",))
+        self.assertTrue(any("<object@" in label for label in written), written)
+
+    def test_parameter_property(self):
+        self.assertEqual({self.PACK}, self.returned("declParamProperty"))
+
+    def test_optional_method_may_be_absent(self):
+        self.assertIn("Reads.at", self.names("declOptionalMethod"))  # the else of `f.atInto ?` keeps the Reads
+
+    def test_count_of_a_built_array(self):
+        self.assertIn(self.PACK, self.returned("declCount"))          # `!all.length` leaves: all held Packs
+
+    def test_plain_call_statement_proves_nothing(self):
+        self.assertIn(TEXT + "a", self.returned("declPlainCall"))
+
+    def test_omitted_argument_is_undefined(self):
+        self.assertEqual({UNDEFINED}, self.returned("declLeftCall"))
+
+
+class GdAccessors(Solved, FixtureCase):
+    """G8': a read runs the getter, a write the setter (fixture `pending/accessors.gd`)."""
+    ROOTS = ("pending",)
+    BASE = "pending"
+
+    def crates(self, spec: str) -> bool:
+        return any(v.endswith("accessors.gd.Crate") for v in self.returned(spec))
+
+    def test_read_through_the_getter(self):
+        self.assertTrue(self.crates("gd_getter"))
+        self.assertTrue(self.crates("gd_own"))          # its own getter reads the stored member, initialized
+
+    def test_write_through_the_setter(self):
+        self.assertFalse(self.crates("gd_setter"))      # the setter stores elsewhere
+        self.assertTrue(self.crates("gd_stored"))
 
 
 class GdNarrowing(Solved, FixtureCase):

@@ -12,6 +12,7 @@ from __future__ import annotations
 from . import js_library, js_transfer, templates
 from .cpp_names import template_args
 from .library import (DEREF, HELD_CALLS, ITEM, ITER, ITERATOR_CALLS, PAIR_PARTS, clean, library_step)
+from .model import ALIAS_KIND
 from .solver import CLASS, ELEM, ENGINE, FN, is_language
 
 OPERATORS = {ITEM: "operator[]", DEREF: "operator->", ITER: "begin", js_library.EACH: "begin"}
@@ -62,7 +63,8 @@ def result(t, target, unit, caller, args: tuple, deliver=None) -> None:
 
 
 def member_one(t, target, text: str, ctx, name: str, called: bool, caller=None, args: tuple = ()) -> None:
-    """A member of one value: its field's held values, its method's callable, or (called) the method's returns."""
+    """A member of one value: its field's held values (read in `caller`: through its getter, G8'), its method's
+    callable, or (called) the method's returns."""
     ix = t.ix
     if text.startswith(FN):
         unit = ix.units[int(text[len(FN):])]
@@ -82,6 +84,9 @@ def member_one(t, target, text: str, ctx, name: str, called: bool, caller=None, 
             t.add(target, [(text[len(ELEM):], ctx)])    # (an iterator's `next()` is the container: its `value` one)
         elif called and name in same:
             t.add(target, [(text, ctx)])
+        else:                                           # its count, any other member: the language's (JS: T1'')
+            t.add(target, [(v, ctx) for v in js_library.language_member(name, called)] if ctx.lang == "js"
+                  else [(ENGINE, ctx)])
         return
     if ctx.lang == "js" and js_library.is_container(text):
         t.add(target, [(v, ctx) for v in js_library.member(name, text, called)])
@@ -92,6 +97,7 @@ def member_one(t, target, text: str, ctx, name: str, called: bool, caller=None, 
         return
     if key is not None and ix.js.is_module(key):                              # a namespace's member: its export (J3)
         gids, modules = ix.js.export(key, name)
+        gids = [g for g in gids if ix.units[g].kind != ALIAS_KIND]            # a type alias is no value (T1')
         t.add(target, [(CLASS + m, ctx) for m in modules] or ([] if gids else [(ENGINE, ctx)]))
         for gid in gids:
             unit = ix.units[gid]
@@ -100,14 +106,15 @@ def member_one(t, target, text: str, ctx, name: str, called: bool, caller=None, 
             elif called:
                 result(t, target, unit, caller, args)
             else:
-                t.follow(t.hold_node(unit), target)
+                t.follow(t.read_node(unit, caller), target)
         return
     if key is None:
         t.add(target, [(library_step(name, text, called), ctx) if not is_language(text) else (ENGINE, ctx)])
         return
-    found = ix.lookup(key, name)
+    found, getters = ix.lookup(key, name), ()
     if ctx.lang == "gd" and ix.classes[key].lang == "cpp":
         found = t.rs.engine_members(key, name, "func" if called else "read")
+        getters = () if called else t.rs.engine_accessors(key, name, "get")     # a bound property's (BIND, G8')
     if not found and ix.classes[key].lang == "js":
         js_transfer.undeclared(t, target, key, ctx, name, called, caller, args)   # (V2)
         return
@@ -122,10 +129,12 @@ def member_one(t, target, text: str, ctx, name: str, called: bool, caller=None, 
         member_values(t, source, target, key, text, ctx)
     for gid in ix.definitions(found):
         unit = ix.units[gid]
-        if called:
-            result(t, target, unit, caller, args, deliver)
+        if unit.kind == ALIAS_KIND:
+            continue                                                         # a type alias is no value (T1')
+        if called or gid in getters:
+            result(t, target, unit, caller if called else None, args, deliver)
         else:
-            deliver(t.hold_node(unit))
+            deliver(t.read_node(unit, caller))          # read where it is written: through its getter or not (G8')
 
 
 def steps(t, step: str):

@@ -77,7 +77,8 @@ def has(t, name: str, positive: bool, text: str, ctx) -> bool:
     if key is None:
         return True
     declared = bool(t.ix.lookup(key, name)) or name in js_transfer.BUILT_IN
-    maybe = name in js_transfer.written_names(t) or not js_transfer.chain_read(t.ix, key)
+    maybe = name in js_transfer.written_names(t) or not js_transfer.chain_read(t.ix, key) \
+        or bool(js_transfer.index_units(t.ix, key))          # an index signature holds any name (T2)
     return (declared or maybe) if positive else not declared
 
 
@@ -178,18 +179,21 @@ def by_class(t, guard, positive: bool, source, named, from_source: bool, unit):
     def transfer_(target, values):
         keys, unknown = named_classes(t, guard, t.held(named))
         tested = values if from_source else t.held(source)
-        kept = [v for text, ctx in tested for v in instance(t, keys, unknown, positive, text, ctx)]
+        test = guard[0] == "instance"
+        kept = [v for text, ctx in tested for v in instance(t, keys, unknown, positive, text, ctx, test)]
         declared = [(CLASS + k, unit) for k in keys] if positive and not from_source else []
         t.add(target, kept + declared)
     return transfer_
 
 
-def instance(t, keys: list, unknown: bool, positive: bool, text: str, ctx) -> list:
+def instance(t, keys: list, unknown: bool, positive: bool, text: str, ctx, test: bool = True) -> list:
     """What `x instanceof C` (MDN: the prototype chain) or a type predicate keeps of one value: an object of the
-    program by its chain; a primitive is no instance; a value the tracer cannot tell that passes is the class named
-    (declared by `by_class`), and stays itself only when the condition can name a class the tracer cannot tell."""
+    program by its chain; a primitive is never an instance (`instanceof` is false of it), but can be what a predicate
+    names when the tracer cannot tell what it names (`x is string`, a call that is no predicate); a value the tracer
+    cannot tell that passes is the class named (declared by `by_class`), and stays itself only when the condition can
+    name a class the tracer cannot tell."""
     if text.startswith((TEXT, LANG)):
-        return [] if positive else [(text, ctx)]
+        return [] if positive and (test or not unknown) else [(text, ctx)]
     key = t.type_class(text, ctx) if text.startswith(CLASS) else None
     if key is None:
         return [(text, ctx)] if unknown or not positive else []

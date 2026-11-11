@@ -36,6 +36,7 @@ class Edge:
     how: str = EXACT   # exact | by name | override
     file: str = ""     # where the link is written (the source unit's file unless a scene or a connect)
     args: tuple = field(default_factory=tuple)   # the trees written at the site (arguments, the value written)
+    argc: int = -1     # a call's arguments written (-1: a link no call writes, or a call whose count is unknown)
 
 
 class Resolver(Flows):
@@ -165,19 +166,39 @@ class Resolver(Flows):
     def engine_members(self, key: str, name: str, want: str) -> list[int]:
         """What GDScript reaches on a C++ object: its bound methods, signals and property accessors (with bases)."""
         ix = self.ix
-        found, todo, seen = [], [key], set()
-        while todo:
-            k = todo.pop()
-            if k in seen:
-                continue
-            seen.add(k)
+        found = []
+        for k in self.with_bases(key):
             found += ix.bound_in[k].get(name, [])
             found += [g for g in ix.members[k].get(name, []) if ix.units[g].kind == "signal"]
+        found += self.engine_accessors(key, name, "get" if want == "read" else "set")
+        return [g for g in found if want != "signal" or ix.units[g].kind in SIGNAL_KINDS]
+
+    def engine_accessors(self, key: str, name: str, which: str) -> list[int]:
+        """The bound getter (`get`) or setter (`set`) of a C++ property GDScript reads or writes (BIND, ADD_PROPERTY):
+        a read runs the getter and is its result, a write runs the setter with the value (G8')."""
+        ix, found = self.ix, []
+        for k in self.with_bases(key):
             for owner, setter, getter in ix.props.get(name, []):
                 if owner == k:
-                    found += ix.bound_in[k].get(getter if want == "read" else setter, [])
-            todo += ix.base_keys(ix.classes[k]) if k in ix.classes else []
-        return [g for g in found if want != "signal" or ix.units[g].kind in SIGNAL_KINDS]
+                    found += ix.bound_in[k].get(getter if which == "get" else setter, [])
+        return found
+
+    def with_bases(self, key: str) -> list[str]:
+        """A class key and the keys of all its bases."""
+        out, todo, seen = [], [key], set()
+        while todo:
+            k = todo.pop()
+            if k not in seen:
+                seen.add(k)
+                out.append(k)
+                todo += self.ix.base_keys(self.ix.classes[k]) if k in self.ix.classes else []
+        return out
+
+    def accessor_units(self, prop, target) -> list[int]:
+        """The functions an accessor of a property names (G8): its own body (a local id) or a method by name."""
+        if isinstance(target, int):
+            return [self.ix.offset[prop.file] + target]
+        return self.bare(prop, target, "func")[0]
 
     def by_string(self, unit, base, text: str) -> tuple[list[int], str]:
         """A name written as a string the engine resolves at run time (NAME)."""
@@ -222,7 +243,7 @@ class Resolver(Flows):
             self.reached.add(self.typer.stack[-1])
             self.status.pop(self.typer.stack[-1], None)
         self.keep_edge(Edge(src, dst, kind, ref.line, ref.cond, how, file or self.ix.units[src].file,
-                            getattr(ref, "args", ())))
+                            getattr(ref, "args", ()), getattr(ref, "argc", -1)))
 
     def keep_edge(self, edge: Edge) -> None:
         """One link per line for the report; the values flow from every call site (two calls of one function on one

@@ -11,11 +11,14 @@ written to (J9). Module-level statements are read by `js_decl`, statements by `j
 from __future__ import annotations
 
 from . import ir_js, js_body, js_class, js_decl, js_types, narrowing, scopes
-from .model import ClassFact, FileFacts, Unit, add_ref, declare, enclose
+from .model import ALIAS_KIND, ClassFact, FileFacts, Unit, add_ref, declare, enclose
 from .rules import CONSTRUCTOR
+from .solver import UNDEFINED
 from .source import Source, field_of, grammar_of, named_children
 
 FUNCTION_NODES = ir_js.FUNCTIONS
+PROPERTY_MARKS = ("accessibility_modifier", "readonly", "override_modifier")   # a constructor parameter's that make it a
+                                                                              # property of the class
 
 STATIC_UNIT, MODULE_UNIT = "<static>", "<module>"
 
@@ -127,11 +130,26 @@ class JsReader:
             slot = self.src.text(pattern) if pattern.type == "identifier" else f"<arg{i}>"
             unit.params.append(slot)
             declared = self.type_values(field_of(p, "type"), unit)
+            if default is not None:
+                unit.defaults.add(len(unit.params) - 1)          # an argument left out takes it (MDN Default parameters)
+            elif p.type == "optional_parameter":
+                declared.append(("cast", UNDEFINED))             # `x?: T`: undefined added to its type (T1')
             declare(self, unit, slot, declared + ([self.ir(default, unit)] if default is not None else []), param=True)
+            if unit.name == CONSTRUCTOR and pattern.type == "identifier" and any(c.type in PROPERTY_MARKS
+                                                                               for c in p.children):
+                self.parameter_property(p, slot, unit)
             if pattern.type != "identifier":
                 self.bind(pattern, ("name", slot), unit, None, ())
             if default is not None:
                 js_body.expr(self, default, unit, ())
+
+    def parameter_property(self, p, name: str, ctor: Unit) -> None:
+        """`constructor(private x: T)` (TypeScript handbook, Classes: parameter properties): a property of the class,
+        of the type written, that the constructor writes with its argument (`this.x = x`)."""
+        field = js_class.field_unit(self, ctor.owner, name, p, None)
+        field.type_text = self.type_text(field_of(p, "type"))
+        field.values += self.type_values(field_of(p, "type"), field)
+        self.add(ctor, "write", name, p, (), base=("self",), args=(("name", name),))
 
     # ---- patterns (J1): each name bound to its part of the value --------------------------------------------------
     def bind(self, pattern, tree: tuple, unit: Unit, write_cond, cond) -> None:
@@ -196,6 +214,24 @@ class JsReader:
         if node.start_byte not in self._objects:
             self._objects[node.start_byte] = js_class.object_literal(self, node, unit)
         return self._objects[node.start_byte]
+
+    def shape_class(self, node) -> str:
+        """An object type written in an annotation: an interface without a name (T1')."""
+        if node.start_byte not in self._objects:
+            self._objects[node.start_byte] = js_class.object_type(self, node)
+        return self._objects[node.start_byte]
+
+    def type_holder(self, node, unit: Unit) -> int:
+        """A type no text can name (`T['k']`, a conditional, `typeof x`, `this`) written in a container's arguments: a
+        unit of its own holding the values it admits, read where it is written (T1'). Its local id."""
+        key = ("type", node.start_byte)
+        if key not in self._objects:
+            holder = self.unit(ALIAS_KIND, f"<type@{node.start_byte}>", unit.owner, node)
+            if unit.kind in ("func", "lambda") and unit.name != MODULE_UNIT:
+                enclose(holder, unit)                            # `typeof x` of a local: the function's x
+            holder.values += js_types.admitted(self, node, holder)
+            self._objects[key] = holder.local_id
+        return self._objects[key]
 
     def constructor_of(self, key: str, node) -> Unit:
         """The class's constructor unit (the default one when the class writes none: it calls the base's, J4)."""

@@ -163,9 +163,10 @@ def link_ref(rs, unit, ref) -> None:
     if kind == "call" and ref.base is None and not ref.qualified and how in (EXTERNAL, LOCAL):
         targets = invoked(rs, unit, ("name", ref.name))      # the name holds a value that is called
         how = EXACT if targets else how
-    elif kind == "call" and ref.base is not None and ref.base != ("super",) and how in (EXTERNAL, UNREACHED):
-        held = invoked(rs, unit, ("member", ref.base, ref.name, False))   # a member holding a value that is called
-        targets, how = (held, EXACT) if held else (targets, how)
+    elif kind == "call" and ref.base is not None and ref.base != ("super",):
+        # each value of the receiver: its method, or what its member holds that is called (a field holding a function)
+        held = [g for g in invoked(rs, unit, ("member", ref.base, ref.name, False)) if g not in targets]
+        targets, how = (targets + held, EXACT) if held else (targets, how)
     if how == EXTERNAL and kind in ("call", "new", "name"):
         handed(rs, unit, ref)
     if how in (EXTERNAL, LOCAL, UNREACHED):
@@ -174,7 +175,9 @@ def link_ref(rs, unit, ref) -> None:
         elif how == UNREACHED and kind in ("call", "name", "emit", "read", "write") and ref.text != IMPLICIT:
             rs.note(UNREACHED, ref.name)
         return
-    if kind == "call" and ref.argc >= 0 and (len(targets) > 1 or rs.typer.substitution is not None):
+    # overloads are chosen by the arguments (C4) where the language has them: C++. JavaScript and GDScript have none:
+    # two targets of one name are the methods of different values of the receiver, and a JS call may pass any count
+    if kind == "call" and unit.lang == "cpp" and ref.argc >= 0 and (len(targets) > 1 or rs.typer.substitution is not None):
         fitting = [g for g in targets if fits(ix.units[g], ref.argc)]
         if fitting:
             rs.fitted.add(node)         # an overload fits the arguments: the others are not called
@@ -226,16 +229,10 @@ class _Shifted:
 
 
 def accessor(rs, unit, prop, kind: str, ref) -> None:
-    """A property's getter on a read, its setter on a write (G8), except inside its own accessors."""
-    which = "get" if kind == "read" else "set"
-    target = prop.accessors.get(which)
-    if target is None or (unit.accessor_of == prop.name and unit.owner == prop.owner):
-        return
-    if isinstance(target, int):
-        gids = [rs.ix.offset[prop.file] + target]
-    else:
-        gids = rs.bare(prop, target, "func")[0]
-    for gid in gids:
+    """A property's getter on a read, its setter on a write (G8), except inside its own accessors: a call, the value
+    written its argument (G8')."""
+    target = prop.runs("get" if kind == "read" else "set", unit)
+    for gid in rs.accessor_units(prop, target) if target is not None else []:
         rs.link(unit.gid, gid, "call", ref, EXACT)
 
 

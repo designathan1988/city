@@ -160,6 +160,17 @@ def asserted(r, st, unit) -> list:
     return _declared(r, field_of(call, "function"), argv, unit, "asserts")
 
 
+def operand_facts(r, op: str, left, unit) -> tuple[tuple, list]:
+    """Where each operand of `&&`, `||` or `??` is the value (MDN): (the guard the left operand's own value passes,
+    the facts where the right one runs). `a && b` is a when a is falsy, else b; `a || b` a when truthy, else b;
+    `a ?? b` a when it is neither null nor undefined, else b."""
+    if op == "??":
+        name = name_of(r, left, unit)
+        return (("nullish",), False), [(name, ("nullish",), True)] if name is not None else []
+    when_true, when_false = facts(r, left, unit)
+    return (("truthy",), op == "||"), when_true if op == "&&" else when_false
+
+
 def case_facts(r, value, test, unit) -> list:
     """What a `switch` case proves when only its own test enters it: the discriminant equal to its literal."""
     return _comparison(r, "===", value, test, unit)

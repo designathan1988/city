@@ -2,18 +2,19 @@
 
 A name read in a unit is the local, parameter, capture, member, variable, class or function it names (LOOK); a parameter
 holds what every link into its function writes (`#arg`, `flows`) and the engine's values when the engine calls it; a
-variable or field holds its declared type, its initializers and every value written to it (`#hold`, `#held`); a call
+variable or field holds its declared type, its initializers and every value written to it (`#hold`, `#held`), and a
+read of a property with a getter is the getter's result (`#read`, G8'); a call
 yields its function's result (`#ret`), made of parts: a template of the function reads only the parts its key reaches,
 the others are the unit's (`templates`, C2'''). The typer (`typer.Typer`) is built on this.
 """
 from __future__ import annotations
 
-from . import templates, transfer
+from . import structural, templates, transfer
 from .model import ENGINE_CALLBACKS, FUNCTION_KINDS
-from .solver import CLASS, ENGINE, FN
+from .solver import CLASS, ENGINE, FN, UNDEFINED
 
 NO_VALUE = ("void", "Variant", "auto", "decltype(auto)", "")
-ARG, HELD, ENGINE_CALLED, HOLD, RET = "#arg", "#held", "#engine", "#hold", "#ret"
+ARG, HELD, ENGINE_CALLED, HOLD, RET, READ = "#arg", "#held", "#engine", "#hold", "#ret", "#read"
 
 
 class Places:
@@ -31,7 +32,7 @@ class Places:
             return
         targets = self.rs.state_targets(unit, name)
         for gid in targets:
-            self.follow(self.hold_node(self.ix.units[gid]), node)
+            self.follow(self.read_node(self.ix.units[gid], unit), node)
         if unit.lang == "js":
             found = [(FN + str(f), unit) for f in self.rs.function_targets(unit, name)]
             key = self.ix.js.class_of(name, unit.file, unit.owner)
@@ -58,6 +59,8 @@ class Places:
         for tree in unit.types.get(name, []):
             if not (bound and tree[0] == "cast"):
                 self.follow(self.node_of(tree, unit), node)
+        if not bound:
+            structural.typed(self, node, unit.types.get(name, []), unit)    # what reaches it is of its type (S1)
         if param >= 0:
             self.follow(self.arg_node(unit, param), node)
         if param >= 0 and not bound:
@@ -83,14 +86,32 @@ class Places:
         if node not in self.wired:
             self.wired.add(node)
             self.value.setdefault(node, [])
-            if unit.kind in FUNCTION_KINDS:
-                self.add(node, [(FN + str(unit.gid), unit)])
+            if unit.kind in FUNCTION_KINDS:              # an optional method may be absent: undefined (T1')
+                self.add(node, [(FN + str(unit.gid), unit)] + ([(UNDEFINED, unit)] if unit.optional else []))
                 return node
             if unit.type_text and unit.type_text not in NO_VALUE and unit.lang != "js":
                 self.add(node, [(unit.type_text, unit)])      # a JS annotation's values are trees in `values` (T3)
             for tree in unit.values:
                 self.follow(self.node_of(tree, unit), node)
             self.follow((HELD, unit.gid), node)
+            structural.typed(self, node, unit.values, unit)                 # what it holds is of its type (S1)
+        return node
+
+    def read_node(self, unit, reader=None):
+        """What reading a variable or field written in `reader` gives (G8'): its getter's result when the read runs
+        it; a JS accessor property with no getter reads `undefined` (MDN `set`); else what it holds."""
+        getter = unit.runs("get", reader)
+        setter_only = unit.lang == "js" and "set" in unit.accessors and "get" not in unit.accessors
+        if getter is None and not setter_only:
+            return self.hold_node(unit)
+        node = (READ, unit.gid)
+        if node not in self.wired:
+            self.wired.add(node)
+            self.value.setdefault(node, [])
+            if getter is None:
+                self.add(node, [(UNDEFINED, unit)])
+            for gid in self.rs.accessor_units(unit, getter) if getter is not None else []:
+                self.follow(self.ret_node(self.ix.units[gid]), node)
         return node
 
     def ret_node(self, unit):
@@ -101,6 +122,7 @@ class Places:
             self.value.setdefault(node, [])
             for part in self.ret_parts(unit):
                 self.follow(part, node)
+            structural.typed(self, node, unit.declared, unit)               # what it returns is of its type (S1)
         return node
 
     def ret_parts(self, unit) -> list:

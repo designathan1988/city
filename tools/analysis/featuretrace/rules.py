@@ -88,10 +88,10 @@ GDEXT_PROPERTY = "ADD_PROPERTY"                                       # ADD_PROP
 HANDLERS = {
     "DEF": ("gd_read:GdReader.unit", "cpp_read:CppReader.unit", "index:Index", "js_read:JsReader.unit",
             "js_decl:declaration", "js_class:class_declaration", "js_class:object_literal",
-            "js_class:members"),
+            "js_class:members", "js_read:JsReader.parameter_property"),
     "LOOK": ("resolve:Resolver.bare", "resolve:Resolver.qualified", "resolve:Resolver.adl", "index:Index.visible",
              "places:Places.named", "places:Places.wire_name", "resolve:Resolver.js_scoped", "scopes:local_key", "scopes:visible",
-             "scopes:scoped_tree", "cpp_lifetime:class_named", "js_modules:JsModules.resolve",
+             "scopes:scoped_tree", "cpp_lifetime:class_named", "js_specifiers:Specifiers.resolve",
              "js_modules:JsModules.export", "js_modules:JsModules.binding", "js_modules:JsModules.class_of"),
     "VALUE": ("typer:Typer.evaluate", "ir_gd:build", "ir_cpp:build", "ir_js:build"),
     "EXPR": ("ir_gd:build", "ir_cpp:build", "typer:Typer.evaluate", "ir_js:build", "js_expr:expression"),
@@ -102,7 +102,9 @@ HANDLERS = {
              "solver:Solver.read", "solver:Solver.grew", "typer:Typer.canon", "solver:Solver.follow",
              "solver:Solver.find", "cycles:sweep", "cycles:components", "cycles:collapse",
              "templates:key_params", "templates:reaches", "templates:route", "transfer:result",
-             "templates:depends", "templates:reads", "templates:leaves", "transfer:member_values", "types_of:TypeNames.replaces"),
+             "templates:depends", "templates:reads", "templates:leaves", "transfer:member_values", "types_of:TypeNames.replaces",
+             "places:Places.read_node", "flows:Flows.omitted", "templates:omitted_is_undefined",
+             "structural:typed", "structural:join", "structural:declared_trees", "structural:fields"),
     "CALL": ("link:link_ref", "link:with_overrides", "link:fits", "resolve:Resolver.member", "link:accessor",
              "cpp_implicit:declared_object", "cpp_implicit:operator", "cpp_body:object_reading",
              "cpp_body:object_or_function", "cpp_ambig:deciding_names", "cpp_ambig:as_arguments",
@@ -118,13 +120,16 @@ HANDLERS = {
                "narrow_values:wire", "narrow_values:passes", "narrow_values:by_member", "narrow_values:by_class",
                "narrow_values:instance", "narrow_values:named_classes", "narrow_values:settle", "js_guards:case_facts",
                "js_guards:asserted", "js_types:predicate", "narrowing:after_if", "narrowing:region_facts",
+               "js_guards:operand_facts",
                "js_body:block", "js_body:guarded", "js_expr:guarded", "ir_js:guarded", "gd_guards:facts",
                "gd_guards:name_of", "gd_body:if_statement", "gd_body:guarded", "gd_read:GdReader.block",
                "narrow_values:is_of", "narrow_values:by_value"),
     "JUMP": ("gd_body:statement", "cpp_body:statement", "js_body:statement"),
     "NAME": ("resolve:Resolver.by_string", "names:made_by_name", "names:callable_of", "names:texts"),
     "SIGNAL": ("link:connect", "js_link:listen", "js_link:fire", "js_expr:events"),
-    "BIND": ("cpp_expr:registration", "index:Index.bind", "resolve:Resolver.engine_members"),
+    "BIND": ("cpp_expr:registration", "index:Index.bind", "resolve:Resolver.engine_members",
+             "resolve:Resolver.engine_accessors", "resolve:Resolver.with_bases", "resolve:Resolver.accessor_units",
+             "model:Unit.runs"),
     "ENTRY": ("walk:entry_reason", "js_decl:module_body"),
     "TYPE": ("typer:Typer.type_class", "js_read:JsReader.type_values", "js_types:values", "js_types:written",
              "js_library:canonical", "js_library:step", "js_library:member", "js_library:awaited",
@@ -133,7 +138,11 @@ HANDLERS = {
              "js_modules:JsModules.declares_type", "js_library:object_read", "solver:is_language",
              "truth:can_be_truthy", "truth:can_be_falsy", "truth:typeof_results", "truth:can_equal",
              "truth:can_differ", "truth:is_nullish", "js_transfer:undeclared", "js_transfer:prop_node",
-             "js_transfer:chain_read", "js_transfer:written_names", "js_link:expando_writes"),
+             "js_transfer:chain_read", "js_transfer:written_names", "js_link:expando_writes",
+             "js_types:admitted", "js_types:language_values", "js_types:literal_string", "js_class:object_type",
+             "js_read:JsReader.shape_class", "js_read:JsReader.type_holder", "typer:Typer.expand",
+             "types_of:TypeNames.alias_marker", "js_modules:JsModules.alias_of", "js_transfer:index_nodes",
+             "js_transfer:index_units", "truth:operator_values"),
 }
 
 # Callables built from an object and a method name (G7): constructor -> (object argument, name argument).
@@ -181,6 +190,7 @@ ITERATOR_MEMBER = "[Symbol.iterator]"
 COERCION_MEMBERS = ("valueOf", "toString", "[Symbol.toPrimitive]")
 THEN_MEMBER = "then"
 CONSTRUCTOR = "constructor"
+INDEX_MEMBER = "[[index]]"     # TS index signature / mapped type (`[k: K]: V`): the values any property name reads (T2)
 
 
 def keywords(lang: str) -> dict:

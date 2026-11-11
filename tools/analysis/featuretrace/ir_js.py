@@ -16,10 +16,10 @@ from .source import field_of, named_children, string_value
 CLASS_VALUE = "#"                 # the typer's prefix of a class of the program (solver.CLASS)
 EITHER = ("??", "||", "&&")       # value-preserving operators (MDN Logical OR, Nullish coalescing)
 TESTS = ("==", "!=", "===", "!==", "<", ">", "<=", ">=", "in", "instanceof")
-WORD_UNARY = ("typeof", "void", "delete", "!")
-LITERALS = {"number": "number", "true": "true", "false": "false", "null": "null", "undefined": "undefined",
+WORD_UNARY = {"typeof": "string", "void": "undefined", "delete": "boolean", "!": "boolean"}   # what each gives (MDN)
+LITERALS = {"true": "true", "false": "false", "null": "null", "undefined": "undefined",
             "regex": "RegExp", "template_string": "string", "jsx_element": "JSX.Element",
-            "jsx_self_closing_element": "JSX.Element", "update_expression": "number", "meta_property": ""}
+            "jsx_self_closing_element": "JSX.Element", "update_expression": "numeric", "meta_property": ""}
 FUNCTIONS = ("function_expression", "arrow_function", "generator_function", "function_declaration",
              "generator_function_declaration")
 
@@ -105,12 +105,11 @@ def guarded(r, facts: list, node, unit):
 
 def _binary(r, node, unit):
     op = r.src.text(field_of(node, "operator")).strip()
+    if op in EITHER:                               # each operand where it is the value (`js_guards.operand_facts`)
+        (guard, positive), other = js_guards.operand_facts(r, op, field_of(node, "left"), unit)
+        own = ("narrow", guarded(r, [], field_of(node, "left"), unit), guard, positive)
+        return union(own, guarded(r, other, field_of(node, "right"), unit))
     left, right = build(r, field_of(node, "left"), unit), build(r, field_of(node, "right"), unit)
-    if op in ("&&", "||"):                         # the right operand is the value only when the left is (not) truthy
-        when_true, when_false = js_guards.facts(r, field_of(node, "left"), unit)
-        return union(left, guarded(r, when_true if op == "&&" else when_false, field_of(node, "right"), unit))
-    if op in EITHER:
-        return union(left, right)
     if op in TESTS:
         return ("literal", "boolean")
     return ("op", op, left, right)
@@ -119,14 +118,29 @@ def _binary(r, node, unit):
 def _unary(r, node, unit):
     op = r.src.text(field_of(node, "operator")).strip()
     if op in WORD_UNARY:
-        return ("literal", "boolean" if op == "!" else "")
+        return ("literal", WORD_UNARY[op])
     return ("unary", op, build(r, field_of(node, "argument"), unit))
 
 
+def _number(r, node, unit):
+    """A numeric literal: a BigInt when written with the `n` suffix (MDN BigInt)."""
+    return ("literal", "bigint" if r.src.text(node).endswith("n") else "number")
+
+
+def _augmented(r, node, unit):
+    """`x op= y`: `||=`, `&&=`, `??=` keep either side; the others give their operator's value (O1)."""
+    op = r.src.text(field_of(node, "operator")).strip()[:-1]
+    left, right = build(r, field_of(node, "left"), unit), build(r, field_of(node, "right"), unit)
+    return union(left, right) if op in EITHER else ("op", op, left, right)
+
+
 def _typed(r, node, unit):
-    """`x as T`, `x satisfies T`, `<T>x`: the value itself, and what the type named allows (erased, J8, T1-T2)."""
+    """`x as T`, `<T>x`: the value itself, and what the type asserted allows (erased, J8, T1-T2); `x satisfies T`: the
+    value alone (TypeScript 4.9: it checks the value against T without changing its type)."""
     kids = named_children(node)
     value = build(r, kids[0], unit) if kids else LITERAL
+    if node.type == "satisfies_expression":
+        return value
     types = [k for k in kids[1:] if k.type not in ("comment",)]
     for tree in js_types.values(r, types[0], unit) if types else []:
         value = union(value, tree)
@@ -179,8 +193,8 @@ BUILDERS = {
     "sequence_expression": _inner,
     "ternary_expression": _ternary,
     "assignment_expression": lambda r, n, u: build(r, field_of(n, "right"), u),
-    "augmented_assignment_expression": lambda r, n, u: union(build(r, field_of(n, "left"), u),
-                                                             build(r, field_of(n, "right"), u)),
+    "augmented_assignment_expression": _augmented,
+    "number": _number,
     "await_expression": lambda r, n, u: ("await", _inner(r, n, u)),
     "yield_expression": lambda r, n, u: LITERAL,
     "spread_element": lambda r, n, u: ("elements", _inner(r, n, u)),

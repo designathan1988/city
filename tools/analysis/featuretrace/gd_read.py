@@ -124,7 +124,8 @@ class GdReader:
             self.scopes = saved
 
     def params(self, node, unit: Unit, cls: ClassFact) -> None:
-        params = field_of(node, "parameters")
+        # a function's `parameters` field; a setter's `set(value):` writes them as an unnamed child (G8)
+        params = field_of(node, "parameters") or next((c for c in named_children(node) if c.type == "parameters"), None)
         unit.required = 0
         for p in named_children(params) if params is not None else []:
             if p.type not in ("default_parameter", "typed_default_parameter"):

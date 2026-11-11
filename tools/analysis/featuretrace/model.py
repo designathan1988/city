@@ -32,6 +32,7 @@ STD_MUTATORS = frozenset({
 
 FUNCTION_KINDS = frozenset({"func", "lambda", "method"})
 STATE_KINDS = frozenset({"var", "field", "const"})
+ALIAS_KIND = "alias"     # js: a type alias (`type X = T`) or a type no text names: holds the values its type admits (T1')
 
 
 @dataclass
@@ -82,8 +83,8 @@ class Unit:
     decl_only: bool = False        # C++ declaration with no body
     virtual: bool = False
     bound_as: list = field(default_factory=list)   # names the engine can call it by (D_METHOD)
-    accessors: dict = field(default_factory=dict)  # gd property: "get"/"set" -> local unit id or function name
-    accessor_of: str = ""          # gd: the property whose set/get this function is (its own name is direct)
+    accessors: dict = field(default_factory=dict)  # property: "get"/"set" -> local unit id or (gd) function name
+    accessor_of: str = ""          # the property whose set/get this function is (gd: its own name is direct)
     outer: int = -1                # lambda: local id of the function it is written in (same file)
     captured: set = field(default_factory=set)     # lambda: names that are still the enclosing function's locals
     written_by: dict = field(default_factory=dict)  # local name -> local ids of the closures that write it (shared)
@@ -91,6 +92,16 @@ class Unit:
     local_types: dict = field(default_factory=dict)    # cpp: a class declared in the function, name -> class key
     objects: list = field(default_factory=list)    # cpp: `T x(a, b);` read as a function: an object if a or b is a value
     predicate: tuple = ()          # js: a return type `[asserts] x is T`: (x's index, T's value trees, asserts) (G1)
+    defaults: set = field(default_factory=set)     # js: parameters written with a default (an omitted argument's)
+    optional: bool = False         # js: a method declared optional (`m?(): T`): reading it may give undefined (T1')
+
+    def runs(self, which: str, reader) -> int | str | None:
+        """The accessor (`get` or `set`) an access of this property written in `reader` runs (G8, G8'): none inside
+        its own accessors, where its name is the stored member; None when it has no such accessor."""
+        target = self.accessors.get(which)
+        if target is None or reader is not None and reader.accessor_of == self.name and reader.owner == self.owner:
+            return None
+        return target
 
     @property
     def key(self):
@@ -167,6 +178,7 @@ class ClassFact:
     outer: str = ""                # gd inner class: the outer class key; cpp: enclosing scope
     engine_visible: bool = False   # cpp: has _bind_methods (the engine knows it by name)
     params: list = field(default_factory=list)     # cpp class template: its type parameter names
+    shape: bool = False            # js: an interface or an object type: no object of its own (`structural`, T1')
 
 
 @dataclass

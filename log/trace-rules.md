@@ -692,3 +692,95 @@ language's value (ENGINE), so no test could tell them apart; a property written 
 | R2 Where they do not | a name assigned inside the region (an assignment, an update, a destructuring or loop binding), or assigned by any function written inside the enclosing function (a closure may run between the test and the use): such a name is read whole there; a property path (`a.b`) is never narrowed (any call may write it) |
 | N1 A narrowed read | a name read inside a region is a narrowed node of the name's node: each value goes through each fact that holds, kept when the fact can be true of it (positive) or false of it (negative); a value the tracer cannot decide (the engine's, a number) is kept; an object of the program is decided by its class (and its bases), the value of a property by that property's values (each value of it decides as it comes); a class or a predicate named by the condition is decided by its values as they come; facts compose (nested regions narrow in turn) |
 | N2 Precision kept | narrowing only removes values that cannot be there at run time; it never adds a value and never removes a link the call graph needs (C3) |
+
+### What narrowing showed on the lab app (probes of the narrowed nodes, 2026-11-11 05:15)
+
+Measured with the same sources (the tracer before the narrowing theme against Task 5's): the city keeps every link
+and gains 4 (`elif x is T` branches of the Terrain3D plugin); the lab app (roadcraft `src`) loses 2 600 links and its
+uses on a receiver no value reaches grow from 1 526 to 3 713. Read against the source lines: 711 of `buildingTool.ts`
+are objects written `{ ..., bay: null }` read after `if (!s?.bay ...) return` or inside `s?.bay && ...` (they cannot be
+there: removed rightly). Two causes remove values that can be there:
+
+- A typed container's element and an interface's object are the class the type names (T1, T2: `Map<number, Walker>`'s
+  `get` gives `Walker`, the interface's value); its properties hold only what is written through it and what their
+  declared types give, and a primitive, literal, `null`, `undefined` or optional type gave nothing. `Walker.done`
+  (`done: boolean`) held only the `true` written by `p.done = true`, so `if (!p || p.done) return null` removed every
+  `Walker` after it (`walk.ts`, 357 links).
+- A property read through a getter held the property's written values, not the getter's result: `get microScoped():
+  boolean { return this.microScope !== null; }` gave `SimWorld.microScoped` no value, a guard `w.microScoped` read it
+  as `undefined` at the fixpoint (V2's rule for a property found nowhere) and removed every `SimWorld`
+  (`ambient.ts`).
+
+Sources (read through context7): TypeScript handbook and 2.0 release notes (`boolean` is `true | false`; an optional
+parameter or property has `undefined` added to its type; literal types; `null` and `undefined` are values of their own
+types under `strictNullChecks`; `void`); MDN `get` and `set` (a getter is called when the property is looked up, a
+setter when it is assigned; a property with a setter alone reads `undefined`, `__defineSetter__`); GDScript reference,
+"Properties (setters and getters)" (`set` and `get` are always called, inside the class too, with or without `self.`;
+inside its own setter or getter the property's name is the stored member; a variable's initializer is written to it
+directly); MDN `typeof` (the results for numbers, strings, BigInts, symbols, objects and functions).
+
+| Rule | What the tracer does |
+|---|---|
+| T1' Types give the values they admit (extends T1) | a primitive type gives the language's value of its kind (`number`, `string`, `bigint`, `symbol`: `<lang>number`, ...); `boolean` gives `true` and `false`; `null`, `undefined` and `void` their constants; a literal type its value (`true`, `false`, `null`, `undefined`, a string; a number or template literal the language's number or string); an optional parameter or property (`x?: T`) adds `undefined`; `object`, a function type and an object type give an object the program does not name (`<lang>object`); `any` and `unknown` the engine's value; a type parameter, `never` and what names nothing keep giving nothing; inside a container's type arguments the same values |
+| T1'' The language's values by kind (truth) | `<lang>number`, `<lang>string`, `<lang>bigint` can be truthy and falsy (`0`, `NaN`, `""`, `0n`); `<lang>symbol` and `<lang>object` are truthy only; `typeof` gives their kind (`"object"` or `"function"` for an object the program does not name); none is nullish; a string can equal a string written, nothing else of them equals a constant of the language or a string; a literal of the program (`1`, `` `a${b}` ``, `!x`, `a === b`) is the value of its kind |
+| G8' A property with accessors (JS `get`/`set`, GDScript `get:`/`set(v):`) | a read outside the property's own accessors gives its getter's result (a JS property with a setter alone reads `undefined`); a write outside them gives the value to its setter's parameter and nothing to the stored value; inside its own accessors the name is the stored member (GDScript); the initializer is written to the stored member directly |
+| N1' A type test holds (`x is T`, `x instanceof C`, a type predicate) | where it holds, the class tested is one of x's values (a declared type, as `T1` gives it); a value the tracer cannot tell that passes is that class |
+
+Read further against the source lines after T1', T1'', G8' (each loss read on its line; the probes walked a receiver's
+values through its narrowed layers, and a member guard's property values on each value). More causes, each a value the
+languages put in a place and the tracer did not, or a rule applied where the language has none:
+
+- A predicate guard whose callee is no predicate (`takenLists.set(name)`, a call statement in a TypeScript file read as
+  a possible assertion) dropped every string and constant of `name`: `instance` removed primitives before asking whether
+  the condition names anything it can tell. A primitive is never an `instanceof` (MDN), but `x is string` admits one.
+- `.length` of an array the program built (`<elem>` values) gave no value; `if (!fits.length) return null` then read it
+  as `undefined` and removed every element (`ambient.ts`, the parked archetypes). MDN Array, Map, Set: a count.
+- An optional method of an interface (`roadAtInto?(...)`) gave only the function: the `else` of `field.roadAtInto ?`
+  removed every `RoadReads` (`paving.ts`).
+- TypeScript parameter properties (`constructor(private readonly host: H)`, handbook, Classes) were no property:
+  before V2 `this.host` was the engine's value, with V2 `undefined`, so every callback given to `host.mutate(...)`,
+  `host.commit(...)` lost its link (80 `handed` links).
+- A member call `x.m()` reached the callables a field `m` holds only when no value of `x` had a method `m`: an object
+  literal holding an arrow `toggle` beside a declared return type with a method `toggle()` lost the arrow
+  (`healthPanel?.toggle()`).
+- The arity filter (C4, overloads by argument count) ran on JavaScript and GDScript, which have no overloads: two
+  targets of one name are methods of different receivers, a JS call may pass any count, and a GDScript callable may
+  carry bound arguments (`emit(kind, text, data)` beside `LabContext.emit(kind, text, data?)` called with two
+  arguments: the object's own method was dropped; `on_pick.call(v)` on bound callables in the city's UI).
+- `x satisfies T` added T's values (TypeScript 4.9: it checks without changing the type), and with T1' an annotation's
+  object type is a class: the initializer of `WALKER_SHAPE = {...} as const satisfies {...}` became a union and
+  `held_class_unit` (the object a spread `...WALKER_SHAPE` names) found no bare object.
+- The deepest: an object literal typed as an interface (`const p: Walker = {...}`, `createVehicle(): Vehicle`) and the
+  interface's value (what a typed container gives, T2) are one object at run time, but their properties were apart:
+  what was written through the interface (`v.shadow = {...}` on a vehicle out of a `Map<id, Vehicle>`) never reached
+  the literal's `shadow` (only `null`), and a guard `v.shadow` removed the literal. TypeScript handbook, Type
+  Compatibility: the type system is structural.
+- `a && b` is a only when a is falsy (MDN), `a || b` a only when truthy, `a ?? b` a only when neither null nor
+  undefined; the tracer held all of a (a truthy `Connector` as the value of `connector && w.lanelet(...)`).
+- A GDScript setter's parameter was never declared (`set(value):` writes the parameters as an unnamed child): a write
+  through a setter gave its argument nowhere.
+
+| Rule | What the tracer does |
+|---|---|
+| G1' A call that may be a predicate or an assertion | when the callee is no function declared `x is T` (or the T it names is no class the tracer tells), the call proves nothing of x's primitives; only `instanceof` is never true of a primitive |
+| T2' A member of a container that gives no element | its count (`length`, `size`) is a number, any other member the language's value, for the language's containers and the program's own |
+| T1''' An optional method (`m?(): T`) | reading it gives its function or `undefined` |
+| J4' A parameter property (`constructor(private x: T)`, `public`, `protected`, `readonly`, `override`) | a property of the class, of the type written, that the constructor writes with its argument |
+| CALL' A member call `x.m(...)` | for each value of x, its method m and what its member m holds that is called, together |
+| C4' Overloads by argument count | C++ only; JavaScript and GDScript calls reach every target |
+| J8' `x satisfies T` | the value of x alone; `x as T` keeps x and adds T's values; the object a constant holds is its initializer's object literal or class (through `as`), never an object type its annotation writes |
+| S1 A value typed as an interface or object type | where a value of a class of the program reaches a place declared with an interface (a parameter, a local, a field, a variable, a function's result), each property the interface declares and the value class's property of that name hold the same values, both ways (a property the class does not declare is the one JS code creates on it, V2) |
+| O3 `a && b`, `a \|\| b`, `a ?? b` | a's values where a is falsy, truthy, not nullish (narrowed by its own test, whatever expression it is), b's where a is not; the right operand read under the facts the left one proves (R1) |
+| G8'' A GDScript setter's parameter | `set(value):` declares `value` |
+
+Measured (2026-11-11 06:20; the tracer before the narrowing theme, c27bb880, against this one, the same sources): the
+city (a copy of its sources taken once: another session was writing `native/`) keeps all 100 562 links and gains 10
+(the four `elif x is T` of the Terrain3D plugin; six calls of GDScript callables with bound arguments the arity filter
+had dropped), 34.2 s -> 26.3 s; the lab app (roadcraft `src` and `tsconfig.json`, 871 files) 184 875 -> 227 789 links,
+uses on a receiver no value reaches 1 046 -> 228, 31.7 s -> 103 s. Of the 296 links it no longer has, each one read is
+a value that cannot be there: `instanceof` negatives (`TableItems`, `ForkMap`, `JobPort`, `LeanRibbon`),
+discriminants and property guards whose objects' literals lack the property or hold another value (`kind`, `ok`,
+`placeless`, `postProcessing: false`), `doLess` (a field initialized `true` and never written false in the program), an
+`&&` whose value is the object a helper wraps (`shape && shaperFor(p, shape)`), 80 `handed` links that are now calls of
+the real implementations (`buildingsWiring.commit`, `main.ts:mutateBuilt`), and a parameter property's own field read
+where the interface's was.

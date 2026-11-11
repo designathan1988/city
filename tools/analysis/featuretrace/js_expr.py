@@ -52,7 +52,8 @@ def expression(r, node, unit, cond) -> None:
         ctor, args = field_of(node, "constructor"), field_of(node, "arguments")
         if ctor is not None and ctor.type not in ("identifier", "member_expression"):
             expression(r, ctor, unit, cond)
-        r.add(unit, "new", "", node, cond, base=r.ir(ctor, unit), args=arguments_of(r, args, unit))
+        trees = arguments_of(r, args, unit)
+        r.add(unit, "new", "", node, cond, base=r.ir(ctor, unit), args=trees, argc=len(trees))
         arguments(r, args, unit, cond)
     elif kind == "assignment_expression":
         left, right = field_of(node, "left"), field_of(node, "right")
@@ -73,9 +74,8 @@ def expression(r, node, unit, cond) -> None:
         left, right = field_of(node, "left"), field_of(node, "right")
         op = r.src.text(field_of(node, "operator")).strip()
         expression(r, left, unit, cond)
-        if op in ("&&", "||"):                  # the right operand runs when the left is true (`&&`) or false (R1)
-            when_true, when_false = js_guards.facts(r, left, unit)
-            guarded(r, when_true if op == "&&" else when_false, right, unit, cond)
+        if op in ("&&", "||", "??"):            # the right operand runs when the left is true, false, nullish (R1)
+            guarded(r, js_guards.operand_facts(r, op, left, unit)[1], right, unit, cond)
         else:
             expression(r, right, unit, cond)
         if op in COERCING:
@@ -177,13 +177,14 @@ def call(r, node, unit, cond) -> None:
         expression(r, obj, unit, cond)
         base = r.ir(obj, unit)
         if method in CALL_FORMS:
-            r.add(unit, "invoke", "", node, cond, base=base, args=r.ir(node, unit)[2])
+            passed = r.ir(node, unit)[2]
+            r.add(unit, "invoke", "", node, cond, base=base, args=passed, argc=len(passed))
         else:
             r.add(unit, "call", method, node, cond, base=base, args=trees, argc=len(argv))
             events(r, node, method, base, argv, unit, cond)
     else:
         expression(r, fn, unit, cond)
-        r.add(unit, "invoke", "", node, cond, base=r.ir(fn, unit), args=trees)
+        r.add(unit, "invoke", "", node, cond, base=r.ir(fn, unit), args=trees, argc=len(trees))
     arguments(r, args, unit, cond)
 
 

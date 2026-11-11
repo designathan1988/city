@@ -4,16 +4,19 @@ A class has its bases (`extends`, and `implements` for the members its interface
 written, else the default one, which calls the base's), its methods, getters and setters (accessor units of a field:
 a read calls the getter, a write the setter), fields (instance initializers run in the constructor, static ones and
 static blocks and decorators in `<static>`). A class written inside a function is local to it. An object literal is a
-class of its own whose values are read where it is written (J9); a spread adds the spread object's class as a base.
+class of its own whose values are read where it is written (J9); a spread adds the spread object's class as a base. An
+object type is an interface without a name (T1'); an optional property (`p?: T`) holds `undefined` besides T's values.
 """
 from __future__ import annotations
 
 from . import ir_js, js_body, js_decl, js_types
 from .model import ClassFact, declare, enclose
-from .rules import CONSTRUCTOR
+from .rules import CONSTRUCTOR, INDEX_MEMBER
+from .solver import UNDEFINED
 from .source import field_of, named_children
 
 ACCESSORS = ("get", "set")
+SHAPE = "<type@"                   # an object type's class key: `<file>#<type@<start byte>>` (T1')
 
 
 def class_declaration(r, node, name: str, owner: str, holder) -> str:
@@ -65,7 +68,9 @@ def members(r, body, key: str, outer, class_node=None) -> None:
                 fn.accessor_of = name
                 prop.accessors[which] = fn.local_id
             elif name != CONSTRUCTOR:
-                r.function(member, name, key, outer).static = static
+                method = r.function(member, name, key, outer)
+                method.static = static
+                method.optional = any(c.type == "?" for c in member.children)   # `m?(): T`: may be undefined (T1')
         elif kind in ("public_field_definition", "property_signature"):
             value = field_of(member, "value")
             if value is not None and value.type in ir_js.FUNCTIONS:
@@ -75,12 +80,22 @@ def members(r, body, key: str, outer, class_node=None) -> None:
             field.static = static
             field.type_text = r.type_text(field_of(member, "type"))
             field.values += r.type_values(field_of(member, "type"), field)
+            if any(c.type == "?" for c in member.children):
+                field.values.append(("cast", UNDEFINED))        # `p?: T`: undefined added to its type (T1')
             if value is not None:
                 field.values.append(r.ir(value, field))
                 runner = r.static_of(key, member) if static else r.constructor_of(key, class_node or member)
                 js_body.expr(r, value, runner, ())
             elif kind == "public_field_definition" and not any(c.type == "declare" for c in member.children):
                 field.values.append(("literal", "undefined"))   # a field written with no initializer (MDN, V1)
+        elif kind == "index_signature":         # `[k: K]: V`, `[P in X]: V`: any property name reads V (T2, T1')
+            mapped = next((c for c in named_children(member) if c.type == "mapped_type_clause"), None)
+            r.type_params.append({r.src.text(field_of(mapped, "name"))} if mapped is not None else set())
+            try:
+                field = field_unit(r, key, INDEX_MEMBER, member, outer)
+                field.values += r.type_values(field_of(member, "type"), field)
+            finally:
+                r.type_params.pop()
         elif kind == "class_static_block":
             js_body.block(r, field_of(member, "body"), r.static_of(key, member), ())
         elif kind == "decorator":
@@ -124,6 +139,15 @@ def object_literal(r, node, unit) -> str:
                 js_body.expr(r, inner, unit, ())
         elif item.type == "method_definition":
             members(r, _Single(item), key, outer or unit)
+    return key
+
+
+def object_type(r, node) -> str:
+    """An object type written in an annotation (`{ a: T; f(): U }`): an interface without a name, a class of its own
+    whose members are those it declares (T1')."""
+    key = f"{r.key}#{SHAPE}{node.start_byte}>"
+    r.facts.classes.append(ClassFact(key, "js", "", r.key, r.src.line(node), shape=True))
+    members(r, node, key, None)
     return key
 
 

@@ -1,13 +1,14 @@
 """The transfers of the JavaScript value rules (log/trace-rules.md: N1, T4', P1-P3, J5, V2), one value at a time, as
 `transfer` has the language-independent ones: `new X(...)` evaluated, `o[k]` with a computed key, the iteration of an
 object of the program, `for (k in o)` and `Object.keys/values/entries(o)` over its enumerable properties, and a
-property no class declares (written outside the class, on its prototype, or nowhere).
+property no class declares (an index signature's, written outside the class, on its prototype, or nowhere).
 """
 from __future__ import annotations
 
 from . import transfer as common          # the language-independent transfers
 from .library import ITEM
-from .rules import ITERATOR_MEMBER
+from .model import ALIAS_KIND
+from .rules import INDEX_MEMBER, ITERATOR_MEMBER
 from .solver import CLASS, ELEM, ENGINE, FN, TEXT, UNDEFINED
 
 PROTOTYPE = "prototype"
@@ -56,18 +57,33 @@ def undeclared(t, target, key: str, ctx, name: str, called: bool, caller=None, a
     inner = t.ix.inner[key].get(name)
     if inner:
         t.add(target, [(CLASS + inner, ctx)])
-    elif name == PROTOTYPE and not called:
+        return
+    if name == PROTOTYPE and not called:
         t.add(target, [(CLASS + key, ctx)])
-    elif name in written_names(t):
-        for k in chain(t.ix, key):
-            if called:
-                t.subscribe(prop_node(k, name), target, ("call",), common.calls(t, caller, args))
-            else:
-                t.follow(prop_node(k, name), target)
-    elif name in BUILT_IN or not chain_read(t.ix, key):
+        return
+    indexes = index_nodes(t, key)
+    sources = indexes + ([prop_node(k, name) for k in chain(t.ix, key)] if name in written_names(t) else [])
+    for source in sources:
+        if called:
+            t.subscribe(source, target, ("call",), common.calls(t, caller, args))
+        else:
+            t.follow(source, target)
+    if sources and not indexes:
+        return
+    if name in BUILT_IN or not chain_read(t.ix, key):
         t.add(target, [(ENGINE, ctx)])
     elif not called:
-        t.add(target, [(UNDEFINED, ctx)])
+        t.add(target, [(UNDEFINED, ctx)])           # found nowhere, or a key an index signature does not hold
+
+
+def index_nodes(t, key: str) -> list:
+    """What an index signature of class `key` or a base declares (T2): the values any property name reads."""
+    return [t.hold_node(t.ix.units[g]) for g in index_units(t.ix, key)]
+
+
+def index_units(ix, key: str) -> list[int]:
+    """The index signatures of class `key` and its bases: with one, any property name may be there."""
+    return [g for k in chain(ix, key) for g in ix.members[k].get(INDEX_MEMBER, [])]
 
 
 def iterated(t, key: str):
@@ -86,17 +102,17 @@ def iterated(t, key: str):
 def indexed(t, other, from_base: bool):
     """JS `o[k]` with a computed key (T4'): each object value with each string value of the key gives that member;
     a container gives its elements. `from_base`: the new values are the object's (`other` the key), else the key's."""
-    def named(values) -> list[str]:
-        return [text[len(TEXT):] for text, _ in values if text.startswith(TEXT)]
-
     def transfer(target, values):
-        objects, names = (values, named(t.held(other))) if from_base else (t.held(other), named(values))
-        if not from_base and not names:
-            return                                      # a key that is no known string reads no property
+        objects, keys = (values, t.held(other)) if from_base else (t.held(other), values)
+        names = [text[len(TEXT):] for text, _ in keys if text.startswith(TEXT)]
+        unnamed = any(not text.startswith(TEXT) for text, _ in keys)
         for text, ctx in objects:
-            if t.type_class(text, ctx):                 # an object of the program: the members the key names
-                for name in names:
+            key = t.type_class(text, ctx)
+            if key:                                     # an object of the program: the members the key names; a key
+                for name in names:                      # no string names reads only what an index signature holds
                     common.member_one(t, target, text, ctx, name, False)
+                for node in index_nodes(t, key) if unnamed else []:
+                    t.follow(node, target)
             elif from_base:                             # a container: its elements, whatever the key
                 common.step_one(t, target, ITEM, text, ctx)
     return transfer
@@ -112,8 +128,8 @@ def enumerable(ix, key: str) -> list:
             continue
         seen.add(k)
         literal = "#<object@" in k
-        found += [ix.units[g] for gids in ix.members[k].values() for g in gids
-                  if literal and ix.units[g].kind != "class"
+        found += [ix.units[g] for name, gids in ix.members[k].items() if name != INDEX_MEMBER for g in gids
+                  if literal and ix.units[g].kind not in ("class", ALIAS_KIND)
                   or ix.units[g].kind in ("field", "var") and not ix.units[g].static and not ix.units[g].accessors]
         todo += ix.base_keys(ix.classes[k])
     return found
@@ -131,8 +147,8 @@ def owns(t, mode: str):
                 names = [TEXT + p.name for p in props] or [ENGINE]
                 t.add(target, [(ELEM + n if mode == "keys" else n, ctx) for n in names])
             elif props:
-                for p in props:
-                    t.subscribe(t.hold_node(p), target, ("own", mode, p.gid), wrapped(t, mode, p.name, ctx))
+                for p in props:                         # an accessor property's value is its getter's (G8')
+                    t.subscribe(t.read_node(p), target, ("own", mode, p.gid), wrapped(t, mode, p.name, ctx))
             elif text.startswith(ELEM):
                 t.add(target, [(text, ctx)] if mode == "values" else [(ELEM + ELEM + ENGINE, ctx), (ELEM + text, ctx)])
             else:

@@ -10,7 +10,7 @@ graph keeps the unit's own links, fed by every call (a superset): a template's c
 """
 from __future__ import annotations
 
-from .solver import identity
+from .solver import UNDEFINED, identity
 
 PASS_SHAPES = ("member", "index", "elements", "each", "await", "addr", "put", "deref", "narrow")
 MISSING = ("<missing>",)          # a key parameter its call does not write: its default, one template
@@ -134,6 +134,8 @@ def route(t, target, unit, args: list, keys: tuple, deliver) -> None:
         made[tkey] = frame
         if value is not None:
             t.add(t.arg_node(frame, k), [value])
+        elif omitted_is_undefined(unit, k):
+            t.add(t.arg_node(frame, k), [(UNDEFINED, unit)])     # JS: an argument left out (MDN Functions)
         for index in keys:                      # the other key parameters: what this call writes (C2')
             if index != k and index < len(args) and args[index] is not None:
                 t.add(t.arg_node(frame, index), t.held(args[index]))
@@ -168,6 +170,13 @@ def route(t, target, unit, args: list, keys: tuple, deliver) -> None:
     for k in keys:
         t.subscribe(families[k], joined, ("meet", k), meets(t, families, k))
     deliver(joined)
+
+
+def omitted_is_undefined(unit, index: int) -> bool:
+    """Whether a JS parameter a call writes no argument for holds `undefined`: not when written with a default, nor a
+    rest parameter (an empty array)."""
+    rest = unit.variadic and index == len(unit.params) - 1
+    return unit.lang == "js" and index not in unit.defaults and not rest
 
 
 def meets(t, families: dict, k: int):
