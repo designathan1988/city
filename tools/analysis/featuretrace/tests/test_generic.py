@@ -76,6 +76,7 @@ LANGUAGE = {
     "truth.py:LITERAL_VALUES": "ECMA-262 literal kinds", "ts_tree.py:OPERANDS": "tree-sitter-typescript node kinds",
     "ts_tree.py:CHAIN": "tree-sitter-typescript node kinds", "typer.py:STEPS": "the tracer's tree shapes",
     "typer.py:CONSTANT_SHAPES": "the tracer's tree shapes", "walk.py:RUNS": "the tracer's link kinds",
+    "engine_input.py:ROOT_PARTS": "the engine input file's parts",
 }
 
 # A platform's, a library's or a program's member names written by hand: the old core's engessamento, each removed by

@@ -39,11 +39,16 @@ returns the same `Result`; the Python modules stay as the specification each eng
   bindings, exports, class_of and alias_of of every type text, members by owner, globals, tsconfig JSX options,
   intrinsic types) as one binary file keyed by the index's content.
 - Test: `tests/test_engine_export.py` — the file round-trips (read back in Python, every tree and table equal).
+- Ruling (2026-11-11, log/trace-research.md F17-F18): built as `featuretrace/engine_input.py`, one pickle (protocol 5)
+  of the units, the classes and the tables, the vocabulary from each constant's owner; the engine reads the pickle
+  opcodes `tests/test_engine_input.py` lists (Lib/pickletools.py) and hash-conses the trees itself. Measured on the
+  lab: read 2.4 s warm, tables and file 7.2 s, 179 MB. The building phases run without the cyclic collector.
 
 ### Task E2: The engine's core — objects, nodes, worklist solver
 - Create `tools/analysis/engine/` (CMakeLists, `input.*`, `objects.*`, `solver.*`, `main.cpp`): read the file, intern
   objects and nodes as integers, the worklist solver with identity edges and subscriptions as typed records.
-- Test: a solver unit test (C++) and `tests/test_engine_core.py` on `heap/core.ts` against the Python result.
+- Test: a solver unit test (C++) and `tests/test_engine_core.py` on `heap/core.ts` against the Python result; the
+  pickle reader's dump of every fixture's input equal to Python's value (`tests/test_engine_input.py`'s files).
 
 ### Task E3: Trees, names, references, members, contexts (heap Tasks 1-3)
 ### Task E4: Declared types, values, summaries, protocols, JSX (heap Tasks 4-6)

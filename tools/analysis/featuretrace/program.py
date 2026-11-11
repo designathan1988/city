@@ -1,8 +1,11 @@
-"""The program read whole: every file under the roots turned into facts (cached per content), indexed and linked."""
+"""The program read whole: every file under the roots turned into facts (cached per content), indexed and linked;
+each phase that builds what the run keeps runs as a building phase (`building`)."""
 from __future__ import annotations
 
+import gc
 import sys
 import threading
+from contextlib import contextmanager
 from pathlib import Path
 
 from . import engine_read, js_libs, link
@@ -13,6 +16,8 @@ from .js_read import read_js
 from .index import Index
 from .source import PROJECT_FILE, cached_facts, discover, reader_version
 
+READERS = (read_gd, read_cpp, read_js, read_tsconfig, read_package, engine_read.read_scene, engine_read.read_project,
+           engine_read.read_data)            # what turns a file into facts: the facts cache's version covers them
 RECURSION = 200_000
 STACK_BYTES = 255 << 20         # under 256 MiB, the most CPython gives a thread on Windows: room for deep chains
 
@@ -63,6 +68,11 @@ def load(roots: list[Path], base: Path, cache_dir: Path | None, progress=None):
 def read(roots: list[Path], base: Path, cache_dir: Path | None, progress=None, declarations: bool = False):
     """Facts of every file under the roots, indexed. Returns (index, files read, files with errors). With
     `declarations`, the declaration files the program's TypeScript chooses are read too (`js_libs`)."""
+    with building():
+        return _read(roots, base, cache_dir, progress, declarations)
+
+
+def _read(roots: list[Path], base: Path, cache_dir: Path | None, progress, declarations: bool):
     files = discover(roots)
     if declarations:
         known = {p for p, _ in files}
@@ -72,7 +82,7 @@ def read(roots: list[Path], base: Path, cache_dir: Path | None, progress=None, d
         project = godot_root(root / "x") if root.is_dir() else godot_root(root)
         if project is not None and (project / PROJECT_FILE).resolve() not in {p for p, _ in files}:
             files.append(((project / PROJECT_FILE).resolve(), "project"))
-    version = reader_version()
+    version = reader_version(READERS)
     all_facts, broken = [], []
     for number, (path, lang) in enumerate(files, start=1):
         try:
@@ -107,12 +117,29 @@ def deep(work):
     sys.setrecursionlimit(RECURSION)
     threading.stack_size(STACK_BYTES)
     try:
-        worker = threading.Thread(target=run)
-        worker.start()
-        worker.join()
+        with building():
+            worker = threading.Thread(target=run)
+            worker.start()
+            worker.join()
     finally:
         threading.stack_size(old_size)
         sys.setrecursionlimit(old_limit)
     if failure:
         raise failure[0]
     return result[0]
+
+
+@contextmanager
+def building():
+    """A phase that builds the data the run keeps (the facts, the index, the links, an analysis): every object it makes
+    stays reachable for the run, so the cyclic collector, which would traverse them all again and again and find
+    nothing (log/trace-research.md F17), does not run while it builds, and what it built is moved out of every later
+    collection (`gc.freeze`). The collector's state is the caller's again when the phase ends, failed or not."""
+    was = gc.isenabled()
+    gc.disable()
+    try:
+        yield
+    finally:
+        gc.freeze()
+        if was:
+            gc.enable()

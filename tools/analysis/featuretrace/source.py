@@ -3,14 +3,18 @@
 The language of a file comes from its extension. Code is parsed by the tree-sitter grammar of its language (the
 language's own rules, as a compiler reads them). Lines are counted from byte offsets: py-tree-sitter 0.26 corrupts
 memory when `Point.row` is read (issue #505), so no Point is ever touched. Facts are cached by the file's content and
-the reader's own source, so a file is read again only when it or the reader changed.
+what the readers' facts depend on (`reader_version`), so a file is read again only when it or a reader changed.
 """
 from __future__ import annotations
 
+import ast
 import bisect
+import functools
 import hashlib
+import importlib.util
 import os
 import pickle
+import sys
 from pathlib import Path
 
 import tree_sitter
@@ -136,12 +140,56 @@ def is_identifier(text: str | None) -> bool:
     return bool(text) and (text[0].isalpha() or text[0] == "_") and all(c.isalnum() or c == "_" for c in text)
 
 
-def reader_version() -> str:
-    """A digest of the readers' own source: changing a reader invalidates every cached fact."""
+@functools.cache
+def reader_version(readers: tuple) -> str:
+    """A digest of what the readers' facts depend on: the source of the modules they are written in and of every
+    module of this package those import (`imported`), and the files of every installed package they import (the
+    grammars, compiled). Changing a reader invalidates every cached fact; changing any other module of the tracer,
+    none. Once per process: the code a process runs is the code it imported."""
+    package = Path(__file__).parent
+    files, outside = imported(package, {reader.__module__.rsplit(".", 1)[-1] for reader in readers})
     digest = hashlib.sha1()
-    for path in sorted(Path(__file__).parent.glob("*.py")):
+    for path in sorted(files):
         digest.update(path.read_bytes())
+    for top in sorted(outside):
+        for path in installed(top):
+            digest.update(path.name.encode() + path.read_bytes())
     return digest.hexdigest()
+
+
+def installed(top: str) -> list[Path]:
+    """The files an installed module or package is made of (its compiled parts included, its byte-code caches not)."""
+    spec = importlib.util.find_spec(top)
+    if spec is None:
+        return []
+    if not spec.submodule_search_locations:
+        return [Path(spec.origin)] if spec.origin else []
+    return sorted(path for folder in spec.submodule_search_locations for path in Path(folder).rglob("*")
+                  if path.is_file() and "__pycache__" not in path.parts)
+
+
+def imported(package: Path, names: set) -> tuple[set, set]:
+    """The files of the package's modules `names` and of every module of the package they import, transitively
+    (relative imports, subpackages included, and each package's `__init__`, which runs before its modules), and the
+    top-level names of what they import from outside the package and the standard library."""
+    files, outside, todo = set(), set(), [tuple(name.split(".")) for name in sorted(names)]
+    while todo:
+        parts = todo.pop()
+        folder = package.joinpath(*parts)
+        path, here = (folder / "__init__.py", parts) if folder.is_dir() else (folder.with_suffix(".py"), parts[:-1])
+        if path in files or not path.is_file():
+            continue
+        files.add(path)
+        todo.append(here)                      # its package's `__init__` runs before it
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.ImportFrom) and 0 < node.level <= len(here) + 1:
+                target = here[:len(here) - node.level + 1] + (tuple(node.module.split(".")) if node.module else ())
+                todo += [target] + [target + (alias.name,) for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                outside.add(node.module.split(".")[0])
+            elif isinstance(node, ast.Import):
+                outside.update(alias.name.split(".")[0] for alias in node.names)
+    return files, outside - set(sys.stdlib_module_names)
 
 
 def cached_facts(path: Path, display: str, lang: str, read, cache_dir: Path | None, version: str, context: str):

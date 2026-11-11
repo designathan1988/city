@@ -257,3 +257,37 @@ official declarations only, converging (finite, fast enough to run in seconds to
   which takes the facts and the name resolutions Python computes, interns trees and types as integers (hash-consing),
   solves on integer worklists and returns the links; the Python semantics stay the specification and the oracle: the
   same tests run against the engine. Plan: log/trace-engine-plan.md.
+
+### F16. The native path has no impediment (P1) — 2026-11-11 21:00
+- llvm-mingw's clang++ builds a C++20 program in 1.1 s; linked `-static` it runs from PowerShell (a dynamic build
+  misses the toolchain's libc++ outside its folder); Python 3.12's `include/Python.h` and `libs/python312.lib` are
+  present for an extension module if the engine is one. CMake 4.4 is present.
+
+### F17. The cyclic garbage collector, not the reading, was most of the tracer's Python time (P1) — 2026-11-11 21:40
+- Measured (e1_read_cached.py, e1_split.py): the lab's read with the facts cache warm took 12.8 s; the same loads and
+  the same index with the cyclic collector disabled take 2.2 s and 0.17 s. Cold (no cache): 32 s.
+- Why (CPython InternalDocs/garbage_collector.md, "Collecting the oldest generation", via context7 /python/cpython;
+  Doc/library/gc.rst): every `threshold0` allocations a young collection examines the new objects, and a full
+  collection traverses every long-lived object once the pending ones pass 25% of them; the tracer builds millions of
+  long-lived objects (facts, index, nodes, sets) that are never garbage during a run, so each is traversed several
+  times for nothing. mypy, a whole-program analyser in CPython, met the same cost and changed its collector settings
+  (python/mypy#18306: incremental check of torch 27% faster). The gc docs give `gc.disable()` and `gc.freeze()` (move
+  every tracked object to a permanent generation that later collections ignore) for programs that build long-lived data.
+- The whole lab on the new core with the collector disabled (probe_whole_gc.py, 85 s deadline): 195,623 links at 10 s
+  (before: 344,765 at 76 s), 369,847 at 80 s; nodes 2.06 M, objects 700 k, the queue still growing to 2.84 M, 6.4 GB. The
+  collector was a large constant factor; the intrinsic cost of F15 stands, and so does the Decision (the native engine).
+- The fix at the cause: the tracer declares its building phases to the runtime (one owner in `program.py`): no cyclic
+  collection while a phase builds the data the run keeps, and what it built frozen out of later collections.
+
+### F18. The engine's input is the facts' own format (P1) — 2026-11-11 21:50
+- Measured (e1_lab_nogc.py): an FTE1 file written by Python (every tree hash-consed in Python) costs 15 s for 1.85 M
+  terms and 5 s for the bytes on the lab, 103.5 MB; the tables themselves 3.6 s.
+- The facts already have one serialized form: the reader's cache, pickle protocol 5. `pickle.dumps` (C-accelerated) of
+  every file's facts after the index: 1.6 s, 157 MB (e1_dumps.py). The cached facts use 25 opcodes only (e1_opcodes.py,
+  via `pickletools.genops`): PROTO, FRAME, MEMOIZE, BINGET, LONG_BINGET, MARK, STOP, NONE, NEWTRUE, NEWFALSE, BININT,
+  BININT1, BININT2, SHORT_BINUNICODE, BINUNICODE, EMPTY_TUPLE, TUPLE1-3, TUPLE, EMPTY_LIST, APPEND(S), EMPTY_DICT,
+  SETITEM(S), EMPTY_SET, ADDITEMS, STACK_GLOBAL, NEWOBJ, BUILD; the globals are the model's four dataclasses.
+- Decision: the engine's input is one pickle (protocol 5) of the units, the classes and the resolution tables, written
+  by `pickle.dump`; the engine reads that documented subset (Lib/pickletools.py describes each opcode; PEP 3154 the
+  framing, PEP 574 protocol 5) and hash-conses the trees itself. A second serialization of the facts (FTE1) is dropped:
+  the facts keep one format. The model's field names reach the engine in the file's vocabulary (`dataclasses.fields`).
