@@ -8,7 +8,7 @@ captured local reaches the enclosing function's (closures share their variables,
 """
 from __future__ import annotations
 
-from . import c_family, js_class, js_decl, js_expr, scopes
+from . import c_family, js_class, js_decl, js_expr, js_guards, scopes
 from .cpp_implicit import IMPLICIT
 from .gd_body import squash
 from .ir import put
@@ -57,7 +57,7 @@ def statement(r, st, unit, cond) -> None:
     elif kind == "enum_declaration":
         js_decl.declaration(r, st, unit.owner, unit)
     elif kind == "if_statement":
-        c_family.if_statement(r, st, unit, cond, statement, expr)
+        c_family.if_statement(r, st, unit, cond, statement, expr, js_guards.facts)
     elif kind == "switch_statement":
         value = field_of(st, "value")
         expr(r, value, unit, cond)

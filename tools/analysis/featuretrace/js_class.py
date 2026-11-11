@@ -79,6 +79,8 @@ def members(r, body, key: str, outer, class_node=None) -> None:
                 field.values.append(r.ir(value, field))
                 runner = r.static_of(key, member) if static else r.constructor_of(key, class_node or member)
                 js_body.expr(r, value, runner, ())
+            elif kind == "public_field_definition" and not any(c.type == "declare" for c in member.children):
+                field.values.append(("literal", "undefined"))   # a field written with no initializer (MDN, V1)
         elif kind == "class_static_block":
             js_body.block(r, field_of(member, "body"), r.static_of(key, member), ())
         elif kind == "decorator":

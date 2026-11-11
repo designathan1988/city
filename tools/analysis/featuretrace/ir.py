@@ -20,6 +20,7 @@ Shapes (tuples, so facts stay picklable and comparable):
   ("put", e)                     a value put into a container (an element)
   ("await", e)                   what awaiting `e` gives
   ("strname", s)                 a name written as a string (NAME)
+  ("narrow", name, guard, pos)   a name read where a condition proved `guard` true (pos) or false of it (N1)
   ("self",) ("super",) ("node",) ("deref", e) ("addr", e)
 """
 from __future__ import annotations

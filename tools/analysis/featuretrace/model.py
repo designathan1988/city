@@ -90,6 +90,7 @@ class Unit:
     tails: set = field(default_factory=set)        # cpp: lines of the calls in tail position (a compiler may jump)
     local_types: dict = field(default_factory=dict)    # cpp: a class declared in the function, name -> class key
     objects: list = field(default_factory=list)    # cpp: `T x(a, b);` read as a function: an object if a or b is a value
+    predicate: tuple = ()          # js: a return type `x is T`: (x's parameter index, T's value trees) (G1)
 
     @property
     def key(self):

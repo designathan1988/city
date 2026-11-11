@@ -12,12 +12,17 @@ sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
 
 from support import FixtureCase  # noqa: E402
-from featuretrace.solver import ENGINE, NULL, TRUE, UNDEFINED  # noqa: E402
+from featuretrace.solver import CLASS, ENGINE, NULL, TRUE, UNDEFINED  # noqa: E402
+
+BOX, TILE, V3 = CLASS + "types.ts#Box", CLASS + "helpers.ts#Tile", CLASS + "guards.js#V3"
 
 
 class Narrowing(FixtureCase):
     ROOTS = ("jsvalues",)
     BASE = "jsvalues"
+
+    def held(self, spec: str, name: str) -> set:
+        return {text for text, _ in self.rs.typer.evaluate(("name", name), self.ix.units[self.gid(spec)])}
 
     def returned(self, spec: str) -> set:
         typer = self.rs.typer
@@ -39,6 +44,26 @@ class Narrowing(FixtureCase):
 
     def test_property_found_nowhere_is_undefined(self):
         self.assertEqual({UNDEFINED}, self.returned("missing"))
+
+    def test_member_truthiness_overload(self):
+        self.assertNotIn(V3, self.held("V3.set", "x"))           # `x.isV3` false: never a V3
+        self.assertIn(V3, self.held("V3.copy", "v"))
+
+    def test_instanceof_branches(self):
+        self.assertTrue({"Box.open", "Tile.lay"} <= self.names("pickBranch"))
+        self.assertEqual({TILE}, self.returned("branchValue"))   # the `else` of `c instanceof Box`
+
+    def test_assignment_in_region_keeps_the_name_whole(self):
+        self.assertIn("Tile.lay", self.names("kept"))
+
+    def test_closure_write_keeps_the_name_whole(self):
+        self.assertIn("Tile.lay", self.names("laterWrite"))
+
+    def test_nested_regions_compose(self):
+        self.assertEqual({BOX}, self.returned("nested"))
+
+    def test_narrowed_key_parameter(self):
+        self.assertEqual({NULL}, self.returned("useKeyed"))      # the Tile's template: no Box, no Tile
 
 
 if __name__ == "__main__":

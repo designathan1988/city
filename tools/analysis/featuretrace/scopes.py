@@ -7,6 +7,8 @@ function's own scope. Names used while a block is open are read as the local the
 """
 from __future__ import annotations
 
+from . import narrowing
+
 
 def reset(r) -> list:
     """A function starts its own scopes (a lambda keeps the enclosing ones: it sees them). Returns the old stack."""
@@ -52,6 +54,12 @@ def visible(r, name: str) -> str:
 
 
 def scoped_tree(r, tree):
+    """A tree built where the reader is: each name read as the local it names (`renamed`), through the facts the open
+    regions prove about it (`narrowing`)."""
+    return narrowing.apply(r, renamed(r, tree))
+
+
+def renamed(r, tree):
     """A tree with each name that names a renamed local read as that local."""
     renamed = {}
     for scope in r.scopes:

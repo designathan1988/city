@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from .solver import identity
 
-PASS_SHAPES = ("member", "index", "elements", "each", "await", "addr", "put", "deref")
+PASS_SHAPES = ("member", "index", "elements", "each", "await", "addr", "put", "deref", "narrow")
 MISSING = ("<missing>",)          # a key parameter its call does not write: its default, one template
 
 

@@ -10,7 +10,7 @@ written to (J9). Module-level statements are read by `js_decl`, statements by `j
 """
 from __future__ import annotations
 
-from . import ir_js, js_body, js_class, js_decl, js_types, scopes
+from . import ir_js, js_body, js_class, js_decl, js_types, narrowing, scopes
 from .model import ClassFact, FileFacts, Unit, add_ref, declare, enclose
 from .rules import CONSTRUCTOR
 from .source import Source, field_of, grammar_of, named_children
@@ -75,9 +75,11 @@ class JsReader:
             scopes.open_scope(self)
             self.base = len(self.scopes) - 1                    # its own scope: where its `var`s go
         self.type_params.append(js_types.parameters(self, node))
+        narrowing.enter_function(self, field_of(node, "body"), "js")
         try:
             self.function_body(node, unit)
         finally:
+            narrowing.leave_function(self)
             self.type_params.pop()
             if nested:
                 scopes.close_scope(self)
