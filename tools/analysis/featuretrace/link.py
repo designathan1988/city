@@ -150,8 +150,9 @@ def link_ref(rs, unit, ref) -> None:
         targets, how = rs.resolve(unit, ref, WANT[kind])
         expando = kind == "write" and unit.lang == "js" and ref.base is not None
         foreign = js_link.expando_writes(rs, unit, ref) if expando else True    # a property no class declares (V2)
-        if kind == "write" and unit.lang == "js" and how in (EXTERNAL, UNREACHED) and foreign:
-            handed(rs, unit, ref)          # a callable written into a library's object: it calls it (J6, J11)
+        if kind == "write" and unit.lang == "js" and foreign and (expando or how in (EXTERNAL, UNREACHED)):
+            handed(rs, unit, ref)          # a callable written into an object the engine or a library can own: it calls
+                                           # it, whatever objects of the program the receiver can also be (J6, J11)
         if how == EXTERNAL and kind == "call" and unit.lang == "cpp" and ref.base is None and not ref.qualified:
             targets = rs.adl(unit, ref.name, ref.args)
             how = EXACT if targets else EXTERNAL
@@ -169,7 +170,7 @@ def link_ref(rs, unit, ref) -> None:
         # each value of the receiver: its method, or what its member holds that is called (a field holding a function)
         held = [g for g in invoked(rs, unit, ("member", ref.base, ref.name, False)) if g not in targets]
         targets, how = (targets + held, EXACT) if held else (targets, how)
-    if how == EXTERNAL and kind in ("call", "new", "name"):
+    if kind in ("call", "new", "name") and (how == EXTERNAL or engine_receiver(rs, unit, ref)):
         handed(rs, unit, ref)
     if how in (EXTERNAL, LOCAL, UNREACHED):
         if how == EXTERNAL and kind in ("call", "new", "name", "emit") and ref.text != IMPLICIT:
@@ -213,6 +214,15 @@ def handed(rs, unit, ref) -> None:
     for arg in ref.args:
         for gid in rs.typer.receiver(arg, unit)[2]:
             rs.link(unit.gid, gid, "handed", site, EXACT)
+
+
+def engine_receiver(rs, unit, ref) -> bool:
+    """Whether a member call's receiver can be an object of the engine or a library (it runs what it is handed),
+    besides any object of the program it can be: in a dynamically typed language (JS, GDScript). In C++ an expression
+    of a class of the program is an object of that class ([expr.ref]): the engine values the tracer's receiver also
+    holds do not change the method it runs."""
+    return unit.lang != "cpp" and ref.kind == "call" and ref.base not in (None, ("super",)) \
+        and rs.typer.receiver(ref.base, unit)[1]
 
 
 def by_value(rs, unit, ref) -> None:

@@ -8,7 +8,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))
 
-from featuretrace import program, seeds, walk  # noqa: E402
+from featuretrace import narrow_values, program, receivers, seeds, walk  # noqa: E402
 
 FIXTURE = HERE / "fixture"
 _LOADED = {}
@@ -44,3 +44,23 @@ class FixtureCase(unittest.TestCase):
 
     def reached(self, spec: str) -> set:
         return {seeds.label(self.ix, g) for g in walk.forward(self.rs, [self.gid(spec)]).reached}
+
+
+class Solved:
+    """Values read once the solver reached its fixpoint (mixed into a `FixtureCase`)."""
+
+    def solved(self, node) -> set:
+        """A node's values once the solver reached its fixpoint again (a node first wired after the solve, such as a
+        templated function's own result, is run to its own: pending differences, then the guards' `undefined` and the
+        receivers no call reached)."""
+        typer = self.rs.typer
+        while True:
+            typer.propagate()
+            if not narrow_values.settle(typer) | receivers.settle(typer):
+                return {text for text, _ in typer.current(node)}
+
+    def held(self, spec: str, name: str) -> set:
+        return self.solved(self.rs.typer.node_of(("name", name), self.ix.units[self.gid(spec)]))
+
+    def returned(self, spec: str) -> set:
+        return self.solved(self.rs.typer.ret_node(self.ix.units[self.gid(spec)]))

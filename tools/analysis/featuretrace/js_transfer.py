@@ -5,6 +5,7 @@ property no class declares (an index signature's, written outside the class, on 
 """
 from __future__ import annotations
 
+from . import js_primitives
 from . import transfer as common          # the language-independent transfers
 from .library import ITEM
 from .model import ALIAS_KIND
@@ -113,6 +114,11 @@ def indexed(t, other, from_base: bool):
                     common.member_one(t, target, text, ctx, name, False)
                 for node in index_nodes(t, key) if unnamed else []:
                     t.follow(node, target)
+            elif js_primitives.kind(text) is not None:  # a string, a number...: the members the key names, else an
+                for name in names:                      # index (T5)
+                    common.member_one(t, target, text, ctx, name, False)
+                if unnamed:
+                    common.step_one(t, target, ITEM, text, ctx)
             elif from_base:                             # a container: its elements, whatever the key
                 common.step_one(t, target, ITEM, text, ctx)
     return transfer

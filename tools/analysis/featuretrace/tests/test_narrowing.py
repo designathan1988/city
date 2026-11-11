@@ -11,32 +11,12 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
 
-from support import FixtureCase  # noqa: E402
-from featuretrace import narrow_values, receivers  # noqa: E402
-from featuretrace.solver import (BIGINT, CLASS, ELEM, ENGINE, FALSE, NULL, NUMBER, OBJECT, STRING, SYMBOL,  # noqa: E402
+from support import FixtureCase, Solved  # noqa: E402
+from featuretrace.solver import (BIGINT, CLASS, ELEM, FALSE, NULL, NUMBER, OBJECT, STRING, SYMBOL,  # noqa: E402
                                  TEXT, TRUE, UNDEFINED)
 
 BOX, TILE, V3 = CLASS + "types.ts#Box", CLASS + "helpers.ts#Tile", CLASS + "guards.js#V3"
 CAN, SHAPE = CLASS + "guards.js#Can", CLASS + "guards.js#<object@"
-
-
-class Solved:
-    """Values read once the solver reached its fixpoint."""
-
-    def solved(self, node) -> set:
-        """A node's values once the solver reached its fixpoint again (a node first wired after the solve, such as a
-        templated function's own result, is run to its own: pending differences, then the guards' `undefined`)."""
-        typer = self.rs.typer
-        while True:
-            typer.propagate()
-            if not narrow_values.settle(typer) | receivers.settle(typer):
-                return {text for text, _ in typer.current(node)}
-
-    def held(self, spec: str, name: str) -> set:
-        return self.solved(self.rs.typer.node_of(("name", name), self.ix.units[self.gid(spec)]))
-
-    def returned(self, spec: str) -> set:
-        return self.solved(self.rs.typer.ret_node(self.ix.units[self.gid(spec)]))
 
 
 class Narrowing(Solved, FixtureCase):
@@ -49,7 +29,7 @@ class Narrowing(Solved, FixtureCase):
         self.assertEqual({UNDEFINED}, self.returned("gone"))
 
     def test_constants_are_the_languages_values(self):
-        self.assertEqual({ENGINE}, self.returned("lengthOfYes"))
+        self.assertEqual({UNDEFINED}, self.returned("lengthOfYes"))     # `true.length`: Boolean has none (T5)
 
     def test_prototype_property(self):
         self.assertEqual({TRUE}, self.returned("flagOf"))

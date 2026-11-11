@@ -837,3 +837,41 @@ C2'''': the city 100,571 links (one less, `FlowStats::resume`'s lambda at `flow_
 `operator==` it reaches, `js_map.h:37`), the lab app 226,880 links (none lost, 11 gained: `handed` links of a function
 kept in a field through `this`, as `Machine`'s default `now` in `this.now` and `castBySize`'s returned function in
 `PartStore.uncast`), 67 s.
+
+## What the lab with three.js showed after J2' (2026-11-11)
+
+The lab with three.js still found no fixpoint in 900 s (363,341 links when stopped). Stack samples of the worker during
+its two long stretches (190-520 s, 560-835 s) all stood in `transfer.member_one` -> `library.library_step` ->
+`clean` / `strip_templates`, on values `<text>` holding whole shader sources of three (`vertexShader`,
+`fragmentShader`): a string a literal carries (G7) was not taken for a value of the language, so a member read on it
+(`toString`, `[Symbol.toPrimitive]` of the coercions J5 reads) parsed the string as a C++ type text, character by
+character, and made a new value of what it found (`#include <common>` gave the "type" `common`; the `<text>` prefix
+itself gave `text`). The same strings stood in the `x` and `y` of every vector: one node merged by the cycle sweep
+holds `Vector2.x`, `Vector3.x` and the `x`/`y` of unrelated objects (`footprints.ts`, `tiles.ts`, `streets.ts`), so
+whatever reaches one reaches all (recorded below as the next cause, S2).
+
+Reading the losses of each fix on its lines brought three more causes, each hidden by the one before:
+`void readDerivedSome<unknown>(...)` read as a call of `void readDerivedSome` (the TypeScript grammar's defect,
+J13); `offPage.ask(...)` valued by the returns of a property (CALL''); `worker.onmessage = ...` not handed to the
+engine's `Worker` once the receiver could also be the program's `ProcessWorker` (J6').
+
+Sources: MDN Object (object coercion: a property read on a primitive is read on its wrapper, String, Number, Boolean,
+BigInt, Symbol; on null and undefined it throws), MDN String (`length`; bracket notation past the end is `undefined`,
+`charAt` the empty string; each method's return), MDN Number `toFixed`/`toPrecision`/`toString` (a string; Number
+has no `[Symbol.toPrimitive]`); tree-sitter-typescript issue #282 (a call with type arguments after `await` parsed
+as a call of the `await` expression; open, 0.23.2 the latest); ECMAScript grammar (UnaryExpression, AwaitExpression:
+a callee is a MemberExpression or CallExpression); ISO C++ [expr.ref] (a member access names the member of the
+object expression's class).
+
+| Rule | What the tracer does |
+|---|---|
+| T5 A value of the language | a string a literal carries, a constant or a kind of the language answers by the language, never as a type text: in JS a member is its wrapper prototype's (`length` a number; `toUpperCase()` a string, `includes()` a boolean, `split()` an array of strings, `match()` an array of strings or null; a method read uncalled a function; a name no prototype has `undefined`, called it throws), its index a one-character string or `undefined`, its iteration one-character strings; a number, boolean, BigInt or symbol has its own prototype's members, no index (`undefined`) and no iteration; a member of null or undefined throws (no value), calling a primitive throws; in GDScript and C++ a member, index or operator of a string is the engine's or the language's value (`js_primitives`, `transfer.of_language`) |
+| J13 The tree as the language groups it | tree-sitter-typescript reads `<T>(...)` after a unary operator, `await`, a prefix update or a binary expression ending in one as a call of that whole expression; the readers see a view of the tree (`ts_tree`) in which each such chain is regrouped: the operator's rightmost operand is the callee, the chain (calls, members, indexes, `!`) is rebuilt on it and the operators wrap it, each node spanning its own text: `void f<T>(a).catch(b)` is `void (f<T>(a).catch(b))` |
+| CALL'' A call of a property | `o.p(...)` where `p` is a property (a field, a variable, a constant) gives what calling each value it holds gives: a function's result, the engine's value for a function the program did not write, nothing for a primitive (it throws); the links already reached the held functions (CALL') |
+| J6' A receiver the engine can own | in a dynamically typed language (JS, GDScript) a callable written into a member of, or passed to a method of, a receiver that can be the engine's or a library's object is handed to it (the engine runs it), whatever objects of the program the receiver can also be; in C++ the receiver's static type decides ([expr.ref]): a call on an expression of a class of the program runs its method, whatever engine values the tracer's receiver holds |
+
+What it changed, measured on the same sources (against J2', 209e8823): the city 100,571 links, none lost or gained; the
+lab app 227,514 links: 7 lost, each a `value` link the misgrouped `void`/`await` made where the call it stood for is
+linked (`readDerivedSome` now a `call`); 641 gained: a call of a function a property holds valued (`this.host()` in
+`GrowthSession` gives the host's `doc`, whose `RoadDoc` members are read), the engine's `Worker` handed its `onerror`
+and `onmessage`, the `then`/`catch` callbacks of `void ...<T>(...)` chains.

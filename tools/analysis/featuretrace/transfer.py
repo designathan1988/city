@@ -5,19 +5,22 @@ so their later values arrive as they come. Every rule here is distributive over 
 
 `[]`, a range-for, `->`, `*`: an element of a container, what a pointer points at, or the operator of a class of the
 program (its template parameters replaced); a member of a value: its field's values, its method's callable or result;
-calling a callable: what its function returns.
+calling a callable: what its function returns. A value of the language (a string a literal carries, a constant, a
+kind) answers by the language (T5): a JS primitive by its wrapper's prototype (`js_primitives`), any other the
+engine's value; never as a type text.
 """
 from __future__ import annotations
 
-from . import js_library, js_transfer, templates
+from . import js_library, js_primitives, js_transfer, templates
 from .cpp_names import template_args
 from .library import (DEREF, HELD_CALLS, ITEM, ITER, ITERATOR_CALLS, PAIR_PARTS, clean, library_step)
 from .model import ALIAS_KIND
-from .solver import CLASS, ELEM, ENGINE, FN, is_language
+from .solver import CLASS, ELEM, ENGINE, FN, TEXT, is_language
 
 OPERATORS = {ITEM: "operator[]", DEREF: "operator->", ITER: "begin", js_library.EACH: "begin"}
 COMPARISONS = ("==", "!=", "<", ">", "<=", ">=", "<=>", "&&", "||", "!", "and", "or", "not", "in", "is")
 CALLABLE_CALLS = ("call", "callv", "call_deferred", "apply")
+HOLDING = ("var", "field", "const")      # the kinds of unit that hold values: calling one calls what it holds (CALL'')
 BIND_CALLS = ("bind", "unbind", "bindv")
 
 
@@ -89,6 +92,10 @@ def member_one(t, target, text: str, ctx, name: str, called: bool, caller=None, 
             t.add(target, [(v, ctx) for v in js_library.language_member(name, called)] if ctx.lang == "js"
                   else [(ENGINE, ctx)])
         return
+    if of_language(text):                               # a JS primitive's wrapper's member, else the engine's (T5)
+        t.add(target, [(v, ctx) for v in js_primitives.member(text, name, called)] if ctx.lang == "js"
+              else [(ENGINE, ctx)])
+        return
     if ctx.lang == "js" and js_library.is_container(text):
         t.add(target, [(v, ctx) for v in js_library.member(name, text, called)])
         return
@@ -132,7 +139,9 @@ def member_one(t, target, text: str, ctx, name: str, called: bool, caller=None, 
         unit = ix.units[gid]
         if unit.kind == ALIAS_KIND:
             continue                                                         # a type alias is no value (T1')
-        if called or gid in getters:
+        if called and unit.kind in HOLDING and gid not in getters:          # a property holding functions: what
+            t.subscribe(t.read_node(unit, caller), target, ("held call", gid), calls(t, caller, args))  # each gives
+        elif called or gid in getters:
             result(t, target, unit, caller if called else None, args, deliver, (text, ctx))
         else:
             deliver(t.read_node(unit, caller))          # read where it is written: through its getter or not (G8')
@@ -153,7 +162,10 @@ def step_one(t, target, step: str, text: str, ctx) -> None:
     if text.startswith(FN) and step == DEREF:
         t.add(target, [(text, ctx)])                    # `*p` of a pointer to a function: the function ([expr.unary.op])
         return
-    if is_language(text) or text.startswith(FN):
+    if of_language(text):                               # a JS string's characters, else the language's value (T5)
+        t.add(target, [(v, ctx) for v in js_primitives.step(text, step)] if ctx.lang == "js" else [(ENGINE, ctx)])
+        return
+    if text.startswith(FN):
         t.add(target, [(ENGINE, ctx)])
         return
     if ctx.lang == "js" and js_library.is_container(text):
@@ -185,7 +197,7 @@ def operators(t, op: str):
 def operator_one(t, target, op: str, text: str, ctx) -> None:
     """A binary or unary operator on a value (its left operand): a comparison is the language's; on a class of the
     program its operator's result (`*` too: multiplication, O2; dereference is the `deref` shape); else the value."""
-    if op in COMPARISONS:
+    if op in COMPARISONS or of_language(text):         # an operator on a value of the language gives one (T5)
         t.add(target, [(ENGINE, ctx)])
         return
     key = t.type_class(text, ctx)
@@ -202,9 +214,16 @@ def calls(t, caller=None, args: tuple = ()):
         for text, ctx in values:
             if text.startswith(FN):
                 result(t, target, t.ix.units[int(text[len(FN):])], caller, args)
+            elif ctx.lang == "js" and of_language(text):
+                t.add(target, [(v, ctx) for v in js_primitives.calls(text)])    # calling a primitive throws (T5)
             elif not text.startswith(ELEM):
                 t.add(target, [(ENGINE, ctx)])          # calling what the engine gives: the engine's value
     return transfer
+
+
+def of_language(text: str) -> bool:
+    """A value of the language: a string a literal carries (G7), a constant or a kind of the language, the engine's."""
+    return text.startswith(TEXT) or is_language(text)
 
 
 def elements(t):
