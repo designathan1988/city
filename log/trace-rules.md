@@ -809,3 +809,31 @@ The largest nodes at 714 s (2.6 M nodes, 124 779 templates): about 4 700 values 
 shading language (`nodeArray(params)`, `FunctionCallNode.parameters`, `LoopNode.params`, in both builds read) and in
 the result of the lab's `processWorker.ts` `walk`, the same set in all of them: elements of objects of three's Collada
 parser (2 397 occurrences among the 45 largest), objects of the app and texts.
+
+### Where the shared set enters (probes of the first nodes a value reaches, 2026-11-11 09:10)
+
+Walking a `ColladaParser` object from where it is made: `ColladaLoader.parse` returns it, `ColladaLoader.load` hands it
+to its `onLoad`, and that `onLoad` held the callback of `examples/jsm/offscreen/scene.js` (an `ImageBitmapLoader`'s
+`imageBitmap`), which makes it a `CanvasTexture`'s image; from `Texture.image` every reader of a texture's image in the
+app and in three (the lab's memory counters, inspectors, `walk`, `jsonCopy`) took it, and three's shading language's
+parameters after them. The callback reached the Collada loader because `scene.js` writes
+`const loader = new THREE.ImageBitmapLoader().setPath(path)`: `setPath` is `Loader`'s and ends `return this`, and the
+tracer valued `this` as the class that owns the method (`Loader`), so `loader.load(...)` reached every loader's `load`
+(their overrides below `Loader`). three writes `return this` in hundreds of chainable methods.
+
+Sources: MDN `this` (in a method, the object the method was called on; in an arrow function, the enclosing context's;
+`call`/`apply`/`bind` set it; a class's static method has the class); ISO C++ [expr.prim.this] (`this` is the object
+expression of the member call); GDScript reference (`self` is the instance the method runs on). Andersen-style
+points-to analyses pass the receiver as the method's first parameter.
+
+| Rule | What the tracer does |
+|---|---|
+| J2' `this` / `self` in a method | holds the objects the method is called on: the receiver's values of each member call that reaches it whose class is the method's class or below (an override gets only its own class's objects), the object `new` makes for a constructor, the caller's `this` for a `super(...)` or `super.m()` call and (C++, GDScript) for a call written without a receiver; a static method's `this` is its class; an arrow function and a lambda read the enclosing function's; a method no such call reaches (the engine's or a library's callback, one no code calls) holds its class's objects, decided at a fixpoint |
+| C2'''' The receiver as a key | a method whose `this` reaches its result (`return this`, `return this.x`, a call by name on it) has the receiver among its key parameters (Agesen's Cartesian product puts the receiver in the tuple): each value of a call's receiver is a template whose `this` holds that value alone, so `new Loader().setPath(p)` gives that loader's object, not every object of the classes below; a call with no receiver written (inside the class) reads the method's own `this` |
+
+What it changed, measured on the same sources as the rules above, tracer at ec53165a against the tracer with J2' and
+C2'''': the city 100,571 links (one less, `FlowStats::resume`'s lambda at `flow_stats_query.cpp:74` no longer reaches
+`js::operator==(const Value &, const Value &)`: `it == this->held.end()` compares two `js::Map::iterator`s, whose own
+`operator==` it reaches, `js_map.h:37`), the lab app 226,880 links (none lost, 11 gained: `handed` links of a function
+kept in a field through `this`, as `Machine`'s default `now` in `this.now` and `castBySize`'s returned function in
+`PartStore.uncast`), 67 s.

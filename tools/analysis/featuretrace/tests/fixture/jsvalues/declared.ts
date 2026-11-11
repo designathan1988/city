@@ -49,6 +49,14 @@ const cars: Map<number, Car> = new Map();
 export function declShadowWrite(id: number) { const c = cars.get(id); if (c) c.shadow = new Pack(); }
 export function declShadowRead() { const c = makeCar(); if (c.shadow) return c; return null; }
 
+// `this` is the object the method is called on (J2'): an inherited chainable method returns its receiver.
+export class Chain { setTag(t: string) { return this; } }
+export class ChainLeaf extends Chain { leafOnly(): void {} }
+export class ChainOther extends Chain { otherOnly(): void {} }
+export function declFluent() { return new ChainLeaf().setTag('a'); }
+export function declFluentOther() { new ChainOther().setTag('b').otherOnly(); }
+export class Lone { me() { return this; } }
+
 // An intersection with a primitive is that primitive: a branded id is a number, no object.
 declare const LaneBrand: unique symbol;
 export type LaneId = number & { readonly [LaneBrand]: true };

@@ -13,7 +13,7 @@ Type texts: a type as written, CLASS + key (a class of the program), FN + gid (a
 """
 from __future__ import annotations
 
-from . import js_library, js_transfer, names, narrow_values, templates, transfer, truth
+from . import js_library, js_transfer, names, narrow_values, receivers, templates, transfer, truth
 from .js_library import EACH
 from .library import DEREF, ITEM, ITER, passes_through
 from .places import Places
@@ -24,7 +24,7 @@ from .types_of import TypeNames
 CALLABLE_CALLS = transfer.CALLABLE_CALLS
 COMPUTED = "#computed"
 STEPS = {"index": ITEM, "elements": ITER, "deref": DEREF, "each": EACH}
-CONSTANT_SHAPES = ("cast", "new", "callable", "self", "super", "strname", "module")
+CONSTANT_SHAPES = ("cast", "new", "callable", "super", "strname", "module")
 
 
 class Typer(Places, TypeNames, Solver):
@@ -41,6 +41,7 @@ class Typer(Places, TypeNames, Solver):
         self.js_written = None             # the property names JS code writes on a receiver (`js_transfer`, V2)
         self.undecided = []                # a property guard on an object whose property no value reached yet (N1)
         self.joined = set()                # (class, interface) whose properties are one (`structural`, S1)
+        self.unreceived = []               # methods' `this` nodes no call with a receiver reached yet (`receivers`)
 
     def class_of(self, unit) -> str | None:
         return unit.owner if unit.owner in self.ix.classes else None
@@ -108,6 +109,8 @@ class Typer(Places, TypeNames, Solver):
             self.subscribe(self.node_of(tree[1], unit), node, ("await",), transfer.awaits(self))
         elif kind in CONSTANT_SHAPES:
             self.add(node, self.constant(tree, unit))
+        elif kind == "self":                      # the objects the method is called on (J2')
+            self.follow(receivers.this_node(self, unit), node)
         elif kind == "narrow":                    # a name read where a condition proved something of it (N1)
             narrow_values.wire(self, node, tree, unit)
         elif kind == "literal" and unit.lang == "js" and tree[1] in truth.JS_CONSTANTS:
@@ -123,9 +126,6 @@ class Typer(Places, TypeNames, Solver):
             return [(tree[1], unit)] if tree[1] else [(ENGINE, unit)]
         if kind == "callable":
             return [(FN + str(self.ix.offset[unit.file] + tree[1]), unit)]
-        if kind == "self":
-            key = self.class_of(unit)
-            return [(CLASS + key, unit)] if key else []
         if kind == "super":
             key = self.class_of(unit)
             bases = self.ix.base_keys(self.ix.classes[key]) if key else []

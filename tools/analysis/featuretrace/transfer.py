@@ -51,13 +51,14 @@ def members(t, name: str, called: bool, caller=None, args: tuple = ()):
     return transfer
 
 
-def result(t, target, unit, caller, args: tuple, deliver=None) -> None:
-    """What a call of `unit` written in `caller` with `args` gives `target`: the result of the templates of its
-    argument values when its result depends on them (`templates`, C2), else the function's own."""
+def result(t, target, unit, caller, args: tuple, deliver=None, receiver=None) -> None:
+    """What a call of `unit` written in `caller` with `args` on `receiver` (the value it is called on) gives `target`:
+    the result of the templates of its argument and receiver values when its result depends on them (`templates`, C2,
+    J2'), else the function's own."""
     keys = templates.key_params(t, unit) if caller is not None else ()
     deliver = deliver or (lambda node: t.follow(node, target))
     if keys:
-        templates.route(t, target, unit, [t.node_of(a, caller) for a in args], keys, deliver)
+        templates.route(t, target, unit, [t.node_of(a, caller) for a in args], keys, deliver, receiver)
     else:
         deliver(t.ret_node(unit))
 
@@ -132,7 +133,7 @@ def member_one(t, target, text: str, ctx, name: str, called: bool, caller=None, 
         if unit.kind == ALIAS_KIND:
             continue                                                         # a type alias is no value (T1')
         if called or gid in getters:
-            result(t, target, unit, caller if called else None, args, deliver)
+            result(t, target, unit, caller if called else None, args, deliver, (text, ctx))
         else:
             deliver(t.read_node(unit, caller))          # read where it is written: through its getter or not (G8')
 

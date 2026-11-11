@@ -10,10 +10,13 @@ graph keeps the unit's own links, fed by every call (a superset): a template's c
 """
 from __future__ import annotations
 
+from . import receivers
 from .solver import UNDEFINED, identity
 
 PASS_SHAPES = ("member", "index", "elements", "each", "await", "addr", "put", "deref", "narrow")
 MISSING = ("<missing>",)          # a key parameter its call does not write: its default, one template
+RECEIVER = -1                     # the object a method runs on, a key when `this` reaches the result (Agesen: the
+                                  # receiver is in the tuple; J2')
 
 
 class Frame:
@@ -34,12 +37,13 @@ class Frame:
 
 
 def key_params(t, unit) -> tuple:
-    """The parameters (indices) that reach the function's result (C1); () when none does."""
+    """The parameters (indices) that reach the function's result (C1), and `RECEIVER` when its `this` does; () when
+    none does."""
     memo = t.template_keys
     if unit.gid not in memo:
         memo[unit.gid] = ()                     # read as none while it is worked out (recursion)
         found = set()
-        if unit.params and unit.returns:
+        if unit.returns:
             seen = set()
             for _, _, tree in unit.returns:
                 found |= reaches(t, unit, tree, seen)
@@ -61,6 +65,8 @@ def reaches(t, unit, tree, seen: set) -> set:
             for part in unit.types[name]:
                 out |= reaches(t, unit, part, seen)
         return out
+    if kind == "self":                              # `this`: the receiver of a method's call (J2')
+        return {RECEIVER} if receivers.runs_on(t, unit) else set()
     if kind in PASS_SHAPES:
         return reaches(t, unit, tree[1], seen)
     if kind == "union":
@@ -71,7 +77,7 @@ def reaches(t, unit, tree, seen: set) -> set:
         out = set()
         for gid in t.rs.function_targets(unit, tree[1][1]):
             for index in key_params(t, t.ix.units[gid]):
-                if index < len(tree[2]):
+                if 0 <= index < len(tree[2]):
                     out |= reaches(t, unit, tree[2][index], seen)
         return out
     return set()
@@ -104,6 +110,8 @@ def reads(unit, tree, seen: set) -> set:
             seen.add(name)
             out |= reads(unit, unit.types[name], seen)
         return out
+    if tree[0] == "self":
+        return {RECEIVER}                       # `this`: the receiver (J2')
     return set().union(*(reads(unit, part, seen) for part in tree[1:] if isinstance(part, (tuple, list))))
 
 
@@ -114,15 +122,20 @@ def leaves(tree) -> list:
     return [tree]
 
 
-def route(t, target, unit, args: list, keys: tuple, deliver) -> None:
-    """A call of `unit` whose argument nodes are `args` (None where not written): for each key parameter, each value
-    it holds at the call is a template (that parameter fixed, the others what the call writes); the call's result is
-    the intersection over the key parameters of each one's templates' results (C2'), `deliver(node)` bringing it into
-    `target`. One key parameter: Agesen's templates exactly. The call's result is one node per call and function,
-    whatever reads it: a second reading of the same call (another receiver with the same method) delivers it again."""
+def route(t, target, unit, args: list, keys: tuple, deliver, receiver=None) -> None:
+    """A call of `unit` whose argument nodes are `args` (None where not written) on `receiver` (the one value it is
+    called on, J2'): for each key parameter (`RECEIVER` among them), each value it holds at the call is a template (that
+    parameter fixed, the others what the call writes); the call's result is the intersection over the key parameters
+    of each one's templates' results (C2'), `deliver(node)` bringing it into `target`. One key parameter: Agesen's
+    templates exactly. The call's result is one node per call and function, whatever reads it: a second reading of the
+    same call (another receiver with the same method) delivers it again."""
     made = {}                                   # (key parameter, value identity) -> Frame, for this call
     single = len(keys) == 1
     families = {k: ("#family", target, unit.gid, k) for k in keys}
+    nodes = {i: a for i, a in enumerate(args) if a is not None}
+    if receiver is not None:                    # the receiver as a node of its one value
+        nodes[RECEIVER] = ("#receiver", identity(*receiver))
+        t.add(nodes[RECEIVER], [receiver])
 
     def make(k: int, value) -> None:
         tkey = (k, MISSING if value is None else identity(*value))
@@ -134,11 +147,13 @@ def route(t, target, unit, args: list, keys: tuple, deliver) -> None:
         made[tkey] = frame
         if value is not None:
             t.add(t.arg_node(frame, k), [value])
+        elif k == RECEIVER:                     # called with no receiver written: what the method's `this` holds
+            t.follow(receivers.this_node(t, unit), t.arg_node(frame, k))
         elif omitted_is_undefined(unit, k):
             t.add(t.arg_node(frame, k), [(UNDEFINED, unit)])     # JS: an argument left out (MDN Functions)
         for index in keys:                      # the other key parameters: what this call writes (C2')
-            if index != k and index < len(args) and args[index] is not None:
-                t.add(t.arg_node(frame, index), t.held(args[index]))
+            if index != k and index in nodes:
+                t.add(t.arg_node(frame, index), t.held(nodes[index]))
         for part in t.ret_parts(frame):         # the template's own parts, and the unit's shared ones
             t.follow(part, families[k])
 
@@ -156,16 +171,16 @@ def route(t, target, unit, args: list, keys: tuple, deliver) -> None:
         return transfer
 
     for k in keys:
-        if k >= len(args) or args[k] is None:
+        if k not in nodes:
             make(k, None)
         else:
-            t.subscribe(args[k], target, ("route", unit.gid, "key", k), keyed(k))
+            t.subscribe(nodes[k], target, ("route", unit.gid, "key", k), keyed(k))
     if single:
         deliver(families[keys[0]])
         return
     for index in keys:                          # a key parameter's later values: the templates keyed by another
-        if index < len(args) and args[index] is not None:
-            t.subscribe(args[index], target, ("route", unit.gid, "arg", index), other(index))
+        if index in nodes:
+            t.subscribe(nodes[index], target, ("route", unit.gid, "arg", index), other(index))
     joined = ("#meet", target, unit.gid)
     for k in keys:
         t.subscribe(families[k], joined, ("meet", k), meets(t, families, k))

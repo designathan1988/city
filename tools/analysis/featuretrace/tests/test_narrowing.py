@@ -12,7 +12,7 @@ sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
 
 from support import FixtureCase  # noqa: E402
-from featuretrace import narrow_values  # noqa: E402
+from featuretrace import narrow_values, receivers  # noqa: E402
 from featuretrace.solver import (BIGINT, CLASS, ELEM, ENGINE, FALSE, NULL, NUMBER, OBJECT, STRING, SYMBOL,  # noqa: E402
                                  TEXT, TRUE, UNDEFINED)
 
@@ -29,7 +29,7 @@ class Solved:
         typer = self.rs.typer
         while True:
             typer.propagate()
-            if not narrow_values.settle(typer):
+            if not narrow_values.settle(typer) | receivers.settle(typer):
                 return {text for text, _ in typer.current(node)}
 
     def held(self, spec: str, name: str) -> set:
@@ -183,6 +183,11 @@ class Declared(Solved, FixtureCase):
         found = self.returned("declShadowRead")                     # `c.shadow` truthy: written through the Car
         self.assertTrue(any("<object@" in v for v in found), found)
 
+    def test_this_is_the_receiver(self):
+        self.assertEqual({CLASS + "declared.ts#ChainLeaf"}, self.returned("declFluent"))
+        self.assertIn("ChainOther.otherOnly", self.names("declFluentOther"))
+        self.assertEqual({CLASS + "declared.ts#Lone"}, self.returned("Lone.me"))   # called by nobody: its class
+
     def test_branded_number_is_a_number(self):
         self.assertEqual({NUMBER}, self.returned("declBranded"))
 
@@ -235,6 +240,18 @@ class GdAccessors(Solved, FixtureCase):
     def test_write_through_the_setter(self):
         self.assertFalse(self.crates("gd_setter"))      # the setter stores elsewhere
         self.assertTrue(self.crates("gd_stored"))
+
+
+class GdReceivers(Solved, FixtureCase):
+    """J2': `self` is the object the method runs on (fixture `pending/receivers.gd`)."""
+    ROOTS = ("pending",)
+    BASE = "pending"
+
+    def test_self_is_the_receiver(self):
+        for spec in ("gd_self_receiver", "gd_implicit_receiver"):    # through a member call; a call with no receiver
+            found = self.returned(spec)
+            self.assertTrue(any(v.endswith("receivers.gd.Leaf2") for v in found), (spec, found))
+            self.assertFalse(any(v.endswith("receivers.gd.Base2") for v in found), (spec, found))
 
 
 class GdNarrowing(Solved, FixtureCase):

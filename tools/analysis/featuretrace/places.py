@@ -9,7 +9,7 @@ the others are the unit's (`templates`, C2'''). The typer (`typer.Typer`) is bui
 """
 from __future__ import annotations
 
-from . import structural, templates, transfer
+from . import receivers, structural, templates, transfer
 from .model import ENGINE_CALLBACKS, FUNCTION_KINDS
 from .solver import CLASS, ENGINE, FN, UNDEFINED
 
@@ -74,8 +74,9 @@ class Places:
             self.follow(self.node_of(("name", name), self.ix.units[self.ix.offset[unit.file] + writer]), node)
 
     def arg_node(self, unit, index: int):
-        """What the calls write in a parameter: of the unit (every call's), or of one of its templates."""
-        return (ARG, unit.key, index)
+        """What the calls write in a parameter: of the unit (every call's), or of one of its templates; for
+        `templates.RECEIVER`, what the template runs on (its `this`, J2')."""
+        return (receivers.THIS, unit.key) if index == templates.RECEIVER else (ARG, unit.key, index)
 
     def named(self, name: str, unit, depth: int = 0) -> list[tuple]:
         return self.evaluate(("name", name), unit)

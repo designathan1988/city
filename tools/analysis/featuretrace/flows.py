@@ -9,7 +9,7 @@ these.
 """
 from __future__ import annotations
 
-from . import templates
+from . import receivers, templates
 from .model import FUNCTION_KINDS
 from .places import ARG, ENGINE_CALLED, HELD
 from .solver import ENGINE, UNDEFINED
@@ -32,6 +32,7 @@ class Flows:
             for position, tree in enumerate(edge.args):
                 typer.follow(typer.node_of(tree, source), (ARG, edge.dst, position))
             self.omitted(edge)
+            receivers.carry(self, edge)                              # the object the method runs on (J2')
         elif edge.kind == "write" and edge.args:
             target = units[edge.dst]
             if target.kind in FUNCTION_KINDS:       # a bound property's setter (BIND): the value is its last argument
