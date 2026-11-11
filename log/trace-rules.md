@@ -1042,3 +1042,41 @@ environment keyed templates without end (C4''), and a maker of several key param
 What remains of the merge three's shading language makes is objects valued by their class: every `ShaderNode` its
 `Fn(jsFunc)` makes is one object, whose `jsFunc` holds every shader function (objects valued by the call that makes
 them, as closures now are: `log/pendencias.md`).
+
+## Why the tracer never converges: the method and the algorithm (systematic debugging of the process, 2026-11-11 night)
+
+The owner asked why the work stays case by case. The evidence, read on the tracer and its records:
+
+- 88 rule identifiers, several corrected three or four times (J2, J2', J2'', J2''', J2''''); 14 sections named "found
+  by" a measurement or a probe; 41 commits of the tracer in a week, nearly all one more rule. Each measurement of a
+  program was taken as the specification: a wrong or missing link found, the narrowest rule that explains it written.
+  No oracle of semantic completeness exists, so each new program shows new cases without end.
+- Syntax is complete and gated: every named node kind of the three grammars (184 TSX, 206 C++, 85 GDScript) has a role
+  in `rule_table`. Semantics have no such oracle.
+- The platform is written by hand: 51 tables of names (containers, primitives, predicates, callbacks, library types)
+  and an opaque value, `<engine>`, used 86 times, which absorbs what no table models and so hides every gap (T5, V2',
+  N1'' were gaps it hid). The platforms' own declarations are on disk and unread: TypeScript's 102 `lib.*.d.ts`
+  (`Array<T>.push/map/forEach` declared there), `@types/three`, Godot's `extension_api-4-7.json` (1,036 classes,
+  16,822 methods).
+- Values have no identity: an object is its class, an array a text of its element type, a closure was its body until
+  C4. Each aliasing, mutation or factory pattern (`push`, factories, `Object.assign`, `this[k]`, prototypes, closures)
+  became a rule of its own; an allocation-site heap abstraction handles them as one.
+- The languages' semantics live in the solver: 69 branches over string-encoded value forms (`<fn>gid^k~e`, `<elem>`,
+  `Array<...>`), so each rule touches the core and meets the others (templates, bounds, narrowing, meets).
+
+The cause is architectural, not a rule. The design that removes it (the literature's: Andersen-style inclusion
+analysis over a normalized IR, specified declaratively as Doop does for Java; platform models from declaration files,
+as TAJS filters by `.d.ts`):
+
+1. One core IR, language-independent: allocation with its site, move, field load and store (a dynamic key too), call
+   with an explicit receiver, return, throw/catch, closure creation with its environment. Each language is lowered into
+   it construct by construct, checked against its grammar's node kinds.
+2. One analysis over it: abstract objects by allocation site (arrays, functions, closures, prototypes, modules are
+   objects), fields per abstract object, call resolution by the callee's objects, finite context sensitivity (object
+   sensitivity for methods, argument tuples for functions, heap cloning one level): termination by design.
+3. Platform models generated from the official declarations, with effects by type (a parameter typed by the
+   receiver's type parameter feeds that place of the receiver; a callback is called with its declared parameters'
+   values; a result typed U is what holds U), opaque only where no declaration exists; the effects types cannot say
+   (`Object.defineProperty`, `bind`, `Reflect`) a finite set enumerated from ECMA-262's standard built-in objects.
+4. Measurement becomes acceptance: the new core holds the current tracer's correct links, on the city, the lab app and
+   the lab with three.js.
