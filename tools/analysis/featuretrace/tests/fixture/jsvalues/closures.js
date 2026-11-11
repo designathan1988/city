@@ -36,3 +36,40 @@ function plain() {
 }
 
 export function plainValue() { return plain(); }
+
+// A maker with two parameters its closure reads (C2' meets C4'): the call still gives the closure.
+function pair(a, b) {
+  return () => [a, b];
+}
+const pairAP = pair(new Apple(), new Pear());
+
+export function pairMade() { return pairAP; }
+
+export function pairRun() { return pairAP(); }
+
+// A closure handed back to its own maker (`spin(wrap(f), n - 1)`): the maker's templates are keyed by the function a
+// closure is, never by the template that made it, so they are finite (C4').
+function wrap(f) {
+  return () => f();
+}
+function spin(f, n) {
+  return n > 0 ? spin(wrap(f), n - 1) : f;
+}
+
+export function spunRun() { return spin(() => new Apple(), 3)(); }
+
+// A property written on a closure in the function that makes it is that closure's own (C4'); `call` and `bind` run a
+// closure in its environment.
+function tagged(x) {
+  const fn = () => 1;
+  fn.tag = x;
+  return fn;
+}
+const taggedA = tagged(new Apple());
+const taggedP = tagged(new Pear());
+
+export function tagApple() { return taggedA.tag; }
+
+export function callApple() { return appleOf.call(null, 1); }
+
+export function bindApple() { return appleOf.bind(null)(1); }

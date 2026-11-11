@@ -13,7 +13,7 @@ Type texts: a type as written, CLASS + key (a class of the program), FN + gid (a
 """
 from __future__ import annotations
 
-from . import js_library, js_transfer, names, narrow_values, receivers, templates, transfer, truth
+from . import closures, js_library, js_transfer, names, narrow_values, receivers, templates, transfer, truth
 from .js_library import EACH
 from .library import DEREF, ITEM, ITER, passes_through
 from .places import Places
@@ -44,7 +44,7 @@ class Typer(Places, TypeNames, Solver):
         self.unreceived = []               # methods' `this` nodes no call with a receiver reached yet (`receivers`)
         self.bound_members = {}            # class or interface key -> the members it requires (`bounds`, S2)
         self.constructors = None           # a function's prototype class -> the function (`js_transfer`, N1'')
-        self.free = {}                     # gid -> a function's free variables (`templates.free_names`, C4)
+        self.free = {}                     # gid -> a function's free variables (`closures.free_names`, C4)
         self.envs = [None]                 # environment id -> the template a closure was made in (C4'); 0: none
         self.env_ids = {}                  # a template's key -> its environment id
 
@@ -68,6 +68,7 @@ class Typer(Places, TypeNames, Solver):
         if frame.key not in self.env_ids:
             self.env_ids[frame.key] = len(self.envs)
             self.envs.append(frame)
+            closures.closure_writes(self, frame, self.env_ids[frame.key])     # its closures' own properties
         return self.env_ids[frame.key]
 
     def closure_frame(self, unit, env: int):

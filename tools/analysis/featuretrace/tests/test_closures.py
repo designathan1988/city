@@ -31,6 +31,21 @@ class Closures(Solved, FixtureCase):
     def test_a_closure_inside_a_closure(self):
         self.assertEqual({APPLE}, self.returned("nestedApple"))
 
+    def test_a_maker_of_two_key_parameters_gives_its_closure(self):
+        made = self.returned("pairMade")
+        self.assertTrue(made and all(v.startswith(FN) for v in made), made)
+        self.assertTrue(self.returned("pairRun"), self.returned("pairRun"))
+
+    def test_a_closure_handed_back_to_its_maker_ends(self):
+        self.assertEqual({APPLE}, self.returned("spunRun"))
+
+    def test_a_property_written_on_a_closure_by_its_maker(self):
+        self.assertEqual({APPLE}, self.returned("tagApple"))
+
+    def test_call_and_bind_run_a_closure_in_its_environment(self):
+        self.assertEqual({APPLE}, self.returned("callApple"))
+        self.assertEqual({APPLE}, self.returned("bindApple"))
+
     def test_a_closure_that_reads_no_parameter_is_one_value(self):
         found = self.returned("plainValue")
         self.assertEqual(1, len(found), found)

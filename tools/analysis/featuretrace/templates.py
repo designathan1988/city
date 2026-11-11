@@ -14,8 +14,8 @@ the template, its own templates nest in it.
 from __future__ import annotations
 
 from . import receivers
-from .model import LOCAL_REFS
-from .solver import UNDEFINED, identity
+from .closures import closed, free_names, function_of, functions, written_on
+from .solver import FN, UNDEFINED, identity
 
 PASS_SHAPES = ("member", "index", "elements", "each", "await", "addr", "put", "deref", "narrow")
 MISSING = ("<missing>",)          # a key parameter its call does not write: its default, one template
@@ -45,46 +45,6 @@ class Frame:
         return getattr(self._unit, name)
 
 
-def free_names(t, unit) -> frozenset:
-    """The variables of its enclosing functions a function reads (its free variables, the ones it closes over): the
-    captured names its references and trees read, and those its own closures read through it."""
-    memo = t.free
-    if unit.gid not in memo:
-        memo[unit.gid] = frozenset()                         # read as none while worked out (a closure of itself)
-        found = {r.name for r in unit.refs if r.base is None and r.kind in LOCAL_REFS and r.name in unit.captured}
-        trees = [r.base for r in unit.refs] + [a for r in unit.refs for a in r.args] \
-            + [v for vs in unit.types.values() for v in vs] + [tree for _, _, tree in unit.returns] + list(unit.yields)
-        found |= {n for n in names_in(trees) if n in unit.captured}
-        inner = callables_in(trees) | set(unit.lambdas.values()) | {r.target for r in unit.refs if r.kind == "lambda"}
-        for lid in inner:                                    # its own closures' free variables it closes over too
-            found |= {n for n in free_names(t, closed(t, unit, lid)) if n in unit.captured}
-        memo[unit.gid] = frozenset(found)
-    return memo[unit.gid]
-
-
-def names_in(tree) -> set:
-    """The names a tree reads (any shape)."""
-    if isinstance(tree, tuple) and len(tree) == 2 and tree[0] == "name" and isinstance(tree[1], str):
-        return {tree[1]}
-    if isinstance(tree, (tuple, list)):
-        return set().union(*(names_in(part) for part in tree if isinstance(part, (tuple, list))))
-    return set()
-
-
-def callables_in(tree) -> set:
-    """The functions written in a tree (their local ids)."""
-    if isinstance(tree, tuple) and len(tree) == 2 and tree[0] == "callable" and isinstance(tree[1], int):
-        return {tree[1]}
-    if isinstance(tree, (tuple, list)):
-        return set().union(*(callables_in(part) for part in tree if isinstance(part, (tuple, list))))
-    return set()
-
-
-def closed(t, unit, local_id: int):
-    """The function written in `unit` with local id `local_id`."""
-    return t.ix.units[t.ix.offset[unit.file] + local_id]
-
-
 def key_params(t, unit) -> tuple:
     """The parameters (indices) that reach the function's result (C1), and `RECEIVER` when its `this` does; () when
     none does."""
@@ -111,7 +71,7 @@ def reaches(t, unit, tree, seen: set) -> set:
             out.add(unit.params.index(name))
         if name in unit.types and name not in seen:
             seen.add(name)
-            for part in unit.types[name]:
+            for part in unit.types[name] + written_on(unit, name):     # a closure's, its properties too (C4')
                 out |= reaches(t, unit, part, seen)
         return out
     if kind == "self":                              # `this`: the receiver of a method's call (J2')
@@ -168,7 +128,7 @@ def reads(t, unit, tree, seen: set) -> set:
             out.add(name)                       # a free variable: what the closure's environment binds (C4')
         if name in unit.types and name not in seen:
             seen.add(name)
-            out |= reads(t, unit, unit.types[name], seen)
+            out |= reads(t, unit, unit.types[name] + written_on(unit, name), seen)
         return out
     if tree[0] == "self":
         return {RECEIVER}                       # `this`: the receiver (J2')
@@ -200,7 +160,7 @@ def route(t, target, unit, args: list, keys: tuple, deliver, receiver=None) -> N
         t.add(nodes[RECEIVER], [receiver])
 
     def make(k: int, value) -> None:
-        tkey = (k, MISSING if value is None else identity(*value))
+        tkey = (k, MISSING if value is None else key_of(value))
         if tkey in made:
             return
         frame = t.templates.get((unit.key, tkey))
@@ -249,6 +209,13 @@ def route(t, target, unit, args: list, keys: tuple, deliver, receiver=None) -> N
     deliver(joined)
 
 
+def key_of(value) -> tuple:
+    """What a value keys a template by: itself, a closure by its function (Agesen: a closure's type is the function
+    written, not the environment it was made in), so the templates a closure argument makes are finite (C4')."""
+    text, ctx = value
+    return identity(function_of(text), ctx) if text.startswith(FN) else identity(text, ctx)
+
+
 def omitted_is_undefined(unit, index: int) -> bool:
     """Whether a JS parameter a call writes no argument for holds `undefined`: not when written with a default, nor a
     rest parameter (an empty array)."""
@@ -258,8 +225,17 @@ def omitted_is_undefined(unit, index: int) -> bool:
 
 def meets(t, families: dict, k: int):
     """A value of key parameter k's templates' results reaches the call when every other key parameter's family holds
-    it too: each family is a superset of the call's result, so is their intersection (C2')."""
+    it too: each family is a superset of the call's result, so is their intersection (C2'). A closure is the same
+    function in every family, each made in that family's template (C4'): the function is what they must all hold, and
+    then each family's closure of it (its environment binding its own key) reaches the call."""
     def transfer(target, values):
         others = [t.known.get(t.find(node), set()) for j, node in families.items() if j != k]
-        t.add(target, [(text, ctx) for text, ctx in values if all(identity(text, ctx) in seen for seen in others)])
+        kept = [(text, ctx) for text, ctx in values
+                if not text.startswith(FN) and all(identity(text, ctx) in seen for seen in others)]
+        made = {function_of(text) for text, _ in values if text.startswith(FN)}
+        shared = {f for f in made if all(f in functions(t, node) for j, node in families.items() if j != k)}
+        if shared:
+            for node in families.values():          # every family's closure of a function they all hold
+                kept += [(text, ctx) for text, ctx in t.held(node) if text.startswith(FN) and function_of(text) in shared]
+        t.add(target, kept)
     return transfer
