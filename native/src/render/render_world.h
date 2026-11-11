@@ -1,5 +1,6 @@
 // Everything drawn from CityState. Consumes the ChangeLog (the only dirty channel) on the main thread under the shared
-// map lock and the log's own mutex (never the map exclusively: that would wait for every mesh job reading the map).
+// map lock and the log's own mutex (never the map exclusively: that would wait for every mesh job reading the map). It is
+// handed the city const and the log apart: the log is the one thing of the state it changes (tools/gates RENDER_SO_LEITURA).
 // Road, furniture and building chunks are streamed around the camera (render.road_end_m,
 // render.props_end_m, render.building_far_end_m): built nearest-first within a per-frame budget, freed when the camera leaves, so memory
 // follows the view and not the size of the map.
@@ -59,8 +60,10 @@ public:
 		wear_.free();
 		effects_.release();
 	}
-	void full_rebuild(CityState &s, godot::Object *terrain3d); // after a new map / load (caller holds the map shared)
-	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam, double frame_s); // frame_s: the frame's own time, what the effects move by
+	// After a new map / load (caller holds the map shared): everything drawn again, the log's render lists dropped.
+	void full_rebuild(const CityState &s, ChangeLog &log, godot::Object *terrain3d);
+	// The frame: the log drained, the streams offered, the commits (frame_s: the frame's own time, what the effects move by).
+	void sync(const CityState &s, ChangeLog &log, godot::Object *terrain3d, const godot::Vector3 &cam, double frame_s);
 	// The frame's level-of-detail view (render/detail.h), set by CityCore before the frame's updates: every family reads its
 	// levels from it.
 	void set_view(const DetailView &v) { view_ = v; }
@@ -199,7 +202,7 @@ private:
 	std::vector<int64_t> nature_keys_, water_keys_;
 	std::vector<float> lot_boxes_;
 	Cost cost_;
-	void drain_log(CityState &s);
+	void drain_log(const CityState &s, ChangeLog &log);
 	void sync_nature(); // the landscape's dirty chunks and the water
 	void mark_changed(const CityState &s); // the chunks the drained edits touched, for every renderer that draws them
 	void offer_streams(const CityState &s, const godot::Vector3 &cam, std::vector<FrameAdmission::Unit> &units);

@@ -12,7 +12,6 @@
 #include <godot_cpp/variant/dictionary.hpp>
 
 #include <mutex>
-#include <shared_mutex>
 
 using namespace godot;
 
@@ -81,7 +80,7 @@ Dictionary CityProbes::flow_push(int n, int seconds) {
 	for (int seg : node.segs)
 		if (seg != main[0] && seg != main[1]) minor = seg;
 	{
-		std::unique_lock<std::shared_mutex> map(s.map_mutex);
+		map_hold::WriterHold map(s.map_mutex, map_hold::Writer::PROBE);
 		std::lock_guard<std::mutex> tr(s.traffic_mutex);
 		FlowControl &c = s.traffic.flow_control;
 		for (int second = 1; second <= seconds; second++) {

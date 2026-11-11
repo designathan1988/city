@@ -94,7 +94,7 @@ void grow_step(CityState &s, double dt) {
 			if (g.acc < 1) return;
 			d = decide(s);
 		}
-		std::unique_lock<std::shared_mutex> map(s.map_mutex);
+		map_hold::WriterHold map(s.map_mutex, map_hold::Writer::TICK);
 		if (s.revision != d.revision) return; // a command edited the map meanwhile: what is owed is decided again at the next step
 		for (int64_t key : d.dropped) g.members.erase(key);
 		g.cells = std::move(d.cells);

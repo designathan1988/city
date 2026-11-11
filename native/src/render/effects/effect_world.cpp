@@ -150,12 +150,12 @@ void EffectWorld::step_geysers(float dt) {
 // `frame_s`: the frame's own time (the engine's, CityCore::_process): the effects move by the clock everything on the screen moves by.
 // They kept a wall clock of their own, so in a run in simulated time (the tests', a recording's) a second of theirs took hundreds of
 // frames, and a body fell in slow motion beside a street at full speed.
-void EffectWorld::sync(CityState &s, FrameAdmission &admission, double frame_s) {
+void EffectWorld::sync(const CityState &s, ChangeLog &log, FrameAdmission &admission, double frame_s) {
 	const float dt = std::min(MAX_FRAME_S, float(std::max(frame_s, 0.0)));
 	now_ += dt;
 	{
-		std::lock_guard<std::mutex> lk(s.log.mutex);
-		events_.swap(s.log.damage_events);
+		std::lock_guard<std::mutex> lk(log.mutex);
+		events_.swap(log.damage_events);
 	}
 	puffs_.stamp(now_); // the clock the puffs about to be born are stamped with
 	for (const DamageEvent &e : events_) apply(e, s);

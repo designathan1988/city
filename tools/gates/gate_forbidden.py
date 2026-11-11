@@ -11,6 +11,10 @@ MARKER = re.compile(r"\b(TODO|FIXME|XXX|HACK)\b", re.I)
 _HTML_COLOR = re.compile(r"^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$")
 _SCENE_CALLS = {"change_scene_to_file", "change_scene_to_packed", "change_scene_to_node"}
 _TREE_ONLY = {"quit", "set_pause"}
+_EXCLUSIVE_GUARDS = {"unique_lock", "lock_guard", "scoped_lock"}  # the standard's guards that hold a mutex exclusively
+_MAP_LOCK = {"shared_mutex", "map_mutex"}  # the map's mutex, by its type (the only shared_mutex of the core) or its name
+_HAND_LOCKS = {"lock", "try_lock", "try_lock_for", "try_lock_until"}
+_HANDLES = {"&", "&&", "*"}
 
 
 def applies(rule, path):
@@ -33,6 +37,61 @@ def includes_prefix(prefix):
             if inc.startswith(prefix):
                 err(rule["id"], f"{src.path}:{line}", rule["message"])
     return check
+
+
+def _statement(code, i):
+    """The tokens from code[i] to the end of its declaration: the next `;`, `{` or `,` outside parentheses, or the `)` that
+    closes a list it stands in (a parameter)."""
+    depth = 0
+    for j in range(i, len(code)):
+        x = code[j].text
+        depth += {"(": 1, ")": -1}.get(x, 0)
+        if depth < 0 or (depth == 0 and x in (";", "{", ",")):
+            return code[i:j]
+    return code[i:]
+
+
+def map_writer(ctx, src, rule, err):
+    """The map held exclusively by anything but map_hold::WriterHold, the hold that names its writer: a standard guard of a
+    shared_mutex or of map_mutex (typed, deduced or by an alias of its type), and map_mutex locked by hand."""
+    if src.lang != "cpp":
+        return
+    code = src.code()
+    n = len(code)
+    for i, t in enumerate(code):
+        if t.kind != "ident":
+            continue
+        guard = t.text in _EXCLUSIVE_GUARDS and any(x.text in _MAP_LOCK for x in _statement(code, i))
+        by_hand = (t.text == "map_mutex" and i + 3 < n and code[i + 1].text in (".", "->")
+                   and code[i + 2].text in _HAND_LOCKS and code[i + 3].text == "(")
+        if guard or by_hand:
+            err(rule["id"], f"{src.path}:{t.line}", rule["message"])
+
+
+def _qualified_start(code, i):
+    """Where the qualified name ending at code[i] begins (`city::CityState` begins at `city`, `::CityState` at `::`)."""
+    while i >= 1 and code[i - 1].text == "::":
+        i -= 2 if i >= 2 and code[i - 2].kind == "ident" else 1
+    return max(i, 0)
+
+
+def render_reads(ctx, src, rule, err):
+    """render/ only reads the city: it includes no command, and the CityState it is handed is const (by reference or pointer),
+    never cast to writable; the ChangeLog it consumes is handed apart."""
+    includes_prefix("sim/commands/")(ctx, src, rule, err)
+    if src.lang != "cpp":
+        return
+    code = src.code()
+    n = len(code)
+    for i, t in enumerate(code):
+        if t.kind != "ident" or t.text != "CityState" or i + 1 >= n:
+            continue
+        start = _qualified_start(code, i)
+        before = code[start - 1].text if start >= 1 else ""
+        cast = before == "<" and start >= 2 and code[start - 2].text == "const_cast"
+        writable = code[i + 1].text in _HANDLES and before != "const"
+        if cast or writable:
+            err(rule["id"], f"{src.path}:{t.line}", rule["message"])
 
 
 def core_owner(ctx, src, rule, err):
@@ -172,7 +231,8 @@ def machine_paths(ctx, src, rule, err):
 CHECKS = {
     "SEM_MARCADORES_SOLTOS": markers,
     "SIM_SEM_GODOT": includes_prefix("godot"),
-    "RENDER_SO_LEITURA": includes_prefix("sim/commands/"),
+    "RENDER_SO_LEITURA": render_reads,
+    "MAP_WRITER_UNNAMED": map_writer,
     "UM_DONO_DO_CORE": core_owner,
     "FLUXO_CENTRAL": central_flow,
     "UI_SEM_ESTILO_SOLTO": loose_style,

@@ -13,7 +13,7 @@ namespace city {
 
 Dictionary CityCore::set_interior(bool on, int target, int level, int dir) {
 	Dictionary d;
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
 	if (!state_->ready) return d;
 	InteriorRequest r;
 	r.on = on;

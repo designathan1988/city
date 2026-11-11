@@ -92,7 +92,7 @@ Dictionary CityCore::save_city(const String &path) {
 		std::string error;
 		const bool ok = write_atomic(target, bytes, error);
 		if (ok) {
-			std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+			map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::SAVE);
 			state_->saved_revision = revision;
 			save_.state.store(2);
 		} else {
@@ -130,7 +130,12 @@ Dictionary CityCore::load_city(const String &path, bool paused) {
 		read->catalog = state_->catalog;
 	}
 	OpenTimes times;
-	if (!decode_city(*read, bytes.data(), bytes.size(), error, &times)) {
+	bool decoded = false;
+	{
+		map_hold::Named reading(map_hold::Writer::LOAD); // the city read aside: no other thread sees it
+		decoded = decode_city(*read, bytes.data(), bytes.size(), error, &times);
+	}
+	if (!decoded) {
 		d["error"] = String(error.c_str()); // refused before anything changed: the open city runs on
 		return d;
 	}
@@ -141,7 +146,7 @@ Dictionary CityCore::load_city(const String &path, bool paused) {
 	// let the map go (its cut refers to them). Paused before the map is taken: a job still gathering needs it shared to end.
 	state_->jobs->pause();
 	{
-		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+		map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::LOAD);
 		state_->interior = InteriorView(); // the layer closes with the city it showed
 		take_city(*state_, *read);
 		spent["take"] = laps.lap();

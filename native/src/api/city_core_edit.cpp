@@ -21,22 +21,22 @@ constexpr size_t JUNCTION_MARK_ARMS = 3;
 } // namespace
 
 bool CityCore::undo() {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
 	return state_->ready && state_->history.undo(*state_);
 }
 
 bool CityCore::redo() {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
 	return state_->ready && state_->history.redo(*state_);
 }
 
 void CityCore::begin_stroke(const String &label) {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
 	state_->history.begin_group(label.utf8().get_data());
 }
 
 void CityCore::end_stroke() {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
 	state_->history.end_group(*state_);
 }
 
@@ -78,12 +78,12 @@ Dictionary CityCore::duplicate_road(int seg) {
 
 Dictionary CityCore::set_marking_style(int style, bool undoable) {
 	if (undoable) return run_edit(*state_, "cmd.paint", [&](CityState &s) { return city::set_marking_style(s, style); });
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
 	return result_dict(city::set_marking_style(*state_, style));
 }
 
 Dictionary CityCore::set_style(const String &id) {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
 	state_->style = id.utf8().get_data();
 	Dictionary d;
 	d["ok"] = true;
@@ -202,7 +202,7 @@ Dictionary CityCore::roundabout(const Vector3 &p, float radius, bool cut) {
 }
 
 Dictionary CityCore::preview_roundabout(const Vector3 &p, float radius, bool cut) {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // a preview only reads: the tick and the mesh jobs go on
 	const CityState &s = *state_;
 	Dictionary d;
 	if (!s.ready) return d;
@@ -215,7 +215,7 @@ Dictionary CityCore::preview_roundabout(const Vector3 &p, float radius, bool cut
 }
 
 Dictionary CityCore::segment_at(const Vector3 &p) {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	Dictionary d;
 	if (!s.ready) return d;
@@ -263,7 +263,7 @@ Dictionary CityCore::draw_building(const Vector3 &a, const Vector3 &b, int fn, i
 }
 
 Dictionary CityCore::preview_lot(const Vector3 &a, const Vector3 &b) {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	Dictionary d;
 	if (!s.ready) return d;

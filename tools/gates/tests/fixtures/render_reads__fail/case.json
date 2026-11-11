@@ -1,6 +1,9 @@
 {
  "rule": "RENDER_SO_LEITURA",
  "expect": [
-  "RENDER_SO_LEITURA native/src/render/a.cpp:2"
+  "RENDER_SO_LEITURA native/src/render/a.cpp:2",
+  "RENDER_SO_LEITURA native/src/render/b.cpp:2",
+  "RENDER_SO_LEITURA native/src/render/b.cpp:3",
+  "RENDER_SO_LEITURA native/src/render/b.cpp:4"
  ]
 }

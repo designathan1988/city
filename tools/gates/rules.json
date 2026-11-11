@@ -229,8 +229,19 @@
       "paths": [
         "native/src/render/"
       ],
-      "pattern": "#include\\s*\"sim/commands/",
-      "message": "render/ só lê o CityState; mutações só pela camada sim/commands"
+      "pattern": "#include\\s*\"sim/commands/|CityState\\s*[&*]",
+      "message": "render/ only reads the city: no sim/commands include, and the CityState it is handed is const (the ChangeLog it consumes comes apart, by its own reference); changes go through sim/commands"
+    },
+    {
+      "id": "MAP_WRITER_UNNAMED",
+      "paths": [
+        "native/src/"
+      ],
+      "pattern": "unique_lock|lock_guard|scoped_lock|map_mutex\\s*(\\.|->)\\s*(try_)?lock",
+      "except": [
+        "native/src/sim/state/map_hold.h"
+      ],
+      "message": "the city's map is held exclusively only by map_hold::WriterHold, which names its writer (command, tick, load, generation, save, probe: sim/state/map_hold.h); a reader holds it shared"
     },
     {
       "id": "UM_DONO_DO_CORE",

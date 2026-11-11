@@ -245,7 +245,7 @@ Dictionary CityProbes::park_sample() {
 }
 
 Dictionary CityProbes::look_twins(float reach_m, float alike) {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex); // a look not yet read is kept
+	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::PROBE); // a look not yet read is kept
 	CityState &s = *state_;
 	int pairs = 0, twins = 0;
 	for (int id = 0; id < int(s.buildings.items.size()); id++) {

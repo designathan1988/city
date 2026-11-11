@@ -91,7 +91,7 @@ Array CityCore::road_spec_issues(int base, const Dictionary &spec) const {
 }
 
 int CityCore::road_spec_make(int base, const Dictionary &spec) {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
 	const RoadSpec s = read_spec(spec);
 	if (!spec_issues(s, state_->catalog.profile(base).road_class).empty()) return -1;
 	RoadVariant v;

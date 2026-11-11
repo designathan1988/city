@@ -181,9 +181,9 @@ building. Meshoptimizer and Clipper2 come through CMake on the first build. Apar
 ## Data flow and threads
 - `DataTables` reads `data/**` → `CityStore.boot` sends the catalogue to the `CityCore`, which refuses a missing key. [c:catalogue-boot]
 - `Simulation` runs on its own thread with a fixed tick (`sim_tick_hz`), under the shared `map_mutex` and `traffic_mutex`. [c:sim-thread]
-- Commands and the clock take `map_mutex` exclusively; growth decides under the shared lock and takes the exclusive one only to add (`grow_step`). [c:exclusive-lock]
+- Commands and the clock take `map_mutex` exclusively, each hold naming its writer (`map_hold::WriterHold`: command, tick, load, generation, save, probe); growth decides under the shared lock and takes the exclusive one only to add (`grow_step`). [c:exclusive-lock]
 - `ChangeLog` is the single "dirty" channel, drained under the shared lock and the log's mutex. [c:change-log]
-- `RenderWorld.sync` never takes the map exclusively. It sends the meshes to the `JobPool`, which read only the map, never the traffic. [c:render-shared]
+- `RenderWorld.sync` never takes the map exclusively and is handed the city const, the `ChangeLog` apart. It sends the meshes to the `JobPool`, which read only the map, never the traffic. [c:render-shared]
 - A mesh job copies what it reads under a short shared lock (`MapRead`, `CityCut`, `HeightPatch`) and builds with the lock let go. [c:mesh-cut]
 - The land's maps are `TerrainBridge`'s (fine ground round the view, far ground whole); Terrain3D keeps no region. A record's derived body has one owner, the tables' `BodyCache`, bounded in bytes. [c:land-owner]
 - Mesh conversion enters `render.upload_budget_mb` per frame; the commit only swaps meshes, within `render.commit_budget_ms`. [c:frame-budgets]

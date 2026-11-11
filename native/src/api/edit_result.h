@@ -28,7 +28,7 @@ inline godot::Dictionary result_dict(const EditResult &r) {
 // Locks the world, records the command under `label` (a strings.csv key) and returns its result.
 template <typename F>
 godot::Dictionary run_edit(CityState &s, const char *label, F &&fn) {
-	std::unique_lock<std::shared_mutex> lk(s.map_mutex);
+	map_hold::WriterHold lk(s.map_mutex, map_hold::Writer::COMMAND);
 	if (!s.ready) return godot::Dictionary();
 	s.history.begin(label);
 	EditResult r = fn(s);

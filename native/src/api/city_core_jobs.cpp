@@ -120,13 +120,17 @@ Dictionary CityProbes::job_pool_probe() const {
 	return d;
 }
 
+// What was built under the map, by the lane of the job that built it, and the map's exclusive holds, by the writer each named
+// (sim/state/map_hold.h): both counted by the tests' DLL since the last reset.
 Dictionary CityProbes::map_hold(bool reset) {
-	Dictionary built;
+	Dictionary built, writers;
 	for (const auto &[who, count] : map_hold::tally()) built[String(who.c_str())] = count;
+	for (const auto &[who, count] : map_hold::writers()) writers[String(who.c_str())] = count;
 	if (reset) map_hold::clear();
 	Dictionary d;
 	d["counted"] = CHECKS;
 	d["built"] = built;
+	d["writers"] = writers;
 	return d;
 }
 

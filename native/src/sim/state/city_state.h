@@ -94,11 +94,16 @@ struct CityData {
 	// Every change to the map but a building that grew: what is made from the streets alone (their furniture: the network, what
 	// the player put up and cut, what a blow knocked out) is kept by it, so the city growing round the streets drops nothing.
 	uint64_t street_revision = 0;
+	// A change made on a thread with no writer named stops the tests' DLL (map_hold.h).
 	void touch() {
+		map_hold::must_write();
 		revision++;
 		street_revision++;
 	}
-	void touch_grown() { revision++; } // a building grew: a change to the map (saved); the streets stand as they stood
+	void touch_grown() { // a building grew: a change to the map (saved); the streets stand as they stood
+		map_hold::must_write();
+		revision++;
+	}
 	bool has_unsaved_work() const { return revision != saved_revision; }
 };
 

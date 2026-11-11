@@ -106,7 +106,7 @@ Dictionary CityCore::new_map(int map, int seed, bool with_city, bool paused) {
 	sim_.stop();
 	CityGenReport r;
 	{
-		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+		map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::GENERATION);
 		state_->growth.clear();
 		state_->interior = InteriorView(); // the layer closes with the city it showed
 		r = generate_map(*state_, map, uint32_t(seed), with_city);
@@ -125,7 +125,7 @@ Dictionary CityCore::new_map(int map, int seed, bool with_city, bool paused) {
 }
 
 void CityCore::mark_saved() {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::SAVE);
 	state_->saved_revision = state_->revision;
 }
 
@@ -190,10 +190,10 @@ void CityCore::_process(double delta) {
 	agents_ms_ = laps.lap();
 	if (need_full_rebuild_) {
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // reads the map; the log has its own mutex
-		render_.full_rebuild(*state_, terrain3d());
+		render_.full_rebuild(*state_, state_->log, terrain3d());
 		need_full_rebuild_ = false;
 	}
-	render_.sync(*state_, terrain3d(), cam_, delta); // takes the map shared (never exclusive: render_world.h)
+	render_.sync(*state_, state_->log, terrain3d(), cam_, delta); // takes the map shared (never exclusive: render_world.h)
 	laps.lap();
 	{
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex);

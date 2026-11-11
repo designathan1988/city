@@ -1,4 +1,4 @@
-// The tally of what was built under the map (map_hold.h).
+// The tallies of what was built under the map and of the exclusive holds by writer (map_hold.h).
 #include "sim/state/map_hold.h"
 
 #include "core/job_pool.h"
@@ -11,7 +11,30 @@ namespace map_hold {
 namespace {
 std::mutex tally_mutex;
 std::map<std::string, int64_t> counts;
+std::map<std::string, int64_t> holds;
 } // namespace
+
+const char *writer_name(Writer w) {
+	switch (w) {
+		case Writer::COMMAND: return "command";
+		case Writer::TICK: return "tick";
+		case Writer::LOAD: return "load";
+		case Writer::GENERATION: return "generation";
+		case Writer::SAVE: return "save";
+		case Writer::PROBE: return "probe";
+		default: return "none";
+	}
+}
+
+void held_by(Writer w) {
+	std::lock_guard<std::mutex> lk(tally_mutex);
+	holds[writer_name(w)]++;
+}
+
+std::map<std::string, int64_t> writers() {
+	std::lock_guard<std::mutex> lk(tally_mutex);
+	return holds;
+}
 
 void leave() {
 	Held &h = mine();
@@ -31,6 +54,7 @@ std::map<std::string, int64_t> tally() {
 void clear() {
 	std::lock_guard<std::mutex> lk(tally_mutex);
 	counts.clear();
+	holds.clear();
 }
 
 } // namespace map_hold

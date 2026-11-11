@@ -325,7 +325,7 @@ Dictionary CityProbes::walker_bodies(const Vector3 &at, float radius) {
 }
 
 void CityProbes::set_city_hour(float hour) {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::PROBE);
 	CityClock &c = state_->clock;
 	c.day_shift = double(hour) * MINUTES_PER_HOUR - c.minutes.load();
 }

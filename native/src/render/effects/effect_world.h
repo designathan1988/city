@@ -31,9 +31,10 @@ public:
 	// The height-sample rectangles (x0, z0, x1, z1) the terrain composed again since the last frame (ChangeLog::terrain_rects): the
 	// craters whose decal stands on them are laid again at the next change of the crater list. Before sync, each frame.
 	void touch_terrain(const CityState &s, const std::vector<int> &rects);
-	// One frame, the caller holding the map shared: plays what happened since the last, then steps the effects; the ruins' pieces
-	// it hands the server come within the frame's admission (its deadline and byte ledger).
-	void sync(CityState &s, FrameAdmission &admission, double frame_s);
+	// One frame, the caller holding the map shared: plays what happened since the last (the damage events taken from `log`, the
+	// one thing of the state it changes), then steps the effects; the ruins' pieces it hands the server come within the frame's
+	// admission (its deadline and byte ledger).
+	void sync(const CityState &s, ChangeLog &log, FrameAdmission &admission, double frame_s);
 	float shake() const { return shake_; } // metres the camera moves now
 	float since_blast() const { return blast_at_ < 0 ? -1.f : float(now_ - blast_at_); } // effect seconds since the last blast (-1 none)
 	bool busy() const { return puffs_.active(now_) || !sources_.empty() || debris_.moving() || ruins_.moving() || flash_left_ > 0; }
@@ -87,7 +88,8 @@ private:
 	Debris debris_;
 	RuinPieces ruins_;
 	PeopleRenderer *people_ = nullptr; // whose bodies fall (render_world.cpp)
-	Rng rng_{ 0xb1a57ULL };
+	static constexpr uint64_t EFFECTS_SEED = 0xb1a57ULL; // the effects' own stream: the same blow scatters the same way every run
+	Rng rng_{ EFFECTS_SEED };
 	godot::RID scenario_, light_, light_inst_;
 	std::vector<DamageEvent> events_, events_played_; // to play; played this frame
 	struct Source {

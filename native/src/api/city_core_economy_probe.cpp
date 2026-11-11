@@ -15,7 +15,7 @@ using namespace godot;
 namespace city {
 
 void CityProbes::probe_set_money(double money) {
-	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
+	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::PROBE);
 	state_->money = money;
 }
 

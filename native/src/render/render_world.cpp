@@ -83,7 +83,7 @@ void RenderWorld::reset() {
 	building_stream_.clear();
 }
 
-void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
+void RenderWorld::full_rebuild(const CityState &s, ChangeLog &log, Object *terrain3d) {
 	reset();
 	terrain_.new_land(s.terrain, terrain3d); // its maps are made by the next sync, round the view
 	fog_.reset();
@@ -109,22 +109,22 @@ void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
 	for (const Building &b : s.buildings.items)
 		if (b.alive) building_stream_.mark(chunk_of(b.x, b.z));
 	buildings_.set_ranges(s);
-	std::lock_guard<std::mutex> log(s.log.mutex); // everything already in the map is drawn by the rebuild
-	s.log.clear_render();
+	std::lock_guard<std::mutex> lk(log.mutex); // everything already in the map is drawn by the rebuild
+	log.clear_render();
 }
 
 // Takes the render lists out of the ChangeLog under its own mutex (the map is held shared: change_log.h).
-void RenderWorld::drain_log(CityState &s) {
-	std::lock_guard<std::mutex> log(s.log.mutex);
-	road_keys_.swap(s.log.road_chunks);
-	prop_keys_.swap(s.log.prop_chunks);
-	building_keys_.swap(s.log.building_chunks);
-	view_keys_.swap(s.log.view_chunks);
-	terrain_rects_.swap(s.log.terrain_rects);
-	paint_rects_.swap(s.log.paint_rects);
-	nature_keys_.swap(s.log.nature_chunks);
-	water_keys_.swap(s.log.water_chunks);
-	lot_boxes_.swap(s.log.lot_boxes);
+void RenderWorld::drain_log(const CityState &s, ChangeLog &log) {
+	std::lock_guard<std::mutex> lk(log.mutex);
+	road_keys_.swap(log.road_chunks);
+	prop_keys_.swap(log.prop_chunks);
+	building_keys_.swap(log.building_chunks);
+	view_keys_.swap(log.view_chunks);
+	terrain_rects_.swap(log.terrain_rects);
+	paint_rects_.swap(log.paint_rects);
+	nature_keys_.swap(log.nature_chunks);
+	water_keys_.swap(log.water_chunks);
+	lot_boxes_.swap(log.lot_boxes);
 	if (!building_keys_.empty()) canyon_.touch(building_keys_);
 	if (!water_keys_.empty() || !terrain_rects_.empty()) shore_.touch();
 	if (!terrain_rects_.empty()) fog_.touch_terrain(s, terrain_rects_);
@@ -234,7 +234,7 @@ void RenderWorld::offer_streams(const CityState &s, const Vector3 &cam, std::vec
 			[this](int64_t k) { buildings_.drop_chunk(k); });
 }
 
-void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam, double frame_s) {
+void RenderWorld::sync(const CityState &s, ChangeLog &log, Object *terrain3d, const Vector3 &cam, double frame_s) {
 	const Tuning &t = s.catalog.tune;
 	using clock = std::chrono::steady_clock;
 	// One deadline from here: the drain, the fields, the flush of the uploads and every commit are inside it.
@@ -253,9 +253,9 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam, doub
 		// Only reads the map: shared, so a frame never waits for the mesh jobs (they read it shared too).
 		MapRead lk(s);
 		cost_.lock = laps.lap();
-		drain_log(s);
+		drain_log(s, log);
 		effects_.touch_terrain(s, terrain_rects_);
-		effects_.sync(s, f, frame_s);
+		effects_.sync(s, log, f, frame_s);
 		const std::vector<int64_t> repaint = effects_.take_repaint();
 		if (!repaint.empty()) {
 			buildings_.set_broken(effects_.broken());

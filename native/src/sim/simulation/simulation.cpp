@@ -73,7 +73,7 @@ void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 			chosen = !s.traffic.flow_control.changed.empty();
 		}
 		if (chosen) { // rare: the mesh jobs read the control off the network, so it changes under the exclusive lock
-			std::unique_lock<std::shared_mutex> map(s.map_mutex);
+			map_hold::WriterHold map(s.map_mutex, map_hold::Writer::TICK);
 			std::lock_guard<std::mutex> tr(s.traffic_mutex);
 			traffic::apply_flow_control(s);
 		}
@@ -82,7 +82,7 @@ void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 		// short hold must not decide on which tick a building grows.
 		if (growing) grow_step(s, dt);
 		{
-			std::unique_lock<std::shared_mutex> map(s.map_mutex, std::try_to_lock); // mesh jobs may hold it shared: the damage clock is owed what it missed
+			map_hold::WriterHold map(s.map_mutex, map_hold::Writer::TICK, std::try_to_lock); // mesh jobs may hold it shared: the damage clock is owed what it missed
 			if (map.owns_lock()) {
 				damage_step(s, owed_ + dt);
 				owed_ = 0;

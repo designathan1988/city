@@ -1,0 +1,9 @@
+{
+ "rule": "MAP_WRITER_UNNAMED",
+ "expect": [
+  "MAP_WRITER_UNNAMED native/src/api/a.cpp:4",
+  "MAP_WRITER_UNNAMED native/src/api/a.cpp:7",
+  "MAP_WRITER_UNNAMED native/src/api/a.cpp:10",
+  "MAP_WRITER_UNNAMED native/src/api/a.cpp:13"
+ ]
+}
