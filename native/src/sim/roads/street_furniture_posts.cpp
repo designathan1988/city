@@ -68,9 +68,10 @@ LampRow lamp_row(const RoadNetwork &net, int sid) {
 	const double v0 = g.retreat_a, v1 = g.len - g.retreat_b, from = v0 + past, to = v1 - past;
 	if (v1 <= v0) return r;
 	r.spacing = r.span = d.lamps.span_m;
-	if (to <= from) { // a short block: one pole in its middle
+	if (to - from < d.poles.min_gap_m) { // too short for a line (two of its poles never stand closer than that): its light on a column at its middle
 		r.origin = (v0 + v1) / 2;
 		r.stations = 1;
+		r.lone = true;
 		return r;
 	}
 	const int spans = std::max(1, int(std::ceil((to - from) / d.lamps.span_m)));

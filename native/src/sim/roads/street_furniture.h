@@ -40,6 +40,7 @@ struct FurnitureSpot {
 // heads `reach` toward the carriageway, and the stations: `stations` poles from `origin`, `spacing` apart.
 struct LampRow {
 	bool any = false, twin = false;
+	bool lone = false; // a block too short for a line (poles.min_gap_m between its end poles): one light, on a column at its middle, no wires
 	int side = 0;
 	float pole_u = 0, head_u = 0, pole_u2 = 0, head_u2 = 0;
 	float centre = 0, across = 1; // the night pools' middle line and how far they reach from it, from the profile's width

@@ -56,6 +56,8 @@ func _kit_lines() -> void:
 	check(int(c.row_poles) > 0 and int(c.row_spans) > 0, "the streets carry lines: %d poles, %d spans" % [c.row_poles, c.row_spans])
 	check(int(c.row_broken) == 0, "every pole of a street's line is strung to one that stands: %d not" % c.row_broken)
 	check(float(c.row_longest_m) <= most, "no span of a street's line is longer than a wire: %.1f m, at most %.1f" % [c.row_longest_m, most])
+	var least: float = DataTables.render_table("streets").wires.min_span_m
+	check(float(c.row_shortest_m) >= least, "no span of a street's line is shorter than a wire: %.1f m, at least %.1f" % [c.row_shortest_m, least])
 
 
 ## A point on a footway: asked of the core, walking out from the middle of the town.

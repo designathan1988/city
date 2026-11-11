@@ -138,6 +138,14 @@ void string_row(Placer &c, size_t first) {
 void lamps(Placer &c) {
 	const LampRow row = lamp_row(c.net, c.sid);
 	const LampDef &d = defs(c.net).lamps;
+	if (row.lone) { // no line: the block's light on a column at its middle, and the other face's beside it
+		FurnitureSpot light = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, row.origin, row.pole_u, toward_road(row.side), 0.f);
+		light.row = 1;
+		light.station = 0;
+		c.station(light);
+		if (row.twin) c.station(column(c, row, row.origin, 0));
+		return;
+	}
 	const size_t first = c.all.size();
 	for (int k = 0; k < row.stations; k++) {
 		const double v = row.origin + row.spacing * k;

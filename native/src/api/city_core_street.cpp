@@ -165,7 +165,7 @@ Dictionary CityStreet::furniture_census() {
 	PackedInt32Array kinds;
 	kinds.resize(FURNITURE_KINDS);
 	kinds.fill(0);
-	double metres = 0, longest = 0;
+	double metres = 0, longest = 0, shortest = 0;
 	int lit = 0, row_poles = 0, row_spans = 0, row_broken = 0;
 	std::vector<FurnitureSpot> spots;
 	for (int sid = 0; sid < int(s.roads.segs.size()); sid++) {
@@ -190,7 +190,9 @@ Dictionary CityStreet::furniture_census() {
 			double ax, az, ay, bx, bz, by;
 			footway_point(s.roads, sid, before->v, before->u, ax, az, ay);
 			footway_point(s.roads, sid, p.v, p.u, bx, bz, by);
-			longest = std::max(longest, std::hypot(bx - ax, bz - az));
+			const double span = std::hypot(bx - ax, bz - az);
+			longest = std::max(longest, span);
+			shortest = row_spans == 1 ? span : std::min(shortest, span);
 		}
 	}
 	Dictionary d;
@@ -201,6 +203,7 @@ Dictionary CityStreet::furniture_census() {
 	d["row_spans"] = row_spans; // the spans the layout strung between them
 	d["row_broken"] = row_broken; // a pole strung to a pole that does not stand (a span the render cannot draw)
 	d["row_longest_m"] = longest; // the longest of those spans, across
+	d["row_shortest_m"] = shortest; // and the shortest
 	return d;
 }
 
@@ -247,6 +250,8 @@ Array CityStreet::furniture_spots(int seg) {
 		d["row"] = p.row;
 		d["side"] = p.side;
 		d["station"] = p.station;
+		d["strung"] = p.strung; // a main row's pole: the station its wires come from (-1: the row starts here)
+		d["row_ends"] = p.row_ends; // ROW_HEAD 1, ROW_TAIL 2
 		d["v"] = p.v;
 		d["u"] = p.u;
 		d["position"] = Vector3(float(x), float(y), float(z));
