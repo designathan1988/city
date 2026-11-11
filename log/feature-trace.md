@@ -460,3 +460,19 @@ fixpoint, 435,615 links in 457 s (177 s before); bisected to N1'' meeting closur
 `gd_body.py`, `cpp_body.py`, `js_primitives.py`, `rules.py`, `tests/test_bounds.py`, `tests/test_mixed.py`, fixtures
 `bounded.ts`, `jsdoc.js`, `defineprops.js`, `newfn.js`, `latewrite.js`, `log/trace-rules.md`, `log/mapa.md`,
 `log/pendencias.md`.
+
+## Closures valued by the call that makes them (2026-11-11 night)
+`superpowers:writing-plans` (`log/trace-rules-closures-plan.md`) -> `superpowers:executing-plans` (ledger
+`log/trace-rules-closures-progress.md`) -> `superpowers:test-driven-development` -> `superpowers:systematic-debugging`
+(the lab's lost and new unreached uses read on their lines; the stalled three run read as an unbounded growth; a
+tracer copy without the fix to watch each test fail). **Cause:** a closure was one value per body, so the 19 memos of
+`identityMemo(compute)` were one arrow over all 19 `compute`s, and what any function a factory returns holds was on
+all. **Rules:** C4 (a closure's free variables, and what its maker writes on it, key the maker's templates), C4' (a
+closure made in a template is `<fn>gid~env`; run, its free variables read that template), C4'' (a template is keyed
+by a closure's function, never its environment: finite), C4''' (several key families meet by function). **Tests:** 238
+OK (`tests/test_closures.py`). **City:** 100,571 links, identical. **Lab app:** 223,604 links, 176 unreached uses.
+**Lab with three.js:** 425,052 links in 235 s (457 s), 185 unreached uses. **Process error fixed:** Python's
+`write_text` had turned six LF files CRLF (e03d8418). **Created:** `closures.py`, `tests/test_closures.py`,
+`tests/fixture/jsvalues/closures.js`, the plan and its ledger. **Changed:** `templates.py`, `places.py`, `typer.py`,
+`solver.py`, `transfer.py`, `js_transfer.py`, `js_link.py`, `rules.py`, `tests/test_templates.py`, `log/trace-rules.md`,
+`log/mapa.md`, `log/pendencias.md`.

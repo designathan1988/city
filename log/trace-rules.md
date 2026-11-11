@@ -1027,3 +1027,18 @@ parameters, fixed when it is made).
 | C4' A closure is valued by the template that made it | a function written in a template of its maker, whose free variables that template binds, is the value `<fn>gid~env` (env: that template); calling it runs the function in its environment: a free variable reads the maker's template, its own parameters what every call writes (and its own templates, C2, under that environment); a property written on it is its own (`f.p = v`, N1'') |
 | C4'' A closure keys a template by its function | a template is keyed by its arguments' values as classes, texts and functions: a closure argument keys it by the function written, never by the template that made it (Agesen: a closure's type is its creation site), so a closure handed back to its maker (`spin(wrap(f), n - 1)`) makes finitely many templates and environments; each template's parameter still holds every closure value the call passes |
 | C4''' A closure in every key family | a call keyed by several parameters keeps a value its key families all hold (C2'); a closure is the same function in every family, each made in that family's template: the function is what they must share, and each family's closure reaches the call |
+
+### What closures valued per template measured (2026-11-11 night)
+
+The city (same sources): 100,571 links, identical (its C++ and GDScript lambdas that capture a parameter are returned by
+no function the city calls as a maker). The lab app: 223,604 links (225,088), 176 unreached uses (the same): every link
+lost read as a merge `identityMemo` made, none gained: the building code iterating `JunctionLevels`, writing `Vec2.x`
+on its volumes, the records' writer handing the memo's closure, `Building.volumes` holding track stretches. The lab
+with three.js: fixpoint, 425,052 links in 235 s (435,615 in 457 s after N1''; 421,076 in 177 s before the review), 185
+unreached uses in the app's code (221 at the start of the review, none new): 8,883 `handed` links from the building
+records to three's shader functions gone. Found by the measurement on the way: a closure value carrying its
+environment keyed templates without end (C4''), and a maker of several key parameters gave no closure (C4''').
+
+What remains of the merge three's shading language makes is objects valued by their class: every `ShaderNode` its
+`Fn(jsFunc)` makes is one object, whose `jsFunc` holds every shader function (objects valued by the call that makes
+them, as closures now are: `log/pendencias.md`).

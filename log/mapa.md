@@ -573,6 +573,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `tools/analysis/featuretrace/js_bounds.py` — what a declared TypeScript type admits, read from its syntax as admit tokens kept on the unit (S2)
 - `tools/analysis/featuretrace/bounds.py` — whether a value passes a declared type's bound (by chain, by members, by its wrapper's members), and the bounded flow into a place (S2)
 - `tools/analysis/featuretrace/tests/test_bounds.py` · `tools/analysis/featuretrace/tests/fixture/jsvalues/bounded.ts` · `tools/analysis/featuretrace/tests/fixture/jsvalues/jsdoc.js` — declared types bound their places (S2, S2')
+- `log/trace-rules-closures-plan.md` · `log/trace-rules-closures-progress.md` — the plan for closures valued by the call that makes them (C4) and its ledger
 - `log/trace-rules-bounds-plan.md` · `log/trace-rules-bounds-progress.md` — the plan of the declared-types-bound-their-places theme (S2, S2') and its ledger
 - `tools/analysis/featuretrace/jsdoc.py` — JSDoc types in a JavaScript file (S2'): the comment right before a declaration, its `@param`, `@returns`, `@type` and `@template` tags, each type read with TypeScript's grammar into a bound
 - `tools/analysis/featuretrace/js_functions.py` — what a JavaScript function is: what its `this` is decided by (an arrow's, a method's, a function's), whether its code is strict, whether it is a constructor with a prototype of its own (J2''', N1''), a hoisted closure's late writes (J7')
