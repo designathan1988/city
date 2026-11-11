@@ -5,8 +5,9 @@
 // with the most room (aside costs, off its own side costs, the stripes left to the oncoming are not its own), moves
 // toward it at a share of its pace without ever stepping sideways into furniture (a piece its step ahead reaches included;
 // standing in one, it steps out), and keeps its gap behind the body ahead both where it stands and where it steps to. Held
-// up past its jamtime (by the way: sidewalk, zebra, a single stripe) it squeezes past walkers (never
-// furniture) at ped_jam_share of its pace (SUMO's jamtime).
+// up past its jamtime (by the way: sidewalk, zebra, a single stripe) it closes in on the bodies ahead with no gap kept, to touching,
+// at ped_jam_share of its pace, and takes any stripe beside them that opens: SUMO lets it through the walkers, but here no body ever
+// stands in another (a queue at a kerb is waited behind or passed beside, as people do).
 #include "sim/traffic/ped_stripes.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -58,15 +59,15 @@ void rooms_of(const Body *b, int n, const float *cand, int m, float look, float 
 	}
 }
 
-// The room ahead of a centre at `c` across: the gap to the nearest body across it (only furniture when squeezing). With
-// nobody about it is the whole look ahead. `own`: the walker's own way on from where it stands (not a stripe's): a piece it is
-// already alongside (its near end behind its centre) is no wall ahead, as walking along it takes it no deeper into it; it steps
-// out of it sideways meanwhile (side_limits).
-float room_at(const Body *b, int n, float c, float look, bool squeeze, bool own) {
+// The room ahead of a centre at `c` across: the gap to the nearest body across it, a walker's to touching it. With nobody about
+// it is the whole look ahead. `own`: the walker's own way on from where it stands (not a stripe's): a piece it is already alongside
+// (its near end behind its centre) is no wall ahead, as walking along it takes it no deeper into it; it steps out of it sideways
+// meanwhile (side_limits).
+float room_at(const Body *b, int n, float c, float look, bool own) {
 	float room = look;
 	for (int k = 0; k < n; k++) {
 		const Body &o = b[k];
-		if ((squeeze && !o.furniture) || !across(o, c) || (own && o.furniture && o.along_lo < 0)) continue;
+		if (!across(o, c) || (own && o.furniture && o.along_lo < 0)) continue;
 		room = std::min(room, gap_of(o));
 	}
 	return room;
@@ -142,9 +143,10 @@ int candidates(const StripeRules &r, const CrowdEntry &w, const WayFrame &f, con
 	return m;
 }
 
-// The pace that keeps the walker's gap and headway behind `room` ahead: its own speed at most, a share of it squeezing past.
+// The pace that keeps the walker's gap and headway behind `room` ahead: its own speed at most; held up past its jamtime (`squeeze`) a
+// share of it, closing to touching with no gap kept.
 float pace_for(const StripeRules &r, const CrowdEntry &w, float room, bool squeeze) {
-	return std::clamp((room - r.gap) * r.inv_headway, 0.f, squeeze ? w.speed * r.jam_share : w.speed);
+	return std::clamp((room - (squeeze ? 0.f : r.gap)) * r.inv_headway, 0.f, squeeze ? w.speed * r.jam_share : w.speed);
 }
 
 } // namespace
@@ -275,13 +277,13 @@ StripeChoice choose_stripe(const StripeRules &r, const CrowdEntry &w, const WayF
 		out.u_goal = cand[best];
 		out.held = 0;
 	}
-	// the gap behind the body ahead on its own way on from where it stands; held up past its jamtime it squeezes past the walkers
-	// until clear
-	float want = pace_for(r, w, room_at(b, n, f.u, r.look, false, true), false);
+	// the gap behind the body ahead on its own way on from where it stands; held up past its jamtime it closes in to touching
+	const float room = room_at(b, n, f.u, r.look, true);
+	float want = pace_for(r, w, room, false);
 	const bool squeezing = w.jam >= jam_after;
 	if (squeezing) {
 		out.jam = want > r.moving ? 0.f : w.jam;
-		want = pace_for(r, w, room_at(b, n, f.u, r.look, true, true), true);
+		want = pace_for(r, w, room, true);
 	} else {
 		out.jam = want < r.moving ? w.jam + r.dt : 0.f;
 	}
@@ -292,7 +294,7 @@ StripeChoice choose_stripe(const StripeRules &r, const CrowdEntry &w, const WayF
 	side_limits(f, b, n, aside, w.speed * r.dt, out.pace * r.dt, lo, hi);
 	out.u = clampf(f.u + std::clamp(out.u_goal - f.u, -aside, aside), lo, hi);
 	// the step ahead is taken where it steps to: its gap is kept to the bodies across that place as well
-	if (out.u != f.u) out.pace = std::min(out.pace, pace_for(r, w, room_at(b, n, out.u, r.look, squeezing, true), squeezing));
+	if (out.u != f.u) out.pace = std::min(out.pace, pace_for(r, w, room_at(b, n, out.u, r.look, true), squeezing));
 	return out;
 }
 

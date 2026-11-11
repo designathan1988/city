@@ -78,9 +78,7 @@ Array crossing_kerb(const CityState &s, int n) {
 	return out;
 }
 
-// Walkers whose body overlaps another's (centres closer than `touch`): [walking, waiting at a kerb].
-// Two bodies side by side (their centres two radii apart, to the rounding of the sum) touch; they do not overlap.
-constexpr float TOUCH_EPS_M = 1e-3f;
+// Walkers whose body overlaps another's (centres closer than `touch`, traffic::inside_another_m): [walking, waiting at a kerb].
 Array people_overlaps(const TrafficState &t, float touch) {
 	std::vector<int> alive;
 	for (int i = 0; i < int(t.peds.size()); i++)
@@ -226,7 +224,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["kerb"] = Array::make(t.kerb_planned, t.kerb_drops, t.kerb_picks, t.kerb_deliveries, t.kerb_abandoned); // at the kerb: stops planned; set down, picked up, delivered; given up
 	d["people_arrived"] = t.ped_arrived;
 	d["people_waiting"] = t.ped_waiting; // at a kerb for the walk phase or a gap
-	d["people_overlaps"] = people_overlaps(t, 2 * state_->catalog.traffic.ped_body_m - TOUCH_EPS_M); // walkers inside another's body: walking, waiting
+	d["people_overlaps"] = people_overlaps(t, traffic::inside_another_m(state_->catalog.traffic)); // walkers inside another's body: walking, waiting
 	d["people_in_furniture"] = traffic::walkers_in_furniture(*state_); // walkers whose body stands in a street piece
 	if (sample > 0) furniture_probe(*state_, d);
 	d["reroutes"] = t.reroutes;

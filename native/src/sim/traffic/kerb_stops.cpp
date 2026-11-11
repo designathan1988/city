@@ -108,8 +108,8 @@ void plan(CityState &s, int id) {
 		const float along = (t.peds[size_t(ped)].s - d.at0) * d.sign + p.classes[int(v.type)].length * p.kerb_door_along;
 		at = std::clamp(along, earliest, latest);
 	} else {
-		// set down or delivering: where the way between its door and the footway across from it passes no street piece (the one
-		// called is walked to a door whose way is clear, kerb_hail; where the vehicle halts the foot is found again, kerb_foot)
+		// set down or delivering: where the way between its door and the footway across from it passes no street piece (one called
+		// finds its own way in clear of them, kerb_way_in; where the vehicle halts the foot is found again, kerb_foot)
 		const VehicleClass &c = p.classes[int(v.type)];
 		const float back = c.length * p.kerb_door_along;
 		const auto clear = [&](float stop) {
@@ -152,9 +152,28 @@ void enter(KerbStop &k, KerbPhase phase) {
 	k.t = 0;
 }
 
-// The person moving between the door and its foot on the footway, by the share of the way from the door, heading the way it goes.
+// The person moving between the door and its foot on the footway, by the share of the way: out from where its walk started (k.from:
+// the door, or where it stood when the foot moved), back from the foot to the door; heading the way it goes.
 void place_walker(CityState &s, const KerbStop &k, const V2 &door, float share) {
-	if (k.ped >= 0) kerb_place(s, k.ped, door + (k.foot - door) * share, k.back ? door - k.foot : k.foot - door);
+	const V2 start = k.back ? door : k.from;
+	if (k.ped >= 0) kerb_place(s, k.ped, start + (k.foot - start) * share, k.back ? door - k.foot : k.foot - start);
+}
+
+// The street's furniture was placed again since its foot was found (a lot nearby changed: TrafficState::furniture_serial): the foot is found
+// again from the door, clear of the pieces as they stand now; a person walking out goes on from where it stands to it (its walk started
+// again there, no jump), with no clear place left it goes on to the old one.
+void refresh_foot(CityState &s, const Vehicle &v, KerbStop &k) {
+	const TrafficState &t = s.traffic;
+	if (k.errand == Errand::PICK || k.back || k.foot_serial == t.furniture_serial) return;
+	k.foot_serial = t.furniture_serial;
+	V2 foot;
+	if (!kerb_foot(s, v.ds, door_places(s, v), foot) || (foot - k.foot).len() == 0.f) return;
+	k.foot = foot;
+	if (k.phase != KerbPhase::TRANSFER || k.ped < 0) return;
+	const Pedestrian &w = t.peds[size_t(k.ped)];
+	k.from = V2(w.cur.x, w.cur.z);
+	k.t = s.catalog.traffic.kerb_seat_s; // up from the seat already: it walks from where it stands
+	k.transfer = k.t + (k.foot - k.from).len() / s.catalog.traffic.kerb_pace_ms;
 }
 
 // How far from the door toward the footway the person is in a transfer: out, it rises from the seat first (kerb_seat_s at
@@ -196,15 +215,14 @@ void halted(CityState &s, int id, KerbStop &k) {
 	const TrafficParams &p = s.catalog.traffic;
 	Vehicle &v = s.traffic.vehicles[size_t(id)];
 	if (k.t <= p.kerb_halt_s) return;
-	if (k.errand == Errand::PICK) {
+	if (k.errand == Errand::PICK) { // the one it stopped for sees it and walks up along its sidewalk (kerb_call)
 		const KerbDoors at = door_places(s, v);
-		if (!kerb_hail(s, k.ped, at.door, p.kerb_pick_fetch_m)) {
+		if (!kerb_call(s, k.ped, at.door, at.arc, p.kerb_pick_fetch_m)) {
 			k.ped = -1;
 			end_stop(s, id);
 			return;
 		}
-		k.fetch = (V2(s.traffic.peds[size_t(k.ped)].cur.x, s.traffic.peds[size_t(k.ped)].cur.z) - at.door).len() / p.kerb_pace_ms;
-		k.from = V2(s.traffic.peds[size_t(k.ped)].cur.x, s.traffic.peds[size_t(k.ped)].cur.z);
+		k.came = false;
 		enter(k, KerbPhase::FETCH);
 	} else if (room_to_open(s, v, k)) {
 		enter(k, KerbPhase::OPEN);
@@ -217,7 +235,7 @@ void step_stop(CityState &s, int id, KerbStop &k, float dt) {
 	Vehicle &v = t.vehicles[size_t(id)];
 	k.t += dt;
 	k.elapsed += dt;
-	if (k.ped >= 0 && k.phase > KerbPhase::HALT && !kerb_holds(t, k.ped)) { // a walker of a street that went
+	if (k.ped >= 0 && k.phase > KerbPhase::HALT && kerb_hold(t, k.ped) == KerbHold::LOST) { // a walker of a street that went, or frightened off
 		k.ped = -1;
 		end_stop(s, id);
 		return;
@@ -231,6 +249,7 @@ void step_stop(CityState &s, int id, KerbStop &k, float dt) {
 		end_stop(s, id);
 		return;
 	}
+	if (k.phase == KerbPhase::HALT || k.phase == KerbPhase::OPEN || k.phase == KerbPhase::TRANSFER) refresh_foot(s, v, k);
 	switch (k.phase) {
 		case KerbPhase::APPROACH:
 			if (v.v < STOPPED_MS && k.at - v.s < PULLED_UP_M) {
@@ -240,18 +259,31 @@ void step_stop(CityState &s, int id, KerbStop &k, float dt) {
 					end_stop(s, id);
 					return;
 				}
+				k.foot_serial = t.furniture_serial;
 				enter(k, KerbPhase::HALT);
 			} else if (v.s > k.at + GONE_BY_M) {
 				end_stop(s, id);
 			}
 			break;
 		case KerbPhase::HALT: halted(s, id, k); break;
-		case KerbPhase::FETCH: {
+		case KerbPhase::FETCH: { // along its sidewalk to the door's arc (the give-up above holds the wait), then in by its way clear of the pieces
+			const V2 door = door_places(s, v).door;
+			if (!k.came) {
+				if (kerb_hold(t, k.ped) == KerbHold::COMING) break;
+				if (!kerb_way_in(s, k.ped, door, k.foot)) { // no clear way in from where it came to: it walks on, the car drives on
+					end_stop(s, id);
+					return;
+				}
+				const Pedestrian &w = t.peds[size_t(k.ped)];
+				k.came = true;
+				k.from = V2(w.cur.x, w.cur.z);
+				k.walked = 0;
+				k.fetch = kerb_way_len(k.from, k.foot, door) / p.kerb_pace_ms;
+			}
 			k.walked += dt;
-			const float share = std::min(1.f, k.walked / std::max(p.kerb_seat_s, k.fetch));
-			const KerbDoors at = door_places(s, v);
-			kerb_place(s, k.ped, k.from + (at.door - k.from) * share, at.door - k.from);
-			if (share >= 1) enter(k, KerbPhase::OPEN);
+			V2 heading;
+			kerb_place(s, k.ped, kerb_way_at(k.from, k.foot, door, k.walked * p.kerb_pace_ms, heading), heading);
+			if (k.walked >= k.fetch) enter(k, KerbPhase::OPEN);
 			break;
 		}
 		case KerbPhase::OPEN:
@@ -264,6 +296,7 @@ void step_stop(CityState &s, int id, KerbStop &k, float dt) {
 					end_stop(s, id); // no room on the footway: they stay aboard
 					return;
 				}
+				k.from = door; // the walk out starts at the door
 				kerb_show(s, k.ped, door, k.foot - door);
 			}
 			enter(k, KerbPhase::TRANSFER);

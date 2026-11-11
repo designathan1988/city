@@ -29,6 +29,22 @@ void flows(const TrafficParams &p, PlaceKind kind, float hour, float &in, float 
 	out = std::max(0.f, -rise) + there / stay;
 }
 
+// How far along its way out a car waits for the street (Bay::wait): the arc nearest that point, the last as its way passes it; -1 for a bay
+// with no gate run (it waits at the kerb).
+float wait_along(const TrafficParams &p, const Manoeuvre &path, const Bay &bay) {
+	if (!bay.waits) return -1;
+	float best = -1, best_d = BIG;
+	for (float along = 0; along <= path.length(); along += p.man_disc_step_m) {
+		const OffPose q = path.pose_at(along);
+		const float d = (V2(q.x, q.z) - bay.wait).len();
+		if (d <= best_d) {
+			best_d = d;
+			best = along;
+		}
+	}
+	return best;
+}
+
 // A car standing in a gated bay drives out: a Vehicle again from where it stood, on its way to the lane, the bay left empty.
 void take_row(CityState &s, int b) {
 	TrafficState &t = s.traffic;
@@ -45,6 +61,7 @@ void take_row(CityState &s, int b) {
 	car.phase = CarPhase::LEAVING;
 	car.path = bay_departure(bay.at, bay.open, bay.via, bay.lane.p, bay.lane.t, p.man_lead_m, p.man_across_m, p.man_least_m, p.man_tangent);
 	lay_way(s, p.classes[int(v.type)], car.path, car.way); // its swath ahead, laid once (swaths.h)
+	car.wait_at = wait_along(p, car.path, bay);
 	v.car = int(t.park.cars.size());
 	t.park.cars.push_back(std::move(car));
 	t.park.moving++;

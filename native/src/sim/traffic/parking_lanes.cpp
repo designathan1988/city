@@ -80,14 +80,16 @@ bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out, YardReads *rea
 
 // Through the gate square on: a curve cut across the wall's line would swing the car's corners into the posts. The way's end is
 // replaced by a straight run along the gate's axis, a car's half length either side, and a point beyond each end so the curves
-// (manoeuvre.cpp) leave it in line.
-static void through_gate(const TrafficParams &tp, const LotGate &gate, std::vector<V2> &via) {
+// (manoeuvre.cpp) leave it in line. `wait`: the run's inner end, the body's middle with its front a margin inside the gate, where a car
+// coming out waits for the street (LotCar::wait_at).
+static void through_gate(const TrafficParams &tp, const LotGate &gate, std::vector<V2> &via, V2 &wait) {
 	float half = 0;
 	for (int t = int(VehicleType::SEDAN); t <= int(VehicleType::PICKUP); t++) half = std::max(half, tp.classes[t].length * 0.5f);
 	const float run = half + tp.parker_gate_margin_m, beyond = run + tp.parker_gate_lead_m;
 	while (via.size() > 1 && (via.back() - gate.at).len() < beyond + tp.parker_gate_lead_m) via.pop_back();
+	wait = gate.at + gate.in * run;
 	via.push_back(gate.at + gate.in * beyond);
-	via.push_back(gate.at + gate.in * run);
+	via.push_back(wait);
 	via.push_back(gate.at - gate.in * run);
 	via.push_back(gate.at - gate.in * beyond);
 }
@@ -120,7 +122,8 @@ bool read_bay_way(CityState &s, int b) {
 		o.reached = lb.gate >= 0 && !lb.way.empty() && gate_lane(s, acc.gates[size_t(lb.gate)].at, o.lane);
 		if (o.reached) {
 			o.via = lb.way;
-			if (!o.dock) through_gate(tp, acc.gates[size_t(lb.gate)], o.via);
+			o.waits = !o.dock;
+			if (o.waits) through_gate(tp, acc.gates[size_t(lb.gate)], o.via, o.wait);
 		}
 		refile_bay(s, ours[i], false);
 	}

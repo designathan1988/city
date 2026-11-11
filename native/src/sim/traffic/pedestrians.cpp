@@ -33,12 +33,7 @@ void aim_line(Pedestrian &w) {
 	onto_line(w);
 }
 
-// On the sidewalk where it stands: its arc is the street curve's nearest point to its body and its place across is how far its
-// body stands from the sidewalk's middle there, whatever its room: a walker that ends its way past its room's edge is stepped back
-// in by the stripes at its lateral pace (ped_stripes.cpp side_limits), never moved there at once. From there it aims at its own side
-// of the way again (the line it came by aimed it at the line).
-void onto_sidewalk(const CityState &s, Pedestrian &w) {
-	w.mode = PedMode::SIDEWALK;
+void where_on_sidewalk(const CityState &s, Pedestrian &w) {
 	const RoadSegment &g = s.roads.segs[size_t(w.seg)];
 	double t, dist;
 	closest_t(g.q, w.cur.x, w.cur.z, t, dist);
@@ -46,6 +41,20 @@ void onto_sidewalk(const CityState &s, Pedestrian &w) {
 	Pose mid;
 	sidewalk_pose(s, w.seg, w.side, w.s, 0.f, mid);
 	w.u = (w.cur.x - mid.x) * mid.fz - (w.cur.z - mid.z) * mid.fx;
+}
+
+// On the sidewalk where it stands (where_on_sidewalk), whatever its room: a walker that ends its way past its room's edge is stepped
+// back in by the stripes at its lateral pace (ped_stripes.cpp side_limits), never moved there at once. From there it aims at its own side
+// of the way again (the line it came by aimed it at the line).
+void onto_sidewalk(const CityState &s, Pedestrian &w) {
+	w.mode = PedMode::SIDEWALK;
+	where_on_sidewalk(s, w);
+	w.u_goal = w.dir == 0 ? -w.track : w.track;
+	w.stripe_held = 0;
+}
+
+void turn_round(Pedestrian &w) {
+	w.dir = 1 - w.dir;
 	w.u_goal = w.dir == 0 ? -w.track : w.track;
 	w.stripe_held = 0;
 }
@@ -201,7 +210,11 @@ void walk(CityState &s, int id, float dt) {
 	Pedestrian &on = t.peds[size_t(id)]; // the company may have grown the list
 	const RoadSegment &g = s.roads.segs[on.seg];
 	on.s += on.dir == 0 ? step : -step;
-	if (on.door.building >= 0 && (on.dir == 0 ? on.s >= on.door.s : on.s <= on.door.s)) {
+	if (on.call_s >= 0 && (on.dir == 0 ? on.s >= on.call_s : on.s <= on.call_s)) { // across from the door it was called to: the stop takes it
+		kerb_came(s, on);
+		return;
+	}
+	if (on.call_s < 0 && on.door.building >= 0 && (on.dir == 0 ? on.s >= on.door.s : on.s <= on.door.s)) {
 		go_in(s, id);
 		return;
 	}

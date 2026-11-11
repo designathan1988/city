@@ -106,6 +106,9 @@ Dictionary CityTransit::transit_run() {
 	d["buses"] = int(run.buses.size());
 	d["on_road"] = on_road;
 	d["stops_called"] = run.stops_called;
+	d["in_reach"] = state_->traffic.bus_in_reach; // walkers on the footway within a bus's call as it began
+	d["called"] = state_->traffic.bus_called; // walkers a bus called up from the footway
+	d["came"] = state_->traffic.bus_came; // of them, those who came to its front door's arc
 	d["boarded"] = state_->traffic.bus_boarded;
 	d["alighted"] = state_->traffic.bus_alighted;
 	d["trains"] = trains;

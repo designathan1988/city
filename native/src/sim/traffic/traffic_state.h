@@ -8,6 +8,7 @@
 #include "sim/traffic/flow_control.h"
 #include "sim/catalog/traffic_params.h"
 #include "sim/state/pose_buffer.h"
+#include "sim/traffic/kerb_state.h"
 #include "sim/traffic/lane_graph_types.h"
 #include "sim/traffic/parking_state.h"
 #include "sim/traffic/ped_state.h"
@@ -28,20 +29,6 @@ constexpr uint64_t TRAFFIC_SEED = 12345; // Roadcraft traffic.ts: Rng(12345)
 
 // A vehicle's paint from here up is the colour of a transport line, not one of the paints (agent_renderer.cpp).
 constexpr int LINE_PAINT = 64;
-// An errand at the kerb (kerb_stops.cpp): somebody set down, somebody picked up, a truck's mate away with a delivery.
-enum class Errand : uint8_t { NONE = 0, DROP, PICK, DELIVER };
-enum class KerbPhase : uint8_t { APPROACH, HALT, FETCH, OPEN, TRANSFER, AWAY, CLOSE };
-// Vehicle::aboard, what the render does to its passengers: as drawn, at least one to set down, one less, one more.
-constexpr uint8_t ABOARD_AS_DRAWN = 0, ABOARD_TO_SET_DOWN = 1, ABOARD_SET_DOWN = 2, ABOARD_PICKED_UP = 3;
-struct KerbStop {
-	int vehicle = -1, ds = -1, lane = 0, ped = -1;
-	Errand errand = Errand::NONE;
-	KerbPhase phase = KerbPhase::APPROACH;
-	bool back = false; // the mate is on the way back
-	float at = 0, t = 0, elapsed = 0, fetch = 0, walked = 0, transfer = 0; // where its front stops; seconds in the phase and in all; the moves
-	V2 from; // where the person to pick up set off from
-	V2 foot; // where the person set down sets foot on the footway: clear of the street's pieces, from the door where the vehicle halted
-};
 
 
 // A tick's route searches (route_admission.cpp): the tick they were counted in and how many started.
@@ -136,8 +123,10 @@ struct TrafficState {
 	std::vector<CrowdChoice> crowd_next; // the step's choices, kept between steps for their room
 	std::vector<const StreetObstacle *> crowd_around; // the furniture round the junction being looked at
 	// The street furniture of the segments the walkers met, as bodies standing on its sidewalks (ped_furniture.cpp);
-	// dropped when an edit touches the segment or a node of it, and far from the camera.
+	// dropped when an edit touches the segment or a node of it, and far from the camera. `furniture_serial` moves whenever a segment's is
+	// built again (from the owner as it places it then, maybe not as it did): what was placed clear of it (a kerb stop's foot) is placed again.
 	std::unordered_map<int, SidewalkFurniture> furniture;
+	uint32_t furniture_serial = 0;
 	// Far (meso) model, Roadcraft traffic/meso.ts: one queue per lane in order of entry and one event per vehicle at
 	// the end of its lane; lane_last_exit spaces the queues; micro_list holds the near vehicles only.
 	std::vector<int> meso_head, meso_tail;
@@ -206,6 +195,9 @@ struct TrafficState {
 	std::vector<int> free_kerb_stops;
 	int kerb_planned = 0, kerb_drops = 0, kerb_picks = 0, kerb_deliveries = 0, kerb_abandoned = 0;
 	int bus_boarded = 0, bus_alighted = 0; // who has got on and off the buses
+	// Who stood on the footway within a bus's call as it began, who it called from there, and of them who came to its front door's arc
+	// (bus_calls.cpp).
+	int bus_in_reach = 0, bus_called = 0, bus_came = 0;
 	std::vector<LaneClosure> closures; // few, and only while a lorry swings across a street
 	std::vector<float> pub_sum, pub_lim; // publish_poses: per segment, kept between ticks (zero but during a pass)
 	std::vector<int> pub_count;

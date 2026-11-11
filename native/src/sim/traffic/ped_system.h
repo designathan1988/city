@@ -6,14 +6,27 @@
 #include "sim/roads/street_furniture.h"
 #include "sim/state/city_state.h"
 
+#include <limits>
+
 namespace city {
 namespace traffic {
+
+// Two walkers stand in one another when their centres are nearer than two bodies by more than the rounding of their places: a place is
+// float metres, and FARTHEST_PLACE_M from the origin (past the edge of the largest map) two of them read their distance off by up to two
+// parts in 2^24 of that (a float's epsilon of it): PLACE_ROUNDING_M. Nearer than two bodies by less, they stand side by side, touching
+// (a jam's squeeze closes to it).
+constexpr float FARTHEST_PLACE_M = 16384.f;
+constexpr float PLACE_ROUNDING_M = std::numeric_limits<float>::epsilon() * FARTHEST_PLACE_M;
+inline float inside_another_m(const TrafficParams &p) { return 2 * p.ped_body_m - PLACE_ROUNDING_M; }
 
 // pedestrians.cpp: the walk's own steps, shared with the door walk
 inline float arc_lo(const RoadSegment &g) { return float(g.retreat_a); } // the sidewalk's first and last arc
 inline float arc_hi(const RoadSegment &g) { return float(g.len - g.retreat_b); }
 void aim_line(Pedestrian &w); // a straight line toward ways[wi] from where the walker stands
+// Its arc (the street curve's nearest point to its body) and its place across (from the sidewalk's middle there), from where it stands.
+void where_on_sidewalk(const CityState &s, Pedestrian &w);
 void onto_sidewalk(const CityState &s, Pedestrian &w); // onto the sidewalk at the same place across as where it stands
+void turn_round(Pedestrian &w); // it walks the other way along its sidewalk, on its own side of the way
 void stand_on_sidewalk(const CityState &s, Pedestrian &w); // its pose at (seg, side, s, u), body and way heading the way it walks
 void despawn(TrafficState &t, int id, bool arrived);
 void despawn_party(CityState &s, int id, bool arrived); // with the one it walks with, when that one is within reach
@@ -133,15 +146,19 @@ const SidewalkFurniture &sidewalk_furniture(CityState &s, int seg); // its footp
 bool on_furniture(CityState &s, int seg, int side, float x, float z, float reach); // within `reach` of a footprint
 // The straight way from `from` to `to` keeps `reach` off every footprint on that sidewalk (the segment against each one, exactly).
 bool way_clear(CityState &s, int seg, int side, const V2 &from, const V2 &to, float reach);
-// The place on that sidewalk nearest (arc, u) where a body stands clear of the furniture and its straight way from `from` passes
-// clear too, written back; `along`: it may move along the sidewalk as well as across it. False when there is none.
-bool clear_foot(CityState &s, int seg, int side, float &arc, float &u, const V2 &from, bool along);
+// The place on that sidewalk nearest (arc, u) where a body stands clear of the furniture and its straight way from `from` (and, with
+// `also`, from that point too) passes clear, written back; `along`: it may move along the sidewalk as well as across it. False when there
+// is none.
+bool clear_foot(CityState &s, int seg, int side, float &arc, float &u, const V2 &from, bool along, const V2 *also = nullptr);
 // The first arc from `at` on where a walker `u` across the sidewalk keeps its body off every footprint on it.
 float clear_arc(CityState &s, int seg, int side, float at, float u);
 void forget_furniture(CityState &s, int seg); // an edit touched the segment or one of its nodes
 void prune_furniture(CityState &s, float cx, float cz, float radius); // segments the walkers are far from
 // Walkers whose body stands in a footprint (traffic_probe), and who with the piece.
 int walkers_in_furniture(const CityState &s, std::vector<std::pair<int, StreetObstacle>> *who = nullptr);
+// The segments whose furniture the walkers keep (TrafficState::furniture) is not what the owner places there now: a cache an edit left
+// unforgotten (the probes').
+int stale_furniture(const CityState &s);
 // The pieces of the whole map standing in front of a lot's gate, a car's or a person's (traffic_probe): the signal posts alone
 // with `signals` (their place is the signals' rule), every other kind without.
 int furniture_in_gates(const CityState &s, bool signals);

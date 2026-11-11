@@ -23,6 +23,9 @@ const MODE_KERB := 3 # PedMode::KERB: a walker a kerb stop or a bus's call holds
 const HELD_REACH_M := 600.0 # round the busy crossing: the bus line's stops
 const HELD_LONGEST_S := 40.0 # past traffic.json kerb_give_up_s + kerb_delivery_s (25 + 7): no errand holds anybody this long
 const HELD_SPOT_M := 0.01
+const HOUR := 8.0 # the morning's walkers: the buses call where people are out on foot
+const WARM_TICKS := 1200 # the town fills before the busiest crossing is read (walker_motion_test's warm-up)
+const KERB_PICKED := 2 # traffic_probe kerb: [planned, set down, picked up, delivered, given up]
 
 
 func _ready() -> void:
@@ -37,10 +40,12 @@ func _ready() -> void:
 	finish()
 
 
+## The line runs through the junction with the most people waiting or crossing, read once the town is out on foot: before that no junction
+## has anybody, and the stops would stand wherever, maybe where nobody walks.
 func _buses() -> void:
-	var probe: Dictionary = CityStore.query(&"traffic_probe", [1])
-	ticks(10)
-	var ground: Vector3 = probe.busy_crossing
+	CityStore.query(&"set_city_hour", [HOUR])
+	ticks(WARM_TICKS)
+	var ground: Vector3 = CityStore.query(&"traffic_probe", [1]).busy_crossing
 	var placed := 0
 	for i in 12:
 		var at := ground + Vector3(STEP_M * (i - 6), 0, 0)
@@ -58,7 +63,9 @@ func _buses() -> void:
 	check(int(run.buses) > 0, "buses on the line")
 	check(int(run.stops_called) > 0, "a bus served a stop")
 	check(int(run.alighted) > 0, "people get off the bus: %s" % run.alighted)
-	check(int(run.boarded) > 0, "people get on the bus: %s" % run.boarded)
+	check(int(run.boarded) > 0, "people get on the bus: %s (on the footway in reach %s, called %s, came to the door's arc %s)" % [run.boarded, run.in_reach, run.called, run.came])
+	var kerb: Array = CityStore.query(&"traffic_probe", [0]).kerb # planned, set down, picked up, delivered, given up
+	check(int(kerb[KERB_PICKED]) > 0, "a car stops for somebody on the footway, who walks up and gets in: %d (stops planned, set down, picked up, delivered, given up: %s)" % [kerb[KERB_PICKED], kerb])
 	_nobody_left_held(ground)
 	var far := Vector3(ground.x, 0, ground.z)
 	CityStore.dispatch(&"transit_stop", [far + Vector3(0, 0, STEP_M)]) # an edit of the plan leaves the buses where they are

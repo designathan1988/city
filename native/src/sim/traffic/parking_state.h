@@ -44,6 +44,10 @@ struct Bay {
 	double stay_until = 0; // a car that parked here stands at least until then
 	LaneSpot lane;
 	std::vector<V2> via; // from the aisle in front of the stall to just inside the gate
+	// Where a car coming out of it waits for the street: its body's middle with its front parker_gate_margin_m inside the gate, the gate's
+	// straight run (parking_lanes.cpp read_bay_way); `waits` false for a bay with no gate run (a dock).
+	V2 wait;
+	bool waits = false;
 };
 
 struct ParkSource {
@@ -82,6 +86,14 @@ struct LotCar {
 	// it goes at the kerb until it is on the lane's list.
 	float lane_clear_at = 0;
 	bool closing = false;
+	// Coming out it waits for the street inside its gate, `wait_at` metres along `path` (Bay::wait; -1: at the kerb, lane_clear_at): until it
+	// commits its swath ends there, so the footway before the gate stays the walkers'. It commits when the footway its way crosses is clear
+	// of walkers (or parker_ask_way_s waited, `asked`: they step out of its swath) and every stretch of lane it sweeps is (lane_clear), then
+	// closes those stretches and crosses without stopping: who comes out of a lot gives way to walkers and vehicles first (CTB art. 36).
+	float wait_at = -1, asked = 0;
+	bool committed = false;
+	float wait() const { return wait_at >= 0 && wait_at < lane_clear_at ? wait_at : lane_clear_at; }
+	bool held_in() const { return phase == CarPhase::LEAVING && !committed; } // its way stops at its wait
 };
 
 // A stretch of lane closed while something off the lanes stands on it. `key`: ds * MAX_LANES + lane.

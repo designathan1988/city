@@ -28,15 +28,17 @@ namespace traffic {
 void lay_way(const CityState &s, const VehicleClass &c, const Manoeuvre &path, std::vector<SwathDisc> &out);
 // The first disc of a laid way that is not behind `at` metres along it by a step or more.
 int way_from(const CityState &s, float at, int size);
+// The end of a laid way's discs through the pose at `at` metres along it (a way that stops there: a car waiting inside its gate).
+int way_to(const CityState &s, float at, int size);
 // Every vehicle off the lanes' swath where it stands now (ParkingState::swaths): before the lots move and again before the walkers do.
 void file_swaths(CityState &s);
 // A body at `x`, `z` with `reach` round it may touch the swath's discs: within its box.
 bool near_swath(const Swath &w, float x, float z, float reach);
 // The order the next vehicle starting on its way takes (ParkingState::starts): every one later than all before it.
 uint32_t next_start(CityState &s);
-// Discs `from` on of the laid way of `vehicle`, a disc pad wider, cross the body of another vehicle off the lanes that has not started
-// on its way: it may not start on it.
-bool way_has_standing(const CityState &s, int vehicle, const std::vector<SwathDisc> &way, int from);
+// Discs `from` on (up to `end`, -1 the way's end) of the laid way of `vehicle`, a disc pad wider, cross the body of another vehicle off
+// the lanes that has not started on its way: it may not start on it.
+bool way_has_standing(const CityState &s, int vehicle, const std::vector<SwathDisc> &way, int from, int end = -1);
 // The same discs cross the swath of a vehicle whose way leads out to the street, or a standing body: a car may not turn in by them.
 bool way_meets_outward(const CityState &s, int vehicle, const std::vector<SwathDisc> &way, int from);
 // How far, up to `want`, `vehicle` (class `c`, started on its way at `order`) may move along `path` this tick: its body moved that far

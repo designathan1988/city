@@ -2,6 +2,7 @@
 // crouch where they are, far off some hold a phone up at it, and then they run, away from it by whatever street leads there, back on their way when
 // the fright is over. A blast is a stampede: some trip and go down, some break down crouched, some film it from far enough off.
 #include "core/random.h"
+#include "sim/traffic/kerb_stops.h"
 #include "sim/traffic/ped_system.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -180,8 +181,8 @@ void turn_from_bang(CityState &s, Pedestrian &w) {
 	const V2 way = node_at(s, ahead) - V2(w.cur.x, w.cur.z), away(w.cur.x - w.bang_x, w.cur.z - w.bang_z);
 	if (way.x * away.x + way.y * away.y >= 0) return; // already going away from it
 	route_from(s, w, -1, behind);
-	w.dir = 1 - w.dir;
-	w.u_goal = w.dir == 0 ? -w.track : w.track; // its own side of the way, the other way
+	kerb_forget_call(w, false); // a vehicle it was called to is left behind: it runs its own way (the stop sees it lost)
+	turn_round(w);
 }
 
 void flee_on(CityState &s, Pedestrian &w, int n) {

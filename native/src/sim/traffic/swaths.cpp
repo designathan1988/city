@@ -46,8 +46,8 @@ bool meets(const ParkingState &pk, const Swath &w, int from, int end, const Swat
 	return false;
 }
 
-// One vehicle's swath: its body where it stands and, when it drives a laid way, the rest of it from `from`.
-void file_one(ParkingState &pk, const TrafficParams &p, const Vehicle &v, int id, const std::vector<SwathDisc> *way, int from, uint32_t order,
+// One vehicle's swath: its body where it stands and, when it drives a laid way, the rest of it from `from` up to `end`.
+void file_one(ParkingState &pk, const TrafficParams &p, const Vehicle &v, int id, const std::vector<SwathDisc> *way, int from, int end, uint32_t order,
 		bool outward) {
 	Swath w;
 	w.first = int(pk.swath_discs.size());
@@ -57,7 +57,7 @@ void file_one(ParkingState &pk, const TrafficParams &p, const Vehicle &v, int id
 	w.body = BODY_DISCS;
 	pk.swath_discs.resize(pk.swath_discs.size() + BODY_DISCS);
 	body_discs(p.classes[int(v.type)], V2(v.cur.x, v.cur.z), V2(v.cur.fx, v.cur.fz), &pk.swath_discs[size_t(w.first)]);
-	if (way && from < int(way->size())) pk.swath_discs.insert(pk.swath_discs.end(), way->begin() + from, way->end());
+	if (way && from < end) pk.swath_discs.insert(pk.swath_discs.end(), way->begin() + from, way->begin() + end);
 	w.count = int(pk.swath_discs.size()) - w.first;
 	Box box;
 	for (int k = w.first; k < w.first + w.count; k++) box.take(pk.swath_discs[size_t(k)], 0.f);
@@ -91,6 +91,10 @@ int way_from(const CityState &s, float at, int size) {
 	return std::min(size, int(at / s.catalog.traffic.man_disc_step_m) * BODY_DISCS);
 }
 
+int way_to(const CityState &s, float at, int size) {
+	return std::min(size, (int(std::ceil(at / s.catalog.traffic.man_disc_step_m)) + 1) * BODY_DISCS);
+}
+
 bool near_swath(const Swath &w, float x, float z, float reach) {
 	return x >= w.x0 - reach && x <= w.x1 + reach && z >= w.z0 - reach && z <= w.z1 + reach;
 }
@@ -104,29 +108,32 @@ void file_swaths(CityState &s) {
 	for (const LotCar &car : pk.cars) {
 		const Vehicle &v = t.vehicles[size_t(car.id)];
 		if (!v.off) continue;
-		// driving in or out: the rest of its way too, even before it starts on it (the walkers step out of it meanwhile)
+		// driving in or out: the rest of its way too, even before it starts on it (the walkers step out of it meanwhile); coming out, up to
+		// its wait inside the gate until it commits to the street (LotCar::wait_at)
 		const bool driving = car.phase == CarPhase::PARKING || car.phase == CarPhase::LEAVING;
-		file_one(pk, p, v, car.id, driving ? &car.way : nullptr, way_from(s, car.path.s, int(car.way.size())), car.start_order,
-				car.phase == CarPhase::LEAVING);
+		const int size = int(car.way.size()), end = car.held_in() ? way_to(s, car.wait(), size) : size;
+		file_one(pk, p, v, car.id, driving ? &car.way : nullptr, way_from(s, car.path.s, size), end, car.start_order, car.phase == CarPhase::LEAVING);
 	}
 	for (const Lorry &l : pk.lorries) {
 		const Vehicle &v = t.vehicles[size_t(l.id)];
 		if (!v.off) continue;
 		const bool driving = l.phase == LorryPhase::ARRIVING || l.phase == LorryPhase::LEAVING || l.phase == LorryPhase::JOINING;
-		file_one(pk, p, v, l.id, driving ? &l.way : nullptr, way_from(s, l.path.s, int(l.way.size())), l.start_order,
+		file_one(pk, p, v, l.id, driving ? &l.way : nullptr, way_from(s, l.path.s, int(l.way.size())), int(l.way.size()), l.start_order,
 				driving && l.phase != LorryPhase::ARRIVING);
 	}
 }
 
 uint32_t next_start(CityState &s) { return ++s.traffic.park.starts; }
 
-bool way_has_standing(const CityState &s, int vehicle, const std::vector<SwathDisc> &way, int from) {
+bool way_has_standing(const CityState &s, int vehicle, const std::vector<SwathDisc> &way, int from, int end) {
 	const ParkingState &pk = s.traffic.park;
 	const float pad = s.catalog.traffic.man_disc_pad_m;
-	if (from >= int(way.size())) return false;
-	const Box box = way_box(way, from, pad);
+	if (end < 0 || end > int(way.size())) end = int(way.size());
+	if (from >= end) return false;
+	Box box;
+	for (int k = from; k < end; k++) box.take(way[size_t(k)], pad);
 	for (const Swath &w : pk.swaths)
-		if (w.vehicle != vehicle && w.order == 0 && meets(pk, w, 0, w.body, way.data() + from, int(way.size()) - from, pad, box)) return true;
+		if (w.vehicle != vehicle && w.order == 0 && meets(pk, w, 0, w.body, way.data() + from, end - from, pad, box)) return true;
 	return false;
 }
 

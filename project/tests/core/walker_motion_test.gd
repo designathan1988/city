@@ -20,6 +20,8 @@ const TURN_SLACK_RAD := 0.05
 const LEAST_SEEN := 20
 const MOST_TOLD := 40 # cases printed, each walker's first of a kind
 const PIECES_NEAR_M := 4.0 # a walker found in a street piece: the pieces of its sidewalk this near it along are printed
+const FOLLOW_REACH_M := 5000.0 # `--follow=<walker>`: its row printed each tick, wherever it is in the town
+const AROUND_M := 3.0 # a case told: the walkers this near it are printed too (who holds it where it is)
 const AT := Vector3.ZERO # the window's middle: the camera of a test stands at the origin
 # the probe's row of a walker (city_core_people.cpp walker_bodies)
 const ID := 0
@@ -60,6 +62,7 @@ var _pairs := 0
 var _seen := {}
 var _told := {}
 var _last_piece := {} # each walker's last case in a street piece, and how many ticks it was in one
+var _stale := 0 # segments a tick whose walkers' furniture is not the owner's placement
 
 
 func _ready() -> void:
@@ -75,12 +78,17 @@ func _ready() -> void:
 	CityStore.query(&"set_city_hour", [HOUR])
 	ticks(WARM_TICKS)
 	var before := _walkers(CityStore.query(&"walker_bodies", [AT, VIEW_M]))
+	var follow := _followed()
 	for i in WATCH_TICKS:
 		ticks(1)
+		if follow >= 0:
+			for w: Array in CityStore.query(&"walker_bodies", [AT, FOLLOW_REACH_M]).bodies:
+				if w[ID] == follow:
+					print("followed %d: %s" % [i, w])
 		var watch: Dictionary = CityStore.query(&"walker_bodies", [AT, VIEW_M])
 		var now := _walkers(watch)
 		_compare(before, now)
-		_met(watch)
+		_met(watch, before)
 		_together(before, now)
 		before = now
 	for id: int in _last_piece:
@@ -99,8 +107,17 @@ func _ready() -> void:
 	check(_off_way == 0, "no walker walks the carriageway away from a crossing: %d times, the first %s" % [_off_way, _off_case])
 	check(_in_vehicle == 0, "no walker stands in a vehicle: %d times, the first %s" % [_in_vehicle, _vehicle_case])
 	check(_in_furniture == 0, "no walker stands in a street piece: %d times" % _in_furniture)
+	check(_stale == 0, "the furniture the walkers keep is the owner's placement: %d stale segments over the ticks" % _stale)
 	check(_pairs > 0 and _apart == 0, "two who walk together within %.0f m on one sidewalk stay within it: left behind %d of %d times, the first %s" % [COMPANY_REACH_M, _apart, _pairs, _apart_case])
 	finish()
+
+
+## The walker `--follow=<index>` names, to print tick by tick (how a case came about); -1 with none.
+func _followed() -> int:
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--follow="):
+			return int(arg.get_slice("=", 1))
+	return -1
 
 
 ## How far apart along it two who walk together are, both on the same sidewalk; -1 when they are not.
@@ -180,7 +197,7 @@ func _gone(was: Array) -> void:
 		_vanish_case = was
 
 
-func _met(watch: Dictionary) -> void:
+func _met(watch: Dictionary, before: Dictionary) -> void:
 	_in_another += int(watch.in_another)
 	if _another_case.is_empty() and not watch.in_another_cases.is_empty():
 		_another_case = watch.in_another_cases[0]
@@ -191,22 +208,31 @@ func _met(watch: Dictionary) -> void:
 	if _vehicle_case.is_empty() and not watch.in_vehicle_cases.is_empty():
 		_vehicle_case = watch.in_vehicle_cases[0]
 	_in_furniture += int(watch.in_furniture)
+	_stale += int(watch.stale_furniture)
 	for pair: Array in watch.in_another_cases:
-		_tell("in another", pair[0][ID], pair)
+		_tell("in another", pair[0][ID], pair, before)
 	for w: Array in watch.off_way_cases:
-		_tell("off the way", w[ID], w)
+		_tell("off the way", w[ID], w, before)
 	for pair: Array in watch.in_vehicle_cases:
-		_tell("in a vehicle", pair[0][ID], pair)
+		_tell("in a vehicle", pair[0][ID], pair, before)
 	for case: Array in watch.in_furniture_cases:
-		_tell("in a street piece", case[0][ID], case)
+		_tell("in a street piece", case[0][ID], case, before)
 		var id: int = case[0][ID]
 		_last_piece[id] = [int(_last_piece.get(id, [0])[0]) + 1, case]
 
 
-## Each walker's first case of a kind, printed once: what the failure's count is made of.
-func _tell(kind: String, id: int, case: Array) -> void:
+## Each walker's first case of a kind, printed once with its row the tick before: what the failure's count is made of, and how the
+## walker came to it.
+func _tell(kind: String, id: int, case: Array, before: Dictionary) -> void:
 	var key := "%s %d" % [kind, id]
 	if _told.has(key) or _told.size() >= MOST_TOLD:
 		return
 	_told[key] = true
 	print("case %s: %s" % [kind, case])
+	print("  the tick before: %s" % [before.get(id, [])])
+	var me: Variant = before.get(id)
+	if me == null:
+		return
+	for w: Array in before.values():
+		if w[ID] != id and Vector2(w[X] - me[X], w[Z] - me[Z]).length() < AROUND_M:
+			print("  near it: %s" % [w])

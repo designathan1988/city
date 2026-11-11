@@ -58,6 +58,7 @@ struct CrowdEntry {
 	float u_goal = 0, held = 0, pace = 0, jam = 0, speed = 0, keep = 0; // speed: its own, bent to keep level with its company
 	uint8_t dir = 0;
 	bool moving = false;
+	bool kerb = false; // under a stop's hand (PedMode::KERB): a body on its sidewalk that the stop moves, with no choice of its own
 };
 
 // What a walker's crowd step chose (ped_stripes.cpp): its stripe, the one it aims at and how long held, its pace, how long held up.
@@ -126,6 +127,10 @@ struct Pedestrian {
 	int cross_seg = -1; // the arm it is crossing now (-1 when not on a crosswalk)
 	float line_off = 0; // its queue before a kerb and its line over the zebra lie this far left of the crosswalk's middle line
 	PedDoor door; // the door it goes in at, on the last street of its route
+	// Called to a vehicle's door (kerb_walkers.cpp kerb_call): it walks its sidewalk to arc `call_s` (-1: not called) and the stop takes
+	// it there; `call_turned`: it turned round for it, and turns back when the call is over before it gets in.
+	float call_s = -1;
+	bool call_turned = false;
 	int goal_side = -1; // the sidewalk of that street it heads for (-1: either)
 	bool entering = false, company_due = false; // on its way in at a door; its company comes out of the door after it
 	// The door it came out of: its company comes out there after it, by the same way (ways[0..wn) until its first corner).

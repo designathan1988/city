@@ -63,7 +63,8 @@ const char *mode_name(PedMode m) {
 	return "";
 }
 
-// Strangers closer than `touch`, by what the nearer of each pair is doing: alone, leading, following, in a lot.
+// Strangers closer than `touch` (in one another: traffic::inside_another_m), by what the nearer of each pair is doing: alone, leading,
+// following, in a lot.
 Dictionary who_touches(const TrafficState &t, float touch) {
 	int alone = 0, leading = 0, following = 0, lot = 0;
 	for (size_t i = 0; i < t.peds.size(); i++) {
@@ -88,6 +89,32 @@ Dictionary who_touches(const TrafficState &t, float touch) {
 	d["lot"] = lot;
 	return d;
 }
+
+// Who walks with whom (people_census): the pairs, those with a child, how far apart the two farthest are and the first two in one another
+// (traffic::inside_another_m), each case as its two walkers.
+struct PairCensus {
+	int parties = 0, family = 0, touching = 0;
+	float widest = 0;
+	Array far, close;
+
+	void add(const CityState &s, const Pedestrian &w, const Pedestrian &l) {
+		const Pedestrian *first = s.traffic.peds.data();
+		parties++;
+		family += w.age == PedAge::CHILD || l.age == PedAge::CHILD ? 1 : 0;
+		const float apart = std::hypot(w.cur.x - l.cur.x, w.cur.z - l.cur.z);
+		if (apart > widest) { // the case: of each of the two, its mode, where, its street and arc, where on its route and round its node, the arm it crosses, its pace
+			far.clear();
+			for (const Pedestrian *q : { &w, &l })
+				far.push_back(Array::make(int(q - first), mode_name(q->mode), Vector2(q->cur.x, q->cur.z), q->seg, q->s, q->ri, Vector2i(q->wi, q->wn), q->cross_seg, q->pace, q->jam));
+		}
+		widest = std::max(widest, apart);
+		const bool in = apart < traffic::inside_another_m(s.catalog.traffic); // in one another, not side by side touching
+		touching += in ? 1 : 0;
+		if (in && close.is_empty()) // the first case: of each of the two, its mode, where, its street, arc, place across, direction, pace, held up; how far apart
+			for (const Pedestrian *q : { &w, &l })
+				close.push_back(Array::make(int(q - first), mode_name(q->mode), Vector2(q->cur.x, q->cur.z), q->seg, q->s, q->u, q->dir, q->pace, q->jam, apart));
+	}
+};
 
 } // namespace
 
@@ -127,11 +154,12 @@ Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 	const CityState &s = *state_;
 	const TrafficState &t = s.traffic;
 	Dictionary d, modes;
-	int ages[PED_AGES] = {}, solo = 0, parties = 0, family = 0, child_alone = 0, total = 0, touching = 0;
-	float widest = 0, longest = 0;
+	int ages[PED_AGES] = {}, solo = 0, child_alone = 0, total = 0;
+	float longest = 0;
 	int on_foot_line = 0, acting[int(PedAct::COUNT)] = {}, mid_crossing = 0, mid_waiting = 0;
 	std::map<std::string, Nearest> spots;
-	Array alone, far;
+	PairCensus pairs;
+	Array alone;
 	for (const Pedestrian &w : t.peds) {
 		if (!w.alive) continue;
 		const float dx = w.cur.x - at.x, dz = w.cur.z - at.z;
@@ -160,18 +188,8 @@ Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 		}
 		if (w.with < 0) continue;
 		const Pedestrian &l = t.peds[size_t(w.with)];
-		const bool child = w.age == PedAge::CHILD || l.age == PedAge::CHILD;
-		parties++;
-		family += child ? 1 : 0;
-		const float apart = std::hypot(w.cur.x - l.cur.x, w.cur.z - l.cur.z);
-		if (apart > widest) { // the case: of each of the two, its mode, where, its street and arc, where on its route and round its node, the arm it crosses, its pace
-			far.clear();
-			for (const Pedestrian *q : { &w, &l })
-				far.push_back(Array::make(int(q - t.peds.data()), mode_name(q->mode), Vector2(q->cur.x, q->cur.z), q->seg, q->s, q->ri, Vector2i(q->wi, q->wn), q->cross_seg, q->pace, q->jam));
-		}
-		widest = std::max(widest, apart);
-		touching += apart < 2 * s.catalog.traffic.ped_body_m ? 1 : 0;
-		spots[child ? "family" : "couple"].offer(s, w, at);
+		pairs.add(s, w, l);
+		spots[w.age == PedAge::CHILD || l.age == PedAge::CHILD ? "family" : "couple"].offer(s, w, at);
 	}
 	Dictionary acts;
 	for (int a = 1; a < int(PedAct::COUNT); a++) acts[ACT_NAMES[a]] = acting[a];
@@ -183,14 +201,15 @@ Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 	d["children"] = ages[int(PedAge::CHILD)];
 	d["elders"] = ages[int(PedAge::ELDER)];
 	d["solo"] = solo;
-	d["parties"] = parties;
-	d["families"] = family;
+	d["parties"] = pairs.parties;
+	d["families"] = pairs.family;
 	d["children_alone"] = child_alone;
 	d["children_alone_cases"] = alone;
-	d["party_gap_m"] = widest;
-	d["party_gap_case"] = far;
-	d["party_touching"] = touching;
-	d["touching_by"] = who_touches(t, 2 * s.catalog.traffic.ped_body_m);
+	d["party_gap_m"] = pairs.widest;
+	d["party_gap_case"] = pairs.far;
+	d["party_touching"] = pairs.touching;
+	d["party_touching_case"] = pairs.close;
+	d["touching_by"] = who_touches(t, traffic::inside_another_m(s.catalog.traffic));
 	d["modes"] = modes;
 	d["lot_way_longest_m"] = longest;
 	d["going_to_the_foot"] = on_foot_line;
@@ -209,7 +228,6 @@ Dictionary CityProbes::people_census(const Vector3 &at, float radius) {
 }
 
 namespace {
-constexpr float IN_ANOTHER_M = 0.05f; // a body this far into another stands in it (less is the rounding of a step)
 constexpr int CASES = 8;
 constexpr float HALF = 0.5f;
 
@@ -260,7 +278,7 @@ Dictionary CityProbes::walker_bodies(const Vector3 &at, float radius) {
 		ids.push_back(i);
 		bodies.push_back(walker_row(s, w, i));
 	}
-	const float touch = 2 * s.catalog.traffic.ped_body_m - IN_ANOTHER_M;
+	const float touch = traffic::inside_another_m(s.catalog.traffic);
 	int in_another = 0, off_way = 0, in_vehicle = 0;
 	Array pairs, off, cars;
 	for (size_t a = 0; a < ids.size(); a++) {
@@ -291,14 +309,18 @@ Dictionary CityProbes::walker_bodies(const Vector3 &at, float radius) {
 	d["in_vehicle_cases"] = cars;
 	std::vector<std::pair<int, StreetObstacle>> in_piece;
 	d["in_furniture"] = traffic::walkers_in_furniture(s, &in_piece); // in a street piece's footprint (the whole map)
-	Array pieces; // the case: the walker, the piece's middle, its half sizes along and across, its arc span, whether it stands on a swath
+	// the case: the walker, the piece's middle, its half sizes along and across, its arc span, whether it stands on a swath, and where the
+	// walker stood the publication before (its trail: how it came there, wherever the view is)
+	Array pieces;
 	for (const auto &[id, o] : in_piece) {
 		if (pieces.size() >= CASES) break;
 		const Pedestrian &w = t.peds[size_t(id)];
+		const Pose &was = w.trail.at[POSE_TRAIL - 2];
 		pieces.push_back(Array::make(walker_row(s, w, id), Vector2(o.x, o.z), Vector2(o.half_along, o.half_across), Vector2(o.s0, o.s1),
-				traffic::on_a_swath(t, w.cur.x, w.cur.z, s.catalog.traffic.ped_body_m)));
+				traffic::on_a_swath(t, w.cur.x, w.cur.z, s.catalog.traffic.ped_body_m), Vector2(was.x, was.z)));
 	}
 	d["in_furniture_cases"] = pieces;
+	d["stale_furniture"] = traffic::stale_furniture(s); // segments whose walkers' furniture is not the owner's placement now
 	return d;
 }
 

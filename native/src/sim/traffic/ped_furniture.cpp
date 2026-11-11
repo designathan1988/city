@@ -20,6 +20,7 @@ namespace {
 
 // A body touching a piece (its centre a body radius off it, to the rounding of the sum) stands beside it, not in it.
 constexpr float TOUCH_EPS_M = 1e-3f;
+constexpr int BOX_CORNERS = 4;
 
 // A point in a footprint's own frame: along it and across it, from its middle.
 V2 in_frame(const StreetObstacle &o, const V2 &p) {
@@ -70,14 +71,24 @@ void build(const CityState &s, int seg, SidewalkFurniture &out) {
 	const Profile &p = s.roads.profile_of(seg);
 	for (const FurnitureSpot &f : spots) {
 		if (f.side < 0) continue; // not on a sidewalk: no walker meets it
-		const float across = f.u - (f.side == 0 ? p.walk_right : p.walk_left);
+		const float middle = f.side == 0 ? p.walk_right : p.walk_left, across = f.u - middle;
 		Pose at;
 		sidewalk_pose(s, seg, f.side, float(f.v), across, at);
 		StreetObstacle o;
-		o.s0 = float(f.v) - f.half_v;
-		o.s1 = float(f.v) + f.half_v;
-		o.u0 = across - f.half_u;
-		o.u1 = across + f.half_u;
+		// Its spans along the arc and across, read back from the four corners of its footprint where it stands: on a bend a metre of the
+		// sidewalk is not a metre of the road's middle line the arc is measured on, so a span from its length alone leaves part of it out.
+		o.s0 = o.u0 = BIG;
+		o.s1 = o.u1 = -BIG;
+		for (int k = 0; k < BOX_CORNERS; k++) {
+			const float a = k & 1 ? f.half_v : -f.half_v, c = k & 2 ? f.half_u : -f.half_u;
+			double v;
+			float u, past;
+			segment_place(s.roads, seg, at.x + at.fx * a + at.fz * c, at.z + at.fz * a - at.fx * c, v, u, past);
+			o.s0 = std::min(o.s0, float(v));
+			o.s1 = std::max(o.s1, float(v));
+			o.u0 = std::min(o.u0, u - middle);
+			o.u1 = std::max(o.u1, u - middle);
+		}
 		o.x = at.x;
 		o.z = at.z;
 		o.fx = at.fx;
@@ -167,6 +178,7 @@ const SidewalkFurniture &sidewalk_furniture(CityState &s, int seg) {
 	if (it != cache.end()) return it->second;
 	SidewalkFurniture &f = cache[seg];
 	build(s, seg, f);
+	s.traffic.furniture_serial++; // built again from the owner, as it places it now: what was placed clear of the old is placed again
 	return f;
 }
 
@@ -184,7 +196,7 @@ bool way_clear(CityState &s, int seg, int side, const V2 &from, const V2 &to, fl
 	return true;
 }
 
-bool clear_foot(CityState &s, int seg, int side, float &arc, float &u, const V2 &from, bool along) {
+bool clear_foot(CityState &s, int seg, int side, float &arc, float &u, const V2 &from, bool along, const V2 *also) {
 	const TrafficParams &p = s.catalog.traffic;
 	const RoadSegment &g = s.roads.segs[size_t(seg)];
 	const float body = p.ped_body_m, half = walk_half(s, seg, side);
@@ -209,7 +221,9 @@ bool clear_foot(CityState &s, int seg, int side, float &arc, float &u, const V2 
 			if (off >= best) continue;
 			Pose at;
 			sidewalk_pose(s, seg, side, a, c, at);
-			if (on_furniture(s, seg, side, at.x, at.z, body) || !way_clear(s, seg, side, from, V2(at.x, at.z), body)) continue;
+			const V2 here(at.x, at.z);
+			if (on_furniture(s, seg, side, at.x, at.z, body) || !way_clear(s, seg, side, from, here, body) || (also && !way_clear(s, seg, side, *also, here, body)))
+				continue;
 			best = off;
 			best_arc = a;
 			best_u = c;
@@ -270,6 +284,26 @@ int furniture_in_gates(const CityState &s, bool signals) {
 		}
 	}
 	return in;
+}
+
+int stale_furniture(const CityState &s) {
+	int stale = 0;
+	for (const auto &[seg, kept] : s.traffic.furniture) {
+		if (seg < 0 || seg >= int(s.roads.segs.size()) || !s.roads.segs[size_t(seg)].alive) continue;
+		SidewalkFurniture now;
+		build(s, seg, now);
+		bool same = true;
+		for (int side = 0; side < 2 && same; side++) {
+			same = kept.side[side].size() == now.side[side].size();
+			for (size_t k = 0; same && k < now.side[side].size(); k++) {
+				const StreetObstacle &a = kept.side[side][k], &b = now.side[side][k];
+				same = std::fabs(a.s0 - b.s0) < TOUCH_EPS_M && std::fabs(a.s1 - b.s1) < TOUCH_EPS_M && std::fabs(a.u0 - b.u0) < TOUCH_EPS_M &&
+						std::fabs(a.u1 - b.u1) < TOUCH_EPS_M;
+			}
+		}
+		stale += same ? 0 : 1;
+	}
+	return stale;
 }
 
 int walkers_in_furniture(const CityState &s, std::vector<std::pair<int, StreetObstacle>> *who) {

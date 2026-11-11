@@ -30,6 +30,45 @@ struct Body {
 };
 constexpr int MAX_BODIES = 64; // bodies a walker looks at in one step (the nearest first is not needed: all are near)
 
+// The bodies one walker sees this step, in its frame; only those that can stand in its room (ped_seen.cpp fills it).
+struct Seen {
+	const WayFrame &f;
+	Body *out;
+	int n = 0;
+	float look, touch, reach; // ped_look_m, two body radii, a body radius
+
+	// Full: every later body would be turned away, so the looking stops there (what it saw is the same).
+	bool full() const { return n >= MAX_BODIES; }
+	// A walker ahead, or beside it (within two radii along, a little behind too): the gap is kept to the first, no step aside
+	// is taken into the second (ped_stripes.cpp side_limits). One farther behind keeps its own gap.
+	void walker(float along, float lat, bool oncoming) {
+		if (along <= -touch || along > look || lat < f.lo - touch || lat > f.hi + touch || n >= MAX_BODIES) return;
+		Body &b = out[n++];
+		b = Body();
+		b.along_lo = b.along_hi = along;
+		b.lat_lo = b.lat_hi = lat;
+		b.reach = touch;
+		b.oncoming = oncoming;
+	}
+	void furniture(const Body &b) {
+		if (b.along_hi < -reach || b.along_lo > look || b.lat_hi < f.lo - reach || b.lat_lo > f.hi + reach || n >= MAX_BODIES) return;
+		out[n++] = b;
+	}
+};
+
+// ped_seen.cpp: what a walker sees. The walkers on its own sidewalk, by arc: those ahead as far as it looks, and those beside it
+// (Seen::walker), a little behind too.
+void see_sidewalk(const std::vector<CrowdEntry> &list, size_t k, Seen &sn);
+// The walkers filed with junction `node` but `self`, remapped into its frame (SUMO's walking areas); a sidewalk walker leaves out its own
+// sidewalk's, already seen by arc.
+void see_junction(const TrafficState &t, int node, int self, int own_sidewalk, Seen &sn);
+// Its own sidewalk's furniture near it, by arc: `from` is the first piece that may reach back to it, carried along by the caller as it goes
+// through the sidewalk's walkers in order of arc.
+void see_sidewalk_furniture(const std::vector<StreetObstacle> &list, size_t from, const CrowdEntry &w, Seen &sn);
+// The furniture on the sidewalks of junction `n`'s arms as far from it as its walkers may be and look.
+void junction_furniture(CityState &s, int n, float look, std::vector<const StreetObstacle *> &out);
+void see_footprint(const StreetObstacle &o, Seen &sn); // a footprint's corners projected ahead and across the walker's frame
+
 // The crowd's rules for one step (traffic.json ped_*), with the step's length and the inverses a choice multiplies by.
 struct StripeRules {
 	float dt = 0, look = 0, gap = 0, inv_headway = 0, accel = 0, aside_share = 0, lateral_cost = 0, keep_cost = 0;

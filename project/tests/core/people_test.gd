@@ -60,7 +60,7 @@ func _ready() -> void:
 	var probe: Dictionary = CityStore.query(&"traffic_probe", [0])
 	print("bodies: ", probe.people_overlaps, " furniture: ", probe.people_in_furniture)
 	check(int(probe.people_in_furniture) == 0, "inside furniture: %d" % probe.people_in_furniture)
-	check(float(c.party_touching) <= MAX_TOUCHING * float(c.parties), "pairs touching: %d" % c.party_touching)
+	check(float(c.party_touching) <= MAX_TOUCHING * float(c.parties), "pairs in one another (nearer than two bodies, more than their places' rounding): %d of %d, the first (id, mode, where, street, arc, across, dir, pace, held up, apart) %s" % [c.party_touching, c.parties, c.party_touching_case])
 	_clips()
 	ticks(MORE_TICKS)
 	var later: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, 0.0])
