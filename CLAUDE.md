@@ -196,5 +196,5 @@ building. Meshoptimizer and Clipper2 come through CMake on the first build. Apar
 
 ## State machines
 - `GameFlow.State`: BOOT → MENU → PLAYING → QUITTING (the `TRANSITIONS` table; closing the window also goes through `quit`). [c:gameflow-states]
-- `SimSpeed` (C++): STOPPED, PAUSED, NORMAL, FAST, FASTEST; only `start()/stop()` enter and leave STOPPED. [c:sim-speed]
-- `ToolController.Tool`: one per tool, INSPECT when empty-handed; only `set_tool` changes it; held `drag`/`tick`, released `release`. [c:tool-states]
+- `SimSpeed` (C++): STOPPED, PAUSED, NORMAL, FAST, FASTEST; only `start()/stop()` enter and leave STOPPED, every move through `enter` and its table `SPEED_MOVES`. [c:sim-speed]
+- `ToolController.Tool`: one per tool, INSPECT when empty-handed; only `set_tool` changes it; the stroke is its `Phase` (held `drag`/`tick`, released `release`), and a tool change cancels a held one. Every enum named like a state is a machine with one setter and its table, or a declared kind (`rules.json` states). [c:tool-states]

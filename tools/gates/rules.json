@@ -446,6 +446,30 @@
     "min_share": 0.3,
     "min_numbers": 5
   },
+  "states": {
+    "_doc": "STATE_CONTROLLER (gate_states.py): every state with its controller. An enum named like a state (suffixes) is a machine, with the file of its controller, the member that holds it, the one setter that writes it and the transition table the setter reads (or why any state may follow any), or a kind, a value chosen and never stepped, with why. The traffic's agents and the signature bodies are machines whose controllers are still to be built (the trace's problems): every write of their members outside a setter is refused until then.",
+    "paths": ["native/src", "project/game", "project/ui", "project/render"],
+    "suffixes": ["State", "Mode", "Phase", "Speed", "Tool"],
+    "machines": [
+      {"enum": "State", "declared": "project/game/flow/game_flow.gd", "file": "project/game/flow/game_flow.gd", "member": "state", "setter": "_to", "table": "TRANSITIONS"},
+      {"enum": "Tool", "declared": "project/game/tools/tool_controller.gd", "file": "project/game/tools/tool_controller.gd", "member": "tool", "setter": "set_tool", "why": "any tool may follow any (the bar, a key, the camera's NONE); a stroke held when the tool changes is ended first, by the Phase machine"},
+      {"enum": "Phase", "declared": "project/game/tools/tool_controller.gd", "file": "project/game/tools/tool_controller.gd", "member": "phase", "setter": "_enter", "table": "PHASES"},
+      {"enum": "SimSpeed", "declared": "native/src/sim/simulation/simulation.h", "file": "native/src/sim/simulation/simulation.cpp", "member": "speed_", "setter": "enter", "table": "SPEED_MOVES"},
+      {"enum": "PedMode", "declared": "native/src/sim/traffic/ped_state.h", "file": "native/src/sim/traffic/ped_mode.cpp", "member": "mode", "setter": "enter_mode", "table": "PED_MODES"},
+      {"enum": "CarPhase", "declared": "native/src/sim/traffic/parking_state.h", "file": "native/src/sim/traffic/car_phase.cpp", "member": "phase", "setter": "enter_car_phase", "table": "CAR_PHASES"},
+      {"enum": "LorryPhase", "declared": "native/src/sim/traffic/parking_state.h", "file": "native/src/sim/traffic/lorry_phase.cpp", "member": "phase", "setter": "enter_lorry_phase", "table": "LORRY_PHASES"},
+      {"enum": "KerbPhase", "declared": "native/src/sim/traffic/kerb_state.h", "file": "native/src/sim/traffic/kerb_phase.cpp", "member": "phase", "setter": "enter_kerb_phase", "table": "KERB_PHASES"},
+      {"enum": "State", "declared": "native/src/render/buildings/signature_bodies.h", "file": "native/src/render/buildings/signature_bodies.cpp", "member": "state_", "setter": "enter", "table": "DESIGN_MOVES"}
+    ],
+    "kinds": [
+      {"enum": "TransitMode", "declared": "native/src/sim/transit/transit_data.h", "why": "the kind of a line (bus, train, metro), chosen when it is laid and never stepped"},
+      {"enum": "BrushMode", "declared": "native/src/sim/terrain/heightfield.h", "why": "what the relief brush does, the player's choice for a stroke"},
+      {"enum": "CornerMode", "declared": "native/src/sim/roads/junction.h", "why": "the shape a junction's corner is drawn with, read from its geometry"},
+      {"enum": "LampMode", "declared": "native/src/sim/commands/street_commands.h", "why": "which poles of a run carry a lamp, the player's choice for the run"},
+      {"enum": "BlockMode", "declared": "native/src/sim/buildings/b40/types.h", "why": "how a block combines with the volume it cuts, a property of the block"},
+      {"enum": "Mode", "declared": "project/game/tools/cloud_tool.gd", "why": "the cloud tool's action, chosen from its options"}
+    ]
+  },
   "mirrors": [],
   "generated": [
     {

@@ -13,6 +13,19 @@ namespace {
 int64_t now_ns() {
 	return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
+
+constexpr int SPEEDS = int(SimSpeed::STOPPED) + 1;
+constexpr int MOVES = int(SpeedMove::STOP) + 1;
+constexpr uint8_t speed_bit(SimSpeed s) { return uint8_t(1u << int(s)); }
+constexpr uint8_t RUNNING = speed_bit(SimSpeed::PAUSED) | speed_bit(SimSpeed::NORMAL) | speed_bit(SimSpeed::FAST) | speed_bit(SimSpeed::FASTEST);
+constexpr uint8_t STOP_ONLY = speed_bit(SimSpeed::STOPPED);
+// The speeds each move may lead to, by the speed it leaves (rows: SpeedMove; columns: SimSpeed, STOPPED last): a start leaves
+// STOPPED for PAUSED or NORMAL and nothing else, a change goes between the running speeds, a stop ends any (twice is no harm).
+constexpr uint8_t SPEED_MOVES[MOVES][SPEEDS] = {
+	{ 0, 0, 0, 0, uint8_t(speed_bit(SimSpeed::PAUSED) | speed_bit(SimSpeed::NORMAL)) },
+	{ RUNNING, RUNNING, RUNNING, RUNNING, 0 },
+	{ STOP_ONLY, STOP_ONLY, STOP_ONLY, STOP_ONLY, STOP_ONLY },
+};
 } // namespace
 
 double CityClock::hour() const {
@@ -27,7 +40,7 @@ void Simulation::start(CityState &s, bool paused) {
 	stop();
 	s_ = &s;
 	period_ns_ = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
-	speed_ = paused ? SimSpeed::PAUSED : SimSpeed::NORMAL;
+	enter(SpeedMove::START, paused ? SimSpeed::PAUSED : SimSpeed::NORMAL); // stop() above left it STOPPED
 	running_ = true;
 	thread_ = std::thread([this]() { run(); });
 }
@@ -39,16 +52,18 @@ void Simulation::stop() {
 	}
 	wake_.notify_all();
 	if (thread_.joinable()) thread_.join();
-	speed_ = SimSpeed::STOPPED;
+	enter(SpeedMove::STOP, SimSpeed::STOPPED);
 }
 
 void Simulation::set_speed(SimSpeed sp) {
-	{
-		std::lock_guard<std::mutex> lk(wake_mutex_);
-		if (speed_.load() == SimSpeed::STOPPED || sp == SimSpeed::STOPPED) return; // only start()/stop() enter or leave STOPPED
-		speed_ = sp;
-	}
-	wake_.notify_all();
+	if (enter(SpeedMove::CHANGE, sp)) wake_.notify_all(); // a stopped clock, or a stop asked here, is refused by the table
+}
+
+bool Simulation::enter(SpeedMove by, SimSpeed next) {
+	std::lock_guard<std::mutex> lk(wake_mutex_);
+	if (!(SPEED_MOVES[int(by)][int(speed_.load())] & speed_bit(next))) return false;
+	speed_.store(next);
+	return true;
 }
 
 int Simulation::steps_per_tick(SimSpeed sp) const {

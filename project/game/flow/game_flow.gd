@@ -78,7 +78,9 @@ func quit() -> void:
 		get_tree().quit()
 
 
-## Ends the process from a scene that runs without the menu flow (captures, tests).
+## Ends the process from a scene that runs without the menu flow (captures, tests): through the table, as every way out
+## (every state leads to QUITTING), so state_changed is heard there too.
 func quit_now() -> void:
-	state = State.QUITTING
+	if state != State.QUITTING:
+		_to(State.QUITTING)
 	get_tree().quit()

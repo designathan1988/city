@@ -3,8 +3,9 @@
 ## Tool: NONE (camera) → ROAD | ZONE | DEMOLISH | INSPECT | UPGRADE | SPLIT | ROUNDABOUT | TERRAIN | LOT | MOVE | CONTROL | PAINT | TREES |
 ## CLOUD | FOG | WEATHER | ELEMENTS | STRIKE | SHOOT | BUILD | TRANSIT | POLE | BARRIER | STREETSCAPE; set_tool() is
 ## the only transition, Esc and a right click that stays a click (CityCamera.right_clicked) cancel; a right or middle
-## drag is the camera's and never reaches the tool. A held left button sends drag() and, every frame, tick(); release()
-## ends the stroke.
+## drag is the camera's and never reaches the tool. The left button's stroke is the Phase machine (IDLE, HELD: PHASES,
+## entered only by _enter): held, it sends drag() and, every frame, tick(); release() ends it. A tool changes only with no
+## stroke held: set_tool cancels a held one first, so a tool never gets the drag, tick or release of a press it never had.
 class_name ToolController
 extends Node
 
@@ -21,6 +22,10 @@ signal hovered(info: Dictionary)
 
 enum Tool { NONE, ROAD, ZONE, DEMOLISH, INSPECT, UPGRADE, SPLIT, ROUNDABOUT, TERRAIN, LOT, MOVE, CONTROL, PAINT, TREES, CLOUD, FOG, WEATHER, ELEMENTS, STRIKE, SHOOT, BUILD, TRANSIT,
 	POLE, BARRIER, STREETSCAPE, LOTS }
+## The left button's stroke: IDLE, or HELD from its press to its release (or to a tool change, which cancels it).
+enum Phase { IDLE, HELD }
+
+const PHASES := {Phase.IDLE: [Phase.HELD], Phase.HELD: [Phase.IDLE]}
 
 const SCRIPTS := {
 	Tool.ROAD: preload("res://game/tools/road_tool.gd"),
@@ -60,7 +65,7 @@ var params: Dictionary = {}
 var remembered: Dictionary = {}
 var active: ToolBase
 var pointer := Vector2.ZERO # where the mouse event being handled happened: the OS's cursor may already be elsewhere
-var _dragging := false
+var phase: Phase = Phase.IDLE
 
 
 func _init(camera_rig: CityCamera) -> void:
@@ -82,6 +87,8 @@ func _ready() -> void:
 
 
 func set_tool(next: Tool, p: Dictionary = {}) -> void:
+	if _enter(Phase.IDLE) and active: # a stroke held as the tool changes is dropped, as Esc drops it
+		active.cancel()
 	if active:
 		active.exit()
 	tool = next
@@ -90,6 +97,14 @@ func set_tool(next: Tool, p: Dictionary = {}) -> void:
 	preview.clear()
 	active = SCRIPTS[next].new(self, p) if SCRIPTS.has(next) else null
 	tool_changed.emit(tool, params)
+
+
+## The stroke's one setter: a move the table refuses (a release with no press, a press over a held one) changes nothing.
+func _enter(next: Phase) -> bool:
+	if not PHASES[phase].has(next):
+		return false
+	phase = next
+	return true
 
 
 func last_param(t: Tool, key: String, fallback: Variant) -> Variant:
@@ -119,7 +134,7 @@ func hover_world(p: Vector3) -> void:
 
 
 func _process(delta: float) -> void:
-	if active and _dragging:
+	if active and phase == Phase.HELD:
 		active.tick(delta)
 
 
@@ -147,19 +162,20 @@ func _unhandled_input(event: InputEvent) -> void:
 	if active == null:
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		_dragging = event.pressed
 		var p: Variant = ground_at(event.position)
-		if event.pressed and p != null:
-			double_press = event.double_click
-			click_world(p)
-			get_viewport().set_input_as_handled()
-		elif not event.pressed:
+		if event.pressed:
+			_enter(Phase.HELD)
+			if p != null:
+				double_press = event.double_click
+				click_world(p)
+				get_viewport().set_input_as_handled()
+		elif _enter(Phase.IDLE): # only the stroke this tool was pressed for is released to it
 			active.release(p if p != null else Vector3.INF)
 	elif event is InputEventMouseMotion:
 		var p: Variant = ground_at(event.position)
 		if p == null:
 			return
-		if _dragging:
+		if phase == Phase.HELD:
 			active.drag(p)
 		else:
 			hover_world(p)

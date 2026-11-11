@@ -11,8 +11,12 @@
 
 namespace city {
 
-// Explicit states of the clock. Transitions: any -> any through set_speed(); stop() -> STOPPED.
+// Explicit states of the clock. Only start() leaves STOPPED (for PAUSED or NORMAL), set_speed() moves among the running
+// speeds, stop() enters STOPPED: the moves each may make are the table SPEED_MOVES (simulation.cpp), read by the one setter
+// enter() (tools/gates STATE_CONTROLLER).
 enum class SimSpeed : int { PAUSED = 0, NORMAL = 1, FAST = 2, FASTEST = 3, STOPPED = 4 };
+// What asks the clock to move, the rows of SPEED_MOVES: its start, a change of speed, its stop.
+enum class SpeedMove : int { START, CHANGE, STOP };
 
 class Simulation {
 public:
@@ -32,6 +36,7 @@ public:
 	~Simulation() { stop(); }
 
 private:
+	bool enter(SpeedMove by, SimSpeed next); // the clock's one setter, under wake_mutex_: false when SPEED_MOVES refuses the move
 	void run();
 	void tick(CityState &s, int steps, int64_t stamp_ns); // steps under the two locks, poses published once (at stamp_ns)
 	CityState *s_ = nullptr;

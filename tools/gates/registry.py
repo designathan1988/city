@@ -16,6 +16,7 @@ import gate_lab
 import gate_language
 import gate_materials
 import gate_python
+import gate_states
 import gate_text
 import gate_tuning
 import gate_ui
@@ -81,6 +82,7 @@ def per_file_rules(rules):
         PerFile("english", ["NON_ENGLISH_TEXT"], gate_language.applies, gate_language.check_english,
                 lambda ctx: ctx.cache.key_of(gate_language.inputs(ctx))),
         PerFile("lab_copy", ["LAB_COPY"], gate_lab.applies, gate_lab.check_lab_copy, gate_lab.store_key),
+        PerFile("states", [gate_states.ID], gate_states.applies, gate_states.check_states, gate_states.context),
     ]
 
 

@@ -66,8 +66,8 @@
     {"id": "daylight", "rule": "Daylight owns the sun, the ambient and the sky; the moon casts all night; the street's light is LampLights", "guards": [{"kind": "test", "name": "project/tests/core/light_color_test.gd"}, {"kind": "test", "name": "project/tests/core/lamp_light_test.gd"}]},
     {"id": "sky-mode", "rule": "day and night fix daylight.json's hours", "guards": [{"kind": "test", "name": "project/tests/visual/capture_clock.gd"}]},
     {"id": "clock-sky", "rule": "tests and captures move the clock and the sky together", "guards": [{"kind": "tool", "name": "project/tests/visual/ui_driver.gd"}]},
-    {"id": "gameflow-states", "rule": "GameFlow's states and their transition table", "guards": [{"kind": "gate", "name": "FLUXO_CENTRAL"}, {"kind": "test", "name": "project/tests/core/shell_test.gd"}]},
-    {"id": "sim-speed", "rule": "SimSpeed: only start and stop enter and leave STOPPED", "guards": [{"kind": "test", "name": "project/tests/core/save_undo_test.gd"}]},
-    {"id": "tool-states", "rule": "ToolController: one tool each, INSPECT when empty-handed, only set_tool changes it", "guards": [{"kind": "test", "name": "project/tests/core/camera_input_test.gd"}, {"kind": "test", "name": "project/tests/core/building_tool_test.gd"}]}
+    {"id": "gameflow-states", "rule": "GameFlow's states and their transition table", "guards": [{"kind": "gate", "name": "FLUXO_CENTRAL"}, {"kind": "gate", "name": "STATE_CONTROLLER"}, {"kind": "test", "name": "project/tests/core/shell_test.gd"}]},
+    {"id": "sim-speed", "rule": "SimSpeed: only start and stop enter and leave STOPPED, every move through one setter and its table", "guards": [{"kind": "gate", "name": "STATE_CONTROLLER"}, {"kind": "test", "name": "project/tests/core/save_undo_test.gd"}]},
+    {"id": "tool-states", "rule": "ToolController: one tool each, only set_tool changes it, the stroke a Phase machine a tool change cancels; every state enum a machine or a kind", "guards": [{"kind": "gate", "name": "STATE_CONTROLLER"}, {"kind": "test", "name": "project/tests/core/camera_input_test.gd"}, {"kind": "test", "name": "project/tests/core/building_tool_test.gd"}]}
   ]
 }

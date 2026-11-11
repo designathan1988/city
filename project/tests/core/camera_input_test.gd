@@ -1,7 +1,8 @@
 ## Camera test through real input (Input.parse_input_event, like the player's mouse and keys): middle-drag pan keeps
 ## the grabbed ground under the cursor, Shift + right drag too, the wheel zooms about the cursor, right drag turns
 ## about the press point with the near side following the hand, tilt and zoom limits hold, keys glide, a right click
-## cancels the road in progress while a right drag does not, and the left button still reaches the tool.
+## cancels the road in progress while a right drag does not, and the left button still reaches the tool. A tool taken while
+## the left button is held gets no stroke it was not pressed for.
 extends TestCase
 
 const TOWN_MAP := 0
@@ -35,6 +36,7 @@ func _ready() -> void:
 	await _orbit_tests()
 	await _limit_tests()
 	await _key_tests()
+	await CameraStrokeCases.new(self).run()
 	await CameraWalkCases.new(self).run()
 	await CameraRoadKeyCases.new(self).run()
 	finish()
