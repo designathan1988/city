@@ -7,6 +7,9 @@ extends CanvasLayer
 
 signal category_pressed(id: String)
 
+const CATEGORY := &"category" # a dock button's category id
+const MENU := "menu" # the popover whose button stands for those with no button of their own
+
 @onready var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
 @onready var rig: CityCamera = get_tree().get_first_node_in_group(&"camera_rig")
 @onready var world: CityWorld = get_tree().get_first_node_in_group(&"world")
@@ -21,7 +24,7 @@ signal category_pressed(id: String)
 @onready var profiler: ProfilerHud
 @onready var effects: EffectsPanel
 @onready var messages: HudMessages
-@onready var _cat_buttons := {}
+@onready var _cat_buttons: Array[Button] = []
 @onready var _dialog: HudDialog
 
 
@@ -76,7 +79,6 @@ func _ready() -> void:
 		tools.inspected.connect(_on_inspector)
 		tools.tool_changed.connect(func(t: ToolController.Tool, _p: Dictionary) -> void: Settings.set_zone_tool(t == ToolController.Tool.ZONE))
 		tools.set_tool(ToolController.Tool.INSPECT) # with nothing in hand a click asks what is there, as in the reference
-	top_bar.set_sky(world.sky_mode if world else "day")
 
 
 ## "Editar perfil" of the Inspector: the same editor as the road tool's, over the dock, working on that road.
@@ -107,7 +109,7 @@ func _notification(what: int) -> void:
 	if what != NOTIFICATION_TRANSLATION_CHANGED or root == null or not is_node_ready():
 		return
 	for c: Dictionary in DataTables.ui("drawers").categories:
-		var b: Button = _cat_buttons[c.id]
+		var b := _category_button(c.id)
 		b.text = tr(c.label_key)
 		HudWidgets.tip_for(b, tr(c.tip_key))
 	top_bar.relabel()
@@ -134,8 +136,16 @@ func _build_dock() -> void:
 		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 		b.pressed.connect(open_category.bind(c.id))
+		b.set_meta(CATEGORY, c.id)
 		row.add_child(b)
-		_cat_buttons[c.id] = b
+		_cat_buttons.append(b)
+
+
+func _category_button(id: String) -> Button:
+	for b in _cat_buttons:
+		if b.get_meta(CATEGORY) == id:
+			return b
+	return null
 
 
 ## The tool's hint: the price while aiming and refusals.
@@ -150,8 +160,8 @@ func flash(text: String, ok: bool) -> void:
 
 func open_category(id: String) -> void:
 	var open: String = "" if drawer.category.get("id", "") == id else id
-	for k in _cat_buttons:
-		_cat_buttons[k].set_pressed_no_signal(k == open)
+	for b in _cat_buttons:
+		b.set_pressed_no_signal(b.get_meta(CATEGORY) == open)
 	category_pressed.emit(open)
 	if open == "":
 		drawer.close()
@@ -176,17 +186,17 @@ func pick_road(index: int) -> void:
 	drawer.catalog.pick_index(index)
 
 
+## A popover under its button (one with no button of its own under the menu's), that button pressed while it is open.
 func open_popover(which: String) -> void:
-	var buttons := top_bar.action_buttons
-	var b: Button = buttons.get(which, buttons.menu)
+	var b := top_bar.popover_button(which)
+	if b == null:
+		b = top_bar.popover_button(MENU)
 	var opened := popover.toggle(which, b.get_global_rect())
-	for k in buttons:
-		buttons[k].set_pressed_no_signal(opened and k == which)
+	top_bar.press_popover(which if opened else "")
 
 
 func _on_popover_closed() -> void:
-	for k in top_bar.action_buttons:
-		top_bar.action_buttons[k].set_pressed_no_signal(false)
+	top_bar.press_popover("")
 
 
 ## A modal dialog over the game: graphics, about.
@@ -227,8 +237,8 @@ func _on_tool_requested(tool: String, params: Dictionary) -> void:
 
 
 func _on_drawer_closed() -> void:
-	for k in _cat_buttons:
-		_cat_buttons[k].set_pressed_no_signal(false)
+	for b in _cat_buttons:
+		b.set_pressed_no_signal(false)
 	if tools:
 		tools.set_tool(ToolController.Tool.INSPECT)
 	show_hint("", true)

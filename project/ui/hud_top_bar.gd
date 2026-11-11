@@ -1,5 +1,7 @@
 ## The top bar: sky (day, night, the residents' clock), clock, money, counts | speed pill | layers, simulation, camera, undo, redo,
-## help, menu. Reads CityStore.snapshot; the buttons ask the HUD for what they open.
+## help, menu. Reads CityStore.snapshot and shows the sky mode the world's daylight holds (Daylight.mode_changed, whoever set it);
+## the buttons ask the HUD for what they open. Each button carries what it stands for as metadata (its tip key, its sky mode, the
+## popover it opens, the history step it runs), so the bar keeps no table beside its nodes.
 class_name HudTopBar
 extends PanelContainer
 
@@ -9,16 +11,21 @@ signal impossible_pressed
 
 const SKY := [["sun", "sky.day", "day"], ["moon", "sky.night", "night"], ["cycle", "sky.cycle", "cycle"]]
 const SPEEDS := [["", 0], ["1×", 1], ["2×", 2], ["4×", 3]]
+const TIP := &"tip_key" # the key of a button's tip, drawn again when the language changes
+const SOON := &"being_built" # the button stands for what is still being built (HudWidgets.soon)
+const SKY_MODE := &"sky_mode"
+const POPOVER := &"popover"
+const STEP := &"history_step"
 
-@onready var action_buttons: Dictionary = {}
 @export var world: CityWorld
 @onready var _clock: Label
 @onready var _money: Label
 @onready var _stats: Label
 @onready var _speed_buttons: Array[Button] = []
 @onready var _sky_buttons: Array[Button] = []
-@onready var _history_buttons: Dictionary = {}
-@onready var _tipped: Array = [] # [button, tip key]: drawn again when the language changes
+@onready var _popover_buttons: Array[Button] = []
+@onready var _history_buttons: Array[Button] = []
+@onready var _tipped: Array[Button] = []
 @onready var _warn: Button
 
 
@@ -30,16 +37,36 @@ func _ready() -> void:
 	offset_right = -HudWidgets.px("margin")
 	custom_minimum_size.y = HudWidgets.px("hud_h")
 	var row := HudWidgets.hbox(self, &"Gap")
+	_build_left(row)
+	var pill := HudWidgets.hbox(HudWidgets.panel(row, &"Seg"))
+	for s in SPEEDS:
+		var b := HudWidgets.button(&"SegButton", "pause" if s[0] == "" else "", s[0], "sim.speed", "seg_min_w", "seg_h")
+		b.toggle_mode = true
+		b.pressed.connect(func() -> void: CityStore.dispatch(&"set_speed", [s[1]]))
+		pill.add_child(b)
+		_speed_buttons.append(b)
+		_tip(b, "sim.speed")
+	_build_actions(row)
+	if world:
+		world.daylight.mode_changed.connect(_show_sky)
+	_show_sky(world.sky_mode if world else "")
+	CityStore.changed.connect(_on_changed)
+	relabel()
+
+
+## The sky segment, the clock, the money, the warning of nodes that cannot be built and the counts.
+func _build_left(row: HBoxContainer) -> void:
 	var left := HudWidgets.hbox(row, &"Gap")
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var sky := HudWidgets.hbox(HudWidgets.panel(left, &"Seg"))
 	for s in SKY:
 		var b := HudWidgets.button(&"SegButton", s[0], "", s[1], "seg_min_w", "seg_h")
 		b.toggle_mode = true
+		b.set_meta(SKY_MODE, s[2])
 		b.pressed.connect(set_sky.bind(s[2]))
 		sky.add_child(b)
 		_sky_buttons.append(b)
-		_tipped.append([b, s[1]])
+		_tip(b, s[1])
 	_clock = HudWidgets.label(left, &"ClockLabel")
 	_money = HudWidgets.label(left, &"MoneyLabel")
 	_warn = HudWidgets.button(&"Chip", "warn", "", "", "", "seg_h")
@@ -49,54 +76,96 @@ func _ready() -> void:
 	_money.mouse_filter = Control.MOUSE_FILTER_PASS
 	_stats = HudWidgets.label(left, &"StatsLabel")
 	_stats.mouse_filter = Control.MOUSE_FILTER_PASS
-	var pill := HudWidgets.hbox(HudWidgets.panel(row, &"Seg"))
-	for s in SPEEDS:
-		var b := HudWidgets.button(&"SegButton", "pause" if s[0] == "" else "", s[0], "sim.speed", "seg_min_w", "seg_h")
-		b.toggle_mode = true
-		b.pressed.connect(func() -> void: CityStore.dispatch(&"set_speed", [s[1]]))
-		pill.add_child(b)
-		_speed_buttons.append(b)
-		_tipped.append([b, "sim.speed"])
+
+
+## The actions of drawers.json: a popover, a step of the history, or a button of what is still being built.
+func _build_actions(row: HBoxContainer) -> void:
 	var right := HudWidgets.hbox(row, &"Pad")
 	right.alignment = BoxContainer.ALIGNMENT_END
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for a in DataTables.ui("drawers").actions:
 		var b := HudWidgets.button(&"IconButton", a.icon, "", a.tip_key, "icon_btn", "icon_btn")
 		right.add_child(b)
-		_tipped.append([b, a.tip_key])
+		_tip(b, a.tip_key)
 		if a.has("popover"):
 			b.toggle_mode = true
+			b.set_meta(POPOVER, a.popover)
 			b.pressed.connect(func() -> void: popover_pressed.emit(a.popover))
-			action_buttons[a.popover] = b
+			_popover_buttons.append(b)
 		elif a.has("action"):
+			b.set_meta(STEP, a.action)
 			b.pressed.connect(func() -> void: history_pressed.emit(a.action))
-			_history_buttons[a.action] = b
+			_history_buttons.append(b)
 		else:
+			b.set_meta(SOON, true)
 			HudWidgets.soon(b, a.tip_key)
-	CityStore.changed.connect(_on_changed)
-	relabel()
+
+
+func _tip(b: Button, key: String) -> void:
+	b.set_meta(TIP, key)
+	_tipped.append(b)
 
 
 ## The texts that do not follow the numbers, in the language now.
 func relabel() -> void:
-	for t: Array in _tipped:
-		HudWidgets.tip_for(t[0], tr(t[1]))
+	for b in _tipped:
+		if b.get_meta(SOON, false):
+			HudWidgets.soon(b, b.get_meta(TIP))
+		else:
+			HudWidgets.tip_for(b, tr(b.get_meta(TIP)))
 	_money.tooltip_text = tr("ui.money.tip").format({"refund": int(round(DataTables.tuning("economy_refund_share") * Formatters.PERCENT))})
 	_on_changed(CityStore.snapshot)
 
 
+## The player's sun, moon or clock: the world's daylight takes the mode and the bar shows what it took (_show_sky).
 func set_sky(mode: String) -> void:
-	for i in SKY.size():
-		_sky_buttons[i].set_pressed_no_signal(SKY[i][2] == mode)
 	if world:
 		world.set_sky_mode(mode)
+	else:
+		_show_sky("")
+
+
+## The mode the world's daylight holds: its button pressed and the others not, whoever changed it.
+func _show_sky(mode: String) -> void:
+	for b in _sky_buttons:
+		b.set_pressed_no_signal(b.get_meta(SKY_MODE) == mode)
+
+
+## The mode the pressed sky button stands for ("" with none): what the bar tells the player.
+func sky_shown() -> String:
+	for b in _sky_buttons:
+		if b.button_pressed:
+			return b.get_meta(SKY_MODE)
+	return ""
+
+
+## The button that opens a popover, or null when none does.
+func popover_button(which: String) -> Button:
+	for b in _popover_buttons:
+		if b.get_meta(POPOVER) == which:
+			return b
+	return null
+
+
+## The open popover's button pressed and the others not ("" presses none).
+func press_popover(which: String) -> void:
+	for b in _popover_buttons:
+		b.set_pressed_no_signal(b.get_meta(POPOVER) == which)
+
+
+## The button of a step of the history (undo, redo), or null.
+func history_button(step: String) -> Button:
+	for b in _history_buttons:
+		if b.get_meta(STEP) == step:
+			return b
+	return null
 
 
 ## Nodes that cannot be built: a warning with their count, hidden with none (the core keeps the list until the network changes).
 func _sync_impossible() -> void:
 	var n: int = CityStore.query(&"impossible_nodes").size()
 	_warn.visible = n > 0
-	_warn.text = str(n)
+	_warn.text = Formatters.format_int(n)
 	_warn.tooltip_text = Formatters.count_label("status.impossible", n)
 
 
@@ -113,8 +182,8 @@ func _on_changed(s: Dictionary) -> void:
 	_sync_impossible()
 	for i in SPEEDS.size():
 		_speed_buttons[i].set_pressed_no_signal(SPEEDS[i][1] == int(s.speed))
-	for action in _history_buttons:
-		var b: Button = _history_buttons[action]
-		b.disabled = not s.get("can_" + action, false)
-		var label: String = s.get(action + "_label", "")
-		b.tooltip_text = tr("action." + action) + ("" if label.is_empty() else " · " + tr(label))
+	for b in _history_buttons:
+		var step: String = b.get_meta(STEP)
+		b.disabled = not s.get("can_" + step, false)
+		var label: String = s.get(step + "_label", "")
+		b.tooltip_text = tr("action." + step) if label.is_empty() else "%s · %s" % [tr("action." + step), tr(label)]

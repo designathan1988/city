@@ -14,6 +14,7 @@ const BUDGET_MS := 16.0
 const DT := 0.016
 ## Free ground past the town, where a road can start.
 const FIELD_M := 100.0
+const CYCLE_HOUR := 12.5 # neither the day's hour nor the night's: the clock's sky
 
 
 func _ready() -> void:
@@ -33,6 +34,7 @@ func _ready() -> void:
 	_options(rig)
 	_levels()
 	_panels(hud)
+	_sky(hud)
 	await _session(rig)
 	await _drawers(hud)
 	await _bomb_force(hud)
@@ -191,6 +193,17 @@ func _drawers(hud: RoadcraftHud) -> void:
 	var right := hud.drawer.get_global_rect().end.x
 	check(right <= hud.drawer.get_viewport_rect().size.x, "the model shelf stays inside the window (%.0f)" % right)
 	hud.drawer.close()
+
+
+## A capture's hour is the sky the player sets for it, as the reference's captures set the clock and the sky mode together: the night's
+## hour by the moon, the day's by the sun, any other by the clock; and the top bar shows the sky the world draws, whoever set it.
+func _sky(hud: RoadcraftHud) -> void:
+	var day: Dictionary = DataTables.game("daylight")
+	for pair: Array in [[float(day.night_hour), "night"], [float(day.day_hour), "day"], [CYCLE_HOUR, "cycle"]]:
+		UiDriver.at_hour(world, pair[0])
+		check(world.sky_mode == pair[1] and hud.top_bar.sky_shown() == pair[1], "at %.1f h the sky is %s and the bar shows it: %s, %s" % [
+				pair[0], pair[1], world.sky_mode, hud.top_bar.sky_shown()])
+	UiDriver.at_hour(world, float(day.day_hour))
 
 
 func _wait(frames: int) -> void:

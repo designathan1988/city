@@ -79,7 +79,7 @@ func _undo_redo(a: Vector3, e: Vector3) -> void:
 	await ui.drawn()
 	_check(CityStore.snapshot.segments == s0 and CityStore.snapshot.can_redo, "Ctrl+Z undid the road")
 	await ui.shot("feat_undo_2_desfeita")
-	await ui.press(hud.top_bar._history_buttons.redo)
+	await ui.press(hud.top_bar.history_button("redo"))
 	await ui.drawn()
 	_check(CityStore.snapshot.segments > s0, "Redo by the button")
 	await ui.shot("feat_undo_3_refeita")

@@ -126,7 +126,7 @@ func _health() -> void:
 
 ## The mouse tip of the Layers button, its own element (the toast above is not one).
 func _tip() -> void:
-	var b: Button = hud.top_bar.action_buttons.layers
+	var b := hud.top_bar.popover_button("layers")
 	var at := b.get_global_rect().get_center()
 	get_viewport().warp_mouse(at)
 	var move := InputEventMouseMotion.new()

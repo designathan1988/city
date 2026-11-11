@@ -4,6 +4,9 @@
 class_name Daylight
 extends RefCounted
 
+## The sky mode changed, whoever changed it (the top bar shows it): "day", "night" or "cycle".
+signal mode_changed(mode: String)
+
 const LEAST_LIGHT := 0.001 # a share of no light at all stays a number
 
 var _d: Dictionary
@@ -72,6 +75,7 @@ func set_mode(sky: String) -> void:
 		follow_clock(CityStore.snapshot.get("hour", _d.day_hour))
 	else:
 		set_hour(_d.day_hour if sky == "day" else _d.night_hour)
+	mode_changed.emit(sky)
 
 
 ## The city's clock moved: the light follows in "cycle", a step at a time, so nothing is redone in a frame it did not move.

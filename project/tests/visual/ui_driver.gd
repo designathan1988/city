@@ -141,11 +141,17 @@ func shot(name: String, settle: int = SETTLE_FRAMES) -> void:
 	print("capture: ", path)
 
 
-## A shot's hour, the light and the city's clock together: in play the sky follows the clock (the top bar's hour), and what
-## runs by the hour (traffic, people, lit windows) reads the clock, not the light.
+## A shot's hour as the player sets it, the clock and the sky together (the reference's captures set the clock and the sky mode):
+## the day's hour by the top bar's sun, the night's by its moon, any other by its clock, the light following the city's clock. Never the
+## light pinned behind the mode the bar shows; what runs by the hour (traffic, people, lit windows) reads the clock.
 static func at_hour(world: CityWorld, hour: float) -> void:
-	world.set_hour(hour)
 	CityStore.dispatch(&"set_day_hour", [hour])
+	var day: Dictionary = DataTables.game("daylight")
+	var mode := "day" if is_equal_approx(hour, float(day.day_hour)) else "night" if is_equal_approx(hour, float(day.night_hour)) else "cycle"
+	world.set_sky_mode(mode)
+	if mode == "cycle":
+		world.follow_clock(hour) # the store's snapshot gives the new hour from the next frame
+
 
 
 ## The step that starts now, in the log.
