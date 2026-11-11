@@ -122,6 +122,7 @@ bool lot_rules(const Dictionary &d, LotRules &l, PackedStringArray &errors) {
 	pair_of(at(d, "person_gate"), l.person_gate);
 	pair_of(at(d, "party_wall"), l.party_wall);
 	l.front_low = float(at(d, "front_low"));
+	l.block_closes = float(at(d, "block_closes_m"));
 	Array pool = at(d, "pool");
 	enum { POOL_W, POOL_D, POOL_DEPTH };
 	l.pool_w = float(pool[POOL_W]); l.pool_d = float(pool[POOL_D]); l.pool_depth = float(pool[POOL_DEPTH]);

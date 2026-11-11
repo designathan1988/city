@@ -1,7 +1,9 @@
 // Where a house's car stands and how the side strips are used. Every house gets its bay: in a closed garage or under a
 // carport standing on its own drive - at the drive's front, or at its end in the yard with the drive carried there -
 // or, on a lot too narrow for a drive, on a car pad in the front garden. The garage is a volume of the body on the
-// drive's strip with its door on the drive, so the car drives straight in. Other lots' drives get their drain, their
+// drive's strip with its door on the drive, so the car drives straight in; standing on the lot's side, its wall closes that
+// stretch of the boundary (laid after it, lot_boundary.cpp). A carport stands inside the boundary's band, the wall along it.
+// Other lots' drives get their drain, their
 // side paths a lamp, drains, bins and crates (an alley used as one), side gardens a row of trees and shrubs.
 #include "sim/buildings/b40/lot_layout.h"
 #include "sim/buildings/b40/massing.h"
@@ -51,11 +53,14 @@ void house_car(LotSpace &s) {
 	const Strip *st = drive_strip(s);
 	if (!st) return;
 	const float len = l.stall_d + GARAGE_WALL, yard = s.D - s.B;
-	const bool back_fits = yard >= len + 2 * GARAGE_SET, front_fits = s.B - s.F >= len + GARAGE_SET;
+	// In front, a garage stands behind the front zone and behind the boundary's reach of the street line: its door never closes
+	// the edge the drive's gate opens.
+	const float front = std::max(s.F, s.rules.block_closes);
+	const bool back_fits = yard >= len + 2 * GARAGE_SET, front_fits = s.B - front >= len + GARAGE_SET;
 	const bool back = back_fits && (!front_fits || s.r.f() < l.garage_back_share);
 	if (!back && !front_fits) return;
 	const bool closed = s.r.f() < l.garage_closed_share;
-	const float y0 = back ? s.B + GARAGE_SET : s.F + GARAGE_SET;
+	const float y0 = back ? s.B + GARAGE_SET : front + GARAGE_SET;
 	const Rect shed{ st->drive.x0, y0, st->drive.x1, y0 + len };
 	if (back) {
 		// The drive carried on past the house to the garage at its end.
@@ -68,12 +73,15 @@ void house_car(LotSpace &s) {
 		garage(s, shed);
 		return;
 	}
+	// A carport is open: the side wall runs along it, and its posts and roof stand on the land inside the boundary's band.
+	const Rect in = s.inner();
+	const Rect port{ std::max(shed.x0, in.x0), shed.y0, std::min(shed.x1, in.x1), std::min(shed.y1, in.y1) };
 	const int post = s.paint("lamp_post"), roof = s.paint("canopy");
-	for (float x : { shed.x0 + CARPORT_POST, shed.x1 - CARPORT_POST })
-		for (float y : { shed.y0 + CARPORT_POST, shed.y1 - CARPORT_POST })
+	for (float x : { port.x0 + CARPORT_POST, port.x1 - CARPORT_POST })
+		for (float y : { port.y0 + CARPORT_POST, port.y1 - CARPORT_POST })
 			s.edge(EL_PILLAR, Rect::around(x, y, CARPORT_POST, CARPORT_POST), l.car_clear_h, post);
 	LotElement slab;
-	slab.kind = EL_SLAB; slab.x = shed.cx(); slab.y = shed.cy(); slab.w = shed.w(); slab.d = shed.d();
+	slab.kind = EL_SLAB; slab.x = port.cx(); slab.y = port.cy(); slab.w = port.w(); slab.d = port.d();
 	slab.z = l.car_clear_h; slab.h = CARPORT_SLAB; slab.paint = roof;
 	s.b.elements.push_back(slab);
 }

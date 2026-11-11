@@ -79,7 +79,7 @@
               "properties": {"lit_share": {"type": "array", "minItems": 2, "items": false, "prefixItems": [{"$ref": "#/$defs/share"}, {"$ref": "#/$defs/share"}]}}},
     "lots": {
      "type": "object", "strict": true,
-     "required": ["_doc", "stall_w", "stall_d", "aisle", "stall_line", "drive_lane", "car_clear_h", "person_gate", "party_wall", "front_low", "pool", "pool_share",
+     "required": ["_doc", "stall_w", "stall_d", "aisle", "stall_line", "drive_lane", "car_clear_h", "person_gate", "party_wall", "front_low", "block_closes_m", "pool", "pool_share",
                   "terrace", "garage_back_share", "yard_life_depth", "max_elements", "garage_closed_share", "lorry_w", "dock_margin", "boundary", "lorry_l"],
      "properties": {
       "_doc": {"type": "string"},
@@ -87,7 +87,7 @@
       "drive_lane": {"$ref": "#/$defs/length"}, "car_clear_h": {"$ref": "#/$defs/length"},
       "person_gate": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/length"}},
       "party_wall": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/length"}},
-      "front_low": {"$ref": "#/$defs/length"},
+      "front_low": {"$ref": "#/$defs/length"}, "block_closes_m": {"$ref": "#/$defs/length"},
       "pool": {"type": "array", "minItems": 3, "items": {"$ref": "#/$defs/length"}},
       "pool_share": {"$ref": "#/$defs/share"}, "terrace": {"$ref": "#/$defs/length"}, "garage_back_share": {"$ref": "#/$defs/share"},
       "yard_life_depth": {"$ref": "#/$defs/length"}, "max_elements": {"type": "integer", "minimum": 1}, "garage_closed_share": {"$ref": "#/$defs/share"},

@@ -127,11 +127,12 @@ float LotSpace::built_back(float x0, float x1) const {
 void lay_out_lot(const Data &data, Body &b, Xoshiro128 &r) {
 	LotSpace s(data, b, r);
 	lay_ground(s);
-	lay_boundary(s);
+	open_boundary(s);
 	lay_cars(s);
 	lay_front(s);
 	lay_back(s);
 	lay_yard(s);
+	lay_boundary(s); // last: every block that stands on an edge (a garage) is known
 }
 
 } // namespace city::b40

@@ -50,6 +50,7 @@ struct LotRules {
 	float drive_lane = 0, car_clear_h = 0; // least clear width of a car's way, least headroom over a car
 	float person_gate[2] = {}, party_wall[2] = {}; // house, other lot
 	float front_low = 0; // the side walls beside the front garden
+	float block_closes = 0; // a ground block whose face stands this near a lot's edge closes it there: its wall is the boundary along it
 	float pool_w = 0, pool_d = 0, pool_depth = 0, pool_share = 0, terrace = 0;
 	float garage_back_share = 0, garage_closed_share = 0, yard_life_depth = 0;
 	float lorry_w = 0, lorry_l = 0, dock_margin = 0; // the widest and the single-unit lorry; room round it in a dock

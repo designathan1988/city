@@ -24,6 +24,18 @@ struct Rect {
 	static Rect around(float x, float y, float w, float d) { return { x - w / 2, y - d / 2, x + w / 2, y + d / 2 }; }
 };
 
+// The lot's boundary as open_boundary plans it and lay_boundary, last, lays it: the front's style and paint, the sides' and the back's
+// kind, paint and heights, each edge's band (its thickness, held from every other part) and the front's stretches its gates take.
+struct BoundaryPlan {
+	BoundaryStyle front;
+	Element side = EL_WALL;
+	int front_paint = -1, side_paint = -1;
+	float front_t = 0, side_t = 0; // the bands: the front's, and the sides' and the back's
+	float party = 0, low = 0; // the sides' and the back's height, and the sides' beside the front zone
+	std::vector<std::pair<float, float>> gates; // the front's stretches the gates take, with the gap a run keeps from them
+	int pieces = 0; // the most pieces the runs can take: kept from the lot's budget until they are laid
+};
+
 // A side strip of the lot (between the front zone and the back zone) and what it is used for.
 struct Strip {
 	SideUse use = SIDE_ATTACHED;
@@ -53,8 +65,10 @@ public:
 	float back_door_x = 0;
 	std::vector<float> loading_x; // loading doors on the back faces, and the wall they stand in
 	float loading_y = 0;
+	BoundaryPlan bounds; // open_boundary's plan, laid by lay_boundary
 
-	bool full() const { return int(b.elements.size()) >= rules.max_elements; }
+	// The lot's budget of parts is spent, the boundary's pieces kept for it until they are laid.
+	bool full() const { return int(b.elements.size()) + bounds.pieces >= rules.max_elements; }
 	int paint(const char *name);
 	int paint(const Paint &p) { return b.add_paint(p); }
 	// Ground cover over `r`, drawn under the parts; `layer` lifts the later covers over the earlier ones.
@@ -67,6 +81,10 @@ public:
 	// A part laid where asked, without the tests (the boundary and its gates, a carport's posts, a tree in its planter).
 	void edge(Element k, const Rect &r, float h, int paint, float base = 0, float z = 0);
 	void keep_clear(const Rect &r) { ways_.push_back(r); }
+	// Room kept for a part laid later (the boundary's bands): nothing is put there meanwhile.
+	void hold(const Rect &r) { solid_.push_back(r); }
+	// The lot's land inside its boundary's bands: where a structure that is not the boundary (a carport) stands.
+	Rect inner() const { return { L + bounds.side_t, bounds.front_t, R - bounds.side_t, D - bounds.side_t }; }
 	bool clear(const Rect &r) const; // nothing solid, no way, no building there, inside the lot
 	bool on_building(const Rect &r) const;
 	// The deepest built edge over the x span [x0, x1] (F when nothing is built there).
@@ -85,10 +103,11 @@ Rect car_pad(const LotSpace &s);
 
 // The zones, in the order lay_out_lot runs them (each file's own rules).
 void lay_ground(LotSpace &s); // lot_ground.cpp: covers of every zone, and the ways kept clear
-void lay_boundary(LotSpace &s); // lot_boundary.cpp: walls, fences, hedges, railings and gates round the lot
+void open_boundary(LotSpace &s); // lot_boundary.cpp: the boundary's style, its gates, and every edge's band held from the parts
 void lay_cars(LotSpace &s); // lot_cars.cpp: house garages, carports and car pads; drives, alleys and side gardens
 void lay_front(LotSpace &s); // lot_front.cpp: front garden, forecourt, plaza and works apron
 void lay_back(LotSpace &s); // lot_back.cpp: car park, service yard, residents' court and loading yard
 void lay_yard(LotSpace &s); // lot_yard.cpp: a house's back yard and what is lived in it; the courts the building leaves
+void lay_boundary(LotSpace &s); // lot_boundary.cpp, last: every edge closed by its runs, its gates or the blocks standing on it
 
 } // namespace city::b40

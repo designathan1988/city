@@ -1,8 +1,11 @@
-// The lot's boundary, made whole by construction: along each edge the run is the whole edge less its gates and less the
-// stretches where the building itself stands on the edge (its wall closes them). The front takes one of its kind's
-// styles (buildings.json lots.boundary); the sides and back are party walls (a works' fence), low beside a front garden.
-// Gates: the people's at the door, a car's on every drive, the car pad's and the works visitors'; with no front zone the
-// side strips open on the street through their own gates.
+// The lot's boundary, made whole: every edge is closed once along its whole length, by its run (a wall, fence, railing or hedge),
+// by its gates or by a ground block of the lot standing on it (within buildings.json lots.block_closes_m: the block's wall closes
+// it), never by two of them. open_boundary plans it before the zones lay their parts: the front takes one of its kind's styles (buildings.json
+// lots.boundary), the sides and back are party walls (a works' fence), low beside a front garden; the gates are laid (the people's
+// at the door, a car's on every drive, the car pad's and the works visitors'; with no front zone the side strips' own), and every
+// edge's band is held, so no part is put where the boundary will stand, its pieces kept from the lot's budget. lay_boundary lays the
+// runs last, when every block is known (a garage on the drive's strip closes its stretch of the side): each edge less its gates less
+// the stretches its blocks close.
 #include "sim/buildings/b40/lot_layout.h"
 
 #include <algorithm>
@@ -13,12 +16,13 @@ namespace {
 constexpr float BOUNDARY_WALL_T = 0.2f, FENCE_THICK = 0.12f, HEDGE_THICK = 0.7f; // thickness of a wall, a fence or railing, a hedge
 constexpr float GATE_POST = 0.2f; // a car gate is its drive less a post each side
 constexpr float GATE_GAP = 0.05f; // a run stops this short of a gate
-constexpr float ATTACH = 0.3f; // a building this near an edge closes it
 constexpr float SHORTEST_RUN = 0.3f; // shorter stretches are left to the posts and the corners
 constexpr float WALK_TRIM = 0.2f; // a side path's gate is the path less this
+constexpr int LATE_BLOCK_PIECES = 2; // a block laid after the plan (a garage) cuts one run of a side or the back in two, each split at the front zone's end
 constexpr float HALF = 0.5f;
 
 using Span = std::pair<float, float>;
+enum LotEdge { EDGE_FRONT, EDGE_BACK, EDGE_LEFT, EDGE_RIGHT, EDGES };
 
 float thickness(Element k) { return k == EL_HEDGE ? HEDGE_THICK : k == EL_WALL ? BOUNDARY_WALL_T : FENCE_THICK; }
 
@@ -67,52 +71,79 @@ std::vector<Gate> front_gates(LotSpace &s) {
 	}
 	return g;
 }
+
+// The stretches of edge `e` the lot's ground blocks close: every block whose face stands within the lot rules' block_closes of the
+// edge, its span along it (x along the front and the back, y along the sides).
+std::vector<Span> closed_by_blocks(const LotSpace &s, LotEdge e) {
+	std::vector<Span> out;
+	for (const Rect &f : s.built) {
+		const float in = e == EDGE_FRONT ? f.y0 : e == EDGE_BACK ? s.D - f.y1 : e == EDGE_LEFT ? f.x0 - s.L : s.R - f.x1;
+		if (in < s.rules.block_closes) out.push_back(e == EDGE_FRONT || e == EDGE_BACK ? Span{ f.x0, f.x1 } : Span{ f.y0, f.y1 });
+	}
+	return out;
+}
+
+// An edge's runs: the edge (the back between the sides' bands) less its gates and less the stretches its blocks close.
+std::vector<Span> edge_runs(const LotSpace &s, LotEdge e) {
+	std::vector<Span> cuts = closed_by_blocks(s, e);
+	if (e == EDGE_FRONT) {
+		cuts.insert(cuts.end(), s.bounds.gates.begin(), s.bounds.gates.end());
+		return runs(s.L, s.R, cuts);
+	}
+	if (e == EDGE_BACK) return runs(s.L + s.bounds.side_t, s.R - s.bounds.side_t, cuts);
+	return runs(0, s.D, cuts);
+}
+
+// The pieces the runs take: a side's run is two where it passes the front zone's end (low beside it, a party wall behind).
+int pieces_of(const LotSpace &s) {
+	int n = 0;
+	for (int e = EDGE_FRONT; e < EDGES; e++)
+		for (const Span &r : edge_runs(s, LotEdge(e))) n += (e == EDGE_LEFT || e == EDGE_RIGHT) && r.first < s.F && r.second > s.F ? 2 : 1;
+	return n;
+}
 } // namespace
 
-void lay_boundary(LotSpace &s) {
+void open_boundary(LotSpace &s) {
 	const Kind kind = s.b.kind;
 	const bool house = kind == KIND_HOUSE, homes = house || kind == KIND_FLATS || kind == KIND_TOWER, works = kind == KIND_WORKS;
 	const LotRules &l = s.rules;
+	BoundaryPlan &p = s.bounds;
 	const std::vector<BoundaryStyle> &styles = l.boundary[kind];
-	const BoundaryStyle &style = styles.size() > 1 ? styles[size_t(s.r.irange(0, int(styles.size()) - 1))] : styles.front();
+	p.front = styles.size() > 1 ? styles[size_t(s.r.irange(0, int(styles.size()) - 1))] : styles.front();
 	const int wall = s.paint(s.data.lot_walls[size_t(s.b.palette) % s.data.lot_walls.size()]);
-	const int front_paint = style.kind == EL_WALL ? wall : s.paint(style.kind == EL_HEDGE ? "hedge" : "fence");
+	p.front_paint = p.front.kind == EL_WALL ? wall : s.paint(p.front.kind == EL_HEDGE ? "hedge" : "fence");
 	const int gate_paint = s.paint("gate");
-	const float top = style.h + style.base;
-	// Front: the gates, then the runs between them (F > 0), or the side strips' gates and garden walls (F == 0).
-	std::vector<Gate> gates = front_gates(s);
-	std::vector<Span> cuts;
-	for (const Gate &g : gates) {
+	p.side = works ? p.front.kind : EL_WALL;
+	p.side_paint = works ? p.front_paint : wall;
+	p.front_t = thickness(p.front.kind);
+	p.side_t = thickness(p.side);
+	p.party = works ? p.front.h : l.party_wall[house ? 0 : 1];
+	p.low = homes ? std::min(l.front_low, p.party) : p.party;
+	const float top = p.front.h + p.front.base;
+	for (const Gate &g : front_gates(s)) {
 		s.edge(g.car ? EL_CAR_GATE : EL_GATE, { g.x0, 0, g.x1, FENCE_THICK }, top, gate_paint);
-		cuts.push_back({ g.x0 - GATE_GAP, g.x1 + GATE_GAP });
+		p.gates.push_back({ g.x0 - GATE_GAP, g.x1 + GATE_GAP });
 	}
-	const float ft = thickness(style.kind);
-	if (s.F > 0) {
-		for (const Span &run : runs(s.L, s.R, cuts)) s.edge(style.kind, { run.first, 0, run.second, ft }, style.h, front_paint, style.base);
-	} else {
-		for (const Strip &st : s.strips)
-			if (st.use == SIDE_GARDEN) s.edge(style.kind, { st.r.x0, 0, st.r.x1, ft }, style.h, front_paint, style.base);
-	}
-	// Sides and back: party walls (a works' fence), cut where the building stands on the edge.
-	const Element side_kind = works ? style.kind : EL_WALL;
-	const int side_paint = works ? front_paint : wall;
-	const float st = thickness(side_kind), party = works ? style.h : l.party_wall[house ? 0 : 1];
-	const float low = homes ? std::min(l.front_low, party) : party;
-	for (int side = 0; side < 2; side++) {
-		const float edge_x = side == 0 ? s.L : s.R;
-		std::vector<Span> held;
-		for (const Rect &f : s.built)
-			if (std::abs((side == 0 ? f.x0 : f.x1) - edge_x) < ATTACH) held.push_back({ f.y0, f.y1 });
-		const float x0 = side == 0 ? s.L : s.R - st, x1 = side == 0 ? s.L + st : s.R;
-		for (const Span &run : runs(0, s.D, held)) {
-			if (run.first < s.F) s.edge(side_kind, { x0, run.first, x1, std::min(run.second, s.F) }, low, side_paint);
-			if (run.second > s.F) s.edge(side_kind, { x0, std::max(run.first, s.F), x1, run.second }, party, side_paint);
+	// The bands the runs will stand on, held from every part the zones lay meanwhile.
+	s.hold({ s.L, 0, s.R, p.front_t });
+	s.hold({ s.L, 0, s.L + p.side_t, s.D });
+	s.hold({ s.R - p.side_t, 0, s.R, s.D });
+	s.hold({ s.L, s.D - p.side_t, s.R, s.D });
+	p.pieces = pieces_of(s) + LATE_BLOCK_PIECES;
+}
+
+void lay_boundary(LotSpace &s) {
+	BoundaryPlan &p = s.bounds;
+	p.pieces = 0; // the budget kept for the runs is theirs now
+	for (const Span &r : edge_runs(s, EDGE_FRONT)) s.edge(p.front.kind, { r.first, 0, r.second, p.front_t }, p.front.h, p.front_paint, p.front.base);
+	for (LotEdge e : { EDGE_LEFT, EDGE_RIGHT }) {
+		const float x0 = e == EDGE_LEFT ? s.L : s.R - p.side_t, x1 = x0 + p.side_t;
+		for (const Span &r : edge_runs(s, e)) {
+			if (r.first < s.F) s.edge(p.side, { x0, r.first, x1, std::min(r.second, s.F) }, p.low, p.side_paint);
+			if (r.second > s.F) s.edge(p.side, { x0, std::max(r.first, s.F), x1, r.second }, p.party, p.side_paint);
 		}
 	}
-	std::vector<Span> held;
-	for (const Rect &f : s.built)
-		if (std::abs(f.y1 - s.D) < ATTACH) held.push_back({ f.x0, f.x1 });
-	for (const Span &run : runs(s.L + st, s.R - st, held)) s.edge(side_kind, { run.first, s.D - st, run.second, s.D }, party, side_paint);
+	for (const Span &r : edge_runs(s, EDGE_BACK)) s.edge(p.side, { r.first, s.D - p.side_t, r.second, s.D }, p.party, p.side_paint);
 }
 
 } // namespace city::b40
