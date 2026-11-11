@@ -365,3 +365,16 @@ official declarations only, converging (finite, fast enough to run in seconds to
   known) and the implicit coercion reads (`toString`, `valueOf`, `Symbol.toPrimitive`) that read them: e.g. 307 values
   in the `[[any]]` of a declared ArrayIterator, read by every coercion of it. Open: what the language says of a store by
   a key whose value is known only by kind (a number names an index, a for-in key the property it enumerates), measured.
+
+### F24. The state of the whole-program run, and what is next (P1) — 2026-11-12 04:00
+- An object's types kept per object in the engine (they depend on its key only): the pair 1.33 s -> 0.86 s; the lab with
+  contexts 535 k items/s, 79 M items in 147 s, 8.5 M nodes, 833 k objects, links 349.9 k and still rising slowly, the
+  queue 160-290 k: not converged in 150 s.
+- Measured (keykind probe, reverted): of the stores by a key whose text is not known, 30% have only numbers as keys
+  (ECMA-262 ToPropertyKey: a number names an index, never a named property) and 70% strings or mixed keys.
+- The causes still open, each with its evidence, in the order they cost:
+  1. the dictionary part (`[[any]]`) read by every named read and coercion (`toString`, `valueOf`,
+     `Symbol.toPrimitive`) of an object any unknown-key store reached (F23) — a number key writes the elements only;
+  2. contexts for every function: 127 k runs; the literature's answer (Zipper, introspective analysis) is contexts only
+     where values flow from parameters to results or into other parameters' fields, measured on the lab;
+  3. the engine's constant factors (making key terms, allocation; an SCC collapse of copy cycles, Hardekopf & Lin).

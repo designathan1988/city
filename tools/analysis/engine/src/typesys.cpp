@@ -115,8 +115,14 @@ const std::vector<int64_t>& lookup(Analysis& an, Value key, Value name) {
     return found->second;
 }
 
-std::vector<Value> own_types(Analysis& an, Obj obj) {
-    std::vector<Value> out;
+const std::vector<Value>& own_types(Analysis& an, Obj obj) {
+    if (an.own_types_known.size() <= obj) {
+        an.own_types_known.resize(an.objects(), 0);
+        an.own_types_of.resize(an.objects());
+    }
+    if (an.own_types_known[obj]) return an.own_types_of[obj];
+    an.own_types_known[obj] = 1;
+    std::vector<Value>& out = an.own_types_of[obj];
     Value key = an.class_of(obj);
     if (key.kind() != Kind::None && an.in.cls(key)) out.push_back(identity(an, key));
     Value kind = an.okind(obj);

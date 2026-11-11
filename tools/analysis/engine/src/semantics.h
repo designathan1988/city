@@ -75,7 +75,7 @@ const std::vector<Value>& group(Analysis& an, Value key);   // [key] where it me
 Value identity(Analysis& an, Value key);
 Value global_type(Analysis& an, Value kind, size_t index);
 const std::vector<int64_t>& lookup(Analysis& an, Value key, Value name);
-std::vector<Value> own_types(Analysis& an, Obj obj);
+const std::vector<Value>& own_types(Analysis& an, Obj obj);   // an object's types, its own first (kept per object)
 bool is_open_type(Analysis& an, Value key);
 std::vector<Value> ancestors(Analysis& an, Value key);
 bool has_member(Analysis& an, Obj obj, Value name);

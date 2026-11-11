@@ -57,3 +57,11 @@ returns the same `Result`; the Python modules stay as the specification each eng
 
 Each of E3-E6 gets its own failing tests first (the heap tests run against the engine), then the code, then the
 measurements, as `superpowers:executing-plans` requires.
+
+### E6 status (2026-11-12 04:00)
+- Done: the engine is the Python semantics (every heap test on both cores, links identical on nine fixture sets); the
+  language's merges fixed in both cores (F20, F23); the engine's tables and memos (F22-F24). Every folder of the lab but
+  `src/world` converges in 1-7 s; `src/world`'s `doc.ts` + `rescale.ts` in 0.86 s with contexts.
+- Open (log/trace-research.md F24, in order): number keys write the elements only (ECMA-262 ToPropertyKey), both cores,
+  with a canonical-numeric name read reading the elements; contexts selected by flows from parameters (Zipper); the
+  engine's constant factors. Then the lab and the city measured, previous and this one, and the CLI switched.
