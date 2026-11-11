@@ -7,6 +7,7 @@ import os
 import sys
 
 import facts as facts_mod
+import scope
 from source import Sources
 
 GATES_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -54,14 +55,26 @@ class Cache:
 
 class Context:
     """`files`: the scope (repo-relative, posix); `listed`: every file git lists, excluded folders included;
-    `changed`: {path: changed line numbers or None for a new file} against HEAD."""
+    `changed`: {path: changed line numbers or None for a new file} against HEAD; `before_root`: a folder holding the
+    files as they were before the change (a self-test case's), else HEAD is asked through git."""
 
-    def __init__(self, root, files, listed, rules, owners, changed, cache):
+    def __init__(self, root, files, listed, rules, owners, changed, cache, before_root=None):
         self.root, self.files, self.listed = root, files, listed
         self.file_set, self.listed_set = set(files), set(listed)
         self.rules, self.owners, self.changed, self.cache = rules, owners, changed, cache
+        self.before_root = before_root
         self.sources = Sources(root)
         self._lazy = {}
+
+    def before(self, path):
+        """The text of `path` before the change, or None when it did not exist."""
+        if self.before_root is None:
+            return scope.before_text(self.root, path)
+        full = os.path.join(self.before_root, path)
+        if not os.path.isfile(full):
+            return None
+        with open(full, encoding="utf-8") as fh:
+            return fh.read()
 
     def source(self, path):
         return self.sources.get(path)

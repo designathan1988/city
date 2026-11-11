@@ -1,0 +1,6 @@
+{
+ "tasks": [
+  {"name": "slow_test", "scene": "tests/core/slow_test",
+   "timeout_s": 600}
+ ]
+}

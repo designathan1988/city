@@ -1,0 +1,11 @@
+{
+ "rule": "patch",
+ "expect": [
+  "NUMBER_MOVED project/tests/core/a_test.gd:5",
+  "NUMBER_MOVED tools/tasks/suites.json:4"
+ ],
+ "changed": {
+  "project/tests/core/a_test.gd": [5],
+  "tools/tasks/suites.json": [4]
+ }
+}

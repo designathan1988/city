@@ -32,7 +32,8 @@ def case_context(case_dir, base_rules, base_owners):
     listed = _walk(repo)
     files = [f for f in listed if not excluded(f, rules["exclude_dirs"])]
     changed = {p: (None if v == "all" else set(v)) for p, v in case.get("changed", {}).items()}
-    return case, Context(repo, files, listed, rules, case.get("owners", base_owners), changed, Cache(repo, enabled=False))
+    return case, Context(repo, files, listed, rules, case.get("owners", base_owners), changed, Cache(repo, enabled=False),
+                         before_root=os.path.join(case_dir, "before"))
 
 
 def run_case(case_dir, base_rules, base_owners, rules_by_name):

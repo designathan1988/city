@@ -470,6 +470,16 @@
       {"enum": "Mode", "declared": "project/game/tools/cloud_tool.gd", "why": "the cloud tool's action, chosen from its options"}
     ]
   },
+  "patch": {
+    "_doc": "NUMBER_MOVED (gate_patch.py): a number moved to make a check pass is a patch. The watched numbers are compared by name with HEAD's file (a test's class-level constant; a JSON key's path, a list's object named by its name or id); one that changed passes only when its cause was recorded first, in a line of the logs or in a fixed problem of a trace's ledger naming the file and the name. The city's frozen digest is no file of the repository: its golden is written only by digest_bless (tools/tasks).",
+    "watched": [
+      {"paths": ["project/tests/"], "kind": "gd_const"},
+      {"paths": ["tools/tasks/suites.json"], "kind": "json", "keys": ["timeout_s"]},
+      {"paths": ["tools/gates/rules.json"], "kind": "json", "keys": ["*"]}
+    ],
+    "logs": ["log"],
+    "ledgers": "dist/trace"
+  },
   "mirrors": [],
   "generated": [
     {

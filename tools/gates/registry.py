@@ -15,6 +15,7 @@ import gate_generated
 import gate_lab
 import gate_language
 import gate_materials
+import gate_patch
 import gate_python
 import gate_states
 import gate_text
@@ -83,6 +84,7 @@ def per_file_rules(rules):
                 lambda ctx: ctx.cache.key_of(gate_language.inputs(ctx))),
         PerFile("lab_copy", ["LAB_COPY"], gate_lab.applies, gate_lab.check_lab_copy, gate_lab.store_key),
         PerFile("states", [gate_states.ID], gate_states.applies, gate_states.check_states, gate_states.context),
+        PerFile("patch", [gate_patch.ID], gate_patch.applies, gate_patch.check_patch, gate_patch.context),
     ]
 
 

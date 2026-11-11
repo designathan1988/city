@@ -1,0 +1,8 @@
+{
+ "rule": "patch",
+ "expect": [],
+ "changed": {
+  "project/tests/core/a_test.gd": [5, 6],
+  "tools/tasks/suites.json": [4]
+ }
+}

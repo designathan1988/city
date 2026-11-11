@@ -59,6 +59,22 @@ def excluded(path, exclude_dirs):
     return False
 
 
+def head_commit(root):
+    """The commit HEAD names, or '' when git cannot tell."""
+    try:
+        return _git(root, "rev-parse", "HEAD").strip()
+    except GitError:
+        return ""
+
+
+def before_text(root, path):
+    """The file as HEAD holds it, or None when HEAD has no such file (new, or git cannot tell)."""
+    try:
+        return _git(root, "show", f"HEAD:{path}")
+    except GitError:
+        return None
+
+
 def changed_lines(root, paths=None):
     """{path: new-side line numbers changed against HEAD, or None for a file git does not track yet}; limited to
     `paths` when given."""

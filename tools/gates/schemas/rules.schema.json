@@ -127,6 +127,28 @@
       },
       "required": ["paths", "suffixes", "machines", "kinds"]
     },
+    "patch": {
+      "type": "object", "strict": true,
+      "description": "NUMBER_MOVED (gate_patch.py): the watched numbers and where a cause is recorded",
+      "properties": {
+        "_doc": {"$ref": "#/$defs/doc"},
+        "watched": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object", "strict": true,
+            "properties": {
+              "paths": {"$ref": "#/$defs/some_paths"},
+              "kind": {"type": "string", "enum": ["gd_const", "json"]},
+              "keys": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+            },
+            "required": ["paths", "kind"]
+          }
+        },
+        "logs": {"$ref": "#/$defs/some_paths"},
+        "ledgers": {"type": "string", "minLength": 1}
+      },
+      "required": ["watched", "logs", "ledgers"]
+    },
     "mirrors": {
       "type": "array",
       "items": {
@@ -174,6 +196,6 @@
   },
   "required": ["exclude_dirs", "root_allowed", "allowed_docs", "doc_exempt_names", "doc_extensions", "junk_globs", "max_lines", "max_function_lines",
     "header_comment_extensions", "mapped_roots", "map_file", "map_markers", "claude_md_max_lines", "cpp_layers", "forbidden", "schemas",
-    "magic_numbers", "clones", "lab_reference", "lab_copy", "states", "mirrors", "generated", "styled_tables", "material_tables",
+    "magic_numbers", "clones", "lab_reference", "lab_copy", "states", "patch", "mirrors", "generated", "styled_tables", "material_tables",
     "uniform_tables"]
 }
