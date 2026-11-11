@@ -23,6 +23,7 @@ constexpr int AIMED = 0, HERE = 1; // candidates[0]: the stripe aimed at; [1] wh
 constexpr float ONE_WAY_CLOSING = 0.5f; // a body coming the other way closes the gap at both paces: half the room
 constexpr float INAPPROPRIATE_M = 1000.f; // SUMO's INAPPROPRIATE_PENALTY as room: a stripe left to the oncoming
 constexpr float CLEAR_EPS_M = 0.01f; // a candidate this far beyond a body's reach is clear of it
+constexpr float WALKERS_SHARE = 0.5f; // of the room between two walkers side by side, what each may step into in a tick
 // 1 / (stripes - 1): where the k-th of a room's stripes lies, without a division per walker
 constexpr float STRIPE_STEP[MAX_STRIPES + 1] = { 0.f, 0.f, 1.f, 1.f / 2, 1.f / 3, 1.f / 4, 1.f / 5, 1.f / 6, 1.f / 7 };
 
@@ -68,18 +69,24 @@ float room_at(const Body *b, int n, float c, float look, bool squeeze) {
 }
 
 // Where the walker may step sideways now: its room (or where it stands, when the room moved off it: it steps back in at
-// its own lateral pace, never a jump), less the furniture beside it on either side.
-void side_limits(const WayFrame &f, const Body *b, int n, float &lo, float &hi) {
+// its own lateral pace, never a jump), less the bodies beside it on either side: a piece of furniture up to its edge, a
+// walker up to half the room between the two (the other steps this tick too, and may take the other half). A walker beside
+// it that its way has brought nearer than their two bodies (two ways that converge) makes it step away, `aside` at most: both
+// do, so they part.
+void side_limits(const WayFrame &f, const Body *b, int n, float aside, float &lo, float &hi) {
 	lo = std::min(f.lo, f.u);
 	hi = std::max(f.hi, f.u);
 	for (int k = 0; k < n; k++) {
 		const Body &o = b[k];
-		if (!o.furniture || o.along_lo - o.reach >= 0 || o.along_hi + o.reach <= 0) continue;
-		const float shut_lo = o.lat_lo - o.reach, shut_hi = o.lat_hi + o.reach;
-		if (f.u <= shut_lo) hi = std::min(hi, shut_lo);
-		else if (f.u >= shut_hi) lo = std::max(lo, shut_hi);
+		if (o.along_lo - o.reach >= 0 || o.along_hi + o.reach <= 0) continue; // ahead of it or behind, not beside
+		const float shut_lo = o.lat_lo - o.reach, shut_hi = o.lat_hi + o.reach, mine = o.furniture ? 1.f : WALKERS_SHARE;
+		if (f.u <= shut_lo) hi = std::min(hi, f.u + (shut_lo - f.u) * mine);
+		else if (f.u >= shut_hi) lo = std::max(lo, f.u - (f.u - shut_hi) * mine);
+		else if (o.furniture) continue;
+		else if (f.u < (o.lat_lo + o.lat_hi) * 0.5f) hi = std::min(hi, std::max(shut_lo, f.u - aside)); // it is on the walker's low side: lower
+		else lo = std::max(lo, std::min(shut_hi, f.u + aside));
 	}
-	if (hi < lo) hi = lo;
+	if (hi < lo) lo = hi = clampf(f.u, hi, lo); // made to step past its room's edge: to the edge; from both sides: it stays
 }
 
 // The places worth a score, each once (the same place twice scores the same and never wins the second time): the
@@ -113,10 +120,11 @@ V2 left_of(const V2 &d) { return V2(d.y, -d.x); }
 
 // On a sidewalk: across is the sidewalk's own u (+ on the left of a -> b) whichever way it walks; in the world (where
 // the last pose put it, facing its way) only when it is near a junction.
-void sidewalk_frame(const CrowdEntry &w, float half, bool world, WayFrame &f) {
+void sidewalk_frame(const CrowdEntry &w, float half, float stripe, bool world, WayFrame &f) {
 	f.u = w.u;
 	f.lo = -half;
 	f.hi = half;
+	f.narrow = 2 * half < stripe;
 	f.keep = clampf(w.keep, -half, half);
 	if (!world) return;
 	f.at = V2(w.x, w.z);
@@ -138,15 +146,37 @@ void line_frame(const CityState &s, const Pedestrian &w, WayFrame &f) {
 		f.lo = -zh + p.ped_body_m - w.line_off;
 		f.hi = std::max(f.lo, -p.ped_body_m - w.line_off);
 		f.keep = clampf(0.f, f.lo, f.hi);
+		f.narrow = f.hi - f.lo < p.ped_stripe_m;
 		return;
 	}
-	// round a corner: room opens off the line's start and, toward a kerb place it must reach, closes again no faster than
-	// the walker steps aside (a share of its pace per metre walked), so it always meets the place
-	const bool to_kerb = w.wi + 1 < w.wn && w.ways[w.wi + 1].cross >= 0;
-	float half = std::min(walk_half(s, w.seg, w.side), p.ped_lateral_share * w.ls); // w.seg: the sidewalk it heads for
-	if (to_kerb) half = std::min(half, p.ped_lateral_share * std::max(0.f, w.llen - w.ls));
+	if (toward_kerb(w)) {
+		// the queue before a kerb runs along the way across (ped_kerb.cpp), so across it is along the kerb: its room is the
+		// waiting span, measured from its own line (line_off: how far left of the zebra's middle that line lies)
+		const KerbSpan span = kerb_span(s);
+		const float aside = -w.line_off - span.middle; // its line right of the span's middle
+		f.lo = aside - span.room;
+		f.hi = aside + span.room;
+		f.keep = 0;
+		f.queue = true;
+		return;
+	}
+	// round a corner: room opens off the line's start no faster than the walker steps aside (a share of its pace per metre
+	// walked), as wide either side as the sidewalk it heads for (w.seg)
+	const float wide = walk_half(s, w.seg, w.side), half = std::min(wide, p.ped_lateral_share * w.ls);
+	f.narrow = 2 * wide < p.ped_stripe_m;
 	f.lo = -half;
 	f.hi = half;
+	if (w.wi + 1 == w.wn) {
+		// the last line ends on the next sidewalk, somewhere across it (pedestrians.cpp aim_at_start): its room closes onto that
+		// sidewalk's room toward the end, no faster than the walker steps aside, so it comes onto the sidewalk inside it
+		Pose mid;
+		sidewalk_pose(s, w.seg, w.side, w.s, 0.f, mid);
+		const float ends = (to.x - mid.x) * mid.fz - (to.z - mid.z) * mid.fx; // where across the sidewalk (+ left of a -> b)
+		const float left = w.dir == 0 ? ends : -ends; // and left of the way it walks
+		const float slack = p.ped_lateral_share * std::max(0.f, w.llen - w.ls);
+		f.lo = std::max(f.lo, -wide - left - slack);
+		f.hi = std::min(f.hi, wide - left + slack);
+	}
 	f.keep = 0;
 	f.reserve_from = f.hi - std::min(p.ped_reserve_share * (f.hi - f.lo), p.ped_reserve_max_m);
 }
@@ -173,8 +203,9 @@ StripeRules::StripeRules(const TrafficParams &p, float step) {
 }
 
 StripeChoice choose_stripe(const StripeRules &r, const CrowdEntry &w, const WayFrame &f, const Body *b, int n) {
-	// how long it stands held up before it squeezes past: SUMO's jamtime by the way (one stripe only: narrow)
-	const float jam_after = f.hi - f.lo < r.stripe ? r.jam_narrow_s : (f.zebra ? r.jam_crossing_s : r.jam_s);
+	// how long it stands held up before it squeezes past: by the way (one stripe only: narrow; a zebra; else), never in a
+	// kerb's queue
+	const float jam_after = f.queue ? BIG : f.narrow ? r.jam_narrow_s : (f.zebra ? r.jam_crossing_s : r.jam_s);
 	// nobody about, on the stripe it aims at (inside its room, not one left to the oncoming), not held up: it walks on
 	if (n == 0 && r.settled_keeps && w.u_goal == f.u && f.u >= f.lo && f.u <= f.hi && f.u <= f.reserve_from && w.jam < jam_after) {
 		StripeChoice out;
@@ -228,7 +259,7 @@ StripeChoice choose_stripe(const StripeRules &r, const CrowdEntry &w, const WayF
 	// aside at a share of its own pace (it can step aside standing), never into the furniture beside it
 	const float aside = r.aside_share * w.speed * r.dt;
 	float lo, hi;
-	side_limits(f, b, n, lo, hi);
+	side_limits(f, b, n, aside, lo, hi);
 	out.u = clampf(f.u + std::clamp(out.u_goal - f.u, -aside, aside), lo, hi);
 	return out;
 }

@@ -14,7 +14,9 @@ inline float arc_lo(const RoadSegment &g) { return float(g.retreat_a); } // the 
 inline float arc_hi(const RoadSegment &g) { return float(g.len - g.retreat_b); }
 void aim_line(Pedestrian &w); // a straight line toward ways[wi] from where the walker stands
 void onto_sidewalk(CityState &s, Pedestrian &w); // onto the sidewalk at the same place across as where it stands
+void stand_on_sidewalk(const CityState &s, Pedestrian &w); // its pose at (seg, side, s, u), body and way heading the way it walks
 void despawn(TrafficState &t, int id, bool arrived);
+void despawn_party(CityState &s, int id, bool arrived); // with the one it walks with, when that one is within reach
 
 // ped_door_walk.cpp: the first and last steps at a lot's door
 void aim_at_door(CityState &s, Pedestrian &w); // on the last street of its route: a door ahead to go in at
@@ -76,8 +78,18 @@ void walker_born(TrafficState &t, int id);
 bool walker_near(const TrafficState &t, const Pose &at, float r);
 
 // ped_party.cpp
-void add_company(CityState &s, int leader); // somebody at the leader's side
-void follow_leaders(CityState &s, float dt); // after the leaders moved
+// Somebody born with the leader's trip, beside it on its sidewalk or out of its door after it; false with no room there.
+bool add_company(CityState &s, int leader);
+// The share of its own pace a walker goes at to stay level with the one it walks with (1 alone or far from it).
+float company_pace(const TrafficState &t, const TrafficParams &p, const Pedestrian &w);
+// About to go over the crosswalk it waits for (ways[wi]): whether the one it walks with is ready too (near, in that kerb's queue,
+// waiting at it or on the crosswalk; or over already). A party starts over together.
+bool company_ready(const TrafficState &t, const TrafficParams &p, const Pedestrian &w);
+// The one it walks with is on the crosswalk over `arm` at its node, within reach: it goes over with it.
+bool crossing_with(const TrafficState &t, const TrafficParams &p, const Pedestrian &w, int arm);
+int company_near(const TrafficState &t, const TrafficParams &p, const Pedestrian &w); // the one it walks with, when within reach; else -1
+uint32_t party_look(const TrafficState &t, const Pedestrian &w); // the hash the party's choices are drawn by: its first walker's
+bool company_door(const TrafficState &t, Pedestrian &w); // the door the one it walks with goes in at, ahead on its sidewalk: its own too
 void step_act(const TrafficState &t, const TrafficParams &p, Pedestrian &w, float dt); // what it does while it stands
 
 // ped_crowd.cpp / ped_stripes.cpp: walkers among walkers and street furniture, on every way they walk
@@ -87,11 +99,22 @@ void on_sidewalk(Pedestrian &w); // onto a new sidewalk: its own side of the way
 void onto_line(Pedestrian &w); // onto a new line round a corner or over a zebra: from where it stands
 void drop_pedestrians_on_seg(CityState &s, int seg); // a segment is going: its walkers leave the scene
 
-// ped_kerb.cpp: places to wait at the kerb of a crosswalk
-void take_kerb_place(CityState &s, int id); // heading for the kerb before a crosswalk: a place to wait there
-void free_kerb_place(TrafficState &t, int id);
-// A waiting walker with a free place nearer the kerb: turned back toward its kerb (ways[wi]) to take it; true.
-bool step_to_nearer_place(CityState &s, int id);
+// ped_kerb.cpp: waiting at the kerb of a crosswalk
+// Where those about to cross wait along the kerb, right of the zebra's middle line: the span's middle and its room either side.
+struct KerbSpan {
+	float middle = 0, room = 0;
+};
+KerbSpan kerb_span(const CityState &s);
+bool toward_kerb(const Pedestrian &w); // on the queue: its line ends at the kerb of a crosswalk it is to cross next
+// A kerb point and its far point were just written at ways[n - 2] and ways[n - 1]: both are moved to the span's middle and the
+// approach point, back from the kerb, is put before them. Returns the new count.
+int queue_before_kerb(const CityState &s, Waypoint *ways, int n);
+bool toward_queue(const Pedestrian &w); // its line ends at the approach point of a kerb's queue
+// Starting for a queue: the approach point and the crossing's points are moved along the kerb to where the walker comes from,
+// inside the waiting span; line_off is that place left of the zebra's middle line.
+void onto_approach(const CityState &s, Pedestrian &w);
+void onto_queue(const CityState &s, Pedestrian &w); // starting the queue: its leg runs along the way across from where it stands
+void cross_from_here(Pedestrian &w); // about to cross to ways[wi]: on a line parallel to the zebra's from where it stands
 
 // ped_furniture.cpp: the street furniture (sim/roads/street_furniture.h) as the walkers and the render meet it
 // The pieces of segment `sid` of the kinds in `kinds`, the signal posts where control_of signals its ends, appended to `out`.

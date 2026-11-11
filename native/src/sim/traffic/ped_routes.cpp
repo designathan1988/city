@@ -2,7 +2,8 @@
 // with a sidewalk (cost length / pace + a fixed extra, heuristic straight distance / pace), and the way round each
 // node: from the corner it stands on, round the corners and over the crosswalks of the arms in between (the
 // rotation with the fewest crossings) to the start of the next sidewalk. A crosswalk is the middle line of the painted
-// zebra past the junction setback (catalog street_furniture.json "crossing"), from kerb to kerb.
+// zebra past the junction setback (catalog street_furniture.json "crossing"), from kerb to kerb; each is walked on its
+// right, by way of an approach point and a queue before its kerb (ped_kerb.cpp).
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/traffic/astar.h"
@@ -126,7 +127,7 @@ int plan_corner(const CityState &s, int n, int seg_in, int side_in, int seg_out,
 	if (best < 0) return -1;
 	if (s.roads.mid_block(n) && best_steps > 0) best_dir = arms[size_t((ci + 1) % deg)].seg == s.roads.crossing_arm(n) ? 1 : -1; // over the arm that has the crosswalk
 	int w = 0, cur = ci;
-	for (int k = 0; k < best_steps && w + 3 <= MAX_WAYS; k++) {
+	for (int k = 0; k < best_steps && w + 4 <= MAX_WAYS; k++) { // a crossing's three points, and the next sidewalk's start after them
 		// increasing: cross arm cur + 1 from its far side to the side facing the next arm; decreasing: arm cur back
 		int arm = best_dir > 0 ? (cur + 1) % deg : cur;
 		int to_next = side_to_next(arms[arm]);
@@ -134,6 +135,7 @@ int plan_corner(const CityState &s, int n, int seg_in, int side_in, int seg_out,
 		Waypoint far = kerb_point(s, arms[arm], best_dir > 0 ? to_next : 1 - to_next);
 		far.cross = arms[arm].seg;
 		ways[w++] = far;
+		w = queue_before_kerb(s, ways, w); // the way to that kerb: an approach point, then the queue (ped_kerb.cpp)
 		cur = best_dir > 0 ? (cur + 1) % deg : (cur - 1 + deg) % deg;
 	}
 	return w;

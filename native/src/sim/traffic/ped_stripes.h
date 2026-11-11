@@ -16,6 +16,8 @@ struct WayFrame {
 	V2 at, fwd, left;
 	float u = 0, lo = 0, hi = 0, keep = 0, reserve_from = BIG;
 	bool zebra = false; // over a zebra (SUMO's crossing), else a sidewalk or a line round a corner (its walking area)
+	bool narrow = false; // the way itself holds one stripe only (its own width, not the room a line opens with)
+	bool queue = false; // before a kerb: those ahead wait for the same leave, so it stands behind them however long
 };
 
 // A body in a walker's frame: its extent ahead and across, how near a centre may come across it and ahead of it
@@ -36,9 +38,9 @@ struct StripeRules {
 	StripeRules(const TrafficParams &p, float step);
 };
 
-// The way's frame of a walker on a sidewalk (`half`: the room either side of its middle; in the world only when it
-// meets those near a junction) and on a line round a corner or over a zebra.
-void sidewalk_frame(const CrowdEntry &w, float half, bool world, WayFrame &f);
+// The way's frame of a walker on a sidewalk (`half`: the room either side of its middle, `stripe` a stripe's width; in the
+// world only when it meets those near a junction) and on a line round a corner, before a kerb or over a zebra.
+void sidewalk_frame(const CrowdEntry &w, float half, float stripe, bool world, WayFrame &f);
 void line_frame(const CityState &s, const Pedestrian &w, WayFrame &f);
 V2 left_of(const V2 &d); // +u of a direction (lane_geometry.cpp: x + dz * u, z - dx * u)
 

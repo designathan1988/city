@@ -22,11 +22,11 @@ struct Waypoint {
 	float x = 0, y = 0, z = 0;
 	int cross = -1, side = -1;
 };
-constexpr int MAX_WAYS = 12; // two per arm crossed (at most 3 at a 6-arm node) and the exit sidewalk start
+constexpr int MAX_WAYS = 12; // three per arm crossed (approach, kerb, far; at most 3 arms at a 6-arm node) and the exit sidewalk start
 
 // SIDEWALK, WAY (round a corner, over a zebra), WAIT (at a kerb), KERB (under a kerb stop's hand, kerb_stops.cpp: between a door and the
-// footway), LOT (between a door and the sidewalk), FOLLOW (with its leader).
-enum class PedMode : uint8_t { SIDEWALK, WAY, WAIT, KERB, LOT, FOLLOW };
+// footway), LOT (between a door and the sidewalk).
+enum class PedMode : uint8_t { SIDEWALK, WAY, WAIT, KERB, LOT };
 
 
 // A front door as the walkers use it: the sidewalk's arc and place across at the foot of its way, and the door itself.
@@ -48,18 +48,17 @@ struct StreetObstacle {
 // choice starts from (the stripe aimed at and how long held, its pace, how long held up, its speed and own side).
 struct CrowdEntry {
 	int id = -1, sidewalk = -1; // seg * 2 + side while on a sidewalk, else -1
-	int party = -1; // its leader's id, or its own: those of a party do not make way for each other
-	float s = 0, u = 0, x = 0, z = 0, fx = 0, fz = 0;
-	float u_goal = 0, held = 0, pace = 0, jam = 0, speed = 0, keep = 0;
+	float s = 0, u = 0, x = 0, z = 0, fx = 0, fz = 0; // fx, fz: its way's heading where it stands
+	float u_goal = 0, held = 0, pace = 0, jam = 0, speed = 0, keep = 0; // speed: its own, bent to keep level with its company
 	uint8_t dir = 0;
-	bool moving = false, follows = false; // follows: a body the others see, with no choice of its own
+	bool moving = false;
 };
 
 // What a walker's crowd step chose (ped_stripes.cpp): its stripe, the one it aims at and how long held, its pace, how long held up.
 struct StripeChoice {
 	float u = 0, u_goal = 0, held = 0, pace = 0, jam = 0;
 };
-using CrowdChoice = std::pair<int, StripeChoice>; // the walker's id (-1: a follower, its leader chooses) and its choice
+using CrowdChoice = std::pair<int, StripeChoice>; // the walker's id (-1: none made) and its choice
 
 struct SidewalkFurniture {
 	std::vector<StreetObstacle> side[2]; // right (0) and left (1) sidewalk, by s0
@@ -111,6 +110,7 @@ struct Pedestrian {
 	// pace the bodies ahead leave it and how long it has been held up (SUMO's jam time)
 	float u = 0, u_goal = 0, stripe_held = 0, pace = 0, jam = 0;
 	int way_node = -1; // the node it goes round (waypoints below)
+	float way_x = 1, way_z = 0; // its way's heading where it stands; `cur` faces as its body does, turned toward this no faster than a body turns
 	Pose cur;
 	RouteRef route; // nodes; route[ri] is the node it walks toward, in TrafficState::ped_pool
 	int ri = 0;
@@ -118,15 +118,12 @@ struct Pedestrian {
 	int wn = 0, wi = 0; // waypoints round node `way_node`, the next one
 	float lx = 0, ly = 0, lz = 0, llen = 0, ls = 0; // current straight line: start, length, metres walked on it
 	int cross_seg = -1; // the arm it is crossing now (-1 when not on a crosswalk)
-	int64_t slot_key = -1; // the kerb a place to wait is held at (TrafficState::kerb_slots), and which place
-	int slot = -1;
-	float line_off = 0; // its line over the zebra lies this far left of the crosswalk's middle line (its place there)
+	float line_off = 0; // its queue before a kerb and its line over the zebra lie this far left of the crosswalk's middle line
 	PedDoor door; // the door it goes in at, on the last street of its route
 	int goal_side = -1; // the sidewalk of that street it heads for (-1: either)
 	bool entering = false, company_due = false; // on its way in at a door; its company comes out of the door after it
-	int with = -1, mate = -1; // the walker it follows; the walker following it
-	float flank = 1; // the side of its leader it walks on (+u or -u)
-	bool on_way = false; // following on a sidewalk (seg, side, s, u read as a walker's)
+	// Walking with somebody (ped_party.cpp): the walker it came out with, and the one that came out with it. Each walks its own way.
+	int with = -1, mate = -1;
 	PoseTrail trail;
 };
 

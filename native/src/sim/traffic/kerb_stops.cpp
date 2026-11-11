@@ -126,14 +126,21 @@ int new_stop(TrafficState &t) {
 
 } // namespace
 
-// The first walker alone on the kerb's footway between two arcs, or -1.
+// Who a car or a bus may call from the footway: somebody walking it alone (one of a party would leave the other on the street),
+// no child, doing nothing else and not running from a bang (the reference game's rule).
+static bool may_be_hailed(const TrafficState &t, const Pedestrian &w) {
+	return w.alive && w.mode == PedMode::SIDEWALK && w.with < 0 && w.mate < 0 && !w.company_due && w.age != PedAge::CHILD &&
+			w.act == PedAct::NONE && t.time >= w.panic_until;
+}
+
+// The first walker on the kerb's footway between two arcs who may be hailed, or -1.
 int kerb_hailable(const CityState &s, const DirSeg &d, float a0, float a1) {
 	const TrafficState &t = s.traffic;
 	const size_t key = size_t(d.seg) * 2 + size_t(kerb_side(d));
 	if (key >= t.crowd.size()) return -1;
 	const float lo = std::min(a0, a1), hi = std::max(a0, a1);
 	for (const CrowdEntry &e : t.crowd[key])
-		if (e.s >= lo && e.s <= hi && t.peds[size_t(e.id)].alive && t.peds[size_t(e.id)].mode == PedMode::SIDEWALK) return e.id;
+		if (e.s >= lo && e.s <= hi && may_be_hailed(t, t.peds[size_t(e.id)])) return e.id;
 	return -1;
 }
 

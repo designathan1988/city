@@ -2,7 +2,7 @@
 // the sidewalk, go round each corner and over the crosswalks on the way (ped_routes.cpp), wait at the kerb for the walk
 // phase or a gap in the traffic (ped_crossing.cpp) and at the end of the route go in at a door of the street (ped_doors.cpp);
 // among the others and the street furniture on every way as ped_crowd.cpp moves them (a stripe across each way, the pace the
-// bodies ahead leave), at a kerb in a place of its own (ped_kerb.cpp).
+// bodies ahead leave), before a kerb in its queue (ped_kerb.cpp); with somebody, as a party (ped_party.cpp).
 #include "sim/traffic/kerb_stops.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -31,29 +31,47 @@ void aim_line(Pedestrian &w) {
 	onto_line(w);
 }
 
-// On the sidewalk at the same place across as where it stands.
+// On the sidewalk where it stands: its arc `s` was the one it was heading for, and becomes the one its body is at (how far along
+// the sidewalk's tangent it stands from that arc's middle), with its place across; from there it aims at its own side of the way
+// again (the line it came by aimed it at the line).
 void onto_sidewalk(CityState &s, Pedestrian &w) {
 	w.mode = PedMode::SIDEWALK;
 	Pose mid;
 	sidewalk_pose(s, w.seg, w.side, w.s, 0.f, mid);
-	const float half = walk_half(s, w.seg, w.side);
-	w.u = clampf((w.cur.x - mid.x) * mid.fz - (w.cur.z - mid.z) * mid.fx, -half, half);
+	const float half = walk_half(s, w.seg, w.side), dx = w.cur.x - mid.x, dz = w.cur.z - mid.z;
+	w.s = clampf(w.s + dx * mid.fx + dz * mid.fz, 0.f, float(s.roads.segs[size_t(w.seg)].len));
+	w.u = clampf(dx * mid.fz - dz * mid.fx, -half, half);
+	w.u_goal = w.dir == 0 ? -w.track : w.track;
+	w.stripe_held = 0;
 }
 
+// Where it stands on its sidewalk, its body and its way heading the way it walks.
+void stand_on_sidewalk(const CityState &s, Pedestrian &w) {
+	sidewalk_pose(s, w.seg, w.side, w.s, w.u, w.cur);
+	if (w.dir == 1) { w.cur.fx = -w.cur.fx; w.cur.fz = -w.cur.fz; }
+	w.way_x = w.cur.fx;
+	w.way_z = w.cur.fz;
+}
+
+// The one it walked with walks on by itself (ped_party.cpp).
 void despawn(TrafficState &t, int id, bool arrived) {
 	off_crosswalk(t, id);
-	free_kerb_place(t, id);
 	const int mate = t.peds[id].mate, with = t.peds[id].with;
 	t.ped_waste += size_t(t.peds[id].route.cap);
 	t.peds[id] = Pedestrian();
 	if (with >= 0) t.peds[size_t(with)].mate = -1;
-	if (mate >= 0) {
-		t.peds[size_t(mate)].with = -1;
-		despawn(t, mate, arrived);
-	}
+	if (mate >= 0) t.peds[size_t(mate)].with = -1;
 	t.free_peds.push_back(id);
 	t.ped_count--;
 	t.ped_arrived += arrived ? 1 : 0;
+}
+
+// A party leaves the street together (ped_party.cpp): the one it walks with goes too when near.
+void despawn_party(CityState &s, int id, bool arrived) {
+	TrafficState &t = s.traffic;
+	const int other = company_near(t, s.catalog.traffic, t.peds[size_t(id)]);
+	despawn(t, id, arrived);
+	if (other >= 0) despawn(t, other, arrived);
 }
 
 namespace {
@@ -62,15 +80,19 @@ constexpr float CROSS_RETRY_S = 0.2f; // a walker waiting at the kerb tries the 
 
 int toward(const CityState &s, const Pedestrian &w) { return w.dir == 0 ? s.roads.segs[w.seg].b : s.roads.segs[w.seg].a; }
 
-// Heading for the kerb of a crosswalk with every place there taken: it asks again, and aims at the place it gets.
-void retry_kerb_place(CityState &s, int id) {
-	Pedestrian &w = s.traffic.peds[size_t(id)];
-	if (w.slot >= 0 || w.ways[w.wi].cross >= 0 || w.wi + 1 >= w.wn || w.ways[w.wi + 1].cross < 0) return;
-	take_kerb_place(s, id);
-	if (w.slot >= 0) aim_line(w);
-}
-
 void begin_line(CityState &s, int id);
+
+// The last point of a way round a node, the next sidewalk's start: put at the place across that sidewalk where the walker
+// stands now, inside its room. A walker keeps its place across from one stretch of its way to the next (the stripes move it
+// to its own side once it is on the sidewalk), so no two lines onto a sidewalk cross.
+void aim_at_start(const CityState &s, Pedestrian &w) {
+	Pose mid, start;
+	sidewalk_pose(s, w.seg, w.side, w.s, 0.f, mid);
+	const float room = walk_half(s, w.seg, w.side);
+	const float across = clampf((w.cur.x - mid.x) * mid.fz - (w.cur.z - mid.z) * mid.fx, -room, room);
+	sidewalk_pose(s, w.seg, w.side, w.s, across, start);
+	w.ways[w.wi] = Waypoint{ start.x, start.y, start.z, -1 };
+}
 
 // Off the end of a line (its lateral offset kept): onto the next line, or onto the sidewalk at the same place across.
 void end_line(CityState &s, int id) {
@@ -91,17 +113,22 @@ void end_line(CityState &s, int id) {
 void begin_line(CityState &s, int id) {
 	TrafficState &t = s.traffic;
 	Pedestrian &w = t.peds[id];
-	take_kerb_place(s, id); // toward the kerb of a crosswalk: to its own place there
 	const Waypoint &to = w.ways[w.wi];
 	const bool frightened = t.time < w.panic_until; // no signal holds somebody running: only the cars on the crossing do
-	if (to.cross >= 0 && ((!frightened && !walk_ok(s, w.way_node, to.cross)) || cars_on_crossing(s, w.way_node, to.cross))) {
+	const bool held = to.cross >= 0 && ((!frightened && !walk_ok(s, w.way_node, to.cross)) || cars_on_crossing(s, w.way_node, to.cross));
+	// a party goes over on one leave: one goes with the other already on the crosswalk, and starts only when the other is at the kerb too
+	const bool waits = to.cross >= 0 && !frightened && !company_ready(t, s.catalog.traffic, w);
+	if (waits || (held && !crossing_with(t, s.catalog.traffic, w, to.cross))) {
 		w.mode = PedMode::WAIT;
 		return;
 	}
+	if (to.cross >= 0) cross_from_here(w); // over from where the queue left it at the kerb
+	else if (toward_queue(w)) onto_approach(s, w); // to the back of a kerb's queue, at its place along the kerb
+	else if (toward_kerb(w)) onto_queue(s, w); // the queue before the kerb, along the way across from where it stands
+	else if (w.wi + 1 == w.wn) aim_at_start(s, w); // onto the next sidewalk, at its place across
 	w.mode = PedMode::WAY;
 	aim_line(w);
 	if (to.cross >= 0) {
-		free_kerb_place(t, id); // onto the crosswalk: the place at the kerb is free again
 		w.cross_seg = to.cross;
 		t.node_crossers[w.way_node].push_back(id);
 	}
@@ -114,31 +141,31 @@ void at_node(CityState &s, int id) {
 	TrafficState &t = s.traffic;
 	Pedestrian &w = t.peds[id];
 	const int n = toward(s, w);
-	if (w.ri + 1 >= w.route.len) { despawn(t, id, true); return; }
+	if (w.ri + 1 >= w.route.len) { despawn_party(s, id, true); return; }
 	if (t.time < w.panic_until) flee_on(s, w, n);
 	int next = seg_between(s, n, route_at(t.ped_pool, w.route, w.ri + 1)), side_out = 0;
 	const bool last = w.ri + 2 >= w.route.len;
 	int want = last ? w.goal_side : -1;
-	if (next >= 0 && want < 0 && s.roads.mid_block(n) && float(hash_combine(w.look, uint32_t(n)) & CROSS_MASK) < s.catalog.traffic.ped_crossing_share * float(CROSS_MASK)) {
+	// a party goes over together: the choice is drawn by its first walker's hash
+	if (next >= 0 && want < 0 && s.roads.mid_block(n) && float(hash_combine(party_look(t, w), uint32_t(n)) & CROSS_MASK) < s.catalog.traffic.ped_crossing_share * float(CROSS_MASK)) {
 		int stays = 0; // going over to the other sidewalk: what a crossing between junctions is there for
 		if (plan_corner(s, n, w.seg, w.side, next, -1, w.ways, stays) >= 0) want = 1 - stays;
 	}
 	int k = next < 0 ? -1 : plan_corner(s, n, w.seg, w.side, next, want, w.ways, side_out);
 	if (k < 0) { despawn(t, id, false); return; }
 	const RoadSegment &ng = s.roads.segs[next];
+	w.company_due = false; // the line it came out of a door by is gone with the lines of this node
 	w.ri++;
 	w.seg = next;
 	w.dir = ng.a == n ? 0 : 1;
 	w.side = side_out;
 	w.s = w.dir == 0 ? arc_lo(ng) : arc_hi(ng);
 	on_sidewalk(w);
-	Pose start;
-	sidewalk_pose(s, next, w.side, w.s, w.u, start);
-	w.ways[k++] = Waypoint{ start.x, start.y, start.z, -1 };
+	w.ways[k++] = Waypoint(); // the next sidewalk's start: aimed at when its line begins, from where the walker stands then
 	w.wn = k;
 	w.wi = 0;
 	w.way_node = n;
-	if (w.ri + 1 >= w.route.len) aim_at_door(s, w);
+	if (w.ri + 1 >= w.route.len && !company_door(t, w)) aim_at_door(s, w);
 	begin_line(s, id);
 }
 
@@ -163,8 +190,6 @@ void walk(CityState &s, int id, float dt) {
 		}
 		w.cross_cd = CROSS_RETRY_S;
 		begin_line(s, id);
-		// still waiting: a place nearer the kerb that freed is taken (the queue moves up)
-		if (w.mode == PedMode::WAIT && step_to_nearer_place(s, id)) begin_line(s, id);
 		if (w.mode == PedMode::WAIT) return;
 	}
 	if (transit::walker_held(s, V2(w.cur.x, w.cur.z), V2(w.cur.fx, w.cur.fz))) return; // a train on the ground ahead
@@ -172,33 +197,30 @@ void walk(CityState &s, int id, float dt) {
 	const float step = w.pace * run * dt; // the crowd sets the pace on every way (ped_crowd.cpp)
 	w.walked += step;
 	if (w.mode == PedMode::WAY) {
-		if (w.slot < 0 && (w.cross_cd -= dt) <= 0) { // no place at the kerb ahead yet: asked again at 5 Hz
-			w.cross_cd = CROSS_RETRY_S;
-			retry_kerb_place(s, id);
-		}
 		w.ls += step;
 		if (w.ls < w.llen) return;
 		off_crosswalk(t, id);
 		end_line(s, id);
 		return;
 	}
-	const RoadSegment &g = s.roads.segs[w.seg];
-	w.s += w.dir == 0 ? step : -step;
-	if (w.door.building >= 0 && (w.dir == 0 ? w.s >= w.door.s : w.s <= w.door.s)) {
+	if (w.company_due) add_company(s, id); // its company still to come out of the door behind it (ped_party.cpp)
+	Pedestrian &on = t.peds[size_t(id)]; // the company may have grown the list
+	const RoadSegment &g = s.roads.segs[on.seg];
+	on.s += on.dir == 0 ? step : -step;
+	if (on.door.building >= 0 && (on.dir == 0 ? on.s >= on.door.s : on.s <= on.door.s)) {
 		go_in(s, id);
 		return;
 	}
-	bool end = w.dir == 0 ? w.s >= arc_hi(g) : w.s <= arc_lo(g);
+	const bool end = on.dir == 0 ? on.s >= arc_hi(g) : on.s <= arc_lo(g);
 	if (!end) return;
-	w.s = clampf(w.s, arc_lo(g), arc_hi(g));
+	on.s = clampf(on.s, arc_lo(g), arc_hi(g));
 	at_node(s, id);
 }
 
 void pose(const CityState &s, Pedestrian &w) {
 	if (w.mode == PedMode::KERB) return;
 	if (w.mode == PedMode::SIDEWALK) {
-		sidewalk_pose(s, w.seg, w.side, w.s, w.u, w.cur);
-		if (w.dir == 1) { w.cur.fx = -w.cur.fx; w.cur.fz = -w.cur.fz; }
+		stand_on_sidewalk(s, w);
 		return;
 	}
 	const Waypoint &to = w.ways[w.wi];
@@ -206,6 +228,23 @@ void pose(const CityState &s, Pedestrian &w) {
 	if (w.mode == PedMode::WAIT) { w.cur.fx = d.x; w.cur.fz = d.y; return; } // standing at the kerb, facing the crossing
 	const float f = clampf(w.ls / w.llen, 0.f, 1.f);
 	w.cur = { lerpf(w.lx, to.x, f) + d.y * w.u, lerpf(w.ly, to.y, f), lerpf(w.lz, to.z, f) - d.x * w.u, d.x, d.y }; // u across its line
+}
+
+// After pose(): what it left in `cur` is its way's heading there, kept for the crowd; the body, which faced `was`, turns toward it
+// no faster than a body turns (round to a bang and back: ease_facing). Under a kerb stop's hand the stop faces it.
+void turn_body(const TrafficState &t, const TrafficParams &p, Pedestrian &w, const V2 &was, float dt) {
+	w.way_x = w.cur.fx;
+	w.way_z = w.cur.fz;
+	if (w.mode == PedMode::KERB) return;
+	if (w.turning) {
+		ease_facing(t, p, w, dt);
+		return;
+	}
+	const float most = p.ped_turn_rad_s * dt;
+	const float by = clampf(std::atan2(was.x * w.way_z - was.y * w.way_x, was.x * w.way_x + was.y * w.way_z), -most, most);
+	const float c = std::cos(by), n = std::sin(by);
+	w.cur.fx = was.x * c - was.y * n;
+	w.cur.fz = was.x * n + was.y * c;
 }
 
 } // namespace
@@ -231,7 +270,6 @@ void reset_pedestrians(CityState &s) {
 	t.node_crossers.assign(s.roads.nodes.size(), {});
 	t.shocks.clear();
 	t.shock_look = 0;
-	t.kerb_slots.clear();
 	t.crowd.clear();
 	t.crowd_keys.clear();
 	t.node_walkers.clear();
@@ -273,20 +311,19 @@ void step_pedestrians(CityState &s, float dt) {
 		if (!w.alive) continue;
 		const float dx = w.cur.x - cx, dz = w.cur.z - cz;
 		if (dx * dx + dz * dz > out2 && w.mode != PedMode::KERB) { // out of the walking window: gone, not lost
-			despawn(t, id, false);
+			despawn_party(s, id, false);
 			continue;
 		}
-		if (w.with >= 0) continue; // its leader's step moves it
+		const V2 faced(w.cur.fx, w.cur.fz);
 		walk(s, id, dt);
 		if (!t.peds[size_t(id)].alive) continue;
-		Pedestrian &after = t.peds[size_t(id)];
+		Pedestrian &after = t.peds[size_t(id)]; // its company may have been born: the list may have grown
 		const bool standing = after.mode == PedMode::WAIT || after.pace <= p.ped_moving_ms || held_by_fright(t, after);
 		after.rest = clampf(after.rest + (standing ? dt : -dt) / p.ped_rest_fade_s, 0.f, 1.f);
 		step_act(t, p, after, dt);
 		pose(s, after);
-		ease_facing(t, p, after, dt);
+		turn_body(t, p, after, faced, dt);
 	}
-	follow_leaders(s, dt);
 	if (spawns <= 0) return;
 	file_spawn_cells(t); // everybody has moved: the births look at where they stand now, and at each other
 	for (int k = 0; k < spawns; k++) spawn_walker(s, now, !filling);

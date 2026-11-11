@@ -20,7 +20,7 @@ struct KerbDoors {
 };
 KerbDoors kerb_door_at(const CityState &s, const Vehicle &v, float back_m); // this far behind its front
 float kerb_arc_of(const DirSeg &d, float at); // the arc along its street of metre `at` of a directed segment
-int kerb_hailable(const CityState &s, const DirSeg &d, float a0, float a1); // the first walker alone on the kerb's footway there, or -1
+int kerb_hailable(const CityState &s, const DirSeg &d, float a0, float a1); // the first walker there who may be called (alone, no child), or -1
 bool kerb_hail(CityState &s, int ped, const V2 &door, float reach);
 void kerb_place(CityState &s, int ped, const V2 &at, const V2 &facing);
 void kerb_let_go(CityState &s, int ped, bool on_foot);

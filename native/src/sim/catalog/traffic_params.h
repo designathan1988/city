@@ -33,7 +33,7 @@ namespace city {
 	X(ped_stampede_film_roll) X(ped_stampede_film_m) X(ped_mourn_m) X(ped_mourn_s) X(ped_turn_rad_s) \
 	X(lorry_kerb_over_m) X(ped_crossing_share) X(ped_act_fade_s) X(ped_look_after_s) X(ped_look_hold_s) X(ped_phone_after_s) X(ped_hands_after_s) X(ped_talk_after_s) X(ped_talk_turn_s) \
 	X(ped_talk_stagger_s) \
-	X(ped_company_share) X(ped_company_child_share) X(ped_company_catch) X(ped_door_off_m) X(ped_gate_out_m) \
+	X(ped_company_share) X(ped_company_child_share) X(ped_company_catch) X(ped_company_slow) X(ped_company_reach_m) X(ped_company_level_m) X(ped_company_wait_m) X(ped_door_off_m) X(ped_gate_out_m) \
 	X(ped_door_reach_m) X(ped_door_budget) X(work_stay_h) X(errand_stay_h) \
 	X(curb_m) X(ped_spawn_per_step) X(ped_fill_per_step) \
 	X(day_base) X(day_morning_h) X(day_morning_w) X(day_morning_amp) X(day_evening_h) X(day_evening_w) \
@@ -47,7 +47,7 @@ namespace city {
 	X(ped_critical_gap_s) X(ped_span_reach_m) X(walk_cost_extra_s) X(ped_routes_per_step) \
 	X(ped_stripe_m) X(ped_body_m) X(ped_margin_m) X(ped_look_m) X(ped_gap_m) X(ped_headway_s) X(ped_lateral_share) \
 	X(ped_lateral_cost) X(ped_keep_right_cost) X(ped_stripe_gain_m) X(ped_stripe_hold_s) X(ped_accel) \
-	X(kerb_wait_half_m) X(kerb_wait_gap_m) X(kerb_wait_rows) \
+	X(kerb_wait_half_m) \
 	X(ped_jam_s) X(ped_jam_crossing_s) X(ped_jam_narrow_s) X(ped_jam_share) X(ped_reserve_share) X(ped_reserve_max_m) X(ped_moving_ms) \
 	X(claim_hold_s) X(claim_brake) X(publish_radius_m) \
 	X(kerb_bay_pitch_m) X(kerb_corner_clear_m) X(kerb_crossing_clear_m) X(kerb_dead_end_m) X(kerb_gate_margin_m) X(kerb_gate_reach_m) \

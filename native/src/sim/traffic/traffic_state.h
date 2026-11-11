@@ -124,7 +124,6 @@ struct TrafficState {
 	std::vector<uint8_t> lane_sorted;
 	std::vector<std::vector<int>> conn_vehicles; // in entry order
 	std::vector<std::vector<int>> node_crossers; // per node: walkers on one of its crosswalks
-	std::unordered_map<int64_t, uint32_t> kerb_slots; // per kerb end of a crosswalk: the places to wait taken (bits)
 	// Who walks near whom, rebuilt every step (ped_crowd.cpp): each sidewalk's walkers by arc (seg * 2 + side) and the
 	// sidewalks with walkers; each junction's walkers (round its corners, at its kerbs, or on a sidewalk within reach of
 	// it: SUMO's walking area) and the junctions with walkers.

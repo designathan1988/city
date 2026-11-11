@@ -17,6 +17,7 @@ void aim_at_door(CityState &s, Pedestrian &w) {
 // At its door's place on the sidewalk: across to the foot of the way in, then to the door.
 void go_in(CityState &s, int id) {
 	Pedestrian &w = s.traffic.peds[size_t(id)];
+	w.company_due = false; // the line it came out by is gone with this one
 	Pose foot;
 	sidewalk_pose(s, w.seg, w.side, w.door.s, w.door.u, foot);
 	w.ways[0] = Waypoint{ foot.x, foot.y, foot.z, -1 };
@@ -29,22 +30,14 @@ void go_in(CityState &s, int id) {
 	aim_line(w);
 }
 
-// Its door reached. Its company, a step behind, goes in after it.
+// Its door reached. The one it walks with, near on that sidewalk, goes in at the same door from where it stands; one farther
+// off comes to the door by its own way (ped_party.cpp company_door).
 static void through_door(CityState &s, int id) {
 	TrafficState &t = s.traffic;
-	Pedestrian &w = t.peds[size_t(id)];
-	if (w.mate >= 0) {
-		Pedestrian &m = t.peds[size_t(w.mate)];
-		m.with = -1;
-		m.on_way = false;
-		m.mode = PedMode::LOT;
-		m.entering = true;
-		m.way_node = -1;
-		m.ways[0] = w.ways[w.wn - 1];
-		m.wn = 1;
-		m.wi = 0;
-		aim_line(m);
-		w.mate = -1;
+	const int other = company_near(t, s.catalog.traffic, t.peds[size_t(id)]);
+	if (other >= 0 && t.peds[size_t(other)].mode == PedMode::SIDEWALK && t.peds[size_t(other)].seg == t.peds[size_t(id)].seg) {
+		t.peds[size_t(other)].door = t.peds[size_t(id)].door;
+		go_in(s, other);
 	}
 	t.doors_in++;
 	despawn(t, id, true);
@@ -57,10 +50,7 @@ void walk_lot(CityState &s, int id, float dt) {
 	const float step = w.speed * dt;
 	w.walked += step;
 	w.ls += step;
-	if (w.company_due && w.ls >= 2 * s.catalog.traffic.ped_body_m + s.catalog.traffic.ped_gap_m) {
-		w.company_due = false;
-		add_company(s, id);
-	}
+	if (w.company_due) add_company(s, id); // out of the door after it, once the door is clear (asked on along its first sidewalk too)
 	Pedestrian &now = t.peds[size_t(id)]; // the company may have grown the list
 	if (now.ls < now.llen) return;
 	if (++now.wi < now.wn) {

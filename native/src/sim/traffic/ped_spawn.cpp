@@ -85,8 +85,8 @@ void at_door(const CityState &s, Pedestrian &w, const PedDoor &d) {
 	w.llen = std::hypot(foot.x - d.x, foot.z - d.z);
 	w.ls = 0;
 	const V2 way = V2(foot.x - d.x, foot.z - d.z).norm();
-	w.cur.fx = way.x;
-	w.cur.fz = way.y;
+	w.cur.fx = w.way_x = way.x;
+	w.cur.fz = w.way_z = way.y;
 	onto_line(w);
 }
 
@@ -148,7 +148,7 @@ bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door) {
 	} else {
 		w.s = clear_arc(s, seg, w.side, w.s, w.u); // born clear of the street furniture and of the others
 		if (w.s > arc_hi(g)) return false;
-		sidewalk_pose(s, seg, w.side, w.s, w.u, w.cur);
+		stand_on_sidewalk(s, w);
 	}
 	if (crowded(t, p, w.cur)) return false;
 	std::vector<int> route; // planned last: a walker that is not born takes no room in the route pool
@@ -162,8 +162,9 @@ bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door) {
 	walker_born(t, id);
 	t.ped_count++;
 	t.doors_out += out ? 1 : 0;
-	if (company && !out) add_company(s, id);
-	return true;
+	if (!company || out || add_company(s, id) || t.peds[size_t(id)].age != PedAge::CHILD) return true;
+	despawn(t, id, false); // no room beside it for the grown-up a child walks with: the child is not born either
+	return false;
 }
 
 // A walker on the footway at `arc`, set there for a kerb stop's errand (kerb_stops.cpp): its body and trip as any walker's, held by
@@ -179,7 +180,7 @@ int ped_on_footway(CityState &s, int seg, int side, float arc) {
 	w.dir = int(t.rng.next() & 1);
 	w.s = clampf(arc, arc_lo(g), arc_hi(g));
 	on_sidewalk(w);
-	sidewalk_pose(s, seg, side, w.s, w.u, w.cur);
+	stand_on_sidewalk(s, w);
 	std::vector<int> route;
 	if (crowded(t, p, w.cur) || !plan_trip(s, w.dir == 0 ? g.b : g.a, route, w.goal_side)) return -1;
 	route_set(t.ped_pool, w.route, t.ped_waste, route.data(), int(route.size()));

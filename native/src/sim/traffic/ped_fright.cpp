@@ -205,7 +205,7 @@ void flee_on(CityState &s, Pedestrian &w, int n) {
 void ease_facing(const TrafficState &t, const TrafficParams &p, Pedestrian &w, float dt) {
 	if (!w.turning) return;
 	const bool held = t.time < w.held_until;
-	const V2 want = held ? V2(w.face_x - w.cur.x, w.face_z - w.cur.z).norm() : V2(w.cur.fx, w.cur.fz);
+	const V2 want = held ? V2(w.face_x - w.cur.x, w.face_z - w.cur.z).norm() : V2(w.way_x, w.way_z);
 	const float err = std::atan2(w.turn_x * want.y - w.turn_z * want.x, w.turn_x * want.x + w.turn_z * want.y);
 	const float most = p.ped_turn_rad_s * dt, by = clampf(err, -most, most);
 	const float c = std::cos(by), n = std::sin(by);
