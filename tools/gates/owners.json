@@ -62,6 +62,14 @@
       "scope": ["project/ui/", "project/game/"]
     },
     {
+      "id": "shown_values",
+      "_doc": "The one owner of the numbers, units and dates the interface shows; its words go through TranslationServer itself, so the text gate (gate_text.py) takes a call of its class as translated text.",
+      "owner": "project/game/store/formatters.gd",
+      "symbol": "count_label",
+      "forbidden_elsewhere": ["\\.one\"\\s+if\\b"],
+      "scope": ["project/ui/", "project/game/"]
+    },
+    {
       "id": "game_state",
       "owner": "project/game/store/city_store.gd",
       "symbol": "snapshot",

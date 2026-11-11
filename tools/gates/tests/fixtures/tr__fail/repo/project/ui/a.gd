@@ -7,3 +7,6 @@ func f(n):
 	$O.add_item("Raw")
 	$P.set_item_text(0, "x " + tr("B"))
 	$L.text = "%s" % [name]
+	$L.text = Shown.format_int(n)
+	$L.text = Formatters.format_int(n) + " km"
+	$L.text = "%s" % [Shown.count_label("a", n)]

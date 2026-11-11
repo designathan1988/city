@@ -14,6 +14,7 @@ import gate_generated
 import gate_language
 import gate_materials
 import gate_python
+import gate_text
 import gate_tuning
 import gate_ui
 from gate_files import SIDECARS
@@ -51,6 +52,8 @@ def _forbidden(entry):
     context = None
     if entry["id"] == "JOB_SEM_CHAVE":
         context = lambda ctx: sorted(gate_forbidden.job_pool_members(ctx))  # noqa: E731
+    elif check is gate_text.untranslated:  # its verdict reads the owner of shown values' class
+        context = lambda ctx: [gate_text.shown_owner(ctx)]  # noqa: E731
     return PerFile(entry["id"], [entry["id"]], lambda ctx, path: gate_forbidden.applies(entry, path),
                    lambda ctx, src, err: check(ctx, src, entry, err), context)
 
