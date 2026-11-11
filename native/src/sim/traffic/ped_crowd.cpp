@@ -279,6 +279,8 @@ void sidewalk_choices(CityState &s, const StripeRules &rules, float zone, float 
 			for (int j = 0; j < nn && !sn.full(); j++) see_junction(seen, near[j], w.id, key, sn);
 			while (from < pieces.size() && pieces[from].s0 < w.s - sn.look - sf.longest) from++;
 			see_sidewalk_furniture(pieces, from, w, sn);
+			const V2 way(w.fx, w.fz); // the ground the vehicles off the lanes hold, in the sidewalk's own across
+			sn.n = held_bodies(seen, V2(w.x, w.z), way, left_of(w.dir == 0 ? way : -way), f, p.ped_look_m, reach, bodies, sn.n);
 			next[first[i] + k] = CrowdChoice(w.id, choose_stripe(rules, w, f, bodies, sn.n));
 		}
 	};
@@ -326,6 +328,7 @@ void crowd_step(CityState &s, float dt) {
 			Seen sn{ f, bodies, 0, p.ped_look_m, touch, reach };
 			for (int j = junctions_round(s, node, near); j-- > 0 && !sn.full();) see_junction(t, near[j], e.id, -1, sn);
 			for (size_t o = 0; o < around.size() && !sn.full(); o++) see_footprint(*around[o], sn);
+			sn.n = held_bodies(t, f.at, f.fwd, f.left, f, p.ped_look_m, reach, bodies, sn.n);
 			next.emplace_back(e.id, choose_stripe(rules, e, f, bodies, sn.n));
 		}
 	}

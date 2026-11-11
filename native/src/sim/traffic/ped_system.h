@@ -92,6 +92,11 @@ uint32_t party_look(const TrafficState &t, const Pedestrian &w); // the hash the
 bool company_door(const TrafficState &t, Pedestrian &w); // the door the one it walks with goes in at, ahead on its sidewalk: its own too
 void step_act(const TrafficState &t, const TrafficParams &p, Pedestrian &w, float dt); // what it does while it stands
 
+// ped_held.cpp: the ground the vehicles off the lanes hold, solid to the walkers
+void file_held_ground(CityState &s); // each such vehicle's body, and the rest of its way once it has taken it, as discs
+bool on_held_ground(const TrafficState &t, float x, float z, float body); // a body of that radius there would stand on it
+void step_off_held(const CityState &s, Pedestrian &w, float dt); // standing on it: a step away, at its pace aside
+
 // ped_crowd.cpp / ped_stripes.cpp: walkers among walkers and street furniture, on every way they walk
 void crowd_step(CityState &s, float dt); // every walking walker's stripe and pace, from the bodies around it
 float walk_half(const CityState &s, int seg, int side); // stripe centres lie within this of the sidewalk's middle

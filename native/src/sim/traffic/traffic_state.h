@@ -106,6 +106,9 @@ struct TrafficState {
 	size_t route_waste = 0, ped_waste = 0;
 	std::vector<PedShock> shocks; // what walkers run from (ped_fright.cpp)
 	float shock_look = 0; // t.time they are looked at next
+	// The ground the vehicles off the lanes hold, solid to the walkers: filed each tick before the crowd step (ped_held.cpp).
+	std::vector<HeldDisc> held;
+	std::vector<HeldGround> held_of; // a vehicle's discs each
 	std::string graph_fault; // the debug DLL: the first broken rule of the lane graph (lane_graph_check.cpp)
 	std::vector<Pedestrian> peds;
 	std::vector<int> free_peds;

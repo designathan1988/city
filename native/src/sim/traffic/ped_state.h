@@ -74,6 +74,16 @@ struct WalkerCells {
 	bool live = false;
 };
 
+// A disc of ground a vehicle off the lanes holds (ped_held.cpp): its body where it stands, and the rest of its way once it has
+// taken it. One vehicle's discs lie together under their box.
+struct HeldDisc {
+	float x = 0, z = 0, r = 0;
+};
+struct HeldGround {
+	float x0 = 0, z0 = 0, x1 = 0, z1 = 0;
+	int first = 0, count = 0; // in TrafficState::held
+};
+
 // A shocking thing on the street (a body, a blast): whoever comes within `reach` of it before `until` runs from it.
 struct PedShock {
 	float x = 0, z = 0, reach = 0, until = 0;

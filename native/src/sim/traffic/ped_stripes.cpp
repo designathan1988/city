@@ -32,6 +32,7 @@ bool across(const Body &o, float c) { return c > o.lat_lo - o.reach && c < o.lat
 // The gap a body leaves ahead of the places across it: at or under zero beside a piece of furniture (shut), BIG when it
 // is behind (a walker: theirs to keep the gap) or passed (furniture).
 float gap_of(const Body &o) {
+	if (o.under) return BIG; // ground a vehicle holds, under its feet: it walks on out of it
 	if (o.furniture) return o.along_hi < -o.reach ? BIG : o.along_lo - o.reach;
 	if (o.along_lo <= 0) return BIG;
 	return (o.oncoming ? o.along_lo * ONE_WAY_CLOSING : o.along_lo) - o.reach;
@@ -72,13 +73,13 @@ float room_at(const Body *b, int n, float c, float look, bool squeeze) {
 // its own lateral pace, never a jump), less the bodies beside it on either side: a piece of furniture up to its edge, a
 // walker up to half the room between the two (the other steps this tick too, and may take the other half). A walker beside
 // it that its way has brought nearer than their two bodies (two ways that converge) makes it step away, `aside` at most: both
-// do, so they part.
-void side_limits(const WayFrame &f, const Body *b, int n, float aside, float &lo, float &hi) {
+// do, so they part; so does ground a vehicle holds that it stands on (ped_held.cpp).
+void side_limits(const WayFrame &f, const Body *b, int n, float aside, float walk, float &lo, float &hi) {
 	lo = std::min(f.lo, f.u);
 	hi = std::max(f.hi, f.u);
 	for (int k = 0; k < n; k++) {
 		const Body &o = b[k];
-		if (o.along_lo - o.reach >= 0 || o.along_hi + o.reach <= 0) continue; // ahead of it or behind, not beside
+		if (o.under || o.along_lo - o.reach >= 0 || o.along_hi + o.reach <= 0) continue; // ahead of it or behind, not beside
 		const float shut_lo = o.lat_lo - o.reach, shut_hi = o.lat_hi + o.reach, mine = o.furniture ? 1.f : WALKERS_SHARE;
 		if (f.u <= shut_lo) hi = std::min(hi, f.u + (shut_lo - f.u) * mine);
 		else if (f.u >= shut_hi) lo = std::max(lo, f.u - (f.u - shut_hi) * mine);
@@ -87,6 +88,13 @@ void side_limits(const WayFrame &f, const Body *b, int n, float aside, float &lo
 		else lo = std::max(lo, std::min(shut_hi, f.u + aside));
 	}
 	if (hi < lo) lo = hi = clampf(f.u, hi, lo); // made to step past its room's edge: to the edge; from both sides: it stays
+	// ground a vehicle holds, under its feet: it walks off it (`walk`: a tick at its own pace), past its room's edge if need be
+	// (it steps back in after)
+	for (int k = 0; k < n; k++) {
+		if (!b[k].under) continue;
+		lo = hi = f.u < b[k].lat_lo ? f.u - walk : f.u + walk;
+		return;
+	}
 }
 
 // The places worth a score, each once (the same place twice scores the same and never wins the second time): the
@@ -259,7 +267,7 @@ StripeChoice choose_stripe(const StripeRules &r, const CrowdEntry &w, const WayF
 	// aside at a share of its own pace (it can step aside standing), never into the furniture beside it
 	const float aside = r.aside_share * w.speed * r.dt;
 	float lo, hi;
-	side_limits(f, b, n, aside, lo, hi);
+	side_limits(f, b, n, aside, w.speed * r.dt, lo, hi);
 	out.u = clampf(f.u + std::clamp(out.u_goal - f.u, -aside, aside), lo, hi);
 	return out;
 }
