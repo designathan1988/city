@@ -49,6 +49,7 @@ class Ref:
     text: str = ""                 # load: the path; name: the literal
     argc: int = -1                 # call: the number of arguments written (-1 when not a call)
     args: tuple = ()               # call: each argument's tree; write: (the value written,)
+    object_of: tuple = ()          # cpp: a use of `T x(a, b);` read as an object: kept if a or b is a value (cpp_ambig)
 
 
 @dataclass
@@ -85,8 +86,25 @@ class Unit:
     accessor_of: str = ""          # gd: the property whose set/get this function is (its own name is direct)
     outer: int = -1                # lambda: local id of the function it is written in (same file)
     captured: set = field(default_factory=set)     # lambda: names that are still the enclosing function's locals
+    written_by: dict = field(default_factory=dict)  # local name -> local ids of the closures that write it (shared)
     tails: set = field(default_factory=set)        # cpp: lines of the calls in tail position (a compiler may jump)
     local_types: dict = field(default_factory=dict)    # cpp: a class declared in the function, name -> class key
+    objects: list = field(default_factory=list)    # cpp: `T x(a, b);` read as a function: an object if a or b is a value
+
+    @property
+    def key(self):
+        """What keys its value nodes: its gid (a template of it is a `templates.Frame`, keyed by gid and tuple)."""
+        return self.gid
+
+    @property
+    def fixed(self):
+        """The parameter a template fixes to its key value: none for the unit itself."""
+        return None
+
+    @property
+    def base(self):
+        """The unit a template is of: the unit itself."""
+        return self
 
 
 def declare(r, unit: Unit, name: str, trees: list, param: bool = False, function_scope: bool = False) -> str:
@@ -121,15 +139,19 @@ def enclose(lam: Unit, owner: Unit) -> None:
 
 
 def assign(r, unit: Unit, name: str, value, shared: bool) -> None:
-    """A value written to a local (the one its name names where it is written): into the unit's own, and when the
-    language shares a captured local with the enclosing function (C++ capture by reference), into the enclosing
-    function's as well."""
+    """A value written to a local (the one its name names where it is written): into the writing unit's own list,
+    evaluated there; when the language shares a captured local with the enclosing function (C++ capture by reference,
+    JS closures, J7), the enclosing function's local holds what the writer's holds (`written_by`)."""
     units, name = r.facts.units, scopes.visible(r, name)
-    while name in unit.types:
-        unit.types[name].append(value)
-        if not shared or name not in unit.captured or unit.outer < 0:
+    if name not in unit.types:
+        return
+    unit.types[name].append(value)
+    while shared and name in unit.captured and unit.outer >= 0:
+        outer = units[unit.outer]
+        if name not in outer.types:
             return
-        unit = units[unit.outer]
+        outer.written_by.setdefault(name, []).append(unit.local_id)
+        unit = outer
 
 
 @dataclass

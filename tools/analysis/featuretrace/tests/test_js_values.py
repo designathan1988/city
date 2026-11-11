@@ -79,6 +79,27 @@ class JsValues(FixtureCase):
     def test_generator_iteration_gives_its_yields(self):
         self.assertIn("Box.open", self.names("fromGenerator"))
 
+    def test_for_in_names_the_properties(self):
+        self.assertIn("Box.open", self.names("eachKey"))                   # k: "a", "b"; table[k]: the Boxes
+
+    def test_object_keys_values_entries(self):
+        self.assertIn("Box.open", self.names("keysOf"))
+        self.assertIn("Box.open", self.names("valuesOf"))
+        self.assertIn("Box.open", self.names("entriesOf"))
+
+    def test_host_type_is_the_host_value(self):
+        self.assertEqual({ENGINE}, self.values("draw", ("name", "c")))   # HTMLCanvasElement: the host's (H1)
+        self.assertEqual(set(), self.values("draw", ("name", "p")))      # an alias of the program: erased (T1)
+
+    def test_closure_write_is_read_where_written(self):
+        # `shown` is the closure's parameter (a Box), not script.js's global function of that name
+        held = self.values("collects", ("name", "all"))
+        self.assertIn(ELEM + BOX, held)
+        self.assertFalse(any(text.startswith((FN, ELEM + FN)) for text in held), held)
+
+    def test_closure_sees_a_later_declaration(self):
+        self.assertIn("Box.open", self.names("closures.ts:13"))         # run(): helper is declared after it
+
     def test_computed_key_names_its_members(self):
         self.assertIn("Box.open", self.names("pick"))                      # t["a"]: the field a
         self.assertEqual(set(), self.values("anyKey", ("name", "v")))      # an unknown key reads no property

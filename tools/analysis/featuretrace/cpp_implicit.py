@@ -1,7 +1,7 @@
 """C++ calls the language makes without a call written (log/trace-rules.md: CALL, C7).
 
-- declaring an object of class type calls its constructor (`T x;`, `T x(args);`, `T x{args};`) and, at the end of its
-  scope, its destructor; `delete p` runs the destructor of what p points at;
+- declaring an object of class type calls its constructor (`T x;`, `T x(args);`, `T x{args};`; each element of an
+  array its own) and, at the end of its scope, its destructor; `delete p` runs the destructor of what p points at;
 - an expression with an operator on a class calls `operator<op>` (member or free, found by argument-dependent lookup);
 - a range-for calls `begin()` and `end()` of the range.
 Each is recorded as a reference; whether it reaches code of the program is decided by the resolver (a built-in operator
@@ -9,7 +9,6 @@ or a library type reaches nothing of the program).
 """
 from __future__ import annotations
 
-from . import scopes
 from .cpp_names import strip_templates
 from .source import field_of, named_children
 
@@ -18,32 +17,62 @@ OBJECT_DECLARATORS = ("identifier", "function_declarator", "init_declarator", "a
 ASSIGN_OPERATORS = ("=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=")   # each overloadable
 
 
-def declared_object(r, unit, declarator, type_text: str, node, cond, add) -> None:
-    """`T x;`, `T x(args);`, `T x{args};`: T's constructor with those arguments, and its destructor at scope end."""
+def declared_object(r, unit, declarator, type_text: str, node, cond, add, args: tuple = ()) -> None:
+    """`T x;`, `T x(args);`, `T x{args};`: T's constructor with those arguments (`T x(a, b);` read as an object: `args`,
+    its initializers, `cpp_ambig`), and its destructor at scope end. An array of T is an aggregate ([dcl.init.aggr]):
+    each element is initialized from its own initializer-clause (a braced one constructs it with its elements; a value
+    copies it: FLOW), the elements with no clause by T's default constructor. A pointer or a reference declared
+    constructs nothing."""
     if declarator.type not in OBJECT_DECLARATORS or not type_text or "*" in type_text or "&" in type_text:
         return
-    args = ()
+    pointer, array = declared_shape(declarator)
+    if pointer:
+        return
+    calls = [()]
     if declarator.type == "function_declarator":
-        params = field_of(declarator, "parameters")
-        args = tuple(argument(r, a, unit) for a in named_children(params)) if params is not None else ()
+        calls = [args]
     elif declarator.type == "init_declarator":
         value = field_of(declarator, "value")
         if value is None or value.type not in ("initializer_list", "argument_list"):
             return                                      # `T x = v;` copies a value: FLOW, no constructor written
-        args = tuple(r.ir(a, unit) for a in named_children(value))
+        clauses = named_children(value)
+        if not array:
+            calls = [tuple(r.ir(a, unit) for a in clauses)]
+        else:
+            calls = [tuple(r.ir(a, unit) for a in named_children(c)) for c in clauses if c.type == "initializer_list"]
+            written, size = array_size(r, declarator)
+            if not clauses or written and (size is None or size > len(clauses)):
+                calls.append(())                        # the elements with no clause: value-initialized
     scope, _, name = strip_templates(type_text.replace("const ", "")).strip().rpartition("::")
     # only a class type has a constructor (default-initialization of a non-class does nothing, C7)
-    add(r, unit, "new", name, node, cond, qualified=bool(scope), scope=scope, args=args, text=IMPLICIT)
+    for args in calls:
+        add(r, unit, "new", name, node, cond, qualified=bool(scope), scope=scope, args=args, text=IMPLICIT)
     add(r, unit, "destroy", name, node, cond, qualified=bool(scope), scope=scope)
 
 
-def argument(r, param, unit) -> tuple:
-    """A "parameter" of `T x(a, b);` in a block: a bare name is the value it names, passed to the constructor
-    (direct-initialization; [dcl.ambig.res] with name lookup)."""
-    typ = field_of(param, "type")
-    if param.type == "parameter_declaration" and field_of(param, "declarator") is None and typ is not None             and typ.type in ("type_identifier", "identifier", "qualified_identifier"):
-        return scopes.scoped_tree(r, ("name", strip_templates(r.src.text(typ))))
-    return r.ir(param, unit)
+def declared_shape(declarator) -> tuple[bool, bool]:
+    """What a declarator declares beside its name ([dcl.decl]): (a pointer or a reference, an array)."""
+    pointer = array = False
+    while declarator is not None and declarator.type not in ("identifier", "field_identifier", "function_declarator"):
+        if declarator.type in ("pointer_declarator", "reference_declarator"):
+            pointer = True
+        elif declarator.type == "array_declarator":
+            array = True
+        if declarator.type == "parenthesized_declarator":
+            declarator = (named_children(declarator) or [None])[0]
+        else:
+            declarator = field_of(declarator, "declarator")
+    return pointer, array
+
+
+def array_size(r, declarator) -> tuple[bool, int | None]:
+    """Whether an array declarator writes its size, and the size when it is a number (`T x[4]`); a size not written
+    (`T x[] = {...}`) is the initializer-clauses' count ([dcl.array])."""
+    while declarator is not None and declarator.type != "array_declarator":
+        declarator = field_of(declarator, "declarator")
+    size = field_of(declarator, "size") if declarator is not None else None
+    text = r.src.text(size).strip() if size is not None else ""
+    return size is not None, int(text) if text.isdigit() else None
 
 
 def operator(r, unit, node, cond, add) -> None:

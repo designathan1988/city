@@ -16,6 +16,7 @@ Shapes (tuples, so facts stay picklable and comparable):
   ("collection", values)         a container literal holding these values
   ("elements", e)                what walking `e` yields (a loop variable)
   ("each", e)                    what a container's own iteration hands a callback (forEach, map: a Map's values)
+  ("keys", e)                    JS `for (k in e)`: e's enumerable property names, as strings
   ("put", e)                     a value put into a container (an element)
   ("await", e)                   what awaiting `e` gives
   ("strname", s)                 a name written as a string (NAME)

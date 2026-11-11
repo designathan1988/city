@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
+from . import cpp_ambig
 from .cpp_names import strip_templates
 from .js_modules import JsModules
 from .model import ENGINE_CALLBACKS, FUNCTION_KINDS, Unit
@@ -85,6 +86,7 @@ class Index:
                 cls.engine_visible = True
         for binding, path in bindings:
             self.bind(binding, path)
+        cpp_ambig.decide(self)                    # `T x(a, b);`: a function or an object, now that names are known
 
     # ---- the translation unit (C6) -----------------------------------------------------------------------------
     @staticmethod

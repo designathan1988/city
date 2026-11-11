@@ -9,11 +9,10 @@ calling a callable: what its function returns.
 """
 from __future__ import annotations
 
-from . import js_library
+from . import js_library, js_transfer, templates
 from .cpp_names import template_args
 from .library import (DEREF, HELD_CALLS, ITEM, ITER, ITERATOR_CALLS, PAIR_PARTS, clean, library_step)
-from .rules import ITERATOR_MEMBER
-from .solver import CLASS, ELEM, ENGINE, FN, TEXT
+from .solver import CLASS, ELEM, ENGINE, FN
 
 OPERATORS = {ITEM: "operator[]", DEREF: "operator->", ITER: "begin", js_library.EACH: "begin"}
 COMPARISONS = ("==", "!=", "<", ">", "<=", ">=", "<=>", "&&", "||", "!", "and", "or", "not", "in", "is")
@@ -35,14 +34,34 @@ def substituted(t, key: str, outer: str, ctx, iterate: bool):
     return transfer
 
 
-def members(t, name: str, called: bool):
+def member_values(t, source, target, key: str, text: str, ctx, iterate: bool = False) -> None:
+    """A member's values (`source`) read on `text`, a value of class `key`, into `target`: the class template's
+    parameters replaced by the arguments `text` writes (`substituted`), else as they are (an identity subscription)."""
+    if iterate or t.replaces(key, text):
+        t.subscribe(source, target, ("subst", key, text, ctx.gid, iterate), substituted(t, key, text, ctx, iterate))
+    else:
+        t.follow(source, target)
+
+
+def members(t, name: str, called: bool, caller=None, args: tuple = ()):
     def transfer(target, values):
         for text, ctx in values:
-            member_one(t, target, text, ctx, name, called)
+            member_one(t, target, text, ctx, name, called, caller, args)
     return transfer
 
 
-def member_one(t, target, text: str, ctx, name: str, called: bool) -> None:
+def result(t, target, unit, caller, args: tuple, deliver=None) -> None:
+    """What a call of `unit` written in `caller` with `args` gives `target`: the result of the templates of its
+    argument values when its result depends on them (`templates`, C2), else the function's own."""
+    keys = templates.key_params(t, unit) if caller is not None else ()
+    deliver = deliver or (lambda node: t.follow(node, target))
+    if keys:
+        templates.route(t, target, unit, [t.node_of(a, caller) for a in args], keys, deliver)
+    else:
+        deliver(t.ret_node(unit))
+
+
+def member_one(t, target, text: str, ctx, name: str, called: bool, caller=None, args: tuple = ()) -> None:
     """A member of one value: its field's held values, its method's callable, or (called) the method's returns."""
     ix = t.ix
     if text.startswith(FN):
@@ -78,8 +97,10 @@ def member_one(t, target, text: str, ctx, name: str, called: bool) -> None:
             unit = ix.units[gid]
             if unit.kind == "class":
                 t.add(target, [(CLASS + unit.qual, ctx)])
+            elif called:
+                result(t, target, unit, caller, args)
             else:
-                t.follow(t.ret_node(unit) if called else t.hold_node(unit), target)
+                t.follow(t.hold_node(unit), target)
         return
     if key is None:
         t.add(target, [(library_step(name, text, called), ctx) if text != ENGINE else (ENGINE, ctx)])
@@ -94,10 +115,14 @@ def member_one(t, target, text: str, ctx, name: str, called: bool) -> None:
         inner = ix.inner[key].get(name)
         t.add(target, [(CLASS + inner, ctx) if inner else (ENGINE, ctx)])      # an engine or library base's member
         return
+    def deliver(source):
+        member_values(t, source, target, key, text, ctx)
     for gid in ix.definitions(found):
         unit = ix.units[gid]
-        source = t.ret_node(unit) if called else t.hold_node(unit)
-        t.subscribe(source, target, ("subst", key, text, ctx.gid, False), substituted(t, key, text, ctx, False))
+        if called:
+            result(t, target, unit, caller, args, deliver)
+        else:
+            deliver(t.hold_node(unit))
 
 
 def steps(t, step: str):
@@ -127,47 +152,14 @@ def step_one(t, target, step: str, text: str, ctx) -> None:
         return
     if ctx.lang == "js":    # an object of the program: `o[k]` the members its key names (`indexed`, T4'); its
         if step == ITER:    # iteration what its own iterator gives (J5); a callback handed to its own forEach gets
-            t.follow(iterated(t, key), target)      # what that method passes
+            t.follow(js_transfer.iterated(t, key), target)      # what that method passes
         return
     found = t.ix.lookup(key, OPERATORS[step])
     if not found:
         t.add(target, [(text, ctx)])                    # a raw pointer's `->`, `*` on a pointer: the object itself
         return
     for gid in t.ix.definitions(found):
-        t.subscribe(t.ret_node(t.ix.units[gid]), target, ("subst", key, text, ctx.gid, step == ITER),
-                    substituted(t, key, text, ctx, step == ITER))
-
-
-def iterated(t, key: str):
-    """What iterating a JS object of class `key` gives (J5): its `[Symbol.iterator]()`'s `next().value`."""
-    node = ("#iterated", key)
-    if node not in t.wired:
-        t.wired.add(node)
-        t.value.setdefault(node, [])
-        iterator = ("#iterator", key)
-        for gid in t.ix.definitions(t.ix.lookup(key, ITERATOR_MEMBER)):
-            t.subscribe(t.ret_node(t.ix.units[gid]), iterator, ("member", "next", True), members(t, "next", True))
-        t.subscribe(iterator, node, ("member", "value", False), members(t, "value", False))
-    return node
-
-
-def indexed(t, other, from_base: bool):
-    """JS `o[k]` with a computed key (T4'): each object value with each string value of the key gives that member;
-    a container gives its elements. `from_base`: the new values are the object's (`other` the key), else the key's."""
-    def named(values) -> list[str]:
-        return [text[len(TEXT):] for text, _ in values if text.startswith(TEXT)]
-
-    def transfer(target, values):
-        objects, names = (values, named(t.held(other))) if from_base else (t.held(other), named(values))
-        if not from_base and not names:
-            return                                      # a key that is no known string reads no property
-        for text, ctx in objects:
-            if t.type_class(text, ctx):                 # an object of the program: the members the key names
-                for name in names:
-                    member_one(t, target, text, ctx, name, False)
-            elif from_base:                             # a container: its elements, whatever the key
-                step_one(t, target, ITEM, text, ctx)
-    return transfer
+        member_values(t, t.ret_node(t.ix.units[gid]), target, key, text, ctx, step == ITER)
 
 
 def operators(t, op: str):
@@ -192,11 +184,11 @@ def operator_one(t, target, op: str, text: str, ctx) -> None:
     t.add(target, [(text, ctx)])
 
 
-def calls(t):
+def calls(t, caller=None, args: tuple = ()):
     def transfer(target, values):
         for text, ctx in values:
             if text.startswith(FN):
-                t.follow(t.ret_node(t.ix.units[int(text[len(FN):])]), target)
+                result(t, target, t.ix.units[int(text[len(FN):])], caller, args)
             elif not text.startswith(ELEM):
                 t.add(target, [(ENGINE, ctx)])          # calling what the engine gives: the engine's value
     return transfer
@@ -214,18 +206,4 @@ def awaits(t):
     def transfer(target, values):
         t.add(target, [(v, ctx) for text, ctx in values
                        for v in (js_library.awaited(text) if ctx.lang == "js" else [text])])
-    return transfer
-
-
-def constructs(t):
-    """`new X(...)` in JS (N1): a class gives its instance, a function called as a constructor the objects it
-    returns, anything else the host's constructor (the language's value)."""
-    def transfer(target, values):
-        for text, ctx in values:
-            if text.startswith(FN):
-                t.follow(t.ret_node(t.ix.units[int(text[len(FN):])]), target)
-            elif text.startswith(CLASS):
-                t.add(target, [(text, ctx)])
-            else:
-                t.add(target, [(ENGINE, ctx)])
     return transfer

@@ -7,7 +7,8 @@ this: the links are its, the values these.
 """
 from __future__ import annotations
 
-from .typer import ARG, ENGINE, ENGINE_CALLED, HELD
+from .places import ARG, ENGINE_CALLED, HELD
+from .solver import ENGINE
 
 CARRYING = ("call", "override", "name", "thread", "emit", "new", "handed")   # links whose arguments reach parameters
 FLOW = "#flow"

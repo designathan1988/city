@@ -538,3 +538,126 @@ dynamic property reads with an unknown name are left out, and the call graphs ke
 | Rule | What the tracer does |
 |---|---|
 | T4' A computed property `o[k]` (replaces T4) | the members named by each string value `k` can hold (G7, the key's values beside the object's, both growing); a key that is no known string reads no property of an object of the program; the language's containers and the program's own (ELEM) give their elements by index as before |
+
+## Property names as values; types of the host (research, 2026-11-11 10:30)
+
+Sources: MDN `for...in` (every enumerable string property, inherited ones too), `Object.keys` / `Object.values` /
+`Object.entries` (the own enumerable string-keyed properties: names, values, `[name, value]` pairs); MDN "Enumerability
+and ownership of properties" (a class's methods are on its prototype and not enumerable; instance fields and an object
+literal's properties are); TypeScript handbook, "Type Declarations" (a type name the program does not declare comes
+from a declaration file: the host's `lib` or a library's types).
+
+| Rule | What the tracer does |
+|---|---|
+| P1 Enumerable properties of an object of the program | an object literal: every property it writes (its methods too) and its spread bases'; an instance of a class: the instance fields of the class and its bases (methods, accessors and static members are not enumerable on it) |
+| P2 `for (k in o)` | k holds the names of o's enumerable properties as strings (G7), so `o[k]` reads exactly those (T4'); over an array or a container of the language, its indices: the language's value |
+| P3 `Object.keys(o)`, `Object.values(o)`, `Object.entries(o)` (the language's `Object`, not a name of the program) | an array of the names as strings; of the properties' values; of `[name, value]` arrays |
+| H1 A TypeScript type name the program does not declare | a type of the host or of a library not read: the host's value (a name the program declares as a class, interface, enum, alias or import of a module read keeps T1) |
+
+### Closures and the names they share (found by a probe of the first nodes that received draco's `l`, 2026-11-11 11:30)
+
+The draco script's own top-level `l` (a real global, L2) reached three's buffers through two readings of closures:
+`exhaust.ts`'s `life[i] = l` written in a method of the object `createExhaust` returns was evaluated in
+`createExhaust`'s scope (`model.assign` put the closure's tree into the enclosing function's list), where `l` is no
+local; and minified modules (chevrotain, lil-gui) use, in a closure, a name their enclosing function declares later
+(the reader copied the enclosing names when it read the closure). Sources: MDN Closures, `var` hoisting, `let`/`const`
+(a closure's names are resolved in its enclosing scopes when it runs; declarations are hoisted, the temporal dead zone
+is a run-time condition).
+
+| Rule | What the tracer does |
+|---|---|
+| J7' A value written to a shared local (JS closures, C++ captures by reference) | is evaluated where it is written; the enclosing function's local holds what the writer's holds |
+| J7'' A JS closure's name | is looked up in its enclosing functions whatever the order the declarations are written in (C++ and GDScript lambdas see only what is declared before them) |
+
+## Call results per argument values: templates (research, 2026-11-11 12:30)
+
+Measured on the lab after the JS rules (drain probes): the sets that still multiply are real values merged by
+functions called from many places: i18n `t(key)` returns every key of the program (1 569 strings) to every caller;
+`getConstNode(value)`, `ShaderNodeObject(obj)` return what any caller passed; generic setters fill `Vector3.x` with
+colour strings. Sources: Agesen, "The Cartesian Product Algorithm" (ECOOP 1995,
+https://bibliography.selflanguage.org/cpa.html): at a call site the product of the receiver's and arguments' types is
+formed and each tuple analysed as its own template, the site revisited as the types grow; Li, Tan, Møller, Smaragdakis,
+Zipper (OOPSLA 2018): precision is lost where a parameter flows to the result directly, wrapped or unwrapped, and
+context is spent there only; Sridharan et al. (ECOOP 2012): correlated property accesses extracted and analysed per
+property name.
+
+| Rule | What the tracer does |
+|---|---|
+| C1 Which functions | a function whose parameters reach its result: directly (a local holding it, a union, `await`), through a member or an element read of it, or through a call by name of such a function on it; the parameters that reach it are its key; a function that writes an inner function keeps one template (its closures read its locals, B3) |
+| C2 A call of such a function | each tuple of the values its key parameters can hold at that call is a template of the function: its parameters hold that tuple (the others what the calls of the template pass), its result is the call's; the call's values are the union over its tuples (Agesen's CPA, values only grow) |
+| C3 The call graph | links stay those of the function read once over every call (a superset): the templates refine the values the calls give, never remove a link |
+| C1' (replaces C1's last clause) | a function that writes an inner function has templates too: a template's closures read the unit's own locals, which every call feeds (C3), a superset of the template's: sound |
+| C2' (replaces C2's product; measured: the city did not reach its fixpoint in 600 s, functions with two or three key parameters of hundreds of values each made their products) | for each key parameter, each value it holds at a call is a template (that parameter fixed, the others what the call writes); each parameter's family of results is a superset of the call's result, and the call holds their intersection (the meet of sound approximations, abstract interpretation's reduced product): templates grow as the sum of the values, not their product; one key parameter is Agesen's templates exactly |
+| C2'' A template's parameters (found by the fixture: `either(a: Box | Tile, b: Box | Tile)` gave both classes to every call) | a template exists because a call writes its arguments: its key parameter holds its key value alone; its other parameters what its calls write, and their default value; never the type declared for them (T1 stays the unit's, for parameters no call of the program writes) |
+
+### Templates share what their key does not reach (found by stack samples of the stalled lab run, 2026-11-11 14:00)
+
+The lab with three.js did not reach its fixpoint in 900 s after C2'': stack samples showed the time in copying every
+argument of a call into every template (`templates.route`, `other`) and in delivering each template's result into the
+call one value at a time (`transfer.substituted`). The cause read in the code: a template was the whole unit read again
+(every tree of the body its own node under the template's key, the calls in it included), so a function whose key held
+a hundred values was wired a hundred times, and each copy's result, the parts no key reaches included, was delivered on
+its own. Sources: Agesen (CPA: two templates differ only in the values of their arguments); Zipper (context is spent on
+the flows of the selected parameters); Smaragdakis, Bravenboer, Lhoták, "Pick Your Contexts Well" (POPL 2011: a
+context-sensitive copy is needed only where its value can differ between contexts).
+
+| Rule | What the tracer does |
+|---|---|
+| C2''' A template's nodes | a tree is a template's own node only when it reads a key parameter, through any shape (an operand, a receiver, an argument, a local holding one); every other tree reads nothing a template binds, so it is the unit's node, the same in every template (exact); a parameter that is no key is the unit's, every call's (C1 selects the parameters that reach the result) |
+| C2''' A call's result | is made of parts (the declared type, a JS annotation's values, a generator's object, each returned tree with its unions opened): a part no key reaches is one node, delivered to the call once whatever the number of templates; the result of one function at one call is one node, so a second reading of the same call (another receiver with the same inherited method) delivers it again, as it must |
+| M1 A member's values read on a receiver | are its values as they are (an identity subscription, merged with its cycle) unless the receiver is a class template written with its arguments, whose parameters are then replaced (`substituted`) |
+
+A first reading of C2''' shared every tree C1's flows do not reach (`reaches`): a tree reading a key parameter through an
+operator or a method call would have been the unit's, mixing every call's values; the rule is by reads. A defect read in
+the code of the earlier `route`: its subscription was kept per call and function, so a second reading of the same call
+with another delivery (the class-template substitution of another receiver) delivered nothing.
+
+## C++ declarations read by the standard (found by a probe of the first float field that held a `V2`, 2026-11-11 14:40)
+
+Comparing HEAD's tracer and the new one over the same city sources left 61 links from float arithmetic to
+`V2::operator+ - * /` the earlier template run did not have. A probe walking the subscriptions back from `V2::x` (a
+float) to where a `V2` entered it found `const V2 corner[] = { f.at(...), ... }` (canyon_field.cpp) read as one
+`V2(px, py)` construction with the four elements as its arguments: `px` received a `V2`, `x` from it, and every
+arithmetic on floats then reached `V2`'s operators. Fixing it showed a second misreading: `const Vector3
+HEAD_BOX(SKULL_W, SKULL_H, SKULL_D);` at namespace scope was read as a function (its value a callable, then handed to
+the engine through an aggregate). Sources: ISO C++ [dcl.init.aggr] (an array is an aggregate: each element is
+copy-initialized from its initializer-clause, the elements with none are value-initialized), [dcl.init.list], [dcl.array]
+(a size not written is the clauses' count), [dcl.ambig.res] and [stmt.ambig] (what can be a function declaration is
+one: each parameter must be a parameter-declaration, its decl-specifier a type name; else the declarator declares an
+object direct-initialized with the expressions written).
+
+| Rule | What the tracer does |
+|---|---|
+| C8 `T a[] = { c1, c2 }` | each element is initialized from its own clause: a braced clause constructs it with its elements, an expression copies it (FLOW, no constructor written); the elements with no clause (a written size larger than the clauses, or none) are default-constructed; an array of pointers, a pointer or a reference constructs nothing |
+| C9 `T x(a, b);` | the parentheses are read by the expression grammar too (the same text parsed as a call's arguments, its lines kept). Once every file is indexed, the names written where each parameter's type goes are looked up: one that is a value of the program (a variable, a constant, a field, an enumerator, a function; in a block a local) makes it an object (at namespace scope a variable) direct-initialized with the expressions, its construction and what they read and call recorded; all types (a built-in type is one) make it a function; a name the program does not declare (a library's, `std::move`) keeps both readings, so no use is lost |
+
+Measured on the city (same sources, HEAD's tracer against this one): 775 links from float arithmetic to `V2`'s
+operators and 4 `V2` constructions with copied elements are gone; `HEAD_BOX` and its kind are read (`read`, no longer
+`value` of a function); 87 links are new, every one a real read the direct-initializations make (the mutexes a
+`std::lock_guard lock(m)` reads, the constants a `Vector3 o(r[LINE_ORIGIN], ...)` reads). The lab app's links are the
+same 184 875.
+
+C9 replaces the row "Direct-initialization in a block" of "The pending rules found against a real run" (kept as it was
+written): a block's `T x(a, b);` is an object only when the lookup says so, and the same rule holds at namespace scope.
+
+## Why the lab with three.js does not reach its fixpoint after P3 (found by probes of the solver's state, 2026-11-11 15:30)
+
+With P1-P3, H1, J7', templates and C8/C9, the lab with three.js linked 453 596 links in 900 s and stopped at the deadline
+(63 228 consumers waiting; 356 186 links in 104.5 s before P1-P3). Stack samples with the sizes of each frame's locals
+(330-570 s): the time is in the deep walkers of the program, `unshared`'s `walk` (jobs/processWorker.ts) and `jsonCopy`
+(world/buildings/types.ts), instantiated for every class that reaches them (103 563 templates), and in numeric places
+that hold objects and shader texts (`_vector4.z ∪ invW`: 1 664 values; `size.x`: three's `ContextNode`; a `Vector3`'s
+`x`: Collada parser objects; `y`: GLSL source). A probe stopping the worker between two propagations and walking the
+subscriptions back from three's `Vector3.x` found where objects enter: identity flows from locals holding a `Vector3`
+(`camera.lookAt(middle)` in farBatchSheet.ts, the same shape in five other lab sheets) into three's
+
+    lookAt( x, y, z ) { if ( x.isVector3 ) { _target.copy( x ); } else { _target.set( x, y, z ); } }
+
+The tracer's flows ignore the branch: `set`'s `x` receives the `Vector3`, `this.x = x` writes it into every `Vector3`'s
+`x`, arithmetic and member reads on `x` then reach whatever the `Vector3` reaches, and P3 (`Object.keys` naming each
+object's own properties) lets the walkers copy every field of every object they are handed into what they return. Three
+writes its overloads this way throughout (`Color.set(r)`: `r.isColor`, `typeof r === 'number'`, `typeof r ===
+'string'`). The rule the languages give is narrowing at branch conditions (TypeScript's control-flow analysis: type
+guards by truthiness of a member, `typeof`, `instanceof`, `Array.isArray`, `in`, equality and discriminants, type
+predicates, `!`, `&&`, `||`, and the code after an `if` whose branch always leaves; GDScript `is`, already written in the
+EXPR table as "inside the branch it guards, the tested name is narrowed to T" and not implemented): the next theme.

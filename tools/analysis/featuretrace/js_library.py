@@ -28,6 +28,15 @@ SAME_CALLS = ("filter", "slice", "concat", "sort", "reverse", "toSorted", "toRev
               "copyWithin", "fill", "flat", "values", "next")   # `next()`: an iterator result, whose `value` is one
 RESULT_VALUE = "value"            # an iterator result's element (MDN Iteration protocols)
 HEADS = frozenset(CANONICAL.values())
+OBJECT = "Object"                     # the language's `Object` and its readers of own enumerable properties (P3)
+OBJECT_READS = ("keys", "values", "entries")
+
+
+def object_read(callee: tuple) -> str | None:
+    """`Object.keys` / `Object.values` / `Object.entries` as written (the caller checks `Object` is the language's)."""
+    if callee[0] == "member" and callee[1] == ("name", OBJECT) and callee[2] in OBJECT_READS:
+        return callee[2]
+    return None
 
 
 def is_container(text: str) -> bool:
@@ -57,23 +66,26 @@ def split_top(text: str, sep: str) -> list[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
-def canonical(text: str, resolve) -> str:
-    """A JS text in its one form: a class of the program as `#key`, a container with its arguments resolved, or "" for
-    what has no runtime value (`resolve(name)` gives a name's class key or None)."""
+def canonical(text: str, resolve, declared) -> str:
+    """A JS text in its one form: a class of the program as `#key`, a container with its arguments resolved, the
+    host's value for a type the program does not declare (H1), or "" for what has no runtime value (`resolve(name)`
+    gives a name's class key or None; `declared(name)` whether the program declares a type of that name)."""
     text = text.strip()
-    if text.startswith("#"):
+    if text.startswith("#") or text == ENGINE:
         return text
     head, args = head_args(text)
     if head in HEADS:
         resolved = []
         for arg in args:
-            parts = [p for p in (canonical(p, resolve) for p in split_top(arg, "|")) if p]
+            parts = [p for p in (canonical(p, resolve, declared) for p in split_top(arg, "|")) if p]
             resolved.append(" | ".join(parts) if parts else UNKNOWN)
         return f"{head}<{', '.join(resolved)}>"
     if head in PRIMITIVES or head == UNKNOWN or not head:
         return ""
     key = resolve(head)
-    return "#" + key if key else ""
+    if key:
+        return "#" + key
+    return "" if declared(head) else ENGINE      # erased (T1), or a type of the host or a library not read (H1)
 
 
 def parts_of(arg: str) -> list[str]:

@@ -140,12 +140,13 @@ def local(r, declarator, unit, cond, function_scope: bool = False) -> None:
 
 
 def loop(r, st, unit, cond) -> None:
-    """`for (x of xs)`: xs's `[Symbol.iterator]()` is called and x takes each element; `for (k in o)`: the keys."""
+    """`for (x of xs)`: xs's `[Symbol.iterator]()` is called and x takes each element; `for (k in o)`: o's enumerable
+    property names as strings (P2)."""
     left, right = field_of(st, "left"), field_of(st, "right")
     operator = field_of(st, "operator")
     walked = r.ir(right, unit)
     of = operator is not None and r.src.text(operator).strip() == "of"
-    value = ("elements", walked) if of else ("literal", "string")
+    value = ("elements", walked) if of else ("keys", walked)
     declared = field_of(st, "kind") is not None
     r.bind(left, value, unit, None if declared else True, cond)
     expr(r, right, unit, cond)

@@ -1,35 +1,33 @@
-"""VALUE, LOOK and FLOW (log/trace-rules.md): the types an expression tree can hold, as value nodes of the solver.
+"""VALUE and FLOW (log/trace-rules.md): the types an expression tree can hold, as value nodes of the solver.
 
-Each (tree, unit) is a node wired once by its shape (the EXPR rows): a name to its sources (a local's values, a
-parameter's arguments, a capture, a variable's or field's held values, a class, a function), a member, a call, a step,
-an operator to the transfer of each value of its base (`transfer`), a union to both sides, a constant to itself. What a
-definition holds (`#hold`) and returns (`#ret`) are nodes too; parameters, variables and the engine's calls are the
-places the links carry into (`flows`). Values only grow and only new ones propagate ("Difference propagation on every
-value"); a shape whose value is not distributive over its sources (a callable or a class made from a name held in a
-value) is a consumer computed again whole.
+Each (tree, unit) is a node wired once by its shape (the EXPR rows): a name to its sources (`places`: a local's values,
+a parameter's arguments, a capture, a variable's or field's held values, a class, a function), a member, a call, a step,
+an operator to the transfer of each value of its base (`transfer`), a union to both sides, a constant to itself. A tree
+read in a template of a function is the template's own node only where the template's key reaches it, else the unit's
+(`templates`, C2'''). Values only grow and only new ones propagate ("Difference propagation on every value"); a shape
+whose value is not distributive over its sources (a callable or a class made from a name held in a value) is a
+consumer computed again whole.
 
 Type texts: a type as written, CLASS + key (a class of the program), FN + gid (a callable of a function), ELEM + type
 (a value put into a container: what its elements hold), ENGINE (a value of the engine or the language).
 """
 from __future__ import annotations
 
-from . import names, transfer
+from . import js_library, js_transfer, names, templates, transfer
 from .js_library import EACH
 from .library import DEREF, ITEM, ITER, passes_through
-from .model import ENGINE_CALLBACKS, FUNCTION_KINDS
+from .places import Places
 from .rules import CALLABLE_CONSTRUCTORS, NAME_CONSTRUCTORS
-from .solver import CLASS, ELEM, ENGINE, FN, TEXT, Solver
+from .solver import CLASS, ENGINE, FN, TEXT, Solver
 from .types_of import TypeNames
 
 CALLABLE_CALLS = transfer.CALLABLE_CALLS
-NO_VALUE = ("void", "Variant", "auto", "decltype(auto)", "")
-ARG, HELD, ENGINE_CALLED, HOLD, RET = "#arg", "#held", "#engine", "#hold", "#ret"
 COMPUTED = "#computed"
 STEPS = {"index": ITEM, "elements": ITER, "deref": DEREF, "each": EACH}
 CONSTANT_SHAPES = ("cast", "new", "callable", "self", "super", "strname", "module")
 
 
-class Typer(TypeNames, Solver):
+class Typer(Places, TypeNames, Solver):
     def __init__(self, index, resolver):
         self.ix = index
         self.rs = resolver
@@ -37,6 +35,9 @@ class Typer(TypeNames, Solver):
         self._classes = {}                 # (type text, scope) -> the class it names
         self.wired = set()                 # value nodes whose sources are wired
         self.computed = {}                 # consumer -> (value node, its computation)
+        self.template_keys = {}            # gid -> the parameters whose values key its templates (`templates`, C1)
+        self.templates = {}                # (gid, tuple) -> the template (`templates.Frame`)
+        self.template_depends = {}         # (gid, tree) -> whether its key parameters reach the tree (C2''')
 
     def class_of(self, unit) -> str | None:
         return unit.owner if unit.owner in self.ix.classes else None
@@ -54,7 +55,9 @@ class Typer(TypeNames, Solver):
 
     # ---- wiring ------------------------------------------------------------------------------------------------
     def node_of(self, tree, unit):
-        node = (tree, unit.gid)
+        if unit.key != unit.gid and not templates.depends(self, unit, tree):
+            unit = unit.base                      # its key does not reach the tree: the unit's own, shared (C2''')
+        node = (tree, unit.key)                   # the unit's gid, or a template's (gid, tuple)
         if node not in self.wired:
             self.wired.add(node)
             self.value.setdefault(node, [])
@@ -75,8 +78,8 @@ class Typer(TypeNames, Solver):
             self.wire_plain_call(node, tree[1], tree[2], unit)
         elif kind == "index" and unit.lang == "js":   # `o[k]`: the object's and the key's values together (T4')
             base, key = self.node_of(tree[1], unit), self.node_of(tree[2], unit)
-            self.subscribe(base, node, ("index", key), transfer.indexed(self, key, True))
-            self.subscribe(key, node, ("index", base), transfer.indexed(self, base, False))
+            self.subscribe(base, node, ("index", key), js_transfer.indexed(self, key, True))
+            self.subscribe(key, node, ("index", base), js_transfer.indexed(self, base, False))
         elif kind in STEPS:
             self.subscribe(self.node_of(tree[1], unit), node, ("step", STEPS[kind]), transfer.steps(self, STEPS[kind]))
         elif kind in ("op", "unary") and unit.lang == "js":
@@ -84,7 +87,9 @@ class Typer(TypeNames, Solver):
         elif kind in ("op", "unary"):
             self.subscribe(self.node_of(tree[2], unit), node, ("op", tree[1]), transfer.operators(self, tree[1]))
         elif kind == "construct":                 # JS `new X(...)`: X evaluated (N1)
-            self.subscribe(self.node_of(tree[1], unit), node, ("construct",), transfer.constructs(self))
+            self.subscribe(self.node_of(tree[1], unit), node, ("construct",), js_transfer.constructs(self))
+        elif kind == "keys":                      # JS `for (k in o)`: o's enumerable property names (P2)
+            self.subscribe(self.node_of(tree[1], unit), node, ("own", "in"), js_transfer.owns(self, "in"))
         elif kind == "union":
             self.follow(self.node_of(tree[1], unit), node)
             self.follow(self.node_of(tree[2], unit), node)
@@ -129,6 +134,10 @@ class Typer(TypeNames, Solver):
         return node
 
     def wire_call(self, node, callee, args, unit) -> None:
+        read = js_library.object_read(callee) if unit.lang == "js" and args else None
+        if read and "Object" not in unit.types and not self.rs.state_targets(unit, "Object"):
+            self.subscribe(self.node_of(args[0], unit), node, ("own", read), js_transfer.owns(self, read))  # P3
+            return
         if self.by_name(callee, args, unit):
             plain = self.node_of(("#plain",) + (callee, args), unit)
             self.compute_whole(node, lambda: names.made_by_name(self, callee, args, unit)
@@ -150,7 +159,7 @@ class Typer(TypeNames, Solver):
         if callee[0] == "member":
             base = self.node_of(callee[1], unit)
             base = self.stepped(base, DEREF) if callee[3] else base
-            self.subscribe(base, node, ("member", callee[2], True), transfer.members(self, callee[2], True))
+            self.subscribe(base, node, ("member", callee[2], True), transfer.members(self, callee[2], True, unit, args))
             return
         if callee[0] == "name":
             name = callee[1]
@@ -162,7 +171,7 @@ class Typer(TypeNames, Solver):
             if unit.lang == "gd" and name[:1].isupper() and not self.rs.function_targets(unit, name):
                 self.add(node, [(name, unit)])                      # an engine type constructed (PascalCase)
                 return
-        self.subscribe(self.node_of(callee, unit), node, ("call",), transfer.calls(self))
+        self.subscribe(self.node_of(callee, unit), node, ("call",), transfer.calls(self, unit, args))
 
     def compute_whole(self, node, compute) -> None:
         consumer = (COMPUTED, node)
@@ -184,84 +193,6 @@ class Typer(TypeNames, Solver):
             self.substitution = outer
         self.add(node, values)
 
-    # ---- names (LOOK, FLOW) -------------------------------------------------------------------------------------
-    def wire_name(self, node, name: str, unit) -> None:
-        """LOOK: local -> member (with bases) -> outer class / namespaces -> global; else the engine's."""
-        if name in unit.lambdas:
-            self.add(node, [(FN + str(self.ix.offset[unit.file] + unit.lambdas[name]), unit)])
-            return
-        if name in unit.types:
-            self.wire_local(node, name, unit)
-            return
-        targets = self.rs.state_targets(unit, name)
-        for gid in targets:
-            self.follow(self.hold_node(self.ix.units[gid]), node)
-        if unit.lang == "js":
-            found = [(FN + str(f), unit) for f in self.rs.function_targets(unit, name)]
-            key = self.ix.js.class_of(name, unit.file, unit.owner)
-            found += [(CLASS + key, unit)] if key else []
-            self.add(node, found or ([] if targets else [(ENGINE, unit)]))
-            return
-        if targets:
-            return
-        key = self.ix.gd_class(name, unit.owner) if unit.lang == "gd" else self.ix.cpp_class(name, unit.owner,
-                                                                                                unit.file)
-        functions = self.rs.function_targets(unit, name) if not key else []
-        self.add(node, [(CLASS + key, unit)] if key else [(FN + str(f), unit) for f in functions] or [(ENGINE, unit)])
-
-    def wire_local(self, node, name: str, unit) -> None:
-        """A local or parameter: its declared type, every value written to it, for a parameter the argument of every
-        link into the function (and the engine's when the engine calls it), for a capture the enclosing local."""
-        for tree in unit.types.get(name, []):
-            self.follow(self.node_of(tree, unit), node)
-        if name in unit.params:
-            self.follow((ARG, unit.gid, unit.params.index(name)), node)
-            self.follow((ENGINE_CALLED, unit.gid), node)
-            if unit.name in ENGINE_CALLBACKS or unit.bound_as:
-                self.add(node, [(ENGINE, unit)])
-        if name in unit.captured and unit.outer >= 0:
-            outer = self.ix.units[self.ix.offset[unit.file] + unit.outer]
-            self.follow(self.node_of(("name", name), outer), node)
-
-    def named(self, name: str, unit, depth: int = 0) -> list[tuple]:
-        return self.evaluate(("name", name), unit)
-
-    def hold_node(self, unit):
-        """What a variable or field holds: its declared type, its initializers, every value written to it."""
-        node = (HOLD, unit.gid)
-        if node not in self.wired:
-            self.wired.add(node)
-            self.value.setdefault(node, [])
-            if unit.kind in FUNCTION_KINDS:
-                self.add(node, [(FN + str(unit.gid), unit)])
-                return node
-            if unit.type_text and unit.type_text not in NO_VALUE and unit.lang != "js":
-                self.add(node, [(unit.type_text, unit)])      # a JS annotation's values are trees in `values` (T3)
-            for tree in unit.values:
-                self.follow(self.node_of(tree, unit), node)
-            self.follow((HELD, unit.gid), node)
-        return node
-
-    def ret_node(self, unit):
-        """What a call of the function yields: its declared return type, else what its `return`s carry."""
-        node = (RET, unit.gid)
-        if node not in self.wired:
-            self.wired.add(node)
-            self.value.setdefault(node, [])
-            if unit.type_text == "void":
-                return node
-            if unit.type_text and unit.type_text not in NO_VALUE and unit.lang != "js":
-                self.add(node, [(unit.type_text, unit)])
-            for tree in unit.declared:                    # a JS return annotation's values (T3)
-                self.follow(self.node_of(tree, unit), node)
-            if unit.generator:                            # the generator object: its iteration gives the yields (J5)
-                for tree in unit.yields:
-                    self.subscribe(self.node_of(tree, unit), node, ("elem",), transfer.elements(self))
-                return node
-            for _, _, tree in unit.returns:
-                self.follow(self.node_of(tree, unit), node)
-        return node
-
     def member(self, text: str, ctx, name: str, called: bool, depth: int = 0) -> list[tuple]:
         """A member of one value (for the consumers that need it whole)."""
         node = ("#member", text, ctx.gid, name, called)
@@ -270,20 +201,3 @@ class Typer(TypeNames, Solver):
             self.value.setdefault(node, [])
             transfer.member_one(self, node, text, ctx, name, called)
         return self.values_of(node)
-
-    def receiver(self, tree, unit) -> tuple[list[str], bool, list[int]]:
-        """(classes of the program the receiver can be, whether it can be an engine value, callables it can be)."""
-        keys, engine, functions = [], False, []
-        for text, ctx in self.evaluate(tree, unit):
-            if text.startswith(ELEM):
-                engine = True              # a container's elements: the container is the language's or the library's
-                continue
-            if text.startswith(FN):
-                functions.append(int(text[len(FN):]))
-                continue
-            key = self.type_class(text, ctx)
-            if key:
-                keys.append(key)
-            else:
-                engine = True
-        return list(dict.fromkeys(keys)), engine, list(dict.fromkeys(functions))

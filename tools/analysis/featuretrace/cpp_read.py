@@ -7,7 +7,7 @@ internal linkage. Bodies are read by `cpp_body`; every value is kept as an expre
 """
 from __future__ import annotations
 
-from . import cpp_body, ir_cpp, scopes
+from . import cpp_ambig, cpp_body, ir_cpp, scopes
 from .cpp_names import WRAPPERS, join, strip_templates, type_of, unwrap
 from .model import ClassFact, FileFacts, Unit, declare
 from .source import Source, field_of, named_children
@@ -223,6 +223,10 @@ class CppReader:
                 unit.virtual = self.is_virtual(node, inner)
                 unit.type_text = "" if deduced(type_text) else type_text
                 self.params(inner, unit)
+                names = cpp_ambig.deciding_names(self, inner) if cls is None else []
+                if names:                       # `T x(a, b);`: an object if a or b is a value (cpp_ambig)
+                    unit.objects = names
+                    cpp_body.object_reading(self, unit, child, inner, unit.type_text, node, (), names)
                 continue
             name = unwrap(child)
             if name is None or name.type not in ("identifier", "field_identifier"):

@@ -55,6 +55,24 @@ class Pending(FixtureCase):
     def test_binary_star_is_multiplication(self):
         self.assertIn("fx::W::go", self.names("fx::scale"))   # (a * b) is what V::operator* returns (O2)
 
+    def test_array_elements_initialized_one_by_one(self):
+        # `P corner[] = { make_p(), make_p() }` copies two P: the float field never holds a P ([dcl.init.aggr])
+        typer = self.rs.typer
+        held = {text for text, _ in typer.current(typer.hold_node(self.ix.units[self.gid("fx::P::x")]))}
+        self.assertNotIn("#fx::P", held)
+        made = [e for e in self.rs.out[self.gid("fx::corners")] if e.kind == "new"]
+        self.assertTrue(made, "the braced element `{ 1, 2 }` constructs a P")
+
+    def test_object_or_function_by_its_names(self):
+        # `const P CORNER(SIDE, SIDE);`: SIDE is a value, so an object constructed; `P maker(P);`: a function
+        self.assertEqual("var", self.ix.units[self.gid("fx::CORNER")].kind)
+        self.assertEqual("func", self.ix.units[self.gid("fx::maker")].kind)
+        self.assertIn("fx::P::P", self.names("fx::CORNER", ("new",)))
+        self.assertIn("fx::P::P", self.names("fx::builds", ("new",)))            # in a block, the same rule
+        self.assertEqual(set(), self.names("fx::only_declares", ("new", "read")))
+        # `Facing taken(std::move(fn));`: std::move is the library's, undeclared here: both readings kept
+        self.assertIn("fx::Facing::Facing", self.names("fx::moves", ("new",)))
+
     def test_destruction(self):
         owner = self.names("fx::Owner::~Owner")
         self.assertTrue({"fx::Pool::~Pool", "fx::Part::~Part", "fx::Base::~Base"} <= owner)

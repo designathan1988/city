@@ -385,3 +385,27 @@ no fixpoint within 840 s once every call site carried its arguments). **Created:
 `js_read.py`, `js_decl.py`, `js_class.py`, `js_body.py`, `js_expr.py`, `js_link.py`, `ir.py`, `ir_js.py`, `model.py`,
 `solver.py`, `types_of.py`, `typer.py`, `transfer.py`, `rules.py`, `tests/test_pending.py`,
 `tests/fixture/pending/lifetime.cpp`, `log/trace-rules.md`, `log/mapa.md`, `log/pendencias.md`.
+
+## Templates share what their key does not reach; C++ arrays and `T x(a, b);` by the standard (2026-11-11 15:40)
+`superpowers:systematic-debugging` (stack samples of the stalled lab run; probes walking the subscriptions back from a
+polluted field, stopped between two propagations) → research (Agesen, Zipper, "Pick Your Contexts Well"; ISO C++
+[dcl.init.aggr], [dcl.array], [dcl.ambig.res], [stmt.ambig]; `log/trace-rules.md`) → `superpowers:executing-plans`
+(ledger `log/trace-rules-templates-progress.md`). **Causes found:** a template was the whole function read again, so a
+function with a hundred values at its key was wired a hundred times and each copy's whole result delivered on its own;
+the earlier `route` delivered nothing to a second reading of the same call; `const V2 corner[] = { f.at(...), ... }`
+was one `V2(px, py)` with the four elements as arguments (the city's `V2::x`, a float, held `V2`, and float arithmetic
+reached `V2`'s operators: 775 links); `const Vector3 HEAD_BOX(SKULL_W, SKULL_H, SKULL_D);` at namespace scope was a
+function. **Rules now (C2''', M1, C8, C9):** a template's own nodes are the trees that read its key, the rest the unit's,
+a result made of parts delivered once; a member's values are an identity unless a class template's arguments replace
+its parameters; each array element from its own clause; `T x(a, b);` read again by the expression grammar and decided
+by lookup once every file is indexed (a value: an object; all types: a function; a library's name: both). **Tests:** 130
+OK (each new one failing on HEAD's reader). **City** (same sources, HEAD's tracer against this one): 775 spurious links
+and 4 copied-element constructions gone, 87 real reads new, 24.3 s. **Lab app:** the same 184 875 links, 32.5 s.
+**Lab with three.js:** no fixpoint in 900 s; cause read: branch conditions do not narrow values (three's overloads by
+type test put objects into numeric fields; `log/trace-rules.md`, "Why the lab with three.js does not reach its fixpoint
+after P3"): open, the next theme. **Created:** `templates.py`, `places.py`, `js_transfer.py`, `cpp_ambig.py`,
+`tests/test_templates.py`, `tests/fixture/jsvalues/{helpers,props,closures}.ts`, the templates plan and ledger.
+**Changed:** `typer.py`, `transfer.py`, `types_of.py`, `model.py`, `flows.py`, `index.py`, `resolve.py`, `rules.py`,
+`cpp_body.py`, `cpp_read.py`, `cpp_implicit.py`, `ir.py`, `js_body.py`, `js_library.py`, `js_modules.py`,
+`tests/test_pending.py`, `tests/test_js_values.py`, `tests/fixture/pending/lifetime.cpp`, `log/trace-rules.md`,
+`log/mapa.md`, `log/pendencias.md`.

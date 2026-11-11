@@ -66,7 +66,7 @@ class Resolver(Flows):
     def bare(self, unit, name: str, want: str) -> tuple[list[int], str]:
         if name in unit.lambdas:
             return [self.ix.offset[unit.file] + unit.lambdas[name]], EXACT
-        if name in unit.types:
+        if name in unit.types or self.typer.enclosing(unit, name) is not None:      # a local, or a closure's (J7)
             held = self.typer.receiver(("name", name), unit)[2] if want == "func" else []
             return (held, EXACT) if held else ([], LOCAL)
         if unit.lang == "js":

@@ -1,13 +1,13 @@
 """C++ bodies: each statement read by its rule (log/trace-rules.md, C++ rows), with the branch conditions that guard it.
 
 Locals record the trees of the values they hold (FLOW): a declared type as a value of that type; `auto` from its
-initializer; `T x(args);` in a block declares an object (direct-initialization); `auto [a, b] = v` binds v's parts; a
-range-for variable holds the range's elements; each assignment adds its value. Every path of `if`, `switch`, loops and
-`try` is followed (BRANCH); a `return` keeps its value's tree (JUMP).
+initializer; `T x(a, b);` declares an object (direct-initialization) when a or b is a value, else a function
+(`cpp_ambig`); `auto [a, b] = v` binds v's parts; a range-for variable holds the range's elements; each assignment adds
+its value. Every path of `if`, `switch`, loops and `try` is followed (BRANCH); a `return` keeps its value's tree (JUMP).
 """
 from __future__ import annotations
 
-from . import c_family, cpp_expr, cpp_implicit, scopes
+from . import c_family, cpp_ambig, cpp_expr, cpp_implicit, scopes
 from .cpp_names import type_of, unwrap
 from .gd_body import squash
 from .model import Unit, add_ref, declare, enclose
@@ -46,9 +46,8 @@ def local(r, node, unit, cond) -> None:
         name = unwrap(child)
         value = field_of(child, "value") if child.type == "init_declarator" else None
         if name is not None and name.type == "function_declarator":
-            # in a block, `T x(args);` declares an object initialised with args (direct-initialization)
-            expr(r, field_of(name, "parameters"), unit, cond)
-            name = field_of(name, "declarator")
+            object_or_function(r, node, child, name, type_text, unit, cond)
+            continue
         if name is not None and name.type == "structured_binding_declarator":
             bind_parts(r, name, unit, r.ir(value, unit) if value is not None else None)
             expr(r, value, unit, cond)
@@ -66,6 +65,35 @@ def local(r, node, unit, cond) -> None:
             declare(r, unit, text, [("cast", type_text)])
             cpp_implicit.declared_object(r, unit, child, type_text, node, cond, add)
         expr(r, value, unit, cond)
+
+
+def object_or_function(r, node, declarator, function, type_text: str, unit, cond) -> None:
+    """`T x(a, b);` in a block: a local object direct-initialized with a and b when the declaration can be one, else
+    the declaration of a function (`cpp_ambig`); the object's local and uses are recorded, its uses marked."""
+    from .cpp_read import deduced
+    names = cpp_ambig.deciding_names(r, function)
+    name = field_of(function, "declarator")
+    if not names or name is None:
+        return
+    auto = deduced(type_text)
+    args = object_reading(r, unit, declarator, function, "" if auto else type_text, node, cond, names)
+    declare(r, unit, r.src.text(name), list(args) if auto and len(args) == 1 else [] if auto else [("cast", type_text)])
+
+
+def object_reading(r, unit, declarator, function, type_text: str, node, cond, names: list) -> tuple:
+    """`T x(a, b);` read as an object (`cpp_ambig`): its parentheses read as initializers (what they read and call)
+    and T's construction with them, each use marked with the names that decide. Returns the initializers' trees."""
+    start = len(unit.refs)
+    reading = cpp_ambig.as_arguments(r, function)
+    args = ()
+    if reading is not None:
+        again, nodes = reading
+        for arg in nodes:
+            expr(again, arg, unit, cond)
+        args = tuple(again.ir(arg, unit) for arg in nodes)
+    cpp_implicit.declared_object(r, unit, declarator, type_text, node, cond, add, args)
+    cpp_ambig.mark(unit, start, names)
+    return args
 
 
 def statement(r, st, unit, cond) -> None:

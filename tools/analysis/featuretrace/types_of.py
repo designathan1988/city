@@ -6,7 +6,7 @@ language with its arguments resolved (`js_library`), or nothing. The typer (`typ
 from __future__ import annotations
 
 from . import js_library
-from .cpp_names import strip_templates
+from .cpp_names import strip_templates, template_args
 from .library import clean, substitute
 from .solver import CLASS, ELEM, ENGINE, FN, TEXT
 
@@ -21,7 +21,8 @@ class TypeNames:
         if text == ENGINE or text.startswith((CLASS, FN, TEXT)):
             return text, ctx
         if ctx.lang == "js":
-            return js_library.canonical(text, lambda name: self.type_class(name, ctx)), ctx
+            return js_library.canonical(text, lambda name: self.type_class(name, ctx),
+                                        lambda name: self.ix.js.declares_type(name, ctx.file, ctx.owner)), ctx
         if "<" in text or "[" in text:
             return text, ctx
         key = self.type_class(text, ctx)
@@ -45,7 +46,39 @@ class TypeNames:
                 self.ix.cpp_class(clean(text), ctx.owner, ctx.file)
         return self._classes[key]
 
+    def receiver(self, tree, unit) -> tuple[list[str], bool, list[int]]:
+        """(classes of the program the receiver can be, whether it can be an engine value, callables it can be)."""
+        keys, engine, functions = [], False, []
+        for text, ctx in self.evaluate(tree, unit):
+            if text.startswith(ELEM):
+                engine = True              # a container's elements: the container is the language's or the library's
+                continue
+            if text.startswith(FN):
+                functions.append(int(text[len(FN):]))
+                continue
+            key = self.type_class(text, ctx)
+            if key:
+                keys.append(key)
+            else:
+                engine = True
+        return list(dict.fromkeys(keys)), engine, list(dict.fromkeys(functions))
+
+    def enclosing(self, unit, name: str):
+        """JS (J7): the function around `unit` that declares `name`, whatever the order it is written in (a `var` is
+        hoisted; a closure runs after its enclosing function's later declarations). None elsewhere: C++ and GDScript
+        lambdas see only what is declared before them."""
+        while unit.lang == "js" and unit.outer >= 0:
+            unit = self.ix.units[self.ix.offset[unit.file] + unit.outer]
+            if name in unit.types:
+                return unit
+        return None
+
+    def replaces(self, key: str, outer: str) -> bool:
+        """Whether a member read on `outer`, a value of class `key`, can have the class template's parameters
+        replaced: a class template written with its arguments. Else a member's values are its own, as they are."""
+        return not outer.startswith(CLASS) and bool(self.ix.classes[key].params) and bool(template_args(clean(outer)))
+
     def substitute(self, key: str, outer: str, member: str) -> tuple[str, bool]:
-        if outer.startswith(CLASS) or member.startswith((CLASS, FN, ELEM, ENGINE)):
+        if not self.replaces(key, outer) or member.startswith((CLASS, FN, ELEM, ENGINE)):
             return member, False
         return substitute(self.ix.classes[key].params, outer, member)

@@ -266,6 +266,17 @@ class JsModules:
                 key = self.ix.inner[key].get(part)
         return key
 
+    def declares_type(self, text: str, file: str, owner: str = "") -> bool:
+        """Whether the program declares a type of this name where it is written (H1): an alias in scope or global, or a
+        name imported from a module read (its class, interface or alias). A class it names is asked first (class_of)."""
+        head = strip_generics(text).split(".")[0]
+        for scope in list(dict.fromkeys(self.scope_keys(owner) + [file] if owner else [file])) + [GLOBAL_KEY]:
+            if f"{scope}#{head}" in self.ix.aliases or f"{scope}.{head}" in self.ix.aliases:
+                return True
+        facts = self.files.get(file)
+        imported = facts.imports.get(head) if facts is not None else None
+        return imported is not None and self.resolve(file, imported[0]) is not None
+
     def held_class(self, scope: str, name: str) -> str | None:
         """A constant of the scope that holds a class or an object literal (`const A = class {}`, `const o = {}`)."""
         return next((k for g in self.ix.members[scope].get(name, []) for k in [self.held_class_unit(g)] if k), None)
