@@ -1,0 +1,10 @@
+{
+  "rule": "contracts",
+  "expect": [
+    "CONTRACT_UNGUARDED CLAUDE.md:3",
+    "CONTRACT_UNGUARDED CLAUDE.md:6",
+    "CONTRACT_UNGUARDED tools/gates/contracts.json",
+    "CONTRACT_UNGUARDED tools/gates/contracts.json",
+    "CONTRACT_UNGUARDED tools/gates/contracts.json"
+  ]
+}

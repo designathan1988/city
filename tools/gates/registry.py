@@ -5,6 +5,7 @@ import sys
 
 import gate_clones
 import gate_code
+import gate_contracts
 import gate_data
 import gate_defs
 import gate_docs
@@ -112,6 +113,7 @@ def whole_rules(rules):
               lambda ctx: ctx.rules.get("generated", [])),
         Whole("python_imports", ["PYTHON_IMPORT_UNRESOLVED"], gate_python.applies, gate_python.check_imports,
               lambda ctx: _site_listing()),
+        Whole("contracts", ["CONTRACT_UNGUARDED"], gate_contracts.inputs, gate_contracts.check_contracts, gate_contracts.extra),
     ]
 
 

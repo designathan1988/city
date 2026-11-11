@@ -1,0 +1,52 @@
+{
+ "_doc": "made up",
+ "sections": [
+  "",
+  "Rules"
+ ],
+ "contracts": [
+  {
+   "id": "records",
+   "rule": "records",
+   "guards": [
+    {
+     "kind": "gate",
+     "name": "MAPA_DESATUALIZADO"
+    }
+   ]
+  },
+  {
+   "id": "header",
+   "rule": "header",
+   "guards": [
+    {
+     "kind": "gate",
+     "name": "CABECALHO"
+    },
+    {
+     "kind": "conduct",
+     "name": "read",
+     "why": "people read it"
+    }
+   ]
+  },
+  {
+   "id": "checks",
+   "rule": "checks",
+   "guards": [
+    {
+     "kind": "test",
+     "name": "tools/t/test_x.py"
+    },
+    {
+     "kind": "runtime",
+     "name": "state_hash"
+    },
+    {
+     "kind": "hook",
+     "name": ".claude/skills/trace-fix/ledger.py"
+    }
+   ]
+  }
+ ]
+}

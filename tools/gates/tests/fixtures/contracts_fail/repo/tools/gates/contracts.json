@@ -1,0 +1,48 @@
+{
+ "_doc": "made up",
+ "sections": [
+  "",
+  "Rules"
+ ],
+ "contracts": [
+  {
+   "id": "records",
+   "rule": "records",
+   "guards": [
+    {
+     "kind": "gate",
+     "name": "MAPA_DESATUALIZADO"
+    }
+   ]
+  },
+  {
+   "id": "header",
+   "rule": "header",
+   "guards": [
+    {
+     "kind": "gate",
+     "name": "CABECALHO"
+    },
+    {
+     "kind": "conduct",
+     "name": "read",
+     "why": "people read it"
+    }
+   ]
+  },
+  {
+   "id": "checks",
+   "rule": "checks",
+   "guards": [
+    {
+     "kind": "gate",
+     "name": "NO_SUCH_GATE"
+    },
+    {
+     "kind": "conduct",
+     "name": "silent"
+    }
+   ]
+  }
+ ]
+}

@@ -361,7 +361,8 @@
     "project/data/render/overlays.json": "tools/gates/schemas/overlays.schema.json",
     "project/data/render/bay_props.json": "tools/gates/schemas/bay_props.schema.json",
     "tools/gates/rules.json": "tools/gates/schemas/rules.schema.json",
-    "tools/gates/lexicon.json": "tools/gates/schemas/lexicon.schema.json"
+    "tools/gates/lexicon.json": "tools/gates/schemas/lexicon.schema.json",
+    "tools/gates/contracts.json": "tools/gates/schemas/contracts.schema.json"
   },
   "magic_numbers": {
     "paths": [
