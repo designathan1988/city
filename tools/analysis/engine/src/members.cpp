@@ -67,20 +67,13 @@ std::vector<int64_t> lookup_in(Analysis& an, Value key, Value name, std::unorder
 
 }  // namespace
 
-std::vector<int64_t> lookup(Analysis& an, Value key, Value name) {
-    Value memo_key = an.tuple({I(1), key, name});
-    auto found = an.memo.find(memo_key.bits());
-    if (found != an.memo.end()) {
-        std::vector<int64_t> out;
-        for (Value v : an.at(found->second)) out.push_back(v.data());
-        return out;
+const std::vector<int64_t>& lookup(Analysis& an, Value key, Value name) {
+    auto [found, made] = an.index_lookups.try_emplace(Key3{key.bits(), name.bits(), 0});
+    if (made) {
+        std::unordered_set<uint64_t> seen;
+        found->second = lookup_in(an, key, name, seen);
     }
-    std::unordered_set<uint64_t> seen;
-    std::vector<int64_t> out = lookup_in(an, key, name, seen);
-    std::vector<Value> items;
-    for (int64_t g : out) items.push_back(I(g));
-    an.memo[memo_key.bits()] = an.tuple(items);
-    return out;
+    return found->second;
 }
 
 Value runs(Analysis& an, const UnitRec& prop, Value which, const UnitRec* reader) {

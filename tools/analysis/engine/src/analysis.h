@@ -112,7 +112,9 @@ public:
     // The nodes and objects made since the last call, counted by their key's first item (what grows).
     std::string growth();
     std::string largest(size_t count);           // the nodes holding the most objects, named
+    std::string composition(Node n);             // the kinds of object a node holds, the most first
     std::string costliest(size_t count);         // the nodes whose deliveries cost the most, named
+    std::string stores(size_t count);            // the stores by unknown keys writing the most
     std::string describe(Value v, int depth = 0);  // a key as text, objects by their keys
     bool entries(bool modules);
     bool enter(int64_t gid, Value ctx, int64_t unknown);
@@ -123,9 +125,14 @@ public:
     std::unordered_map<uint64_t, std::vector<Value>> active_order;         // gid -> contexts, in order
     std::unordered_map<uint64_t, std::unordered_set<uint64_t>> closures;   // gid -> environments (bits)
     std::unordered_map<uint64_t, std::vector<Value>> closure_order;
-    std::unordered_map<uint64_t, Value> memo;                              // (function tag, key) -> answer
+    // Answers that never change, keyed by what they are asked with (no term made to look one up).
+    std::unordered_map<Key3, std::vector<int64_t>, Key3Hash> type_lookups, index_lookups;
+    std::unordered_map<uint64_t, std::vector<Value>> alone_groups;        // a key merged with no other: [key]
+    std::unordered_map<uint64_t, bool> reads_memo;                         // whether a declared type reads its env
+    std::unordered_map<uint64_t, Value> call_sites;                        // a call node -> its static site
     bool contexts = true;                                                  // false: every run in ROOT
     uint64_t progress_every = 0;
+    std::unordered_map<uint64_t, std::pair<uint64_t, uint64_t>> store_probe;   // store site -> (bases, values)
 
 private:
     size_t grown_nodes_ = 0, grown_objects_ = 0;

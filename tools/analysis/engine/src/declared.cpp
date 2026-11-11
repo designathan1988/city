@@ -101,10 +101,14 @@ void structural(Analysis& an, Obj obj, Value key, Value env, Value site, Value o
 }  // namespace
 
 Value call_site(Analysis& an, Value node) {
+    auto known = an.call_sites.find(node.bits());
+    if (known != an.call_sites.end()) return known->second;
     auto items = an.at(node);
     Value ctx = !items.empty() && an.is_tuple(items.back()) ? items.back() : an.ROOT;
     Obj site = an.make(an.tuple(items.empty() ? items : items.first(items.size() - 1)));
-    return an.tuple({I(site), contexts::heap(an, ctx)});
+    Value where = an.tuple({I(site), contexts::heap(an, ctx)});
+    an.call_sites.emplace(node.bits(), where);
+    return where;
 }
 
 void apply(Analysis& an, Value node, int64_t gid, int64_t holder, std::span<const Value> args, Value site) {

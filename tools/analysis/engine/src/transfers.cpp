@@ -102,6 +102,9 @@ void store_by_object(Analysis& an, Value, const Captured& c, Objs objs) {
         if (c[1].kind() != Kind::None) {
             for (Value text : an.at(c[1])) members::write(an, c[0], o, text);
         } else {
+            auto& probe = an.store_probe[an.tuple({c[2], c[3]}).bits()];
+            ++probe.first;
+            probe.second = an.held(c[0]).size();
             an.follow(c[0], members::field(an, o, an.V.ELEMENTS_FIELD));
             an.follow(c[0], an.any_field(o));
         }

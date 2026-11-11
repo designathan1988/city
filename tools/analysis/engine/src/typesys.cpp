@@ -89,10 +89,9 @@ void inherited(Analysis& an, Obj obj, Value key, int64_t index, Value node) {
 Value resolve(Analysis& an, Value text, Value file, Value owner) { return an.in.resolve(text, file, owner); }
 
 const std::vector<Value>& group(Analysis& an, Value key) {
-    static std::unordered_map<uint64_t, std::vector<Value>> alone;
     const ClassRec* c = an.in.cls(key);
     if (c && !c->group.empty()) return c->group;
-    auto [found, made] = alone.try_emplace(key.bits());
+    auto [found, made] = an.alone_groups.try_emplace(key.bits());
     if (made) found->second.push_back(key);
     return found->second;
 }
@@ -107,20 +106,13 @@ Value global_type(Analysis& an, Value kind, size_t index) {
     return found != an.in.intrinsics.end() && index < found->second.size() ? found->second[index] : NONE;
 }
 
-std::vector<int64_t> lookup(Analysis& an, Value key, Value name) {
-    Value memo_key = an.tuple({I(2), key, name});
-    auto found = an.memo.find(memo_key.bits());
-    std::vector<int64_t> out;
-    if (found != an.memo.end()) {
-        for (Value v : an.at(found->second)) out.push_back(v.data());
-        return out;
+const std::vector<int64_t>& lookup(Analysis& an, Value key, Value name) {
+    auto [found, made] = an.type_lookups.try_emplace(Key3{key.bits(), name.bits(), 0});
+    if (made) {
+        std::unordered_set<uint64_t> seen;
+        found->second = lookup_in(an, key, name, seen);
     }
-    std::unordered_set<uint64_t> seen;
-    out = lookup_in(an, key, name, seen);
-    std::vector<Value> items;
-    for (int64_t g : out) items.push_back(I(g));
-    an.memo[memo_key.bits()] = an.tuple(items);
-    return out;
+    return found->second;
 }
 
 std::vector<Value> own_types(Analysis& an, Obj obj) {

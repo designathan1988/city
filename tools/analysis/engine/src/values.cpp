@@ -159,17 +159,16 @@ Value produce(Analysis& an, Value tree, Value env, Value site) {
 }
 
 bool reads(Analysis& an, Value tree) {
-    static std::unordered_map<uint64_t, bool> memo;
     if (!an.is_tuple(tree)) return false;
-    auto found = memo.find(tree.bits());
-    if (found != memo.end()) return found->second;
+    auto found = an.reads_memo.find(tree.bits());
+    if (found != an.reads_memo.end()) return found->second;
     auto items = an.at(tree);
     bool tagged = !items.empty() && items[0].kind() == Kind::Str;
     bool out = tagged && (items[0] == an.V.T_PARAM || items[0] == an.V.T_THIS);
     for (size_t i = tagged ? 1 : 0; !out && i < items.size(); ++i) {
         if (an.is_tuple(items[i]) && reads(an, items[i])) out = true;
     }
-    memo[tree.bits()] = out;
+    an.reads_memo[tree.bits()] = out;
     return out;
 }
 

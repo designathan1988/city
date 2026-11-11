@@ -332,3 +332,22 @@ official declarations only, converging (finite, fast enough to run in seconds to
   matters (objects flowing from parameters to returns or into parameters' fields), none for the rest. To be settled:
   the selection criterion computed from each function's own flows (no rule for a program or a library), measured on the
   lab with the engine.
+
+### F22. Where the lab's cost is: one pair of files, contexts, and the engine's own tables (P1) — 2026-11-12 02:30
+- Bisected with the engine (engine_part.py, each run under its own deadline): every folder of the lab converges alone in
+  1-7 s without contexts except `src/world`; inside it, `doc.ts` with `rescale.ts` alone (two program files and the 130
+  declaration files) does not converge in 15 s without contexts, while each converges alone in under 1 s.
+- On that pair without contexts the returns of generic functions hold "everything of doc.ts" (its arrays, Maps,
+  iterators, the RoadDoc objects, lambdas): `copyItem = <T>(value: T): T => structuredClone(value)` and its kind are
+  called with every value of the document, and a context-insensitive analysis gives each caller what all the others
+  passed (185 k links). With contexts the pair converges in 1.8 s with 5,759 links: contexts are what makes it both
+  precise and finite in practice.
+- The engine profiled by the project's sampler (tools/analysis/sampler.py, a RelWithDebInfo build; the sampler now reads
+  from each module's PE debug directory whether its .pdb exists, so a system module without one is named by offset
+  instead of failing: tools/analysis/pe_debug.py): on the pair, terms made only to key a memo (`typesys.lookup`, the
+  index's lookup), the call site rebuilt at every call, and the solver torn down at exit. Keyed directly now: the pair
+  6.9 s -> 1.8 s, the same 446,413 items and 5,759 links.
+- On the whole lab with contexts the rate stayed ~330 k items/s (48.5 M items in 148 s, 8.7 M nodes, 876 k objects,
+  348 k links, the queue near 100 k): there the profile is the standard library's node-based hash sets (each insert
+  allocates; ~35%), making key terms (16%) and allocation (9%). Next: flat open-addressing sets for the solver's and the
+  analysis's keys.

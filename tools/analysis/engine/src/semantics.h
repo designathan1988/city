@@ -65,7 +65,7 @@ void link_fields(Analysis& an, const UnitRec& unit, Obj obj, Value name, int64_t
 Obj prototype(Analysis& an, Value key, int64_t maker = -1);
 Value field(Analysis& an, Obj obj, Value name);
 Value every(Analysis& an, Obj obj);
-std::vector<int64_t> lookup(Analysis& an, Value key, Value name);   // Index.lookup: members, a module's exports, bases
+const std::vector<int64_t>& lookup(Analysis& an, Value key, Value name);   // Index.lookup: members, exports, bases
 Value runs(Analysis& an, const UnitRec& prop, Value which, const UnitRec* reader);   // Unit.runs
 }  // namespace members
 
@@ -74,7 +74,7 @@ Value resolve(Analysis& an, Value text, Value file, Value owner);
 const std::vector<Value>& group(Analysis& an, Value key);   // [key] where it merges with none
 Value identity(Analysis& an, Value key);
 Value global_type(Analysis& an, Value kind, size_t index);
-std::vector<int64_t> lookup(Analysis& an, Value key, Value name);
+const std::vector<int64_t>& lookup(Analysis& an, Value key, Value name);
 std::vector<Value> own_types(Analysis& an, Obj obj);
 bool is_open_type(Analysis& an, Value key);
 std::vector<Value> ancestors(Analysis& an, Value key);

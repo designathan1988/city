@@ -4,6 +4,7 @@
 // and name read holds). Every stage prints a line, with the time since
 // the start, as it ends, and the solver one every so many items, so the process that runs it watches it live.
 #include <chrono>
+#include <cstdlib>
 #include <cstdio>
 #include <fstream>
 #include <iterator>
@@ -60,6 +61,7 @@ int analyse(const char* input, const char* output, bool sensitive, bool names) {
             say("  " + an.growth());
             say("  " + semantics.profile());
             say("  costliest:" + an.costliest(kLargest));
+            say("  stores:" + an.stores(kLargest));
         }
         say("  " + std::to_string(items) + " items, " + std::to_string(an.solver.nodes()) + " nodes, " +
             std::to_string(an.objects()) + " objects, " + std::to_string(an.links.size()) + " links, queue " +
@@ -79,7 +81,8 @@ int analyse(const char* input, const char* output, bool sensitive, bool names) {
     for (const std::string& line : in.missed) say("  missing: " + line);
     std::ofstream(output, std::ios::binary).write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
     say("written " + std::to_string(bytes.size()) + " bytes");
-    return 0;
+    std::fflush(stdout);
+    std::_Exit(0);                              // the process's memory goes with it: no structure torn down piece by piece
 }
 
 }  // namespace

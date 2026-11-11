@@ -71,14 +71,31 @@ std::string Analysis::describe(Value v, int depth) {
     return "?";
 }
 
+std::string Analysis::stores(size_t count) {
+    std::vector<std::pair<uint64_t, uint64_t>> rows;
+    for (auto& [site, n] : store_probe) rows.emplace_back(n.first * n.second, site);
+    std::sort(rows.rbegin(), rows.rend());
+    std::string out;
+    for (size_t i = 0; i < rows.size() && i < count; ++i) {
+        Value site = Value::from_bits(rows[i].second);
+        const UnitRec& u = unit(item(site, 0).data());
+        auto& n = store_probe[rows[i].second];
+        out += "\n      " + std::to_string(n.first) + " bases x " + std::to_string(n.second) + " values at " +
+               describe(u.qual) + ":" + std::to_string(item(site, 1).data());
+    }
+    return out;
+}
+
 std::string Analysis::costliest(size_t count) {
     std::string out;
+    size_t shown = 0;
     for (const auto& [cost, n] : solver.take_costs(count)) {
         Value key = node_keys_[n];
         out += "\n      " + std::to_string(cost) + " held " + std::to_string(solver.held(n).size()) + " " + describe(key);
         if (item(key, 0) == V.FIELD || item(key, 0) == V.MEMBER) {
             out += " obj=" + describe(okey(static_cast<Obj>(item(key, 1).data())));
         }
+        if (shown++ < kComposed) out += composition(n);
     }
     return out;
 }
@@ -95,25 +112,29 @@ std::string Analysis::largest(size_t count) {
         Value tag = item(key, 0);
         if (tag == V.MEMBER || tag == V.FIELD) shown += " obj=" + describe(okey(static_cast<Obj>(item(key, 1).data())));
         out += "\n      " + std::to_string(rows[i].first) + " " + shown;
-        if (i >= kComposed) continue;
-        std::unordered_map<std::string, size_t> kinds;
-        for (Obj o : solver.held(rows[i].second)) {
-            Value k = okey(o);
-            std::string what = describe(item(k, 0));
-            if (item(k, 0) == V.SITE_FUNCTION) {
-                what += ":" + std::string(text(unit(item(k, 1).data()).qual)).substr(0, kLabel);
-            } else if (item(k, 1).kind() == Kind::Str) {
-                what += ":" + describe(item(k, 1));
-            }
-            ++kinds[what];
+        if (i < kComposed) out += composition(rows[i].second);
+    }
+    return out;
+}
+
+std::string Analysis::composition(Node n) {
+    std::unordered_map<std::string, size_t> kinds;
+    for (Obj o : solver.held(n)) {
+        Value k = okey(o);
+        std::string what = describe(item(k, 0));
+        if (item(k, 0) == V.SITE_FUNCTION) {
+            what += ":" + std::string(text(unit(item(k, 1).data()).qual)).substr(0, kLabel);
+        } else if (item(k, 1).kind() == Kind::Str) {
+            what += ":" + describe(item(k, 1));
         }
-        std::vector<std::pair<size_t, std::string>> parts;
-        for (auto& [w, n] : kinds) parts.emplace_back(n, w);
-        std::sort(parts.rbegin(), parts.rend());
-        out += "\n         made of " + std::to_string(parts.size()) + " kinds:";
-        for (size_t j = 0; j < parts.size() && j < kComposedKinds; ++j) {
-            out += " " + parts[j].second + "=" + std::to_string(parts[j].first);
-        }
+        ++kinds[what];
+    }
+    std::vector<std::pair<size_t, std::string>> parts;
+    for (auto& [w, count] : kinds) parts.emplace_back(count, w);
+    std::sort(parts.rbegin(), parts.rend());
+    std::string out = "\n         made of " + std::to_string(parts.size()) + " kinds:";
+    for (size_t j = 0; j < parts.size() && j < kComposedKinds; ++j) {
+        out += " " + parts[j].second + "=" + std::to_string(parts[j].first);
     }
     return out;
 }

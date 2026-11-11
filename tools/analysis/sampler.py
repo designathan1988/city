@@ -23,6 +23,7 @@ import time
 from collections import defaultdict
 from pathlib import Path
 
+from pe_debug import database_missing
 from sampler_report import report
 from unwind import UnwindTables
 
@@ -210,7 +211,10 @@ def symbolize(path: str, offsets: list[int], symbolizer: str) -> dict[int, str |
     table_path = store_path(TOOL, f"{module_hash(path)}.json")
     table = json.loads(table_path.read_text(encoding="utf-8")) if table_path.is_file() else {}
     ask = sorted({o for o in offsets if str(o) not in table})
-    if ask:
+    if ask and database_missing(path):  # its debug information is nowhere here: named by offset, never asked for
+        table.update({str(o): None for o in ask})
+        write_atomic(table_path, json.dumps(table))
+    elif ask:
         with open(path, "rb") as f:
             head = f.read(4096)
         pe = struct.unpack_from("<I", head, 0x3C)[0]
