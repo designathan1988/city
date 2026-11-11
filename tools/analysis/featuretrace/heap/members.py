@@ -12,13 +12,14 @@ from __future__ import annotations
 from ..js_transfer import chain
 from ..languages import GETTER, PROTOTYPE, PROTOTYPE_CONSTRUCTOR, SETTER
 from ..model import STATE_KINDS
-from ..vocab import (CALL, ELEMENTS_FIELD, READ, SITE_CLASS, SITE_DECLARED, SITE_LITERAL, SITE_MODULE, SITE_PROTOTYPE,
-                     SITE_UNKNOWN, WRITE)
+from ..vocab import (CALL, ELEMENTS_FIELD, READ, SITE_CLASS, SITE_DECLARED, SITE_LITERAL, SITE_MODULE,
+                     SITE_PRIMITIVE, SITE_PROTOTYPE, SITE_UNKNOWN, WRITE)
 
 from . import contexts, names, typesys, values  # noqa: E402  (they read members: imported once it is defined)
 
 ALL, ACCESSOR, PROTOTYPES, PROPERTY = 9, 11, 12, 13    # nodes: every property of one object; an accessor's call; a
                                                      # prototype; a site: a declared property's
+KEEP_NOTHING = (SITE_PRIMITIVE, SITE_UNKNOWN)          # the kinds of value no property written to is kept on
 
 
 def read(an, target, obj: int, name: str) -> None:
@@ -34,6 +35,11 @@ def read(an, target, obj: int, name: str) -> None:
         return
     if kind == SITE_UNKNOWN:
         an.solver.add(target, [obj])
+        return
+    if kind == SITE_PRIMITIVE:                    # no property of its own: its wrapper's prototype's (none for null
+        for own in typesys.own_types(an, obj):   # and undefined: ECMA-262 GetValue, RequireObjectCoercible)
+            if declared_read(an, target, obj, own, name):
+                break
         return
     key, maker = objects.class_of(obj), objects.maker(obj)
     for own in typesys.own_types(an, obj):        # its class's or declared type's members, else its intrinsic's
@@ -136,15 +142,20 @@ def read_all(an, target, obj: int) -> None:
     """What a key no text names reads (log/trace-research.md F14; T4' of the old core): the object as a dictionary —
     its elements and what writes through unknown keys put in it — never its named members, which code reaches by name
     (ACG and Jelly leave such reads unresolved; reading every member of every object a generic helper is handed made
-    every set of the program large)."""
+    every set of the program large). A primitive and the unknown object keep nothing written to them (`write`)."""
+    if an.objects.kind(obj) in KEEP_NOTHING:
+        return
     an.solver.follow(field(an, obj, ELEMENTS_FIELD), target)
     an.solver.follow(an.any_field(obj), target)
 
 
 def write(an, source, obj: int, name: str) -> None:
     """`obj.name = value`: the value in that object's property, or its class's setter run with it (a class's static
-    field: what it holds)."""
+    field: what it holds). A primitive keeps no property (ECMA-262 PutValue sets it on a wrapper that is gone after,
+    or throws); what is written to the unknown object is handed to unknown code, at the write (`refs.escape`)."""
     ix, objects = an.ix, an.objects
+    if objects.kind(obj) in KEEP_NOTHING:
+        return
     cls = objects.class_itself(obj)
     for gid in ix.lookup(cls, name) if cls is not None and cls in ix.classes else []:
         if ix.units[gid].static and ix.units[gid].kind in STATE_KINDS:

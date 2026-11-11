@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import unittest
 
-from .support import HeapCase
+from .support import ENGINE, HeapCase
 
 
 class HeapContexts(HeapCase):
@@ -41,6 +41,10 @@ class HeapContexts(HeapCase):
 
     def test_a_class_value_method_is_a_closure_of_the_run_that_made_it(self):
         self.assertEqual({"Apple"}, self.classes("classValueApple"))
+
+
+class HeapContextsEngine(HeapContexts):
+    CORE = ENGINE
 
 
 if __name__ == "__main__":

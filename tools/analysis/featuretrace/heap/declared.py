@@ -91,7 +91,7 @@ def taken(an, obj: int, tree: tuple, env, site, origin) -> None:
             for i, arg in enumerate(tree[2]):                    # nominally: its places give to the arguments
                 values.consume(an, arg, env, typesys.place(an, obj, key, i), values.sub(site, i), origin)
         else:                                                    # structurally, through what the type declares
-            bound = an.objects.declared(key, ((values.BOUND, key), site[1]), None)
+            bound = an.objects.declared(key, values.sub(site, (values.BOUND, key)), None)   # one per site and type
             for i, arg in enumerate(tree[2]):
                 held = typesys.place(an, bound, key, i)
                 values.consume(an, arg, env, held, values.sub(site, i), origin)

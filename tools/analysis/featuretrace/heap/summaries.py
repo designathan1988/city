@@ -152,7 +152,10 @@ def arguments(an, fn: int) -> list:
 
 
 def keep(an, holder: int, fn: int, tree: tuple) -> None:
-    """A function a declared method of `holder` took under the declared function type `tree`: kept on the holder."""
+    """A function a declared method of `holder` took under the declared function type `tree`: kept on the holder (a
+    primitive keeps no state: a method called on it runs on a wrapper made for the call)."""
+    if an.objects.kind(holder) in (SITE_PRIMITIVE, SITE_UNKNOWN):
+        return
     an.solver.add(an.field(holder, PLATFORM_FIELD), [an.objects.make(KEPT_ENTRY, fn, tree)])
 
 

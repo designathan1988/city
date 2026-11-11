@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <memory>
 #include <span>
 #include <string>
 #include <string_view>
@@ -25,6 +26,7 @@ public:
     static constexpr Value make(Kind kind, int64_t data) {
         return Value((static_cast<uint64_t>(data) << kKindBits) | static_cast<uint64_t>(kind));
     }
+    static constexpr Value from_bits(uint64_t bits) { return Value(bits); }
     constexpr Kind kind() const { return static_cast<Kind>(bits_ & kKindMask); }
     constexpr int64_t data() const { return static_cast<int64_t>(bits_) >> kKindBits; }
     constexpr uint32_t id() const { return static_cast<uint32_t>(data()); }
@@ -44,6 +46,8 @@ constexpr int64_t kIntMin = INT64_MIN >> Value::kKindBits;
 enum class Shape : uint8_t { Tuple, List, Dict, Set, FrozenSet, Object };
 
 // Strings interned and terms hash-consed: `term` returns the id of the one term with that shape, head and items.
+// A term's items never move once made (they live in blocks that are never reallocated), so a span of them stays
+// valid while more terms are made.
 class Store {
 public:
     Store();
@@ -56,16 +60,14 @@ public:
     uint32_t term(Shape shape, uint32_t head, std::span<const Value> items);
     Shape shape(uint32_t id) const { return recs_[id].shape; }
     uint32_t head(uint32_t id) const { return recs_[id].head; }
-    std::span<const Value> items(uint32_t id) const {
-        return {pool_.data() + recs_[id].first, recs_[id].count};
-    }
+    std::span<const Value> items(uint32_t id) const { return {recs_[id].first, recs_[id].count}; }
     size_t terms() const { return recs_.size(); }
 
 private:
     struct Rec {
         Shape shape;
         uint32_t head;
-        uint64_t first;
+        const Value* first;
         uint32_t count;
         uint64_t hash;
     };
@@ -76,7 +78,9 @@ private:
     std::deque<std::string> texts_;                       // a deque: a string never moves, its view stays valid
     std::unordered_map<std::string_view, uint32_t> string_ids_;
     std::vector<Rec> recs_;
-    std::vector<Value> pool_;
+    const Value* keep(std::span<const Value> items);     // the items copied into a block
+    std::vector<std::unique_ptr<Value[]>> blocks_;
+    size_t block_used_ = 0, block_size_ = 0;
     std::vector<uint32_t> slots_;                          // open addressing: term id + 1, 0 empty
     std::vector<Value> scratch_;
 };

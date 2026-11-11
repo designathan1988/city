@@ -7,7 +7,7 @@ from __future__ import annotations
 import unittest
 
 from .. import js_libs, program
-from .support import HEAP, HeapCase
+from .support import ENGINE, HEAP, HeapCase
 
 LIBS = HEAP / "libs"
 
@@ -26,6 +26,21 @@ class HeapPlatform(HeapCase):
 
     def test_a_map_gives_back_what_was_set(self):
         self.assertEqual({"Apple"}, self.classes("mapGet"))
+
+    def test_a_primitive_keeps_no_property(self):
+        self.assertEqual(set(), self.classes("primitiveKeepsNothing"))   # ECMA-262 PutValue: a wrapper, gone
+        self.assertEqual(set(), self.classes("undefinedKeepsNothing"))   # undefined has no property at all
+
+    def test_what_is_written_into_unknown_code_is_called_back(self):
+        handed = self.names("escaped", ("handed",))
+        self.assertTrue(any("<lambda" in n for n in handed), handed)
+
+    def test_a_structural_argument_reaches_only_its_own_call(self):
+        self.assertEqual({"Apple"}, self.classes("unboxApple"))
+        self.assertEqual({"Pear"}, self.classes("unboxPear"))
+
+    def test_a_method_returning_this_gives_its_receiver(self):
+        self.assertEqual({"Apple"}, self.classes("chained"))              # `set(...): this` then `get`
 
     def test_then_calls_back_with_the_resolved_value(self):
         self.assertEqual({"Apple"}, self.classes("thenValue"))
@@ -78,6 +93,10 @@ class DeclarationFiles(unittest.TestCase):
         self.assertEqual({"typescript/lib/lib.d.ts", "typescript/lib/lib.es5.d.ts", "typescript/lib/lib.dom.d.ts",
                           "@types/thing/index.d.ts", "@types/other/main.d.ts", "@types/other/more.d.ts"},
                          self.names("plain"))
+
+
+class HeapPlatformEngine(HeapPlatform):
+    CORE = ENGINE
 
 
 if __name__ == "__main__":

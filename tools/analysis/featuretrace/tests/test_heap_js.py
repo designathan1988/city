@@ -8,7 +8,7 @@ from __future__ import annotations
 import unittest
 
 from .js_expectations import JsValuesExpectations, WebExpectations
-from .support import HeapCase
+from .support import ENGINE, HeapCase
 
 
 class WebHeap(HeapCase, WebExpectations):
@@ -47,6 +47,22 @@ class JsValuesHeap(HeapCase, JsValuesExpectations):
     def test_a_program_annotation_is_no_value(self):
         self.assertIn("types.ts.boxes", self.names("walk"))     # `boxes(): Box[]` returns `[]`: nothing to open
         self.assertNotIn("Box.open", self.names("walk"))
+
+
+class WebHeapEngine(WebHeap):
+    CORE = ENGINE
+
+
+class JsxAutomaticEngine(JsxAutomatic):
+    CORE = ENGINE
+
+
+class JsxClassicEngine(JsxClassic):
+    CORE = ENGINE
+
+
+class JsValuesHeapEngine(JsValuesHeap):
+    CORE = ENGINE
 
 
 if __name__ == "__main__":

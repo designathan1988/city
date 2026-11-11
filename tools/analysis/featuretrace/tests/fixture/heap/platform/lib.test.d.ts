@@ -47,6 +47,9 @@ interface Page {
 }
 declare var page: Page;
 
+interface Holder<T> { value: T; }
+declare function unbox<T>(holder: Holder<T>): T;
+
 declare module "host" {
   global {
     interface Page { title(): Element; }

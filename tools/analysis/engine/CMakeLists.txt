@@ -14,7 +14,10 @@ endif()
 
 set(FTENGINE_STACK_BYTES 268435456)  # 256 MiB, as the Python side's deep thread
 
-add_library(ftengine_core STATIC src/terms.cpp src/pickle_reader.cpp src/dump.cpp src/solver.cpp)
+add_library(ftengine_core STATIC src/terms.cpp src/pickle_reader.cpp src/dump.cpp src/solver.cpp src/input.cpp
+  src/analysis.cpp src/trees.cpp src/refs.cpp src/names.cpp src/members.cpp src/typesys.cpp src/values.cpp
+  src/declared.cpp src/summaries.cpp src/protocols.cpp src/jsx.cpp src/texts.cpp src/transfers.cpp src/output.cpp
+  src/objects.cpp src/diagnostics.cpp)
 target_include_directories(ftengine_core PUBLIC src)
 target_compile_options(ftengine_core PUBLIC -Wall -Wextra)
 

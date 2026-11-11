@@ -9,6 +9,7 @@ namespace {
 constexpr size_t kFirstSlots = size_t{1} << 16;   // the table's first size (a power of two)
 constexpr uint64_t kMix = 0x9E3779B97F4A7C15ULL;  // the golden ratio's fraction, Fibonacci hashing's multiplier
 constexpr int kShift = 29;
+constexpr size_t kBlockItems = size_t{1} << 20;  // a block's items (8 MiB)
 
 uint64_t mix(uint64_t h, uint64_t v) {
     h ^= v + kMix + (h << 6) + (h >> 2);
@@ -44,7 +45,7 @@ bool Store::equal(uint32_t id, Shape shape, uint32_t head, std::span<const Value
     if (r.shape != shape || r.head != head || r.count != items.size()) {
         return false;
     }
-    return std::equal(items.begin(), items.end(), pool_.begin() + static_cast<ptrdiff_t>(r.first));
+    return std::equal(items.begin(), items.end(), r.first);
 }
 
 uint32_t Store::term(Shape shape, uint32_t head, std::span<const Value> items) {
@@ -60,8 +61,7 @@ uint32_t Store::term(Shape shape, uint32_t head, std::span<const Value> items) {
         uint32_t slot = slots_[at];
         if (slot == 0) {
             auto id = static_cast<uint32_t>(recs_.size());
-            recs_.push_back({shape, head, pool_.size(), static_cast<uint32_t>(items.size()), h});
-            pool_.insert(pool_.end(), items.begin(), items.end());
+            recs_.push_back({shape, head, keep(items), static_cast<uint32_t>(items.size()), h});
             slots_[at] = id + 1;
             if (recs_.size() * 2 > slots_.size()) {
                 grow();
@@ -72,6 +72,19 @@ uint32_t Store::term(Shape shape, uint32_t head, std::span<const Value> items) {
             return slot - 1;
         }
     }
+}
+
+const Value* Store::keep(std::span<const Value> items) {
+    if (items.empty()) return nullptr;
+    if (block_used_ + items.size() > block_size_) {
+        block_size_ = std::max(kBlockItems, items.size());
+        blocks_.push_back(std::make_unique<Value[]>(block_size_));
+        block_used_ = 0;
+    }
+    Value* at = blocks_.back().get() + block_used_;
+    std::copy(items.begin(), items.end(), at);
+    block_used_ += items.size();
+    return at;
 }
 
 void Store::grow() {

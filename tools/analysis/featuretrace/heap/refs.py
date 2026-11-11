@@ -10,10 +10,11 @@ from __future__ import annotations
 from ..js_read import MODULE_UNIT
 from ..model import STATE_KINDS
 from ..vocab import (ANY_FIELD, CALL, CONSTRUCT, ELEMENTS_FIELD, IMPORT, INVOKE, JSX, LAMBDA, MEMBER, NAME, NEW,
-                     READ, STORE, WRITE)
-from . import jsx, members, names, texts, trees
+                     READ, SITE_PRIMITIVE, SITE_UNKNOWN, STORE, WRITE)
+from . import declared, jsx, members, names, summaries, texts, trees
 
 WRITTEN = 11               # a node: the subscription a `new` reference writes its line through
+ESCAPE = 14                # a node: the open call a write into the unknown object is
 
 
 def lower(an, unit, ctx) -> None:
@@ -69,9 +70,23 @@ def write(an, unit, ref, ctx) -> None:
 
     def by_object(_, objs):
         for obj in objs:
+            if an.objects.kind(obj) == SITE_UNKNOWN:
+                escape(an, unit, ref, value, ctx)
+                continue
             members.write(an, value, obj, name)
             members.link_fields(an, unit, obj, name, ref.line, True)
     an.solver.subscribe(an.node(ref.base, unit, ctx), (WRITE, unit.gid, ref.line, name, ctx), (WRITE,), by_object)
+
+
+def escape(an, unit, ref, value, ctx) -> None:
+    """A value written into the unknown object is handed to code the program does not have (Averroes: what escapes may
+    be called back): an open call at the write, its callbacks linked from the line that writes it."""
+    node = (ESCAPE, unit.gid, ref.line, ctx)
+    if node in an.wired:
+        return
+    an.wired.add(node)
+    an.written(node, unit.gid, ref.line)
+    summaries.open_call(an, node, [value], declared.call_site(an, node))
 
 
 def store(an, unit, ref, ctx) -> None:
@@ -84,6 +99,12 @@ def store(an, unit, ref, ctx) -> None:
 
     def by_object(_, objs):
         for obj in objs:
+            kind = an.objects.kind(obj)
+            if kind == SITE_UNKNOWN:
+                escape(an, unit, ref, value, ctx)
+                continue
+            if kind == SITE_PRIMITIVE:                 # a primitive keeps no property (`members.write`)
+                continue
             if known is not None:
                 for text in known:
                     members.write(an, value, obj, text)

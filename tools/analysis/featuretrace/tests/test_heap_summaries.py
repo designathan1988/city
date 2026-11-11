@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import unittest
 
-from .support import HeapCase
+from .support import ENGINE, HeapCase
 
 
 class HeapSummaries(HeapCase):
@@ -43,6 +43,10 @@ class HeapSummaries(HeapCase):
         self.assertTrue(any(kind == "call" and dst.endswith(".run") for kind, dst in self.links("invoked")),
                         self.links("invoked"))
         self.assertEqual({"Apple"}, self.classes("invoked"))
+
+
+class HeapSummariesEngine(HeapSummaries):
+    CORE = ENGINE
 
 
 if __name__ == "__main__":

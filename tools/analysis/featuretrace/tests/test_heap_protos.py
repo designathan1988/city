@@ -3,35 +3,13 @@
 (fixture `heap/protos.js`)."""
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parents[1]))
-
-from featuretrace import program, seeds  # noqa: E402
-from featuretrace.heap import analysis  # noqa: E402
-
-FIXTURE = HERE / "fixture" / "heap"
-_DONE = {}
+from .support import ENGINE, HeapCase
 
 
-def analysed():
-    if "protos" not in _DONE:
-        ix, _, _ = program.read([FIXTURE / "protos.js"], FIXTURE, None)
-        _DONE["protos"] = (ix, analysis.analyse(ix))
-    return _DONE["protos"]
-
-
-class HeapProtos(unittest.TestCase):
-    def setUp(self):
-        self.ix, self.result = analysed()
-
-    def returned(self, spec: str) -> set:
-        found = seeds.find(self.ix, spec)
-        self.assertEqual(1, len(found), found)
-        return self.result.returned(found[0])
+class HeapProtos(HeapCase):
+    ROOT = "protos.js"
 
     def made(self, spec: str, cls: str) -> bool:
         return any(v.startswith("new:") and v.split(":")[1].endswith(cls) for v in self.returned(spec))
@@ -55,6 +33,10 @@ class HeapProtos(unittest.TestCase):
 
     def test_constructor_is_the_class(self):
         self.assertTrue(self.made("constructorOf", "#Derived"), self.returned("constructorOf"))
+
+
+class HeapProtosEngine(HeapProtos):
+    CORE = ENGINE
 
 
 if __name__ == "__main__":

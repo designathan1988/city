@@ -2,6 +2,8 @@
 // applications of new edges and subscriptions; each item hands only the objects not yet handed.
 #include "solver.h"
 
+#include <algorithm>
+
 namespace ftengine {
 
 namespace {
@@ -112,6 +114,8 @@ void Solver::deliver(Node source, uint32_t from, uint32_t upto, Transfers& trans
     std::vector<Obj> objects;
     objects.swap(scratch_);                        // a transfer may deliver nothing, but may add to this node
     size_t edges = edges_[source].size(), subs = subs_[source].size();
+    if (cost_.size() <= source) cost_.resize(held_.size(), 0);
+    cost_[source] += objects.size() * (edges + subs);
     for (size_t i = 0; i < edges; ++i) add(edges_[source][i], objects);
     for (size_t i = 0; i < subs; ++i) {
         Sub sub = subs_[source][i];
@@ -120,9 +124,22 @@ void Solver::deliver(Node source, uint32_t from, uint32_t upto, Transfers& trans
     objects.swap(scratch_);
 }
 
-void Solver::run(Transfers& transfers) {
+std::vector<std::pair<uint64_t, Node>> Solver::take_costs(size_t count) {
+    std::vector<std::pair<uint64_t, Node>> rows;
+    for (Node n = 0; n < cost_.size(); ++n) {
+        if (cost_[n]) rows.emplace_back(cost_[n], n);
+    }
+    size_t keep = std::min(count, rows.size());
+    std::partial_sort(rows.begin(), rows.begin() + keep, rows.end(), std::greater<>());
+    rows.resize(keep);
+    std::fill(cost_.begin(), cost_.end(), 0);
+    return rows;
+}
+
+void Solver::run(Transfers& transfers, const std::function<void(uint64_t)>& tick) {
     while (!firsts_.empty() || !work_.empty()) {
         ++items_;
+        if (tick && items_ % kTickItems == 0) tick(items_);
         if (!firsts_.empty()) {
             First f = firsts_.front();
             firsts_.pop_front();

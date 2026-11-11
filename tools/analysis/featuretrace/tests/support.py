@@ -1,5 +1,5 @@
 """The fixture project loaded once, and the lookups every test of the tracer makes on it; the new core's analysis of a
-fixture, once, and the lookups its tests make (`HeapCase`)."""
+fixture, once, by the Python semantics or the native engine (`CORE`), and the lookups its tests make (`HeapCase`)."""
 from __future__ import annotations
 
 import sys
@@ -9,13 +9,14 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))
 
-from featuretrace import narrow_values, program, receivers, seeds, walk  # noqa: E402
+from featuretrace import engine_result, narrow_values, program, receivers, seeds, walk  # noqa: E402
 from featuretrace.heap import analysis  # noqa: E402
 
 FIXTURE = HERE / "fixture"
 HEAP = FIXTURE / "heap"
 _LOADED = {}
 _ANALYSED = {}
+ENGINE = "engine"                    # a HeapCase's CORE: the native engine
 
 
 def loaded(roots: tuple = ("project", "native"), base: str = "") -> tuple:
@@ -50,27 +51,30 @@ class FixtureCase(unittest.TestCase):
         return {seeds.label(self.ix, g) for g in walk.forward(self.rs, [self.gid(spec)]).reached}
 
 
-def analysed(roots: tuple, base: str, declarations: bool) -> tuple:
+def analysed(roots: tuple, base: str, declarations: bool, core: str = "python") -> tuple:
     """The new core's analysis of the fixture read from these roots (relative to the fixture folder), with the
-    declaration files its TypeScript chooses when asked, once: (index, result)."""
-    key = (roots, base, declarations)
+    declaration files its TypeScript chooses when asked, by the Python semantics or the engine, once: (index,
+    result)."""
+    key = (roots, base, declarations, core)
     if key not in _ANALYSED:
         ix, _, _ = program.read([FIXTURE / r for r in roots], FIXTURE / base, None, declarations=declarations)
-        _ANALYSED[key] = (ix, program.deep(lambda: analysis.analyse(ix)))
+        run = (lambda: engine_result.analyse(ix, names=True)) if core == ENGINE else (lambda: analysis.analyse(ix))
+        _ANALYSED[key] = (ix, program.deep(run))
     return _ANALYSED[key]
 
 
 class HeapCase(unittest.TestCase):
     """A case over the new core's analysis of a fixture: `ROOT` under `fixture/heap`, or `ROOTS` from the fixture
-    folder with `BASE` and the declaration files (`DECLARATIONS`)."""
+    folder with `BASE` and the declaration files (`DECLARATIONS`), by the core `CORE` names."""
     ROOT = ""
     ROOTS = ()
     BASE = "heap"
     DECLARATIONS = False
+    CORE = "python"
     RUNS = ("call", "new", "handed")      # a function the platform runs for the caller is a call made through it
 
     def setUp(self):
-        self.ix, self.result = analysed(self.ROOTS or ("heap/" + self.ROOT,), self.BASE, self.DECLARATIONS)
+        self.ix, self.result = analysed(self.ROOTS or ("heap/" + self.ROOT,), self.BASE, self.DECLARATIONS, self.CORE)
 
     def names(self, spec: str, kinds=RUNS) -> set:
         """The labels of what a definition links to by those kinds."""

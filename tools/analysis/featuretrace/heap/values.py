@@ -51,8 +51,9 @@ def level_place(an, env, level: int, index: int):
 
 def produce(an, tree: tuple, env, site):
     """The node holding the values a declared type gives in `env` at `site`. The language's values are one node for
-    all; a type parameter is its place itself; a type that reads nothing of the environment (no type parameter, no
-    `this`) is keyed without it, so one node and one object serve every receiver (log/trace-research.md F12)."""
+    all; a type parameter is its place itself; `this` the node of the receiver itself (F19); a type that reads nothing
+    of the environment (no type parameter, no `this`) is keyed without it, so one node and one object serve every
+    receiver (log/trace-research.md F12)."""
     kind = tree[0] if tree else None
     if kind == T_VALUES:
         node = (PRODUCED, tree)
@@ -60,6 +61,11 @@ def produce(an, tree: tuple, env, site):
         held = level_place(an, env, tree[1], tree[2])
         if held is not None:
             return held
+        node = (PRODUCED, ())
+    elif kind == T_THIS:                  # the receiver itself: one node per object, never one per call and site
+        if env is not None and env[0] is not None:
+            from .declared import an_node
+            return an_node(an, env[0])
         node = (PRODUCED, ())
     else:
         node = (PRODUCED, tree, env if reads(tree) else NO_ENV, site)
@@ -96,8 +102,6 @@ def wire(an, node, tree, env, site) -> None:
         solver.add(node, language_objects(an, tree[1]))
     elif kind == T_BOTH:
         both(an, node, tree, env, site)
-    elif kind == T_THIS and env[0] is not None:
-        solver.add(node, [env[0]])
     elif kind == T_NAMED:
         named(an, node, tree, env, site)
     elif kind == T_OBJECT:

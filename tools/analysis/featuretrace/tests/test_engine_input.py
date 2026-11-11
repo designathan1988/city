@@ -12,6 +12,7 @@ from pathlib import Path
 
 from .support import FIXTURE
 from .. import engine_input, languages, program, seeds, vocab
+from ..heap import analysis, values
 from ..heap.typesys import ALIAS, CLASS
 from ..model import Unit
 
@@ -38,11 +39,10 @@ class InputCase(unittest.TestCase):
         cls.read_back = pickle.loads(cls.data)
 
     def part(self, name: str):
-        return self.read_back[engine_input.ROOT_PARTS.index(name)]
+        return self.read_back[name]
 
     def test_the_file_is_the_tables_of_the_index(self):
-        self.assertEqual(engine_input.tables(self.ix), self.read_back)
-        self.assertEqual(len(engine_input.ROOT_PARTS), len(self.read_back))
+        self.assertEqual(dict(zip(engine_input.ROOT_PARTS, engine_input.tables(self.ix))), self.read_back)
 
     def test_the_file_uses_only_what_the_engine_reads(self):
         used = {op.name for op, _, _ in pickletools.genops(self.data)}
@@ -58,7 +58,9 @@ class InputCase(unittest.TestCase):
         self.assertEqual(languages.INTRINSICS, found["languages.INTRINSICS"])
         self.assertEqual("gid", found["model.Unit"][found["model.Unit"].index("gid")])
         self.assertIn("refs", found["model.Unit"])
-        self.assertTrue(all(name.split(".")[0] != "heap" for name in found))
+        self.assertEqual(analysis.TREE, found["heap.analysis.TREE"])            # the new core's own tags
+        self.assertEqual(values.NO_ENV, found["heap.values.NO_ENV"])
+        self.assertNotIn("heap.values.READS", found)                           # a memo is no constant
 
 
 class PlatformInput(InputCase):
@@ -102,6 +104,25 @@ class WebInput(InputCase):
 
     def test_the_units_are_the_index_units(self):
         self.assertTrue(all(isinstance(u, Unit) for u in self.part("units")))
+
+
+class ValuesInput(InputCase):
+    ROOTS = ("jsvalues",)
+    DECLARATIONS = True
+
+    def test_each_operator_and_literal_gives_the_language_values(self):
+        operators = {(op, unary): kinds for op, unary, kinds in self.part("operators")}
+        self.assertIn("string", operators[("+", False)])                      # `+` concatenates too
+        literals = dict(self.part("literals"))
+        self.assertEqual(["undefined"], literals["undefined"])
+
+
+class JsxClassicInput(InputCase):
+    ROOTS = ("heap/jsxclassic",)
+
+    def test_the_classic_factory_is_a_name_read_where_the_element_is(self):
+        heads = {name for _, name, *_ in self.part("names")}
+        self.assertTrue(heads & {"React", "h"}, heads)
 
 
 if __name__ == "__main__":

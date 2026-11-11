@@ -1,6 +1,8 @@
 // The engine's command line (log/trace-engine-plan.md): `dump <input> <output>` reads an input file and writes its
-// canonical text; `stats <input>` reads it and prints what it holds. Every stage prints a line, with the time since the
-// start, as it ends, so the process that runs it watches it live.
+// canonical text; `stats <input>` reads it and prints what it holds; `analyse <input> <output> [--no-contexts]
+// [--names]` runs the analysis (heap/analysis.py `analyse`) and writes its result (with `--names`, what each local
+// and name read holds). Every stage prints a line, with the time since
+// the start, as it ends, and the solver one every so many items, so the process that runs it watches it live.
 #include <chrono>
 #include <cstdio>
 #include <fstream>
@@ -8,8 +10,11 @@
 #include <string>
 #include <vector>
 
+#include "analysis.h"
 #include "dump.h"
+#include "output.h"
 #include "pickle_reader.h"
+#include "semantics.h"
 #include "terms.h"
 
 namespace {
@@ -18,6 +23,8 @@ using Clock = std::chrono::steady_clock;
 const Clock::time_point kStart = Clock::now();
 constexpr int kUsage = 2;
 constexpr double kMegabyte = 1e6;
+constexpr uint64_t kGrowthEvery = 4;       // ticks between two reports of what grows
+constexpr size_t kLargest = 25;            // the nodes a report names
 
 void say(const std::string& line) {
     double seconds = std::chrono::duration<double>(Clock::now() - kStart).count();
@@ -39,6 +46,42 @@ ftengine::Value parse(const std::vector<uint8_t>& data, ftengine::Store& store) 
     return root;
 }
 
+int analyse(const char* input, const char* output, bool sensitive, bool names) {
+    ftengine::Input in;
+    ftengine::Value root = parse(read_file(input), in.store);
+    ftengine::decode(root, in);
+    say("decoded: " + std::to_string(in.units.size()) + " units, " + std::to_string(in.classes.size()) + " classes");
+    ftengine::Analysis an(in);
+    an.contexts = sensitive;
+    ftengine::Semantics semantics(an);
+    uint64_t ticks = 0;
+    auto tick = [&](uint64_t items) {
+        if (++ticks % kGrowthEvery == 0) {
+            say("  " + an.growth());
+            say("  " + semantics.profile());
+            say("  costliest:" + an.costliest(kLargest));
+        }
+        say("  " + std::to_string(items) + " items, " + std::to_string(an.solver.nodes()) + " nodes, " +
+            std::to_string(an.objects()) + " objects, " + std::to_string(an.links.size()) + " links, queue " +
+            std::to_string(an.solver.pending()));
+    };
+    an.entries(true);
+    an.solver.run(semantics, tick);
+    int rounds = 0;
+    while (an.entries(false)) {
+        an.solver.run(semantics, tick);
+        ++rounds;
+    }
+    say("solved: " + std::to_string(an.links.size()) + " links, " + std::to_string(an.objects()) + " objects, " +
+        std::to_string(an.solver.nodes()) + " nodes, " + std::to_string(an.solver.items()) + " items, " +
+        std::to_string(rounds) + " entry rounds, " + std::to_string(in.missing) + " resolutions missing");
+    std::string bytes = ftengine::result_pickle(an, semantics, names);
+    for (const std::string& line : in.missed) say("  missing: " + line);
+    std::ofstream(output, std::ios::binary).write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    say("written " + std::to_string(bytes.size()) + " bytes");
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -52,6 +95,16 @@ int main(int argc, char** argv) {
             say("dumped " + std::to_string(text.size()) + " bytes");
             return 0;
         }
+        if (command == "analyse" && argc >= 4) {
+            bool sensitive = true, names = false;
+            for (int i = 4; i < argc; ++i) {
+                std::string flag = argv[i];
+                if (flag == "--no-contexts") sensitive = false;
+                else if (flag == "--names") names = true;
+                else throw std::runtime_error("unknown flag " + flag);
+            }
+            return analyse(argv[2], argv[3], sensitive, names);
+        }
         if (command == "stats" && argc == 3) {
             ftengine::Store store;
             parse(read_file(argv[2]), store);
@@ -61,6 +114,7 @@ int main(int argc, char** argv) {
         say(std::string("failed: ") + error.what());
         return 1;
     }
-    std::fprintf(stderr, "usage: ftengine dump <input> <output> | stats <input>\n");
+    std::fprintf(stderr, "usage: ftengine dump <input> <output> | stats <input> | analyse <input> <output> "
+                         "[--no-contexts] [--names]\n");
     return kUsage;
 }

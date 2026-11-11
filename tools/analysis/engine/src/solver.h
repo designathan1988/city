@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <span>
 #include <unordered_set>
 #include <vector>
@@ -40,10 +41,15 @@ public:
     void add(Node n, std::span<const Obj> objects);
     void follow(Node source, Node target);
     bool subscribe(Node source, Node target, uint32_t key, const Transfer& transfer);
-    void run(Transfers& transfers);
+    // Runs to the fixpoint; `tick` (when given) is called every kTickItems items with the items so far.
+    void run(Transfers& transfers, const std::function<void(uint64_t)>& tick = {});
+    static constexpr uint64_t kTickItems = uint64_t{1} << 18;
+    size_t pending() const { return work_.size() + firsts_.size(); }
     std::span<const Obj> held(Node n) const { return held_[n].order; }
     bool holds(Node n, Obj o) const { return held_[n].contains(o); }
     uint64_t items() const { return items_; }              // worklist items processed so far
+    // Per node, objects handed times the edges and subscriptions they were handed to, since the last take.
+    std::vector<std::pair<uint64_t, Node>> take_costs(size_t count);
 
 private:
     // A node's objects: in the order they came, with an index once they are many.
@@ -87,6 +93,7 @@ private:
     std::unordered_set<Key, KeyHash> sub_keys_;
     std::vector<Obj> scratch_;
     uint64_t items_ = 0;
+    std::vector<uint64_t> cost_;
 };
 
 }  // namespace ftengine

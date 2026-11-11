@@ -2,41 +2,16 @@
 calls resolved by the callee's objects, aliases through the heap (fixture `heap/core.ts`)."""
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parents[1]))
-
-from featuretrace import program, seeds  # noqa: E402
-from featuretrace.heap import analysis  # noqa: E402
-
-FIXTURE = HERE / "fixture" / "heap"
-_DONE = {}
+from .support import ENGINE, HeapCase
 
 
-def analysed():
-    if "core" not in _DONE:
-        ix, _, _ = program.read([FIXTURE / "core.ts"], FIXTURE, None)
-        _DONE["core"] = (ix, analysis.analyse(ix))
-    return _DONE["core"]
-
-
-class HeapCore(unittest.TestCase):
-    def setUp(self):
-        self.ix, self.result = analysed()
-
-    def gid(self, spec: str) -> int:
-        found = seeds.find(self.ix, spec)
-        self.assertEqual(1, len(found), found)
-        return found[0]
+class HeapCore(HeapCase):
+    ROOT = "core.ts"
 
     def calls(self, spec: str) -> set:
-        return {seeds.label(self.ix, e.dst) for e in self.result.out[self.gid(spec)] if e.kind in ("call", "new")}
-
-    def returned(self, spec: str) -> set:
-        return self.result.returned(self.gid(spec))
+        return self.names(spec, ("call", "new"))
 
     def test_a_method_through_a_local_and_a_field(self):
         self.assertIn("Box.open", self.calls("viaLocal"))
@@ -66,6 +41,10 @@ class HeapCore(unittest.TestCase):
     def test_an_object_literal_property(self):
         found = self.returned("literalRead")
         self.assertTrue(any(v.startswith("new:") and "Box" in v for v in found), found)
+
+
+class HeapCoreEngine(HeapCore):
+    CORE = ENGINE
 
 
 if __name__ == "__main__":

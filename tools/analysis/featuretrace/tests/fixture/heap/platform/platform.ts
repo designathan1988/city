@@ -20,6 +20,8 @@ export function mapGet() {
   return m.get("k");
 }
 
+export function chained() { return new Map().set("k", new Apple()).get("k"); }
+
 export function thenValue() {
   let got;
   Promise.resolve(new Apple()).then((v) => { got = v; });
@@ -57,3 +59,9 @@ export function called() {
 export function onFocus(target: Element) { target.focus(); }
 
 export function titled() { return page.title(); }
+
+export function primitiveKeepsNothing() { const s: any = "x"; s.p = new Apple(); return s.p; }
+export function undefinedKeepsNothing() { const v: any = undefined; v.q = new Pear(); return v.q; }
+export function escaped(host: any) { host.onload = () => new Pear(); }
+export function unboxApple() { return unbox({ value: new Apple() }); }
+export function unboxPear() { return unbox({ value: new Pear() }); }

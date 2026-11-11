@@ -291,3 +291,44 @@ official declarations only, converging (finite, fast enough to run in seconds to
   by `pickle.dump`; the engine reads that documented subset (Lib/pickletools.py describes each opcode; PEP 3154 the
   framing, PEP 574 protocol 5) and hash-conses the trees itself. A second serialization of the facts (FTE1) is dropped:
   the facts keep one format. The model's field names reach the engine in the file's vocabulary (`dataclasses.fields`).
+
+### F19. The engine is the Python semantics, and it shows where the work goes (P1) — 2026-11-12 00:30
+- The new core ported to C++ (tools/analysis/engine/src, one file per heap/ module, each Python closure one kind of
+  transfer): on all nine fixture sets (heap core, contexts, protos, platform, summaries, both JSX transforms, web,
+  jsvalues) its links are the Python core's, link for link, and every heap test passes on both cores (437 tests).
+- The lab through the engine (engine_lab.py, 150 s deadline, stopped by PID at it): with contexts, 49.8 M worklist
+  items in 149 s (330 k/s), 8.7 M nodes, 876 k objects, the queue level at 100-180 k; without, 17.3 M items in 146 s,
+  5.5 M nodes, the queue growing. Neither converges in the budget: the engine is not the limit, the analysis's size is.
+- Measured inside the engine (its own reports: nodes and objects made by tag, the nodes holding the most objects and
+  what they hold, the nodes whose deliveries cost the most):
+  - an O(n^2) of the port: a call's targets, lines and relays were scanned linearly (Python kept the targets in a set);
+    indexed by hash now;
+  - `this` in a declared type made one node per receiver, call and site to hold the receiver alone (the largest kind of
+    node made); it is the receiver's own node now, in both cores.
+
+### F20. Three program-wide merges the language does not have (P1) — 2026-11-12 00:50
+- The costliest node of the whole run (11.4 M deliveries in 6 s) was the `[[any]]` field of the primitive `undefined`:
+  2,774 values written by unknown keys into whatever may be undefined, read back by every member read of every value
+  that may be undefined. ECMA-262: GetValue and PutValue on undefined or null throw (RequireObjectCoercible); a property
+  set on another primitive is set on a wrapper made for that access and gone after. A primitive keeps no property now:
+  a read gives its wrapper prototype's declared members only; writes, stores and kept platform state on it, nothing.
+- The unknown object kept what was written to it and gave it back to every iteration and unknown-key read of the
+  unknown object (its `[[elements]]`, `[[any]]` and `every` nodes among the costliest). A read of the unknown object
+  is the unknown object; what is written into it is handed to code the program does not have: an open call at the
+  write (Averroes: what escapes may be called back), its callbacks linked from the writing line (`refs.escape`).
+- The object a structural argument is read through (`BOUND`) was one per declared type for the whole program, so every
+  call taking an `Iterable<T>`, `ArrayLike<T>` or `PromiseLike<T>` shared one place T (417-436 values each); it is one
+  per call site and type now, as the declared objects a call returns are.
+- Tests (red on the engine with the old semantics, green on both after): test_a_primitive_keeps_no_property,
+  test_what_is_written_into_unknown_code_is_called_back, test_a_structural_argument_reaches_only_its_own_call,
+  test_a_method_returning_this_gives_its_receiver (a refactor's pin: green before and after).
+
+### F21. What still keeps the lab from converging (P1) — 2026-11-12 01:10 — open
+- Without contexts, after F20: the costliest nodes are `[[any]]` fields of ordinary objects (literals, arrays, Maps,
+  functions) each holding the same ~875 values: a store by an unknown key (`dst[k] = src[k]`) inside a generic helper
+  whose parameters hold thousands of objects writes everything into every object's dictionary part. With contexts the
+  helpers are told apart, but every run multiplies the nodes (8.7 M).
+- What the literature does (F3; Zipper, Scaler, introspective analysis): contexts only for the methods whose precision
+  matters (objects flowing from parameters to returns or into parameters' fields), none for the rest. To be settled:
+  the selection criterion computed from each function's own flows (no rule for a program or a library), measured on the
+  lab with the engine.
