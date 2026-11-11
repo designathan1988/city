@@ -6,6 +6,7 @@
 // open_lot_tree_ok allows (the same layout numbers).
 #include "sim/buildings/b40/civic.h"
 
+#include "sim/buildings/b40/cover_layers.h"
 #include "sim/buildings/building_store.h"
 
 #include <algorithm>
@@ -14,22 +15,22 @@
 namespace city::b40 {
 
 namespace {
-constexpr float LAWN_CLEAR = 0.5f, SURFACE_H = 0.06f, PATH_W = 3.f, RING_SHARE = 0.2f, RING_W = 2.2f, TREE_CLEAR = 1.6f, RING_MIN = 34.f;
+constexpr float LAWN_CLEAR = 0.5f, PATH_W = 3.f, RING_SHARE = 0.2f, RING_W = 2.2f, TREE_CLEAR = 1.6f, RING_MIN = 34.f;
 constexpr float BASIN = 5.f, POOL_PLAZA = 11.f, RIM_H = 0.5f, RIM_T = 0.35f, SPOUT = 0.7f, SPOUT_H = 1.8f, BOWL = 1.6f, BOWL_H = 0.25f;
 constexpr float FOUNTAIN_MIN = 22.f, PLAY = 10.f, PLAY_MIN = 46.f, HEDGE_H = 1.1f, HEDGE_T = 0.8f;
-constexpr float BENCH_W = 1.8f, BENCH_D = 0.55f, BENCH_H = 0.45f, BENCH_EVERY = 9.f, LAMP = 0.2f, LAMP_H = 4.2f, LAMP_EVERY = 14.f;
+constexpr float BENCH_W = 1.8f, BENCH_D = 0.55f, BENCH_H = 0.45f, PARK_BENCH_EVERY = 9.f, LAMP = 0.2f, LAMP_H = 4.2f, LAMP_EVERY = 14.f;
 constexpr float BIN = 0.5f, BIN_H = 0.9f, POST = 0.12f, SWING_H = 2.4f, SWING_W = 3.6f, FRAME = 2.f, FRAME_H = 1.6f, SEAT = 0.5f;
 constexpr float SEAT_Z = 0.5f, SEESAW_L = 3.6f, SEESAW_W = 0.3f, SEESAW_Z = 0.45f, CHAIN = 0.03f;
 constexpr float LOT_EDGE = 5.f, BAND_MIN = 40.f, BAND = 7.f, BAND_COL = 0.3f, BAND_H = 3.f, BAND_ROOF = 0.4f, BAND_DECK = 0.6f;
 constexpr float COURT_W = 15.f, COURT_D = 28.f, COURT_RUN = 2.f, LINE = 0.12f, FENCE_H = 3.f, GOAL_W = 3.f, GOAL_H = 2.f;
-constexpr float GOAL_D = 0.8f, CIRCLE = 3.f, HALF = 0.5f, LIFT_LINE = 4.f, LIFT_INNER = 5.f; // layer lifts (x SURFACE_H) of painted lines
+constexpr float GOAL_D = 0.8f, CIRCLE = 3.f, HALF = 0.5f;
 
 struct Lay {
 	const Data &data;
 	Body &b;
 	float W, D;
 	int paint(const char *n) { return b.add_paint(data.color(n)); }
-	void surface(float x0, float y0, float x1, float y1, int p, float lift = 1) { put(b, EL_SURFACE, x0, y0, x1, y1, SURFACE_H * lift, p); }
+	void surface(float x0, float y0, float x1, float y1, int p, CoverLayer layer = COVER_GROUND) { put(b, EL_SURFACE, x0, y0, x1, y1, cover_h(layer), p); }
 	void fountain(float cx, float cy, bool plaza);
 	void benches_along_x(float y, float x0, float x1, int bench, int lamp, int bin);
 	void benches_along_y(float x, float y0, float y1, int bench, int lamp, int bin);
@@ -39,8 +40,8 @@ struct Lay {
 
 void Lay::fountain(float cx, float cy, bool plaza) {
 	int stone = paint("pool_coping");
-	if (plaza) surface(cx - POOL_PLAZA / 2, cy - POOL_PLAZA / 2, cx + POOL_PLAZA / 2, cy + POOL_PLAZA / 2, paint("square_paving"), 2);
-	surface(cx - BASIN / 2, cy - BASIN / 2, cx + BASIN / 2, cy + BASIN / 2, paint("fountain_water"), RIM_H / SURFACE_H * HALF);
+	if (plaza) surface(cx - POOL_PLAZA / 2, cy - POOL_PLAZA / 2, cx + POOL_PLAZA / 2, cy + POOL_PLAZA / 2, paint("square_paving"), COVER_WAY);
+	put(b, EL_SURFACE, cx - BASIN / 2, cy - BASIN / 2, cx + BASIN / 2, cy + BASIN / 2, RIM_H * HALF, paint("fountain_water")); // the water half up its rim
 	for (float s : { -1.f, 1.f }) {
 		put(b, EL_WALL, cx - BASIN / 2, cy + s * BASIN / 2 - RIM_T / 2, cx + BASIN / 2, cy + s * BASIN / 2 + RIM_T / 2, RIM_H, stone);
 		put(b, EL_WALL, cx + s * BASIN / 2 - RIM_T / 2, cy - BASIN / 2, cx + s * BASIN / 2 + RIM_T / 2, cy + BASIN / 2, RIM_H, stone);
@@ -50,23 +51,23 @@ void Lay::fountain(float cx, float cy, bool plaza) {
 }
 
 void Lay::benches_along_x(float y, float x0, float x1, int bench, int lamp, int bin) {
-	for (float x = x0 + BENCH_EVERY / 2; x < x1 - BENCH_W; x += BENCH_EVERY) {
+	for (float x = x0 + PARK_BENCH_EVERY / 2; x < x1 - BENCH_W; x += PARK_BENCH_EVERY) {
 		put_at(b, EL_BENCH, x, y - PATH_W / 2 - BENCH_D, BENCH_W, BENCH_D, BENCH_H, bench);
-		if (std::fmod(x - x0, LAMP_EVERY) < BENCH_EVERY) put_at(b, EL_LAMP, x + BENCH_W, y + PATH_W / 2 + LAMP, LAMP, LAMP, LAMP_H, lamp);
+		if (std::fmod(x - x0, LAMP_EVERY) < PARK_BENCH_EVERY) put_at(b, EL_LAMP, x + BENCH_W, y + PATH_W / 2 + LAMP, LAMP, LAMP, LAMP_H, lamp);
 		else put_at(b, EL_BIN, x + BENCH_W, y - PATH_W / 2 - BIN, BIN, BIN, BIN_H, bin);
 	}
 }
 
 void Lay::benches_along_y(float x, float y0, float y1, int bench, int lamp, int bin) {
-	for (float y = y0 + BENCH_EVERY / 2; y < y1 - BENCH_W; y += BENCH_EVERY) {
+	for (float y = y0 + PARK_BENCH_EVERY / 2; y < y1 - BENCH_W; y += PARK_BENCH_EVERY) {
 		put_at(b, EL_BENCH, x - PATH_W / 2 - BENCH_D, y, BENCH_D, BENCH_W, BENCH_H, bench);
-		if (std::fmod(y - y0, LAMP_EVERY) < BENCH_EVERY) put_at(b, EL_LAMP, x + PATH_W / 2 + LAMP, y + BENCH_W, LAMP, LAMP, LAMP_H, lamp);
+		if (std::fmod(y - y0, LAMP_EVERY) < PARK_BENCH_EVERY) put_at(b, EL_LAMP, x + PATH_W / 2 + LAMP, y + BENCH_W, LAMP, LAMP, LAMP_H, lamp);
 		else put_at(b, EL_BIN, x - PATH_W / 2 - BIN, y + BENCH_W, BIN, BIN, BIN_H, bin);
 	}
 }
 
 void Lay::playground(float cx, float cy) {
-	surface(cx - PLAY / 2, cy - PLAY / 2, cx + PLAY / 2, cy + PLAY / 2, paint("sand"), 2);
+	surface(cx - PLAY / 2, cy - PLAY / 2, cx + PLAY / 2, cy + PLAY / 2, paint("sand"), COVER_WAY);
 	int red = paint("play_red"), yellow = paint("play_yellow"), blue = paint("play_blue"), dark = paint("plant_dark");
 	float sx = cx - PLAY / 4, sy = cy - PLAY / 4; // swings
 	for (float s : { -1.f, 1.f }) put_at(b, EL_PILLAR, sx + s * SWING_W / 2, sy, POST * 2, POST * 2, SWING_H, red);
@@ -109,12 +110,12 @@ void park(Lay &L) {
 	const float W = L.W, D = L.D, rg = ring_of(W, D);
 	L.surface(-W / 2 + LAWN_CLEAR, LAWN_CLEAR, W / 2 - LAWN_CLEAR, D - LAWN_CLEAR, L.paint("square_lawn"));
 	int path = L.paint("path");
-	L.surface(-W / 2 + LAWN_CLEAR, D / 2 - PATH_W / 2, W / 2 - LAWN_CLEAR, D / 2 + PATH_W / 2, path, 2);
-	L.surface(-PATH_W / 2, LAWN_CLEAR, PATH_W / 2, D - LAWN_CLEAR, path, 2);
+	L.surface(-W / 2 + LAWN_CLEAR, D / 2 - PATH_W / 2, W / 2 - LAWN_CLEAR, D / 2 + PATH_W / 2, path, COVER_WAY);
+	L.surface(-PATH_W / 2, LAWN_CLEAR, PATH_W / 2, D - LAWN_CLEAR, path, COVER_WAY);
 	float rx0 = -W / 2 + rg, rx1 = W / 2 - rg, ry0 = rg, ry1 = D - rg;
 	if (has_ring(W, D)) {
-		for (float y : { ry0, ry1 }) L.surface(rx0, y - RING_W / 2, rx1, y + RING_W / 2, path, 2);
-		for (float x : { rx0, rx1 }) L.surface(x - RING_W / 2, ry0, x + RING_W / 2, ry1, path, 2);
+		for (float y : { ry0, ry1 }) L.surface(rx0, y - RING_W / 2, rx1, y + RING_W / 2, path, COVER_WAY);
+		for (float x : { rx0, rx1 }) L.surface(x - RING_W / 2, ry0, x + RING_W / 2, ry1, path, COVER_WAY);
 	}
 	int bench = L.paint("bench"), lamp = L.paint("lamp_post"), bin = L.paint("bin");
 	L.benches_along_x(D / 2, -W / 2 + LAWN_CLEAR, -POOL_PLAZA / 2, bench, lamp, bin);
@@ -130,7 +131,7 @@ void square(Lay &L) {
 	const float W = L.W, D = L.D;
 	L.surface(-W / 2 + LAWN_CLEAR, LAWN_CLEAR, W / 2 - LAWN_CLEAR, D - LAWN_CLEAR, L.paint("square_paving"));
 	int lawn = L.paint("square_lawn");
-	for (float s : { -1.f, 1.f }) L.surface(s > 0 ? W / 2 - LAWN_CLEAR - LOT_EDGE : -W / 2 + LAWN_CLEAR, LAWN_CLEAR, s > 0 ? W / 2 - LAWN_CLEAR : -W / 2 + LAWN_CLEAR + LOT_EDGE, D - LAWN_CLEAR, lawn, 2);
+	for (float s : { -1.f, 1.f }) L.surface(s > 0 ? W / 2 - LAWN_CLEAR - LOT_EDGE : -W / 2 + LAWN_CLEAR, LAWN_CLEAR, s > 0 ? W / 2 - LAWN_CLEAR : -W / 2 + LAWN_CLEAR + LOT_EDGE, D - LAWN_CLEAR, lawn, COVER_WAY);
 	if (fountain_fits(W, D)) L.fountain(0, D / 2, false);
 	int bench = L.paint("bench"), lamp = L.paint("lamp_post");
 	float rb = BASIN / 2 + PATH_W;
@@ -156,16 +157,16 @@ void court(Lay &L) {
 	L.surface(-W / 2 + LAWN_CLEAR, LAWN_CLEAR, W / 2 - LAWN_CLEAR, D - LAWN_CLEAR, L.paint("square_lawn"));
 	float cw = std::min(COURT_W, W - 2 * COURT_RUN), cd = std::min(COURT_D, D - 2 * COURT_RUN), cy = D / 2;
 	if (cw <= 0 || cd <= 0) return;
-	L.surface(-cw / 2 - COURT_RUN / 2, cy - cd / 2 - COURT_RUN / 2, cw / 2 + COURT_RUN / 2, cy + cd / 2 + COURT_RUN / 2, L.paint("court_run"), 2);
-	L.surface(-cw / 2, cy - cd / 2, cw / 2, cy + cd / 2, L.paint("court"), 3);
+	L.surface(-cw / 2 - COURT_RUN / 2, cy - cd / 2 - COURT_RUN / 2, cw / 2 + COURT_RUN / 2, cy + cd / 2 + COURT_RUN / 2, L.paint("court_run"), COVER_OWN);
+	L.surface(-cw / 2, cy - cd / 2, cw / 2, cy + cd / 2, L.paint("court"), COVER_COURT);
 	int line = L.paint("court_line"), fence = L.paint("fence"), white = L.paint("sign_white");
-	put_at(L.b, EL_SURFACE, 0, cy, cw, LINE, SURFACE_H * LIFT_LINE, line);
-	put_at(L.b, EL_SURFACE, 0, cy, CIRCLE, CIRCLE, SURFACE_H * LIFT_LINE, line);
-	put_at(L.b, EL_SURFACE, 0, cy, CIRCLE - LINE * 2, CIRCLE - LINE * 2, SURFACE_H * LIFT_INNER, L.paint("court"));
+	put_at(L.b, EL_SURFACE, 0, cy, cw, LINE, cover_h(COVER_MARK), line);
+	put_at(L.b, EL_SURFACE, 0, cy, CIRCLE, CIRCLE, cover_h(COVER_MARK), line);
+	put_at(L.b, EL_SURFACE, 0, cy, CIRCLE - LINE * 2, CIRCLE - LINE * 2, cover_h(COVER_INSET), L.paint("court"));
 	float fx = cw / 2 + COURT_RUN / 2, fy = cd / 2 + COURT_RUN / 2;
 	for (float s : { -1.f, 1.f }) {
-		put_at(L.b, EL_SURFACE, s * (cw - LINE) / 2, cy, LINE, cd, SURFACE_H * LIFT_LINE, line);
-		put_at(L.b, EL_SURFACE, 0, cy + s * (cd - LINE) / 2, cw, LINE, SURFACE_H * LIFT_LINE, line);
+		put_at(L.b, EL_SURFACE, s * (cw - LINE) / 2, cy, LINE, cd, cover_h(COVER_MARK), line);
+		put_at(L.b, EL_SURFACE, 0, cy + s * (cd - LINE) / 2, cw, LINE, cover_h(COVER_MARK), line);
 		put(L.b, EL_FENCE, -fx, cy + s * fy, fx, cy + s * fy + LINE, FENCE_H, fence);
 		put(L.b, EL_FENCE, s * fx, cy - fy, s * fx + LINE, cy + fy, FENCE_H, fence);
 		float gy = cy + s * (cd / 2 - GOAL_D / 2);

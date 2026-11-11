@@ -81,11 +81,12 @@ constexpr uint8_t SKIP_NONE = 0, SKIP_E2_NEG = 1, SKIP_E2_POS = 2, SKIP_E0_NEG =
 // One box of an instanced shell drawn as a unit-cube MultiMesh instance: the three basis columns already scaled by the
 // box sides (axis x size), the centre, the shaded sRGB colour, its finish and the bar width (second largest side).
 constexpr int BOX_BASIS_FLOATS = 9; // three basis columns of three floats
+constexpr uint32_t WHITE_RGBA8 = 0xffffffff; // an instance's colour before it is given one
 
 struct BoxInstance {
 	float basis[BOX_BASIS_FLOATS] = {};
 	float origin[3] = {};
-	uint32_t color = 0xffffffff;
+	uint32_t color = WHITE_RGBA8;
 	int8_t fin = -1;
 	float thick = 0;
 };
@@ -106,7 +107,7 @@ struct BayInstance {
 struct PropInstance {
 	float basis[BOX_BASIS_FLOATS] = {};
 	float origin[3] = {};
-	uint32_t color = 0xffffffff;
+	uint32_t color = WHITE_RGBA8;
 	uint8_t kind = 0;
 };
 
@@ -157,6 +158,8 @@ struct Shell {
 	void quad(const godot::Vector3 &a, const godot::Vector3 &b, const godot::Vector3 &c, const godot::Vector3 &d, const godot::Vector3 &out,
 			const Lin &lin, int8_t fin, SurfaceKind kind = SK_SHELL);
 	void tri(const godot::Vector3 &a, const godot::Vector3 &b, const godot::Vector3 &c, const godot::Vector3 &out, const Lin &lin, int8_t fin);
+	// A convex polygon of `count` corners facing `out`, fanned from its first corner.
+	void poly(const godot::Vector3 *p, int count, const godot::Vector3 &out, const Lin &lin, int8_t fin, SurfaceKind kind) { face(p, count, out, lin, fin, kind); }
 	// Rectangle in the e0/e1 plane of `f` at e2 = c, facing +e2 (or -e2 when `back`).
 	void rect(const Basis &f, float a0, float a1, float b0, float b1, float c, const Lin &lin, int8_t fin, bool back = false);
 	void box(const Basis &f, float a0, float a1, float b0, float b1, float c0, float c1, const Lin &lin, int8_t fin, uint8_t skip = SKIP_NONE);

@@ -47,6 +47,7 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	if (!errors.is_empty()) return false;
 	if (!look_.load(t, errors) || !look_.bay.load(ctx.tables.get("bay_props", Dictionary()), errors) || !look_.interior.load(ctx.table("furniture", errors), errors)) return false;
 	look_.lot_plate = ctx.catalog->tune.lot_plate_m;
+	look_.cover_step = ctx.catalog->tune.lot_cover_step_m;
 	// the unit meshes every chunk's draws share (mesh_draw.h shared): a chunk's draws are made when it streams in; the boxes and the
 	// balcony pieces also throw their shadow through twins in the shadow material (commit_one)
 	for (int k = 0; k < b40::BAY_PROPS; k++) prop_mesh_[size_t(k)] = look_.bay.models[size_t(k)].bake(material_props_, false).shared(material_cast_);

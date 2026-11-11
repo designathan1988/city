@@ -6,6 +6,7 @@
 // always find their way (the simulation reads the bays, docks and gates back from the elements).
 #pragma once
 
+#include "sim/buildings/b40/cover_layers.h"
 #include "sim/buildings/b40/gen.h"
 
 #include <vector>
@@ -71,8 +72,8 @@ public:
 	bool full() const { return int(b.elements.size()) + bounds.pieces >= rules.max_elements; }
 	int paint(const char *name);
 	int paint(const Paint &p) { return b.add_paint(p); }
-	// Ground cover over `r`, drawn under the parts; `layer` lifts the later covers over the earlier ones.
-	void cover(const Rect &r, const char *name, int layer = 0);
+	// Ground cover over `r`, drawn under the parts, on its layer of the one cover scale (cover_layers.h).
+	void cover(const Rect &r, const char *name, CoverLayer layer = COVER_GROUND);
 	// A part standing on the lot: refused (false) when it meets the building, a way, a solid part or the lot's edge.
 	bool put(Element k, const Rect &r, float h, int paint, int facing = FACE_STREET, float z = 0);
 	// A part flat on the ground (a bay, a dock, a drain): it may lie in a way, never on the building; a bay or a dock

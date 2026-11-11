@@ -5,6 +5,7 @@
 // block (5-9 / 2 storeys) on a glazed podium, blue band, red cross panel and an entrance canopy.
 #include "sim/buildings/b40/civic.h"
 
+#include "sim/buildings/b40/cover_layers.h"
 #include "core/math.h"
 #include "core/units.h"
 #include "sim/buildings/building_store.h"
@@ -14,10 +15,10 @@
 namespace city::b40 {
 
 namespace {
-constexpr float HALF = 0.5f, FRONT_SHARE = 0.18f, FRONT_MIN = 4.f, FRONT_MAX = 12.f, SIDE_GAP = 2.f, BACK_GAP = 2.f, CIVIC_STOREY = 3.6f;
+constexpr float HALF = 0.5f, FRONT_SHARE = 0.18f, FRONT_MIN = 4.f, FRONT_MAX = 12.f, PLAN_SIDE_PATH = 2.f, PLAN_BACK_ROOM = 2.f, CIVIC_STOREY = 3.6f;
 // school
 constexpr float WING_D = 11.f, WING_D_SHARE = 0.45f, SIDE_WING_W = 11.f, SIDE_WING_SHARE = 0.35f, SCHOOL_ROOF_PITCH = 24.f;
-constexpr float COURT_W = 15.f, COURT_D = 28.f, COURT_LINE = 0.12f, COURT_EDGE = 1.5f, SURFACE_H = 0.06f;
+constexpr float COURT_W = 15.f, COURT_D = 28.f, COURT_LINE = 0.12f, COURT_EDGE = 1.5f;
 constexpr int SCHOOL_STOREYS_LO = 2, SCHOOL_STOREYS_HI = 3;
 // church
 constexpr float NAVE_W = 14.f, NAVE_W_SHARE = 0.6f, NAVE_D = 30.f, NAVE_H = 9.f, NAVE_PITCH = 42.f, TOWER_W = 4.4f;
@@ -49,16 +50,16 @@ void school(const Data &data, Body &b, float w, float d, Xoshiro128 &r) {
 	}
 	// the court: lawn round a painted sports court on the open side of the L
 	float x0 = left ? sw : 0, x1 = left ? w : w - sw;
-	put(b, EL_SURFACE, x0, wd, x1, d, SURFACE_H, b.add_paint(data.color("lawn")));
+	put(b, EL_SURFACE, x0, wd, x1, d, cover_h(COVER_OWN), b.add_paint(data.color("lawn")));
 	float cw = std::min(COURT_W, x1 - x0 - 2 * COURT_EDGE), cd = std::min(COURT_D, d - wd - 2 * COURT_EDGE);
 	if (cw <= 0 || cd <= 0) return;
 	float cx = (x0 + x1) / 2, cy = (wd + d) / 2;
-	put_at(b, EL_SURFACE, cx, cy, cw, cd, SURFACE_H * 2, b.add_paint(data.color("court")));
+	put_at(b, EL_SURFACE, cx, cy, cw, cd, cover_h(COVER_COURT), b.add_paint(data.color("court")));
 	int line = b.add_paint(data.color("court_line"));
-	put_at(b, EL_SURFACE, cx, cy, cw, COURT_LINE, SURFACE_H * 3, line);
+	put_at(b, EL_SURFACE, cx, cy, cw, COURT_LINE, cover_h(COVER_MARK), line);
 	for (float s : { -1.f, 1.f }) {
-		put_at(b, EL_SURFACE, cx + s * (cw - COURT_LINE) / 2, cy, COURT_LINE, cd, SURFACE_H * 3, line);
-		put_at(b, EL_SURFACE, cx, cy + s * (cd - COURT_LINE) / 2, cw, COURT_LINE, SURFACE_H * 3, line);
+		put_at(b, EL_SURFACE, cx + s * (cw - COURT_LINE) / 2, cy, COURT_LINE, cd, cover_h(COVER_MARK), line);
+		put_at(b, EL_SURFACE, cx, cy + s * (cd - COURT_LINE) / 2, cw, COURT_LINE, cover_h(COVER_MARK), line);
 	}
 }
 
@@ -138,12 +139,12 @@ LotPlan civic_plan(float W, float D) {
 	p.D = D;
 	p.front = FRONT_PLAZA;
 	p.front_depth = std::clamp(D * FRONT_SHARE, FRONT_MIN, FRONT_MAX);
-	p.left = p.right = SidePlan{ SIDE_PATH, SIDE_GAP };
+	p.left = p.right = SidePlan{ SIDE_PATH, PLAN_SIDE_PATH };
 	p.back = BACK_NONE;
-	p.x0 = SIDE_GAP;
-	p.x1 = W - SIDE_GAP;
+	p.x0 = PLAN_SIDE_PATH;
+	p.x1 = W - PLAN_SIDE_PATH;
 	p.y0 = p.front_depth;
-	p.y1 = D - BACK_GAP;
+	p.y1 = D - PLAN_BACK_ROOM;
 	return p;
 }
 } // namespace

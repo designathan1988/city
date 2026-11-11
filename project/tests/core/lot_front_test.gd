@@ -7,6 +7,8 @@
 ## of the lot (a carport's post, a bin, a bench) stands in its boundary, nor in another part's footprint (a clothes line over a pool's
 ## deck). And nothing of a lot stands on the paving as it is drawn (probe lot_paving: the bands, the junctions' plates out to their
 ## corners' footway backs, the bulbs), in the town and in the metropolis, whose wide footways give the corners with a round back.
+## And a lot's covers lie in their order (probe lot_covers): wherever a later cover lies over an earlier one (a forecourt's asphalt over
+## its pavers, a court's lines over the court) it stands over it everywhere, never crossing it, never at its depth.
 ## Run: godot --path project res://tests/core/lot_front_test.tscn -- --no-flow
 extends TestCase
 
@@ -32,6 +34,7 @@ func _ready() -> void:
 	check(int(d.sides_apart) == 0, "every lot shares its side with the lot beside it: %d of %d with bare land between, the first (building, x, z, reach) %s"
 			% [d.sides_apart, d.sides, d.side_worst])
 	_check_paving("the town", CityStore.query(&"lot_paving"))
+	_check_covers("the town", CityStore.query(&"lot_covers"))
 	var b: Dictionary = CityStore.query(&"lot_bounds")
 	print("lot edges: %d lots, %d boundary pieces, %d doubled; %d points, %d open" % [b.lots, b.pieces, b.doubled, b.samples, b.open])
 	check(int(b.lots) > 0 and int(b.pieces) > 0, "the town has lots laid with a boundary: %d lots, %d pieces" % [b.lots, b.pieces])
@@ -46,7 +49,16 @@ func _ready() -> void:
 	# The metropolis: its avenues' wide footways give the corners whose back follows the kerb's return (junction_corner.h OFFSET, RUN).
 	new_map(METROPOLIS_MAP, SEED, true)
 	_check_paving("the metropolis", CityStore.query(&"lot_paving"))
+	_check_covers("the metropolis", CityStore.query(&"lot_covers"))
 	finish()
+
+
+## Every later cover of a lot over the earlier ones it lies on, by half a step at least, everywhere.
+func _check_covers(city: String, d: Dictionary) -> void:
+	print("%s: covers over covers: %d points in %d lots, %d not over" % [city, d.samples, d.lots, d.under])
+	check(int(d.samples) > 0, "%s has covers lying over covers: %d" % [city, d.samples])
+	check(int(d.under) == 0, "%s: every later cover stands over the earlier one it lies on: %d of %d not, the worst (building, x, z, later less earlier, elements) %s"
+			% [city, d.under, d.samples, d.worst])
 
 
 ## Nothing of a lot stands on the paving as it is drawn: its bands, its junctions' plates out to their corners' footway backs, its bulbs.

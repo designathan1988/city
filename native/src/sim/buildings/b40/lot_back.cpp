@@ -68,7 +68,7 @@ void car_park(LotSpace &s) {
 			float wall = s.built_back(x - WALL_LAMP_W, x + WALL_LAMP_W);
 			s.edge(EL_LAMP, { x - WALL_LAMP_W * HALF, wall, x + WALL_LAMP_W * HALF, wall + WALL_LAMP_OUT }, WALL_LAMP_H, post, 0, WALL_LAMP_Z);
 		}
-	if (s.back_door) s.cover({ s.back_door_x - WALK_W * HALF, s.B, s.back_door_x + WALK_W * HALF, aisle0 + 1 }, "pavers", 2);
+	if (s.back_door) s.cover({ s.back_door_x - WALK_W * HALF, s.B, s.back_door_x + WALK_W * HALF, aisle0 + 1 }, "pavers", COVER_OWN);
 }
 
 void service(LotSpace &s) {
@@ -91,13 +91,13 @@ void service(LotSpace &s) {
 void court(LotSpace &s) {
 	const float cx = s.built_box.empty() ? (s.L + s.R) * HALF : s.built_box.cx();
 	const Rect sq{ cx - SQUARE_W * HALF, s.B + SQUARE_FROM, cx + SQUARE_W * HALF, std::min(s.D - YARD_BACK, s.B + SQUARE_FROM + SQUARE_D) };
-	s.cover(sq, "square_paving", 2);
-	if (s.back_door) s.cover({ s.back_door_x - WALK_W * HALF, s.B, s.back_door_x + WALK_W * HALF, sq.y0 }, "pavers", 2);
+	s.cover(sq, "square_paving", COVER_OWN);
+	if (s.back_door) s.cover({ s.back_door_x - WALK_W * HALF, s.B, s.back_door_x + WALK_W * HALF, sq.y0 }, "pavers", COVER_OWN);
 	const int bench = s.paint("bench");
 	for (float dx : { -BENCH_X, BENCH_X }) s.put(EL_BENCH, Rect::around(cx + dx, sq.cy(), BENCH_W, BENCH_D), BENCH_H, bench, FACE_BACK);
 	if (s.D - s.B >= PLAY_MIN_D && s.R - s.L >= PLAY_MIN_W) {
 		Rect play{ s.R - PLAY - PLAY_IN * 2, s.D - PLAY - PLAY_IN, s.R - PLAY_IN * 2, s.D - PLAY_IN };
-		s.cover(play, "sand", 2);
+		s.cover(play, "sand", COVER_OWN);
 		s.put(EL_SWING, Rect::around(play.cx(), play.cy(), SWING_W, SWING_D), SWING_H, s.paint("play_blue"));
 	}
 	const int tree = s.paint("hedge");

@@ -82,6 +82,8 @@ void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume 
 // A round piece on a roof, standing on (cx, cy) of the frame `b`; `capped`: its top drawn, in `top`.
 void cylinder(Shell &s, const Basis &b, float cx, float cy, float r, float z0, float z1, const Lin &side, const Lin &top, int8_t fin, bool capped = true);
 void emit_lot(Shell &shell, Shell &parts, const Placed &pl);
+// A lot element hung above the floor a cut building shows: gone with the floors over it (emit_lot, lot_covers).
+inline bool cut_away(const Body &b, const LotElement &e) { return b.cut_level >= 0 && e.z >= b.level_z(b.cut_level + 1) - EPS; }
 // The lot's furniture and ground marks (lot_props.cpp); false for a kind it does not draw. `g`: ground over the floor.
 // A part only the player sets (lot_parts.cpp); false when `e` is not one.
 bool emit_built_part(Shell &shell, const Placed &pl, const LotElement &e, float g, const Lin &lin, int8_t fin);

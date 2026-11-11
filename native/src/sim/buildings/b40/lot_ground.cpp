@@ -41,10 +41,10 @@ void lay_ground(LotSpace &s) {
 	if (const char *c = front_cover(s.plan.front); c && s.F > 0) s.cover(s.front(), c);
 	for (const Strip &st : s.strips) {
 		if (!st.drive.empty()) {
-			s.cover(st.drive, drive, 1);
+			s.cover(st.drive, drive, COVER_WAY);
 			s.keep_clear({ st.drive.x0 + WAY_SIDE, 0, st.drive.x1 - WAY_SIDE, s.B });
 		}
-		if (!st.walk.empty()) s.cover(st.walk, walk, 1);
+		if (!st.walk.empty()) s.cover(st.walk, walk, COVER_WAY);
 		if (st.use == SIDE_GARDEN) s.cover(st.r, "lawn");
 	}
 	if (const char *c = back_cover(s.plan.back); c && s.B < s.D) s.cover(s.yard(), c);

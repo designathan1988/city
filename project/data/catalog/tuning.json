@@ -228,6 +228,7 @@
  },
  "lot": {
   "plate_m": 0.03,
+  "cover_step_m": 0.002,
   "apron_m": 4,
   "bank_batter": 3.5,
   "bank_reach_m": 40

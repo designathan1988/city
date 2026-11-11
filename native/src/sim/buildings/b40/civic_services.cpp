@@ -3,13 +3,14 @@
 // box with a glazed shopfront, a sign band and parking in front), city hall (13 m stone block with a six-column
 // portico and stepped pediment) and police / fire station (8 m, garage doors, the fire station's 18 m hose tower).
 #include "sim/buildings/b40/civic.h"
+#include "sim/buildings/b40/cover_layers.h"
 
 #include <algorithm>
 
 namespace city::b40 {
 
 namespace {
-constexpr float HALF = 0.5f, SURFACE_H = 0.06f;
+constexpr float HALF = 0.5f;
 // gas station
 constexpr float STORE_FRONT_W = 10.f, SHOP_D = 8.f, SHOP_H = 4.f, CANOPY_Z = 5.5f, CANOPY_T = 0.7f, CANOPY_W_MAX = 18.f, CANOPY_D = 10.f;
 constexpr float CANOPY_EDGE = 1.f, COLUMN = 0.45f, PUMP_W = 0.7f, PUMP_D = 1.2f, PUMP_H = 1.8f, ISLAND_W = 1.2f, ISLAND_D = 4.f;
@@ -43,7 +44,7 @@ void gas_station(const Data &data, Body &b, Xoshiro128 &r) {
 	float sw = std::min(STORE_FRONT_W, w), sd = std::min(SHOP_D, d * HALF);
 	bool left = r.f() < HALF;
 	flat_block(b, add_block(b, { left ? 0 : w - sw, d - sd, sw, sd, 0, 1, ROOF_FLAT, BAY_WINDOW, BAY_SHOPFRONT }), LINES_NONE, CROWN_SLAB);
-	put(b, EL_SURFACE, 0, 0, w, d - sd, SURFACE_H, b.add_paint(data.color("asphalt")));
+	put(b, EL_SURFACE, 0, 0, w, d - sd, cover_h(COVER_OWN), b.add_paint(data.color("asphalt")));
 	float cw = std::min(CANOPY_W_MAX, w - 2 * CANOPY_EDGE), cd = std::min(CANOPY_D, d - sd - CANOPY_EDGE), cx = w / 2, cy = (d - sd) / 2;
 	if (cw <= 0 || cd <= 0) return;
 	int canopy = b.add_paint(data.color("fuel_canopy")), stripe = b.add_paint(data.color("fuel_brand"));
@@ -65,10 +66,10 @@ void market(const Data &data, Body &b, Xoshiro128 &r, bool mall) {
 	int box = add_block(b, { 0, park, w, d - park, 0, mall ? 2 : 1, ROOF_FLAT, BAY_WALL, BAY_SHOPFRONT });
 	flat_block(b, box, LINES_NONE, CROWN_ATTIC);
 	int asphalt = b.add_paint(data.color("asphalt")), line = b.add_paint(data.color("stall_line"));
-	put(b, EL_SURFACE, 0, 0, w, park, SURFACE_H, asphalt);
+	put(b, EL_SURFACE, 0, 0, w, park, cover_h(COVER_OWN), asphalt);
 	for (float y0 : { 0.f, STALL_D + AISLE })
 		if (y0 + STALL_D <= park)
-			for (float x = STALL_W; x < w; x += STALL_W) put(b, EL_SURFACE, x - STRIPE_W / 2, y0, x + STRIPE_W / 2, y0 + STALL_D, SURFACE_H * 2, line);
+			for (float x = STALL_W; x < w; x += STALL_W) put(b, EL_SURFACE, x - STRIPE_W / 2, y0, x + STRIPE_W / 2, y0 + STALL_D, cover_h(COVER_MARK), line);
 	float top = b.level_z(mall ? 2 : 1);
 	put_at(b, EL_CANOPY, w / 2, park - SIGN_OUT, w * SIGN_SHARE, SIGN_OUT, SIGN_H, b.add_paint(data.color(mall ? "mall_sign" : "market_sign")), top - SIGN_H * 2);
 	put_at(b, EL_CANOPY, r.f() < HALF ? CART_W : w - CART_W, park - CART_D, CART_W, CART_D, CART_H, b.add_paint(data.color("plant_metal")), 0);
@@ -110,7 +111,7 @@ void station(const Data &data, Body &b, Xoshiro128 &r, bool fire) {
 		int tower = add_block(b, { left ? 0 : w - TOWER_W, d - TOWER_W, TOWER_W, TOWER_W, STATION_STOREYS, TOWER_STOREYS, ROOF_FLAT, BAY_WINDOW, BAY_NONE });
 		flat_block(b, tower, LINES_EVERY, CROWN_CORNICE);
 		b.volumes[size_t(tower)].wall = b.add_paint(data.color("fire_tower"));
-		put(b, EL_SURFACE, 0, -b.plan.front_depth, w, 0, SURFACE_H * 2, b.add_paint(data.color("concrete")));
+		put(b, EL_SURFACE, 0, -b.plan.front_depth, w, 0, cover_h(COVER_OWN), b.add_paint(data.color("concrete")));
 	}
 	int band = b.add_paint(data.color(fire ? "fire_band" : "police_band"));
 	put(b, EL_CANOPY, -BAND_OUT, -BAND_OUT, w + BAND_OUT, 0, BAND_H, band, b.level_z(STATION_STOREYS) - BAND_H * 2);

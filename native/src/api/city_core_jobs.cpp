@@ -190,6 +190,7 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("lot_fronts"), &CityProbes::lot_fronts);
 	ClassDB::bind_method(D_METHOD("lot_bounds"), &CityProbes::lot_bounds);
 	ClassDB::bind_method(D_METHOD("lot_paving"), &CityProbes::lot_paving);
+	ClassDB::bind_method(D_METHOD("lot_covers"), &CityProbes::lot_covers);
 	ClassDB::bind_method(D_METHOD("road_overlaps"), &CityProbes::road_overlaps);
 	ClassDB::bind_method(D_METHOD("onto_sidewalk_moves"), &CityProbes::onto_sidewalk_moves);
 	ClassDB::bind_method(D_METHOD("set_city_hour", "hour"), &CityProbes::set_city_hour);

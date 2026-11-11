@@ -45,7 +45,7 @@ void house_car(LotSpace &s) {
 	const int line = s.paint("stall_line");
 	Rect pad = car_pad(s);
 	if (!pad.empty()) {
-		s.cover(pad, "concrete", 2);
+		s.cover(pad, "concrete", COVER_OWN);
 		s.flat(EL_STALL, Rect::around(pad.cx(), s.F * HALF, l.stall_w, std::min(l.stall_d, s.F)), 0, line, FACE_STREET);
 		s.keep_clear(pad);
 		return;
@@ -64,7 +64,7 @@ void house_car(LotSpace &s) {
 	const Rect shed{ st->drive.x0, y0, st->drive.x1, y0 + len };
 	if (back) {
 		// The drive carried on past the house to the garage at its end.
-		s.cover({ shed.x0, s.B, shed.x1, y0 }, "concrete", 1);
+		s.cover({ shed.x0, s.B, shed.x1, y0 }, "concrete", COVER_WAY);
 		s.keep_clear({ shed.x0 + WAY_SIDE, s.B, shed.x1 - WAY_SIDE, y0 });
 	}
 	s.flat(EL_STALL, Rect::around(shed.cx(), y0 + l.stall_d * HALF, l.stall_w, l.stall_d), 0, line, FACE_STREET);

@@ -56,7 +56,7 @@ void yard_life(LotSpace &s, const Rect &a) {
 		}
 		case 2: { // a play corner
 			Rect sand = Rect::around(fx(a.x0 + SAND), a.cy(), SAND, SAND);
-			s.cover(sand, "sand", 2);
+			s.cover(sand, "sand", COVER_OWN);
 			s.put(EL_SWING, Rect::around(sand.cx(), sand.cy(), SWING_W, SWING_D), SWING_H, s.paint("play_blue"));
 			table(s, fx(a.x1 - TABLE * 2), a.cy());
 			s.put(EL_SHED, Rect::around(fx(a.x1 - DOG), a.y1 - DOG, DOG, DOG), DOG_H, shed);
@@ -71,7 +71,7 @@ void yard_life(LotSpace &s, const Rect &a) {
 		}
 		default: { // an edicula with its deck, a table, trees
 			Rect ed = Rect::around(a.cx(), a.y1 - EDICULA_D * HALF, EDICULA_W, EDICULA_D);
-			if (s.put(EL_SHED, ed, EDICULA_H, s.paint("edicula"))) s.cover({ ed.x0, ed.y0 - DECK_D, ed.x1, ed.y0 }, "deck", 2);
+			if (s.put(EL_SHED, ed, EDICULA_H, s.paint("edicula"))) s.cover({ ed.x0, ed.y0 - DECK_D, ed.x1, ed.y0 }, "deck", COVER_OWN);
 			table(s, fx(a.x0 + TABLE * 2), a.y0 + TABLE * 2);
 			for (float x : { a.x0 + FRUIT * HALF, a.x1 - FRUIT * HALF }) s.put(EL_TREE, Rect::around(x, a.y0 + FRUIT * HALF, FRUIT, FRUIT), FRUIT_H, tree);
 			break;
@@ -89,7 +89,7 @@ void house_yard(LotSpace &s) {
 	for (size_t i = 0; i < s.own_parts; i++) {
 		const Rect &f = s.built[i];
 		const Rect t{ f.x0, f.y1, f.x1, std::min(s.D, f.y1 + l.terrace) };
-		s.cover(t, "tiles", 2);
+		s.cover(t, "tiles", COVER_OWN);
 		for (float x = t.x0 + POT_IN; x < t.x1 - POT_IN; x += POT_EVERY) s.put(EL_PLANTER, Rect::around(x, t.y1 - POT_IN, POT, POT), POT_H, pot);
 		if (t.w() > widest.w()) widest = t;
 	}
@@ -100,7 +100,7 @@ void house_yard(LotSpace &s) {
 		Rect pool = Rect::around(mid, lawn + POOL_GAP + l.pool_d * HALF, l.pool_w, l.pool_d);
 		if (s.put(EL_POOL, pool, l.pool_depth, s.paint("pool"))) {
 			// The pool's footprint is its water and the deck round it, its coping on the deck: nothing else of the yard stands there.
-			s.cover(pool.grown(l.pool_deck), "pool_coping", 2);
+			s.cover(pool.grown(l.pool_deck), "pool_coping", COVER_OWN);
 			s.hold(pool.grown(l.pool_deck));
 			const int lounger = s.paint("bench");
 			for (int k = 0; k < 2; k++) {
@@ -114,7 +114,7 @@ void house_yard(LotSpace &s) {
 		// The drive ends in a paved service corner: bins, a drain (where no garage stands at its end).
 		Rect corner{ st.drive.x0, s.B, st.drive.x0 + CORNER, s.B + CORNER };
 		if (s.put(EL_BIN, Rect::around(corner.cx(), corner.y1 - BIN_D, BIN_W, BIN_D), BIN_H, s.paint("bin"))) {
-			s.cover(corner, "path", 2);
+			s.cover(corner, "path", COVER_OWN);
 			s.flat(EL_DRAIN, Rect::around(corner.cx(), corner.y0 + DRAIN, DRAIN, DRAIN), DRAIN_H, s.paint("grille"));
 		}
 	}
@@ -132,7 +132,7 @@ void house_yard(LotSpace &s) {
 
 void free_court(LotSpace &s, const Rect &c) {
 	if (s.b.kind == KIND_WORKS) {
-		s.cover(c, "asphalt", 2);
+		s.cover(c, "asphalt", COVER_OWN);
 		const LotRules &l = s.rules;
 		if (c.d() >= l.stall_d)
 			for (float x = c.x0; x + l.stall_w <= c.x1; x += l.stall_w)
@@ -140,13 +140,13 @@ void free_court(LotSpace &s, const Rect &c) {
 		return;
 	}
 	if (c.w() <= SMALL_W && c.d() <= SMALL_D) {
-		s.cover(c, "tiles", 2);
+		s.cover(c, "tiles", COVER_OWN);
 		s.put(EL_PLANTER, Rect::around(c.x1 - PLANTER, c.y1 - PLANTER, PLANTER, PLANTER), PLANTER_H, s.paint("planter"));
 		s.put(EL_BENCH, Rect::around(c.cx(), c.y1 - BENCH_D, BENCH_W, BENCH_D), BENCH_H, s.paint("bench"), FACE_STREET);
 		return;
 	}
 	Rect sq = Rect::around(c.cx(), c.cy(), std::min(c.w() - 2 * SQUARE_IN, SQUARE_MAX), std::min(c.d() - 2 * SQUARE_IN, SQUARE_MAX));
-	s.cover(sq, "square_paving", 2);
+	s.cover(sq, "square_paving", COVER_OWN);
 	for (float dy : { -1.f, 1.f }) s.put(EL_BENCH, Rect::around(sq.cx(), sq.cy() + dy * (sq.d() * HALF - BENCH_D), BENCH_W, BENCH_D), BENCH_H, s.paint("bench"), dy < 0 ? FACE_BACK : FACE_STREET);
 	const int tree = s.paint("hedge");
 	s.put(EL_TREE, Rect::around(c.x0 + FREE_TREE_IN, c.y0 + FREE_TREE_IN, CORNER_TREE, CORNER_TREE), TREE_H, tree);

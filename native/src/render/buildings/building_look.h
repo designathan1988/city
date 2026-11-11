@@ -27,6 +27,7 @@ struct BuildingLook {
 	float guard_h_m = 0; // top of every guard above its floor (facade_parts.cpp, roof_emit.cpp)
 	float fence_bar_m = 0; // lot_emit.cpp
 	float lot_plate = 0; // how far a lot's covers stand over the ground: the catalogue's (tuning lot.plate_m), which the probes read too
+	float cover_step = 0; // how far a lot's cover lies over each cover laid before it (tuning lot.cover_step_m, lot_covers.cpp)
 	float air_handler_per_area = 0; // roof_plant.cpp
 	std::vector<PartBand> part_bands; // near-to-far, last one unbounded (thick_max large)
 	InteriorLook interior; // the furniture models and the paints of a building cut open (furniture.json)

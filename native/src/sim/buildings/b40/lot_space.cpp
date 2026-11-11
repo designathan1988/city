@@ -10,7 +10,6 @@ namespace city::b40 {
 namespace {
 constexpr float LOT_CLEAR_IN = 0.15f; // a part keeps this far inside the lot's edge (the boundary stands on it)
 constexpr float PART_GAP = 0.05f; // two solid parts never touch
-constexpr float COVER_H = 0.06f, COVER_STEP = 0.02f; // ground covers' thickness and the lift of each later layer
 constexpr uint32_t BYTE = 0xff;
 constexpr int STOREY_SHIFT = KEY_STOREY_SHIFT, SIDE_SHIFT = KEY_SIDE_SHIFT, BACK_SIDE = 2;
 constexpr float HALF = 0.5f;
@@ -73,10 +72,10 @@ void LotSpace::add(Element k, const Rect &rc, float h, int p, int facing, float 
 	b.elements.push_back(e);
 }
 
-void LotSpace::cover(const Rect &rc, const char *name, int layer) {
+void LotSpace::cover(const Rect &rc, const char *name, CoverLayer layer) {
 	Rect c{ std::max(rc.x0, L), std::max(rc.y0, 0.f), std::min(rc.x1, R), std::min(rc.y1, D) };
 	if (c.empty() || full()) return;
-	add(EL_SURFACE, c, COVER_H + COVER_STEP * float(layer), paint(name), FACE_STREET, 0, 0);
+	add(EL_SURFACE, c, cover_h(layer), paint(name), FACE_STREET, 0, 0);
 }
 
 bool LotSpace::on_building(const Rect &rc) const {
