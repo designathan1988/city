@@ -60,6 +60,21 @@
       },
       "required": ["min_tokens", "paths", "extensions"]
     },
+    "lab_copy": {
+      "type": "object", "strict": true,
+      "properties": {
+        "_doc": {"$ref": "#/$defs/doc"},
+        "reference": {"type": "string", "minLength": 1},
+        "reference_dirs": {"$ref": "#/$defs/paths"},
+        "skip_dirs": {"$ref": "#/$defs/paths"},
+        "k": {"type": "integer", "minimum": 2},
+        "w": {"type": "integer", "minimum": 1},
+        "min_name_len": {"type": "integer", "minimum": 1},
+        "number_run": {"type": "integer", "minimum": 2},
+        "trivial_numbers": {"type": "array", "items": {"type": "number"}, "uniqueItems": true}
+      },
+      "required": ["reference", "reference_dirs", "skip_dirs", "k", "w", "min_name_len", "number_run", "trivial_numbers"]
+    },
     "mirrors": {
       "type": "array",
       "items": {

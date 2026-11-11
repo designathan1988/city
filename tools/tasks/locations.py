@@ -56,10 +56,16 @@ def _mingw() -> str:
     return Path(found).resolve().parent.parent.as_posix() if found else ""
 
 
+def _nowhere() -> str:
+    """A place no search finds: it is this machine's to name."""
+    return ""
+
+
 TOOLS = {  # name -> (environment variable, locator)
     "godot": ("GODOT", _godot),
     "bash": ("BASH_EXE", _bash),
     "mingw": ("MINGW", _mingw),
+    "roadcraft_lab": ("ROADCRAFT_LAB", _nowhere),  # the reference game's tree, read for behaviour only (LAB_COPY's store)
 }
 
 

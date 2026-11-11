@@ -414,6 +414,17 @@
       ".py"
     ]
   },
+  "lab_copy": {
+    "_doc": "LAB_COPY (gate_lab_copy.py, store lab_prints.py): the roadcraft lab is read for behaviour only and never copied, renamed or not (owner, 2026-11-11). reference: '@roadcraft_lab' is this machine's location of the reference tree (tools/tasks/locations.py), reference_dirs its code. A change is held against the reference's names in their normal form (min_name_len letters, two parts or more), its winnowed fingerprints (k-grams of k neutral tokens, a window of w) and its runs of number_run non-trivial numbers. min_share and min_numbers are fixed by the calibration tests (tools/gates/tests/test_lab_copy.py) and never moved to make a run pass.",
+    "reference": "@roadcraft_lab",
+    "reference_dirs": ["src"],
+    "skip_dirs": ["node_modules", "dist", "dist-probe", "cooked"],
+    "k": 12,
+    "w": 8,
+    "min_name_len": 8,
+    "number_run": 3,
+    "trivial_numbers": [0, 1, 2, -1, 0.5, 100, 1000]
+  },
   "mirrors": [],
   "generated": [
     {
