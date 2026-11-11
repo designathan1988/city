@@ -48,6 +48,8 @@ public:
 	godot::Dictionary lot_fronts();
 	// Tests: every lot's edges closed once, by its boundary or by a ground block standing on them, never both nor neither (city_core_lot_probe.cpp).
 	godot::Dictionary lot_bounds();
+	// Tests: every lot's rectangle against the paving as it is drawn round it, none standing on it (city_core_lot_paving_probe.cpp).
+	godot::Dictionary lot_paving();
 	// Tests: the city's road surfaces built on the spot, their top faces at one height over the same ground (city_core_road_probe.cpp).
 	godot::Dictionary road_overlaps();
 	// Bodies laid on every sidewalk, inside their room and past it, put onto the sidewalk where they stand (pedestrians.cpp

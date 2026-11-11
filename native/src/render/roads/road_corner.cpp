@@ -16,7 +16,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr double PLATE_MIN_RETREAT = 0.05; // a node whose ends all stand nearer than this has no plate
 constexpr float SAME_M = 1e-3f; // points nearer than this in plan are one
 constexpr int PAVINGS = 4; // StreetLook::paving's colours, one per Paving
 constexpr double COVER_SHARE = 1e-4; // a footway's triangles leave out less than this share of its polygon: they cover it
@@ -155,28 +154,26 @@ namespace {
 
 std::vector<ArmEnd> arm_ends(const RoadEmit &e, int n) {
 	std::vector<ArmEnd> ends;
-	for (int sid : e.s.roads.nodes[size_t(n)].segs) {
-		const RoadSegment &g = e.s.roads.segs[size_t(sid)];
+	for (const NodeEnd &ne : node_ends(e.s.roads, n)) { // anticlockwise already
+		const RoadSegment &g = e.s.roads.segs[size_t(ne.seg)];
 		ArmEnd en;
-		en.sid = sid;
-		en.at_a = g.a == n;
-		en.at = en.at_a ? g.retreat_a : g.retreat_b;
-		const SegFrame f = seg_frame(e.s, sid, en.at_a ? en.at : g.len - en.at);
-		en.p = f.c;
-		en.d = en.at_a ? f.fwd : -f.fwd;
-		en.prof = &e.s.catalog.profile(g.profile);
-		en.arm = arm_of(g.q, *en.prof, en.at_a ? 0 : 1);
+		en.end = ne;
+		en.sid = ne.seg;
+		en.at_a = ne.at_a;
+		en.at = ne.at;
+		en.p = Vector3(float(ne.x), float(e.s.roads.seg_y(ne.seg, ne.at_a ? ne.at : g.len - ne.at)), float(ne.z));
+		en.d = Vector3(ne.dir.x, 0, ne.dir.y);
+		en.prof = ne.prof;
+		en.arm = ne.arm;
 		ends.push_back(en);
 	}
-	std::sort(ends.begin(), ends.end(), [](const ArmEnd &a, const ArmEnd &b) { return arm_angle(a.arm.dx, a.arm.dz) < arm_angle(b.arm.dx, b.arm.dz); });
 	return ends;
 }
 
 bool plated(const std::vector<ArmEnd> &ends) {
-	if (ends.size() < 2) return false;
-	for (const ArmEnd &en : ends)
-		if (en.at > PLATE_MIN_RETREAT) return true;
-	return false;
+	std::vector<NodeEnd> plain;
+	for (const ArmEnd &en : ends) plain.push_back(en.end);
+	return node_plated(plain);
 }
 
 int left_side(const ArmEnd &en) { return en.at_a ? STREET_LEFT : STREET_RIGHT; }
@@ -187,16 +184,10 @@ Color footway_colour(const StreetLook &L, const ArmEnd &en) {
 	return s.kind == StripKind::SIDEWALK ? L.paving[int(s.pave) & (PAVINGS - 1)] : L.paving[0];
 }
 
-CornerOutline corner_of(const RoadEmit &e, const Vector3 &node, const ArmEnd &a, const ArmEnd &b) {
-	const auto side = [&](const ArmEnd &en, bool left) {
-		CornerSide s;
-		s.mouth = V2(en.p.x - node.x, en.p.z - node.z);
-		s.dir = V2(en.d.x, en.d.z);
-		s.section = side_section(*en.prof, left == en.at_a); // the arm's left is the profile's +u at its end a
-		s.at = en.at;
-		return s;
-	};
-	return corner_outline(a.arm, b.arm, side(a, true), side(b, false), e.L.arc_step, e.L.bevel_steps);
+CornerOutline corner_of(const RoadEmit &e, const ArmEnd &a, const ArmEnd &b) {
+	const RoadSegment &g = e.s.roads.segs[size_t(a.sid)];
+	const RoadNode &nd = e.s.roads.nodes[size_t(a.at_a ? g.a : g.b)];
+	return node_corner(e.s.roads, nd.x, nd.z, a.end, b.end);
 }
 
 void draw_corner(const RoadEmit &e, const Vector3 &node, const ArmEnd &a, const ArmEnd &b, const CornerOutline &o, const SurfaceLayout &la,
@@ -227,14 +218,12 @@ void footway_mouths(const RoadEmit &e, int sid, double from[2], double to[2]) {
 		const int n = at_a ? g.a : g.b;
 		const std::vector<ArmEnd> ends = arm_ends(e, n);
 		if (!plated(ends)) continue;
-		const RoadNode &nd = e.s.roads.nodes[size_t(n)];
-		const Vector3 node(float(nd.x), float(nd.y), float(nd.z));
 		const size_t k = ends.size();
 		for (size_t i = 0; i < k; i++) {
 			if (ends[i].sid != sid || ends[i].at_a != at_a) continue;
 			// the arm's left is its corner with the next end, where it is that corner's a; its right, with the one before, as b
-			const double left_run = corner_of(e, node, ends[i], ends[(i + 1) % k]).run_a;
-			const double right_run = corner_of(e, node, ends[(i + k - 1) % k], ends[i]).run_b;
+			const double left_run = corner_of(e, ends[i], ends[(i + 1) % k]).run_a;
+			const double right_run = corner_of(e, ends[(i + k - 1) % k], ends[i]).run_b;
 			const int left = left_side(ends[i]), right = STREET_LEFT + STREET_RIGHT - left;
 			(at_a ? from : to)[left] += at_a ? left_run : -left_run;
 			(at_a ? from : to)[right] += at_a ? right_run : -right_run;
@@ -251,7 +240,7 @@ void corner_census(const RoadEmit &e, int node, CornerCensus &c) {
 	for (const ArmEnd &en : ends) lays.push_back(surface_layout(e, en.sid));
 	for (size_t i = 0; i < ends.size(); i++) {
 		const size_t j = (i + 1) % ends.size();
-		const CornerOutline o = corner_of(e, at, ends[i], ends[j]);
+		const CornerOutline o = corner_of(e, ends[i], ends[j]);
 		c.corners++;
 		c.kinds[int(o.kind)]++;
 		if (!o.simple) c.crossed++;

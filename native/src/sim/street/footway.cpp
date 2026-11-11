@@ -1,6 +1,7 @@
 // Reading a point against the segments near it, see footway.h.
 #include "sim/street/footway.h"
 
+#include "sim/roads/centre_line.h"
 #include "sim/roads/junction.h"
 
 #include <algorithm>
@@ -72,25 +73,17 @@ bool in_corner_block(const Arm &a, const Arm &b, const Corner &c, double mouth_a
 } // namespace
 
 void segment_frame(const RoadNetwork &net, int seg, double v, double &fx, double &fz, double &lx, double &lz) {
-	const RoadSegment &g = net.segs[size_t(seg)];
-	const double t = t_at_length(g.table, v);
-	double dx, dz;
-	g.q.deriv(t, dx, dz);
-	double l = std::hypot(dx, dz);
-	if (l == 0) l = 1;
-	fx = dx / l;
-	fz = dz / l;
-	lx = dz / l;
-	lz = -dx / l;
+	double x, z;
+	centre_at(net, seg, v, x, z, fx, fz);
+	lx = fz;
+	lz = -fx;
 }
 
 void footway_point(const RoadNetwork &net, int seg, double v, float u, double &x, double &z, double &y) {
-	const RoadSegment &g = net.segs[size_t(seg)];
-	double fx, fz, lx, lz;
-	segment_frame(net, seg, v, fx, fz, lx, lz);
-	g.q.at(t_at_length(g.table, v), x, z);
-	x += lx * u;
-	z += lz * u;
+	double fx, fz;
+	centre_at(net, seg, v, x, z, fx, fz);
+	x += fz * u; // the left of the tangent (fx, fz) is (fz, -fx)
+	z -= fx * u;
 	y = net.seg_y(seg, v);
 }
 

@@ -5,11 +5,13 @@
 ## laid round a building is closed once (probe lot_bounds): by its boundary (a wall, fence, railing, hedge or gate on the line) or by a
 ## ground block standing on the edge, never a boundary in front of a block's face or through it, never a stretch left open; and no part
 ## of the lot (a carport's post, a bin, a bench) stands in its boundary, nor in another part's footprint (a clothes line over a pool's
-## deck).
+## deck). And nothing of a lot stands on the paving as it is drawn (probe lot_paving: the bands, the junctions' plates out to their
+## corners' footway backs, the bulbs), in the town and in the metropolis, whose wide footways give the corners with a round back.
 ## Run: godot --path project res://tests/core/lot_front_test.tscn -- --no-flow
 extends TestCase
 
 const TOWN_MAP := 0
+const METROPOLIS_MAP := 5
 const SEED := 1
 
 
@@ -29,6 +31,7 @@ func _ready() -> void:
 	check(int(d.sides) > 0, "the town has lots side by side: %d" % d.sides)
 	check(int(d.sides_apart) == 0, "every lot shares its side with the lot beside it: %d of %d with bare land between, the first (building, x, z, reach) %s"
 			% [d.sides_apart, d.sides, d.side_worst])
+	_check_paving("the town", CityStore.query(&"lot_paving"))
 	var b: Dictionary = CityStore.query(&"lot_bounds")
 	print("lot edges: %d lots, %d boundary pieces, %d doubled; %d points, %d open" % [b.lots, b.pieces, b.doubled, b.samples, b.open])
 	check(int(b.lots) > 0 and int(b.pieces) > 0, "the town has lots laid with a boundary: %d lots, %d pieces" % [b.lots, b.pieces])
@@ -40,4 +43,15 @@ func _ready() -> void:
 			% [b.parts_in, b.parts_first, b.parts_by])
 	check(int(b.parts_meet) == 0, "no part of a lot stands in another's footprint (a pool's with its deck): %d pairs, the first (building, kinds, x, z, metres in) %s, by kinds, lot kind and front use %s"
 			% [b.parts_meet, b.meet_first, b.meet_by])
+	# The metropolis: its avenues' wide footways give the corners whose back follows the kerb's return (junction_corner.h OFFSET, RUN).
+	new_map(METROPOLIS_MAP, SEED, true)
+	_check_paving("the metropolis", CityStore.query(&"lot_paving"))
 	finish()
+
+
+## Nothing of a lot stands on the paving as it is drawn: its bands, its junctions' plates out to their corners' footway backs, its bulbs.
+func _check_paving(city: String, d: Dictionary) -> void:
+	print("%s: lots on the paving: %d of %d" % [city, d.paved, d.lots])
+	check(int(d.lots) > 0, "%s has lots held against its paving: %d" % [city, d.lots])
+	check(int(d.paved) == 0, "%s: no lot stands on the paving as it is drawn (a band, a junction's corner, a bulb): %d of %d, the worst (building, x, z, m2 on it) %s"
+			% [city, d.paved, d.lots, d.worst])

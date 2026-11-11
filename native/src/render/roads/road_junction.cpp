@@ -5,7 +5,6 @@
 #include "sim/roads/junction.h"
 
 #include <algorithm>
-#include <cmath>
 #include <iterator>
 
 using namespace godot;
@@ -13,8 +12,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr double FILLET_SLACK = 0.05;
-constexpr double TAU_D = 2 * PI_D;
 const Vector3 UP(0, 1, 0);
 
 Vector3 flat_unit(Vector3 v) {
@@ -87,7 +84,7 @@ void junction(const RoadEmit &e, int n, const std::vector<ArmEnd> &ends) {
 	for (size_t i = 0; i < k; i++) {
 		const ArmEnd &a = ends[i], &b = ends[(i + 1) % k];
 		ring.push_back(side(a, -a.arm.asph_right));
-		const CornerOutline o = corner_of(e, node, a, b);
+		const CornerOutline o = corner_of(e, a, b);
 		const std::vector<Vector3> in = lifted(node, a, b, o.kerb, o.share, 0);
 		ring.insert(ring.end(), in.begin(), in.end());
 		if (asphalt) wedge(e, node, a, b, in);
@@ -129,14 +126,15 @@ void road_cut(const RoadEmit &e, int n, const ArmEnd &en) {
 	face(al, f.l, walk);
 }
 
-// A circle of radius r round a turning bulb, open where the road comes in.
-std::vector<Vector3> bulb_ring(const StreetLook &L, const EndFrame &f, const ArmEnd &en, double setback, double r) {
+// A circle of radius r round a turning bulb, open where the road comes in (node_outline.h bulb_ring), its height rising from the
+// node's to the mouth's along the arm.
+std::vector<Vector3> bulb_ring(const RoadEmit &e, const EndFrame &f, const ArmEnd &en, double r) {
+	const double setback = bulb_setback(en.end);
 	std::vector<Vector3> pts;
-	double a_in = std::acos(std::min(1.0, setback / r));
-	for (int i = 0; i <= L.bulb_steps; i++) {
-		double phi = a_in + double(i) / L.bulb_steps * (TAU_D - 2 * a_in), along = r * std::cos(phi), u = r * std::sin(phi);
-		float y = along <= 0 ? f.node.y : float(f.node.y + (en.p.y - f.node.y) * std::min(1.0, along / setback));
-		pts.push_back(f.node + f.d * float(along) + f.left * float(u) + Vector3(0, y - f.node.y, 0));
+	for (const V2 &s : city::bulb_ring(e.s.roads, en.end, r)) {
+		const double along = s.x;
+		const float y = along <= 0 ? f.node.y : float(f.node.y + (en.p.y - f.node.y) * std::min(1.0, along / setback));
+		pts.push_back(f.node + f.d * s.x + f.left * s.y + Vector3(0, y - f.node.y, 0));
 	}
 	return pts;
 }
@@ -144,9 +142,8 @@ std::vector<Vector3> bulb_ring(const StreetLook &L, const EndFrame &f, const Arm
 void bulb(const RoadEmit &e, int n, const ArmEnd &en) {
 	const StreetLook &L = e.L;
 	const EndFrame f = end_frame(e, n, en);
-	const double setback = std::max(en.at, FILLET_SLACK);
 	const auto ring = [&](double r, float rise) {
-		std::vector<Vector3> pts = bulb_ring(L, f, en, setback, r);
+		std::vector<Vector3> pts = bulb_ring(e, f, en, r);
 		for (Vector3 &p : pts) p.y += rise;
 		return pts;
 	};
@@ -188,7 +185,7 @@ void junction_verge(const RoadEmit &e, int n, const std::vector<ArmEnd> &ends) {
 	const Vector3 node(float(nd.x), float(nd.y), float(nd.z));
 	for (size_t i = 0; i < ends.size(); i++) {
 		const ArmEnd &a = ends[i], &b = ends[(i + 1) % ends.size()];
-		const CornerOutline o = corner_of(e, node, a, b);
+		const CornerOutline o = corner_of(e, a, b);
 		const bool raised = side_section(*a.prof, a.at_a).raised || side_section(*b.prof, !b.at_a).raised;
 		const float rise = raised ? e.L.h_sidewalk : 0.f;
 		const std::vector<Vector3> back = lifted(node, a, b, o.back, o.back_share, 0);
@@ -219,7 +216,7 @@ void cut_verge(const RoadEmit &e, int n, const ArmEnd &en) {
 
 void bulb_verge(const RoadEmit &e, int n, const ArmEnd &en) {
 	const EndFrame f = end_frame(e, n, en);
-	const std::vector<Vector3> ring = bulb_ring(e.L, f, en, std::max(en.at, FILLET_SLACK), BULB_R + BULB_WALK);
+	const std::vector<Vector3> ring = bulb_ring(e, f, en, BULB_R + BULB_WALK);
 	std::vector<Vector3> away;
 	for (const Vector3 &p : ring) away.push_back(flat_unit(p - f.node));
 	verge_from(e, ring, away, f.kw > 0 ? e.L.h_sidewalk : 0.f);

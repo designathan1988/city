@@ -2,6 +2,7 @@
 #include "render/roads/road_mesh.h"
 
 #include "render/owned_segments.h"
+#include "sim/roads/centre_line.h"
 
 #include <algorithm>
 #include <cmath>
@@ -16,16 +17,12 @@ constexpr double ONE_GRADE_M = 0.02; // off the straight line between its mouths
 } // namespace
 
 SegFrame seg_frame(const CityView &s, int sid, double at) {
-	const RoadSegment &g = s.roads.segs[sid];
-	double t = t_at_length(g.table, at), x, z, dx, dz;
-	g.q.at(t, x, z);
-	g.q.deriv(t, dx, dz);
-	double l = std::hypot(dx, dz);
-	if (l == 0) l = 1;
+	double x, z, fx, fz;
+	centre_at(s.roads, sid, at, x, z, fx, fz);
 	SegFrame f;
 	f.c = Vector3(float(x), float(s.roads.seg_y(sid, at)), float(z));
-	f.fwd = Vector3(float(dx / l), 0, float(dz / l));
-	f.left = Vector3(float(dz / l), 0, float(-dx / l));
+	f.fwd = Vector3(float(fx), 0, float(fz));
+	f.left = Vector3(float(fz), 0, float(-fx));
 	return f;
 }
 

@@ -11,7 +11,7 @@
 	X(road, overlap_run_m) X(road, parallel_cos) \
 	X(road, snap_node_px) X(road, snap_pick_px) X(road, snap_land_px) X(road, snap_step_deg) X(road, grid_m) X(road, inner_radius_m) X(road, bend_limit) X(road, bend_gain) \
 	X(road, free_tolerance_m) X(road, free_max_controls) X(road, click_px) X(road, variant_lane_lo_m) X(road, variant_lane_hi_m) X(road, variant_walk_lo_m) X(road, variant_walk_hi_m) \
-	X(road, bay_m) X(road, max_variants) \
+	X(road, bay_m) X(road, max_variants) X(road, corner_arc_step_rad) X(road, corner_bevel_steps) X(road, bulb_steps) \
 	X(grade, ground) X(grade, authored) X(grade, join_m) X(grade, ramp) X(grade, deck) X(grade, deck_tie) X(grade, tunnel) X(grade, clearance_m) \
 	X(grade, clear_elevated_m) X(grade, clear_bridge_m) X(grade, deck_ground_m) X(grade, deck_elevated_m) X(grade, deck_bridge_m) X(grade, deck_tunnel_m) \
 	X(flow, stop_major) X(flow, stop_minor) X(flow, signal_major) X(flow, signal_minor) X(flow, signal_major_b) X(flow, signal_minor_b) \

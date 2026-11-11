@@ -1,9 +1,9 @@
-// A node's arms as the road surfaces read them (road_junction.cpp draws the node, road_corner.cpp its corners): each segment end's
-// mouth on its own curve, its arm and profile; and the corner between two neighbouring ends as sim/roads/junction_corner.h lays it.
+// A node's arms as the road surfaces read them (road_junction.cpp draws the node, road_corner.cpp its corners): each segment end as
+// sim/roads/node_outline.h gives it, at the road's height; and the corner between two neighbouring ends as that owner lays it.
 #pragma once
 
 #include "render/roads/road_mesh.h"
-#include "sim/roads/junction_corner.h"
+#include "sim/roads/node_outline.h"
 
 #include <vector>
 
@@ -16,6 +16,7 @@ struct ArmEnd {
 	const Profile *prof = nullptr;
 	bool at_a = true; // the segment's end a is at this node
 	int sid = -1;
+	NodeEnd end; // the end in plan these are read from (node_outline.h)
 };
 
 // The node's segment ends, anticlockwise (arm_angle).
@@ -26,8 +27,8 @@ bool plated(const std::vector<ArmEnd> &ends);
 int left_side(const ArmEnd &en);
 // The paving of the arm's left footway: what a footway's faces next to it wear.
 godot::Color footway_colour(const StreetLook &L, const ArmEnd &en);
-// The corner between end a and the next anticlockwise b of the node at `node`.
-CornerOutline corner_of(const RoadEmit &e, const godot::Vector3 &node, const ArmEnd &a, const ArmEnd &b);
+// The corner between end a and the next anticlockwise b of their node, in the node's frame (node_outline.h node_corner).
+CornerOutline corner_of(const RoadEmit &e, const ArmEnd &a, const ArmEnd &b);
 // One corner's kerb and footway; `la`, `lb` the surfaces of a's and b's segments (road_corner.cpp).
 void draw_corner(const RoadEmit &e, const godot::Vector3 &node, const ArmEnd &a, const ArmEnd &b, const CornerOutline &o, const SurfaceLayout &la,
 		const SurfaceLayout &lb);

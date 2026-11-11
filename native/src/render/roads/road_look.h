@@ -1,8 +1,8 @@
-// What the road meshes look like, read once from project/data/render/streets.json: strip colours, the junction corner and
-// dead-end shapes, painted markings, gutters and dropped kerbs. The raised strips' heights are the catalogue's (tuning.json
-// street, which the simulation reads too: a lot meets the footway's top); where the lamps the night light pools follow stand
-// and where the crosswalks lie is the simulation's (sim/roads/street_furniture.h). Also the vertex conventions shared with
-// render/shaders/road.gdshader (material id in COLOR.a).
+// What the road meshes look like, read once from project/data/render/streets.json: strip colours, painted markings, gutters and
+// dropped kerbs. The raised strips' heights are the catalogue's (tuning.json street, which the simulation reads too: a lot meets the
+// footway's top), and so are a junction corner's and a turning bulb's outlines (sim/roads/node_outline.h: the lots are cut by them);
+// where the lamps the night light pools follow stand and where the crosswalks lie is the simulation's (sim/roads/street_furniture.h).
+// Also the vertex conventions shared with render/shaders/road.gdshader (material id in COLOR.a).
 #pragma once
 
 #include "sim/catalog/catalog.h"
@@ -48,8 +48,6 @@ struct StreetLook {
 	float ramp_full = 0, ramp_flat = 0, ramp_flare = 0, ramp_low = 0, ramp_run = 0, ramp_min_walk = 0;
 	// a lot's car gate (a vehicle access): the kerb's lip there, the band beside the kerb its ramp takes, the flare along the kerb
 	float drive_low = 0, drive_band = 0, drive_flare = 0;
-	float arc_step = 0;
-	int bevel_steps = 1, bulb_steps = 1;
 	godot::Color white, yellow;
 	float paint_lift = 0;
 	// The regional paint standards (Menu > Paint), by the map's marking_style: the widths of the lines and of the zebra, the dashes

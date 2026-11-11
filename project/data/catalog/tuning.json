@@ -100,7 +100,10 @@
   "variant_walk_lo_m": 1,
   "variant_walk_hi_m": 12,
   "bay_m": 2,
-  "max_variants": 256
+  "max_variants": 256,
+  "corner_arc_step_rad": 0.19635,
+  "corner_bevel_steps": 7,
+  "bulb_steps": 28
  },
  "flow": {
   "stop_major": 300,
