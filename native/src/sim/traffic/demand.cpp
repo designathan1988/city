@@ -14,7 +14,7 @@ namespace {
 
 constexpr int PICK_TRIES = 24, DEST_TRIES = 16, MAX_FAILURES = 8, FLEET_MAX = 65536;
 constexpr float SIDE_REACH_M = 120.f; // a segment counts fully once it is this long
-constexpr float VF_BASE = 0.92f, VF_SPAN = 0.16f;
+constexpr float VF_BASE = 0.92f, VF_FASTEST = 1.08f; // a driver's share of its class's speed, slowest and fastest
 constexpr float PLACE_LO = 0.1f, PLACE_HI = 0.9f, GOAL_LO = 0.2f, GOAL_HI = 0.8f;
 constexpr float START_SPEED_SHARE = 0.6f;
 
@@ -30,14 +30,15 @@ float seg_weight(const CityState &s, int seg, const float *w) {
 	return best * std::min(1.f, float(g.len) / SIDE_REACH_M);
 }
 
+// A directed segment of the window (where trips start and end: the traffic round the view is the window's), drawn by the zones
+// beside it at this hour.
 int pick_ds(CityState &s, const float *w) {
 	TrafficState &t = s.traffic;
-	const int n = int(t.g.ds.size());
+	const int n = int(t.window_ds.size());
 	int last = -1;
 	for (int k = 0; k < PICK_TRIES && n > 0; k++) {
-		int ds = int(t.rng.next() % uint32_t(n));
-		if (!t.g.ds[ds].ok) ds ^= 1;
-		if (!t.g.ds[ds].ok) continue;
+		const int ds = t.window_ds[size_t(t.rng.next() % uint32_t(n))];
+		if (ds >= int(t.g.ds.size()) || !t.g.ds[size_t(ds)].ok) continue;
 		bool leaves = false;
 		each_conn_from(t.g, ds, [&](int) { leaves = true; });
 		if (!leaves) continue;
@@ -77,17 +78,17 @@ bool lane_free(const CityState &s, int key, float at, float len) {
 	return true;
 }
 
-// One trip attempt; returns false on failure (no destination, no route or no room). Past the city's opening (`filling`) a trip
-// starts only where nothing is drawn, beyond publish_radius_m of the camera: inside it cars come out of the lots or drive in, as
-// the reference game's do (they appear and leave only out of sight).
-bool spawn_one(CityState &s, bool filling) {
+// One trip from directed segment `from` (-1: drawn by the zones); false on failure (no destination, no route or no room). Past the
+// city's opening (`filling`) a trip starts only where nothing is drawn, beyond publish_radius_m of the camera: inside it cars come
+// out of the lots or drive in, as the reference game's do (they appear and leave only out of sight).
+bool spawn_one(CityState &s, bool filling, int from = -1) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	VehicleType type = draw_type(s);
 	bool truck = type == VehicleType::TRUCK;
 	const bool bike = type == VehicleType::BICYCLE;
 	float hour = float(s.clock.hour());
-	int from = pick_ds(s, truck ? p.zone_truck : weights_now(p, hour, true));
+	if (from < 0) from = pick_ds(s, truck ? p.zone_truck : weights_now(p, hour, true));
 	if (from < 0 || (bike && !t.g.ds[size_t(from)].bikes)) return false;
 	V2 a = mid_of(s, from);
 	if (!filling && (a - V2(s.camera_x.load(), s.camera_z.load())).len() < p.publish_radius_m) return false;
@@ -152,7 +153,7 @@ int new_vehicle(CityState &s, VehicleType type, uint8_t paint) {
 	v.micro = false; // micro_add registers it in micro_list
 	v.type = type;
 	v.paint = paint;
-	v.vf = s.catalog.traffic.classes[int(type)].speed_share * (VF_BASE + VF_SPAN * t.rng.f());
+	v.vf = s.catalog.traffic.classes[int(type)].speed_share * (VF_BASE + (VF_FASTEST - VF_BASE) * t.rng.f());
 	v.drift = t.rng.range(0.f, TAU_F);
 	t.vehicle_count++;
 	return id;
@@ -186,11 +187,43 @@ bool new_trip(CityState &s, int id, int from_ds) {
 	return false;
 }
 
-double fleet_target(const CityState &s) {
-	const TrafficState &t = s.traffic;
+double demand_for(const CityState &s, double lane_metres) {
 	const TrafficParams &p = s.catalog.traffic;
-	return std::min(double(FLEET_MAX), t.g.lane_metres * p.density_per_lane_m * day_factor(p, float(s.clock.hour())) * p.traffic_share * s.traffic_levels.traffic * s.traffic_levels.population * s.traffic_levels.demand * t.gov);
+	return lane_metres * p.density_per_lane_m * day_factor(p, float(s.clock.hour())) * p.traffic_share * s.traffic_levels.traffic * s.traffic_levels.population * s.traffic_levels.demand * s.traffic.gov;
 }
+
+double fleet_target(const CityState &s) {
+	return std::min(double(FLEET_MAX), demand_for(s, s.traffic.window_lane_m));
+}
+
+namespace {
+// The segments that came into the window filled to their share of the demand (their lane metres at this hour and levels), spread
+// along their lanes as trips that start there, out of sight (in sight only while the city opens): a street the view comes to
+// carries its traffic at once, as the reference's far model hands a link's cars to its window. `budget`: the tick's attempts; the
+// attempts left.
+int fill_window(CityState &s, bool filling, int budget) {
+	TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
+	const double per_lane_m = demand_for(s, 1.0);
+	const V2 eye(s.camera_x.load(), s.camera_z.load());
+	int failures = 0;
+	while (budget > 0 && !t.fill_ds.empty() && failures < MAX_FAILURES && may_request_search(s)) {
+		const int ds = t.fill_ds.back();
+		const bool live = ds < int(t.g.ds.size()) && t.g.ds[size_t(ds)].ok && size_t(ds) < t.in_win.size() && t.in_win[size_t(ds)];
+		if (!live || (!filling && (mid_of(s, ds) - eye).len() < p.publish_radius_m)) { t.fill_ds.pop_back(); continue; }
+		const DirSeg &d = t.g.ds[size_t(ds)];
+		int have = 0;
+		for (int lane = 0; lane < d.lanes; lane++) have += lane_load(t, ds * MAX_LANES + lane);
+		if (double(have) >= per_lane_m * double(d.len) * double(d.lanes)) { t.fill_ds.pop_back(); continue; }
+		budget--;
+		if (!spawn_one(s, true, ds)) {
+			failures++;
+			t.fill_ds.pop_back(); // no room or no trip from it now: the credit fills the window from then on
+		}
+	}
+	return budget;
+}
+} // namespace
 
 float day_factor(const TrafficParams &p, float h) {
 	auto g = [h](float c, float w) { float d = h - c; return std::exp(-d * d / (2 * w * w)); };
@@ -208,6 +241,7 @@ void spawn_vehicles(CityState &s, float dt) {
 	// a car driving in or out of a bay is a car driving: the demand counts it (it just is not on a lane)
 	const double driving = double(t.vehicle_count) + double(t.park.moving);
 	const bool filling = driving < p.fill_share * target; // the city's opening: the streets filled where they are
+	if (fill_window(s, filling, int(p.spawn_fill_attempts)) < int(p.spawn_fill_attempts)) return; // the tick's work went to the streets that came in
 	if (filling) {
 		attempts = int(p.spawn_fill_attempts);
 	} else {

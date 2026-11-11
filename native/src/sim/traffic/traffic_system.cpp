@@ -15,7 +15,7 @@
 namespace city {
 namespace traffic {
 
-void despawn_vehicle(CityState &s, int id, bool arrived) {
+void despawn_vehicle(CityState &s, int id, bool arrived, bool counted) {
 	TrafficState &t = s.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
 	if (!v.alive) return;
@@ -31,7 +31,7 @@ void despawn_vehicle(CityState &s, int id, bool arrived) {
 	v = Vehicle();
 	t.free_vehicles.push_back(id);
 	t.vehicle_count--;
-	(arrived ? t.arrived : t.lost)++;
+	if (counted) (arrived ? t.arrived : t.lost)++;
 }
 
 void reset_traffic(CityState &s) {

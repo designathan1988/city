@@ -25,7 +25,8 @@ void publish_poses(CityState &s, int64_t stamp_ns);
 // vehicle_pose.cpp: where a vehicle on the lanes is drawn (its middle, heading and pitch into `out`), from its path.
 void vehicle_pose(const CityState &s, const Vehicle &v, Pose &out);
 float day_factor(const TrafficParams &p, float hour);
-void despawn_vehicle(CityState &s, int id, bool arrived);
+// Gone from the scene: its trip `arrived` or lost; not `counted` as either when it only drove out of the window.
+void despawn_vehicle(CityState &s, int id, bool arrived, bool counted = true);
 int new_vehicle(CityState &s, VehicleType type, uint8_t paint); // of that type, on no lane yet, counted in the fleet
 void reset_traffic(CityState &s); // full graph build and an empty fleet: a new map or a load
 
@@ -87,6 +88,7 @@ void meso_unlink(CityState &s, int id);
 void meso_enter(CityState &s, int id, int key, bool spawned); // the only way into the far model (leaves lane + micro lists)
 void meso_process(CityState &s);
 bool in_window(const CityState &s, int ds);
+double window_lane_metres(const CityState &s); // the lane metres of the directed segments whose middle is in the window
 void check_window(CityState &s);
 void materialize(CityState &s, int key);
 
@@ -187,6 +189,7 @@ bool reconsider(CityState &s, int vehicle);
 // demand.cpp
 void spawn_vehicles(CityState &s, float dt);
 double fleet_target(const CityState &s); // how many vehicles the demand asks for now
+double demand_for(const CityState &s, double lane_metres); // the vehicles these lane metres carry at this hour and these levels
 void free_vehicle(TrafficState &t, int id); // the slot of a vehicle off the lanes, out of the fleet count
 bool new_trip(CityState &s, int id, int from_ds); // a route from `from_ds` to a destination the demand draws
 

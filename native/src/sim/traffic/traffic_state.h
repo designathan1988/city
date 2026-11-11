@@ -158,6 +158,13 @@ struct TrafficState {
 	// the walkable segments inside ped_window_m.
 	float win_x = 0, win_z = 0;
 	double win_t = -double(BIG);
+	// The window owns the demand (window.cpp, demand.cpp): its directed segments (their middle within meso_window_m) and their lane
+	// metres at the last look, which of them are in it (by ds), and those that came in since and are still to be filled to their
+	// share.
+	std::vector<int> window_ds;
+	std::vector<uint8_t> in_win;
+	std::vector<int> fill_ds;
+	double window_lane_m = 0;
 	double ped_kind_m[PLACE_KINDS] = {}; // metres of street of each kind of place inside the window
 	std::vector<int> ped_segs;
 	// The doors the walkers use (ped_doors.cpp): by sidewalk (seg * 2 + side), the lots read (seed + 1 by building id) and

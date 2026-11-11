@@ -215,6 +215,10 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["reroutes"] = t.reroutes;
 	d["released"] = t.released; // jammed-junction releases
 	d["governor"] = t.gov;
+	int on_lanes = 0; // drawn and driven on the lanes near the camera (the window's)
+	for (const Vehicle &v : t.vehicles) on_lanes += v.alive && v.micro && !v.off ? 1 : 0;
+	const double window_m = traffic::window_lane_metres(*state_);
+	d["window"] = Array::make(window_m, traffic::demand_for(*state_, window_m), on_lanes); // its lane metres, what they carry now, how many drive there
 	d["drawn_vehicles"] = render_.drawn_vehicles();
 	d["drawn_people"] = render_.drawn_people();
 	d["drawn_signal_lenses"] = render_.lit_lenses(); // lit on the signal posts, from the published lights
