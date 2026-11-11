@@ -47,6 +47,13 @@ struct NearSample {
 	float d = BIG, surface = 0;
 };
 
+// What the lots grade in a rectangle of the composition, per sample: the weight and distance of the lot that grades it so far (the
+// stronger, then the nearer, wins), and the ground it gives there (NO_LOT: none).
+constexpr float NO_LOT = -BIG;
+struct LotGrades {
+	std::vector<float> weight, dist, height;
+};
+
 // A rectangle of height samples (inclusive).
 struct SampleRect {
 	int x0 = 0, z0 = 0, x1 = -1, z1 = -1;
@@ -182,7 +189,7 @@ private:
 	template <typename S>
 	bool drop_shape(std::vector<S> &shapes, SpatialHash &hash, int id);
 	void apply_road_shape(const RoadShape &r, int x0, int z0, int x1, int z1, std::vector<float> &best_w, std::vector<float> &best_d); // road_shape.cpp
-	void apply_lot_shape(const LotShape &r, int x0, int z0, int x1, int z1, std::vector<float> &best_w, std::vector<float> &best_d); // lot_shape.cpp
+	void apply_lot_shape(const LotShape &r, int x0, int z0, int x1, int z1, LotGrades &grades) const; // lot_shape.cpp
 };
 
 // A held composition for the length of a scope (Heightfield::hold): composed when it ends, or dropped with `compose` false.

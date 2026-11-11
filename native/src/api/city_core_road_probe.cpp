@@ -10,6 +10,7 @@
 #include "render/render_world.h"
 #include "render/roads/road_mesh.h"
 #include "sim/state/city_state.h"
+#include "sim/terrain/height_patch.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -109,6 +110,53 @@ void tops_of(const MeshBuilder &mb, int64_t from_idx, int from, std::vector<Top>
 constexpr int CELL_BITS = 32; // a cell's x in the key's high half, its z in the low half
 int64_t top_cell(int cx, int cz) { return (int64_t(cx) << CELL_BITS) ^ int64_t(uint32_t(cz)); }
 int cell_of(float v) { return int(std::floor(v / CELL_M)); }
+
+constexpr float GROUND_OVER_M = 0.01f; // the ground stands over a top by more than its heights' quantum: it shows through
+
+// Whether the ground stands over a top: the final heights (the drawn ground; a top is no lot, so no lot's own level is asked) at its
+// corners, bilinear, and at every height sample under it, against the top's own height there. `at` is where, `by` how far.
+bool ground_over(const Top &t, const Heightfield &g, V2 &at, float &by) {
+	const auto final_at = [&](int ix, int iz) { return g.final_at(ix, iz); };
+	for (int k = 0; k < 3; k++) {
+		const float ground = grid_sample(t.p[k].x, t.p[k].y, g.N, g.spacing, final_at);
+		if (ground > t.y[k] + GROUND_OVER_M) {
+			at = t.p[k];
+			by = ground - t.y[k];
+			return true;
+		}
+	}
+	const float wind = (t.p[1] - t.p[0]).cross(t.p[2] - t.p[0]) >= 0 ? 1.f : -1.f;
+	const int ix0 = std::max(0, int(std::ceil(t.x0 / g.spacing + g.N * HALF))), ix1 = std::min(g.N - 1, int(std::floor(t.x1 / g.spacing + g.N * HALF)));
+	const int iz0 = std::max(0, int(std::ceil(t.z0 / g.spacing + g.N * HALF))), iz1 = std::min(g.N - 1, int(std::floor(t.z1 / g.spacing + g.N * HALF)));
+	for (int iz = iz0; iz <= iz1; iz++)
+		for (int ix = ix0; ix <= ix1; ix++) {
+			const V2 p(g.x_of(ix), g.x_of(iz));
+			bool inside = true;
+			for (int e = 0; e < 3; e++) inside = inside && (t.p[(e + 1) % 3] - t.p[e]).cross(p - t.p[e]) * wind >= 0;
+			if (!inside || g.final_at(ix, iz) <= height_at(t, p) + GROUND_OVER_M) continue;
+			at = p;
+			by = g.final_at(ix, iz) - height_at(t, p);
+			return true;
+		}
+	return false;
+}
+
+// The tops the ground stands over: how many, the ground they cover, by what drew them, and the first.
+struct Buried {
+	int tops = 0;
+	double ground = 0;
+	Dictionary by;
+	Array first;
+	void count(const Top &t, const Heightfield &g) {
+		V2 at;
+		float over = 0;
+		if (!ground_over(t, g, at, over)) return;
+		tops++;
+		ground += std::fabs((t.p[1] - t.p[0]).cross(t.p[2] - t.p[0])) * HALF;
+		by[source(t.from)] = int(by.get(source(t.from), 0)) + 1;
+		if (first.is_empty()) first = Array::make(at.x, at.y, over, t.from);
+	}
+};
 } // namespace
 
 Dictionary CityProbes::road_overlaps() {
@@ -131,6 +179,8 @@ Dictionary CityProbes::road_overlaps() {
 		tops_of(mb, at, -1 - n, tops);
 		corner_census(e, n, census);
 	}
+	Buried buried;
+	for (const Top &t : tops) buried.count(t, s.terrain);
 	std::unordered_map<int64_t, std::vector<int>> cells;
 	for (int i = 0; i < int(tops.size()); i++)
 		for (int cx = cell_of(tops[size_t(i)].x0); cx <= cell_of(tops[size_t(i)].x1); cx++)
@@ -183,6 +233,10 @@ Dictionary CityProbes::road_overlaps() {
 	Array ring;
 	for (const Vector3 &p : census.first_ring) ring.push_back(Vector2(p.x, p.z));
 	d["holed_first"] = Array::make(census.first_node, ring); // the first such: its node and its polygon in plan
+	d["buried"] = buried.tops; // road tops the ground stands over (it shows through them)
+	d["buried_m2"] = buried.ground;
+	d["buried_by"] = buried.by; // by what drew them: segment, node
+	d["buried_first"] = buried.first; // x, z, how far the ground stands over, what drew it
 	return d;
 }
 

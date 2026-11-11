@@ -1,6 +1,7 @@
-// The final heights composed from the base heights, the modifiers and the ground shaped to the roads (heightfield.h), and the
-// held composition of a bulk edit: while a hold is open the rectangles wait, and when the last one is let go they are merged
-// into blocks and each block is composed once, so n inserts cost n and not n times everything that overlaps them.
+// The final heights composed from the base heights, the modifiers, the ground shaped to the roads and the ground graded to the
+// lots under them (heightfield.h), and the held composition of a bulk edit: while a hold is open the rectangles wait, and when
+// the last one is let go they are merged into blocks and each block is composed once, so n inserts cost n and not n times
+// everything that overlaps them.
 #include "sim/terrain/heightfield.h"
 
 #include "core/job_pool.h"
@@ -83,7 +84,8 @@ void Heightfield::recompose(int x0, int z0, int x1, int z1) {
 void Heightfield::compose_rect(const SampleRect &r) {
 	const int x0 = r.x0, z0 = r.z0, x1 = r.x1, z1 = r.z1;
 	finals.to_base(x0, z0, x1, z1, base_q); // the natural ground again, then what changes it
-	std::vector<float> best_w(size_t(x1 - x0 + 1) * (z1 - z0 + 1), 0.f), best_d(best_w.size(), 0.f); // best_d: how far the road that shaped it; 0: none has, a tie stays with what stands
+	const size_t count = size_t(x1 - x0 + 1) * size_t(z1 - z0 + 1);
+	std::vector<float> best_w(count, 0.f), best_d(count, 0.f); // best_d: how far the road that shaped it; 0: none has, a tie stays with what stands
 	float minx = x_of(x0), maxx = x_of(x1), minz = x_of(z0), maxz = x_of(z1);
 	std::vector<int> ids;
 	auto found = [&](const auto &hash) -> const std::vector<int> & {
@@ -97,8 +99,19 @@ void Heightfield::compose_rect(const SampleRect &r) {
 		if (mods[id].alive) apply_modifier(mods[id], x0, z0, x1, z1, best_w);
 	for (int id : found(shape_hash))
 		if (road_shapes[size_t(id)].alive) apply_road_shape(road_shapes[size_t(id)], x0, z0, x1, z1, best_w, best_d);
-	for (int id : found(lot_hash)) // after the roads: a lot meets the footway it faces, over the ground a road holds beside itself
-		if (lots.shapes[size_t(id)].alive) apply_lot_shape(lots.shapes[size_t(id)], x0, z0, x1, z1, best_w, best_d);
+	// The lots grade what the roads leave free: each sample's lot ground (the lots among themselves, the stronger then the nearer), then
+	// the roads' ground laid over it by the roads' own weight, so under a road (its carriageway, its footways, the band beside them)
+	// the ground is the road's wherever a lot stands.
+	LotGrades lot{ std::vector<float>(count, 0.f), std::vector<float>(count, 0.f), std::vector<float>(count, NO_LOT) };
+	for (int id : found(lot_hash))
+		if (lots.shapes[size_t(id)].alive) apply_lot_shape(lots.shapes[size_t(id)], x0, z0, x1, z1, lot);
+	for (int z = z0; z <= z1; z++)
+		for (int x = x0; x <= x1; x++) {
+			const size_t li = size_t(z - z0) * size_t(x1 - x0 + 1) + size_t(x - x0);
+			if (lot.height[li] == NO_LOT) continue;
+			const float natural = dequant(base_q[size_t(z) * size_t(N) + size_t(x)]), road = final_at(x, z);
+			set_final(x, z, road + (lot.height[li] - natural) * (1.f - std::min(1.f, best_w[li])));
+		}
 }
 
 // Each piece visits only the samples whose nearest point of the polyline can lie on it: the slab along it, the wedge

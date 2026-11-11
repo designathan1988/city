@@ -52,8 +52,6 @@ bool site_of(const CityState &s, int id, LotShape &out) {
 		footway_point(s.roads, at.seg, at.v, at.u, wx, wz, y);
 		return float(y) + (walk.strip.flush ? 0.f : tn.street_sidewalk_m) - tn.lot_plate_m;
 	};
-	const Profile &p = s.roads.profile_of(hit.seg);
-	const StripEdge &walk = hit.side == 0 ? p.edges.front() : p.edges.back();
 	LotShape r;
 	r.ox = f.o.x;
 	r.oz = f.o.y;
@@ -63,20 +61,18 @@ bool site_of(const CityState &s, int id, LotShape &out) {
 	r.bz = f.e1.y;
 	r.w = rec.w;
 	r.d = rec.d;
-	r.front_in = walk.strip.flush ? 0.f : walk.u1 - walk.u0;
 	// the footway's profile along the frontage, a level every LEVEL_STEP_M (two at least): the lot follows its street
 	const int steps = std::max(1, int(std::ceil(rec.w / LEVEL_STEP_M)));
 	for (int k = 0; k <= steps; k++) r.levels.push_back(level_at(-rec.w * HALF + rec.w * float(k) / float(steps)));
 	r.minx = r.minz = r.rx0 = r.rz0 = std::numeric_limits<float>::max();
 	r.maxx = r.maxz = r.rx1 = r.rz1 = std::numeric_limits<float>::lowest();
 	for (float x : { -rec.w * HALF, rec.w * HALF })
-		for (float y : { -r.front_in, 0.f, rec.d }) {
+		for (float y : { 0.f, rec.d }) { // the lot's own rectangle, from its front: the street in front is the road's ground
 			const V2 c = f.at(x, y);
 			r.minx = std::min(r.minx, c.x);
 			r.maxx = std::max(r.maxx, c.x);
 			r.minz = std::min(r.minz, c.y);
 			r.maxz = std::max(r.maxz, c.y);
-			if (y < 0) continue; // the sidewalk is graded, the lot's own rectangle starts at its front
 			r.rx0 = std::min(r.rx0, c.x);
 			r.rx1 = std::max(r.rx1, c.x);
 			r.rz0 = std::min(r.rz0, c.y);

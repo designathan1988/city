@@ -21,6 +21,8 @@ func _ready() -> void:
 			% [d.corners_crossed, d.corners, d.corners_kinds])
 	check(int(d.corners_holed) == 0, "every junction corner's footway is drawn whole: %d of %d leave part of it out, the first (node, polygon) %s"
 			% [d.corners_holed, d.corners, d.holed_first])
+	check(int(d.buried) == 0, "the ground stands over no road surface: %d tops over %.2f m2 (by what drew them %s), the first (x, z, how far over, source) %s"
+			% [d.buried, d.buried_m2, d.buried_by, d.buried_first])
 	check(int(d.pairs) == 0, "no two road tops stand at one height over the same ground: %d pairs over %.2f m2, the first (x, z, area, heights) %s, by what drew them %s, the largest (x, z, area, sources) %s"
 			% [d.pairs, d.ground_m2, d.first, d.by, d.worst])
 	finish()
