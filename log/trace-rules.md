@@ -875,3 +875,45 @@ lab app 227,514 links: 7 lost, each a `value` link the misgrouped `void`/`await`
 linked (`readDerivedSome` now a `call`); 641 gained: a call of a function a property holds valued (`this.host()` in
 `GrowthSession` gives the host's `doc`, whose `RoadDoc` members are read), the engine's `Worker` handed its `onerror`
 and `onmessage`, the `then`/`catch` callbacks of `void ...<T>(...)` chains.
+
+### The language's own predicates (G1'')
+
+A probe of the first values that entered `Vector3.x`'s node (each with the frames that brought it) found them coming
+from four places; the first: the generic walker of `jobs/processWorker.ts` writes, inside
+`if (ArrayBuffer.isView(v))`, `const Kind = v.constructor; new Kind(copyOf(v.buffer), v.byteOffset, length)`. With
+`v` holding every object the walker is handed, `new Kind(...)` constructed every class of the program (three's
+`GTAOPass` with `length` as its `width`), and those values went on through every field the constructors write. By
+ECMAScript (25.1.4.3 `ArrayBuffer.isView`: true of an object with a [[ViewedArrayBuffer]], a typed array or a
+DataView) `v` there is the host's view. The tracer narrowed by `Array.isArray` alone, written as a special case.
+
+| Rule | What the tracer does |
+|---|---|
+| G1'' The language's own predicates | a predicate ECMAScript defines, read on the language's own global (not a local of that name), narrows its argument: `Array.isArray` to arrays (a container, the program's array, or an object the program did not write), `ArrayBuffer.isView` to an object the program did not write (the engine's, the language's `object`, an object of a class whose chain reaches a base the tracer did not read), `Number.isInteger`, `Number.isSafeInteger`, `Number.isFinite`, `Number.isNaN` to numbers; their negation keeps every value but an array for `Array.isArray` (`js_guards.LANGUAGE_PREDICATES`, `narrow_values.host_object`) |
+
+### `call`, `apply` and `bind` by the receiver's value (J2''), array literals (T2'')
+
+The second early value in `Vector3.x`'s node was three's `GTAOPass` object in its own `width`: `postprocess.ts` writes
+`const resize = pass.setSize.bind(pass)`, and the tracer linked it as a call of `setSize` with `pass` as `width`. Two
+rules were wrong. The reader made any `x.bind(t)` the value x and any `x.call(t, ...)` / `x.apply(t, a)` a call of x,
+whatever x is: three's `SkinnedMesh.bind(skeleton, matrix)`, TSL's `fn.call(params)` and the app's `LotStore.apply`,
+`Walkways.apply`, `LotTraffic.call` are methods of objects, and those calls reached nothing. And reading `f.bind` gave
+f, so the call of what a member holds (CALL') called f with `bind`'s arguments; the resolver's `c.call(...)` rule
+(GDScript's `Callable.call`) did the same for `apply`. By MDN (Function.prototype.call, apply, bind): `f.call(t, ...a)`
+runs f with `this` t and the arguments a; `f.apply(t, arr)` with the elements of arr; `f.bind(t, ...a)` runs nothing:
+it makes a function that runs f with `this` t and a put before its own arguments.
+
+A JS array literal was the engine's value besides its elements, so iterating it (`for (x of [a, b])`, `[...arr]`,
+`apply(t, [x, y])`) gave an unknown element besides those written.
+
+| Rule | What the tracer does |
+|---|---|
+| J2'' `call`, `apply`, `bind` | `x.call(...)`, `x.apply(...)`, `x.bind(...)` are member calls decided by each value of x: on an object, its own method of that name; on a function of the program, Function.prototype's: `call` runs it with `this` the first argument and the others (a `call` link, the receiver J2' carries that object), `apply` with the elements of the array in every parameter, `bind` makes the bound function (a `bound` link: the arguments after `this` reach the first parameters, `this` the object written), whose later calls pass their arguments after the bound ones (a value `<fn>gid^k`, `solver.fn_of`); read uncalled each is a function of the language; nothing is handed to the engine by them on a function of the program; GDScript's `Callable.call`, `bind` keep their own rule |
+| T2'' A JS array literal | is an array of the language holding what is written (`Array<?>` and its elements): its iteration gives those elements alone; the engine's container stays for GDScript and C++ |
+
+What it changed, measured on the same sources (against 6ac1935d with J6'): the city 100,571 links, none lost or
+gained; the lab app 227,456 links: 118 lost, each read on its line: the walker's `new Kind(...)` constructing every
+class and `v.length` of every class (G1''), `ArrayBuffer.isView(value)` in the inspector's `preview` (G1''), the calls
+a `bind` was read as (now `bound` links where it binds, calls where the bound function is called: `lay(...)` in
+`buildingMesh.ts`), elements of array literals that were the engine's (`Ring`'s edges no longer `PlacedFurniture`);
+60 gained: the calls of `apply`/`call` methods of the program (`LotStore.apply` from ten functions of `lots.ts`,
+`Walkways.apply`, `LotTraffic.call`, `StoreOrder.apply`, `TimingVariant.apply`), 5 `bound` links, 2 `handed`.

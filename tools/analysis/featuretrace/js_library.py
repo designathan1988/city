@@ -15,6 +15,7 @@ from .solver import ALIAS, LANG, NUMBER, TEXT
 
 EACH = "<each>"                       # what a callback handed to a container's own iteration receives (forEach, map...)
 UNKNOWN = "?"
+EMPTY_ARRAY = "Array<?>"                         # an array of the language written with nothing known in it (T2'')
 VALUE_FORMS = (LANG, TEXT, ALIAS)                 # the language's values, strings and type-alias markers as they are
 ALIAS_LOCAL = ALIAS + "@"                         # a reader's marker: a unit of the file it was read in (`js_types`)
 PRIMITIVES = frozenset({"number", "string", "boolean", "bigint", "symbol", "object", "unknown", "any", "never", "void",

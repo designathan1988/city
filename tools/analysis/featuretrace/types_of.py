@@ -9,7 +9,7 @@ from __future__ import annotations
 from . import js_library
 from .cpp_names import strip_templates, template_args
 from .library import clean, substitute
-from .solver import ALIAS, CLASS, ELEM, ENGINE, FN, LANG, TEXT, is_language
+from .solver import ALIAS, CLASS, ELEM, ENGINE, FN, LANG, TEXT, fn_of, is_language
 
 
 class TypeNames:
@@ -64,7 +64,7 @@ class TypeNames:
                 engine = True              # a container's elements: the container is the language's or the library's
                 continue
             if text.startswith(FN):
-                functions.append(int(text[len(FN):]))
+                functions.append(fn_of(text)[0])
                 continue
             key = self.type_class(text, ctx)
             if key:
@@ -72,6 +72,10 @@ class TypeNames:
             else:
                 engine = True
         return list(dict.fromkeys(keys)), engine, list(dict.fromkeys(functions))
+
+    def callables(self, tree, unit) -> list[tuple[int, int]]:
+        """The functions a value can be, each with the leading arguments a `bind` gave it (J2'')."""
+        return list(dict.fromkeys(fn_of(text) for text, _ in self.evaluate(tree, unit) if text.startswith(FN)))
 
     def enclosing(self, unit, name: str):
         """JS (J7): the function around `unit` that declares `name`, whatever the order it is written in (a `var` is

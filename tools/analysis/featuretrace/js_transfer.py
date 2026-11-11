@@ -10,7 +10,7 @@ from . import transfer as common          # the language-independent transfers
 from .library import ITEM
 from .model import ALIAS_KIND
 from .rules import INDEX_MEMBER, ITERATOR_MEMBER
-from .solver import CLASS, ELEM, ENGINE, FN, TEXT, UNDEFINED
+from .solver import CLASS, ELEM, ENGINE, FN, TEXT, UNDEFINED, fn_of
 
 PROTOTYPE = "prototype"
 # What every object and every function has from the language (MDN Object.prototype, Function.prototype): a class
@@ -180,7 +180,7 @@ def constructs(t):
     def transfer(target, values):
         for text, ctx in values:
             if text.startswith(FN):
-                t.follow(t.ret_node(t.ix.units[int(text[len(FN):])]), target)
+                t.follow(t.ret_node(t.ix.units[fn_of(text)[0]]), target)
             elif text.startswith(CLASS):
                 t.add(target, [(text, ctx)])
             else:

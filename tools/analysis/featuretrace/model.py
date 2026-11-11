@@ -51,6 +51,7 @@ class Ref:
     argc: int = -1                 # call: the number of arguments written (-1 when not a call)
     args: tuple = ()               # call: each argument's tree; write: (the value written,)
     object_of: tuple = ()          # cpp: a use of `T x(a, b);` read as an object: kept if a or b is a value (cpp_ambig)
+    receiver: tuple | None = None  # js: the object written as `this` in `f.call(t)`, `f.apply(t)`, `f.bind(t)` (J2'')
 
 
 @dataclass

@@ -25,6 +25,18 @@ NUMBER, STRING, BIGINT, SYMBOL = LANG + "number", LANG + "string", LANG + "bigin
 OBJECT, FUNCTION = LANG + "object", LANG + "function"     # an object, a function the program does not name (T1')
 ALIAS = "<alias>"          # ALIAS + gid: the values a type alias admits, taken where a value would be (T1')
 SAME = ("same",)           # the key of an identity subscription: the target holds every value of the source
+BOUND = "^"                # FN + gid + BOUND + k: the function a JS `bind` made, k arguments put first (J2'')
+
+
+def fn_of(text: str) -> tuple[int, int]:
+    """A function value's unit and how many leading arguments a `bind` gave it (J2''; MDN Function.prototype.bind)."""
+    gid, _, lead = text[len(FN):].partition(BOUND)
+    return int(gid), int(lead or 0)
+
+
+def bound(gid: int, lead: int) -> str:
+    """The value of a function `bind` gave `lead` leading arguments (the function itself when none)."""
+    return f"{FN}{gid}{BOUND}{lead}" if lead else f"{FN}{gid}"
 
 
 def is_language(text: str) -> bool:

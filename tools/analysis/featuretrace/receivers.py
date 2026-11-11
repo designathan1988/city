@@ -13,7 +13,8 @@ from . import js_transfer, templates
 from .solver import CLASS
 
 THIS = "#this"
-RECEIVING = ("call", "override", "new")      # the links of a call: what they reach runs on the call's receiver
+RECEIVING = ("call", "override", "new", "bound")    # the links of a call (and of a `bind`, J2''): what they reach
+                                                   # runs on the call's receiver
 
 
 def runs_on(t, unit) -> bool:

@@ -151,8 +151,8 @@ class Resolver(Flows):
             found = self.keep(ix.lookup(bases[0], name), want, unit.file) if bases else []
             return (found, EXACT) if found else ([], EXTERNAL)
         keys, engine, callables = self.typer.receiver(base, unit)
-        if name in CALLABLE_CALLS and callables and want == "func":
-            return callables, EXACT
+        if name in CALLABLE_CALLS and callables and want == "func" and unit.lang != "js":
+            return callables, EXACT                 # GDScript's `c.call(...)`; JS's is its own reference (J2'')
         found = []
         for key in keys:
             if unit.lang == "gd" and ix.classes[key].lang == "cpp":

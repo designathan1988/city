@@ -113,8 +113,9 @@ HANDLERS = {
              "cpp_implicit:declared_object", "cpp_implicit:operator", "cpp_body:object_reading",
              "cpp_body:object_or_function", "cpp_ambig:deciding_names", "cpp_ambig:as_arguments",
              "cpp_ambig:decide", "cpp_ambig:classify",
-             "cpp_implicit:range_calls", "cpp_implicit:destroyed", "gd_read:GdReader.accessors", "link:invoked",
-             "link:handed", "link:engine_receiver", "cpp_lifetime:implicit_construction", "cpp_lifetime:implicit_destruction",
+             "cpp_implicit:range_calls", "cpp_implicit:destroyed", "gd_read:GdReader.accessors", "link_calls:invoked_leads", "link_calls:site_of", "link_calls:form_on_functions", "types_of:TypeNames.callables",
+             "solver:fn_of", "solver:bound", "transfer:function_member", "js_expr:function_form",
+             "link_calls:handed", "link_calls:engine_receiver", "cpp_lifetime:implicit_construction", "cpp_lifetime:implicit_destruction",
              "cpp_lifetime:destruction_of", "cpp_lifetime:owned_classes", "cpp_lifetime:destructors",
              "cpp_lifetime:constructors", "link:link_node", "solver:Solver.substituted", "js_link:constructors", "js_link:module_run", "js_link:jsx", "js_link:callback_args",
              "js_expr:call", "js_expr:implicit", "js_body:loop"),
@@ -122,7 +123,7 @@ HANDLERS = {
                "js_guards:facts", "narrowing:open", "narrowing:close", "narrowing:apply", "narrowing:wrap",
                "narrowing:leaves", "narrowing:assigned_names", "narrowing:enter_function", "scopes:renamed",
                "narrow_values:wire", "narrow_values:passes", "narrow_values:by_member", "narrow_values:by_class",
-               "narrow_values:instance", "narrow_values:named_classes", "narrow_values:settle", "js_guards:case_facts",
+               "narrow_values:instance", "narrow_values:host_object", "narrow_values:named_classes", "narrow_values:settle", "js_guards:case_facts",
                "js_guards:asserted", "js_types:predicate", "narrowing:after_if", "narrowing:region_facts",
                "js_guards:operand_facts",
                "js_body:block", "js_body:guarded", "js_expr:guarded", "ir_js:guarded", "gd_guards:facts",
@@ -189,6 +190,7 @@ HIGHER_ORDER = {
 # Function.prototype.call/apply/bind (J2): the arguments after thisArg reach the function's parameters.
 CALL_FORMS = {"call": "spread", "apply": "array"}
 BIND_FORMS = ("bind",)
+FUNCTION_FORMS = (*CALL_FORMS, *BIND_FORMS)     # Function.prototype's members that run a function or bind it (J2'')
 # Calls the language makes (J5): the member it calls, written as the program names it.
 ITERATOR_MEMBER = "[Symbol.iterator]"
 COERCION_MEMBERS = ("valueOf", "toString", "[Symbol.toPrimitive]")

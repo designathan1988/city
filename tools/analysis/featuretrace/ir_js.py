@@ -3,14 +3,14 @@ TypeScript rows; J1-J10).
 
 `this` is the class's instance (`("self",)`), `super` its base. A function or arrow is a callable of its unit; a class
 expression and an object literal are values of their own class (`("cast", "#<key>")`). `a ?? b`, `a || b`, `a && b`
-and the ternary hold either side; `as`/`satisfies`/`!`/`<T>` keep the value with the type named; `f.bind(t)` is f;
-`f.call(t, ...)` / `f.apply(t, a)` call f; `import("m")` is the module's namespace; `await x` what x resolves to.
+and the ternary hold either side; `as`/`satisfies`/`!`/`<T>` keep the value with the type named; `x.call(...)`,
+`x.apply(...)`, `x.bind(...)` are member calls, decided by x's values (J2'': Function.prototype's on a function, the
+object's own method on an object); `import("m")` is the module's namespace; `await x` what x resolves to.
 """
 from __future__ import annotations
 
 from . import js_guards, js_types, narrowing, scopes
 from .ir import LITERAL, name, union
-from .rules import BIND_FORMS, CALL_FORMS
 from .source import field_of, named_children, string_value
 
 CLASS_VALUE = "#"                 # the typer's prefix of a class of the program (solver.CLASS)
@@ -79,16 +79,6 @@ def _call(r, node, unit):
         return ("module", spec) if spec is not None else LITERAL
     if fn.type == "super":
         return ("call", ("member", ("super",), "constructor", False), args_of(r, args, unit))
-    if fn.type == "member_expression":
-        method = member_name(r.src, field_of(fn, "property"))
-        target = field_of(fn, "object")
-        if method in BIND_FORMS:
-            return build(r, target, unit)                    # f.bind(t): the same function (J2)
-        if method in CALL_FORMS:
-            rest = args_of(r, args, unit)[1:]
-            if CALL_FORMS[method] == "array":
-                rest = tuple(("elements", a) for a in rest)
-            return ("call", build(r, target, unit), rest)
     return ("call", build(r, fn, unit), args_of(r, args, unit))
 
 

@@ -12,8 +12,8 @@ sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
 
 from support import FixtureCase, Solved  # noqa: E402
-from featuretrace.solver import (BIGINT, ENGINE, FALSE, FUNCTION, NULL, NUMBER, STRING, TRUE,  # noqa: E402
-                                 UNDEFINED)
+from featuretrace.solver import (BIGINT, CLASS, ENGINE, FALSE, FUNCTION, NULL, NUMBER, OBJECT, STRING,  # noqa: E402
+                                 TRUE, UNDEFINED)
 
 STRINGS = f"Array<{STRING}>"
 
@@ -51,6 +51,23 @@ class JsPrimitives(Solved, FixtureCase):
         for spec in ("primUpper", "primIndex", "primEach", "primMethod", "primMissing"):
             found = self.returned(spec)
             self.assertFalse(any("common" in v or v == "text" for v in found), (spec, found))
+
+
+class LanguagePredicates(Solved, FixtureCase):
+    """G1'': the predicates ECMAScript itself defines narrow (fixture `jsvalues/builtins.ts`)."""
+    ROOTS = ("jsvalues",)
+    BASE = "jsvalues"
+    GADGET = CLASS + "builtins.ts#Gadget"
+
+    def test_array_buffer_is_view(self):
+        self.assertEqual({ENGINE, NULL}, self.returned("viewOnly"))         # the typed array; no Gadget, no array
+        self.assertNotIn("Gadget.constructor", self.names("viewMakes"))    # a view's constructor is the host's
+
+    def test_number_predicates(self):
+        self.assertEqual({NUMBER, NULL}, self.returned("intOnly"))
+
+    def test_an_object_of_the_language_can_be_an_array(self):
+        self.assertIn(OBJECT, self.returned("anyObjectArray"))
 
 
 class OtherStrings(Solved, FixtureCase):

@@ -4,7 +4,8 @@ G1; TypeScript handbook, Narrowing; MDN `typeof`, `instanceof`, `in`, falsy valu
 `facts(r, node, unit)` gives the facts that hold when the condition is true and when it is false, each
 `(name_tree, guard, positive)` (`narrowing`). A name is a local or a parameter (never a property path). Guards: the
 name's truthiness `("truthy",)`, a property's truthiness `("member", p)` (`x.p`, `x?.p`), `("typeof", t)`,
-`("instance", class_tree)`, `("array",)` (the language's `Array.isArray`), `("has", p)` (`"p" in x`),
+`("instance", class_tree)`, `("array",)`, `("view",)`, `("number",)` (the language's own predicates,
+`LANGUAGE_PREDICATES`), `("has", p)` (`"p" in x`),
 `("equals", value)` (`===`, `!==` with a constant of the language or a string), `("nullish",)` (`== null`,
 `!= null`, `== undefined`), `("member-equals", p, value)` (`x.p === v`, a `switch` case), `("predicate", callee_tree,
 index)` (a call of a function declared `x is T`) and, after a call statement, `("asserts", callee_tree, index)` (one
@@ -21,6 +22,11 @@ CONSTANTS = {"null": NULL, "undefined": UNDEFINED, "true": TRUE, "false": FALSE}
 EQUAL, DIFFERENT = ("===", "=="), ("!==", "!=")
 INNER = ("parenthesized_expression", "non_null_expression", "expression_statement")
 TYPESCRIPT = (".ts", ".tsx", ".mts", ".cts")      # the files that can declare a type predicate or an assertion
+# The predicates ECMAScript defines (G1''): `Array.isArray` (an array), `ArrayBuffer.isView` (a typed array or a
+# DataView), `Number.isInteger` and its kin (true of numbers alone).
+LANGUAGE_PREDICATES = {"Array.isArray": ("array",), "ArrayBuffer.isView": ("view",),
+                       **dict.fromkeys(("Number.isInteger", "Number.isSafeInteger", "Number.isFinite", "Number.isNaN"),
+                                       ("number",))}
 
 
 def typescript(r) -> bool:
@@ -130,13 +136,14 @@ def facts(r, node, unit) -> tuple[list, list]:
 
 
 def _call(r, node, unit) -> tuple[list, list]:
-    """`Array.isArray(x)` (the language's `Array`); any other call: a type predicate on each name passed, decided by
-    the callee's declaration (`x is T`) when its values are known."""
+    """A predicate ECMAScript defines, read on the language's own global (G1''); any other call: a type predicate on
+    each name passed, decided by the callee's declaration (`x is T`) when its values are known."""
     fn, args = field_of(node, "function"), field_of(node, "arguments")
     argv = [a for a in named_children(args) if a.type != "comment"] if args is not None else []
-    if fn is not None and r.src.text(fn) == "Array.isArray" and "Array" not in unit.types and argv:
+    guard = LANGUAGE_PREDICATES.get(r.src.text(fn)) if fn is not None else None
+    if guard is not None and r.src.text(fn).split(".")[0] not in unit.types and argv:
         name = name_of(r, argv[0], unit)
-        return _both([(name, ("array",), True)] if name is not None else [])
+        return _both([(name, guard, True)] if name is not None else [])
     return _both(_declared(r, fn, argv, unit, "predicate"))
 
 

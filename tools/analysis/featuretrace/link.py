@@ -15,10 +15,12 @@ from __future__ import annotations
 
 import time
 
-from . import cpp_lifetime, js_link, names, narrow_values, receivers
+from . import cpp_lifetime, js_link, narrow_values, receivers
 from .cpp_implicit import IMPLICIT
 from .cpp_lifetime import Site as _Site
 from .model import FUNCTION_KINDS
+from .link_calls import (by_value, engine_receiver, form_on_functions, handed, invoked_leads,
+                         site_of)
 from .rules import NAME_CALLS
 from .resolve import EXACT, EXTERNAL, LOCAL, UNREACHED, Resolver
 from .typer import CLASS
@@ -131,9 +133,9 @@ def link_ref(rs, unit, ref) -> None:
     if kind == "destroy":
         cpp_lifetime.destructors(rs, unit, ref)
         return
-    if kind == "invoke":
-        for gid in invoked(rs, unit, ref.base):
-            rs.link(unit.gid, gid, "call", ref, EXACT)
+    if kind in ("invoke", "bound"):        # a value called (a bound function: after its bound arguments); `bind`
+        for gid, lead in invoked_leads(rs, unit, ref.base):    # making one (J2'')
+            rs.link(unit.gid, gid, "call" if kind == "invoke" else "bound", site_of(rs, ref, gid, lead), EXACT)
         return
     if kind == "name":
         targets, how = rs.by_string(unit, ref.base, ref.text or ref.name)
@@ -163,14 +165,25 @@ def link_ref(rs, unit, ref) -> None:
         rs.exact.add(node)              # found by lookup: the fallbacks below no longer apply to this reference
     elif not targets and node in rs.exact:
         return
+    leads = {}                              # a bound function called: the arguments its `bind` put first (J2'')
+    if kind == "call" and ref.base is None and unit.lang == "js" and targets:    # a local holding a bound function
+        for gid, lead in invoked_leads(rs, unit, ("name", ref.name)):
+            if gid in targets:
+                leads.setdefault(gid, set()).add(lead)
     if kind == "call" and ref.base is None and not ref.qualified and how in (EXTERNAL, LOCAL):
-        targets = invoked(rs, unit, ("name", ref.name))      # the name holds a value that is called
+        for gid, lead in invoked_leads(rs, unit, ("name", ref.name)):    # the name holds a value that is called
+            leads.setdefault(gid, set()).add(lead)
+        targets = list(leads)
         how = EXACT if targets else how
     elif kind == "call" and ref.base is not None and ref.base != ("super",):
         # each value of the receiver: its method, or what its member holds that is called (a field holding a function)
-        held = [g for g in invoked(rs, unit, ("member", ref.base, ref.name, False)) if g not in targets]
+        for gid, lead in invoked_leads(rs, unit, ("member", ref.base, ref.name, False)):
+            if gid not in targets or gid in leads:
+                leads.setdefault(gid, set()).add(lead)
+        held = [g for g in leads if g not in targets]
         targets, how = (targets + held, EXACT) if held else (targets, how)
-    if kind in ("call", "new", "name") and (how == EXTERNAL or engine_receiver(rs, unit, ref)):
+    if kind in ("call", "new", "name") and (how == EXTERNAL or engine_receiver(rs, unit, ref)) \
+            and not form_on_functions(rs, unit, ref):
         handed(rs, unit, ref)
     if how in (EXTERNAL, LOCAL, UNREACHED):
         if how == EXTERNAL and kind in ("call", "new", "name", "emit") and ref.text != IMPLICIT:
@@ -190,54 +203,13 @@ def link_ref(rs, unit, ref) -> None:
     for gid in targets:
         edge_kind = "value" if kind == "read" and ix.units[gid].kind in FUNCTION_KINDS else \
             "call" if kind == "operator" else kind
-        rs.link(unit.gid, gid, edge_kind, ref, how)
+        for lead in leads.get(gid, (0,)):
+            rs.link(unit.gid, gid, edge_kind, site_of(rs, ref, gid, lead) if lead else ref, how)
         if kind in ("read", "write"):
             accessor(rs, unit, ix.units[gid], kind, ref)
     if kind in ("call", "name") and ref.base != ("super",) and not ref.qualified:
         for gid in with_overrides(rs, targets):
             rs.link(unit.gid, gid, "override", ref, "override")
-
-
-def invoked(rs, unit, tree) -> list[int]:
-    """Calling a value: the functions it can hold, and `operator()` of the classes it can be."""
-    keys, _, callables = rs.typer.receiver(tree, unit)
-    found = list(callables)
-    for key in keys:
-        found += rs.keep(rs.ix.lookup(key, "operator()"), "func", unit.file)
-    return list(dict.fromkeys(found))
-
-
-def handed(rs, unit, ref) -> None:
-    """A callable given to a function of the engine or the library is run by it (a comparator, a deferred call, a
-    thread's body); given to a function of the program it runs only where the program calls it."""
-    site = js_link.Site(ref, js_link.callback_args(unit, ref))   # what the callback receives, when the language says
-    for arg in ref.args:
-        for gid in rs.typer.receiver(arg, unit)[2]:
-            rs.link(unit.gid, gid, "handed", site, EXACT)
-
-
-def engine_receiver(rs, unit, ref) -> bool:
-    """Whether a member call's receiver can be an object of the engine or a library (it runs what it is handed),
-    besides any object of the program it can be: in a dynamically typed language (JS, GDScript). In C++ an expression
-    of a class of the program is an object of that class ([expr.ref]): the engine values the tracer's receiver also
-    holds do not change the method it runs."""
-    return unit.lang != "cpp" and ref.kind == "call" and ref.base not in (None, ("super",)) \
-        and rs.typer.receiver(ref.base, unit)[1]
-
-
-def by_value(rs, unit, ref) -> None:
-    """`obj.call(name, ...)` with the name held in a value (G7): each text it can hold names a method."""
-    for text in names.texts(rs.typer, ref.args[0], unit):
-        targets, how = rs.by_string(unit, ref.base if ref.base is not None else ("self",), text)
-        for gid in targets:
-            rs.link(unit.gid, gid, "name", _Shifted(ref), how)
-
-
-class _Shifted:
-    """A by-name call site: its arguments after the name."""
-
-    def __init__(self, ref):
-        self.line, self.cond, self.args = ref.line, ref.cond, ref.args[1:]
 
 
 def accessor(rs, unit, prop, kind: str, ref) -> None:

@@ -10,7 +10,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
 
-from support import FixtureCase  # noqa: E402
+from support import FixtureCase, Solved  # noqa: E402
+from featuretrace.solver import NUMBER, TEXT  # noqa: E402
 
 
 class Mixed(FixtureCase):
@@ -27,6 +28,27 @@ class Mixed(FixtureCase):
     def test_passed_to_a_method_of_a_mixed_receiver(self):
         self.assertTrue(any("<lambda:" in n for n in self.handed("mixedCall")), self.handed("mixedCall"))
         self.assertIn("OwnThen.then", self.names("mixedCall"))                        # and the program's method gets it
+
+
+class FunctionForms(Solved, FixtureCase):
+    """J2'': `call`, `apply` and `bind` by the receiver's value (fixture `jsvalues/forms.js`)."""
+    ROOTS = ("jsvalues",)
+    BASE = "jsvalues"
+
+    def test_bind_does_not_call(self):
+        self.assertEqual({NUMBER}, self.held("FormSizer.setSize", "width"))     # `resize(3, 4)`: never the object
+
+    def test_bound_leading_arguments(self):
+        self.assertEqual({TEXT + "second"}, self.returned("boundLeading"))      # `g("second")` is f("first", "second")
+
+    def test_methods_named_like_the_forms(self):
+        self.assertEqual({NUMBER}, self.returned("ownBind"))
+        self.assertEqual({TEXT + "p"}, self.returned("ownCall"))
+        self.assertIn("FormBinder.bind", self.names("ownBind"))
+
+    def test_call_and_apply(self):
+        self.assertEqual({TEXT + "c"}, self.returned("callForm"))
+        self.assertEqual({TEXT + "x", TEXT + "y"}, self.returned("applyForm"))
 
 
 class StaticReceiver(FixtureCase):

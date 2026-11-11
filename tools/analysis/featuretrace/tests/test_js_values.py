@@ -57,7 +57,8 @@ class JsValues(FixtureCase):
         typer = self.rs.typer
         returned = [text for text, _ in typer.current(typer.ret_node(self.ix.units[self.gid("allBoxes")]))]
         self.assertEqual(1, returned.count(f"Array<{BOX}>"))   # one value from both files
-        self.assertEqual({f"Array<{BOX}>", ENGINE}, set(returned))   # and the array literals `[]`
+        self.assertEqual({f"Array<{BOX}>", js_library.EMPTY_ARRAY}, set(returned))   # and the array literals `[]`
+                                                                                      # (T2'')
 
     def test_no_annotation_text_is_a_value(self):
         for node, held in self.rs.typer.value.items():

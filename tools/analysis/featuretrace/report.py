@@ -11,7 +11,7 @@ from .walk import readers
 
 ARROW = {"call": "calls", "value": "hands over", "name": "by name", "emit": "emits", "signal": "fires handler",
          "lambda": "lambda", "new": "constructs", "override": "override", "thread": "runs on a thread",
-         "handed": "hands to the engine/library"}
+         "handed": "hands to the engine/library", "bound": "binds"}
 
 
 def where(ix, gid: int) -> str:

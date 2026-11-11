@@ -5,15 +5,16 @@ trees. The language's own calls are references too, marked implicit (silent when
 `[Symbol.iterator]` for spread and `yield*`, `then` for `await`, `valueOf`/`toString`/`[Symbol.toPrimitive]` for
 arithmetic, comparison and template substitutions (J5). A `yield` records what its generator gives. Events by type: subscribing (`addEventListener`, `on`, ...)
 and firing (`dispatchEvent`, `emit`, `postMessage`) (J6). A capitalized JSX tag is a component handed to the JSX
-runtime (J10). `f.call(t, ...)` / `f.apply(t, a)` call f with the arguments after t (J2).
+runtime (J10). `f.call(t, ...)` / `f.apply(t, a)` call f with the arguments after t, `f.bind(t, ...)` makes the
+function that does (J2''), each beside the member call an object's own method of that name answers.
 """
 from __future__ import annotations
 
 from . import js_body, js_guards, narrowing, scopes
 from .cpp_implicit import IMPLICIT
 from .ir_js import args_of, member_name
-from .rules import (CALL_FORMS, COERCION_MEMBERS, CONSTRUCTOR, EVENT_FIRE, EVENT_OBJECTS, EVENT_SUBSCRIBE,
-                    ITERATOR_MEMBER, MESSAGE_FIRE, THEN_MEMBER)
+from .rules import (BIND_FORMS, CALL_FORMS, COERCION_MEMBERS, CONSTRUCTOR, EVENT_FIRE, EVENT_OBJECTS,
+                    EVENT_SUBSCRIBE, ITERATOR_MEMBER, MESSAGE_FIRE, THEN_MEMBER)
 from .source import field_of, named_children, string_value
 
 COERCING = ("+", "-", "*", "/", "%", "**", "<", ">", "<=", ">=", "==", "!=", "+=", "-=", "*=", "/=")
@@ -176,16 +177,32 @@ def call(r, node, unit, cond) -> None:
         method = member_name(r.src, field_of(fn, "property"))
         expression(r, obj, unit, cond)
         base = r.ir(obj, unit)
-        if method in CALL_FORMS:
-            passed = r.ir(node, unit)[2]
-            r.add(unit, "invoke", "", node, cond, base=base, args=passed, argc=len(passed))
+        forms = method in CALL_FORMS or method in BIND_FORMS
+        r.add(unit, "call", method, node, cond, base=base, args=trees, argc=len(argv), text=IMPLICIT if forms else "")
+        if forms:
+            function_form(r, node, method, base, trees, unit, cond)
         else:
-            r.add(unit, "call", method, node, cond, base=base, args=trees, argc=len(argv))
             events(r, node, method, base, argv, unit, cond)
     else:
         expression(r, fn, unit, cond)
         r.add(unit, "invoke", "", node, cond, base=r.ir(fn, unit), args=trees, argc=len(trees))
     arguments(r, args, unit, cond)
+
+
+def function_form(r, node, method: str, base, trees: tuple, unit, cond) -> None:
+    """`x.call(t, ...a)`, `x.apply(t, arr)`, `x.bind(t, ...a)` on a function x (J2''; MDN Function.prototype): call
+    runs x with `this` t and the arguments a; apply with the elements of arr in every place (`text` "apply"); bind
+    makes the function that runs x with `this` t and a put first (a `bound` reference: no call here). On an object of
+    the program with a method of that name, the member call written beside it is that method's."""
+    this = trees[0] if trees else ("literal", "undefined")
+    rest = trees[1:]
+    if method in BIND_FORMS:
+        r.add(unit, "bound", "", node, cond, base=base, args=rest, receiver=this)
+    elif CALL_FORMS[method] == "array":
+        r.add(unit, "invoke", "", node, cond, base=base, args=tuple(("elements", a) for a in rest[:1]), argc=-1,
+              receiver=this, text=method)
+    else:
+        r.add(unit, "invoke", "", node, cond, base=base, args=rest, argc=len(rest), receiver=this)
 
 
 def events(r, node, method: str, base, argv, unit, cond) -> None:

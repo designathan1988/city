@@ -14,7 +14,8 @@ from .model import FUNCTION_KINDS
 from .places import ARG, ENGINE_CALLED, HELD
 from .solver import ENGINE, UNDEFINED
 
-CARRYING = ("call", "override", "name", "thread", "emit", "new", "handed")   # links whose arguments reach parameters
+CARRYING = ("call", "override", "name", "thread", "emit", "new", "handed", "bound")   # links whose arguments reach
+                                                                                  # parameters
 WRITTEN_CALLS = ("call", "override", "new")      # links of a call whose arguments are written at the site
 FLOW = "#flow"
 
@@ -30,7 +31,8 @@ class Flows:
         source = units[edge.src]
         if edge.kind in CARRYING:
             for position, tree in enumerate(edge.args):
-                typer.follow(typer.node_of(tree, source), (ARG, edge.dst, position))
+                if tree is not None:                # a place a `bind` filled (J2''): its own link carried it
+                    typer.follow(typer.node_of(tree, source), (ARG, edge.dst, position))
             self.omitted(edge)
             receivers.carry(self, edge)                              # the object the method runs on (J2')
         elif edge.kind == "write" and edge.args:
@@ -52,7 +54,7 @@ class Flows:
         `undefined`, unless written with a default (it holds that) or a rest parameter (an empty array). A call with a
         spread argument writes an unknown count."""
         callee = self.ix.units[edge.dst]
-        if edge.kind not in WRITTEN_CALLS or edge.argc < 0 or any(tree[0] == "elements" for tree in edge.args):
+        if edge.kind not in WRITTEN_CALLS or edge.argc < 0 or any(tree is not None and tree[0] == "elements" for tree in edge.args):
             return
         for position in range(edge.argc, len(callee.params)):
             if templates.omitted_is_undefined(callee, position):

@@ -10,7 +10,7 @@ one of its values whatever flows in, and a value the tracer cannot tell is that 
 from __future__ import annotations
 
 from . import js_library, js_transfer, transfer, truth
-from .solver import CLASS, ELEM, FN, LANG, TEXT, UNDEFINED
+from .solver import CLASS, ELEM, ENGINE, FN, LANG, OBJECT, TEXT, UNDEFINED, fn_of
 
 
 def wire(t, node, tree, unit) -> None:
@@ -54,19 +54,25 @@ def passes(t, guard, positive: bool, text: str, ctx, unit) -> bool:
         return nullish is not False if positive else nullish is not True
     if kind == "array":
         array = text.startswith(ELEM) or js_library.head_args(text)[0] == "Array"
-        return can_be_array(t, text, ctx) if positive else not array
+        return (array or host_object(t, text, ctx)) if positive else not array
+    if kind == "view":                  # `ArrayBuffer.isView`: a typed array or a DataView, the host's (G1'')
+        return host_object(t, text, ctx) if positive else True
+    if kind == "number":                # `Number.isInteger` and its kin: true of numbers alone (G1'')
+        return "number" in truth.typeof_results(text) if positive else True
     if kind == "has":
         return has(t, guard[1], positive, text, ctx)
     return True
 
 
-def can_be_array(t, text: str, ctx) -> bool:
-    if text.startswith((TEXT, FN, LANG)):
-        return False
+def host_object(t, text: str, ctx) -> bool:
+    """Whether a value can be an object the program did not write: the engine's, an object of the language's, an object
+    of a class of the program whose chain reaches a base the tracer did not read (it may extend the host's)."""
+    if text in (ENGINE, OBJECT):
+        return True
     if text.startswith(CLASS):
         key = t.type_class(text, ctx)
-        return key is None or not js_transfer.chain_read(t.ix, key)        # a base the tracer did not read
-    return True
+        return key is None or not js_transfer.chain_read(t.ix, key)
+    return False
 
 
 def has(t, name: str, positive: bool, text: str, ctx) -> bool:
@@ -162,7 +168,7 @@ def named_classes(t, guard, held: list) -> tuple[list, bool]:
         return keys, unknown
     asserts = guard[0] == "asserts"
     for text, _ in held:                  # the callee: a function declared `[asserts] x is T` at this argument
-        unit = t.ix.units[int(text[len(FN):])] if text.startswith(FN) else None
+        unit = t.ix.units[fn_of(text)[0]] if text.startswith(FN) else None
         predicate = unit.predicate if unit is not None else ()
         if not predicate or predicate[0] != guard[2] or predicate[2] != asserts:
             return [], True

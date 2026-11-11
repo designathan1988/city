@@ -14,13 +14,13 @@ from __future__ import annotations
 from . import js_library, js_primitives, js_transfer, templates
 from .cpp_names import template_args
 from .library import (DEREF, HELD_CALLS, ITEM, ITER, ITERATOR_CALLS, PAIR_PARTS, clean, library_step)
-from .model import ALIAS_KIND
-from .solver import CLASS, ELEM, ENGINE, FN, TEXT, is_language
+from .model import ALIAS_KIND, STATE_KINDS
+from .rules import FUNCTION_FORMS
+from .solver import CLASS, ELEM, ENGINE, FN, FUNCTION, TEXT, bound, fn_of, is_language
 
 OPERATORS = {ITEM: "operator[]", DEREF: "operator->", ITER: "begin", js_library.EACH: "begin"}
 COMPARISONS = ("==", "!=", "<", ">", "<=", ">=", "<=>", "&&", "||", "!", "and", "or", "not", "in", "is")
 CALLABLE_CALLS = ("call", "callv", "call_deferred", "apply")
-HOLDING = ("var", "field", "const")      # the kinds of unit that hold values: calling one calls what it holds (CALL'')
 BIND_CALLS = ("bind", "unbind", "bindv")
 
 
@@ -70,8 +70,11 @@ def member_one(t, target, text: str, ctx, name: str, called: bool, caller=None, 
     """A member of one value: its field's held values (read in `caller`: through its getter, G8'), its method's
     callable, or (called) the method's returns."""
     ix = t.ix
+    if text.startswith(FN) and ctx.lang == "js":
+        function_member(t, target, text, ctx, name, called, caller, args)
+        return
     if text.startswith(FN):
-        unit = ix.units[int(text[len(FN):])]
+        unit = ix.units[fn_of(text)[0]]
         if not called and name in PAIR_PARTS:
             t.add(target, [(text if name == "second" else ENGINE, ctx)])       # (library.PAIR_PARTS)
         elif called and name in CALLABLE_CALLS:
@@ -139,12 +142,32 @@ def member_one(t, target, text: str, ctx, name: str, called: bool, caller=None, 
         unit = ix.units[gid]
         if unit.kind == ALIAS_KIND:
             continue                                                         # a type alias is no value (T1')
-        if called and unit.kind in HOLDING and gid not in getters:          # a property holding functions: what
+        if called and unit.kind in STATE_KINDS and gid not in getters:      # a property holding functions: what
             t.subscribe(t.read_node(unit, caller), target, ("held call", gid), calls(t, caller, args))  # each gives
         elif called or gid in getters:
             result(t, target, unit, caller if called else None, args, deliver, (text, ctx))
         else:
             deliver(t.read_node(unit, caller))          # read where it is written: through its getter or not (G8')
+
+
+def function_member(t, target, text: str, ctx, name: str, called: bool, caller, args: tuple) -> None:
+    """A member of a JS function of the program (J2''; MDN Function.prototype): `call` gives what the function returns
+    for the arguments after `this`, `apply` for the elements of its array in every place, `bind` the function bound
+    with the arguments after `this` put first; read uncalled, each is a function of the language; any other member
+    the language's value."""
+    gid, lead = fn_of(text)
+    unit = t.ix.units[gid]
+    if not called:
+        t.add(target, [(FUNCTION if name in FUNCTION_FORMS else ENGINE, ctx)])
+    elif name == "call":
+        result(t, target, unit, caller if not lead else None, args[1:])
+    elif name == "apply":
+        spread = (("elements", args[1]),) * max(len(unit.params) - lead, 0) if len(args) > 1 else ()
+        result(t, target, unit, caller if not lead else None, spread)
+    elif name == "bind":
+        t.add(target, [(bound(gid, lead + max(len(args) - 1, 0)), ctx)])
+    else:
+        t.add(target, [(ENGINE, ctx)])
 
 
 def steps(t, step: str):
@@ -212,8 +235,9 @@ def operator_one(t, target, op: str, text: str, ctx) -> None:
 def calls(t, caller=None, args: tuple = ()):
     def transfer(target, values):
         for text, ctx in values:
-            if text.startswith(FN):
-                result(t, target, t.ix.units[int(text[len(FN):])], caller, args)
+            if text.startswith(FN):                     # a bound function: its own arguments after those bound
+                gid, lead = fn_of(text)
+                result(t, target, t.ix.units[gid], caller if not lead else None, args)
             elif ctx.lang == "js" and of_language(text):
                 t.add(target, [(v, ctx) for v in js_primitives.calls(text)])    # calling a primitive throws (T5)
             elif not text.startswith(ELEM):

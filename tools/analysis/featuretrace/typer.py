@@ -97,8 +97,8 @@ class Typer(Places, TypeNames, Solver):
         elif kind == "union":
             self.follow(self.node_of(tree[1], unit), node)
             self.follow(self.node_of(tree[2], unit), node)
-        elif kind == "collection":
-            self.add(node, [(ENGINE, unit)])
+        elif kind == "collection":                # JS: an array of the language holding what is written (T2''); else
+            self.add(node, [(js_library.EMPTY_ARRAY if unit.lang == "js" else ENGINE, unit)])   # the engine's
             for value in tree[1]:
                 self.subscribe(self.node_of(value, unit), node, ("elem",), transfer.elements(self))
         elif kind == "put":
