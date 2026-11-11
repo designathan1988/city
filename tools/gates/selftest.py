@@ -21,21 +21,27 @@ def _walk(repo):
     return sorted(out)
 
 
-def run_case(case_dir, base_rules, base_owners, rules_by_name):
-    """(rule name, expected failure ids, list of mismatch messages) for one fixture case."""
+def case_context(case_dir, base_rules, base_owners):
+    """(case, the uncached Context its rule runs in): the case's repo, the real rules with the case's whole top-level entries
+    in their place, its changed lines."""
     with open(os.path.join(case_dir, "case.json"), encoding="utf-8") as fh:
         case = json.load(fh)
     rules = dict(base_rules)
     rules.update(case.get("overrides", {}))  # a case replaces whole top-level entries of rules.json
-    rule = registry.all_rules(rules)
-    rule = next((r for r in rule if r.name == case["rule"]), None)
-    if rule is None or case["rule"] not in rules_by_name:
-        return case["rule"], set(), [f"unknown rule '{case['rule']}'"]
     repo = os.path.join(case_dir, "repo")
     listed = _walk(repo)
     files = [f for f in listed if not excluded(f, rules["exclude_dirs"])]
     changed = {p: (None if v == "all" else set(v)) for p, v in case.get("changed", {}).items()}
-    ctx = Context(repo, files, listed, rules, case.get("owners", base_owners), changed, Cache(repo, enabled=False))
+    return case, Context(repo, files, listed, rules, case.get("owners", base_owners), changed, Cache(repo, enabled=False))
+
+
+def run_case(case_dir, base_rules, base_owners, rules_by_name):
+    """(rule name, expected failure ids, list of mismatch messages) for one fixture case."""
+    case, ctx = case_context(case_dir, base_rules, base_owners)
+    rule = next((r for r in registry.all_rules(ctx.rules) if r.name == case["rule"]), None)
+    if rule is None or case["rule"] not in rules_by_name:
+        return case["rule"], set(), [f"unknown rule '{case['rule']}'"]
+    files = ctx.files
     got = sorted(f"{gid} {where}" for gid, where, _msg in run_rules(ctx, files, [rule]))
     want = sorted(case["expect"])
     issues = []

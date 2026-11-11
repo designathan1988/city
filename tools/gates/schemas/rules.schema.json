@@ -60,20 +60,33 @@
       },
       "required": ["min_tokens", "paths", "extensions"]
     },
+    "lab_reference": {
+      "type": "object", "strict": true,
+      "properties": {
+        "_doc": {"$ref": "#/$defs/doc"},
+        "place": {"type": "string", "minLength": 1},
+        "dirs": {"$ref": "#/$defs/paths"},
+        "skip_dirs": {"$ref": "#/$defs/paths"}
+      },
+      "required": ["place", "dirs", "skip_dirs"]
+    },
     "lab_copy": {
       "type": "object", "strict": true,
       "properties": {
         "_doc": {"$ref": "#/$defs/doc"},
-        "reference": {"type": "string", "minLength": 1},
-        "reference_dirs": {"$ref": "#/$defs/paths"},
-        "skip_dirs": {"$ref": "#/$defs/paths"},
+        "paths": {"$ref": "#/$defs/some_paths"},
+        "extensions": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^\\.[a-z]+$"}, "uniqueItems": true},
         "k": {"type": "integer", "minimum": 2},
         "w": {"type": "integer", "minimum": 1},
         "min_name_len": {"type": "integer", "minimum": 1},
-        "number_run": {"type": "integer", "minimum": 2},
-        "trivial_numbers": {"type": "array", "items": {"type": "number"}, "uniqueItems": true}
+        "trivial_numbers": {"type": "array", "items": {"type": "number"}, "uniqueItems": true},
+        "max_spread": {"type": "integer", "minimum": 1},
+        "min_tokens": {"type": "integer", "minimum": 1},
+        "min_share": {"type": "number", "minimum": 0, "maximum": 1},
+        "min_numbers": {"type": "integer", "minimum": 2}
       },
-      "required": ["reference", "reference_dirs", "skip_dirs", "k", "w", "min_name_len", "number_run", "trivial_numbers"]
+      "required": ["paths", "extensions", "k", "w", "min_name_len", "trivial_numbers", "max_spread", "min_tokens", "min_share",
+        "min_numbers"]
     },
     "mirrors": {
       "type": "array",
@@ -122,5 +135,5 @@
   },
   "required": ["exclude_dirs", "root_allowed", "allowed_docs", "doc_exempt_names", "doc_extensions", "junk_globs", "max_lines", "max_function_lines",
     "header_comment_extensions", "mapped_roots", "map_file", "map_markers", "claude_md_max_lines", "cpp_layers", "forbidden", "schemas",
-    "magic_numbers", "clones", "mirrors", "generated", "styled_tables", "material_tables", "uniform_tables"]
+    "magic_numbers", "clones", "lab_reference", "lab_copy", "mirrors", "generated", "styled_tables", "material_tables", "uniform_tables"]
 }

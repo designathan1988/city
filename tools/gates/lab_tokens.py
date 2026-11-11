@@ -1,7 +1,10 @@
 """The code of three languages read as one, what LAB_COPY's fingerprints are made of: declarations and the languages' own types
-become D, a function's head F, identifiers I, numbers their value, strings S, control words and operators the same word across
-TypeScript, C++ and GDScript (`===` is `==`, `elif` is `else if`, `::` is `.`), where a translation keeps them alike; the winnowed
-k-gram fingerprints of such a stream, the names a source defines and their normal form, and its runs of non-trivial numbers."""
+become D (a C++ declaration's type too), a function's head F, identifiers I, numbers their value, strings S, control words and
+operators the same word across TypeScript, C++ and GDScript (`===` is `==`, `elif` is `else if`, `::` and `->` are `.`), and
+TypeScript's type-only writing (annotations, `as`, the non-null `!`) is dropped; `flatten` then takes out what the languages
+write differently round the same program (statement ends, braces, a condition's parentheses, an empty argument list, the
+receiver written out, a range loop's word). Also the winnowed k-gram fingerprints of such a stream, a defined name's normal
+form, and the non-trivial numbers in their order."""
 import re
 
 import facts
@@ -19,11 +22,18 @@ DECLARE = frozenset({
     "String", "StringName", "Array", "Dictionary", "Vector2", "Vector2i", "Vector3", "Vector3i", "Color", "Variant",
 })
 FUNCTION_WORDS = frozenset({"function", "func", "def"})
-SAME = {"===": "==", "!==": "!=", "::": ".", "and": "&&", "or": "||", "not": "!", "nullptr": "null", "undefined": "null",
-        "None": "null", "self": "this", "True": "true", "False": "false"}
+SAME = {"===": "==", "!==": "!=", "::": ".", "->": ".", ":=": "=", "and": "&&", "or": "||", "not": "!", "nullptr": "null",
+        "undefined": "null", "None": "null", "self": "this", "True": "true", "False": "false"}
+_AFTER_ASSERTION = frozenset({")", ".", ";", ",", "]", "}", "=", "?."})  # TypeScript's postfix `!` asserts a type, no more
+_TYPE_PARTS = frozenset({"D", "I", ".", "<", ">", ">>", "*", "&", "&&", ","})
+_DECLARED_BEFORE = frozenset({"=", ";", "(", ",", ")", "{", "[", ":"})  # what may follow a declared name
+_STATEMENT_START = frozenset({";", "{", "}", "(", ",", ":"})
+_FLAT_DROP = frozenset({";", "{", "}", "pass"})  # statement ends, block braces and GDScript's empty statement
+_CONTROL_WORDS = frozenset({"if", "while", "for", "switch"})
 KEPT_WORDS = frozenset({"if", "else", "for", "while", "do", "return", "break", "continue", "switch", "case", "default",
                         "new", "delete", "this", "true", "false", "null", "try", "catch", "throw", "in", "of", "class",
                         "struct", "enum", "match", "await", "yield"})
+ANNOTATED = frozenset({"js", "gd"})  # the languages that write a type after a name: `name: Type`, `-> Type`
 _PART = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z0-9]+")
 _TYPE_END = frozenset({"=", ",", ")", ";", "{", "=>"})
 
@@ -36,8 +46,8 @@ def normal_name(name, min_len):
     return joined if len(parts) >= 2 and len(joined) >= min_len else None
 
 
-def _number(src, tok):
-    return lex_gd.number_value(tok.text) if src.lang == "gd" else lex_c.number_value(tok.text)
+def number_of(text, lang):
+    return lex_gd.number_value(text) if lang == "gd" else lex_c.number_value(text)
 
 
 def _skip_type(code, i):
@@ -57,15 +67,15 @@ def _skip_type(code, i):
     return i
 
 
-def _annotation(code, i, stack):
+def _annotation(code, i, stack, lang):
     """Whether the ':' or '->' at `i` opens a type annotation: a GDScript `->`, a declared name's or a parameter's type, or
-    a TypeScript return type after `)`."""
+    a TypeScript return type after `)` (in GDScript that `:` opens the function's block)."""
     t = code[i].text
     if t == "->":
         return True
     prev = code[i - 1].text if i else ""
     if prev == ")":
-        return True
+        return lang == "js"
     j = i - 1 if prev != "?" else i - 2  # an optional parameter's `?:`
     if j < 0 or code[j].kind != "ident":
         return False
@@ -78,44 +88,101 @@ def _block_colon(code, i):
     return i + 1 >= len(code) or code[i + 1].line != code[i].line
 
 
-def neutral_tokens(src):
-    """[(neutral text, line)] of a source's code, preprocessor lines left out."""
-    code = [t for t in src.code() if not t.pp]
+def neutral_of(code, lang, line_offset=0):
+    """[(neutral text, line)] of code tokens (preprocessor lines left out) written in `lang`, braces and statement ends kept
+    (a function's body is found by them before `flatten` takes them out)."""
+    code = [t for t in code if not t.pp]
     out, stack = [], []
     i = 0
     while i < len(code):
         tok = code[i]
-        text = tok.text
+        text, line = tok.text, tok.line + line_offset
         if text in ("(", "[", "{"):
             stack.append(text)
         elif text in (")", "]", "}") and stack:
             stack.pop()
-        if text in (":", "->") and _annotation(code, i, stack):
+        if lang in ANNOTATED and text in (":", "->") and _annotation(code, i, stack, lang):
             i = _skip_type(code, i + 1)
             continue
-        if src.lang == "gd" and text == ":" and _block_colon(code, i):
+        if lang == "js" and tok.kind == "ident" and text == "as" and i:
+            i = _skip_type(code, i + 1)
+            continue
+        if lang == "js" and text == "!" and (i + 1 >= len(code) or code[i + 1].text in _AFTER_ASSERTION):
+            i += 1
+            continue
+        if lang == "gd" and text == ":" and _block_colon(code, i):
             i += 1
             continue
         if tok.kind == "number":
-            value = _number(src, tok)
-            out.append((f"N:{value:.10g}" if value is not None else "N", tok.line))
+            value = number_of(text, lang)
+            out.append((f"N:{value:.10g}" if value is not None else "N", line))
         elif tok.kind in ("string", "char"):
-            out.append(("S", tok.line))
+            out.append(("S", line))
         elif tok.kind == "ident":
             if text == "elif":
-                out += [("else", tok.line), ("if", tok.line)]
+                out += [("else", line), ("if", line)]
             elif text in FUNCTION_WORDS:
-                out.append(("F", tok.line))
+                out.append(("F", line))
             elif text in DECLARE:
                 if not out or out[-1][0] != "D":
-                    out.append(("D", tok.line))
+                    out.append(("D", line))
             else:
                 word = SAME.get(text, text)
-                out.append((word if word in KEPT_WORDS else "I", tok.line))
+                out.append((word if word in KEPT_WORDS else "I", line))
         else:
-            out.append((SAME.get(text, text), tok.line))
+            out.append((SAME.get(text, text), line))
         i += 1
-    return _function_heads(out)
+    return _function_heads(_declarations(out) if lang in ("cpp", "glsl") else out)
+
+
+def neutral_tokens(src):
+    """[(neutral text, line)] of a source's code."""
+    return neutral_of(src.code(), src.lang)
+
+
+def _type_end(out, i):
+    """The index past a C++ type starting at i (declaration words, a qualified name, its template arguments, then
+    qualifiers, pointers and references), or None."""
+    n, j = len(out), i
+    while j < n and out[j][0] == "D":
+        j += 1
+    if j >= n or out[j][0] != "I":
+        return None
+    j += 1
+    while j + 1 < n and out[j][0] == "." and out[j + 1][0] == "I":
+        j += 2
+    if j < n and out[j][0] == "<":
+        depth = 0
+        while j < n:
+            t = out[j][0]
+            if t not in _TYPE_PARTS and not t.startswith("N"):
+                return None
+            depth += 1 if t == "<" else -2 if t == ">>" else -1 if t == ">" else 0
+            j += 1
+            if depth <= 0:
+                break
+        if depth > 0:
+            return None
+    while j < n and out[j][0] in ("D", "*", "&", "&&"):
+        j += 1
+    return j
+
+
+def _declarations(out):
+    """A C++ declaration's type, `std::vector<Loaf> batch` or `Loaf loaf`, reads as the other languages' declaration word:
+    `D I`."""
+    res, i, n = [], 0, len(out)
+    while i < n:
+        if not res or res[-1][0] in _STATEMENT_START:
+            j = _type_end(out, i)
+            if j is not None and j + 1 < n and out[j][0] == "I" and out[j + 1][0] in _DECLARED_BEFORE and any(
+                    t == "I" for t, _l in out[i:j]):
+                res.append(("D", out[i][1]))
+                i = j
+                continue
+        res.append(out[i])
+        i += 1
+    return res
 
 
 def _function_heads(out):
@@ -126,9 +193,41 @@ def _function_heads(out):
     return out
 
 
-def fingerprints(tokens, k, w):
-    """[(hash, line)] winnowed from the k-grams of `tokens` (Schleimer, Wilkerson and Aiken 2003): each k-gram hashed
-    Karp-Rabin over facts.token_id, the minimum of every window of `w` hashes kept (the rightmost on ties), once."""
+def flatten(tokens):
+    """The stream with what the languages write differently round the same program taken out: statement ends and block
+    braces (GDScript writes neither), the parentheses round a control word's condition (GDScript writes none), an empty
+    argument list (a property in one language is an accessor in another), the receiver written out (`this.`, `self.`,
+    `this->`) and a declaration word right after `for`; a range loop's `of` or `:` reads as GDScript's `in`."""
+    out, parens, n, i = [], [], len(tokens), 0
+    while i < n:
+        t, line = tokens[i]
+        nxt = tokens[i + 1][0] if i + 1 < n else None
+        if t in _FLAT_DROP or (t == "D" and out and out[-1][0] == "for"):
+            i += 1
+            continue
+        if (t == "this" and nxt == ".") or (t == "(" and nxt == ")"):
+            i += 2
+            continue
+        if t == "(":
+            control = bool(out) and out[-1][0] in _CONTROL_WORDS
+            parens.append((control, bool(out) and out[-1][0] == "for"))
+            if control:
+                i += 1
+                continue
+        elif t == ")" and parens and parens.pop()[0]:
+            i += 1
+            continue
+        elif t == "of" or (t == ":" and parens and parens[-1][1]):
+            t = "in"
+        out.append((t, line))
+        i += 1
+    return out
+
+
+def kgrams(tokens, k, informative=False):
+    """[(hash, index of its first token)] of every k-gram of `tokens`, hashed Karp-Rabin over facts.token_id; with
+    `informative`, only those that are no short pattern repeated (a list of like statements has a list's shape, not a
+    program's logic)."""
     if len(tokens) < k:
         return []
     ids = [facts.token_id(t) for t, _line in tokens]
@@ -138,8 +237,23 @@ def fingerprints(tokens, k, w):
         if i >= k:
             h = (h - ids[i - k] * power) % facts.MOD
         h = (h * facts.BASE + v) % facts.MOD
-        if i >= k - 1:
-            grams.append((h, tokens[i - k + 1][1]))
+        if i >= k - 1 and not (informative and periodic(ids[i - k + 1:i + 1])):
+            grams.append((h, i - k + 1))
+    return grams
+
+
+def periodic(window):
+    """Whether a window repeats a pattern no longer than half of it."""
+    n = len(window)
+    return any(all(window[j] == window[j + p] for j in range(n - p)) for p in range(1, n // 2 + 1))
+
+
+def fingerprints(tokens, k, w):
+    """[(hash, index)] winnowed from the k-grams of `tokens` (Schleimer, Wilkerson and Aiken 2003): the minimum of every
+    window of `w` hashes kept (the rightmost on ties), once."""
+    grams = kgrams(tokens, k)
+    if not grams:
+        return []
     out, last = [], -1
     for s in range(max(1, len(grams) - w + 1)):
         window = grams[s:s + w]
@@ -151,65 +265,18 @@ def fingerprints(tokens, k, w):
     return out
 
 
-def _defined_ts(code):
-    found = {}
-    stack = []
-    for i, tok in enumerate(code):
-        t = tok.text
-        if t == "{":
-            stack.append(code[i - 1].text if i else "")
-            continue
-        if t == "}" and stack:
-            stack.pop()
-            continue
-        if tok.kind != "ident" or i + 1 >= len(code):
-            continue
-        prev = code[i - 1].text if i else ""
-        nxt = code[i + 1].text
-        if prev in ("function", "class", "interface", "type", "enum", "const", "let", "var", "func", "class_name", "signal"):
-            found.setdefault(t, tok.line)
-        elif nxt in ("(", "=", ":", "?") and prev in ("{", ";", "}", "readonly", "static", "private", "public", "protected",
-                                                       "async", "get", "set") and _in_class(stack):
-            found.setdefault(t, tok.line)
-    return found
+def guaranteed_length(k, w):
+    """The shortest match winnowing is sure to find (w + k - 1 tokens): a piece shorter than this has too few fingerprints
+    for its share of them to say anything."""
+    return w + k - 1
 
 
-def _in_class(stack):
-    return bool(stack) and stack[-1] not in (")", "=>")
-
-
-def _defined_cpp(code):
-    found = {}
-    for i, tok in enumerate(code[:-1]):
-        if tok.kind != "ident" or tok.text in DECLARE or tok.text in KEPT_WORDS:
-            continue
-        prev = code[i - 1] if i else None
-        nxt = code[i + 1].text
-        if prev is None:
-            continue
-        typed = prev.text in DECLARE or prev.text in (">", "*", "&") or (prev.kind == "ident" and prev.text not in KEPT_WORDS
-                                                                       and prev.text not in ("return", "else"))
-        if prev.text in ("struct", "class", "enum", "namespace", "using") or (typed and nxt in ("(", "=", ";", "{", "[", ",")):
-            found.setdefault(tok.text, tok.line)
-    return found
-
-
-def defined_at(src):
-    """{name: line} of what a source defines: functions, classes, constants, variables, fields and members."""
-    code = [t for t in src.code() if not t.pp]
-    return _defined_cpp(code) if src.lang == "cpp" else _defined_ts(code)
-
-
-def defined_names(src):
-    return set(defined_at(src))
-
-
-def number_runs(src, trivial, run):
-    """[(values, line)]: every run of `run` non-trivial numbers in the order the source writes them."""
-    values = []
-    for tok in src.code():
-        if tok.kind == "number":
-            v = _number(src, tok)
+def numbers_in_order(code, lang, trivial, line_offset=0):
+    """[(value, line)] of the non-trivial numbers of code tokens, in the order they are written."""
+    out = []
+    for tok in code:
+        if tok.kind == "number" and not tok.pp:
+            v = number_of(tok.text, lang)
             if v is not None and v not in trivial:
-                values.append((v, tok.line))
-    return [(tuple(v for v, _ in values[s:s + run]), values[s][1]) for s in range(len(values) - run + 1)]
+                out.append((v, tok.line + line_offset))
+    return out

@@ -11,6 +11,7 @@ import gate_docs
 import gate_files
 import gate_forbidden
 import gate_generated
+import gate_lab
 import gate_language
 import gate_materials
 import gate_python
@@ -78,6 +79,7 @@ def per_file_rules(rules):
                 gate_defs.check_data_copies, lambda ctx: ctx.cache.key_of(_data_files(ctx))),
         PerFile("english", ["NON_ENGLISH_TEXT"], gate_language.applies, gate_language.check_english,
                 lambda ctx: ctx.cache.key_of(gate_language.inputs(ctx))),
+        PerFile("lab_copy", ["LAB_COPY"], gate_lab.applies, gate_lab.check_lab_copy, gate_lab.store_key),
     ]
 
 
