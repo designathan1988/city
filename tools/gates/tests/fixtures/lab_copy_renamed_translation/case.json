@@ -1,0 +1,17 @@
+{
+  "rule": "lab_copy",
+  "expect": [
+    "LAB_COPY native/src/bakery/kiln.cpp:15",
+    "LAB_COPY native/src/bakery/kiln.cpp:33"
+  ],
+  "overrides": {
+    "lab_reference": {
+      "place": "../../../lab/ref",
+      "dirs": [],
+      "skip_dirs": []
+    }
+  },
+  "changed": {
+    "native/src/bakery/kiln.cpp": "all"
+  }
+}

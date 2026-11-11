@@ -1,0 +1,9 @@
+{
+  "_doc": "Calibration case (LAB_COPY): the reference's values under this game's keys: a value is what the game must do, kept in data.",
+  "shelves": 14,
+  "crust": 1.35,
+  "minutes_fixed": 18.5,
+  "minutes_per_gram": 0.042,
+  "proof_needed": 45,
+  "cool_step": 7.5
+}

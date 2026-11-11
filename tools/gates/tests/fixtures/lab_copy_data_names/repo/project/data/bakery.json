@@ -1,0 +1,6 @@
+{
+  "_doc": "Calibration case (LAB_COPY): a table whose keys are the reference's names: a name is the reference's, whatever holds it.",
+  "rack_slots": 14,
+  "crust_factor": 1.35,
+  "proof_minutes": 45
+}

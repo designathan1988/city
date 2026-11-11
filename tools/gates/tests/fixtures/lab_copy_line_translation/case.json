@@ -1,0 +1,25 @@
+{
+  "rule": "lab_copy",
+  "expect": [
+    "LAB_COPY native/src/bakery/oven.cpp:7",
+    "LAB_COPY native/src/bakery/oven.cpp:8",
+    "LAB_COPY native/src/bakery/oven.cpp:11",
+    "LAB_COPY native/src/bakery/oven.cpp:12",
+    "LAB_COPY native/src/bakery/oven.cpp:15",
+    "LAB_COPY native/src/bakery/oven.cpp:24",
+    "LAB_COPY native/src/bakery/oven.cpp:26",
+    "LAB_COPY native/src/bakery/oven.cpp:29",
+    "LAB_COPY native/src/bakery/oven.cpp:33",
+    "LAB_COPY native/src/bakery/oven.cpp:48"
+  ],
+  "overrides": {
+    "lab_reference": {
+      "place": "../../../lab/ref",
+      "dirs": [],
+      "skip_dirs": []
+    }
+  },
+  "changed": {
+    "native/src/bakery/oven.cpp": "all"
+  }
+}

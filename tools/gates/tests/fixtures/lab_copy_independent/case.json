@@ -1,0 +1,14 @@
+{
+  "rule": "lab_copy",
+  "expect": [],
+  "overrides": {
+    "lab_reference": {
+      "place": "../../../lab/ref",
+      "dirs": [],
+      "skip_dirs": []
+    }
+  },
+  "changed": {
+    "native/src/bakery/oven.cpp": "all"
+  }
+}

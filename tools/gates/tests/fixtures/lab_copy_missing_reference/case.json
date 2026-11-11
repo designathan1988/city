@@ -1,0 +1,16 @@
+{
+  "rule": "lab_copy",
+  "expect": [
+    "LAB_COPY native/src/bakery/timing.cpp"
+  ],
+  "overrides": {
+    "lab_reference": {
+      "place": "../absent",
+      "dirs": [],
+      "skip_dirs": []
+    }
+  },
+  "changed": {
+    "native/src/bakery/timing.cpp": "all"
+  }
+}

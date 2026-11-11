@@ -1,0 +1,18 @@
+{
+  "rule": "lab_copy",
+  "expect": [
+    "LAB_COPY project/data/bakery.json:3",
+    "LAB_COPY project/data/bakery.json:4",
+    "LAB_COPY project/data/bakery.json:5"
+  ],
+  "overrides": {
+    "lab_reference": {
+      "place": "../../../lab/ref",
+      "dirs": [],
+      "skip_dirs": []
+    }
+  },
+  "changed": {
+    "project/data/bakery.json": "all"
+  }
+}

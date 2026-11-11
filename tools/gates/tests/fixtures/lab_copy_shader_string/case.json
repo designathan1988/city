@@ -1,0 +1,17 @@
+{
+  "rule": "lab_copy",
+  "expect": [
+    "LAB_COPY project/render/shaders/glaze.gdshader:4",
+    "LAB_COPY project/render/shaders/glaze.gdshader:7"
+  ],
+  "overrides": {
+    "lab_reference": {
+      "place": "../../../lab/ref",
+      "dirs": [],
+      "skip_dirs": []
+    }
+  },
+  "changed": {
+    "project/render/shaders/glaze.gdshader": "all"
+  }
+}
