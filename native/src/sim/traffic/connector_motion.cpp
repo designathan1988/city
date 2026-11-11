@@ -5,7 +5,9 @@
 // its length, vehicle_pose.cpp). box_hold says what holds one.
 #include "sim/traffic/motion_law.h"
 
+#include "sim/traffic/fork_bodies.h"
 #include "sim/traffic/lane_closures.h"
+#include "sim/traffic/light_rule.h"
 
 #include <algorithm>
 
@@ -40,23 +42,10 @@ void connector_leads(const CityState &s, int ci, size_t k, float top, Lead &car,
 } // namespace
 
 void fork_leads(const CityState &s, int ci, const Vehicle &v, float along, Lead &l) {
-	const TrafficState &t = s.traffic;
-	const TrafficParams &p = s.catalog.traffic;
-	const Conn &c = t.g.conns[size_t(ci)];
-	const int mine = body_class(p, v.type);
-	for (size_t k = 0; k < c.forks.size(); k++) {
-		const int branch = c.forks[k];
-		const Conn &o = t.g.conns[size_t(branch)];
-		// `front`: along the other branch's way, which starts where this one starts; past its clear arc the body is clear of this one's
-		const auto ahead = [&](const Vehicle &u, float front) {
-			const float length = body_length(s, u);
-			if (front <= along || front - length * 0.5f >= c.fork_clear[k][size_t(body_class(p, u.type) * BODY_CLASSES + mine)]) return;
-			l.take(front - length - along, u.v);
-		};
-		for (int id : t.conn_vehicles[size_t(branch)]) ahead(t.vehicles[size_t(id)], t.vehicles[size_t(id)].cs);
-		for (int id : t.lane_vehicles[size_t(o.to_ds) * MAX_LANES + o.to_lane])
-			if (t.vehicles[size_t(id)].came == branch) ahead(t.vehicles[size_t(id)], o.len + t.vehicles[size_t(id)].s);
-	}
+	const Conn &c = s.traffic.g.conns[size_t(ci)];
+	fork_bodies(s, c, body_class(s.catalog.traffic, v.type), [&](const Vehicle &u, float front) {
+		if (front > along) l.take(front - body_length(s, u) - along, u.v); // further along than `v`: followed as on one path
+	});
 }
 
 void step_connector(CityState &s, int ci, float dt) {

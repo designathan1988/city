@@ -7,7 +7,7 @@
 #include "sim/buildings/b40/record.h"
 #include "sim/buildings/lot_access.h"
 #include "sim/street/footway.h"
-#include "sim/traffic/traffic_system.h"
+#include "sim/traffic/light_rule.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>

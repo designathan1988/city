@@ -5,6 +5,7 @@
 #include "sim/traffic/kerb_stops.h"
 
 #include "sim/traffic/lane_closures.h"
+#include "sim/traffic/light_rule.h"
 #include "sim/traffic/motion_law.h"
 
 #include "core/units.h"
@@ -123,12 +124,12 @@ bool gate(CityState &s, int id, int &ci, float dist, bool head, bool held, bool 
 	if (ci < 0 || t.g.conns[ci].from_lane != v.lane || dist >= p.look_ahead_m) return false;
 	if (v.pass == ci) {
 		// a commitment is taken back while the nose is still behind the line: the light went against it and it can still
-		// stop (at an amber by the amber's rule, at a red comfortably), a light past the junction stops it before it, or it
-		// stands and its exit filled meanwhile; else it goes once the box is clear, never into a junction it cannot leave
-		// nor against the light (a jammed junction's release lets its one vehicle in whatever its exit)
+		// stop (at an amber by the amber's rule, at a red comfortably; standing behind the line it has stopped), a light past
+		// the junction stops it before it, or it stands and its exit filled meanwhile; else it goes once the box is clear, never
+		// into a junction it cannot leave nor against the light (a jammed junction's release lets its one vehicle in whatever its exit)
 		const Light light = light_for(s, v.ds);
-		const bool can_stop = light == Light::AMBER ? stops_at_amber(s, v, v.ds, line - p.stop_margin_m, ci) || v.amber_hold == v.ds
-				: stop_is_comfortable(s, v, line - p.stop_margin_m);
+		const float room = stop_room(p, line);
+		const bool can_stop = light == Light::AMBER ? stops_at_amber(s, v, v.ds, room, ci) || v.amber_hold == v.ds : stop_is_comfortable(s, v, room);
 		const bool stale = held || (can_stop && light != Light::GREEN) ||
 				(!released && v.v < WAIT_SPEED && !is_splice(s, t.g.conns[ci].node) && !has_exit(s, t.g.conns[ci], id));
 		if (!stale) return box_clear(s, ci, id);

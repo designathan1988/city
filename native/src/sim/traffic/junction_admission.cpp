@@ -6,6 +6,9 @@
 // off while too many vehicles stand in full lanes.
 #include "sim/traffic/traffic_system.h"
 
+#include "sim/traffic/fork_bodies.h"
+#include "sim/traffic/lane_closures.h"
+
 #include <algorithm>
 
 namespace city {
@@ -16,8 +19,15 @@ namespace {
 constexpr double CLAIM_FRESH_S = 1.0; // an exit claim lapses unless renewed within this
 constexpr int SPLICE_DEGREE = 2;
 
-float body(const CityState &s, int id) { return s.catalog.traffic.classes[int(s.traffic.vehicles[id].type)].length; }
+float body(const CityState &s, int id) { return body_length(s, s.traffic.vehicles[size_t(id)]); }
 size_t key(int ds, int lane) { return size_t(ds) * MAX_LANES + lane; }
+
+// A body that took another branch out of `c`'s lane still stands where the ways part, in the way of a body of class `mine` (fork_bodies.h).
+bool fork_busy(const CityState &s, const Conn &c, int mine) {
+	bool busy = false;
+	fork_bodies(s, c, mine, [&](const Vehicle &, float) { busy = true; });
+	return busy;
+}
 
 } // namespace
 
@@ -46,9 +56,12 @@ bool has_exit(const CityState &s, const Conn &c, int vid) {
 			inbound++;
 		}
 	}
-	if (lane.empty() && inbound == 0) return true;
+	// a stretch of the exit a body off the lanes holds (a car pulling out of a lot, a lorry swinging) is no room up to it
+	const float shut = closure_ahead(t, int(to), 0.f);
+	if (shut >= 0) room = std::min(room, shut);
+	if (lane.empty() && inbound == 0 && shut < 0) return true;
 	// short lane between close junctions: nearly part of the junction; one more fits behind a moving tail
-	if (L < tp.short_exit_m && tail && tail->v > tp.tail_moving_ms && inbound == 0) return true;
+	if (L < tp.short_exit_m && tail && tail->v > tp.tail_moving_ms && inbound == 0 && shut < 0) return true;
 	if (float(lane.size()) >= std::max(1.f, L / tp.slot_m)) return false;
 	return room > std::min(body(s, vid) + tp.exit_room_pad_m, L * tp.reconsider_full_share);
 }
@@ -80,6 +93,7 @@ bool box_clear(const CityState &s, int ci, int vid) {
 	const TrafficState &t = s.traffic;
 	const Conn &c = t.g.conns[ci];
 	const int mine = body_class(s.catalog.traffic, t.vehicles[size_t(vid)].type);
+	if (fork_busy(s, c, mine)) return false; // whoever took another branch first still stands on this one's way
 	for (size_t k = 0; k < c.conflicts.size(); k++) {
 		if (conflict_busy(s, c, k, mine)) return false;
 		const int d = c.conflicts[k];
@@ -127,6 +141,7 @@ bool jam_release(CityState &s, int ci, int vid) {
 	if (!on.empty() && t.vehicles[on.back()].cs < body(s, on.back()) + tp.exit_room_pad_m) return false;
 	if (peds_in_way(s, ci)) return false;
 	const int mine = body_class(tp, t.vehicles[size_t(vid)].type);
+	if (fork_busy(s, c, mine)) return false;
 	for (size_t k = 0; k < c.conflicts.size(); k++)
 		if (conflict_busy(s, c, k, mine) || pass_holder(s, c.conflicts[k]) >= 0) return false;
 	return true;

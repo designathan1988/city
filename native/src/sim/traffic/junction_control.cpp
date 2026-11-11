@@ -4,6 +4,7 @@
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/roads/junction.h"
+#include "sim/traffic/light_rule.h"
 
 #include <cmath>
 
@@ -13,7 +14,6 @@ namespace traffic {
 namespace {
 
 constexpr int RANK_MAIN = 3, RANK_YIELD = 1; // free arms keep DirSeg::rank's default
-constexpr int MAIN_PRIORITY = 2; // arms of this road priority or more push a junction toward signals
 constexpr int RING_PRIORITY = 100; // over every class of road: whoever circulates has the way, whatever comes in
 constexpr int SIGNAL_ARMS = 5, SIGNAL_MAIN_ARMS = 3;
 constexpr size_t MAIN_LEGS = 2; // the road that goes through a junction
@@ -80,7 +80,7 @@ Control decide(const RoadNode &node, const std::vector<Arm> &arms, const Traffic
 	std::vector<int> high;
 	int lo = arms[0].priority, hi = lo;
 	for (size_t i = 0; i < arms.size(); i++) {
-		if (arms[i].priority >= MAIN_PRIORITY) high.push_back(int(i));
+		if (float(arms[i].priority) >= tp.signal_main_priority) high.push_back(int(i)); // a main road's arm pushes the junction toward signals
 		lo = std::min(lo, arms[i].priority);
 		hi = std::max(hi, arms[i].priority);
 	}
@@ -261,7 +261,7 @@ bool may_enter(const CityState &s, int vid, int ci, float dist) {
 	// road joint (two-way node without control): no junction to block; IDM follows whoever is beyond it
 	if (is_splice(s, c.node)) return true;
 	const float line = dist - t.g.ds[c.from_ds].stop_back;
-	if (light_stops(s, me, c.from_ds, line - tp.stop_margin_m, ci)) return false;
+	if (light_stops(s, me, c.from_ds, stop_room(tp, line), ci)) return false;
 	if (t.g.ds[c.from_ds].must_stop && me.stood_at != c.from_ds) return false; // a Stop is more than a lower rank: it is taken from a stand
 	if (!has_exit(s, c, vid)) return false;
 	const float top = top_speed(s, me, conn_speed(s, c));

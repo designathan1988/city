@@ -122,32 +122,7 @@ int connector_to(const CityState &s, int ds, int lane, int next_ds, int cls = 0)
 int pick_connector(const CityState &s, const Vehicle &v);
 Hold hold_reason(const CityState &s, int vehicle);
 int lane_head(const CityState &s, int vehicle); // the first vehicle of its lane (itself when it leads), -1 off lanes
-
-// light_rule.cpp: the one rule of the lights, for admission, commitments and the stops ahead. `v` can stop
-// comfortably (its class's b) within `stop_m`; how far it needs to stop as the intergreen is timed (CONTRAN MBST vol. V
-// 5.7.1: reaction, then signal_decel); whether it stops at the amber of approach `ds`, `stop_m` ahead, with connector
-// `ci` past the line (-1: none from its lane); the light of `ds` holds it (red always; amber by that rule, a decision
-// held until green).
-bool stop_is_comfortable(const CityState &s, const Vehicle &v, float stop_m);
-float amber_reach(const TrafficParams &p, float v);
-struct AmberApproach {
-	float v = 0, stop_m = 0; // its speed and the metres to where it stops
-	float top = 0; // the speed it may take the line at
-	float brake = 0, brake_hard = 0; // m/s²: its comfortable and its emergency braking
-	float left = 0; // seconds of amber left
-};
-bool amber_stops(const TrafficParams &p, const AmberApproach &a);
-bool stops_at_amber(const CityState &s, const Vehicle &v, int ds, float stop_m, int ci);
-bool light_stops(const CityState &s, const Vehicle &v, int ds, float stop_m, int ci);
-// Where a vehicle stops for the lights down its route: the first stop line within its horizon whose light holds it.
-struct LightStop {
-	float gap = NO_LEADER; // metres to where it stops
-	bool here = false; // that stop is on the lane it is on: it does not cross its junction now
-	int amber_hold = -1; // its amber decision from now on (Vehicle::amber_hold)
-};
-// The walk starts at route step `ri` on lane `lane`, whose start is `start` metres ahead (negative: it is on it); the
-// last step's junction is never crossed.
-LightStop lights_ahead(const CityState &s, const Vehicle &v, int ri, int lane, float start);
+// The lights' rule for vehicles has its own header: sim/traffic/light_rule.h.
 
 // junction_sweeps.cpp: the body class (BODY_CLASSES) a vehicle type is swept as at the junctions, the smallest envelope holding it.
 int body_class(const TrafficParams &p, VehicleType type);
@@ -159,7 +134,9 @@ int pass_holder(const CityState &s, int conn); // vehicle committed to `conn` an
 // Whether a body on conflicting connector `k` of `c` (on it, or come off it with its body still reaching back) is not yet clear of
 // a body of class `mine` on `c`: by the sweeps' clear arcs (Conn::conflict_clear).
 bool conflict_busy(const CityState &s, const Conn &c, size_t k, int mine);
-bool box_clear(const CityState &s, int conn, int vehicle); // no body in the way of this vehicle's on a crossing connector, nor committed earlier
+// No body in the way of this vehicle's: on a crossing connector, on another branch of its lane's fork short of where the ways part
+// (fork_bodies.h), nor committed earlier to a crossing one. A commitment is granted only on it.
+bool box_clear(const CityState &s, int conn, int vehicle);
 void commit(CityState &s, int vehicle, int conn);
 void release(CityState &s, int vehicle, int conn); // takes a commitment back before the vehicle used it
 void claim_exit(CityState &s, const Conn &c, int vehicle);

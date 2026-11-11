@@ -1,13 +1,15 @@
 // The lights for vehicles: one rule for admission, commitments and braking (red holds; amber holds whoever should stop,
 // a decision held until green), and the stop each vehicle sees along its route, past road joints and junctions, as a
 // driver sees the signals down the street.
-#include "sim/traffic/traffic_system.h"
+#include "sim/traffic/light_rule.h"
 
 #include <algorithm>
 #include <cmath>
 
 namespace city {
 namespace traffic {
+
+float stop_room(const TrafficParams &p, float line_m) { return line_m >= p.stop_margin_m ? line_m - p.stop_margin_m : std::min(line_m, 0.f); }
 
 bool stop_is_comfortable(const CityState &s, const Vehicle &v, float stop_m) {
 	return stop_m >= 0 && v.v * v.v <= 2 * s.catalog.traffic.classes[int(v.type)].b * stop_m;
@@ -76,11 +78,11 @@ LightStop lights_ahead(const CityState &s, const Vehicle &v, int ri, int lane, f
 		const int ds = route_at(t.route_pool, v.route, k);
 		const DirSeg &d = t.g.ds[size_t(ds)];
 		const bool own = k == ri && start <= 0;
-		const float room = d.len - d.stop_back - p.stop_margin_m, stop = start + room;
+		const float room = d.len - d.stop_back - p.stop_margin_m, line = start + d.len - d.stop_back, stop = stop_room(p, line);
 		if (stop > horizon) break;
 		const int ci = connector_to(s, ds, ln, route_at(t.route_pool, v.route, k + 1));
 		// its own line once over it or committed there is the gate's business
-		if (t.g.junctions[size_t(d.to)].ctl == Control::SIGNAL && !(own && (stop + p.stop_margin_m < 0 || v.pass >= 0))) {
+		if (t.g.junctions[size_t(d.to)].ctl == Control::SIGNAL && !(own && (line < 0 || v.pass >= 0))) {
 			const Light l = light_for(s, ds);
 			if (l != Light::GREEN && v.amber_hold == ds) out.amber_hold = ds;
 			if (light_stops(s, v, ds, stop, ci)) {

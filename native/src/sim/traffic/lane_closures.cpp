@@ -85,7 +85,9 @@ void sweep_lanes(const CityState &s, const std::vector<AxlePose> &poses, int fro
 
 // Nobody on a stretch or too near to stop short of it: no other body off the lanes holding it (a stretch it closed: that body
 // drives over it on no lane list), the near vehicles on its lane, and those on the connectors that end on it (all at the node its
-// lane starts from). A near vehicle is on its lane's list or on its connector's, and on no other.
+// lane starts from) or committed to one. A near vehicle is on its lane's list or on its connector's, and on no other. The stretch's
+// owner standing on that lane (a car turning off it into its lot) is not in its own way, and whoever is behind its body there follows
+// it (it holds them, then the stretch does): only what is ahead of its rear can stand on the stretch.
 bool lane_clear(const CityState &s, const LaneClosure &c) {
 	const TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
@@ -93,12 +95,17 @@ bool lane_clear(const CityState &s, const LaneClosure &c) {
 	for (const LaneClosure &held : t.closures)
 		if (held.key == c.key && held.owner != c.owner && held.from < c.to + p.lorry_clear_margin_m && held.to > c.from - p.lorry_clear_margin_m) return false;
 	const auto stopping = [&](const Vehicle &v) { return v.v * v.v / (2 * p.classes[int(v.type)].b) + p.lorry_clear_margin_m; };
+	const Vehicle *owner = c.owner >= 0 && size_t(c.owner) < t.vehicles.size() ? &t.vehicles[size_t(c.owner)] : nullptr;
+	const bool owner_on_it = owner && !owner->off && owner->conn < 0 && owner->ds * MAX_LANES + owner->lane == c.key;
+	const float behind = owner_on_it ? owner->s - p.classes[int(owner->type)].length : -BIG;
 	if (size_t(c.key) < t.lane_vehicles.size())
 		for (int id : t.lane_vehicles[size_t(c.key)]) {
 			const Vehicle &v = t.vehicles[size_t(id)];
+			if (id == c.owner || v.s <= behind) continue;
 			const float rear = v.s - p.classes[int(v.type)].length;
 			if (rear < c.to + p.lorry_clear_margin_m && v.s > c.from - stopping(v)) return false;
 		}
+	if (owner_on_it) return true; // the connectors onto its lane end behind it
 	const LaneGraph &g = t.g;
 	const int from = size_t(ds) < g.ds.size() ? g.ds[size_t(ds)].from : -1;
 	if (from < 0 || size_t(from) >= g.node_conn.size()) return true;
@@ -108,6 +115,12 @@ bool lane_clear(const CityState &s, const LaneClosure &c) {
 		for (int id : t.conn_vehicles[size_t(ci)]) {
 			const Vehicle &v = t.vehicles[size_t(id)];
 			if (k.len - v.cs + c.from < stopping(v)) return false;
+		}
+		// a lane head committed to this connector has taken the way over it: as near as one already on it
+		const int u = pass_holder(s, ci);
+		if (u >= 0) {
+			const Vehicle &v = t.vehicles[size_t(u)];
+			if (v.ds >= 0 && g.ds[size_t(v.ds)].len - v.s + k.len + c.from < stopping(v)) return false;
 		}
 	}
 	return true;

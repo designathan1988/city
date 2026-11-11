@@ -84,10 +84,15 @@ std::vector<OffPose> way_between(const TrafficParams &p, const Manoeuvre &path, 
 	return out;
 }
 
+// What a car stopped before its gate does about its way in (leave_road).
+enum class Turn : uint8_t { IN, WAIT, TAKEN };
+
 // Stopped before its gate: off the road, along the way in. The lanes its body stands across on its way, up to where it stands on
-// none, are closed to the traffic behind it until it gets there (lane_closures.h). Not when its way in meets the swath of a vehicle
-// leaving the lot or a standing body (swaths.h): it would stand on its lane over the stretch that one needs. False then.
-bool leave_road(CityState &s, LotCar &car) {
+// none, are closed to the traffic behind it until it gets there (lane_closures.h), once nobody is on those stretches or too near to
+// stop short of them, as for every body off the lanes (lane_clear): until then it waits at its gate (WAIT), its call's timeout
+// bounding the wait. Not when its way in meets the swath of a vehicle leaving the lot or a standing body (swaths.h): it would stand
+// on its lane over the stretch that one needs (TAKEN).
+Turn leave_road(CityState &s, LotCar &car) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	Vehicle &v = t.vehicles[size_t(car.id)];
@@ -98,13 +103,17 @@ bool leave_road(CityState &s, LotCar &car) {
 	Manoeuvre way = bay_arrival(V2(at.x, at.z), std::atan2(at.fz, at.fx), bay.at, bay.open, bay.via, p.man_lead_m, p.man_across_m, p.man_least_m, p.man_tangent);
 	std::vector<SwathDisc> laid;
 	lay_way(s, c, way, laid);
-	if (way_meets_outward(s, car.id, laid, 0)) return false;
+	if (way_meets_outward(s, car.id, laid, 0)) return Turn::TAKEN;
+	float along = 0;
+	while (along < way.length() && on_lanes(s, c.length * 0.5f, c.half_width, way.pose_at(along))) along = std::min(way.length(), along + p.man_disc_step_m);
+	std::vector<LaneClosure> stretches;
+	sweep_body(s, c.length * 0.5f, c.half_width, way_between(p, way, 0, along), p.parker_closure_margin_m, car.id, stretches);
+	for (const LaneClosure &k : stretches)
+		if (!lane_clear(s, k)) return Turn::WAIT; // someone stands where it turns, or comes on too near to stop short of it
 	car.path = std::move(way);
 	car.way = std::move(laid);
-	float along = 0;
-	while (along < car.path.length() && on_lanes(s, c.length * 0.5f, c.half_width, car.path.pose_at(along))) along = std::min(car.path.length(), along + p.man_disc_step_m);
 	car.lane_clear_at = along;
-	sweep_body(s, c.length * 0.5f, c.half_width, way_between(p, car.path, 0, along), p.parker_closure_margin_m, car.id, t.closures);
+	t.closures.insert(t.closures.end(), stretches.begin(), stretches.end());
 	car.closing = true;
 	lane_del(s, v.ds * MAX_LANES + v.lane, car.id);
 	micro_remove(t, car.id);
@@ -114,7 +123,7 @@ bool leave_road(CityState &s, LotCar &car) {
 	t.vehicle_count--;
 	enter_phase(t.park, car, CarPhase::PARKING);
 	set_off_pose(s, v, car.path.pose());
-	return true;
+	return Turn::IN;
 }
 
 // A car sent to a bay that will not reach it (kept out of its lane, called away by the far model): on to somewhere else.
@@ -137,8 +146,10 @@ void coming(CityState &s, LotCar &car) {
 		return;
 	}
 	if (v.ds != lane.ds || v.conn >= 0 || v.lane != lane.lane || v.v > p.parker_stop_ms || v.s < v.stop_at - p.parker_stop_slack_m) return;
+	const Turn turn = leave_road(s, car);
+	if (turn == Turn::WAIT) return; // it stands at its gate's mark until where it turns is clear
 	v.stop_at = -1;
-	if (!leave_road(s, car)) give_up(s, car); // its way in is taken by one coming out: it goes on elsewhere
+	if (turn == Turn::TAKEN) give_up(s, car); // its way in is taken by one coming out: it goes on elsewhere
 }
 
 void parking(CityState &s, LotCar &car, float dt) {
