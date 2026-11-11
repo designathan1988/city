@@ -1,7 +1,8 @@
 // Somebody getting out of a car at the kerb or getting in, and a truck's mate away with a delivery. A vehicle with an errand
 // plans a stop on the kerb lane of a street, clear of its ends and of any queue; it pulls up, the door opens when the swing is
-// clear, the person moves between the door and the footway (a walker under the stop's hand, PedMode::KERB) and the door shuts.
-// Set down, they walk on as any walker; picked up, the walker is gone and the car carries one more (Vehicle::aboard).
+// clear, the person moves between the door and the footway (a walker under the stop's hand, PedMode::KERB: kerb_walkers.cpp)
+// and the door shuts. Set down, they walk on as any walker; picked up, the walker is gone and the car carries one more
+// (Vehicle::aboard).
 #include "sim/traffic/kerb_stops.h"
 
 #include "core/random.h"
@@ -18,62 +19,20 @@ constexpr uint32_t ERRAND_SALT = 0x2545F491u, ERRAND_SPAN = 0xFFFFFFu;
 constexpr float STOPPED_MS = 0.1f; // standing still, for a stop
 constexpr float NEAR_STOP_M = 1.f, PAST_STOP_M = 2.f; // pulled up at it; gone past it
 constexpr int RIGHT_SIDE = 0;
-constexpr float MOVED_MIN_M = 0.05f; // shorter than this a move has no direction
 
 bool is_car(const Vehicle &v) { return v.type <= VehicleType::PICKUP; }
-
-
-// The walker a stop holds: called to a door within `reach`; set where it is, facing its way; let go to walk on, or gone aboard.
-} // namespace
-
-bool kerb_hail(CityState &s, int ped, const V2 &door, float reach) {
-	TrafficState &t = s.traffic;
-	if (ped < 0 || size_t(ped) >= t.peds.size()) return false;
-	Pedestrian &w = t.peds[size_t(ped)];
-	if (!w.alive || w.mode != PedMode::SIDEWALK || (V2(w.cur.x, w.cur.z) - door).len() > reach) return false;
-	w.mode = PedMode::KERB;
-	return true;
-}
-
-void kerb_place(CityState &s, int ped, const V2 &at, const V2 &facing) {
-	Pedestrian &w = s.traffic.peds[size_t(ped)];
-	const V2 f = facing.len() > MOVED_MIN_M ? facing.norm() : V2(w.cur.fx, w.cur.fz);
-	w.walked += (V2(w.cur.x, w.cur.z) - at).len();
-	w.cur.x = at.x;
-	w.cur.z = at.y;
-	w.cur.fx = f.x;
-	w.cur.fz = f.y;
-}
-
-void kerb_let_go(CityState &s, int ped, bool on_foot) {
-	Pedestrian &w = s.traffic.peds[size_t(ped)];
-	if (!w.alive || w.mode != PedMode::KERB) return;
-	if (on_foot && w.route.len > 0) w.mode = PedMode::SIDEWALK;
-	else ped_gone(s, ped);
-}
-
-// A walker on the footway beside `foot`, on the kerb's sidewalk of `ds`.
-int kerb_walker_out(CityState &s, int ds, const V2 &foot) {
-	const DirSeg &d = s.traffic.g.ds[size_t(ds)];
-	const RoadSegment &g = s.roads.segs[size_t(d.seg)];
-	double at, dist;
-	closest_t(g.q, foot.x, foot.y, at, dist);
-	return ped_on_footway(s, d.seg, d.sign > 0 ? 0 : 1, float(arc_of_t(g, at)));
-}
-
-// The arc along its street of metre `at` of a directed segment, and which sidewalk is on its kerb side.
-float kerb_arc_of(const DirSeg &d, float at) { return d.at0 + d.sign * at; }
-
-namespace {
-int kerb_side(const DirSeg &d) { return d.sign > 0 ? RIGHT_SIDE : 1; }
 
 bool has_footway(const CityState &s, const DirSeg &d) {
 	const Profile &p = s.roads.profile_of(d.seg);
 	return kerb_side(d) == RIGHT_SIDE ? p.has_walk_right : p.has_walk_left;
 }
 
-// Where a kerb-side door opens, and the footway beside it.
 } // namespace
+
+// The arc along its street of metre `at` of a directed segment.
+float kerb_arc_of(const DirSeg &d, float at) { return d.at0 + d.sign * at; }
+
+// Where a kerb-side door opens, and the footway beside it.
 
 KerbDoors kerb_door_at(const CityState &s, const Vehicle &v, float back_m) {
 	const TrafficParams &p = s.catalog.traffic;
@@ -82,7 +41,7 @@ KerbDoors kerb_door_at(const CityState &s, const Vehicle &v, float back_m) {
 	const float at = std::clamp(v.s - back_m, 0.f, d.len);
 	Pose lane, foot;
 	lane_pose(s, v.ds, v.lane, at, lane);
-	sidewalk_pose(s, d.seg, d.sign > 0 ? RIGHT_SIDE : 1, kerb_arc_of(d, at), 0, foot);
+	sidewalk_pose(s, d.seg, kerb_side(d), kerb_arc_of(d, at), 0, foot);
 	const V2 right(-lane.fz, lane.fx); // the world's z runs down the map: the side the kerb is on, -X of the vehicle
 	return { V2(lane.x, lane.z) + right * (c.half_width + p.kerb_door_out_m), V2(foot.x, foot.z) };
 }
@@ -124,28 +83,7 @@ int new_stop(TrafficState &t) {
 	return int(t.kerb_stops.size()) - 1;
 }
 
-} // namespace
-
-// Who a car or a bus may call from the footway: somebody walking it alone (one of a party would leave the other on the street),
-// no child, doing nothing else and not running from a bang (the reference game's rule).
-static bool may_be_hailed(const TrafficState &t, const Pedestrian &w) {
-	return w.alive && w.mode == PedMode::SIDEWALK && w.with < 0 && w.mate < 0 && !w.company_due && w.age != PedAge::CHILD &&
-			w.act == PedAct::NONE && t.time >= w.panic_until;
-}
-
-// The first walker on the kerb's footway between two arcs who may be hailed, or -1.
-int kerb_hailable(const CityState &s, const DirSeg &d, float a0, float a1) {
-	const TrafficState &t = s.traffic;
-	const size_t key = size_t(d.seg) * 2 + size_t(kerb_side(d));
-	if (key >= t.crowd.size()) return -1;
-	const float lo = std::min(a0, a1), hi = std::max(a0, a1);
-	for (const CrowdEntry &e : t.crowd[key])
-		if (e.s >= lo && e.s <= hi && may_be_hailed(t, t.peds[size_t(e.id)])) return e.id;
-	return -1;
-}
-
 // Chooses where to stop on the lane it is on, or waits for a later one.
-namespace {
 void plan(CityState &s, int id) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
@@ -197,9 +135,17 @@ void enter(KerbStop &k, KerbPhase phase) {
 	k.t = 0;
 }
 
-// The person moving between the door and the footway, by the share of the way from the door.
+// The person moving between the door and the footway, by the share of the way from the door, heading the way it goes.
 void place_walker(CityState &s, const KerbStop &k, const KerbDoors &at, float share) {
-	if (k.ped >= 0) kerb_place(s, k.ped, at.door + (at.foot - at.door) * share, at.foot - at.door);
+	if (k.ped >= 0) kerb_place(s, k.ped, at.door + (at.foot - at.door) * share, k.back ? at.door - at.foot : at.foot - at.door);
+}
+
+// How far from the door toward the footway the person is in a transfer: out, it rises from the seat first (kerb_seat_s at
+// the door) and then walks; back (a truck's mate), it walks first and then sits.
+float share_out(const TrafficParams &p, const KerbStop &k, float dt) {
+	const float walk = std::max(k.transfer - p.kerb_seat_s, dt);
+	if (k.back) return 1 - std::min(1.f, k.t / walk);
+	return std::clamp((k.t - p.kerb_seat_s) / walk, 0.f, 1.f);
 }
 
 void transfer_done(CityState &s, Vehicle &v, KerbStop &k) {
@@ -296,12 +242,12 @@ void step_stop(CityState &s, int id, KerbStop &k, float dt) {
 					end_stop(s, id); // no room on the footway: they stay aboard
 					return;
 				}
+				kerb_show(s, k.ped, at.door, at.foot - at.door);
 			}
 			enter(k, KerbPhase::TRANSFER);
 			break;
 		case KerbPhase::TRANSFER: {
-			const float share = std::min(1.f, k.t / std::max(k.transfer, dt)), out = k.back ? 1 - share : share;
-			if (k.errand != Errand::PICK) place_walker(s, k, door_places(s, v), out);
+			if (k.errand != Errand::PICK) place_walker(s, k, door_places(s, v), share_out(p, k, dt));
 			if (k.t >= k.transfer) transfer_done(s, v, k);
 			break;
 		}

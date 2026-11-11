@@ -20,9 +20,11 @@ struct KerbDoors {
 };
 KerbDoors kerb_door_at(const CityState &s, const Vehicle &v, float back_m); // this far behind its front
 float kerb_arc_of(const DirSeg &d, float at); // the arc along its street of metre `at` of a directed segment
+inline int kerb_side(const DirSeg &d) { return d.sign > 0 ? 0 : 1; } // the sidewalk on its kerb side (0 right, 1 left of a -> b)
 int kerb_hailable(const CityState &s, const DirSeg &d, float a0, float a1); // the first walker there who may be called (alone, no child), or -1
 bool kerb_hail(CityState &s, int ped, const V2 &door, float reach);
-void kerb_place(CityState &s, int ped, const V2 &at, const V2 &facing);
+void kerb_place(CityState &s, int ped, const V2 &at, const V2 &facing); // moved there, its way heading `facing`
+void kerb_show(CityState &s, int ped, const V2 &at, const V2 &facing); // where somebody held first shows: there, facing that way
 void kerb_let_go(CityState &s, int ped, bool on_foot);
 int kerb_walker_out(CityState &s, int ds, const V2 &foot); // somebody out on the footway beside `foot`, -1 with no room
 inline bool kerb_holds(const TrafficState &t, int ped) { return t.peds[size_t(ped)].alive && t.peds[size_t(ped)].mode == PedMode::KERB; }

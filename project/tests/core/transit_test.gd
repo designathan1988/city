@@ -19,6 +19,10 @@ const CROSSING_OFF_M := 6.0
 const CROSSING_STATION := 0.7
 const CROSSING_SAMPLES := 200
 const CROSSING_SAMPLE_TICKS := 20
+const MODE_KERB := 3 # PedMode::KERB: a walker a kerb stop or a bus's call holds
+const HELD_REACH_M := 600.0 # round the busy crossing: the bus line's stops
+const HELD_LONGEST_S := 40.0 # past traffic.json kerb_give_up_s + kerb_delivery_s (25 + 7): no errand holds anybody this long
+const HELD_SPOT_M := 0.01
 
 
 func _ready() -> void:
@@ -55,11 +59,34 @@ func _buses() -> void:
 	check(int(run.stops_called) > 0, "a bus served a stop")
 	check(int(run.alighted) > 0, "people get off the bus: %s" % run.alighted)
 	check(int(run.boarded) > 0, "people get on the bus: %s" % run.boarded)
+	_nobody_left_held(ground)
 	var far := Vector3(ground.x, 0, ground.z)
 	CityStore.dispatch(&"transit_stop", [far + Vector3(0, 0, STEP_M)]) # an edit of the plan leaves the buses where they are
 	ticks(1)
 	var after: Dictionary = CityStore.query(&"transit_run")
 	check(int(after.on_road) >= int(run.on_road), "buses go on after an edit of the plan: %d of %d" % [after.on_road, run.on_road])
+
+
+## Whoever a stop holds (getting off a bus or a car, walking up to one) is let go when its errand is over: nobody is still under
+## a stop's hand, on the same spot, after longer than the longest errand lasts.
+func _nobody_left_held(ground: Vector3) -> void:
+	var held := _held(ground)
+	ticks(int(HELD_LONGEST_S * float(DataTables.tuning("sim_tick_hz"))))
+	var still := _held(ground)
+	var left := 0
+	for id: int in held:
+		if still.has(id) and (still[id] as Vector2).distance_to(held[id]) < HELD_SPOT_M:
+			left += 1
+	check(left == 0, "nobody is left standing under a stop's hand: %d of %d held" % [left, held.size()])
+
+
+## The walkers a stop holds round a point (probe walker_bodies: id, x, z, pace, mode), by id: where each stands.
+func _held(ground: Vector3) -> Dictionary:
+	var out := {}
+	for w: Array in CityStore.query(&"walker_bodies", [ground, HELD_REACH_M]).bodies:
+		if int(w[4]) == MODE_KERB:
+			out[int(w[0])] = Vector2(w[1], w[2])
+	return out
 
 
 ## A track across a street near the busiest junction: the lanes it crosses are found, and traffic waits as a train comes.

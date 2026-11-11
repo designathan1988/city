@@ -230,12 +230,14 @@ void pose(const CityState &s, Pedestrian &w) {
 	w.cur = { lerpf(w.lx, to.x, f) + d.y * w.u, lerpf(w.ly, to.y, f), lerpf(w.lz, to.z, f) - d.x * w.u, d.x, d.y }; // u across its line
 }
 
-// After pose(): what it left in `cur` is its way's heading there, kept for the crowd; the body, which faced `was`, turns toward it
-// no faster than a body turns (round to a bang and back: ease_facing). Under a kerb stop's hand the stop faces it.
+// After pose(): what it left in `cur` is its way's heading there, kept for the crowd (under a kerb stop's hand the stop has set
+// that heading: kerb_stops.cpp kerb_place); the body, which faced `was`, turns toward it no faster than a body turns (round to
+// a bang and back: ease_facing).
 void turn_body(const TrafficState &t, const TrafficParams &p, Pedestrian &w, const V2 &was, float dt) {
-	w.way_x = w.cur.fx;
-	w.way_z = w.cur.fz;
-	if (w.mode == PedMode::KERB) return;
+	if (w.mode != PedMode::KERB) {
+		w.way_x = w.cur.fx;
+		w.way_z = w.cur.fz;
+	}
 	if (w.turning) {
 		ease_facing(t, p, w, dt);
 		return;

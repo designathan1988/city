@@ -30,6 +30,22 @@ void begin(CityState &s, int id, BusCall &c) {
 		b.walked = 0;
 	}
 }
+
+// The one getting off: a step down at the door, then across to the footway at the kerb's pace, and a walker from there.
+void step_off(CityState &s, BusCall &c, float dt) {
+	const TrafficParams &p = s.catalog.traffic;
+	BusCall::Boarder &b = c.leaver;
+	if (!kerb_holds(s.traffic, b.ped)) { // of a street that went
+		b.ped = -1;
+		return;
+	}
+	b.walked += dt;
+	const float share = std::clamp((b.walked - p.bus_step_aboard_s) / std::max(b.takes - p.bus_step_aboard_s, dt), 0.f, 1.f);
+	kerb_place(s, b.ped, b.from + (c.leaver_to - b.from) * share, c.leaver_to - b.from);
+	if (share < 1) return;
+	kerb_let_go(s, b.ped, true);
+	b.ped = -1;
+}
 } // namespace
 
 bool bus_call(CityState &s, int id, BusCall &c, float dt) {
@@ -38,12 +54,22 @@ bool bus_call(CityState &s, int id, BusCall &c, float dt) {
 	if (!c.begun) begin(s, id, c);
 	const Vehicle &v = t.vehicles[size_t(id)];
 	c.t += dt;
-	if (c.leaving > 0 && c.t >= c.next_off) {
+	if (c.leaving > 0 && c.leaver.ped < 0 && c.t >= c.next_off) { // the next one off, once the one before is on the footway
 		const KerbDoors at = kerb_door_at(s, v, p.classes[int(v.type)].length * p.kerb_door_along);
-		if (kerb_walker_out(s, v.ds, at.foot) >= 0) t.bus_alighted++;
+		const int ped = kerb_walker_out(s, v.ds, at.foot);
+		if (ped >= 0) { // it steps out at the middle door and walks to the footway (with no room there it stays aboard)
+			kerb_show(s, ped, at.door, at.foot - at.door);
+			c.leaver.ped = ped;
+			c.leaver.from = at.door;
+			c.leaver.walked = 0;
+			c.leaver.takes = p.bus_step_aboard_s + (at.foot - at.door).len() / p.kerb_pace_ms;
+			c.leaver_to = at.foot;
+			t.bus_alighted++;
+		}
 		c.leaving--;
 		c.next_off += p.bus_passenger_s;
 	}
+	if (c.leaver.ped >= 0) step_off(s, c, dt);
 	const V2 door = kerb_door_at(s, v, p.bus_front_door_m).door;
 	bool walking = false;
 	for (BusCall::Boarder &b : c.boarders) {
@@ -63,7 +89,7 @@ bool bus_call(CityState &s, int id, BusCall &c, float dt) {
 			walking = true;
 		}
 	}
-	return c.leaving == 0 && !walking;
+	return c.leaving == 0 && !walking && c.leaver.ped < 0;
 }
 
 void bus_call_over(CityState &s, BusCall &c) {
@@ -71,6 +97,7 @@ void bus_call_over(CityState &s, BusCall &c) {
 		if (b.ped >= 0) kerb_let_go(s, b.ped, true);
 		b.ped = -1;
 	}
+	if (c.leaver.ped >= 0) kerb_let_go(s, c.leaver.ped, true);
 	c = BusCall();
 }
 
