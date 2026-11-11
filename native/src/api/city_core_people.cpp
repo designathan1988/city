@@ -289,7 +289,12 @@ Dictionary CityProbes::walker_bodies(const Vector3 &at, float radius) {
 	d["off_way_cases"] = off;
 	d["in_vehicle"] = in_vehicle; // standing in a vehicle's drawn body
 	d["in_vehicle_cases"] = cars;
-	d["in_furniture"] = traffic::walkers_in_furniture(s); // in a street piece's footprint (the whole map)
+	std::vector<std::pair<int, StreetObstacle>> in_piece;
+	d["in_furniture"] = traffic::walkers_in_furniture(s, &in_piece); // in a street piece's footprint (the whole map)
+	Array pieces; // the case: the walker, the piece's middle, its half sizes along and across, its arc span
+	for (const auto &[id, o] : in_piece)
+		if (pieces.size() < CASES) pieces.push_back(Array::make(walker_row(s, t.peds[size_t(id)], id), Vector2(o.x, o.z), Vector2(o.half_along, o.half_across), Vector2(o.s0, o.s1)));
+	d["in_furniture_cases"] = pieces;
 	return d;
 }
 

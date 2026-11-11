@@ -154,7 +154,7 @@ void prune_furniture(CityState &s, float cx, float cz, float radius) {
 	}
 }
 
-int walkers_in_furniture(const CityState &s) {
+int walkers_in_furniture(const CityState &s, std::vector<std::pair<int, StreetObstacle>> *who) {
 	// from the owner again, not the walkers' cache: the probe checks what they keep off as well as how
 	std::unordered_map<int, SidewalkFurniture> seen;
 	auto of = [&](int seg) -> const SidewalkFurniture & {
@@ -166,18 +166,25 @@ int walkers_in_furniture(const CityState &s) {
 	};
 	const float body = s.catalog.traffic.ped_body_m;
 	int inside = 0;
-	for (const Pedestrian &w : s.traffic.peds) {
+	for (size_t id = 0; id < s.traffic.peds.size(); id++) {
+		const Pedestrian &w = s.traffic.peds[id];
 		if (!w.alive) continue;
 		bool hit = false;
+		StreetObstacle piece;
 		auto check = [&](int seg) {
 			if (hit || seg < 0 || !s.roads.segs[size_t(seg)].alive) return;
 			for (const auto &side : of(seg).side)
-				for (const StreetObstacle &o : side) hit = hit || distance_to(o, w.cur.x, w.cur.z) < body - TOUCH_EPS_M;
+				for (const StreetObstacle &o : side)
+					if (!hit && distance_to(o, w.cur.x, w.cur.z) < body - TOUCH_EPS_M) {
+						hit = true;
+						piece = o;
+					}
 		};
 		check(w.seg);
 		if (w.mode != PedMode::SIDEWALK && w.way_node >= 0)
 			for (int seg : s.roads.nodes[size_t(w.way_node)].segs) check(seg);
 		inside += hit ? 1 : 0;
+		if (hit && who) who->emplace_back(int(id), piece);
 	}
 	return inside;
 }

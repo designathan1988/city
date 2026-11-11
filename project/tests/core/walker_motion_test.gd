@@ -186,6 +186,8 @@ func _met(watch: Dictionary) -> void:
 		_tell("off the way", w[ID], w)
 	for pair: Array in watch.in_vehicle_cases:
 		_tell("in a vehicle", pair[0][ID], pair)
+	for case: Array in watch.in_furniture_cases:
+		_tell("in a street piece", case[0][ID], case)
 
 
 ## Each walker's first case of a kind, printed once: what the failure's count is made of.

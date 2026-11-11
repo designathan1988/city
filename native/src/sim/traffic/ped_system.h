@@ -132,7 +132,8 @@ bool on_furniture(CityState &s, int seg, int side, float x, float z, float reach
 float clear_arc(CityState &s, int seg, int side, float at, float u);
 void forget_furniture(CityState &s, int seg); // an edit touched the segment or one of its nodes
 void prune_furniture(CityState &s, float cx, float cz, float radius); // segments the walkers are far from
-int walkers_in_furniture(const CityState &s); // walkers whose body stands in a footprint (traffic_probe)
+// Walkers whose body stands in a footprint (traffic_probe), and who with the piece.
+int walkers_in_furniture(const CityState &s, std::vector<std::pair<int, StreetObstacle>> *who = nullptr);
 
 // ped_routes.cpp
 bool walkable(const CityState &s, int seg);

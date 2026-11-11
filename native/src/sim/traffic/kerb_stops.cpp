@@ -17,7 +17,7 @@ namespace traffic {
 namespace {
 constexpr uint32_t ERRAND_SALT = 0x2545F491u, ERRAND_SPAN = 0xFFFFFFu;
 constexpr float STOPPED_MS = 0.1f; // standing still, for a stop
-constexpr float NEAR_STOP_M = 1.f, PAST_STOP_M = 2.f; // pulled up at it; gone past it
+constexpr float PULLED_UP_M = 1.f, GONE_BY_M = 2.f; // pulled up at its stop; gone past it
 constexpr int RIGHT_SIDE = 0;
 
 bool is_car(const Vehicle &v) { return v.type <= VehicleType::PICKUP; }
@@ -34,16 +34,34 @@ float kerb_arc_of(const DirSeg &d, float at) { return d.at0 + d.sign * at; }
 
 // Where a kerb-side door opens, and the footway beside it.
 
-KerbDoors kerb_door_at(const CityState &s, const Vehicle &v, float back_m) {
-	const TrafficParams &p = s.catalog.traffic;
-	const VehicleClass &c = p.classes[int(v.type)];
-	const DirSeg &d = s.traffic.g.ds[size_t(v.ds)];
-	const float at = std::clamp(v.s - back_m, 0.f, d.len);
+namespace {
+// The door of a vehicle of class `c` on lane `lane` of `ds` whose door stands at metre `at`, and the footway across from it.
+KerbDoors doors_at(const CityState &s, int ds, int lane_i, const VehicleClass &c, float at) {
+	const DirSeg &d = s.traffic.g.ds[size_t(ds)];
+	at = std::clamp(at, 0.f, d.len);
 	Pose lane, foot;
-	lane_pose(s, v.ds, v.lane, at, lane);
+	lane_pose(s, ds, lane_i, at, lane);
 	sidewalk_pose(s, d.seg, kerb_side(d), kerb_arc_of(d, at), 0, foot);
 	const V2 right(-lane.fz, lane.fx); // the world's z runs down the map: the side the kerb is on, -X of the vehicle
-	return { V2(lane.x, lane.z) + right * (c.half_width + p.kerb_door_out_m), V2(foot.x, foot.z) };
+	return { V2(lane.x, lane.z) + right * (c.half_width + s.catalog.traffic.kerb_door_out_m), V2(foot.x, foot.z) };
+}
+
+// Whether somebody walks straight between the door and the footway across from it with no street piece of that sidewalk in the
+// way (a bench, a bin, a post standing between the kerb and the sidewalk's middle).
+bool door_way_clear(CityState &s, const KerbDoors &at, int seg, int side) {
+	const float body = s.catalog.traffic.ped_body_m;
+	const V2 way = at.foot - at.door;
+	const int steps = int(std::ceil(way.len() / body));
+	for (int k = 0; k <= steps; k++) {
+		const V2 q = at.door + way * (steps > 0 ? float(k) / float(steps) : 0.f);
+		if (on_furniture(s, seg, side, q.x, q.y, body)) return false;
+	}
+	return true;
+}
+} // namespace
+
+KerbDoors kerb_door_at(const CityState &s, const Vehicle &v, float back_m) {
+	return doors_at(s, v.ds, v.lane, s.catalog.traffic.classes[int(v.type)], v.s - back_m);
 }
 
 namespace {
@@ -101,6 +119,13 @@ void plan(CityState &s, int id) {
 		if (ped < 0) return;
 		const float along = (t.peds[size_t(ped)].s - d.at0) * d.sign + p.classes[int(v.type)].length * p.kerb_door_along;
 		at = std::clamp(along, earliest, latest);
+	} else {
+		// set down or delivering: where the way between its door and the footway passes no street piece (the one called is walked to
+		// a door whose way is clear, kerb_hail)
+		const VehicleClass &c = p.classes[int(v.type)];
+		const float back = c.length * p.kerb_door_along;
+		while (at <= latest && !door_way_clear(s, doors_at(s, v.ds, v.lane, c, at - back), d.seg, kerb_side(d))) at += p.ped_body_m;
+		if (at > latest) return;
 	}
 	if (queued_ahead(s, v, at)) return;
 	v.kerb = new_stop(t);
@@ -216,10 +241,10 @@ void step_stop(CityState &s, int id, KerbStop &k, float dt) {
 	}
 	switch (k.phase) {
 		case KerbPhase::APPROACH:
-			if (v.v < STOPPED_MS && k.at - v.s < NEAR_STOP_M) {
+			if (v.v < STOPPED_MS && k.at - v.s < PULLED_UP_M) {
 				k.at = v.s;
 				enter(k, KerbPhase::HALT);
-			} else if (v.s > k.at + PAST_STOP_M) {
+			} else if (v.s > k.at + GONE_BY_M) {
 				end_stop(s, id);
 			}
 			break;
