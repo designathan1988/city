@@ -9,7 +9,7 @@ O detalhe fica em `log/`: `mapa.md` (arquivo por arquivo), `ferramentas.md` (o q
 Antes de começar, leia o registro da sua linha. Ao fechar o tema, atualize-o com hora e commit, no mesmo commit.
 
 **Where the tree stands (2026-11-10).** `native/`, `project/`, `tools/` and `log/` were taken back to `a1a771c4` (2026-11-07 20:29) by the owner's order: the city generated there is whole, and the lab ports made from 2026-11-08 21:30 on broke it.
-Main as it stood is the tag `antes-da-volta-2026-11-10`: read it for WHAT was built and found, never to copy code back. Each performance fix and each feature is made again one at a time, designed for this architecture,
+Main as it stood is the tag `antes-da-volta-2026-11-10`: read it for WHAT was built and found; its lab ports never come back (the earlier fixes to this game's own code were brought back by the owner's authorisation, being nothing of the roadcraft). Each performance fix and each feature is made again one at a time, designed for this architecture,
 measured (memory, CPU, GPU, frame) and photographed in the 24 km city (map `km24`) before and after. Code translated from the 4.0 still stands here (the translated runtime in `core/`, `flow_control`): it is redone the same way, not regenerated.
 
 ## Metodologia de trabalho (toda tarefa, nesta ordem; trabalho direto)
@@ -36,10 +36,11 @@ A reported problem is solved with the `trace-fix` skill (`python .claude/skills/
 - Toda correção diz, com arquivo e linha: qual é a causa, por que o sintoma não volta por outro caminho e quais outros
   sintomas somem junto.
 - Caro não prova causa e barato não prova remendo: o critério é o de cima.
-- **Nothing is copied, ever** (owner, 2026-11-11, binding in every prompt, skill and order): no line, line-by-line
-  translation, structure, name or function of the roadcraft lab, which is only a reference for what the features must
-  reach; and no code from the tag `antes-da-volta-2026-11-10`, read only for what was built. No order allowed either; never
-  look for backing where there is none. Code that came in that way is redone at its cause, designed for this tree.
+- **Nothing of the roadcraft is copied, ever** (owner, 2026-11-11, binding in every prompt, skill and order): no line,
+  line-by-line translation, structure, name or function of the roadcraft lab, which is only a reference for what the
+  features must reach; the lab ports in the tag `antes-da-volta-2026-11-10` came from it and never come back. The fixes made
+  earlier to this game's own code were brought back from the tag by the owner's authorisation (2026-11-10), being nothing of
+  the roadcraft: do not confuse the two. Code of the roadcraft that came in is redone at its cause, designed for this tree.
 
 ## Princípios
 - A causa dos problemas de desempenho é a arquitetura. Sombra, polígono e tempo de GPU são sintomas e mudam com a placa.

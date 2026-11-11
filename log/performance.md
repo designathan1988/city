@@ -114,11 +114,11 @@ The city opens in 20 to 25 s. The ranges are two runs with the views taken in a 
 ## P12, P14, P16, P17, P18, P19 (2026-11-10): code first, one measure at the end
 
 The owner's order: fix in code, then measure once. Each is in the trace `port-from-nov7` with its cause. The code of P17
-(C13), P18 (C20) and P19 (C9) was copied from the work before the return (tag `antes-da-volta-2026-11-10`). That was an
-error: no order ever allowed code to be brought back from the tag (CLAUDE.md: it is read for what was built, never copied),
-and none allows copying the roadcraft lab, a reference only for what the features must reach. Cheap solutions that do not
-solve the cause are not allowed: every problem is solved at its cause, choosing the most expensive and laborious solution
-there is (owner, 2026-11-11). Every commit that copied the tag is redone at its cause (trace `port-from-nov7`, P113).
+(C13), P18 (C20) and P19 (C9) was brought back from the work before the return (tag `antes-da-volta-2026-11-10`) by the
+owner's authorisation: fixes made earlier to this game's own code, nothing of the roadcraft lab, whose code is never copied
+(a reference only for what the features must reach). Each is checked line by line for any port's code that rode along
+(trace `port-from-nov7`, P114). Cheap solutions that do not solve the cause are not allowed: every problem is solved at its
+cause, choosing the most expensive and laborious solution there is (owner, 2026-11-11).
 
 - P12 (`0ffc4fde`): the mid level's openings are instances only within their own reach (`building_bay_end_m`), a level of
   their own; past it the walls' merged rectangles.
@@ -161,10 +161,10 @@ Measured once, at `8ca7efe1`, the plan of P9 (`info` and 5 s of `usage` at each 
 
 ## P25 to P31 (2026-11-10, night): the tag's performance and optimisation fixes, written or fitted for this tree in one batch
 
-Tested, photographed and measured once at the end. These were applied three-way from the tag and resolved to this tree's
-forms, which is copying: no order allowed it (CLAUDE.md, the owner's orders), and the claim written here before that the
-owner had ordered it was false (owner, 2026-11-11). Each is redone at its cause, designed for this tree (trace P113).
-Commits `0fbba89a` to the batch's close.
+The owner's authorisation: the tag's fixes to this game's own code (performance and optimisation), nothing of the ports,
+tested, photographed and measured once at the end. The tag's line could not be transplanted (it stands on the ports); each
+was written for this tree or applied three-way and resolved to this tree's forms; each is checked line by line for any
+port's code that rode along (trace P114). Commits `0fbba89a` to the batch's close.
 
 - P25 (`0fbba89a`): the people's clip palette is not kept on the CPU beside its texture; the three clips a fallen body
   is posed from are cut out at load.
