@@ -44,8 +44,8 @@ def this_node(t, unit):
         t.value.setdefault(node, [])
         if runs_on(t, base):
             t.unreceived.append((node, base))           # its class's objects if no call reaches it (`settle`)
-        else:
-            key = t.class_of(base)
+        else:                                           # a function `new` makes objects with: those (N1')
+            key = base.constructs or t.class_of(base)
             t.add(node, [(CLASS + key, base)] if key else [])
     return node
 

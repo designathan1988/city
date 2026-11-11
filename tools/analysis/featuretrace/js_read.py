@@ -40,10 +40,26 @@ class JsReader:
         self.facts.classes.append(ClassFact(self.key, "js", "", self.key, 1))
         self.module = self.unit("func", MODULE_UNIT, self.key, root, qual=f"{self.key}:{MODULE_UNIT}")
         js_decl.module_body(self, root, self.key, self.module)
+        self.late_writes()
         self.facts.script = not self.facts.imports and not self.facts.exports and not self.facts.star_exports \
             and not js_decl.has_module_syntax(self, root)
         self.facts.errors = int(root.has_error)
         return self.facts
+
+    def late_writes(self) -> None:
+        """What a hoisted closure wrote to a variable its enclosing function declares later in the text (J7'): the
+        variable is the enclosing function's, and the closure's writes reach it as a closure's do."""
+        units = self.facts.units
+        for unit in units:
+            for name, values in unit.late_writes.items():
+                outer = unit
+                while outer.outer >= 0 and name not in outer.types:
+                    outer = units[outer.outer]
+                if outer is unit or name not in outer.types:
+                    continue
+                unit.types[name] = unit.types.get(name, []) + list(values)
+                unit.captured.add(name)
+                outer.written_by.setdefault(name, []).append(unit.local_id)
 
     # ---- units -------------------------------------------------------------------------------------------------
     def unit(self, kind: str, name: str, owner: str, node, qual: str | None = None, **extra) -> Unit:
@@ -87,7 +103,17 @@ class JsReader:
             if nested:
                 scopes.close_scope(self)
             self.scopes, self.base = saved, base
+        self.constructor_function(node, unit)
         return unit
+
+    def constructor_function(self, node, unit: Unit) -> None:
+        """A function (no method, no arrow) that writes on `this`: `new` on it makes an object whose properties are
+        what it writes there (N1'; MDN new operator), a class of its own."""
+        if node.type == "arrow_function" or "#" in unit.owner or unit.kind not in ("func", "lambda") \
+                or not any(ref.kind == "write" and ref.base == ("self",) for ref in unit.refs):
+            return
+        unit.constructs = f"{self.key}#<new {unit.name}@{unit.line}>"
+        self.facts.classes.append(ClassFact(unit.constructs, "js", "", self.key, unit.line))
 
     def function_body(self, node, unit: Unit) -> None:
         ret = field_of(node, "return_type")

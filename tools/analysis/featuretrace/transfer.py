@@ -15,7 +15,7 @@ from . import js_library, js_primitives, js_transfer, templates
 from .cpp_names import template_args
 from .library import (DEREF, HELD_CALLS, ITEM, ITER, ITERATOR_CALLS, PAIR_PARTS, clean, library_step)
 from .model import ALIAS_KIND, STATE_KINDS
-from .rules import FUNCTION_FORMS
+from .rules import CONSTRUCTOR, FUNCTION_FORMS
 from .solver import CLASS, ELEM, ENGINE, FN, FUNCTION, TEXT, bound, fn_of, is_language
 
 OPERATORS = {ITEM: "operator[]", DEREF: "operator->", ITER: "begin", js_library.EACH: "begin"}
@@ -122,6 +122,9 @@ def member_one(t, target, text: str, ctx, name: str, called: bool, caller=None, 
     if key is None:
         t.add(target, [(library_step(name, text, called), ctx) if not is_language(text) else (ENGINE, ctx)])
         return
+    if ctx.lang == "js" and name == CONSTRUCTOR and not ix.classes[key].shape:
+        t.add(target, [] if called else [(CLASS + key, ctx)])       # an object's `constructor`: its class (J4'; MDN
+        return                                                       # Object.prototype.constructor); called, a TypeError
     found, getters = ix.lookup(key, name), ()
     if ctx.lang == "gd" and ix.classes[key].lang == "cpp":
         found = t.rs.engine_members(key, name, "func" if called else "read")

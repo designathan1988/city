@@ -133,6 +133,9 @@ def link_ref(rs, unit, ref) -> None:
     if kind == "destroy":
         cpp_lifetime.destructors(rs, unit, ref)
         return
+    if kind == "hand":                     # functions the language runs (a property's accessors, J14)
+        handed(rs, unit, ref)
+        return
     if kind in ("invoke", "bound"):        # a value called (a bound function: after its bound arguments); `bind`
         for gid, lead in invoked_leads(rs, unit, ref.base):    # making one (J2'')
             rs.link(unit.gid, gid, "call" if kind == "invoke" else "bound", site_of(rs, ref, gid, lead), EXACT)

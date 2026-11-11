@@ -52,9 +52,9 @@ def written_names(t) -> frozenset:
 def undeclared(t, target, key: str, ctx, name: str, called: bool, caller=None, args: tuple = ()) -> None:
     """A property of an object of class `key` that no class of its chain declares (V2): an inner class or a module's
     member first; `prototype` is the class's objects; a property JS code writes is what was written to it on the class
-    or a base (called: what those functions return); else `undefined` when the tracer read the whole chain (calling it
-    throws: nothing), the language's value when it is one every object has or a base the tracer did not read may hold
-    it."""
+    or a base (called: what those functions return); the language's value when it is one every object has or a base
+    the tracer did not read may hold it, whatever is written under its name (V2'); else, when nothing is written,
+    `undefined` (calling it throws: nothing)."""
     inner = t.ix.inner[key].get(name)
     if inner:
         t.add(target, [(CLASS + inner, ctx)])
@@ -69,11 +69,9 @@ def undeclared(t, target, key: str, ctx, name: str, called: bool, caller=None, a
             t.subscribe(source, target, ("call",), common.calls(t, caller, args))
         else:
             t.follow(source, target)
-    if sources and not indexes:
-        return
     if name in BUILT_IN or not chain_read(t.ix, key):
-        t.add(target, [(ENGINE, ctx)])
-    elif not called:
+        t.add(target, [(ENGINE, ctx)])              # one every object has, or a base the tracer did not read holds it,
+    elif not called and (indexes or not sources):   # whatever code writes under its name (V2')
         t.add(target, [(UNDEFINED, ctx)])           # found nowhere, or a key an index signature does not hold
 
 
@@ -179,8 +177,10 @@ def constructs(t):
     returns, anything else the host's constructor (the language's value)."""
     def transfer(target, values):
         for text, ctx in values:
-            if text.startswith(FN):
-                t.follow(t.ret_node(t.ix.units[fn_of(text)[0]]), target)
+            if text.startswith(FN):                     # what it returns, else the object it made (N1')
+                unit = t.ix.units[fn_of(text)[0]]
+                t.follow(t.ret_node(unit), target)
+                t.add(target, [(CLASS + unit.constructs, ctx)] if unit.constructs else [])
             elif text.startswith(CLASS):
                 t.add(target, [(text, ctx)])
             else:

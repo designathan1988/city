@@ -939,3 +939,28 @@ what it returns).
 |---|---|
 | S2 A declared type bounds its place | what flows into a parameter, an annotated local or variable, a field (an interface's property too) or a function's result declared with a type passes only if the type admits it: `number`, `string`, `boolean`, `bigint`, `symbol`, `null`, `undefined` and literal types their values (a string literal type its string, or any string the tracer cannot tell); `object` and an object type or interface any value but `null` and `undefined` that has its required members; a class of the program an object of it or below, or of a class that declares all its members (structural); an array or tuple type an array, a container type a container of its kind or (`Record`) any object; a function type a function; a union what any member admits; `Partial`, `Pick`, `Omit` any object; `any`, `unknown`, a type parameter, a host type the tracer did not read (H1), a mapped, conditional, lookup or `typeof` type every value; the engine's value (the tracer cannot tell it) passes every bound; an optional parameter or property admits `undefined`; an async function's result is bounded by its `Promise`'s type argument, a generator's is not bounded. A bound is a filter, not an identity: a typed field no longer merges with what flows past it (`js_bounds`, `bounds`) |
 | S2' JSDoc in JavaScript | a JavaScript file's `@param`, `@type` and `@returns` written right before a declaration bound its places as TypeScript annotations do, each type read with TypeScript's grammar (`jsdoc`) |
+
+### What the lab with three.js showed once it reached its fixpoint (2026-11-11)
+
+With S2 and S2' the lab with three.js reached its fixpoint: 406,864 links in 159 s (1,372 files). The uses on a
+receiver no value reaches were then read in the app's own code, against the app traced alone with the same tracer
+(263): 697, so 436 came from reading three. None was a bound refusing a value; each was a rule missing, hidden while
+three was the engine's value:
+
+| Rule | What the tracer does |
+|---|---|
+| J4' An object's `constructor` | reading `constructor` on an object of a class of the program gives its class (MDN Object.prototype.constructor), not the constructor method: `new this.constructor(...)` (three's `clone()`) makes an object of the receiver's own class; called without `new`, nothing (a TypeError) |
+| V2' A member of an unread base | a member no class of the program declares, on a class whose chain reaches a base the tracer did not read (`class VersionedMap extends Map`), can be the base's: the language's value, whatever code writes under its name elsewhere (the early return when some code wrote `.get =` left `this.vehicles.get(id)` empty) |
+| J14 `Object.defineProperty`, `Object.defineProperties` | on the language's own `Object`, with a descriptor written as an object literal, define the property: `value` is written to it, `get`'s result is what reading it gives, the accessors are handed to the language (three's `Object3D` defines `position`, `rotation`, `quaternion`, `scale` so; `Texture`, `Material` their `id`) (`js_defines`) |
+| J7' A hoisted closure's writes | a function declaration is read before its enclosing function's later declarations (J7), and its writes to them were dropped (`model.assign` knew no such name yet); they are kept and, once the file is read, joined to the enclosing function's variable as a closure's writes are (three's `WebGLRenderer` declares `let ..., info` and its `initGLContext()` assigns `info = new WebGLInfo(gl)`) |
+| N1' `new` on a function | a function (no method, no arrow) that writes on `this` makes, called with `new`, an object whose properties are what it writes there (MDN new operator: unless it returns an object): a class of its own whose objects its `this` holds (three's `WebGLShadowMap`, `WebGLInfo`'s users) |
+
+Measured after each (tracer at 002aa185 for the first): the city 100,571 links, unchanged by all; the lab app 224,909
+links (V2' 24 gained, J14 5, J7' 247 with 2 `handed` gone where a closure-shared variable now holds the program's
+object), 211 unreached uses (263 before); the lab with three.js 421,076 links in 177 s, 221 unreached uses in the app's
+code, 11 of them only with three.
+
+What remains (11) has one cause: an array has no identity. `a[i] = v` writes into the place that holds the array, but
+`a.push(v)` is no write, and what is put into an array a parameter holds does not reach the array its caller passed
+(three's `o.raycast(raycaster, found)` pushes into `found`; `Texture.addUpdateRange` pushes into `this.updateRanges`).
+Before T2'' every array literal also held the engine's value, whose elements hid this. Recorded in `log/pendencias.md`.

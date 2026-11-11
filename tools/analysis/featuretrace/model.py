@@ -97,6 +97,10 @@ class Unit:
     optional: bool = False         # js: a method declared optional (`m?(): T`): reading it may give undefined (T1')
     bounds: dict = field(default_factory=dict)     # js: parameter or local -> its declared type's bound (S2)
     bound: tuple = ()              # js: a field's, variable's or alias's declared type's bound; a function's result's
+    late_writes: dict = field(default_factory=dict)    # js: name -> what a closure writes to a variable its enclosing
+                                                        # function declares later in the text (J7')
+    constructs: str = ""           # js: the class of the objects `new` on this function makes (what it writes on
+                                   # `this`, N1')
 
     def runs(self, which: str, reader) -> int | str | None:
         """The accessor (`get` or `set`) an access of this property written in `reader` runs (G8, G8'): none inside
@@ -159,6 +163,8 @@ def assign(r, unit: Unit, name: str, value, shared: bool) -> None:
     JS closures, J7), the enclosing function's local holds what the writer's holds (`written_by`)."""
     units, name = r.facts.units, scopes.visible(r, name)
     if name not in unit.types:
+        if shared and unit.lang == "js" and unit.outer >= 0:      # a hoisted closure read before the enclosing
+            unit.late_writes.setdefault(name, []).append(value)   # function's later declaration (J7')
         return
     unit.types[name].append(value)
     while shared and name in unit.captured and unit.outer >= 0:

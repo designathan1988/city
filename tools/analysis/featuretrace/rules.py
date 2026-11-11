@@ -88,7 +88,7 @@ GDEXT_PROPERTY = "ADD_PROPERTY"                                       # ADD_PROP
 HANDLERS = {
     "DEF": ("gd_read:GdReader.unit", "cpp_read:CppReader.unit", "index:Index", "js_read:JsReader.unit",
             "js_decl:declaration", "js_class:class_declaration", "js_class:object_literal",
-            "js_class:members", "js_read:JsReader.parameter_property"),
+            "js_class:members", "js_read:JsReader.parameter_property", "js_read:JsReader.late_writes", "js_read:JsReader.constructor_function"),
     "LOOK": ("resolve:Resolver.bare", "resolve:Resolver.qualified", "resolve:Resolver.adl", "index:Index.visible",
              "places:Places.named", "places:Places.wire_name", "resolve:Resolver.js_scoped", "scopes:local_key", "scopes:visible",
              "scopes:scoped_tree", "cpp_lifetime:class_named", "js_specifiers:Specifiers.resolve",
@@ -124,7 +124,8 @@ HANDLERS = {
              "link_calls:handed", "link_calls:engine_receiver", "cpp_lifetime:implicit_construction", "cpp_lifetime:implicit_destruction",
              "cpp_lifetime:destruction_of", "cpp_lifetime:owned_classes", "cpp_lifetime:destructors",
              "cpp_lifetime:constructors", "link:link_node", "solver:Solver.substituted", "js_link:constructors", "js_link:module_run", "js_link:jsx", "js_link:callback_args",
-             "js_expr:call", "js_expr:implicit", "js_body:loop"),
+             "js_expr:call", "js_expr:implicit", "js_body:loop", "js_defines:definer", "js_defines:define",
+             "js_defines:descriptor"),
     "BRANCH": ("gd_body:statement", "cpp_body:statement", "js_body:statement", "c_family:if_statement",
                "js_guards:facts", "narrowing:open", "narrowing:close", "narrowing:apply", "narrowing:wrap",
                "narrowing:leaves", "narrowing:assigned_names", "narrowing:enter_function", "scopes:renamed",

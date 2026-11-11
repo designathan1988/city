@@ -10,7 +10,7 @@ function that does (J2''), each beside the member call an object's own method of
 """
 from __future__ import annotations
 
-from . import js_body, js_guards, narrowing, scopes
+from . import js_body, js_defines, js_guards, narrowing, scopes
 from .cpp_implicit import IMPLICIT
 from .ir_js import args_of, member_name
 from .rules import (BIND_FORMS, CALL_FORMS, COERCION_MEMBERS, CONSTRUCTOR, EVENT_FIRE, EVENT_OBJECTS,
@@ -175,6 +175,9 @@ def call(r, node, unit, cond) -> None:
     elif fn.type == "member_expression":
         obj = field_of(fn, "object")
         method = member_name(r.src, field_of(fn, "property"))
+        which = js_defines.definer(r, fn, unit)
+        if which:                                               # the language defines the properties (J14)
+            js_defines.define(r, node, which, argv, unit, cond)
         expression(r, obj, unit, cond)
         base = r.ir(obj, unit)
         forms = method in CALL_FORMS or method in BIND_FORMS

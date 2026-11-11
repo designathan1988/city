@@ -11,7 +11,7 @@ sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
 
 from support import FixtureCase, Solved  # noqa: E402
-from featuretrace.solver import NUMBER, TEXT  # noqa: E402
+from featuretrace.solver import CLASS, ENGINE, NUMBER, TEXT  # noqa: E402
 
 
 class Mixed(FixtureCase):
@@ -49,6 +49,58 @@ class FunctionForms(Solved, FixtureCase):
     def test_call_and_apply(self):
         self.assertEqual({TEXT + "c"}, self.returned("callForm"))
         self.assertEqual({TEXT + "x", TEXT + "y"}, self.returned("applyForm"))
+
+
+class ConstructorProperty(Solved, FixtureCase):
+    """J4': `obj.constructor` is the object's class (fixture `jsvalues/ctor.js`)."""
+    ROOTS = ("jsvalues",)
+    BASE = "jsvalues"
+
+    def test_constructor_is_the_class(self):
+        self.assertEqual({CLASS + "ctor.js#Cloner"}, self.returned("ctorOf"))
+        self.assertEqual({CLASS + "ctor.js#SubCloner"}, self.returned("cloned"))   # the receiver's own class
+
+
+class HostBase(Solved, FixtureCase):
+    """V2': a base the tracer did not read can hold a member, whatever code writes (fixture `jsvalues/hostbase.ts`)."""
+    ROOTS = ("jsvalues",)
+    BASE = "jsvalues"
+
+    def test_member_of_an_unread_base(self):
+        self.assertIn(ENGINE, self.returned("hostGet"))         # `Map.prototype.get`, the host's
+
+
+class DefinedProperties(Solved, FixtureCase):
+    """J14: `Object.defineProperty`, `Object.defineProperties` (fixture `jsvalues/defineprops.js`)."""
+    ROOTS = ("jsvalues",)
+    BASE = "jsvalues"
+    SPOT = CLASS + "defineprops.js#Spot"
+
+    def test_value_and_getter(self):
+        self.assertEqual({self.SPOT}, self.returned("heldSpot"))
+        self.assertEqual({NUMBER}, self.returned("heldId"))
+        self.assertEqual({self.SPOT}, self.returned("heldTwice"))
+
+
+class LateWrites(Solved, FixtureCase):
+    """J7': a hoisted closure writes a variable declared before it in the text (fixture `jsvalues/latewrite.js`)."""
+    ROOTS = ("jsvalues",)
+    BASE = "jsvalues"
+
+    def test_hoisted_closure_writes_the_enclosing_variable(self):
+        self.assertIn(CLASS + "latewrite.js#LateBox", self.returned("lateWrite"))
+
+
+class FunctionConstructors(Solved, FixtureCase):
+    """N1': `new F()` on a function makes the object F writes on `this` (fixture `jsvalues/newfn.js`)."""
+    ROOTS = ("jsvalues",)
+    BASE = "jsvalues"
+
+    def test_new_object_of_a_function(self):
+        made = self.returned("madeObject")
+        self.assertTrue(made and all("Counter2" in v for v in made), made)
+        self.assertEqual({NUMBER}, self.returned("madeCount"))
+        self.assertEqual({NUMBER}, self.returned("madeBump"))
 
 
 class StaticReceiver(FixtureCase):
