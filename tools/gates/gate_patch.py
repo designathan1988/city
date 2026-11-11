@@ -1,7 +1,8 @@
 """NUMBER_MOVED: a number moved to make a check pass is a patch (CLAUDE.md, no-patch). The watched numbers (rules.json
 patch.watched: the tests' named constants, the tasks' deadlines, the gates' own thresholds) are compared by name with the
 file as HEAD holds it; a value that changed passes only when its cause is recorded first, in a line of the logs or in a
-fixed problem of a trace's ledger, naming the file and the name moved. A number that is new, or gone, is no move."""
+fixed problem of a trace's ledger, naming the file, the name moved and the value it moved to. A number that is new, or
+gone, is no move."""
 import glob
 import json
 import os
@@ -156,9 +157,13 @@ def _numbers(src, text, watch):
     return _json_numbers(src.text if text is None else text, set(watch["keys"]))
 
 
-def _recorded(ctx, path, word):
+def _recorded(ctx, path, word, value):
+    """A record of this move: a line naming the file, the name and the value it moved to (an older line about the same
+    constant names another value, so it cannot pass a later move)."""
     base = os.path.basename(path)
-    return any((path in line or base in line) and re.search(rf"\b{re.escape(word)}\b", line) for line in _records(ctx))
+    name = re.compile(rf"\b{re.escape(word)}\b")
+    moved_to = re.compile(rf"(?<![\d.]){re.escape(f'{value:g}')}(?![\d])")
+    return any((path in line or base in line) and name.search(line) and moved_to.search(line) for line in _records(ctx))
 
 
 def check_patch(ctx, src, err):
@@ -170,7 +175,8 @@ def check_patch(ctx, src, err):
     new, words = _numbers(src, None, watch)
     for name, (value, line) in sorted(new.items(), key=lambda kv: kv[1][1]):
         was = old.get(name)
-        if was is None or was[0] == value or _recorded(ctx, src.path, words[name]):
+        if was is None or was[0] == value or _recorded(ctx, src.path, words[name], value):
             continue
         err(ID, f"{src.path}:{line}", f"{name} moved from {was[0]:g} to {value:g}: a number moved to make a check pass is a "
-            f"patch; record the cause first (a log line, or a fixed trace problem, naming {src.path} and {words[name]})")
+            f"patch; record the cause first (a log line, or a fixed trace problem, naming {src.path}, {words[name]} and "
+            f"{value:g})")
