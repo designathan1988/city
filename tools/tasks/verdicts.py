@@ -91,7 +91,32 @@ def write_golden(task, log: str, code: int, root: Path):
     return PASS, f"golden written: {task.params['golden']}"
 
 
-VERDICTS = {"exit_code": exit_code, "godot": godot, "matches_golden": matches_golden, "write_golden": write_golden}
+def no_machine_path(task, log: str, code: int, root: Path):
+    """A build: exit 0, and none of its outputs holds the repository's absolute root (the folder of the machine that built it,
+    a person's name with it), in UTF-8 or UTF-16 as a binary keeps text: native/CMakeLists.txt maps every source path the
+    compiler writes from the root, and this holds it to that."""
+    if code != 0:
+        return FAIL, f"exit {code}"
+    needles = {form.encode(enc) for form in (root.as_posix(), str(root)) for enc in ("utf-8", "utf-16-le")}
+    found, seen = [], 0
+    for out in task.outputs:
+        path = root / out
+        if not path.exists():
+            return FAIL, f"no output at {out}"
+        for f in ([path] if path.is_file() else sorted(p for p in path.rglob("*") if p.is_file())):
+            seen += 1
+            data = f.read_bytes()
+            if any(n in data for n in needles):
+                found.append(f.relative_to(root).as_posix())
+    if not seen:
+        return FAIL, "no output file to look at: an empty set proves nothing"
+    if found:
+        return FAIL, f"the build's root folder is written in {', '.join(found[:SHOWN_LINES])}"
+    return PASS, f"{seen} output file(s), no machine folder in them"
+
+
+VERDICTS = {"exit_code": exit_code, "godot": godot, "matches_golden": matches_golden, "write_golden": write_golden,
+            "no_machine_path": no_machine_path}
 
 
 def judge(task, log: str, code: int, root: Path) -> tuple[str, str]:

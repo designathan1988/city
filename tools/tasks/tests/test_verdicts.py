@@ -36,5 +36,38 @@ class GodotVerdictTest(unittest.TestCase):
         self.assertEqual(self.verdict("FAILURES: 0\n", code=1), FAIL)
 
 
+class MachinePathVerdictTest(unittest.TestCase):
+    """A build's outputs hold no folder of the machine that built them: the repository's absolute root, in UTF-8 or UTF-16."""
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp(prefix="verdicts-paths-"))
+        self.addCleanup(shutil.rmtree, self.dir, True)
+        (self.dir / "run.log").write_text("built\n", encoding="utf-8")
+        self.task = Task(name="build", argv=["cmake"], timeout_s=1, outputs=["bin/core.dll"])
+        (self.dir / "bin").mkdir()
+
+    def judge(self, content: bytes, code: int = 0):
+        (self.dir / "bin" / "core.dll").write_bytes(content)
+        return verdicts.no_machine_path(self.task, str(self.dir / "run.log"), code, self.dir)
+
+    def test_clean_output_passes(self):
+        self.assertEqual(self.judge(b"\x00native/src/a.cpp\x00")[0], PASS)
+
+    def test_root_in_utf8_fails(self):
+        status, message = self.judge(b"\x00" + self.dir.as_posix().encode("utf-8") + b"/native/src/a.cpp\x00")
+        self.assertEqual(status, FAIL)
+        self.assertIn("bin/core.dll", message)
+
+    def test_root_in_utf16_fails(self):
+        self.assertEqual(self.judge(str(self.dir).encode("utf-16-le"))[0], FAIL)
+
+    def test_missing_output_fails(self):
+        (self.dir / "bin").rmdir()
+        self.assertEqual(verdicts.no_machine_path(self.task, str(self.dir / "run.log"), 0, self.dir)[0], FAIL)
+
+    def test_exit_code_fails(self):
+        self.assertEqual(self.judge(b"clean", code=2)[0], FAIL)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -19,6 +19,21 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     add_compile_options(-march=x86-64-v3 -ffp-contract=off -fno-math-errno -fno-trapping-math -fvisibility-inlines-hidden)
 endif()
 
+# No folder of the machine that builds goes into what it builds: a source path the compiler writes (__FILE__ in the asserts of godot-cpp
+# and libc++, the debug info) is written from the repository's root, the toolchain's from its own name (-ffile-prefix-map: clang's macro
+# and debug maps together, ClangCommandLineReference), and the profile's name of a static function drops the root's directories
+# (-static-func-strip-dirname-prefix, the compiler's own option for the counter names): a DLL, a profile and an export hold no person's
+# folder, and two machines build the same names.
+get_filename_component(CITY_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    string(REGEX MATCHALL "/" CITY_ROOT_SLASHES "${CITY_REPO_ROOT}/")
+    list(LENGTH CITY_ROOT_SLASHES CITY_ROOT_LEVELS)
+    add_compile_options("-ffile-prefix-map=${CITY_REPO_ROOT}/=" "SHELL:-mllvm -static-func-strip-dirname-prefix=${CITY_ROOT_LEVELS}")
+    if(LLVM_MINGW)
+        add_compile_options("-ffile-prefix-map=${LLVM_MINGW}/=llvm-mingw/")
+    endif()
+endif()
+
 # The export's DLL: one program for the optimizer across every file (ThinLTO, https://clang.llvm.org/docs/ThinLTO.html), and with the
 # profile of a run of the game (native/pgo, tools/build/pgo.sh) it knows which branch is taken and what is worth inlining. The tests'
 # DLL leaves both out: it is linked many times an hour. CITY_PROFILE=generate is the instrumented build pgo.sh trains.

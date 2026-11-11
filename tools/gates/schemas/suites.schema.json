@@ -76,7 +76,7 @@
     "cwd": {"type": "string"},
     "env": {"type": "object", "additionalProperties": {"type": "string"}},
     "hidden": {"type": "boolean"},
-    "verdict": {"enum": ["exit_code", "godot", "matches_golden", "write_golden"]},
+    "verdict": {"enum": ["exit_code", "godot", "matches_golden", "write_golden", "no_machine_path"]},
     "params": {"type": "object", "additionalProperties": {"type": "string"}},
     "resources": {"$ref": "#/$defs/resources"},
     "fresh": {"type": "boolean"},

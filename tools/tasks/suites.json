@@ -61,6 +61,7 @@
    "extra": ["{cmake_version}", "{ninja_version}", "{clang_version}"],
    "env": {"MINGW": "{mingw}"},
    "outputs": ["project/bin/libcitycore.windows.template_debug.x86_64.dll"],
+   "verdict": "no_machine_path",
    "resources": {"cores": "all", "locks": {"dll": "exclusive"}}
   },
   "build_release": {
@@ -71,6 +72,7 @@
    "extra": ["{cmake_version}", "{ninja_version}", "{clang_version}"],
    "env": {"MINGW": "{mingw}"},
    "outputs": ["project/bin/libcitycore.windows.template_release.x86_64.dll"],
+   "verdict": "no_machine_path",
    "resources": {"cores": "all", "locks": {"dll": "exclusive"}}
   },
   "gates_changed": {
