@@ -90,14 +90,14 @@ void Solver::queue(Node n) {
 
 void Solver::follow(Node source, Node target) {
     if (source == target) return;
-    if (!edge_keys_.insert(static_cast<uint64_t>(source) << kHalf | target).second) return;
+    if (!edge_keys_.insert(static_cast<uint64_t>(source) << kHalf | target)) return;
     edges_[source].push_back(target);
     auto upto = static_cast<uint32_t>(held_[source].order.size());
     if (upto) firsts_.push_back({source, upto, true, target});
 }
 
 bool Solver::subscribe(Node source, Node target, uint32_t key, const Transfer& transfer) {
-    if (!sub_keys_.insert({source, target, key}).second) return false;
+    if (!sub_keys_.insert({source, target, key})) return false;
     subs_[source].push_back({target, key, transfer});
     auto upto = static_cast<uint32_t>(held_[source].order.size());
     if (upto) firsts_.push_back({source, upto, false, static_cast<uint32_t>(subs_[source].size() - 1)});

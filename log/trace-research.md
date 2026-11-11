@@ -351,3 +351,17 @@ official declarations only, converging (finite, fast enough to run in seconds to
   348 k links, the queue near 100 k): there the profile is the standard library's node-based hash sets (each insert
   allocates; ~35%), making key terms (16%) and allocation (9%). Next: flat open-addressing sets for the solver's and the
   analysis's keys.
+
+### F23. A declaration has no run; what is left is the dictionary part (P1) — 2026-11-12 03:30
+- Flat open-addressing sets and maps for the solver's and the analysis's keys (engine/src/flat.h): the pair 1.8 s ->
+  1.33 s, the same result.
+- The functions run in the most contexts on the lab were declared library methods (`Array[Symbol.iterator]` 18,968
+  runs, `Iterator.next` 18,100, `Map.set`/`get`, `Array.push`/`map`, `Set.add`...): a declaration has no body, so a
+  context, parameters, `this` and a result of its own are nodes nothing reads; what it does is `declared.apply`, in its
+  receiver's environment. A call of a declaration is its link and what its declaration says now, in both cores, and a
+  declaration is no entry point. Runs 232 k -> 127 k; the lab with contexts at 470 k items/s (69 M in 146 s), 8.4 M
+  nodes, 833 k objects, links stable at ~348.7 k from about 100 s, the queue still ~260 k: it does not converge in 150 s.
+- What still grows: values spreading through objects' dictionary parts (`[[any]]`, written by stores whose key is not
+  known) and the implicit coercion reads (`toString`, `valueOf`, `Symbol.toPrimitive`) that read them: e.g. 307 values
+  in the `[[any]]` of a declared ArrayIterator, read by every coercion of it. Open: what the language says of a store by
+  a key whose value is known only by kind (a number names an index, a for-in key the property it enumerates), measured.

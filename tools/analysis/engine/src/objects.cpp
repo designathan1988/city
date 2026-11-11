@@ -15,11 +15,9 @@ Obj Analysis::function_object(int64_t gid, Value env) {
 }
 
 Obj Analysis::make(Value key) {
-    auto found = object_ids_.find(key.bits());
-    if (found != object_ids_.end()) return found->second;
-    auto id = static_cast<Obj>(objects_.size());
-    object_ids_.emplace(key.bits(), id);
-    objects_.push_back(key);
+    bool made = false;
+    Obj id = object_ids_.get(key.bits(), made, [&] { return static_cast<Obj>(objects_.size()); });
+    if (made) objects_.push_back(key);
     return id;
 }
 

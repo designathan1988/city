@@ -62,6 +62,7 @@ int analyse(const char* input, const char* output, bool sensitive, bool names) {
             say("  " + semantics.profile());
             say("  costliest:" + an.costliest(kLargest));
             say("  stores:" + an.stores(kLargest));
+            if (ticks % (kGrowthEvery * kGrowthEvery) == 0) say("  runs:" + an.runs(kLargest));
         }
         say("  " + std::to_string(items) + " items, " + std::to_string(an.solver.nodes()) + " nodes, " +
             std::to_string(an.objects()) + " objects, " + std::to_string(an.links.size()) + " links, queue " +

@@ -40,11 +40,9 @@ Value Analysis::lookup_dict(Value dict, Value key) const {
 }
 
 Node Analysis::N(Value key) {
-    auto found = nodes_.find(key.bits());
-    if (found != nodes_.end()) return found->second;
-    Node n = solver.node();
-    nodes_.emplace(key.bits(), n);
-    node_keys_.push_back(key);
+    bool made = false;
+    Node n = nodes_.get(key.bits(), made, [&] { return solver.node(); });
+    if (made) node_keys_.push_back(key);
     return n;
 }
 
@@ -114,6 +112,12 @@ void Analysis::call(Value node, Obj fn, int64_t receiver, std::span<const Value>
         return;
     }
     int64_t gid = item(key, 1).data();
+    const UnitRec& u = unit(gid);
+    if (u.decl_only) {                         // no body: nothing runs (no context, parameter or result of its own)
+        reached(node, gid, kind);
+        if (typesys::declared(*this, gid)) declared::apply(*this, node, gid, receiver, args, where);
+        return;
+    }
     Value env = last(*this, key);
     Value ctx;
     if (receiver >= 0) {
@@ -123,7 +127,6 @@ void Analysis::call(Value node, Obj fn, int64_t receiver, std::span<const Value>
         ctx = contexts::of_call(*this, env, item(where, 0));
     }
     activate(gid, ctx);
-    const UnitRec& u = unit(gid);
     for (size_t index = 0; index < args.size(); ++index) {
         if (args[index].kind() != Kind::None && index < u.params.size()) {
             follow(args[index], param(gid, static_cast<int64_t>(index), ctx));
@@ -132,7 +135,6 @@ void Analysis::call(Value node, Obj fn, int64_t receiver, std::span<const Value>
     if (receiver >= 0) add(this_(gid, ctx), static_cast<Obj>(receiver));
     follow(result(gid, ctx, where), node);
     reached(node, gid, kind);
-    if (u.decl_only && typesys::declared(*this, gid)) declared::apply(*this, node, gid, receiver, args, where);
 }
 
 Value Analysis::result(int64_t gid, Value ctx, Value where) {
@@ -151,7 +153,7 @@ Value Analysis::result(int64_t gid, Value ctx, Value where) {
 }
 
 void Analysis::reached(Value node, int64_t gid, Value kind) {
-    if (!has_target_.insert({node.bits(), static_cast<uint64_t>(gid), kind.bits()}).second) return;
+    if (!has_target_.insert({node.bits(), static_cast<uint64_t>(gid), kind.bits()})) return;
     targets_[node.bits()].emplace_back(gid, kind);
     auto lines = lines_[node.bits()];
     for (const auto& [caller, line] : lines) link(caller, gid, kind, line);
@@ -159,14 +161,14 @@ void Analysis::reached(Value node, int64_t gid, Value kind) {
 
 void Analysis::relay(Value origin, Value node) {
     if (origin.kind() == Kind::None) return;
-    if (!has_relay_.insert({origin.bits(), node.bits(), 0}).second) return;
+    if (!has_relay_.insert({origin.bits(), node.bits(), 0})) return;
     relays_[origin.bits()].push_back(node);
     auto lines = lines_[origin.bits()];
     for (const auto& [caller, line] : lines) written(node, caller, line);
 }
 
 void Analysis::written(Value node, int64_t caller, int64_t line) {
-    if (!has_line_.insert({node.bits(), static_cast<uint64_t>(caller), static_cast<uint64_t>(line)}).second) return;
+    if (!has_line_.insert({node.bits(), static_cast<uint64_t>(caller), static_cast<uint64_t>(line)})) return;
     lines_[node.bits()].emplace_back(caller, line);
     auto found = targets_[node.bits()];
     for (const auto& [gid, kind] : found) link(caller, gid, kind, line);
@@ -178,7 +180,7 @@ void Analysis::written(Value node, int64_t caller, int64_t line) {
 
 void Analysis::link(int64_t src, int64_t dst, Value kind, int64_t line) {
     uint64_t pair = static_cast<uint64_t>(src) << 32 | static_cast<uint32_t>(dst);
-    if (!known_.insert({pair, kind.bits(), static_cast<uint64_t>(line)}).second) return;
+    if (!known_.insert({pair, kind.bits(), static_cast<uint64_t>(line)})) return;
     links.push_back({src, dst, kind, line});
 }
 
@@ -192,7 +194,7 @@ bool Analysis::entries(bool modules) {
         }
     }
     for (const UnitRec& u : in.units) {
-        if (!is_function_unit(u.gid) || (u.name == V.MODULE_UNIT) != modules) continue;
+        if (!is_function_unit(u.gid) || u.decl_only || (u.name == V.MODULE_UNIT) != modules) continue;
         if (modules) {
             started |= enter(u.gid, ROOT, -1);
         } else if (!called.count(u.gid)) {
@@ -205,7 +207,7 @@ bool Analysis::entries(bool modules) {
 }
 
 bool Analysis::enter(int64_t gid, Value ctx, int64_t unknown) {
-    if (!entered_.insert({static_cast<uint64_t>(gid), ctx.bits(), 0}).second) return false;
+    if (!entered_.insert({static_cast<uint64_t>(gid), ctx.bits(), 0})) return false;
     activate(gid, ctx);
     if (unknown < 0) return true;
     const UnitRec& u = unit(gid);

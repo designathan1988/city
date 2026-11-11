@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "flat.h"
 #include "input.h"
 #include "solver.h"
 #include "vocab.h"
@@ -56,7 +57,7 @@ public:
     // ---- nodes --------------------------------------------------------------------------------------------------
     Node N(Value key);                             // the solver node of a key (made the first time)
     Value key_of(Node n) const { return node_keys_[n]; }
-    bool wire_once(Value key) { return wired_.insert(key.bits()).second; }
+    bool wire_once(Value key) { return wired_.insert(key.bits()); }
     void add(Value node, Obj o) { solver.add(N(node), o); }
     void add(Value node, std::span<const Obj> objs) { solver.add(N(node), objs); }
     void follow(Value source, Value target) { solver.follow(N(source), N(target)); }
@@ -113,6 +114,7 @@ public:
     std::string growth();
     std::string largest(size_t count);           // the nodes holding the most objects, named
     std::string composition(Node n);             // the kinds of object a node holds, the most first
+    std::string runs(size_t count);              // the functions run in the most contexts, and their nodes
     std::string costliest(size_t count);         // the nodes whose deliveries cost the most, named
     std::string stores(size_t count);            // the stores by unknown keys writing the most
     std::string describe(Value v, int depth = 0);  // a key as text, objects by their keys
@@ -136,16 +138,16 @@ public:
 
 private:
     size_t grown_nodes_ = 0, grown_objects_ = 0;
-    std::unordered_map<uint64_t, Node> nodes_;
+    FlatMap<uint64_t, Node, U64Hash> nodes_;
     std::vector<Value> node_keys_;
-    std::unordered_set<uint64_t> wired_;
-    std::unordered_map<uint64_t, Obj> object_ids_;
+    FlatSet<uint64_t, U64Hash> wired_;
+    FlatMap<uint64_t, Obj, U64Hash> object_ids_;
     std::vector<Value> objects_;
     std::unordered_map<uint64_t, std::vector<std::pair<int64_t, int64_t>>> lines_;   // node -> (caller, line)
     std::unordered_map<uint64_t, std::vector<std::pair<int64_t, Value>>> targets_;   // node -> (gid, kind)
     std::unordered_map<uint64_t, std::vector<Value>> relays_;
-    std::unordered_set<Key3, Key3Hash> known_, entered_;
-    std::unordered_set<Key3, Key3Hash> has_target_, has_line_, has_relay_;   // the lists above, indexed
+    FlatSet<Key3, Key3Hash> known_, entered_;
+    FlatSet<Key3, Key3Hash> has_target_, has_line_, has_relay_;   // the lists above, indexed
 };
 
 // The contexts (heap/contexts.py).

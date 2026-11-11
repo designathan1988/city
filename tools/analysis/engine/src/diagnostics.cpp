@@ -86,6 +86,30 @@ std::string Analysis::stores(size_t count) {
     return out;
 }
 
+std::string Analysis::runs(size_t count) {
+    std::unordered_map<int64_t, size_t> nodes_of;          // a function's nodes: those keyed by its gid second
+    for (Value key : node_keys_) {
+        Value tag = item(key, 0);
+        if ((tag == V.TREE || tag == V.LOCAL || tag == V.PARAM || tag == V.THIS || tag == V.RET) &&
+            item(key, 1).kind() == Kind::Int) {
+            ++nodes_of[item(key, 1).data()];
+        }
+    }
+    std::vector<std::pair<size_t, int64_t>> rows;
+    for (const auto& [gid, ctxs] : active_order) rows.emplace_back(ctxs.size(), static_cast<int64_t>(gid));
+    std::sort(rows.rbegin(), rows.rend());
+    size_t total = 0;
+    for (const auto& r : rows) total += r.first;
+    std::string out = " " + std::to_string(rows.size()) + " functions in " + std::to_string(total) + " runs";
+    for (size_t i = 0; i < rows.size() && i < count; ++i) {
+        const UnitRec& u = unit(rows[i].second);
+        out += "\n      " + std::to_string(rows[i].first) + " runs, " + std::to_string(nodes_of[rows[i].second]) +
+               " nodes: " + std::string(text(u.qual)).substr(0, kLabel) + " params=" + std::to_string(u.params.size()) +
+               " result=" + describe(u.result_type);
+    }
+    return out;
+}
+
 std::string Analysis::costliest(size_t count) {
     std::string out;
     size_t shown = 0;

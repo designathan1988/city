@@ -10,8 +10,9 @@
 #include <deque>
 #include <functional>
 #include <span>
-#include <unordered_set>
 #include <vector>
+
+#include "flat.h"
 
 namespace ftengine {
 
@@ -89,8 +90,8 @@ private:
     std::vector<uint8_t> queued_;
     std::deque<Node> work_;
     std::deque<First> firsts_;
-    std::unordered_set<uint64_t> edge_keys_;
-    std::unordered_set<Key, KeyHash> sub_keys_;
+    FlatSet<uint64_t, U64Hash> edge_keys_;
+    FlatSet<Key, KeyHash> sub_keys_;
     std::vector<Obj> scratch_;
     uint64_t items_ = 0;
     std::vector<uint64_t> cost_;

@@ -127,13 +127,18 @@ class Analysis:
         if gid is None:
             declared.call_object(self, node, fn, receiver, args, where)
             return
+        unit = self.ix.units[gid]
+        if unit.decl_only:                   # no body: nothing runs (no context, no parameter, no result of its own)
+            self.reached(node, gid, kind)
+            if typesys.declared(self, gid):
+                declared.apply(self, node, gid, receiver, args, where)
+            return
         env = objects.env(fn)
         if receiver is not None:
             ctx = contexts.of_method(env, objects.site(receiver), objects.heap(receiver))
         else:
             ctx = contexts.of_call(env, where[0])
         self.activate(gid, ctx)
-        unit = self.ix.units[gid]
         for index, arg in enumerate(args):
             if arg is not None and index < len(unit.params):
                 self.solver.follow(arg, self.param(gid, index, ctx))
@@ -141,8 +146,6 @@ class Analysis:
             self.solver.add(self.this(gid, ctx), [receiver])
         self.solver.follow(self.result(gid, ctx, where), node)
         self.reached(node, gid, kind)
-        if unit.decl_only and typesys.declared(self, gid):
-            declared.apply(self, node, gid, receiver, args, where)
 
     def result(self, gid: int, ctx, where):
         """What a call gives: what the function returns; a generator function's call, a generator object whose
@@ -226,8 +229,8 @@ def entries(an, modules: bool) -> bool:
     unknown, started = an.objects.make(SITE_UNKNOWN), False
     for unit in an.ix.units:
         gid = unit.gid
-        if not an.is_function_unit(gid) or (unit.name == MODULE_UNIT) != modules:
-            continue
+        if not an.is_function_unit(gid) or unit.decl_only or (unit.name == MODULE_UNIT) != modules:
+            continue                         # a declaration has no body to run
         if modules:
             started |= enter(an, gid, ROOT, None)
         elif not any(e.kind in (CALL, NEW, HANDED) for e in an.inn.get(gid, ())):   # no caller, nor the platform
