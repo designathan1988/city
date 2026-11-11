@@ -18,7 +18,7 @@ _DONE = {}
 
 def analysed():
     if "core" not in _DONE:
-        ix, files, broken = program.read([FIXTURE], FIXTURE, None)
+        ix, _, _ = program.read([FIXTURE / "core.ts"], FIXTURE, None)
         _DONE["core"] = (ix, analysis.analyse(ix))
     return _DONE["core"]
 

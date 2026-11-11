@@ -1,8 +1,9 @@
-"""Members of one object (log/trace-core-plan.md, Tasks 1-2; ECMA-262 [[Get]] and [[Set]] through the prototype
+"""Members of one object (log/trace-core-plan.md, Tasks 1-3; ECMA-262 [[Get]] and [[Set]] through the prototype
 chain): a read gives what was written to that object's property, what its class's chain declares under the name (a
 method's function object, an instance field's initializers, an accessor's getter run on the object), what was written
-on the prototype objects of its chain (a class's, a constructor function's own or the object its `prototype` was set
-to), what a write through an unknown key put in it; `constructor` its class; a class or a function as a value its own
+on the prototype objects of its chain (a class's, the prototype object of the function object that made it or the
+object its `prototype` was set to: each function object its own), what a write through an unknown key put in it;
+`constructor` its class or that function object; a class or a function as a value its own
 properties (a class's statics, its prototype object). A write puts the value in that object's property, or runs the
 setter its class declares. A read through a key no text names reads every property.
 """
@@ -19,15 +20,15 @@ ALL, ACCESSOR, PROTOTYPES = 9, 11, 12        # nodes: every property of one obje
 def read(an, target, obj: int, name: str) -> None:
     """Member `name` of object `obj` into `target`."""
     ix, objects = an.ix, an.objects
-    key = objects.class_of(obj)
+    key, maker = objects.class_of(obj), objects.maker(obj)
     if key is not None:
         declared_read(an, target, obj, key, name)
     for k in chain(ix, key) if key is not None and key in ix.classes else []:
-        an.solver.follow(field(an, prototype(an, k), name), target)
-    if key is not None:
-        made_from(an, target, obj, key, name)
-        if name == PROTOTYPE_CONSTRUCTOR:
-            an.solver.add(target, [constructor_value(an, key)])
+        an.solver.follow(field(an, prototype(an, k, maker if k == key else None), name), target)
+    if maker is not None:
+        made_from(an, target, maker, name)
+    if key is not None and name == PROTOTYPE_CONSTRUCTOR:
+        an.solver.add(target, [maker if maker is not None else an.objects.make(SITE_CLASS, key)])
     statics(an, target, obj, name)
     an.solver.follow(field(an, obj, name), target)
     an.solver.follow(an.any_field(obj), target)
@@ -64,24 +65,16 @@ def statics(an, target, obj: int, name: str) -> None:
     if name != PROTOTYPE:
         return
     gid = objects.function(obj)
-    made = cls if cls is not None else ix.units[gid].constructs if gid is not None else ""
-    if made:
-        an.solver.add(target, [prototype(an, made)])
+    if cls is not None:
+        an.solver.add(target, [prototype(an, cls)])
+    elif gid is not None and ix.units[gid].constructs:
+        an.solver.add(target, [prototype(an, ix.units[gid].constructs, obj)])
 
 
-def made_from(an, target, obj: int, key: str, name: str) -> None:
-    """An object a constructor function made: the members of the objects its `prototype` was set to."""
-    gid = an.constructed().get(key)
-    if gid is None:
-        return
-    held = field(an, an.function_object(gid), PROTOTYPE)
+def made_from(an, target, maker: int, name: str) -> None:
+    """An object the function object `maker` made: the members of the objects its `prototype` was set to."""
+    held = field(an, maker, PROTOTYPE)
     an.solver.subscribe(held, target, (PROTOTYPES, name), lambda t, protos: [read(an, t, p, name) for p in protos])
-
-
-def constructor_value(an, key: str) -> int:
-    """An object's `constructor`: its class, or the function whose `new` made it."""
-    gid = an.constructed().get(key)
-    return an.function_object(gid) if gid is not None else an.objects.make(SITE_CLASS, key)
 
 
 def accessor(an, target, obj: int, prop, local_id, args: list) -> None:
@@ -136,9 +129,10 @@ def link_fields(an, unit, obj: int, name: str, line: int, writing: bool) -> None
             an.link(unit.gid, an.ix.offset[prop.file] + runs, CALL, line)
 
 
-def prototype(an, key: str) -> int:
-    """The prototype object of a class or of a constructor function's objects."""
-    return an.objects.make(SITE_PROTOTYPE, key)
+def prototype(an, key: str, maker: int | None = None) -> int:
+    """The prototype object of a class, or of the objects one constructor function object makes (each function
+    object has its own: ECMAScript MakeConstructor)."""
+    return an.objects.make(SITE_PROTOTYPE, key) if maker is None else an.objects.make(SITE_PROTOTYPE, key, maker)
 
 
 def field(an, obj: int, name: str):

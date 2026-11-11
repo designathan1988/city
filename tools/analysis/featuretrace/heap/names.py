@@ -1,24 +1,27 @@
-"""What a name is where it is read (log/trace-core-plan.md, Task 1; the languages' scoping rules, as the readers keep
-them): a local function, a local or parameter (and the enclosing function's, for a closure, hoisted or not), else a
-definition of the module, a namespace, an import or the global scope — a function's object, a class's, or what a
-variable holds.
+"""What a name is where it is read (log/trace-core-plan.md, Tasks 1 and 3; the languages' scoping rules, as the
+readers keep them): a local function, a local or parameter (and the enclosing function's, for a closure, hoisted or
+not), else a definition of the module, a namespace, an import or the global scope — a function's object, a class's, or
+what a variable holds. A local is read in the run it belongs to: one step outward is one step to the environment
+(`contexts.environment`), so a closure reads the variables of the run that made it.
 """
 from __future__ import annotations
 
 from ..model import STATE_KINDS
 from ..vocab import CLASS_UNIT, LAMBDA, SITE_CLASS
+from . import contexts
 
 
-def wire_name(an, node, unit, name: str) -> None:
+def wire_name(an, node, unit, name: str, ctx) -> None:
     if name in unit.lambdas:
-        an.solver.add(node, [an.function_object(an.ix.offset[unit.file] + unit.lambdas[name])])
+        gid = an.ix.offset[unit.file] + unit.lambdas[name]
+        an.solver.add(node, [an.function_object(gid, scope(an, unit, ctx, an.ix.units[gid].outer))])
         return
     if name in unit.types or name in unit.params:
-        an.solver.follow(an.local(unit, name), node)
+        an.solver.follow(an.local(unit, name, ctx), node)
         return
-    owner = enclosing(an, unit, name)
+    owner, owner_ctx = enclosing(an, unit, name, ctx)
     if owner is not None:                         # declared by an enclosing function after the closure (J7)
-        an.solver.follow(an.local(owner, name), node)
+        an.solver.follow(an.local(owner, name, owner_ctx), node)
         return
     found = definitions(an, unit, name)
     for gid in found:
@@ -28,13 +31,22 @@ def wire_name(an, node, unit, name: str) -> None:
         an.solver.add(node, [an.objects.make(SITE_CLASS, key)])
 
 
-def enclosing(an, unit, name: str):
-    """The function around `unit` that declares `name`, whatever the order it is written in (J7)."""
+def scope(an, unit, ctx, local_id: int):
+    """The run of the function `local_id` — `unit` itself or one written around it — as seen from `unit` running in
+    `ctx`: the environment of each step outward. A function object made from a declaration is made in that run."""
+    while unit.local_id != local_id and unit.outer >= 0:
+        unit, ctx = an.ix.units[an.ix.offset[unit.file] + unit.outer], contexts.environment(ctx)
+    return ctx
+
+
+def enclosing(an, unit, name: str, ctx=contexts.ROOT):
+    """The function around `unit` that declares `name`, whatever the order it is written in (J7), and its run as seen
+    from `unit` running in `ctx`; (None, ctx) when no enclosing function declares it."""
     while unit.outer >= 0:
-        unit = an.ix.units[an.ix.offset[unit.file] + unit.outer]
+        unit, ctx = an.ix.units[an.ix.offset[unit.file] + unit.outer], contexts.environment(ctx)
         if name in unit.types or name in unit.params:
-            return unit
-    return None
+            return unit, ctx
+    return None, ctx
 
 
 def definitions(an, unit, name: str) -> list[int]:

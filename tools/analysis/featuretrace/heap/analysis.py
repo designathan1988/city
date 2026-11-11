@@ -1,20 +1,29 @@
-"""The analysis over abstract objects (log/trace-core-plan.md, Task 1): the places values are kept in are nodes of the
-solver — an expression tree read in a unit, a local, a parameter, a function's `this` and its result, a variable, a
-field of one object — and calls are found by the objects a callee holds, each found call a link of the form the walk
-and the report read (`resolve.Edge`). `analyse(index)` lowers every unit's references and solves them.
+"""The analysis over abstract objects (log/trace-core-plan.md, Tasks 1-3): the places values are kept in are nodes of
+the solver — an expression tree read in a unit, a local, a parameter, a function's `this` and its result, each in one
+context; a variable; a field of one object — and calls are found by the objects a callee holds, each found call a link
+of the form the walk and the report read (`resolve.Edge`).
+
+Contexts are finite by construction (`contexts`): a function runs in (its closure's environment, the call's site), a
+method called on a receiver in (its environment, the receiver's allocation site and heap context); an object made in a
+context carries its heap context, a closure the whole context as its environment. A unit's references are lowered
+once per context it runs in. Module code runs first, in ROOT; then a function no call of the program reaches is an
+entry point, called by the unknown caller once for each environment a closure of it was made in, with the unknown
+object in each parameter and `this`.
 """
 from __future__ import annotations
 
 from collections import defaultdict
 
+from ..js_read import MODULE_UNIT
 from ..model import FUNCTION_KINDS
 from ..resolve import EXACT, Edge
 from ..vocab import ANY_FIELD, CALL, NEW, SITE_FUNCTION, SITE_UNKNOWN
-from . import refs, trees
+from . import contexts, refs, trees
 from .objects import Objects
 from .solver import Solver
 
 TREE, LOCAL, PARAM, THIS, RET, HOLD, FIELD, INITIAL = range(8)       # what a node is
+ROOT = contexts.ROOT
 
 
 class Analysis:
@@ -23,42 +32,43 @@ class Analysis:
         self.objects = Objects()
         self.solver = Solver()
         self.wired = set()
+        self.active = defaultdict(set)       # gid -> the contexts its references were lowered in
         self.lines = defaultdict(list)       # a call's node -> (caller gid, line) of each reference written for it
         self.targets = defaultdict(set)      # a call's node -> (callee gid, link kind) found so far
         self.edges, self.known = [], set()
         self.out, self.inn = defaultdict(list), defaultdict(list)
-        self.entered = set()                 # the functions given the unknown object as entry points
-        self._constructed = None
+        self.entered = set()                 # (gid, context) of each run started as an entry point
+        self.closures = defaultdict(set)     # gid -> the environments its function objects were made in
 
     # ---- nodes -------------------------------------------------------------------------------------------------
-    def node(self, tree, unit):
-        """The node of an expression tree read in `unit`, wired once by its shape (`trees`)."""
-        node = (TREE, unit.gid, tree)
+    def node(self, tree, unit, ctx):
+        """The node of an expression tree read in `unit` in context `ctx`, wired once by its shape (`trees`)."""
+        node = (TREE, unit.gid, tree, ctx)
         if node not in self.wired:
             self.wired.add(node)
-            trees.wire(self, node, tree, unit)
+            trees.wire(self, node, tree, unit, ctx)
         return node
 
-    def local(self, unit, name: str):
-        node = (LOCAL, unit.gid, name)
+    def local(self, unit, name: str, ctx):
+        node = (LOCAL, unit.gid, name, ctx)
         if node not in self.wired:
             self.wired.add(node)
-            trees.wire_local(self, node, unit, name)
+            trees.wire_local(self, node, unit, name, ctx)
         return node
 
-    def param(self, gid: int, index: int):
-        return (PARAM, gid, index)
+    def param(self, gid: int, index: int, ctx):
+        return (PARAM, gid, index, ctx)
 
-    def this(self, gid: int):
-        return (THIS, gid)
+    def this(self, gid: int, ctx):
+        return (THIS, gid, ctx)
 
-    def ret(self, gid: int):
-        node = (RET, gid)
+    def ret(self, gid: int, ctx):
+        node = (RET, gid, ctx)
         if node not in self.wired:
             self.wired.add(node)
             unit = self.ix.units[gid]
             for _, _, tree in unit.returns:
-                self.solver.follow(self.node(tree, unit), node)
+                self.solver.follow(self.node(tree, unit, ctx), node)
         return node
 
     def hold(self, gid: int):
@@ -76,29 +86,47 @@ class Analysis:
             self.wired.add(node)
             unit = self.ix.units[gid]
             for tree in unit.values:
-                self.solver.follow(self.node(tree, unit), node)
+                self.solver.follow(self.node(tree, unit, ROOT), node)
         return node
 
     def field(self, obj: int, name: str):
         return (FIELD, obj, name)
 
-    def function_object(self, gid: int) -> int:
-        return self.objects.make(SITE_FUNCTION, gid)
+    def any_field(self, obj: int):
+        return self.field(obj, ANY_FIELD)
 
-    # ---- calls -------------------------------------------------------------------------------------------------
+    def function_object(self, gid: int, env=ROOT) -> int:
+        """A function's object, made in context `env` (its environment: what its free variables read)."""
+        self.closures[gid].add(env)
+        return self.objects.make(SITE_FUNCTION, gid, env)
+
+    # ---- running units -----------------------------------------------------------------------------------------
+    def activate(self, gid: int, ctx) -> None:
+        """A unit runs in a context: its references are lowered there (once)."""
+        if ctx not in self.active[gid]:
+            self.active[gid].add(ctx)
+            refs.lower(self, self.ix.units[gid], ctx)
+
     def call(self, node, fn: int, receiver: int | None, args: list, kind: str) -> None:
-        """A call whose node is `node` runs the function object `fn` on `receiver` with `args`: its parameters take the
-        arguments, its `this` the receiver, the call its result; a link for each reference written for the call."""
+        """A call whose node is `node` runs the function object `fn` on `receiver` with `args`, in its context: its
+        parameters take the arguments, its `this` the receiver, the call its result; a link for each reference.
+        A plain call's site is its node without the caller's context."""
         gid = self.objects.function(fn)
         if gid is None:
             return
+        objects, env = self.objects, self.objects.env(fn)
+        if receiver is not None:
+            ctx = contexts.of_method(env, objects.site(receiver), objects.heap(receiver))
+        else:
+            ctx = contexts.of_call(env, objects.make(*node[:-1]))
+        self.activate(gid, ctx)
         unit = self.ix.units[gid]
         for index, arg in enumerate(args):
             if arg is not None and index < len(unit.params):
-                self.solver.follow(arg, self.param(gid, index))
+                self.solver.follow(arg, self.param(gid, index, ctx))
         if receiver is not None:
-            self.solver.add(self.this(gid), [receiver])
-        self.solver.follow(self.ret(gid), node)
+            self.solver.add(self.this(gid, ctx), [receiver])
+        self.solver.follow(self.ret(gid, ctx), node)
         if (gid, kind) not in self.targets[node]:
             self.targets[node].add((gid, kind))
             for caller, line in self.lines[node]:
@@ -120,9 +148,7 @@ class Analysis:
             self.out[src].append(edge)
             self.inn[dst].append(edge)
 
-    def any_field(self, obj: int):
-        return self.field(obj, ANY_FIELD)
-
+    # ---- classes -----------------------------------------------------------------------------------------------
     def made_by(self, obj: int) -> str | None:
         """The class of the objects `new` on `obj` makes: a class itself, or a constructor function's own (N1'')."""
         key = self.objects.class_itself(obj)
@@ -131,31 +157,38 @@ class Analysis:
         gid = self.objects.function(obj)
         return self.ix.units[gid].constructs or None if gid is not None else None
 
-    def constructed(self) -> dict:
-        """A constructor function's class -> the function (its objects' prototype is the function's `prototype`)."""
-        if self._constructed is None:
-            self._constructed = {u.constructs: u.gid for u in self.ix.units if u.constructs}
-        return self._constructed
-
     def is_function_unit(self, gid: int) -> bool:
         return self.ix.units[gid].kind in FUNCTION_KINDS
 
 
-def entries(an) -> bool:
-    """The functions no call reaches get the unknown object in each parameter and `this` (once). Returns whether any
-    did."""
-    unknown, added = an.objects.make(SITE_UNKNOWN), False
-    calling = (CALL, NEW)
+def entries(an, modules: bool) -> bool:
+    """Module code runs first, in ROOT; after it, every function no call reaches is called by the unknown caller, once
+    for each environment a closure of it was made in (ROOT when none was), the unknown object in each parameter and
+    `this`. Returns whether any run started."""
+    unknown, started = an.objects.make(SITE_UNKNOWN), False
     for unit in an.ix.units:
         gid = unit.gid
-        if not an.is_function_unit(gid) or gid in an.entered or any(e.kind in calling for e in an.inn.get(gid, ())):
+        if not an.is_function_unit(gid) or (unit.name == MODULE_UNIT) != modules:
             continue
-        an.entered.add(gid)
-        for index in range(len(unit.params)):
-            an.solver.add(an.param(gid, index), [unknown])
-        an.solver.add(an.this(gid), [unknown])
-        added = True
-    return added
+        if modules:
+            started |= enter(an, gid, ROOT, None)
+        elif not any(e.kind in (CALL, NEW) for e in an.inn.get(gid, ())):
+            for env in list(an.closures.get(gid) or {ROOT}):
+                started |= enter(an, gid, contexts.of_call(env, unknown), unknown)
+    return started
+
+
+def enter(an, gid: int, ctx, unknown) -> bool:
+    """A unit run in `ctx` by no call of the program (its arguments and `this` the unknown object, if given)."""
+    if (gid, ctx) in an.entered:
+        return False
+    an.entered.add((gid, ctx))
+    an.activate(gid, ctx)
+    if unknown is not None:
+        for index in range(len(an.ix.units[gid].params)):
+            an.solver.add(an.param(gid, index, ctx), [unknown])
+        an.solver.add(an.this(gid, ctx), [unknown])
+    return True
 
 
 class Result:
@@ -169,26 +202,23 @@ class Result:
 
     def points(self, gid: int, tree) -> set[str]:
         an = self.analysis
-        node = an.node(tree, an.ix.units[gid])
+        nodes = [an.node(tree, an.ix.units[gid], ctx) for ctx in an.active.get(gid) or {ROOT}]
         an.solver.run()
-        return {an.objects.label(o) for o in an.solver.pts.get(node, ())}
+        return {an.objects.label(o) for node in nodes for o in an.solver.pts.get(node, ())}
 
     def returned(self, gid: int) -> set[str]:
         an = self.analysis
-        node = an.ret(gid)
+        nodes = [an.ret(gid, ctx) for ctx in an.active.get(gid) or {ROOT}]
         an.solver.run()
-        return {an.objects.label(o) for o in an.solver.pts.get(node, ())}
+        return {an.objects.label(o) for node in nodes for o in an.solver.pts.get(node, ())}
 
 
 def analyse(index, progress=None) -> Result:
-    """Every unit's references lowered, then solved to the least fixpoint; at the fixpoint, a function no call of the
-    program reaches is an entry point: what calls it passes values the program does not make (the unknown object, in
-    each parameter and `this`), and the solver runs to its fixpoint again."""
+    """Module code, then the entry points, each solved to the least fixpoint, until no function starts."""
     an = Analysis(index)
-    for unit in index.units:
-        refs.lower(an, unit)
+    entries(an, modules=True)
     an.solver.run()
-    while entries(an):
+    while entries(an, modules=False):
         an.solver.run()
     if progress:
         progress(f"heap: {len(an.edges)} links, {len(an.objects.keys)} objects")
