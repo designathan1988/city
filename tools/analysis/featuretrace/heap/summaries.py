@@ -16,9 +16,9 @@ from __future__ import annotations
 
 from ..library import ENGINE
 from ..solver import OBJECT, SYMBOL, TEXT
-from ..vocab import (CALL, HANDED, PLATFORM_FIELD, SITE_PRIMITIVE, SITE_TEXT, SITE_UNKNOWN, T_FN, T_NAMED, T_OBJECT,
-                     T_OPEN, T_UNION, T_VALUES)
-from . import members, typesys
+from ..vocab import (CALL, HANDED, PLATFORM_FIELD, SITE_KEY, SITE_PRIMITIVE, SITE_TEXT, SITE_UNKNOWN, T_FN, T_NAMED,
+                     T_OBJECT, T_OPEN, T_UNION, T_VALUES)
+from . import members, texts, typesys
 
 POOL, TEXTS, RECEIVE, FIELDS, CALLED, REFLECT, MEMBER_OF, SUMMARY_SITE = 50, 51, 52, 53, 54, 55, 56, 57   # node tags
 KEPT, KEPT_SITE, KEPT_ENTRY, GIVEN, UNKNOWN_ARG = 58, 59, 62, 63, 64
@@ -74,18 +74,15 @@ def summarize(an, node, unit, args: list, site, parameter) -> None:
     """The generic summary of the call `node` of the declared function `unit` (`parameter(unit, i)`: the type its
     argument at i takes). The pool is filled where the call's values reach open positions (`values.consume`)."""
     solver, objects = an.solver, an.objects
-    texts = (TEXTS, node)
     where = (objects.make(SUMMARY_SITE, site[0]), site[1])
-    keys = [i for i in range(len(args)) if args[i] is not None and keyed(an, parameter(unit, i))]
-    for i in keys:
-        solver.subscribe(args[i], texts, (TEXTS, i), lambda t, objs: solver.add(t, [
-            o for o in objs if objects.kind(o) in (SITE_TEXT, SITE_PRIMITIVE)]))
+    names = set()
+    for i in range(len(args)):                     # the texts the call's property-key arguments have, as written
+        if args[i] is not None and keyed(an, parameter(unit, i)):
+            names |= texts.argument(an, node, i) or set()
     for i, arg in enumerate(args):
-        if arg is None or not keys:
-            continue
-        if is_open(an, parameter(unit, i)):
+        if arg is not None and names and is_open(an, parameter(unit, i)):
             solver.subscribe(arg, (RECEIVE, node, i), (RECEIVE,), lambda _, objs: [
-                receive(an, node, o, where) for o in objs if is_object(an, o)])
+                receive(an, node, o, names, where) for o in objs if is_object(an, o)])
     solver.subscribe(pool(node), (CALLED, node), (CALLED,), lambda _, objs: [
         called(an, node, o, where) for o in objs if objects.function(o) is not None])
     if is_open(an, unit.result_type):
@@ -103,11 +100,11 @@ def open_call(an, node, args: list, site) -> None:
     an.solver.add(node, [an.objects.make(SITE_UNKNOWN)])
 
 
-def receive(an, node, obj: int, where) -> None:
-    """An open object argument: the pool reaches the member each string the call passes names (never the object itself),
-    and that member is read and, a function, called on it (reflection by name)."""
-    an.solver.subscribe((TEXTS, node), (FIELDS, node, obj), (FIELDS,), lambda _, keys: [
-        named(an, node, obj, an.objects.text(k), where) for k in keys if an.objects.text(k) is not None])
+def receive(an, node, obj: int, keys, where) -> None:
+    """An open object argument: the pool reaches the member each text the call's property-key arguments have names
+    (never the object itself), and that member is read and, a function, called on it (reflection by name)."""
+    for name in keys:
+        named(an, node, obj, name, where)
 
 
 def named(an, node, obj: int, name: str, where) -> None:
@@ -221,4 +218,4 @@ def hands(an, tree: tuple) -> bool:
 
 
 def is_object(an, obj: int) -> bool:
-    return an.objects.kind(obj) not in (SITE_PRIMITIVE, SITE_TEXT, SITE_UNKNOWN)
+    return an.objects.kind(obj) not in (SITE_PRIMITIVE, SITE_TEXT, SITE_KEY, SITE_UNKNOWN)

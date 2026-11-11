@@ -133,8 +133,10 @@ def accessor(an, target, obj: int, prop, local_id, args: list) -> None:
 
 
 def read_all(an, target, obj: int) -> None:
-    """Every property of `obj` and its elements: what a key no text names can read."""
-    an.solver.follow(every(an, obj), target)
+    """What a key no text names reads (log/trace-research.md F14; T4' of the old core): the object as a dictionary —
+    its elements and what writes through unknown keys put in it — never its named members, which code reaches by name
+    (ACG and Jelly leave such reads unresolved; reading every member of every object a generic helper is handed made
+    every set of the program large)."""
     an.solver.follow(field(an, obj, ELEMENTS_FIELD), target)
     an.solver.follow(an.any_field(obj), target)
 

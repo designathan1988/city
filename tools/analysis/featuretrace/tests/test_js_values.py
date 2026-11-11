@@ -66,6 +66,11 @@ class JsValues(FixtureCase, JsValuesExpectations):
         self.assertIn(ELEM + BOX, held)
         self.assertFalse(any(text.startswith((FN, ELEM + FN)) for text in held), held)
 
+    def test_object_keys(self):
+        # the current core's own rule (a debt); the new core leaves it: `keys(o: object): string[]` declares no link
+        # from the strings to o (log/pendencias.md)
+        self.assertIn("Box.open", self.names("keysOf"))
+
     def test_an_unknown_key_reads_no_property(self):
         self.assertEqual(set(), self.values("anyKey", ("name", "v")))      # an unknown key reads no property
 

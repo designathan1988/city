@@ -14,8 +14,8 @@ from ..solver import LANG, STRING
 from ..rules import CONSTRUCTOR
 from ..vocab import (AWAIT, CALL, CALLABLE, CAST, COLLECTION, CONSTRUCT, EACH, ELEMENTS, ELEMENTS_FIELD, INDEX,
                      JSX, KEYS, LITERAL, MEMBER, NAME, NARROW, NEW, OP, SELF, SITE_CLASS, SITE_PRIMITIVE, SITE_TEXT,
-                     STRNAME, SUPER, UNARY, UNION)
-from . import contexts, declared, jsx, members, names, protocols, typesys
+                     SITE_KEY, STRNAME, SUPER, UNARY, UNION)
+from . import contexts, declared, jsx, members, names, protocols, texts, typesys
 
 CONSTRUCTED = 10           # a node: what a constructor's call returns (the `new` itself is the object made)
 
@@ -65,34 +65,37 @@ def wire(an, node, tree, unit, ctx) -> None:
         solver.follow(this_of(an, unit, ctx), node)
     elif kind == LITERAL:
         solver.add(node, [an.objects.primitive(v) for v in literal_kinds(tree[1])])
-    elif kind == STRNAME:
-        solver.add(node, [an.objects.make(SITE_TEXT, tree[1])])
+    elif kind == STRNAME:                          # the language's string: its text is read where it names a key
+        solver.add(node, [an.objects.primitive(STRING_KIND)])
     elif kind in (OP, UNARY):
         solver.add(node, [an.objects.primitive(v[len(LANG):]) for v in truth.operator_values(tree[1], kind == UNARY)
                           if v.startswith(LANG)])
     elif kind == JSX:
         jsx.value(an, node, tree, unit, ctx)
-    elif kind == KEYS:
+    elif kind == KEYS:                             # `for (k in o)`: a key of each object o (a string)
         solver.add(node, [an.objects.primitive(STRING_KIND)])
+        solver.subscribe(an.node(tree[1], unit, ctx), node, (KEYS,), lambda t, objs: solver.add(t, [
+            an.objects.make(SITE_KEY, o) for o in objs]))
 
 
 def wire_index(an, node, tree, unit, ctx) -> None:
-    """`o[k]`: each object with each key: a text names its property, any other key reads every property."""
+    """`o[k]`: the property each text k can have names (`texts`); where its texts are not known, the object as a
+    dictionary (`members.read_all`), and every named member where k is a key enumerating that same object gave."""
+    key = an.node(tree[2], unit, ctx)
+    known = texts.of(an, tree[2], unit)
     solver = an.solver
-    base, key = an.node(tree[1], unit, ctx), an.node(tree[2], unit, ctx)
 
     def by_object(target, objs):
-        for obj in objs:
-            solver.subscribe(key, target, (INDEX, obj), lambda t, keys, obj=obj: by_key(t, obj, keys))
-
-    def by_key(target, obj, keys):
-        for k in keys:
-            text = an.objects.text(k)
-            if text is not None:
-                members.read(an, target, obj, text)
-            else:
-                members.read_all(an, target, obj)
-    solver.subscribe(base, node, (INDEX,), by_object)
+        for o in objs:
+            if known is not None:
+                for text in known:
+                    members.read(an, target, o, text)
+                continue
+            members.read_all(an, target, o)
+            solver.subscribe(key, target, (INDEX, o), lambda t, keys, o=o: [
+                solver.follow(members.every(an, o), t) for k in keys
+                if an.objects.kind(k) == SITE_KEY and an.objects.keys[k][1] == o])
+    solver.subscribe(an.node(tree[1], unit, ctx), node, (INDEX,), by_object)
 
 
 def wire_call(an, node, tree, unit, ctx) -> None:

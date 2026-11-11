@@ -11,7 +11,7 @@ from ..js_read import MODULE_UNIT
 from ..model import STATE_KINDS
 from ..vocab import (ANY_FIELD, CALL, CONSTRUCT, ELEMENTS_FIELD, IMPORT, INVOKE, JSX, LAMBDA, MEMBER, NAME, NEW,
                      READ, STORE, WRITE)
-from . import jsx, members, names, trees
+from . import jsx, members, names, texts, trees
 
 WRITTEN = 11               # a node: the subscription a `new` reference writes its line through
 
@@ -75,21 +75,18 @@ def write(an, unit, ref, ctx) -> None:
 
 
 def store(an, unit, ref, ctx) -> None:
-    """`o[k] = v`: the property each text of k names, else every property (and the elements)."""
+    """`o[k] = v`: the property each text k can have names (`texts`), else every property (and the elements)."""
     if not ref.args or ref.key is None:
         return
-    value, key = an.node(ref.args[0], unit, ctx), an.node(ref.key, unit, ctx)
+    value = an.node(ref.args[0], unit, ctx)
+    an.node(ref.key, unit, ctx)
+    known = texts.of(an, ref.key, unit)
 
     def by_object(_, objs):
         for obj in objs:
-            an.solver.subscribe(key, (STORE, obj), (STORE, unit.gid, ref.line, ctx),
-                                lambda __, keys, obj=obj: by_key(obj, keys))
-
-    def by_key(obj, keys):
-        for k in keys:
-            text = an.objects.text(k)
-            if text is not None:
-                members.write(an, value, obj, text)
+            if known is not None:
+                for text in known:
+                    members.write(an, value, obj, text)
             else:
                 an.solver.follow(value, members.field(an, obj, ELEMENTS_FIELD))
                 an.solver.follow(value, an.field(obj, ANY_FIELD))

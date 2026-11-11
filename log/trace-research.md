@@ -201,3 +201,45 @@ official declarations only, converging (finite, fast enough to run in seconds to
   nodes); the window is now the declared objects' production (`PRODUCED`, 565,000 items) and fields.
 - Still open: the whole lab does not finish within 85 s; the next measured steps are the Decision's item 4 (nodes as
   integers, cycles of identity edges collapsed, the solved analysis kept by its inputs' content).
+
+### F12. Nodes per receiver for what reads no receiver (P1) — 2026-11-11 20:05
+- Nodes by kind at 55 s (probe_nodes.py): 416,626 `PRODUCED` nodes, 299,569 of them a primitive type (`: number`,
+  `: string`) made again for every environment and site, 80,783 named types keyed by an environment they never read.
+  Fix: the language's values are one node for all, a type parameter is its place itself, and a type with no type
+  parameter and no `this` in it is keyed without the environment. `PRODUCED` fell to 29,434, all nodes at 63 s from
+  ~990,000 to ~620,000; the rate of links did not change: the time is elsewhere.
+- Cycles are not it (probe_scc.py): 1,257,113 identity edges, 8,536 of 462,290 nodes in cycles, the largest 1,505.
+
+### F13. The facts are strings (P1) — 2026-11-11 20:10
+- probe_facts.py at 51 s: 13,138,388 facts; 19,884 nodes hold more than 100 objects; the largest sets (1,100-1,363
+  objects) are mostly known strings (`str`: 988 of 1,363; 1,165 of 1,166): every string literal is an object of its
+  own, and all of them flow together through the program's text helpers, so every edge carries a thousand objects.
+- What it says: a string's text matters only where it names a member (a computed key `o[k]`, a property-key
+  argument); there it is known from the code around it (a literal, a constant initialized with one, a union of those),
+  as the scalable analyzers do (ACG ignores dynamic keys; Jelly takes them from local constants and approximate
+  interpretation's hints). In the heap a string is the language's string, one object; the texts a key position can
+  have are read from its expression and its constants' definitions, locally.
+
+### F14. Dictionary reads, enumerated keys, and the whole program reached (P1) — 2026-11-11 20:30
+- probe_facts.py after F13: the largest sets were a generic helper's parameters (`value`, `args`: 590-613 objects of
+  every kind) read with keys no text names, each such read reading every named member of every object it held. ACG
+  and Jelly leave a read through an unknown key unresolved, and the old core's own T4' says an unknown key reads no
+  property. A key no text names now reads the object as a dictionary (its elements and what unknown keys wrote), and
+  a key `for...in` enumerated from an object (ECMA-262 EnumerateObjectProperties) reads that object's named members.
+  `Object.keys(o)` stays unresolved: the lib declares `keys(o: object): string[]`, no link from the strings to `o`.
+- Measured after: the analysis reaches the whole program — 31,662 units active (3,234 before), 344,765 links at 76 s
+  (the old core: 223,604 on the lab app) — and does not finish in 85 s: 1.9 M items queued, 87,000 declared objects
+  (ArrayBuffer 11,073, ArrayIterator 10,389, Map 8,859, Array 8,816...), 455,000 interned site identifiers.
+- What it says: the analysis is now correct in shape and reaches what the old core reached and more; what remains is
+  the throughput of CPython against a whole program (Jelly: the same reach in 22 s on V8, F6). The Decision's item 4
+  is no longer about waste: it is about the runtime of the solver.
+
+## State of the research (2026-11-11 20:35) — what is proven and what is not yet
+- Proven, with bounded scripts: the hang's three causes and the four inflations (pool, reflection on any string, nodes
+  per receiver, strings as objects, every-member reads) were the reasons the analysis never converged; each fix was
+  measured; the analysis now reaches the whole lab and every expectation of the old core's JS tests except
+  `Object.keys` (undeclared) holds on it; a declared platform (130 real lib files) is read and used.
+- Not yet proven: a whole-program run inside a short budget. Measured throughput: CPython ~60,000-100,000 worklist items
+  per second on this analysis; the lab needs several million. The options the research leaves: run the same solver on
+  a faster runtime (PyPy, a download that needs the owner's permission; or the solver ported to V8/Node or C++, both
+  present on this machine), and keep the solved analysis by its inputs' content so only the first run pays.

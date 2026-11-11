@@ -75,8 +75,7 @@ class JsValuesExpectations:
     def test_for_in_names_the_properties(self):
         self.assertIn("Box.open", self.names("eachKey"))                   # k: "a", "b"; table[k]: the Boxes
 
-    def test_object_keys_values_entries(self):
-        self.assertIn("Box.open", self.names("keysOf"))
+    def test_object_values_entries(self):
         self.assertIn("Box.open", self.names("valuesOf"))
         self.assertIn("Box.open", self.names("entriesOf"))
 

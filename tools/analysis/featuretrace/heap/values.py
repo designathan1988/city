@@ -11,13 +11,16 @@ back with the values its parameters' types give, its result taken as the functio
 from __future__ import annotations
 
 from ..languages import ARRAY_TYPE, INDEX_SIGNATURE
-from ..solver import ENGINE, LANG, NUMBER, TEXT
+from ..solver import ENGINE, LANG, NUMBER, STRING, TEXT
+from ..truth import KINDS
 from ..vocab import (ELEMENTS_FIELD, LEVEL_ALIAS, LEVEL_OWN, LEVEL_TYPE, SITE_DECLARED_FN, SITE_TEXT, SITE_UNKNOWN,
                      T_BOTH,
                      T_FN, T_INDEX, T_NAMED, T_OBJECT, T_PARAM, T_QUERY, T_THIS, T_TUPLE, T_UNION, T_VALUES)
 from . import members, names, summaries, typesys
 
 PRODUCED, CONSUMED, OWN_PLACE, RESULT, MEMBER, BOUND = 20, 21, 22, 23, 24, 25   # node tags; a site's parts
+STRING_KIND = KINDS[STRING]
+NO_ENV = (None, None, None)          # the environment of a type that reads none
 
 
 def sub(site, part) -> tuple:
@@ -37,6 +40,8 @@ def own_place(env, index: int):
 
 def level_place(an, env, level: int, index: int):
     """The place a type parameter of `level` names in `env` (None where the environment has none)."""
+    if env is None:
+        return None
     if level == LEVEL_TYPE and env[0] is not None:
         return typesys.place(an, env[0], env[1], index)
     if level == LEVEL_OWN and env[2] is not None:
@@ -45,12 +50,36 @@ def level_place(an, env, level: int, index: int):
 
 
 def produce(an, tree: tuple, env, site):
-    """The node holding the values a declared type gives in `env` at `site`."""
-    node = (PRODUCED, tree, env, site)
+    """The node holding the values a declared type gives in `env` at `site`. The language's values are one node for
+    all; a type parameter is its place itself; a type that reads nothing of the environment (no type parameter, no
+    `this`) is keyed without it, so one node and one object serve every receiver (log/trace-research.md F12)."""
+    kind = tree[0] if tree else None
+    if kind == T_VALUES:
+        node = (PRODUCED, tree)
+    elif kind == T_PARAM:
+        held = level_place(an, env, tree[1], tree[2])
+        if held is not None:
+            return held
+        node = (PRODUCED, ())
+    else:
+        node = (PRODUCED, tree, env if reads(tree) else NO_ENV, site)
     if node not in an.wired:
         an.wired.add(node)
-        wire(an, node, tree, env, site)
+        wire(an, node, tree, env if reads(tree) else NO_ENV, site)
     return node
+
+
+def reads(tree) -> bool:
+    """Whether a declared type reads its environment: a type parameter or `this` in it."""
+    memo = READS.get(tree)
+    if memo is None:
+        tagged = bool(tree) and isinstance(tree[0], str)
+        memo = READS[tree] = bool(tree) and (tagged and tree[0] in (T_PARAM, T_THIS) or any(
+            reads(part) for part in (tree[1:] if tagged else tree) if isinstance(part, tuple)))
+    return memo
+
+
+READS: dict = {}
 
 
 def wire(an, node, tree, env, site) -> None:
@@ -171,8 +200,8 @@ def language_objects(an, values: tuple) -> list[int]:
     for v in values:
         if v == ENGINE:
             out.append(an.objects.make(SITE_UNKNOWN))
-        elif v.startswith(TEXT):
-            out.append(an.objects.make(SITE_TEXT, v[len(TEXT):]))
+        elif v.startswith(TEXT):                      # a string literal type: the language's string
+            out.append(an.objects.primitive(STRING_KIND))
         elif v.startswith(LANG):
             out.append(an.objects.primitive(v[len(LANG):]))
     return out

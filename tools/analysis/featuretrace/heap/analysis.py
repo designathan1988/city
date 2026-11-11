@@ -270,13 +270,13 @@ class Result:
         an = self.analysis
         nodes = [an.node(tree, an.ix.units[gid], ctx) for ctx in an.active.get(gid) or {ROOT}]
         an.solver.run()
-        return {an.objects.label(o) for node in nodes for o in an.solver.pts.get(node, ())}
+        return {an.objects.label(o) for node in nodes for o in an.solver.held(node)}
 
     def returned(self, gid: int) -> set[str]:
         an = self.analysis
         nodes = [an.ret(gid, ctx) for ctx in an.active.get(gid) or {ROOT}]
         an.solver.run()
-        return {an.objects.label(o) for node in nodes for o in an.solver.pts.get(node, ())}
+        return {an.objects.label(o) for node in nodes for o in an.solver.held(node)}
 
 
 def analyse(index, progress=None) -> Result:

@@ -71,6 +71,7 @@ SITE_DECLARED_FN = "declfn"    # a function of a declared function type the plat
 SITE_RESOLVER = "resolver"     # the function `await` hands a thenable: what it is called with is the awaited value
 SITE_GENERATOR = "gen"         # the generator object a generator function's call makes: its yields are its elements
 SITE_PROMISE = "promise"       # the promise an async function's call makes: what it returns is its result
+SITE_KEY = "key"               # a key enumerating one object gives (`for...in`): a string naming its members
 
 # Fields of an abstract object beyond its named properties.
 ELEMENTS_FIELD = "[[elements]]"     # an array's elements, what an unknown key reaches
