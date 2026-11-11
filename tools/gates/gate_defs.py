@@ -102,30 +102,32 @@ def check_magic_numbers(ctx, src, err):
 # ---- data values copied into code -------------------------------------------------------------------------------
 
 def data_values(ctx):
-    """value -> data paths, leaf key -> data paths, leaf key -> {value: data path}, over every data table with a schema."""
+    """value -> data paths, leaf key -> data paths, leaf key -> {value: data path}, and leaf key -> {value: the names of the
+    objects holding it there ("" at a table's top)}, over every data table with a schema."""
     def build():
-        vals, keys, key_vals = {}, {}, {}
+        vals, keys, key_vals, key_holders = {}, {}, {}, {}
 
-        def walk(node, where, leaf):
+        def walk(node, where, leaf, holder):
             if isinstance(node, dict):
                 for k, v in node.items():
-                    walk(v, f"{where}.{k}", k)
+                    walk(v, f"{where}.{k}", k, leaf)
             elif isinstance(node, list):
                 for i, v in enumerate(node):
-                    walk(v, f"{where}[{i}]", leaf)
+                    walk(v, f"{where}[{i}]", leaf, holder)
             elif isinstance(node, (int, float)) and not isinstance(node, bool):
                 vals.setdefault(float(node), []).append(where)
                 if leaf and not leaf.startswith("_"):
                     keys.setdefault(leaf, []).append(where)
                     key_vals.setdefault(leaf, {}).setdefault(float(node), where)
+                    key_holders.setdefault(leaf, {}).setdefault(float(node), set()).add(holder)
 
         ignore = {out for g in ctx.rules.get("generated", []) for out in g["outputs"]}  # a generator's output owns nothing: its inputs do
         for data_path in ctx.rules["schemas"]:
             full = os.path.join(ctx.root, data_path)
             if data_path not in ignore and os.path.exists(full):
                 with open(full, encoding="utf-8") as fh:
-                    walk(json.load(fh), data_path, "")
-        return vals, keys, key_vals
+                    walk(json.load(fh), data_path, "", "")
+        return vals, keys, key_vals, key_holders
     return ctx.lazy("data_values", build)
 
 
@@ -164,12 +166,13 @@ def _constant_value(src, ids):
     return v
 
 
-def _copied_key(words, value, key_words, key_vals):
+def _copied_key(words, value, key_words, key_holders):
     """The data key a constant of these name words and this value repeats: one whose words equal the name's when two or
     more (the name says which definition it is, whatever number it was typed with), else one every word of which the
     name holds and that holds this same value (KERB_HEIGHT for kerb_m; a name that is a fragment of a key, LOOK_STEP of
     ped_react_look_s, names another thing, and one shared word alone names nothing: finish, style, wheel stand in many
-    keys)."""
+    keys). A key of one word is named by the object it sits in as well: arms in cactus is a cactus's, and only a name
+    that also says cactus repeats it (STREET_JOINT_ARMS = 2 does not); at a table's top the key stands alone."""
     if not words:
         return None
     for key, kw in key_words.items():
@@ -178,7 +181,10 @@ def _copied_key(words, value, key_words, key_vals):
     if value is None:
         return None
     for key, kw in key_words.items():
-        if kw and kw <= words and float(value) in key_vals.get(key, {}):
+        holders = key_holders.get(key, {}).get(float(value))
+        if not kw or not kw <= words or holders is None:
+            continue
+        if len(kw) >= 2 or any(_name_words(h) <= words for h in holders):
             return key
     return None
 
@@ -187,14 +193,14 @@ def check_data_copies(ctx, src, err):
     """A definition owned by a data table gets no second owner in code: neither a named constant that names a data key
     (word for word with two or more words, or a matching name declared with that key's own value) nor the same
     distinctive value typed again (it would drift silently)."""
-    vals, keys, key_vals = data_values(ctx)
+    vals, keys, key_vals, key_holders = data_values(ctx)
     distinct = {v: w for v, w in vals.items() if len(w) == 1 and _distinctive(v)}
     key_words = {k: _name_words(k) for k in keys}
     _inside, by_name = constant_tokens(src)
     skip = set()
     for name, ids in by_name.items():
         value = _constant_value(src, ids)
-        key = _copied_key(_name_words(name), value, key_words, key_vals)
+        key = _copied_key(_name_words(name), value, key_words, key_holders)
         if key is not None:
             line = min(t.line for t in src.code() if id(t) in ids)
             at = key_vals[key].get(float(value), keys[key][0]) if value is not None else keys[key][0]

@@ -9,7 +9,8 @@
 
 namespace city {
 
-enum class Ramp : uint8_t { NONE, KERB, LOW_U0, LOW_U1 };
+// How a piece follows a lowered kerb (render/roads/kerb_drop.h): a kerb drops; a band of the footway beside it slopes down to it.
+enum class Ramp : uint8_t { NONE, KERB, BAND };
 
 struct Piece {
 	float u0 = 0, u1 = 0, h = 0;
@@ -18,6 +19,7 @@ struct Piece {
 	float edge0 = 0, edge1 = 0, lane = 0; // where wear is read: the surface's two edges, and the lanes' width
 	int tone = 0;
 	Ramp ramp = Ramp::NONE;
+	float kerb_d0 = 0, kerb_d1 = 0, band = 0; // a footway band's edges' distances from its kerb, and its footway's crossing band
 	godot::Color face; // what its vertical faces wear
 	bool island = false;
 };
@@ -28,7 +30,9 @@ struct Piece {
 bool island_at(const Profile &p, int i);
 bool island_span(const Profile &p, float &u0, float &u1);
 
-std::vector<Piece> pieces_of(const StreetLook &L, const Profile &p);
+// `drops`: the raised footways beside the outer kerbs split into the bands a lowered kerb slopes (road_section.cpp walk), for a
+// surface drawn near; without it they run whole (the far meshes, the verge), where a lowered kerb is under a pixel.
+std::vector<Piece> pieces_of(const StreetLook &L, const Profile &p, bool drops);
 // The same section past an island's nose: bare carriageway where the island stood.
 std::vector<Piece> without_island(const std::vector<Piece> &ps);
 

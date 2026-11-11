@@ -1,6 +1,6 @@
 // The one channel through which the simulation announces what changed: each consumer drains its own lists. Render adapters
-// consume and clear theirs on the main thread; the traffic drains the net_* lists; the transit drains transit_segs; the lot
-// cache consumes lot_cells. Nothing else keeps its own dirty flags: what an owner has still to work out of its own data (the
+// consume and clear theirs on the main thread (lot_boxes among them); the traffic drains the net_* lists and lots_changed; the
+// transit drains transit_segs; the lot cache consumes lot_cells. Nothing else keeps its own dirty flags: what an owner has still to work out of its own data (the
 // network's shapes and grades left to settle, growth's queue of cells) is that owner's state, and what is kept by the city's
 // revision (sim/street/furniture_kept.h) or by an exact key (sim/buildings/b40/body_cache.h) needs no mark.
 // Locking: producers append while holding CityState::map_mutex exclusively (commands, growth, load); a consumer that holds
@@ -39,6 +39,10 @@ struct ChangeLog {
 	std::vector<int> furniture_segs;
 	// Buildings that came or went: their bays, and the kerbs their car gates keep bays off, are laid out again by the traffic.
 	std::vector<int> lots_changed;
+	// The same buildings' boxes (x0, z0, x1, z1), for the render: the streets facing them draw their car gates again (the kerbs
+	// dropped across them, the parking paint kept off them). Boxes, not ids: a slot freed and taken again before the render
+	// drains would lose where the old lot stood.
+	std::vector<float> lot_boxes;
 	// Junctions whose signal settings changed: only their plan is made again, the lanes and connectors stay.
 	std::vector<int> signal_nodes;
 	// Blows, shots and falls for the render to play once (damage_event.h): drained with the other render lists.
@@ -94,6 +98,7 @@ struct ChangeLog {
 		add(transit_segs, from.transit_segs);
 		add(furniture_segs, from.furniture_segs);
 		add(lots_changed, from.lots_changed);
+		add(lot_boxes, from.lot_boxes);
 		add(signal_nodes, from.signal_nodes);
 		add(damage_events, from.damage_events);
 	}
@@ -107,6 +112,7 @@ struct ChangeLog {
 		paint_rects.clear();
 		nature_chunks.clear();
 		water_chunks.clear();
+		lot_boxes.clear();
 	}
 };
 

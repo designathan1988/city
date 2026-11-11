@@ -1,1 +1,1 @@
-{"lane_width_m": 3.375, "finish_m": 0.4, "style_share": 0.3, "wheel_r": 0.33, "ped_react_look_s": 0.5}
+{"lane_width_m": 3.375, "finish_m": 0.4, "style_share": 0.3, "wheel_r": 0.33, "ped_react_look_s": 0.5, "cactus": {"arms": 2}}

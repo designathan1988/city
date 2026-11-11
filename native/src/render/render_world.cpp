@@ -19,6 +19,12 @@ constexpr float STREAM_DROP_K = 1.25f; // a streamed chunk is freed this far bey
 // Built results may wait for this many upload windows: past that, no new mesh is built until the bakes catch up (the
 // waiting shells are CPU memory; a camera jump would otherwise pile up gigabytes of them).
 constexpr int64_t BACKLOG_WINDOWS = 4;
+constexpr size_t LOT_BOX_FLOATS = 4; // ChangeLog::lot_boxes: x0, z0, x1, z1
+// The frame's one order of the chunk queues that hand over after the buildings (sync's f.commit), and where each one's hand-over
+// time lands in hand_ms_.
+enum HandOrder : size_t {
+	HAND_ROADS, HAND_FAR_ROADS, HAND_VERGES, HAND_STRUCTURES, HAND_PROPS, HAND_TREES_NEAR, HAND_TREES_FAR, HAND_COVER, HAND_WATER, HAND_QUEUES
+};
 } // namespace
 
 bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
@@ -86,7 +92,7 @@ void RenderWorld::full_rebuild(CityState &s, Object *terrain3d) {
 	water_.mark_wet(s.terrain);
 	for (const RoadSegment &g : s.roads.segs)
 		if (g.alive) {
-			int64_t k = chunk_of(float((g.q.x0 + g.q.x1) / 2), float((g.q.z0 + g.q.z1) / 2));
+			const int64_t k = segment_chunk(g); // the chunk that draws it
 			road_stream_.mark(k);
 			far_roads_.mark(k);
 			if (structure_of(g.flags) != Structure::GROUND) raised_stream_.mark(k);
@@ -118,6 +124,7 @@ void RenderWorld::drain_log(CityState &s) {
 	paint_rects_.swap(s.log.paint_rects);
 	nature_keys_.swap(s.log.nature_chunks);
 	water_keys_.swap(s.log.water_chunks);
+	lot_boxes_.swap(s.log.lot_boxes);
 	if (!building_keys_.empty()) canyon_.touch(building_keys_);
 	if (!water_keys_.empty() || !terrain_rects_.empty()) shore_.touch();
 	if (!terrain_rects_.empty()) fog_.touch_terrain(s, terrain_rects_);
@@ -166,6 +173,14 @@ void RenderWorld::mark_changed(const CityState &s) {
 		props_stream_.mark(k);
 		trees_.mark_dirty(k);
 	}
+	// A lot that came, went or changed: the near surfaces of the streets it may face draw its car gates again (kerb_drop.h, the parking
+	// paint), each from the chunk that draws it; its gates stand within kerb_gate_reach_m of a facing segment's box (lot_access.h
+	// street_gates). A chunk not built yet reads the lot when it is.
+	const float reach = s.catalog.traffic.kerb_gate_reach_m;
+	for (size_t i = 0; i + LOT_BOX_FLOATS <= lot_boxes_.size(); i += LOT_BOX_FLOATS)
+		s.roads.for_segments_near(lot_boxes_[i] - reach, lot_boxes_[i + 1] - reach, lot_boxes_[i + 2] + reach, lot_boxes_[i + 3] + reach,
+				[&](int sid) { road_stream_.rebuild(segment_chunk(s.roads.segs[size_t(sid)])); });
+	lot_boxes_.clear();
 	transit_.touch(road_keys_);
 	transit_.touch_terrain(s, terrain_rects_);
 	for (int64_t k : view_keys_) buildings_.restyle_chunk(k);
@@ -284,17 +299,32 @@ void RenderWorld::sync(CityState &s, Object *terrain3d, const Vector3 &cam, doub
 	buildings_.commit(f.upload, f.until, cost_.chunk_max, cost_.super_max);
 	cost_.buildings = laps.lap();
 	cost_.building = buildings_.commit_times();
-	// Every other chunk queue in the frame's one order: the bakes the ledger admits, then the hand-overs while the deadline lasts.
-	f.commit({ &roads_, &far_roads_, &verges_, &structures_, &props_, trees_.near_queue(), trees_.far_queue(), cover_.queue(), &water_ }, &hand_ms_);
-	far_roads_.fold(roads_);
-	cost_.roads = hand_ms_[0] + hand_ms_[1] + hand_ms_[2] + hand_ms_[3];
-	cost_.props = hand_ms_[4];
-	cost_.trees = hand_ms_[5] + hand_ms_[6] + hand_ms_[7];
+	hand_over(f);
 	laps.lap();
 	cost_.uploads = double(f.upload.used) / BYTES_PER_MIB;
 	// What this frame handed to the engine was built by the pool's jobs and is freed here, on this thread: the workers at rest
 	// are told, so each gives back what was freed in its heap (core/job_pool.h freed()).
 	if (f.upload.used > 0) s.jobs->freed();
+}
+
+// Every chunk queue after the buildings, in the frame's one order: the bakes the ledger admits, then the hand-overs while the
+// deadline lasts; each one's time into the costs by name.
+void RenderWorld::hand_over(FrameAdmission &f) {
+	hand_order_.assign(HAND_QUEUES, nullptr);
+	hand_order_[HAND_ROADS] = &roads_;
+	hand_order_[HAND_FAR_ROADS] = &far_roads_;
+	hand_order_[HAND_VERGES] = &verges_;
+	hand_order_[HAND_STRUCTURES] = &structures_;
+	hand_order_[HAND_PROPS] = &props_;
+	hand_order_[HAND_TREES_NEAR] = trees_.near_queue();
+	hand_order_[HAND_TREES_FAR] = trees_.far_queue();
+	hand_order_[HAND_COVER] = cover_.queue();
+	hand_order_[HAND_WATER] = &water_;
+	f.commit(hand_order_, &hand_ms_);
+	far_roads_.fold(roads_);
+	cost_.roads = hand_ms_[HAND_ROADS] + hand_ms_[HAND_FAR_ROADS] + hand_ms_[HAND_VERGES] + hand_ms_[HAND_STRUCTURES];
+	cost_.props = hand_ms_[HAND_PROPS];
+	cost_.trees = hand_ms_[HAND_TREES_NEAR] + hand_ms_[HAND_TREES_FAR] + hand_ms_[HAND_COVER];
 }
 
 } // namespace city

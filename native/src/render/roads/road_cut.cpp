@@ -2,6 +2,7 @@
 #include "render/roads/road_cut.h"
 
 #include "core/grid.h"
+#include "render/owned_segments.h"
 #include "render/roads/road_mesh.h"
 #include "sim/roads/road_grade.h"
 #include "sim/terrain/road_shape.h"
@@ -26,9 +27,7 @@ CityCut cut_for_roads(const CityState &s, const StreetLook &look, int64_t key, f
 		CutBox box{ x0, z0, x0 + size, z0 + size };
 		live.roads.for_segments_near(x0, z0, x0 + size, z0 + size, [&](int sid) {
 			const RoadSegment &g = live.roads.segs[size_t(sid)];
-			double mx, mz;
-			g.q.at(0.5, mx, mz);
-			if (chunk_of(float(mx), float(mz), size) == key) box.take(g.minx, g.minz, g.maxx, g.maxz); // owned: drawn whole from here
+			if (segment_chunk(g, size) == key) box.take(g.minx, g.minz, g.maxx, g.maxz); // owned: drawn whole from here
 		});
 		return box.grown(road_reach(live.catalog, look));
 	});

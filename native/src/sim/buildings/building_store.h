@@ -94,7 +94,8 @@ private:
 	const OccupancyDef *occupancy_ = nullptr; // the catalogue's, set by init
 	void place(int id, const Building &b);
 	void tally(const Building &b, int sign); // the record's residents and jobs into (+1) or out of (-1) the totals
-	void mark_into(int id, std::vector<int64_t> &out) const;
+	static float reach(const Building &b); // how far the lot's turned rectangle reaches from its centre: half its diagonal
+	void mark_into(int id, std::vector<int64_t> &out) const; // the chunks the lot's rectangle may touch
 };
 
 constexpr float BUILDING_HASH_CELL = 64.f;

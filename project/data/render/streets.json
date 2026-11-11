@@ -36,10 +36,14 @@
    {"id": "br_norm", "dash_kmh": [60, 80], "dash_m": [2, 3, 3], "gap_m": [4, 6, 9], "all_white": false, "centre_m": 0.1, "divider_m": 0.1, "fast_centre_m": 0.15, "fast_divider_m": 0.15, "exclusive_m": 0.25, "double_line_m": 0.1, "double_gap_m": 0.1, "zebra_period_m": 0.9, "zebra_bar_m": 0.35, "multi_lane_double": true}
   ]},
  "dropped_kerb": {
+  "_doc": "At a crossing (flare_m, low_m, run_m, min_walk_m: the street's _doc). At a lot's car gate, a vehicle access (ABNT NBR 9050 as the municipal guides state it, the City of Sao Paulo's sidewalk guide): the kerb lowered over the gate's width to a lip of drive_low_m (the 5 cm step kept between the gutter and the kerb at a vehicle entry), its ramp kept in the service strip beside the kerb, drive_band_m wide (NBR 9050:2004's least service strip, 0.75 m; steeper than 1 in 12 is allowed there), the walking strip behind it left level; the kerb rises back to its full height over drive_flare_m along it either side of the gate (no published value: a modelling choice, the crossing's flare).",
   "flare_m": 1.5,
   "low_m": 0,
   "run_m": 1.8,
-  "min_walk_m": 2.0
+  "min_walk_m": 2.0,
+  "drive_low_m": 0.05,
+  "drive_band_m": 0.75,
+  "drive_flare_m": 1.5
  },
  "junction": {
   "arc_step_rad": 0.19635,

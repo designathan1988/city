@@ -5,7 +5,6 @@
 #include "render/roads/road_section.h"
 
 #include <algorithm>
-#include <cmath>
 
 using namespace godot;
 
@@ -57,7 +56,7 @@ void emit_verge_segment(const RoadEmit &e, int sid) {
 	const Profile &p = e.s.catalog.profile(g.profile);
 	const double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
 	if (p.edges.empty() || p.rail || v1 <= v0) return;
-	const std::vector<Piece> ps = pieces_of(e.L, p);
+	const std::vector<Piece> ps = pieces_of(e.L, p, false); // the outer edges alone are read
 	// A straight road is linear in height and the ground is held to it, so the ribbon needs no more points than the road has (road_segment.cpp)
 	const int n = surface_steps(e, sid, v0, v1);
 	const float raised = e.s.catalog.tune.structure_raised_m;

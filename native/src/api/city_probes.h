@@ -41,6 +41,9 @@ public:
 	// The lots' bays read near the camera whose way reaches a lane: how many, how many through a gate whose foot lies in a corner or a
 	// crosswalk, and the first (bay, building, street, the foot's arc, the lane's point).
 	godot::Dictionary lot_gates();
+	// Tests and captures: every lot's car gate facing a kerb, those whose kerb the road surface draws above the lip a vehicle access
+	// keeps, and where a few of the gates stand (city_core_kerb_probe.cpp).
+	godot::Dictionary drive_kerbs();
 	// Bodies laid on every sidewalk, inside their room and past it, put onto the sidewalk where they stand (pedestrians.cpp
 	// onto_sidewalk) and posed again: how many, the farthest one moved and where (street, side, arc, place across, metres).
 	godot::Dictionary onto_sidewalk_moves();

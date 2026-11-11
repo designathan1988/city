@@ -50,28 +50,44 @@ void carriage_span(const Profile &p, int i, float &edge0, float &edge1) {
 	edge1 = p.edges[b].u1;
 }
 
-void walk(const StreetLook &L, const Profile &p, int i, const Piece &base, std::vector<Piece> &out) {
+// A raised footway beside an outer kerb, from the kerb: the band a car gate's drive slopes (L.drive_band, the service strip), the rest
+// of the band a crossing slopes (L.ramp_run), then the walk part, which no lowering touches. Whole without `drops`.
+void walk(const StreetLook &L, const Profile &p, int i, const Piece &base, bool drops, std::vector<Piece> &out) {
 	Piece pc = base;
-	const bool kerb_u1 = outer_kerb(p, i + 1);
+	const bool kerb_u1 = outer_kerb(p, i + 1), kerb_u0 = !kerb_u1 && outer_kerb(p, i - 1);
 	pc.edge0 = kerb_u1 ? pc.u1 : pc.u0; // from the kerb: the footway's far side is the lot's
 	pc.edge1 = kerb_u1 ? pc.u0 : pc.u1;
-	float w = pc.u1 - pc.u0, band = std::min(L.ramp_run, w - WALK_KEEP);
-	if (pc.h <= 0 || w < L.ramp_min_walk) {
+	const float w = pc.u1 - pc.u0, band = std::min(L.ramp_run, w - WALK_KEEP);
+	if (!drops || pc.h <= 0 || w < L.ramp_min_walk || !(kerb_u1 || kerb_u0)) {
 		out.push_back(pc);
 		return;
 	}
-	Piece r = pc;
-	if (outer_kerb(p, i + 1)) { // kerb on the +u side
-		r.u0 = pc.u1 = pc.u1 - band;
-		r.ramp = Ramp::LOW_U1;
-		out.push_back(pc);
-		out.push_back(r);
-	} else if (outer_kerb(p, i - 1)) {
-		r.u1 = pc.u0 = pc.u0 + band;
-		r.ramp = Ramp::LOW_U0;
-		out.push_back(r);
-		out.push_back(pc);
-	} else out.push_back(pc);
+	const float cuts[3] = { 0.f, std::min(L.drive_band, band), band }; // the bands' edges, metres from the kerb
+	const auto at_u = [&](float d) { return kerb_u1 ? pc.u1 - d : pc.u0 + d; };
+	Piece rest = pc;
+	if (kerb_u1) rest.u1 = at_u(band);
+	else rest.u0 = at_u(band);
+	Piece bands[2];
+	for (int k = 0; k < 2; k++) {
+		Piece &b = bands[k];
+		b = pc;
+		b.ramp = Ramp::BAND;
+		b.band = band;
+		b.u0 = kerb_u1 ? at_u(cuts[k + 1]) : at_u(cuts[k]);
+		b.u1 = kerb_u1 ? at_u(cuts[k]) : at_u(cuts[k + 1]);
+		b.kerb_d0 = kerb_u1 ? cuts[k + 1] : cuts[k];
+		b.kerb_d1 = kerb_u1 ? cuts[k] : cuts[k + 1];
+	}
+	const bool behind = cuts[2] > cuts[1]; // a footway narrower than the drive's band has no band behind it
+	if (kerb_u1) {
+		out.push_back(rest);
+		if (behind) out.push_back(bands[1]);
+		out.push_back(bands[0]);
+	} else {
+		out.push_back(bands[0]);
+		if (behind) out.push_back(bands[1]);
+		out.push_back(rest);
+	}
 }
 
 // Strip `i`'s piece moved to where the island stands (road_mesh.h island_at).
@@ -111,7 +127,7 @@ bool island_span(const Profile &p, float &u0, float &u1) {
 	return false;
 }
 
-std::vector<Piece> pieces_of(const StreetLook &L, const Profile &p) {
+std::vector<Piece> pieces_of(const StreetLook &L, const Profile &p, bool drops) {
 	std::vector<Piece> out;
 	for (int i = 0; i < int(p.edges.size()); i++) {
 		const Strip &s = p.edges[i].strip;
@@ -135,7 +151,7 @@ std::vector<Piece> pieces_of(const StreetLook &L, const Profile &p) {
 				pc.col = L.paving[int(s.pave) & 3];
 				pc.face = s.pave == Paving::GRASS ? L.curb : pc.col;
 				pc.h = s.flush ? 0 : L.h_sidewalk;
-				walk(L, p, i, pc, out);
+				walk(L, p, i, pc, drops, out);
 				continue;
 			case StripKind::MEDIAN:
 				pc.mat = paving_mat(s.pave);

@@ -88,7 +88,7 @@ void read_kerb(CityState &s, int seg) {
 	ParkSource &src = p.kerbs[seg];
 	if (!s.roads.segs[size_t(seg)].alive || !parks_along(s.roads, seg)) return;
 	std::vector<ArcSpan> gates[2];
-	street_gates(s.roads, s.buildings, seg, gates);
+	street_gates(s.roads, s.buildings, seg, s.catalog.traffic.kerb_gate_margin_m, gates);
 	KerbLayout k;
 	kerb_layout(s.roads, seg, gates, k);
 	const LaneGraph &g = s.traffic.g;
@@ -279,20 +279,16 @@ void forget_parking_lot(CityState &s, int id) {
 	p.relook = true;
 	if (size_t(id) >= s.buildings.items.size()) return;
 	const Building &b = s.buildings.items[size_t(id)];
+	// its car gates move the bays of the streets it faces: those streets' kerbs are read again (the render draws their surface and
+	// paint again from the same change: BuildingStore::mark, render_world.cpp mark_changed)
 	const float reach = std::max(b.w, b.d) + s.catalog.traffic.kerb_gate_reach_m;
 	std::vector<int> streets;
 	s.roads.for_segments_near(b.x - reach, b.z - reach, b.x + reach, b.z + reach, [&](int seg) {
-		if (parks_along(s.roads, seg)) streets.push_back(seg);
+		if (p.kerbs.count(seg)) streets.push_back(seg);
 	});
-	// its car gates move the street's bays and their paint
-	std::lock_guard<std::mutex> lk(s.log.mutex);
 	for (int seg : streets) {
-		auto k = p.kerbs.find(seg);
-		if (k != p.kerbs.end()) {
-			drop_source(s, k->second, true);
-			p.kerbs.erase(k);
-		}
-		s.roads.mark_segment(seg);
+		drop_source(s, p.kerbs[seg], true);
+		p.kerbs.erase(seg);
 	}
 }
 

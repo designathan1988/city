@@ -65,6 +65,9 @@ void load_shape(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.ramp_low = float(r["low_m"]);
 	L.ramp_run = float(r["run_m"]);
 	L.ramp_min_walk = float(r["min_walk_m"]);
+	L.drive_low = float(r["drive_low_m"]);
+	L.drive_band = float(r["drive_band_m"]);
+	L.drive_flare = float(r["drive_flare_m"]);
 	Dictionary j = sub(t, "junction", errors);
 	L.arc_step = float(j["arc_step_rad"]);
 	L.bevel_steps = int(j["bevel_steps"]);

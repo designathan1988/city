@@ -44,6 +44,8 @@ struct StreetLook {
 	int verge_strips = 1;
 	// dropped kerbs at crossings (metres from the mouth) and the ramp band of the footway
 	float ramp_full = 0, ramp_flat = 0, ramp_flare = 0, ramp_low = 0, ramp_run = 0, ramp_min_walk = 0;
+	// a lot's car gate (a vehicle access): the kerb's lip there, the band beside the kerb its ramp takes, the flare along the kerb
+	float drive_low = 0, drive_band = 0, drive_flare = 0;
 	float arc_step = 0;
 	int bevel_steps = 1, bulb_steps = 1;
 	godot::Color white, yellow;

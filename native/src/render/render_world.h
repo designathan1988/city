@@ -158,6 +158,7 @@ public:
 	BuildingViewNeed building_need() const { return buildings_.view_need(); }
 	int building_chunk(float x, float z) const { return buildings_.chunk_flags(x, z); }
 	RoadChunks::Count road_count() const { return roads_.count(); }
+	const StreetLook &street_look() const { return roads_.look(); } // what the road surfaces are drawn by (the probes read it)
 	RoadChunks::Count verge_count() const { return verges_.count(); }
 	void draw_verges(bool on) { verges_.draw(on); }
 	int64_t wear_bytes() const { return wear_.bytes(); }
@@ -195,11 +196,13 @@ private:
 	std::vector<int64_t> road_keys_, building_keys_, view_keys_, prop_keys_;
 	std::vector<int> terrain_rects_, paint_rects_;
 	std::vector<int64_t> nature_keys_, water_keys_;
+	std::vector<float> lot_boxes_;
 	Cost cost_;
 	void drain_log(CityState &s);
 	void sync_nature(); // the landscape's dirty chunks and the water
 	void mark_changed(const CityState &s); // the chunks the drained edits touched, for every renderer that draws them
 	void offer_streams(const CityState &s, const godot::Vector3 &cam, std::vector<FrameAdmission::Unit> &units);
+	void hand_over(FrameAdmission &f); // the queues after the buildings, in the frame's order, and their costs
 	int64_t baking() const;
 	int64_t waiting() const;
 	int upload_every_ = 1, upload_frame_ = 0; // the Optimisations tab: uploads only every N frames
@@ -209,7 +212,8 @@ private:
 	int64_t upload_debt_ = 0;
 	int64_t carried_bytes_ = 0; // uploads made between two syncs (the wear's tiles), paid into the next one's ledger
 	std::vector<FrameAdmission::Unit> units_; // the frame's build units (capacity kept)
-	std::vector<double> hand_ms_;
+	std::vector<AdmittedQueue *> hand_order_; // the queues that hand over after the buildings, in the frame's order (capacity kept)
+	std::vector<double> hand_ms_; // each one's hand-over time, by that order
 	DetailView view_; // this frame's (set_view)
 };
 

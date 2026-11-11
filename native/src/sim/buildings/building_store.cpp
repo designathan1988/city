@@ -96,17 +96,21 @@ void BuildingStore::mark(int id) const {
 	if (!log) return;
 	log->lots_changed.push_back(id);
 	mark_into(id, log->building_chunks);
+	const Building &b = items[size_t(id)];
+	const float r = reach(b);
+	log->lot_boxes.insert(log->lot_boxes.end(), { b.x - r, b.z - r, b.x + r, b.z + r });
 }
 
 void BuildingStore::mark_look(int id) const {
 	if (log) mark_into(id, log->view_chunks);
 }
 
+float BuildingStore::reach(const Building &b) { return 0.5f * std::hypot(b.w, b.d); }
+
 void BuildingStore::mark_into(int id, std::vector<int64_t> &out) const {
-	const Building &b = items[id];
-	float r = std::max(b.w, b.d) * 0.5f;
-	for (int j = int(std::floor((b.z - r) / CHUNK)); j <= int(std::floor((b.z + r) / CHUNK)); j++)
-		for (int i = int(std::floor((b.x - r) / CHUNK)); i <= int(std::floor((b.x + r) / CHUNK)); i++) out.push_back(cell_key(i, j));
+	const Building &b = items[size_t(id)];
+	const float r = reach(b);
+	for_chunks(b.x - r, b.z - r, b.x + r, b.z + r, [&](int64_t k) { out.push_back(k); });
 }
 
 void BuildingStore::occupancy(const Building &b, float floor_share, const float per_m2[4], int &residents, int &jobs) {

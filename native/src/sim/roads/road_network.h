@@ -182,6 +182,8 @@ public:
 	// Every node refreshed (a load, a new city): nothing is left to settle.
 	void refresh_all();
 	void mark_segment(int s); // its road chunks and lot cells
+	// Its road chunks alone: what is drawn over it changed, not where it runs (its heights, its furniture, a lot facing it).
+	void mark_surface(int s) const;
 	// What changed on the roads since the last take_edits, for what is derived from them later in the settle (the streets'
 	// name plates): the segments whose curve, casing, mouths or heights changed, and the boxes of the roads that came, went
 	// or changed casing.
