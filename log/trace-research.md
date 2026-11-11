@@ -243,3 +243,17 @@ official declarations only, converging (finite, fast enough to run in seconds to
   per second on this analysis; the lab needs several million. The options the research leaves: run the same solver on
   a faster runtime (PyPy, a download that needs the owner's permission; or the solver ported to V8/Node or C++, both
   present on this machine), and keep the solved analysis by its inputs' content so only the first run pays.
+
+### F15. The cost is intrinsic to the whole program, and the runtime decides (P1) — 2026-11-11 20:50
+- A fresh sampling profile (after F11-F14): no hot spot; the solver's loop is ~89% of the analysing thread, spread over
+  interning nodes (hashing deep tuples), subscriptions, node creation, a linear `written` check, lookups.
+- A part of the lab (`src/sim`, 91 files with the declarations) does not finish in 85 s either; its queue
+  (probe_queue.py) is the intrinsic cost of a whole-program, context-insensitive analysis, not a loop: the return
+  node of a function called from 6,414 sites gets ~5,800 items, each growth copied to 6,414 edges; the shared `number`
+  node has 23,406 edges; member reads multiply by call sites times receivers. Each step costs CPython a fraction of a
+  microsecond to microseconds, and there are tens of millions.
+- Decision (owner's rule: the costliest solution that solves the cause; no download without the owner's permission):
+  the analysis's semantics run in a native engine in C++ (the project's language; llvm-mingw and CMake 4.4 present),
+  which takes the facts and the name resolutions Python computes, interns trees and types as integers (hash-consing),
+  solves on integer worklists and returns the links; the Python semantics stay the specification and the oracle: the
+  same tests run against the engine. Plan: log/trace-engine-plan.md.

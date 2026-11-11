@@ -574,6 +574,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `tools/analysis/featuretrace/js_bounds.py` — what a declared TypeScript type admits, read from its syntax as admit tokens kept on the unit (S2)
 - `tools/analysis/featuretrace/bounds.py` — whether a value passes a declared type's bound (by chain, by members, by its wrapper's members), and the bounded flow into a place (S2)
 - `tools/analysis/featuretrace/tests/test_bounds.py` · `tools/analysis/featuretrace/tests/fixture/jsvalues/bounded.ts` · `tools/analysis/featuretrace/tests/fixture/jsvalues/jsdoc.js` — declared types bound their places (S2, S2')
+- `log/trace-engine-plan.md` — the plan of the tracer's native engine: the analysis's semantics run in C++ over integer nodes, Python writing the facts and the name resolutions, the Python semantics as the oracle
 - `log/trace-research.md` — the research the owner ordered before finishing the tracer: every problem met, the literature and the measurements that settle it (bounded probes), and the decision they prove
 - `log/trace-core-plan.md` · `log/trace-core-progress.md` — the plan for the tracer's core redesigned (one IR, one inclusion analysis over abstract objects, platforms from their declarations) and its ledger
 - `log/trace-rules-closures-plan.md` · `log/trace-rules-closures-progress.md` — the plan for closures valued by the call that makes them (C4) and its ledger
