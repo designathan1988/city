@@ -123,15 +123,16 @@ void place_pole(const CityView &s,const StreetLook &L, const FurnitureLook &F, i
 	}
 }
 
-// The first or last pole of `seg`'s main row at node `n`, when it stands on `side`.
+// The end pole of `seg`'s main row at node `n` (the layout's ROW_HEAD at a, ROW_TAIL at b: sim/roads/street_furniture.h), when it stands
+// on `side`; none when that pole is gone (cut, knocked out, buried).
 bool row_end(const CityView &s,const StreetLook &L, int seg, int n, int side, PropPlace &out) {
 	const LampRow row = lamp_row(s.roads, seg);
 	if (!row.any || row.stations == 0 || row.side != side) return false;
 	std::vector<FurnitureSpot> spots;
 	furniture_of(s, seg, furniture_bit(FurnitureKind::LAMP), spots);
-	const int station = s.roads.segs[size_t(seg)].a == n ? 0 : row.stations - 1;
+	const uint8_t end = s.roads.segs[size_t(seg)].a == n ? ROW_HEAD : ROW_TAIL;
 	for (const FurnitureSpot &p : spots) {
-		if (p.row != 0 || p.station != station) continue;
+		if (p.row != 0 || !(p.row_ends & end)) continue;
 		out.origin = world_of(s, L, p, &out.basis);
 		return true;
 	}
@@ -175,12 +176,13 @@ PropKind prop_kind(FurnitureKind k) {
 	}
 }
 
+// A segment's pieces; the main row's poles strung as the layout strung them (FurnitureSpot::strung: the pole each one's wires come from).
 void place_segment(const CityView &s,const StreetLook &L, const FurnitureLook &F, int sid, std::vector<PropPlace> &out, StreetInstances &inst) {
 	std::vector<FurnitureSpot> spots;
 	furniture_of(s, sid, PROP_KINDS, spots);
-	bool wired = false;
-	PropPlace last;
-	int last_station = -1, row_side = 0;
+	std::vector<std::pair<int, PropPlace>> row; // the main row's poles standing, by station
+	std::vector<std::pair<int, PropPlace>> strung; // each pole's place and the station its wires come from
+	int row_side = 0;
 	for (const FurnitureSpot &p : spots) {
 		PropPlace place;
 		place.origin = world_of(s, L, p, &place.basis);
@@ -188,19 +190,21 @@ void place_segment(const CityView &s,const StreetLook &L, const FurnitureLook &F
 			place_row_pole(F, p, sid, place, inst);
 			if (p.kind != FurnitureKind::LAMP || p.row != 0) continue;
 			row_side = p.side;
-			if (wired && p.station == last_station + 1) {
-				const Vector3 arm = place.basis.get_column(2);
-				push_span(inst, F.wire, last.origin, last.basis.get_column(2), place.origin, arm, float(sid + p.station) * PHASE_STEP, PoleKind::URBAN, PoleKind::URBAN);
-			}
-			last = place;
-			last_station = p.station;
-			wired = true;
+			row.emplace_back(p.station, place);
+			if (p.strung >= 0) strung.emplace_back(p.strung, place);
 			continue;
 		}
 		place.kind = prop_kind(p.kind);
 		out.push_back(place);
 	}
-	if (wired) join_rows(s, L, F, sid, row_side, inst);
+	for (const auto &[from, place] : strung)
+		for (const auto &[station, before] : row) {
+			if (station != from) continue;
+			push_span(inst, F.wire, before.origin, before.basis.get_column(2), place.origin, place.basis.get_column(2), float(sid + station) * PHASE_STEP,
+					PoleKind::URBAN, PoleKind::URBAN);
+			break;
+		}
+	if (!row.empty()) join_rows(s, L, F, sid, row_side, inst);
 }
 } // namespace
 

@@ -117,11 +117,28 @@ FurnitureSpot column(const Placer &c, const LampRow &row, double v, int station)
 	return s;
 }
 
+// The main row's spans, its one owner: each pole it stood strung to the pole it stood before it (a station that could not stand is
+// bridged, as a line strings the poles it has), the first and the last marked as the row's ends.
+void string_row(Placer &c, size_t first) {
+	int before = -1;
+	FurnitureSpot *last = nullptr;
+	for (size_t i = first; i < c.all.size(); i++) {
+		FurnitureSpot &q = c.all[i];
+		if (q.kind != FurnitureKind::LAMP || q.row != 0) continue;
+		q.strung = before;
+		if (before < 0) q.row_ends |= ROW_HEAD;
+		before = q.station;
+		last = &q;
+	}
+	if (last) last->row_ends |= ROW_TAIL;
+}
+
 // Lamps: spread evenly at most span_m apart between a pole just past each crosswalk (and the signal post's place). The
 // lighting columns of the other face keep to the stations, staggered, or to a beat of their own (column_every_m).
 void lamps(Placer &c) {
 	const LampRow row = lamp_row(c.net, c.sid);
 	const LampDef &d = defs(c.net).lamps;
+	const size_t first = c.all.size();
 	for (int k = 0; k < row.stations; k++) {
 		const double v = row.origin + row.spacing * k;
 		FurnitureSpot main_pole = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, v, row.pole_u, toward_road(row.side), 0.f);
@@ -133,6 +150,7 @@ void lamps(Placer &c) {
 		const double between = one ? v : v + row.spacing * d.twin_stagger;
 		c.station(column(c, row, between, k));
 	}
+	string_row(c, first);
 	if (!row.twin || row.stations == 0 || d.column_every_m <= 0.f) return;
 	int k = 0;
 	for (double v = c.v0 + d.column_first_m; v <= c.v1 - defs(c.net).furniture.row_end_m; v += d.column_every_m) c.station(column(c, row, v, k++));

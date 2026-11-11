@@ -14,6 +14,8 @@
 
 namespace city {
 
+constexpr uint8_t ROW_HEAD = 1, ROW_TAIL = 2; // FurnitureSpot::row_ends: the main row's first pole (at node a), its last (at node b)
+
 struct FurnitureSpot {
 	FurnitureKind kind = FurnitureKind::LAMP;
 	int seg = -1; // the segment it stands on
@@ -21,6 +23,11 @@ struct FurnitureSpot {
 	int side = -1; // the sidewalk it stands on: 0 the right one (edges.front()), 1 the left one, -1 none
 	int row = 0; // a lamp: 0 the main row (its poles are wired), 1 the row on the other side
 	int station = -1; // a lamp: its place along the row (a cut pole breaks the wires there)
+	// A pole of the main row: the station of the pole before it that its wires come from (-1: the row starts here), the row's one owner of
+	// its spans (a station the layout could not stand is bridged; one the player cut, a blow knocked out or a buried stretch hides takes
+	// its wires with it); and whether it is the row's first or last pole, strung on across its node where the street goes on.
+	int strung = -1;
+	uint8_t row_ends = 0; // ROW_HEAD, ROW_TAIL
 	bool lit = true; // a lamp: this pole carries a light (lamps.pole_lit_every)
 	int item = -1; // what the player placed: its record (sim/street/street_works.h)
 	double v = 0;

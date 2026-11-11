@@ -165,8 +165,8 @@ Dictionary CityStreet::furniture_census() {
 	PackedInt32Array kinds;
 	kinds.resize(FURNITURE_KINDS);
 	kinds.fill(0);
-	double metres = 0;
-	int lit = 0;
+	double metres = 0, longest = 0;
+	int lit = 0, row_poles = 0, row_spans = 0, row_broken = 0;
 	std::vector<FurnitureSpot> spots;
 	for (int sid = 0; sid < int(s.roads.segs.size()); sid++) {
 		if (!s.roads.segs[size_t(sid)].alive) continue;
@@ -176,12 +176,31 @@ Dictionary CityStreet::furniture_census() {
 		for (const FurnitureSpot &p : spots) {
 			kinds[int(p.kind)] += 1;
 			lit += p.kind == FurnitureKind::LAMP && p.lit ? 1 : 0;
+			if (p.kind != FurnitureKind::LAMP || p.row != 0) continue;
+			row_poles++;
+			if (p.strung < 0) continue;
+			const FurnitureSpot *before = nullptr; // the pole its wires come from, standing on the same segment
+			for (const FurnitureSpot &q : spots)
+				if (q.kind == FurnitureKind::LAMP && q.row == 0 && q.station == p.strung) before = &q;
+			if (!before) {
+				row_broken++;
+				continue;
+			}
+			row_spans++;
+			double ax, az, ay, bx, bz, by;
+			footway_point(s.roads, sid, before->v, before->u, ax, az, ay);
+			footway_point(s.roads, sid, p.v, p.u, bx, bz, by);
+			longest = std::max(longest, std::hypot(bx - ax, bz - az));
 		}
 	}
 	Dictionary d;
 	d["kinds"] = kinds;
 	d["street_m"] = metres;
 	d["lit"] = lit;
+	d["row_poles"] = row_poles; // the main rows' poles (they carry the line)
+	d["row_spans"] = row_spans; // the spans the layout strung between them
+	d["row_broken"] = row_broken; // a pole strung to a pole that does not stand (a span the render cannot draw)
+	d["row_longest_m"] = longest; // the longest of those spans, across
 	return d;
 }
 
