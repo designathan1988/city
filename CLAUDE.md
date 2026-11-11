@@ -5,7 +5,7 @@ Arquivo criado ou apagado entra em `log/mapa.md` no mesmo commit: o gate `MAPA_D
 O detalhe fica em `log/`: `mapa.md` (arquivo por arquivo), `ferramentas.md` (o que cada uma ensinou), `pendencias.md`
 (o que falta). Registros de cada linha: `work-log.md` (porte e gráficos), `conversor.md`, `causa-raiz.md`, `lab.md`, `base.md`,
 `arquitetura.md` (o analisador de causas), `review.md` (the full reading: findings, problems, process errors),
-`feature-trace.md` (the road flow traced by hand and the generic feature tracer's causes).
+`feature-trace.md` (the road flow traced by hand and the generic feature tracer's causes), `how-we-work.md` (the binding way, step by step, and the contradictions settled), `live-instance-design.md` (the live instance, the contracts' guards, the player's input, the order of the work).
 Antes de começar, leia o registro da sua linha. Ao fechar o tema, atualize-o com hora e commit, no mesmo commit.
 
 **Where the tree stands (2026-11-10).** `native/`, `project/`, `tools/` and `log/` were taken back to `a1a771c4` (2026-11-07 20:29) by the owner's order: the city generated there is whole, and the lab ports made from 2026-11-08 21:30 on broke it.
@@ -14,7 +14,7 @@ measured (memory, CPU, GPU, frame) and photographed in the 24 km city (map `km24
 
 ## Metodologia de trabalho (toda tarefa, nesta ordem; trabalho direto)
 1. **Identify:** read the code involved and ask "why" until you reach the design decision that produces the symptom. List every problem.
-2. **Research** when the task touches an outside API (Godot, godot-cpp, Terrain3D): the official documentation and relevant sources, never memory alone.
+2. **Research** with context7 on every implementation and fix that touches an outside API (Godot, godot-cpp, Terrain3D, a library): the official documentation and sources, never memory alone.
 3. **Compreenda:** ligue problema, causa e solução pelo código e, quando houve, pela pesquisa.
 4. **Plan** the fix of the cause, with one owner, always choosing the most expensive and laborious solution that solves the
    cause (owner, 2026-11-11): a cheap solution that does not solve the cause is forbidden, and so is offering cheap options.
@@ -54,7 +54,7 @@ A reported problem is solved with the `trace-fix` skill (`python .claude/skills/
 - A photo is taken only when the view is drawn (`{"until": "render_pending", "equals": 0}` before each `shot`) and is shown with its commit and date written on it.
 
 ## Execução e verificação
-- Investigating is reading code: no measurements, profiles or long, heavy tests to investigate. A measurement only checks the effect of a change its cause already explains; every port and performance fix is measured in the 24 km city before and after.
+- Investigating is reading code: no measurements, profiles or long, heavy tests to investigate. A measurement only checks the effect of a change its cause already explains; every feature and performance fix is measured in the 24 km city at its end, the previous build and this one.
 - Verifica-se só o que a mudança alcança:
 
 | Mudou | Verifique |
@@ -137,7 +137,7 @@ compilar. Meshoptimizer e Clipper2 vêm pelo CMake na primeira compilação. À 
 `C:\Users\Jonathan\Desktop\city` é o projeto inteiro. O detalhe arquivo por arquivo está em `log/mapa.md`.
 
 **`native/src`: núcleo C++**
-- `core/`: bytes, cor, grade, pool de jobs, matemática, memória, polígonos, aleatório, unidades e o runtime do código traduzido.
+- `core/`: bytes, colour, grid, job pool, maths, memory, polygons, random, units; the translated runtime still there is a debt, redone at its cause.
 - `sim/state/`: `CityState`, `ChangeLog` (canal único de "sujo"), `PoseBuffer`.
 - `sim/catalog/`: tipos do catálogo, sem valores.
 - `sim/commands/`: comandos do jogador, diário de edições, desfazer e refazer.
@@ -172,7 +172,7 @@ compilar. Meshoptimizer e Clipper2 vêm pelo CMake na primeira compilação. À 
   `check_scripts.gd` (scripts that do not compile), `rename_english.py` (the English rename, with `--check`).
 - `analysis/`: `sampler.py` with `sampler_report.py` and `unwind.py`, `causes.py` with `detectors.py` and `code_parse.py`, `arch.py` and `arch/` (the architecture analyser), `arch_eval/` (answer keys only its selfcheck reads).
 - `assets/`: cozinha de pessoas, marcos, ruído, móveis, postes e perfis de via.
-- `converter/`: the porting tool, with its own git (`node src/cli.ts feature`, `convert`, `differential`, `graph`, `translate`, `audit`, `verify`). Translated code (e.g. `flow_control`) is regenerated, never fixed by hand.
+- `converter/`: the old porting tool, with its own git; it produces and regenerates no game code (translating the roadcraft is forbidden). What it translated and still stands (`flow_control`) is a debt, redesigned at its cause.
 - `converter-slice/`: the converter's older slice, with its own git.
 - `process/`: ferramentas de processo e registros. `ports/`: planos, coberturas e relatórios de cada porte.
 
@@ -190,7 +190,7 @@ compilar. Meshoptimizer e Clipper2 vêm pelo CMake na primeira compilação. À 
 - Poses por `PoseBuffer`. O save grava em thread própria.
 
 ## Luz e relógio
-- `Daylight` é o dono do sol, do ambiente e do céu. À noite o sol vira lua sem sombra; a luz da rua é `LampLights`.
+- `Daylight` is the owner of the sun, the ambient and the sky. At night the sun becomes the moon, which casts all night (P347); the street's light is `LampLights`.
 - `CityWorld.set_sky_mode("day"|"night"|"cycle")`: dia e noite fixam as horas de `daylight.json` (16h e 22h).
 - Testes e capturas movem relógio e céu juntos (`UiDriver.at_hour`).
 
