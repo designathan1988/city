@@ -122,7 +122,9 @@ HANDLERS = {
              "js_library:canonical", "js_library:step", "js_library:member", "js_library:awaited",
              "types_of:TypeNames.canon", "transfer:awaits", "js_transfer:constructs", "js_transfer:indexed",
              "js_transfer:iterated", "js_transfer:owns", "js_transfer:enumerable", "js_transfer:wrapped",
-             "js_modules:JsModules.declares_type", "js_library:object_read"),
+             "js_modules:JsModules.declares_type", "js_library:object_read", "solver:is_language",
+             "truth:can_be_truthy", "truth:can_be_falsy", "truth:typeof_results", "truth:can_equal",
+             "truth:can_differ", "truth:is_nullish"),
 }
 
 # Callables built from an object and a method name (G7): constructor -> (object argument, name argument).

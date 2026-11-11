@@ -19,15 +19,23 @@ from . import cycles
 from .library import ENGINE
 
 CLASS, FN, ELEM, TEXT = "#", "<fn>", "<elem>", "<text>"   # value forms; TEXT + s: a string value carrying s (G7)
+LANG = "<lang>"            # a constant of the language (V1): `true`, `false`, `null`, `undefined`
+TRUE, FALSE, NULL, UNDEFINED = LANG + "true", LANG + "false", LANG + "null", LANG + "undefined"
 SAME = ("same",)           # the key of an identity subscription: the target holds every value of the source
 
 
+def is_language(text: str) -> bool:
+    """A value of the language or the engine: the engine's value, or one of the language's constants (V1), which
+    every rule that does not test it treats as the engine's."""
+    return text == ENGINE or text.startswith(LANG)
+
+
 def identity(text: str, ctx) -> tuple:
-    """What makes two values the same: a class, a function, a text or an engine value is itself; a type as written
-    is itself in the scope it is read in (the class and file, not each unit); a JavaScript value is itself, its names
-    resolved when it was made (T3)."""
+    """What makes two values the same: a class, a function, a text, a constant or an engine value is itself; a type as
+    written is itself in the scope it is read in (the class and file, not each unit); a JavaScript value is itself, its
+    names resolved when it was made (T3)."""
     core = text[len(ELEM):] if text.startswith(ELEM) else text
-    if core == ENGINE or core.startswith((CLASS, FN, TEXT)) or ctx.lang == "js":
+    if core == ENGINE or core.startswith((CLASS, FN, TEXT, LANG)) or ctx.lang == "js":
         return (text,)
     return (text, ctx.lang, ctx.owner, ctx.file)
 

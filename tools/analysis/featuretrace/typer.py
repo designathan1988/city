@@ -13,7 +13,7 @@ Type texts: a type as written, CLASS + key (a class of the program), FN + gid (a
 """
 from __future__ import annotations
 
-from . import js_library, js_transfer, names, templates, transfer
+from . import js_library, js_transfer, names, templates, transfer, truth
 from .js_library import EACH
 from .library import DEREF, ITEM, ITER, passes_through
 from .places import Places
@@ -105,6 +105,8 @@ class Typer(Places, TypeNames, Solver):
             self.subscribe(self.node_of(tree[1], unit), node, ("await",), transfer.awaits(self))
         elif kind in CONSTANT_SHAPES:
             self.add(node, self.constant(tree, unit))
+        elif kind == "literal" and unit.lang == "js" and tree[1] in truth.JS_CONSTANTS:
+            self.add(node, [(truth.JS_CONSTANTS[tree[1]], unit)])    # `true`, `false`, `null`, `undefined` (V1)
         else:
             self.add(node, [(ENGINE, unit)])      # literal, node: the engine's or the language's values
 

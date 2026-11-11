@@ -8,7 +8,7 @@ from __future__ import annotations
 from . import js_library
 from .cpp_names import strip_templates, template_args
 from .library import clean, substitute
-from .solver import CLASS, ELEM, ENGINE, FN, TEXT
+from .solver import CLASS, ELEM, ENGINE, FN, LANG, TEXT, is_language
 
 
 class TypeNames:
@@ -18,7 +18,7 @@ class TypeNames:
         if text.startswith(ELEM):
             inner, where = self.canon(text[len(ELEM):], ctx)
             return (ELEM + inner if inner else ""), where
-        if text == ENGINE or text.startswith((CLASS, FN, TEXT)):
+        if text == ENGINE or text.startswith((CLASS, FN, TEXT, LANG)):
             return text, ctx
         if ctx.lang == "js":
             return js_library.canonical(text, lambda name: self.type_class(name, ctx),
@@ -29,7 +29,7 @@ class TypeNames:
         return (CLASS + key, ctx) if key else (text, ctx)
 
     def type_class(self, text: str, ctx) -> str | None:
-        if not text or text == ENGINE or text.startswith((FN, ELEM, TEXT)):
+        if not text or is_language(text) or text.startswith((FN, ELEM, TEXT)):
             return None
         if text.startswith(CLASS):
             return text[1:]
@@ -79,6 +79,6 @@ class TypeNames:
         return not outer.startswith(CLASS) and bool(self.ix.classes[key].params) and bool(template_args(clean(outer)))
 
     def substitute(self, key: str, outer: str, member: str) -> tuple[str, bool]:
-        if not self.replaces(key, outer) or member.startswith((CLASS, FN, ELEM, ENGINE)):
+        if not self.replaces(key, outer) or member.startswith((CLASS, FN, ELEM, ENGINE, LANG)):
             return member, False
         return substitute(self.ix.classes[key].params, outer, member)

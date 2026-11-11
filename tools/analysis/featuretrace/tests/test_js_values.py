@@ -12,7 +12,7 @@ sys.path.insert(0, str(HERE))
 
 from support import FixtureCase  # noqa: E402
 from featuretrace import js_library  # noqa: E402
-from featuretrace.solver import CLASS, ELEM, ENGINE, FN, TEXT  # noqa: E402
+from featuretrace.solver import CLASS, ELEM, ENGINE, FN, LANG, TEXT  # noqa: E402
 
 BOX = CLASS + "types.ts#Box"
 
@@ -65,7 +65,7 @@ class JsValues(FixtureCase):
                 core = text
                 while core.startswith(ELEM):
                     core = core[len(ELEM):]
-                allowed = core == ENGINE or core.startswith((CLASS, FN, TEXT)) or js_library.is_container(core)
+                allowed = core == ENGINE or core.startswith((CLASS, FN, TEXT, LANG)) or js_library.is_container(core)
                 self.assertTrue(allowed, f"{text!r} in {str(node)[:80]}")
 
     def test_new_calls_a_function(self):

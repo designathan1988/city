@@ -11,7 +11,7 @@ Shapes (tuples, so facts stay picklable and comparable):
   ("new", type_text)             a constructed object of that type (C++, GDScript)
   ("construct", e)               JS `new e(...)`: e evaluated (a class's instance, a function's returned objects)
   ("callable", lambda_local_id)  a lambda as a value
-  ("literal", type_text)         a literal ("" when the language's own)
+  ("literal", type_text)         a literal ("" when the language's own; JS "true", "false", "null", "undefined": V1)
   ("union", a, b)                either value (a ternary)
   ("collection", values)         a container literal holding these values
   ("elements", e)                what walking `e` yields (a loop variable)

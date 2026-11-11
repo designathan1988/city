@@ -661,3 +661,34 @@ writes its overloads this way throughout (`Color.set(r)`: `r.isColor`, `typeof r
 guards by truthiness of a member, `typeof`, `instanceof`, `Array.isArray`, `in`, equality and discriminants, type
 predicates, `!`, `&&`, `||`, and the code after an `if` whose branch always leaves; GDScript `is`, already written in the
 EXPR table as "inside the branch it guards, the tested name is narrowed to T" and not implemented): the next theme.
+
+## Narrowing at branch conditions (research, 2026-11-11 16:30)
+
+Sources (read through context7): TypeScript handbook, "Narrowing" (`typeof` type guards, truthiness, equality, the
+`in` operator, `instanceof`, assignments, control flow analysis, type predicates `parameterName is Type`, discriminated
+unions by `if` and `switch`); TypeScript 2.0 release notes (control flow analysis: after `if (typeof x === "number")
+return;` x is no longer a number; an assignment in the branch replaces the narrowed type); TypeScript 4.4 (aliased
+conditions and discriminants, only for a `const`, a `readonly` property or an unmodified parameter); MDN "Falsy" (`false`,
+`0`, `-0`, `0n`, `""`, `null`, `undefined`, `NaN`, `document.all`; every other value truthy), `typeof` (its exhaustive
+table: "undefined", "object" for null and any object, "boolean", "number", "bigint", "string", "symbol", "function" for
+functions and classes), `instanceof` (the prototype chain, or `[Symbol.hasInstance]`), `in` (a property of the object or
+of its prototype chain), "Inheritance and the prototype chain" (a property put on `C.prototype` is read by every instance
+of C; an assignment to a property the object does not have creates it; a property found nowhere on the chain reads
+`undefined`); Godot, GDScript reference (`is` tests whether a value extends a class or is of a built-in type).
+
+What the tracer had: branches are followed with their condition as text only, so the values flowing through a branch
+are the values before it ("Why the lab with three.js does not reach its fixpoint after P3"); GDScript replaced a name
+an `is` proves with the tested type inside the `if` body only; JS `true`, `false`, `null` and `undefined` were the
+language's value (ENGINE), so no test could tell them apart; a property written outside the class (`o.extra = v`,
+`C.prototype.flag = true`) and a property found nowhere were unread and the engine's value.
+
+| Rule | What the tracer does |
+|---|---|
+| V1 The language's constants | JS `true`, `false`, `null` and `undefined` (the literal and the global name) are values of their own (`<lang>true`, ...); like the engine's value in every rule that does not test them (members, steps, calls, identity) |
+| V2 A property written where no class declares it (MDN) | `o.p = v` on an object of class K that declares no `p` creates `p` on K's objects: the values written are K's property `p` (`#prop` node); `C.prototype` read on a class C is C's objects, so `C.prototype.p = v` gives every C (and every class below) the property; a read of `p` on K is K's and its bases' declared member, else what was written to `p` on K or its bases; a property no class of a chain the tracer read whole declares or writes is `undefined`, one a base the tracer did not read may hold is the engine's |
+| G1 Guards (JS) | a condition proves facts about the values of a name (a local or a parameter): its truthiness; the truthiness of one of its properties (`x.p`, `x?.p`); `typeof x === "t"`; `x instanceof C`; `Array.isArray(x)` (the language's `Array`); `"p" in x`; `x === v`, `x !== v` with `v` a literal of the language or a string; `x == null`, `x != null`; `x.p === v` (a discriminant); `f(x)` where f is declared with a return type `x is T` (a type predicate); `!`, `&&` (both facts when true), `||` (both negations when false), parentheses |
+| G2 Guards (GDScript) | `x is T`, `not`, `and`, `or`, parentheses |
+| R1 Where facts hold | the `if` branch (the facts of the condition being true), the `else` branch (false), the statements after an `if` whose other branch always leaves (`return`, `throw`, `break`, `continue`, or a block or `if` that always does), the operands of `?:`, the right operand of `&&` (left true) and of `||` (left false), a loop's body (its condition true), a `switch` case that is entered only by its own test (the discriminant equal to its literal) |
+| R2 Where they do not | a name assigned inside the region (an assignment, an update, a destructuring or loop binding), or assigned by any function written inside the enclosing function (a closure may run between the test and the use): such a name is read whole there; a property path (`a.b`) is never narrowed (any call may write it) |
+| N1 A narrowed read | a name read inside a region is a narrowed node of the name's node: each value goes through each fact that holds, kept when the fact can be true of it (positive) or false of it (negative); a value the tracer cannot decide (the engine's, a number) is kept; an object of the program is decided by its class (and its bases), the value of a property by that property's values (each value of it decides as it comes); a class or a predicate named by the condition is decided by its values as they come; facts compose (nested regions narrow in turn) |
+| N2 Precision kept | narrowing only removes values that cannot be there at run time; it never adds a value and never removes a link the call graph needs (C3) |

@@ -17,7 +17,7 @@ CLASS_VALUE = "#"                 # the typer's prefix of a class of the program
 EITHER = ("??", "||", "&&")       # value-preserving operators (MDN Logical OR, Nullish coalescing)
 TESTS = ("==", "!=", "===", "!==", "<", ">", "<=", ">=", "in", "instanceof")
 WORD_UNARY = ("typeof", "void", "delete", "!")
-LITERALS = {"number": "number", "true": "boolean", "false": "boolean", "null": "null", "undefined": "undefined",
+LITERALS = {"number": "number", "true": "true", "false": "false", "null": "null", "undefined": "undefined",
             "regex": "RegExp", "template_string": "string", "jsx_element": "JSX.Element",
             "jsx_self_closing_element": "JSX.Element", "update_expression": "number", "meta_property": ""}
 FUNCTIONS = ("function_expression", "arrow_function", "generator_function", "function_declaration",
@@ -55,7 +55,7 @@ def member_name(src, node) -> str:
 
 def _identifier(r, node, unit):
     text = r.src.text(node)
-    return LITERAL if text == "undefined" else name(text)
+    return ("literal", "undefined") if text == "undefined" else name(text)
 
 
 def _member(r, node, unit):

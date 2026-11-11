@@ -12,7 +12,7 @@ from __future__ import annotations
 from . import js_library, js_transfer, templates
 from .cpp_names import template_args
 from .library import (DEREF, HELD_CALLS, ITEM, ITER, ITERATOR_CALLS, PAIR_PARTS, clean, library_step)
-from .solver import CLASS, ELEM, ENGINE, FN
+from .solver import CLASS, ELEM, ENGINE, FN, is_language
 
 OPERATORS = {ITEM: "operator[]", DEREF: "operator->", ITER: "begin", js_library.EACH: "begin"}
 COMPARISONS = ("==", "!=", "<", ">", "<=", ">=", "<=>", "&&", "||", "!", "and", "or", "not", "in", "is")
@@ -103,7 +103,7 @@ def member_one(t, target, text: str, ctx, name: str, called: bool, caller=None, 
                 t.follow(t.hold_node(unit), target)
         return
     if key is None:
-        t.add(target, [(library_step(name, text, called), ctx) if text != ENGINE else (ENGINE, ctx)])
+        t.add(target, [(library_step(name, text, called), ctx) if not is_language(text) else (ENGINE, ctx)])
         return
     found = ix.lookup(key, name)
     if ctx.lang == "gd" and ix.classes[key].lang == "cpp":
@@ -140,7 +140,7 @@ def step_one(t, target, step: str, text: str, ctx) -> None:
     if text.startswith(FN) and step == DEREF:
         t.add(target, [(text, ctx)])                    # `*p` of a pointer to a function: the function ([expr.unary.op])
         return
-    if text == ENGINE or text.startswith(FN):
+    if is_language(text) or text.startswith(FN):
         t.add(target, [(ENGINE, ctx)])
         return
     if ctx.lang == "js" and js_library.is_container(text):
