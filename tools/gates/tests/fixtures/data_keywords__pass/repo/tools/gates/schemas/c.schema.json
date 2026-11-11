@@ -1,0 +1,8 @@
+{"$defs": {"colour": {"type": "string", "pattern": "^#[0-9a-f]{6}$"}},
+ "type": "object", "additionalProperties": false, "required": ["tint", "speed", "mode", "pair", "tags", "sizes"],
+ "properties": {"tint": {"$ref": "#/$defs/colour"},
+                "speed": {"oneOf": [{"type": "integer"}, {"type": "string", "enum": ["auto"]}]},
+                "mode": {"type": "string", "pattern": "^[a-z]+$"},
+                "pair": {"type": "array", "prefixItems": [{"type": "string"}, {"type": "number"}], "items": false},
+                "tags": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+                "sizes": {"type": "array", "items": {"type": ["number", "boolean", "string"]}, "uniqueItems": true}}}

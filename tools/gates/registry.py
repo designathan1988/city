@@ -10,7 +10,9 @@ import gate_defs
 import gate_docs
 import gate_files
 import gate_forbidden
+import gate_generated
 import gate_language
+import gate_materials
 import gate_python
 import gate_tuning
 import gate_ui
@@ -94,11 +96,14 @@ def whole_rules(rules):
         Whole("map", ["CLAUDE_MD", "MAPA_DESATUALIZADO"], gate_docs.inputs, gate_docs.check_claude_md,
               lambda ctx: sorted(ctx.listed)),
         Whole("data", ["DADOS", "DADOS_SEM_SCHEMA"], _in_scope(gate_data.inputs), gate_data.check_data),
+        Whole("materials", ["SHADER_PARAM"], _in_scope(gate_materials.inputs), gate_materials.check_materials),
         Whole("owner_symbols", ["DONO_AUSENTE"], gate_defs.owner_inputs, gate_defs.check_owner_symbols,
               lambda ctx: sorted(c["owner"] in ctx.listed_set for c in ctx.owners["concepts"])),
         Whole("clones", ["CODIGO_DUPLICADO"], _in_scope(gate_clones.applies), gate_clones.check_clones),
         Whole("tuning", ["TUNING", "TUNING_SEM_USO"], _in_scope(gate_tuning.inputs), gate_tuning.check_tuning),
         Whole("mirrors", ["ESPELHO"], gate_tuning.mirror_inputs, gate_tuning.check_mirrors),
+        Whole("generated", ["GENERATED_DRIFT"], gate_generated.inputs, gate_generated.check_generated,
+              lambda ctx: ctx.rules.get("generated", [])),
         Whole("python_imports", ["PYTHON_IMPORT_UNRESOLVED"], gate_python.applies, gate_python.check_imports,
               lambda ctx: _site_listing()),
     ]

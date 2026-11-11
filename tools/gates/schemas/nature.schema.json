@@ -1,60 +1,66 @@
 {
- "type": "object",
- "properties": {
-  "_doc": {
-   "type": "string"
-  },
-  "weather": {
-   "type": "object",
-   "additional": {
-    "type": "object",
-    "properties": {
-     "min": {
-      "type": "number"
-     },
-     "max": {
-      "type": "number"
-     },
-     "default": {
-      "type": "number"
-     }
-    },
-    "required": [
-     "min",
-     "max",
-     "default"
-    ],
-    "strict": true
-   }
-  },
-  "clouds": {
-   "type": "object"
-  },
-  "fog": {
-   "type": "object"
-  },
-  "paint": {
-   "type": "object"
-  },
-  "trees": {
-   "type": "object"
-  },
-  "styles": { "type": "object" },
-  "ecology": {
-   "type": "object"
-  },
-  "elements": {
-   "type": "object"
-  }
+ "$defs": {
+  "share": {"type": "number", "minimum": 0, "maximum": 1},
+  "count": {"type": "integer", "minimum": 1},
+  "metres": {"type": "number", "minimum": 0},
+  "length": {"type": "number", "exclusiveMinimum": 0},
+  "degrees": {"type": "number", "minimum": 0, "maximum": 90},
+  "slider": {"type": "object", "strict": true, "required": ["min", "max", "default"],
+             "properties": {"min": {"type": "number"}, "max": {"type": "number"}, "default": {"type": "number"}}},
+  "formation": {"type": "object", "strict": true,
+                "required": ["cactus", "closed_canopy", "dry", "emergent", "grass", "palm", "rocky", "shrub", "trees", "wet"],
+                "properties": {"cactus": {"$ref": "#/$defs/share"}, "closed_canopy": {"$ref": "#/$defs/share"}, "dry": {"$ref": "#/$defs/share"},
+                               "emergent": {"$ref": "#/$defs/share"}, "grass": {"$ref": "#/$defs/share"}, "palm": {"$ref": "#/$defs/share"},
+                               "rocky": {"$ref": "#/$defs/share"}, "shrub": {"$ref": "#/$defs/share"}, "trees": {"$ref": "#/$defs/share"}, "wet": {"$ref": "#/$defs/share"}}}
  },
- "required": [
-  "weather",
-  "clouds",
-  "fog",
-  "paint",
-  "trees",
-  "ecology",
-  "elements"
- ],
- "strict": true
+ "type": "object",
+ "strict": true,
+ "required": ["weather", "clouds", "fog", "paint", "trees", "ecology", "elements"],
+ "properties": {
+  "_doc": {"type": "string", "minLength": 1},
+  "weather": {"type": "object", "additional": {"$ref": "#/$defs/slider"}},
+  "clouds": {"type": "object", "strict": true,
+             "required": ["crowd_share", "density", "grip_height", "height_m", "max_clouds", "pick_centre", "pick_radius", "scatter_reach", "scatter_tries", "show_from", "show_span", "size_m", "span_m"],
+             "properties": {"crowd_share": {"$ref": "#/$defs/share"}, "density": {"$ref": "#/$defs/slider"}, "grip_height": {"$ref": "#/$defs/share"},
+                            "height_m": {"$ref": "#/$defs/slider"}, "max_clouds": {"$ref": "#/$defs/count"}, "pick_centre": {"$ref": "#/$defs/share"},
+                            "pick_radius": {"$ref": "#/$defs/share"}, "scatter_reach": {"$ref": "#/$defs/share"}, "scatter_tries": {"$ref": "#/$defs/count"},
+                            "show_from": {"$ref": "#/$defs/share"}, "show_span": {"$ref": "#/$defs/share"}, "size_m": {"$ref": "#/$defs/slider"}, "span_m": {"$ref": "#/$defs/length"}}},
+  "fog": {"type": "object", "strict": true, "required": ["fog_texel_m", "height_m", "max_dabs", "min_density", "speed_ms"],
+          "properties": {"fog_texel_m": {"$ref": "#/$defs/length"}, "height_m": {"$ref": "#/$defs/slider"}, "max_dabs": {"$ref": "#/$defs/count"},
+                         "min_density": {"type": "number", "minimum": 0}, "speed_ms": {"$ref": "#/$defs/slider"}}},
+  "paint": {"type": "object", "strict": true, "required": ["kinds", "land_rim", "landform_rock", "max_tiles", "min_strength", "rock_reach", "strength_scale"],
+            "properties": {"kinds": {"type": "array", "minItems": 1, "unique_key": "id",
+                                     "items": {"type": "object", "strict": true, "required": ["id", "class", "slot"],
+                                               "properties": {"id": {"type": "string", "pattern": "^[a-z][a-z_]*$"}, "class": {"type": "string", "enum": ["biome", "cover", "eraser", "ground"]},
+                                                              "slot": {"type": "integer", "minimum": 0}}}},
+                           "land_rim": {"$ref": "#/$defs/share"}, "landform_rock": {"type": "array", "minItems": 1, "items": {"type": "string", "enum": ["basalt", "granite", "sandstone"]}},
+                           "max_tiles": {"$ref": "#/$defs/count"}, "min_strength": {"$ref": "#/$defs/share"}, "rock_reach": {"type": "number", "exclusiveMinimum": 0},
+                           "strength_scale": {"type": "number", "exclusiveMinimum": 0}}},
+  "trees": {"type": "object", "strict": true,
+            "required": ["kind_count", "kind_first", "m2_per_hectare", "max_clearings", "max_per_dab", "max_planted", "min_height_share", "model_slots", "seed_top", "tries_per_tree"],
+            "properties": {"kind_count": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/count"}},
+                           "kind_first": {"type": "array", "minItems": 1, "items": {"type": "integer", "minimum": 0}},
+                           "m2_per_hectare": {"$ref": "#/$defs/length"}, "max_clearings": {"$ref": "#/$defs/count"}, "max_per_dab": {"$ref": "#/$defs/count"},
+                           "max_planted": {"$ref": "#/$defs/count"}, "min_height_share": {"$ref": "#/$defs/share"}, "model_slots": {"$ref": "#/$defs/count"},
+                           "seed_top": {"$ref": "#/$defs/share"}, "tries_per_tree": {"$ref": "#/$defs/count"}}},
+  "elements": {"type": "object", "strict": true, "required": ["area_m2", "kinds", "least_size_m", "max_items", "max_per_dab"],
+               "properties": {"area_m2": {"$ref": "#/$defs/length"}, "kinds": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^[a-z][A-Za-z]*$"}},
+                              "least_size_m": {"$ref": "#/$defs/length"}, "max_items": {"$ref": "#/$defs/count"}, "max_per_dab": {"$ref": "#/$defs/count"}}},
+  "styles": {"type": "object", "properties": {"_doc": {"type": "string"}},
+             "additional": {"type": "object", "strict": true, "required": ["default_biome"], "properties": {"default_biome": {"type": "string", "pattern": "^[a-z]+$"}}}},
+  "ecology": {"type": "object", "strict": true,
+              "required": ["canopy_wood", "emergent_wood", "flat_from_deg", "flat_to_deg", "forest_line_from_m", "forest_line_to_m", "formations", "fray_m", "mean_cells",
+                           "mixes", "patch_m", "riparian_far_m", "riparian_far_patch_m", "riparian_near_m", "riparian_near_patch_m", "site_grid_m", "site_high_m",
+                           "site_low_m", "steep_from_deg", "steep_to_deg", "trees_wood"],
+              "properties": {"canopy_wood": {"$ref": "#/$defs/share"}, "emergent_wood": {"$ref": "#/$defs/share"}, "trees_wood": {"$ref": "#/$defs/share"},
+                             "flat_from_deg": {"$ref": "#/$defs/degrees"}, "flat_to_deg": {"$ref": "#/$defs/degrees"}, "steep_from_deg": {"$ref": "#/$defs/degrees"},
+                             "steep_to_deg": {"$ref": "#/$defs/degrees"}, "forest_line_from_m": {"$ref": "#/$defs/metres"}, "forest_line_to_m": {"$ref": "#/$defs/metres"},
+                             "fray_m": {"$ref": "#/$defs/metres"}, "mean_cells": {"$ref": "#/$defs/count"}, "patch_m": {"$ref": "#/$defs/length"},
+                             "riparian_far_m": {"$ref": "#/$defs/metres"}, "riparian_far_patch_m": {"$ref": "#/$defs/length"}, "riparian_near_m": {"$ref": "#/$defs/metres"},
+                             "riparian_near_patch_m": {"$ref": "#/$defs/length"}, "site_grid_m": {"$ref": "#/$defs/length"}, "site_high_m": {"$ref": "#/$defs/metres"},
+                             "site_low_m": {"$ref": "#/$defs/metres"},
+                             "formations": {"type": "object", "additional": {"$ref": "#/$defs/formation"}},
+                             "mixes": {"type": "object", "properties": {"_doc": {"type": "string"}}, "additional": {"type": "number", "minimum": 0},
+                                       "description": "each key a share or a distance in metres (its _doc)"}}}
+ }
 }

@@ -1,0 +1,10 @@
+{
+ "rule": "materials",
+ "expect": [],
+ "overrides": {
+  "material_tables": ["project/data/m.json"],
+  "uniform_tables": [
+   {"table": "project/data/p.json", "path": "look", "shaders": ["res://render/s.gdshader"]}
+  ]
+ }
+}

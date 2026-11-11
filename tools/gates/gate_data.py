@@ -1,53 +1,83 @@
-"""Data gates: every data table parses and matches its schema (minimal JSON-Schema subset, stdlib only)."""
+"""Data gates: every data table parses with no key written twice in one object and matches its schema, checked by
+tools/tasks/schema.py, the tools' one JSON Schema checker (a keyword it does not support is an error of the schema,
+never a check skipped), in its complete mode: every object of a table is described and closed and every list says what it
+holds, unless the schema marks the node free with the reason."""
 import json
 import os
+import re
+import sys
 
-TYPES = {"object": dict, "array": list, "string": str, "boolean": bool, "integer": int, "number": (int, float)}
+TOOLS_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+if TOOLS_DIR not in sys.path:
+    sys.path.insert(0, TOOLS_DIR)
+from tasks import schema as json_schema  # noqa: E402
 
 
-def validate(value, schema, where, errors):
-    t = schema.get("type")
-    if t:
-        ok = isinstance(value, TYPES[t]) and not (t in ("integer", "number") and isinstance(value, bool))
-        if not ok:
-            errors.append(f"{where}: expected {t}")
-            return
-    if "enum" in schema and value not in schema["enum"]:
-        errors.append(f"{where}: value {value!r} not in {schema['enum']}")
-    if "minimum" in schema and isinstance(value, (int, float)) and value < schema["minimum"]:
-        errors.append(f"{where}: {value} < minimum {schema['minimum']}")
-    if "maximum" in schema and isinstance(value, (int, float)) and value > schema["maximum"]:
-        errors.append(f"{where}: {value} > maximum {schema['maximum']}")
-    if "pattern_prefix" in schema and isinstance(value, str) and not value.startswith(schema["pattern_prefix"]):
-        errors.append(f"{where}: must start with {schema['pattern_prefix']!r}")
-    if isinstance(value, dict):
-        for key in schema.get("required", []):
-            if key not in value:
-                errors.append(f"{where}: missing key '{key}'")
-        props = schema.get("properties", {})
-        for key, sub in value.items():
-            if key in props:
-                validate(sub, props[key], f"{where}.{key}", errors)
-            elif "additional" in schema:
-                validate(sub, schema["additional"], f"{where}.{key}", errors)
-            elif schema.get("strict"):
-                errors.append(f"{where}: unknown key '{key}'")
-    if isinstance(value, list):
-        if "minItems" in schema and len(value) < schema["minItems"]:
-            errors.append(f"{where}: at least {schema['minItems']} items")
-        if "maxItems" in schema and len(value) > schema["maxItems"]:
-            errors.append(f"{where}: at most {schema['maxItems']} items")
-        for i, item in enumerate(value):
-            if "items" in schema:
-                validate(item, schema["items"], f"{where}[{i}]", errors)
-        if schema.get("unique_key"):
-            keys = [v.get(schema["unique_key"]) for v in value if isinstance(v, dict)]
-            if len(keys) != len(set(keys)):
-                errors.append(f"{where}: '{schema['unique_key']}' repeated")
+class DuplicateKey(ValueError):
+    """A JSON object names one key twice: Python's and Godot's readers keep the last value without a word."""
+
+    def __init__(self, key):
+        super().__init__(key)
+        self.key = key
+
+
+def _unique_pairs(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise DuplicateKey(key)
+        out[key] = value
+    return out
+
+
+def load_strict(path):
+    """A JSON file whose objects each name a key once; raises DuplicateKey or json.JSONDecodeError."""
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh, object_pairs_hook=_unique_pairs)
+
+
+def _key_lines(path, key):
+    """The lines where a key is written, to point at both places of a duplicate."""
+    rx = re.compile(r'"' + re.escape(key) + r'"\s*:')
+    with open(path, encoding="utf-8") as fh:
+        return [n for n, line in enumerate(fh, 1) if rx.search(line)]
 
 
 def inputs(ctx, path):
-    return (path.startswith("project/data/") and path.endswith(".json")) or path.startswith("tools/gates/schemas/")
+    return (path.startswith("project/data/") and path.endswith(".json")) or path.startswith("tools/gates/schemas/") or path in ctx.rules["schemas"]
+
+
+def _load(ctx, rel, err, owner):
+    full = os.path.join(ctx.root, rel)
+    try:
+        return load_strict(full)
+    except DuplicateKey as e:
+        err("DADOS", owner, f"{rel}: key '{e.key}' written twice in one object (lines {', '.join(map(str, _key_lines(full, e.key)))})")
+    except (OSError, json.JSONDecodeError) as e:
+        err("DADOS", owner, f"{rel}: invalid JSON: {e}")
+    return None
+
+
+def _laid(under, over):
+    """`over` laid on a copy of `under` block by block, as DataTables._lay does: a dictionary into a dictionary, anything else
+    replaces."""
+    out = dict(under)
+    for key, value in over.items():
+        out[key] = _laid(out[key], value) if isinstance(value, dict) and isinstance(out.get(key), dict) else value
+    return out
+
+
+def _styled_errors(data, schema):
+    """A styled table (rules.json styled_tables, DataTables.STYLED) as each of its styles makes it: the style laid over the
+    table, the styles taken away, judged by the same schema. So one schema holds the table and every style's overlay."""
+    base = {k: v for k, v in data.items() if k != "styles"}
+    whole = dict(schema, required=[k for k in schema.get("required", []) if k != "styles"])
+    out = []
+    for style, over in data.get("styles", {}).items():
+        if style.startswith("_") or not isinstance(over, dict):
+            continue
+        out += [f"styles.{style} laid over the table: {e}" for e in json_schema.errors(_laid(base, over), whole, schema, complete=True)]
+    return out
 
 
 def check_data(ctx, err):
@@ -56,19 +86,15 @@ def check_data(ctx, err):
         if f.startswith("project/data/") and f.endswith(".json") and f not in rules["schemas"]:
             err("DADOS_SEM_SCHEMA", f, "every data table needs a schema in rules.json/schemas")
     for data_path, schema_path in rules["schemas"].items():
-        full = os.path.join(ctx.root, data_path)
-        if not os.path.exists(full):
+        if not os.path.exists(os.path.join(ctx.root, data_path)):
             err("DADOS", data_path, "data table missing")
             continue
-        try:
-            with open(full, encoding="utf-8") as fh:
-                data = json.load(fh)
-            with open(os.path.join(ctx.root, schema_path), encoding="utf-8") as fh:
-                schema = json.load(fh)
-        except (OSError, json.JSONDecodeError) as e:
-            err("DADOS", data_path, f"invalid JSON: {e}")
+        data = _load(ctx, data_path, err, data_path)
+        schema = _load(ctx, schema_path, err, data_path)
+        if data is None or schema is None:
             continue
-        errors = []
-        validate(data, schema, "$", errors)
-        for e in errors:
+        for e in json_schema.errors(data, schema, complete=True):
             err("DADOS", data_path, e)
+        if data_path in rules.get("styled_tables", []):
+            for e in _styled_errors(data, schema):
+                err("DADOS", data_path, e)

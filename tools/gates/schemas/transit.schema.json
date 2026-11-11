@@ -1,392 +1,50 @@
 {
- "type": "object",
- "properties": {
-  "_doc": {
-   "type": "string"
-  },
-  "radius_m": {
-   "type": "number"
-  },
-  "items_per_frame": {
-   "type": "number"
-  },
-  "run_m": {
-   "type": "number"
-  },
-  "default_line": {
-   "type": "string"
-  },
-  "car_m": {
-   "type": "array",
-   "items": {
-    "type": "number"
-   }
-  },
-  "car_up_m": {
-   "type": "number"
-  },
-  "parts": {
-   "type": "object",
-   "additionalProperties": {
-    "type": "object",
-    "properties": {
-     "colour": {
-      "type": "string"
-     },
-     "roughness": {
-      "type": "number"
-     },
-     "metal": {
-      "type": "number"
-     },
-     "xray": {
-      "type": "number"
-     },
-     "glass": {
-      "type": "boolean"
-     }
-    },
-    "required": [
-     "colour",
-     "roughness",
-     "metal"
-    ]
-   }
-  },
-  "track": {
-   "type": "object",
-   "properties": {
-    "gauge_m": {
-     "type": "number"
-    },
-    "piece_m": {
-     "type": "number"
-    },
-    "sleeper_step_m": {
-     "type": "number"
-    },
-    "ballast": {
-     "type": "object",
-     "properties": {
-      "up": {
-       "type": "number"
-      },
-      "high": {
-       "type": "number"
-      },
-      "wide": {
-       "type": "number"
-      },
-      "over": {
-       "type": "number"
-      }
-     },
-     "required": [
-      "up",
-      "high",
-      "wide"
-     ]
-    },
-    "sleeper": {
-     "type": "object",
-     "properties": {
-      "up": {
-       "type": "number"
-      },
-      "high": {
-       "type": "number"
-      },
-      "wide": {
-       "type": "number"
-      },
-      "long": {
-       "type": "number"
-      }
-     },
-     "required": [
-      "up",
-      "high",
-      "wide"
-     ]
-    },
-    "rail": {
-     "type": "object",
-     "properties": {
-      "up": {
-       "type": "number"
-      },
-      "high": {
-       "type": "number"
-      },
-      "wide": {
-       "type": "number"
-      },
-      "over": {
-       "type": "number"
-      },
-      "paved_up": {
-       "type": "number"
-      },
-      "paved_high": {
-       "type": "number"
-      }
-     },
-     "required": [
-      "up",
-      "high",
-      "wide"
-     ]
-    }
-   },
-   "required": [
-    "gauge_m",
-    "piece_m",
-    "sleeper_step_m",
-    "ballast",
-    "sleeper",
-    "rail"
-   ]
-  },
-  "metro": {
-   "type": "object",
-   "properties": {
-    "rails_below_m": {
-     "type": "number"
-    },
-    "wide_m": {
-     "type": "number"
-    },
-    "high_m": {
-     "type": "number"
-    },
-    "floor_up_m": {
-     "type": "number"
-    },
-    "shell_m": {
-     "type": "number"
-    },
-    "side_gap_m": {
-     "type": "number"
-    },
-    "roof_wide_m": {
-     "type": "number"
-    },
-    "over_m": {
-     "type": "number"
-    },
-    "shaft_m": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     }
-    },
-    "passage_m": {
-     "type": "array",
-     "items": {
-      "type": "number"
-     }
-    },
-    "entrance_step_m": {
-     "type": "number"
-    },
-    "entrance_reach_m": {
-     "type": "number"
-    },
-    "entrance_clear_m": {
-     "type": "number"
-    },
-    "entrance_turns": {
-     "type": "number"
-    }
-   },
-   "required": [
-    "rails_below_m",
-    "wide_m",
-    "high_m",
-    "floor_up_m",
-    "shell_m",
-    "side_gap_m",
-    "roof_wide_m",
-    "over_m",
-    "shaft_m",
-    "passage_m",
-    "entrance_step_m",
-    "entrance_reach_m",
-    "entrance_clear_m",
-    "entrance_turns"
-   ]
-  },
-  "station": {
-   "type": "array",
-   "items": {
-    "type": "object",
-    "properties": {
-     "part": {
-      "type": "string"
-     },
-     "at": {
-      "type": "array",
-      "items": {
-       "type": "number"
-      }
-     },
-     "size": {
-      "type": "array",
-      "items": {
-       "type": "number"
-      }
-     },
-     "tint": {
-      "type": "boolean"
-     }
-    },
-    "required": [
-     "part",
-     "at",
-     "size"
-    ]
-   }
-  },
-  "stop": {
-   "type": "array",
-   "items": {
-    "type": "object",
-    "properties": {
-     "part": {
-      "type": "string"
-     },
-     "at": {
-      "type": "array",
-      "items": {
-       "type": "number"
-      }
-     },
-     "size": {
-      "type": "array",
-      "items": {
-       "type": "number"
-      }
-     },
-     "tint": {
-      "type": "boolean"
-     }
-    },
-    "required": [
-     "part",
-     "at",
-     "size"
-    ]
-   }
-  },
-  "terminal": {
-   "type": "array",
-   "items": {
-    "type": "object",
-    "properties": {
-     "part": {
-      "type": "string"
-     },
-     "at": {
-      "type": "array",
-      "items": {
-       "type": "number"
-      }
-     },
-     "size": {
-      "type": "array",
-      "items": {
-       "type": "number"
-      }
-     },
-     "tint": {
-      "type": "boolean"
-     }
-    },
-    "required": [
-     "part",
-     "at",
-     "size"
-    ]
-   }
-  },
-  "entrance": {
-   "type": "array",
-   "items": {
-    "type": "object",
-    "properties": {
-     "part": {
-      "type": "string"
-     },
-     "at": {
-      "type": "array",
-      "items": {
-       "type": "number"
-      }
-     },
-     "size": {
-      "type": "array",
-      "items": {
-       "type": "number"
-      }
-     },
-     "tint": {
-      "type": "boolean"
-     }
-    },
-    "required": [
-     "part",
-     "at",
-     "size"
-    ]
-   }
-  },
-  "below": {
-   "type": "array",
-   "items": {
-    "type": "object",
-    "properties": {
-     "part": {
-      "type": "string"
-     },
-     "at": {
-      "type": "array",
-      "items": {
-       "type": "number"
-      }
-     },
-     "size": {
-      "type": "array",
-      "items": {
-       "type": "number"
-      }
-     },
-     "tint": {
-      "type": "boolean"
-     }
-    },
-    "required": [
-     "part",
-     "at",
-     "size"
-    ]
-   }
-  }
+ "$defs": {
+  "metres": {"type": "number", "minimum": 0},
+  "length": {"type": "number", "exclusiveMinimum": 0},
+  "share": {"type": "number", "minimum": 0, "maximum": 1},
+  "hex": {"type": "string", "pattern": "^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"},
+  "vec3": {"type": "array", "minItems": 3, "items": false, "prefixItems": [{"type": "number"}, {"type": "number"}, {"type": "number"}]},
+  "size3": {"type": "array", "minItems": 3, "items": false, "prefixItems": [{"$ref": "#/$defs/length"}, {"$ref": "#/$defs/length"}, {"$ref": "#/$defs/length"}]},
+  "pair": {"type": "array", "minItems": 2, "items": false, "prefixItems": [{"$ref": "#/$defs/metres"}, {"$ref": "#/$defs/metres"}]},
+  "slab": {"type": "object", "strict": true, "required": ["up", "high", "wide"],
+           "properties": {"up": {"type": "number"}, "high": {"$ref": "#/$defs/length"}, "wide": {"$ref": "#/$defs/length"}, "over": {"$ref": "#/$defs/metres"},
+                          "long": {"$ref": "#/$defs/length"}, "paved_up": {"type": "number"}, "paved_high": {"$ref": "#/$defs/length"}}},
+  "piece": {"type": "object", "strict": true, "required": ["part", "at", "size"],
+            "properties": {"part": {"type": "string", "pattern": "^[a-z_]+$", "description": "a key of parts"}, "at": {"$ref": "#/$defs/vec3"},
+                           "size": {"$ref": "#/$defs/size3"}, "tint": {"type": "boolean"}}},
+  "pieces": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/piece"}}
  },
- "required": [
-  "_doc",
-  "radius_m",
-  "items_per_frame",
-  "run_m",
-  "default_line",
-  "car_m",
-  "car_up_m",
-  "parts",
-  "track",
-  "metro",
-  "station",
-  "stop",
-  "terminal",
-  "entrance",
-  "below"
- ]
+ "type": "object",
+ "strict": true,
+ "required": ["_doc", "radius_m", "items_per_frame", "run_m", "default_line", "car_m", "car_up_m", "parts", "track", "metro", "station", "stop", "terminal", "entrance", "below"],
+ "properties": {
+  "_doc": {"type": "string", "minLength": 1},
+  "radius_m": {"$ref": "#/$defs/length"},
+  "items_per_frame": {"type": "integer", "minimum": 1},
+  "run_m": {"$ref": "#/$defs/length"},
+  "default_line": {"$ref": "#/$defs/hex"},
+  "car_m": {"$ref": "#/$defs/size3"},
+  "car_up_m": {"$ref": "#/$defs/metres"},
+  "parts": {"type": "object",
+            "additional": {"type": "object", "strict": true, "required": ["colour", "roughness", "metal"],
+                           "properties": {"colour": {"$ref": "#/$defs/hex"}, "roughness": {"$ref": "#/$defs/share"}, "metal": {"$ref": "#/$defs/share"},
+                                          "xray": {"type": "integer", "minimum": 0}, "glass": {"type": "boolean"}}}},
+  "track": {"type": "object", "strict": true, "required": ["gauge_m", "piece_m", "sleeper_step_m", "ballast", "sleeper", "rail"],
+            "properties": {"gauge_m": {"$ref": "#/$defs/length"}, "piece_m": {"$ref": "#/$defs/length"}, "sleeper_step_m": {"$ref": "#/$defs/length"},
+                           "ballast": {"$ref": "#/$defs/slab"}, "sleeper": {"$ref": "#/$defs/slab"}, "rail": {"$ref": "#/$defs/slab"}}},
+  "metro": {"type": "object", "strict": true,
+            "required": ["rails_below_m", "wide_m", "high_m", "floor_up_m", "shell_m", "side_gap_m", "roof_wide_m", "over_m", "shaft_m", "passage_m",
+                         "entrance_step_m", "entrance_reach_m", "entrance_clear_m", "entrance_turns"],
+            "properties": {"rails_below_m": {"$ref": "#/$defs/length"}, "wide_m": {"$ref": "#/$defs/length"}, "high_m": {"$ref": "#/$defs/length"},
+                           "floor_up_m": {"type": "number"}, "shell_m": {"$ref": "#/$defs/length"}, "side_gap_m": {"$ref": "#/$defs/metres"},
+                           "roof_wide_m": {"$ref": "#/$defs/length"}, "over_m": {"$ref": "#/$defs/metres"}, "shaft_m": {"$ref": "#/$defs/pair"},
+                           "passage_m": {"$ref": "#/$defs/pair"}, "entrance_step_m": {"$ref": "#/$defs/length"}, "entrance_reach_m": {"$ref": "#/$defs/length"},
+                           "entrance_clear_m": {"$ref": "#/$defs/length"}, "entrance_turns": {"type": "integer", "minimum": 1}}},
+  "station": {"$ref": "#/$defs/pieces"},
+  "stop": {"$ref": "#/$defs/pieces"},
+  "terminal": {"$ref": "#/$defs/pieces"},
+  "entrance": {"$ref": "#/$defs/pieces"},
+  "below": {"$ref": "#/$defs/pieces"}
+ }
 }

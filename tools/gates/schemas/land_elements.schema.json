@@ -1,8 +1,32 @@
 {
- "type": "object",
- "properties": {
-  "ELEMENTS": { "type": "object" }
+ "$defs": {
+  "key": {"type": "string", "pattern": "^[a-zA-Z0-9_.]+$"},
+  "icon": {"type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$"},
+  "card": {"type": "object", "strict": true, "required": ["label_key", "value"],
+           "properties": {"label_key": {"$ref": "#/$defs/key"}, "value": {"type": "integer"}, "icon": {"$ref": "#/$defs/icon"}, "swatch": {"type": "string", "pattern": "^[a-z_]+$"}}},
+  "group": {"type": "object", "strict": true, "required": ["key", "cards"],
+            "properties": {"key": {"type": "string", "pattern": "^[a-z_]+$"}, "rows": {"type": "integer", "minimum": 1}, "default": {"type": "integer"},
+                           "options": {"type": "boolean"}, "cards": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/card"}}}},
+  "slider": {"type": "object", "strict": true, "required": ["key", "label_key", "min", "max", "step", "default"],
+             "properties": {"key": {"type": "string", "pattern": "^[a-z_]+$"}, "label_key": {"$ref": "#/$defs/key"}, "min": {"type": "number"}, "max": {"type": "number"},
+                            "step": {"type": "number", "exclusiveMinimum": 0}, "default": {"type": "number"}, "unit": {"type": "string"}}},
+  "action": {"type": "object", "strict": true, "required": ["label_key", "action"],
+             "properties": {"label_key": {"$ref": "#/$defs/key"}, "icon": {"$ref": "#/$defs/icon"}, "action": {"type": "string", "pattern": "^[a-z_]+$"}, "when": {"type": "integer"}}}
  },
+ "type": "object",
+ "strict": true,
  "required": ["ELEMENTS"],
- "strict": true
+ "description": "the Elements panel of the Landscape drawer, kept apart from land_panels.json for the size of the file (P272 joins them)",
+ "properties": {
+  "ELEMENTS": {"type": "object", "strict": true,
+               "properties": {"groups": {"type": "array", "items": {"$ref": "#/$defs/group"}}, "sliders": {"type": "array", "items": {"$ref": "#/$defs/slider"}},
+                              "actions": {"type": "array", "items": {"$ref": "#/$defs/action"}},
+                              "switch": {"type": "array", "items": {"type": "object", "strict": true, "required": ["label_key", "tool"],
+                                                                    "properties": {"label_key": {"$ref": "#/$defs/key"}, "tool": {"type": "string", "pattern": "^[A-Z]+$"}, "icon": {"$ref": "#/$defs/icon"}}}},
+                              "kind_brush": {"type": "array", "description": "per element kind, by its position in nature.json elements.kinds (P272)",
+                                             "items": {"type": "object", "strict": true,
+                                                       "properties": {"density": {"type": "number", "exclusiveMinimum": 0}, "size": {"type": "number", "exclusiveMinimum": 0},
+                                                                      "variation": {"type": "number", "minimum": 0}, "spacing": {"type": "number", "exclusiveMinimum": 0},
+                                                                      "strength": {"type": "number", "minimum": 0}, "intensity": {"type": "number", "minimum": 0}}}}}}
+ }
 }

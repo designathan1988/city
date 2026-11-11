@@ -314,10 +314,7 @@
   "beam_section": [[-0.5, -0.5], [-0.42, -0.32], [-0.22, 0.5], [-0.1, 0.42], [0, 0.1], [0.1, 0.42], [0.22, 0.5], [0.42, -0.32], [0.5, -0.5]]
  },
  "lamp_light": {
-  "_doc": "A lamp's lens and the lit air under it. The light on the ground is render/props/lamp_lights.h, its numbers in tuning.json render.lamp_*. pool_along, pool_sides, pool_lift_m: of the discs the pools were, read by nothing now and kept while the schema asks them. beam_radius_m: the lit air under the lens in rain. lamp_* and column_*: height and reach of the lens on a utility pole and on a lighting column.",
-  "pool_along": 1.6,
-  "pool_sides": 8,
-  "pool_lift_m": 0.03,
+  "_doc": "A lamp's lens and the lit air under it. The light on the ground is render/props/lamp_lights.h, its numbers in tuning.json render.lamp_*. beam_radius_m: the lit air under the lens in rain. lamp_* and column_*: height and reach of the lens on a utility pole and on a lighting column.",
   "beams": false,
   "beam_radius_m": 3.68,
   "lamp_height_m": 7.16,

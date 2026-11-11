@@ -1,0 +1,2 @@
+{"_doc": "every param a uniform of the shader or of its include, each with a value of its type",
+ "mat": {"shader": "res://render/s.gdshader", "params": {"tint": "#ffffff", "speed": 1, "tex": "res://render/t.png", "steps": [1, 2], "on": true}}}

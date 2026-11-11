@@ -1,0 +1,13 @@
+{
+ "rule": "generated",
+ "expect": [
+  "GENERATED_DRIFT out.txt",
+  "GENERATED_DRIFT tools/gone.py"
+ ],
+ "overrides": {
+  "generated": [
+   {"generator": "tools/gen.py", "inputs": [], "outputs": ["out.txt"]},
+   {"generator": "tools/gone.py", "inputs": [], "outputs": ["other.txt"]}
+  ]
+ }
+}

@@ -334,7 +334,6 @@
     "project/data/render/streets.json": "tools/gates/schemas/streets.schema.json",
     "project/data/render/palette.json": "tools/gates/schemas/palette.schema.json",
     "project/data/ui/tokens.json": "tools/gates/schemas/tokens.schema.json",
-    "project/data/ui/toolbar.json": "tools/gates/schemas/toolbar.schema.json",
     "project/data/ui/builder.json": "tools/gates/schemas/builder.schema.json",
     "project/data/ui/hud.json": "tools/gates/schemas/hud.schema.json",
     "project/data/ui/drawers.json": "tools/gates/schemas/drawers.schema.json",
@@ -350,7 +349,8 @@
     "project/data/ui/keys.json": "tools/gates/schemas/keys.schema.json",
     "project/data/ui/help.json": "tools/gates/schemas/help.schema.json",
     "project/data/render/overlays.json": "tools/gates/schemas/overlays.schema.json",
-    "project/data/render/bay_props.json": "tools/gates/schemas/bay_props.schema.json"
+    "project/data/render/bay_props.json": "tools/gates/schemas/bay_props.schema.json",
+    "tools/gates/rules.json": "tools/gates/schemas/rules.schema.json"
   },
   "magic_numbers": {
     "paths": [
@@ -378,46 +378,13 @@
       0.25,
       1.5
     ],
-    "named_constant_line": "^\\s*(static\\s+)?(inline\\s+)?(constexpr|const)\\s+[\\w:<>]+\\s+[A-Z][A-Z0-9_]*\\s*(=|\\[)|^\\s*const\\s+[A-Z][A-Z0-9_]*\\s*(:=|=|:)",
-    "data_copy_min_abs": 4.5,
     "data_copy_paths": [
       "native/src/",
       "project/game/",
       "project/ui/",
       "project/render/"
     ],
-    "data_copy_ignore_files": [
-      "project/data/render/furniture.json"
-    ],
-    "_data_copy_ignore_doc": "furniture.json holds the coordinates of each piece's parts (modelling), not values any code owns.",
-    "data_copy_allow": [
-      "native/src/render/trees/tree_look.cpp:CAL_SIDE",
-      "native/src/sim/lots/lot_cache.cpp:LOT_LOOK",
-      "native/src/sim/roads/road_network.cpp:LOT_LOOK_M",
-      "native/src/sim/terrain/heightfield.cpp:PLAIN_BASE",
-      "native/src/sim/terrain/heightfield.cpp:VALLEY_START",
-      "native/src/sim/terrain/heightfield.cpp:BANK_START",
-      "native/src/sim/terrain/terrain_gen.cpp:LAKE_GRID",
-      "native/src/render/trees/tree_look.cpp:CAL_SIDE",
-      "native/src/sim/lots/lot_cache.cpp:LOT_LOOK",
-      "native/src/sim/buildings/b40/model.h:NO_BAY",
-      "project/game/tools/building_tool.gd:NO_BAY",
-      "native/src/sim/roads/road_network.cpp:LOT_LOOK_M",
-      "native/src/sim/buildings/b40/massing_house.cpp:STOREY_MIN_H",
-      "native/src/render/atmosphere/fog_field.cpp:BUCKET_M",
-      "native/src/render/effects/effect_blast.cpp:SOIL_TINT",
-      "native/src/render/effects/effect_things.cpp:FLESH",
-      "native/src/sim/traffic/way_search.cpp:FINE_HEADINGS",
-      "native/src/render/buildings/bay_kit.cpp:WALL_FOOT",
-      "native/src/render/buildings/facade_props.cpp:INSET_IN",
-      "native/src/sim/buildings/interior/plan.cpp:INSET",
-      "native/src/sim/roads/road_grade.h:MAX_STATIONS",
-      "native/src/sim/citygen/block_lots.cpp:MAX_BLOCK",
-      "native/src/sim/citygen/road_gen.cpp:MAX_WET",
-      "native/src/sim/citygen/block_lots.cpp:LOT_FRONTAGE",
-      "native/src/sim/citygen/road_gen.cpp:EDGE_PAD"
-    ],
-    "_data_copy_allow_doc": "file:CONSTANT pairs whose value coincides with an unrelated data value (landscape generator shape constants)."
+    "_data_copy_doc": "Tables a generator writes (generated outputs) are no owner of their values: their generator's inputs are. A constant is a second owner of a data key when its name equals the key's word for word with two or more words, or its name matches the key and it is declared with that key's own value (gate_defs.check_data_copies); there is no list of exceptions: a constant that is no copy is named for what it is."
   },
   "clones": {
     "min_tokens": 80,
@@ -436,5 +403,36 @@
       ".py"
     ]
   },
-  "mirrors": []
+  "mirrors": [],
+  "generated": [
+    {
+      "generator": "tools/assets/make_furniture.py",
+      "inputs": [
+        "project/data/render/interiors.json"
+      ],
+      "outputs": [
+        "project/data/render/furniture.json"
+      ]
+    }
+  ],
+  "styled_tables": [
+    "project/data/catalog/street_furniture.json",
+    "project/data/render/streets.json"
+  ],
+  "_styled_tables_doc": "Tables read with a regional style laid over them (DataTables.STYLED): the data gate lays each style over the table and judges the result by the table's own schema.",
+  "material_tables": [
+    "project/data/render/materials.json"
+  ],
+  "_material_tables_doc": "Tables of materials whose params are set on their shader by name: each param is a uniform of that shader (gate_materials.py).",
+  "uniform_tables": [
+    {
+      "table": "project/data/render/palette.json",
+      "path": "terrain",
+      "shaders": [
+        "res://render/shaders/terrain.gdshader"
+      ]
+    }
+  ],
+  "_uniform_tables_doc": "Blocks of a table set key by key on shaders (render/city_world.gd _build_terrain sets palette.terrain on the terrain's and the verge's): each key a uniform of the listed shaders.",
+  "_generated_doc": "Files a generator writes: the generator's --check (exit 0 when the outputs on disk are what it writes, writing nothing) must pass, so a hand edit of an output cannot stand."
 }

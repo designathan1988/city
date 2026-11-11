@@ -1,144 +1,97 @@
 {
- "type": "object",
- "required": [
-  "_doc",
-  "styles"
- ],
- "properties": {
-  "_doc": {
-   "type": "string"
+ "$defs": {
+  "paint": {"type": "array", "minItems": 2, "items": false,
+            "prefixItems": [{"type": "string", "enum": ["plaster", "stucco", "ceramic", "brick", "stone", "concrete", "wood", "metal", "glass", "tile", "slate", "panel", "roofing", "grass", "plastic"]},
+                            {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"}]},
+  "element": {"type": "string", "enum": ["tree", "bench", "planter", "flowers", "rocks", "fence", "wall", "pavement", "slab", "pillar", "canopy", "parking", "railing", "clock", "awning"]},
+  "bay": {"type": "string", "enum": ["wall", "window", "sash", "french", "bayWindow", "ribbon", "wide", "balcony", "door", "doubleDoor", "garageDoor", "shopfront", "loadingDoor", "pillar", "loggia", "brise", "shuttered", "gourmet"]},
+  "metres": {"type": "number", "minimum": 0},
+  "point": {"type": "array", "minItems": 2, "items": false, "prefixItems": [{"type": "number"}, {"type": "number"}]},
+  "rect": {"type": "array", "minItems": 4, "items": false, "prefixItems": [{"type": "number"}, {"type": "number"}, {"$ref": "#/$defs/metres"}, {"$ref": "#/$defs/metres"}]},
+  "facing": {"type": "integer", "minimum": 0, "maximum": 3},
+  "last_storey": {"type": "integer", "minimum": -1, "description": "a storey index, or -1 for the top storey (b40/model.h TOP_STOREY)"},
+  "side_run": {"type": "object", "strict": true, "required": ["side", "from", "to", "fill"],
+               "properties": {"side": {"type": "integer", "minimum": 0}, "from": {"type": "integer", "minimum": 0}, "to": {"$ref": "#/$defs/last_storey"}, "fill": {"$ref": "#/$defs/bay"}}},
+  "bay_run": {"type": "object", "strict": true, "required": ["side", "from", "to", "fill", "alternate", "first"],
+              "properties": {"side": {"type": "integer", "minimum": 0}, "from": {"type": "integer", "minimum": 0}, "to": {"$ref": "#/$defs/last_storey"}, "fill": {"$ref": "#/$defs/bay"},
+                             "alternate": {"type": "integer", "minimum": 0}, "first": {"type": "integer", "minimum": 0}}},
+  "block": {
+   "type": "object", "strict": true, "required": ["at", "storeys", "fill"],
+   "properties": {
+    "at": {"$ref": "#/$defs/rect"},
+    "base": {"type": "integer", "minimum": 0},
+    "storeys": {"type": "integer", "minimum": 1},
+    "pitch_deg": {"type": "number", "minimum": 0, "maximum": 90},
+    "roof": {"type": "string", "enum": ["flat", "terrace", "gable", "hip", "shed", "sawtooth"]},
+    "fill": {"$ref": "#/$defs/bay"},
+    "ground_fill": {"$ref": "#/$defs/bay"},
+    "door_kind": {"$ref": "#/$defs/bay"},
+    "door_bay": {"oneOf": [{"type": "integer", "minimum": 0}, {"const": "middle"}]},
+    "pattern": {"type": "string", "enum": ["office", "gallery", "artDeco", "artDecoCrown"]},
+    "outline": {"type": "array", "minItems": 3, "items": {"type": "array", "minItems": 2, "items": false, "prefixItems": [{"type": "number", "minimum": 0, "maximum": 1}, {"type": "number", "minimum": 0, "maximum": 1}]}},
+    "sides": {"type": "array", "items": {"$ref": "#/$defs/side_run"}},
+    "bays": {"type": "array", "items": {"$ref": "#/$defs/bay_run"}}
+   }
   },
-  "styles": {
-   "type": "object",
-   "additionalProperties": {
-    "type": "object",
-    "required": [
-     "module_m",
-     "ground_m",
-     "storey_m",
-     "ring_piece_m",
-     "surface_m",
-     "part_sizes",
-     "schemes",
-     "surfaces",
-     "models"
-    ],
-    "properties": {
-     "module_m": {
-      "type": "number"
-     },
-     "ground_m": {
-      "type": "number"
-     },
-     "storey_m": {
-      "type": "number"
-     },
-     "ring_piece_m": {
-      "type": "number"
-     },
-     "surface_m": {
-      "type": "number"
-     },
-     "part_sizes": {
-      "type": "array"
-     },
-     "schemes": {
-      "type": "array"
-     },
-     "surfaces": {
-      "type": "object"
-     },
-     "models": {
-      "type": "array",
-      "items": {
-       "type": "object",
-       "required": [
-        "id",
-        "group",
-        "use",
-        "kind",
-        "scheme"
-       ],
-       "properties": {
-        "id": {
-         "type": "string"
-        },
-        "group": {
-         "type": "string",
-         "enum": [
-          "homes",
-          "public",
-          "commerce",
-          "work",
-          "leisure",
-          "generic"
-         ]
-        },
-        "use": {
-         "type": "string",
-         "enum": [
-          "residential",
-          "commercial",
-          "industrial",
-          "mixed"
-         ]
-        },
-        "kind": {
-         "type": "string",
-         "enum": [
-          "house",
-          "flats",
-          "tower",
-          "shop",
-          "office",
-          "works"
-         ]
-        },
-        "function": {
-         "type": "string"
-        },
-        "ground_m": {
-         "type": "number"
-        },
-        "storey_m": {
-         "type": "number"
-        },
-        "wall": {
-         "type": "array"
-        },
-        "roof": {
-         "type": "array"
-        },
-        "trim": {
-         "type": "array"
-        },
-        "blocks": {
-         "type": "array"
-        },
-        "open": {
-         "type": "array"
-        },
-        "parts": {
-         "type": "array"
-        },
-        "rows": {
-         "type": "array"
-        },
-        "rings": {
-         "type": "array"
-        },
-        "cores": {
-         "type": "array"
-        },
-        "scheme": {
-         "type": "number",
-         "minimum": 0
-        }
-       }
-      }
-     }
-    }
+  "model": {
+   "type": "object", "strict": true, "required": ["id", "group", "use", "kind", "scheme"],
+   "properties": {
+    "id": {"type": "string", "pattern": "^[a-z][A-Za-z0-9]*$"},
+    "group": {"type": "string", "enum": ["homes", "public", "commerce", "work", "leisure", "generic"]},
+    "use": {"type": "string", "enum": ["residential", "commercial", "industrial", "mixed"]},
+    "kind": {"type": "string", "enum": ["house", "flats", "tower", "shop", "office", "works"]},
+    "function": {"type": "string", "enum": ["house", "townhouse", "apartments", "residentialTower", "school", "church", "hospital", "clinic", "square", "park",
+                                            "gasStation", "supermarket", "cityHall", "police", "policeStation", "fireStation", "mall", "sportsCourt", "council",
+                                            "courthouse", "postOffice", "university", "library", "museum", "prison", "cemetery", "busStation", "shop", "bank",
+                                            "pharmacy", "bakery", "restaurant", "snackBar", "bar", "nightclub", "cinema", "hotel", "gym", "club", "office",
+                                            "factory", "warehouse", "playground"]},
+    "scheme": {"type": "integer", "minimum": 0},
+    "ground_m": {"type": "number", "exclusiveMinimum": 0},
+    "storey_m": {"type": "number", "exclusiveMinimum": 0},
+    "wall": {"$ref": "#/$defs/paint"},
+    "roof": {"$ref": "#/$defs/paint"},
+    "trim": {"$ref": "#/$defs/paint"},
+    "blocks": {"type": "array", "items": {"$ref": "#/$defs/block"}},
+    "cores": {"type": "array", "items": {"type": "object", "strict": true, "required": ["at", "top"],
+                                         "properties": {"at": {"$ref": "#/$defs/point"}, "top": {"type": "integer", "minimum": 1}}}},
+    "open": {"type": "array", "items": {"type": "object", "strict": true, "required": ["at", "surface"],
+                                        "properties": {"at": {"$ref": "#/$defs/rect"}, "surface": {"type": "string", "pattern": "^[a-z]+$"}}}},
+    "parts": {"type": "array", "items": {"type": "object", "strict": true, "required": ["kind", "at"],
+                                         "properties": {"kind": {"$ref": "#/$defs/element"}, "at": {"$ref": "#/$defs/point"}, "facing": {"$ref": "#/$defs/facing"},
+                                                        "rise_m": {"$ref": "#/$defs/metres"},
+                                                        "size": {"type": "object", "strict": true, "properties": {"w": {"$ref": "#/$defs/metres"}, "d": {"$ref": "#/$defs/metres"}, "h": {"$ref": "#/$defs/metres"}}}}}},
+    "rows": {"type": "array", "items": {"type": "object", "strict": true, "required": ["kind", "from", "to", "count"],
+                                        "properties": {"kind": {"$ref": "#/$defs/element"}, "from": {"$ref": "#/$defs/point"}, "to": {"$ref": "#/$defs/point"},
+                                                       "count": {"type": "integer", "minimum": 1}, "facing": {"$ref": "#/$defs/facing"}}}},
+    "rings": {"type": "array", "items": {"type": "object", "strict": true, "required": ["kind", "at", "opening_m"],
+                                         "properties": {"kind": {"$ref": "#/$defs/element"}, "at": {"$ref": "#/$defs/rect"}, "opening_m": {"$ref": "#/$defs/metres"}}}}
+   }
+  },
+  "style": {
+   "type": "object", "strict": true,
+   "required": ["module_m", "ground_m", "storey_m", "ring_piece_m", "surface_m", "part_sizes", "schemes", "surfaces", "models"],
+   "properties": {
+    "module_m": {"type": "number", "exclusiveMinimum": 0},
+    "ground_m": {"type": "number", "exclusiveMinimum": 0},
+    "storey_m": {"type": "number", "exclusiveMinimum": 0},
+    "ring_piece_m": {"type": "number", "exclusiveMinimum": 0},
+    "surface_m": {"$ref": "#/$defs/metres"},
+    "part_sizes": {"type": "array", "minItems": 1,
+                   "items": {"type": "array", "minItems": 4, "items": false,
+                             "prefixItems": [{"$ref": "#/$defs/element"}, {"$ref": "#/$defs/metres"}, {"$ref": "#/$defs/metres"}, {"$ref": "#/$defs/metres"}]}},
+    "schemes": {"type": "array", "minItems": 1,
+                "items": {"type": "object", "strict": true, "required": ["wall", "trim", "roof"],
+                          "properties": {"wall": {"$ref": "#/$defs/paint"}, "trim": {"$ref": "#/$defs/paint"}, "roof": {"$ref": "#/$defs/paint"}}}},
+    "surfaces": {"type": "object", "additional": {"$ref": "#/$defs/paint"}},
+    "models": {"type": "array", "minItems": 1, "unique_key": "id", "items": {"$ref": "#/$defs/model"}}
    }
   }
+ },
+ "type": "object",
+ "strict": true,
+ "required": ["_doc", "styles"],
+ "properties": {
+  "_doc": {"type": "string", "minLength": 1},
+  "styles": {"type": "object", "additional": {"$ref": "#/$defs/style"}}
  }
 }

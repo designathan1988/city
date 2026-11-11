@@ -48,7 +48,14 @@
    "type": "integer"
   },
   "plan": {
-   "type": "object"
+   "type": "object",
+   "description": "the shape of a generated city: shares, angles, counts and distances (citygen/city_plan.cpp)",
+   "properties": {"_doc": {"type": "string"},
+                  "squares": {"type": "object", "description": "the green squares a plan lays: sizes in metres and m2, the road profiles a square faces",
+                              "properties": {"green_main_roads": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^[a-z][A-Za-z0-9]*$"}}},
+                              "additional": {"type": "number", "minimum": 0}}},
+   "additional": {"type": "number", "minimum": 0},
+   "required": ["_doc", "centres", "centre_turn", "main_offset", "second_from", "second_to", "second_pull", "density", "density_pull", "squares"]
   }
  },
  "required": [

@@ -1,12 +1,17 @@
 """What the gates look at: the repository's files as git knows them (tools/tasks' worktree snapshot: tracked plus
 untracked-not-ignored, never a filesystem walk), the excluded folders of rules.json, and the lines each file changed
-against HEAD."""
+against HEAD. Every git question goes through tools/tasks/inputs.git, the tools' one wrapper (a deadline, its own stdin,
+no console window)."""
 import os
 import re
 import subprocess
 import sys
 
 TOOLS_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+if TOOLS_DIR not in sys.path:
+    sys.path.insert(0, TOOLS_DIR)
+from tasks import inputs  # noqa: E402  the one owner of what the worktree holds and changed, and of git's calls
+
 FIXTURES = "tools/gates/tests/fixtures/"  # the self-test's inputs: deliberately failing files, never the real scope
 _HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", re.M)
 
@@ -16,16 +21,17 @@ class GitError(Exception):
 
 
 def _git(root, *args):
-    proc = subprocess.run(["git", "-c", "core.quotePath=false", "-C", root, *args], capture_output=True)
-    if proc.returncode != 0:
-        raise GitError(f"git {' '.join(args)}: {proc.stderr.decode('utf-8', 'replace').strip()}")
-    return proc.stdout.decode("utf-8", "replace")
+    """git's answer through the tools' wrapper; paths written as they are (core.quotePath off), a failure a GitError."""
+    try:
+        return inputs.git(root, "-c", "core.quotePath=false", *args)
+    except subprocess.TimeoutExpired as e:
+        raise GitError(f"git {' '.join(args)}: no answer within {inputs.GIT_TIMEOUT_S} s") from e
+    except (RuntimeError, OSError) as e:  # a non-zero exit, or git missing
+        raise GitError(str(e)) from e
 
 
 def _snapshot(root):
-    sys.path.insert(0, TOOLS_DIR)
-    from tasks.inputs import snapshot  # the one owner of what the worktree holds and changed
-    return snapshot(root)
+    return inputs.snapshot(root)
 
 
 def listed_files(root):

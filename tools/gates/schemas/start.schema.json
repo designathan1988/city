@@ -1,53 +1,20 @@
 {
  "type": "object",
- "required": [
-  "reveal_limit_s",
-  "default_style",
-  "styles",
-  "units",
-  "sizes",
-  "seed_max"
- ],
+ "strict": true,
+ "required": ["_doc", "reveal_limit_s", "default_style", "styles", "units", "sizes", "seed_max"],
  "properties": {
-  "_doc": {
-   "type": "string"
-  },
-  "default_style": {
-   "type": "string"
-  },
-  "styles": {
-   "type": "object",
-   "additionalProperties": {
-    "type": "object",
-    "required": [
-     "name_key",
-     "speed_unit",
-     "length_unit",
-     "currency"
-    ]
-   }
-  },
-  "units": {
-   "type": "object",
-   "additionalProperties": {
-    "type": "object",
-    "required": [
-     "label",
-     "m",
-     "s"
-    ]
-   }
-  },
-  "sizes": {
-   "type": "array",
-   "items": {
-    "type": "string"
-   },
-   "minItems": 1
-  },
-  "seed_max": {
-   "type": "integer",
-   "minimum": 1
-  }
+  "_doc": {"type": "string", "minLength": 1},
+  "reveal_limit_s": {"type": "number", "exclusiveMinimum": 0},
+  "default_style": {"type": "string", "pattern": "^[a-z]+$", "description": "a key of styles"},
+  "styles": {"type": "object",
+             "additional": {"type": "object", "strict": true, "required": ["name_key", "speed_unit", "length_unit", "currency"],
+                            "properties": {"name_key": {"type": "string", "pattern": "^style\\.[a-z]+$"}, "speed_unit": {"type": "string", "pattern": "^[a-z]+$", "description": "a key of units"},
+                                           "length_unit": {"type": "string", "pattern": "^[a-z]+$", "description": "a key of units"}, "currency": {"type": "string", "minLength": 1}}}},
+  "units": {"type": "object",
+            "additional": {"type": "object", "strict": true, "required": ["label", "m", "s"],
+                           "properties": {"label": {"type": "string", "minLength": 1}, "m": {"type": "number", "exclusiveMinimum": 0, "description": "metres in one"},
+                                          "s": {"type": "number", "exclusiveMinimum": 0, "description": "seconds in one (for speeds)"}}}},
+  "sizes": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^[a-z]+$"}},
+  "seed_max": {"type": "integer", "minimum": 1}
  }
 }

@@ -1,11 +1,16 @@
 {
  "type": "object",
- "required": [
-  "options"
- ],
+ "strict": true,
+ "required": ["_doc", "options", "defaults"],
  "properties": {
-  "_doc": {
-   "type": "string"
-  }
+  "_doc": {"type": "string", "minLength": 1},
+  "options": {"type": "array", "minItems": 1, "unique_key": "id",
+              "items": {"type": "object", "strict": true, "required": ["id", "field", "offered"],
+                        "properties": {"id": {"type": "string", "pattern": "^[a-z][A-Za-z0-9]*$"}, "field": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+                                       "offered": {"type": "array", "minItems": 2,
+                                                   "items": {"oneOf": [{"const": "tier"}, {"type": "number"}, {"type": "boolean"}]},
+                                                   "description": "the choices offered: 'tier' (the graphics tier's own) first, then values"},
+                                       "scale": {"type": "boolean"}}}},
+  "defaults": {"type": "object", "additional": {"oneOf": [{"type": "number"}, {"type": "boolean"}]}}
  }
 }

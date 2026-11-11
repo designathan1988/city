@@ -1,100 +1,42 @@
 {
- "type": "object",
- "properties": {
-  "_doc": {
-   "type": "string"
-  },
-  "tabs": {
-   "type": "object",
-   "additionalProperties": {
-    "type": "object",
-    "properties": {
-     "sections": {
-      "type": "array",
-      "items": {
-       "type": "object",
-       "properties": {
-        "title_key": {
-         "type": "string"
-        },
-        "tools": {
-         "type": "array",
-         "items": {
-          "type": "object",
-          "properties": {
-           "id": {
-            "type": "string"
-           },
-           "do": {
-            "type": "string"
-           },
-           "icon": {
-            "type": "string"
-           },
-           "label_key": {
-            "type": "string"
-           },
-           "rgb": {
-            "type": "string"
-           },
-           "value": {
-            "type": "number"
-           },
-           "size": {
-            "type": "array",
-            "items": {
-             "type": "number"
-            }
-           },
-           "fit_kind": {
-            "type": "number"
-           },
-           "standoff_m": {
-            "type": "number"
-           },
-           "rise_m": {
-            "type": "number"
-           },
-           "drop_m": {
-            "type": "number"
-           }
-          },
-          "required": [
-           "id",
-           "do"
-          ],
-          "additionalProperties": false
-         }
-        },
-        "shelf": {
-         "type": "string",
-         "enum": [
-          "models"
-         ]
-        }
-       },
-       "required": [
-        "title_key"
-       ],
-       "additionalProperties": false
-      }
-     }
-    },
-    "required": [
-     "sections"
-    ],
-    "additionalProperties": false
+ "$defs": {
+  "metres": {"type": "number", "minimum": 0},
+  "tool": {
+   "type": "object", "strict": true, "required": ["id", "do"],
+   "properties": {
+    "id": {"type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$"},
+    "do": {"type": "string", "pattern": "^[a-z][a-z_]*$", "description": "what the tool does (builder_strip.gd CHOICES, building_tool.gd)"},
+    "icon": {"type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$"},
+    "label_key": {"type": "string", "pattern": "^[a-z][A-Za-z0-9_.]*$"},
+    "rgb": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+    "value": {"type": "number"},
+    "size": {"type": "array", "minItems": 3, "items": false, "prefixItems": [{"$ref": "#/$defs/metres"}, {"$ref": "#/$defs/metres"}, {"$ref": "#/$defs/metres"}]},
+    "fit_kind": {"type": "integer", "minimum": 0},
+    "standoff_m": {"$ref": "#/$defs/metres"},
+    "rise_m": {"$ref": "#/$defs/metres"},
+    "drop_m": {"$ref": "#/$defs/metres"},
+    "piece": {"type": "string", "pattern": "^[a-z][A-Za-z]*$", "description": "a furniture kind, or move/remove (build_hands.gd)"},
+    "top_kind": {"type": "integer", "minimum": 0, "description": "the primitive's top (body_api.h primitive_of)"},
+    "top_deg": {"type": "number", "minimum": 0, "maximum": 90}
    }
   },
-  "model_groups": {
-   "type": "array",
-   "items": {
-    "type": "string"
+  "section": {
+   "type": "object", "strict": true, "required": ["title_key"],
+   "properties": {
+    "title_key": {"type": "string", "pattern": "^[a-z][A-Za-z0-9_.]*$"},
+    "tools": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/tool"}},
+    "shelf": {"type": "string", "enum": ["models"]}
    }
   }
  },
- "required": [
-  "tabs"
- ],
- "additionalProperties": false
+ "type": "object",
+ "strict": true,
+ "required": ["tabs"],
+ "properties": {
+  "_doc": {"type": "string", "minLength": 1},
+  "tabs": {"type": "object",
+           "additional": {"type": "object", "strict": true, "required": ["sections"],
+                          "properties": {"sections": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/section"}}}}},
+  "model_groups": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^[a-z]+$"}}
+ }
 }

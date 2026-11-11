@@ -1,17 +1,17 @@
 {
  "type": "object",
- "required": [
-  "long_frame_ms",
-  "status_window_s",
-  "kept",
-  "kept_saved",
-  "save_every_s",
-  "rows",
-  "refresh_s"
- ],
+ "strict": true,
+ "required": ["_doc", "long_frame_ms", "status_window_s", "kept", "kept_saved", "save_every_s", "rows", "refresh_s", "step_min_ms", "changes_shown"],
  "properties": {
-  "_doc": {
-   "type": "string"
-  }
+  "_doc": {"type": "string", "minLength": 1},
+  "long_frame_ms": {"type": "number", "exclusiveMinimum": 0},
+  "status_window_s": {"type": "number", "exclusiveMinimum": 0},
+  "kept": {"type": "integer", "minimum": 1},
+  "kept_saved": {"type": "integer", "minimum": 1},
+  "save_every_s": {"type": "number", "exclusiveMinimum": 0},
+  "rows": {"type": "integer", "minimum": 1},
+  "refresh_s": {"type": "number", "exclusiveMinimum": 0},
+  "step_min_ms": {"type": "number", "minimum": 0},
+  "changes_shown": {"type": "integer", "minimum": 1}
  }
 }

@@ -1,13 +1,36 @@
 {
  "type": "object",
- "required": [
-  "groups",
-  "resolutions",
-  "stats_every_s"
- ],
+ "strict": true,
+ "required": ["_doc", "doctor", "groups", "resolutions", "stats_every_s"],
  "properties": {
-  "_doc": {
-   "type": "string"
-  }
+  "_doc": {"type": "string", "minLength": 1},
+  "stats_every_s": {"type": "number", "exclusiveMinimum": 0},
+  "resolutions": {"type": "array", "minItems": 1, "items": {"type": "number", "exclusiveMinimum": 0, "maximum": 1}},
+  "groups": {"type": "array", "minItems": 1, "unique_key": "id",
+             "items": {"type": "object", "strict": true, "required": ["id", "items"],
+                       "properties": {"id": {"type": "string", "pattern": "^[a-z]+$"},
+                                      "items": {"type": "array", "minItems": 1, "unique_key": "key",
+                                                "items": {"type": "object", "strict": true, "required": ["key"],
+                                                          "properties": {"key": {"type": "string", "pattern": "^[a-z][A-Za-z]*$"},
+                                                                         "effect": {"type": "string", "pattern": "^[a-z_]+$"},
+                                                                         "global": {"type": "string", "pattern": "^[a-z_]+$"},
+                                                                         "layers": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^[a-z_]+$"}},
+                                                                         "lots": {"type": "boolean"}, "occlusion": {"type": "boolean"},
+                                                                         "sim": {"type": "string", "enum": ["growth", "pedestrians", "traffic"]}}}}}}},
+  "doctor": {"type": "object", "strict": true,
+             "required": ["_doc", "budget_fps", "bound_share", "high_ms", "medium_ms", "low_ms", "stage_min_ms", "stage_tail", "stutter_ms", "many_hitches",
+                          "settle_ms", "measure_ms", "read_ms", "step_ms", "still_ms", "most_ms", "tail_ms", "stages"],
+             "properties": {"_doc": {"type": "string"}, "budget_fps": {"type": "number", "exclusiveMinimum": 0}, "bound_share": {"type": "number", "minimum": 0, "maximum": 1},
+                            "high_ms": {"type": "number", "minimum": 0}, "medium_ms": {"type": "number", "minimum": 0}, "low_ms": {"type": "number", "minimum": 0},
+                            "stage_min_ms": {"type": "number", "minimum": 0}, "stage_tail": {"type": "number", "minimum": 0, "maximum": 1},
+                            "stutter_ms": {"type": "number", "minimum": 0}, "many_hitches": {"type": "integer", "minimum": 1}, "settle_ms": {"type": "number", "minimum": 0},
+                            "measure_ms": {"type": "number", "exclusiveMinimum": 0}, "read_ms": {"type": "number", "exclusiveMinimum": 0},
+                            "step_ms": {"type": "number", "exclusiveMinimum": 0}, "still_ms": {"type": "number", "minimum": 0},
+                            "most_ms": {"type": "number", "exclusiveMinimum": 0}, "tail_ms": {"type": "number", "minimum": 0},
+                            "stages": {"type": "array", "minItems": 1,
+                                       "items": {"type": "object", "strict": true, "required": ["id", "from"],
+                                                 "properties": {"id": {"type": "string", "pattern": "^[a-z_]+$"},
+                                                                "from": {"type": "string", "pattern": "^(begin|[A-Z_]+)$"},
+                                                                "switch": {"type": "string", "pattern": "^[a-z][A-Za-z]*$"}}}}}}
  }
 }

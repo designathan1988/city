@@ -1,370 +1,43 @@
 {
- "type": "object",
- "properties": {
-  "vehicle_tints": {
-   "type": "array",
-   "items": {
-    "type": "string",
-    "pattern_prefix": "#"
-   },
-   "minItems": 1
-  },
-  "person_tints": {
-   "type": "array",
-   "items": {
-    "type": "string",
-    "pattern_prefix": "#"
-   },
-   "minItems": 1
-  },
-  "foliage_round": {
-   "type": "array",
-   "items": {
-    "type": "string",
-    "pattern_prefix": "#"
-   },
-   "minItems": 1
-  },
-  "water": {
-   "type": "object",
-   "properties": {
-    "_doc": {
-     "type": "string"
-    },
-    "shallow": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "mid": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "deep": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "foam_tint": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "gravel": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "silt": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "sea_level_m": {
-     "type": "number"
-    },
-    "wave_scale": {
-     "type": "number"
-    },
-    "peak_hz": {
-     "type": "number"
-    },
-    "detail_ratio": {
-     "type": "number"
-    },
-    "ripple_strength": {
-     "type": "number"
-    },
-    "slope_sigma": {
-     "type": "number"
-    },
-    "specular_f0": {
-     "type": "number"
-    },
-    "fetch_m": {
-     "type": "number"
-    },
-    "tint_depth_m": {
-     "type": "number"
-    },
-    "slick_share": {
-     "type": "number"
-    },
-    "foam_m": {
-     "type": "number"
-    },
-    "rim_m": {
-     "type": "number"
-    },
-    "bed_from_m": {
-     "type": "number"
-    },
-    "silt_m": {
-     "type": "number"
-    },
-    "bed_cover": {
-     "type": "number"
-    },
-    "absorb_m": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
-    "bed_wet": {
-     "type": "number"
-    },
-    "bed_seen_m": {
-     "type": "number"
-    },
-    "bed_hidden_m": {
-     "type": "number"
-    },
-    "sheet_least": {
-     "type": "number"
-    },
-    "sheet_most": {
-     "type": "number"
-    },
-    "paws_m": {
-     "type": "number"
-    },
-    "paws_rough": {
-     "type": "number"
-    }
-   },
-   "required": [
-    "shallow",
-    "deep",
-    "sea_level_m",
-    "wave_scale",
-    "peak_hz",
-    "detail_ratio",
-    "ripple_strength",
-    "slope_sigma",
-    "specular_f0",
-    "fetch_m"
-   ],
-   "strict": true
-  },
-  "sky": {
-   "type": "object",
-   "properties": {
-    "top": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "horizon": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "ground": {
-     "type": "string",
-     "pattern_prefix": "#"
-    }
-   },
-   "required": [
-    "top",
-    "horizon",
-    "ground"
-   ],
-   "strict": true
-  },
-  "terrain": {
-   "type": "object",
-   "properties": {
-    "grass_map": {
-     "type": "string"
-    },
-    "rock": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "detail_wide_from_px": {
-     "type": "number"
-    },
-    "detail_wide_to_px": {
-     "type": "number"
-    },
-    "detail_wide_share": {
-     "type": "number"
-    },
-    "past_map_y_m": {
-     "type": "number"
-    },
-    "sand": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "bank_tint": {
-     "type": "string",
-     "pattern_prefix": "#"
-    },
-    "beach_from_m": {
-     "type": "number"
-    },
-    "beach_to_m": {
-     "type": "number"
-    },
-    "beach_wander_m": {
-     "type": "number"
-    },
-    "bank_from_m": {
-     "type": "number"
-    },
-    "bank_to_m": {
-     "type": "number"
-    },
-    "bank_wander_m": {
-     "type": "number"
-    },
-    "wet_from_m": {
-     "type": "number"
-    },
-    "wet_to_m": {
-     "type": "number"
-    },
-    "wet_keep": {
-     "type": "number"
-    },
-    "shore_gentle_from": {
-     "type": "number"
-    },
-    "shore_gentle_to": {
-     "type": "number"
-    },
-    "shore_wander_len_m": {
-     "type": "number"
-    },
-    "sand_grain_m": {
-     "type": "number"
-    },
-    "sand_speck_m": {
-     "type": "number"
-    },
-    "land_map": {
-     "type": "string"
-    },
-    "patch_scale": {
-     "type": "number"
-    },
-    "grass_m": {
-     "type": "number"
-    },
-    "dirt_m": {
-     "type": "number"
-    },
-    "rock_m": {
-     "type": "number"
-    },
-    "dirt_layer": {
-     "type": "number"
-    },
-    "rock_layer": {
-     "type": "number"
-    },
-    "_doc": {
-     "type": "string"
-    },
-    "dirt_from": {
-     "type": "number"
-    },
-    "dirt_to": {
-     "type": "number"
-    },
-    "rock_slope": {
-     "type": "number"
-    },
-    "biome_tint": {
-     "type": "array",
-     "items": {
-      "type": "string"
-     }
-    },
-    "gully_m": {
-     "type": "number"
-    },
-    "gully_depth": {
-     "type": "number"
-    },
-    "gully_slope_from": {
-     "type": "number"
-    },
-    "gully_slope_to": {
-     "type": "number"
-    },
-    "grass_detail": {
-     "type": "string"
-    },
-    "detail_m": {
-     "type": "number"
-    },
-    "detail_near_px": {
-     "type": "number"
-    },
-    "detail_far_px": {
-     "type": "number"
-    },
-    "detail_albedo": {
-     "type": "number"
-    },
-    "detail_wide_near_px": {
-     "type": "number"
-    },
-    "detail_wide_far_px": {
-     "type": "number"
-    },
-    "detail_wide": {
-     "type": "number"
-    },
-    "grain_per_m": {
-     "type": "number"
-    },
-    "grain_repeat": {
-     "type": "number"
-    },
-    "grain_low": {
-     "type": "number"
-    },
-    "grain_high": {
-     "type": "number"
-    },
-    "grain_share": {
-     "type": "number"
-    },
-    "grass_bump": {
-     "type": "number"
-    },
-    "blade_bump": {
-     "type": "number"
-    },
-    "grass_normal": {
-     "type": "string"
-    },
-    "grass_blades_normal": {
-     "type": "string"
-    },
-    "biome_dry": {
-     "type": "array"
-    },
-    "straw_share": {
-     "type": "number"
-    }
-   },
-   "required": [
-    "grass_map",
-    "rock",
-    "sand",
-    "land_map",
-    "grass_m",
-    "dirt_m",
-    "rock_m",
-    "dirt_layer",
-    "rock_layer",
-    "dirt_from",
-    "dirt_to",
-    "rock_slope"
-   ],
-   "strict": true
-  }
+ "$defs": {
+  "hex": {"type": "string", "pattern": "^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"},
+  "hexes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/hex"}},
+  "value": {"description": "a uniform's value as render/city_world.gd shader_value reads it; gate_materials.py checks each key against terrain.gdshader",
+            "oneOf": [{"type": "number"}, {"type": "boolean"},
+                      {"type": "string", "pattern": "^(res://.+|#([0-9a-fA-F]{6}|[0-9a-fA-F]{8}))$"},
+                      {"type": "array", "minItems": 1, "items": {"type": "number"}},
+                      {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/hex"}}]}
  },
- "required": [
-  "vehicle_tints",
-  "person_tints",
-  "foliage_round",
-  "water",
-  "sky",
-  "terrain"
- ],
- "strict": true
+ "type": "object",
+ "strict": true,
+ "required": ["vehicle_tints", "person_tints", "foliage_round", "water", "sky", "terrain"],
+ "properties": {
+  "vehicle_tints": {"$ref": "#/$defs/hexes"},
+  "person_tints": {"$ref": "#/$defs/hexes"},
+  "foliage_round": {"$ref": "#/$defs/hexes"},
+  "water": {
+   "type": "object", "strict": true,
+   "required": ["shallow", "deep", "sea_level_m", "wave_scale", "peak_hz", "detail_ratio", "ripple_strength", "slope_sigma", "specular_f0", "fetch_m"],
+   "properties": {
+    "_doc": {"type": "string"},
+    "shallow": {"$ref": "#/$defs/hex"}, "mid": {"$ref": "#/$defs/hex"}, "deep": {"$ref": "#/$defs/hex"}, "foam_tint": {"$ref": "#/$defs/hex"},
+    "gravel": {"$ref": "#/$defs/hex"}, "silt": {"$ref": "#/$defs/hex"},
+    "sea_level_m": {"type": "number"}, "wave_scale": {"type": "number", "minimum": 0}, "peak_hz": {"type": "number", "exclusiveMinimum": 0},
+    "detail_ratio": {"type": "number", "minimum": 0}, "ripple_strength": {"type": "number", "minimum": 0}, "slope_sigma": {"type": "number", "minimum": 0},
+    "specular_f0": {"type": "number", "minimum": 0, "maximum": 1}, "fetch_m": {"type": "number", "exclusiveMinimum": 0},
+    "tint_depth_m": {"type": "number", "exclusiveMinimum": 0}, "slick_share": {"type": "number", "minimum": 0, "maximum": 1},
+    "foam_m": {"type": "number", "minimum": 0}, "rim_m": {"type": "number", "minimum": 0}, "bed_from_m": {"type": "number", "minimum": 0},
+    "silt_m": {"type": "number", "minimum": 0}, "bed_cover": {"type": "number", "minimum": 0, "maximum": 1},
+    "absorb_m": {"type": "array", "minItems": 3, "items": false, "prefixItems": [{"type": "number", "exclusiveMinimum": 0}, {"type": "number", "exclusiveMinimum": 0}, {"type": "number", "exclusiveMinimum": 0}]},
+    "bed_wet": {"type": "number", "minimum": 0, "maximum": 1}, "bed_seen_m": {"type": "number", "minimum": 0}, "bed_hidden_m": {"type": "number", "minimum": 0},
+    "sheet_least": {"type": "number", "minimum": 0}, "sheet_most": {"type": "number", "minimum": 0},
+    "paws_m": {"type": "number", "exclusiveMinimum": 0}, "paws_rough": {"type": "number", "minimum": 0}
+   }
+  },
+  "sky": {"type": "object", "strict": true, "required": ["top", "horizon", "ground"],
+          "properties": {"top": {"$ref": "#/$defs/hex"}, "horizon": {"$ref": "#/$defs/hex"}, "ground": {"$ref": "#/$defs/hex"}}},
+  "terrain": {"type": "object", "properties": {"_doc": {"type": "string", "minLength": 1}}, "additional": {"$ref": "#/$defs/value"},
+              "description": "the ground's look, set key by key on the terrain's and the verge's shaders (render/city_world.gd)",
+              "required": ["grass_map", "rock", "sand", "land_map", "grass_m", "dirt_m", "rock_m", "dirt_layer", "rock_layer", "dirt_from", "dirt_to", "rock_slope"]}
+ }
 }

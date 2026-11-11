@@ -1,0 +1,6 @@
+{"type": "object", "strict": true,
+ "properties": {"bare": {"type": "object"},
+                "open": {"type": "object", "properties": {"x": {"type": "number"}}},
+                "list": {"type": "array"},
+                "silent": {"type": "object", "free": ""},
+                "reasoned": {"type": "object", "free": "a fixture's free node: anything goes below it"}}}

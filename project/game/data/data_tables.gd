@@ -40,7 +40,6 @@ const UI := {
 	"tokens": "res://data/ui/tokens.json",
 	"land_panels": "res://data/ui/land_panels.json",
 	"land_elements": "res://data/ui/land_elements.json",
-	"toolbar": "res://data/ui/toolbar.json",
 	"hud": "res://data/ui/hud.json",
 	"drawers": "res://data/ui/drawers.json",
 	"keys": "res://data/ui/keys.json",
@@ -89,7 +88,7 @@ static func _read(path: String) -> Variant:
 static func _parse(path: String) -> Variant:
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if parsed == null:
-		push_error("JSON inválido: %s" % path)
+		push_error("invalid JSON: %s" % path)
 		return {}
 	return parsed
 
@@ -135,13 +134,17 @@ static func catalog_table(key: String) -> Dictionary:
 	return _catalog_cache[key]
 
 
+## Every catalog table, the fragments joined into a copy of their table: the cached table is never written, so a second
+## call joins them once again and not twice.
 static func catalog() -> Dictionary:
 	var out := _group(CATALOG)
 	for key in CATALOG_FRAGMENTS:
-		var list: Array = out[key].get("profiles", [])
+		var joined: Dictionary = out[key].duplicate() # shallow: only "profiles" is replaced, by a list of its own
+		var list: Array = (joined.get("profiles", []) as Array).duplicate()
 		for path in CATALOG_FRAGMENTS[key]:
 			list.append_array(_read(path).get("profiles", []))
-		out[key]["profiles"] = list
+		joined["profiles"] = list
+		out[key] = joined
 	return out
 
 
@@ -199,7 +202,7 @@ static func tuning(key: String) -> float:
 static func load_translations() -> void:
 	var first := FileAccess.open(STRINGS[0], FileAccess.READ)
 	if first == null:
-		push_error("strings.csv ausente")
+		push_error("missing translation table: %s" % STRINGS[0])
 		return
 	var header := first.get_csv_line()
 	first.close()
@@ -211,7 +214,7 @@ static func load_translations() -> void:
 	for path in STRINGS:
 		var file := FileAccess.open(path, FileAccess.READ)
 		if file == null:
-			push_error("strings ausente: %s" % path)
+			push_error("missing translation table: %s" % path)
 			continue
 		file.get_csv_line()
 		while not file.eof_reached():

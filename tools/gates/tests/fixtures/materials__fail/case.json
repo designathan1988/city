@@ -1,0 +1,19 @@
+{
+ "rule": "materials",
+ "expect": [
+  "SHADER_PARAM project/data/m.json",
+  "SHADER_PARAM project/data/m.json",
+  "SHADER_PARAM project/data/m.json",
+  "SHADER_PARAM project/data/m.json",
+  "SHADER_PARAM project/data/m.json",
+  "SHADER_PARAM project/data/p.json",
+  "SHADER_PARAM project/data/p.json"
+ ],
+ "overrides": {
+  "material_tables": ["project/data/m.json"],
+  "uniform_tables": [
+   {"table": "project/data/p.json", "path": "look", "shaders": ["res://render/s.gdshader"]},
+   {"table": "project/data/p.json", "path": "gone", "shaders": ["res://render/s.gdshader"]}
+  ]
+ }
+}

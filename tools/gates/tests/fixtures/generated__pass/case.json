@@ -1,0 +1,9 @@
+{
+ "rule": "generated",
+ "expect": [],
+ "overrides": {
+  "generated": [
+   {"generator": "tools/gen.py", "inputs": [], "outputs": ["out.txt"]}
+  ]
+ }
+}

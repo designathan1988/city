@@ -7,13 +7,18 @@ data/render/interiors.json "sizes" (across W, deep D, high H) and scaled to the 
 x across (right of the piece), y up, z towards the front (the way it faces). Options: n copies each moved by step and
 grown by grow, spin copies turned about the up axis, colours cycled one per copy.
 The shapes are the modelling of a piece as people use it (a bed: frame, legs, mattress, duvet, headboard, pillows), drawn
-against the photos of the reference; no norm fixes them. Run: python3 tools/assets/make_furniture.py
+against the photos of the reference; no norm fixes them. The sizes are every interior style's (interiors.json styles.<s>.sizes):
+a piece listed by two styles has one size, or the run stops.
+Run: python tools/assets/make_furniture.py (writes); --check: exit 1, writing nothing, when the table on disk is not what this
+script writes (the gates' generated rule asks it, so a hand edit of the table cannot stand).
 """
 import json
 import os
+import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "..", "project", "data", "render")
+OUTPUT = os.path.join(DATA, "furniture.json")
 PALETTE = {
 	"oak": ["wood", "#9a6a43"], "walnut": ["wood", "#5e3d26"], "linen": ["plaster", "#f2efe8"], "duvet": ["plaster", "#7d93ad"],
 	"fabric": ["plaster", "#6f7f8f"], "cushion": ["plaster", "#84929f"], "black": ["plaster", "#1e2125"], "steel": ["metal", "#b3b9bd"],
@@ -189,17 +194,45 @@ def build(kind, W, D, H):
 	return simple[kind]()
 
 
-def main():
-	sizes = json.load(open(os.path.join(DATA, "interiors.json"), encoding="utf-8"))["sizes"]
-	models = {k: build(k, w, d, h) for k, w, d, h in sizes}
+def piece_sizes():
+	"""[kind, across, deep, high] of every piece any interior style lists, in the order the styles list them."""
+	with open(os.path.join(DATA, "interiors.json"), encoding="utf-8") as fh:
+		styles = json.load(fh)["styles"]
+	sizes, order = {}, []
+	for style, table in styles.items():
+		for kind, w, d, h in table["sizes"]:
+			if kind not in sizes:
+				sizes[kind] = (w, d, h)
+				order.append(kind)
+			elif sizes[kind] != (w, d, h):
+				raise SystemExit(f"{kind}: style {style} gives {(w, d, h)}, another style {sizes[kind]}: one model cannot be both")
+	return [[k, *sizes[k]] for k in order]
+
+
+def render():
+	"""The table's text and its piece and part counts."""
+	models = {k: build(k, w, d, h) for k, w, d, h in piece_sizes()}
 	doc = ("What each piece of furniture is made of, part by part, for the cut-open view of a building (tools/assets/make_furniture.py writes it "
 		"from the sizes of interiors.json). A part is [shape, size, place, colour, options]; see the script for the shapes and options.")
 	text = "{\n \"_doc\": %s,\n \"palette\": {\n" % json.dumps(doc)
 	text += ",\n".join("  %s: %s" % (json.dumps(k), json.dumps(v)) for k, v in PALETTE.items()) + "\n },\n \"models\": {\n"
 	text += ",\n".join("  %s: [\n%s\n  ]" % (json.dumps(k), ",\n".join("   " + json.dumps(p) for p in v)) for k, v in models.items()) + "\n }\n}\n"
-	open(os.path.join(DATA, "furniture.json"), "w", encoding="utf-8", newline="\n").write(text)
-	print(sum(len(v) for v in models.values()), "parts in", len(models), "pieces")
+	return text, len(models), sum(len(v) for v in models.values())
+
+
+def main(argv):
+	text, pieces, parts = render()
+	if "--check" in argv:
+		with open(OUTPUT, encoding="utf-8", newline="") as fh:
+			same = fh.read() == text
+		print(("furniture.json is what make_furniture.py writes" if same else
+			"furniture.json differs from what make_furniture.py writes: change the script and run it, never the table"))
+		return 0 if same else 1
+	with open(OUTPUT, "w", encoding="utf-8", newline="\n") as fh:
+		fh.write(text)
+	print(parts, "parts in", pieces, "pieces")
+	return 0
 
 
 if __name__ == "__main__":
-	main()
+	sys.exit(main(sys.argv[1:]))

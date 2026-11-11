@@ -1,40 +1,40 @@
 {
- "type": "object",
- "properties": {
-  "_doc": {
-   "type": "string"
+ "$defs": {
+  "kind": {"type": "string", "pattern": "^[a-z][A-Za-z]*$", "description": "a furniture kind (interior.h FurnitureKind), named as in sizes"},
+  "length": {"type": "number", "exclusiveMinimum": 0},
+  "ref": {"type": "array", "minItems": 2, "items": false, "description": "an edge of the room and a distance from it",
+          "prefixItems": [{"type": "string", "enum": ["x0", "x1", "y0", "y1", "cx", "cy", "ys"]}, {"type": "number"}]},
+  "step": {
+   "type": "object", "strict": true, "required": ["op"],
+   "properties": {
+    "op": {"type": "string", "enum": ["put", "grid", "back", "left", "right", "wallAcross", "lobby"]},
+    "kind": {"$ref": "#/$defs/kind"},
+    "level": {"type": "string", "enum": ["any", "ground", "upper"]},
+    "x": {"$ref": "#/$defs/ref"}, "y": {"$ref": "#/$defs/ref"},
+    "x0": {"$ref": "#/$defs/ref"}, "y0": {"$ref": "#/$defs/ref"}, "x1": {"$ref": "#/$defs/ref"}, "y1": {"$ref": "#/$defs/ref"},
+    "gx": {"$ref": "#/$defs/length"}, "gy": {"$ref": "#/$defs/length"},
+    "wide": {"type": "boolean"},
+    "angle": {"type": "string", "enum": ["front", "right", "back", "left"]}
+   }
   },
-  "styles": {
-   "type": "object",
-   "additionalProperties": {
-    "type": "object",
-    "properties": {
-     "sizes": {
-      "type": "array",
-      "items": {
-       "type": "array"
-      }
-     },
-     "seen": {
-      "type": "array",
-      "items": {
-       "type": "string"
-      }
-     },
-     "recipes": {
-      "type": "object"
-     }
-    },
-    "required": [
-     "sizes",
-     "seen",
-     "recipes"
-    ]
+  "style": {
+   "type": "object", "strict": true, "required": ["sizes", "seen", "recipes"],
+   "properties": {
+    "sizes": {"type": "array", "minItems": 1,
+              "items": {"type": "array", "minItems": 4, "items": false,
+                        "prefixItems": [{"$ref": "#/$defs/kind"}, {"$ref": "#/$defs/length"}, {"$ref": "#/$defs/length"}, {"$ref": "#/$defs/length"}]}},
+    "seen": {"type": "array", "items": {"$ref": "#/$defs/kind"}},
+    "recipes": {"type": "object",
+                "additional": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/step"}},
+                "description": "steps per building purpose (interiors_loader.cpp PURPOSES)"}
    }
   }
  },
- "required": [
-  "_doc",
-  "styles"
- ]
+ "type": "object",
+ "strict": true,
+ "required": ["_doc", "styles"],
+ "properties": {
+  "_doc": {"type": "string", "minLength": 1},
+  "styles": {"type": "object", "additional": {"$ref": "#/$defs/style"}}
+ }
 }

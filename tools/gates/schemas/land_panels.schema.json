@@ -1,19 +1,40 @@
 {
+ "$defs": {
+  "key": {"type": "string", "pattern": "^[a-zA-Z0-9_.]+$"},
+  "icon": {"type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$"},
+  "card": {"type": "object", "strict": true, "required": ["label_key", "value"],
+           "properties": {"label_key": {"$ref": "#/$defs/key"}, "value": {"type": "integer"}, "icon": {"$ref": "#/$defs/icon"}, "swatch": {"type": "string", "pattern": "^[a-z_]+$"}}},
+  "group": {"type": "object", "strict": true, "required": ["key", "cards"],
+            "properties": {"key": {"type": "string", "pattern": "^[a-z_]+$"}, "rows": {"type": "integer", "minimum": 1}, "default": {"type": "integer"},
+                           "options": {"type": "boolean"}, "cards": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/card"}}}},
+  "slider": {"type": "object", "strict": true, "required": ["label_key", "min", "max", "step"],
+             "properties": {"label_key": {"$ref": "#/$defs/key"}, "min": {"type": "number"}, "max": {"type": "number"}, "step": {"type": "number", "exclusiveMinimum": 0},
+                            "head": {"$ref": "#/$defs/key"}, "scale": {"type": "number", "exclusiveMinimum": 0}, "when": {"type": "integer"}, "unit": {"type": "string"},
+                            "key": {"type": "string", "pattern": "^[a-z_]+$"}, "default": {"type": "number"}, "weather": {"type": "string", "pattern": "^[a-z_]+$"}},
+             "oneOf": [{"required": ["key", "default"], "description": "a slider of the tool's own state"},
+                       {"required": ["weather"], "description": "a slider of the weather: its value is the weather's"}]},
+  "action": {"type": "object", "strict": true, "required": ["label_key", "action"],
+             "properties": {"label_key": {"$ref": "#/$defs/key"}, "icon": {"$ref": "#/$defs/icon"}, "action": {"type": "string", "pattern": "^[a-z_]+$"}, "when": {"type": "integer"}}},
+  "panel": {"type": "object", "strict": true,
+            "properties": {"groups": {"type": "array", "items": {"$ref": "#/$defs/group"}}, "sliders": {"type": "array", "items": {"$ref": "#/$defs/slider"}},
+                           "actions": {"type": "array", "items": {"$ref": "#/$defs/action"}}, "actions_row": {"$ref": "#/$defs/key"},
+                           "biomes": {"type": "boolean"}, "map_head": {"type": "boolean"},
+                           "switch": {"type": "array", "items": {"type": "object", "strict": true, "required": ["label_key", "tool"],
+                                                                 "properties": {"label_key": {"$ref": "#/$defs/key"}, "tool": {"type": "string", "pattern": "^[A-Z]+$"}, "icon": {"$ref": "#/$defs/icon"}}}},
+                           "kind_brush": {"type": "array", "description": "per element kind, by its position in nature.json elements.kinds (P272)",
+                                          "items": {"type": "object", "strict": true,
+                                                    "properties": {"density": {"type": "number", "exclusiveMinimum": 0}, "size": {"type": "number", "exclusiveMinimum": 0},
+                                                                   "variation": {"type": "number", "minimum": 0}, "spacing": {"type": "number", "exclusiveMinimum": 0},
+                                                                   "strength": {"type": "number", "minimum": 0}, "intensity": {"type": "number", "minimum": 0}}}}}}
+ },
  "type": "object",
+ "strict": true,
+ "required": ["_doc", "TERRAIN", "PAINT", "TREES", "CLOUD", "FOG", "WEATHER", "confirm"],
  "properties": {
-  "_doc": {
-   "type": "string"
-  }
- },
- "additional": {
-  "type": "object"
- },
- "required": [
-  "TERRAIN",
-  "PAINT",
-  "TREES",
-  "CLOUD",
-  "FOG",
-  "WEATHER"
- ]
+  "_doc": {"type": "string", "minLength": 1},
+  "TERRAIN": {"$ref": "#/$defs/panel"}, "PAINT": {"$ref": "#/$defs/panel"}, "TREES": {"$ref": "#/$defs/panel"},
+  "CLOUD": {"$ref": "#/$defs/panel"}, "FOG": {"$ref": "#/$defs/panel"}, "WEATHER": {"$ref": "#/$defs/panel"},
+  "confirm": {"type": "object", "additional": {"type": "object", "strict": true, "required": ["key"],
+                                               "properties": {"key": {"$ref": "#/$defs/key"}, "counts": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^[a-z_]+$"}}}}}
+ }
 }

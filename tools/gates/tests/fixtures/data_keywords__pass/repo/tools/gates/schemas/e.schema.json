@@ -1,0 +1,1 @@
+{"type": "object", "strict": true, "properties": {"n": {"type": "integer", "minimum": 0}}}

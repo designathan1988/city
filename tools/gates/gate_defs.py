@@ -102,9 +102,9 @@ def check_magic_numbers(ctx, src, err):
 # ---- data values copied into code -------------------------------------------------------------------------------
 
 def data_values(ctx):
-    """value -> data paths, leaf key -> data paths, over every data table with a schema."""
+    """value -> data paths, leaf key -> data paths, leaf key -> {value: data path}, over every data table with a schema."""
     def build():
-        vals, keys = {}, {}
+        vals, keys, key_vals = {}, {}, {}
 
         def walk(node, where, leaf):
             if isinstance(node, dict):
@@ -117,14 +117,15 @@ def data_values(ctx):
                 vals.setdefault(float(node), []).append(where)
                 if leaf and not leaf.startswith("_"):
                     keys.setdefault(leaf, []).append(where)
+                    key_vals.setdefault(leaf, {}).setdefault(float(node), where)
 
-        ignore = set(ctx.rules["magic_numbers"].get("data_copy_ignore_files", []))
+        ignore = {out for g in ctx.rules.get("generated", []) for out in g["outputs"]}  # a generator's output owns nothing: its inputs do
         for data_path in ctx.rules["schemas"]:
             full = os.path.join(ctx.root, data_path)
             if data_path not in ignore and os.path.exists(full):
                 with open(full, encoding="utf-8") as fh:
                     walk(json.load(fh), data_path, "")
-        return vals, keys
+        return vals, keys, key_vals
     return ctx.lazy("data_values", build)
 
 
@@ -149,24 +150,54 @@ def applies_data_copies(ctx, path):
     return _in(path, cfg["data_copy_paths"]) and not _in(path, cfg.get("exempt", [])) and path.endswith(OWNER_EXTENSIONS)
 
 
+def _constant_value(src, ids):
+    """The number a named constant is declared as, sign included; None when its declaration holds no number or several (an
+    expression, a list, a call)."""
+    decl = [t for t in src.code() if id(t) in ids]
+    numbers = [k for k, t in enumerate(decl) if t.kind == "number"]
+    if len(numbers) != 1:
+        return None
+    k = numbers[0]
+    v = _value(src, decl[k])
+    if v is not None and k > 0 and decl[k - 1].text == "-":
+        v = -v
+    return v
+
+
+def _copied_key(words, value, key_words, key_vals):
+    """The data key a constant of these name words and this value repeats: one whose words equal the name's when two or
+    more (the name says which definition it is, whatever number it was typed with), else one whose words hold the
+    name's or are held by it and that holds this same value (one shared word alone names nothing: finish, style,
+    wheel stand in many keys)."""
+    if not words:
+        return None
+    for key, kw in key_words.items():
+        if len(words) >= 2 and words == kw:
+            return key
+    if value is None:
+        return None
+    for key, kw in key_words.items():
+        if kw and (kw <= words or words <= kw) and float(value) in key_vals.get(key, {}):
+            return key
+    return None
+
+
 def check_data_copies(ctx, src, err):
-    """A definition owned by a data table gets no second owner in code: neither a named constant whose name matches a
-    data key nor the same distinctive value typed again (it would drift silently)."""
-    allow = set(ctx.rules["magic_numbers"].get("data_copy_allow", []))
-    vals, keys = data_values(ctx)
+    """A definition owned by a data table gets no second owner in code: neither a named constant that names a data key
+    (word for word with two or more words, or a matching name declared with that key's own value) nor the same
+    distinctive value typed again (it would drift silently)."""
+    vals, keys, key_vals = data_values(ctx)
     distinct = {v: w for v, w in vals.items() if len(w) == 1 and _distinctive(v)}
     key_words = {k: _name_words(k) for k in keys}
     _inside, by_name = constant_tokens(src)
     skip = set()
     for name, ids in by_name.items():
-        if f"{src.path}:{name}" in allow:
-            skip |= ids
-            continue
-        words = _name_words(name)
-        hits = [k for k, kw in key_words.items() if len(kw & words) >= 2 or (words and words == kw)]
-        if hits:
+        value = _constant_value(src, ids)
+        key = _copied_key(_name_words(name), value, key_words, key_vals)
+        if key is not None:
             line = min(t.line for t in src.code() if id(t) in ids)
-            err("SEGUNDO_DONO", f"{src.path}:{line}", f"{name} repeats the definition of '{hits[0]}' ({keys[hits[0]][0]}): read the data")
+            at = key_vals[key].get(float(value), keys[key][0]) if value is not None else keys[key][0]
+            err("SEGUNDO_DONO", f"{src.path}:{line}", f"{name} repeats the definition of '{key}' ({at}): read the data")
             skip |= ids
     for t in src.code():
         if t.kind == "number" and id(t) not in skip:

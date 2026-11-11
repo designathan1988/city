@@ -23,15 +23,15 @@
           "type": "number"
         },
         "warm_levels": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          }
+          "type": "array", "minItems": 3, "items": false,
+          "prefixItems": [{"type": "number"}, {"type": "number"}, {"type": "number"}]
         },
         "lut_side": {
-          "type": "integer"
+          "type": "integer", "minimum": 2
         }
-      }
+      },
+      "required": ["contrast", "vibrance", "tone_from", "tone_to", "warm_levels", "lut_side"],
+      "strict": true
     },
     "vignette": {
       "type": "object",
@@ -51,7 +51,9 @@
         "span": {
           "type": "number"
         }
-      }
+      },
+      "required": ["floor_share", "from_r2", "to_r2", "span"],
+      "strict": true
     },
     "low_height": {
       "type": "number"
@@ -146,7 +148,9 @@
         "strength": {
           "type": "number"
         }
-      }
+      },
+      "required": ["reach_m", "reach_curve", "thickness_m", "power", "strength"],
+      "strict": true
     },
     "low_from_m": {
       "type": "number"
@@ -259,7 +263,9 @@
         "intensity": {
           "type": "number"
         }
-      }
+      },
+      "required": ["radius_m", "intensity"],
+      "strict": true
     }
   },
   "additional": {

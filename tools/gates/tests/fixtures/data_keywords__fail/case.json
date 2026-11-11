@@ -1,0 +1,22 @@
+{
+ "rule": "data",
+ "expect": [
+  "DADOS project/data/c.json",
+  "DADOS project/data/c.json",
+  "DADOS project/data/c.json",
+  "DADOS project/data/c.json",
+  "DADOS project/data/c.json",
+  "DADOS project/data/c.json",
+  "DADOS project/data/c.json",
+  "DADOS project/data/c.json",
+  "DADOS project/data/d.json",
+  "DADOS project/data/e.json"
+ ],
+ "overrides": {
+  "schemas": {
+   "project/data/c.json": "tools/gates/schemas/c.schema.json",
+   "project/data/d.json": "tools/gates/schemas/d.schema.json",
+   "project/data/e.json": "tools/gates/schemas/e.schema.json"
+  }
+ }
+}

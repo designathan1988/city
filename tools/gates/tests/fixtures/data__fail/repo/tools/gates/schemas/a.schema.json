@@ -1,1 +1,1 @@
-{"type": "object", "properties": {"speed": {"type": "number"}}, "required": ["speed", "size"]}
+{"type": "object", "strict": true, "properties": {"speed": {"type": "number"}, "size": {"type": "number"}}, "required": ["speed", "size"]}

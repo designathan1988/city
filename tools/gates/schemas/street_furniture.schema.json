@@ -77,7 +77,9 @@
    "strict": true
   },
   "styles": {
-   "type": "object"
+   "type": "object",
+   "properties": {"_doc": {"type": "string"}},
+   "additional": {"type": "object", "free": "a regional style's overlay of this table's own blocks: the data gate lays it over the table and judges the result by this schema (rules.json styled_tables)"}
   },
   "signals": {
    "type": "object",
@@ -122,7 +124,12 @@
     },
     "bin_spacing_m": {
      "type": "number"
-    }
+    },
+    "bin_every_m": {"type": "number", "minimum": 0, "description": "0: no row of bins (street_furniture.cpp lays them in rows when above 0)"},
+    "bin_first_m": {"type": "number", "minimum": 0},
+    "bench_every_m": {"type": "number", "minimum": 0, "description": "0: no row of benches"},
+    "bench_first_m": {"type": "number", "minimum": 0},
+    "row_end_m": {"type": "number", "minimum": 0}
    },
    "required": [
     "_doc",
@@ -160,7 +167,8 @@
     },
     "pit_m": {
      "type": "number"
-    }
+    },
+    "in_generated_city": {"type": "number", "enum": [0, 1], "description": "1: generated streets get trees too (a float field of CITY_TREE_FIELDS)"}
    },
    "required": [
     "_doc",
@@ -547,8 +555,8 @@
     "_doc": {"type": "string"},
     "reach_m": {"type": "number"},
     "prefix": {"type": "string"},
-    "prefixes": {"type": "object"},
-    "names": {"type": "array"}
+    "prefixes": {"type": "object", "additional": {"type": "string", "minLength": 1}, "description": "a road category or profile id and the word that takes the prefix's place"},
+    "names": {"type": "array", "items": {"type": "string", "minLength": 1}}
    },
    "required": ["_doc", "reach_m", "prefix", "prefixes", "names"],
    "strict": true

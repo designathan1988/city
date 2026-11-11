@@ -1,0 +1,3 @@
+{"_doc": "a misspelt uniform, a texture given a number, a colour given to a float, a uniform only in a comment, and a shader that is not there",
+ "mat": {"shader": "res://render/s.gdshader", "params": {"tint": "#ffffff", "speeed": 1, "tex": 3, "speed": "#000000", "hidden": 2}},
+ "gone": {"shader": "res://render/none.gdshader", "params": {}}}

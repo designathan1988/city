@@ -1,0 +1,1 @@
+{"type": "object", "strict": true, "properties": {"a": {"type": "integer"}}}

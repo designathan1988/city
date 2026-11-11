@@ -1,1 +1,44 @@
-{"type": "object", "properties": {"_doc": {"type": "string"}, "palette": {"type": "object", "additional": {"type": "array", "items": {"type": "string"}, "minItems": 2}}, "models": {"type": "object", "additional": {"type": "array", "items": {"type": "array", "items": {}}}}}, "required": ["_doc", "palette", "models"], "strict": true}
+{
+ "$defs": {
+  "finish": {"type": "string", "enum": ["plaster", "stucco", "ceramic", "brick", "stone", "concrete", "wood", "metal", "glass", "tile", "slate", "panel", "roofing"]},
+  "hex": {"type": "string", "pattern": "^#[0-9a-f]{6}$"},
+  "colour_name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+  "length": {"type": "number", "minimum": 0},
+  "coordinate": {"type": "number"},
+  "vec3": {"type": "array", "prefixItems": [{"$ref": "#/$defs/coordinate"}, {"$ref": "#/$defs/coordinate"}, {"$ref": "#/$defs/coordinate"}], "items": false, "minItems": 3},
+  "size3": {"type": "array", "prefixItems": [{"$ref": "#/$defs/length"}, {"$ref": "#/$defs/length"}, {"$ref": "#/$defs/length"}], "items": false, "minItems": 3},
+  "options": {
+   "type": "object",
+   "strict": true,
+   "properties": {
+    "n": {"type": "integer", "minimum": 1},
+    "step": {"$ref": "#/$defs/vec3"},
+    "grow": {"$ref": "#/$defs/vec3"},
+    "spin": {"type": "integer", "minimum": 1},
+    "colors": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/colour_name"}}
+   }
+  },
+  "box": {"type": "array", "minItems": 4, "items": false,
+          "prefixItems": [{"const": "box"}, {"$ref": "#/$defs/size3"}, {"$ref": "#/$defs/vec3"}, {"$ref": "#/$defs/colour_name"}, {"$ref": "#/$defs/options"}]},
+  "cyl": {"type": "array", "minItems": 4, "items": false,
+          "prefixItems": [{"const": "cyl"}, {"$ref": "#/$defs/size3"}, {"$ref": "#/$defs/vec3"}, {"$ref": "#/$defs/colour_name"}, {"$ref": "#/$defs/options"}]},
+  "ball": {"type": "array", "minItems": 4, "items": false,
+           "prefixItems": [{"const": "ball"},
+                           {"type": "array", "prefixItems": [{"$ref": "#/$defs/length"}], "items": false, "minItems": 1},
+                           {"$ref": "#/$defs/vec3"}, {"$ref": "#/$defs/colour_name"}]}
+ },
+ "type": "object",
+ "strict": true,
+ "required": ["_doc", "palette", "models"],
+ "properties": {
+  "_doc": {"type": "string", "minLength": 1},
+  "palette": {
+   "type": "object",
+   "additional": {"type": "array", "prefixItems": [{"$ref": "#/$defs/finish"}, {"$ref": "#/$defs/hex"}], "items": false, "minItems": 2}
+  },
+  "models": {
+   "type": "object",
+   "additional": {"type": "array", "minItems": 1, "items": {"oneOf": [{"$ref": "#/$defs/box"}, {"$ref": "#/$defs/cyl"}, {"$ref": "#/$defs/ball"}]}}
+  }
+ }
+}

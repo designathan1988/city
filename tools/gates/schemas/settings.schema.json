@@ -12,20 +12,105 @@
     "shadow_choices",
     "fps_choices",
     "presets",
-    "tests_preset"
+    "tests_preset",
+    "filter_radius",
+    "road_blocks",
+    "layers"
   ],
+  "strict": true,
+  "$defs": {
+    "tier": {
+      "type": "object",
+      "strict": true,
+      "properties": {
+        "pixel_ratio": {"type": "number", "exclusiveMinimum": 0},
+        "shadows": {"type": "boolean"},
+        "shadow_px": {"type": "integer", "minimum": 1},
+        "shadow_filter": {"type": "integer", "minimum": 0, "maximum": 5},
+        "shadow_least_m": {"type": "number", "exclusiveMinimum": 0},
+        "msaa": {"type": "integer", "minimum": 0, "maximum": 3},
+        "smaa": {"type": "boolean"},
+        "ssao": {"type": "boolean"},
+        "temporal": {"type": "integer", "minimum": 0, "maximum": 2},
+        "temporal_sharpness": {"type": "number", "minimum": 0, "maximum": 2},
+        "temporal_mip_bias": {"type": "number"},
+        "ssil": {"type": "boolean"},
+        "anisotropy": {"type": "integer", "minimum": 0, "maximum": 4},
+        "detail_props": {"type": "boolean"},
+        "triangle_share": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "lamp_lights": {"type": "integer", "minimum": 0},
+        "head_lights": {"type": "integer", "minimum": 0},
+        "lamp_shadows": {"type": "integer", "minimum": 0},
+        "post": {"type": "boolean"},
+        "vegetation": {"type": "number", "minimum": 0, "maximum": 1},
+        "detail_cutoff_zoom": {"type": "number", "minimum": 0},
+        "pedestrian_detail": {"type": "integer", "minimum": 0, "maximum": 2},
+        "occupant_zoom": {"type": "number", "exclusiveMinimum": 0},
+        "vehicle_error_px": {"type": "number", "exclusiveMinimum": 0},
+        "vehicle_whole_cap": {"type": "integer", "minimum": 0},
+        "sky_clouds": {"type": "boolean"},
+        "cloud_shadows": {"type": "boolean"}
+      },
+      "required": [
+        "pixel_ratio",
+        "shadows",
+        "shadow_px",
+        "shadow_filter",
+        "shadow_least_m",
+        "msaa",
+        "smaa",
+        "ssao",
+        "temporal",
+        "temporal_sharpness",
+        "temporal_mip_bias",
+        "ssil",
+        "anisotropy",
+        "detail_props",
+        "triangle_share",
+        "lamp_lights",
+        "head_lights",
+        "lamp_shadows",
+        "post",
+        "vegetation",
+        "detail_cutoff_zoom",
+        "pedestrian_detail",
+        "occupant_zoom",
+        "vehicle_error_px",
+        "vehicle_whole_cap",
+        "sky_clouds",
+        "cloud_shadows"
+      ]
+    }
+  },
   "properties": {
     "_doc": {
       "type": "string"
     },
     "filter_radius": {
-      "type": "array"
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {"type": "number", "exclusiveMinimum": 0}
     },
     "default": {
       "type": "string"
     },
     "gpu_default": {
       "type": "string"
+    },
+    "levels": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"}
+    },
+    "gpu_rules": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "items": false,
+        "prefixItems": [{"type": "string", "minLength": 1}, {"type": "string"}]
+      }
     },
     "presets": {
       "type": "array",
@@ -39,100 +124,105 @@
     },
     "tiers": {
       "type": "object",
-      "additional": {
-        "type": "object",
-        "properties": {
-          "pixel_ratio": {
-            "type": "number"
-          },
-          "shadows": {
-            "type": "boolean"
-          },
-          "shadow_px": {
-            "type": "integer"
-          },
-          "shadow_filter": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 5
-          },
-          "shadow_least_m": {
-            "type": "number"
-          },
-          "msaa": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 3
-          },
-          "smaa": {
-            "type": "boolean"
-          },
-          "ssao": {
-            "type": "boolean"
-          },
-          "temporal": {
-            "type": "number"
-          },
-          "temporal_sharpness": {
-            "type": "number"
-          },
-          "temporal_mip_bias": {
-            "type": "number"
-          },
-          "ssil": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "pixel_ratio",
-          "shadows",
-          "shadow_px",
-          "shadow_filter",
-          "shadow_least_m",
-          "msaa",
-          "smaa",
-          "ssao",
-          "temporal",
-          "temporal_sharpness",
-          "temporal_mip_bias",
-          "ssil"
-        ]
-      }
+      "additional": {"$ref": "#/$defs/tier"}
+    },
+    "shadow_choices": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "integer", "minimum": 0}
+    },
+    "fps_choices": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "integer", "minimum": 0}
+    },
+    "frame_cap": {
+      "type": "object",
+      "strict": true,
+      "properties": {
+        "max_fps": {"type": "integer", "minimum": 1},
+        "background_fps": {"type": "integer", "minimum": 1}
+      },
+      "required": ["max_fps", "background_fps"]
+    },
+    "governor": {
+      "type": "object",
+      "strict": true,
+      "properties": {
+        "window": {"type": "integer", "minimum": 1},
+        "settle": {"type": "integer", "minimum": 0},
+        "down_windows": {"type": "integer", "minimum": 1},
+        "up_windows": {"type": "integer", "minimum": 1},
+        "up_share": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "undone_s": {"type": "number", "minimum": 0},
+        "undone_hold_s": {"type": "number", "minimum": 0},
+        "stall_s": {"type": "number", "exclusiveMinimum": 0},
+        "percentile": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "cpu_budget_slack": {"type": "number", "exclusiveMinimum": 0}
+      },
+      "required": ["window", "settle", "down_windows", "up_windows", "up_share", "undone_s", "undone_hold_s", "stall_s", "percentile",
+        "cpu_budget_slack"]
+    },
+    "dynamic_resolution": {
+      "type": "object",
+      "strict": true,
+      "properties": {
+        "scales": {"type": "array", "minItems": 1, "items": {"type": "number", "exclusiveMinimum": 0, "maximum": 1}},
+        "percentile": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "aim": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "window": {"type": "integer", "minimum": 1},
+        "deadband": {"type": "number", "minimum": 0},
+        "rise_margin": {"type": "number", "minimum": 0},
+        "settle": {"type": "integer", "minimum": 0}
+      },
+      "required": ["scales", "percentile", "aim", "window", "deadband", "rise_margin", "settle"]
+    },
+    "layers": {
+      "type": "object",
+      "strict": true,
+      "properties": {
+        "zones": {"type": "boolean"},
+        "congestion": {"type": "boolean"},
+        "grid": {"type": "boolean"}
+      },
+      "required": ["zones", "congestion", "grid"]
     },
     "road_blocks": {
       "type": "object",
+      "strict": true,
       "properties": {
         "cols": {
-          "type": "number"
+          "type": "integer", "minimum": 1
         },
         "rows": {
-          "type": "number"
+          "type": "integer", "minimum": 1
         },
         "size_m": {
-          "type": "number"
+          "type": "number", "exclusiveMinimum": 0
         },
         "most": {
-          "type": "number"
+          "type": "integer", "minimum": 1
         },
         "least_m": {
-          "type": "number"
+          "type": "number", "exclusiveMinimum": 0
         },
         "widest_m": {
-          "type": "number"
+          "type": "number", "exclusiveMinimum": 0
         },
         "step_m": {
-          "type": "number"
+          "type": "number", "exclusiveMinimum": 0
         },
         "turn_step_deg": {
-          "type": "number"
+          "type": "number", "exclusiveMinimum": 0
         },
         "preview_step_m": {
-          "type": "number"
+          "type": "number", "exclusiveMinimum": 0
         },
         "preview_half_px": {
-          "type": "number"
+          "type": "number", "exclusiveMinimum": 0
         }
-      }
+      },
+      "required": ["cols", "rows", "size_m", "most", "least_m", "widest_m", "step_m", "turn_step_deg", "preview_step_m", "preview_half_px"]
     }
   }
 }
