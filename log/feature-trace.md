@@ -409,3 +409,33 @@ after P3"): open, the next theme. **Created:** `templates.py`, `places.py`, `js_
 `cpp_body.py`, `cpp_read.py`, `cpp_implicit.py`, `ir.py`, `js_body.py`, `js_library.py`, `js_modules.py`,
 `tests/test_pending.py`, `tests/test_js_values.py`, `tests/fixture/pending/lifetime.cpp`, `log/trace-rules.md`,
 `log/mapa.md`, `log/pendencias.md`.
+
+## Narrowing, the languages' values and declared types: the lab with three.js reaches its fixpoint (2026-11-11 late)
+`superpowers:writing-plans` (`log/trace-rules-narrowing-plan.md`, `log/trace-rules-bounds-plan.md`) ->
+`superpowers:executing-plans` (ledgers copied to `log/trace-rules-narrowing-progress.md`,
+`log/trace-rules-bounds-progress.md`) -> `superpowers:test-driven-development` (each rule's test failing first) ->
+`superpowers:systematic-debugging` (stack samples of the stalled run; a probe stopped between two propagations that
+prints the frames of the first arrival of a value into a node; the uses on an empty receiver read against the app
+traced alone) -> research (MDN, ECMAScript, TypeScript handbook and JSDoc Reference via context7,
+tree-sitter-typescript issue #282). **Causes found, in order:** `this` read as the method's class (J2'); a string a
+literal carries parsed as a C++ type text (T5); `void f<T>(a).catch(b)` misgrouped by the TypeScript grammar (J13); a
+call of a property valued by a field's returns (CALL''); a receiver the engine could own losing its hand-off beside the
+program's objects (J6'); `ArrayBuffer.isView` not narrowing (G1''); `pass.setSize.bind(pass)` linked as a call with
+`pass` as its width, and program methods named `call`/`apply`/`bind` reaching nothing (J2''); array literals holding
+the engine's value (T2''); declared types adding values but never bounding them, so three's `Color.set` mixed
+strings into every vector component (S2, S2' with JSDoc); `obj.constructor` read as the constructor method (J4'); an
+unread base's members lost when code wrote the name elsewhere (V2'); `Object.defineProperty` ignored (J14); a hoisted
+closure's writes dropped (J7'); `new` on a function giving nothing (N1'). **Tests:** 222 OK, each new one failing on
+the code before it. **City** (same sources): 100,571 links throughout but one spurious `js::operator==` gone (J2').
+**Lab app:** 224,909 links, 211 uses on an empty receiver (263). **Lab with three.js:** fixpoint, 421,076 links in
+177 s (no fixpoint in 900 s before). **Created:** `receivers.py`, `js_primitives.py`, `ts_tree.py`, `link_calls.py`,
+`js_bounds.py`, `bounds.py`, `jsdoc.py`, `js_defines.py`, `tests/test_primitives.py`, `tests/test_regroup.py`,
+`tests/test_mixed.py`, `tests/test_bounds.py`, fixtures `jsvalues/{primitives.js,regroup.ts,held.ts,mixed.ts,builtins.ts,
+forms.js,bounded.ts,jsdoc.js,ctor.js,hostbase.ts,defineprops.js,latewrite.js,newfn.js}`,
+`pending/{receivers.gd,strings.gd,strings.cpp,handed.cpp}`, the bounds plan and ledger. **Changed:** `transfer.py`,
+`js_transfer.py`, `templates.py`, `places.py`, `flows.py`, `link.py`, `resolve.py`, `typer.py`, `types_of.py`,
+`solver.py`, `model.py`, `rules.py`, `ir_js.py`, `js_expr.py`, `js_read.py`, `js_body.py`, `js_class.py`, `js_decl.py`,
+`js_guards.py`, `js_library.py`, `narrow_values.py`, `report.py`, `tests/support.py`, `tests/test_narrowing.py`,
+`tests/test_js_values.py`, `log/trace-rules.md`, `log/mapa.md`, `log/pendencias.md`. **Open:** arrays without identity
+(`push` is no write; a parameter's container content not written back), function types' signatures, local type
+aliases, `keyof` names (`log/pendencias.md`).
