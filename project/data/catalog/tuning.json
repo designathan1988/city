@@ -212,6 +212,13 @@
   "side_offset_m": 14,
   "sample_m": 8
  },
+ "street": {
+  "kerb_m": 0.15,
+  "kerb_by_median_m": 0.15,
+  "sidewalk_m": 0.15,
+  "median_m": 0.17,
+  "barrier_m": 0.81
+ },
  "strike": {
   "force_start": 5,
   "force_fine": 10,

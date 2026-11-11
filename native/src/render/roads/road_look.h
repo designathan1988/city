@@ -1,9 +1,11 @@
-// What the road meshes look like, read once from project/data/render/streets.json: strip colours and heights, the
-// junction corner and dead-end shapes, painted markings, gutters and dropped kerbs. Where the lamps the night light
-// pools follow stand and where the crosswalks lie is the simulation's (sim/roads/street_furniture.h). Also the vertex
-// conventions shared with render/shaders/road.gdshader (material id in COLOR.a).
+// What the road meshes look like, read once from project/data/render/streets.json: strip colours, the junction corner and
+// dead-end shapes, painted markings, gutters and dropped kerbs. The raised strips' heights are the catalogue's (tuning.json
+// street, which the simulation reads too: a lot meets the footway's top); where the lamps the night light pools follow stand
+// and where the crosswalks lie is the simulation's (sim/roads/street_furniture.h). Also the vertex conventions shared with
+// render/shaders/road.gdshader (material id in COLOR.a).
 #pragma once
 
+#include "sim/catalog/catalog.h"
 #include "sim/roads/profiles.h"
 
 #include <godot_cpp/variant/color.hpp>
@@ -62,7 +64,8 @@ struct StreetLook {
 	std::vector<PaintStyle> styles;
 	float parking_line_w = 0, parking_dash = 1, parking_gap = 1, no_parking_w = 0, no_parking_min = 0; // MER and LPP
 
-	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
+	// `t` streets.json; `tn` the catalogue's tuning, whose street group gives the raised strips' heights.
+	bool load(const godot::Dictionary &t, const Tuning &tn, godot::PackedStringArray &errors);
 	// The carriageway's colour: asphalt keeps its class's tone, the other pavings their own.
 	const godot::Color &carriage(const Profile &p) const {
 		return p.surface == Surface::ASPHALT ? asphalt[int(p.road_class)] : surface[int(p.surface)];

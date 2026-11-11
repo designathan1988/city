@@ -43,14 +43,13 @@ void load_colors(StreetLook &L, const Dictionary &t, PackedStringArray &errors) 
 	L.barrier = hexc(c["barrier"]);
 }
 
-void load_shape(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
-	Dictionary h = sub(t, "heights", errors);
-	L.h_curb = float(h["curb"]);
-	L.h_curb_median = float(h["curb_by_median"]);
-	L.h_sidewalk = float(h["sidewalk"]);
-	L.h_median = float(h["median"]);
-	L.h_barrier = float(h["barrier"]);
-	L.skirt = float(h["skirt"]);
+void load_shape(StreetLook &L, const Dictionary &t, const Tuning &tn, PackedStringArray &errors) {
+	L.h_curb = tn.street_kerb_m;
+	L.h_curb_median = tn.street_kerb_by_median_m;
+	L.h_sidewalk = tn.street_sidewalk_m;
+	L.h_median = tn.street_median_m;
+	L.h_barrier = tn.street_barrier_m;
+	L.skirt = float(sub(t, "heights", errors)["skirt"]);
 	L.median_nose = float(t["median_nose_m"]);
 	Dictionary v = sub(t, "verge", errors);
 	L.verge_reach = float(v["reach_m"]);
@@ -118,9 +117,9 @@ void load_marks(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 }
 } // namespace
 
-bool StreetLook::load(const Dictionary &t, PackedStringArray &errors) {
+bool StreetLook::load(const Dictionary &t, const Tuning &tn, PackedStringArray &errors) {
 	load_colors(*this, t, errors);
-	load_shape(*this, t, errors);
+	load_shape(*this, t, tn, errors);
 	load_marks(*this, t, errors);
 	return errors.is_empty();
 }

@@ -73,7 +73,12 @@ bool TransitRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	for (int i = 0; i < TRANSIT_XRAY_LAYERS; i++) xray_[i] = ctx.material((std::string("transit_xray_") + std::to_string(i)).c_str(), errors);
 	const Dictionary t = ctx.table("transit", errors);
 	if (!errors.is_empty() || !look_.read(t, errors)) return false;
-	look_.kerb = Dictionary(Dictionary(ctx.table("streets", errors))["heights"])["sidewalk"];
+	if (!ctx.catalog) {
+		errors.push_back("transit: the render has no catalogue");
+		return false;
+	}
+	look_.kerb = ctx.catalog->tune.street_sidewalk_m; // the footway's top: the catalogue's, as the roads draw it
+
 	radius_ = t["radius_m"];
 	per_frame_ = t["items_per_frame"];
 	TransitMeshes car;

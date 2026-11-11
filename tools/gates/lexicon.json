@@ -2,5 +2,5 @@
  "_doc": "The English gate's lexicon (gate_language.py). Its Portuguese is the pt_BR column of project/data/i18n less the words of its en column, plus `portuguese` here: words the code, ids and documents wrote that no translation holds. `english`: words both languages write, never a finding (grade, interior, final, via; sim and num as the code's abbreviations). `names`: proper names and the titles of sources cited in their own language (a standard, a book, a place, a person), taken out of a line before its words are judged. A word comes off `english` and a name off `names` only when nothing in the tree writes it any more.",
  "portuguese": ["segundo", "dono", "donos", "dados", "falha", "falhas", "pendencias", "unico", "magico", "desatualizado", "limpa", "lixo", "cabecalho", "desconhecida", "orfao", "espelho", "duplicado", "ausente", "leitura", "leitor", "marcadores", "soltos", "solto", "fonte", "porte", "trabalho", "registro", "chave"],
  "english": ["sim", "grade", "grades", "chunks", "interior", "rail", "guard", "num", "cores", "pos", "todo", "final", "via", "some", "lateral", "mover", "divide", "media", "forum", "triangular", "circular", "brises", "ver", "solo"],
- "names": []
+ "names": ["Manual Brasileiro de Sinalização de Trânsito", "Sinalização Horizontal", "São Paulo"]
 }
