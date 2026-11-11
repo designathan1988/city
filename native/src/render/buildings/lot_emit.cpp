@@ -29,6 +29,17 @@ struct LotEmit {
 		return e.paint >= 0 ? lin_of(pl.b->paints[size_t(e.paint)].rgb) : paint_lin(pl.data->color(fallback));
 	}
 	int8_t fin(const LotElement &e) const { return e.paint >= 0 ? pl.b->paints[size_t(e.paint)].finish : FIN_CONCRETE; }
+	// A box of the lot's frame held to the lot's own land (its plan's width either side of the front's middle, its depth back): what
+	// stands out of a boundary piece's footprint (a coping's lip, a plinth, a gate's posts) is laid on the lot's side of its lines, never on
+	// the footway nor in the neighbour's (render/buildings/building_renderer_probe.cpp lot_past_lot). A body with no lot known keeps it.
+	void on_land(float &x0, float &x1, float &y0, float &y1) const {
+		const float W = pl.b->plan.W, D = pl.b->plan.D;
+		if (W <= 0 || D <= 0) return;
+		x0 = std::max(x0, -W * HALF);
+		x1 = std::min(x1, W * HALF);
+		y0 = std::max(y0, 0.f);
+		y1 = std::min(y1, D);
+	}
 	void surface(const LotElement &e);
 	void wall(const LotElement &e, float x0, float x1, float y0, float y1);
 	void fence(const LotElement &e, float x0, float x1, float y0, float y1, bool light);
@@ -65,16 +76,19 @@ void LotEmit::wall(const LotElement &e, float x0, float x1, float y0, float y1) 
 	Lin lin = paint(e, "concrete");
 	int8_t f = fin(e);
 	shell.grime_floor = floor_y + g;
+	on_land(x0, x1, y0, y1);
 	if (pl.coarse) {
 		shell.box(pl.lot, x0, x1, y0, y1, lo, top, lin, f, SKIP_E2_NEG);
 		return;
 	}
 	shell.box(pl.lot, x0, x1, y0, y1, g + SPLASH, top - COPING_H, lin, f, SKIP_E2_NEG | SKIP_E2_POS);
-	float o = COPING_OUT;
-	shell.box(pl.lot, x0 - (x1 - x0 < y1 - y0 ? o : 0), x1 + (x1 - x0 < y1 - y0 ? o : 0), y0 - (x1 - x0 >= y1 - y0 ? o : 0), y1 + (x1 - x0 >= y1 - y0 ? o : 0),
-			lo, g + SPLASH, lin * SPLASH_SHADE, f, SKIP_E2_NEG);
-	shell.box(pl.lot, x0 - (x1 - x0 < y1 - y0 ? o : 0), x1 + (x1 - x0 < y1 - y0 ? o : 0), y0 - (x1 - x0 >= y1 - y0 ? o : 0), y1 + (x1 - x0 >= y1 - y0 ? o : 0),
-			top - COPING_H, top, paint_lin(pl.data->color("wall_coping")) * COPING_SHADE, FIN_STONE, SKIP_E2_NEG);
+	// The plinth and the coping proud of both faces of the wall's thickness, on the lot's own land: on a line the lot shares with a
+	// neighbour or the street, the lip stands inward alone (the neighbour's wall on the line makes the pair one wall proud both ways).
+	const float o = COPING_OUT, across_x = x1 - x0 < y1 - y0 ? o : 0, across_y = x1 - x0 >= y1 - y0 ? o : 0;
+	float px0 = x0 - across_x, px1 = x1 + across_x, py0 = y0 - across_y, py1 = y1 + across_y;
+	on_land(px0, px1, py0, py1);
+	shell.box(pl.lot, px0, px1, py0, py1, lo, g + SPLASH, lin * SPLASH_SHADE, f, SKIP_E2_NEG);
+	shell.box(pl.lot, px0, px1, py0, py1, top - COPING_H, top, paint_lin(pl.data->color("wall_coping")) * COPING_SHADE, FIN_STONE, SKIP_E2_NEG);
 }
 
 void LotEmit::fence(const LotElement &e, float x0, float x1, float y0, float y1, bool light) {
@@ -90,8 +104,9 @@ void LotEmit::fence(const LotElement &e, float x0, float x1, float y0, float y1,
 	float len = along_x ? x1 - x0 : y1 - y0, top = g + e.h;
 	float cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
 	auto bar = [&](float a0, float a1, float z0, float z1, float t) {
-		if (along_x) parts.box(pl.lot, a0, a1, cy - t / 2, cy + t / 2, z0, z1, m, FIN_METAL);
-		else parts.box(pl.lot, cx - t / 2, cx + t / 2, a0, a1, z0, z1, m, FIN_METAL);
+		float bx0 = along_x ? a0 : cx - t / 2, bx1 = along_x ? a1 : cx + t / 2, by0 = along_x ? cy - t / 2 : a0, by1 = along_x ? cy + t / 2 : a1;
+		on_land(bx0, bx1, by0, by1);
+		parts.box(pl.lot, bx0, bx1, by0, by1, z0, z1, m, FIN_METAL);
 	};
 	float s0 = along_x ? x0 : y0;
 	bar(s0, s0 + len, top - COPING_H, top, RAIL_T);
@@ -104,10 +119,16 @@ void LotEmit::fence(const LotElement &e, float x0, float x1, float y0, float y1,
 void LotEmit::gate(const LotElement &e) {
 	float x0 = e.x - e.w / 2, x1 = e.x + e.w / 2, g = ground(e.x, e.y);
 	Lin m = paint(e, "gate");
-	for (float x : { x0 - GATE_POST, x1 }) parts.box(pl.lot, x, x + GATE_POST, e.y - GATE_POST / 2, e.y + GATE_POST / 2, g - FOOT, g + e.h + GATE_RAIL, m, FIN_METAL);
-	parts.box(pl.lot, x0, x1, e.y - pl.look->fence_bar_m / 2, e.y + pl.look->fence_bar_m / 2, g + e.h - GATE_RAIL, g + e.h, m, FIN_METAL);
-	parts.box(pl.lot, x0, x1, e.y - pl.look->fence_bar_m / 2, e.y + pl.look->fence_bar_m / 2, g + GATE_RAIL, g + 2 * GATE_RAIL, m, FIN_METAL);
-	for (float x = x0 + BAR_EVERY; x < x1; x += BAR_EVERY) parts.box(pl.lot, x, x + pl.look->fence_bar_m, e.y - pl.look->fence_bar_m / 2, e.y + pl.look->fence_bar_m / 2, g + GATE_RAIL, g + e.h, m, FIN_METAL);
+	// Every piece of the gate on the lot's own land: its posts proud of the run either side, its rails and bars across the opening.
+	const auto piece = [&](float a0, float a1, float b0, float b1, float z0, float z1) {
+		on_land(a0, a1, b0, b1);
+		parts.box(pl.lot, a0, a1, b0, b1, z0, z1, m, FIN_METAL);
+	};
+	const float bar = pl.look->fence_bar_m;
+	for (float x : { x0 - GATE_POST, x1 }) piece(x, x + GATE_POST, e.y - GATE_POST / 2, e.y + GATE_POST / 2, g - FOOT, g + e.h + GATE_RAIL);
+	piece(x0, x1, e.y - bar / 2, e.y + bar / 2, g + e.h - GATE_RAIL, g + e.h);
+	piece(x0, x1, e.y - bar / 2, e.y + bar / 2, g + GATE_RAIL, g + 2 * GATE_RAIL);
+	for (float x = x0 + BAR_EVERY; x < x1; x += BAR_EVERY) piece(x, x + bar, e.y - bar / 2, e.y + bar / 2, g + GATE_RAIL, g + e.h);
 }
 
 void LotEmit::prop(const LotElement &e) {

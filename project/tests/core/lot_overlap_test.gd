@@ -1,7 +1,8 @@
 ## No two buildings of the generated city stand on the same ground: every record's lot (its centre, width, depth and turn, as
 ## probe_building gives them) is a rectangle, and no two of them overlap by more than a hand's width. Two lots that share a line
 ## touch; they do not overlap. And what is drawn over a lot stays on it: no pitched roof reaches past its lot's lines (probe
-## bay_census, roof_past_lot), so two halls on a shared line do not put their roofs through one another.
+## bay_census, roof_past_lot), so two halls on a shared line do not put their roofs through one another; nor does its ground or its
+## boundary (lot_past_lot: a wall's plinth and coping), so two lots' walls on one line do not stand in one another.
 extends TestCase
 
 const TOWN_MAP := 0
@@ -52,8 +53,12 @@ func _ready() -> void:
 	check(crossing.is_empty(), "no two lots overlap ([id, id, metres, zones, functions] of the first: %s)" % [crossing.slice(0, SHOWN)])
 	await get_tree().process_frame # the building levels know their map once the first frame drew it
 	await get_tree().process_frame
-	var past := int(CityStore.query(&"bay_census").get("roof_past_lot", -1))
+	var census: Dictionary = CityStore.query(&"bay_census")
+	var past := int(census.get("roof_past_lot", -1))
 	check(past == 0, "no pitched roof is written past its lot's lines (its eaves take the room the lot leaves): %d vertices past" % past)
+	var walls := int(census.get("lot_past_lot", -1))
+	check(walls == 0, "no lot's ground or boundary is written past its lot's lines (plinths and copings stay on its land): %d vertices past, the first (seed, kind, x, y, w, d, vertices) %s"
+			% [walls, census.get("lot_past_first", [])])
 	finish()
 
 
