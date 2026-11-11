@@ -18,7 +18,8 @@ measured (memory, CPU, GPU, frame) and photographed in the 24 km city (map `km24
 2. **Pesquise** quando a tarefa toca API externa (Godot, godot-cpp, Terrain3D): documentação oficial e fontes relevantes,
    nunca só a memória.
 3. **Compreenda:** ligue problema, causa e solução pelo código e, quando houve, pela pesquisa.
-4. **Planeje** a correção da causa, com dono único. O esforço não entra na decisão, nem para menos nem para mais.
+4. **Plan** the fix of the cause, with one owner, always choosing the most expensive and laborious solution that solves the
+   cause (owner, 2026-11-11): a cheap solution that does not solve the cause is forbidden, and so is offering cheap options.
 5. **Codifique** sem tentativa e erro: se não deu certo, volte à leitura até entender.
 6. **Verify what the change reaches**, once (the table of what each kind of change asks for, below). A photo is judged on its own (nothing broken,
    out of shape, overlapping or missing), never made equal pixel for pixel to another run, an older commit or a kept reference.
@@ -35,6 +36,10 @@ A reported problem is solved with the `trace-fix` skill (`python .claude/skills/
 - Toda correção diz, com arquivo e linha: qual é a causa, por que o sintoma não volta por outro caminho e quais outros
   sintomas somem junto.
 - Caro não prova causa e barato não prova remendo: o critério é o de cima.
+- **Nothing is copied, ever** (owner, 2026-11-11, binding in every prompt, skill and order): no line, line-by-line
+  translation, structure, name or function of the roadcraft lab, which is only a reference for what the features must
+  reach; and no code from the tag `antes-da-volta-2026-11-10`, read only for what was built. No order allowed either; never
+  look for backing where there is none. Code that came in that way is redone at its cause, designed for this tree.
 
 ## Princípios
 - A causa dos problemas de desempenho é a arquitetura. Sombra, polígono e tempo de GPU são sintomas e mudam com a placa.
