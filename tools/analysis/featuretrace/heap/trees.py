@@ -13,7 +13,7 @@ from ..solver import LANG, STRING
 from ..vocab import (AWAIT, CALL, CALLABLE, CAST, COLLECTION, CONSTRUCT, EACH, ELEMENTS, ELEMENTS_FIELD, INDEX,
                      KEYS, LITERAL, MEMBER, NAME, NARROW, OP, SELF, SITE_CLASS, SITE_TEXT, STRNAME, SUPER, UNARY,
                      UNION)
-from . import contexts, members, names
+from . import contexts, members, names, protocols
 
 LITERAL_MADE, CLASS_MADE = 1, 2           # `ClassFact.made` (js_class): an object literal, a class expression
 STRING_KIND = truth.KINDS[STRING]
@@ -45,19 +45,20 @@ def wire(an, node, tree, unit, ctx) -> None:
         gid = an.ix.offset[unit.file] + tree[1]                  # made here: this run is its environment
         solver.add(node, [an.function_object(gid, names.scope(an, unit, ctx, an.ix.units[gid].outer))])
     elif kind == CAST:
-        wire_cast(an, node, tree[1], ctx)
+        wire_cast(an, node, tree[1], unit, ctx)
     elif kind == COLLECTION:
         array = an.objects.array(unit.file, tree[2] if len(tree) > 2 else id(tree), ctx)
         solver.add(node, [array])
         for value in tree[1]:
             solver.follow(an.node(value, unit, ctx), members.field(an, array, ELEMENTS_FIELD))
     elif kind in (ELEMENTS, EACH):
-        solver.subscribe(an.node(tree[1], unit, ctx), node, (ELEMENTS,), lambda t, objs: [
-            solver.follow(members.field(an, o, ELEMENTS_FIELD), t) for o in objs])
+        protocols.iterate(an, node, an.node(tree[1], unit, ctx))
     elif kind in (UNION,):
         solver.follow(an.node(tree[1], unit, ctx), node)
         solver.follow(an.node(tree[2], unit, ctx), node)
-    elif kind in (NARROW, AWAIT):
+    elif kind == AWAIT:
+        protocols.await_(an, node, an.node(tree[1], unit, ctx))
+    elif kind == NARROW:
         solver.follow(an.node(tree[1], unit, ctx), node)
     elif kind == SELF:
         solver.follow(this_of(an, unit, ctx), node)
@@ -121,7 +122,7 @@ def wire_call(an, node, tree, unit, ctx) -> None:
             an.call(t, fn, None, args, CALL) for fn in fns])
 
 
-def wire_cast(an, node, text: str, ctx) -> None:
+def wire_cast(an, node, text: str, unit, ctx) -> None:
     """A value written in the code of a class made there: an object literal's object, a class expression's class;
     any other cast is a declared type, no value of its own."""
     if not text.startswith(CLASS_VALUE):
@@ -129,9 +130,22 @@ def wire_cast(an, node, text: str, ctx) -> None:
     key = text[len(CLASS_VALUE):]
     made = an.ix.classes[key].made if key in an.ix.classes else -1
     if made == LITERAL_MADE:
-        an.solver.add(node, [an.objects.literal(key, ctx)])
+        obj = an.objects.literal(key, ctx)
+        an.solver.add(node, [obj])
+        literal_methods(an, obj, key, unit, ctx)
     elif made == CLASS_MADE:
         an.solver.add(node, [an.objects.make(SITE_CLASS, key)])
+
+
+def literal_methods(an, obj: int, key: str, unit, ctx) -> None:
+    """An object literal's methods are closures made where the literal is evaluated, each a property of the object
+    (ECMA-262 PropertyDefinitionEvaluation, DefineMethod): their environment is the run that evaluates it."""
+    for name, gids in an.ix.members[key].items():
+        for gid in gids:
+            method = an.ix.units[gid]
+            if an.is_function_unit(gid) and not method.accessor_of:
+                env = names.scope(an, unit, ctx, method.outer)
+                an.solver.add(members.field(an, obj, name), [an.function_object(gid, env)])
 
 
 def this_of(an, unit, ctx):

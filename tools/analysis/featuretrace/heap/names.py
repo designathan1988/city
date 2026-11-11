@@ -66,7 +66,7 @@ def value_of(an, gid: int, node) -> None:
     unit = an.ix.units[gid]
     if an.is_function_unit(gid):
         an.solver.add(node, [an.function_object(gid)])
-    elif unit.kind == CLASS_UNIT:
-        an.solver.add(node, [an.objects.make(SITE_CLASS, unit.qual)])
+    elif unit.kind == CLASS_UNIT and not (unit.qual in an.ix.classes and an.ix.classes[unit.qual].shape):
+        an.solver.add(node, [an.objects.make(SITE_CLASS, unit.qual)])     # an interface is no value
     elif unit.kind in STATE_KINDS:
         an.solver.follow(an.hold(gid), node)

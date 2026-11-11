@@ -10,11 +10,13 @@ written to (J9). Module-level statements are read by `js_decl`, statements by `j
 """
 from __future__ import annotations
 
-from . import ir_js, js_body, js_bounds, js_class, js_decl, js_functions, js_types, jsdoc, narrowing, scopes, ts_tree
+from . import (ir_js, js_body, js_bounds, js_class, js_decl, js_functions, js_sigs, js_types, jsdoc, narrowing, scopes,
+               ts_tree)
 from .model import ALIAS_KIND, ClassFact, FileFacts, Unit, add_ref, declare, enclose
 from .rules import CONSTRUCTOR
 from .solver import UNDEFINED
 from .source import Source, field_of, grammar_of, named_children
+from .vocab import LEVEL_OWN
 
 FUNCTION_NODES = ir_js.FUNCTIONS
 PROPERTY_MARKS = ("accessibility_modifier", "readonly", "override_modifier")   # a constructor parameter's that make it a
@@ -34,6 +36,8 @@ class JsReader:
         self.scopes = []                 # the blocks of the function being read (`scopes`)
         self.base = 0                    # the index of the function's own scope among them
         self.type_params = []            # the type parameters of the generic declarations being read, innermost last
+        self.sig_scope = []              # the same, as the type trees `js_sigs` keeps them
+        self.ambient = 0                 # how many `declare` the reader is inside: what it reads only declares
 
     def run(self) -> FileFacts:
         self.grammar = grammar_of(self.src.path)
@@ -54,6 +58,7 @@ class JsReader:
     def unit(self, kind: str, name: str, owner: str, node, qual: str | None = None, **extra) -> Unit:
         unit = Unit(kind, "js", name, qual or self.qual(owner, name), owner, self.src.display, self.src.line(node),
                     self.src.end_line(node), local_id=len(self.facts.units), **extra)
+        unit.ambient = self.declaration_file or self.ambient > 0
         self.facts.units.append(unit)
         return unit
 
@@ -82,13 +87,13 @@ class JsReader:
         if nested:
             scopes.open_scope(self)
             self.base = len(self.scopes) - 1                    # its own scope: where its `var`s go
-        self.type_params.append(js_types.parameters(self, node))
+        unit.tparams = js_sigs.open_params(self, node, LEVEL_OWN, owner)
         narrowing.enter_function(self, field_of(node, "body"), "js")
         try:
             self.function_body(node, unit)
         finally:
             narrowing.leave_function(self)
-            self.type_params.pop()
+            js_sigs.close_params(self)
             if nested:
                 scopes.close_scope(self)
             self.scopes, self.base = saved, base
@@ -100,6 +105,7 @@ class JsReader:
         unit.type_text = self.type_text(ret) if ret is not None else ""
         unit.declared = js_types.values(self, ret, unit) if ret is not None else []      # T3
         unit.bound = js_bounds.result(self, ret, node)                                  # S2
+        unit.result_type = js_sigs.result(self, node, unit.owner)                       # kept whole (Task 4)
         self.params(field_of(node, "parameters") or field_of(node, "parameter"), unit)
         if jsdoc.is_js(self):
             jsdoc.function(self, node, unit)                    # a JavaScript file's JSDoc types (S2')
@@ -139,6 +145,8 @@ class JsReader:
             slot = self.src.text(pattern) if pattern.type == "identifier" else f"<arg{i}>"
             unit.params.append(slot)
             declared = self.type_values(field_of(p, "type"), unit)
+            written = js_sigs.of(self, field_of(p, "type"), unit.owner)
+            unit.param_types.append(js_sigs.optional(written) if p.type == "optional_parameter" else written)
             if pattern.type != "rest_pattern":                   # what a declared type admits bounds it (S2)
                 unit.bounds[slot] = js_bounds.of(self, field_of(p, "type"), p.type == "optional_parameter")
             if default is not None:

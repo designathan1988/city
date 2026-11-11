@@ -106,6 +106,12 @@ class Unit:
     this_of: str = ""              # js: what its `this` is (J2'''): "arrow" (its enclosing function's), "method" (the
                                    # receiver, of its class), "function" (what its calls give)
     strict: bool = False           # js: strict code (a module, a class, "use strict"): a plain call's `this` is undefined
+    param_types: list = field(default_factory=list)    # js: each parameter's declared type kept whole (`js_sigs`), ()
+                                                        # where none is written
+    result_type: tuple = ()        # js: the declared result of a function, the declared type of a field or variable
+    tparams: tuple = ()            # js: a function's or an alias's own type parameters: each one's default type
+    indexes: list = field(default_factory=list)    # js: an index signature's (key type, value type) on its field
+    ambient: bool = False          # js: declared only (a declaration file, `declare`): what it does is its declaration
 
     def runs(self, which: str, reader) -> int | str | None:
         """The accessor (`get` or `set`) an access of this property written in `reader` runs (G8, G8'): none inside
@@ -204,6 +210,8 @@ class ClassFact:
     shape: bool = False            # js: an interface or an object type: no object of its own (`structural`, T1')
     made: int = -1                 # js: an object literal (1) or a class expression (2) where the code makes it: a
                                    # `("cast", "#key")` of it is a value made there, any other cast a declared type
+    tparams: tuple = ()            # js: its type parameters: each one's default type (`js_sigs`)
+    heritage: list = field(default_factory=list)   # js: what it extends and implements, as declared types (`js_sigs`)
 
 
 @dataclass

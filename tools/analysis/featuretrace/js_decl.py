@@ -4,12 +4,14 @@ namespaces, type aliases and ambient declarations (`declare`, `declare global`, 
 """
 from __future__ import annotations
 
-from . import ir_js, js_body, js_bounds, js_class, js_types, jsdoc
+from . import ir_js, js_body, js_bounds, js_class, js_sigs, js_types, jsdoc
 from .model import ALIAS_KIND, ClassFact
 from .source import field_of, named_children, string_value
+from .vocab import LEVEL_ALIAS, LEVEL_TYPE
 
 GLOBAL_KEY = "<global>"            # the global scope's names (scripts, `declare global`): one class for the program
 AMBIENT = "ambient:"               # `declare module "m" { }`: the module m's declarations
+GLOBAL_WORD = "global"             # `global { }`: a global augmentation (TypeScript handbook, Declaration Merging)
 DECLARATIONS = ("function_declaration", "generator_function_declaration", "function_signature", "class_declaration",
                 "abstract_class_declaration", "lexical_declaration", "variable_declaration", "interface_declaration",
                 "enum_declaration", "type_alias_declaration", "internal_module", "module", "ambient_declaration")
@@ -21,10 +23,16 @@ def has_module_syntax(r, root) -> bool:
 
 def module_body(r, block, owner: str, holder) -> None:
     """The statements of a module or namespace: imports, exports, declarations (members of `owner`), and the code
-    run when it is evaluated (references of `holder`)."""
-    for st in named_children(block):
+    run when it is evaluated (references of `holder`). A global augmentation written in an ambient module without
+    `declare` (`global { ... }`, TypeScript handbook: Declaration Merging) is read where the grammar recovers it."""
+    statements = named_children(block)
+    for i, st in enumerate(statements):
         kind = st.type
-        if kind == "import_statement":
+        if kind == "statement_block" and i and global_word(r, statements[i - 1]):
+            global_augmentation(r, st, holder)
+        elif kind == "ERROR" and global_word(r, st):
+            continue
+        elif kind == "import_statement":
             imports(r, st, holder)
         elif kind == "export_statement":
             exports(r, st, owner, holder)
@@ -34,6 +42,20 @@ def module_body(r, block, owner: str, holder) -> None:
             declaration(r, named_children(st)[0], owner, holder)
         else:
             js_body.statement(r, st, holder, ())
+
+
+def global_word(r, node) -> bool:
+    """The word `global` the grammar (tree-sitter-typescript 0.23) leaves as an error before a global augmentation."""
+    return node.type == "ERROR" and r.src.text(node).strip() == GLOBAL_WORD
+
+
+def global_augmentation(r, block, holder) -> None:
+    r.facts.classes.append(ClassFact(GLOBAL_KEY, "js", "", r.key, r.src.line(block)))
+    r.ambient += 1
+    try:
+        module_body(r, block, GLOBAL_KEY, holder)
+    finally:
+        r.ambient -= 1
 
 
 def imports(r, st, holder) -> None:
@@ -121,14 +143,16 @@ def declaration(r, node, owner: str, holder) -> list[str]:
         return variables(r, node, owner, holder)
     if kind == "interface_declaration":
         key = new_class(r, node, name, owner)
-        r.facts.classes[-1].shape = True                             # no object of its own (`structural`)
-        for clause in (c for c in named_children(node) if c.type == "extends_type_clause"):
-            r.facts.classes[-1].bases += [r.src.text(t) for t in named_children(clause)]
-        r.type_params.append(js_types.parameters(r, node))           # its type parameters are erased (T1)
+        cls = r.facts.classes[-1]
+        cls.shape = True                                             # no object of its own (`structural`)
+        cls.tparams = js_sigs.open_params(r, node, LEVEL_TYPE, key)  # erased (T1), and kept (Task 4)
         try:
+            for clause in (c for c in named_children(node) if c.type == "extends_type_clause"):
+                cls.bases += [r.src.text(t) for t in named_children(clause)]
+                cls.heritage += [js_sigs.tree(r, js_types.bare(t), key) for t in named_children(clause)]
             js_class.members(r, field_of(node, "body"), key, None)
         finally:
-            r.type_params.pop()
+            js_sigs.close_params(r)
         return [name]
     if kind == "enum_declaration":
         key = new_class(r, node, name, owner)
@@ -140,12 +164,13 @@ def declaration(r, node, owner: str, holder) -> list[str]:
     if kind == "type_alias_declaration":
         r.facts.aliases[scoped(owner, name)] = " ".join(r.src.text(field_of(node, "value")).split())
         alias = r.unit(ALIAS_KIND, name, owner, node, scoped(owner, name))   # the values its type admits (T1')
-        r.type_params.append(js_types.parameters(r, node))           # its type parameters are erased (T1)
+        alias.tparams = js_sigs.open_params(r, node, LEVEL_ALIAS, owner)     # erased (T1), and kept (Task 4)
         try:
             alias.values += js_types.values(r, field_of(node, "value"), alias)
             alias.bound = js_bounds.of(r, field_of(node, "value"))     # what a place of this type admits (S2)
+            alias.result_type = js_sigs.tree(r, js_types.bare(field_of(node, "value")), owner)
         finally:
-            r.type_params.pop()
+            js_sigs.close_params(r)
         return [name]
     if kind in ("internal_module", "module"):
         spec = string_value(r.src, name_node)
@@ -161,12 +186,16 @@ def declaration(r, node, owner: str, holder) -> list[str]:
         return [name] if spec is None else []
     if kind == "ambient_declaration":
         names = []
-        for part in named_children(node):
-            if part.type == "statement_block":                  # declare global { ... }
-                r.facts.classes.append(ClassFact(GLOBAL_KEY, "js", "", r.key, r.src.line(node)))
-                module_body(r, part, GLOBAL_KEY, holder)
-            elif part.type in DECLARATIONS:
-                names += declaration(r, part, owner, holder)
+        r.ambient += 1                                          # what it declares only declares (Task 4)
+        try:
+            for part in named_children(node):
+                if part.type == "statement_block":              # declare global { ... }
+                    r.facts.classes.append(ClassFact(GLOBAL_KEY, "js", "", r.key, r.src.line(node)))
+                    module_body(r, part, GLOBAL_KEY, holder)
+                elif part.type in DECLARATIONS:
+                    names += declaration(r, part, owner, holder)
+        finally:
+            r.ambient -= 1
         return names
     return []
 
@@ -211,6 +240,7 @@ def variables(r, node, owner: str, holder) -> list[str]:
         unit.values += r.type_values(field_of(declarator, "type"), unit)
         unit.bound = js_bounds.of(r, field_of(declarator, "type")) \
             or (jsdoc.declared(r, declarator) if jsdoc.is_js(r) else ())         # S2, its JSDoc `@type` (S2')
+        unit.result_type = js_sigs.of(r, field_of(declarator, "type"), owner)   # kept whole (Task 4)
         if value is not None:
             unit.values.append(r.ir(value, unit))
             js_body.expr(r, value, holder, ())

@@ -69,3 +69,6 @@ const AppleKind = makeKind(() => new Apple());
 const PearKind = makeKind(() => new Pear());
 
 export function kindApple() { return new AppleKind().build(); }
+
+function holderOf(v) { return { get() { return v; } }; }
+export function literalApple() { holderOf(new Pear()); return holderOf(new Apple()).get(); }

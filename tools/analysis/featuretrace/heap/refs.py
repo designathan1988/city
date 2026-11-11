@@ -11,7 +11,7 @@ from ..model import STATE_KINDS
 from ..rules import CONSTRUCTOR
 from ..vocab import (ANY_FIELD, CALL, CONSTRUCT, ELEMENTS_FIELD, INVOKE, LAMBDA, MEMBER, NAME, NEW, READ, STORE,
                      WRITE)
-from . import members, names, trees
+from . import declared, members, names, trees
 
 CONSTRUCTED = 10           # a node: what a constructor's call returns (the `new` itself is the object made)
 
@@ -40,13 +40,17 @@ def construct(an, unit, ref, ctx) -> None:
     """`new C(args)`: the object made at the site in this context (the construct tree), and C's constructor run on it
     — a class's declared constructor, or the constructor function object itself, its environment kept."""
     ctor = an.node(ref.base, unit, ctx)
-    an.node((CONSTRUCT, ref.base, ref.site), unit, ctx)
+    value = an.node((CONSTRUCT, ref.base, ref.site), unit, ctx)
     args = [an.node(a, unit, ctx) for a in ref.args]
 
     def by_class(_, objs):
         for obj in objs:
             key = an.made_by(obj)
-            if not key:
+            if not key:                               # an object of a declared type: its construct signatures
+                call = (CONSTRUCTED, unit.gid, ref.site, obj, ctx)
+                an.written(call, unit.gid, ref.line)
+                declared.construct(an, call, obj, args)
+                an.solver.follow(call, value)
                 continue
             made = trees.made(an, obj, unit.file, ref.site, ctx)
             call = (CONSTRUCTED, unit.gid, ref.site, key, ctx)

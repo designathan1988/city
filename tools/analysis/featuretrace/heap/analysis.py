@@ -17,8 +17,9 @@ from collections import defaultdict
 from ..js_read import MODULE_UNIT
 from ..model import FUNCTION_KINDS
 from ..resolve import EXACT, Edge
-from ..vocab import ANY_FIELD, CALL, NEW, SITE_FUNCTION, SITE_UNKNOWN
-from . import contexts, refs, trees
+from ..model import STATE_KINDS as STATE
+from ..vocab import ANY_FIELD, CALL, HANDED, NEW, SITE_FUNCTION, SITE_UNKNOWN, T_OPEN
+from . import contexts, declared, refs, trees, typesys, values
 from .objects import Objects
 from .solver import Solver
 
@@ -39,6 +40,8 @@ class Analysis:
         self.out, self.inn = defaultdict(list), defaultdict(list)
         self.entered = set()                 # (gid, context) of each run started as an entry point
         self.closures = defaultdict(set)     # gid -> the environments its function objects were made in
+        self.relays = defaultdict(list)      # a call's node -> the nodes of the calls it hands functions to
+        self.memo = {}                       # what a declared type resolves to, merges with, looks up
 
     # ---- nodes -------------------------------------------------------------------------------------------------
     def node(self, tree, unit, ctx):
@@ -87,6 +90,8 @@ class Analysis:
             unit = self.ix.units[gid]
             for tree in unit.values:
                 self.solver.follow(self.node(tree, unit, ROOT), node)
+            if unit.ambient and unit.result_type and unit.kind in STATE:     # declared: an object of its type
+                self.solver.follow(values.produce(self, unit.result_type, (None, None, None), ((gid,), ROOT)), node)
         return node
 
     def field(self, obj: int, name: str):
@@ -107,18 +112,21 @@ class Analysis:
             self.active[gid].add(ctx)
             refs.lower(self, self.ix.units[gid], ctx)
 
-    def call(self, node, fn: int, receiver: int | None, args: list, kind: str) -> None:
+    def call(self, node, fn: int, receiver: int | None, args: list, kind: str, site=None) -> None:
         """A call whose node is `node` runs the function object `fn` on `receiver` with `args`, in its context: its
         parameters take the arguments, its `this` the receiver, the call its result; a link for each reference.
-        A plain call's site is its node without the caller's context."""
+        A plain call's site is its node without the caller's context (`site` when the caller says). A function only
+        declared does what its declaration says (`declared`); an object no function of the program is called as
+        its kind says."""
         gid = self.objects.function(fn)
         if gid is None:
+            declared.call_object(self, node, fn, receiver, args)
             return
         objects, env = self.objects, self.objects.env(fn)
         if receiver is not None:
             ctx = contexts.of_method(env, objects.site(receiver), objects.heap(receiver))
         else:
-            ctx = contexts.of_call(env, objects.make(*node[:-1]))
+            ctx = contexts.of_call(env, site if site is not None else objects.make(*node[:-1]))
         self.activate(gid, ctx)
         unit = self.ix.units[gid]
         for index, arg in enumerate(args):
@@ -127,17 +135,34 @@ class Analysis:
         if receiver is not None:
             self.solver.add(self.this(gid, ctx), [receiver])
         self.solver.follow(self.ret(gid, ctx), node)
+        self.reached(node, gid, kind)
+        if unit.decl_only and typesys.declared(self, gid):
+            declared.apply(self, node, gid, receiver, args, declared.call_site(self, node))
+
+    def reached(self, node, gid: int, kind) -> None:
+        """The call `node` runs `gid`: a link for each reference written for it (`kind` True: a `new`)."""
+        kind = NEW if kind is True else CALL if kind is False else kind
         if (gid, kind) not in self.targets[node]:
             self.targets[node].add((gid, kind))
             for caller, line in self.lines[node]:
                 self.link(caller, gid, kind, line)
 
+    def relay(self, origin, node) -> None:
+        """The references written for the call `origin` are written for `node` too (a call it hands a function to)."""
+        if origin is None or node in self.relays[origin]:
+            return
+        self.relays[origin].append(node)
+        for caller, line in list(self.lines[origin]):
+            self.written(node, caller, line)
+
     def written(self, node, caller: int, line: int) -> None:
         """A reference written for the call `node`: a link to each function it runs, found now or later."""
         if (caller, line) not in self.lines[node]:
             self.lines[node].append((caller, line))
-            for gid, kind in self.targets[node]:
+            for gid, kind in list(self.targets[node]):
                 self.link(caller, gid, kind, line)
+            for other in list(self.relays.get(node, ())):
+                self.written(other, caller, line)
 
     def link(self, src: int, dst: int, kind: str, line: int) -> None:
         key = (src, dst, kind, line)
@@ -172,7 +197,7 @@ def entries(an, modules: bool) -> bool:
             continue
         if modules:
             started |= enter(an, gid, ROOT, None)
-        elif not any(e.kind in (CALL, NEW) for e in an.inn.get(gid, ())):
+        elif not any(e.kind in (CALL, NEW, HANDED) for e in an.inn.get(gid, ())):   # no caller, nor the platform
             for env in list(an.closures.get(gid) or {ROOT}):
                 started |= enter(an, gid, contexts.of_call(env, unknown), unknown)
     return started
@@ -184,9 +209,15 @@ def enter(an, gid: int, ctx, unknown) -> bool:
         return False
     an.entered.add((gid, ctx))
     an.activate(gid, ctx)
-    if unknown is not None:
-        for index in range(len(an.ix.units[gid].params)):
-            an.solver.add(an.param(gid, index, ctx), [unknown])
+    if unknown is not None:                  # each parameter: an object of its declared type, else the unknown one
+        unit = an.ix.units[gid]
+        for index in range(len(unit.params)):
+            tree = unit.param_types[index] if index < len(unit.param_types) else ()
+            if tree and tree[0] != T_OPEN:
+                site = ((gid, index), ROOT)
+                an.solver.follow(values.produce(an, tree, (None, None, None), site), an.param(gid, index, ctx))
+            else:
+                an.solver.add(an.param(gid, index, ctx), [unknown])
         an.solver.add(an.this(gid, ctx), [unknown])
     return True
 

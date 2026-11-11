@@ -9,11 +9,12 @@ object type is an interface without a name (T1'); an optional property (`p?: T`)
 """
 from __future__ import annotations
 
-from . import ir_js, js_body, js_bounds, js_decl, js_types, jsdoc
+from . import ir_js, js_body, js_bounds, js_decl, js_sigs, js_types, jsdoc
 from .model import ClassFact, declare, enclose
 from .rules import CONSTRUCTOR, INDEX_MEMBER
 from .solver import UNDEFINED
 from .source import field_of, named_children
+from .vocab import LEVEL_TYPE, T_NAMED, T_VALUES
 
 ACCESSORS = ("get", "set")
 SHAPE = "<type@"                   # an object type's class key: `<file>#<type@<start byte>>` (T1')
@@ -31,18 +32,13 @@ def class_declaration(r, node, name: str, owner: str, holder) -> str:
     else:
         js_decl.new_class(r, node, name, owner)
     cls = next(c for c in reversed(r.facts.classes) if c.key == key)
-    for heritage in (c for c in named_children(node) if c.type == "class_heritage"):
-        for clause in named_children(heritage):
-            if clause.type == "extends_clause":
-                cls.bases.append(" ".join(r.src.text(field_of(clause, "value")).split()))
-            elif clause.type == "implements_clause":
-                cls.bases += [r.src.text(t) for t in named_children(clause)]
+    cls.tparams = js_sigs.open_params(r, node, LEVEL_TYPE, key)     # erased (T1), and kept (Task 4)
     outer = holder if local else None
     body = field_of(node, "body")
     explicit = next((m for m in named_children(body) if m.type == "method_definition"
                      and ir_js.member_name(r.src, field_of(m, "name")) == CONSTRUCTOR), None) if body else None
-    r.type_params.append(js_types.parameters(r, node))      # the class's type parameters are erased (T1)
     try:
+        heritage(r, node, cls, key)
         if explicit is not None:
             r.function(explicit, CONSTRUCTOR, key, outer)
         r.constructor_of(key, node)
@@ -50,8 +46,24 @@ def class_declaration(r, node, name: str, owner: str, holder) -> str:
             js_body.decorator(r, decorator, r.static_of(key, node))
         members(r, body, key, outer, node)
     finally:
-        r.type_params.pop()
+        js_sigs.close_params(r)
     return key
+
+
+def heritage(r, node, cls, key: str) -> None:
+    """What a class extends (an expression, with its type arguments) and implements: as written, and as declared
+    types (Task 4)."""
+    for part in (c for c in named_children(node) if c.type == "class_heritage"):
+        for clause in named_children(part):
+            if clause.type == "extends_clause":
+                text = " ".join(r.src.text(field_of(clause, "value")).split())
+                cls.bases.append(text)
+                args = field_of(clause, "type_arguments")
+                written = tuple(js_sigs.tree(r, js_types.bare(a), key) for a in named_children(args)) if args else ()
+                cls.heritage.append((T_NAMED, text, written, r.key, key))
+            elif clause.type == "implements_clause":
+                cls.bases += [r.src.text(t) for t in named_children(clause)]
+                cls.heritage += [js_sigs.tree(r, js_types.bare(t), key) for t in named_children(clause)]
 
 
 def members(r, body, key: str, outer, class_node=None) -> None:
@@ -61,7 +73,10 @@ def members(r, body, key: str, outer, class_node=None) -> None:
         name_node = field_of(member, "name")
         name = ir_js.member_name(r.src, name_node) if name_node is not None else ""
         static = any(c.type == "static" for c in member.children)
-        if kind in ("method_definition", "method_signature", "abstract_method_signature"):
+        if kind in ("construct_signature", "call_signature"):     # `new (...): T`, `(...): T` (Task 4)
+            r.function(member, js_sigs.CONSTRUCT_MEMBER if kind == "construct_signature" else js_sigs.CALL_MEMBER,
+                       key, outer)
+        elif kind in ("method_definition", "method_signature", "abstract_method_signature"):
             which = next((c.type for c in member.children if c.type in ACCESSORS), None)
             if which:
                 prop = field_unit(r, key, name, member, outer)
@@ -82,6 +97,8 @@ def members(r, body, key: str, outer, class_node=None) -> None:
             field.type_text = r.type_text(field_of(member, "type"))
             field.values += r.type_values(field_of(member, "type"), field)
             optional = any(c.type == "?" for c in member.children)
+            written = js_sigs.of(r, field_of(member, "type"), key)
+            field.result_type = js_sigs.optional(written) if optional else written       # kept whole (Task 4)
             if field_of(member, "type") is not None:
                 field.bound = js_bounds.of(r, field_of(member, "type"), optional)   # what it can hold (S2)
             elif jsdoc.is_js(r):
@@ -92,17 +109,22 @@ def members(r, body, key: str, outer, class_node=None) -> None:
                 field.values.append(r.ir(value, field))
                 runner = r.static_of(key, member) if static else r.constructor_of(key, class_node or member)
                 js_body.expr(r, value, runner, ())
-            elif kind == "public_field_definition" and not any(c.type == "declare" for c in member.children):
+            elif kind == "public_field_definition" and not any(c.type == "declare" for c in member.children) \
+                    and not field.ambient:
                 field.values.append(("literal", "undefined"))   # a field written with no initializer (MDN, V1)
         elif kind == "index_signature":         # `[k: K]: V`, `[P in X]: V`: any property name reads V (T2, T1')
             mapped = next((c for c in named_children(member) if c.type == "mapped_type_clause"), None)
-            r.type_params.append({r.src.text(field_of(mapped, "name"))} if mapped is not None else set())
+            js_sigs.open_names(r, [r.src.text(field_of(mapped, "name"))] if mapped is not None else [],
+                               (T_VALUES, js_types.KEYS))
             try:
                 field = field_unit(r, key, INDEX_MEMBER, member, outer)
                 field.values += r.type_values(field_of(member, "type"), field)
                 field.bound = js_bounds.of(r, field_of(member, "type"))
+                index = (T_VALUES, js_types.KEYS) if mapped is not None else \
+                    js_sigs.of(r, field_of(member, "index_type"), key)
+                field.indexes.append((index, js_sigs.of(r, field_of(member, "type"), key)))     # Task 4
             finally:
-                r.type_params.pop()
+                js_sigs.close_params(r)
         elif kind == "class_static_block":
             js_body.block(r, field_of(member, "body"), r.static_of(key, member), ())
         elif kind == "decorator":

@@ -65,7 +65,24 @@ SITE_MODULE = "module"     # a module's namespace
 SITE_PRIMITIVE = "prim"    # a value of one of the language's primitive kinds
 SITE_TEXT = "str"          # a string the analysis knows the text of
 SITE_UNKNOWN = "unknown"   # what no declaration describes: counted in the report
+SITE_DECLARED = "decl"     # an object of a declared type the platform gives (a result, a property, a declared variable)
+SITE_DECLARED_FN = "declfn"    # a function of a declared function type the platform gives (a callback's argument)
+SITE_RESOLVER = "resolver"     # the function `await` hands a thenable: what it is called with is the awaited value
 
 # Fields of an abstract object beyond its named properties.
 ELEMENTS_FIELD = "[[elements]]"     # an array's elements, what an unknown key reaches
 ANY_FIELD = "[[any]]"               # what a write through an unknown key put: every named read sees it
+
+# Declared types kept whole (js_sigs; heap.types): the platform's signatures as type trees, type parameters kept.
+T_PARAM = "tparam"         # (T_PARAM, level, index): a type parameter of the declaring type, the function or an alias
+T_NAMED = "tnamed"         # (T_NAMED, text, (type arguments...), file, owner): a type a name names, where it is written
+T_FN = "tfn"               # (T_FN, (parameter types...), result type, rest index or -1, `this` type)
+T_UNION = "tunion"         # (T_UNION, (parts...)): a union, an intersection, a conditional type's branches
+T_VALUES = "tvalues"       # (T_VALUES, (the language's values...)): a primitive, a literal type, `keyof`
+T_OBJECT = "tobject"       # (T_OBJECT, class key): an object type written in place (an interface without a name)
+T_THIS = "tthis"           # (T_THIS,): the `this` type, the object the member is read on
+T_INDEX = "tindex"         # (T_INDEX, object type, key type): an indexed access type `T[K]`
+T_TUPLE = "ttuple"         # (T_TUPLE, (parts...)): a tuple type
+T_QUERY = "tquery"         # (T_QUERY, name, file, owner): `typeof x`, the value a name has where it is written
+T_OPEN = "topen"           # (T_OPEN,): a type the declaration writes no value for (a mapped type's or an `infer`'s)
+LEVEL_TYPE, LEVEL_OWN, LEVEL_ALIAS = 0, 1, 2      # whose type parameter: the declaring type's, the function's, an alias's

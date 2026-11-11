@@ -55,6 +55,9 @@ class HeapContexts(unittest.TestCase):
     def test_each_function_object_has_its_own_prototype(self):
         self.assertEqual({"Apple"}, self.classes("kindApple"))
 
+    def test_an_object_literal_method_is_a_closure_of_the_run_that_made_it(self):
+        self.assertEqual({"Apple"}, self.classes("literalApple"))
+
 
 if __name__ == "__main__":
     unittest.main()

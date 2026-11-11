@@ -5,7 +5,7 @@ import sys
 import threading
 from pathlib import Path
 
-from . import engine_read, link
+from . import engine_read, js_libs, link
 from .cpp_read import read_cpp
 from .gd_read import read_gd
 from .js_config import read_package, read_tsconfig
@@ -60,9 +60,14 @@ def load(roots: list[Path], base: Path, cache_dir: Path | None, progress=None):
     return index, resolver, count, broken
 
 
-def read(roots: list[Path], base: Path, cache_dir: Path | None, progress=None):
-    """Facts of every file under the roots, indexed. Returns (index, files read, files with errors)."""
+def read(roots: list[Path], base: Path, cache_dir: Path | None, progress=None, declarations: bool = False):
+    """Facts of every file under the roots, indexed. Returns (index, files read, files with errors). With
+    `declarations`, the declaration files the program's TypeScript chooses are read too (`js_libs`)."""
     files = discover(roots)
+    if declarations:
+        known = {p for p, _ in files}
+        for root in roots:
+            files += [(f, "js") for f in js_libs.declaration_files(root) if f not in known and not known.add(f)]
     for root in roots:
         project = godot_root(root / "x") if root.is_dir() else godot_root(root)
         if project is not None and (project / PROJECT_FILE).resolve() not in {p for p, _ in files}:

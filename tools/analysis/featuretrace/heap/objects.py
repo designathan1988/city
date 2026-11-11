@@ -8,10 +8,12 @@ the function object that made it (its prototype is that function's `prototype`).
 """
 from __future__ import annotations
 
-from ..vocab import SITE_ARRAY, SITE_CLASS, SITE_FUNCTION, SITE_LITERAL, SITE_NEW, SITE_PRIMITIVE, SITE_TEXT
+from ..vocab import (SITE_ARRAY, SITE_CLASS, SITE_DECLARED, SITE_DECLARED_FN, SITE_FUNCTION, SITE_LITERAL, SITE_NEW,
+                     SITE_PRIMITIVE, SITE_TEXT)
 from . import contexts
 
-MADE = (SITE_NEW, SITE_LITERAL, SITE_ARRAY, SITE_FUNCTION)      # the kinds whose key ends with a context
+MADE = (SITE_NEW, SITE_LITERAL, SITE_ARRAY, SITE_FUNCTION, SITE_DECLARED, SITE_DECLARED_FN)   # keys ending with a
+                                                                                          # context
 
 
 class Objects:
@@ -47,9 +49,10 @@ class Objects:
         return key[-1] if key[0] in MADE else contexts.ROOT
 
     def class_of(self, obj: int) -> str | None:
-        """The class an object is an instance of: a `new`'s class, an object literal's own class."""
+        """The class an object is an instance of: a `new`'s class, an object literal's own class, a declared object's
+        declared type."""
         key = self.keys[obj]
-        return key[1] if key[0] in (SITE_NEW, SITE_LITERAL) else None
+        return key[1] if key[0] in (SITE_NEW, SITE_LITERAL, SITE_DECLARED) else None
 
     def maker(self, obj: int) -> int | None:
         """The function object whose `new` made an object (a constructor function's), else None."""
@@ -91,3 +94,13 @@ class Objects:
 
     def array(self, file: str, site: int, ctx) -> int:
         return self.make(SITE_ARRAY, file, site, contexts.heap(ctx))
+
+    def declared(self, key: str, site, env) -> int:
+        """An object of the declared type `key` made at a site (where, the heap context); an object type written in
+        place keeps the environment its member types are read in."""
+        return self.make(SITE_DECLARED, key, site[0], env, site[1])
+
+    def environment(self, obj: int):
+        """The environment a declared object of an object type written in place reads its member types in."""
+        key = self.keys[obj]
+        return key[3] if key[0] == SITE_DECLARED else None
