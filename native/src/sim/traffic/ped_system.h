@@ -31,6 +31,12 @@ void stand_on_sidewalk(const CityState &s, Pedestrian &w); // its pose at (seg, 
 void despawn(TrafficState &t, int id, bool arrived);
 void despawn_party(CityState &s, int id, bool arrived); // with the one it walks with, when that one is within reach
 
+// ped_ways.cpp: the ways off the sidewalk
+void at_node(CityState &s, int id); // at the end of a sidewalk: arrived, or the way round the node onto the next street's sidewalk
+void end_line(CityState &s, int id); // off the end of a line (its place across kept): onto the next line, or onto the sidewalk
+void begin_line(CityState &s, int id); // the next straight line toward ways[wi] from where it stands; a crosswalk waits for its leave
+void off_crosswalk(TrafficState &t, int id); // off the crosswalk it was on (TrafficState::node_crossers)
+
 // ped_door_walk.cpp: the first and last steps at a lot's door
 void aim_at_door(CityState &s, Pedestrian &w); // on the last street of its route: a door ahead to go in at
 void go_in(CityState &s, int id); // at its door's place on the sidewalk: across to the foot of the way in, its bends, then the door
@@ -99,11 +105,14 @@ bool walker_near(const TrafficState &t, const Pose &at, float r);
 bool add_company(CityState &s, int leader);
 // The share of its own pace a walker goes at to stay level with the one it walks with (1 alone or far from it).
 float company_pace(const TrafficState &t, const TrafficParams &p, const Pedestrian &w);
-// About to go over the crosswalk it waits for (ways[wi]): whether the one it walks with is ready too (near, in that kerb's queue,
-// waiting at it or on the crosswalk; or over already). A party starts over together.
+// About to go over the crosswalk it waits for (ways[wi]): whether the one it walks with is ready too (at that kerb, or in its queue with
+// nobody between the two; or over already). A party starts over together.
 bool company_ready(const TrafficState &t, const TrafficParams &p, const Pedestrian &w);
-// The one it walks with is on the crosswalk over `arm` at its node, within reach: it goes over with it.
-bool crossing_with(const TrafficState &t, const TrafficParams &p, const Pedestrian &w, int arm);
+// The one it walks with is on the crosswalk over `arm` at its node, however far along: it goes over with it, on the pair's leave.
+bool crossing_with(const TrafficState &t, const Pedestrian &w, int arm);
+// Just stepped onto a crosswalk: the one it walks with that steps off with it on the same leave (waiting at the same kerb, or in the
+// queue right behind it with nobody between), or -1.
+int company_steps_off(const TrafficState &t, const TrafficParams &p, const Pedestrian &w);
 int company_near(const TrafficState &t, const TrafficParams &p, const Pedestrian &w); // the one it walks with, when within reach; else -1
 uint32_t party_look(const TrafficState &t, const Pedestrian &w); // the hash the party's choices are drawn by: its first walker's
 bool company_door(const TrafficState &t, Pedestrian &w); // the door the one it walks with goes in at, ahead on its sidewalk: its own too

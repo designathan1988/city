@@ -119,18 +119,45 @@ float company_pace(const TrafficState &t, const TrafficParams &p, const Pedestri
 	return ahead < -p.ped_company_level_m ? p.ped_company_slow : 1.f;
 }
 
+// Nobody stands on the straight way from `from` to `to` at their junction: no walker filed with it (but the two) within two bodies of that
+// way between them, whom the one behind would have to pass to come up to the other.
+static bool way_between_clear(const TrafficState &t, const TrafficParams &p, int node, int from, int to) {
+	const Pedestrian &a = t.peds[size_t(from)], &b = t.peds[size_t(to)];
+	const V2 start(a.cur.x, a.cur.z), d = V2(b.cur.x, b.cur.z) - start;
+	const float len2 = d.dot(d), touch = 2 * p.ped_body_m;
+	if (len2 <= 0) return true;
+	for (const CrowdEntry &c : t.node_walkers[size_t(node)]) {
+		if (c.id == from || c.id == to) continue;
+		const V2 r = V2(c.x, c.z) - start;
+		const float along = r.dot(d) / len2;
+		if (along > 0 && along < 1 && (r - d * along).len() < touch) return false;
+	}
+	return true;
+}
+
 bool company_ready(const TrafficState &t, const TrafficParams &p, const Pedestrian &w) {
 	const Pedestrian *o = partner_of(t, w);
 	if (!o || further_on(*o, w)) return true; // alone, or the other is over already
-	// at the same kerb and near: in its queue (the point before the crossing's), waiting at it or on the crosswalk. One still on its
-	// way to a full queue gets into it past those standing, as anybody held up does (ped_stripes.cpp), and is then ready.
-	return o->mode != PedMode::SIDEWALK && o->way_node == w.way_node && o->ri == w.ri && o->wi + 1 >= w.wi &&
-			V2(o->cur.x - w.cur.x, o->cur.z - w.cur.z).len() <= p.ped_company_reach_m;
+	if (o->mode == PedMode::SIDEWALK || o->way_node != w.way_node || o->ri != w.ri) return false;
+	// at the same kerb: its queue leg ended, waiting there too; or on its queue leg with nobody between the two, so it steps up as this one
+	// steps off (one held behind others who wait, for a car or the next green, would be left behind: no body passes through another)
+	if (o->wi >= w.wi) return true;
+	const int self = int(&w - t.peds.data()), other = int(o - t.peds.data());
+	return o->wi + 1 == w.wi && way_between_clear(t, p, w.way_node, other, self);
 }
 
-bool crossing_with(const TrafficState &t, const TrafficParams &p, const Pedestrian &w, int arm) {
+int company_steps_off(const TrafficState &t, const TrafficParams &p, const Pedestrian &w) {
 	const Pedestrian *o = partner_of(t, w);
-	return o && o->way_node == w.way_node && o->cross_seg == arm && V2(o->cur.x - w.cur.x, o->cur.z - w.cur.z).len() <= p.ped_company_reach_m;
+	if (!o || w.cross_seg < 0 || o->cross_seg >= 0 || o->way_node != w.way_node || o->ri != w.ri) return -1;
+	const int self = int(&w - t.peds.data()), other = int(o - t.peds.data());
+	if (o->mode == PedMode::WAIT && o->wi == w.wi && o->ways[o->wi].cross == w.cross_seg) return other; // waiting at the same kerb
+	const bool queued = o->mode == PedMode::WAY && o->wi + 1 == w.wi && toward_kerb(*o) && o->ways[o->wi + 1].cross == w.cross_seg;
+	return queued && way_between_clear(t, p, w.way_node, other, self) ? other : -1; // right behind it in the queue
+}
+
+bool crossing_with(const TrafficState &t, const Pedestrian &w, int arm) {
+	const Pedestrian *o = partner_of(t, w);
+	return o && o->way_node == w.way_node && o->cross_seg == arm; // the pair's leave, however long the crosswalk
 }
 
 int company_near(const TrafficState &t, const TrafficParams &p, const Pedestrian &w) {
