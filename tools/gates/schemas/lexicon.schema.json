@@ -1,0 +1,15 @@
+{
+  "description": "tools/gates/lexicon.json: the English gate's lexicon (gate_language.py).",
+  "$defs": {
+    "words": {"type": "array", "items": {"type": "string", "pattern": "^[a-z]{3,}$"}, "uniqueItems": true}
+  },
+  "type": "object",
+  "strict": true,
+  "properties": {
+    "_doc": {"type": "string", "minLength": 1},
+    "portuguese": {"$ref": "#/$defs/words"},
+    "english": {"$ref": "#/$defs/words"},
+    "names": {"type": "array", "items": {"type": "string", "minLength": 3}, "uniqueItems": true}
+  },
+  "required": ["_doc", "portuguese", "english", "names"]
+}

@@ -1,13 +1,18 @@
 {
  "rule": "english",
  "expect": [
+  "NON_ENGLISH_TEXT project/data/x.json:1",
   "NON_ENGLISH_TEXT tools/a.py:2",
-  "NON_ENGLISH_TEXT tools/new.py:1"
+  "NON_ENGLISH_TEXT tools/new.py:1",
+  "NON_ENGLISH_TEXT tools/plain.py:2",
+  "NON_ENGLISH_TEXT tools/plain.py:3"
  ],
  "changed": {
+  "project/data/x.json": "all",
   "tools/a.py": [
    2
   ],
-  "tools/new.py": "all"
+  "tools/new.py": "all",
+  "tools/plain.py": "all"
  }
 }

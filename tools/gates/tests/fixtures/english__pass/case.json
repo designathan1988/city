@@ -5,6 +5,7 @@
   "project/data/i18n/strings.csv": "all",
   "tools/b.py": [
    2
-  ]
+  ],
+  "tools/c.py": "all"
  }
 }

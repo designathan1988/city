@@ -73,7 +73,8 @@ def per_file_rules(rules):
         PerFile("single_owner", ["DONO_UNICO"], gate_defs.applies_owners, gate_defs.check_single_owner),
         PerFile("data_copies", ["SEGUNDO_DONO", "VALOR_DUPLICADO"], gate_defs.applies_data_copies,
                 gate_defs.check_data_copies, lambda ctx: ctx.cache.key_of(_data_files(ctx))),
-        PerFile("english", ["NON_ENGLISH_TEXT"], gate_language.applies, gate_language.check_english),
+        PerFile("english", ["NON_ENGLISH_TEXT"], gate_language.applies, gate_language.check_english,
+                lambda ctx: ctx.cache.key_of(gate_language.inputs(ctx))),
     ]
 
 
