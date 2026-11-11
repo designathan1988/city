@@ -210,6 +210,8 @@ def target(r, node, unit, cond, value: tuple | None) -> None:
         expr(r, obj, unit, cond)
         if name is None:                                        # o[k] = v: a value put into o
             expr(r, key, unit, cond)
+            if value is not None:                               # the write itself, its object and key kept as trees
+                r.add(unit, "store", "", node, cond, base=r.ir(obj, unit), args=(value,), key=r.ir(key, unit))
             target(r, obj, unit, cond, put(value) if value is not None else None)
             return
         base = r.ir(obj, unit)

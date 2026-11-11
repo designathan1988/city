@@ -12,8 +12,8 @@ from .source import field_of, named_children, string_value
 
 USE_STRICT = "use strict"
 # What `this` is in a function written as each node (MDN `this`, Arrow function expressions, Method definitions).
-THIS_OF = {"arrow_function": "arrow", "method_definition": "method"}
-FUNCTION = "function"
+ARROW, METHOD, FUNCTION = "arrow", "method", "function"      # what `this` is decided by (`Unit.this_of`)
+THIS_OF = {"arrow_function": ARROW, "method_definition": METHOD}
 
 
 def made(r, node, unit, outer, module) -> None:

@@ -220,6 +220,8 @@ class JsReader:
             own = field_of(node, "name")
             name = self.src.text(own) if own is not None else f"<class:{self.src.line(node)}>"
             self._objects[node.start_byte] = js_class.class_declaration(self, node, name, unit.owner, unit)
+            made = next(c for c in reversed(self.facts.classes) if c.key == self._objects[node.start_byte])
+            made.made = js_class.MADE_CLASS                 # a class written as an expression: a value made here
         return self._objects[node.start_byte]
 
     def object_class(self, node, unit: Unit) -> str:

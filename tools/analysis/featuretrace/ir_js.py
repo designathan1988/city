@@ -85,7 +85,7 @@ def _call(r, node, unit):
 def _new(r, node, unit):
     """`new X(...)`: X is an expression; its value decides what is made (N1: a class's instance, what a function
     called as a constructor returns, the host's object)."""
-    return ("construct", build(r, field_of(node, "constructor"), unit))
+    return ("construct", build(r, field_of(node, "constructor"), unit), node.start_byte)    # its allocation site
 
 
 def guarded(r, facts: list, node, unit):
@@ -155,7 +155,7 @@ def _array(r, node, unit):
             values.append(("elements", build(r, (named_children(item) or [None])[0], unit)))
         elif item.type != "comment":
             values.append(build(r, item, unit))
-    return ("collection", tuple(values))
+    return ("collection", tuple(values), node.start_byte)                # its allocation site
 
 
 def _string(r, node, unit):

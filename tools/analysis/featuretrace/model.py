@@ -52,6 +52,8 @@ class Ref:
     args: tuple = ()               # call: each argument's tree; write: (the value written,)
     object_of: tuple = ()          # cpp: a use of `T x(a, b);` read as an object: kept if a or b is a value (cpp_ambig)
     receiver: tuple | None = None  # js: the object written as `this` in `f.call(t)`, `f.apply(t)`, `f.bind(t)` (J2'')
+    site: int = -1                 # new: where the object is made (its allocation site, the start of the expression)
+    key: tuple | None = None       # store: the key no literal names (`o[k] = v`), as a tree
 
 
 @dataclass
@@ -200,6 +202,8 @@ class ClassFact:
     engine_visible: bool = False   # cpp: has _bind_methods (the engine knows it by name)
     params: list = field(default_factory=list)     # cpp class template: its type parameter names
     shape: bool = False            # js: an interface or an object type: no object of its own (`structural`, T1')
+    made: int = -1                 # js: an object literal (1) or a class expression (2) where the code makes it: a
+                                   # `("cast", "#key")` of it is a value made there, any other cast a declared type
 
 
 @dataclass

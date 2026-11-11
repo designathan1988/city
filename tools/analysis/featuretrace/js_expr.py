@@ -54,7 +54,7 @@ def expression(r, node, unit, cond) -> None:
         if ctor is not None and ctor.type not in ("identifier", "member_expression"):
             expression(r, ctor, unit, cond)
         trees = arguments_of(r, args, unit)
-        r.add(unit, "new", "", node, cond, base=r.ir(ctor, unit), args=trees, argc=len(trees))
+        r.add(unit, "new", "", node, cond, base=r.ir(ctor, unit), args=trees, argc=len(trees), site=node.start_byte)
         arguments(r, args, unit, cond)
     elif kind == "assignment_expression":
         left, right = field_of(node, "left"), field_of(node, "right")

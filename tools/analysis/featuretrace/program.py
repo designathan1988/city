@@ -55,6 +55,13 @@ def reader_for(path: Path):
 
 def load(roots: list[Path], base: Path, cache_dir: Path | None, progress=None):
     """Facts of every file, then the index and the links. Returns (index, resolver, files read, files with errors)."""
+    index, count, broken = read(roots, base, cache_dir, progress)
+    resolver = deep(lambda: link.build(index, progress))
+    return index, resolver, count, broken
+
+
+def read(roots: list[Path], base: Path, cache_dir: Path | None, progress=None):
+    """Facts of every file under the roots, indexed. Returns (index, files read, files with errors)."""
     files = discover(roots)
     for root in roots:
         project = godot_root(root / "x") if root.is_dir() else godot_root(root)
@@ -77,8 +84,7 @@ def load(roots: list[Path], base: Path, cache_dir: Path | None, progress=None):
     index = Index(all_facts)
     if progress:
         progress(f"indexed {len(index.units)} definitions; linking")
-    resolver = deep(lambda: link.build(index, progress))
-    return index, resolver, len(files), broken
+    return index, len(files), broken
 
 
 def deep(work):

@@ -17,6 +17,7 @@ from .source import field_of, named_children
 
 ACCESSORS = ("get", "set")
 SHAPE = "<type@"                   # an object type's class key: `<file>#<type@<start byte>>` (T1')
+MADE_LITERAL, MADE_CLASS = 1, 2       # `ClassFact.made`: an object literal, a class expression
 
 
 def class_declaration(r, node, name: str, owner: str, holder) -> str:
@@ -121,7 +122,7 @@ def field_unit(r, key: str, name: str, node, outer):
 def object_literal(r, node, unit) -> str:
     """An object literal: a class of its own (J9); its values are read where the literal is written."""
     key = f"{r.key}#<object@{node.start_byte}>"
-    cls = ClassFact(key, "js", "", r.key, r.src.line(node))
+    cls = ClassFact(key, "js", "", r.key, r.src.line(node), made=MADE_LITERAL)
     r.facts.classes.append(cls)
     outer = unit if unit.kind in ("func", "lambda") and unit.name != "<module>" else None
     for item in named_children(node):

@@ -122,7 +122,7 @@ def link_ref(rs, unit, ref) -> None:
     if kind == "lambda":
         rs.link(unit.gid, ix.offset[unit.file] + ref.target, "lambda", ref, EXACT)
         return
-    if kind == "load":
+    if kind in ("load", "store"):          # a store is the new core's (`heap`); this core reads its `put` instead
         return
     if kind in JS_KINDS:
         JS_KINDS[kind](rs, unit, ref)
