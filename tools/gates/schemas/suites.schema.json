@@ -38,10 +38,21 @@
  "$defs": {
   "strings": {"type": "array", "items": {"type": "string", "minLength": 1}},
   "var": {
-   "type": "object",
-   "required": ["windows", "posix"],
-   "additionalProperties": false,
-   "properties": {"doc": {"type": "string"}, "env": {"type": "string"}, "windows": {"type": "string"}, "posix": {"type": "string"}}
+   "oneOf": [
+    {
+     "type": "object",
+     "required": ["windows", "posix"],
+     "additionalProperties": false,
+     "properties": {"doc": {"type": "string"}, "env": {"type": "string"}, "windows": {"type": "string"}, "posix": {"type": "string"}}
+    },
+    {
+     "type": "object",
+     "required": ["locate"],
+     "additionalProperties": false,
+     "description": "a machine's tool, found by tools/tasks/locations.py (its environment variable, tools/tasks/local.json, the PATH)",
+     "properties": {"doc": {"type": "string"}, "locate": {"enum": ["godot", "bash", "mingw"]}}
+    }
+   ]
   },
   "resources": {
    "type": "object",

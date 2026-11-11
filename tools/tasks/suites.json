@@ -6,24 +6,9 @@
    "windows": "60",
    "posix": "60"
   },
-  "godot": {
-   "doc": "Godot 4.7 console binary",
-   "env": "GODOT",
-   "windows": "C:/Users/Jonathan/AppData/Local/Microsoft/WinGet/Links/godot_console.exe",
-   "posix": "godot"
-  },
-  "bash": {
-   "doc": "the bash that runs tools/build/*.sh (Git Bash on Windows, never the WSL one in System32)",
-   "env": "BASH_EXE",
-   "windows": "C:/Program Files/Git/bin/bash.exe",
-   "posix": "bash"
-  },
-  "mingw": {
-   "doc": "llvm-mingw root of the Windows build",
-   "env": "MINGW",
-   "windows": "C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64",
-   "posix": ""
-  },
+  "godot": {"doc": "Godot 4.7 console binary (GODOT, tools/tasks/local.json or the PATH: tools/tasks/locations.py)", "locate": "godot"},
+  "bash": {"doc": "the bash that runs tools/build/*.sh: Git for Windows' own, found beside its git, never the WSL one in System32 (BASH_EXE)", "locate": "bash"},
+  "mingw": {"doc": "llvm-mingw root of the Windows build (MINGW, or the folder above its x86_64-w64-mingw32-clang++)", "locate": "mingw"},
   "captures": {
    "doc": "where the capture suite writes, one folder per task (tools/build/build.sh capture DIR sets it)",
    "env": "CAPTURE_DIR",

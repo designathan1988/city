@@ -12,7 +12,7 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import godot_deps, inputs, proc, schema
+from . import godot_deps, inputs, locations, proc, schema
 from .task import HERE, ROOT, Task
 
 SUITES = HERE / "suites.json"
@@ -75,8 +75,13 @@ class Suites:
             value = NOT_COMPUTED if self.listing else self._version(name)
         elif name in self.doc["vars"]:
             spec = self.doc["vars"][name]
-            value = os.environ.get(spec.get("env", ""), "") or spec["windows" if os.name == "nt" else "posix"]
-            value = self.expand(value)
+            if "locate" in spec:  # a machine's tool: tools/tasks/locations.py, the one owner of where tools are
+                try:
+                    value = locations.locate(spec["locate"])
+                except locations.Missing as e:
+                    raise ValueError(str(e)) from e
+            else:
+                value = self.expand(os.environ.get(spec.get("env", ""), "") or spec["windows" if os.name == "nt" else "posix"])
         else:
             raise ValueError(f"unknown var {{{name}}}")
         self._vars[name] = value

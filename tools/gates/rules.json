@@ -304,6 +304,16 @@
         "tools/gates/rules.json"
       ],
       "message": "Pendências vão para log/pendencias.md, não para comentários"
+    },
+    {
+      "id": "MACHINE_PATH",
+      "paths": [
+        "tools/",
+        "project/",
+        "native/"
+      ],
+      "pattern": "(?i)\\b[a-z]:[\\\\/]users[\\\\/]|(?<![\\w.])/home/[a-z_][a-z0-9_.-]*/",
+      "message": "a home folder of one machine (a person's name) in a tracked file: tools are found by tools/tasks/locations.py (the environment, the machine's tools/tasks/local.json, the PATH), and nothing else names a machine's folders"
     }
   ],
   "schemas": {

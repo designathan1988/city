@@ -158,6 +158,17 @@ def pattern_on_code(ctx, src, rule, err):
             err(rule["id"], f"{src.path}:{n}", rule["message"])
 
 
+def machine_paths(ctx, src, rule, err):
+    """A home folder of one machine (a person's name with it) on any line, comments and strings alike: a comment leaks it as
+    much as a string does."""
+    if src.binary:
+        return
+    rx = re.compile(rule["pattern"])
+    for n, line in enumerate(src.lines, 1):
+        if rx.search(line):
+            err(rule["id"], f"{src.path}:{n}", rule["message"])
+
+
 CHECKS = {
     "SEM_MARCADORES_SOLTOS": markers,
     "SIM_SEM_GODOT": includes_prefix("godot"),
@@ -168,4 +179,5 @@ CHECKS = {
     "TEXTO_VIA_TR": gate_text.untranslated,
     "DADOS_POR_UM_LEITOR": data_reader,
     "JOB_SEM_CHAVE": job_keys,
+    "MACHINE_PATH": machine_paths,
 }

@@ -1,0 +1,8 @@
+{
+ "rule": "MACHINE_PATH",
+ "expect": [
+  "MACHINE_PATH native/src/a.cpp:1",
+  "MACHINE_PATH project/game/x.gd:2",
+  "MACHINE_PATH tools/run.sh:2"
+ ]
+}
