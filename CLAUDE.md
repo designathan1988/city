@@ -71,6 +71,8 @@ A reported problem is solved with the `trace-fix` skill (`python .claude/skills/
 - Nada é refeito sem mudança de entrada: o resultado fica guardado pela chave das suas entradas.
 - Cada ferramenta processa só o que a mudança alcança. A execução completa é uma opção explícita.
 - Ferramenta de verificação tem de poder reprovar: sai com código diferente de zero na falha, e conjunto vazio reprova.
+- **The feature tracer is generic, never "engessado"** (owner, binding): no rule, table or case for a program, library,
+  API or pattern; specs and official declarations only; a gap fixes the mechanism (gate: `featuretrace/tests/test_generic.py`).
 
 ## Idioma
 - Todo texto novo ou alterado no repositório é escrito em inglês: código, nomes de arquivos e pastas, comentários,

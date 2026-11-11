@@ -4,7 +4,7 @@
 
 **Goal:** One generic analysis over one core IR traces any feature of a GDScript, C++ or JavaScript/TypeScript program, its platforms modeled from their official declarations, so that no program needs a rule of its own.
 
-**Architecture:** The readers, the index and the scopes stay (their syntax coverage is complete and gated). A new package `featuretrace/heap` lowers each unit's facts (refs and expression trees) into inclusion constraints over abstract objects — allocation sites (literals, arrays, `new`, functions and closures, classes and their prototypes, modules, the language's primitive kinds, objects of declared types) with fields per object — and solves them with difference propagation and finite contexts (argument tuples for functions, the receiver's site for methods, heap cloning one level). Calls, reads and writes become links of the same `Edge` form `walk` and `report` read. The platforms are what their declarations say: TypeScript's `lib.*.d.ts` and the packages' `.d.ts` read by the same JS reader as programs, each declared signature a generic summary (type-parameter places, callbacks, results), Godot's `extension_api.json` read the same way; the effects no type states are a finite list taken from ECMA-262's standard built-in objects.
+**Architecture:** The readers, the index and the scopes stay (their syntax coverage is complete and gated). A new package `featuretrace/heap` lowers each unit's facts (refs and expression trees) into inclusion constraints over abstract objects — allocation sites (literals, arrays, `new`, functions and closures, classes and their prototypes, modules, the language's primitive kinds, objects of declared types) with fields per object — and solves them with difference propagation and finite contexts (argument tuples for functions, the receiver's site for methods, heap cloning one level). Calls, reads and writes become links of the same `Edge` form `walk` and `report` read. The platforms are what their declarations say: TypeScript's `lib.*.d.ts` and the packages' `.d.ts` read by the same JS reader as programs, each declared signature a generic summary (type-parameter places, callbacks, results), Godot's `extension_api.json` read the same way; what no declaration states is a generic summary derived from the declarations themselves (the placeholder-library principle of Ali and Lhoták's Averroes: what a declared function receives can reach the places and results its declared types admit, and the callbacks it receives are called with the values their declared parameters admit), never a list of functions.
 
 **Tech Stack:** Python 3.12, tree-sitter (TSX, C++, GDScript), the tracer under `tools/analysis/featuretrace`.
 
@@ -13,7 +13,8 @@
 ## Global Constraints
 
 - Rules name no project and no library: the languages' specifications, the platforms' declarations, the analysis literature (Andersen; Doop; Agesen CPA; object sensitivity).
-- No hand table of a platform's names where a declaration says it; an opaque value only where no declaration exists, and every use of one counted in the report.
+- **The tracer is generic, never "engessado" (owner, binding):** no rule, table, list, name set or branch for a program, library, framework, API member or code pattern, in code, plans or records. The languages' own data (node kinds, keywords, operators, the intrinsics a literal is made with) lives outside `heap`, cited to its specification; `heap` holds no table of names and compares no value with a name (`tests/test_generic.py` fails otherwise); the old core's tables are `DEBTS` there and only shrink.
+- An opaque value only where no declaration exists, and every use of one counted in the report.
 - Termination by design: finite sites, finite contexts; no deadline, threshold or cut decides a result.
 - Files under 300 lines with a header; new files in `log/mapa.md`; English in the repository; repo files edited with the Edit tool or as bytes (never `write_text`).
 - The current core stays the baseline until the new one holds its correct links on the city, the lab app and the lab with three.js; then it is retired.
@@ -66,29 +67,31 @@
 ### Task 4: The platform from declarations (TypeScript `lib.*.d.ts`, packages' `.d.ts`)
 
 **Files:**
-- Create: `heap/declared.py` (a declared signature as a summary: arguments into the receiver's type-parameter places, the result from them or a declared-type object per call site, callbacks called with the declared places), `heap/platform.py` (the declaration files a program has: TypeScript's `lib` set from `tsconfig` `target`/`lib`, `@types/*` and packages' `types`; the classes of the language's values: array literal `Array`, object literal `Object`, function `Function`, primitives their wrappers)
+- Create: `heap/declared.py` (a declared signature as a summary: arguments into the receiver's type-parameter places, the result from them or a declared-type object per call site, callbacks called with the declared places), `heap/platform.py` (the declaration files a program has: TypeScript's `lib` set from `tsconfig` `target`/`lib`, `@types/*` and packages' `types`), `languages.py` (the languages' own data the analysis reads, each entry cited to its specification: the intrinsic each literal is created with, ECMA-262 ArrayCreate, OrdinaryObjectCreate, OrdinaryFunctionCreate; listed in `tests/test_generic.py` `LANGUAGE`)
 - Modify: `program.py` (the declaration files read as roots, displayed as such), `heap/lower.py`
 - Test: `tests/test_heap_platform.py`, fixture `tests/fixture/heap/platform.ts` with a small `lib` copy written for the test (no library text copied: declarations of the same shapes)
 
 - [ ] Step 1: failing tests: `a.push(x)` then `a[0]` holds x through an alias; `xs.map(f)` calls f with xs's elements and holds f's results; `m.set(k, v); m.get(k)` holds v; `p.then(f)` calls f with what p resolves to; `for (const x of s)` over a Set holds its elements; a host object's declared method's result is its declared type's object.
 - [ ] Step 2 to 4: run, implement, pass, commit.
 
-### Task 5: The effects no type states (ECMA-262's standard built-in objects)
+### Task 5: What no declaration states, summarized generically from the declarations
 
 **Files:**
-- Create: `heap/builtins.py` (the enumerated list: `Object.defineProperty/defineProperties/assign/create/getPrototypeOf/setPrototypeOf/entries/keys/values/fromEntries`, `Function.prototype.call/apply/bind`, `Reflect.apply/construct/get/set/defineProperty`, `Array.from` with its mapper, `Promise` resolution, `structuredClone`), each its ECMA-262 section
-- Test: `tests/test_heap_builtins.py`, fixture `tests/fixture/heap/builtins.js`
+- Create: `heap/summaries.py` (for every declared function, whatever its name: the values its call passes reach the fields of its object arguments and of its receiver, and its result, wherever their declared types admit them, each value's own fields one level down; every function-typed value it receives, directly or in a field of an argument, is called with the values its declared parameters admit; an object it receives with a string may have the member that string names read or called (reflection by name, whatever the platform); its result is also the declared result type's object per call site). No function is named anywhere: a summary is computed from the signature alone.
+- Test: `tests/test_heap_summaries.py`, fixture `tests/fixture/heap/summaries.ts` with a declaration file written for the test (shapes only, its own names)
 
-- [ ] Step 1: failing tests: one per entry of the list.
+- [ ] Step 1: failing tests, each on a declared function of the fixture's own declaration file: a descriptor-shaped argument's `value` reaches the target argument's fields; a callback in an argument's field is called; a source argument's fields reach the target's; an `any`-typed result holds what the call passed; a function the declarations type precisely (Task 4) keeps its precise summary.
 - [ ] Step 2 to 4: run, implement, pass, commit.
 
-### Task 6: Modules, events, JSX, workers on the new core
+### Task 6: Modules, JSX and the platform's callbacks on the new core
 
 **Files:**
-- Modify: `heap/lower.py` (imports and exports through `index.js`, `listen`/`fire`, `jsx`, `import()`), `heap/edges.py`
+- Modify: `heap/lower.py` (imports and exports through `index.js`, `import()`, JSX through the factory `tsconfig`'s `jsx`/`jsxImportSource` names and that runtime's declarations), `heap/edges.py`
 - Test: `tests/test_heap_core.py` with the existing `jsvalues` and `project` fixtures' JS expectations ported
 
-- [ ] Step 1: failing tests: the current `tests/test_js*.py` expectations of calls, events and JSX hold on `heap.analysis.analyse`.
+No event, message or listener is known by its method's name: a listener handed to the platform is called by it through Task 5's generic summary (the old core's `listen`/`fire` by name are debts).
+
+- [ ] Step 1: failing tests: the current `tests/test_js*.py` expectations of calls and JSX hold on `heap.analysis.analyse`; a listener handed to a declared function is reached as called by the platform.
 - [ ] Step 2 to 4: run, implement, pass, commit.
 
 ### Task 7: Acceptance for JavaScript and TypeScript
@@ -101,7 +104,7 @@
 
 **Files:**
 - Create: `heap/godot.py` (engine classes, their bases, methods with argument and result types, signals, properties, singletons from the JSON of the Godot version the project uses)
-- Modify: `heap/lower.py` (GDScript's trees: `self`, signals, `Callable`, `call` by name, scene connections)
+- Modify: `heap/lower.py` (GDScript's trees: `self`, the `signal` keyword's declarations and their `connect`/`emit` as the language defines them, scene connections read from the scene files; a call by a name held in a string reached through Task 5's reflection summary, never a list of the engine's method names)
 - Test: `tests/test_heap_gd.py` with the existing GDScript fixtures' expectations
 
 - [ ] Steps: failing tests, implement, acceptance on the city's GDScript against the current core, commit.

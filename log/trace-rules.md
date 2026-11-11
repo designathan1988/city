@@ -1,5 +1,13 @@
 # Trace rules: every construct of GDScript and C++, by the official references
 
+> **BINDING (owner, 2026-11-11): the feature tracer is generic, never "engessado".** No rule below may name a
+> program, a library, a framework, an API member or a code pattern; the languages' semantics come from their
+> specifications, a platform's behaviour only from its official declarations read as data, and what no declaration
+> says from a generic summary of the declarations. Rows below that name platform members (events by method name,
+> container calls, built-in tables, Godot call names...) are debts of the old core, listed in
+> `tools/analysis/featuretrace/tests/test_generic.py` (`DEBTS`, which only shrinks) and removed by
+> `log/trace-core-plan.md`. A gap is closed by fixing the mechanism, never by a new row for a case.
+
 Research for the feature tracer (`tools/analysis/trace_feature.py`), written before any further code change (owner's order,
 2026-11-10). Each construct of each grammar has exactly one row: its role in a trace and the rule that handles it. The
 implementation follows this table; a construct not in it is a gap in the research, not a case to patch.

@@ -2,6 +2,10 @@
 
 How to trace one feature end to end in this project, and what each attempt taught. Feature traced first: building a road.
 
+> **BINDING (owner, 2026-11-11):** the method below is the manual trace of this project's road flow (2026-11-07). Its
+> project names (`CityStore`, `StoreApi`, `D_METHOD`...) are never encoded in the feature tracer, which is generic:
+> no rule, table or case for a program, library, API or pattern (`CLAUDE.md`; `log/trace-rules.md`).
+
 ## Method (what works)
 1. Start at the trigger the player uses (the UI data that draws the button or tab).
 2. Follow every link through the mechanism that makes the call, reading the code at each step:
