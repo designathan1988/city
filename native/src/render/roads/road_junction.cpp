@@ -76,7 +76,7 @@ std::vector<Vector3> corner(const StreetLook &L, const Vector3 &node, const End 
 	std::vector<Vector3> out;
 	Corner fc = corner_fillet(a.arm, b.arm);
 	Vector3 pa = side(a, ua), pb = side(b, -ub);
-	if (fc.mode == CornerMode::FILLET && a.at >= fc.trim_a - FILLET_SLACK && b.at >= fc.trim_b - FILLET_SLACK) {
+	if (fillet_drawn(fc, a.at, b.at)) {
 		double ccx = node.x + fc.cx, ccz = node.z + fc.cz;
 		double tax = node.x + a.arm.dx * fc.trim_a + a.arm.dz * ua, taz = node.z + a.arm.dz * fc.trim_a - a.arm.dx * ua;
 		double tbx = node.x + b.arm.dx * fc.trim_b - b.arm.dz * ub, tbz = node.z + b.arm.dz * fc.trim_b + b.arm.dx * ub;

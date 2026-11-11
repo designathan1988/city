@@ -51,12 +51,17 @@ bool on_band(const RoadNetwork &net, double x, double z, F &&band) {
 // Whether (px, pz), from a node, stands in the footway block of corner `c` between arm a and the next arm anticlockwise b:
 // beyond a's left kerb and b's right kerb, short of both mouths, and not on the asphalt the kerb return (a fillet) or the cut
 // (a bevel) gives the junction there.
+// Beyond an arm's left kerb or its right kerb, from the node: the left of (dx, dz) is (dz, -dx), the kerbs' lines as
+// corner_fillet takes them.
+bool beyond_left(const Arm &a, double px, double pz) { return px * a.dz - pz * a.dx > a.asph_left; }
+bool beyond_right(const Arm &b, double px, double pz) { return -px * b.dz + pz * b.dx > b.asph_right; }
+// Beyond a's left kerb and b's right kerb: the footway of the corner between them, where that corner is under half a turn.
+bool beyond_kerbs(const Arm &a, const Arm &b, double px, double pz) { return beyond_left(a, px, pz) && beyond_right(b, px, pz); }
+
 bool in_corner_block(const Arm &a, const Arm &b, const Corner &c, double mouth_a, double mouth_b, double px, double pz) {
 	if (c.mode != CornerMode::FILLET && c.mode != CornerMode::BEVEL) return false;
 	const double along_a = px * a.dx + pz * a.dz, along_b = px * b.dx + pz * b.dz;
-	// a's left is (dz, -dx), b's right (-dz, dx): the kerbs' lines as corner_fillet takes them
-	const bool beyond = px * a.dz - pz * a.dx > a.asph_left && -px * b.dz + pz * b.dx > b.asph_right;
-	if (!beyond || along_a > mouth_a || along_b > mouth_b) return false;
+	if (!beyond_kerbs(a, b, px, pz) || along_a > mouth_a || along_b > mouth_b) return false;
 	if (c.mode == CornerMode::FILLET) return along_a >= c.trim_a || along_b >= c.trim_b || std::hypot(px - c.cx, pz - c.cz) <= c.r;
 	// a bevel: the straight cut from a's kerb at its trim to b's kerb at its trim; the node's side of it is asphalt
 	const double ax = a.dx * c.trim_a + a.dz * a.asph_left, az = a.dz * c.trim_a - a.dx * a.asph_left;
@@ -215,6 +220,22 @@ bool JunctionKerbs::on_footway(double px, double pz) const {
 	for (size_t k = 0; arms.size() >= 2 && k < arms.size(); k++) {
 		const size_t j = (k + 1) % arms.size();
 		if (in_corner_block(arms[k], arms[j], corners[k], mouths[k], mouths[j], px - x, pz - z)) return true;
+	}
+	return false;
+}
+
+bool JunctionKerbs::kerb_return(double px, double pz, double qx, double qz, double &cx, double &cz) const {
+	for (size_t k = 0; arms.size() >= 2 && k < arms.size(); k++) {
+		const size_t j = (k + 1) % arms.size();
+		// one point on the footway of a's side facing the corner, the other on b's: round a corner wider than half a turn (the
+		// outside of a bend) the footway lies beyond either kerb, never both
+		const Arm &a = arms[k], &b = arms[j];
+		const bool p_a = beyond_left(a, px - x, pz - z), p_b = beyond_right(b, px - x, pz - z);
+		const bool q_a = beyond_left(a, qx - x, qz - z), q_b = beyond_right(b, qx - x, qz - z);
+		if (!fillet_drawn(corners[k], mouths[k], mouths[j]) || !((p_a && q_b) || (q_a && p_b))) continue;
+		cx = x + corners[k].cx;
+		cz = z + corners[k].cz;
+		return true;
 	}
 	return false;
 }

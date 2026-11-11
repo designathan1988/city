@@ -17,6 +17,7 @@ const MAX_ELDERS := 0.25
 const MIN_CHILDREN := 0.05
 const MAX_CHILDREN := 0.25
 const FAR_PARTY_M := 4.0 # the two of a pair are never further apart than a few steps
+const AROUND_M := 6.0 # a pair that parted: the walkers this near each of the two are printed
 const MAX_TOUCHING := 0.01 # a stride's overlap as one turns while the other stands: not more than one pair in a hundred
 const CROSS_STEPS := 1500 # a street sees few people an hour: as long as it takes somebody to cross
 const CROSS_TICKS := 30
@@ -52,6 +53,8 @@ func _ready() -> void:
 	check(float(c.children) / total >= MIN_CHILDREN and float(c.children) / total <= MAX_CHILDREN, "children: %d" % c.children)
 	check(int(c.children_alone) == 0, "a child alone: %d" % c.children_alone)
 	check(float(c.party_gap_m) <= FAR_PARTY_M, "the two of a pair apart: %.2f m" % c.party_gap_m)
+	if float(c.party_gap_m) > FAR_PARTY_M:
+		_around(c.party_gap_case)
 	var probe: Dictionary = CityStore.query(&"traffic_probe", [0])
 	print("bodies: ", probe.people_overlaps, " furniture: ", probe.people_in_furniture)
 	check(int(probe.people_in_furniture) == 0, "inside furniture: %d" % probe.people_in_furniture)
@@ -73,6 +76,14 @@ func _ready() -> void:
 	print("in the afternoon ", afternoon, " at 3 h ", night.wanted)
 	check(float(night.wanted) < afternoon, "fewer people before dawn")
 	finish()
+
+
+## The walkers round each of a pair that parted (the census's case: id, mode, where, ...), as walker_bodies gives them: what held one.
+func _around(case: Array) -> void:
+	for w: Array in case:
+		var at: Vector2 = w[2]
+		print("round walker %d: %s" % [w[0], CityStore.query(&"walker_bodies", [Vector3(at.x, 0.0, at.y), AROUND_M]).bodies])
+		print("vehicles round walker %d: %s" % [w[0], CityStore.query(&"vehicle_bodies", [Vector3(at.x, 0.0, at.y), AROUND_M * 2.0])])
 
 
 func _frames(n: int) -> void:

@@ -82,18 +82,6 @@ int toward(const CityState &s, const Pedestrian &w) { return w.dir == 0 ? s.road
 
 void begin_line(CityState &s, int id);
 
-// The last point of a way round a node, the next sidewalk's start: put at the place across that sidewalk where the walker
-// stands now, inside its room. A walker keeps its place across from one stretch of its way to the next (the stripes move it
-// to its own side once it is on the sidewalk), so no two lines onto a sidewalk cross.
-void aim_at_start(const CityState &s, Pedestrian &w) {
-	Pose mid, start;
-	sidewalk_pose(s, w.seg, w.side, w.s, 0.f, mid);
-	const float room = walk_half(s, w.seg, w.side);
-	const float across = clampf((w.cur.x - mid.x) * mid.fz - (w.cur.z - mid.z) * mid.fx, -room, room);
-	sidewalk_pose(s, w.seg, w.side, w.s, across, start);
-	w.ways[w.wi] = Waypoint{ start.x, start.y, start.z, -1 };
-}
-
 // Off the end of a line (its lateral offset kept): onto the next line, or onto the sidewalk at the same place across.
 void end_line(CityState &s, int id) {
 	Pedestrian &w = s.traffic.peds[size_t(id)];
@@ -125,7 +113,7 @@ void begin_line(CityState &s, int id) {
 	if (to.cross >= 0) cross_from_here(w); // over from where the queue left it at the kerb
 	else if (toward_queue(w)) onto_approach(s, w); // to the back of a kerb's queue, at its place along the kerb
 	else if (toward_kerb(w)) onto_queue(s, w); // the queue before the kerb, along the way across from where it stands
-	else if (w.wi + 1 == w.wn) aim_at_start(s, w); // onto the next sidewalk, at its place across
+	else if (w.wi + 1 == w.wn) aim_onto_sidewalk(s, w); // onto the next sidewalk, at its place across (ped_routes.cpp)
 	w.mode = PedMode::WAY;
 	aim_line(w);
 	if (to.cross >= 0) {

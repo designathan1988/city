@@ -15,9 +15,14 @@ namespace city {
 namespace {
 constexpr double KERB_RADIUS_MIN = 2.8, TAPER_ANGLE = 12 * PI_D / DEG_PER_HALF_TURN, ACUTE = 12 * PI_D / DEG_PER_HALF_TURN, CORNER_MITER = 2.5;
 constexpr double BULB_HALF_MAX = 6.5, BULB_LEN_MIN = 40, BENT_RADIUS = 0.3;
-constexpr double BEVEL_PAD = 1.02, STRAIGHT_EPS = 1e-3, TAPER_MIN_STEP = 0.05, FILLET_SHARE = 0.5;
+constexpr double BEVEL_PAD = 1.02, STRAIGHT_EPS = 1e-3, LEAST_WIDTH_STEP = 0.05, FILLET_SHARE = 0.5; // under that step, no taper
 constexpr double DEGENERATE_ARM_EPS = 1e-6;
+constexpr double TRIM_SLACK = 0.05; // a mouth this much short of its fillet's trim still reaches it
 } // namespace
+
+bool fillet_drawn(const Corner &c, double mouth_a, double mouth_b) {
+	return c.mode == CornerMode::FILLET && mouth_a >= c.trim_a - TRIM_SLACK && mouth_b >= c.trim_b - TRIM_SLACK;
+}
 
 Arm arm_of(const Quad &q, const Profile &p, int end) {
 	double dx = end == 0 ? q.cx - q.x0 : q.cx - q.x1, dz = end == 0 ? q.cz - q.z0 : q.cz - q.z1;
@@ -77,7 +82,7 @@ Corner corner_fillet(const Arm &a, const Arm &b) {
 	if (psi > PI_D - STRAIGHT_EPS) return none;
 	double step = std::fabs(aw - bw);
 	if (PI_D - psi < TAPER_ANGLE) {
-		if (step < TAPER_MIN_STEP) return none;
+		if (step < LEAST_WIDTH_STEP) return none;
 		double run = step / std::tan(TAPER_ANGLE) / 2;
 		return { CornerMode::TAPER, run, run, 0, 0, 0 };
 	}

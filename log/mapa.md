@@ -26,6 +26,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/api/city_core_query.cpp` · `native/src/api/city_core_probe.cpp` · `native/src/api/city_core_probe_render.cpp` — leituras para a UI e os testes (snapshot, altura, raycast); sondas do núcleo: custo do quadro, chegada das poses e tráfego
 - `native/src/api/city_core_watch_probe.cpp` · `project/tests/core/street_crossing_test.gd` · `project/tests/core/street_crossing_test.tscn` — a rua vista tick a tick: quem está na faixa do meio da quadra, o que parou por eles, a menor distância e quem volta pelo canteiro; o teste disso em tráfego real
 - `native/src/api/city_core_flow_probe.cpp` — `probes` area: the flow translation on a fixed script, and a city crossing driven by flow
+- `native/src/api/city_core_corner_probe.cpp` — `probes` area (`corner_ways`): every way round a corner with no crosswalk, walked from each place across its sidewalk, against the carriageway; a way that touches it told with its node's arms and corners as drawn
 - `native/src/api/function_names.h` — nomes das funções do prédio, como os modelos e os documentos os escrevem
 - `native/src/api/city_core_inspect.cpp` — o que a ferramenta Inspecionar e o aviso da barra perguntam: tráfego ao vivo de via e cruzamento e nós impossíveis
 - `native/src/api/city_core_sight.cpp` — a linha de visão da câmera contra os prédios: quanto dela está livre, quanto de puxão ela pede e o olho tirado de dentro de um prédio

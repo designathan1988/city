@@ -175,7 +175,7 @@ void line_frame(const CityState &s, const Pedestrian &w, WayFrame &f) {
 	f.lo = -half;
 	f.hi = half;
 	if (w.wi + 1 == w.wn) {
-		// the last line ends on the next sidewalk, somewhere across it (pedestrians.cpp aim_at_start): its room closes onto that
+		// the last line ends on the next sidewalk, somewhere across it (ped_routes.cpp aim_onto_sidewalk): its room closes onto that
 		// sidewalk's room toward the end, no faster than the walker steps aside, so it comes onto the sidewalk inside it
 		Pose mid;
 		sidewalk_pose(s, w.seg, w.side, w.s, 0.f, mid);

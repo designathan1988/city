@@ -215,13 +215,15 @@ constexpr float HALF = 0.5f;
 
 // A walker as walker_bodies gives it: index, middle x and z, its own pace, its mode, its street, sidewalk, arc and place across,
 // whom it came out with and who came out with it, the arm it crosses now, its heading, how far it stands at rest, the node it goes round and its next point,
-// the stripe it aims at, the pace the crowd leaves it, how long it has been held up, its direction and how wide its sidewalk's room is either side.
+// the stripe it aims at, the pace the crowd leaves it, how long it has been held up, its direction and how wide its sidewalk's room is either side;
+// how many points its way round the node has, and the one it heads for.
 Array walker_row(const CityState &s, const Pedestrian &w, int id) {
 	Array r;
+	const Waypoint &next = w.ways[std::clamp(w.wi, 0, std::max(0, w.wn - 1))];
 	for (const Variant &x : { Variant(id), Variant(w.cur.x), Variant(w.cur.z), Variant(w.speed), Variant(int(w.mode)), Variant(w.seg),
 			 Variant(w.side), Variant(w.s), Variant(w.u), Variant(w.with), Variant(w.mate), Variant(w.cross_seg), Variant(w.cur.fx),
 			 Variant(w.cur.fz), Variant(w.rest), Variant(w.way_node), Variant(w.wi), Variant(w.u_goal), Variant(w.pace), Variant(w.jam),
-			 Variant(w.dir), Variant(traffic::walk_half(s, w.seg, w.side)) })
+			 Variant(w.dir), Variant(traffic::walk_half(s, w.seg, w.side)), Variant(w.wn), Variant(Vector2(next.x, next.z)) })
 		r.push_back(x);
 	return r;
 }

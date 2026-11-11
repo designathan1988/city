@@ -37,5 +37,8 @@ struct Corner {
 	double r = 0, cx = 0, cz = 0; // kerb return (fillet only), centre relative to the node
 };
 Corner corner_fillet(const Arm &a, const Arm &b);
+// Whether a corner's kerb is drawn as its return's arc: a fillet whose trims both arms' mouths (setbacks) reach; else the kerb
+// runs from mouth to mouth on a curve (render/roads/road_junction.cpp corner). What walks round a corner reads it here too.
+bool fillet_drawn(const Corner &c, double mouth_a, double mouth_b);
 
 } // namespace city

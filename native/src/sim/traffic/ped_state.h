@@ -22,7 +22,9 @@ struct Waypoint {
 	float x = 0, y = 0, z = 0;
 	int cross = -1, side = -1;
 };
-constexpr int MAX_WAYS = 12; // three per arm crossed (approach, kerb, far; at most 3 arms at a 6-arm node) and the exit sidewalk start
+// three per arm crossed (approach, kerb, far; at most 3 arms at a 6-arm node) and the exit sidewalk start; with no arm crossed,
+// the points round the corner before that start (ped_routes.cpp)
+constexpr int MAX_WAYS = 12;
 
 // SIDEWALK, WAY (round a corner, over a zebra), WAIT (at a kerb), KERB (under a kerb stop's hand, kerb_stops.cpp: between a door and the
 // footway), LOT (between a door and the sidewalk).

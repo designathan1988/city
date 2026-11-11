@@ -50,6 +50,10 @@ struct JunctionKerbs {
 	std::vector<Corner> corners; // corners[k]: between arms[k] and the next anticlockwise
 	JunctionKerbs(const RoadNetwork &net, int node);
 	bool on_footway(double px, double pz) const;
+	// The kerb return drawn round the corner a walker goes round from one point to the other (one beyond the kerb of the one arm
+	// on that corner's side, the other beyond the other arm's): its centre in the world; false when no corner has the two or that
+	// corner's kerb is no return's arc (junction.h fillet_drawn).
+	bool kerb_return(double px, double pz, double qx, double qz, double &cx, double &cz) const;
 };
 // Whether something of `radius` on `hit`'s sidewalk stands in a crosswalk's landing (a mouth of a three-arm node or more).
 bool on_landing(const RoadNetwork &net, const FootwayHit &hit, float radius, float clear);

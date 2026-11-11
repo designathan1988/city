@@ -142,6 +142,11 @@ bool find_walk_route(const CityState &s, int from, int goal, std::vector<int> &o
 // each crosswalk crossed (the far one carries the arm). Returns how many (-1: no way); `side_out` = exit sidewalk, the one
 // with fewest crossings or `want_side` when it has that side (-1: either).
 int plan_corner(const CityState &s, int n, int seg_in, int side_in, int seg_out, int want_side, Waypoint *ways, int &side_out);
+// The last point of a way round a node, the next sidewalk's start (w.seg, w.side, w.s): put at the place across that sidewalk
+// where the walker stands now, inside its room. A walker keeps its place across from one stretch of its way to the next (the
+// stripes move it to its own side once it is on the sidewalk), so no two lines onto a sidewalk cross. Straight off its sidewalk
+// (wi 0: no crosswalk), the way round the corner of w.way_node comes before it, from where it stands heading (way_x, way_z).
+void aim_onto_sidewalk(const CityState &s, Pedestrian &w);
 
 } // namespace traffic
 } // namespace city

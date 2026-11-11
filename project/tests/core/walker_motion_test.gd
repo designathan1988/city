@@ -1,6 +1,6 @@
 ## The people on foot as the player sees them round the camera, tick by tick: no walker jumps farther than its pace carries it,
 ## none turns faster than a body turns, none appears or vanishes on a street in view, none stands in another, none walks the
-## carriageway away from a crossing, none stands in a vehicle or in a street piece. Run: godot --path project res://tests/core/walker_motion_test.tscn -- --no-flow
+## carriageway away from a crossing (nor would round any corner of the town), none stands in a vehicle or in a street piece. Run: godot --path project res://tests/core/walker_motion_test.tscn -- --no-flow
 extends TestCase
 
 const TOWN_MAP := 0
@@ -65,6 +65,8 @@ func _ready() -> void:
 		return
 	_dt = 1.0 / float(DataTables.tuning("sim_tick_hz"))
 	new_map(TOWN_MAP, SEED, true)
+	var corners: Dictionary = CityStore.query(&"corner_ways")
+	check(int(corners.ways) > 0 and int(corners.off) == 0, "every way round a corner with no crosswalk keeps off the carriageway: %d of %d step on it, the first (node, from, side, to, place across, where, the run, the node, its arms: dir x, dir z, asphalt left, right, setback; its corners: mode, trims, radius, centre) %s" % [corners.off, corners.ways, corners.cases])
 	CityStore.query(&"set_city_hour", [HOUR])
 	ticks(WARM_TICKS)
 	var before := _walkers(CityStore.query(&"walker_bodies", [AT, VIEW_M]))

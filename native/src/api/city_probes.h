@@ -35,6 +35,9 @@ public:
 	godot::Dictionary people_census(const godot::Vector3 &at, float radius);
 	// The walkers within `radius` of `at` one by one, and those standing in one another, on a carriageway away from a crossing or in a vehicle.
 	godot::Dictionary walker_bodies(const godot::Vector3 &at, float radius);
+	// Every way round a corner with no crosswalk (the whole map), walked from each place across its sidewalk: how many, how many
+	// touch a carriageway, and the first of them with the run and the node's arms and corners (city_core_people.cpp corner_case).
+	godot::Dictionary corner_ways();
 	void set_city_hour(float hour); // tests: the city's clock at that hour of the day
 	godot::Array people_clips() const; // tests: the clips of people.bin
 	bool show_people_clip(const godot::String &name); // captures: everybody at rest in that clip
