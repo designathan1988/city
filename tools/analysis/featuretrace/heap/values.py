@@ -13,8 +13,9 @@ from __future__ import annotations
 from ..languages import ARRAY_TYPE, INDEX_SIGNATURE
 from ..solver import ENGINE, LANG, NUMBER, TEXT
 from ..vocab import (ELEMENTS_FIELD, LEVEL_ALIAS, LEVEL_OWN, LEVEL_TYPE, SITE_DECLARED_FN, SITE_TEXT, SITE_UNKNOWN,
+                     T_BOTH,
                      T_FN, T_INDEX, T_NAMED, T_OBJECT, T_PARAM, T_QUERY, T_THIS, T_TUPLE, T_UNION, T_VALUES)
-from . import members, names, typesys
+from . import members, names, summaries, typesys
 
 PRODUCED, CONSUMED, OWN_PLACE, RESULT, MEMBER, BOUND = 20, 21, 22, 23, 24, 25   # node tags; a site's parts
 
@@ -64,6 +65,8 @@ def wire(an, node, tree, env, site) -> None:
             solver.follow(produce(an, part, env, sub(site, i)), node)
     elif kind == T_VALUES:
         solver.add(node, language_objects(an, tree[1]))
+    elif kind == T_BOTH:
+        both(an, node, tree, env, site)
     elif kind == T_THIS and env[0] is not None:
         solver.add(node, [env[0]])
     elif kind == T_NAMED:
@@ -87,6 +90,19 @@ def wire(an, node, tree, env, site) -> None:
     elif kind == T_QUERY:
         for gid in names.definitions(an, Scope(tree[2], tree[3]), tree[1]):
             names.value_of(an, gid, node)
+
+
+def both(an, node, tree, env, site) -> None:
+    """An intersection: the objects of each part, each one with the members of the others' objects (a value of
+    `A & B` is one object that is both)."""
+    parts = [produce(an, part, env, sub(site, i)) for i, part in enumerate(tree[1])]
+    for i, held in enumerate(parts):
+        an.solver.follow(held, node)
+        for j, other in enumerate(parts):
+            if i != j:
+                an.solver.subscribe(held, (T_BOTH, node, i, j), (T_BOTH,), lambda _, objs, other=other: [
+                    an.solver.subscribe(other, an.any_field(o), (T_BOTH, o), lambda t, srcs: [
+                        an.solver.follow(members.every(an, s), t) for s in srcs if s != o]) for o in objs])
 
 
 def named(an, node, tree, env, site) -> None:
@@ -134,11 +150,13 @@ def indexes(an, made: int, key: str, env, site) -> None:
 def consume(an, tree: tuple, env, source, site, origin) -> None:
     """The values of `source` given to a place of a declared type in `env` (`origin`: the call they were given to)."""
     kind = tree[0] if tree else None
+    if summaries.is_open(an, tree) and origin is not None:     # a position no type describes: the call's pool
+        an.solver.follow(source, summaries.pool(origin))
     if kind == T_PARAM:
         held = level_place(an, env, tree[1], tree[2])
         if held is not None:
             an.solver.follow(source, held)
-    elif kind == T_UNION:
+    elif kind in (T_UNION, T_BOTH):
         for i, part in enumerate(tree[1]):
             consume(an, part, env, source, sub(site, i), origin)
     elif kind in (T_FN, T_NAMED, T_OBJECT, T_TUPLE):

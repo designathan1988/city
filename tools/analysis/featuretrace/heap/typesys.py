@@ -10,8 +10,8 @@ from __future__ import annotations
 from ..languages import INDEX_SIGNATURE, INTRINSICS
 from ..model import STATE_KINDS
 from ..solver import NUMBER
-from ..vocab import (ANY_FIELD, CLASS_UNIT, ELEMENTS_FIELD, LEVEL_TYPE, SITE_DECLARED, SITE_PRIMITIVE, T_NAMED,
-                     T_PARAM, T_UNION, T_VALUES)
+from ..vocab import (ANY_FIELD, CLASS_UNIT, ELEMENTS_FIELD, LEVEL_TYPE, SITE_DECLARED, SITE_PRIMITIVE, T_BOTH,
+                     T_NAMED, T_PARAM, T_UNION, T_VALUES)
 from . import contexts, members
 
 ALIAS, CLASS = 1, 2                      # what a resolved name is
@@ -155,8 +155,8 @@ def state(an, gid: int) -> bool:
 
 
 def parts(tree: tuple) -> list:
-    """A type's parts: a union's, each; any other type itself."""
-    return [p for part in tree[1] for p in parts(part)] if tree and tree[0] == T_UNION else [tree]
+    """A type's parts: a union's or an intersection's, each; any other type itself."""
+    return [p for part in tree[1] for p in parts(part)] if tree and tree[0] in (T_UNION, T_BOTH) else [tree]
 
 
 def values(tree: tuple) -> tuple:

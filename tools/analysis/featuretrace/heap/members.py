@@ -178,4 +178,15 @@ def field(an, obj: int, name: str):
 
 
 def every(an, obj: int):
-    return (ALL, obj)
+    """Every property of `obj`: what was written to its fields, and the initializers of the instance fields its class
+    chain declares (an object literal's properties are its class's fields)."""
+    node = (ALL, obj)
+    if node not in an.wired:
+        an.wired.add(node)
+        key, ix = an.objects.class_of(obj), an.ix
+        for k in chain(ix, key) if key is not None and key in ix.classes and not an.objects.environment(obj)                 and an.objects.kind(obj) != SITE_DECLARED else []:
+            for gids in ix.members[k].values():
+                for gid in gids:
+                    if ix.units[gid].kind in STATE_KINDS and not ix.units[gid].static:
+                        an.solver.follow(an.initial(gid), node)
+    return node

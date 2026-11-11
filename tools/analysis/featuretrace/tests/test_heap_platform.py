@@ -4,39 +4,16 @@ declared type; iteration and `await` follow the language's protocols; the declar
 its tsconfig and its TypeScript choose (fixtures `heap/platform`, `heap/libs`)."""
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parents[1]))
+from .. import js_libs, program
+from .support import HEAP, HeapCase
 
-from featuretrace import js_libs, program, seeds  # noqa: E402
-from featuretrace.heap import analysis  # noqa: E402
-
-FIXTURE = HERE / "fixture" / "heap"
-LIBS = FIXTURE / "libs"
-_DONE = {}
+LIBS = HEAP / "libs"
 
 
-def analysed():
-    if "platform" not in _DONE:
-        ix, _, _ = program.read([FIXTURE / "platform"], FIXTURE, None)
-        _DONE["platform"] = (ix, analysis.analyse(ix))
-    return _DONE["platform"]
-
-
-class HeapPlatform(unittest.TestCase):
-    def setUp(self):
-        self.ix, self.result = analysed()
-
-    def gid(self, spec: str) -> int:
-        found = seeds.find(self.ix, spec)
-        self.assertEqual(1, len(found), found)
-        return found[0]
-
-    def classes(self, spec: str) -> set:
-        return {v.split(":")[1].rsplit("#", 1)[-1] for v in self.result.returned(self.gid(spec)) if v.startswith("new:")}
+class HeapPlatform(HeapCase):
+    ROOT = "platform"
 
     def test_a_push_is_read_back_through_an_alias(self):
         self.assertEqual({"Apple"}, self.classes("pushed"))
@@ -63,30 +40,24 @@ class HeapPlatform(unittest.TestCase):
         self.assertEqual({"Apple"}, self.classes("iterated"))
 
     def test_a_host_method_gives_an_object_of_its_declared_type(self):
-        found = self.result.returned(self.gid("hosted"))
-        self.assertTrue(any(v.startswith("decl:") and "#Element" in v for v in found), found)
+        self.assertTrue(self.declared("hosted", "Element"), self.returned("hosted"))
 
     def test_an_object_given_for_an_interface_has_its_method_called_back(self):
-        found = self.result.returned(self.gid("listened"))
-        self.assertTrue(any(v.startswith("decl:") and "#Element" in v for v in found), found)
+        self.assertTrue(self.declared("listened", "Element"), self.returned("listened"))
 
     def test_a_function_given_for_a_function_type_is_called_back(self):
-        found = self.result.returned(self.gid("called"))
-        self.assertTrue(any(v.startswith("decl:") and "#Element" in v for v in found), found)
+        self.assertTrue(self.declared("called", "Element"), self.returned("called"))
 
     def test_an_entry_parameter_is_an_object_of_its_declared_type(self):
-        calls = {seeds.label(self.ix, e.dst) for e in self.result.out[self.gid("onFocus")] if e.kind == "call"}
-        self.assertTrue(any(c.endswith("Element.focus") for c in calls), calls)
+        self.assertIn(("call", "Element.focus"), {(k, d.rsplit(".", 2)[-2] + "." + d.rsplit(".", 1)[-1])
+                                                for k, d in self.links("onFocus")})
 
     def test_a_global_augmentation_merges_into_the_global_type(self):
-        calls = {seeds.label(self.ix, e.dst) for e in self.result.out[self.gid("titled")] if e.kind == "call"}
-        self.assertTrue(any(c.endswith("Page.title") for c in calls), calls)
-        found = self.result.returned(self.gid("titled"))
-        self.assertTrue(any(v.startswith("decl:") and "#Element" in v for v in found), found)
+        self.assertTrue(any(k == "call" and d.endswith("Page.title") for k, d in self.links("titled")))
+        self.assertTrue(self.declared("titled", "Element"), self.returned("titled"))
 
     def test_a_host_method_called_is_linked(self):
-        calls = {seeds.label(self.ix, e.dst) for e in self.result.out[self.gid("focused")] if e.kind == "call"}
-        self.assertTrue(any(c.endswith("Element.focus") for c in calls), calls)
+        self.assertTrue(any(k == "call" and d.endswith("Element.focus") for k, d in self.links("focused")))
 
 
 class DeclarationFiles(unittest.TestCase):

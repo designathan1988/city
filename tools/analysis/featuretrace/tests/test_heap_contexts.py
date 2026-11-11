@@ -4,35 +4,13 @@ write the shared variable's, a callback no call reaches run in the environment i
 function object (fixture `heap/contexts.js`)."""
 from __future__ import annotations
 
-import sys
 import unittest
-from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parents[1]))
-
-from featuretrace import program, seeds  # noqa: E402
-from featuretrace.heap import analysis  # noqa: E402
-
-FIXTURE = HERE / "fixture" / "heap"
-_DONE = {}
+from .support import HeapCase
 
 
-def analysed():
-    if "contexts" not in _DONE:
-        ix, _, _ = program.read([FIXTURE / "contexts.js"], FIXTURE, None)
-        _DONE["contexts"] = (ix, analysis.analyse(ix))
-    return _DONE["contexts"]
-
-
-class HeapContexts(unittest.TestCase):
-    def setUp(self):
-        self.ix, self.result = analysed()
-
-    def classes(self, spec: str) -> set:
-        found = seeds.find(self.ix, spec)
-        self.assertEqual(1, len(found), found)
-        return {v.split(":")[1].rsplit("#", 1)[-1] for v in self.result.returned(found[0]) if v.startswith("new:")}
+class HeapContexts(HeapCase):
+    ROOT = "contexts.js"
 
     def test_each_memo_runs_its_own_function(self):
         self.assertEqual({"Apple"}, self.classes("memoApple"))

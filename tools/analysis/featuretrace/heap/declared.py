@@ -10,7 +10,7 @@ from __future__ import annotations
 from ..languages import ARRAY_TYPE, CALL_SIGNATURE, CONSTRUCT_SIGNATURE
 from ..vocab import (ELEMENTS_FIELD, HANDED, SITE_DECLARED_FN, SITE_FUNCTION, SITE_RESOLVER, T_FN, T_NAMED, T_OBJECT,
                      T_OPEN, T_PARAM, T_TUPLE)
-from . import contexts, members, typesys, values
+from . import contexts, members, summaries, typesys, values
 
 CALLBACK, CALLBACK_SITE, READ_MEMBER = 30, 31, 32          # node tags
 
@@ -32,6 +32,7 @@ def apply(an, node, gid: int, holder, args: list, site) -> None:
             values.consume(an, tree, env, arg, values.sub(site, (gid, i)), node)
     if unit.result_type:
         an.solver.follow(values.produce(an, unit.result_type, env, values.sub(site, gid)), node)
+    summaries.summarize(an, node, unit, args, site, parameter)     # what no declaration states (Task 5)
 
 
 def parameter(unit, index: int) -> tuple:
@@ -104,8 +105,9 @@ def heritage(an, key: str) -> set:
 
 def structural(an, obj: int, key: str, env, site, origin) -> None:
     """An object given to a type it is not nominally: each method the type declares read on it and called back, each
-    property through which values reach the program (a function type, a type parameter in its type) read on it and
-    given to that type; a call signature, if it is a function, calls it back."""
+    property through which values reach the program (a function type, a type parameter in its type) or which no type
+    describes (the call's pool, Task 5) read on it and given to that type; a call signature, if it is a function,
+    calls it back."""
     ix = an.ix
     for k in [key] + sorted(heritage(an, key)):
         for g in typesys.group(an, k):
@@ -117,7 +119,7 @@ def structural(an, obj: int, key: str, env, site, origin) -> None:
                             callback(an, obj, signature(unit), env, values.member_site(gid, site), origin, None)
                         continue
                     tree = signature(unit) if an.is_function_unit(gid) else unit.result_type
-                    if not an.is_function_unit(gid) and not reaches(tree):
+                    if not an.is_function_unit(gid) and not reaches(tree) and not summaries.is_open(an, tree):
                         continue                         # a method is called back; a property, where values reach
                     read = (READ_MEMBER, obj, name)
                     members.read(an, read, obj, name)

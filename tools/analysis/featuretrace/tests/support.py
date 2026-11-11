@@ -1,4 +1,5 @@
-"""The fixture project loaded once, and the lookups every test of the tracer makes on it."""
+"""The fixture project loaded once, and the lookups every test of the tracer makes on it; the new core's analysis of a
+fixture under `fixture/heap`, once, and the lookups its tests make (`HeapCase`)."""
 from __future__ import annotations
 
 import sys
@@ -9,9 +10,12 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))
 
 from featuretrace import narrow_values, program, receivers, seeds, walk  # noqa: E402
+from featuretrace.heap import analysis  # noqa: E402
 
 FIXTURE = HERE / "fixture"
+HEAP = FIXTURE / "heap"
 _LOADED = {}
+_ANALYSED = {}
 
 
 def loaded(roots: tuple = ("project", "native"), base: str = "") -> tuple:
@@ -44,6 +48,42 @@ class FixtureCase(unittest.TestCase):
 
     def reached(self, spec: str) -> set:
         return {seeds.label(self.ix, g) for g in walk.forward(self.rs, [self.gid(spec)]).reached}
+
+
+def analysed(root: str) -> tuple:
+    """The new core's analysis of one fixture under `fixture/heap` (a file or a folder), once: (index, result)."""
+    if root not in _ANALYSED:
+        ix, _, _ = program.read([HEAP / root], HEAP, None)
+        _ANALYSED[root] = (ix, analysis.analyse(ix))
+    return _ANALYSED[root]
+
+
+class HeapCase(unittest.TestCase):
+    """A case over the new core's analysis of the fixture `ROOT` (under `fixture/heap`)."""
+    ROOT = ""
+
+    def setUp(self):
+        self.ix, self.result = analysed(self.ROOT)
+
+    def gid(self, spec: str) -> int:
+        found = seeds.find(self.ix, spec)
+        self.assertEqual(1, len(found), found)
+        return found[0]
+
+    def returned(self, spec: str) -> set:
+        return self.result.returned(self.gid(spec))
+
+    def classes(self, spec: str) -> set:
+        """The classes of the objects `new` made that a function returns."""
+        return {v.split(":")[1].rsplit("#", 1)[-1] for v in self.returned(spec) if v.startswith("new:")}
+
+    def links(self, spec: str) -> set:
+        """(kind, target label) of every link leaving a definition."""
+        return {(e.kind, seeds.label(self.ix, e.dst)) for e in self.result.out[self.gid(spec)]}
+
+    def declared(self, spec: str, type_name: str) -> bool:
+        """Whether a function returns an object of a declared type of that name."""
+        return any(v.startswith("decl:") and f"#{type_name}:" in v for v in self.returned(spec))
 
 
 class Solved:

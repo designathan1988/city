@@ -11,8 +11,8 @@ from __future__ import annotations
 from . import js_types
 from .solver import FALSE, TRUE, UNDEFINED
 from .source import field_of, named_children
-from .vocab import (LEVEL_ALIAS, LEVEL_OWN, LEVEL_TYPE, T_FN, T_INDEX, T_NAMED, T_OBJECT, T_OPEN, T_PARAM, T_QUERY,
-                    T_THIS, T_TUPLE, T_UNION, T_VALUES)
+from .vocab import (LEVEL_ALIAS, LEVEL_OWN, LEVEL_TYPE, T_BOTH, T_FN, T_INDEX, T_NAMED, T_OBJECT, T_OPEN, T_PARAM,
+                    T_QUERY, T_THIS, T_TUPLE, T_UNION, T_VALUES)
 
 ARRAY = "Array"                       # the type `T[]` abbreviates (TypeScript handbook, Everyday Types: Arrays)
 CONSTRUCT_MEMBER = "[[Construct]]"    # a construct signature (`new (...): T`): ECMA-262's [[Construct]] internal method
@@ -61,6 +61,8 @@ def tree(r, node, owner: str) -> tuple:
     kind = node.type
     if kind == "default_type":                           # a type parameter's default (`<T = U>`)
         return tree(r, js_types.bare((named_children(node) or [None])[0]), owner)
+    if kind == "intersection_type" and not any(js_types.is_primitive(r, m) for m in js_types.members(r, node)):
+        return (T_BOTH, tuple(tree(r, js_types.bare(m), owner) for m in named_children(node)))   # one value of each
     if kind in js_types.EITHER:
         return (T_UNION, tuple(tree(r, m, owner) for m in js_types.members(r, node)))
     if kind in js_types.CALLABLE_TYPES:
