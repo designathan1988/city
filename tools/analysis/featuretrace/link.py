@@ -144,7 +144,9 @@ def link_ref(rs, unit, ref) -> None:
         targets, how = constructors(rs, unit, ref)
     else:
         targets, how = rs.resolve(unit, ref, WANT[kind])
-        if kind == "write" and unit.lang == "js" and how in (EXTERNAL, UNREACHED):
+        expando = kind == "write" and unit.lang == "js" and ref.base is not None
+        foreign = js_link.expando_writes(rs, unit, ref) if expando else True    # a property no class declares (V2)
+        if kind == "write" and unit.lang == "js" and how in (EXTERNAL, UNREACHED) and foreign:
             handed(rs, unit, ref)          # a callable written into a library's object: it calls it (J6, J11)
         if how == EXTERNAL and kind == "call" and unit.lang == "cpp" and ref.base is None and not ref.qualified:
             targets = rs.adl(unit, ref.name, ref.args)

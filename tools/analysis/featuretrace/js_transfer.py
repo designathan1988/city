@@ -1,13 +1,73 @@
-"""The transfers of the JavaScript value rules (log/trace-rules.md: N1, T4', P1-P3, J5), one value at a time, as
+"""The transfers of the JavaScript value rules (log/trace-rules.md: N1, T4', P1-P3, J5, V2), one value at a time, as
 `transfer` has the language-independent ones: `new X(...)` evaluated, `o[k]` with a computed key, the iteration of an
-object of the program, `for (k in o)` and `Object.keys/values/entries(o)` over its enumerable properties.
+object of the program, `for (k in o)` and `Object.keys/values/entries(o)` over its enumerable properties, and a
+property no class declares (written outside the class, on its prototype, or nowhere).
 """
 from __future__ import annotations
 
 from . import transfer as common          # the language-independent transfers
 from .library import ITEM
 from .rules import ITERATOR_MEMBER
-from .solver import CLASS, ELEM, ENGINE, FN, TEXT
+from .solver import CLASS, ELEM, ENGINE, FN, TEXT, UNDEFINED
+
+PROTOTYPE = "prototype"
+# What every object and every function has from the language (MDN Object.prototype, Function.prototype): a class
+# value is either its objects or the class itself, so neither is ever `undefined` on it.
+BUILT_IN = frozenset({"constructor", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString",
+                      "toString", "valueOf", "__proto__", "__defineGetter__", "__defineSetter__", "__lookupGetter__",
+                      "__lookupSetter__", "apply", "bind", "call", "length", "name", "arguments", "caller"})
+
+
+def prop_node(key: str, name: str) -> tuple:
+    """What JS code writes to property `name` of class `key`'s objects where no class of its chain declares it (V2)."""
+    return ("#prop", key, name)
+
+
+def chain(ix, key: str) -> list[str]:
+    """A class and every base above it (the prototype chain)."""
+    found, todo = [], [key]
+    while todo:
+        k = todo.pop()
+        if k not in found and k in ix.classes:
+            found.append(k)
+            todo += ix.base_keys(ix.classes[k])
+    return found
+
+
+def chain_read(ix, key: str) -> bool:
+    """Whether the tracer read every base of the chain (a base it cannot resolve may hold any property)."""
+    return all(len(ix.base_keys(ix.classes[k])) == len(ix.classes[k].bases) for k in chain(ix, key))
+
+
+def written_names(t) -> frozenset:
+    """The property names JS code writes on a receiver (`o.p = v`): only these can be created outside a class (V2)."""
+    if t.js_written is None:
+        t.js_written = frozenset(r.name for u in t.ix.units if u.lang == "js" for r in u.refs
+                                 if r.kind == "write" and r.base is not None)
+    return t.js_written
+
+
+def undeclared(t, target, key: str, ctx, name: str, called: bool, caller=None, args: tuple = ()) -> None:
+    """A property of an object of class `key` that no class of its chain declares (V2): an inner class or a module's
+    member first; `prototype` is the class's objects; a property JS code writes is what was written to it on the class
+    or a base (called: what those functions return); else `undefined` when the tracer read the whole chain (calling it
+    throws: nothing), the language's value when it is one every object has or a base the tracer did not read may hold
+    it."""
+    inner = t.ix.inner[key].get(name)
+    if inner:
+        t.add(target, [(CLASS + inner, ctx)])
+    elif name == PROTOTYPE and not called:
+        t.add(target, [(CLASS + key, ctx)])
+    elif name in written_names(t):
+        for k in chain(t.ix, key):
+            if called:
+                t.subscribe(prop_node(k, name), target, ("call",), common.calls(t, caller, args))
+            else:
+                t.follow(prop_node(k, name), target)
+    elif name in BUILT_IN or not chain_read(t.ix, key):
+        t.add(target, [(ENGINE, ctx)])
+    elif not called:
+        t.add(target, [(UNDEFINED, ctx)])
 
 
 def iterated(t, key: str):

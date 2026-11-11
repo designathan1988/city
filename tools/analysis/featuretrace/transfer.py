@@ -108,6 +108,9 @@ def member_one(t, target, text: str, ctx, name: str, called: bool, caller=None, 
     found = ix.lookup(key, name)
     if ctx.lang == "gd" and ix.classes[key].lang == "cpp":
         found = t.rs.engine_members(key, name, "func" if called else "read")
+    if not found and ix.classes[key].lang == "js":
+        js_transfer.undeclared(t, target, key, ctx, name, called, caller, args)   # (V2)
+        return
     if not found:
         if not called and name in PAIR_PARTS and ix.classes[key].lang == "cpp":
             t.add(target, [(text if name == "second" else ENGINE, ctx)])

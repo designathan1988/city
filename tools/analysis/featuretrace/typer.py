@@ -38,6 +38,7 @@ class Typer(Places, TypeNames, Solver):
         self.template_keys = {}            # gid -> the parameters whose values key its templates (`templates`, C1)
         self.templates = {}                # (gid, tuple) -> the template (`templates.Frame`)
         self.template_depends = {}         # (gid, tree) -> whether its key parameters reach the tree (C2''')
+        self.js_written = None             # the property names JS code writes on a receiver (`js_transfer`, V2)
 
     def class_of(self, unit) -> str | None:
         return unit.owner if unit.owner in self.ix.classes else None

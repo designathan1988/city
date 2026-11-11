@@ -5,7 +5,7 @@ promises receives.
 """
 from __future__ import annotations
 
-from . import names
+from . import js_transfer, names
 from .ir import LITERAL
 from .rules import (ACCUMULATOR, AWAITED, CONSTRUCTOR, ELEMENTS, ENGINE_VALUE, HIGHER_ORDER)
 
@@ -77,6 +77,18 @@ def jsx(rs, unit, ref) -> None:
             rs.link(unit.gid, gid, "new", Site(ref, ref.args), "exact")
         for gid in rs.keep(rs.ix.lookup(key, RENDER), "func", unit.file):
             rs.link(unit.gid, gid, "handed", Site(ref), "exact")
+
+
+def expando_writes(rs, unit, ref) -> bool:
+    """`o.p = v` (V2): for each class of the program the receiver can be that declares no `p`, v is what `p` holds on
+    that class's objects (`js_transfer.prop_node`). Returns whether the receiver can be a value the program does not
+    define, or holds nothing yet: only then is a callable written into it handed to a library (J6, J11)."""
+    typer = rs.typer
+    keys, engine, _ = typer.receiver(ref.base, unit)
+    for key in keys:
+        if ref.args and not rs.ix.lookup(key, ref.name):
+            typer.follow(typer.node_of(ref.args[0], unit), js_transfer.prop_node(key, ref.name))
+    return engine or not keys
 
 
 def callback_args(unit, ref) -> tuple:

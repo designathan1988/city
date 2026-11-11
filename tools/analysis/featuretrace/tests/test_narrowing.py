@@ -31,6 +31,15 @@ class Narrowing(FixtureCase):
     def test_constants_are_the_languages_values(self):
         self.assertEqual({ENGINE}, self.returned("lengthOfYes"))
 
+    def test_prototype_property(self):
+        self.assertEqual({TRUE}, self.returned("flagOf"))
+
+    def test_property_written_outside_its_class(self):
+        self.assertIn("Box.open", self.names("useBag"))
+
+    def test_property_found_nowhere_is_undefined(self):
+        self.assertEqual({UNDEFINED}, self.returned("missing"))
+
 
 if __name__ == "__main__":
     unittest.main()
