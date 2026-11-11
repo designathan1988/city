@@ -1,7 +1,9 @@
 """The roadcraft's fingerprints, the store LAB_COPY holds a change against: every name the reference tree defines for others,
 in its normal form, the winnowed k-gram fingerprints of each of its units (a function body, the code outside them, a program
 in a string: lab_units.py) read as language-neutral tokens (lab_tokens.py), and each unit's non-trivial numbers in order;
-kept by the gates' own version and the content of every file read, so the tree is read again only when either changed."""
+and the base, what independent code on this machine also writes (the vendored and fetched libraries: every k-gram and
+number of theirs), which is no evidence of a copy (MOSS's base files, -b). Kept by the gates' own version and the content of
+every file read, so the trees are read again only when one changed."""
 import hashlib
 import os
 import sys
@@ -15,22 +17,25 @@ if TOOLS_DIR not in sys.path:
     sys.path.insert(0, TOOLS_DIR)
 from tasks import locations  # noqa: E402  the one owner of this machine's paths
 
-CODE_EXTENSIONS = frozenset({".ts", ".tsx", ".js", ".mjs", ".cpp", ".h", ".hpp", ".gd"})
+CODE_EXTENSIONS = frozenset({".ts", ".tsx", ".js", ".mjs", ".cpp", ".cc", ".c", ".h", ".hpp", ".gd", ".gdshader",
+                             ".gdshaderinc", ".glsl"})
 STORE_SETTINGS = ("k", "w", "min_name_len", "trivial_numbers")  # what of rules.json lab_copy the store is made with
 
 
 class NoReference(Exception):
-    """The reference tree is not on this machine: nothing can be judged against it."""
+    """The reference tree or a base library is not on this machine: nothing can be judged against them."""
 
 
 class Store:
     """The reference's names (normal form -> ["file:line"]), fingerprints (hash -> [[file, unit line, token index in the
     unit]]), units' numbers ("file:unit line" -> [values]) and units' neutral tokens ("file:unit line" -> "D I = ...", what
-    a shared passage is grown along); a fingerprint's and a number's spread is how many units hold it."""
+    a shared passage is grown along); a fingerprint's and a number's spread is how many units hold it. `base` holds the
+    k-grams' hashes and the numbers the base libraries write."""
 
-    def __init__(self, names, prints, numbers, tokens=None):
+    def __init__(self, names, prints, numbers, tokens=None, base=None):
         self.names, self.prints, self.numbers = names, prints, numbers
         self.tokens = tokens or {}
+        self.base = set(base or ())
         self.print_spread = {h: len({(u[0], u[1]) for u in v}) for h, v in prints.items()}
         holders = {}
         for unit, values in numbers.items():
@@ -48,27 +53,45 @@ class Store:
 
     def to_json(self):
         return {"names": self.names, "prints": {str(h): v for h, v in self.prints.items()}, "numbers": self.numbers,
-                "tokens": self.tokens}
+                "tokens": self.tokens, "base": sorted(self.base, key=repr)}
 
     @staticmethod
     def from_json(d):
-        return Store(d["names"], {int(h): v for h, v in d["prints"].items()}, d["numbers"], d["tokens"])
+        return Store(d["names"], {int(h): v for h, v in d["prints"].items()}, d["numbers"], d["tokens"], d["base"])
 
 
 def reference_files(ref_root, place):
     """The reference's code files, relative to `ref_root`, under the place's `dirs` (all of it when none)."""
-    skip = set(place.get("skip_dirs", []))
+    return code_files(ref_root, place.get("dirs") or ["."], set(place.get("skip_dirs", [])))
+
+
+def code_files(root, tops, skip=frozenset()):
+    """The code files under `root`'s folders `tops`, relative to `root`, folders in `skip` and hidden ones left out."""
     out = []
-    for top in place.get("dirs") or ["."]:
-        for dirpath, dirs, names in os.walk(os.path.join(ref_root, top)):
+    for top in tops:
+        for dirpath, dirs, names in os.walk(os.path.join(root, top)):
             dirs[:] = sorted(d for d in dirs if d not in skip and not d.startswith("."))
             for n in sorted(names):
                 if os.path.splitext(n)[1] in CODE_EXTENSIONS:
-                    out.append(os.path.relpath(os.path.join(dirpath, n), ref_root).replace(os.sep, "/"))
+                    out.append(os.path.relpath(os.path.join(dirpath, n), root).replace(os.sep, "/"))
     return out
 
 
-def build_store(ref_root, place, cfg):
+def base_of(repo_root, place, cfg):
+    """The k-grams' hashes and the numbers of every base library's code (lab_reference.base, folders of this repository)."""
+    out = set()
+    trivial = set(float(x) for x in cfg["trivial_numbers"])
+    for rel in code_files(repo_root, place.get("base", [])):
+        src = Source(repo_root, rel)
+        if src.binary or src.lang is None:
+            continue
+        for span in lab_units.spans(src, trivial):
+            out.update(h for h, _at in lab_tokens.kgrams(span.tokens, cfg["k"]))
+            out.update(span.values)
+    return out
+
+
+def build_store(ref_root, place, cfg, repo_root=None):
     names, prints, numbers, tokens = {}, {}, {}, {}
     trivial = set(float(x) for x in cfg["trivial_numbers"])
     for rel in reference_files(ref_root, place):
@@ -87,38 +110,47 @@ def build_store(ref_root, place, cfg):
                 tokens[f"{rel}:{span.line}"] = " ".join(t for t, _line in span.tokens)
             if span.values:
                 numbers[f"{rel}:{span.line}"] = span.values
-    return Store(names, prints, numbers, tokens)
+    base = base_of(repo_root, place, cfg) if repo_root else set()
+    return Store(names, prints, numbers, tokens, base)
 
 
-def tree_digest(ref_root, place, cfg):
-    """The reference's key: every file's path and bytes, where it was read from and the settings the store is made with."""
+def tree_digest(ref_root, place, cfg, repo_root):
+    """The store's key: every reference and base file's path and bytes, where they were read from and the settings the
+    store is made with."""
     settings = {k: cfg[k] for k in STORE_SETTINGS}
-    h = hashlib.sha256(repr((sorted(settings.items()), place.get("dirs"), place.get("skip_dirs"))).encode("utf-8"))
-    for rel in reference_files(ref_root, place):
+    h = hashlib.sha256(repr((sorted(settings.items()), place.get("dirs"), place.get("skip_dirs"),
+                             place.get("base"))).encode("utf-8"))
+    files = [(ref_root, rel) for rel in reference_files(ref_root, place)]
+    files += [(repo_root, rel) for rel in code_files(repo_root, place.get("base", []))]
+    for root, rel in files:
         h.update(rel.encode("utf-8"))
-        with open(os.path.join(ref_root, rel), "rb") as fh:
+        with open(os.path.join(root, rel), "rb") as fh:
             h.update(hashlib.sha256(fh.read()).digest())
     return h.hexdigest()
 
 
 def reference_root(ctx):
-    """The reference tree: `@name` is a location of this machine (tools/tasks/locations.py), else a path from the root."""
-    place = ctx.rules["lab_reference"]["place"]
+    """The reference tree: `@name` is a location of this machine (tools/tasks/locations.py), else a path from the root;
+    every base library must be there too."""
+    place = ctx.rules["lab_reference"]
     try:
-        root = locations.locate(place[1:]) if place.startswith("@") else os.path.join(ctx.root, place)
+        root = locations.locate(place["place"][1:]) if place["place"].startswith("@") else os.path.join(ctx.root, place["place"])
     except locations.Missing as e:
         raise NoReference(str(e)) from e
     if not os.path.isdir(root):
         raise NoReference(f"the reference tree {root} is not there: set it (tools/tasks/locations.py)")
+    for lib in place.get("base", []):
+        if not os.path.isdir(os.path.join(ctx.root, lib)):
+            raise NoReference(f"the base library {lib} is not there: build the DLLs (tools/build/build.sh), CMake fetches it")
     return root
 
 
 def store_key(ctx):
-    """The store's key, once a run: the gates' own version and the reference's digest."""
+    """The store's key, once a run: the gates' own version and the trees' digest."""
     def build():  # the key names a cache file: letters, digits and '_' only
         root = reference_root(ctx)
-        return "lab_prints_" + hashlib.sha256((ctx.cache.version + tree_digest(root, ctx.rules["lab_reference"],
-                                                                                 ctx.rules["lab_copy"])).encode()).hexdigest()
+        digest = tree_digest(root, ctx.rules["lab_reference"], ctx.rules["lab_copy"], ctx.root)
+        return "lab_prints_" + hashlib.sha256((ctx.cache.version + digest).encode()).hexdigest()
     return ctx.lazy("lab_prints key", build)
 
 
@@ -126,4 +158,4 @@ def load_store(ctx):
     key = store_key(ctx)
     root = reference_root(ctx)
     return ctx.lazy(key, lambda: Store.from_json(ctx.cache.get(key, lambda: build_store(
-        root, ctx.rules["lab_reference"], ctx.rules["lab_copy"]).to_json())))
+        root, ctx.rules["lab_reference"], ctx.rules["lab_copy"], ctx.root).to_json())))

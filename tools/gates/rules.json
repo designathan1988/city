@@ -415,10 +415,11 @@
     ]
   },
   "lab_reference": {
-    "_doc": "Where the roadcraft lab is, the reference LAB_COPY holds a change against: '@roadcraft_lab' is this machine's location (tools/tasks/locations.py), dirs its code, skip_dirs what is not its code. The self-test's cases replace this entry alone, so they run with the real thresholds of lab_copy.",
+    "_doc": "Where the roadcraft lab is, the reference LAB_COPY holds a change against: '@roadcraft_lab' is this machine's location (tools/tasks/locations.py), dirs its code, skip_dirs what is not its code. base: independent libraries in this repository (vendored, or fetched by CMake when the DLLs are built) whose k-grams and numbers are no evidence of a copy (MOSS's base files): what they also write is the trade's, not the reference's. The self-test's cases replace this entry alone, so they run with the real thresholds of lab_copy.",
     "place": "@roadcraft_lab",
     "dirs": ["src"],
-    "skip_dirs": ["node_modules", "dist", "dist-probe", "cooked"]
+    "skip_dirs": ["node_modules", "dist", "dist-probe", "cooked"],
+    "base": ["native/godot-cpp/include", "native/godot-cpp/src", "project/addons/terrain_3d", "native/build-win/_deps/clipper2-src", "native/build-win/_deps/meshoptimizer-src", "native/build-win/_deps/mimalloc-src"]
   },
   "lab_copy": {
     "_doc": "LAB_COPY (gate_lab.py, store lab_prints.py): the roadcraft lab is read for behaviour only and never copied, renamed or not (owner, 2026-11-11). Judged: the changed lines' functions in paths with extensions. A name the change defines for others is refused when its normal form (min_name_len letters, two parts or more) is one the reference defines; a piece when the passages it shares with one reference unit (greedy string tiling over k-grams of k neutral tokens, the reference winnowed with a window of w) hold informative k-grams worth min_tokens tokens and min_share of all of its own, or when one reference unit holds min_numbers of its non-trivial numbers in order. A k-gram or number in more than max_spread reference units is an idiom: MOSS's -m, whose default is 10. min_tokens, min_share and min_numbers are fixed by the calibration (tools/gates/tests/test_lab_gate.py: the made-up copies and passing cases, and engine-bound files of this game that cannot come from the reference) and never moved to make a run pass.",

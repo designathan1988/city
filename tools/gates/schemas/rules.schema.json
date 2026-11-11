@@ -66,9 +66,10 @@
         "_doc": {"$ref": "#/$defs/doc"},
         "place": {"type": "string", "minLength": 1},
         "dirs": {"$ref": "#/$defs/paths"},
-        "skip_dirs": {"$ref": "#/$defs/paths"}
+        "skip_dirs": {"$ref": "#/$defs/paths"},
+        "base": {"$ref": "#/$defs/paths"}
       },
-      "required": ["place", "dirs", "skip_dirs"]
+      "required": ["place", "dirs", "skip_dirs", "base"]
     },
     "lab_copy": {
       "type": "object", "strict": true,

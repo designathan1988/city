@@ -44,10 +44,13 @@ class Verdict:
         self.line, self.share, self.covered, self.numbers, self.matches = line, share, covered, numbers, matches
 
 
+def in_paths(cfg, path):
+    """Whether a file is of the rule's paths and extensions."""
+    return os.path.splitext(path)[1] in cfg["extensions"] and any(path == p or path.startswith(p + "/") for p in cfg["paths"])
+
+
 def applies(ctx, path):
-    cfg = ctx.rules["lab_copy"]
-    return (path in ctx.changed and os.path.splitext(path)[1] in cfg["extensions"]
-            and any(path == p or path.startswith(p + "/") for p in cfg["paths"]))
+    return path in ctx.changed and in_paths(ctx.rules["lab_copy"], path)
 
 
 def store_key(ctx):
@@ -86,10 +89,10 @@ def tiled(ours, theirs, seeds, informative, k):
 def best_share(store, cfg, piece):
     """(share, covered, 'file:line') of the reference unit whose shared passages hold the most of the piece's informative
     k-grams, idioms left out: covered is how many they hold, share what part of all of them that is."""
-    informative = {p: h for h, p in piece.grams}
+    informative = {p: h for h, p in piece.grams if h not in store.base}
     seeds = {}
     for h, p in piece.grams:
-        if store.print_spread.get(h, 0) > cfg["max_spread"]:
+        if store.print_spread.get(h, 0) > cfg["max_spread"] or h in store.base:
             continue
         for f, line, u in store.prints.get(h, ()):
             seeds.setdefault(f"{f}:{line}", []).append((p, u))
@@ -116,7 +119,7 @@ def _in_order(a, b):
 
 def best_numbers(store, cfg, piece):
     """(count, 'file:line') of the reference unit holding the most of the piece's numbers in their order, idioms left out."""
-    values = [v for v in piece.numbers if len(store.number_holders.get(v, ())) <= cfg["max_spread"]]
+    values = [v for v in piece.numbers if len(store.number_holders.get(v, ())) <= cfg["max_spread"] and v not in store.base]
     units = {u for v in set(values) for u in store.number_holders.get(v, ())}
     best, where = 0, None
     for unit in sorted(units):
@@ -154,32 +157,34 @@ def judge(ctx, src):
     return out
 
 
-def _named(ctx, src, store):
-    """{line: [reason]} of the names the change defines that the reference defines."""
+def findings(ctx, src):
+    """{line: [(what, the reference's place)]} of the pieces and the names of `src` the change touches that are past the
+    rule; raises lab_prints.NoReference when the reference is not there."""
     cfg = ctx.rules["lab_copy"]
+    store = lab_prints.load_store(ctx)
     lines = ctx.changed.get(src.path)
-    out = {}
+    found = {}
     for name, line in lab_units.api_names(src) + lab_units.program_names(src):
         norm = lab_tokens.normal_name(name, cfg["min_name_len"])
         if norm in store.names and (lines is None or line in lines):
-            out.setdefault(line, []).append(f"defines '{name}', a name the reference defines ({store.names[norm][0]})")
-    return out
+            found.setdefault(line, []).append((f"defines '{name}', a name the reference defines", store.names[norm][0]))
+    for v in judge(ctx, src):
+        for m in v.matches:
+            what = (f"its passages shared with the reference cover {m.measure:.0%} of it" if m.kind == "passages"
+                    else f"{m.measure} of its numbers stand in the reference in the same order")
+            found.setdefault(v.line, []).append((what, m.ref))
+    return found
 
 
 def check_lab_copy(ctx, src, err):
     if src.binary:
         return
     try:
-        verdicts = judge(ctx, src)
-        found = _named(ctx, src, lab_prints.load_store(ctx))
+        found = findings(ctx, src)
     except lab_prints.NoReference as e:
         err("LAB_COPY", src.path, f"cannot be judged without the reference: {e}")
         return
-    for v in verdicts:
-        for m in v.matches:
-            what = (f"passages shared with {m.ref} cover {m.measure:.0%} of it" if m.kind == "passages"
-                    else f"{m.measure} of its numbers stand in {m.ref} in the same order")
-            found.setdefault(v.line, []).append(what)
     for line in sorted(found):
-        err("LAB_COPY", f"{src.path}:{line}", "; ".join(found[line]) + ": the roadcraft is read for what the game does, "
-            "never copied; design this for this game (CLAUDE.md, log/how-we-work.md)")
+        err("LAB_COPY", f"{src.path}:{line}", "; ".join(f"{what} ({ref})" for what, ref in found[line])
+            + ": the roadcraft is read for what the game does, never copied; design this for this game (CLAUDE.md, "
+            "log/how-we-work.md)")
