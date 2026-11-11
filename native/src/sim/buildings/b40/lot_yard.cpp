@@ -1,21 +1,20 @@
 // A house's back yard and the courts a building leaves free in its envelope. The yard: a tiled terrace on the house's
 // own back (wherever the house ends, not where its zone starts), pots and a bench on it; a pool on part of the yards
-// (lots.pool, pool_share) with its stone deck and two loungers; beds along the back wall, trees in the back corners,
-// shrubs along the side walls, a clothes line; a yard deep enough (lots.yard_life_depth) is lived in - an orchard, a
+// (lots.pool, pool_share) with its stone deck (lots.pool_deck_m, held from every other part) and two loungers beside it; beds
+// along the back wall, trees in the back corners, shrubs along the side walls, a clothes line on the lawn; a yard deep enough (lots.yard_life_depth) is lived in - an orchard, a
 // kitchen garden with a coop, a play corner, a workshop shed or an edicula with its deck - mirrored at random. The free
 // courts (envelope less the ground volumes): a works' are paved with bays, a small one tiled with a planter and a bench,
 // a large one a garden square with benches, trees and flowers.
 #include "sim/buildings/b40/lot_layout.h"
 
 #include <algorithm>
-#include <cmath>
 
 namespace city::b40 {
 
 namespace {
-constexpr float POOL_GAP = 1.f, POOL_SIDE = 1.5f, POOL_ROOM = 2.f, DECK = 0.6f;
+constexpr float POOL_GAP = 1.f, POOL_SIDE = 1.5f, POOL_ROOM = 2.f;
 constexpr float LOUNGER_W = 0.65f, LOUNGER_L = 1.8f, LOUNGER_H = 0.35f, LOUNGER_GAP = 1.f, LOUNGER_OUT = 1.f;
-constexpr float BED_EVERY = 2.2f, BED_W = 1.6f, BED_D = 1.2f, BED_H = 0.4f, BED_BACK = 1.f, BED_FROM = 1.5f;
+constexpr float BED_EVERY = 2.2f, BED_W = 1.6f, BED_D = 1.2f, BED_H = 0.4f, BED_BACK = 1.f, FLOWERBEDS_IN = 1.5f; // the flower beds along the back wall
 constexpr float CORNER_TREE = 3.f, TREE_H = 5.f, CORNER_TREE_IN = 2.6f, CORNER_TREE_BACK = 2.8f;
 constexpr float BUSH = 1.3f, BUSH_TOP = 1.4f, SHRUB_IN = 1.5f, SHRUB_EVERY = 3.2f, SHRUB_TO = 3.f;
 constexpr float CLOTHES_SHARE = 0.5f, LINE_MIN_D = 6.f, LINE_H = 1.9f, LINE_SPAN = 0.4f, LINE_FROM = 0.2f, LINE_D = 0.2f;
@@ -100,7 +99,9 @@ void house_yard(LotSpace &s) {
 	if (s.r.f() < l.pool_share && depth >= l.pool_d + POOL_GAP + POOL_ROOM && s.R - s.L >= l.pool_w + 2 * POOL_SIDE) {
 		Rect pool = Rect::around(mid, lawn + POOL_GAP + l.pool_d * HALF, l.pool_w, l.pool_d);
 		if (s.put(EL_POOL, pool, l.pool_depth, s.paint("pool"))) {
-			s.cover(pool.grown(DECK), "pool_coping", 2);
+			// The pool's footprint is its water and the deck round it, its coping on the deck: nothing else of the yard stands there.
+			s.cover(pool.grown(l.pool_deck), "pool_coping", 2);
+			s.hold(pool.grown(l.pool_deck));
 			const int lounger = s.paint("bench");
 			for (int k = 0; k < 2; k++) {
 				float y = pool.y0 + LOUNGER_L * HALF + float(k) * (LOUNGER_L + LOUNGER_GAP);
@@ -118,7 +119,7 @@ void house_yard(LotSpace &s) {
 		}
 	}
 	const int flowers = s.paint("flowers"), tree = s.paint("hedge");
-	for (float x = s.L + BED_FROM; x < s.R - BED_FROM; x += BED_EVERY) s.put(EL_FLOWERS, Rect::around(x, s.D - BED_BACK, BED_W, BED_D), BED_H, flowers);
+	for (float x = s.L + FLOWERBEDS_IN; x < s.R - FLOWERBEDS_IN; x += BED_EVERY) s.put(EL_FLOWERS, Rect::around(x, s.D - BED_BACK, BED_W, BED_D), BED_H, flowers);
 	for (float x : { s.L + CORNER_TREE_IN, s.R - CORNER_TREE_IN }) s.put(EL_TREE, Rect::around(x, s.D - CORNER_TREE_BACK, CORNER_TREE, CORNER_TREE), TREE_H, tree);
 	for (float x : { s.L + SHRUB_IN, s.R - SHRUB_IN })
 		for (float y = lawn + SHRUB_IN; y < s.D - SHRUB_TO; y += SHRUB_EVERY) s.put(EL_SHRUB, Rect::around(x, y, BUSH, BUSH), BUSH_TOP, tree);

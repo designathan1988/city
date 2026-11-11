@@ -4,7 +4,8 @@
 ## over the footway; and a lot beside another in a row shares its side, no strip of bare land between the two. And every edge of a lot
 ## laid round a building is closed once (probe lot_bounds): by its boundary (a wall, fence, railing, hedge or gate on the line) or by a
 ## ground block standing on the edge, never a boundary in front of a block's face or through it, never a stretch left open; and no part
-## of the lot (a carport's post, a bin, a bench) stands in its boundary.
+## of the lot (a carport's post, a bin, a bench) stands in its boundary, nor in another part's footprint (a clothes line over a pool's
+## deck).
 ## Run: godot --path project res://tests/core/lot_front_test.tscn -- --no-flow
 extends TestCase
 
@@ -37,4 +38,6 @@ func _ready() -> void:
 			% [float(b.open) * float(b.step_m), b.open_first, b.open_by])
 	check(int(b.parts_in) == 0, "no part of a lot stands in its boundary: %d, the first (building, part kind, piece kind, x, z, metres in) %s, by part, lot kind and front use %s"
 			% [b.parts_in, b.parts_first, b.parts_by])
+	check(int(b.parts_meet) == 0, "no part of a lot stands in another's footprint (a pool's with its deck): %d pairs, the first (building, kinds, x, z, metres in) %s, by kinds, lot kind and front use %s"
+			% [b.parts_meet, b.meet_first, b.meet_by])
 	finish()

@@ -126,7 +126,7 @@ bool lot_rules(const Dictionary &d, LotRules &l, PackedStringArray &errors) {
 	Array pool = at(d, "pool");
 	enum { POOL_W, POOL_D, POOL_DEPTH };
 	l.pool_w = float(pool[POOL_W]); l.pool_d = float(pool[POOL_D]); l.pool_depth = float(pool[POOL_DEPTH]);
-	l.pool_share = float(at(d, "pool_share")); l.terrace = float(at(d, "terrace"));
+	l.pool_share = float(at(d, "pool_share")); l.terrace = float(at(d, "terrace")); l.pool_deck = float(at(d, "pool_deck_m"));
 	l.garage_back_share = float(at(d, "garage_back_share")); l.garage_closed_share = float(at(d, "garage_closed_share"));
 	l.yard_life_depth = float(at(d, "yard_life_depth")); l.max_elements = int(at(d, "max_elements"));
 	l.lorry_w = float(at(d, "lorry_w")); l.lorry_l = float(at(d, "lorry_l")); l.dock_margin = float(at(d, "dock_margin"));

@@ -171,9 +171,9 @@ Dictionary CityProbes::lot_fronts() {
 namespace {
 // What lot_bounds finds: how many of each, the first of each, and how many by "edge kind lot-kind front-use".
 struct BoundsTally {
-	int lots = 0, pieces = 0, doubled = 0, open = 0, samples = 0, parts_in = 0;
-	Array doubled_first, open_first, parts_first;
-	Dictionary doubled_by, open_by, parts_by;
+	int lots = 0, pieces = 0, doubled = 0, open = 0, samples = 0, parts_in = 0, parts_meet = 0;
+	Array doubled_first, open_first, parts_first, meet_first;
+	Dictionary doubled_by, open_by, parts_by, meet_by;
 	static void count(Dictionary &by, int edge, int kind, const b40::Body &b) {
 		const String key = String::num_int64(edge) + " " + String::num_int64(kind) + " " + String::num_int64(int(b.plan.kind)) + " " + String::num_int64(int(b.plan.front));
 		by[key] = int(by.get(key, 0)) + 1;
@@ -212,6 +212,34 @@ void parts_in_boundary(const b40::Body &b, const b40::LotFrame &f, int id, Bound
 				t.parts_first = Array::make(id, int(e.kind), int(p.kind), w.x, w.y, overlap(plan_box(e), plan_box(p)));
 			}
 			break;
+		}
+	}
+}
+
+// A part's footprint on the ground: its box, a pool's with the deck laid round it (lots.pool_deck_m, lot_yard.cpp).
+PlanBox footprint(const b40::LotElement &e, float deck) {
+	const PlanBox r = plan_box(e);
+	return e.kind == b40::EL_POOL ? PlanBox{ r.x0 - deck, r.y0 - deck, r.x1 + deck, r.y1 + deck } : r;
+}
+
+// A slab laid on the ground (a fuel island, a portico's floor) is a platform: what stands on it stands on it, not in it.
+bool platform(const b40::LotElement &e) { return e.kind == b40::EL_SLAB && e.z == 0; }
+
+// The lot's standing parts in one another, a pool with its deck among them: nothing solid stands in another's footprint.
+void parts_in_parts(const b40::Body &b, const b40::LotFrame &f, int id, float deck, BoundsTally &t) {
+	const std::vector<b40::LotElement> &el = b.elements;
+	for (size_t i = 0; i < el.size(); i++) {
+		if (!standing_part(el[i]) || platform(el[i])) continue;
+		for (size_t j = i + 1; j < el.size(); j++) {
+			if (!standing_part(el[j]) || platform(el[j])) continue;
+			const float in = overlap(footprint(el[i], deck), footprint(el[j], deck));
+			if (in <= IN_FRONT_M) continue;
+			t.parts_meet++;
+			BoundsTally::count(t.meet_by, int(el[i].kind), int(el[j].kind), b);
+			if (t.meet_first.is_empty()) {
+				const V2 w = f.at(el[i].x, el[i].y);
+				t.meet_first = Array::make(id, int(el[i].kind), int(el[j].kind), w.x, w.y, in);
+			}
 		}
 	}
 }
@@ -266,6 +294,7 @@ Dictionary CityProbes::lot_bounds() {
 		std::vector<EdgeSpan> on[LOT_EDGES], blocks[LOT_EDGES];
 		edges_of(*body, closes, on, blocks);
 		parts_in_boundary(*body, f, id, t);
+		parts_in_parts(*body, f, id, s.buildings.designs.lots.pool_deck, t);
 		for (int k = 0; k < LOT_EDGES; k++) judge_edge(*body, f, id, k, on[k], blocks[k], t);
 	}
 	Dictionary d;
@@ -281,6 +310,9 @@ Dictionary CityProbes::lot_bounds() {
 	d["parts_in"] = t.parts_in; // parts standing on the ground in a boundary piece
 	d["parts_first"] = t.parts_first; // building, the part's kind, the piece's kind, x, z, metres in
 	d["parts_by"] = t.parts_by; // "-1 part-kind lot-kind front-use": how many
+	d["parts_meet"] = t.parts_meet; // pairs of a lot's standing parts in one another (a pool with its deck)
+	d["meet_first"] = t.meet_first; // building, the two parts' kinds, x, z, metres in
+	d["meet_by"] = t.meet_by; // "kind kind lot-kind front-use": how many
 	d["step_m"] = EDGE_STEP_M;
 	return d;
 }

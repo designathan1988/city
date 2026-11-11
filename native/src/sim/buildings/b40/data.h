@@ -52,6 +52,7 @@ struct LotRules {
 	float front_low = 0; // the side walls beside the front garden
 	float block_closes = 0; // a ground block whose face stands this near a lot's edge closes it there: its wall is the boundary along it
 	float pool_w = 0, pool_d = 0, pool_depth = 0, pool_share = 0, terrace = 0;
+	float pool_deck = 0; // the paved deck round a pool (its coping on it): the pool's footprint, where no other part stands
 	float garage_back_share = 0, garage_closed_share = 0, yard_life_depth = 0;
 	float lorry_w = 0, lorry_l = 0, dock_margin = 0; // the widest and the single-unit lorry; room round it in a dock
 	int max_elements = 0;
