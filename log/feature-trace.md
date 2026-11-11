@@ -304,3 +304,14 @@ equal to `project/bin`'s): 236 calls between functions of the program, all answe
 `publish_poses -> lane_pose` came from code another session changed since). Lab (three.js read): fixpoint in 368 s,
 787,509 links (595,715 before: overrides now all labelled, block scope, the new rules), report written; the relinking
 over copied deltas took 430 s for the same links, read positions 368 s.
+
+## Final check of the committed tracer (93b903ed, 2026-11-11 00:40)
+**Lab, with the committed code** (roadcraft `src` + three r186 `build`, `examples/jsm`, start `src/frameLoop.ts:30`):
+fixpoint in 374 s, 145,846 definitions, 787,509 links (the same links as the run before the `add_ref` extraction),
+report written (`dist/trace/lab_frame_final.txt`). **City pairs between the comparison run and the final run** (6 only
+before, 7 only after): another session's commit 24e4e2ae (23:04, "the ground a car off the lanes holds is solid to the
+walkers") landed between the two runs: it made `side_limits` and `gap_of` read the new field `Body::under` instead of
+`held`, rewrote `file_held_ground` in the new `ped_held.cpp`, and inserted lines in `ped_stripes.cpp` that moved the
+lambdas of `candidates` (101 -> 109) and `rooms_of` (54 -> 55). Every one of the 13 pairs is one of those changes;
+none comes from the tracer. **The tracer's pending items in `log/pendencias.md`** (lines "Feature tracer at scale...",
+"Resolved 2026-11-10 22:55", "Resolved 2026-11-11 00:15") are all closed; the other items of that file are the game's.
