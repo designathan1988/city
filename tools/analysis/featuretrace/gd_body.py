@@ -185,4 +185,4 @@ def attribute(r, node, unit, cls, cond, value: tuple | None) -> None:
             r.add(unit, "read", name, seg, cond, base=base)
             for part in named_children(seg)[1:]:
                 expr(r, part, unit, cls, cond)
-        base = ir_gd.step(src, base, seg, lambda n: r.lambda_id(n, unit, cls))
+        base = scopes.scoped_tree(r, ir_gd.step(src, base, seg, lambda n: r.lambda_id(n, unit, cls)))

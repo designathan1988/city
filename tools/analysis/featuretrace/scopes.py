@@ -12,6 +12,7 @@ def reset(r) -> list:
     """A function starts its own scopes (a lambda keeps the enclosing ones: it sees them). Returns the old stack."""
     saved = r.scopes
     r.scopes = [{}]
+    r.base = 0
     return saved
 
 
@@ -29,7 +30,7 @@ def local_key(r, unit, name: str, function_scope: bool = False) -> str:
     name (declared in another block), then a key of its own. A name the function captures is shadowed in place."""
     if not r.scopes:
         return name
-    scope = r.scopes[0] if function_scope else r.scopes[-1]
+    scope = r.scopes[getattr(r, "base", 0)] if function_scope else r.scopes[-1]   # the function's own scope
     if name in scope:
         return scope[name]                     # declared again in the same scope: the same local (JS `var`)
     key = name

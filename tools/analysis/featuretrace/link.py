@@ -84,6 +84,8 @@ def link_node(rs, node, deltas: dict | None = None) -> None:
             rs.status.pop(node, None)
             link_ref(rs, unit, unit.refs[number])
             return
+        if deltas and rs.status.get(node, ("",))[0] == UNREACHED:
+            rs.status.pop(node)             # values reached what it reads: "no value reaches it" no longer holds
         for grown, new in deltas.items():
             position = 0
             while True:
@@ -165,7 +167,7 @@ def link_ref(rs, unit, ref) -> None:
     if how in (EXTERNAL, LOCAL, UNREACHED):
         if how == EXTERNAL and kind in ("call", "new", "name", "emit") and ref.text != IMPLICIT:
             rs.note(EXTERNAL, ref.name)
-        elif how == UNREACHED and kind in ("call", "name", "emit", "read", "write"):
+        elif how == UNREACHED and kind in ("call", "name", "emit", "read", "write") and ref.text != IMPLICIT:
             rs.note(UNREACHED, ref.name)
         return
     if kind == "call" and ref.argc >= 0 and (len(targets) > 1 or rs.typer.substitution is not None):

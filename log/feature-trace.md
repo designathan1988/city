@@ -315,3 +315,20 @@ walkers") landed between the two runs: it made `side_limits` and `gap_of` read t
 lambdas of `candidates` (101 -> 109) and `rooms_of` (54 -> 55). Every one of the 13 pairs is one of those changes;
 none comes from the tracer. **The tracer's pending items in `log/pendencias.md`** (lines "Feature tracer at scale...",
 "Resolved 2026-11-10 22:55", "Resolved 2026-11-11 00:15") are all closed; the other items of that file are the game's.
+
+## A regression of the block scope found and fixed (2026-11-11 01:20)
+**Found:** the lab's report after 93b903ed showed 5,003 uses on a receiver no value reaches (634 before the day's
+changes). **Causes, read in the code and the solver's state on the lab's `src/lab`:** (1) `js_expr` built a call's and a
+`new`'s argument trees with `ir_js.args_of`, not through `r.ir`, so the block-scope renaming (`row` -> `row#9`) did not
+reach them: a callback's parameter took no value, or the other same-named local's; the GDScript member-chain steps had
+the same gap (`ir_gd.step`). (2) A reference linked first with no value for its receiver was noted "unreached", and the
+relink by difference did not take the note back when values came (the whole relink used to clear it first), so a later
+read of an external member, which notes nothing, left it standing. (3) An implicit call (coercion, iterator) was noted
+"unreached" while it is silent when nothing answers. (4) A JS `var` in a nested function went to the outermost
+function's scope. **Fixes:** `js_expr.arguments_of` and `gd_body.attribute` rename through `scopes.scoped_tree`;
+`link.link_node` drops an "unreached" note when a difference arrives (values reached the receiver); `link_ref` keeps
+implicit calls silent; `scopes.local_key` uses the function's own scope (`JsReader.base`). Each has a test that failed on
+93b903ed first (`test_pending.py`: renamed local passed as an argument, `var` in a nested function, no stale note).
+**Tests:** 94 OK; city on a fixed snapshot (HEAD): the same caller-callee pairs as 93b903ed (the 107/148 seen before came
+from another session's uncommitted edits between runs); lab: fixpoint in 428 s, 785,524 links, uses on a receiver no value
+reaches 407 (634 before the day's changes), report `dist/trace/lab_frame_done.txt`.

@@ -30,6 +30,7 @@ class JsReader:
         self._objects = {}               # object / class expression start byte -> class key
         self.declaration_file = src.display.endswith((".d.ts", ".d.mts", ".d.cts"))
         self.scopes = []                 # the blocks of the function being read (`scopes`)
+        self.base = 0                    # the index of the function's own scope among them
 
     def run(self) -> FileFacts:
         root = self.src.parse(grammar_of(self.src.path))
@@ -67,15 +68,17 @@ class JsReader:
         nested = outer is not None and outer.name != MODULE_UNIT
         if nested:
             enclose(unit, outer)
+        base = self.base
         saved = self.scopes if nested else scopes.reset(self)   # a nested function sees the enclosing blocks
         if nested:
             scopes.open_scope(self)
+            self.base = len(self.scopes) - 1                    # its own scope: where its `var`s go
         try:
             self.function_body(node, unit)
         finally:
             if nested:
                 scopes.close_scope(self)
-            self.scopes = saved
+            self.scopes, self.base = saved, base
         return unit
 
     def function_body(self, node, unit: Unit) -> None:

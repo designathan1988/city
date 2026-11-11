@@ -27,6 +27,20 @@ class Pending(FixtureCase):
     def test_block_scope_javascript(self):
         self.assertTrue({"Box.open", "Can.open"} <= self.names("scopes.js:7"))
 
+    def test_renamed_local_passed_as_argument(self):
+        # the second `row` (a Can) reaches the arrow's parameter: its open() is Can's, not Box's
+        self.assertEqual({"Can.open"}, self.names("scopes.js:19"))
+
+    def test_var_belongs_to_its_own_function(self):
+        self.assertIn("Can.open", self.names("scopes.js:29"))          # the inner function's `var it`: a Can
+        outer = self.names("scopes.js:32")                              # the outer function's `var it`: a Box
+        self.assertIn("Box.open", outer)
+        self.assertNotIn("Can.open", outer)
+
+    def test_no_stale_unreached_note(self):
+        # linked first with no value for `p`, then again when the caller's Box arrives: not "unreached"
+        self.assertNotIn(self.gid("late"), self.rs.unreached)
+
     def test_local_class(self):
         self.assertIn("fx::use.<lambda:77>", self.names("fx::Pool::each.<lambda:35>"))
 

@@ -9,7 +9,7 @@ runtime (J10). `f.call(t, ...)` / `f.apply(t, a)` call f with the arguments afte
 """
 from __future__ import annotations
 
-from . import js_body
+from . import js_body, scopes
 from .cpp_implicit import IMPLICIT
 from .ir_js import args_of, member_name
 from .rules import (CALL_FORMS, COERCION_MEMBERS, CONSTRUCTOR, EVENT_FIRE, EVENT_OBJECTS, EVENT_SUBSCRIBE,
@@ -52,7 +52,7 @@ def expression(r, node, unit, cond) -> None:
         ctor, args = field_of(node, "constructor"), field_of(node, "arguments")
         if ctor is not None and ctor.type not in ("identifier", "member_expression"):
             expression(r, ctor, unit, cond)
-        r.add(unit, "new", "", node, cond, base=r.ir(ctor, unit), args=args_of(r, args, unit))
+        r.add(unit, "new", "", node, cond, base=r.ir(ctor, unit), args=arguments_of(r, args, unit))
         arguments(r, args, unit, cond)
     elif kind == "assignment_expression":
         left, right = field_of(node, "left"), field_of(node, "right")
@@ -108,6 +108,11 @@ def expression(r, node, unit, cond) -> None:
             expression(r, child, unit, cond)
 
 
+def arguments_of(r, args, unit) -> tuple:
+    """A call's argument trees, each name read as the local it names in the open blocks (`scopes`)."""
+    return scopes.scoped_tree(r, args_of(r, args, unit))
+
+
 def implicit(r, node, member: str, operand, unit, cond) -> None:
     """A call the language makes on a value (J5): silent when no class of the program answers it."""
     if operand is not None and operand.type not in PLAIN:
@@ -131,7 +136,7 @@ def arguments(r, args, unit, cond) -> None:
 def call(r, node, unit, cond) -> None:
     fn, args = field_of(node, "function"), field_of(node, "arguments")
     argv = (named_children(args) if args.type == "arguments" else [args]) if args is not None else []
-    trees = args_of(r, args, unit)
+    trees = arguments_of(r, args, unit)
     if fn.type == "import":                                     # import("m"): the module runs (J3)
         spec = string_value(r.src, argv[0]) if argv else None
         if spec is not None:
