@@ -3,7 +3,7 @@
 
 #include "core/grid.h"
 #include "render/buildings/facade_bay.h"
-#include "render/buildings/roof_util.h"
+#include "render/buildings/lot_census.h"
 #include "sim/buildings/b40/civic.h"
 
 #include <algorithm>
@@ -27,54 +27,6 @@ constexpr float BYTE_MAX = 255.f;
 // A pane's seed as one number: its room, its bay byte, the darker glass and the room's floor.
 uint32_t seed_key(uint32_t slot, uint32_t bay, bool dark, uint32_t floor) {
 	return slot | bay << SEED_BAY_BIT | uint32_t(dark) << SEED_DARK_BIT | floor << SEED_FLOOR_BIT;
-}
-
-constexpr float PAST_LOT_M = 0.02f; // how far past its lot's line a part may be written and still stand on it
-
-// How many of the points lie past the lot's lines of the body placed (its plan's width either side of the front's middle, its depth back).
-int64_t past_lines(const b40::Placed &pl, const std::vector<Vector3> &points) {
-	const b40::Body &b = *pl.b;
-	int64_t past = 0;
-	for (const Vector3 &p : points) {
-		const Vector3 d = p - pl.lot.o;
-		const float x = d.dot(pl.lot.e0), y = d.dot(pl.lot.e1);
-		past += std::abs(x) > b.plan.W / 2 + PAST_LOT_M || y < -PAST_LOT_M || y > b.plan.D + PAST_LOT_M ? 1 : 0;
-	}
-	return past;
-}
-
-// The vertices of a body's pitched roofs that lie past its lot's lines: a roof ends at its own lot, whatever its eaves.
-int64_t roof_past_lot(const b40::Placed &pl) {
-	const b40::Body &b = *pl.b;
-	if (b.plan.W <= 0 || b.plan.D <= 0) return 0; // a body with no lot known (a model, a design)
-	b40::Shell roofs;
-	for (const b40::Volume &v : b.volumes)
-		if (!b40::roof_flat(v.roof) && v.outline.empty()) b40::emit_pitched(roofs, pl, v, b.level_z(v.top()));
-	return past_lines(pl, roofs.pos);
-}
-
-// The vertices of a lot's ground and boundary (its surfaces, walls, fences, railings, hedges and gates, as lot_emit.cpp draws them) that
-// lie past its lot's lines: what a lot lays stays on its own land, plinths and copings included, so two lots on one line never stand in
-// one another and none stands on the footway. Each element is drawn alone, so the first one past is named: `first` gets its building,
-// kind, middle and size in the lot's frame, and how many of its vertices lie past.
-int64_t lot_past_lot(const b40::Placed &pl, int id, Array &first) {
-	const b40::Body &b = *pl.b;
-	if (b.plan.W <= 0 || b.plan.D <= 0) return 0;
-	b40::Body one = b;
-	b40::Placed only = pl;
-	only.b = &one;
-	int64_t past = 0;
-	for (const b40::LotElement &e : b.elements) {
-		if (e.kind != b40::EL_SURFACE && e.kind != b40::EL_WALL && e.kind != b40::EL_FENCE && e.kind != b40::EL_RAILING && e.kind != b40::EL_HEDGE &&
-				e.kind != b40::EL_GATE && e.kind != b40::EL_CAR_GATE) continue;
-		one.elements.assign(1, e);
-		b40::Shell shell, parts;
-		b40::emit_lot(shell, parts, only);
-		const int64_t out = past_lines(pl, shell.pos) + past_lines(pl, parts.pos);
-		if (out > 0 && first.is_empty()) first = Array::make(id, int(e.kind), e.x, e.y, e.w, e.d, out);
-		past += out;
-	}
-	return past;
 }
 
 // The near level's panes of a body against the mid level's bays of the same body, each level laid as its job lays it.
@@ -142,8 +94,8 @@ Dictionary BuildingRenderer::bay_census() {
 	const CityState &s = *state_;
 	std::unordered_map<std::string, int64_t> fine, coarse;
 	std::array<int64_t, b40::BAY_COUNT> by_comp{};
-	int64_t bays = 0, buildings = 0, past_lot = 0, lot_past = 0;
-	Array lot_past_first;
+	int64_t bays = 0, buildings = 0;
+	LotCensus lots;
 	PaneAgreement panes;
 	std::vector<Building> records;
 	{
@@ -170,8 +122,7 @@ Dictionary BuildingRenderer::bay_census() {
 			coarse[key(COARSE, c, o)]++;
 		});
 		panes.add(pl);
-		past_lot += roof_past_lot(pl);
-		lot_past += lot_past_lot(pl, int(rec.seed), lot_past_first);
+		lots.add(pl, int(rec.seed));
 	}
 	const auto cover = [](const std::unordered_map<std::string, int64_t> &m, int64_t total) {
 		std::vector<int64_t> counts;
@@ -207,9 +158,7 @@ Dictionary BuildingRenderer::bay_census() {
 	d["panes_unmatched"] = panes.unmatched; // near panes whose room, bay byte, glass and floor no mid bay of the building carries
 	d["mid_shutters"] = panes.shutters; // mid bays with a roller shutter part way down
 	d["mid_rooms"] = panes.rooms; // the rooms the mid level's bays light by, a building at a time
-	d["roof_past_lot"] = past_lot; // vertices of pitched roofs written past their lot's lines
-	d["lot_past_lot"] = lot_past; // vertices of the lots' ground and boundaries written past their lot's lines
-	d["lot_past_first"] = lot_past_first; // the first element past: building's seed, kind, middle and size in the lot's frame, vertices past
+	lots.put(d); // the lots against their lines and their open gates (lot_census.h)
 	return d;
 }
 

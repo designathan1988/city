@@ -2,7 +2,8 @@
 ## probe_building gives them) is a rectangle, and no two of them overlap by more than a hand's width. Two lots that share a line
 ## touch; they do not overlap. And what is drawn over a lot stays on it: no pitched roof reaches past its lot's lines (probe
 ## bay_census, roof_past_lot), so two halls on a shared line do not put their roofs through one another; nor does its ground or its
-## boundary (lot_past_lot: a wall's plinth and coping), so two lots' walls on one line do not stand in one another.
+## boundary (lot_past_lot: a wall's plinth and coping), so two lots' walls on one line do not stand in one another. And every lot's gate
+## stands open (gates_shut): nothing of it in the passage a car or a person goes through.
 extends TestCase
 
 const TOWN_MAP := 0
@@ -59,6 +60,13 @@ func _ready() -> void:
 	var walls := int(census.get("lot_past_lot", -1))
 	check(walls == 0, "no lot's ground or boundary is written past its lot's lines (plinths and copings stay on its land): %d vertices past, the first (seed, kind, x, y, w, d, vertices) %s"
 			% [walls, census.get("lot_past_first", [])])
+	var gates := int(census.get("gates", 0))
+	var shut := int(census.get("gates_shut", -1))
+	check(gates > 0 and shut == 0, "the lots' gates stand open, their leaves swung into the lot beside the passage: %d gates, %d vertices in a passage, the first (seed, kind, x, y, w, vertices) %s"
+			% [gates, shut, census.get("gates_shut_first", [])])
+	var blocked := int(census.get("leaves_blocked", -1))
+	check(blocked == 0, "nothing of a lot stands where its open gates' leaves stand: %d parts or blocks in a leaf, the first (seed, gate kind, kind or -1 a block, x, y, w, d) %s"
+			% [blocked, census.get("leaves_blocked_first", [])])
 	finish()
 
 

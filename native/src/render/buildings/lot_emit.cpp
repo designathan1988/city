@@ -1,5 +1,6 @@
 // The lot elements of a placed body: its covers as lot_covers.h lays them on the ground (lawns drawn as grass by the shader),
-// boundary walls with plinth and coping, fences and railings on their base walls, hedges, gates with posts and bars, planters,
+// boundary walls with plinth and coping, fences and railings on their base walls, hedges, gates standing open (their posts, and their leaves
+// swung into the lot), planters,
 // benches, bollards, lamps (lit heads), bins, stall lines, wall ACs, and the building-hung canopies, awnings, veranda floors, slabs
 // and posts.
 #include "render/buildings/lot_covers.h"
@@ -102,19 +103,38 @@ void LotEmit::fence(const LotElement &e, float x0, float x1, float y0, float y1,
 	for (float a = s0; a <= s0 + len + EPS; a += every) bar(std::min(a, s0 + len - pw), std::min(a, s0 + len - pw) + pw, base, top + POST_OVER, pw);
 }
 
+// A gate stands open while its lot is lived in, as the reference's gates stand: its posts proud of the run either side, and its leaves hung on
+// them swung into the lot along the opening's sides, so a car drives and a person walks through with nothing of the gate in the way: as many
+// as the rules hang in its opening (data.h LotRules::gate_leaves), each its share of the opening long; a leaf is its bottom and top rails, its
+// stiles at the hinge and at the free end, and its bars between the rails.
 void LotEmit::gate(const LotElement &e) {
 	float x0 = e.x - e.w / 2, x1 = e.x + e.w / 2, g = ground(e.x, e.y);
 	Lin m = paint(e, "gate");
-	// Every piece of the gate on the lot's own land: its posts proud of the run either side, its rails and bars across the opening.
+	// Every piece of the gate on the lot's own land.
 	const auto piece = [&](float a0, float a1, float b0, float b1, float z0, float z1) {
 		on_land(a0, a1, b0, b1);
 		parts.box(pl.lot, a0, a1, b0, b1, z0, z1, m, FIN_METAL);
 	};
 	const float bar = pl.look->fence_bar_m;
 	for (float x : { x0 - GATE_POST, x1 }) piece(x, x + GATE_POST, e.y - GATE_POST / 2, e.y + GATE_POST / 2, g - FOOT, g + e.h + GATE_RAIL);
-	piece(x0, x1, e.y - bar / 2, e.y + bar / 2, g + e.h - GATE_RAIL, g + e.h);
-	piece(x0, x1, e.y - bar / 2, e.y + bar / 2, g + GATE_RAIL, g + 2 * GATE_RAIL);
-	for (float x = x0 + BAR_EVERY; x < x1; x += BAR_EVERY) piece(x, x + bar, e.y - bar / 2, e.y + bar / 2, g + GATE_RAIL, g + e.h);
+	const int leaves = pl.data->lots.gate_leaves(e.w);
+	const float reach = e.w / float(leaves); // a leaf's length
+	const float in = e.facing == FACE_BACK ? -1.f : 1.f; // the way into the lot
+	const float root = e.y + in * e.d * HALF; // the leaves hang from the run's inner face
+	const auto leaf = [&](float lx0) {
+		// A piece of the leaf from s0 to s1 along it (from its hinge), at heights z0..z1.
+		const auto along = [&](float s0, float s1, float z0, float z1) {
+			const float a = root + in * s0, b = root + in * s1;
+			piece(lx0, lx0 + bar, std::min(a, b), std::max(a, b), z0, z1);
+		};
+		along(0, reach, g + GATE_RAIL, g + 2 * GATE_RAIL);
+		along(0, reach, g + e.h - GATE_RAIL, g + e.h);
+		along(0, bar, g + GATE_RAIL, g + e.h);
+		along(reach - bar, reach, g + GATE_RAIL, g + e.h);
+		for (float s = BAR_EVERY; s < reach - bar; s += BAR_EVERY) along(s, s + bar, g + 2 * GATE_RAIL, g + e.h - GATE_RAIL);
+	};
+	leaf(x0);
+	if (leaves > 1) leaf(x1 - bar);
 }
 
 void LotEmit::prop(const LotElement &e) {

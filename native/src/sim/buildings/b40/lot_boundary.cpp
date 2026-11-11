@@ -2,8 +2,9 @@
 // by its gates or by a ground block of the lot standing on it (within buildings.json lots.block_closes_m: the block's wall closes
 // it), never by two of them. open_boundary plans it before the zones lay their parts: the front takes one of its kind's styles (buildings.json
 // lots.boundary), the sides and back are party walls (a works' fence), low beside a front garden; the gates are laid (the people's
-// at the door, a car's on every drive, the car pad's and the works visitors'; with no front zone the side strips' own), and every
-// edge's band is held, so no part is put where the boundary will stand, its pieces kept from the lot's budget. lay_boundary lays the
+// at the door, a car's on every drive, the car pad's and the works visitors'; with no front zone the side strips' own), each standing open
+// with the room of its leaves held, and every edge's band is held, so no part is put where the boundary or a leaf will stand, its pieces
+// kept from the lot's budget. lay_boundary lays the
 // runs last, when every block is known (a garage on the drive's strip closes its stretch of the side): each edge less its gates less
 // the stretches its blocks close.
 #include "sim/buildings/b40/lot_layout.h"
@@ -14,7 +15,7 @@ namespace city::b40 {
 
 namespace {
 constexpr float BOUNDARY_WALL_T = 0.2f, FENCE_THICK = 0.12f, HEDGE_THICK = 0.7f; // thickness of a wall, a fence or railing, a hedge
-constexpr float GATE_POST = 0.2f; // a car gate is its drive less a post each side
+constexpr float GATE_POST = 0.2f; // a car gate is its drive less a post each side; an open leaf's room across, at the opening's side
 constexpr float GATE_GAP = 0.05f; // a run stops this short of a gate
 constexpr float SHORTEST_RUN = 0.3f; // shorter stretches are left to the posts and the corners
 constexpr float WALK_TRIM = 0.2f; // a side path's gate is the path less this
@@ -44,7 +45,22 @@ struct Gate {
 	bool car;
 };
 
+std::vector<Gate> planned_gates(LotSpace &s); // where the people's, the cars' and the works visitors' gates go
+
+// The gates of the lot's front, each opening between the side runs' bands (a side strip's walk or drive reaches the lot's edge, where the
+// side wall stands): a gate and its open leaves never stand in a side wall.
 std::vector<Gate> front_gates(LotSpace &s) {
+	std::vector<Gate> g = planned_gates(s);
+	const float lo = s.L + s.bounds.side_t, hi = s.R - s.bounds.side_t;
+	for (Gate &one : g) {
+		one.x0 = std::max(one.x0, lo);
+		one.x1 = std::min(one.x1, hi);
+	}
+	g.erase(std::remove_if(g.begin(), g.end(), [](const Gate &one) { return one.x1 - one.x0 < SHORTEST_RUN; }), g.end());
+	return g;
+}
+
+std::vector<Gate> planned_gates(LotSpace &s) {
 	const bool house = s.b.kind == KIND_HOUSE;
 	const LotRules &l = s.rules;
 	std::vector<Gate> g;
@@ -121,8 +137,14 @@ void open_boundary(LotSpace &s) {
 	p.low = homes ? std::min(l.front_low, p.party) : p.party;
 	const float top = p.front.h + p.front.base;
 	for (const Gate &g : front_gates(s)) {
-		s.edge(g.car ? EL_CAR_GATE : EL_GATE, { g.x0, 0, g.x1, FENCE_THICK }, top, gate_paint);
+		// As deep as the front's band, so its leaves stand open past the run (a hedge's 0.7 m, a wall's 0.2 m), each in a strip a post's width
+		// along the opening's side, as far as it reaches: held, so no part the zones put stands in a leaf (render/buildings/lot_emit.cpp draws them).
+		s.edge(g.car ? EL_CAR_GATE : EL_GATE, { g.x0, 0, g.x1, p.front_t }, top, gate_paint);
 		p.gates.push_back({ g.x0 - GATE_GAP, g.x1 + GATE_GAP });
+		const int leaves = l.gate_leaves(g.x1 - g.x0);
+		const float reach = (g.x1 - g.x0) / float(leaves);
+		s.hold({ g.x0, p.front_t, g.x0 + GATE_POST, p.front_t + reach });
+		if (leaves > 1) s.hold({ g.x1 - GATE_POST, p.front_t, g.x1, p.front_t + reach });
 	}
 	// The bands the runs will stand on, held from every part the zones lay meanwhile.
 	s.hold({ s.L, 0, s.R, p.front_t });

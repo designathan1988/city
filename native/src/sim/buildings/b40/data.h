@@ -10,6 +10,7 @@
 #include "sim/buildings/b40/model.h"
 #include "sim/buildings/interior/tables.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdint>
 #include <string>
@@ -58,6 +59,9 @@ struct LotRules {
 	int max_elements = 0;
 	std::vector<BoundaryStyle> boundary[KIND_COUNT];
 	float row_depth(int rows) const { return rows <= 0 ? 0 : float(rows) * stall_d + aisle; }
+	// How many leaves an open gate of this opening hangs (lot_boundary.cpp keeps their room, render/buildings/lot_emit.cpp draws them): one
+	// the opening's width where it is no wider than the widest person's gate, else two of half the opening each.
+	int gate_leaves(float opening) const { return opening > std::max(person_gate[0], person_gate[1]) ? 2 : 1; }
 };
 
 // A number no filling of the tables had before (Data::generation).
