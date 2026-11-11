@@ -18,12 +18,14 @@ from ..js_read import MODULE_UNIT
 from ..model import FUNCTION_KINDS
 from ..resolve import EXACT, Edge
 from ..model import STATE_KINDS as STATE
-from ..vocab import ANY_FIELD, CALL, HANDED, NEW, SITE_FUNCTION, SITE_UNKNOWN, T_OPEN
-from . import contexts, declared, refs, trees, typesys, values
+from ..vocab import (ANY_FIELD, CALL, ELEMENTS_FIELD, HANDED, NEW, RESULT_FIELD, SITE_FUNCTION, SITE_GENERATOR,
+                     SITE_PROMISE, SITE_UNKNOWN, T_OPEN)
+from . import contexts, declared, members, protocols, refs, trees, typesys, values
 from .objects import Objects
 from .solver import Solver
 
 TREE, LOCAL, PARAM, THIS, RET, HOLD, FIELD, INITIAL = range(8)       # what a node is
+INSTANCES, MADE_BY_CALL = 60, 61               # every object of a class; the generator or promise a call makes
 ROOT = contexts.ROOT
 
 
@@ -115,18 +117,21 @@ class Analysis:
     def call(self, node, fn: int, receiver: int | None, args: list, kind: str, site=None) -> None:
         """A call whose node is `node` runs the function object `fn` on `receiver` with `args`, in its context: its
         parameters take the arguments, its `this` the receiver, the call its result; a link for each reference.
-        A plain call's site is its node without the caller's context (`site` when the caller says). A function only
+        A plain call's site is its node without the caller's context, or `site`, (static site, heap context), when the
+        caller gives it (a callback's node carries objects no site may hold). A function only
         declared does what its declaration says (`declared`); an object no function of the program is called as
         its kind says."""
-        gid = self.objects.function(fn)
+        objects = self.objects
+        where = site if site is not None else declared.call_site(self, node)    # (static site, heap context)
+        gid = objects.function(fn)
         if gid is None:
-            declared.call_object(self, node, fn, receiver, args)
+            declared.call_object(self, node, fn, receiver, args, where)
             return
-        objects, env = self.objects, self.objects.env(fn)
+        env = objects.env(fn)
         if receiver is not None:
             ctx = contexts.of_method(env, objects.site(receiver), objects.heap(receiver))
         else:
-            ctx = contexts.of_call(env, site if site is not None else objects.make(*node[:-1]))
+            ctx = contexts.of_call(env, where[0])
         self.activate(gid, ctx)
         unit = self.ix.units[gid]
         for index, arg in enumerate(args):
@@ -134,10 +139,29 @@ class Analysis:
                 self.solver.follow(arg, self.param(gid, index, ctx))
         if receiver is not None:
             self.solver.add(self.this(gid, ctx), [receiver])
-        self.solver.follow(self.ret(gid, ctx), node)
+        self.solver.follow(self.result(gid, ctx, where), node)
         self.reached(node, gid, kind)
         if unit.decl_only and typesys.declared(self, gid):
-            declared.apply(self, node, gid, receiver, args, declared.call_site(self, node))
+            declared.apply(self, node, gid, receiver, args, where)
+
+    def result(self, gid: int, ctx, where):
+        """What a call gives: what the function returns; a generator function's call, a generator object whose
+        elements are its yields; an async function's, a promise whose result is what it returns, settled."""
+        unit = self.ix.units[gid]
+        if not unit.generator and not unit.asynchronous:
+            return self.ret(gid, ctx)
+        made = self.objects.made_by_call(SITE_GENERATOR if unit.generator else SITE_PROMISE, gid, where)
+        held = (MADE_BY_CALL, made)
+        if held not in self.wired:
+            self.wired.add(held)
+            self.solver.add(held, [made])
+        if unit.generator:
+            slot = members.field(self, made, ELEMENTS_FIELD)
+            for tree in unit.yields:
+                self.solver.follow(self.node(tree, unit, ctx), slot)
+        else:
+            protocols.settle(self, members.field(self, made, RESULT_FIELD), self.ret(gid, ctx))
+        return held
 
     def reached(self, node, gid: int, kind) -> None:
         """The call `node` runs `gid`: a link for each reference written for it (`kind` True: a `new`)."""
@@ -182,6 +206,15 @@ class Analysis:
         gid = self.objects.function(obj)
         return self.ix.units[gid].constructs or None if gid is not None else None
 
+    def instance_made(self, obj: int) -> None:
+        """An object of a class: one of the instances of its class and of each class above it."""
+        key = self.objects.class_of(obj)
+        for k in typesys.ancestors(self, key) if key is not None else []:
+            self.solver.add(self.instances(k), [obj])
+
+    def instances(self, key: str):
+        return (INSTANCES, key)
+
     def is_function_unit(self, gid: int) -> bool:
         return self.ix.units[gid].kind in FUNCTION_KINDS
 
@@ -219,6 +252,8 @@ def enter(an, gid: int, ctx, unknown) -> bool:
             else:
                 an.solver.add(an.param(gid, index, ctx), [unknown])
         an.solver.add(an.this(gid, ctx), [unknown])
+        if unit.owner in an.ix.classes and not unit.static:      # a method: any object of its class
+            an.solver.follow(an.instances(unit.owner), an.this(gid, ctx))
     return True
 
 

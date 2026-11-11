@@ -11,10 +11,13 @@ from ..ir_js import CLASS_VALUE
 from ..js_class import MADE_CLASS as CLASS_MADE, MADE_LITERAL as LITERAL_MADE
 from ..js_functions import ARROW as ARROW_THIS
 from ..solver import LANG, STRING
+from ..rules import CONSTRUCTOR
 from ..vocab import (AWAIT, CALL, CALLABLE, CAST, COLLECTION, CONSTRUCT, EACH, ELEMENTS, ELEMENTS_FIELD, INDEX,
-                     KEYS, LITERAL, MEMBER, NAME, NARROW, OP, SELF, SITE_CLASS, SITE_TEXT, STRNAME, SUPER, UNARY,
-                     UNION)
-from . import contexts, members, names, protocols
+                     JSX, KEYS, LITERAL, MEMBER, NAME, NARROW, NEW, OP, SELF, SITE_CLASS, SITE_PRIMITIVE, SITE_TEXT,
+                     STRNAME, SUPER, UNARY, UNION)
+from . import contexts, declared, jsx, members, names, protocols, typesys
+
+CONSTRUCTED = 10           # a node: what a constructor's call returns (the `new` itself is the object made)
 
 STRING_KIND = truth.KINDS[STRING]
 
@@ -38,9 +41,7 @@ def wire(an, node, tree, unit, ctx) -> None:
     elif kind == CALL:
         wire_call(an, node, tree, unit, ctx)
     elif kind == CONSTRUCT:
-        site = tree[2] if len(tree) > 2 else -1
-        solver.subscribe(an.node(tree[1], unit, ctx), node, (CONSTRUCT,), lambda t, objs: solver.add(t, [
-            made(an, o, unit.file, site, ctx) for o in objs if an.made_by(o)]))
+        construct(an, node, tree, unit, ctx)
     elif kind == CALLABLE:
         gid = an.ix.offset[unit.file] + tree[1]                  # made here: this run is its environment
         solver.add(node, [an.function_object(gid, names.scope(an, unit, ctx, an.ix.units[gid].outer))])
@@ -69,6 +70,8 @@ def wire(an, node, tree, unit, ctx) -> None:
     elif kind in (OP, UNARY):
         solver.add(node, [an.objects.primitive(v[len(LANG):]) for v in truth.operator_values(tree[1], kind == UNARY)
                           if v.startswith(LANG)])
+    elif kind == JSX:
+        jsx.value(an, node, tree, unit, ctx)
     elif kind == KEYS:
         solver.add(node, [an.objects.primitive(STRING_KIND)])
 
@@ -132,6 +135,7 @@ def wire_cast(an, node, text: str, unit, ctx) -> None:
     if made == LITERAL_MADE:
         obj = an.objects.literal(key, ctx)
         an.solver.add(node, [obj])
+        an.instance_made(obj)
         literal_methods(an, obj, key, unit, ctx)
     elif made == CLASS_MADE:                       # evaluated in this run: its methods are closures of it
         an.solver.add(node, [an.objects.class_value(key, ctx, unit.gid)])
@@ -186,12 +190,47 @@ def wire_local(an, node, unit, name: str, ctx) -> None:
             solver.follow(node, outer)
 
 
+def construct(an, node, tree, unit, ctx) -> None:
+    """`new C(args)` (ECMA-262 EvaluateNew, [[Construct]]): for each value C can be, the object made at the site
+    with C's constructor (a class's declared one, or the constructor function itself) run on it, and an object the
+    constructor returns instead; on an object of a declared type, its construct signatures."""
+    solver = an.solver
+    site = tree[2] if len(tree) > 2 else -1
+    args = [an.node(a, unit, ctx) for a in (tree[3] if len(tree) > 3 else ())]
+
+    def by_value(target, objs):
+        for obj in objs:
+            key = an.made_by(obj)
+            call = constructed(node, key or obj)
+            if not key:
+                declared.construct(an, call, obj, args)
+                solver.follow(call, target)
+                continue
+            instance = made(an, obj, unit.file, site, ctx)
+            solver.add(target, [instance])
+            ctors = [obj] if an.objects.function(obj) is not None else [
+                an.function_object(g, members.method_env(an, obj, g)) for g in typesys.lookup(an, key, CONSTRUCTOR)
+                if an.is_function_unit(g)]
+            for fn in ctors:
+                an.call(call, fn, instance, args, NEW)
+            solver.subscribe(call, target, (CONSTRUCT, key), lambda t, returned: solver.add(t, [
+                o for o in returned if an.objects.kind(o) not in (SITE_PRIMITIVE, SITE_TEXT)]))
+    solver.subscribe(an.node(tree[1], unit, ctx), node, (CONSTRUCT,), by_value)
+
+
+def constructed(node, made) -> tuple:
+    """The call node of the constructor a `new` tree's node runs for what C is (a class key, a declared object)."""
+    return (CONSTRUCTED, node[1], node[2], made, node[3])
+
+
 def made(an, obj: int, file: str, site: int, ctx) -> int:
     """The object `new` on `obj` makes at a site in a context (one a constructor function or a class evaluated in a
     run made knows that function or class object)."""
     objects = an.objects
     maker = obj if objects.function(obj) is not None or objects.class_env(obj) is not None else -1
-    return objects.instance(an.made_by(obj), file, site, maker, ctx)
+    made = objects.instance(an.made_by(obj), file, site, maker, ctx)
+    an.instance_made(made)
+    return made
 
 
 def is_made(an, text: str) -> bool:

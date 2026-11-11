@@ -8,7 +8,7 @@ function, and what that is called with is the awaited value, itself settled the 
 from __future__ import annotations
 
 from ..languages import ITERATOR, NEXT, THEN, VALUE
-from ..vocab import CALL, ELEMENTS_FIELD, SITE_RESOLVER
+from ..vocab import CALL, ELEMENTS_FIELD, RESULT_FIELD, SITE_PROMISE, SITE_RESOLVER
 from . import members, typesys
 
 ITERATOR_CALL, NEXT_CALL, THEN_CALL, PROBE, RESOLVING, SETTLE = 40, 41, 42, 43, 44, 45      # node tags
@@ -43,6 +43,9 @@ def settle(an, node, source) -> None:
 
 
 def one(an, node, obj: int) -> None:
+    if an.objects.kind(obj) == SITE_PROMISE:          # a promise the language made: its result
+        an.solver.follow(members.field(an, obj, RESULT_FIELD), node)
+        return
     if not typesys.has_member(an, obj, THEN):
         an.solver.add(node, [obj])
         return

@@ -1,0 +1,203 @@
+# Feature tracer: research before finishing (owner's order, 2026-11-11 evening)
+
+The owner's order: research on the internet until the solution of every problem the tracer has met is found and the
+whole objective is proven feasible; record every finding here as it is found, with quick bounded scripts that verify
+it; only then go on. Nothing in this file is deleted: findings are appended, a wrong one is marked wrong with why.
+
+The objective: one generic tracer that follows the complete flow of any feature through GDScript (with scenes and
+config), C++ (GDExtension included) and JavaScript/TypeScript (JSX, TSX), from the languages' rules and the platforms'
+official declarations only, converging (finite, fast enough to run in seconds to a few minutes), never naming a program.
+
+## The problems met so far
+
+- P1. Processes: a run of the new core on one lab file ran for minutes with no output and was moved to the background;
+  the owner forbids unwatched, slow or heavy processes and a process blocking another.
+- P2. The old core never converged: hand rules per case (51 tables of names), measurement used as specification.
+- P3. Unbounded abstractions: closures' templates without end (C4''); Window's index signature making one declared
+  object per level (RecursionError); risk: allocation sites built from call nodes that carry objects.
+- P4. The solver applies a subscription's transfer recursively inside `subscribe`: the stack reached 4,323 frames on
+  the lab (probe_stack.py, 2026-11-11 17:40), cycling structural -> callback -> consume -> taken -> structural.
+- P5. Structural consumption of a program object as a declared type reads every member the type declares (hundreds in
+  the DOM) and is redone per call site, environment and site path.
+- P6. The platform's behaviour: declarations say types, not effects (what dispatchEvent calls, what a library stores).
+- P7. Events and listeners: what calls a listener added with addEventListener.
+- P8. JSX: factories, runtimes, children.
+- P9. Grammar gaps of tree-sitter-typescript 0.23.2 (global augmentation in ambient modules).
+- P10. Acceptance: how to compare the new core's call graph with the old one and with the truth.
+- P11. GDScript and Godot's engine API for Task 8; P12. C++ (virtual calls, function pointers, templates) for Task 9.
+
+## Findings
+
+### F1. The solver's discipline (P4) — 2026-11-11 17:50
+- Pearce, Kelly, Hankin, "Online cycle detection and difference propagation for pointer analysis", SCAM 2003
+  (https://whileydave.com/publications/PKH03_SCAM_preprint.pdf): Andersen's analysis as set constraints solved by a
+  worklist; difference propagation pushes only the change of each node's set. Every unit of work is a worklist item:
+  nothing is applied recursively.
+- Hardekopf, Lin, "The ant and the grasshopper", PLDI 2007 (https://cs.utexas.edu/~lin/papers/pldi07.pdf): lazy and
+  hybrid cycle detection collapse nodes with identical sets, the fastest variant they studied. Pereira and Berlin's
+  wave propagation (CGO 2009) orders propagation topologically.
+- What it says of this tracer: `heap/solver.py` applies a new subscription's transfer to the source's current objects
+  inside `subscribe`, so wiring that subscribes recursively nests Python frames (4,323 on the lab). The cause-level fix
+  is the worklist discipline: a new subscription's first application is a queued item like any difference.
+
+### F2. How the analyzers that scale treat JavaScript (P5, P6) — 2026-11-11 17:55
+- Jelly (Aarhus, https://github.com/cs-au-dk/jelly): "Its core is a flow-insensitive control-flow and points-to
+  analysis, together with access paths for tracking library usage"; it treats the Node.js standard library as unknown
+  code; with all dependencies "can take a long time", and offers indirection bounding (`--max-indirections`) or a
+  timeout for partial results; it compares call graphs (static against dynamic, via NodeProf) for precision and
+  recall. Its design comes from JAM (modular call graphs, ISSTA 2021), TAPIR (OOPSLA 2020) and ACG (ICSE 2013).
+- Averroes (Ali, Lhotak, ECOOP 2013, https://plg.uwaterloo.ca/~olhotak/pubs/ecoop13.pdf): a placeholder library that
+  over-approximates the library; call graphs as sound as with the whole library, 4.3x-12x faster; merging the library's
+  pointers costs precision (a later study: 59% of the whole-program precision on average).
+- TAJS's DOM model (Jensen, Madsen, Moller, ESEC/FSE 2011, https://cs.au.dk/~amoeller/papers/dom): event handlers are
+  collected as registered and triggered non-deterministically by the event loop (a hand model of ~250 abstract objects,
+  500 properties, 200 functions).
+- What it says of this tracer: the analyzers that finish on real programs are context-insensitive at the core and model
+  the library either by hand (forbidden here) or as unknown code with access paths and callbacks assumed called. None
+  enumerates every member of a declared type on every object handed to it: that is this tracer's design error (P5).
+
+### F3. What keeps an analysis of real programs inside a budget (P1, P3, P5) — 2026-11-11 18:05
+- Zipper (Li, Tan, Moller, Smaragdakis, OOPSLA 2018, https://cs.au.dk/~amoeller/papers/zipper): a fast
+  context-insensitive pre-analysis builds a precision flow graph; the methods through which objects flow in and back out
+  (direct, wrapped, unwrapped flows) are the precision-critical ones (38% on average); 2-object sensitivity applied only
+  to them keeps essentially all its precision and runs much faster. Finding them is graph reachability, negligible time.
+- Introspective analysis (Smaragdakis, Kastrinis, Balatsouras, PLDI 2014) and Scaler (TOPLAS 2020, "scalability-first
+  pointer analysis with self-tuning context-sensitivity"): context sensitivity chosen per method from a cheap first pass;
+  Scaler's aim is to finish any program within a given budget.
+- Indirection-bounded call graphs (Chakraborty, Gnanakumar, Sridharan, Moller, ECOOP 2024,
+  https://cs.au.dk/~amoeller/papers/bounded): code has few levels of indirection; a wave propagation that follows the
+  levels finds the true edges first; bounding the levels gave ~2x speed for 5% recall.
+- ACG (Feldthaus et al., ICSE 2013): a field-based flow analysis builds approximate call graphs fast enough for an IDE;
+  "Static JavaScript Call Graphs: A Comparative Study" (SCAM 2018) and Jelly's `--compare-callgraphs` measure precision
+  and recall against dynamic call graphs (the truth a static graph is judged by).
+- What it says of this tracer: context sensitivity everywhere (Task 3's 1-call-site and 2-object with heap context on
+  every function) is the cost the literature avoids; the costliest correct design is the two-phase one — a
+  context-insensitive run, then contexts only for the precision-critical functions its flow graph names — and every run
+  reports progress and finishes inside a budget it is given (Scaler's discipline, the owner's order on processes).
+
+### F4. The evidence on the lab (P4, P5) — probe_stack.py, 2026-11-11 17:40
+- A watchdog printing the analysing thread's stack every 6 s: depth 2,409 -> 4,323 -> 2,970 -> 1,974, the frames
+  repeated most `solver.subscribe` (1,070), `values.consume` (539), `declared.taken` (536), `declared.callback` (535),
+  `declared.structural` (533): one object given to a declared type is consumed structurally — every member the type
+  declares read on it, each method called back, each result consumed into its declared type, structurally again — all
+  inside `subscribe`'s immediate application. The solver's step counter never advanced past the first item's wiring.
+- Causes: (a) the solver applies transfers recursively (F1); (b) structural consumption reads the type's members (the
+  DOM's hundreds), not the members the object has, and is keyed per call, environment and site, so the same (object,
+  type) pair is consumed again and again; (c) a callback's call node carries its environment's objects into the static
+  site an object made under it is keyed by (a promise chain through async callbacks would nest without end).
+
+### F5. Godot's engine API, for GDScript (P11) — 2026-11-11 18:15 (context7 /godotengine/godot-docs; local check)
+- `godot --dump-extension-api` writes `extension_api.json`, the engine API for GDExtension bindings (command-line
+  reference). The repository has the dumps of 4.3 to 4.8 in `native/godot-cpp/gdextension/`; 4.7: 1,036 classes, 41
+  singletons. A class: name, inherits, is_instantiable, is_refcounted, api_type, methods, properties, signals, enums,
+  constants. A method: name, is_const, is_vararg, is_static, is_virtual, arguments (name, type, default_value, meta),
+  return_value (type); a property: type, name, setter, getter; a signal: name, arguments. Builtin classes (38: Array,
+  String, Callable, Signal...) and 114 utility functions are declared the same way.
+- Verified (a 1-second script): Node's virtual methods are declared (`_process`, `_physics_process`, `_enter_tree`,
+  `_exit_tree`, `_ready`, `_input`, ...); Object declares `connect(signal: StringName, callable: Callable)`,
+  `emit_signal`, `call(method: StringName, ...vararg) -> Variant`, `call_deferred`, `set`, `get`.
+- What it says of this tracer: the engine's callbacks are the methods the API declares virtual (the old core's
+  `ENGINE_CALLBACKS` list is replaced by the declaration); `connect` and `emit_signal` on one object are the platform's
+  kept state (a callable kept, called back by an emit with the arguments its parameters admit) — the same generic rule
+  as addEventListener and dispatchEvent; `call(method)` is reflection by name on the receiver (Task 5's summary must
+  count the receiver among the objects a string may name a member of); `Variant` is an open type.
+
+### F6. An independent reference for JavaScript, measured (P10) — 2026-11-11 18:25
+- Jelly 0.13.0 is installed at `C:/Projects/toolchains/jelly` (`node .../@cs-au-dk/jelly/lib/main.js`). On the web
+  fixture: 63 ms, 27 functions, 40 calls, 28 call->function edges, its JSON call graph (`files`, `functions`, `calls`,
+  `fun2fun`, `call2fun`). On the lab's `src` with every dependency: a V8 fatal error after 42 s (its README: raise
+  `--max-old-space-size`). With `--ignore-dependencies` and a 6 GB heap: 22.3 s, 3,289 MB, 19,725 functions, 99,094
+  calls, 58,087 call->function edges, 39.8% of the calls to native or external code, 77.8% of the functions reachable.
+- What it says: an independent call graph of the lab exists to measure the new core's recall and precision against
+  (Task 7), as Jelly's own `--compare-callgraphs` does; and a whole-program, context-insensitive analysis in optimized
+  V8 needs 22 s and 3.3 GB for the lab's own code: a whole-program fixpoint in Python, with contexts, on every trace
+  cannot be fast. A trace asks about one feature: the analysis must answer that question, not solve the program.
+
+### F7. Answering one query instead of solving the program (P1, P10) — 2026-11-11 18:30
+- Demand-driven points-to analysis performs "only the work necessary to answer a query": Heintze and Tardieu (PLDI
+  2001, the first on-demand Andersen analysis, built to compute call graphs of C with function pointers); Sridharan,
+  Gopan, Shan, Bodik (OOPSLA 2005) and Sridharan, Bodik (PLDI 2006, refinement-based, context sensitivity refined per
+  query) as CFL-reachability; Boomerang (Spath, Nguyen Quang Do, Ali, Bodden, ECOOP 2016,
+  https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.ECOOP.2016.22), flow-, field- and context-sensitive on
+  demand.
+- Reuse across runs: per-function summaries computed once and applied at every call site (diff graphs, ICOOOLPS 2017);
+  POLYMER (OOPSLA 2016) reuses facts of shared code across programs: 2.6x faster call graphs, 5.2x points-to.
+- What it says of this tracer: a trace is a query (what a feature runs, what reaches it). Two costs must both be small:
+  the work per query (demand: only the units the query reaches, the writes a read it needs can see) and the work shared
+  by every query (the facts and the platform's declarations, read once and kept by content, as the readers' facts are).
+
+### F8. The three causes fixed and verified (P3, P4, P5) — 2026-11-11 18:45
+- The solver now follows the worklist discipline (F1): a new subscription's first application is a queued item; no
+  transfer runs inside another. Structural consumption happens once per (object, type, environment), only for objects
+  the program made (the platform's objects are its own), only on the members the object has, besides index signatures
+  and call signatures. Every call's allocation site is an explicit (static site, heap context): a callback's node, which
+  carries its environment's objects, is never a site.
+- Verified (probe_growth.py, bounded, live): the lab's main.ts with its 130 declaration files, which ran for minutes
+  without end, finishes in 2.1 s: 141,795 worklist items, 19,279 objects (7,530 declared, 3,160 declared functions),
+  deepest object key nesting 14. The 71 heap tests pass.
+
+### F9. The whole program does not fit; the query does (P1) — measured 2026-11-11 19:00
+- Bounded probes on the lab's whole `src` (1,000 files with the declarations), 85 s each, live output:
+  context-sensitive, 691,624 items, not finished, the rate falling (250,000 items in 8 s, the next 250,000 in 36 s;
+  15,469 function objects cloned per context); context-insensitive (Zipper's pre-analysis), 334,847 items, not finished
+  (46 s for 250,000: larger sets, heavier items). A sampling profile (probe_sample.py, 1,352 samples): `analysis.call`
+  ~53% of the analysing thread, the trees' transfers ~34%, Task 5's generic summaries ~28% (reflection by name alone
+  ~16%), `taken` ~17%. CPython does not cache a tuple's hash: a node keyed by a 12-deep tree hashes 8x slower than an
+  int (a 1-second micro-benchmark), a cost, not the cause (~120 microseconds per item overall).
+- With module code entered, a query from `LotTool.advanceProposal` is the whole program again: the lab's `main.ts`
+  builds the whole application at module level. With the seed alone, 598 items, 8 units, 21 links in 0.0 s: too shallow,
+  because the seed's `this`, its fields and its parameters are fed by code no forward walk runs.
+- On-demand call graphs for JavaScript (SAS 2023, https://link.springer.com/10.1007/978-3-031-44245-2_20): start from an
+  empty call graph, interleave backward data-flow queries, resolve call edges as needed; it explores a smaller part of
+  the program. ACG's "optimistic DEMAND" propagates only along edges that may end at a call site. Doop on Souffle
+  (Datalog compiled to C++) is an order of magnitude faster than a hand-built Java framework.
+- What it says of this tracer: a trace must be a demand-driven query over the same inclusion analysis — forward from
+  the seed as now, and every node that needs its sources (a parameter, a function's `this`, a field, a variable)
+  finding them through static indexes (the call sites that may call the function, the writes of the member's name, the
+  `new`s of the class) and wiring only those expressions, never whole units nor all module code.
+
+### F10. What inflates the work, measured (P1, P5, P6) — 2026-11-11 19:20
+- The same whole-lab probe, context-insensitive, with Task 5's pool removed and unknown code treated as Jelly treats
+  it (what it is handed is called back, nothing spread into fields): 3,487,665 items in 85 s against 334,847 — ten
+  times the work done in the same time; objects level off near 50,000 (converging); nodes ~890,000 still growing.
+  The Averroes pool (every open argument's fields one level down, the callbacks' results, all spread into every open
+  object's fields and called back with everything) makes every set large and every item heavy, and its precision is
+  the literature's 59% (F2).
+- The demand-driven prototype (probe_query.py): 5.1 M items in 85 s at ~60,000 per second, but pulling by name
+  (callers of `get`, writes of common field names) drags in 12,789 units and 678,215 links; Jelly reaches 10,570 of
+  19,725 functions from that same seed: a central feature's closure is half the program, so a query does not avoid
+  the program's scale.
+- A synthetic benchmark of Python against Node on the same worklist algorithm was inconclusive (the random graph formed
+  one giant component: Python 5 M items, 16.5 M facts in 60 s; Node, with string field keys, ran out of its 4 GB):
+  a runtime is no shortcut; the algorithm's work is the cost.
+
+## Decision (2026-11-11 19:25): what the research proves the tracer must be
+
+1. One inclusion analysis over the whole program, solved by the worklist discipline (F1), context-insensitive first,
+   with contexts only for the functions a precision flow graph names (Zipper, F3) — the costliest correct design, not
+   contexts everywhere.
+2. The platform from its declarations as Task 4 reads them (precise where they type), and where they say nothing,
+   Jelly's and JAM's treatment of unknown code (F2): what it is handed is called back with what its declared
+   parameters give; a value given in an open position with a string naming a member reaches that member of the call's
+   open object arguments (defineProperty's shape); a member a passed string names is read and called on the open
+   arguments themselves (reflection); no pool spread into every field, no callback called with everything.
+3. The platform's kept state only where a declaration pairs it: a function kept by a call on an object is called back
+   by a later call on that object that hands no function and passes a value of a named type the kept function's
+   declared parameter admits (an Event to an EventListener; a Signal's emit to its connected callables) — never by a
+   type parameter's value (an array's push does not call its forEach callbacks again).
+4. Speed by engineering the same algorithm: nodes interned to integers, cycles of identity edges collapsed (Hardekopf
+   and Lin, F1), the facts and the solved analysis kept by the content of their inputs so a second trace reads them;
+   every run prints its progress and finishes inside the budget it is given (Scaler, F3); acceptance against Jelly's
+   call graph of the lab (F6) and the old core's links.
+
+### F11. Narrowed summaries, measured (P5, P6) — 2026-11-11 19:50
+- With the summaries of the Decision in the code (no Averroes pool; kept state paired by declared types), the
+  whole-lab probe did 8.9 M items in 85 s; the window of its last 40 s (probe_tail.py): 4.1 M of 5.2 M items were
+  reflection reads (`MEMBER_OF`) of one object each — `console.log("text", obj)`-shaped calls reading `obj["text"]`.
+  Cause: any string in any position was taken for a member name. A string names a member only where its position is
+  declared with a property-key type (ECMA-262: a key is a string or a symbol; TypeScript's `PropertyKey`, `keyof T`,
+  a union of string literals), as `defineProperty(o, p: PropertyKey, ...)` and `Reflect.get(t, k: PropertyKey)`
+  declare it; a plain `string` is text. After the fix: 4.9 M items in 85 s and the analysis reaches further (945,000
+  nodes); the window is now the declared objects' production (`PRODUCED`, 565,000 items) and fields.
+- Still open: the whole lab does not finish within 85 s; the next measured steps are the Decision's item 4 (nodes as
+  integers, cycles of identity edges collapsed, the solved analysis kept by its inputs' content).

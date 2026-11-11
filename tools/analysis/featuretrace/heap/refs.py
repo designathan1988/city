@@ -7,13 +7,13 @@ links too. No name of a program or platform is read here.
 """
 from __future__ import annotations
 
+from ..js_read import MODULE_UNIT
 from ..model import STATE_KINDS
-from ..rules import CONSTRUCTOR
-from ..vocab import (ANY_FIELD, CALL, CONSTRUCT, ELEMENTS_FIELD, INVOKE, LAMBDA, MEMBER, NAME, NEW, READ, STORE,
-                     WRITE)
-from . import declared, members, names, trees
+from ..vocab import (ANY_FIELD, CALL, CONSTRUCT, ELEMENTS_FIELD, IMPORT, INVOKE, JSX, LAMBDA, MEMBER, NAME, NEW,
+                     READ, STORE, WRITE)
+from . import jsx, members, names, trees
 
-CONSTRUCTED = 10           # a node: what a constructor's call returns (the `new` itself is the object made)
+WRITTEN = 11               # a node: the subscription a `new` reference writes its line through
 
 
 def lower(an, unit, ctx) -> None:
@@ -34,35 +34,20 @@ def lower(an, unit, ctx) -> None:
             read(an, unit, ref, ctx)
         elif kind == LAMBDA and ref.target >= 0:
             an.link(unit.gid, an.ix.offset[unit.file] + ref.target, LAMBDA, ref.line)
+        elif kind == JSX and ref.base is not None:
+            jsx.written(an, unit, ref, ctx)
+        elif kind == IMPORT and ref.text:            # the imported module's code runs first (J3)
+            target = an.ix.js.resolve(unit.file, ref.text)
+            for gid in an.ix.by_qual.get(f"{target}:{MODULE_UNIT}", []) if target else []:
+                an.link(unit.gid, gid, CALL, ref.line)
 
 
 def construct(an, unit, ref, ctx) -> None:
-    """`new C(args)`: the object made at the site in this context (the construct tree), and C's constructor run on it
-    — a class's declared constructor, or the constructor function object itself, its environment kept."""
-    ctor = an.node(ref.base, unit, ctx)
-    value = an.node((CONSTRUCT, ref.base, ref.site), unit, ctx)
-    args = [an.node(a, unit, ctx) for a in ref.args]
-
-    def by_class(_, objs):
-        for obj in objs:
-            key = an.made_by(obj)
-            if not key:                               # an object of a declared type: its construct signatures
-                call = (CONSTRUCTED, unit.gid, ref.site, obj, ctx)
-                an.written(call, unit.gid, ref.line)
-                declared.construct(an, call, obj, args)
-                an.solver.follow(call, value)
-                continue
-            made = trees.made(an, obj, unit.file, ref.site, ctx)
-            call = (CONSTRUCTED, unit.gid, ref.site, key, ctx)
-            an.written(call, unit.gid, ref.line)
-            if an.objects.function(obj) is not None:
-                ctors = [obj]
-            else:
-                ctors = [an.function_object(g, members.method_env(an, obj, g)) for g in an.ix.lookup(key, CONSTRUCTOR)
-                         if an.is_function_unit(g)]
-            for fn in ctors:
-                an.call(call, fn, made, args, NEW)
-    an.solver.subscribe(ctor, (CONSTRUCTED, unit.gid, ref.site, ctx), (NEW,), by_class)
+    """`new C(args)`: its tree does the construction (`trees.construct`); the reference writes its line on each
+    constructor call the tree's node makes."""
+    node = an.node((CONSTRUCT, ref.base, ref.site, ref.args), unit, ctx)
+    an.solver.subscribe(an.node(ref.base, unit, ctx), (WRITTEN, node), (NEW,), lambda _, objs: [
+        an.written(trees.constructed(node, an.made_by(o) or o), unit.gid, ref.line) for o in objs])
 
 
 def write(an, unit, ref, ctx) -> None:

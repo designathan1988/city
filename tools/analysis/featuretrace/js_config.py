@@ -11,6 +11,7 @@ from .model import FileFacts
 
 TRAILING_COMMA = re.compile(r",(\s*[}\]])")
 PACKAGE_FIELDS = ("name", "exports", "module", "main", "types", "typings", "browser")
+JSX_OPTIONS = ("jsx", "jsxFactory", "jsxImportSource")      # tsconfig: how JSX is transformed (TS handbook, JSX)
 
 
 def strip_jsonc(text: str) -> str:
@@ -56,6 +57,7 @@ def read_tsconfig(src) -> FileFacts:
     options = data.get("compilerOptions") or {}
     facts.config = {"paths": options.get("paths") or {}, "baseUrl": options.get("baseUrl"),
                     "extends": data.get("extends")}
+    facts.config.update({k: options[k] for k in JSX_OPTIONS if isinstance(options.get(k), str)})
     return facts
 
 

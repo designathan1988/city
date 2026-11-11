@@ -12,7 +12,8 @@ from __future__ import annotations
 from ..js_transfer import chain
 from ..languages import GETTER, PROTOTYPE, PROTOTYPE_CONSTRUCTOR, SETTER
 from ..model import STATE_KINDS
-from ..vocab import CALL, ELEMENTS_FIELD, READ, SITE_CLASS, SITE_DECLARED, SITE_LITERAL, SITE_PROTOTYPE, WRITE
+from ..vocab import (CALL, ELEMENTS_FIELD, READ, SITE_CLASS, SITE_DECLARED, SITE_LITERAL, SITE_MODULE, SITE_PROTOTYPE,
+                     SITE_UNKNOWN, WRITE)
 
 from . import contexts, names, typesys, values  # noqa: E402  (they read members: imported once it is defined)
 
@@ -21,8 +22,19 @@ ALL, ACCESSOR, PROTOTYPES, PROPERTY = 9, 11, 12, 13    # nodes: every property o
 
 
 def read(an, target, obj: int, name: str) -> None:
-    """Member `name` of object `obj` into `target`."""
+    """Member `name` of object `obj` into `target`: a module namespace's export; anything the platform's unknown
+    object holds is the unknown object again."""
     ix, objects = an.ix, an.objects
+    kind = objects.kind(obj)
+    if kind == SITE_MODULE:
+        gids, modules = ix.js.export(objects.keys[obj][1], name)
+        for gid in gids:
+            names.value_of(an, gid, target)
+        an.solver.add(target, [objects.make(SITE_MODULE, m) for m in modules])
+        return
+    if kind == SITE_UNKNOWN:
+        an.solver.add(target, [obj])
+        return
     key, maker = objects.class_of(obj), objects.maker(obj)
     for own in typesys.own_types(an, obj):        # its class's or declared type's members, else its intrinsic's
         if declared_read(an, target, obj, own, name):

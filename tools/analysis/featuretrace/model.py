@@ -78,6 +78,8 @@ class Unit:
     type_text: str = ""            # a variable's declared type, a function's declared return type
     declared: list = field(default_factory=list)   # js: the value trees a function's return annotation allows (T3)
     generator: bool = False        # js: `function*`: a call gives a generator object, whose iteration gives its yields
+    asynchronous: bool = False     # js: `async`: a call gives a promise whose result is what it returns
+    this_type: tuple = ()          # js: the declared type of its `this` parameter (`js_sigs`), () where none
     yields: list = field(default_factory=list)     # js: what each `yield` gives (`yield* e`: e's elements)
     refs: list = field(default_factory=list)
     returns: list = field(default_factory=list)    # (line, expression text, tree) of each return

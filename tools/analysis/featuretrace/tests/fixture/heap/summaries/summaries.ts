@@ -9,3 +9,4 @@ export function passed() { return pass(new Apple()); }
 export function kept() { return keep(new Apple(), new Pear()); }
 export function joined() { const t = {}; both(t, { a: new Apple() }); return t.a; }
 export function invoked() { const o = { run() { return new Apple(); } }; return invoke(o, "run"); }
+export function noted() { const o = { run() { return new Apple(); } }; note("run", o); return o; }

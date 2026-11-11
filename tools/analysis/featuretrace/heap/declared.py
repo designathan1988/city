@@ -8,15 +8,19 @@ by the program, takes its arguments the same way; the function `await` hands a t
 from __future__ import annotations
 
 from ..languages import ARRAY_TYPE, CALL_SIGNATURE, CONSTRUCT_SIGNATURE
-from ..vocab import (ELEMENTS_FIELD, HANDED, SITE_DECLARED_FN, SITE_FUNCTION, SITE_RESOLVER, T_FN, T_NAMED, T_OBJECT,
-                     T_OPEN, T_PARAM, T_TUPLE)
+from ..vocab import (ELEMENTS_FIELD, HANDED, SITE_ARRAY, SITE_DECLARED_FN, SITE_FUNCTION, SITE_LITERAL, SITE_NEW,
+                     SITE_RESOLVER, SITE_UNKNOWN, T_FN, T_NAMED, T_OBJECT, T_OPEN, T_PARAM, T_TUPLE)
 from . import contexts, members, summaries, typesys, values
 
-CALLBACK, CALLBACK_SITE, READ_MEMBER = 30, 31, 32          # node tags
+CALLBACK, CALLBACK_SITE, READ_MEMBER, THIS, RECEIVERS, CALLBACK_ARG = 30, 31, 32, 33, 34, 35   # node tags, site parts
+STRUCTURAL = 36
+PROGRAM_MADE = (SITE_NEW, SITE_LITERAL, SITE_FUNCTION, SITE_ARRAY)     # the objects the program's own code makes
 
 
 def call_site(an, node) -> tuple:
-    """A call's site for what its declaration makes: the call's place without its context, and the heap context."""
+    """A call's site for what its declaration makes, for a node whose last part is its context and whose other parts
+    are static (a tree's call, a protocol's, a JSX element's): the place without the context, and the heap context.
+    A call whose node carries objects (a callback's) is given its static site explicitly (`analysis.call`)."""
     ctx = node[-1] if isinstance(node[-1], tuple) else contexts.ROOT
     return (an.objects.make(*node[:-1]), contexts.heap(ctx))
 
@@ -30,26 +34,41 @@ def apply(an, node, gid: int, holder, args: list, site) -> None:
         tree = parameter(unit, i)
         if tree and arg is not None:
             values.consume(an, tree, env, arg, values.sub(site, (gid, i)), node)
+    if unit.this_type and holder is not None:      # `this: T`: the receiver given to its declared type
+        values.consume(an, unit.this_type, env, an_node(an, holder), values.sub(site, (gid, THIS)), node)
     if unit.result_type:
         an.solver.follow(values.produce(an, unit.result_type, env, values.sub(site, gid)), node)
     summaries.summarize(an, node, unit, args, site, parameter)     # what no declaration states (Task 5)
+    if holder is not None:
+        summaries.kept(an, node, holder, unit, args, site, parameter)   # the platform's state on its receiver
 
 
 def parameter(unit, index: int) -> tuple:
-    """The declared type an argument at `index` takes: its parameter's, past the rest parameter its element type."""
-    types = unit.param_types
-    if unit.variadic and types and index >= len(types) - 1:
-        rest = types[-1]
-        if rest and rest[0] == T_NAMED and rest[1] == ARRAY_TYPE and rest[2]:
-            return rest[2][0]
-        return rest[1][index - len(types) + 1] if rest and rest[0] == T_TUPLE and index - len(types) + 1 < \
-            len(rest[1]) else ()
+    """The declared type a declared function's argument at `index` takes."""
+    types = tuple(unit.param_types)
+    return positional(types, len(types) - 1 if unit.variadic else -1, index)
+
+
+def positional(types: tuple, rest: int, index: int) -> tuple:
+    """The declared type an argument at `index` takes: its parameter's; from the rest parameter on, one element of
+    the rest type (an array's element type, a tuple's part, a variadic type parameter itself)."""
+    if 0 <= rest < len(types) and index >= rest:
+        tree = types[rest]
+        if tree and tree[0] == T_NAMED and tree[1] == ARRAY_TYPE and tree[2]:
+            return tree[2][0]
+        if tree and tree[0] == T_TUPLE:
+            return tree[1][index - rest] if index - rest < len(tree[1]) else ()
+        return tree
     return types[index] if index < len(types) else ()
 
 
 def taken(an, obj: int, tree: tuple, env, site, origin) -> None:
-    """One object given to a place of a function, named or object type."""
+    """One object given to a place of a function, named or object type (a function given to a declared function type
+    by a method is kept on the method's receiver: `summaries.keep`)."""
     kind = tree[0]
+    if env[0] is not None and an.objects.function(obj) is not None:
+        for kept in function_types(an, tree):
+            summaries.keep(an, env[0], obj, kept)
     if kind == T_FN:
         callback(an, obj, tree, env, site, origin, None)
     elif kind == T_TUPLE:
@@ -80,6 +99,18 @@ def taken(an, obj: int, tree: tuple, env, site, origin) -> None:
             structural(an, obj, key, (bound, key, env[2]), site, origin)
 
 
+def function_types(an, tree: tuple) -> list:
+    """The declared function types a type gives a function: itself, or a named type's call signatures."""
+    if tree[0] == T_FN:
+        return [tree]
+    if tree[0] != T_NAMED:
+        return []
+    found = typesys.resolve(an, tree[1], tree[3], tree[4])
+    if found is None or found[0] != typesys.CLASS:
+        return []
+    return [signature(an.ix.units[g]) for g in typesys.lookup(an, found[1], CALL_SIGNATURE)]
+
+
 def an_node(an, obj: int):
     """A node holding one object."""
     node = (READ_MEMBER, obj)
@@ -104,20 +135,34 @@ def heritage(an, key: str) -> set:
 
 
 def structural(an, obj: int, key: str, env, site, origin) -> None:
-    """An object given to a type it is not nominally: each method the type declares read on it and called back, each
-    property through which values reach the program (a function type, a type parameter in its type) or which no type
-    describes (the call's pool, Task 5) read on it and given to that type; a call signature, if it is a function,
-    calls it back."""
+    """An object the program made, given to a type it is not nominally (once per object, type and environment —
+    log/trace-research.md F4): each method the type declares that the object has, read on it and called back; each
+    such property through which values reach the program (a function type, a type parameter in its type) or which no
+    type describes (the call's pool, Task 5), read on it and given to that type; its index signatures' values; a call
+    signature, if it is a function, calls it back. An object the platform made is the platform's own."""
     ix = an.ix
+    done = (STRUCTURAL, obj, key, env)
+    if an.objects.kind(obj) not in PROGRAM_MADE or done in an.wired:
+        return
+    an.wired.add(done)
+    own = an.objects.class_of(obj)
     for k in [key] + sorted(heritage(an, key)):
         for g in typesys.group(an, k):
             for name, gids in ix.members[g].items():
                 for gid in gids:
                     unit = ix.units[gid]
+                    for key_type, value in unit.indexes:        # an index signature: what the object holds
+                        held = members.field(an, obj, ELEMENTS_FIELD) if typesys.NUMBER in typesys.values(key_type) \
+                            else members.every(an, obj)
+                        values.consume(an, value, env, held, values.member_site(gid, site), origin)
+                    if unit.indexes:
+                        continue
                     if name == CALL_SIGNATURE:
                         if an.objects.kind(obj) == SITE_FUNCTION:
                             callback(an, obj, signature(unit), env, values.member_site(gid, site), origin, None)
                         continue
+                    if own is None or own not in ix.classes or not typesys.lookup(an, own, name):
+                        continue                         # a member the object does not have
                     tree = signature(unit) if an.is_function_unit(gid) else unit.result_type
                     if not an.is_function_unit(gid) and not reaches(tree) and not summaries.is_open(an, tree):
                         continue                         # a method is called back; a property, where values reach
@@ -151,40 +196,62 @@ def callback(an, fn: int, tree: tuple, env, site, origin, this) -> None:
     result taken as the result type; a link from the call that handed it."""
     static = an.objects.make(CALLBACK_SITE, site[0])
     node = (CALLBACK, static, fn, env, site[1])
-    args = [values.produce(an, p, env, values.sub(site, i)) for i, p in enumerate(tree[1])]
+    where = (static, site[1])
+    gid = an.objects.function(fn)
+    count = len(an.ix.units[gid].params) if gid is not None else len(tree[1])
+    args = [argument(an, node, positional(tree[1], tree[3], i), env, values.sub(site, i), origin) for i in range(count)]
     an.relay(origin, node)
-    an.call(node, fn, this, args, HANDED, site=static)
+    an.call(node, fn, this, args, HANDED, site=where)
+    if this is None and tree[4] and tree[4][0] != T_OPEN:       # the `this` its declared type gives
+        receivers = values.produce(an, tree[4], env, values.sub(site, THIS))
+        an.solver.subscribe(receivers, (RECEIVERS, node), (RECEIVERS,), lambda _, objs: [
+            an.call(node, fn, o, args, HANDED, site=where) for o in objs])
     if tree[2]:
         values.consume(an, tree[2], env, node, values.sub(site, values.RESULT), origin)
 
 
-def call_object(an, node, fn: int, receiver, args: list) -> None:
-    """A call of an object that is no function of the program: a declared function the platform gave, the function
-    `await` hands a thenable, an object whose declared type has a call signature."""
+def argument(an, node, tree: tuple, env, site, origin):
+    """What the platform passes a callback's parameter: what its declared type gives and, where that type is open,
+    whatever the call handing the callback took (its pool: Averroes's placeholder principle)."""
+    given = values.produce(an, tree, env, site)
+    if origin is None or not summaries.is_open(an, tree):
+        return given
+    held = (CALLBACK_ARG, node, site)
+    an.solver.follow(given, held)
+    an.solver.follow(summaries.pool(origin), held)
+    return held
+
+
+def call_object(an, node, fn: int, receiver, args: list, where) -> None:
+    """A call of an object that is no function of the program, at the static site `where`: a declared function the
+    platform gave, the function `await` hands a thenable, an object whose declared type has a call signature."""
     key, kind = an.objects.keys[fn], an.objects.kind(fn)
     if kind == SITE_DECLARED_FN:
         tree, env, site = key[1], key[2], (key[3], key[4])
         for i, arg in enumerate(args):
-            if i < len(tree[1]) and arg is not None:
-                values.consume(an, tree[1][i], env, arg, values.sub(site, i), node)
+            part = positional(tree[1], tree[3], i)
+            if part and arg is not None:
+                values.consume(an, part, env, arg, values.sub(site, i), node)
         if tree[2]:
             an.solver.follow(values.produce(an, tree[2], env, values.sub(site, values.RESULT)), node)
+    elif kind == SITE_UNKNOWN:                     # what no declaration describes: an open call
+        summaries.open_call(an, node, args, where)
     elif kind == SITE_RESOLVER:
         if args and args[0] is not None:
             from . import protocols
             protocols.settle(an, key[1], args[0])
     else:
-        signatures(an, node, fn, CALL_SIGNATURE, args)
+        signatures(an, node, fn, CALL_SIGNATURE, args, where)
 
 
 def construct(an, node, obj: int, args: list) -> None:
     """`new` on an object of a declared type: its construct signatures."""
-    signatures(an, node, obj, CONSTRUCT_SIGNATURE, args)
+    signatures(an, node, obj, CONSTRUCT_SIGNATURE, args, call_site(an, node))
 
 
-def signatures(an, node, obj: int, name: str, args: list) -> None:
+def signatures(an, node, obj: int, name: str, args: list, where) -> None:
     for key in typesys.own_types(an, obj):
         for gid in typesys.lookup(an, key, name):
             an.reached(node, gid, name == CONSTRUCT_SIGNATURE)
-            apply(an, node, gid, obj, args, call_site(an, node))
+            apply(an, node, gid, obj, args, where)
 

@@ -19,6 +19,7 @@ THIS_OF = {"arrow_function": ARROW, "method_definition": METHOD}
 def made(r, node, unit, outer, module) -> None:
     """A function just made: what its `this` is decided by and whether its code is strict."""
     unit.generator = any(c.type == "*" for c in node.children)     # `function*`, `*name()`, `async *name()` (J5)
+    unit.asynchronous = any(c.type == "async" for c in node.children)     # an async function (MDN async function)
     unit.this_of = THIS_OF.get(node.type, FUNCTION)
     unit.strict = (outer.strict if outer is not None else module.strict) or in_class(unit.owner) \
         or says_strict(r, field_of(node, "body"))

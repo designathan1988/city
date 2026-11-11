@@ -42,6 +42,7 @@ INVOKE = "invoke"
 BOUND = "bound"
 HAND = "hand"
 IMPORT = "import"
+JSX = "jsx"                # a JSX element: its tag handed to the JSX runtime with its props
 
 # Link kinds (resolve.Edge) beyond the reference kinds above.
 HANDED = "handed"
@@ -68,10 +69,15 @@ SITE_UNKNOWN = "unknown"   # what no declaration describes: counted in the repor
 SITE_DECLARED = "decl"     # an object of a declared type the platform gives (a result, a property, a declared variable)
 SITE_DECLARED_FN = "declfn"    # a function of a declared function type the platform gives (a callback's argument)
 SITE_RESOLVER = "resolver"     # the function `await` hands a thenable: what it is called with is the awaited value
+SITE_GENERATOR = "gen"         # the generator object a generator function's call makes: its yields are its elements
+SITE_PROMISE = "promise"       # the promise an async function's call makes: what it returns is its result
 
 # Fields of an abstract object beyond its named properties.
 ELEMENTS_FIELD = "[[elements]]"     # an array's elements, what an unknown key reaches
 ANY_FIELD = "[[any]]"               # what a write through an unknown key put: every named read sees it
+RESULT_FIELD = "[[PromiseResult]]"  # a promise's result (ECMA-262's internal slot of that name)
+PLATFORM_FIELD = "[[platform]]"     # what a declared call on an object kept: the platform's state on it
+JSX_CHILDREN = "[[children]]"       # a JSX element's children, named as the runtime's declarations name them
 
 # Declared types kept whole (js_sigs; heap.types): the platform's signatures as type trees, type parameters kept.
 T_PARAM = "tparam"         # (T_PARAM, level, index): a type parameter of the declaring type, the function or an alias

@@ -10,8 +10,8 @@ written to (J9). Module-level statements are read by `js_decl`, statements by `j
 """
 from __future__ import annotations
 
-from . import (ir_js, js_body, js_bounds, js_class, js_decl, js_functions, js_sigs, js_types, jsdoc, narrowing, scopes,
-               ts_tree)
+from . import (ir_js, js_body, js_bounds, js_class, js_decl, js_functions, js_jsx, js_sigs, js_types, jsdoc, narrowing,
+               scopes, ts_tree)
 from .model import ALIAS_KIND, ClassFact, FileFacts, Unit, add_ref, declare, enclose
 from .rules import CONSTRUCTOR
 from .solver import UNDEFINED
@@ -135,6 +135,8 @@ class JsReader:
         items = [params] if params.type == "identifier" else named_children(params)   # `x => ...`
         for i, p in enumerate(i for i in items if i.type != "comment"):
             pattern = field_of(p, "pattern") if p.type in ("required_parameter", "optional_parameter") else p
+            if pattern is not None and pattern.type == "this":       # `this: T` (TypeScript handbook, Functions)
+                unit.this_type = js_sigs.of(self, field_of(p, "type"), unit.owner)
             if pattern is None or pattern.type == "this":
                 continue
             default = field_of(p, "value")
@@ -236,6 +238,13 @@ class JsReader:
         if node.start_byte not in self._objects:
             self._objects[node.start_byte] = js_class.object_literal(self, node, unit)
         return self._objects[node.start_byte]
+
+    def jsx_props(self, node, unit: Unit) -> tuple:
+        """A JSX element's props object, made once (`js_jsx`)."""
+        key = ("props", node.start_byte)
+        if key not in self._objects:
+            self._objects[key] = js_jsx.props(self, node, unit)
+        return self._objects[key]
 
     def shape_class(self, node) -> str:
         """An object type written in an annotation: an interface without a name (T1')."""

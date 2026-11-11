@@ -18,8 +18,7 @@ EITHER = ("??", "||", "&&")       # value-preserving operators (MDN Logical OR, 
 TESTS = ("==", "!=", "===", "!==", "<", ">", "<=", ">=", "in", "instanceof")
 WORD_UNARY = {"typeof": "string", "void": "undefined", "delete": "boolean", "!": "boolean"}   # what each gives (MDN)
 LITERALS = {"true": "true", "false": "false", "null": "null", "undefined": "undefined",
-            "regex": "RegExp", "template_string": "string", "jsx_element": "JSX.Element",
-            "jsx_self_closing_element": "JSX.Element", "update_expression": "numeric", "meta_property": ""}
+            "regex": "RegExp", "template_string": "string", "update_expression": "numeric", "meta_property": ""}
 FUNCTIONS = ("function_expression", "arrow_function", "generator_function", "function_declaration",
              "generator_function_declaration")
 
@@ -85,7 +84,14 @@ def _call(r, node, unit):
 def _new(r, node, unit):
     """`new X(...)`: X is an expression; its value decides what is made (N1: a class's instance, what a function
     called as a constructor returns, the host's object)."""
-    return ("construct", build(r, field_of(node, "constructor"), unit), node.start_byte)    # its allocation site
+    return ("construct", build(r, field_of(node, "constructor"), unit), node.start_byte,     # its allocation site,
+            args_of(r, field_of(node, "arguments"), unit))                                  # its arguments
+
+
+def _jsx(r, node, unit):
+    """A JSX element: a call of the JSX factory with its tag and its props; its value is what that gives (`js_jsx`)."""
+    from . import js_jsx
+    return js_jsx.tree(r, node, unit, build)
 
 
 def guarded(r, facts: list, node, unit):
@@ -193,5 +199,7 @@ BUILDERS = {
     "class": lambda r, n, u: ("cast", CLASS_VALUE + r.class_value(n, u)),
     "string": _string,
     "template_string": _string,
+    "jsx_element": lambda r, n, u: _jsx(r, n, u),
+    "jsx_self_closing_element": lambda r, n, u: _jsx(r, n, u),
     **{kind: (lambda r, n, u: ("callable", r.lambda_id(n, u))) for kind in FUNCTIONS},
 }

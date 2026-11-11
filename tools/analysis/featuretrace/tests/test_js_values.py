@@ -10,6 +10,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
 
+from js_expectations import JsValuesExpectations  # noqa: E402
 from support import FixtureCase  # noqa: E402
 from featuretrace import js_library  # noqa: E402
 from featuretrace.solver import BIGINT, CLASS, ELEM, ENGINE, FN, LANG, NULL, NUMBER, TEXT  # noqa: E402
@@ -17,21 +18,13 @@ from featuretrace.solver import BIGINT, CLASS, ELEM, ENGINE, FN, LANG, NULL, NUM
 BOX = CLASS + "types.ts#Box"
 
 
-class JsValues(FixtureCase):
+class JsValues(FixtureCase, JsValuesExpectations):
     ROOTS = ("jsvalues",)
     BASE = "jsvalues"
 
     def values(self, spec: str, tree: tuple) -> set:
         unit = self.ix.units[self.gid(spec)]
         return {text for text, _ in self.rs.typer.evaluate(tree, unit)}
-
-    def test_inner_function_is_not_global(self):
-        found = self.names("use")
-        self.assertIn("script.js.shown", found)
-        self.assertNotIn("script.js.x", found)                 # `outer`'s local, not a global (L2)
-
-    def test_inner_function_is_not_a_member(self):
-        self.assertNotIn("K.helper", self.names("viaMember"))   # `m`'s local, not a member of K (L1)
 
     def test_union_with_null_is_the_class(self):
         self.assertEqual({CLASS + "types.ts#Building", NULL}, self.values("levelOf", ("name", "b")))   # and null (T1')
@@ -41,14 +34,6 @@ class JsValues(FixtureCase):
 
     def test_declared_return_gives_elements(self):
         self.assertIn("Box.open", self.names("walk"))
-
-    def test_map_get_and_entries(self):
-        self.assertIn("Box.open", self.names("lookup"))        # get: the value
-        self.assertIn("Box.open", self.names("entries"))       # iteration: [key, value]
-        self.assertIn("Box.open", self.names("types.ts:26"))   # forEach: the value (in the callback)
-
-    def test_promise_awaited(self):
-        self.assertIn("Box.open", self.names("later"))
 
     def test_js_arithmetic_is_a_primitive(self):
         self.assertEqual({NUMBER, BIGINT}, self.values("scaled", ("name", "n")))        # a number or a BigInt (T1'')
@@ -69,25 +54,6 @@ class JsValues(FixtureCase):
                 allowed = core == ENGINE or core.startswith((CLASS, FN, TEXT, LANG)) or js_library.is_container(core)
                 self.assertTrue(allowed, f"{text!r} in {str(node)[:80]}")
 
-    def test_new_calls_a_function(self):
-        found = self.names("mk")
-        self.assertIn("news.js.Maker", found)                  # called as a constructor
-        self.assertIn("Box.open", found)                       # the object it returns
-
-    def test_new_through_a_variable(self):
-        self.assertIn("Box.open", self.names("viaVariable"))
-
-    def test_generator_iteration_gives_its_yields(self):
-        self.assertIn("Box.open", self.names("fromGenerator"))
-
-    def test_for_in_names_the_properties(self):
-        self.assertIn("Box.open", self.names("eachKey"))                   # k: "a", "b"; table[k]: the Boxes
-
-    def test_object_keys_values_entries(self):
-        self.assertIn("Box.open", self.names("keysOf"))
-        self.assertIn("Box.open", self.names("valuesOf"))
-        self.assertIn("Box.open", self.names("entriesOf"))
-
     def test_host_type_is_the_host_value(self):
         self.assertEqual({ENGINE}, self.values("draw", ("name", "c")))   # HTMLCanvasElement: the host's (H1)
         point = self.values("draw", ("name", "p"))                       # an alias of the program: what its type admits,
@@ -100,11 +66,7 @@ class JsValues(FixtureCase):
         self.assertIn(ELEM + BOX, held)
         self.assertFalse(any(text.startswith((FN, ELEM + FN)) for text in held), held)
 
-    def test_closure_sees_a_later_declaration(self):
-        self.assertIn("Box.open", self.names("closures.ts:13"))         # run(): helper is declared after it
-
-    def test_computed_key_names_its_members(self):
-        self.assertIn("Box.open", self.names("pick"))                      # t["a"]: the field a
+    def test_an_unknown_key_reads_no_property(self):
         self.assertEqual(set(), self.values("anyKey", ("name", "v")))      # an unknown key reads no property
 
 

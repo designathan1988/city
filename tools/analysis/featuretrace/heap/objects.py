@@ -8,12 +8,12 @@ the function object that made it (its prototype is that function's `prototype`).
 """
 from __future__ import annotations
 
-from ..vocab import (SITE_ARRAY, SITE_CLASS, SITE_DECLARED, SITE_DECLARED_FN, SITE_FUNCTION, SITE_LITERAL, SITE_NEW,
-                     SITE_PRIMITIVE, SITE_TEXT)
+from ..vocab import (SITE_ARRAY, SITE_CLASS, SITE_DECLARED, SITE_DECLARED_FN, SITE_FUNCTION, SITE_GENERATOR,
+                     SITE_LITERAL, SITE_NEW, SITE_PRIMITIVE, SITE_PROMISE, SITE_TEXT)
 from . import contexts
 
-MADE = (SITE_NEW, SITE_LITERAL, SITE_ARRAY, SITE_FUNCTION, SITE_DECLARED, SITE_DECLARED_FN)   # keys ending with a
-                                                                                          # context
+MADE = (SITE_NEW, SITE_LITERAL, SITE_ARRAY, SITE_FUNCTION, SITE_DECLARED, SITE_DECLARED_FN, SITE_GENERATOR,
+        SITE_PROMISE)                                         # the kinds whose key ends with a heap context
 
 
 class Objects:
@@ -104,6 +104,11 @@ class Objects:
 
     def array(self, file: str, site: int, ctx) -> int:
         return self.make(SITE_ARRAY, file, site, contexts.heap(ctx))
+
+    def made_by_call(self, kind: str, gid: int, site) -> int:
+        """The generator or the promise a call of `gid` makes at a site (where, the heap context)."""
+        assert kind in (SITE_GENERATOR, SITE_PROMISE)
+        return self.make(kind, gid, site[0], site[1])
 
     def declared(self, key: str, site, env) -> int:
         """An object of the declared type `key` made at a site (where, the heap context); an object type written in

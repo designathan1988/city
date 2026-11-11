@@ -7,7 +7,7 @@ heritage, to the heritage's type argument (`interface B<T> extends A<T>`: B's T 
 """
 from __future__ import annotations
 
-from ..languages import INDEX_SIGNATURE, INTRINSICS
+from ..languages import INDEX_SIGNATURE, INTRINSICS, OPEN_INTRINSICS, SLOTS
 from ..model import STATE_KINDS
 from ..solver import NUMBER
 from ..vocab import (ANY_FIELD, CLASS_UNIT, ELEMENTS_FIELD, LEVEL_TYPE, SITE_DECLARED, SITE_PRIMITIVE, T_BOTH,
@@ -81,11 +81,31 @@ def own_types(an, obj: int) -> list[str]:
     if key is not None and key in an.ix.classes:
         out.append(identity(an, key))
     kind = objects.kind(obj)
-    name = INTRINSICS.get(objects.keys[obj][1] if kind == SITE_PRIMITIVE else kind)
-    intrinsic = global_type(an, name) if name else None
-    if intrinsic is not None and intrinsic not in out:
-        out.append(intrinsic)
+    for name in INTRINSICS.get(objects.keys[obj][1] if kind == SITE_PRIMITIVE else kind, ()):
+        intrinsic = global_type(an, name)
+        if intrinsic is not None and intrinsic not in out:
+            out.append(intrinsic)
     return out
+
+
+def open_types(an) -> set:
+    """The intrinsic types of every object and every function: a position they type constrains nothing."""
+    memo = an.memo.setdefault(open_types, {})
+    if not memo:
+        memo[None] = {t for kind in OPEN_INTRINSICS for n in INTRINSICS[kind] for t in [global_type(an, n)] if t}
+    return memo[None]
+
+
+def ancestors(an, key: str) -> list[str]:
+    """A class and every class it extends or implements, as written (each once)."""
+    seen, todo = [], [key]
+    while todo:
+        k = todo.pop()
+        if k in seen or k not in an.ix.classes:
+            continue
+        seen.append(k)
+        todo += an.ix.base_keys(an.ix.classes[k])
+    return seen
 
 
 def has_member(an, obj: int, name: str) -> bool:
@@ -106,6 +126,7 @@ def place(an, obj: int, key: str, index: int):
     if node not in an.wired:
         an.wired.add(node)
         keyed(an, obj, key, index, node)
+        slotted(an, obj, key, index, node)
         inherited(an, obj, key, index, node)
     return node
 
@@ -119,6 +140,16 @@ def keyed(an, obj: int, key: str, index: int, node) -> None:
                 held = members.field(an, obj, ELEMENTS_FIELD) if NUMBER in values(key_type) else an.field(obj, ANY_FIELD)
                 an.solver.follow(held, node)
                 an.solver.follow(node, held)
+
+
+def slotted(an, obj: int, key: str, index: int, node) -> None:
+    """An object the language makes with a slot (a generator's elements, a promise's result): the type parameter of
+    its intrinsic's declared type that holds the slot is the slot, both ways."""
+    kind = an.objects.kind(obj)
+    if kind in SLOTS and SLOTS[kind][1] == index and key in {global_type(an, n) for n in INTRINSICS[kind]}:
+        held = members.field(an, obj, SLOTS[kind][0])
+        an.solver.follow(held, node)
+        an.solver.follow(node, held)
 
 
 def inherited(an, obj: int, key: str, index: int, node) -> None:

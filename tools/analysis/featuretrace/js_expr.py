@@ -10,7 +10,7 @@ function that does (J2''), each beside the member call an object's own method of
 """
 from __future__ import annotations
 
-from . import js_body, js_defines, js_guards, narrowing, scopes
+from . import js_body, js_defines, js_guards, js_jsx, narrowing, scopes
 from .cpp_implicit import IMPLICIT
 from .ir_js import args_of, member_name
 from .rules import (BIND_FORMS, CALL_FORMS, COERCION_MEMBERS, CONSTRUCTOR, EVENT_FIRE, EVENT_OBJECTS,
@@ -245,19 +245,5 @@ def event_type(r, event) -> str | None:
 
 
 def jsx(r, node, unit, cond) -> None:
-    """A JSX element: a capitalized tag (or a member) is a component handed to the JSX runtime with its props (J10);
-    the attributes' and children's expressions are read."""
-    opening = field_of(node, "open_tag") if node.type == "jsx_element" else node
-    tag = field_of(opening, "name") if opening is not None else None
-    if tag is not None:
-        text = r.src.text(tag)
-        if tag.type in ("member_expression", "nested_identifier") or text[:1].isupper():
-            r.add(unit, "jsx", text, node, cond, base=r.ir(tag, unit), args=(("literal", ""),))
-    for part in named_children(node):
-        if part is opening or part.type in ("jsx_closing_element", "jsx_text"):
-            if part is opening:
-                for attribute in named_children(opening):
-                    for value in named_children(attribute):
-                        expression(r, value, unit, cond)
-            continue
-        expression(r, part, unit, cond)
+    """A JSX element (J10): `js_jsx`."""
+    js_jsx.element(r, node, unit, cond, expression)
