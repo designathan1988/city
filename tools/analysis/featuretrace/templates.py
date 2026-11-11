@@ -6,26 +6,35 @@ at each call: Agesen's Cartesian product on the parameters Zipper's flow pattern
 the unit read under that tuple (a `Frame`): its key parameters hold the tuple, its result is the call's; the call holds
 the union over its tuples, as values only grow. Only the trees its key reaches (`depends`, by the same flows) are the
 template's own nodes: every other tree is the unit's, shared by all its templates and delivered once (C2'''). The call
-graph keeps the unit's own links, fed by every call (a superset): a template's closures read the unit's locals (C3).
+graph keeps the unit's own links, fed by every call (a superset). A closure whose free variables read a parameter
+reaches the result as the parameter would (C4): its maker is answered per that parameter's values, and a closure made
+in a template is the function with that template as its environment (C4', `Frame.env`): run, its free variables read
+the template, its own templates nest in it.
 """
 from __future__ import annotations
 
 from . import receivers
+from .model import LOCAL_REFS
 from .solver import UNDEFINED, identity
 
 PASS_SHAPES = ("member", "index", "elements", "each", "await", "addr", "put", "deref", "narrow")
 MISSING = ("<missing>",)          # a key parameter its call does not write: its default, one template
 RECEIVER = -1                     # the object a method runs on, a key when `this` reaches the result (Agesen: the
                                   # receiver is in the tuple; J2')
+CLOSED = -2                       # a closure frame's key: the environment it runs in (C4')
 
 
 class Frame:
-    """A unit read under a key: every attribute is the unit's but `key`, which keys its value nodes."""
+    """A unit read under a key: every attribute is the unit's but `key`, which keys its value nodes. A template of a
+    call's argument values (`keyed`), or a closure run in the template its maker made it in (`env`, C4'); a template of
+    a closure's own call nests in its closure frame (its key keyed by that frame's)."""
 
-    def __init__(self, unit, key: tuple):
+    def __init__(self, unit, key: tuple, env=None):
         self._unit = unit
-        self.key = (unit.gid, key)
-        self.fixed = key[0] if key[1] != MISSING else None   # the parameter that holds its key value alone
+        self.key = (unit.key, key)
+        self.keyed = env is None                            # keyed by its call's argument values
+        self.env = env if env is not None else getattr(unit, "env", None)
+        self.fixed = key[0] if self.keyed and key[1] != MISSING else None    # the parameter holding its key value
 
     @property
     def base(self):
@@ -34,6 +43,46 @@ class Frame:
 
     def __getattr__(self, name):
         return getattr(self._unit, name)
+
+
+def free_names(t, unit) -> frozenset:
+    """The variables of its enclosing functions a function reads (its free variables, the ones it closes over): the
+    captured names its references and trees read, and those its own closures read through it."""
+    memo = t.free
+    if unit.gid not in memo:
+        memo[unit.gid] = frozenset()                         # read as none while worked out (a closure of itself)
+        found = {r.name for r in unit.refs if r.base is None and r.kind in LOCAL_REFS and r.name in unit.captured}
+        trees = [r.base for r in unit.refs] + [a for r in unit.refs for a in r.args] \
+            + [v for vs in unit.types.values() for v in vs] + [tree for _, _, tree in unit.returns] + list(unit.yields)
+        found |= {n for n in names_in(trees) if n in unit.captured}
+        inner = callables_in(trees) | set(unit.lambdas.values()) | {r.target for r in unit.refs if r.kind == "lambda"}
+        for lid in inner:                                    # its own closures' free variables it closes over too
+            found |= {n for n in free_names(t, closed(t, unit, lid)) if n in unit.captured}
+        memo[unit.gid] = frozenset(found)
+    return memo[unit.gid]
+
+
+def names_in(tree) -> set:
+    """The names a tree reads (any shape)."""
+    if isinstance(tree, tuple) and len(tree) == 2 and tree[0] == "name" and isinstance(tree[1], str):
+        return {tree[1]}
+    if isinstance(tree, (tuple, list)):
+        return set().union(*(names_in(part) for part in tree if isinstance(part, (tuple, list))))
+    return set()
+
+
+def callables_in(tree) -> set:
+    """The functions written in a tree (their local ids)."""
+    if isinstance(tree, tuple) and len(tree) == 2 and tree[0] == "callable" and isinstance(tree[1], int):
+        return {tree[1]}
+    if isinstance(tree, (tuple, list)):
+        return set().union(*(callables_in(part) for part in tree if isinstance(part, (tuple, list))))
+    return set()
+
+
+def closed(t, unit, local_id: int):
+    """The function written in `unit` with local id `local_id`."""
+    return t.ix.units[t.ix.offset[unit.file] + local_id]
 
 
 def key_params(t, unit) -> tuple:
@@ -67,6 +116,11 @@ def reaches(t, unit, tree, seen: set) -> set:
         return out
     if kind == "self":                              # `this`: the receiver of a method's call (J2')
         return {RECEIVER} if receivers.runs_on(t, unit) else set()
+    if kind == "callable":                          # a closure: the parameters its free variables read (C4)
+        out = set()
+        for name in free_names(t, closed(t, unit, tree[1])):
+            out |= reaches(t, unit, ("name", name), seen)
+        return out
     if kind in PASS_SHAPES:
         return reaches(t, unit, tree[1], seen)
     if kind == "union":
@@ -84,35 +138,43 @@ def reaches(t, unit, tree, seen: set) -> set:
 
 
 def depends(t, unit, tree) -> bool:
-    """Whether a tree's value can differ between the function's templates: it reads a key parameter, through any shape
-    (an operand, a receiver, an argument, a local holding one). Only those trees are a template's own nodes; any other
-    reads nothing a template binds, so it is the unit's, the same in all its templates (C2''')."""
+    """Whether a tree's value can differ between the function's templates: it reads a key parameter, or (in a closure
+    frame) a free variable its environment binds, through any shape (an operand, a receiver, an argument, a local
+    holding one, a closure reading one). Only those trees are a template's own nodes; any other reads nothing a
+    template binds, so it is the unit's, the same in all its templates (C2''', C4')."""
     memo = t.template_depends
-    key = (unit.gid, tree)
+    keyed, env = getattr(unit, "keyed", False), getattr(unit, "env", None) is not None
+    key = (unit.gid, keyed, env, tree)
     if key not in memo:
-        keys = set(t.template_keys.get(unit.gid, ()))
-        memo[key] = bool(keys) and bool(reads(unit.base, tree, set()) & keys)
+        keys = set(t.template_keys.get(unit.gid, ())) if keyed else set()
+        keys |= free_names(t, unit) if env else set()
+        memo[key] = bool(keys) and bool(reads(t, unit, tree, set()) & keys)
     return memo[key]
 
 
-def reads(unit, tree, seen: set) -> set:
-    """The parameters (indices) a tree reads: a parameter named, a local's every value, and every part of any shape
-    (a tree is a tuple led by its kind; the other tuples and lists in it are sequences of trees)."""
+def reads(t, unit, tree, seen: set) -> set:
+    """The parameters (indices) and the free variables (names) a tree reads: a parameter or a captured name named, a
+    local's every value, a closure's free variables, and every part of any shape (a tree is a tuple led by its kind;
+    the other tuples and lists in it are sequences of trees)."""
     if isinstance(tree, list) or isinstance(tree, tuple) and not (tree and isinstance(tree[0], str)):
-        return set().union(*(reads(unit, part, seen) for part in tree)) if tree else set()
+        return set().union(*(reads(t, unit, part, seen) for part in tree)) if tree else set()
     if not isinstance(tree, tuple):
         return set()
     if tree[0] == "name":
         name, out = tree[1], set()
         if name in unit.params:
             out.add(unit.params.index(name))
+        if name in unit.captured:
+            out.add(name)                       # a free variable: what the closure's environment binds (C4')
         if name in unit.types and name not in seen:
             seen.add(name)
-            out |= reads(unit, unit.types[name], seen)
+            out |= reads(t, unit, unit.types[name], seen)
         return out
     if tree[0] == "self":
         return {RECEIVER}                       # `this`: the receiver (J2')
-    return set().union(*(reads(unit, part, seen) for part in tree[1:] if isinstance(part, (tuple, list))))
+    if tree[0] == "callable":                   # a closure: what its free variables read here (C4)
+        return reads(t, unit, [("name", n) for n in free_names(t, closed(t, unit, tree[1]))], seen)
+    return set().union(*(reads(t, unit, part, seen) for part in tree[1:] if isinstance(part, (tuple, list))))
 
 
 def leaves(tree) -> list:
@@ -131,7 +193,7 @@ def route(t, target, unit, args: list, keys: tuple, deliver, receiver=None) -> N
     same call (another receiver with the same method) delivers it again."""
     made = {}                                   # (key parameter, value identity) -> Frame, for this call
     single = len(keys) == 1
-    families = {k: ("#family", target, unit.gid, k) for k in keys}
+    families = {k: ("#family", target, unit.key, k) for k in keys}
     nodes = {i: a for i, a in enumerate(args) if a is not None}
     if receiver is not None:                    # the receiver as a node of its one value
         nodes[RECEIVER] = ("#receiver", identity(*receiver))
@@ -141,9 +203,9 @@ def route(t, target, unit, args: list, keys: tuple, deliver, receiver=None) -> N
         tkey = (k, MISSING if value is None else identity(*value))
         if tkey in made:
             return
-        frame = t.templates.get((unit.gid, tkey))
+        frame = t.templates.get((unit.key, tkey))
         if frame is None:
-            frame = t.templates[(unit.gid, tkey)] = Frame(unit, tkey)
+            frame = t.templates[(unit.key, tkey)] = Frame(unit, tkey)
         made[tkey] = frame
         if value is not None:
             t.add(t.arg_node(frame, k), [value])
@@ -174,14 +236,14 @@ def route(t, target, unit, args: list, keys: tuple, deliver, receiver=None) -> N
         if k not in nodes:
             make(k, None)
         else:
-            t.subscribe(nodes[k], target, ("route", unit.gid, "key", k), keyed(k))
+            t.subscribe(nodes[k], target, ("route", unit.key, "key", k), keyed(k))
     if single:
         deliver(families[keys[0]])
         return
     for index in keys:                          # a key parameter's later values: the templates keyed by another
         if index in nodes:
-            t.subscribe(nodes[index], target, ("route", unit.gid, "arg", index), other(index))
-    joined = ("#meet", target, unit.gid)
+            t.subscribe(nodes[index], target, ("route", unit.key, "arg", index), other(index))
+    joined = ("#meet", target, unit.key)
     for k in keys:
         t.subscribe(families[k], joined, ("meet", k), meets(t, families, k))
     deliver(joined)

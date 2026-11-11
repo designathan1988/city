@@ -16,7 +16,7 @@ from .cpp_names import template_args
 from .library import (DEREF, HELD_CALLS, ITEM, ITER, ITERATOR_CALLS, PAIR_PARTS, clean, library_step)
 from .model import ALIAS_KIND, STATE_KINDS
 from .rules import CONSTRUCTOR, FUNCTION_FORMS
-from .solver import CLASS, ELEM, ENGINE, FN, FUNCTION, TEXT, bound, fn_of, is_language
+from .solver import CLASS, ELEM, ENGINE, FN, FUNCTION, TEXT, closure, env_of, fn_of, is_language
 
 OPERATORS = {ITEM: "operator[]", DEREF: "operator->", ITER: "begin", js_library.EACH: "begin"}
 COMPARISONS = ("==", "!=", "<", ">", "<=", ">=", "<=>", "&&", "||", "!", "and", "or", "not", "in", "is")
@@ -54,10 +54,12 @@ def members(t, name: str, called: bool, caller=None, args: tuple = ()):
     return transfer
 
 
-def result(t, target, unit, caller, args: tuple, deliver=None, receiver=None) -> None:
+def result(t, target, unit, caller, args: tuple, deliver=None, receiver=None, env: int = 0) -> None:
     """What a call of `unit` written in `caller` with `args` on `receiver` (the value it is called on) gives `target`:
     the result of the templates of its argument and receiver values when its result depends on them (`templates`, C2,
-    J2'), else the function's own."""
+    J2'), else the function's own; a closure's run in the environment its maker made it in (C4')."""
+    if env:
+        unit = t.closure_frame(unit, env)
     keys = templates.key_params(t, unit) if caller is not None else ()
     deliver = deliver or (lambda node: t.follow(node, target))
     if keys:
@@ -77,8 +79,8 @@ def member_one(t, target, text: str, ctx, name: str, called: bool, caller=None, 
         unit = ix.units[fn_of(text)[0]]
         if not called and name in PAIR_PARTS:
             t.add(target, [(text if name == "second" else ENGINE, ctx)])       # (library.PAIR_PARTS)
-        elif called and name in CALLABLE_CALLS:
-            t.follow(t.ret_node(unit), target)
+        elif called and name in CALLABLE_CALLS:                               # run where it was made (C4')
+            t.follow(t.ret_node(t.closure_frame(unit, env_of(text)) if env_of(text) else unit), target)
         else:
             t.add(target, [(text, ctx) if name in BIND_CALLS else (ENGINE, ctx)])
         return
@@ -159,18 +161,18 @@ def function_member(t, target, text: str, ctx, name: str, called: bool, caller, 
     with the arguments after `this` put first; read uncalled, each is a function of the language; any other member
     the function's own property (`js_transfer.function_property`, N1'')."""
     gid, lead = fn_of(text)
-    unit = t.ix.units[gid]
+    unit, env = t.ix.units[gid], env_of(text)
     if name not in FUNCTION_FORMS:
-        js_transfer.function_property(t, target, unit, ctx, name, called, caller, args)
+        js_transfer.function_property(t, target, unit, ctx, name, called, caller, args, env)
     elif not called:
         t.add(target, [(FUNCTION, ctx)])
-    elif name == "call":
-        result(t, target, unit, caller if not lead else None, args[1:])
+    elif name == "call":                                # run in its environment (C4')
+        result(t, target, unit, caller if not lead else None, args[1:], env=env)
     elif name == "apply":
         spread = (("elements", args[1]),) * max(len(unit.params) - lead, 0) if len(args) > 1 else ()
-        result(t, target, unit, caller if not lead else None, spread)
-    else:
-        t.add(target, [(bound(gid, lead + max(len(args) - 1, 0)), ctx)])
+        result(t, target, unit, caller if not lead else None, spread, env=env)
+    else:                                               # `bind`: the same closure, arguments put first
+        t.add(target, [(closure(gid, env, lead + max(len(args) - 1, 0)), ctx)])
 
 
 def steps(t, step: str):
@@ -238,9 +240,9 @@ def operator_one(t, target, op: str, text: str, ctx) -> None:
 def calls(t, caller=None, args: tuple = ()):
     def transfer(target, values):
         for text, ctx in values:
-            if text.startswith(FN):                     # a bound function: its own arguments after those bound
-                gid, lead = fn_of(text)
-                result(t, target, t.ix.units[gid], caller if not lead else None, args)
+            if text.startswith(FN):                     # a bound function: its own arguments after those bound; a
+                gid, lead = fn_of(text)                 # closure: in its environment (C4')
+                result(t, target, t.ix.units[gid], caller if not lead else None, args, env=env_of(text))
             elif ctx.lang == "js" and of_language(text):
                 t.add(target, [(v, ctx) for v in js_primitives.calls(text)])    # calling a primitive throws (T5)
             elif not text.startswith(ELEM):

@@ -44,6 +44,9 @@ class Typer(Places, TypeNames, Solver):
         self.unreceived = []               # methods' `this` nodes no call with a receiver reached yet (`receivers`)
         self.bound_members = {}            # class or interface key -> the members it requires (`bounds`, S2)
         self.constructors = None           # a function's prototype class -> the function (`js_transfer`, N1'')
+        self.free = {}                     # gid -> a function's free variables (`templates.free_names`, C4)
+        self.envs = [None]                 # environment id -> the template a closure was made in (C4'); 0: none
+        self.env_ids = {}                  # a template's key -> its environment id
 
     def class_of(self, unit) -> str | None:
         return unit.owner if unit.owner in self.ix.classes else None
@@ -60,8 +63,22 @@ class Typer(Places, TypeNames, Solver):
         return self.current(node)
 
     # ---- wiring ------------------------------------------------------------------------------------------------
+    def environment(self, frame) -> int:
+        """The id of the template a closure made in it closes over (C4')."""
+        if frame.key not in self.env_ids:
+            self.env_ids[frame.key] = len(self.envs)
+            self.envs.append(frame)
+        return self.env_ids[frame.key]
+
+    def closure_frame(self, unit, env: int):
+        """A function run as the closure made in environment `env`: its free variables read that template (C4')."""
+        key = (unit.gid, (templates.CLOSED, env))
+        if key not in self.templates:
+            self.templates[key] = templates.Frame(unit, (templates.CLOSED, env), env=self.envs[env])
+        return self.templates[key]
+
     def node_of(self, tree, unit):
-        if unit.key != unit.gid and not templates.depends(self, unit, tree):
+        while unit.key != unit.gid and not templates.depends(self, unit, tree):
             unit = unit.base                      # its key does not reach the tree: the unit's own, shared (C2''')
         node = (tree, unit.key)                   # the unit's gid, or a template's (gid, tuple)
         if node not in self.wired:
@@ -126,8 +143,8 @@ class Typer(Places, TypeNames, Solver):
         kind = tree[0]
         if kind in ("cast", "new"):
             return [(tree[1], unit)] if tree[1] else [(ENGINE, unit)]
-        if kind == "callable":
-            return [(FN + str(self.ix.offset[unit.file] + tree[1]), unit)]
+        if kind == "callable":                    # in a template its free variables read: that template's (C4')
+            return [(self.closure_value(self.ix.offset[unit.file] + tree[1], unit), unit)]
         if kind == "super":
             key = self.class_of(unit)
             bases = self.ix.base_keys(self.ix.classes[key]) if key else []

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from . import bounds, receivers, structural, templates, transfer
 from .model import ENGINE_CALLBACKS, FUNCTION_KINDS, STATE_KINDS
-from .solver import CLASS, ENGINE, FN, UNDEFINED
+from .solver import CLASS, ENGINE, FN, UNDEFINED, closure
 
 NO_VALUE = ("void", "Variant", "auto", "decltype(auto)", "")
 ARG, HELD, ENGINE_CALLED, HOLD, RET, READ = "#arg", "#held", "#engine", "#hold", "#ret", "#read"
@@ -20,15 +20,16 @@ ARG, HELD, ENGINE_CALLED, HOLD, RET, READ = "#arg", "#held", "#engine", "#hold",
 class Places:
     def wire_name(self, node, name: str, unit) -> None:
         """LOOK: local -> member (with bases) -> outer class / namespaces -> global; else the engine's."""
-        if name in unit.lambdas:
-            self.add(node, [(FN + str(self.ix.offset[unit.file] + unit.lambdas[name]), unit)])
+        if name in unit.lambdas:                  # a local function: in a template, the closure it makes there (C4')
+            self.add(node, [(self.closure_value(self.ix.offset[unit.file] + unit.lambdas[name], unit), unit)])
             return
         if name in unit.types:
             self.wire_local(node, name, unit)
             return
         owner = self.enclosing(unit, name)
         if owner is not None:                     # declared by an enclosing function after the closure (J7)
-            self.follow(self.node_of(("name", name), owner), node)
+            env = getattr(unit, "env", None)
+            self.follow(self.node_of(("name", name), env if env is not None and env.gid == owner.gid else owner), node)
             return
         targets = self.rs.state_targets(unit, name)
         for gid in targets:
@@ -59,8 +60,8 @@ class Places:
         if param >= 0 and param == unit.fixed:
             flow(self.arg_node(unit, param))
             return
-        bound = param >= 0 and unit.key != unit.gid               # a template's parameter
-        for tree in unit.types.get(name, []):
+        bound = param >= 0 and getattr(unit, "keyed", False)    # a template's parameter (a closure frame's are the
+        for tree in unit.types.get(name, []):                   # unit's: every call writes them, C4')
             if not (bound and tree[0] == "cast"):
                 flow(self.node_of(tree, unit))
         if not bound:
@@ -68,19 +69,25 @@ class Places:
         if param >= 0:
             flow(self.arg_node(unit, param))
         if param >= 0 and not bound:
-            flow((ENGINE_CALLED, unit.key))
+            flow((ENGINE_CALLED, unit.gid))
             if unit.name in ENGINE_CALLBACKS or unit.bound_as:
                 self.add(node, [(ENGINE, unit)])
-        if name in unit.captured and unit.outer >= 0:
-            outer = self.ix.units[self.ix.offset[unit.file] + unit.outer]
+        if name in unit.captured and unit.outer >= 0:          # a free variable: the environment's (C4'), else the
+            env = getattr(unit, "env", None)                    # enclosing function's
+            outer = env if env is not None else self.ix.units[self.ix.offset[unit.file] + unit.outer]
             flow(self.node_of(("name", name), outer))
         for writer in unit.written_by.get(name, ()):      # what closures sharing it write, read where written
             flow(self.node_of(("name", name), self.ix.units[self.ix.offset[unit.file] + writer]))
 
     def arg_node(self, unit, index: int):
-        """What the calls write in a parameter: of the unit (every call's), or of one of its templates; for
-        `templates.RECEIVER`, what the template runs on (its `this`, J2')."""
-        return (receivers.THIS, unit.key) if index == templates.RECEIVER else (ARG, unit.key, index)
+        """What the calls write in a parameter: of the unit (every call's, a closure frame's too, C4'), or of one of its
+        templates; for `templates.RECEIVER`, what the template runs on (its `this`, J2')."""
+        key = unit.key if getattr(unit, "keyed", True) else unit.gid
+        return (receivers.THIS, key) if index == templates.RECEIVER else (ARG, key, index)
+
+    def closure_value(self, gid: int, unit) -> str:
+        """The value of the function `gid` written in `unit`: in a template, the closure that template makes (C4')."""
+        return closure(gid, self.environment(unit)) if unit.key != unit.gid else FN + str(gid)
 
     def named(self, name: str, unit, depth: int = 0) -> list[tuple]:
         return self.evaluate(("name", name), unit)

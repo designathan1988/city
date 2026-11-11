@@ -26,17 +26,28 @@ OBJECT, FUNCTION = LANG + "object", LANG + "function"     # an object, a functio
 ALIAS = "<alias>"          # ALIAS + gid: the values a type alias admits, taken where a value would be (T1')
 SAME = ("same",)           # the key of an identity subscription: the target holds every value of the source
 BOUND = "^"                # FN + gid + BOUND + k: the function a JS `bind` made, k arguments put first (J2'')
+ENV = "~"                  # FN + gid [+ BOUND + k] + ENV + e: the closure its maker's template e made (C4')
 
 
 def fn_of(text: str) -> tuple[int, int]:
     """A function value's unit and how many leading arguments a `bind` gave it (J2''; MDN Function.prototype.bind)."""
-    gid, _, lead = text[len(FN):].partition(BOUND)
+    gid, _, lead = text[len(FN):].partition(ENV)[0].partition(BOUND)
     return int(gid), int(lead or 0)
+
+
+def env_of(text: str) -> int:
+    """The template of its maker a function value closes over (C4'): 0 when none binds its free variables."""
+    return int(text.partition(ENV)[2] or 0)
+
+
+def closure(gid: int, env: int = 0, lead: int = 0) -> str:
+    """The value of a function: its unit, the leading arguments a `bind` gave it, the template it closes over."""
+    return f"{FN}{gid}" + (f"{BOUND}{lead}" if lead else "") + (f"{ENV}{env}" if env else "")
 
 
 def bound(gid: int, lead: int) -> str:
     """The value of a function `bind` gave `lead` leading arguments (the function itself when none)."""
-    return f"{FN}{gid}{BOUND}{lead}" if lead else f"{FN}{gid}"
+    return closure(gid, 0, lead)
 
 
 def is_language(text: str) -> bool:

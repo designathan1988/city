@@ -1005,3 +1005,23 @@ any of them is on all: three's shading language makes its functions with `Fn(...
 whose `compute(key)` gives every memo's result to every caller (`closedBlocks` holds `trackCells`' map of track
 stretches, `Building.volumes` reaches them, and the records' writer walks them). Recorded in `log/pendencias.md`:
 a closure valued by the call that makes it (its captured variables' values), the next theme.
+
+## Closures valued by the call that makes them (C4) (2026-11-11 night)
+
+A function written inside another is a new function object each time the enclosing function runs, closing over that
+run's variables (ECMAScript, InstantiateOrdinaryFunctionExpression and InstantiateArrowFunctionExpression: the closure
+keeps the running execution context's environment; MDN Closures; C++ [expr.prim.lambda.closure]: each evaluation of a
+lambda expression makes a closure object holding its captures; GDScript: a lambda captures the enclosing locals when it
+is made). The tracer valued a closure by its body: every function one factory returns was one value, so the 19 memos
+of the app's `identityMemo(compute)` were one arrow whose `compute` was all 19, and what code writes on any function
+three's `Fn(jsFunc)` returns was on all of them (`log/trace-rules.md`, "What the review's fixes measured").
+
+Sources: the ECMAScript and C++ rules above; Agesen, "The Cartesian Product Algorithm" (templates per argument
+tuple); Shivers, "Control-Flow Analysis of Higher-Order Languages" (a closure is a lambda with its environment);
+closure conversion (Appel, "Compiling with Continuations": a closure is the function with its free variables as
+parameters, fixed when it is made).
+
+| Rule | What the tracer does |
+|---|---|
+| C4 A closure's free variables key its maker | a parameter reaches a function's result when the result can be a closure (a function written in it, returned or held by a local it returns) that reads the parameter, or a local made from it, as a free variable: the maker is answered per value of that parameter (C1-C2), as when the parameter itself is returned |
+| C4' A closure is valued by the template that made it | a function written in a template of its maker, whose free variables that template binds, is the value `<fn>gid~env` (env: that template); calling it runs the function in its environment: a free variable reads the maker's template, its own parameters what every call writes (and its own templates, C2, under that environment); a property written on it is its own (`f.p = v`, N1'') |

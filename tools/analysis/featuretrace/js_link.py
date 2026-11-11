@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from . import js_transfer, names
 from .ir import LITERAL
+from .solver import FN, env_of, fn_of
 from .rules import (ACCUMULATOR, AWAITED, CONSTRUCTOR, ELEMENTS, ENGINE_VALUE, HIGHER_ORDER)
 
 MODULE_UNIT = "<module>"
@@ -91,8 +92,10 @@ def expando_writes(rs, unit, ref) -> bool:
     for key in keys:
         if ref.args and not rs.ix.lookup(key, ref.name):
             typer.follow(typer.node_of(ref.args[0], unit), js_transfer.prop_node(key, ref.name))
-    for gid in functions if ref.args else []:
-        typer.follow(typer.node_of(ref.args[0], unit), js_transfer.fn_prop_node(gid, ref.name))
+    made = {(fn_of(text)[0], env_of(text)) for text, _ in typer.evaluate(ref.base, unit) if text.startswith(FN)} \
+        if functions and ref.args else set()
+    for gid, env in made:                         # each closure's own (C4')
+        typer.follow(typer.node_of(ref.args[0], unit), js_transfer.fn_prop_node(gid, ref.name, env))
     return engine
 
 

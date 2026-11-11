@@ -27,7 +27,7 @@ class Templates(FixtureCase):
         self.assertEqual((0,), self.keys("inner"))          # a member of it
         self.assertEqual((0,), self.keys("wrapped"))        # through a call by name of such a function
         self.assertEqual((), self.keys("constant"))
-        self.assertEqual((), self.keys("maker"))            # a closure, not the parameter
+        self.assertEqual((0,), self.keys("maker"))          # a closure that reads it (C4)
         self.assertEqual((1,), self.keys("down"))           # recursive: the parameter that comes back
 
     def test_each_call_gets_its_own_result(self):

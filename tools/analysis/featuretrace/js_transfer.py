@@ -11,7 +11,7 @@ from . import transfer as common          # the language-independent transfers
 from .library import ITEM
 from .model import ALIAS_KIND
 from .rules import INDEX_MEMBER, ITERATOR_MEMBER
-from .solver import CLASS, ELEM, ENGINE, FN, OBJECT, TEXT, UNDEFINED, fn_of
+from .solver import CLASS, ELEM, ENGINE, FN, OBJECT, TEXT, UNDEFINED, env_of, fn_of
 
 PROTOTYPE = "prototype"
 # What every object has from the language (MDN Object.prototype), and every function besides (MDN Function.prototype,
@@ -29,19 +29,20 @@ def prop_node(key: str, name: str) -> tuple:
     return ("#prop", key, name)
 
 
-def fn_prop_node(gid: int, name: str) -> tuple:
-    """What JS code writes to property `name` of function `gid` (a function is an object; `f.prototype = o`, N1'')."""
-    return ("#fnprop", gid, name)
+def fn_prop_node(gid: int, name: str, env: int = 0) -> tuple:
+    """What JS code writes to property `name` of function `gid` (a function is an object; `f.prototype = o`, N1''): a
+    closure's own, made in environment `env` (C4'); `prototype` the function's, whose `new` makes its one class."""
+    return ("#fnprop", gid, 0 if name == PROTOTYPE else env, name)
 
 
-def function_property(t, target, unit, ctx, name: str, called: bool, caller=None, args: tuple = ()) -> None:
+def function_property(t, target, unit, ctx, name: str, called: bool, caller=None, args: tuple = (), env: int = 0):
     """A property of a JS function of the program other than `call`, `apply`, `bind` (N1''; MDN Function): what code
-    writes on it under that name; `prototype` its prototype object (an ordinary function's class of its own, a
-    generator's the language's, `undefined` on an arrow, a method or an async function); one every function has the
-    language's value; any other `undefined` (calling it throws: nothing)."""
+    writes on it under that name (on the closure made in `env`, C4'); `prototype` its prototype object (an ordinary
+    function's class of its own, a generator's the language's, `undefined` on an arrow, a method or an async
+    function); one every function has the language's value; any other `undefined` (calling it throws: nothing)."""
     written = name in written_names(t)
     if written:
-        source = fn_prop_node(unit.gid, name)
+        source = fn_prop_node(unit.gid, name, env)
         if called:
             t.subscribe(source, target, ("call",), common.calls(t, caller, args))
         else:
@@ -228,9 +229,9 @@ def constructs(t):
     returns, anything else the host's constructor (the language's value)."""
     def transfer(target, values):
         for text, ctx in values:
-            if text.startswith(FN):                     # what it returns, else the object it made (N1')
-                unit = t.ix.units[fn_of(text)[0]]
-                t.follow(t.ret_node(unit), target)
+            if text.startswith(FN):                     # what it returns, else the object it made (N1'); a closure
+                unit, env = t.ix.units[fn_of(text)[0]], env_of(text)        # run in its environment (C4')
+                t.follow(t.ret_node(t.closure_frame(unit, env) if env else unit), target)
                 t.add(target, [(CLASS + unit.constructs, ctx)] if unit.constructs else [])
             elif text.startswith(CLASS):
                 t.add(target, [(text, ctx)])
