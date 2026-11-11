@@ -1,6 +1,8 @@
 // The nearest of a list, each with a spot of its own (light_pool.h).
 #include "render/light_pool.h"
 
+#include <godot_cpp/core/error_macros.hpp>
+
 #include <algorithm>
 #include <cmath>
 
@@ -38,6 +40,12 @@ LightPool::Slot LightPool::make_slot() const {
 	rs->light_set_param(s.light, RenderingServer::LIGHT_PARAM_SPOT_ANGLE, look_.angle_deg);
 	rs->light_set_param(s.light, RenderingServer::LIGHT_PARAM_SPOT_ATTENUATION, look_.cone_fall);
 	rs->light_set_param(s.light, RenderingServer::LIGHT_PARAM_SPECULAR, look_.specular);
+	rs->light_set_param(s.light, RenderingServer::LIGHT_PARAM_SIZE, look_.size); // its shadow's penumbra (PCSS), when it casts
+	if (look_.shadow) { // how its map is read, all three said: the server's own start (blur 0) reads it with none of them
+		rs->light_set_param(s.light, RenderingServer::LIGHT_PARAM_SHADOW_BLUR, look_.shadow->blur);
+		rs->light_set_param(s.light, RenderingServer::LIGHT_PARAM_SHADOW_BIAS, look_.shadow->bias);
+		rs->light_set_param(s.light, RenderingServer::LIGHT_PARAM_SHADOW_NORMAL_BIAS, look_.shadow->normal_bias);
+	}
 	rs->light_set_param(s.light, RenderingServer::LIGHT_PARAM_ENERGY, 0);
 	rs->light_set_shadow(s.light, false);
 	rs->light_set_shadow_caster_mask(s.light, look_.casters);
@@ -45,6 +53,12 @@ LightPool::Slot LightPool::make_slot() const {
 	rs->instance_set_layer_mask(s.instance, look_.layer);
 	rs->instance_set_visible(s.instance, false);
 	return s;
+}
+
+void LightPool::set_budget(int count, int casting) {
+	ERR_FAIL_COND_MSG(casting > 0 && !look_.shadow, "a pool of lights with no shadow look cannot cast (LightLook::shadow)");
+	budget_ = count;
+	cast_budget_ = casting;
 }
 
 void LightPool::free_slot(Slot &s) const {

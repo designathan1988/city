@@ -41,6 +41,8 @@ void LampLights::init(const RID &scenario, const Tuning &t, const Color &glass) 
 	l.specular = float(t.render_lamp_specular);
 	l.fade_from = float(t.render_lamp_gives_way_from);
 	l.cast_reach = float(t.render_lamp_cast_reach_m);
+	l.size = float(t.render_lamp_lens_m);
+	l.shadow = ShadowLook{ float(t.render_lamp_shadow_blur), float(t.render_lamp_shadow_bias), float(t.render_lamp_shadow_normal_bias) };
 	l.layer = LAYER_FURNITURE;
 	l.casters = CASTERS;
 	pool_.init(scenario, l);

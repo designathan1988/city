@@ -12,6 +12,8 @@ const BASE_DPI := 96.0
 const MS_PER_S := 1000.0
 ## Four cascades tile an atlas of twice their side (PSSM 4 splits).
 const ATLAS_PER_CASCADE := 2
+## The quadrants of a positional shadow atlas (Viewport.set_positional_shadow_atlas_quadrant_subdiv).
+const POSITIONAL_QUADRANTS := 4
 const COMPATIBILITY := "gl_compatibility"
 const FORWARD_PLUS := "forward_plus"
 ## settings.json tiers "temporal": what resolves the shimmer of edges, shaders and shadows over the frames. FSR2 at the full resolution
@@ -106,6 +108,12 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	RenderingServer.directional_soft_shadow_filter_set_quality(int(q.shadow_filter) as RenderingServer.ShadowQuality)
 	world.daylight.cascades.side_px = float(q.shadow_px)
 	world.daylight.cascades.set_filter(DataTables.game("settings").filter_radius[int(q.shadow_filter)])
+	# the casting lamps' maps: the atlas they share and how its quadrants are split, the larger maps to the lamps larger on screen, and the
+	# filter their penumbra (the lamp's lens, render.lamp_lens_m) is read through
+	viewport.positional_shadow_atlas_size = int(q.lamp_shadow_atlas)
+	for i in POSITIONAL_QUADRANTS:
+		viewport.set_positional_shadow_atlas_quadrant_subdiv(i, int(q.lamp_shadow_quadrants[i]) as Viewport.PositionalShadowAtlasQuadrantSubdiv)
+	RenderingServer.positional_soft_shadow_filter_set_quality(int(q.shadow_filter) as RenderingServer.ShadowQuality)
 	var temporal: int = int(q.temporal) if has_temporal() else TEMPORAL_NONE
 	# one filter resolves the edges: where the frames do (TAA, FSR2), SMAA over them was a second full-screen pass that only softened
 	var smaa: bool = q.smaa and has_smaa() and temporal == TEMPORAL_NONE

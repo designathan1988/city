@@ -37,6 +37,7 @@ public:
 	void set_lamp_budget(int count, int casting) { lights_.set_budget(count, casting); }
 	void set_lamp_night(float night) { lights_.set_night(night); }
 	int lit_lamps() const { return lights_.lit(); }
+	const LightLook &lamp_look() const { return lights_.look(); }
 	godot::Vector2 lamps_hand_over() const { return lights_.handed_over(); }
 	// The run under the pointer, drawn as it will stand; empty lists take it away. Main thread, map held.
 	void set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles);

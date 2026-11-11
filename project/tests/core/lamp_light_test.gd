@@ -13,6 +13,8 @@ const WITH_LIGHTS := "high"
 const WITHOUT_LIGHTS := "low"
 ## The traffic put on the streets before the headlamps are counted: 30 s of the city, stepped by the test.
 const TRAFFIC_TICKS := 600
+const QUADRANTS := 4 # of a positional shadow atlas
+const NEAREST_CASTERS := 2 # the lamps either side of the eye: what a view of a street shows up close
 
 
 func _ready() -> void:
@@ -34,6 +36,7 @@ func _ready() -> void:
 	await _settled()
 	check(not world.sun.shadow_enabled, "under the lamps the moon's shadow pass is gone")
 	var budget: int = Settings.current().lamp_lights
+	_check_casting(Settings.current())
 	var lit := _handed_over()
 	if world.contact.available():
 		print("  lamps lit %d of %d, the road's pools from %.0f to %.0f m" % [_lit(), budget, lit.x, lit.y])
@@ -62,8 +65,50 @@ func _ready() -> void:
 	finish()
 
 
+## The tier's casting lamps by night: a map of the atlas each, the nearest of the tier's side, and their shadow read through the lens.
+func _check_casting(q: Dictionary) -> void:
+	var near_maps := _slots_at_least(get_viewport(), int(q.lamp_shadow_px))
+	var maps := _slots_at_least(get_viewport(), 1)
+	print("  positional atlas %d px: %d maps, %d of %d px or more, for %d casting lamps" % [
+			get_viewport().positional_shadow_atlas_size, maps, near_maps, q.lamp_shadow_px, q.lamp_shadows])
+	check(maps >= int(q.lamp_shadows), "every casting lamp gets a shadow map: %d maps for %d lamps" % [maps, q.lamp_shadows])
+	check(near_maps >= mini(NEAREST_CASTERS, int(q.lamp_shadows)), "the lamps nearest the eye get maps of the tier's side: %d of %d px" % [near_maps,
+			q.lamp_shadow_px])
+	if int(q.lamp_shadows) == 0 or not world.contact.available():
+		return
+	# a spot's shadow blur scales its lens's penumbra, its filter and its depth bias (Godot light_storage.cpp, spot): at 0 all three are
+	# gone, one hard tap that shows the map's texels as stairs and a surface that shades itself in bands
+	var shadow := _shadow()
+	print("  casting lamps' shadow: lens %.2f m, blur %.2f, bias %.3f, normal bias %.2f" % [shadow.get("lens_m", 0.0), shadow.get("blur", 0.0),
+			shadow.get("bias", 0.0), shadow.get("normal_bias", 0.0)])
+	check(float(shadow.get("lens_m", 0.0)) > 0.0, "a casting lamp's shadow has its lens's penumbra (light size): %s" % shadow)
+	check(float(shadow.get("blur", 0.0)) > 0.0, "a casting lamp's shadow is filtered through its lens: %s" % shadow)
+	check(float(shadow.get("bias", 0.0)) > 0.0 and float(shadow.get("normal_bias", 0.0)) > 0.0,
+			"a casting lamp's shadow stands off the surface it falls on: %s" % shadow)
+
+
 func _lit() -> int:
 	return int(CityStore.query(&"render_cost").lit_street_lamps)
+
+
+## How many maps of the viewport's positional atlas have a side of `px` or more: each quadrant is a quarter of the atlas, split in
+## 4^(subdiv - 1) maps (Viewport.PositionalShadowAtlasQuadrantSubdiv; 0 unused).
+func _slots_at_least(vp: Viewport, px: int) -> int:
+	var count := 0
+	var quadrant := vp.positional_shadow_atlas_size / 2
+	for i in QUADRANTS:
+		var subdiv := int(vp.get_positional_shadow_atlas_quadrant_subdiv(i))
+		if subdiv == Viewport.SHADOW_ATLAS_QUADRANT_SUBDIV_DISABLED:
+			continue
+		var per_side := 1 << (subdiv - 1)
+		if quadrant / per_side >= px:
+			count += per_side * per_side
+	return count
+
+
+## What the casting lamps' shadow is read through (render_cost lamp_shadow): the lens, the blur, the depth and normal bias.
+func _shadow() -> Dictionary:
+	return CityStore.query(&"render_cost").get("lamp_shadow", {})
 
 
 func _handed_over() -> Vector2:

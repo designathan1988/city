@@ -96,6 +96,7 @@ public:
 		agents_.set_night(night);
 	}
 	int lit_lamps() const { return props_.lit_lamps(); }
+	const LightLook &lamp_look() const { return props_.lamp_look(); } // the street lamps' lights as they are made (render_cost probe)
 	int lit_heads() const { return agents_.lit_heads(); }
 	godot::Vector2 lamps_hand_over() const { return props_.lamps_hand_over(); }
 	float shake() const { return effects_.shake(); } // metres the blasts move the camera now

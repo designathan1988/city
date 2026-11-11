@@ -10,15 +10,27 @@
 #include <godot_cpp/variant/vector2.hpp>
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace city {
+
+// How a casting light's map is read. The blur scales the penumbra the light's size gives, the filter round every tap and, for a spot, its
+// depth bias too (Godot light_storage.cpp, the spot's soft_shadow_scale): at 0 a spot has no penumbra, no filter and no bias, one hard tap
+// that shows the map's texels as stairs and a surface that shades itself in bands. A light made through the RenderingServer starts there
+// (blur 0), not where the SpotLight3D node starts (blur 1): whoever makes the light says all three. The normal bias moves what is shaded
+// off its own surface by texels of the map.
+struct ShadowLook {
+	float blur = 0, bias = 0, normal_bias = 0;
+};
 
 struct LightLook {
 	godot::Color color;
 	float energy = 0, range = 0, angle_deg = 0, cone_fall = 0, decay = 0, specular = 0;
 	float fade_from = 0; // of how far the lit ones go, where they start to fade
 	float cast_reach = 0; // farthest one casts from the eye: a shadow costs the pass whether it shows or not
+	float size = 0; // the light's own size (the lamp's lens): the penumbra its shadow has, wider the farther a caster stands from what it falls on
+	std::optional<ShadowLook> shadow; // what a casting light's map is read through; a pool without one never casts (the headlamps)
 	uint32_t layer = 0, casters = 0; // the layer it is hidden with, and what casts for it (render_layers.h)
 };
 
@@ -33,16 +45,15 @@ class LightPool {
 public:
 	void init(const godot::RID &scenario, const LightLook &look);
 	void reset();
-	void set_budget(int count, int casting) {
-		budget_ = count;
-		cast_budget_ = casting;
-	}
+	// The tier's lights, and how many of them cast: casting asks the look for its shadow (refused without one).
+	void set_budget(int count, int casting);
 	void set_night(float night) { night_ = night; }
 	bool wanted() const { return budget_ > 0 && night_ > 0; }
 	// The nearest of `list` take the lights; `most_m`: as far as any is lit. `moving`: every light is placed again, not only those that changed hands.
 	void update(std::vector<LightWanted> &list, float most_m, float frame_s, bool moving);
 	godot::Vector2 lit_span() const; // on the ground from the eye, from where they fade to where they end
 	int lit() const { return lit_; }
+	const LightLook &look() const { return look_; } // what every light of it is made with (render_cost probe)
 
 private:
 	struct Slot {

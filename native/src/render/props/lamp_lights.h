@@ -27,6 +27,7 @@ public:
 	void set_night(float night) { pool_.set_night(night); }
 	void update(const godot::Vector3 &eye, const ViewCull &view, float frame_s);
 	int lit() const { return pool_.lit(); } // lights on now (render_cost probe)
+	const LightLook &look() const { return pool_.look(); } // their lens and how their shadows are read (render_cost probe)
 	godot::Vector2 handed_over() const { return published_; } // `lamp_lit`, for the tests: the engine reads a global back only in the editor
 
 private:

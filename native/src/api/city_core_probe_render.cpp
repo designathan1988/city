@@ -5,15 +5,9 @@
 #include "core/units.h"
 
 #include <algorithm>
-#include <cmath>
+#include <cstring>
 
 using namespace godot;
-
-#include <algorithm>
-#include <cstring>
-#include <mutex>
-#include <shared_mutex>
-#include <vector>
 
 namespace city {
 
@@ -33,6 +27,15 @@ Dictionary CityCore::render_cost() const {
 	d["lit_street_lamps"] = render_.lit_lamps();
 	d["lit_head_lamps"] = render_.lit_heads();
 	d["lamps_hand_over"] = render_.lamps_hand_over();
+	const LightLook &lamp = render_.lamp_look();
+	Dictionary shadow; // the casting street lamps' shadow as their lights are made: the lens's penumbra and how the map is read
+	shadow["lens_m"] = lamp.size;
+	if (lamp.shadow) {
+		shadow["blur"] = lamp.shadow->blur;
+		shadow["bias"] = lamp.shadow->bias;
+		shadow["normal_bias"] = lamp.shadow->normal_bias;
+	}
+	d["lamp_shadow"] = shadow;
 	d["process"] = process_ms_; // constant time: the game reads it on every long frame (health log), so it must not make one
 	d["agents"] = agents_ms_;
 	d["lock"] = c.lock;
