@@ -166,9 +166,10 @@ def _constant_value(src, ids):
 
 def _copied_key(words, value, key_words, key_vals):
     """The data key a constant of these name words and this value repeats: one whose words equal the name's when two or
-    more (the name says which definition it is, whatever number it was typed with), else one whose words hold the
-    name's or are held by it and that holds this same value (one shared word alone names nothing: finish, style,
-    wheel stand in many keys)."""
+    more (the name says which definition it is, whatever number it was typed with), else one every word of which the
+    name holds and that holds this same value (KERB_HEIGHT for kerb_m; a name that is a fragment of a key, LOOK_STEP of
+    ped_react_look_s, names another thing, and one shared word alone names nothing: finish, style, wheel stand in many
+    keys)."""
     if not words:
         return None
     for key, kw in key_words.items():
@@ -177,7 +178,7 @@ def _copied_key(words, value, key_words, key_vals):
     if value is None:
         return None
     for key, kw in key_words.items():
-        if kw and (kw <= words or words <= kw) and float(value) in key_vals.get(key, {}):
+        if kw and kw <= words and float(value) in key_vals.get(key, {}):
             return key
     return None
 
