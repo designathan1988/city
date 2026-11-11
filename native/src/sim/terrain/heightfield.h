@@ -1,5 +1,6 @@
 // Authoritative terrain: player-sculpted base heights + non-destructive modifiers (road corridors,
-// intersection pads) composed into the final heights. Terrain3D only renders it (render/terrain_bridge).
+// intersection pads), the ground shaped to the roads and graded to the lots, composed into the final heights. Terrain3D only
+// renders it (render/terrain_bridge).
 #pragma once
 
 #include "core/bytes.h"
@@ -8,8 +9,10 @@
 #include "sim/state/change_log.h"
 #include "sim/terrain/final_heights.h"
 #include "sim/terrain/height_patch.h"
+#include "sim/terrain/lot_shape.h"
 #include "sim/terrain/road_shape.h"
 
+#include <algorithm>
 #include <unordered_map>
 #include <vector>
 
@@ -70,6 +73,11 @@ public:
 	// The ground shaped to each road, by segment id: derived from the roads' heights, never journaled nor saved.
 	std::vector<RoadShape> road_shapes;
 	SpatialHash shape_hash;
+	// The ground graded to each building's lot, by building id (lots.shapes; lots.hash files each by its own rectangle, what
+	// height_at asks; lot_hash by the ground it grades, what the composition asks): derived from the lot and its street, never
+	// journaled nor saved.
+	LotLevels lots;
+	SpatialHash lot_hash;
 	// World rectangles (x0, z0, x1, z1) where the natural ground or its water changed since the roads last read it.
 	std::vector<float> ground_moved;
 	ChangeLog *log = nullptr;
@@ -100,7 +108,7 @@ public:
 		float h = half_size() - margin;
 		return x > -h && x < h && z > -h && z < h;
 	}
-	float height_at(float x, float z) const; // final heights (with road corridors and pads)
+	float height_at(float x, float z) const; // the ground: a lot's own level on a lot (lot_shape.h), else the final heights
 	// The final height of a sample, by column and row, and `count` of them along row `iz` from column `ix`, in metres.
 	float final_at(int ix, int iz) const { return finals.at(ix, iz, base_q); }
 	void set_final(int ix, int iz, float h) { finals.put(ix, iz, h, base_q); }
@@ -129,6 +137,9 @@ public:
 	// The ground under segment `id` shaped to it again (or no more), recomposed where it was and where it is.
 	void put_road_shape(int id, const RoadShape &r);
 	void drop_road_shape(int id);
+	// The ground under building `id`'s lot graded to it again (or no more), recomposed where it was and where it is.
+	void put_lot_shape(int id, const LotShape &r);
+	void drop_lot_shape(int id);
 	// Where the natural ground moved since the last call (the roads there read it again), and forgets it.
 	std::vector<float> take_ground_moved();
 	int add_modifier(const std::vector<float> &pts, float flat, float max_run);
@@ -149,12 +160,25 @@ private:
 	float dab_value(const BrushDab &d, size_t i, float dist, int x, int z) const;
 	float natural_reach(const BrushDab &d, float x, float z, float lobe_share, float salt_x, float salt_z) const;
 	int held = 0;
+	// The final heights back to the natural ground and every modifier and derived shape gone (a new land, a load).
+	void clear_shapes();
 	void compose_rect(const SampleRect &r); // its final heights, nothing logged: rectangles that share no sample may run at once
 	std::vector<SampleRect> waiting;
 	// Distance to the nearest piece of a polyline (x, height, z triples) for the samples of the box within `reach` of it.
 	const std::vector<NearSample> &nearest(const std::vector<float> &pts, float reach, int ax0, int az0, int ax1, int az1) const;
 	void apply_modifier(const TerrainModifier &m, int x0, int z0, int x1, int z1, std::vector<float> &best_w);
+	// The samples of the rectangle [x0, x1] x [z0, z1] a box reaches (its samples and one past them): what every apply_* visits.
+	SampleRect samples_over(float minx, float minz, float maxx, float maxz, int x0, int z0, int x1, int z1) const {
+		return { std::max(x0, ix_of(minx)), std::max(z0, ix_of(minz)), std::min(x1, ix_of(maxx) + 1), std::min(z1, ix_of(maxz) + 1) };
+	}
+	// A derived shape (a road's, a lot's) put again under `id` in its family's list and box hash, or dropped (true when it stood),
+	// recomposed where it was and where it is: the one way either family changes.
+	template <typename S>
+	void put_shape(std::vector<S> &shapes, SpatialHash &hash, int id, const S &r);
+	template <typename S>
+	bool drop_shape(std::vector<S> &shapes, SpatialHash &hash, int id);
 	void apply_road_shape(const RoadShape &r, int x0, int z0, int x1, int z1, std::vector<float> &best_w, std::vector<float> &best_d); // road_shape.cpp
+	void apply_lot_shape(const LotShape &r, int x0, int z0, int x1, int z1, std::vector<float> &best_w, std::vector<float> &best_d); // lot_shape.cpp
 };
 
 // A held composition for the length of a scope (Heightfield::hold): composed when it ends, or dropped with `compose` false.

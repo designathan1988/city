@@ -1,6 +1,7 @@
 // The roads' heights carried to the ground and to everything that stands on a road (road_grade_sync.h).
 #include "sim/commands/road_grade_sync.h"
 
+#include "sim/commands/lot_sites.h"
 #include "sim/commands/road_edit.h"
 #include "sim/state/city_state.h"
 #include "sim/terrain/road_shape.h"
@@ -63,17 +64,21 @@ void sync_grade(CityState &s) {
 		const float *r = &moved_ground[k];
 		net.for_segments_near(r[0], r[1], r[2], r[3], [&](int seg) { net.grade.ground_changed(seg); });
 	}
-	if (!net.grade.pending()) return;
 	std::vector<int> moved, gone;
-	net.grade.solve(net, ground_of(s.terrain), moved, gone, s.jobs.get());
-	ComposeHold hold(s.terrain); // every road moved, shaped once where they overlap
-	for (int seg : gone) s.terrain.drop_road_shape(seg);
-	for (int seg : moved) {
-		const RoadShape shape = shape_of(net, seg);
-		mark_ground(s, shape.minx, shape.minz, shape.maxx, shape.maxz); // what stands on the ground there sits again
-		s.terrain.put_road_shape(seg, shape);
-		net.mark_heights(seg);
+	if (net.grade.pending()) {
+		net.grade.solve(net, ground_of(s.terrain), moved, gone, s.jobs.get());
+		ComposeHold hold(s.terrain); // every road moved, shaped once where they overlap
+		for (int seg : gone) s.terrain.drop_road_shape(seg);
+		for (int seg : moved) {
+			const RoadShape shape = shape_of(net, seg);
+			mark_ground(s, shape.minx, shape.minz, shape.maxx, shape.maxz); // what stands on the ground there sits again
+			s.terrain.put_road_shape(seg, shape);
+			net.mark_heights(seg);
+		}
 	}
+	// the lots facing what moved or went, and the buildings that came, went or changed, graded to their streets as they now stand
+	moved.insert(moved.end(), gone.begin(), gone.end());
+	settle_sites(s, moved);
 }
 
 } // namespace city

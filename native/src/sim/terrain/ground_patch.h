@@ -22,6 +22,7 @@ struct GroundPatch {
 	float water_level = 0;
 	int x0 = 0, z0 = 0, w = 0, h = 0; // grid nodes [x0, x0 + w) x [z0, z0 + h)
 	std::vector<float> final_h; // row-major, w a row
+	LotLevels lots; // the lots over the window, in the order of their ids (a lot's ground is its own level: lot_shape.h)
 	std::vector<uint16_t> base_q; // the natural ground of the same window, quantized as the Heightfield keeps it; empty unless asked
 	int water_n = 0; // the whole water grid's side and spacing
 	float water_spacing = 0;
@@ -33,6 +34,8 @@ struct GroundPatch {
 	float final_at(int ix, int iz) const { return final_h[at(ix, iz)]; }
 	float height_at(float x, float z) const {
 		if (final_h.empty()) return 0.f;
+		float lot;
+		if (lots.level_at(x, z, lot)) return lot;
 		return grid_sample(x, z, N, spacing, [&](int ix, int iz) { return final_h[at(ix, iz)]; });
 	}
 	float base_height_at(float x, float z) const {

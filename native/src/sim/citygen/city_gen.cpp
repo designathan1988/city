@@ -4,6 +4,7 @@
 #include "sim/commands/road_grade_sync.h"
 
 #include "sim/buildings/growth.h"
+#include "sim/commands/lot_sites.h"
 #include "sim/street/street_names.h"
 #include "sim/citygen/road_gen.h"
 #include "sim/citygen/squares.h"
@@ -128,6 +129,7 @@ CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with
 		rep.lots = int(s.lots.total());
 		rep.squares = plan_squares(s, seed);
 		rep.buildings = fill_all(s);
+		settle_sites(s, {}); // every lot just grown graded to its street
 		name_streets(s);
 		settle_name_plates(s.street, s.roads, s.log); // the plates of the names given, on the roads as they are now settled
 		rep.nodes = r.node_count();

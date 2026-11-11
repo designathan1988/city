@@ -2,6 +2,7 @@
 #include "sim/simulation/city_growth.h"
 
 #include "sim/buildings/growth.h"
+#include "sim/commands/lot_sites.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -102,6 +103,7 @@ void grow_step(CityState &s, double dt) {
 			return;
 		}
 		s.buildings.add(d.b);
+		settle_sites(s, {}); // its lot graded to its street, as an edit's are
 		g.last_x = d.b.x;
 		g.last_z = d.b.z;
 		g.has_last = true;

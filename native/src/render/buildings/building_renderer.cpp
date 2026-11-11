@@ -8,6 +8,7 @@
 #include "core/units.h"
 
 #include "render/buildings/bay_kit.h"
+#include "render/buildings/building_stream.h"
 #include "render/buildings/facade.h"
 #include "render/buildings/flag_cloth.h"
 #include "render/mesh_builder.h"
@@ -19,34 +20,12 @@ using namespace godot;
 
 namespace city {
 
+using namespace building_stream;
+
 namespace {
-constexpr float HALF = 0.5f, FREED_PAST = 1.25f; // a level is freed past its reach times this
-constexpr int BAND_BIT_NEAR = 2, BAND_BIT_MID = 4, BAND_BIT_BAYS = 8;
-constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
+constexpr float HALF = 0.5f;
 
 int64_t super_of(const Vector3 &centre) { return chunk_of(centre.x, centre.z, SUPERCHUNK); }
-
-Vector3 super_centre(int64_t key) {
-	return Vector3((float(key_x(key)) + HALF) * SUPERCHUNK, 0, (float(key_y(key)) + HALF) * SUPERCHUNK);
-}
-
-float horizontal(const Vector3 &cam, const Vector3 &at) {
-	float dx = cam.x - at.x, dz = cam.z - at.z;
-	return std::sqrt(dx * dx + dz * dz);
-}
-
-double now_s() { return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
-
-// fn(key, chunk) for every streamed chunk of a superchunk.
-template <typename Map, typename F>
-void each_chunk_of(Map &chunks, int64_t super_key, F &&fn) {
-	const int sx = key_x(super_key) * CHUNKS_PER_SUPER, sz = key_y(super_key) * CHUNKS_PER_SUPER;
-	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
-		for (int i = 0; i < CHUNKS_PER_SUPER; i++) {
-			auto it = chunks.find(cell_key(sx + i, sz + j));
-			if (it != chunks.end()) fn(it->first, it->second);
-		}
-}
 } // namespace
 
 bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
@@ -67,6 +46,7 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 	Dictionary t = ctx.table("buildings", errors);
 	if (!errors.is_empty()) return false;
 	if (!look_.load(t, errors) || !look_.bay.load(ctx.tables.get("bay_props", Dictionary()), errors) || !look_.interior.load(ctx.table("furniture", errors), errors)) return false;
+	look_.lot_plate = ctx.catalog->tune.lot_plate_m;
 	// the unit meshes every chunk's draws share (mesh_draw.h shared): a chunk's draws are made when it streams in; the boxes and the
 	// balcony pieces also throw their shadow through twins in the shadow material (commit_one)
 	for (int k = 0; k < b40::BAY_PROPS; k++) prop_mesh_[size_t(k)] = look_.bay.models[size_t(k)].bake(material_props_, false).shared(material_cast_);
@@ -275,84 +255,6 @@ void BuildingRenderer::commit(UploadBudget &upload, const std::chrono::steady_cl
 				commit_super(b);
 				super_max = std::max(super_max, one.lap());
 			}, &times_);
-}
-
-// A superchunk, every frame: each chunk's switch between its own detail and the far mesh, the levels it needs or no
-// longer needs, and the far mesh's mask of the chunks drawn in detail (never a hole: a chunk leaves the far mesh only
-// once its mid level is up, and shows itself whatever the distance while no far mesh stands in).
-void BuildingRenderer::visit_super(int64_t key, Super &sp, const Vector3 &cam, float eye, std::vector<Want> &want) {
-	const float leave = mid_end_ * (1 + look_.far_hysteresis), mid_reach = mid_end_ + CHUNK * REACH_PAD;
-	const float bay_reach = bay_end_ + CHUNK * HALF; // a sub-chunk's range is measured to its own middle, up to half a chunk from the chunk's
-	const bool far_missing = !sp.built || !sp.has_content;
-	const int sx = key_x(key) * CHUNKS_PER_SUPER, sz = key_y(key) * CHUNKS_PER_SUPER;
-	int mask = 0;
-	each_chunk_of(chunks_, key, [&](int64_t ck, Chunk &ch) {
-		const float dc = horizontal(cam, ch.centre); // streaming of the levels: the ground distance
-		const float d = std::sqrt(dc * dc + eye * eye); // the switch: with the eye height, as visibility ranges measure
-		ch.detail = ch.cut || (ch.detail ? d < leave : d < mid_end_);
-		uint8_t levels = 0;
-		if ((!ch.built[LEVEL_NEAR] || ch.stale[LEVEL_NEAR]) && (dc < near_reach() || ch.cut)) levels = uint8_t(levels | BAND_BIT_NEAR);
-		else if (ch.built[LEVEL_NEAR] && !ch.cut && dc > near_reach() * FREED_PAST) drop(ch, LEVEL_NEAR);
-		// a chunk drawn in detail keeps its mid level current even in the hysteresis band past mid_reach
-		if ((!ch.built[LEVEL_MID] || ch.stale[LEVEL_MID]) && (dc < mid_reach || ch.detail)) {
-			levels = uint8_t(levels | BAND_BIT_MID);
-		} else if (ch.built[LEVEL_MID] && !ch.detail && dc > mid_reach * FREED_PAST) {
-			drop(ch, LEVEL_MID);
-			drop_bands(ch);
-		}
-		// the mid level's openings stand only where they are drawn: with a mid level, built or asked now, within their own reach
-		const bool mid_up = ch.built[LEVEL_MID] || (levels & BAND_BIT_MID) != 0;
-		if ((!ch.built[LEVEL_BAYS] || ch.stale[LEVEL_BAYS]) && mid_up && dc < bay_reach) levels = uint8_t(levels | BAND_BIT_BAYS);
-		else if (ch.built[LEVEL_BAYS] && dc > bay_reach * FREED_PAST) drop(ch, LEVEL_BAYS);
-		const bool drawn = ch.built[LEVEL_MID] && (ch.detail || far_missing);
-		if (drawn != ch.shown) show(ch, drawn);
-		if (drawn) mask |= 1 << ((key_y(ck) - sz) * CHUNKS_PER_SUPER + (key_x(ck) - sx));
-		if (levels == 0) return;
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		if (!requested_.count(ck)) want.push_back({ dc, ck, levels });
-	});
-	sp.mask = mask;
-	send_mask(sp);
-}
-
-void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
-	if (!state_) return;
-	// RenderWorld::sync calls this under the shared map lock (the ground height is a map read)
-	const float eye = std::max(0.f, cam.y - state_->terrain.height_at(cam.x, cam.z));
-	const float far_reach = far_end_ + eye * look_.far_per_eye; // from up there the ground in view runs on past the data's end
-	const double now = now_s();
-	std::vector<Want> want, want_super;
-	int waiting = 0; // far meshes to redo, each on its clock
-	for (auto &[key, sp] : supers_) {
-		// the far reach from the superchunk's centre, as the chunks are streamed (a nearest-point reach would hold a
-		// ring of extra far meshes, a quarter more memory, for buildings past building_far_end_m)
-		const float ground = horizontal(cam, super_centre(key));
-		if (ground > far_reach * FREED_PAST && sp.far.inst.is_valid()) drop_far(key, sp);
-		visit_super(key, sp, cam, eye, want);
-		// the first far mesh at once (nothing stands in yet); a rebuild of a built one on its clock
-		const bool due = !sp.built || now >= std::max(sp.due, sp.asked + look_.far_rebuild_interval_s);
-		if (sp.dirty && ground <= far_reach) {
-			std::lock_guard<std::mutex> lk(queue_mutex_);
-			if (!super_requested_.count(key)) {
-				if (due) want_super.push_back({ ground, key, 0 });
-				else waiting++;
-			}
-		}
-	}
-	need_.want = int(want.size() + want_super.size()) + waiting;
-	need_.unmet = need_.want;
-	std::sort(want.begin(), want.end(), [](const Want &a, const Want &b) { return a.d < b.d; });
-	for (const Want &w : want) {
-		if (!budget.take()) break;
-		submit(*state_, w.key, (w.mask & BAND_BIT_NEAR) != 0, (w.mask & BAND_BIT_MID) != 0, (w.mask & BAND_BIT_BAYS) != 0, w.d);
-		need_.unmet--;
-	}
-	std::sort(want_super.begin(), want_super.end(), [](const Want &a, const Want &b) { return a.d < b.d; });
-	for (const Want &w : want_super) {
-		if (!budget.take()) break;
-		submit_super(*state_, w.key, w.d);
-		need_.unmet--;
-	}
 }
 
 } // namespace city

@@ -27,6 +27,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/api/city_core_watch_probe.cpp` · `project/tests/core/street_crossing_test.gd` · `project/tests/core/street_crossing_test.tscn` — a rua vista tick a tick: quem está na faixa do meio da quadra, o que parou por eles, a menor distância e quem volta pelo canteiro; o teste disso em tráfego real
 - `native/src/api/city_core_flow_probe.cpp` — `probes` area: the flow translation on a fixed script, and a city crossing driven by flow
 - `native/src/api/city_core_kerb_probe.cpp` · `project/tests/core/drive_kerb_test.gd` · `project/tests/core/drive_kerb_test.tscn` — `probes` area (`drive_kerbs`): every car gate of the lots facing a kerb, the top of that kerb at the gate's middle as the road surface draws it, held to a vehicle access's lip; the test in the town
+- `native/src/api/city_core_lot_probe.cpp` · `project/tests/core/lot_front_test.gd` · `project/tests/core/lot_front_test.tscn` — `probes` area (`lot_fronts`): every lot's covers just inside its front against the footway's top just outside it; the test in the town
 - `native/src/api/city_core_corner_probe.cpp` — `probes` area (`corner_ways`): every way round a corner with no crosswalk, walked from each place across its sidewalk, against the carriageway; a way that touches it told with its node's arms and corners as drawn
 - `native/src/api/function_names.h` — nomes das funções do prédio, como os modelos e os documentos os escrevem
 - `native/src/api/city_core_inspect.cpp` — o que a ferramenta Inspecionar e o aviso da barra perguntam: tráfego ao vivo de via e cruzamento e nós impossíveis
@@ -123,6 +124,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/commands/road_copies.cpp` — inverter mão única, duplicar via e a pintura do mapa
 - `native/src/sim/commands/road_blocks.cpp` · `native/src/sim/commands/road_blocks.h` — quarteirões de uma vez: uma grade de ruas num gesto, um passo de desfazer
 - `native/src/sim/commands/road_edit.cpp` · `native/src/sim/commands/road_edit.h` — passos comuns das edições de via
+- `native/src/sim/commands/lot_sites.cpp` · `native/src/sim/commands/lot_sites.h` — every building's lot graded to the street it faces: its level the footway's top along its front less the lot's plate, settled after every edit, the city's generation, growth and the load
 - `native/src/sim/commands/road_grade_sync.cpp` · `native/src/sim/commands/road_grade_sync.h` — o greide resolvido depois de uma edição (chão = terreno, água e nível do mar) e o chão moldado às vias movidas; se um trecho cruza água (vira ponte)
 - `native/src/sim/commands/road_plan.cpp` — encaixe e validação de vias (= prévia)
 - `native/src/sim/commands/road_path.cpp` · `native/src/sim/commands/road_snap.cpp` — o gesto vira peças (reta, curva, traço à mão) e o plano e a obra delas; onde a via pousa (rede, ângulos, grade)
@@ -182,6 +184,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/terrain/ground_patch.h` — the ground as a reader off the map lock takes it: a copy of a window of the land (final heights, and when asked the natural ground and the water samples) and the one handle a job-path function reads the ground through, live or copied
 - `native/src/sim/terrain/height_patch.h` — amostrador bilinear único do terreno e cópia das alturas para os jobs
 - `native/src/sim/terrain/heightfield.cpp` · `native/src/sim/terrain/heightfield.h` — alturas, consultas, raycast, modificadores, formas das vias e o chão que se moveu
+- `native/src/sim/terrain/lot_shape.cpp` · `native/src/sim/terrain/lot_shape.h` — the ground graded to a lot (level inside it and over the sidewalk in front, an apron, a bank to the land) and the lot's own exact level, which the ground's height at a point of the lot is
 - `native/src/sim/terrain/road_shape.cpp` · `native/src/sim/terrain/road_shape.h` — the ground shaped to a road by the resolved height: cut, fill, slope, the ground under the deck and the tunnel
 - `native/src/sim/terrain/terrain_brush.cpp` — pincel de relevo e formas
 - `native/src/sim/terrain/terrain_gen.cpp` · `native/src/sim/terrain/terrain_gen.h` — generated terrain (from the map seed)
@@ -254,6 +257,8 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/render/buildings/signature_bodies.cpp` · `native/src/render/buildings/signature_bodies.h` · `native/src/sim/buildings/b40/signature_kinds.h` · `project/render/shaders/signature.gdshader` · `project/render/shaders/signature_glass.gdshader` · `project/render/shaders/signature_look.gdshaderinc` · `tools/assets/cook_signatures.py` — the buildings with a design of their own (landmarks): baked shape and paintings, one mesh per kind, loaded the first time, one instance per building, coming and going with the chunk
 - `native/src/render/buildings/building_surface.h` — o que um nível guarda: a superfície que um job fez, os triângulos e bytes de cada tipo e a malha distante de um superchunk
 - `native/src/render/buildings/building_renderer.cpp` · `native/src/render/buildings/building_renderer.h` · `native/src/render/buildings/building_renderer_reach.cpp` — streaming dos níveis near/mid/far por chunk e superchunk; o alcance de cada nível (dados, nível gráfico) e as faixas de visibilidade dos chunks
+- `native/src/render/buildings/building_stream.h` — what the building renderer's files share of the stream: a request's level bits, the chunks of a superchunk, the pacing clock
+- `native/src/render/buildings/building_renderer_view.cpp` — each frame's view of the building stream: every superchunk's chunks switched between their detail and the far mesh, the levels each needs from the eye, the jobs asked in the frame's budget
 - `native/src/render/buildings/building_renderer_build.cpp` — montagem CPU dos níveis por subchunk e bandas de peças
 - `native/src/render/buildings/building_renderer_commit.cpp` — upload ao RenderingServer dos níveis, peças e bandas
 - `native/src/render/buildings/building_renderer_probe.cpp` — o que os testes leem dos níveis: o que a vista ainda pede, como está um chunk e o que cada superfície guarda (`building_cost`)

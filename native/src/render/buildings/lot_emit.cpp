@@ -12,10 +12,10 @@ namespace city::b40 {
 
 namespace {
 constexpr float GROUND_CELL_M = 3.f, LEVEL_M = 0.01f; // a surface's cell on a slope, and the fold under which ground counts as level
-constexpr float LOT_RAISE = 0.03f, FOOT = 0.3f, PIECE = 4.f, COPING_H = 0.07f, COPING_OUT = 0.04f, COPING_SHADE = 1.f;
+constexpr float FOOT = 0.3f, PIECE = 4.f, COPING_H = 0.07f, COPING_OUT = 0.04f, COPING_SHADE = 1.f;
 constexpr float SPLASH = 0.22f, SPLASH_SHADE = 0.78f, RAIL_T = 0.04f, RAIL_LOW = 0.45f, LOW_RAIL_H = 0.06f, POST = 0.12f, POST_EVERY = 2.f, POST_OVER = 0.05f;
 constexpr float LIGHT_POST = 0.06f, LIGHT_EVERY = 0.45f, BAR_EVERY = 0.14f, GATE_POST = 0.17f, GATE_RAIL = 0.08f;
-constexpr float LAMP_HEAD = 0.44f, LAMP_HEAD_H = 0.12f, LAMP_POST = 0.12f, BOLLARD_BAND = 0.25f, BOLLARD_BAND_H = 0.1f, BOLLARD_BAND_OUT = 0.01f;
+constexpr float LAMP_HEAD = 0.44f, LAMP_HEAD_H = 0.12f, GARDEN_LAMP_STEM = 0.12f, BOLLARD_BAND = 0.25f, BOLLARD_BAND_H = 0.1f, BOLLARD_BAND_OUT = 0.01f;
 constexpr float SOIL_IN = 0.06f, BENCH_SEAT = 0.4f, BENCH_SEAT_T = 0.06f, BENCH_BACK = 0.95f, BENCH_BACK_T = 0.06f;
 constexpr float FASCIA_SHADE = 0.95f, FASCIA_H = 0.2f, AWN_SHADE = 0.8f, HALF = 0.5f, GRILLE_T = 0.02f;
 constexpr uint32_t BAND_LIGHT = 0xffe8c8, LAMP_WARM = 0xf1ebdd;
@@ -42,7 +42,7 @@ void LotEmit::surface(const LotElement &e) {
 	bool lawn = e.paint >= 0 && pl.b->paints[size_t(e.paint)].finish == FIN_NONE;
 	Lin lin = paint(e, "paving");
 	float x0 = e.x - e.w / 2, x1 = e.x + e.w / 2, y0 = e.y - e.d / 2, y1 = e.y + e.d / 2;
-	float lift = LOT_RAISE + e.h - HALF * e.h;
+	float lift = pl.look->lot_plate + e.h - HALF * e.h;
 	Shell &to = lawn && shell.lawns ? *shell.lawns : shell;
 	// On level ground one quad. On a slope it follows the ground cell by cell: a single quad folds along its own diagonal, and two
 	// surfaces that overlap fold along different ones and cross (a lawn coming up through the car park over it).
@@ -136,7 +136,7 @@ void LotEmit::prop(const LotElement &e) {
 						-pl.lot.e2, lin_of(LAMP_WARM), FIN_NONE, SK_LAMP);
 				break;
 			}
-			parts.box(pl.lot, e.x - LAMP_POST / 2, e.x + LAMP_POST / 2, e.y - LAMP_POST / 2, e.y + LAMP_POST / 2, g, g + e.h, lin, FIN_METAL);
+			parts.box(pl.lot, e.x - GARDEN_LAMP_STEM / 2, e.x + GARDEN_LAMP_STEM / 2, e.y - GARDEN_LAMP_STEM / 2, e.y + GARDEN_LAMP_STEM / 2, g, g + e.h, lin, FIN_METAL);
 			shell.box(pl.lot, e.x - LAMP_HEAD / 2, e.x + LAMP_HEAD / 2, e.y - LAMP_HEAD / 2, e.y + LAMP_HEAD / 2, g + e.h, g + e.h + LAMP_HEAD_H, lin, FIN_METAL);
 			Basis down{ pl.lot.o, pl.lot.e0, pl.lot.e1, -pl.lot.e2 };
 			shell.quad(pl.lot.at(e.x - LAMP_HEAD / 3, e.y - LAMP_HEAD / 3, g + e.h - GRILLE_T), pl.lot.at(e.x + LAMP_HEAD / 3, e.y - LAMP_HEAD / 3, g + e.h - GRILLE_T),

@@ -35,9 +35,9 @@ float road_shape_reach() { return SHAPE_INNER_M + SHAPE_SHOULDER_MAX_M; }
 float cut_wall_reach() { return SHAPE_INNER_M + CUT_SHOULDER_M; }
 
 void Heightfield::apply_road_shape(const RoadShape &r, int x0, int z0, int x1, int z1, std::vector<float> &best_w, std::vector<float> &best_d) {
-	const int ax0 = std::max(x0, ix_of(r.minx)), ax1 = std::min(x1, ix_of(r.maxx) + 1);
-	const int az0 = std::max(z0, ix_of(r.minz)), az1 = std::min(z1, ix_of(r.maxz) + 1);
-	if (ax0 > ax1 || az0 > az1) return;
+	const SampleRect a = samples_over(r.minx, r.minz, r.maxx, r.maxz, x0, z0, x1, z1);
+	if (a.empty()) return;
+	const int ax0 = a.x0, ax1 = a.x1, az0 = a.z0, az1 = a.z1;
 	const int W = ax1 - ax0 + 1;
 	const std::vector<NearSample> &near = nearest(r.pts, r.half + road_shape_reach(), ax0, az0, ax1, az1);
 	const float close = tune->grade_tunnel_headroom_m + tune->grade_tunnel_arch_m + TUNNEL_CLOSE_PAD_M;

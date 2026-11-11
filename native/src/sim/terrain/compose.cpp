@@ -97,6 +97,8 @@ void Heightfield::compose_rect(const SampleRect &r) {
 		if (mods[id].alive) apply_modifier(mods[id], x0, z0, x1, z1, best_w);
 	for (int id : found(shape_hash))
 		if (road_shapes[size_t(id)].alive) apply_road_shape(road_shapes[size_t(id)], x0, z0, x1, z1, best_w, best_d);
+	for (int id : found(lot_hash)) // after the roads: a lot meets the footway it faces, over the ground a road holds beside itself
+		if (lots.shapes[size_t(id)].alive) apply_lot_shape(lots.shapes[size_t(id)], x0, z0, x1, z1, best_w, best_d);
 }
 
 // Each piece visits only the samples whose nearest point of the polyline can lie on it: the slab along it, the wedge
@@ -184,9 +186,9 @@ const std::vector<NearSample> &Heightfield::nearest(const std::vector<float> &pt
 }
 
 void Heightfield::apply_modifier(const TerrainModifier &m, int x0, int z0, int x1, int z1, std::vector<float> &best_w) {
-	const int ax0 = std::max(x0, ix_of(m.minx)), ax1 = std::min(x1, ix_of(m.maxx) + 1);
-	const int az0 = std::max(z0, ix_of(m.minz)), az1 = std::min(z1, ix_of(m.maxz) + 1);
-	if (ax0 > ax1 || az0 > az1) return;
+	const SampleRect a = samples_over(m.minx, m.minz, m.maxx, m.maxz, x0, z0, x1, z1);
+	if (a.empty()) return;
+	const int ax0 = a.x0, ax1 = a.x1, az0 = a.z0, az1 = a.z1;
 	const bool pad = m.pts.size() / 3 == 1; // one point: a round pad, the piece from it to itself
 	const std::vector<float> pad_piece = pad ? std::vector<float>{ m.pts[0], m.pts[1], m.pts[2], m.pts[0], m.pts[1], m.pts[2] } : std::vector<float>();
 	const std::vector<NearSample> &near = nearest(pad ? pad_piece : m.pts, m.flat + m.max_run, ax0, az0, ax1, az1);

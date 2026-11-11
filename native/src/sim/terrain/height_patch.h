@@ -1,9 +1,10 @@
-// The terrain's one bilinear sampler (grid_sample) and a copy of the final heights over a box (Heightfield::patch),
-// sampled with it exactly as Heightfield::height_at: a mesh job copies the ground under its lots while it holds the
-// map lock briefly and builds from the copy without the lock.
+// The terrain's one bilinear sampler (grid_sample) and a copy of the final heights over a box (Heightfield::patch), with the
+// lots standing over it, sampled exactly as Heightfield::height_at: a mesh job copies the ground under its lots while it holds
+// the map lock briefly and builds from the copy without the lock.
 #pragma once
 
 #include "core/math.h"
+#include "sim/terrain/lot_shape.h"
 
 #include <cmath>
 #include <cstddef>
@@ -26,10 +27,13 @@ struct HeightPatch {
 	float spacing = 1;
 	int x0 = 0, z0 = 0, w = 0, h = 0; // grid nodes [x0, x0 + w) x [z0, z0 + h)
 	std::vector<float> final_h; // row-major, w per row
+	LotLevels lots; // the lots over the window, in the order of their ids
 
 	// The same value as Heightfield::height_at for every point whose four grid nodes lie in the window.
 	float height_at(float x, float z) const {
 		if (final_h.empty()) return 0.f;
+		float lot;
+		if (lots.level_at(x, z, lot)) return lot;
 		return grid_sample(x, z, N, spacing, [&](int ix, int iz) {
 			const int gx = clampi(ix - x0, 0, w - 1), gz = clampi(iz - z0, 0, h - 1);
 			return final_h[size_t(gz) * size_t(w) + size_t(gx)];

@@ -72,6 +72,8 @@ public:
 	// counted again over every record, and right after growth, edits and loads alike (the snapshot reads them).
 	int residents = 0, jobs = 0;
 	b40::Data designs; // the generator's tables (set once at boot, read-only after): every body is made from them, and kept by them
+	// The records whose lot the ground is still to be graded to (sim/buildings/lot_sites.h settle_sites takes them): every mark.
+	std::vector<int> sites_due;
 
 	void init(ChangeLog *l, const OccupancyDef *occupancy);
 	// The same links set again, nothing cleared: the store moved in with a city read aside (CityState::bind).
@@ -85,7 +87,7 @@ public:
 	// Undo / redo / load: the record goes back under the same id. A building that
 	// grew there meanwhile (outside the history) moves to a new id; `evict` also knocks down what grew on the lot.
 	void put(int id, const Building &b, bool evict);
-	void mark(int id) const;
+	void mark(int id); // the record changed: its chunks drawn again, the traffic and the render told, its lot due to be graded
 	void mark_look(int id) const; // its chunks drawn again though it did not change: another look (Interior layer)
 	// Residents and jobs from the floor area.
 	static void occupancy(const Building &b, float floor_share, const float per_m2[4], int &residents, int &jobs);

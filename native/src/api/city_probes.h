@@ -44,6 +44,8 @@ public:
 	// Tests and captures: every lot's car gate facing a kerb, those whose kerb the road surface draws above the lip a vehicle access
 	// keeps, and where a few of the gates stand (city_core_kerb_probe.cpp).
 	godot::Dictionary drive_kerbs();
+	// Tests: every lot's front against the footway it faces, the lot's covers there against the footway's top (city_core_lot_probe.cpp).
+	godot::Dictionary lot_fronts();
 	// Bodies laid on every sidewalk, inside their room and past it, put onto the sidewalk where they stand (pedestrians.cpp
 	// onto_sidewalk) and posed again: how many, the farthest one moved and where (street, side, arc, place across, metres).
 	godot::Dictionary onto_sidewalk_moves();

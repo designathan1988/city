@@ -219,6 +219,12 @@
   "median_m": 0.17,
   "barrier_m": 0.81
  },
+ "lot": {
+  "plate_m": 0.03,
+  "apron_m": 4,
+  "bank_batter": 3.5,
+  "bank_reach_m": 40
+ },
  "strike": {
   "force_start": 5,
   "force_fine": 10,

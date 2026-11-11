@@ -25,6 +25,7 @@ void BuildingStore::clear() {
 	hash.cell = BUILDING_HASH_CELL;
 	count = 0;
 	residents = jobs = 0;
+	sites_due.clear();
 }
 
 int BuildingStore::add(const Building &b) {
@@ -92,7 +93,8 @@ void BuildingStore::tally(const Building &b, int sign) {
 	jobs += sign * j;
 }
 
-void BuildingStore::mark(int id) const {
+void BuildingStore::mark(int id) {
+	sites_due.push_back(id);
 	if (!log) return;
 	log->lots_changed.push_back(id);
 	mark_into(id, log->building_chunks);
