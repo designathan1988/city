@@ -6,14 +6,18 @@ can hold; a signal no code declares is the engine's and an entry point. Scene co
 code defines are kept per unit as its external uses; members on a receiver no value reaches, as unreached.
 
 Values flow along the links (an argument into a parameter, an assignment into a field) and the links depend on the
-values: both are nodes of one worklist solver (`typer`), computed again only when something they read grew.
+values: both are nodes of one worklist solver (`typer`). A reference whose values grew is linked again over the
+difference only: each grown value node's new values in its place, one read position at a time, the others whole
+(semi-naive evaluation); what depends on the whole set (anything found by lookup, an overload that fits) uses what the
+reference already found (`Resolver.exact`, `Resolver.fitted`).
 """
 from __future__ import annotations
 
 import time
 
-from . import js_link, names
+from . import cpp_lifetime, js_link, names
 from .cpp_implicit import IMPLICIT
+from .cpp_lifetime import Site as _Site
 from .model import FUNCTION_KINDS
 from .rules import NAME_CALLS
 from .resolve import EXACT, EXTERNAL, LOCAL, UNREACHED, Resolver
@@ -34,7 +38,8 @@ def build(index, progress=None) -> Resolver:
     for unit in list(index.units):
         for number in range(len(unit.refs)):
             link_node(rs, (REF, unit.gid, number))
-    implicit_construction(rs)
+    cpp_lifetime.implicit_construction(rs)
+    cpp_lifetime.implicit_destruction(rs)
     for signal, src_key, dst_key, method, file, line in index.connections:
         handlers = rs.keep(index.lookup(dst_key, method), "func", "")
         signals = rs.keep(index.lookup(src_key, signal), "signal", "") or [index.engine_signal(signal)]
@@ -52,7 +57,7 @@ def build(index, progress=None) -> Resolver:
         if node not in typer.dirty:
             continue
         if node[0] == REF:
-            link_node(rs, node)
+            link_node(rs, node, typer.take_deltas(node))
         else:
             typer.recompute(node)
         done += 1
@@ -65,27 +70,29 @@ def build(index, progress=None) -> Resolver:
     return rs
 
 
-def link_node(rs, node) -> None:
-    """Links one reference as a node of the solver: what it reads is recorded, so it is linked again if that grows."""
+def link_node(rs, node, deltas: dict | None = None) -> None:
+    """Links one reference as a node of the solver: what it reads is recorded, so it is linked again if that grows.
+    The first time over every value; after that over what grew: each grown node's new values in its place, at each
+    position the reference reads it, the other nodes whole (semi-naive evaluation)."""
     _, gid, number = node
     unit = rs.ix.units[gid]
     typer = rs.typer
     typer.dirty.discard(node)
-    rs.status.pop(node, None)
     typer.stack.append(node)
     try:
-        link_ref(rs, unit, unit.refs[number])
+        if deltas is None:                  # the first time: every value
+            rs.status.pop(node, None)
+            link_ref(rs, unit, unit.refs[number])
+            return
+        for grown, new in deltas.items():
+            position = 0
+            while True:
+                reads = typer.substituted(grown, new, position, lambda: link_ref(rs, unit, unit.refs[number]))
+                position += 1
+                if position >= reads:
+                    break
     finally:
         typer.stack.pop()
-
-
-class _Site:
-    """A place a link is written that is no reference of a unit (a scene connection)."""
-
-    def __init__(self, line: int):
-        self.line = line
-        self.cond = ()
-        self.args = ()
 
 
 def with_overrides(rs, gids: list[int]) -> list[int]:
@@ -97,7 +104,7 @@ def with_overrides(rs, gids: list[int]) -> list[int]:
             continue
         if unit.lang == "cpp" and unit.qual not in ix.virtual_quals:
             continue
-        found += [g for g in ix.overrides(unit.owner, unit.name) if g not in gids]
+        found += ix.overrides(unit.owner, unit.name)    # every override below it, whatever else the call reached
     return list(dict.fromkeys(found))
 
 
@@ -116,7 +123,7 @@ def link_ref(rs, unit, ref) -> None:
         connect(rs, unit, ref)
         return
     if kind == "destroy":
-        destructors(rs, unit, ref)
+        cpp_lifetime.destructors(rs, unit, ref)
         return
     if kind == "invoke":
         for gid in invoked(rs, unit, ref.base):
@@ -142,6 +149,11 @@ def link_ref(rs, unit, ref) -> None:
             how = EXACT if targets else EXTERNAL
     if kind == "call" and ref.name in NAME_CALLS and ref.args:
         by_value(rs, unit, ref)
+    node = rs.typer.stack[-1]
+    if targets and how not in (EXTERNAL, LOCAL, UNREACHED):
+        rs.exact.add(node)              # found by lookup: the fallbacks below no longer apply to this reference
+    elif not targets and node in rs.exact:
+        return
     if kind == "call" and ref.base is None and not ref.qualified and how in (EXTERNAL, LOCAL):
         targets = invoked(rs, unit, ("name", ref.name))      # the name holds a value that is called
         how = EXACT if targets else how
@@ -156,8 +168,13 @@ def link_ref(rs, unit, ref) -> None:
         elif how == UNREACHED and kind in ("call", "name", "emit", "read", "write"):
             rs.note(UNREACHED, ref.name)
         return
-    if kind == "call" and ref.argc >= 0 and len(targets) > 1:
-        targets = [g for g in targets if fits(ix.units[g], ref.argc)] or targets
+    if kind == "call" and ref.argc >= 0 and (len(targets) > 1 or rs.typer.substitution is not None):
+        fitting = [g for g in targets if fits(ix.units[g], ref.argc)]
+        if fitting:
+            rs.fitted.add(node)         # an overload fits the arguments: the others are not called
+            targets = fitting
+        elif node in rs.fitted:
+            targets = []
     for gid in targets:
         edge_kind = "value" if kind == "read" and ix.units[gid].kind in FUNCTION_KINDS else \
             "call" if kind == "operator" else kind
@@ -216,39 +233,6 @@ def accessor(rs, unit, prop, kind: str, ref) -> None:
         rs.link(unit.gid, gid, "call", ref, EXACT)
 
 
-def implicit_construction(rs) -> None:
-    """A constructor runs its bases' constructors and its object members' constructors (C7)."""
-    ix = rs.ix
-    for unit in list(ix.units):
-        cls = ix.classes.get(unit.owner)
-        if cls is None or cls.lang != "cpp" or unit.name != cls.name or unit.decl_only:
-            continue
-        site = _Site(unit.line)
-        for base in ix.base_keys(cls):
-            for gid in rs.keep(ix.members[base].get(ix.classes[base].name, []), "func", unit.file):
-                rs.link(unit.gid, gid, "call", site, EXACT)
-        for gids in ix.members[cls.key].values():
-            for member in (ix.units[g] for g in gids):
-                held = member.kind == "field" and member.type_text and not set("*&") & set(member.type_text)
-                key = ix.cpp_class(member.type_text, cls.key, member.file) if held else None
-                for gid in rs.keep(ix.members[key].get(ix.classes[key].name, []), "func", unit.file) if key else []:
-                    rs.link(unit.gid, gid, "call", site, EXACT)
-
-
-def destructors(rs, unit, ref) -> None:
-    """An object's destructor at the end of its scope, or `delete` (C7)."""
-    ix = rs.ix
-    if ref.base is not None:
-        keys = rs.typer.receiver(ref.base, unit)[0]
-    else:
-        key = ix.cpp_class("::".join(p for p in (ref.scope, ref.name) if p), unit.owner, unit.file)
-        keys = [key] if key else []
-    for key in keys:
-        simple = ix.classes[key].name
-        for gid in rs.keep(ix.members[key].get("~" + simple, []), "func", unit.file):
-            rs.link(unit.gid, gid, "call", ref, EXACT)
-
-
 def fits(unit, argc: int) -> bool:
     """Overload resolution by arity: the call's arguments fill the required parameters and no more than all."""
     if unit.required < 0:
@@ -269,8 +253,7 @@ def constructors(rs, unit, ref) -> tuple[list[int], str]:
                  for k in [rs.typer.type_class(t, c)] if k] if ref.base is not None else []
         found = [g for k in dict.fromkeys(keys) for g in rs.keep(ix.lookup(k, "_init"), "func", unit.file)]
     else:
-        key = ix.cpp_class("::".join(p for p in (ref.scope, ref.name) if p), unit.owner, unit.file)
-        found = rs.keep(ix.members[key].get(ref.name, []), "func", unit.file) if key else []
+        found = cpp_lifetime.constructors(rs, unit, ref)
     return (found, EXACT) if found else ([], EXTERNAL)
 
 

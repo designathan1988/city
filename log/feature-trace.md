@@ -275,3 +275,32 @@ definitions, 595,715 links, report written (2,266 entry points, 11,641 definitio
 **Still whole:** a reference is linked again over its receiver's whole value when it grows (after the differences have
 drained); on the lab that is 658k relinks and most of the 325 s. Its delta form (each grown node substituted by its
 difference in turn, as semi-naive evaluation does) is the next step for speed; the result is already complete.
+
+## The tracer's pending items closed (2026-11-11 00:15)
+**Pending, from the runtime check and the lab:** 5 calls of a real run with no link; references linked again over their
+receiver whole; `override` labels that depended on the order of relinks. **Causes, read in the code and the graph:**
+(1) a function's locals were kept by name for the whole function, so a second `it` in a sibling block hid the first
+(`JobPool::loop` read the iterator over `newest_` where it meant `slots_`: the keyed jobs never reached `work()`);
+(2) a class declared in a function body (`struct Batch` in `parallel_for`) was not read; (3) in `Blocks b(x0, z0, facing);`
+the grammar reads the values as parameters (the most vexing parse) and they became literals, so the lambda never
+reached `Blocks::Blocks`; (4) a destructor did not run its members' and bases' destructors, nor what a `unique_ptr` or a
+container owns (`~CityCore -> ~JobPool`); (5) `*p` of a pointer to a function gave the engine's value instead of the
+function; (6) `link_node` linked a reference again over everything it read; (7) `with_overrides` left out the targets the
+current relink had found. **Research and plan:** `log/trace-rules.md` ("The pending rules found against a real run":
+[basic.scope.block], [class.local], [dcl.ambig.res], [class.dtor], [unique.ptr.single.dtor], [container.reqmts],
+[expr.unary.op], MDN let/var, GDScript locals, semi-naive evaluation); `log/trace-rules-pending-plan.md`.
+**Code:** `scopes.py` (block scope for C++, GDScript, JS; `var` and parameters at the function's scope);
+`model.declare/assign` take the reader; `Unit.local_types` and `CppReader.local_class`; `cpp_implicit.argument`;
+`cpp_lifetime.py` (construction moved from link.py, destruction added); `transfer.step_one` (`*` on a function);
+`Solver` keeps per consumer and node how many values it read, `link_node` relinks over each grown node's new values at
+each read position (semi-naive), `Resolver.reached/exact/fitted` keep the decisions that depend on the whole set;
+`with_overrides` takes every override; `Index.overrides` memoized.
+**Tests, at the end:** 91 tracer tests OK (6 new, `test_pending.py`). City, last commit against this: 8 caller-callee
+pairs gone, each a wrong link of two same-named locals (`BodyStage::clear` read `inst` of the other loop's element,
+`survey_depth` read `v.w` of another `v`), 270 new, among them `JobPool::loop` -> the keyed jobs (23),
+`parallel_for`'s helper -> the callbacks, `Blocks::Blocks` <- `place_blocks`'s lambda, `~CityCore` -> `~JobPool` and its
+other owned members. Runtime check with a new run of `road_commands_test` on the current DLL (map relinked, every section
+equal to `project/bin`'s): 236 calls between functions of the program, all answered (exit 0; the old run's
+`publish_poses -> lane_pose` came from code another session changed since). Lab (three.js read): fixpoint in 368 s,
+787,509 links (595,715 before: overrides now all labelled, block scope, the new rules), report written; the relinking
+over copied deltas took 430 s for the same links, read positions 368 s.

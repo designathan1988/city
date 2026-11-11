@@ -7,7 +7,7 @@ internal linkage. Bodies are read by `cpp_body`; every value is kept as an expre
 """
 from __future__ import annotations
 
-from . import cpp_body, ir_cpp
+from . import cpp_body, ir_cpp, scopes
 from .cpp_names import WRAPPERS, join, strip_templates, type_of, unwrap
 from .model import ClassFact, FileFacts, Unit, declare
 from .source import Source, field_of, named_children
@@ -28,6 +28,7 @@ class CppReader:
         self.facts = FileFacts(src.display, "cpp")
         self.template = []           # the type parameters of the template being read
         self._lambdas = {}           # lambda node start byte -> local id (each lambda one unit)
+        self.scopes = []             # the blocks of the function being read (`scopes`)
 
     def run(self) -> FileFacts:
         root = self.src.parse("cpp")
@@ -42,7 +43,7 @@ class CppReader:
         return unit
 
     def ir(self, node, unit: Unit) -> tuple:
-        return ir_cpp.build(self.src, node, lambda n: self.lambda_id(n, unit))
+        return scopes.scoped_tree(self, ir_cpp.build(self.src, node, lambda n: self.lambda_id(n, unit)))
 
     def lambda_id(self, node, owner: Unit) -> int:
         """The lambda's unit (made once, whether met while building a tree or while walking the body)."""
@@ -105,6 +106,17 @@ class CppReader:
         self.unit("class", fact.name, key, prefix, node, file_local=anon)
         self.scope(body, key, fact, anon)
 
+    def local_class(self, node, unit: Unit) -> None:
+        """A class declared in a function body ([class.local]): keyed in the function, its name naming it there."""
+        name_node = field_of(node, "name")
+        if name_node is None or field_of(node, "body") is None:
+            return
+        name = strip_templates(self.src.text(name_node))
+        saved = self.scopes
+        self.klass(node, unit.qual, True)
+        self.scopes = saved
+        unit.local_types[name] = join(unit.qual, name)
+
     def enum(self, node, prefix: str) -> None:
         name_node, body = field_of(node, "name"), field_of(node, "body")
         scoped = any(c.type in ("class", "struct") for c in node.children)
@@ -150,14 +162,18 @@ class CppReader:
         typ = field_of(node, "type")
         declared = type_of(self.src.text(typ)) if typ is not None else ""
         unit.type_text = "" if deduced(declared) else declared
-        self.params(decl, unit)
-        for child in named_children(node):
-            if child.type == "field_initializer_list":
-                cpp_body.expr(self, child, unit, ())
-        body = field_of(node, "body")
-        if body is not None:
-            cpp_body.block(self, body, unit, ())
-            cpp_body.tail_calls(self, body, unit)
+        saved = scopes.reset(self)
+        try:
+            self.params(decl, unit)
+            for child in named_children(node):
+                if child.type == "field_initializer_list":
+                    cpp_body.expr(self, child, unit, ())
+            body = field_of(node, "body")
+            if body is not None:
+                cpp_body.block(self, body, unit, ())
+                cpp_body.tail_calls(self, body, unit)
+        finally:
+            self.scopes = saved
 
     def is_virtual(self, node, decl) -> bool:
         words = {self.src.text(c) for c in node.children if c.type in ("virtual", "storage_class_specifier")}
@@ -182,7 +198,7 @@ class CppReader:
             declared = type_of(self.src.text(typ)) if typ is not None else ""
             pointer = self.src.text(field_of(p, "declarator")).lstrip().startswith("*")
             declared = f"{declared} *" if pointer and declared else declared
-            declare(unit, text, [] if deduced(declared) else [("cast", declared)])
+            declare(self, unit, text, [] if deduced(declared) else [("cast", declared)], param=True)
 
     def declaration(self, node, prefix: str, cls: ClassFact | None, anon: bool) -> None:
         typ = field_of(node, "type")

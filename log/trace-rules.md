@@ -378,3 +378,25 @@ distributive stay consumers computed again in full, but only after every pending
 | parameter (place) | yes: a union of the arguments of every link into the function | each link subscribes its argument tree |
 | variable or field (place) | yes: a union of every value written | each write subscribes its value tree |
 | signal handler parameter | yes | subscribes the signal's carried values |
+
+## The pending rules found against a real run (research, 2026-11-10 23:20)
+
+Sources: cppreference "Scope" ([basic.scope.block]: a name declared in a block is local to it, from its point of
+declaration to the end of the block; the same name in another block is another entity), "Local classes"
+([class.local]: a class declared in a function body is local to it, its name visible in that scope), "Most vexing
+parse" / [dcl.ambig.res] with name lookup (in a block, `T x(a, b);` declares an object initialized with the values `a`,
+`b` when they name values, not types), "Destructors" ([class.dtor]: after the body, the destructors of the non-static
+data members in reverse order, then of the direct bases; std::unique_ptr's destructor deletes what it owns, a container
+destroys its elements, [unique.ptr.single.dtor], [container.reqmts]); MDN `let`/`const` (block scope), `var` (function
+scope); GDScript reference (a local is visible in the block it is declared in); semi-naive evaluation (each relation's
+delta at each position in turn, the others whole).
+
+| Rule | Where | What the tracer does |
+|---|---|---|
+| Block scope | C++, GDScript, JS `let`/`const`/`class`/`catch`/loop variables | a declaration whose name is already a local of the function in another block is another local (its own key); uses inside its block read it |
+| Function scope | JS `var`, parameters | one local for the whole function |
+| Local class | C++ | read as a class keyed in its function; its name names it inside the function and its lambdas |
+| Direct-initialization in a block | C++ | each "parameter" that is a bare name is a value passed to the constructor |
+| Implicit destruction | C++ | a destructor (written or implicit) runs the destructors of the members held by value, of what a library owner holds (smart pointers, containers, optional, pair, tuple, variant), and of the bases |
+| Relinking a reference | all | when what it reads grew, only the difference is linked: each grown node's new values in its place, in turn, the others whole; a decision that depends on the whole set (anything reached, an overload that fits) uses what the reference already found |
+| Overrides of a call | all | every override below each target is linked as such, whatever else the same call reached (no dependence on the order of relinks) |

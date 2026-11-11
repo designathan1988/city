@@ -129,7 +129,7 @@ def target(r, node, unit, cond, value: tuple | None) -> None:
     if node.type == "identifier":
         name = r.src.text(node)
         if value is not None:
-            assign(r.facts.units, unit, name, value, shared=True)
+            assign(r, unit, name, value, shared=True)
         add(r, unit, "write", name, node, cond, args=args)
     elif node.type == "qualified_identifier":
         scope, name = scoped(r.src.text(node))
@@ -189,7 +189,7 @@ def call(r, node, unit, cond) -> None:
         if name in STD_MUTATORS and member:
             value = put(trees[-1]) if trees else None
             if owner is None and value is not None:
-                assign(r.facts.units, unit, member, value, shared=True)
+                assign(r, unit, member, value, shared=True)
             add(r, unit, "write", member, node, cond, base=owner, args=(value,) if value is not None else ())
     thread = name in THREAD_NAMES
     for a in argv:

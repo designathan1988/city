@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from . import scopes
+
 # Methods the Godot engine itself calls on a script or an extension class (Godot 4 API, Object/Node/Control/Resource
 # virtuals). A function with one of these names is an entry point: the engine, not the code, calls it.
 ENGINE_CALLBACKS = frozenset({
@@ -81,12 +83,28 @@ class Unit:
     outer: int = -1                # lambda: local id of the function it is written in (same file)
     captured: set = field(default_factory=set)     # lambda: names that are still the enclosing function's locals
     tails: set = field(default_factory=set)        # cpp: lines of the calls in tail position (a compiler may jump)
+    local_types: dict = field(default_factory=dict)    # cpp: a class declared in the function, name -> class key
 
 
-def declare(unit: Unit, name: str, trees: list) -> None:
-    """A local or parameter declared in `unit`: a name of the enclosing function it shadows is no longer captured."""
-    unit.types[name] = trees
-    unit.captured.discard(name)
+def declare(r, unit: Unit, name: str, trees: list, param: bool = False, function_scope: bool = False) -> str:
+    """A local or parameter declared in `unit`, under the key its block gives it (`scopes`); a name of the
+    enclosing function it shadows is no longer captured. Returns the key."""
+    key = name if param else scopes.local_key(r, unit, name, function_scope)
+    if param and r.scopes:
+        r.scopes[-1][name] = name               # the function's own scope (a lambda opens one of its own)
+    unit.types[key] = trees
+    unit.captured.discard(key)
+    return key
+
+
+LOCAL_REFS = ("read", "write", "call", "value", "thread")   # a plain name that can be a local
+
+
+def add_ref(r, unit: Unit, kind: str, name: str, line: int, cond: tuple, **extra) -> None:
+    """A reference made where the reader is: a plain name is the local it names in the open blocks (`scopes`)."""
+    if kind in LOCAL_REFS and extra.get("base") is None and not extra.get("qualified"):
+        name = scopes.visible(r, name)
+    unit.refs.append(Ref(kind, name, line=line, cond=cond, **extra))
 
 
 def enclose(lam: Unit, owner: Unit) -> None:
@@ -96,11 +114,14 @@ def enclose(lam: Unit, owner: Unit) -> None:
     lam.types = {k: [] for k in owner.types}
     lam.captured = set(owner.types)
     lam.lambdas = dict(owner.lambdas)
+    lam.local_types = dict(owner.local_types)
 
 
-def assign(units: list, unit: Unit, name: str, value, shared: bool) -> None:
-    """A value written to a local: into the unit's own, and when the language shares a captured local with the
-    enclosing function (C++ capture by reference), into the enclosing function's as well."""
+def assign(r, unit: Unit, name: str, value, shared: bool) -> None:
+    """A value written to a local (the one its name names where it is written): into the unit's own, and when the
+    language shares a captured local with the enclosing function (C++ capture by reference), into the enclosing
+    function's as well."""
+    units, name = r.facts.units, scopes.visible(r, name)
     while name in unit.types:
         unit.types[name].append(value)
         if not shared or name not in unit.captured or unit.outer < 0:

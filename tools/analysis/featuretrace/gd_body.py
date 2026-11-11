@@ -7,7 +7,7 @@ narrows the tested name inside its branch. Member chains are walked step by step
 """
 from __future__ import annotations
 
-from . import gd_calls, ir_gd
+from . import gd_calls, ir_gd, scopes
 from .ir import put
 from .rules import SIGNAL_OPS
 from .model import assign, declare
@@ -31,12 +31,12 @@ def statement(r, st, unit, cls, cond) -> None:
         value, typ = field_of(st, "value"), field_of(st, "type")
         if value is not None and value.type == "lambda":
             unit.lambdas[name] = r.lambda_id(value, unit, cls)
-            declare(unit, name, [("callable", unit.lambdas[name])])
+            declare(r, unit, name, [("callable", unit.lambdas[name])])
             return
         if typ is not None and typ.type == "type":
-            declare(unit, name, [("cast", src.text(typ))])
+            declare(r, unit, name, [("cast", src.text(typ))])
         else:
-            declare(unit, name, [r.ir(value, unit, cls)] if value is not None else [])
+            declare(r, unit, name, [r.ir(value, unit, cls)] if value is not None else [])
         expr(r, value, unit, cls, cond)
     elif kind == "if_statement":
         test = field_of(st, "condition")
@@ -55,9 +55,12 @@ def statement(r, st, unit, cls, cond) -> None:
                 r.block(field_of(child, "body"), unit, cls, cond + ("else of if " + squash(src.text(test)),))
     elif kind == "for_statement":
         left, right = field_of(st, "left"), field_of(st, "right")
-        declare(unit, src.text(left), [("elements", r.ir(right, unit, cls))])
+        walked = r.ir(right, unit, cls)
         expr(r, right, unit, cls, cond)
+        scopes.open_scope(r)                    # the loop variable is local to the loop
+        declare(r, unit, src.text(left), [("elements", walked)])
         r.block(field_of(st, "body"), unit, cls, cond + (f"for {src.text(left)} in {squash(src.text(right))}",))
+        scopes.close_scope(r)
     elif kind == "while_statement":
         test = field_of(st, "condition")
         expr(r, test, unit, cls, cond)
@@ -85,14 +88,16 @@ def match(r, st, unit, cls, cond) -> None:
         block = field_of(section, "body")
         pattern = ", ".join(src.text(c) for c in named_children(section) if c is not block)
         label = f"match {squash(src.text(value))}: {squash(pattern)}"
+        scopes.open_scope(r)                    # a pattern's bindings are local to its branch
         for part in named_children(section):
             if part.type == "pattern_binding":
                 for name in named_children(part):
-                    declare(unit, src.text(name), [matched])
+                    declare(r, unit, src.text(name), [matched])
             elif part is not block:
                 expr(r, part, unit, cls, cond + (label,))     # a pattern reads the names it compares with
         if block is not None:
             r.block(block, unit, cls, cond + (label,))
+        scopes.close_scope(r)
 
 
 def narrow(r, test) -> dict:
@@ -144,7 +149,7 @@ def target(r, node, unit, cls, cond, value: tuple) -> None:
         return
     if node.type == "identifier":
         name = r.src.text(node)
-        assign(r.facts.units, unit, name, value, shared=False)
+        assign(r, unit, name, value, shared=False)
         r.add(unit, "write", name, node, cond, args=(value,))
     elif node.type == "attribute":
         attribute(r, node, unit, cls, cond, value=value)

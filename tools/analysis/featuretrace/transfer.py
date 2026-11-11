@@ -104,6 +104,9 @@ def step_one(t, target, step: str, text: str, ctx) -> None:
     if text.startswith(ELEM):
         t.add(target, [(text[len(ELEM):], ctx)])        # an element: by index, by a walk, through an iterator
         return
+    if text.startswith(FN) and step == DEREF:
+        t.add(target, [(text, ctx)])                    # `*p` of a pointer to a function: the function ([expr.unary.op])
+        return
     if text == ENGINE or text.startswith(FN):
         t.add(target, [(ENGINE, ctx)])
         return

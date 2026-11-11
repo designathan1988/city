@@ -35,6 +35,10 @@ class Solver:
         self.stack = []                    # the consumers being computed, innermost last
         self.dirty = set()                 # consumers that read something that grew since they were computed
         self.work = deque()                # dirty consumers waiting to be computed again
+        self.marks = {}                    # (consumer, node) -> how many of the node's values it has read
+        self.grown = defaultdict(set)      # consumer -> the nodes it read that grew since
+        self.substitution = None           # (node, its new values, read position) while a consumer is linked anew
+        self.substitution_reads = 0
 
     # ---- value nodes -------------------------------------------------------------------------------------------
     def canon(self, text: str, ctx) -> tuple:
@@ -77,14 +81,48 @@ class Solver:
                 transfer(target, new)
 
     # ---- consumers ---------------------------------------------------------------------------------------------
+    def substituted(self, node, new: list, position: int, run) -> int:
+        """Runs a consumer with `node` read as only its new values at its `position`-th read (the others whole).
+        Returns how many times the consumer read `node`."""
+        outer = (self.substitution, self.substitution_reads)
+        self.substitution, self.substitution_reads = (node, new, position), 0
+        try:
+            run()
+            return self.substitution_reads
+        finally:
+            self.substitution, self.substitution_reads = outer
+
+    def current(self, node) -> list:
+        """A node's values as the consumer being run reads them (its difference in its place when substituted); how
+        many it has read is kept, so the next difference is what came after."""
+        held = self.value.get(node, ())
+        if self.stack:
+            self.marks[(self.stack[-1], node)] = len(held)
+        if self.substitution is not None and self.substitution[0] == node:
+            reads = self.substitution_reads
+            self.substitution_reads += 1
+            if reads == self.substitution[2]:
+                return list(self.substitution[1])
+        return list(held)
+
+    def take_deltas(self, consumer) -> dict:
+        """The values each node the consumer read gained since it read it (values only grow: the tail of the list)."""
+        out = {}
+        for node in self.grown.pop(consumer, ()):
+            start = self.marks.get((consumer, node))
+            if start is not None and len(self.value.get(node, ())) > start:
+                out[node] = self.value[node][start:]
+        return out
+
     def read(self, node) -> None:
         """The consumer being computed reads `node` whole: it is computed again when `node` grows."""
         if self.stack:
             self.readers[node].add(self.stack[-1])
 
     def grew(self, node) -> None:
-        """`node` grew: every consumer that read it is computed again."""
+        """`node` grew: every consumer that read it is computed again (over what grew)."""
         for reader in self.readers.get(node, ()):
+            self.grown[reader].add(node)
             if reader not in self.dirty:
                 self.dirty.add(reader)
                 self.work.append(reader)

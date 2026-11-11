@@ -8,7 +8,7 @@ captured local reaches the enclosing function's (closures share their variables,
 """
 from __future__ import annotations
 
-from . import c_family, js_class, js_decl, js_expr
+from . import c_family, js_class, js_decl, js_expr, scopes
 from .cpp_implicit import IMPLICIT
 from .gd_body import squash
 from .ir import put
@@ -25,18 +25,20 @@ SILENT = ("break_statement", "continue_statement", "empty_statement", "debugger_
 
 def block(r, node, unit, cond) -> None:
     items = named_children(node) if node is not None else []
+    scopes.open_scope(r)
     for st in items:
         if st.type in HOISTED:
             local_function(r, st, unit)
     for st in items:
         statement(r, st, unit, cond)
+    scopes.close_scope(r)
 
 
 def local_function(r, node, unit) -> int:
     name = r.src.text(field_of(node, "name"))
     if name not in unit.lambdas:
         unit.lambdas[name] = r.function(node, name, unit.owner, unit, kind="lambda").local_id
-        declare(unit, name, [("callable", unit.lambdas[name])])
+        declare(r, unit, name, [("callable", unit.lambdas[name])])
     return unit.lambdas[name]
 
 
@@ -47,7 +49,7 @@ def statement(r, st, unit, cond) -> None:
         block(r, st, unit, cond)
     elif kind in ("lexical_declaration", "variable_declaration"):
         for declarator in (c for c in named_children(st) if c.type == "variable_declarator"):
-            local(r, declarator, unit, cond)
+            local(r, declarator, unit, cond, function_scope=kind == "variable_declaration")   # `var`: the function's
     elif kind in HOISTED:
         local_function(r, st, unit)
     elif kind in ("class_declaration", "abstract_class_declaration"):
@@ -67,6 +69,7 @@ def statement(r, st, unit, cond) -> None:
                 if sub is not test:
                     statement(r, sub, unit, cond + (label,))
     elif kind == "for_statement":
+        scopes.open_scope(r)                    # `for (let ...)`: the loop's own scope
         parts = []
         for name in ("initializer", "condition", "increment"):
             part = field_of(st, name)
@@ -74,8 +77,11 @@ def statement(r, st, unit, cond) -> None:
                 parts.append(src.text(part).rstrip(";").strip())
                 statement(r, part, unit, cond)
         statement(r, field_of(st, "body"), unit, cond + ("for " + squash("; ".join(parts)),))
+        scopes.close_scope(r)
     elif kind == "for_in_statement":
+        scopes.open_scope(r)
         loop(r, st, unit, cond)
+        scopes.close_scope(r)
     elif kind in ("while_statement", "do_statement"):
         test = field_of(st, "condition")
         expr(r, test, unit, cond)
@@ -84,11 +90,13 @@ def statement(r, st, unit, cond) -> None:
         block(r, field_of(st, "body"), unit, cond)
         handler = field_of(st, "handler")
         if handler is not None:
+            scopes.open_scope(r)                # the catch parameter is local to its clause
             param = field_of(handler, "parameter")
             if param is not None:
                 r.bind(param, ("literal", ""), unit, None, cond)
             label = "catch " + squash(src.text(param)) if param is not None else "catch"
             block(r, field_of(handler, "body"), unit, cond + (label,))
+            scopes.close_scope(r)
         final = field_of(st, "finalizer")
         if final is not None:
             block(r, field_of(final, "body"), unit, cond + ("finally",))
@@ -109,13 +117,14 @@ def statement(r, st, unit, cond) -> None:
         expr(r, st, unit, cond)
 
 
-def local(r, declarator, unit, cond) -> None:
-    """`const x = v` inside a function: a function or class written to it takes its name (J9)."""
+def local(r, declarator, unit, cond, function_scope: bool = False) -> None:
+    """`const x = v` inside a function: a function or class written to it takes its name (J9); `var` belongs to the
+    function's scope, `let`/`const` to the block's."""
     target, value = field_of(declarator, "name"), field_of(declarator, "value")
     if target.type == "identifier" and value is not None and value.type in FUNCTIONS:
         name = r.src.text(target)
         unit.lambdas[name] = r.function(value, name, unit.owner, unit, kind="lambda").local_id
-        declare(unit, name, [("callable", unit.lambdas[name])])
+        declare(r, unit, name, [("callable", unit.lambdas[name])], function_scope=function_scope)
         return
     if target.type == "identifier" and value is not None and value.type == "class":
         js_class.class_declaration(r, value, r.src.text(target), unit.owner, unit)
@@ -123,7 +132,8 @@ def local(r, declarator, unit, cond) -> None:
     tree = r.ir(value, unit) if value is not None else ("literal", "undefined")
     declared = r.type_values(field_of(declarator, "type"))
     if target.type == "identifier":
-        declare(unit, r.src.text(target), declared + ([tree] if value is not None else []))
+        declare(r, unit, r.src.text(target), declared + ([tree] if value is not None else []),
+                function_scope=function_scope)
     else:
         r.bind(target, tree, unit, None, cond)
     expr(r, value, unit, cond)
@@ -146,7 +156,7 @@ def loop(r, st, unit, cond) -> None:
 
 
 def write_name(r, node, name: str, value: tuple, unit, cond) -> None:
-    assign(r.facts.units, unit, name, value, shared=True)
+    assign(r, unit, name, value, shared=True)
     r.add(unit, "write", name, node, cond, args=(value,))
 
 

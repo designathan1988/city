@@ -37,6 +37,7 @@ class Index:
         self.includes = {}                        # file -> files its `#include "..."` names (resolved)
         self._visible = {}
         self._lookups = {}
+        self._overrides = {}
         autoloads, bindings = {}, []
         for facts in all_facts:
             self.offset[facts.path] = len(self.units)
@@ -226,6 +227,8 @@ class Index:
 
     def overrides(self, key: str, name: str) -> list[int]:
         """Definitions of the same name in every class that derives from `key`: what a virtual call may reach."""
+        if (key, name) in self._overrides:
+            return self._overrides[(key, name)]
         found, todo, seen = [], list(self.subclasses.get(key, ())), set()
         while todo:
             sub = todo.pop()
@@ -234,6 +237,7 @@ class Index:
             seen.add(sub)
             found += [g for g in self.members[sub].get(name, []) if self.units[g].kind in FUNCTION_KINDS]
             todo += list(self.subclasses.get(sub, ()))
+        self._overrides[(key, name)] = found
         return found
 
     # ---- the engine's names ------------------------------------------------------------------------------------

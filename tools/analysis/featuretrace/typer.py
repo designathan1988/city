@@ -55,7 +55,7 @@ class Typer(TypeNames, Solver):
 
     def values_of(self, node) -> list[tuple]:
         self.read(node)
-        return list(self.value.get(node, ()))
+        return self.current(node)
 
     def follow(self, source, target) -> None:
         self.subscribe(source, target, ("same",), same(self))
@@ -171,11 +171,14 @@ class Typer(TypeNames, Solver):
         """A consumer value computed again whole from what it reads (its value only grows)."""
         node, compute = self.computed[consumer]
         self.dirty.discard(consumer)
+        self.grown.pop(consumer, None)         # computed again whole
+        outer, self.substitution = self.substitution, None    # whole, even inside a reference linked by difference
         self.stack.append(consumer)
         try:
             values = compute()
         finally:
             self.stack.pop()
+            self.substitution = outer
         self.add(node, values)
 
     # ---- names (LOOK, FLOW) -------------------------------------------------------------------------------------

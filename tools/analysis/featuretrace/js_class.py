@@ -23,7 +23,7 @@ def class_declaration(r, node, name: str, owner: str, holder) -> str:
     if local:
         r.facts.classes.append(ClassFact(key, "js", name, r.key, r.src.line(node)))
         r.unit("class", name, holder.owner, node, qual=key)
-        declare(holder, name, [("cast", ir_js.CLASS_VALUE + key)])
+        declare(r, holder, name, [("cast", ir_js.CLASS_VALUE + key)])
     else:
         js_decl.new_class(r, node, name, owner)
     cls = next(c for c in reversed(r.facts.classes) if c.key == key)

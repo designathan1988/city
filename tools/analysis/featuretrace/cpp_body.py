@@ -7,20 +7,22 @@ range-for variable holds the range's elements; each assignment adds its value. E
 """
 from __future__ import annotations
 
-from . import c_family, cpp_expr, cpp_implicit
+from . import c_family, cpp_expr, cpp_implicit, scopes
 from .cpp_names import type_of, unwrap
 from .gd_body import squash
-from .model import Ref, Unit, declare, enclose
+from .model import Unit, add_ref, declare, enclose
 from .source import field_of, named_children
 
 
 def add(r, unit: Unit, kind: str, name: str, node, cond, **extra) -> None:
-    unit.refs.append(Ref(kind, name, line=r.src.line(node), cond=cond, **extra))
+    add_ref(r, unit, kind, name, r.src.line(node), cond, **extra)
 
 
 def block(r, node, unit, cond) -> None:
+    scopes.open_scope(r)
     for st in named_children(node):
         statement(r, st, unit, cond)
+    scopes.close_scope(r)
 
 
 def bind_parts(r, node, unit, source: tuple | None) -> None:
@@ -28,13 +30,15 @@ def bind_parts(r, node, unit, source: tuple | None) -> None:
     names = [r.src.text(c) for c in named_children(node) if c.type == "identifier"]
     for i, name in enumerate(names):
         part = ("first", "second")[i] if len(names) == 2 else ""
-        declare(unit, name, [("member", source, part, False)] if source is not None and part else [])
+        declare(r, unit, name, [("member", source, part, False)] if source is not None and part else [])
 
 
 def local(r, node, unit, cond) -> None:
     """A local declaration: each declarator's name and the value it holds."""
     from .cpp_read import deduced
     typ = field_of(node, "type")
+    if typ is not None and typ.type in ("class_specifier", "struct_specifier", "union_specifier"):
+        r.local_class(typ, unit)                # a class declared in the function ([class.local])
     type_text = type_of(r.src.text(typ)) if typ is not None else ""
     for i, child in enumerate(node.children):
         if node.field_name_for_child(i) != "declarator":
@@ -54,12 +58,12 @@ def local(r, node, unit, cond) -> None:
         text = r.src.text(name)
         if value is not None and value.type == "lambda_expression":
             unit.lambdas[text] = r.lambda_id(value, unit)
-            declare(unit, text, [("callable", unit.lambdas[text])])
+            declare(r, unit, text, [("callable", unit.lambdas[text])])
             continue
         if deduced(type_text):
-            declare(unit, text, [r.ir(value, unit)] if value is not None else [])
+            declare(r, unit, text, [r.ir(value, unit)] if value is not None else [])
         else:
-            declare(unit, text, [("cast", type_text)])
+            declare(r, unit, text, [("cast", type_text)])
             cpp_implicit.declared_object(r, unit, child, type_text, node, cond, add)
         expr(r, value, unit, cond)
 
@@ -71,6 +75,8 @@ def statement(r, st, unit, cond) -> None:
         block(r, st, unit, cond)
     elif kind == "declaration":
         local(r, st, unit, cond)
+    elif kind in ("class_specifier", "struct_specifier", "union_specifier"):
+        r.local_class(st, unit)                 # `struct X { ... };` in a block: a local class ([class.local])
     elif kind == "if_statement":
         c_family.if_statement(r, st, unit, cond, statement, expr)
     elif kind in ("for_statement", "for_range_loop", "while_statement", "do_statement"):
@@ -104,6 +110,15 @@ def statement(r, st, unit, cond) -> None:
 
 
 def loop(r, st, unit, cond) -> None:
+    """A loop: its init declarations and loop variable are local to it (a scope of their own)."""
+    scopes.open_scope(r)
+    try:
+        loop_body(r, st, unit, cond)
+    finally:
+        scopes.close_scope(r)
+
+
+def loop_body(r, st, unit, cond) -> None:
     from .cpp_read import deduced
     src = r.src
     body = field_of(st, "body")
@@ -116,7 +131,7 @@ def loop(r, st, unit, cond) -> None:
         if name is not None and name.type == "structured_binding_declarator":
             bind_parts(r, name, unit, walked)
         elif name is not None:
-            declare(unit, src.text(name), [walked] if deduced(declared) else [("cast", declared)])
+            declare(r, unit, src.text(name), [walked] if deduced(declared) else [("cast", declared)])
         expr(r, right, unit, cond)
         cpp_implicit.range_calls(r, unit, right, st, cond, add)
         label = f"for ({squash(src.text(field_of(st, 'declarator')))} : {squash(src.text(right))})"
@@ -183,6 +198,7 @@ def lambda_unit(r, node, owner: Unit) -> Unit:
                r.src.display, line, r.src.end_line(node), local_id=len(r.facts.units))
     r.facts.units.append(lam)
     enclose(lam, owner)
+    scopes.open_scope(r)                        # its parameters: a scope of its own inside the enclosing blocks
     decl = field_of(node, "declarator")
     if decl is not None:
         r.params(decl, lam)
@@ -190,6 +206,7 @@ def lambda_unit(r, node, owner: Unit) -> Unit:
     if body is not None:
         block(r, body, lam, ())
         tail_calls(r, body, lam)
+    scopes.close_scope(r)
     return lam
 
 

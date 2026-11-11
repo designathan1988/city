@@ -97,6 +97,6 @@ def member_call(r, seg, name, base, unit, cls, cond) -> None:
         if name in PUTS and argv and member:
             value = put(r.ir(argv[-1], unit, cls))
             if owner is None:
-                assign(r.facts.units, unit, member, value, shared=False)
+                assign(r, unit, member, value, shared=False)
             r.add(unit, "write", member, seg, cond, base=owner, args=(value,))
     arguments(r, argv, unit, cls, cond)

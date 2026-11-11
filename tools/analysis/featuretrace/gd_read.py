@@ -6,8 +6,8 @@ expression tree built by `ir_gd` (log/trace-rules.md: VALUE, FLOW).
 """
 from __future__ import annotations
 
-from . import gd_body, ir_gd
-from .model import ClassFact, FileFacts, Ref, Unit, declare, enclose
+from . import gd_body, ir_gd, scopes
+from .model import ClassFact, FileFacts, Unit, add_ref, declare, enclose
 from .source import Source, field_of, named_children, string_value
 
 
@@ -18,6 +18,7 @@ class GdReader:
         self.facts = FileFacts(src.display, "gd")
         self.narrowed = {}           # names an enclosing `is` test proves the type of
         self._lambdas = {}           # lambda node start byte -> local id (each lambda one unit)
+        self.scopes = []             # the blocks of the function being read (`scopes`)
 
     # ---- definitions -------------------------------------------------------------------------------------------
     def run(self) -> FileFacts:
@@ -117,9 +118,11 @@ class GdReader:
                         accessor_of=prop.name)
             self.facts.units.append(body)
             prop.accessors[which] = body.local_id
+            saved = scopes.reset(self)
             self.params(part, body, cls)
             if field_of(part, "body") is not None:
                 self.block(field_of(part, "body"), body, cls, ())
+            self.scopes = saved
 
     def params(self, node, unit: Unit, cls: ClassFact) -> None:
         params = field_of(node, "parameters")
@@ -134,9 +137,9 @@ class GdReader:
             unit.params.append(name)
             typ, default = field_of(p, "type"), field_of(p, "value")
             if typ is not None and typ.type == "type":
-                declare(unit, name, [("cast", self.src.text(typ))])
+                declare(self, unit, name, [("cast", self.src.text(typ))], param=True)
             else:
-                declare(unit, name, [self.ir(default, unit, cls)] if default is not None else [])
+                declare(self, unit, name, [self.ir(default, unit, cls)] if default is not None else [], param=True)
 
     def function(self, node, cls: ClassFact) -> None:
         name = field_of(node, "name")
@@ -145,9 +148,11 @@ class GdReader:
         unit.static = any(c.type == "static_keyword" for c in node.children)
         ret = field_of(node, "return_type")
         unit.type_text = self.src.text(ret) if ret is not None else ""
+        saved = scopes.reset(self)
         self.params(node, unit, cls)
         if field_of(node, "body") is not None:
             self.block(field_of(node, "body"), unit, cls, ())
+        self.scopes = saved
 
     def lambda_id(self, node, owner: Unit, cls: ClassFact) -> int:
         """The lambda's unit (made once, whether met while building a tree or while walking the body)."""
@@ -159,23 +164,27 @@ class GdReader:
         self.facts.units.append(lam)
         self._lambdas[node.start_byte] = lam.local_id
         enclose(lam, owner)
+        scopes.open_scope(self)                 # its parameters: a scope of its own inside the enclosing blocks
         self.params(node, lam, cls)
         if field_of(node, "body") is not None:
             self.block(field_of(node, "body"), lam, cls, ())
+        scopes.close_scope(self)
         return lam.local_id
 
     # ---- bodies ------------------------------------------------------------------------------------------------
     def ir(self, node, unit: Unit, cls: ClassFact) -> tuple:
         """The expression tree of a node; a name an enclosing `is` test proves is read as that type."""
-        tree = ir_gd.build(self.src, node, lambda n: self.lambda_id(n, unit, cls))
+        tree = scopes.scoped_tree(self, ir_gd.build(self.src, node, lambda n: self.lambda_id(n, unit, cls)))
         return narrowed(tree, self.narrowed) if self.narrowed else tree
 
     def add(self, unit: Unit, kind: str, name: str, node, cond, **extra) -> None:
-        unit.refs.append(Ref(kind, name, line=self.src.line(node), cond=cond, **extra))
+        add_ref(self, unit, kind, name, self.src.line(node), cond, **extra)
 
     def block(self, node, unit: Unit, cls: ClassFact, cond: tuple) -> None:
+        scopes.open_scope(self)
         for st in named_children(node):
             gd_body.statement(self, st, unit, cls, cond)
+        scopes.close_scope(self)
 
     def expr(self, node, unit: Unit, cls: ClassFact, cond: tuple) -> None:
         gd_body.expr(self, node, unit, cls, cond)

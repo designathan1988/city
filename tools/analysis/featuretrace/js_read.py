@@ -10,12 +10,13 @@ written to (J9). Module-level statements are read by `js_decl`, statements by `j
 """
 from __future__ import annotations
 
-from . import ir_js, js_body, js_class, js_decl
-from .model import ClassFact, FileFacts, Ref, Unit, declare, enclose
+from . import ir_js, js_body, js_class, js_decl, scopes
+from .model import ClassFact, FileFacts, Unit, add_ref, declare, enclose
 from .rules import CONSTRUCTOR
 from .source import Source, field_of, grammar_of, named_children
 
 FUNCTION_NODES = ir_js.FUNCTIONS
+
 STATIC_UNIT, MODULE_UNIT = "<static>", "<module>"
 NO_TYPES = ("null", "undefined", "void", "never", "any", "unknown")
 
@@ -28,6 +29,7 @@ class JsReader:
         self._lambdas = {}               # function node start byte -> local id
         self._objects = {}               # object / class expression start byte -> class key
         self.declaration_file = src.display.endswith((".d.ts", ".d.mts", ".d.cts"))
+        self.scopes = []                 # the blocks of the function being read (`scopes`)
 
     def run(self) -> FileFacts:
         root = self.src.parse(grammar_of(self.src.path))
@@ -50,10 +52,10 @@ class JsReader:
         return f"{owner}.{name}" if "#" in owner else f"{owner}:{name}"
 
     def add(self, unit: Unit, kind: str, name: str, node, cond, **extra) -> None:
-        unit.refs.append(Ref(kind, name, line=self.src.line(node), cond=cond, **extra))
+        add_ref(self, unit, kind, name, self.src.line(node), cond, **extra)
 
     def ir(self, node, unit: Unit) -> tuple:
-        return ir_js.build(self, node, unit)
+        return scopes.scoped_tree(self, ir_js.build(self, node, unit))
 
     # ---- functions ---------------------------------------------------------------------------------------------
     def function(self, node, name: str, owner: str, outer: Unit | None, kind: str = "func") -> Unit:
@@ -62,8 +64,21 @@ class JsReader:
             return self.facts.units[self._lambdas[node.start_byte]]
         unit = self.unit(kind, name, owner, node)
         self._lambdas[node.start_byte] = unit.local_id
-        if outer is not None and outer.name != MODULE_UNIT:
+        nested = outer is not None and outer.name != MODULE_UNIT
+        if nested:
             enclose(unit, outer)
+        saved = self.scopes if nested else scopes.reset(self)   # a nested function sees the enclosing blocks
+        if nested:
+            scopes.open_scope(self)
+        try:
+            self.function_body(node, unit)
+        finally:
+            if nested:
+                scopes.close_scope(self)
+            self.scopes = saved
+        return unit
+
+    def function_body(self, node, unit: Unit) -> None:
         ret = field_of(node, "return_type")
         unit.type_text = self.type_text(ret) if ret is not None else ""
         self.params(field_of(node, "parameters") or field_of(node, "parameter"), unit)
@@ -75,7 +90,6 @@ class JsReader:
         else:                                                   # an arrow's expression body is its return value
             unit.returns.append((self.src.line(body), js_body.squash(self.src.text(body)), self.ir(body, unit)))
             js_body.expr(self, body, unit, ())
-        return unit
 
     def lambda_id(self, node, unit: Unit) -> int:
         """A function written as a value inside `unit`: a lambda (named by its own name when it has one)."""
@@ -103,7 +117,7 @@ class JsReader:
             slot = self.src.text(pattern) if pattern.type == "identifier" else f"<arg{i}>"
             unit.params.append(slot)
             declared = self.type_values(field_of(p, "type"))
-            declare(unit, slot, declared + ([self.ir(default, unit)] if default is not None else []))
+            declare(self, unit, slot, declared + ([self.ir(default, unit)] if default is not None else []), param=True)
             if pattern.type != "identifier":
                 self.bind(pattern, ("name", slot), unit, None, ())
             if default is not None:
@@ -116,7 +130,7 @@ class JsReader:
         if kind in ("identifier", "shorthand_property_identifier_pattern"):
             text = self.src.text(pattern)
             if write_cond is None:
-                declare(unit, text, [tree])
+                declare(self, unit, text, [tree])
             else:
                 js_body.write_name(self, pattern, text, tree, unit, cond)
         elif kind == "object_pattern":

@@ -4,6 +4,7 @@ the arguments written. The typer (`typer.Typer`) is built on this.
 """
 from __future__ import annotations
 
+from .cpp_names import strip_templates
 from .library import clean, substitute
 from .solver import CLASS, ELEM, ENGINE, FN, TEXT
 
@@ -25,6 +26,10 @@ class TypeNames:
             return None
         if text.startswith(CLASS):
             return text[1:]
+        if ctx.lang == "cpp" and ctx.local_types:          # a class of the function it is read in ([class.local])
+            local = ctx.local_types.get(strip_templates(clean(text)))
+            if local:
+                return local
         key = (text, ctx.lang, ctx.owner, ctx.file)       # a type names the same class from the same scope
         if key not in self._classes:
             self._classes[key] = self.ix.gd_class(text, ctx.owner) if ctx.lang == "gd" else \

@@ -9,6 +9,7 @@ or a library type reaches nothing of the program).
 """
 from __future__ import annotations
 
+from . import scopes
 from .cpp_names import strip_templates
 from .source import field_of, named_children
 
@@ -24,7 +25,7 @@ def declared_object(r, unit, declarator, type_text: str, node, cond, add) -> Non
     args = ()
     if declarator.type == "function_declarator":
         params = field_of(declarator, "parameters")
-        args = tuple(r.ir(a, unit) for a in named_children(params)) if params is not None else ()
+        args = tuple(argument(r, a, unit) for a in named_children(params)) if params is not None else ()
     elif declarator.type == "init_declarator":
         value = field_of(declarator, "value")
         if value is None or value.type not in ("initializer_list", "argument_list"):
@@ -34,6 +35,15 @@ def declared_object(r, unit, declarator, type_text: str, node, cond, add) -> Non
     # only a class type has a constructor (default-initialization of a non-class does nothing, C7)
     add(r, unit, "new", name, node, cond, qualified=bool(scope), scope=scope, args=args, text=IMPLICIT)
     add(r, unit, "destroy", name, node, cond, qualified=bool(scope), scope=scope)
+
+
+def argument(r, param, unit) -> tuple:
+    """A "parameter" of `T x(a, b);` in a block: a bare name is the value it names, passed to the constructor
+    (direct-initialization; [dcl.ambig.res] with name lookup)."""
+    typ = field_of(param, "type")
+    if param.type == "parameter_declaration" and field_of(param, "declarator") is None and typ is not None             and typ.type in ("type_identifier", "identifier", "qualified_identifier"):
+        return scopes.scoped_tree(r, ("name", strip_templates(r.src.text(typ))))
+    return r.ir(param, unit)
 
 
 def operator(r, unit, node, cond, add) -> None:

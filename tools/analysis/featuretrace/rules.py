@@ -90,7 +90,8 @@ HANDLERS = {
             "js_decl:declaration", "js_class:class_declaration", "js_class:object_literal",
             "js_class:members"),
     "LOOK": ("resolve:Resolver.bare", "resolve:Resolver.qualified", "resolve:Resolver.adl", "index:Index.visible",
-             "typer:Typer.named", "resolve:Resolver.js_scoped", "js_modules:JsModules.resolve",
+             "typer:Typer.named", "resolve:Resolver.js_scoped", "scopes:local_key", "scopes:visible",
+             "scopes:scoped_tree", "cpp_lifetime:class_named", "js_modules:JsModules.resolve",
              "js_modules:JsModules.export", "js_modules:JsModules.binding", "js_modules:JsModules.class_of"),
     "VALUE": ("typer:Typer.evaluate", "ir_gd:build", "ir_cpp:build", "ir_js:build"),
     "EXPR": ("ir_gd:build", "ir_cpp:build", "typer:Typer.evaluate", "ir_js:build", "js_expr:expression"),
@@ -99,9 +100,11 @@ HANDLERS = {
              "solver:Solver.propagate", "typer:Typer.wire", "transfer:member_one", "transfer:step_one",
              "solver:Solver.read", "solver:Solver.grew", "typer:Typer.canon"),
     "CALL": ("link:link_ref", "link:with_overrides", "link:fits", "resolve:Resolver.member", "link:accessor",
-             "link:destructors", "link:implicit_construction", "cpp_implicit:declared_object", "cpp_implicit:operator",
+             "cpp_implicit:declared_object", "cpp_implicit:operator",
              "cpp_implicit:range_calls", "cpp_implicit:destroyed", "gd_read:GdReader.accessors", "link:invoked",
-             "link:handed", "js_link:constructors", "js_link:module_run", "js_link:jsx", "js_link:callback_args",
+             "link:handed", "cpp_lifetime:implicit_construction", "cpp_lifetime:implicit_destruction",
+             "cpp_lifetime:destruction_of", "cpp_lifetime:owned_classes", "cpp_lifetime:destructors",
+             "cpp_lifetime:constructors", "link:link_node", "solver:Solver.substituted", "js_link:constructors", "js_link:module_run", "js_link:jsx", "js_link:callback_args",
              "js_expr:call", "js_expr:implicit", "js_body:loop"),
     "BRANCH": ("gd_body:statement", "cpp_body:statement", "js_body:statement"),
     "JUMP": ("gd_body:statement", "cpp_body:statement", "js_body:statement"),
@@ -121,6 +124,12 @@ NAME_CONSTRUCTORS = {("ClassDB", "instantiate"): 0}
 # C++ casts and the library's makers: the type a templated call yields.
 CASTS = ("static_cast", "dynamic_cast", "const_cast", "reinterpret_cast", "bit_cast", "any_cast", "get", "get_if")
 MAKERS = {"make_shared": "std::shared_ptr", "make_unique": "std::unique_ptr", "make_optional": "std::optional"}
+# The library's owners ([unique.ptr], [util.smartptr.shared], [containers], [optional], [pairs], [tuple], [variant]):
+# destroying one destroys what it holds (its template arguments' objects).
+LIBRARY_OWNERS = frozenset({"unique_ptr", "shared_ptr", "vector", "deque", "list", "forward_list", "array", "set",
+                            "multiset", "map", "multimap", "unordered_set", "unordered_multiset", "unordered_map",
+                            "unordered_multimap", "optional", "pair", "tuple", "variant", "stack", "queue",
+                            "priority_queue"})
 # [utility], [refwrap], [utility.as.const]: each returns its argument itself (a cast of its value category, a wrapper
 # that calls through to it), so a call of one holds what its argument holds
 PASS_THROUGH = frozenset({"move", "forward", "move_if_noexcept", "as_const", "ref", "cref"})

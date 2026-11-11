@@ -47,6 +47,9 @@ class Resolver(Flows):
         self.out = defaultdict(list)
         self.inn = defaultdict(list)
         self.status = {}                    # reference node -> ("external" | "unreached", name), its last outcome
+        self.reached = set()                # references that linked something
+        self.exact = set()                  # references whose lookup found definitions
+        self.fitted = set()                 # call references for which an overload fits the arguments
         self.external = defaultdict(set)    # unit gid -> names it uses that no code defines (engine, library)
         self.unreached = defaultdict(set)   # unit gid -> members used on a receiver no value of the code reaches
 
@@ -214,6 +217,9 @@ class Resolver(Flows):
         return self.bare(unit, ref.name, want)
 
     def link(self, src, dst, kind, ref, how, file="") -> None:
+        if self.typer.stack:
+            self.reached.add(self.typer.stack[-1])
+            self.status.pop(self.typer.stack[-1], None)
         self.keep_edge(Edge(src, dst, kind, ref.line, ref.cond, how, file or self.ix.units[src].file,
                             getattr(ref, "args", ())))
 
@@ -228,8 +234,11 @@ class Resolver(Flows):
         self.flows_of(len(self.edges) - 1, edge)
 
     def note(self, outcome: str, name: str) -> None:
-        """The outcome of the reference being linked when it reaches nothing of the program (replaced on a re-link)."""
-        self.status[self.typer.stack[-1]] = (outcome, name)
+        """The outcome of the reference being linked when it reaches nothing of the program (none once it reached
+        something)."""
+        node = self.typer.stack[-1]
+        if node not in self.reached:
+            self.status[node] = (outcome, name)
 
     def settle(self) -> None:
         """The external and unreached uses, from the last outcome of each reference."""
