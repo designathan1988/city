@@ -19,9 +19,8 @@ BOX, TILE, V3 = CLASS + "types.ts#Box", CLASS + "helpers.ts#Tile", CLASS + "guar
 CAN, SHAPE = CLASS + "guards.js#Can", CLASS + "guards.js#<object@"
 
 
-class Narrowing(FixtureCase):
-    ROOTS = ("jsvalues",)
-    BASE = "jsvalues"
+class Solved:
+    """Values read once the solver reached its fixpoint."""
 
     def solved(self, node) -> set:
         """A node's values once the solver reached its fixpoint again (a node first wired after the solve, such as a
@@ -37,6 +36,11 @@ class Narrowing(FixtureCase):
 
     def returned(self, spec: str) -> set:
         return self.solved(self.rs.typer.ret_node(self.ix.units[self.gid(spec)]))
+
+
+class Narrowing(Solved, FixtureCase):
+    ROOTS = ("jsvalues",)
+    BASE = "jsvalues"
 
     def test_literal_constants(self):
         self.assertEqual({TRUE}, self.returned("yes"))
@@ -117,6 +121,32 @@ class Narrowing(FixtureCase):
 
     def test_unknown_comparison_proves_nothing(self):
         self.assertEqual({BOX, TILE, NULL}, self.returned("unknownTest"))
+
+    def test_unknown_value_is_the_tested_class(self):
+        self.assertEqual({BOX, NULL}, self.returned("hostValue"))   # the host's value that is a Box is a Box
+
+
+class GdNarrowing(Solved, FixtureCase):
+    ROOTS = ("pending",)
+    BASE = "pending"
+
+    @staticmethod
+    def has(values: set, cls: str) -> bool:
+        return any(v.endswith("guards.gd." + cls) for v in values)
+
+    def test_gd_is_branches(self):
+        self.assertTrue({"Crate.open", "Plank.lay"} <= {n.split("guards.gd.")[-1] for n in self.names("gd_branches")})
+        values = self.returned("gd_else_value")
+        self.assertTrue(self.has(values, "Plank"), values)
+        self.assertFalse(self.has(values, "Crate"), values)
+
+    def test_gd_early_return(self):
+        values = self.returned("gd_early_value")
+        self.assertTrue(self.has(values, "Crate"), values)
+        self.assertFalse(self.has(values, "Plank"), values)
+
+    def test_gd_unknown_value_is_the_tested_class(self):
+        self.assertTrue(self.has(self.returned("gd_typed"), "Crate"))
 
 
 if __name__ == "__main__":

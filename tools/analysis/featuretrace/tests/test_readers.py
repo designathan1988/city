@@ -74,7 +74,7 @@ class GdScriptFlows(unittest.TestCase):
         self.assertEqual(put.args, (("put", ("name", "a")),))
 
     def test_is_narrows_the_receiver_inside_the_branch(self):
-        self.assertEqual(refs(self.f, "call", "only_foo")[0].base, ("cast", "Foo"))
+        self.assertEqual(refs(self.f, "call", "only_foo")[0].base, ("narrow", ("name", "p"), ("is", "Foo"), True))
 
     def test_returns_hold_ir(self):
         self.assertEqual(self.f.returns[0][2], ("name", "a"))

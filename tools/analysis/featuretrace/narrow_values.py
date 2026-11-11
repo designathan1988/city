@@ -3,12 +3,14 @@
 can be true of (positive) or false of (negative); a value the tracer cannot decide is kept. A property's truthiness or
 equality is decided by that property's values on that value, as they come; `instanceof` and a type predicate by the
 classes the condition names, as they come (the name's held values tested again when they grow). Only values that
-cannot be there at run time are removed (N2).
+cannot be there at run time are removed (N2). Where `x is T`, `x instanceof C` or a type predicate holds, x is a T, as
+a declared type is (EXPR, `is`; TypeScript narrows a name of no known type to the class tested): the class tested is
+one of its values whatever flows in, and a value the tracer cannot tell is that class.
 """
 from __future__ import annotations
 
 from . import js_library, js_transfer, transfer, truth
-from .solver import CLASS, ELEM, FN, LANG, TEXT, UNDEFINED, is_language
+from .solver import CLASS, ELEM, FN, LANG, TEXT, UNDEFINED
 
 
 def wire(t, node, tree, unit) -> None:
@@ -19,15 +21,21 @@ def wire(t, node, tree, unit) -> None:
         t.subscribe(source, node, key, by_member(t, guard, positive))
     elif guard[0] in ("instance", "predicate", "asserts"):
         named = t.node_of(guard[1], unit)
-        t.subscribe(source, node, key, by_class(t, guard, positive, source, named, True))
-        t.subscribe(named, node, key + ("named",), by_class(t, guard, positive, source, named, False))
+        t.subscribe(source, node, key, by_class(t, guard, positive, source, named, True, unit))
+        t.subscribe(named, node, key + ("named",), by_class(t, guard, positive, source, named, False, unit))
     else:
+        if guard[0] == "is" and positive:
+            wanted = t.type_class(guard[1], unit)       # x is a T there: T declared (EXPR, `is`)
+            t.add(node, [(CLASS + wanted, unit)] if wanted else [(guard[1], unit)])
         t.subscribe(source, node, key, by_value(t, guard, positive, unit))
 
 
 def by_value(t, guard, positive: bool, unit):
     def transfer_(target, values):
-        t.add(target, [(text, ctx) for text, ctx in values if passes(t, guard, positive, text, ctx, unit)])
+        if guard[0] == "is":
+            t.add(target, [kept for text, ctx in values for kept in is_of(t, guard[1], positive, text, ctx, unit)])
+        else:
+            t.add(target, [(text, ctx) for text, ctx in values if passes(t, guard, positive, text, ctx, unit)])
     return transfer_
 
 
@@ -49,8 +57,6 @@ def passes(t, guard, positive: bool, text: str, ctx, unit) -> bool:
         return can_be_array(t, text, ctx) if positive else not array
     if kind == "has":
         return has(t, guard[1], positive, text, ctx)
-    if kind == "is":
-        return is_of(t, guard[1], positive, text, ctx, unit)
     return True
 
 
@@ -75,14 +81,20 @@ def has(t, name: str, positive: bool, text: str, ctx) -> bool:
     return (declared or maybe) if positive else not declared
 
 
-def is_of(t, type_text: str, positive: bool, text: str, ctx, unit) -> bool:
-    """GDScript `x is T`: an object of a class of the program is or is not a T by its chain; anything else may be."""
+def is_of(t, type_text: str, positive: bool, text: str, ctx, unit) -> list:
+    """GDScript `x is T` (G2): an object of a class of the program is or is not a T by its chain; a string, a callable
+    or a container may be an engine T (`String`, `Callable`, `Array`), never a class of the program; a value the
+    tracer cannot tell that passes is the T already declared there (`wire`). An engine T decides nothing of the
+    program's classes (they may extend it)."""
     wanted = t.type_class(type_text, unit)
     key = t.type_class(text, ctx) if text.startswith(CLASS) else None
-    if wanted is None or key is None:
-        return True
-    derives = wanted in js_transfer.chain(t.ix, key)
-    return derives if positive else not derives
+    if key is not None:
+        if wanted is None:
+            return [(text, ctx)]
+        return [(text, ctx)] if (wanted in js_transfer.chain(t.ix, key)) == positive else []
+    if not positive or wanted is None and text.startswith((TEXT, FN, ELEM)):
+        return [(text, ctx)]
+    return []
 
 
 def member_node(t, text: str, ctx, name: str):
@@ -160,22 +172,30 @@ def named_classes(t, guard, held: list) -> tuple[list, bool]:
     return keys, unknown or not held
 
 
-def by_class(t, guard, positive: bool, source, named, from_source: bool):
+def by_class(t, guard, positive: bool, source, named, from_source: bool, unit):
+    """Where the condition holds, each class it names is one of the name's values (declared there); the name's values
+    are tested by those classes. The classes named grow as the condition's class values do (`named` side)."""
     def transfer_(target, values):
         keys, unknown = named_classes(t, guard, t.held(named))
         tested = values if from_source else t.held(source)
-        t.add(target, [(text, ctx) for text, ctx in tested if instance(t, keys, unknown, positive, text, ctx)])
+        kept = [v for text, ctx in tested for v in instance(t, keys, unknown, positive, text, ctx)]
+        declared = [(CLASS + k, unit) for k in keys] if positive and not from_source else []
+        t.add(target, kept + declared)
     return transfer_
 
 
-def instance(t, keys: list, unknown: bool, positive: bool, text: str, ctx) -> bool:
-    """Whether `x instanceof C` can be true (positive) or false of a value (MDN `instanceof`: the prototype chain)."""
+def instance(t, keys: list, unknown: bool, positive: bool, text: str, ctx) -> list:
+    """What `x instanceof C` (MDN: the prototype chain) or a type predicate keeps of one value: an object of the
+    program by its chain; a primitive is no instance; a value the tracer cannot tell that passes is the class named
+    (declared by `by_class`), and stays itself only when the condition can name a class the tracer cannot tell."""
     if text.startswith((TEXT, LANG)):
-        return not positive                         # a primitive is no instance
+        return [] if positive else [(text, ctx)]
     key = t.type_class(text, ctx) if text.startswith(CLASS) else None
     if key is None:
-        return True if not positive else unknown or is_language(text)
+        return [(text, ctx)] if unknown or not positive else []
     lineage = js_transfer.chain(t.ix, key)
     if positive:
-        return unknown or any(k in lineage for k in keys)
-    return unknown or not keys or not all(k in lineage for k in keys)
+        keep = unknown or any(k in lineage for k in keys)
+    else:
+        keep = unknown or not keys or not all(k in lineage for k in keys)
+    return [(text, ctx)] if keep else []

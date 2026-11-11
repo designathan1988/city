@@ -38,7 +38,7 @@ laterWrite(new Box());
 export function nested(c) { if (c instanceof Box) { if (c.open) { return c; } } }
 nested(new Box());
 nested(new Tile());
-export function keyed(x) { if (x instanceof Box) return x; return null; }
+export function keyed(x) { if (x.open) return x; return null; }
 export function useKeyed() { return keyed(new Tile()); }
 keyed(new Box());
 
@@ -95,3 +95,7 @@ optionalElse(new Tile());
 export function unknownTest(c, t) { if (typeof c === t) return c; return null; }
 unknownTest(new Box(), "object");
 unknownTest(new Tile(), "object");
+
+// An unknown value that passes `instanceof C` is a C (N1).
+export function hostValue(e) { if (e instanceof Box) return e; return null; }
+hostValue(window.thing);

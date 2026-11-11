@@ -6,7 +6,7 @@ expression tree built by `ir_gd` (log/trace-rules.md: VALUE, FLOW).
 """
 from __future__ import annotations
 
-from . import gd_body, ir_gd, scopes
+from . import gd_body, ir_gd, narrowing, scopes
 from .model import ClassFact, FileFacts, Unit, add_ref, declare, enclose
 from .source import Source, field_of, named_children, string_value
 
@@ -16,7 +16,6 @@ class GdReader:
         self.src = src
         self.res = res_path
         self.facts = FileFacts(src.display, "gd")
-        self.narrowed = {}           # names an enclosing `is` test proves the type of
         self._lambdas = {}           # lambda node start byte -> local id (each lambda one unit)
         self.scopes = []             # the blocks of the function being read (`scopes`)
 
@@ -173,30 +172,27 @@ class GdReader:
 
     # ---- bodies ------------------------------------------------------------------------------------------------
     def ir(self, node, unit: Unit, cls: ClassFact) -> tuple:
-        """The expression tree of a node; a name an enclosing `is` test proves is read as that type."""
-        tree = scopes.scoped_tree(self, ir_gd.build(self.src, node, lambda n: self.lambda_id(n, unit, cls)))
-        return narrowed(tree, self.narrowed) if self.narrowed else tree
+        """The expression tree of a node, its names read where the reader is (`scopes`: block scope, narrowing)."""
+        return scopes.scoped_tree(self, ir_gd.build(self.src, node, lambda n: self.lambda_id(n, unit, cls)))
 
     def add(self, unit: Unit, kind: str, name: str, node, cond, **extra) -> None:
         add_ref(self, unit, kind, name, self.src.line(node), cond, **extra)
 
     def block(self, node, unit: Unit, cls: ClassFact, cond: tuple) -> None:
+        """A block's statements; what one proves for those after it (an `if` that always leaves) holds over them."""
         scopes.open_scope(self)
-        for st in named_children(node):
-            gd_body.statement(self, st, unit, cls, cond)
+        items, opened = named_children(node), 0
+        for i, st in enumerate(items):
+            after = gd_body.statement(self, st, unit, cls, cond)
+            if after:
+                narrowing.open(self, after, items[i + 1:], "gd")
+                opened += 1
+        for _ in range(opened):
+            narrowing.close(self)
         scopes.close_scope(self)
 
     def expr(self, node, unit: Unit, cls: ClassFact, cond: tuple) -> None:
         gd_body.expr(self, node, unit, cls, cond)
-
-
-def narrowed(tree, names: dict):
-    """The tree with each name an `is` test narrowed replaced by a value of the tested type."""
-    if not isinstance(tree, tuple) or not tree:
-        return tree
-    if tree[0] == "name" and tree[1] in names:
-        return ("cast", names[tree[1]])
-    return tuple(narrowed(t, names) if isinstance(t, tuple) else t for t in tree)
 
 
 def read_gd(src: Source, res_path: str) -> FileFacts:

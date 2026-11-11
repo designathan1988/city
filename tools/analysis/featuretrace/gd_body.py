@@ -3,15 +3,16 @@
 Branches (`if`/`elif`/`else`, `match` with `when` guards, `for`, `while`) are all followed, the condition carried on
 every reference under them (BRANCH). Each name that receives a value records the value's tree (FLOW): `var`
 initializers and assignments, `for` (the elements walked), `match` bindings (the value matched), `return`. An `is` test
-narrows the tested name inside its branch. Member chains are walked step by step, each step's receiver kept as a tree.
+narrows the tested name where it holds (`gd_guards`, `narrowing`). Member chains are walked step by step, each step's
+receiver kept as a tree.
 """
 from __future__ import annotations
 
-from . import gd_calls, ir_gd, scopes
+from . import gd_calls, gd_guards, ir_gd, narrowing, scopes
 from .ir import put
 from .rules import SIGNAL_OPS
 from .model import assign, declare
-from .source import field_of, is_identifier, named_children
+from .source import field_of, named_children
 
 COND_WIDTH = 90
 STATEMENTS = ("if_statement", "for_statement", "while_statement", "match_statement", "return_statement",
@@ -39,20 +40,7 @@ def statement(r, st, unit, cls, cond) -> None:
             declare(r, unit, name, [r.ir(value, unit, cls)] if value is not None else [])
         expr(r, value, unit, cls, cond)
     elif kind == "if_statement":
-        test = field_of(st, "condition")
-        expr(r, test, unit, cls, cond)
-        saved = narrow(r, test)
-        r.block(field_of(st, "body"), unit, cls, cond + ("if " + squash(src.text(test)),))
-        r.narrowed = saved
-        for i, child in enumerate(st.children):
-            if st.field_name_for_child(i) != "alternative":
-                continue
-            if child.type == "elif_clause":
-                other = field_of(child, "condition")
-                expr(r, other, unit, cls, cond)
-                r.block(field_of(child, "body"), unit, cls, cond + ("elif " + squash(src.text(other)),))
-            else:
-                r.block(field_of(child, "body"), unit, cls, cond + ("else of if " + squash(src.text(test)),))
+        return if_statement(r, st, unit, cls, cond)
     elif kind == "for_statement":
         left, right = field_of(st, "left"), field_of(st, "right")
         walked = r.ir(right, unit, cls)
@@ -100,22 +88,33 @@ def match(r, st, unit, cls, cond) -> None:
         scopes.close_scope(r)
 
 
-def narrow(r, test) -> dict:
-    """Inside the branch, a name an `is` test proves (alone or joined by `and`) is of that type. Returns the
-    narrowing to put back after the branch."""
-    saved, todo = dict(r.narrowed), [test]
-    r.narrowed = dict(r.narrowed)
-    while todo:
-        node = todo.pop()
-        if node is None or node.type != "binary_operator":
-            continue
-        op = r.src.text(field_of(node, "op")).strip()
-        left, right = field_of(node, "left"), field_of(node, "right")
-        if op in ("and", "&&"):
-            todo += [left, right]
-        elif op == "is" and left is not None and is_identifier(r.src.text(left)):
-            r.narrowed[r.src.text(left)] = r.src.text(right)
-    return saved
+def if_statement(r, st, unit, cls, cond) -> list:
+    """`if` / `elif` / `else`: each branch under its condition and the facts it proves (an `elif` also the falsity of
+    every condition before it, R1). Returns what holds after it: the false facts when the `if` alone always leaves."""
+    src = r.src
+    test = field_of(st, "condition")
+    expr(r, test, unit, cls, cond)
+    when_true, prior = gd_guards.facts(r, test, unit)
+    body = field_of(st, "body")
+    guarded(r, when_true, body, unit, cls, cond + ("if " + squash(src.text(test)),))
+    alternatives = [child for i, child in enumerate(st.children) if st.field_name_for_child(i) == "alternative"]
+    for child in alternatives:
+        if child.type == "elif_clause":
+            other = field_of(child, "condition")
+            expr(r, other, unit, cls, cond)
+            other_true, other_false = gd_guards.facts(r, other, unit)
+            guarded(r, prior + other_true, field_of(child, "body"), unit, cls, cond + ("elif " + squash(src.text(other)),))
+            prior = prior + other_false
+        else:
+            guarded(r, prior, field_of(child, "body"), unit, cls, cond + ("else of if " + squash(src.text(test)),))
+    return prior if not alternatives and narrowing.leaves(body, "gd") else []
+
+
+def guarded(r, facts: list, body, unit, cls, cond) -> None:
+    """A block read where facts hold (R1)."""
+    narrowing.open(r, facts, [body], "gd")
+    r.block(body, unit, cls, cond)
+    narrowing.close(r)
 
 
 def expr(r, node, unit, cls, cond) -> None:
