@@ -65,3 +65,12 @@ docBang(viaDoc("s"));
 let docLet = viaDoc("s");
 docLet = 3;
 export function docLetRead() { return docLet; }
+
+// S2''': a JSDoc comment is a comment of the file's tree; `/**` written inside a template is no comment.
+const docTemplate = `/**
+@type {string}
+`;
+/** @type {number} */
+let docAfter = viaDoc("s");
+docAfter = 4;
+export function docAfterRead() { return docAfter; }

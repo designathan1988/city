@@ -8,13 +8,16 @@ A bound is a tuple of admit tokens kept on the unit where the type is written, r
 `Pick`, `Omit`: any object), `("function",)`, `("constructor",)`, `("array",)` (arrays and tuples),
 `("container", head)` (`Map`, `Set`, `Promise`), `("members", names)` (an object type: what has its required members),
 `("named", text)` (a class, an interface or an alias of the program, or a host type: resolved where it is written).
-A union or an intersection admits what any member admits; an empty tuple is no bound.
+A union or an intersection admits what any member admits; an empty tuple is no bound. A type of the language's
+library is what it admits, never the tracer's form of its values (S2''): `Function` admits a class, `Iterable` what
+has `[Symbol.iterator]`, `ArrayLike` what has `length`.
 """
 from __future__ import annotations
 
 from .ir_js import member_name
 from .js_library import CANONICAL
 from .js_types import NAMES, bare, literal_string, members
+from .rules import ITERATOR_MEMBER
 from .source import field_of, named_children
 
 ANY = ("any",)
@@ -24,9 +27,20 @@ PREDEFINED = {"number": ("number",), "string": ("string",), "boolean": ("boolean
 CONSTANTS = {"null": ("null",), "undefined": ("undefined",), "true": ("boolean",), "false": ("boolean",)}
 SAME_TYPE = ("Readonly", "Required", "NonNullable", "Awaited")      # the type argument's bound
 ANY_OBJECT = ("Partial", "Pick", "Omit", "Record")                  # some object of the type argument's members
-FUNCTION_NAMES = ("Function", "CallableFunction", "NewableFunction")
 NONNULLISH_NAMES = ("Object",)
 PROMISE = "Promise"
+ARRAY = ("array",)
+# The library's types by what they admit (TypeScript lib.es5/es2015: a class is a `Function`; an iterable has
+# `[Symbol.iterator]`, an async one `[Symbol.asyncIterator]`, an iterator `next` (the tracer's iterators and generator
+# objects are arrays, T2), an array-like `length`, a thenable `then`).
+LIBRARY = {"Function": [("constructor",)], "NewableFunction": [("constructor",)], "CallableFunction": [("function",)],
+           "Array": [ARRAY], "ReadonlyArray": [ARRAY],
+           **dict.fromkeys(("Iterable",), [ARRAY, ("members", (ITERATOR_MEMBER,))]),
+           **dict.fromkeys(("AsyncIterable",), [ARRAY, ("members", ("[Symbol.asyncIterator]",))]),
+           **dict.fromkeys(("Iterator", "IterableIterator", "IteratorObject", "Generator", "AsyncIterator",
+                            "AsyncIterableIterator", "AsyncGenerator"), [ARRAY, ("members", ("next",))]),
+           "ArrayLike": [ARRAY, ("members", ("length",))],
+           "PromiseLike": [("container", PROMISE), ("members", ("then",))]}
 
 
 def of(r, annotation, optional: bool = False) -> tuple:
@@ -92,27 +106,27 @@ def one(r, node) -> list:
         return [object_type(r, node)]
     if kind in NAMES:
         text = " ".join(r.src.text(node).split())
-        return [ANY] if text in r.type_scope() else [named(text)]
+        return [ANY] if text in r.type_scope() else named(text)
     if kind == "generic_type":
         return generic(r, node)
     return [ANY]                    # lookup, conditional, `typeof`, `this`, mapped, `infer`: the tracer cannot read it
 
 
-def named(text: str) -> tuple:
+def named(text: str) -> list:
+    """The tokens of a type written by its name: a predefined type, a type of the language's library by what it
+    admits, else a name resolved where it is written."""
     if text in PREDEFINED:
-        return PREDEFINED[text]
-    if text in FUNCTION_NAMES:
-        return ("function",)
+        return [PREDEFINED[text]]
+    if text in LIBRARY:
+        return list(LIBRARY[text])
     if text in NONNULLISH_NAMES:
-        return ("nonnullish",)
+        return [("nonnullish",)]
     head = CANONICAL.get(text)
-    if head == "Array":
-        return ("array",)
     if head in ANY_OBJECT:
-        return ("object",)
+        return [("object",)]
     if head:
-        return ("container", head)
-    return ("named", text)
+        return [("container", head)]
+    return [("named", text)]
 
 
 def generic(r, node) -> list:
@@ -125,7 +139,7 @@ def generic(r, node) -> list:
         return list(of(r, args[0])) or [ANY] if args else [ANY]
     if head in ANY_OBJECT:
         return [("object",)]
-    return [named(head)]            # a class or interface of the program: its type arguments are erased
+    return named(head)              # a class or interface of the program: its type arguments are erased
 
 
 def object_type(r, node) -> tuple:

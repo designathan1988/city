@@ -11,7 +11,7 @@ sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
 
 from support import FixtureCase, Solved  # noqa: E402
-from featuretrace.solver import CLASS, ELEM, NULL, NUMBER, TEXT, UNDEFINED  # noqa: E402
+from featuretrace.solver import CLASS, ELEM, FN, NULL, NUMBER, TEXT, UNDEFINED  # noqa: E402
 
 BOX, BIG, TILE = CLASS + "bounded.ts#BoundBox", CLASS + "bounded.ts#BoundBig", CLASS + "bounded.ts#BoundTile"
 LITERAL = CLASS + "bounded.ts#<object@"
@@ -61,6 +61,31 @@ class Bounds(Solved, FixtureCase):
         found = self.returned("bAny")
         self.assertTrue({ELEM + TEXT + "s", ELEM + TILE} <= found, found)
 
+    def test_function_admits_a_class(self):
+        found = self.returned("bFunction")                          # a class is a function (S2'')
+        self.assertIn(BOX, found)
+        self.assertTrue(any(v.startswith(FN) for v in found), found)
+        self.assertNotIn(NUMBER, found)
+
+    def test_members_every_value_has(self):
+        self.assertIn(TILE, self.returned("bPrintable"))            # Object.prototype's `toString`
+        found = self.returned("bTagged")                            # a function's property code writes
+        self.assertTrue(any(v.startswith(FN) for v in found), found)
+
+    def test_iterable_and_array_like_by_their_members(self):
+        found = self.returned("bIterable")
+        self.assertTrue(any(v.startswith("Set<") for v in found), found)
+        self.assertIn(TEXT + "abc", found)
+        self.assertTrue(any(v.startswith(("Array<", ELEM)) for v in found), found)
+        self.assertNotIn(NUMBER, found)
+        found = self.returned("bArrayLike")
+        self.assertIn(TEXT + "abc", found)
+        self.assertEqual(1, len(self.literals(found)), found)      # `{ length: 0 }`
+        self.assertNotIn(NUMBER, found)
+        found = self.returned("bThenable")                          # a thenable is a PromiseLike
+        self.assertEqual(1, len(self.literals(found)), found)
+        self.assertNotIn(NUMBER, found)
+
 
 class JsDoc(Solved, FixtureCase):
     """S2': JSDoc in a JavaScript file (fixture `jsvalues/jsdoc.js`)."""
@@ -85,6 +110,9 @@ class JsDoc(Solved, FixtureCase):
     def test_returns_and_variable(self):
         self.assertEqual({self.VEC}, self.returned("docMake"))             # `@returns {DocVec}`
         self.assertEqual({NUMBER}, self.returned("docLetRead"))            # `@type {number}` on `let`
+
+    def test_comments_are_the_trees(self):
+        self.assertEqual({NUMBER}, self.returned("docAfterRead"))          # `/**` in a template is no comment
 
 
 if __name__ == "__main__":

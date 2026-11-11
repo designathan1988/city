@@ -81,6 +81,15 @@ class DefinedProperties(Solved, FixtureCase):
         self.assertEqual({NUMBER}, self.returned("heldId"))
         self.assertEqual({self.SPOT}, self.returned("heldTwice"))
 
+    def test_descriptor_members_by_their_values(self):
+        self.assertEqual({self.SPOT}, self.returned("heldShort"))         # `{ value }`
+        self.assertEqual({self.SPOT}, self.returned("heldByRef"))         # `{ get: spotGetter }`
+        self.assertIn(self.SPOT, self.returned("heldViaVar"))             # a descriptor held in a variable
+        self.assertIn(self.SPOT, self.returned("heldComputed"))           # a key no literal names: `o[k] = v`
+        self.assertIn(self.SPOT, self.returned("heldMap"))                # a map of descriptors held in a variable
+        handed = self.names("Holder2.constructor", ("handed",))          # the getter handed to the language
+        self.assertTrue(any("spotGetter" in n for n in handed), handed)
+
 
 class LateWrites(Solved, FixtureCase):
     """J7': a hoisted closure writes a variable declared before it in the text (fixture `jsvalues/latewrite.js`)."""

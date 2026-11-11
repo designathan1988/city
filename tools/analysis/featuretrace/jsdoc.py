@@ -1,8 +1,9 @@
 """JSDoc types in a JavaScript file (log/trace-rules.md, S2'; TypeScript handbook, JSDoc Reference and Type Checking
 JavaScript Files).
 
-The `/** ... */` comment written right before a declaration (only modifiers and the declaration's own introduction
-between them: `export`, `async`, `static`, `const x =`, ...) types its places as a TypeScript annotation would:
+The `/** ... */` comment node of the file's tree (S2''': never `/**` inside a string, a template or a regular
+expression) written right before a declaration (only modifiers and the declaration's own introduction between them:
+`export`, `async`, `static`, `const x =`, ...) types its places as a TypeScript annotation would:
 `@param {T} x` (`[x]`, `[x=v]`, `{T=}`: optional), `@returns {T}` / `@return {T}`, `@type {T}` on a variable, a class
 field or `this.x = v`; `@template T` names type parameters (any value). Each type is read with TypeScript's grammar
 once Closure's forms are written as TypeScript's: `?T` is T or null, `!T` T, `T=` T or undefined, `*` and `?` any,
@@ -17,10 +18,10 @@ import tree_sitter
 import tree_sitter_typescript
 
 from . import js_bounds
-from .source import Source, field_of, named_children
+from .source import Source, comments, field_of, named_children
 
 JS_EXTS = (".js", ".mjs", ".cjs", ".jsx")
-COMMENT = re.compile(rb"/\*\*(?!/)(.*?)\*/", re.S)
+DOC_OPEN, DOC_CLOSE, EMPTY = b"/**", b"*/", b"/**/"
 GAP = re.compile(r"(?:\s+|export\b|default\b|async\b|static\b|public\b|private\b|protected\b|readonly\b|declare\b"
                  r"|abstract\b|override\b|get\b|set\b|function\b|const\b|let\b|var\b|\*|[A-Za-z_$][\w$]*\s*=(?!=))*")
 TAG = re.compile(r"@(param|arg|argument|returns|return|type|template)\b\s*(.*)")
@@ -50,12 +51,15 @@ def doc_of(r, node) -> str | None:
     if docs is None:
         data = r.src.data
         targets, texts = [], []
-        for found in COMMENT.finditer(data):
-            j = found.end()
+        for comment in comments(r.tree_root, r.grammar):
+            raw = data[comment.start_byte:comment.end_byte]
+            if not raw.startswith(DOC_OPEN) or raw == EMPTY or not raw.endswith(DOC_CLOSE):
+                continue                                # a line comment or a plain block comment
+            j = comment.end_byte
             while j < len(data) and data[j] in b" \t\r\n":
                 j += 1
             targets.append(j)
-            texts.append(found.group(1).decode("utf-8", "replace"))
+            texts.append(raw[len(DOC_OPEN):-len(DOC_CLOSE)].decode("utf-8", "replace"))
         docs = r.jsdoc_index = (targets, texts)
     targets, texts = docs
     i = bisect.bisect_right(targets, node.start_byte) - 1

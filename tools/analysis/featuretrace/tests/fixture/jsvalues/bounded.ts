@@ -72,3 +72,34 @@ bAsync(1);
 
 export function bAny(x: any, y: unknown) { return [x, y]; }
 bAny(via("s"), via(new BoundTile()));
+
+// S2'': a bound is what the type admits, by the type.
+export function bFunction(f: Function) { return f; }
+bFunction(BoundBox);
+bFunction(via(() => 1));
+bFunction(via(5));
+
+interface BoundPrintable { toString(): string; }
+export function bPrintable(p: BoundPrintable) { return p; }
+bPrintable(via(new BoundTile()));
+
+export function bTagged(f: { (): number; tag: string }) { return f; }
+function boundTagged() { return 1; }
+boundTagged.tag = "t";
+bTagged(via(boundTagged));
+
+function boundSet(): Set<number> { return new Set(); }
+export function bIterable(xs: Iterable<number>) { return xs; }
+bIterable(via(boundSet()));
+bIterable(via("abc"));
+bIterable(via([1]));
+bIterable(via(5));
+
+export function bArrayLike(xs: ArrayLike<number>) { return xs; }
+bArrayLike(via("abc"));
+bArrayLike(via({ length: 0 }));
+bArrayLike(via(5));
+
+export function bThenable(p: PromiseLike<number>) { return p; }
+bThenable(via({ then(f) { return f(1); } }));
+bThenable(via(5));

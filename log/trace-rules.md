@@ -964,3 +964,26 @@ What remains (11) has one cause: an array has no identity. `a[i] = v` writes int
 `a.push(v)` is no write, and what is put into an array a parameter holds does not reach the array its caller passed
 (three's `o.raycast(raycaster, found)` pushes into `found`; `Texture.addUpdateRange` pushes into `this.updateRanges`).
 Before T2'' every array literal also held the engine's value, whose elements hid this. Recorded in `log/pendencias.md`.
+
+## What the final review of S2 and the fixpoint's rules found (self-review, 2026-11-11)
+
+The review read every file the theme changed (`209e8823^..e3048cac`) against the languages' rules, one question per
+place: can a value the language puts there be missing, or a value it never puts there be added. Six answers were no.
+
+Sources: MDN Function (a class is a function; `Function.prototype.prototype`), Object.prototype (the members every
+object has), `this` (a function's `this` is decided by how it is called: a method call its receiver, `new` the object
+made, `call`/`apply`/`bind` the object given, a plain call `undefined` in strict code or `globalThis` in sloppy code,
+an API calling a callback the value it chooses; an arrow's is its enclosing function's), Inheritance and the prototype
+chain, `Object.create()`, `Object.defineProperty()`; ECMAScript, OrdinaryCallBindThis and MakeConstructor (an ordinary
+function declaration or expression is a constructor with a `prototype` object of its own; an arrow, a method, an
+async function or a generator is not); TypeScript lib (`Iterable<T>` is what has `[Symbol.iterator]`, `ArrayLike<T>`
+what has `length`, `Iterator<T>` what has `next`, `PromiseLike<T>` what has `then`; a class is assignable to
+`Function`); tree-sitter (a comment is a node of its own, never inside a string, a template or a regular expression).
+
+| Rule | What the tracer does |
+|---|---|
+| S2'' What a type admits, by the type | a bound is what the type admits, never the tracer's form of its values: `Function` admits a class (a class value can be the class itself); `Iterable` and its kin admit what has `[Symbol.iterator]` (arrays, Sets, Maps, strings, an object of the program that declares it), `Iterator` and generators what has `next` or an array (the tracer's form of an iterator, T2), `ArrayLike` an array or what has `length`, `PromiseLike` a promise or what has `then`; every value has Object.prototype's members, a function Function.prototype's and an array Array.prototype's, and a property code writes on an object, a function or an array is one of its members (an expando) |
+| S2''' JSDoc comments are the parser's | the comment a declaration's JSDoc is read from is a comment node of the file's tree, never a match of `/**` over its bytes |
+| J14' A descriptor's members by their values | `Object.defineProperty(o, k, d)` reads d's `value`, `get` and `set` as the values the descriptor holds, written by name, shorthand, a method or a reference to a function; a descriptor no literal writes gives what its members hold; a key no literal names puts the value into o, as `o[k] = v` does; `Object.defineProperties(o, m)` with a map no literal writes puts what its descriptors' `value` and getters give into o |
+| J2''' `this` of a function by its calls | a function with a `this` of its own (a declaration or an expression: no arrow) holds, as a method does (J2'), the objects its calls give: the receiver of a member call, the object `new` makes, the object `call`, `apply` or `bind` gives, `undefined` for a plain call in strict code (a module, a TypeScript file, a `"use strict"` file) or the global object in sloppy code, the engine's value when the engine or a library is handed it; one no call reaches holds the engine's value (an entry point the host calls) |
+| N1'' A function's prototype | an ordinary function (no arrow, method, async function or generator) is a constructor: it has a prototype object, a class of its own (`<new f@line>`) that `new f()` makes and `f.prototype` gives, its members what code writes on it (`f.prototype.m = ...`, V2) and what `f.prototype = o` puts there; `Object.create(p)` gives an object whose members are p's (p's values: a write on it is a write on p, an over-approximation the tracer keeps); an arrow's, a method's or an async function's `prototype` is `undefined` |

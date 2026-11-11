@@ -13,11 +13,14 @@ from .rules import INDEX_MEMBER, ITERATOR_MEMBER
 from .solver import CLASS, ELEM, ENGINE, FN, TEXT, UNDEFINED, fn_of
 
 PROTOTYPE = "prototype"
-# What every object and every function has from the language (MDN Object.prototype, Function.prototype): a class
-# value is either its objects or the class itself, so neither is ever `undefined` on it.
-BUILT_IN = frozenset({"constructor", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString",
-                      "toString", "valueOf", "__proto__", "__defineGetter__", "__defineSetter__", "__lookupGetter__",
-                      "__lookupSetter__", "apply", "bind", "call", "length", "name", "arguments", "caller"})
+# What every object has from the language (MDN Object.prototype), and every function besides (MDN Function.prototype,
+# a function's own `length` and `name`): a class value is either its objects or the class itself, so neither is ever
+# `undefined` on it.
+OBJECT_MEMBERS = frozenset({"constructor", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString",
+                            "toString", "valueOf", "__proto__", "__defineGetter__", "__defineSetter__",
+                            "__lookupGetter__", "__lookupSetter__"})
+FUNCTION_MEMBERS = frozenset({"apply", "bind", "call", "length", "name", "arguments", "caller"})
+BUILT_IN = OBJECT_MEMBERS | FUNCTION_MEMBERS
 
 
 def prop_node(key: str, name: str) -> tuple:

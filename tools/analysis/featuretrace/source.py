@@ -38,6 +38,16 @@ _GRAMMARS = {
     "ts": tree_sitter.Language(tree_sitter_typescript.language_typescript()),
     "tsx": tree_sitter.Language(tree_sitter_typescript.language_tsx()),
 }
+_COMMENTS = {}                        # grammar -> the query of its comment nodes
+
+
+def comments(root, grammar: str) -> list:
+    """The comment nodes of a parsed tree, in the order they are written (a comment is a node of its own, never part
+    of a string, a template or a regular expression)."""
+    if grammar not in _COMMENTS:
+        _COMMENTS[grammar] = tree_sitter.Query(_GRAMMARS[grammar], "(comment) @comment")
+    found = tree_sitter.QueryCursor(_COMMENTS[grammar]).captures(root).get("comment", [])
+    return sorted(found, key=lambda node: node.start_byte)
 
 
 def language_of(path: Path) -> str:

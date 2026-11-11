@@ -81,7 +81,8 @@ def apparent(text: str, name: str) -> bool:
     if k is None or k == NULLISH:
         return False
     _, methods, properties = KINDS[k]
-    return name in methods or name in properties or name in OBJECT_PROTOTYPE or name in OBJECT_PROPERTIES         or name == CONSTRUCTOR or k == "string" and name.isdigit()
+    return name in methods or name in properties or name in OBJECT_PROTOTYPE or name in OBJECT_PROPERTIES \
+        or name == CONSTRUCTOR or k == "string" and name.isdigit()
 
 
 def step(text: str, kind_of_step: str) -> list[str]:

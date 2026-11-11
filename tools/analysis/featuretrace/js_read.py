@@ -36,7 +36,9 @@ class JsReader:
         self.type_params = []            # the type parameters of the generic declarations being read, innermost last
 
     def run(self) -> FileFacts:
-        root = ts_tree.grouped(self.src.parse(grammar_of(self.src.path)))      # as the language groups it (J13)
+        self.grammar = grammar_of(self.src.path)
+        self.tree_root = self.src.parse(self.grammar)                          # the parser's tree (its comments, S2''')
+        root = ts_tree.grouped(self.tree_root)                                 # as the language groups it (J13)
         self.facts.classes.append(ClassFact(self.key, "js", "", self.key, 1))
         self.module = self.unit("func", MODULE_UNIT, self.key, root, qual=f"{self.key}:{MODULE_UNIT}")
         js_decl.module_body(self, root, self.key, self.module)
