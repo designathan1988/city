@@ -104,7 +104,8 @@ HANDLERS = {
              "templates:key_params", "templates:reaches", "templates:route", "transfer:result",
              "templates:depends", "templates:reads", "templates:leaves", "transfer:member_values", "types_of:TypeNames.replaces",
              "places:Places.read_node", "flows:Flows.omitted", "templates:omitted_is_undefined",
-             "structural:typed", "structural:join", "structural:declared_trees", "structural:fields"),
+             "structural:typed", "structural:join", "structural:declared_trees", "structural:fields",
+             "places:Places.own_parts"),
     "CALL": ("link:link_ref", "link:with_overrides", "link:fits", "resolve:Resolver.member", "link:accessor",
              "cpp_implicit:declared_object", "cpp_implicit:operator", "cpp_body:object_reading",
              "cpp_body:object_or_function", "cpp_ambig:deciding_names", "cpp_ambig:as_arguments",
@@ -142,7 +143,7 @@ HANDLERS = {
              "js_types:admitted", "js_types:language_values", "js_types:literal_string", "js_class:object_type",
              "js_read:JsReader.shape_class", "js_read:JsReader.type_holder", "typer:Typer.expand",
              "types_of:TypeNames.alias_marker", "js_modules:JsModules.alias_of", "js_transfer:index_nodes",
-             "js_transfer:index_units", "truth:operator_values"),
+             "js_transfer:index_units", "truth:operator_values", "js_types:is_primitive"),
 }
 
 # Callables built from an object and a method name (G7): constructor -> (object argument, name argument).

@@ -784,3 +784,28 @@ discriminants and property guards whose objects' literals lack the property or h
 `&&` whose value is the object a helper wraps (`shape && shaperFor(p, shape)`), 80 `handed` links that are now calls of
 the real implementations (`buildingsWiring.commit`, `main.ts:mutateBuilt`), and a parameter property's own field read
 where the interface's was.
+
+### The lab with three.js after these rules (stack samples and the largest nodes, 2026-11-11 07:50)
+
+No fixpoint in 900 s (456 216 links and 54 052 references waiting at 607 s, then one propagation past the deadline;
+453 596 and 63 228 at 897 s before the theme). Stack samples with their locals (600-900 s) showed two causes of mine:
+
+- S1 as first written followed each property both ways between a class and the interface, so the cycle sweep merged
+  the properties of one name of every class ever typed as one interface into one node: every `x` of everything that
+  reached a `Vec2`, a `Lot`, ... (`fillRing`'s `x0`, a number, held objects of `preparedCity.ts`). TypeScript's
+  structural typing makes an object of the class one of the interface's objects, not every object of the interface
+  one object: the class's property holds what is written through the interface and what the interface's type admits;
+  a read through the interface can give what any of them holds.
+- A branded id (`type SegmentId = number & { readonly [SegmentIdBrand]: true }`) gave the number and an object of the
+  object type; that object's `.y`, `.z` were the properties JS code writes under those names on anything (V2), so every
+  id read as a point.
+
+| Rule | What the tracer does |
+|---|---|
+| S1' (replaces S1's "both ways") | where a value of class K reaches a place declared with interface I, K's property p holds what is written through I and what I's p admits (its declared type, initializers and writes), and I's p holds K's: a read through I can be any object typed as I, each object keeps its own |
+| T1'''' An intersection with a primitive member | is that primitive (a branded number is a number; the object type in it describes no object); an intersection of object types is an object of each |
+
+The largest nodes at 714 s (2.6 M nodes, 124 779 templates): about 4 700 values each in the parameters of three's
+shading language (`nodeArray(params)`, `FunctionCallNode.parameters`, `LoopNode.params`, in both builds read) and in
+the result of the lab's `processWorker.ts` `walk`, the same set in all of them: elements of objects of three's Collada
+parser (2 397 occurrences among the 45 largest), objects of the app and texts.

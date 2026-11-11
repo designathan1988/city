@@ -183,6 +183,14 @@ class Declared(Solved, FixtureCase):
         found = self.returned("declShadowRead")                     # `c.shadow` truthy: written through the Car
         self.assertTrue(any("<object@" in v for v in found), found)
 
+    def test_branded_number_is_a_number(self):
+        self.assertEqual({NUMBER}, self.returned("declBranded"))
+
+    def test_objects_typed_as_one_interface_stay_apart(self):
+        self.returned("declSpotTyped")                              # rawB's object read as a Spot: joined
+        self.assertIn(self.PACK, self.returned("declSpotA"))        # spotA's object joined too
+        self.assertNotIn(self.PACK, self.returned("declSpotB"))     # spotA's own Pack is not rawB's
+
     def test_no_arity_overloads_in_javascript(self):
         found = self.names("declArity")
         self.assertTrue(any("<object@" in n and n.endswith(".emitted") for n in found), found)

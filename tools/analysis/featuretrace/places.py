@@ -97,6 +97,11 @@ class Places:
             structural.typed(self, node, unit.values, unit)                 # what it holds is of its type (S1)
         return node
 
+    def own_parts(self, unit) -> list:
+        """What a field holds of its own: its declared type's and initializers' values and what is written to it, not
+        what the objects typed as it hold (`structural`, S1)."""
+        return [(HELD, unit.gid)] + [self.node_of(tree, unit) for tree in unit.values]
+
     def read_node(self, unit, reader=None):
         """What reading a variable or field written in `reader` gives (G8'): its getter's result when the read runs
         it; a JS accessor property with no getter reads `undefined` (MDN `set`); else what it holds."""

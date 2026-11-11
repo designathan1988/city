@@ -4,9 +4,10 @@ Type Compatibility: the type system is structural, an object whose type has an i
 An interface or an object type (an alias of one too) has no object of its own: its value in the tracer (the class the
 type names, T1) stands for every object typed as it. Where a value of a class of the program (an object literal, a
 class's instance, another interface's value) reaches a place declared with such a type (a parameter, a local, a field,
-a variable, a function's result), it is one of those objects: each property the interface declares and the property of
-that name on the value's class hold the same values (what is written through either, what either's type admits), both
-ways. A property the value's class does not declare is the one JS code creates on it (`js_transfer.prop_node`, V2).
+a variable, a function's result), it is one of those objects: the value's property of each name the interface declares
+holds what is written through the interface and what the interface's type admits, and a read through the interface can
+give what that property holds. Each object stays its own: what one object typed as the interface holds is not another's.
+A property the value's class does not declare is the one JS code creates on it (`js_transfer.prop_node`, V2).
 """
 from __future__ import annotations
 
@@ -62,8 +63,9 @@ def join(t, text: str, ctx, shape: str, where) -> None:
     for name, field in fields(ix, s):
         mine = [g for g in ix.lookup(k, name) if ix.units[g].kind == "field"]
         for node in [t.hold_node(ix.units[g]) for g in mine] or [js_transfer.prop_node(k, name)]:
-            t.follow(t.hold_node(field), node)
-            t.follow(node, t.hold_node(field))
+            t.follow(node, t.hold_node(field))              # a read through the interface can be this object's
+            for part in t.own_parts(field):                 # what is written through it, what its type admits
+                t.follow(part, node)
 
 
 def fields(ix, key: str) -> list:

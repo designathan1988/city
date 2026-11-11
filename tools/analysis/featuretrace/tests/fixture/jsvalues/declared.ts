@@ -49,6 +49,20 @@ const cars: Map<number, Car> = new Map();
 export function declShadowWrite(id: number) { const c = cars.get(id); if (c) c.shadow = new Pack(); }
 export function declShadowRead() { const c = makeCar(); if (c.shadow) return c; return null; }
 
+// An intersection with a primitive is that primitive: a branded id is a number, no object.
+declare const LaneBrand: unique symbol;
+export type LaneId = number & { readonly [LaneBrand]: true };
+export function declBranded(id: LaneId) { return id; }
+
+// Two objects typed as one interface stay two objects: one's own values are not the other's (S1 is per object).
+export interface Spot { mark: object; }
+const spotA: Spot = { mark: new Pack() };
+const rawB = { mark: { tag: 1 } };
+export const spotB: Spot = rawB;
+export function declSpotB() { return rawB.mark; }
+export function declSpotTyped() { return spotB; }
+export function declSpotA() { return spotA.mark; }
+
 // JavaScript has no overloads: a method of one receiver is not chosen away by another's arity (C4 is C++'s).
 export interface Emitter { emitted(kind: string, text: string, data?: number): void; }
 const emitter: Emitter = { emitted(kind: string, text: string, data: number) {} };

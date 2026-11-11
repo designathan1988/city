@@ -3,7 +3,8 @@ languages' own rules", T1-T3; "What narrowing showed on the lab app", T1').
 
 Types are erased: an annotation gives the values the type admits. A name gives the class it names (the typer resolves
 it, `TypeNames.canon`), or the values a type alias admits (`ALIAS`, read where the alias is declared); each member of a
-union or an intersection gives its own; `typeof x` gives the value of x; the language's containers give a generic text
+union or an intersection gives its own, but an intersection with a primitive is that primitive (a branded number);
+`typeof x` gives the value of x; the language's containers give a generic text
 of the ECMAScript built-ins (`js_library`) whose index, iteration and element calls give the element types. A primitive
 gives the language's value of its kind, `boolean` both constants, a literal type its value, an object type the
 interface it writes (a class of its own), a function type a function the program does not name, `T['k']` the member
@@ -34,7 +35,7 @@ KEYS = (STRING, NUMBER, SYMBOL)            # `keyof T`: a property key of T (str
 def values(r, annotation, unit) -> list[tuple]:
     """The value trees an annotation allows, read in `unit` (`typeof x` is x's value there)."""
     out = []
-    for part in members(annotation):
+    for part in members(r, annotation):
         out += admitted(r, part, unit)
     return out
 
@@ -98,14 +99,26 @@ def literal_string(r, node) -> str | None:
     return string_value(r.src, node) if node is not None and node.type == "string" else None
 
 
-def members(node) -> list:
-    """The members of a union or intersection (nested ones flattened), each without its wrappers."""
+def members(r, node) -> list:
+    """The members of a union or intersection (nested ones flattened), each without its wrappers. An intersection with
+    a primitive member is a primitive: its object members describe no object (a branded `number & { [brand]: true }`
+    is a number); an intersection of object types is an object of each."""
     node = bare(node)
     if node is None:
         return []
     if node.type in EITHER:
-        return [m for child in named_children(node) for m in members(child)]
+        found = [m for child in named_children(node) for m in members(r, child)]
+        if node.type == "intersection_type":
+            primitive = [m for m in found if is_primitive(r, m)]
+            return primitive or found
+        return found
     return [node]
+
+
+def is_primitive(r, node) -> bool:
+    """A type whose values are primitives of the language (a number, a string, a literal, a boolean, ...)."""
+    language = language_values(r, node)
+    return bool(language) and not set(language) & {OBJECT, FUNCTION, ENGINE}
 
 
 def bare(node):
@@ -123,7 +136,7 @@ def written(r, node, unit) -> str:
         return UNKNOWN
     kind = node.type
     if kind in EITHER:
-        parts = [t for t in (written(r, m, unit) for m in members(node)) if t != UNKNOWN]
+        parts = [t for t in (written(r, m, unit) for m in members(r, node)) if t != UNKNOWN]
         return " | ".join(parts) if parts else UNKNOWN
     language = language_values(r, node)
     if language is not None:
