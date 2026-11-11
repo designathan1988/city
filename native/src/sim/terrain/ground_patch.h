@@ -38,6 +38,11 @@ struct GroundPatch {
 		if (lots.level_at(x, z, lot)) return lot;
 		return grid_sample(x, z, N, spacing, [&](int ix, int iz) { return final_h[at(ix, iz)]; });
 	}
+	// Whether (x, z) lies on a lot, whose own level is the ground there (lot_shape.h).
+	bool on_lot(float x, float z) const {
+		float h;
+		return lots.level_at(x, z, h);
+	}
 	float base_height_at(float x, float z) const {
 		if (CHECKS && base_q.empty()) city_stop("the natural ground read from a patch cut without it");
 		if (base_q.empty()) return height_at(x, z);
@@ -81,6 +86,7 @@ public:
 	float x_of(int ix) const { return (float(ix) - float(n()) * 0.5f) * spacing(); }
 	int ix_of(float x) const { return int(std::floor(x / spacing() + float(n()) * 0.5f)); } // as Heightfield::ix_of
 	float height_at(float x, float z) const { return patch_ ? patch_->height_at(x, z) : live_->height_at(x, z); }
+	bool on_lot(float x, float z) const { return patch_ ? patch_->on_lot(x, z) : live_->on_lot(x, z); } // a lot holds the ground there
 	float final_at(int ix, int iz) const { return patch_ ? patch_->final_at(ix, iz) : live_->final_at(ix, iz); }
 	float base_height_at(float x, float z) const { return patch_ ? patch_->base_height_at(x, z) : live_->base_height_at(x, z); }
 	float water_level() const { return patch_ ? patch_->water_level : live_->water_level; }

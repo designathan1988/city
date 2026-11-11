@@ -1,11 +1,10 @@
-// Placing lots (Roadcraft world/lots.ts): closed blocks first, then the open land along each zoned street side (streetPlan): a run of street with free
-// land behind its footway is one strip, of a lot's depth, cut in equal lots.
+// Placing lots: closed blocks first, then the open land along each zoned street side: a run of street with free land behind its
+// footway is one strip, of a lot's depth, cut in equal lots. A lot's front lies on the footway's outer edge and the lots of a run or of a
+// block's row share their sides: no land is left between a lot and the street or between two lots.
 #include "sim/citygen/lot_strips.h"
 
 #include "core/seeded.h"
 #include "sim/citygen/road_gen.h"
-#include "sim/terrain/terrain_gen.h"
-#include "sim/roads/junction.h"
 
 #include <algorithm>
 #include <cmath>
@@ -13,11 +12,10 @@
 namespace city {
 
 namespace {
-constexpr double FRONT_PAD = 0.3, WIDTH_TRIM = 0.6;
-constexpr double STRIP_DEPTH = 32, STRIP_FRONTAGE = 22, STRIP_LEAST = 10; // lots.ts LOT_DEPTH, LOT_FRONTAGE, MIN_LOT
+constexpr double STRIP_DEPTH = 32, STRIP_FRONTAGE = 22, STRIP_LEAST = 10; // a strip lot's depth, the frontage it aims at, the least run
 // Works take more than the 4.0 gives them: a lorry has to turn in the yard. On its lots a tenth of the docks had no way in (yard_test).
 constexpr double WORKS_DEPTH = 50, WORKS_FRONTAGE = 42;
-constexpr double ALONG_STEP = 1, BEHIND_FOOTWAY = 1.5, BACK_IN = 1; // where a run reads the land: lots.ts streetPlan
+constexpr double ALONG_STEP = 1, BEHIND_FOOTWAY = 1.5, BACK_IN = 1; // where a run reads the land: past the footway and short of the back
 constexpr double KEY_SCALE = 4, SEED_SCALE = 2;
 constexpr uint32_t SIDE_KEY = 77;
 
@@ -29,7 +27,7 @@ void LotStrips::keep(const Frame &f, int zone, int profile) {
 	mark_lot(f);
 	if (std::floor((f.cx - cx0_) / LOT_CELL) != 0 || std::floor((f.cz - cz0_) / LOT_CELL) != 0) return;
 	Lot l;
-	l.x = f.cx; l.z = f.cz; l.w = f.w - WIDTH_TRIM; l.d = f.d;
+	l.x = f.cx; l.z = f.cz; l.w = f.w; l.d = f.d;
 	l.rot = std::atan2(-f.lx, -f.lz);
 	l.zone = zone;
 	l.profile = profile;
@@ -79,7 +77,8 @@ LotStrips::Along LotStrips::along(int s, double at, double sign) const {
 // Runs of street where the land behind the footway is open, and its far side too.
 void LotStrips::place_side(int s, int side, int zone) {
 	const Profile &info = prof_[g_.profile[s]];
-	const double sign = side == 0 ? 1 : -1, face = (side == 0 ? info.left : info.right) + FRONT_PAD, length = len(s);
+	// The front on the footway's outer edge: the side's half width (a generated street is straight, its edge a line along it).
+	const double sign = side == 0 ? 1 : -1, face = side == 0 ? info.left : info.right, length = len(s);
 	const bool works = zone == ZONE_IND;
 	const double depth = works ? WORKS_DEPTH : STRIP_DEPTH, frontage = works ? WORKS_FRONTAGE : STRIP_FRONTAGE;
 	const auto clear = [&](double at) {

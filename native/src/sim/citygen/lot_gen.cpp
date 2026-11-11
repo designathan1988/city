@@ -140,7 +140,8 @@ bool LotStrips::unfit(const Frame &f) const {
 }
 
 void LotStrips::mark_lot(const Frame &f) {
-	// a cell short of its ends: a cell of the grid is wider than the gap to the next lot, and the next street's strip starts right there
+	// a cell short of its ends: the next lot starts right at its end (its run's next one, or the next street's strip), and a cell of the
+	// grid is wider than any rounding there
 	for (double a = -f.w / 2 + LOT_END_IN; a <= f.w / 2 - LOT_END_IN; a += RES / 2) {
 		const double x = f.cx + f.tx * a, z = f.cz + f.tz * a;
 		for (double b = -f.d / 2; b <= f.d / 2; b += RES / 2) {

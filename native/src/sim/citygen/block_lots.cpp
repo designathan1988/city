@@ -1,7 +1,10 @@
-// A closed block cut into lots as Roadcraft 4.0 cuts it (blockLots.ts): the land between the streets found on a 1 m
-// raster, each closed piece a block; its least-area rectangle cut into one or two rows (two when >= 44 m deep, back to
-// back) and each row into equal columns of about LOT_FRONTAGE. Every lot reaches the footway.
+// A closed block cut into lots: the land between the streets found on a 1 m raster, each closed piece a block; the block's box
+// turned to its land (the least-area box of its cells) and carried out to the paving's real edge on each side (block_paving.h), then
+// cut into one or two rows (two when >= 44 m deep, back to back) and each row into equal columns of about LOT_FRONTAGE that share their
+// sides. Every lot's sides on the block's outline lie on the footways' outer edges.
 #include "sim/citygen/lot_gen.h"
+
+#include "sim/citygen/block_paving.h"
 
 #include <algorithm>
 #include <array>
@@ -10,7 +13,8 @@
 namespace city {
 
 namespace {
-constexpr double LOT_FRONTAGE = 22, TWO_ROWS = 44, MIN_LOT = 10, RES = 1, MAX_BLOCK = 320, PLATE_SHARE = 1.15;
+using block_paving::Box;
+constexpr double LOT_FRONTAGE = 22, TWO_ROWS = 44, MIN_LOT = 10, RES = block_paving::RASTER_M, MAX_BLOCK = 320, PLATE_SHARE = 1.15;
 constexpr double LATTICE_START = 0.1, LATTICE_STEP = 0.2, LAND_SHARE = 0.5, STREET_PROBE = 12;
 constexpr int MIN_DEGREE_PLATE = 3;
 constexpr double EPS_LEN = 1e-9, EPS_AREA = 1e-6;
@@ -35,10 +39,6 @@ std::vector<P2> convex_hull(std::vector<P2> s) {
 	lower.insert(lower.end(), upper.begin(), upper.end());
 	return lower;
 }
-
-struct Box {
-	double cx, cz, ux, uz, vx, vz, L, D;
-};
 
 bool min_area_box(const std::vector<P2> &h, Box &best) {
 	if (h.size() < 3) return false;
@@ -73,10 +73,19 @@ public:
 		label_.assign(size_t(W_) * W_, -1);
 	}
 
-	void disc(double x, double z, double r) {
-		const int box[4] = { std::max(0, int(std::floor((x - r - ax_) / RES))), std::min(W_ - 1, int(std::floor((x + r - ax_) / RES))),
-			std::max(0, int(std::floor((z - r - az_) / RES))), std::min(W_ - 1, int(std::floor((z + r - az_) / RES))) };
-		fill_disc(paved_.data(), W_, ax_, az_, RES, x, z, r, box, 1);
+	// A street's band: kept whole for the edges, painted on the raster as discs at `samples` points along it.
+	void street(const Quad &q, double half, int samples) {
+		paving_.street(q, half);
+		for (int k = 0; k < samples; k++) {
+			double x, z;
+			q.at(double(k) / (samples - 1), x, z);
+			disc(x, z, half);
+		}
+	}
+
+	void plate(double x, double z, double r) {
+		paving_.plate(x, z, r);
+		disc(x, z, r);
 	}
 
 	// The land's closed pieces, by runs of a row joined to the runs they touch in the row above: the same pieces a flood of
@@ -122,6 +131,7 @@ private:
 	const lot_gen::Facing &facing_;
 	std::vector<uint8_t> paved_;
 	std::vector<int> label_;
+	block_paving::Paving paving_;
 	std::vector<lot_gen::BlockLot> out_;
 	struct Run {
 		int row, from, to, parent; // columns from..to of a row, and the run it was joined to (itself: a root)
@@ -130,6 +140,12 @@ private:
 		int first, last, cells, i0, i1, j0, j1;
 	};
 	std::vector<Run> runs_;
+
+	void disc(double x, double z, double r) {
+		const int box[4] = { std::max(0, int(std::floor((x - r - ax_) / RES))), std::min(W_ - 1, int(std::floor((x + r - ax_) / RES))),
+			std::max(0, int(std::floor((z - r - az_) / RES))), std::min(W_ - 1, int(std::floor((z + r - az_) / RES))) };
+		fill_disc(paved_.data(), W_, ax_, az_, RES, x, z, r, box, 1);
+	}
 
 	int find(int r) {
 		while (runs_[size_t(r)].parent != r) {
@@ -191,7 +207,8 @@ private:
 		}
 		Box box;
 		if (!min_area_box(convex_hull(pts), box)) return;
-		double L = box.L + RES, D = box.D + RES;
+		paving_.measure(box);
+		const double L = box.L, D = box.D;
 		auto at = [&](double s, double t, double &x, double &z) { x = box.cx + box.ux * s + box.vx * t; z = box.cz + box.uz * s + box.vz * t; };
 		int rows = D >= TWO_ROWS ? 2 : 1;
 		double depth = D / rows;
@@ -245,16 +262,10 @@ std::vector<lot_gen::BlockLot> lot_gen::block_lots(const LotGraph &g, const std:
 		node_half[g.sb[s]] = std::max(node_half[g.sb[s]], half);
 		deg[g.sa[s]]++;
 		deg[g.sb[s]]++;
-		double len = tables[s].back();
-		int n = std::max(2, int(std::ceil(len / RES)) + 1);
-		for (int k = 0; k < n; k++) {
-			double x, z;
-			g.quad[s].at(double(k) / (n - 1), x, z);
-			b.disc(x, z, half);
-		}
+		b.street(g.quad[s], half, std::max(2, int(std::ceil(tables[s].back() / RES)) + 1));
 	}
 	for (int n = 0; n < g.nodes(); n++)
-		if (deg[n] >= MIN_DEGREE_PLATE) b.disc(g.nx[n], g.nz[n], node_half[n] * PLATE_SHARE);
+		if (deg[n] >= MIN_DEGREE_PLATE) b.plate(g.nx[n], g.nz[n], node_half[n] * PLATE_SHARE);
 	return b.cut_all();
 }
 

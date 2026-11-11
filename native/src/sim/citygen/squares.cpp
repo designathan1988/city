@@ -22,7 +22,8 @@ using namespace b40;
 
 namespace {
 constexpr double FILE_CELL_M = 60; // the grid lots are filed in while they are joined
-constexpr float LAWN_H = 0.06f, LATTICE_FROM_M = 200, SEAM_M = 0.35f;
+constexpr float LAWN_H = 0.06f, LATTICE_FROM_M = 200;
+constexpr float SHARED_LINE_M = 1e-3f; // two lots' shared side, reached from each one's own centre in floats, within a millimetre
 constexpr uint32_t LCG_MUL = 1664525U, LCG_ADD = 1013904223U, TREE_SEED_MUL = 31U, TREE_SEED_STEP = 7919U, SQUARE_SALT = 0x711eU;
 constexpr double LCG_UNIT = 4294967296.0;
 constexpr float PLAZA_WIDE = 0.45f; // the round plaza's rectangles: full size, and this share across
@@ -57,8 +58,8 @@ bool inside(const Plot &p, V2 at) {
 	const Lot &l = *p.lot;
 	const float sn = std::sin(float(l.rot)), cs = std::cos(float(l.rot));
 	const V2 rel = at - p.centre;
-	// a lot stands a little short of the next (lot_place.cpp WIDTH_TRIM): the seam between two is the block's, and no edge to a tree
-	return std::fabs(rel.x * cs - rel.y * sn) <= float(l.w) / 2 + SEAM_M && std::fabs(rel.x * sn + rel.y * cs) <= float(l.d) / 2 + SEAM_M;
+	// the lots of a block share their sides (lot_place.cpp): a point on the line two share is on both, no edge to a tree
+	return std::fabs(rel.x * cs - rel.y * sn) <= float(l.w) / 2 + SHARED_LINE_M && std::fabs(rel.x * sn + rel.y * cs) <= float(l.d) / 2 + SHARED_LINE_M;
 }
 
 struct Joined {

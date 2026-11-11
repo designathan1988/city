@@ -12,6 +12,7 @@ namespace city {
 
 namespace {
 const Vector3 UP(0, 1, 0);
+constexpr float LOT_LOOK_M = 0.3f; // a lot is looked for this far past the footway's outer edge
 
 float ease(float t) { return t * t * (3.f - 2.f * t); }
 
@@ -71,8 +72,10 @@ void emit_verge_segment(const RoadEmit &e, int sid) {
 		};
 		for (int k = 0; k <= n; k++) {
 			const SegFrame f = seg_frame(e.s, sid, v0 + (v1 - v0) * k / n);
-			// Nothing runs down to the ground from a deck in the air, nor from a road against its wall: the runs of open road only.
-			if (f.c.y - e.s.terrain.height_at(f.c.x, f.c.z) > raised || walled_at(e, g, f, side)) {
+			// Nothing runs down to the ground from a deck in the air, nor from a road against its wall, nor where a lot meets the footway
+			// at its top (sim/terrain/lot_shape.h): the runs of open road beside open land only.
+			const Vector3 beyond = f.c + f.left * (across + side * LOT_LOOK_M);
+			if (f.c.y - e.s.terrain.height_at(f.c.x, f.c.z) > raised || walled_at(e, g, f, side) || e.s.terrain.on_lot(beyond.x, beyond.z)) {
 				flush();
 				continue;
 			}

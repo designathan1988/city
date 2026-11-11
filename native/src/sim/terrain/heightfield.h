@@ -109,6 +109,10 @@ public:
 		return x > -h && x < h && z > -h && z < h;
 	}
 	float height_at(float x, float z) const; // the ground: a lot's own level on a lot (lot_shape.h), else the final heights
+	bool on_lot(float x, float z) const { // whether a lot holds the ground there
+		float h;
+		return lots.level_at(x, z, h);
+	}
 	// The final height of a sample, by column and row, and `count` of them along row `iz` from column `ix`, in metres.
 	float final_at(int ix, int iz) const { return finals.at(ix, iz, base_q); }
 	void set_final(int ix, int iz, float h) { finals.put(ix, iz, h, base_q); }
