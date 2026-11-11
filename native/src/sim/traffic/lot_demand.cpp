@@ -93,8 +93,8 @@ void lot_depart(CityState &s, double target) {
 		while (kind + 1 < PLACE_KINDS && roll >= w[kind]) roll -= w[kind++];
 		if (pk.row_of[kind].empty()) continue;
 		const int b = pk.row_of[kind][size_t(t.rng.next() % uint32_t(pk.row_of[kind].size()))];
-		// a car that has not stood its stay is left there: the draw goes to another next look
-		if (t.time >= pk.bays[size_t(b)].stay_until && read_bay_way(s, b)) take_row(s, b);
+		// a car that has not stood its stay, or whose lot's drive another car is on, is left there: the draw goes to another next look
+		if (t.time >= pk.bays[size_t(b)].stay_until && !lot_busy(pk, pk.bays[size_t(b)].source) && read_bay_way(s, b)) take_row(s, b);
 	}
 }
 

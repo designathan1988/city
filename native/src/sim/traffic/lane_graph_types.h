@@ -15,8 +15,8 @@ constexpr int BODY_CLASSES = 3;
 constexpr int BODY_PAIRS = BODY_CLASSES * BODY_CLASSES;
 
 enum class Turn : uint8_t { STRAIGHT = 0, RIGHT = 1, LEFT = 2, UTURN = 3 };
-enum class Control : uint8_t { NONE = 0, PRIORITY = 1, SIGNAL = 2 };
-enum class Light : uint8_t { GREEN = 0, AMBER = 1, RED = 2 };
+enum class Control : uint8_t { NONE, PRIORITY, SIGNAL };
+enum class Light : uint8_t { GREEN, AMBER, RED };
 // Why a vehicle is not moving (traffic_probe, tests).
 enum class Hold : uint8_t { QUEUED = 0, WRONG_LANE, RED, EXIT_ROOM, CONFLICT_BUSY, YIELD, ON_CONNECTOR, FREE, CROSSING, COUNT };
 
@@ -51,11 +51,16 @@ struct Conn {
 	int next_at_node = -1, next_from = -1; // next connection of the same node / of the same lane of origin
 	bool alive = false;
 	int8_t max_class = BODY_CLASSES - 1; // the largest body class whose sweep keeps off the footways (-1: none)
-	// The connectors whose bodies meet this one's (junction_sweeps.cpp), and per conflict, by [theirs * BODY_CLASSES + mine], the
-	// body-centre arc along THAT connector's way (negative on the lane before it, past its length on the lane after) past which a
-	// body of class `theirs` on it is clear of one of class `mine` on this one; NO_LEADER below zero: those two never meet.
+	// The connectors out of other lanes whose bodies meet this one's (junction_sweeps.cpp), and per conflict, by [theirs *
+	// BODY_CLASSES + mine], the body-centre arc along THAT connector's way (negative on the lane before it, past its length on the
+	// lane after) past which a body of class `theirs` on it is clear of one of class `mine` on this one; NO_LEADER below zero: those
+	// two never meet. The junction's admission keeps them apart.
 	std::vector<int> conflicts;
 	std::vector<std::array<float, BODY_PAIRS>> conflict_clear;
+	// Its diverging siblings: the connectors out of the same lane whose bodies meet this one's near the split, with their clear arcs
+	// as above. No admission between them: the one behind drives against the one further along (diverge_leads, motion_law.h).
+	std::vector<int> diverges;
+	std::vector<std::array<float, BODY_PAIRS>> diverge_clear;
 };
 
 struct Junction {

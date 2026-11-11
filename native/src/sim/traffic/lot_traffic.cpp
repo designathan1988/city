@@ -1,7 +1,8 @@
 // The cars that use the lots' car gates: a passing car is called to a free bay, stops on its lane before the gate, leaves
 // the road, drives in, stands its stay, and when the fleet runs short drives out and joins the traffic again. Who is sent in and
 // out is lot_demand.cpp. Off the lanes a car is a Vehicle
-// with `off` set: on no lane list, out of the fleet count, its pose the manoeuvre's.
+// with `off` set: on no lane list, out of the fleet count, its pose the manoeuvre's. A lot's drive is one car's at a time
+// (lot_busy): a car is sent out, or turns in, only while no other car of its lot drives off the lanes.
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/traffic/lane_closures.h"
@@ -125,12 +126,18 @@ void coming(CityState &s, LotCar &car) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	Vehicle &v = t.vehicles[size_t(car.id)];
-	const LaneSpot &lane = t.park.bays[size_t(car.bay)].lane;
+	const Bay &bay = t.park.bays[size_t(car.bay)];
+	const LaneSpot &lane = bay.lane;
 	if (!v.micro || car.t > p.parker_call_timeout_s || v.stuck > p.parker_give_up_s) {
 		give_up(s, car);
 		return;
 	}
 	if (v.ds != lane.ds || v.conn >= 0 || v.lane != lane.lane || v.v > p.parker_stop_ms || v.s < v.stop_at - p.parker_stop_slack_m) return;
+	// another car of its lot on the drive: it goes on rather than stand on the lane, over the stretch that one may need to join it
+	if (lot_busy(t.park, bay.source)) {
+		give_up(s, car);
+		return;
+	}
 	v.stop_at = -1;
 	leave_road(s, car);
 }
@@ -214,6 +221,12 @@ void set_off_pose(CityState &s, Vehicle &v, const OffPose &q) {
 	v.cur.fz = std::sin(q.angle);
 }
 
+
+bool lot_busy(const ParkingState &pk, int source) {
+	for (const LotCar &car : pk.cars)
+		if ((car.phase == CarPhase::PARKING || car.phase == CarPhase::LEAVING) && pk.bays[size_t(car.bay)].source == source) return true;
+	return false;
+}
 
 bool lot_car_at_rest(const CityState &s, int id) {
 	const Vehicle &v = s.traffic.vehicles[size_t(id)];

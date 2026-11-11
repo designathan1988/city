@@ -54,10 +54,13 @@ void integrate(const CityState &s, Vehicle &v, float acc, float dt, float &pos) 
 }
 
 namespace {
-// What the lane head sees beyond the stop line: the connector's last vehicle or the next lane's tail.
+// What the lane head sees beyond the stop line: a stretch held on the next lane by a body off the lanes, and the connector's last
+// vehicle or the next lane's tail.
 void lead_beyond(const CityState &s, int ci, float dist, Lead &l) {
 	const TrafficState &t = s.traffic;
 	const Conn &c = t.g.conns[ci];
+	const float shut = closure_ahead(t, c.to_ds * MAX_LANES + c.to_lane, 0.f);
+	if (shut >= 0) l.take(dist + c.len + shut, 0.f);
 	const auto &on = t.conn_vehicles[ci];
 	if (!on.empty()) {
 		const Vehicle &b = t.vehicles[on.back()];
@@ -203,6 +206,7 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 				// Only the lane head arbitrates at the junction; followers keep the IDM distance to their leader.
 				if (head) {
 					lead_beyond(s, ci, dist, l);
+					diverge_leads(s, ci, v, -dist, l); // a body that took another turn out of this lane, still at the split
 					open = gate(s, id, ci, dist, head, lights.here, released);
 					const float line = dist - t.g.ds[ds].stop_back; // the stop line is behind the crosswalk
 					if (!open && dist < p.look_ahead_m) l.take(line > -p.stop_margin_m ? std::max(0.f, line - p.stop_margin_m) : dist - p.stop_margin_m, 0.f);

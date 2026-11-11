@@ -5,6 +5,8 @@
 // `ped_window_m`, which also sets how many sidewalk metres demand may fill.
 #include "sim/traffic/traffic_system.h"
 
+#include "sim/traffic/lane_closures.h"
+
 #include <algorithm>
 #include <cmath>
 #include <iterator>
@@ -116,6 +118,8 @@ void materialize(CityState &s, int key) {
 	const int tail = t.lane_vehicles[size_t(key)].empty() ? -1 : t.lane_vehicles[size_t(key)].front(); // the rearmost drawn one
 	const float tail_len = tail >= 0 ? s.catalog.traffic.classes[int(t.vehicles[size_t(tail)].type)].length : 0.f;
 	float limit = tail >= 0 ? t.vehicles[size_t(tail)].s - tail_len - MAT_TAIL_PAD_M : held ? stop : L - MAT_END_PAD_M;
+	const float shut = closure_ahead(t, key, 0.f); // a stretch a body off the lanes holds: the queue is drawn behind the first
+	if (shut >= 0) limit = std::min(limit, shut - MAT_TAIL_PAD_M);
 	int id = t.meso_head[size_t(key)];
 	while (id >= 0) {
 		Vehicle &v = t.vehicles[size_t(id)];

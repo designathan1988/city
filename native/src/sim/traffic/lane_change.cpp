@@ -4,6 +4,8 @@
 // changes keep right.
 #include "sim/traffic/traffic_system.h"
 
+#include "sim/traffic/lane_closures.h"
+
 #include <algorithm>
 
 namespace city {
@@ -63,10 +65,12 @@ struct View {
 	}
 };
 
-// Whether lane key `dst` leaves `front` metres ahead of the body of `id` and `back` behind it.
+// Whether lane key `dst` leaves `front` metres ahead of the body of `id` and `back` behind it: nobody there, nor a stretch a body
+// off the lanes holds.
 bool gaps_open(const View &w, int id, int dst, float front, float back) {
 	const TrafficState &t = w.s.traffic;
 	const Vehicle &v = t.vehicles[id];
+	if (stretch_held(t, dst, v.s - w.len(id) - back, v.s + front)) return false;
 	const Around n = around(t, dst, v.s, id);
 	if (n.lead >= 0 && t.vehicles[n.lead].s - w.len(n.lead) - v.s < front) return false;
 	return n.follow < 0 || v.s - w.len(id) - t.vehicles[n.follow].s >= back;

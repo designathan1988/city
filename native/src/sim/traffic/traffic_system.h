@@ -57,6 +57,7 @@ bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out, YardReads *rea
 // lot_traffic.cpp
 void step_lots(CityState &s, float dt);
 bool lot_car_at_rest(const CityState &s, int id); // standing in its bay and not sent out
+bool lot_busy(const ParkingState &pk, int source); // a car of lot `source` drives off the lanes now (its drive is one car's)
 void lot_car_gone(CityState &s, int id); // its bay went: off the road it goes too, on the road it drives on
 void lot_car_forget(CityState &s, int id); // the vehicle left the scene: its bay is free
 void settle_parked(CityState &s); // the cars that parked become rows of their bays, their Vehicles let go

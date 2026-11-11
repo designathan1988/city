@@ -1,7 +1,11 @@
 // The vehicles crossing a node on a connector: each drives against the one ahead (on the connector or at the tail of the lane it
-// enters), the walkers on the exit crosswalk and the lights down its route, and at the connector's end it is handed to that lane
-// (its body reaching back over the connector until it has driven its length, vehicle_pose.cpp). box_hold says what holds one.
+// enters), a body further along on a diverging sibling out of the same lane, a stretch of its exit lane a body off the lanes holds
+// (a car pulling out of a lot, a lorry swinging), the walkers on the exit crosswalk and the lights down
+// its route, and at the connector's end it is handed to that lane (its body reaching back over the connector until it has driven
+// its length, vehicle_pose.cpp). box_hold says what holds one.
 #include "sim/traffic/motion_law.h"
+
+#include "sim/traffic/lane_closures.h"
 
 #include <algorithm>
 
@@ -28,9 +32,32 @@ void connector_leads(const CityState &s, int ci, size_t k, float top, Lead &car,
 			car.take(c.len - v.cs + o.s - body_length(s, o), o.v);
 		}
 	}
+	diverge_leads(s, ci, v, v.cs, car);
+	const float shut = closure_ahead(t, c.to_ds * MAX_LANES + c.to_lane, 0.f); // a stretch of its exit lane a body off the lanes holds
+	if (shut >= 0) car.take(c.len - v.cs + shut, 0.f);
 	if (v.cs < c.len && peds_in_way(s, ci, FRONT_PAST, front_time(s, v, c.len - v.cs, top))) walkers.take(c.len - v.cs, 0.f);
 }
 } // namespace
+
+void diverge_leads(const CityState &s, int ci, const Vehicle &v, float along, Lead &l) {
+	const TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
+	const Conn &c = t.g.conns[size_t(ci)];
+	const int mine = body_class(p, v.type);
+	for (size_t k = 0; k < c.diverges.size(); k++) {
+		const int d = c.diverges[k];
+		const Conn &o = t.g.conns[size_t(d)];
+		// `front`: along the sibling's way, which shares this one's start; past its clear arc the body is clear of this one's
+		const auto ahead = [&](const Vehicle &u, float front) {
+			const float length = body_length(s, u);
+			if (front <= along || front - length * 0.5f >= c.diverge_clear[k][size_t(body_class(p, u.type) * BODY_CLASSES + mine)]) return;
+			l.take(front - length - along, u.v);
+		};
+		for (int id : t.conn_vehicles[size_t(d)]) ahead(t.vehicles[size_t(id)], t.vehicles[size_t(id)].cs);
+		for (int id : t.lane_vehicles[size_t(o.to_ds) * MAX_LANES + o.to_lane])
+			if (t.vehicles[size_t(id)].came == d) ahead(t.vehicles[size_t(id)], o.len + t.vehicles[size_t(id)].s);
+	}
+}
 
 void step_connector(CityState &s, int ci, float dt) {
 	TrafficState &t = s.traffic;

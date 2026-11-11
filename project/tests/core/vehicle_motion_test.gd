@@ -15,6 +15,7 @@ const REBORN_M := 24.0 # farther in one tick is another vehicle given the same i
 const MOVING_MS := 0.5
 const STILL_M := 0.001
 const LEAST_SEEN := 20
+const PAIRS_SHOWN := 6 # the distinct pairs met that a failure names, each with the depth and rows of its first tick's deepest
 const AT := Vector3.ZERO # the window's middle: the camera of a test stands at the origin
 # the probe's row of a body (city_core_clearance_probe.cpp vehicle_bodies)
 const ID := 0
@@ -36,6 +37,7 @@ var _vanish_case: Array = []
 var _in_another := 0
 var _deepest := 0.0
 var _deepest_pair: Array = []
+var _pairs := {} # "low id-high id" of each tick's deepest pair -> [depth, rows] at its first tick
 var _over := {}
 var _footway_case: Array = []
 var _seen := {}
@@ -65,6 +67,8 @@ func _ready() -> void:
 	check(_popped == 0, "no vehicle appears on a street in view: %d" % _popped)
 	check(_vanished == 0, "no vehicle vanishes from a street in view: %d, the first %s" % [_vanished, _vanish_case])
 	check(_in_another == 0, "no body stands in another: %d times, the deepest %.2f m %s" % [_in_another, _deepest, _deepest_pair])
+	if not _pairs.is_empty():
+		print("pairs met (each tick's deepest): %d, the first %s" % [_pairs.size(), _pairs.values().slice(0, PAIRS_SHOWN)])
 	check(_over.is_empty(), "no body on the lanes climbs a footway: %d bodies, %s" % [_over.size(), _footway_case])
 	finish()
 
@@ -145,6 +149,13 @@ func _bodies_met(watch: Dictionary) -> void:
 	if float(watch.deepest_m) > _deepest:
 		_deepest = watch.deepest_m
 		_deepest_pair = watch.deepest_pair
+	var pair: Array = watch.deepest_pair
+	if pair.size() == 2:
+		var a: int = pair[0][ID]
+		var b: int = pair[1][ID]
+		var key := "%d-%d" % [mini(a, b), maxi(a, b)]
+		if not _pairs.has(key):
+			_pairs[key] = [watch.deepest_m, pair]
 	for c: Array in watch.footway_cases:
 		_over[c[0]] = true
 		if _footway_case.size() < 4:

@@ -5,6 +5,8 @@
 // model's (meso_alpha) and a full lane slows it (meso_crowd), so the camera does not change how fast the city drives.
 #include "sim/traffic/traffic_system.h"
 
+#include "sim/traffic/lane_closures.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -197,6 +199,23 @@ void meso_process(CityState &s) {
 
 namespace {
 
+// The mouth of lane `to_lane` of `to` (in the window) has no room for a far vehicle drawn at its start now: a drawn vehicle coming
+// onto it off a connector would land where it is put, the drawn tail `tail` is still near the start, or a body off the lanes (a car
+// pulling out of a lot, a lorry swinging) holds a stretch there.
+bool mouth_taken(const CityState &s, int to, int to_lane, int tail) {
+	const TrafficState &t = s.traffic;
+	const LaneGraph &g = t.g;
+	const TrafficParams &p = s.catalog.traffic;
+	const int from = g.ds[size_t(to)].from;
+	if (from >= 0 && size_t(from) < g.node_conn.size())
+		for (int x = g.node_conn[size_t(from)]; x >= 0; x = g.conns[size_t(x)].next_at_node) {
+			const Conn &k = g.conns[size_t(x)];
+			if (k.alive && k.to_ds == to && k.to_lane == to_lane && !t.conn_vehicles[size_t(x)].empty()) return true;
+		}
+	if (tail >= 0 && t.vehicles[size_t(tail)].s < p.classes[int(t.vehicles[size_t(tail)].type)].length + p.meso_s0_m + HANDOVER_PAD_M) return true;
+	return stretch_held(t, to * MAX_LANES + to_lane, 0.f, p.meso_s0_m + HANDOVER_PAD_M);
+}
+
 // End of the lane in meso mode: pick the next lane, wait for a red or a full queue, or hand the vehicle to the near
 // model when the lane it enters is inside the window (Roadcraft meso.ts advance).
 void advance(CityState &s, int id) {
@@ -246,21 +265,9 @@ void advance(CityState &s, int id) {
 	}
 	const bool near = in_window(s, to);
 	const int tail = t.lane_vehicles[size_t(to_key)].empty() ? -1 : t.lane_vehicles[size_t(to_key)].back();
-	// a drawn vehicle coming onto that lane off a connector would land where it is put: it waits for the mouth to be its own
-	if (near && g.ds[size_t(to)].from >= 0 && size_t(g.ds[size_t(to)].from) < g.node_conn.size())
-		for (int x = g.node_conn[size_t(g.ds[size_t(to)].from)]; x >= 0; x = g.conns[size_t(x)].next_at_node) {
-			const Conn &k = g.conns[size_t(x)];
-			if (k.alive && k.to_ds == to && k.to_lane == to_lane && !t.conn_vehicles[size_t(x)].empty()) {
-				schedule(t, id, t.time + double(HANDOVER_RETRY_S));
-				return;
-			}
-		}
-	if (near && tail >= 0) { // behind drawn vehicles: it waits to fit behind them (never passes them unseen)
-		const Vehicle &o = t.vehicles[size_t(tail)];
-		if (o.s < s.catalog.traffic.classes[int(o.type)].length + s.catalog.traffic.meso_s0_m + HANDOVER_PAD_M) {
-			schedule(t, id, t.time + double(HANDOVER_RETRY_S));
-			return;
-		}
+	if (near && mouth_taken(s, to, to_lane, tail)) { // it waits for the mouth to be its own (never passes a drawn one unseen)
+		schedule(t, id, t.time + double(HANDOVER_RETRY_S));
+		return;
 	}
 	meso_unlink(s, id);
 	v.wait = 0;

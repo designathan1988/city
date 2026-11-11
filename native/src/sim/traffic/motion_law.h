@@ -27,6 +27,11 @@ float finish_accel(const CityState &s, const Vehicle &v, float acc, const Lead &
 void integrate(const CityState &s, Vehicle &v, float acc, float dt, float &pos);
 // Moves the vehicles on one connector and hands those over its end to the lane it enters (connector_motion.cpp).
 void step_connector(CityState &s, int ci, float dt);
+// What `v`, its front `along` connector `ci`'s way (negative before the line), drives against on the connector's diverging siblings
+// (Conn::diverges): a body on a sibling, or come off it with its body still on its way, further along than `v` and not yet clear of
+// it, its gap measured as on one path from the line (connector_motion.cpp). The lane's head takes it at its line, a vehicle on the
+// connector all the way over: whoever took the other turn out of its lane first is followed until it has left the split.
+void diverge_leads(const CityState &s, int ci, const Vehicle &v, float along, Lead &l);
 
 } // namespace traffic
 } // namespace city

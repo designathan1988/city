@@ -83,12 +83,15 @@ void sweep_lanes(const CityState &s, const std::vector<AxlePose> &poses, int fro
 	sweep_body(s, c.length * 0.5f, c.half_width, bodies, p.lorry_closure_margin_m, owner, out);
 }
 
-// Nobody on a stretch or too near to stop short of it: the near vehicles on its lane, and those on the connectors that end on
-// it (all at the node its lane starts from). A near vehicle is on its lane's list or on its connector's, and on no other.
+// Nobody on a stretch or too near to stop short of it: no other body off the lanes holding it (a stretch it closed: that body
+// drives over it on no lane list), the near vehicles on its lane, and those on the connectors that end on it (all at the node its
+// lane starts from). A near vehicle is on its lane's list or on its connector's, and on no other.
 bool lane_clear(const CityState &s, const LaneClosure &c) {
 	const TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	const int ds = c.key / MAX_LANES, lane = c.key % MAX_LANES;
+	for (const LaneClosure &held : t.closures)
+		if (held.key == c.key && held.owner != c.owner && held.from < c.to + p.lorry_clear_margin_m && held.to > c.from - p.lorry_clear_margin_m) return false;
 	const auto stopping = [&](const Vehicle &v) { return v.v * v.v / (2 * p.classes[int(v.type)].b) + p.lorry_clear_margin_m; };
 	if (size_t(c.key) < t.lane_vehicles.size())
 		for (int id : t.lane_vehicles[size_t(c.key)]) {
@@ -120,6 +123,11 @@ float closure_ahead(const TrafficState &t, int key, float s) {
 	for (const LaneClosure &c : t.closures)
 		if (c.key == key && c.to > s && (best < 0 || c.from - s < best)) best = std::max(0.f, c.from - s);
 	return best;
+}
+
+bool stretch_held(const TrafficState &t, int key, float from, float to) {
+	const float ahead = closure_ahead(t, key, from);
+	return ahead >= 0 && ahead < to - from;
 }
 
 } // namespace traffic

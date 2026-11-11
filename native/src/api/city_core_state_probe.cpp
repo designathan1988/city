@@ -92,6 +92,8 @@ Dictionary derived_of(const CityState &s) {
 		graph = fold(graph, f, sizeof(f));
 		graph = fold(graph, c.conflicts.data(), c.conflicts.size() * sizeof(int));
 		graph = fold(graph, c.conflict_clear.data(), c.conflict_clear.size() * sizeof(c.conflict_clear[0]));
+		graph = fold(graph, c.diverges.data(), c.diverges.size() * sizeof(int));
+		graph = fold(graph, c.diverge_clear.data(), c.diverge_clear.size() * sizeof(c.diverge_clear[0]));
 		graph = fold(graph, &c.max_class, sizeof(c.max_class));
 	}
 	d["graph"] = String::num_uint64(graph, HEX);

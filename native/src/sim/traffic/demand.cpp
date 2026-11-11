@@ -3,6 +3,8 @@
 // morning, work -> home in the evening), 200-7000 m apart with an exponential preference for short trips.
 #include "sim/traffic/kerb_stops.h"
 
+#include "sim/traffic/lane_closures.h"
+
 #include "core/units.h"
 
 #include <cmath>
@@ -108,6 +110,7 @@ bool spawn_one(CityState &s, bool filling, int from = -1) {
 	const int key = from * MAX_LANES + lane;
 	const float stop = d.len - d.stop_back - p.stop_margin_m; // it starts short of its stop line, able to stop there
 	if (at < vc.length + p.mouth_clear_m || at > stop || !lane_free(s, key, at, vc.length)) return false; // keep the lane mouth clear
+	if (stretch_held(t, key, at - vc.length - vc.min_gap, at + vc.min_gap)) return false; // a body off the lanes holds it
 	if (float(lane_load(t, key) + 1) > d.len / p.slot_m) return false; // the lane is full, far vehicles included
 	std::vector<int> route;
 	if (!find_route(s, from, to, route, type) || route.size() < 2) return false;
