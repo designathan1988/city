@@ -15,7 +15,6 @@ namespace {
 
 constexpr int RANK_MAIN = 3, RANK_YIELD = 1; // free arms keep DirSeg::rank's default
 constexpr int RING_PRIORITY = 100; // over every class of road: whoever circulates has the way, whatever comes in
-constexpr int SIGNAL_ARMS = 5, SIGNAL_MAIN_ARMS = 3;
 constexpr size_t MAIN_LEGS = 2; // the road that goes through a junction
 constexpr uint32_t OFFSET_HASH = 2654435761u, OFFSET_STEPS = 1000; // where in its first green each junction starts
 constexpr float STOPPED_MS = 0.5f, FIRST_COME_S = 0.3f; // stopped vehicles go first come, first served
@@ -24,6 +23,7 @@ constexpr float STOP_SETBACK_SHARE = 0.5f; // a short lane keeps at least half o
 
 struct Arm {
 	int seg = -1, in = -1, priority = 0;
+	int lanes = 0; // its road's travel lanes, both ways
 	V2 out; // outward direction from the node
 };
 
@@ -33,10 +33,12 @@ std::vector<Arm> arms_of(const CityState &s, int n) {
 	for (int si : s.roads.nodes[n].segs) {
 		int din = si * 2 + (s.roads.segs[si].b == n ? 0 : 1), dout = si * 2 + (s.roads.segs[si].a == n ? 0 : 1);
 		if (!g.ds[din].ok && !g.ds[dout].ok) continue;
+		const Profile &prof = s.roads.profile_of(si);
 		Arm a;
 		a.seg = si;
 		a.in = g.ds[din].ok ? din : -1;
-		a.priority = s.roads.profile_of(si).ring ? RING_PRIORITY : s.roads.profile_of(si).priority;
+		a.priority = prof.ring ? RING_PRIORITY : prof.priority;
+		a.lanes = prof.lanes_fwd() + prof.lanes_back();
 		Pose p;
 		if (a.in >= 0) { lane_pose(s, din, 0, g.ds[din].len, p); a.out = V2(-p.fx, -p.fz); }
 		else { lane_pose(s, dout, 0, 0.f, p); a.out = V2(p.fx, p.fz); }
@@ -61,6 +63,7 @@ std::vector<Arm> network_arms(const CityState &s, int n) {
 		Arm a;
 		a.seg = si;
 		a.priority = p.ring ? RING_PRIORITY : p.priority;
+		a.lanes = p.lanes_fwd() + p.lanes_back();
 		a.out = V2(float(out.dx), float(out.dz));
 		arms.push_back(a);
 	}
@@ -77,17 +80,18 @@ Control decide(const RoadNode &node, const std::vector<Arm> &arms, const Traffic
 		if (a.priority == RING_PRIORITY) return Control::PRIORITY; // a roundabout's entry gives way, and never takes a signal by itself
 	if (node.auto_signal == AUTO_SIGNAL) return Control::SIGNAL; // the flows measured there chose: the geometry only speaks before they do
 	if (node.auto_signal == AUTO_ALL_STOP) return Control::PRIORITY;
-	std::vector<int> high;
-	int lo = arms[0].priority, hi = lo;
-	for (size_t i = 0; i < arms.size(); i++) {
-		if (float(arms[i].priority) >= tp.signal_main_priority) high.push_back(int(i)); // a main road's arm pushes the junction toward signals
-		lo = std::min(lo, arms[i].priority);
-		hi = std::max(hi, arms[i].priority);
+	int lo = arms[0].priority, hi = lo, widest = 0;
+	for (const Arm &a : arms) {
+		lo = std::min(lo, a.priority);
+		hi = std::max(hi, a.priority);
+		widest = std::max(widest, a.lanes);
 	}
-	if (node.auto_signal == 0) return hi > lo ? Control::PRIORITY : Control::NONE;
-	if (int(arms.size()) >= SIGNAL_ARMS || int(high.size()) >= SIGNAL_MAIN_ARMS) return Control::SIGNAL;
-	if (high.size() == 2 && arms[high[0]].out.dot(arms[high[1]].out) > tp.through_pair_dot) return Control::SIGNAL;
-	return hi > lo ? Control::PRIORITY : Control::NONE;
+	const Control by_rank = hi > lo ? Control::PRIORITY : Control::NONE;
+	if (node.auto_signal == 0) return by_rank;
+	// Before the flows speak: a crossing of signal_arms arms or more runs on signals, and so does a T where one road carries
+	// signal_lanes lanes or more (two each way); a T of narrower streets goes by rank.
+	if (float(arms.size()) >= tp.signal_arms || float(widest) >= tp.signal_lanes) return Control::SIGNAL;
+	return by_rank;
 }
 
 void make_stages(CityState &s, int n, const std::vector<Arm> &arms, Junction &j) {

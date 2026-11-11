@@ -1,6 +1,7 @@
-## The control a junction on automatic gets from its flows: the translated classes against the Roadcraft 4.0 on one script (the
-## numbers below came from its own code, tools/converter/scripts/call40.mjs, ORACLE), real vehicles counted, and a junction of the
-## city turned into a signal by what passes through it.
+## The control a junction on automatic gets: from its geometry before any flow is measured (junctions drawn on free ground), and
+## from its flows: the translated classes against the Roadcraft 4.0 on one script (the numbers below came from its own code,
+## tools/converter/scripts/call40.mjs, ORACLE), real vehicles counted, and a junction of the city turned into a signal by what
+## passes through it.
 extends TestCase
 
 const TOWN_MAP := 0
@@ -18,6 +19,17 @@ const STOP_TICKS := 800
 const STOP_NODES := 320 # every node of the town: the traffic flows with a Stop at every junction
 const STOP_LEAST := 40
 const CTL_STOP := 3 # road_network.h NodeControl
+## The junctions drawn on free ground past the town: arms of local streets (road_profiles.json localStreet, two lanes) and an
+## avenue (avenue, four lanes); a tick or two for the lane graph to take the edit up.
+const LOCAL := 0
+const AVENUE := 3
+const OUT_M := 300.0
+const ARM_M := 100.0
+const SITES_APART_M := 400.0
+const PX := 0.25
+const SETTLE_TICKS := 4
+const SIGNAL_POST := 0 # furniture_types.h FurnitureKind::SIGNAL
+const FURNITURE_SAMPLE := 1 # traffic_probe counts the street furniture only with a sample
 
 func _ready() -> void:
 	var rig := CityCamera.new()
@@ -27,8 +39,9 @@ func _ready() -> void:
 		return
 	new_map(TOWN_MAP, SEED, true)
 	_replay()
+	var quiet := _geometry()
 	_driven()
-	_junction()
+	_junction(quiet)
 	_stop_sign()
 	finish()
 
@@ -41,6 +54,53 @@ func _replay() -> void:
 		var want: Variant = ORACLE[key]
 		var same: bool = absf(got[key] - want) <= absf(want) * SAME if want is float else got[key] == want
 		check(same, "%s: %s, the 4.0 gives %s" % [key, got[key], want])
+
+
+## Before the flows speak, a junction on automatic runs on signals when it is a crossing of four arms or more, or a T where one
+## road carries four lanes or more (two each way); a T of two-lane streets runs without. A signal stands on its posts. Returns
+## a T of two-lane streets left as it is, for the flows to push (-1: none was laid).
+func _geometry() -> int:
+	var b: Dictionary = CityStore.query(&"city_bounds")
+	var o := Vector3(b.max.x + OUT_M, 0, (b.min.z + b.max.z) * 0.5)
+	var mid := o + Vector3(ARM_M, 0, 0)
+	_road(o, o + Vector3(2 * ARM_M, 0, 0), LOCAL)
+	_road(mid + Vector3(0, 0, ARM_M), mid, LOCAL)
+	_signal_at(mid, 3, false, "a T of two-lane streets")
+	var posts := _signal_posts()
+	_road(mid - Vector3(0, 0, ARM_M), mid, LOCAL)
+	_signal_at(mid, 4, true, "its fourth arm makes a crossing")
+	check(_signal_posts() > posts, "the crossing's signal stands on posts: %d -> %d on the map" % [posts, _signal_posts()])
+	var p := o + Vector3(0, 0, SITES_APART_M)
+	var t := p + Vector3(ARM_M, 0, 0)
+	_road(p, p + Vector3(2 * ARM_M, 0, 0), AVENUE)
+	_road(t + Vector3(0, 0, ARM_M), t, LOCAL)
+	_signal_at(t, 3, true, "a T on a four-lane avenue")
+	var q := o - Vector3(0, 0, SITES_APART_M)
+	var stem := q + Vector3(ARM_M, 0, 0)
+	_road(q, q + Vector3(2 * ARM_M, 0, 0), LOCAL)
+	_road(stem - Vector3(0, 0, ARM_M), stem, LOCAL)
+	return _signal_at(stem, 3, false, "another T of two-lane streets")
+
+
+func _road(a: Vector3, e: Vector3, profile: int) -> void:
+	var r: Dictionary = CityStore.dispatch(&"build_road", [a, e, false, Vector3.ZERO, profile, PX])
+	check(r.get("ok", false), "road %s -> %s laid: %s" % [a, e, r])
+
+
+## The junction at `at`: its arms as the inspector counts them, and whether the core runs it on signals. Returns its node (-1:
+## no junction of those arms there).
+func _signal_at(at: Vector3, arms: int, signalled: bool, what: String) -> int:
+	ticks(SETTLE_TICKS)
+	var node: Dictionary = CityStore.query(&"inspect", [at])
+	if not check(node.get("kind", "") == "node" and node.get("arms", 0) == arms, "%s: a junction of %d arms %s" % [what, arms, node]):
+		return -1
+	var state: Dictionary = CityStore.query(&"flow_state", [node.id])
+	check(state.signal == signalled, "%s: %s" % [what, "a signal" if signalled else "no signal"])
+	return node.id
+
+
+func _signal_posts() -> int:
+	return CityStore.query(&"traffic_probe", [FURNITURE_SAMPLE]).street_furniture[SIGNAL_POST]
 
 
 ## The city running: vehicles entering junctions reach the count.
@@ -64,10 +124,9 @@ func _stop_sign() -> void:
 	check(probe.stop_skipped == 0, "all stopped first: %d passed without stopping" % probe.stop_skipped)
 
 
-func _junction() -> void:
-	var node: int = CityStore.query(&"flow_junction")
-	check(node >= 0, "there is a three-arm junction with no signal")
-	if node < 0:
+## The flows through a T of two-lane streets, as many as warrant a signal, put one on it.
+func _junction(node: int) -> void:
+	if not check(node >= 0, "a three-arm junction with no signal to push"):
 		return
 	var state: Dictionary = CityStore.query(&"flow_push", [node, PUSH_S])
 	print("pushed: ", state)

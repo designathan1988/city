@@ -72,7 +72,6 @@ public:
 	godot::Dictionary memory_churn(int mib, int keep_one_in) const;
 	godot::Dictionary allocator_probe() const; // what the core's allocator holds of the system now: committed MiB and threads with a heap
 	godot::Dictionary flow_replay(); // tests: the translated flow classes alone through a fixed script (city_core_flow_probe.cpp)
-	int flow_junction(); // tests: a three-arm junction on automatic with no signal, or -1
 	godot::Dictionary flow_push(int n, int seconds); // tests: that much traffic through it, the choice applied; empty while the clock runs
 	godot::Dictionary flow_state(int n); // tests: what is measured, and the control of `n`
 	godot::Dictionary street_watch(float near_m); // tests: who is on a crossing between junctions, what stopped for them, who is turning back

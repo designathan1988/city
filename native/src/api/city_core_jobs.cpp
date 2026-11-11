@@ -202,7 +202,6 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("memory_churn", "mib", "keep_one_in"), &CityProbes::memory_churn);
 	ClassDB::bind_method(D_METHOD("allocator_probe"), &CityProbes::allocator_probe);
 	ClassDB::bind_method(D_METHOD("flow_replay"), &CityProbes::flow_replay);
-	ClassDB::bind_method(D_METHOD("flow_junction"), &CityProbes::flow_junction);
 	ClassDB::bind_method(D_METHOD("flow_push", "n", "seconds"), &CityProbes::flow_push);
 	ClassDB::bind_method(D_METHOD("flow_state", "n"), &CityProbes::flow_state);
 	ClassDB::bind_method(D_METHOD("street_watch", "near_m"), &CityProbes::street_watch);

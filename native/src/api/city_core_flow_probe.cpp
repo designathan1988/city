@@ -1,6 +1,6 @@
 // CityProbes: the flows and the control they warrant, for the tests. `flow_replay` runs the translated classes alone through a fixed
 // script, the same one tools/converter/scripts/call40.mjs runs on the Roadcraft 4.0, so a number off is a translation off.
-// `flow_junction`, `flow_push` and `flow_state` work on the city.
+// `flow_push` and `flow_state` work on the city.
 #include "api/city_probes.h"
 
 #include "sim/simulation/simulation.h"
@@ -67,16 +67,6 @@ Dictionary CityProbes::flow_replay() {
 	out["quiet_flow"] = quiet_flow(tn);
 	out["warranted"] = name_of(warranted_control(tn.flow_signal_major, tn.flow_signal_minor, tn.flow_signal_minor, AutoControl::PRIORITY, tn));
 	return out;
-}
-
-int CityProbes::flow_junction() {
-	CityState &s = *state_;
-	std::shared_lock<std::shared_mutex> map(s.map_mutex);
-	for (size_t n = 0; n < s.roads.nodes.size(); n++) {
-		const RoadNode &node = s.roads.nodes[n];
-		if (node.alive && node.ctl == CTL_AUTO && node.segs.size() == 3 && traffic::control_of(s, int(n)) != Control::SIGNAL) return int(n);
-	}
-	return -1;
 }
 
 Dictionary CityProbes::flow_push(int n, int seconds) {
