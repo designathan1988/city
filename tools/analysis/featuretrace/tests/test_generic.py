@@ -110,14 +110,18 @@ def tables(path: Path) -> dict[str, int]:
     return found
 
 
-def compared_names(path: Path) -> list[str]:
-    """Names a function compares a value with (`x == "push"`, `name in ("push", "pop")`): `line: name`."""
-    out = []
-    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
-        if isinstance(node, ast.Compare):
-            for side in [node.left, *node.comparators]:
-                out += [f"{node.lineno}: {s}" for s in strings(side) if IDENT.match(s)]
-    return out
+def written_names(path: Path) -> list[str]:
+    """Every string a module writes that has the shape of a name, docstrings aside (`x == "push"`, `lookup(k, "m")`,
+    `f"new:{k}"`): `line: name`. The new core writes none: its vocabulary is the tracer's own constants (`vocab`) and
+    the languages' names their specifications define (`languages`), imported."""
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    docs = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef)) and node.body \
+                and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Constant):
+            docs.add(id(node.body[0].value))
+    return [f"{n.lineno}: {n.value}" for n in ast.walk(tree) if isinstance(n, ast.Constant)
+            and isinstance(n.value, str) and id(n) not in docs and IDENT.match(n.value.strip(":"))]
 
 
 def found_tables() -> dict[str, int]:
@@ -148,10 +152,30 @@ class Generic(unittest.TestCase):
     def test_the_debts_only_shrink(self):
         self.assertEqual([], sorted(DEBTS - set(found_tables())), "a debt removed from the code: remove it from DEBTS")
 
-    def test_the_new_core_names_nothing_a_platform_declares(self):
+    def test_the_new_core_writes_no_name(self):
         for path in sorted(CORE.glob("heap/*.py")):
             self.assertEqual({}, tables(path), f"{path.name}: the new core holds no table of names")
-            self.assertEqual([], compared_names(path), f"{path.name}: the new core compares no value with a name")
+            self.assertEqual([], written_names(path), f"{path.name}: the new core writes no name (vocab, languages)")
+
+    def test_the_gate_fails_where_it_must(self):
+        planted = HERE / "fixture" / "generic" / "planted.py"
+        self.assertEqual(["planted.py:CALLS"], [k.rsplit("/", 1)[-1] for k in tables_rel(planted)])
+        self.assertEqual(["2: push", "2: pop", "6: forEach", "7: constructor"], written_names(planted))
+
+
+def tables_rel(path: Path) -> list[str]:
+    """`tables` of a file outside the core (the gate's own fixture)."""
+    return [k.split(":", 1)[0].rsplit("/", 1)[-1] + ":" + k.split(":", 1)[1] for k in tables_outside(path)]
+
+
+def tables_outside(path: Path) -> dict[str, int]:
+    found = {}
+    for st in ast.parse(path.read_text(encoding="utf-8")).body:
+        if isinstance(st, ast.Assign):
+            names = [s for s in strings(st.value) if IDENT.match(s)]
+            if len(names) >= 2:
+                found |= {f"{path.name}:{t.id}": len(names) for t in st.targets if isinstance(t, ast.Name)}
+    return found
 
 
 if __name__ == "__main__":
