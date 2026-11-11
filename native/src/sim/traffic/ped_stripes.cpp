@@ -3,8 +3,9 @@
 // piece of furniture, so a gap between two pieces is found even off the stripes. A stripe a footprint stands in beside
 // the walker is shut; ahead, each stripe's room is the gap to the nearest body across it. The walker takes the stripe
 // with the most room (aside costs, off its own side costs, the stripes left to the oncoming are not its own), moves
-// toward it at a share of its pace without ever stepping sideways into furniture, and keeps its gap behind the body
-// ahead. Held up past its jamtime (by the way: sidewalk, zebra, a single stripe) it squeezes past walkers (never
+// toward it at a share of its pace without ever stepping sideways into furniture (a piece its step ahead reaches included;
+// standing in one, it steps out), and keeps its gap behind the body ahead both where it stands and where it steps to. Held
+// up past its jamtime (by the way: sidewalk, zebra, a single stripe) it squeezes past walkers (never
 // furniture) at ped_jam_share of its pace (SUMO's jamtime).
 #include "sim/traffic/ped_stripes.h"
 #include "sim/traffic/traffic_system.h"
@@ -58,43 +59,62 @@ void rooms_of(const Body *b, int n, const float *cand, int m, float look, float 
 }
 
 // The room ahead of a centre at `c` across: the gap to the nearest body across it (only furniture when squeezing). With
-// nobody about it is the whole look ahead.
-float room_at(const Body *b, int n, float c, float look, bool squeeze) {
+// nobody about it is the whole look ahead. `own`: the walker's own way on from where it stands (not a stripe's): a piece it is
+// already alongside (its near end behind its centre) is no wall ahead, as walking along it takes it no deeper into it; it steps
+// out of it sideways meanwhile (side_limits).
+float room_at(const Body *b, int n, float c, float look, bool squeeze, bool own) {
 	float room = look;
 	for (int k = 0; k < n; k++) {
 		const Body &o = b[k];
-		if ((squeeze && !o.furniture) || !across(o, c)) continue;
+		if ((squeeze && !o.furniture) || !across(o, c) || (own && o.furniture && o.along_lo < 0)) continue;
 		room = std::min(room, gap_of(o));
 	}
 	return room;
 }
 
+// Out of the band of a piece it stands in, the walker steps to the side its room holds, the nearer one when both do.
+bool out_low(const WayFrame &f, float shut_lo, float shut_hi) {
+	const bool low_fits = shut_lo >= std::min(f.lo, f.u), high_fits = shut_hi <= std::max(f.hi, f.u);
+	if (low_fits != high_fits) return low_fits;
+	return f.u - shut_lo <= shut_hi - f.u;
+}
+
 // Where the walker may step sideways now: its room (or where it stands, when the room moved off it: it steps back in at
 // its own lateral pace, never a jump), less the bodies beside it on either side: a piece of furniture up to its edge, a
-// walker up to half the room between the two (the other steps this tick too, and may take the other half). A walker beside
-// it that its way has brought nearer than their two bodies (two ways that converge) makes it step away, `aside` at most: both
-// do, so they part; so does ground a vehicle holds that it stands on (ped_held.cpp).
-void side_limits(const WayFrame &f, const Body *b, int n, float aside, float walk, float &lo, float &hi) {
-	lo = std::min(f.lo, f.u);
-	hi = std::max(f.hi, f.u);
+// walker up to half the room between the two (the other steps this tick too, and may take the other half). A piece is
+// beside it as soon as this tick's step ahead (`ahead`) reaches it, so the walker never steps into the band of a piece it is
+// about to reach (a walker ahead is kept off by the pace's gap). Standing in a piece's band (put there, or brought there by
+// its way), it steps out of it at `aside`, to the side its room holds. A walker beside it that its way has brought nearer than
+// their two bodies (two ways that converge) makes it step away, `aside` at most: both do, so they part; so does ground a
+// vehicle holds that it stands on (ped_held.cpp), past its room's edge if need be but never into a piece. The room and the
+// furniture bound it hard, the walkers only within that: a walker never pushes it into a piece, nor keeps it in one.
+void side_limits(const WayFrame &f, const Body *b, int n, float aside, float walk, float ahead, float &lo, float &hi) {
+	float piece_lo = -BIG, piece_hi = BIG; // the furniture
+	float soft_lo = -BIG, soft_hi = BIG; // the walkers beside it
 	for (int k = 0; k < n; k++) {
 		const Body &o = b[k];
-		if (o.under || o.along_lo - o.reach >= 0 || o.along_hi + o.reach <= 0) continue; // ahead of it or behind, not beside
-		const float shut_lo = o.lat_lo - o.reach, shut_hi = o.lat_hi + o.reach, mine = o.furniture ? 1.f : WALKERS_SHARE;
-		if (f.u <= shut_lo) hi = std::min(hi, f.u + (shut_lo - f.u) * mine);
-		else if (f.u >= shut_hi) lo = std::max(lo, f.u - (f.u - shut_hi) * mine);
-		else if (o.furniture) continue;
-		else if (f.u < (o.lat_lo + o.lat_hi) * 0.5f) hi = std::min(hi, std::max(shut_lo, f.u - aside)); // it is on the walker's low side: lower
-		else lo = std::max(lo, std::min(shut_hi, f.u + aside));
+		const float reached = o.furniture ? ahead : 0.f;
+		if (o.under || o.along_lo - o.reach >= reached || o.along_hi + o.reach <= 0) continue; // ahead of its step or behind, not beside
+		const float shut_lo = o.lat_lo - o.reach, shut_hi = o.lat_hi + o.reach;
+		float &bound_lo = o.furniture ? piece_lo : soft_lo, &bound_hi = o.furniture ? piece_hi : soft_hi;
+		const float mine = o.furniture ? 1.f : WALKERS_SHARE;
+		if (f.u <= shut_lo) bound_hi = std::min(bound_hi, f.u + (shut_lo - f.u) * mine);
+		else if (f.u >= shut_hi) bound_lo = std::max(bound_lo, f.u - (f.u - shut_hi) * mine);
+		else if (o.furniture ? out_low(f, shut_lo, shut_hi) : f.u < (o.lat_lo + o.lat_hi) * 0.5f) bound_hi = std::min(bound_hi, std::max(shut_lo, f.u - aside)); // lower
+		else bound_lo = std::max(bound_lo, std::min(shut_hi, f.u + aside));
 	}
-	if (hi < lo) lo = hi = clampf(f.u, hi, lo); // made to step past its room's edge: to the edge; from both sides: it stays
 	// ground a vehicle holds, under its feet: it walks off it (`walk`: a tick at its own pace), past its room's edge if need be
-	// (it steps back in after)
+	// (it steps back in after), as far as the furniture lets it (held between the two, it walks on along its way)
 	for (int k = 0; k < n; k++) {
 		if (!b[k].under) continue;
-		lo = hi = f.u < b[k].lat_lo ? f.u - walk : f.u + walk;
+		const float off = f.u < b[k].lat_lo ? f.u - walk : f.u + walk;
+		lo = hi = piece_lo <= piece_hi ? clampf(off, piece_lo, piece_hi) : f.u;
 		return;
 	}
+	const float hard_lo = std::max(std::min(f.lo, f.u), piece_lo), hard_hi = std::min(std::max(f.hi, f.u), piece_hi); // the room and the furniture
+	lo = std::max(hard_lo, std::min(std::max(soft_lo, hard_lo), hard_hi));
+	hi = std::min(hard_hi, std::max(std::min(soft_hi, hard_hi), hard_lo));
+	if (hi < lo) lo = hi = clampf(f.u, hi, lo); // made to step past its room's edge: to the edge; from both sides: it stays
 }
 
 // The places worth a score, each once (the same place twice scores the same and never wins the second time): the
@@ -120,6 +140,11 @@ int candidates(const StripeRules &r, const CrowdEntry &w, const WayFrame &f, con
 		if (above <= f.hi) out[m++] = above;
 	}
 	return m;
+}
+
+// The pace that keeps the walker's gap and headway behind `room` ahead: its own speed at most, a share of it squeezing past.
+float pace_for(const StripeRules &r, const CrowdEntry &w, float room, bool squeeze) {
+	return std::clamp((room - r.gap) * r.inv_headway, 0.f, squeeze ? w.speed * r.jam_share : w.speed);
 }
 
 } // namespace
@@ -227,7 +252,7 @@ StripeChoice choose_stripe(const StripeRules &r, const CrowdEntry &w, const WayF
 	const int m = candidates(r, w, f, b, n, cand, here);
 	float rooms[MAX_CANDIDATES];
 	rooms_of(b, n, cand, m, r.look, rooms);
-	float aimed_room = r.look, here_room = r.look, aimed = 0, best_score = -BIG;
+	float aimed_room = r.look, aimed = 0, best_score = -BIG;
 	int best = AIMED;
 	for (int k = 0; k < m; k++) {
 		const float c = cand[k], room = rooms[k];
@@ -237,7 +262,6 @@ StripeChoice choose_stripe(const StripeRules &r, const CrowdEntry &w, const WayF
 			aimed_room = room;
 			aimed = sc;
 		}
-		if (k == HERE && here) here_room = room;
 		if (sc > best_score) {
 			best = k;
 			best_score = sc;
@@ -251,24 +275,24 @@ StripeChoice choose_stripe(const StripeRules &r, const CrowdEntry &w, const WayF
 		out.u_goal = cand[best];
 		out.held = 0;
 	}
-	// the gap behind the body ahead in its own span; held up past its jamtime it squeezes past the walkers until clear
-	// (where it is was scored already, as a candidate or as the stripe aimed at, unless it stands outside its room)
-	const bool scored = here || f.u == cand[AIMED];
-	const float lead = !scored && n > 0 ? room_at(b, n, f.u, r.look, false) : here ? here_room : f.u == cand[AIMED] ? aimed_room : r.look;
-	float want = std::clamp((lead - r.gap) * r.inv_headway, 0.f, w.speed);
-	if (w.jam >= jam_after) {
-		const float squeeze = room_at(b, n, f.u, r.look, true);
+	// the gap behind the body ahead on its own way on from where it stands; held up past its jamtime it squeezes past the walkers
+	// until clear
+	float want = pace_for(r, w, room_at(b, n, f.u, r.look, false, true), false);
+	const bool squeezing = w.jam >= jam_after;
+	if (squeezing) {
 		out.jam = want > r.moving ? 0.f : w.jam;
-		want = std::clamp((squeeze - r.gap) * r.inv_headway, 0.f, w.speed * r.jam_share);
+		want = pace_for(r, w, room_at(b, n, f.u, r.look, true, true), true);
 	} else {
 		out.jam = want < r.moving ? w.jam + r.dt : 0.f;
 	}
 	out.pace = std::min(want, w.pace + r.accel * r.dt);
-	// aside at a share of its own pace (it can step aside standing), never into the furniture beside it
+	// aside at a share of its own pace (it can step aside standing), never into the furniture beside it or reached this tick
 	const float aside = r.aside_share * w.speed * r.dt;
 	float lo, hi;
-	side_limits(f, b, n, aside, w.speed * r.dt, lo, hi);
+	side_limits(f, b, n, aside, w.speed * r.dt, out.pace * r.dt, lo, hi);
 	out.u = clampf(f.u + std::clamp(out.u_goal - f.u, -aside, aside), lo, hi);
+	// the step ahead is taken where it steps to: its gap is kept to the bodies across that place as well
+	if (out.u != f.u) out.pace = std::min(out.pace, pace_for(r, w, room_at(b, n, out.u, r.look, squeezing, true), squeezing));
 	return out;
 }
 

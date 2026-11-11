@@ -2,6 +2,7 @@
 #include "sim/buildings/building_store.h"
 
 #include "sim/catalog/catalog.h"
+#include "sim/roads/furniture_kept.h"
 
 #include <algorithm>
 #include <cmath>
@@ -95,12 +96,14 @@ void BuildingStore::tally(const Building &b, int sign) {
 
 void BuildingStore::mark(int id) {
 	sites_due.push_back(id);
+	const Building &b = items[size_t(id)];
+	const float r = reach(b);
+	if (furniture) furniture->forget_meeting({ b.x - r, b.z - r, b.x + r, b.z + r }); // under the exclusive lock, before any reader places again
 	if (!log) return;
 	log->lots_changed.push_back(id);
 	mark_into(id, log->building_chunks);
-	const Building &b = items[size_t(id)];
-	const float r = reach(b);
 	log->lot_boxes.insert(log->lot_boxes.end(), { b.x - r, b.z - r, b.x + r, b.z + r });
+	log->lot_fronts.insert(log->lot_fronts.end(), { b.x - r, b.z - r, b.x + r, b.z + r });
 }
 
 void BuildingStore::mark_look(int id) const {

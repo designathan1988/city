@@ -174,12 +174,16 @@ void RenderWorld::mark_changed(const CityState &s) {
 		trees_.mark_dirty(k);
 	}
 	// A lot that came, went or changed: the near surfaces of the streets it may face draw its car gates again (kerb_drop.h, the parking
-	// paint), each from the chunk that draws it; its gates stand within kerb_gate_reach_m of a facing segment's box (lot_access.h
-	// street_gates). A chunk not built yet reads the lot when it is.
+	// paint), and their props stand off its gates again (street_furniture.h; the kept placement was dropped when the lot changed,
+	// BuildingStore::mark), each from the chunk that draws it; its gates stand within kerb_gate_reach_m of a facing segment's box
+	// (lot_access.h street_gates). A chunk not built yet reads the lot when it is.
 	const float reach = s.catalog.traffic.kerb_gate_reach_m;
 	for (size_t i = 0; i + LOT_BOX_FLOATS <= lot_boxes_.size(); i += LOT_BOX_FLOATS)
-		s.roads.for_segments_near(lot_boxes_[i] - reach, lot_boxes_[i + 1] - reach, lot_boxes_[i + 2] + reach, lot_boxes_[i + 3] + reach,
-				[&](int sid) { road_stream_.rebuild(segment_chunk(s.roads.segs[size_t(sid)])); });
+		s.roads.for_segments_near(lot_boxes_[i] - reach, lot_boxes_[i + 1] - reach, lot_boxes_[i + 2] + reach, lot_boxes_[i + 3] + reach, [&](int sid) {
+			const int64_t k = segment_chunk(s.roads.segs[size_t(sid)]);
+			road_stream_.rebuild(k);
+			props_stream_.rebuild(k);
+		});
 	lot_boxes_.clear();
 	transit_.touch(road_keys_);
 	transit_.touch_terrain(s, terrain_rects_);

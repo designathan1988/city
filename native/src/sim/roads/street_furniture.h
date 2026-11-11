@@ -6,6 +6,7 @@
 // (+u on the left of a -> b).
 #pragma once
 
+#include "sim/roads/parking_layout.h"
 #include "sim/roads/road_network.h"
 
 #include <cstdint>
@@ -64,8 +65,11 @@ constexpr uint32_t FURNITURE_ALL = (1u << FURNITURE_KINDS) - 1u;
 // The pieces standing on segment `sid` whose kind is in `kinds`: the signal posts of its signalled ends (signalled[0]
 // at a, [1] at b; the junction control is sim/traffic's) that stand on it, then by its furniture level the lamps,
 // hydrants, bins, benches and trees, in that order. A hydrant, bin, bench or tree that would leave a walker no way past
-// the pieces beside it is not placed (traffic.json ped_body_m and ped_margin_m: the walkers' own sizes).
-void segment_furniture(const RoadNetwork &net, int sid, const bool signalled[2], uint32_t kinds, std::vector<FurnitureSpot> &out);
+// the pieces beside it is not placed (traffic.json ped_body_m and ped_margin_m: the walkers' own sizes). `gates`: the
+// lots' gates on each side as arc spans (sim/buildings/lot_access.h street_gates), or null; every piece but a signal post
+// stands clear of them.
+void segment_furniture(const RoadNetwork &net, int sid, const bool signalled[2], const std::vector<ArcSpan> *gates, uint32_t kinds,
+		std::vector<FurnitureSpot> &out);
 // The signal post for the traffic arriving at signalled node `n` on arm `approach`: across the junction, on the arm it
 // goes straight on into, at the right of that traffic; on its own corner when it has no straight continuation. False
 // when the arm has no lanes into `n`.

@@ -184,6 +184,14 @@ void graph_probe(const TrafficState &t, Dictionary &d) {
 	d["sweep_pairs"] = int64_t(t.g.sweep_pairs); // connector pairs looked at
 	d["sweep_tests"] = int64_t(t.g.sweep_tests); // ... and the body rectangles tested for them
 }
+
+// The street furniture of the whole map: pieces by kind (signal, lamp, hydrant, bin, bench, tree), and those standing in front
+// of a lot's gate. Every segment is placed again, so the tests ask for it only with a sample.
+void furniture_probe(const CityState &s, Dictionary &d) {
+	d["street_furniture"] = furniture_counts(s);
+	d["furniture_in_gates"] = traffic::furniture_in_gates(s, false); // pieces standing in front of a lot's gate
+	d["signals_in_gates"] = traffic::furniture_in_gates(s, true); // ... of them signal posts, which the signals' rule places
+}
 } // namespace
 
 static void push_sample(const TrafficState &t, const Vehicle &v, Array &poses, Array &dirs, Array &types, Array &mids, Array &speeds) {
@@ -210,8 +218,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["people_waiting"] = t.ped_waiting; // at a kerb for the walk phase or a gap
 	d["people_overlaps"] = people_overlaps(t, 2 * state_->catalog.traffic.ped_body_m - TOUCH_EPS_M); // walkers inside another's body: walking, waiting
 	d["people_in_furniture"] = traffic::walkers_in_furniture(*state_); // walkers whose body stands in a street piece
-	// pieces of the map by kind (signal, lamp, hydrant, bin, bench, tree): every segment placed again, so only with a sample
-	if (sample > 0) d["street_furniture"] = furniture_counts(*state_);
+	if (sample > 0) furniture_probe(*state_, d);
 	d["reroutes"] = t.reroutes;
 	d["released"] = t.released; // jammed-junction releases
 	d["governor"] = t.gov;

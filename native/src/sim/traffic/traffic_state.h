@@ -40,6 +40,7 @@ struct KerbStop {
 	bool back = false; // the mate is on the way back
 	float at = 0, t = 0, elapsed = 0, fetch = 0, walked = 0, transfer = 0; // where its front stops; seconds in the phase and in all; the moves
 	V2 from; // where the person to pick up set off from
+	V2 foot; // where the person set down sets foot on the footway: clear of the street's pieces, from the door where the vehicle halted
 };
 
 

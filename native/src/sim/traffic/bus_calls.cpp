@@ -56,14 +56,15 @@ bool bus_call(CityState &s, int id, BusCall &c, float dt) {
 	c.t += dt;
 	if (c.leaving > 0 && c.leaver.ped < 0 && c.t >= c.next_off) { // the next one off, once the one before is on the footway
 		const KerbDoors at = kerb_door_at(s, v, p.classes[int(v.type)].length * p.kerb_door_along);
-		const int ped = kerb_walker_out(s, v.ds, at.foot);
-		if (ped >= 0) { // it steps out at the middle door and walks to the footway (with no room there it stays aboard)
-			kerb_show(s, ped, at.door, at.foot - at.door);
+		V2 foot;
+		const int ped = kerb_foot(s, v.ds, at, foot) ? kerb_walker_out(s, v.ds, foot) : -1;
+		if (ped >= 0) { // it steps out at the middle door and walks to its foot on the footway, clear of the street's pieces (with no room it stays aboard)
+			kerb_show(s, ped, at.door, foot - at.door);
 			c.leaver.ped = ped;
 			c.leaver.from = at.door;
 			c.leaver.walked = 0;
-			c.leaver.takes = p.bus_step_aboard_s + (at.foot - at.door).len() / p.kerb_pace_ms;
-			c.leaver_to = at.foot;
+			c.leaver.takes = p.bus_step_aboard_s + (foot - at.door).len() / p.kerb_pace_ms;
+			c.leaver_to = foot;
 			t.bus_alighted++;
 		}
 		c.leaving--;

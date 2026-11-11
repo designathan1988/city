@@ -16,6 +16,7 @@
 namespace city {
 
 struct OccupancyDef;
+class FurnitureKept;
 
 // What a building is for (the ids saved with a record, new ones at the end). FN_NONE: its kind and seed say.
 enum BuildingFn : uint8_t { FN_NONE = 0, FN_SCHOOL, FN_CHURCH, FN_HOSPITAL, FN_CLINIC, FN_SQUARE, FN_PARK, FN_GAS_STATION,
@@ -67,6 +68,9 @@ class BuildingStore : public BuildingRecords {
 public:
 	SlotIds free_ids;
 	ChangeLog *log = nullptr;
+	// The city's kept street furniture (furniture_kept.h): a lot's gates are an input of its street's placement, so a record that
+	// changes drops the placements whose lots it may be among (mark).
+	FurnitureKept *furniture = nullptr;
 	int count = 0;
 	// Residents and jobs of the alive records (occupancy), kept by place/remove, the one way a record comes or goes: never
 	// counted again over every record, and right after growth, edits and loads alike (the snapshot reads them).
@@ -76,10 +80,12 @@ public:
 	std::vector<int> sites_due;
 
 	void init(ChangeLog *l, const OccupancyDef *occupancy);
-	// The same links set again, nothing cleared: the store moved in with a city read aside (CityState::bind).
-	void attach(ChangeLog *l, const OccupancyDef *occupancy) {
+	// The same links set again, nothing cleared: the store moved in with a city read aside (CityState::bind), and the city's kept
+	// street furniture (init leaves it as bound).
+	void attach(ChangeLog *l, const OccupancyDef *occupancy, FurnitureKept *kept) {
 		log = l;
 		occupancy_ = occupancy;
+		furniture = kept;
 	}
 	void clear();
 	int add(const Building &b);
@@ -87,7 +93,9 @@ public:
 	// Undo / redo / load: the record goes back under the same id. A building that
 	// grew there meanwhile (outside the history) moves to a new id; `evict` also knocks down what grew on the lot.
 	void put(int id, const Building &b, bool evict);
-	void mark(int id); // the record changed: its chunks drawn again, the traffic and the render told, its lot due to be graded
+	// The record changed: its chunks drawn again, the traffic and the render told (the streets it faces lay their furniture off its
+	// gates again), its lot due to be graded.
+	void mark(int id);
 	void mark_look(int id) const; // its chunks drawn again though it did not change: another look (Interior layer)
 	// Residents and jobs from the floor area.
 	static void occupancy(const Building &b, float floor_share, const float per_m2[4], int &residents, int &jobs);

@@ -19,6 +19,7 @@ const TURN_RAD_S := 6.0 # traffic.json ped_turn_rad_s: how fast a body turns
 const TURN_SLACK_RAD := 0.05
 const LEAST_SEEN := 20
 const MOST_TOLD := 40 # cases printed, each walker's first of a kind
+const PIECES_NEAR_M := 4.0 # a walker found in a street piece: the pieces of its sidewalk this near it along are printed
 const AT := Vector3.ZERO # the window's middle: the camera of a test stands at the origin
 # the probe's row of a walker (city_core_people.cpp walker_bodies)
 const ID := 0
@@ -58,6 +59,7 @@ var _apart_case: Array = []
 var _pairs := 0
 var _seen := {}
 var _told := {}
+var _last_piece := {} # each walker's last case in a street piece, and how many ticks it was in one
 
 
 func _ready() -> void:
@@ -81,6 +83,12 @@ func _ready() -> void:
 		_met(watch)
 		_together(before, now)
 		before = now
+	for id: int in _last_piece:
+		var last: Array = _last_piece[id][1]
+		print("in a street piece %d ticks, the last: %s" % _last_piece[id])
+		for spot: Dictionary in CityStore.query(&"furniture_spots", [last[0][SEG]]):
+			if spot.side == last[0][SIDE] and absf(spot.v - last[0][ARC]) < PIECES_NEAR_M:
+				print("  the sidewalk's piece near it: %s" % spot)
 	print("rows: id, x, z, pace, mode, seg, side, s, u, with, mate, crossing arm, heading x, heading z, rest, node, next point")
 	check(_seen.size() >= LEAST_SEEN, "the town walks round the camera: %d walkers seen" % _seen.size())
 	check(_jumps == 0, "no walker jumps farther than its pace carries it in a tick: %d, the worst (metres, before, after) %s" % [_jumps, _jump_worst])
@@ -191,6 +199,8 @@ func _met(watch: Dictionary) -> void:
 		_tell("in a vehicle", pair[0][ID], pair)
 	for case: Array in watch.in_furniture_cases:
 		_tell("in a street piece", case[0][ID], case)
+		var id: int = case[0][ID]
+		_last_piece[id] = [int(_last_piece.get(id, [0])[0]) + 1, case]
 
 
 ## Each walker's first case of a kind, printed once: what the failure's count is made of.

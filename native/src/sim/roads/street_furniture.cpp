@@ -1,7 +1,9 @@
 // Street furniture placement, see street_furniture.h; every distance comes from data/catalog/street_furniture.json and
 // its sources. Each sidewalk is a free width for walking and a service strip at the kerb; the pieces stand in the strip,
 // the signal posts and lamps first (they must be there), then each other piece at the first place along the arc from
-// where its rule wants it that no placed footprint covers, and only where it still leaves a walker a way past.
+// where its rule wants it that no placed footprint covers, and only where it still leaves a walker a way past. No piece
+// but a signal post stands in front of a lot's gate: the strip at the kerb holds the vehicles' ramps and the persons' way
+// in as well as the furniture (NBR 9050; Decreto SP 59.671/2020), so a piece is moved along past the gates of its side.
 #include "sim/roads/street_furniture_internal.h"
 
 #include <algorithm>
@@ -15,26 +17,18 @@ namespace {
 constexpr int FURN_FULL = 0, FURN_NONE = 2; // RoadSegment furniture level (SEG_FURNITURE_MASK)
 constexpr int BASE_RESIDENTIAL = 1, BASE_INDUSTRIAL = 3; // ZoneDef::base
 constexpr int MAX_BESIDE = 16; // pieces a passage check looks at across one cross-section
-constexpr double SQRT2 = 1.4142135623730951;
 constexpr int SLOT_TRIES = 64; // a piece is moved along past at most this many others before it gives up
 // Two places closer than what they need by under this are apart: a piece moved to just touch another must not find it
 // in the way again through the rounding of the sum it was moved by.
 constexpr double TOUCH_EPS_M = 1e-3;
-constexpr double STRAIGHT_SLACK_M = 0.01; // a segment this much longer than its chord bends
 
-int side_of(const Profile &p, float u) {
-	const StripEdge &r = p.edges.front(), &l = p.edges.back();
-	if (r.strip.kind == StripKind::SIDEWALK && u >= r.u0 && u <= r.u1) return 0;
-	if (l.strip.kind == StripKind::SIDEWALK && u >= l.u0 && u <= l.u1) return 1;
-	return -1;
-}
+// The sidewalk of `sid` at the right of its way out of node `n`: the corner it faces (one per corner of the node).
+int corner_side(const RoadSegment &g, int n) { return g.a == n ? 0 : 1; }
 
 // Leaves the free width (NBR 9050) beside a piece reaching `depth` from the kerb on `side`.
 bool fits_walk(const RoadNetwork &net, const Profile &p, int side, float depth) {
 	return walk_on(p, side) && depth <= walk_width(p, side) - defs(net).sidewalk.free_width_m;
 }
-// The sidewalk of `sid` at the right of its way out of node `n`: the corner it faces (one per corner of the node).
-int corner_side(const RoadSegment &g, int n) { return g.a == n ? 0 : 1; }
 
 // A kerbside piece of kind `k` on `side`, its face kerb_clear_m from the kerb's face, facing the road.
 FurnitureSpot kerbside(const RoadNetwork &net, FurnitureKind k, int sid, const Profile &p, int side, double v) {
@@ -74,12 +68,24 @@ struct Placer {
 	const Profile &p;
 	double v0, v1; // the mouths
 	std::vector<FurnitureSpot> &all;
+	const std::vector<ArcSpan> *gates; // the lots' gates on each side (lot_access.h street_gates), or null
 
 	bool fits(int side, float depth) const { return fits_walk(net, p, side, depth); }
-	// Moves `s` along by `dir` from where its rule wants it until no placed footprint on its side covers it.
+	// Moves `s` along by `dir` past every gate of its side its footprint stands in; true when it moved.
+	bool off_gates(FurnitureSpot &s, int dir) const {
+		if (!gates || s.side < 0) return false;
+		bool moved = false;
+		for (const ArcSpan &gate : gates[size_t(s.side)]) {
+			if (s.v + s.half_v <= gate.first + TOUCH_EPS_M || s.v - s.half_v >= gate.second - TOUCH_EPS_M) continue;
+			s.v = dir > 0 ? gate.second + s.half_v : gate.first - s.half_v;
+			moved = true;
+		}
+		return moved;
+	}
+	// Moves `s` along by `dir` from where its rule wants it until no placed footprint and no gate on its side covers it.
 	bool slot(FurnitureSpot &s, int dir) const {
 		for (int tries = 0; tries < SLOT_TRIES; tries++) {
-			bool moved = false;
+			bool moved = off_gates(s, dir);
 			for (const FurnitureSpot &q : all) {
 				if (q.side != s.side || std::fabs(q.u - s.u) >= q.half_u + s.half_u || std::fabs(q.v - s.v) > q.half_v + s.half_v - TOUCH_EPS_M) continue;
 				s.v = dir > 0 ? q.v + q.half_v + s.half_v : q.v - q.half_v - s.half_v;
@@ -88,6 +94,16 @@ struct Placer {
 			if (!moved) return s.v - s.half_v >= v0 && s.v + s.half_v <= v1;
 		}
 		return false;
+	}
+	// A pole the rule stations (a lamp, a column): moved past the gates of its side, ahead or else back, kept within the mouths.
+	void station(const FurnitureSpot &s) {
+		for (const int dir : { 1, -1 }) {
+			FurnitureSpot q = s;
+			for (int tries = 0; tries < SLOT_TRIES && off_gates(q, dir); tries++) {}
+			if (q.v - q.half_v < v0 || q.v + q.half_v > v1) continue;
+			all.push_back(q);
+			return;
+		}
 	}
 	void place(FurnitureSpot s, int dir) {
 		if (slot(s, dir) && leaves_way(net, p, all, s)) all.push_back(s);
@@ -111,15 +127,15 @@ void lamps(Placer &c) {
 		FurnitureSpot main_pole = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, v, row.pole_u, toward_road(row.side), 0.f);
 		main_pole.station = k;
 		main_pole.lit = !row.twin || k % int(d.pole_lit_every) == 0;
-		c.all.push_back(main_pole);
+		c.station(main_pole);
 		const bool one = row.stations == 1; // a short block's only station has the other face's lamp beside it
 		if (!row.twin || d.column_every_m > 0.f || (!one && k + 1 == row.stations)) continue;
 		const double between = one ? v : v + row.spacing * d.twin_stagger;
-		c.all.push_back(column(c, row, between, k));
+		c.station(column(c, row, between, k));
 	}
 	if (!row.twin || row.stations == 0 || d.column_every_m <= 0.f) return;
 	int k = 0;
-	for (double v = c.v0 + d.column_first_m; v <= c.v1 - defs(c.net).furniture.row_end_m; v += d.column_every_m) c.all.push_back(column(c, row, v, k++));
+	for (double v = c.v0 + d.column_first_m; v <= c.v1 - defs(c.net).furniture.row_end_m; v += d.column_every_m) c.station(column(c, row, v, k++));
 }
 
 // The arm of node `n` a hydrant may stand on: the lowest-numbered one with room at the corner it faces, or -1.
@@ -230,6 +246,10 @@ void trees(Placer &c) {
 			if (moved) continue; // check the new place against all again
 			if (v > c.v1 - clear) break;
 			FurnitureSpot s = spot(c.net, FurnitureKind::TREE, c.sid, c.p, v, u, 0.f, 0.f);
+			if (c.off_gates(s, 1)) { // in front of a gate: past it, and every piece looked at again from there
+				v = s.v;
+				continue;
+			}
 			if (leaves_way(c.net, c.p, c.all, s)) c.all.push_back(s);
 			v += t.spacing_m;
 		}
@@ -238,35 +258,8 @@ void trees(Placer &c) {
 
 } // namespace
 
-FurnitureSpot furniture::spot(const RoadNetwork &net, FurnitureKind k, int sid, const Profile &p, double v, float u, float face_left, float face_fwd) {
-	FurnitureSpot s;
-	s.kind = k;
-	s.seg = sid;
-	s.side = side_of(p, u);
-	s.v = v;
-	s.u = u;
-	s.face_left = face_left;
-	s.face_fwd = face_fwd;
-	const Footprint &f = defs(net).footprint[int(k)];
-	const bool along_traffic = face_fwd != 0; // its z runs along the segment
-	s.half_v = (along_traffic ? f.z_m : f.x_m) * 0.5f;
-	s.half_u = (along_traffic ? f.x_m : f.z_m) * 0.5f;
-	return s;
-}
-
-bool sidewalk_on(const Profile &p, int side) { return !p.edges.empty() && walk_on(p, side); }
-
-float sidewalk_u(const Profile &p, int side, float from_kerb) { return kerb_in(p, side, from_kerb); }
-
 float kerbside_reach(const RoadNetwork &net, FurnitureKind k) {
 	return defs(net).sidewalk.kerb_clear_m + defs(net).footprint[int(k)].z_m * 0.5f;
-}
-
-float plate_kerb(const RoadNetwork &net, int seg) {
-	const RoadSegment &g = net.segs[size_t(seg)];
-	const RoadNode &a = net.nodes[size_t(g.a)], &b = net.nodes[size_t(g.b)];
-	const SignDef &d = defs(net).signs;
-	return g.len > std::hypot(b.x - a.x, b.z - a.z) + STRAIGHT_SLACK_M ? d.plate_kerb_curve_m : d.plate_kerb_m;
 }
 
 bool kerbside_place(const RoadNetwork &net, int seg, const Profile &p, int side, FurnitureKind k, float &u) {
@@ -289,32 +282,14 @@ bool kerbside_place(const RoadNetwork &net, int seg, const Profile &p, int side,
 	return k == FurnitureKind::COLUMN || fits_walk(net, p, side, d.sidewalk.kerb_clear_m + across);
 }
 
-void hydrant_square(const RoadNetwork &net, double x, double z, double &x0, double &z0, double &x1, double &z1) {
-	const double cell = defs(net).hydrants.reach_m / SQRT2;
-	x0 = std::floor(x / cell) * cell;
-	z0 = std::floor(z / cell) * cell;
-	x1 = x0 + cell;
-	z1 = z0 + cell;
-}
-
-bool open_stretch(const RoadNetwork &net, const RoadSegment &g, float &from, float &to) {
-	const float a = net.nodes[size_t(g.a)].lift, b = net.nodes[size_t(g.b)].lift, buried = -net.cat->tune.structure_buried_m;
-	from = 0;
-	to = 1;
-	if (is_sunken(structure_of(g.flags)) || (a < buried && b < buried)) return false;
-	if (a >= buried && b >= buried) return true;
-	const float t = (buried - a) / (b - a);
-	(a < buried ? from : to) = t;
-	return true;
-}
-
-void segment_furniture(const RoadNetwork &net, int sid, const bool signalled[2], uint32_t kinds, std::vector<FurnitureSpot> &out) {
+void segment_furniture(const RoadNetwork &net, int sid, const bool signalled[2], const std::vector<ArcSpan> *gates, uint32_t kinds,
+		std::vector<FurnitureSpot> &out) {
 	thread_local std::vector<FurnitureSpot> all;
 	all.clear();
 	const RoadSegment &g = net.segs[size_t(sid)];
 	const Profile &p = net.profile_of(sid);
 	if (!g.alive || p.edges.empty()) return;
-	Placer c{ net, sid, g, p, g.retreat_a, g.len - g.retreat_b, all };
+	Placer c{ net, sid, g, p, g.retreat_a, g.len - g.retreat_b, all, gates };
 	FurnitureSpot post;
 	if (g.a != g.b)
 		for (int end = 0; end < 2; end++) {

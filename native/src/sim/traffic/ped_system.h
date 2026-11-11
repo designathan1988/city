@@ -127,12 +127,20 @@ void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vecto
 bool furniture_xz(const CityState &s, int seg, const FurnitureSpot &f, float &x, float &z);
 const SidewalkFurniture &sidewalk_furniture(CityState &s, int seg); // its footprints as bodies, built once per edit
 bool on_furniture(CityState &s, int seg, int side, float x, float z, float reach); // within `reach` of a footprint
+// The straight way from `from` to `to` keeps `reach` off every footprint on that sidewalk (the segment against each one, exactly).
+bool way_clear(CityState &s, int seg, int side, const V2 &from, const V2 &to, float reach);
+// The place on that sidewalk nearest (arc, u) where a body stands clear of the furniture and its straight way from `from` passes
+// clear too, written back; `along`: it may move along the sidewalk as well as across it. False when there is none.
+bool clear_foot(CityState &s, int seg, int side, float &arc, float &u, const V2 &from, bool along);
 // The first arc from `at` on where a walker `u` across the sidewalk keeps its body off every footprint on it.
 float clear_arc(CityState &s, int seg, int side, float at, float u);
 void forget_furniture(CityState &s, int seg); // an edit touched the segment or one of its nodes
 void prune_furniture(CityState &s, float cx, float cz, float radius); // segments the walkers are far from
 // Walkers whose body stands in a footprint (traffic_probe), and who with the piece.
 int walkers_in_furniture(const CityState &s, std::vector<std::pair<int, StreetObstacle>> *who = nullptr);
+// The pieces of the whole map standing in front of a lot's gate, a car's or a person's (traffic_probe): the signal posts alone
+// with `signals` (their place is the signals' rule), every other kind without.
+int furniture_in_gates(const CityState &s, bool signals);
 
 // ped_routes.cpp
 bool walkable(const CityState &s, int seg);

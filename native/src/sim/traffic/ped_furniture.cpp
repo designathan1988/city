@@ -1,8 +1,11 @@
 // The street furniture of a segment, placed (sim/roads/street_furniture.cpp: the kit and its ends' signal posts where junction
 // control signals them; what the player put up and cut; what a blow left standing) or read kept for the streets' revision
-// (sim/street/furniture_kept.h), and as the walkers meet it: bodies standing on their sidewalks, footprints along the arc and
+// (sim/roads/furniture_kept.h), and as the walkers meet it: bodies standing on their sidewalks, footprints along the arc and
 // across from the sidewalk's middle, and in the world. A segment's bodies are built when a walker first meets it, dropped when
-// an edit touches the segment or one of its nodes (lane_graph_edit.cpp, reset_traffic) and when the walkers are far.
+// an edit touches the segment or one of its nodes (lane_graph_edit.cpp, reset_traffic) and when the walkers are far. The one
+// owner of what stands clear of the furniture: a body at a point, a straight way (the exact distance of the segment from each
+// footprint) and the place nearest a wanted one where somebody is put on the footway (a door's foot, a kerb stop's).
+#include "sim/buildings/lot_access.h"
 #include "sim/street/street_spots.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -18,11 +21,47 @@ namespace {
 // A body touching a piece (its centre a body radius off it, to the rounding of the sum) stands beside it, not in it.
 constexpr float TOUCH_EPS_M = 1e-3f;
 
+// A point in a footprint's own frame: along it and across it, from its middle.
+V2 in_frame(const StreetObstacle &o, const V2 &p) {
+	const float rx = p.x - o.x, rz = p.y - o.z;
+	return V2(rx * o.fx + rz * o.fz, rx * o.fz - rz * o.fx);
+}
+
+// Distance from a point in the footprint's frame to the footprint (0 inside it).
+float box_distance(const StreetObstacle &o, const V2 &c) {
+	return std::hypot(std::max(0.f, std::fabs(c.x) - o.half_along), std::max(0.f, std::fabs(c.y) - o.half_across));
+}
+
 // Distance from (x, z) to a footprint (0 inside it).
-float distance_to(const StreetObstacle &o, float x, float z) {
-	const float rx = x - o.x, rz = z - o.z;
-	const float along = std::fabs(rx * o.fx + rz * o.fz), across = std::fabs(rx * o.fz - rz * o.fx);
-	return std::hypot(std::max(0.f, along - o.half_along), std::max(0.f, across - o.half_across));
+float distance_to(const StreetObstacle &o, float x, float z) { return box_distance(o, in_frame(o, V2(x, z))); }
+
+// The least distance from the segment a..b to a footprint, 0 when it goes through it. In the footprint's frame the footprint is a
+// box round the middle: a segment that misses it comes nearest it at one of its own ends or at one of the box's corners.
+float segment_distance_to(const StreetObstacle &o, const V2 &a, const V2 &b) {
+	const V2 p = in_frame(o, a), d = in_frame(o, b) - p;
+	// through it: what of the segment lies inside the box on both axes is not empty (Liang-Barsky clipping)
+	const float from[2] = { p.x, p.y }, dir[2] = { d.x, d.y }, half[2] = { o.half_along, o.half_across };
+	float t0 = 0, t1 = 1;
+	bool through = true;
+	for (int k = 0; k < 2 && through; k++) {
+		if (dir[k] == 0) {
+			through = std::fabs(from[k]) <= half[k];
+			continue;
+		}
+		const float ta = (-half[k] - from[k]) / dir[k], tb = (half[k] - from[k]) / dir[k];
+		t0 = std::max(t0, std::min(ta, tb));
+		t1 = std::min(t1, std::max(ta, tb));
+		through = t0 <= t1;
+	}
+	if (through) return 0.f;
+	float least = std::min(box_distance(o, p), box_distance(o, p + d));
+	const float len2 = d.dot(d);
+	for (int k = 0; k < 4; k++) {
+		const V2 corner(k & 1 ? o.half_along : -o.half_along, k & 2 ? o.half_across : -o.half_across);
+		const float t = len2 > 0 ? clampf((corner - p).dot(d) / len2, 0.f, 1.f) : 0.f;
+		least = std::min(least, (p + d * t - corner).len());
+	}
+	return least;
 }
 
 void build(const CityState &s, int seg, SidewalkFurniture &out) {
@@ -84,8 +123,14 @@ void place_street_furniture(const CityState &s, int sid, uint32_t kinds, std::ve
 	const RoadSegment &g = s.roads.segs[size_t(sid)];
 	if (!g.alive) return;
 	const bool signalled[2] = { control_of(s, g.a) == Control::SIGNAL, control_of(s, g.b) == Control::SIGNAL };
+	// the ways into the lots (NBR 9050: the service strip at the kerb holds the furniture and the vehicle ramps alike): a person's
+	// gate keeps a walker's body clear; a car's what the kerb's bays keep (the car sweeps the footway past its gate as it turns) and a
+	// walker's body more, so nobody is held between a car on the footway and a piece
+	const TrafficParams &tp = s.catalog.traffic;
+	std::vector<ArcSpan> gates[2];
+	street_gates(s.roads, s.buildings, sid, tp.kerb_gate_margin_m + tp.ped_body_m, gates, tp.ped_body_m);
 	const size_t first = out.size();
-	segment_furniture(s.roads, sid, signalled, kinds, out);
+	segment_furniture(s.roads, sid, signalled, gates, kinds, out);
 	merge_street(s.street, s.roads, sid, kinds, out, first); // what the player put up and cut
 	if (s.damage.gone.empty()) return;
 	// what a blow knocked out is not placed again (sim/demolition/damage_state.h)
@@ -105,7 +150,11 @@ void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vecto
 	}
 	// The kinds only choose among the pieces placed (segment_furniture, merge_street and the knocked-out ones filter each piece
 	// by itself), so the kept placement of every kind, filtered, is the placement of these kinds.
-	const FurnitureKept::Spots all = s.furniture_kept.of(s.street_revision, sid, [&](std::vector<FurnitureSpot> &made) {
+	// the ground its lots stand on: as far from the segment as street_gates looks for their gates
+	const RoadSegment &g = s.roads.segs[size_t(sid)];
+	const float lots = s.roads.profile_of(sid).half() + s.catalog.traffic.kerb_gate_reach_m;
+	const FurnitureKept::Reach reach{ float(g.minx) - lots, float(g.minz) - lots, float(g.maxx) + lots, float(g.maxz) + lots };
+	const FurnitureKept::Spots all = s.furniture_kept.of(s.street_revision, sid, reach, [&](std::vector<FurnitureSpot> &made) {
 		place_street_furniture(s, sid, FURNITURE_ALL, made);
 	});
 	for (const FurnitureSpot &f : *all)
@@ -126,6 +175,50 @@ bool on_furniture(CityState &s, int seg, int side, float x, float z, float reach
 	for (const StreetObstacle &o : sidewalk_furniture(s, seg).side[side])
 		if (distance_to(o, x, z) < reach) return true;
 	return false;
+}
+
+bool way_clear(CityState &s, int seg, int side, const V2 &from, const V2 &to, float reach) {
+	if (seg < 0 || side < 0 || side > 1) return true;
+	for (const StreetObstacle &o : sidewalk_furniture(s, seg).side[size_t(side)])
+		if (segment_distance_to(o, from, to) < reach) return false;
+	return true;
+}
+
+bool clear_foot(CityState &s, int seg, int side, float &arc, float &u, const V2 &from, bool along) {
+	const TrafficParams &p = s.catalog.traffic;
+	const RoadSegment &g = s.roads.segs[size_t(seg)];
+	const float body = p.ped_body_m, half = walk_half(s, seg, side);
+	// where a body just clears a piece near it: its band's edges across, its ends along (the places worth trying, none sampled)
+	thread_local std::vector<float> arcs, across;
+	arcs.assign(1, arc);
+	across.assign(1, clampf(u, -half, half));
+	for (const StreetObstacle &o : sidewalk_furniture(s, seg).side[size_t(side)]) {
+		if (o.s1 + body < arc - p.ped_look_m || o.s0 - body > arc + p.ped_look_m) continue;
+		if (along) {
+			arcs.push_back(o.s0 - body - TOUCH_EPS_M);
+			arcs.push_back(o.s1 + body + TOUCH_EPS_M);
+		}
+		across.push_back(clampf(o.u0 - body - TOUCH_EPS_M, -half, half));
+		across.push_back(clampf(o.u1 + body + TOUCH_EPS_M, -half, half));
+	}
+	float best = BIG, best_arc = arc, best_u = u;
+	for (const float a : arcs) {
+		if (a < arc_lo(g) || a > arc_hi(g)) continue;
+		for (const float c : across) {
+			const float off = std::hypot(a - arc, c - u);
+			if (off >= best) continue;
+			Pose at;
+			sidewalk_pose(s, seg, side, a, c, at);
+			if (on_furniture(s, seg, side, at.x, at.z, body) || !way_clear(s, seg, side, from, V2(at.x, at.z), body)) continue;
+			best = off;
+			best_arc = a;
+			best_u = c;
+		}
+	}
+	if (best >= BIG) return false;
+	arc = best_arc;
+	u = best_u;
+	return true;
 }
 
 float clear_arc(CityState &s, int seg, int side, float at, float u) {
@@ -152,6 +245,31 @@ void prune_furniture(CityState &s, float cx, float cz, float radius) {
 		const float x = float((g.minx + g.maxx) * 0.5) - cx, z = float((g.minz + g.maxz) * 0.5) - cz;
 		it = x * x + z * z > radius * radius ? cache.erase(it) : std::next(it);
 	}
+}
+
+int furniture_in_gates(const CityState &s, bool signals) {
+	int in = 0;
+	std::vector<FurnitureSpot> spots;
+	std::vector<ArcSpan> gates[2];
+	const uint32_t kinds = signals ? furniture_bit(FurnitureKind::SIGNAL) : FURNITURE_ALL & ~furniture_bit(FurnitureKind::SIGNAL);
+	for (int sid = 0; sid < int(s.roads.segs.size()); sid++) {
+		if (!s.roads.segs[size_t(sid)].alive) continue;
+		gates[0].clear();
+		gates[1].clear();
+		street_gates(s.roads, s.buildings, sid, 0, gates, 0); // the gates themselves, no margin
+		if (gates[0].empty() && gates[1].empty()) continue;
+		spots.clear();
+		street_furniture_of(s, sid, kinds, spots);
+		for (const FurnitureSpot &f : spots) {
+			if (f.side < 0) continue;
+			for (const ArcSpan &gate : gates[size_t(f.side)])
+				if (f.v + f.half_v > gate.first + TOUCH_EPS_M && f.v - f.half_v < gate.second - TOUCH_EPS_M) {
+					in++;
+					break;
+				}
+		}
+	}
+	return in;
 }
 
 int walkers_in_furniture(const CityState &s, std::vector<std::pair<int, StreetObstacle>> *who) {

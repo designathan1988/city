@@ -214,7 +214,7 @@ int LotAccess::reached() const {
 	return n;
 }
 
-void street_gates(const RoadNetwork &net, const BuildingRecords &lots, const Data &designs, int sid, double margin, std::vector<ArcSpan> gates[2]) {
+void street_gates(const RoadNetwork &net, const BuildingRecords &lots, const Data &designs, int sid, double margin, std::vector<ArcSpan> gates[2], double walk_margin) {
 	const RoadSegment &g = net.segs[size_t(sid)];
 	const TrafficParams &tp = net.cat->traffic;
 	const float reach = net.profile_of(sid).half() + tp.kerb_gate_reach_m;
@@ -223,7 +223,7 @@ void street_gates(const RoadNetwork &net, const BuildingRecords &lots, const Dat
 		const std::shared_ptr<const std::vector<LotElement>> elements = record_elements(designs, rec);
 		const LotFrame f = lot_frame(rec);
 		for (const LotElement &e : *elements) {
-			if (e.kind != EL_CAR_GATE) continue;
+			if (e.kind != EL_CAR_GATE && !(walk_margin >= 0 && e.kind == EL_GATE)) continue;
 			const V2 w = f.at(e.x, e.y);
 			double t, dist, x, z, dx, dz;
 			closest_t(g.q, w.x, w.y, t, dist);
@@ -231,7 +231,7 @@ void street_gates(const RoadNetwork &net, const BuildingRecords &lots, const Dat
 			g.q.at(t, x, z);
 			g.q.deriv(t, dx, dz);
 			const int side = street_side(dz * (w.x - x) - dx * (w.y - z)); // the gate across the street's frame: +u on the left of a -> b
-			const double at = arc_of_t(g, t), half = e.w * HALF + margin;
+			const double at = arc_of_t(g, t), half = e.w * HALF + (e.kind == EL_CAR_GATE ? margin : walk_margin);
 			gates[side].emplace_back(at - half, at + half);
 		}
 	});

@@ -17,6 +17,7 @@ void kerb_forget(CityState &s, int id); // it left the scene
 // What a stop does with a person, shared with the bus's calls (bus_calls.cpp).
 struct KerbDoors {
 	V2 door, foot; // at the vehicle's side, and on the footway across from it
+	float arc = 0; // the foot's arc along its street
 };
 KerbDoors kerb_door_at(const CityState &s, const Vehicle &v, float back_m); // this far behind its front
 float kerb_arc_of(const DirSeg &d, float at); // the arc along its street of metre `at` of a directed segment
@@ -27,6 +28,9 @@ void kerb_place(CityState &s, int ped, const V2 &at, const V2 &facing); // moved
 void kerb_show(CityState &s, int ped, const V2 &at, const V2 &facing); // where somebody held first shows: there, facing that way
 void kerb_let_go(CityState &s, int ped, bool on_foot);
 int kerb_walker_out(CityState &s, int ds, const V2 &foot); // somebody out on the footway beside `foot`, -1 with no room
+// Where somebody out of the door of a vehicle on `ds` sets foot on the footway: the place nearest the one across from the door whose
+// straight way from the door passes clear of the street's pieces (ped_furniture.cpp clear_foot); false with none near.
+bool kerb_foot(CityState &s, int ds, const KerbDoors &at, V2 &foot);
 inline bool kerb_holds(const TrafficState &t, int ped) { return t.peds[size_t(ped)].alive && t.peds[size_t(ped)].mode == PedMode::KERB; }
 
 // bus_calls.cpp: who gets off and on at a stop. True when that is over; `over` lets go of whoever is left when the bus goes.

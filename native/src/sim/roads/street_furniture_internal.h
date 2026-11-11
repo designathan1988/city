@@ -1,5 +1,6 @@
 // Internal surface of the street furniture placement (sim/roads and sim/street): the sidewalk's own zones as the segment
-// pieces (street_furniture.cpp), the posts (street_furniture_posts.cpp) and the player's pieces (sim/street) read them.
+// pieces (street_furniture.cpp, street_furniture_places.cpp), the posts (street_furniture_posts.cpp) and the player's pieces
+// (sim/street) read them.
 #pragma once
 
 #include "sim/roads/street_furniture.h"

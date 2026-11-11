@@ -4,7 +4,7 @@
 #pragma once
 
 #include "sim/commands/commands.h"
-#include "sim/street/furniture_kept.h"
+#include "sim/roads/furniture_kept.h"
 
 #include <cstdint>
 #include <functional>

@@ -3,7 +3,8 @@
 ## touch; they do not overlap. And what is drawn over a lot stays on it: no pitched roof reaches past its lot's lines (probe
 ## bay_census, roof_past_lot), so two halls on a shared line do not put their roofs through one another; nor does its ground or its
 ## boundary (lot_past_lot: a wall's plinth and coping), so two lots' walls on one line do not stand in one another. And every lot's gate
-## stands open (gates_shut): nothing of it in the passage a car or a person goes through.
+## stands open (gates_shut): nothing of it in the passage a car or a person goes through; and no street piece stands in front of it
+## (traffic_probe furniture_in_gates: the kerb's strip holds the vehicles' ramps and the furniture alike, NBR 9050).
 extends TestCase
 
 const TOWN_MAP := 0
@@ -11,6 +12,7 @@ const SEED := 1
 const CELL_M := 64.0 # the grid the lots are filed in to find neighbours
 const TOUCH_M := 0.1 # how far two rectangles may enter one another and still only touch
 const SHOWN := 8
+const FURNITURE_SAMPLE := 1 # traffic_probe counts the street furniture only with a sample
 
 
 func _ready() -> void:
@@ -67,6 +69,9 @@ func _ready() -> void:
 	var blocked := int(census.get("leaves_blocked", -1))
 	check(blocked == 0, "nothing of a lot stands where its open gates' leaves stand: %d parts or blocks in a leaf, the first (seed, gate kind, kind or -1 a block, x, y, w, d) %s"
 			% [blocked, census.get("leaves_blocked_first", [])])
+	var street: Dictionary = CityStore.query(&"traffic_probe", [FURNITURE_SAMPLE])
+	print("signal posts in front of a gate (the signals' rule places them): %d" % street.signals_in_gates)
+	check(street.furniture_in_gates == 0, "no street piece stands in front of a lot's gate: %d" % street.furniture_in_gates)
 	finish()
 
 

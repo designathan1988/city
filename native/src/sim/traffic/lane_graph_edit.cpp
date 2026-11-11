@@ -14,6 +14,8 @@ namespace traffic {
 
 namespace {
 
+constexpr size_t LOT_BOX_FLOATS = 4; // ChangeLog::lot_fronts: x0, z0, x1, z1
+
 // Takes `c` out of the list of connections leaving its lane of origin.
 void unlink_from_lane(LaneGraph &g, int ci) {
 	Conn &c = g.conns[size_t(ci)];
@@ -158,6 +160,7 @@ void apply_network_changes(CityState &s) {
 	TrafficState &t = s.traffic;
 	// the step holds the map shared: the net lists are taken out under the log's own mutex (change_log.h)
 	std::vector<int> nodes, removed, changed, furniture, lots, signals;
+	std::vector<float> fronts;
 	{
 		std::lock_guard<std::mutex> lk(s.log.mutex);
 		nodes.swap(s.log.net_nodes);
@@ -165,10 +168,16 @@ void apply_network_changes(CityState &s) {
 		changed.swap(s.log.net_segs_changed);
 		furniture.swap(s.log.furniture_segs);
 		lots.swap(s.log.lots_changed);
+		fronts.swap(s.log.lot_fronts);
 		signals.swap(s.log.signal_nodes);
 	}
 	ChangeLog::dedup(signals);
 	for (int n : signals) replan_signal(s, n);
+	// the streets a changed lot may face: their furniture is laid off its gates (street_furniture.h), so it is met again
+	const float reach = s.catalog.traffic.kerb_gate_reach_m;
+	for (size_t i = 0; i + LOT_BOX_FLOATS <= fronts.size(); i += LOT_BOX_FLOATS)
+		s.roads.for_segments_near(fronts[i] - reach, fronts[i + 1] - reach, fronts[i + 2] + reach, fronts[i + 3] + reach, [&](int seg) { furniture.push_back(seg); });
+	ChangeLog::dedup(furniture);
 	for (int seg : furniture) {
 		forget_furniture(s, seg);
 		forget_doors(s, seg);
@@ -199,7 +208,11 @@ void apply_network_changes(CityState &s) {
 	}
 	for (int n : nodes) {
 		if (n < 0 || n >= int(s.roads.nodes.size())) continue;
-		for (int seg : s.roads.nodes[size_t(n)].segs) { forget_furniture(s, seg); forget_parking_seg(s, seg); }
+		for (int seg : s.roads.nodes[size_t(n)].segs) {
+			forget_furniture(s, seg);
+			forget_doors(s, seg); // a door's foot is placed clear of that furniture (ped_doors.cpp)
+			forget_parking_seg(s, seg);
+		}
 	}
 	for (int n : nodes) clear_node(s, n);
 	for (int seg : changed) build_dir(s, seg);

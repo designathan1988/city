@@ -45,11 +45,13 @@ float car_half_width(const TrafficParams &p);
 float lorry_half_width(const TrafficParams &p);
 
 // The car gates of the lots facing each side of street `sid`, as arcs along it, each grown by `margin` metres either way: what keeps
-// bays off a kerb (kerb_gate_margin_m) or the gate itself (0, where its kerb drops). `lots`: the records, the live store's or a job's
-// cut of them; `designs`: the generator's tables their elements are made from.
-void street_gates(const RoadNetwork &net, const BuildingRecords &lots, const b40::Data &designs, int sid, double margin, std::vector<ArcSpan> gates[2]);
-inline void street_gates(const RoadNetwork &net, const BuildingStore &lots, int sid, double margin, std::vector<ArcSpan> gates[2]) {
-	street_gates(net, lots, lots.designs, sid, margin, gates);
+// bays off a kerb (kerb_gate_margin_m) or the gate itself (0, where its kerb drops); with `walk_margin` 0 or more, the persons' gates
+// too, each grown by that: what keeps the street's furniture off the ways into the lots (sim/roads/street_furniture.h). `lots`: the
+// records, the live store's or a job's cut of them; `designs`: the generator's tables their elements are made from.
+void street_gates(const RoadNetwork &net, const BuildingRecords &lots, const b40::Data &designs, int sid, double margin, std::vector<ArcSpan> gates[2],
+		double walk_margin = -1);
+inline void street_gates(const RoadNetwork &net, const BuildingStore &lots, int sid, double margin, std::vector<ArcSpan> gates[2], double walk_margin = -1) {
+	street_gates(net, lots, lots.designs, sid, margin, gates, walk_margin);
 }
 
 // The lot's gates and bays alone, without their ways (a few elements read, no grid): what standing cars need.

@@ -8,7 +8,7 @@ namespace city {
 void CityState::bind() {
 	roads.cat = &catalog;
 	roads.log = &log;
-	buildings.attach(&log, &catalog.occupancy);
+	buildings.attach(&log, &catalog.occupancy, &furniture_kept);
 	terrain.log = &log;
 	terrain.tune = &catalog.tune;
 	terrain.jobs = jobs.get();
