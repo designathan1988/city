@@ -8,7 +8,7 @@ and the ternary hold either side; `as`/`satisfies`/`!`/`<T>` keep the value with
 """
 from __future__ import annotations
 
-from . import js_types
+from . import js_guards, js_types, narrowing, scopes
 from .ir import LITERAL, name, union
 from .rules import BIND_FORMS, CALL_FORMS
 from .source import field_of, named_children, string_value
@@ -98,9 +98,17 @@ def _new(r, node, unit):
     return ("construct", build(r, field_of(node, "constructor"), unit))
 
 
+def guarded(r, facts: list, node, unit):
+    """An operand's tree read where facts hold (R1): its names as the locals they name, through the facts."""
+    return narrowing.wrap(scopes.renamed(r, build(r, node, unit)), narrowing.region_facts(r, facts, [node], "js"))
+
+
 def _binary(r, node, unit):
     op = r.src.text(field_of(node, "operator")).strip()
     left, right = build(r, field_of(node, "left"), unit), build(r, field_of(node, "right"), unit)
+    if op in ("&&", "||"):                         # the right operand is the value only when the left is (not) truthy
+        when_true, when_false = js_guards.facts(r, field_of(node, "left"), unit)
+        return union(left, guarded(r, when_true if op == "&&" else when_false, field_of(node, "right"), unit))
     if op in EITHER:
         return union(left, right)
     if op in TESTS:
@@ -131,7 +139,9 @@ def _inner(r, node, unit):
 
 
 def _ternary(r, node, unit):
-    return union(build(r, field_of(node, "consequence"), unit), build(r, field_of(node, "alternative"), unit))
+    when_true, when_false = js_guards.facts(r, field_of(node, "condition"), unit)
+    return union(guarded(r, when_true, field_of(node, "consequence"), unit),
+                 guarded(r, when_false, field_of(node, "alternative"), unit))
 
 
 def _array(r, node, unit):

@@ -8,7 +8,7 @@ cannot be there at run time are removed (N2).
 from __future__ import annotations
 
 from . import js_library, js_transfer, transfer, truth
-from .solver import CLASS, ELEM, FN, LANG, TEXT, is_language
+from .solver import CLASS, ELEM, FN, LANG, TEXT, UNDEFINED, is_language
 
 
 def wire(t, node, tree, unit) -> None:
@@ -17,7 +17,7 @@ def wire(t, node, tree, unit) -> None:
     key = ("narrow", guard, positive)
     if guard[0] in ("member", "member-equals"):
         t.subscribe(source, node, key, by_member(t, guard, positive))
-    elif guard[0] in ("instance", "predicate"):
+    elif guard[0] in ("instance", "predicate", "asserts"):
         named = t.node_of(guard[1], unit)
         t.subscribe(source, node, key, by_class(t, guard, positive, source, named, True))
         t.subscribe(named, node, key + ("named",), by_class(t, guard, positive, source, named, False))
@@ -107,9 +107,29 @@ def by_member(t, guard, positive: bool):
 
     def transfer_(target, values):
         for text, ctx in values:
-            t.subscribe(member_node(t, text, ctx, guard[1]), target, ("narrow-by", text, guard, positive),
-                        decide(text, ctx))
+            member = member_node(t, text, ctx, guard[1])
+            t.undecided.append((member, target, text, ctx, guard, positive))
+            t.subscribe(member, target, ("narrow-by", text, guard, positive), decide(text, ctx))
     return transfer_
+
+
+def settle(t) -> bool:
+    """At a fixpoint, a property no value reached on an object reads `undefined` there (MDN: a property found nowhere
+    on the chain): a guard that `undefined` lets through keeps that object. Returns whether a value was added (the
+    solver then runs to its fixpoint again: values only grow)."""
+    added, waiting = False, []
+    for member, target, text, ctx, guard, positive in t.undecided:
+        if t.value.get(t.find(member)):
+            continue                                # decided by the property's values
+        if member_passes(guard, positive, UNDEFINED):
+            node = t.find(target)
+            before = len(t.value.get(node, ()))
+            t.add(node, [(text, ctx)])
+            added = added or len(t.value.get(node, ())) > before
+        else:
+            waiting.append((member, target, text, ctx, guard, positive))
+    t.undecided = waiting
+    return added
 
 
 def member_passes(guard, positive: bool, value: str) -> bool:
@@ -127,15 +147,16 @@ def named_classes(t, guard, held: list) -> tuple[list, bool]:
             keys += [key] if key else []
             unknown = unknown or key is None
         return keys, unknown
-    for text, _ in held:                            # the callee: a function declared `x is T` at this argument
+    asserts = guard[0] == "asserts"
+    for text, _ in held:                  # the callee: a function declared `[asserts] x is T` at this argument
         unit = t.ix.units[int(text[len(FN):])] if text.startswith(FN) else None
         predicate = unit.predicate if unit is not None else ()
-        if not predicate or predicate[0] != guard[2]:
+        if not predicate or predicate[0] != guard[2] or predicate[2] != asserts:
             return [], True
-        for tree in predicate[1]:
-            key = tree[1][len(CLASS):] if tree[0] == "cast" and tree[1].startswith(CLASS) else None
-            keys += [key] if key in t.ix.classes else []
-            unknown = unknown or key not in t.ix.classes
+        for tree in predicate[1]:         # T as written, read where the function is declared
+            key = t.type_class(tree[1], unit) if tree[0] == "cast" else None
+            keys += [key] if key else []
+            unknown = unknown or not key
     return keys, unknown or not held
 
 

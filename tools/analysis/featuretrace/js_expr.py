@@ -9,7 +9,7 @@ runtime (J10). `f.call(t, ...)` / `f.apply(t, a)` call f with the arguments afte
 """
 from __future__ import annotations
 
-from . import js_body, scopes
+from . import js_body, js_guards, narrowing, scopes
 from .cpp_implicit import IMPLICIT
 from .ir_js import args_of, member_name
 from .rules import (CALL_FORMS, COERCION_MEMBERS, CONSTRUCTOR, EVENT_FIRE, EVENT_OBJECTS, EVENT_SUBSCRIBE,
@@ -71,10 +71,21 @@ def expression(r, node, unit, cond) -> None:
         coerce(r, node, (argument,), unit, cond)
     elif kind == "binary_expression":
         left, right = field_of(node, "left"), field_of(node, "right")
+        op = r.src.text(field_of(node, "operator")).strip()
         expression(r, left, unit, cond)
-        expression(r, right, unit, cond)
-        if r.src.text(field_of(node, "operator")).strip() in COERCING:
+        if op in ("&&", "||"):                  # the right operand runs when the left is true (`&&`) or false (R1)
+            when_true, when_false = js_guards.facts(r, left, unit)
+            guarded(r, when_true if op == "&&" else when_false, right, unit, cond)
+        else:
+            expression(r, right, unit, cond)
+        if op in COERCING:
             coerce(r, node, (left, right), unit, cond)
+    elif kind == "ternary_expression":
+        test = field_of(node, "condition")
+        expression(r, test, unit, cond)
+        when_true, when_false = js_guards.facts(r, test, unit)
+        guarded(r, when_true, field_of(node, "consequence"), unit, cond)
+        guarded(r, when_false, field_of(node, "alternative"), unit, cond)
     elif kind == "unary_expression":
         argument = field_of(node, "argument")
         expression(r, argument, unit, cond)
@@ -109,6 +120,13 @@ def expression(r, node, unit, cond) -> None:
     else:
         for child in named_children(node):
             expression(r, child, unit, cond)
+
+
+def guarded(r, facts: list, node, unit, cond) -> None:
+    """An operand read where facts hold (R1)."""
+    narrowing.open(r, facts, [node], "js")
+    expression(r, node, unit, cond)
+    narrowing.close(r)
 
 
 def arguments_of(r, args, unit) -> tuple:

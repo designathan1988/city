@@ -91,6 +91,7 @@ class JsReader:
         unit.type_text = self.type_text(ret) if ret is not None else ""
         unit.declared = js_types.values(self, ret, unit) if ret is not None else []      # T3
         self.params(field_of(node, "parameters") or field_of(node, "parameter"), unit)
+        unit.predicate = js_types.predicate(self, ret, unit)                       # `x is T`, `asserts x is T`
         body = field_of(node, "body")
         if body is None:
             unit.decl_only = True

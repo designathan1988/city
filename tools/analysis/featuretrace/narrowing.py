@@ -74,32 +74,47 @@ def leave_function(r) -> None:
     r.closure_written.pop()
 
 
-def open(r, facts: list, region: list, lang: str) -> None:
-    """A region starts: its facts, but on the names it assigns (their keys where the reader is) or a closure of the
-    function assigns (by name, whatever block declares it) (R2)."""
+def region_facts(r, facts: list, region: list, lang: str) -> list:
+    """The facts that hold over a region: not those on a name it assigns (its key where the reader is), nor on a name
+    a closure of the function assigns (by name, whatever block declares it) (R2)."""
     if not facts:
-        frames(r).append([])
-        return
+        return []
     killed = {scopes.visible(r, name) for name in assigned_names(r, region, lang)}
     shared = r.closure_written[-1] if getattr(r, "closure_written", None) else set()
-    frames(r).append([f for f in facts if f[0][0] == "name" and f[0][1] not in killed
-                      and f[0][1].split("#")[0] not in shared])
+    return [f for f in facts if f[0][0] == "name" and f[0][1] not in killed and f[0][1].split("#")[0] not in shared]
+
+
+def open(r, facts: list, region: list, lang: str) -> None:
+    """A region starts with the facts that hold over it."""
+    frames(r).append(region_facts(r, facts, region, lang))
 
 
 def close(r) -> None:
     frames(r).pop()
 
 
+def _chain(tree) -> tuple[tuple, list]:
+    """A read through facts as (the name read, the facts already on it)."""
+    applied = []
+    while tree[0] == "narrow":
+        applied.append((tree[2], tree[3]))
+        tree = tree[1]
+    return tree, applied
+
+
 def wrap(tree, facts: list):
-    """`tree` with each name a fact is about read through that fact (the facts in order, the last outermost)."""
-    if not facts or not isinstance(tree, tuple) or not tree or tree[0] == "narrow":
+    """`tree` with each name a fact is about read through that fact, once (a name already read through some facts
+    gets the others outside them)."""
+    if not facts or not isinstance(tree, tuple) or not tree:
         return tree
-    if tree[0] == "name":
-        read = tree
-        for name_tree, guard, positive in facts:
-            if name_tree == tree:
-                read = ("narrow", read, guard, positive)
-        return read
+    if tree[0] in ("name", "narrow"):
+        name, applied = _chain(tree)
+        if name[0] == "name":
+            for name_tree, guard, positive in facts:
+                if name_tree == name and (guard, positive) not in applied:
+                    tree = ("narrow", tree, guard, positive)
+                    applied.append((guard, positive))
+            return tree
     return tuple(wrap(part, facts) if isinstance(part, tuple) else part for part in tree)
 
 
@@ -107,6 +122,18 @@ def apply(r, tree):
     """A tree built where the reader is: every fact of every open region applied, outer regions first."""
     held = [fact for frame in frames(r) for fact in frame]
     return wrap(tree, held) if held else tree
+
+
+def after_if(st, when_true: list, when_false: list, lang: str) -> list:
+    """The facts that hold after an `if` (R1): the false facts when only its consequence always leaves, the true ones
+    when only its alternative does."""
+    consequence, alt = field_of(st, "consequence") or field_of(st, "body"), field_of(st, "alternative")
+    out, back = leaves(consequence, lang), alt is not None and leaves(alt, lang)
+    if out and not back:
+        return when_false
+    if back and not out:
+        return when_true
+    return []
 
 
 def leaves(node, lang: str) -> bool:

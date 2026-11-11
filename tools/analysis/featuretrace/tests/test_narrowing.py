@@ -12,21 +12,31 @@ sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
 
 from support import FixtureCase  # noqa: E402
-from featuretrace.solver import CLASS, ENGINE, NULL, TRUE, UNDEFINED  # noqa: E402
+from featuretrace import narrow_values  # noqa: E402
+from featuretrace.solver import CLASS, ELEM, ENGINE, NULL, TEXT, TRUE, UNDEFINED  # noqa: E402
 
 BOX, TILE, V3 = CLASS + "types.ts#Box", CLASS + "helpers.ts#Tile", CLASS + "guards.js#V3"
+CAN, SHAPE = CLASS + "guards.js#Can", CLASS + "guards.js#<object@"
 
 
 class Narrowing(FixtureCase):
     ROOTS = ("jsvalues",)
     BASE = "jsvalues"
 
+    def solved(self, node) -> set:
+        """A node's values once the solver reached its fixpoint again (a node first wired after the solve, such as a
+        templated function's own result, is run to its own: pending differences, then the guards' `undefined`)."""
+        typer = self.rs.typer
+        while True:
+            typer.propagate()
+            if not narrow_values.settle(typer):
+                return {text for text, _ in typer.current(node)}
+
     def held(self, spec: str, name: str) -> set:
-        return {text for text, _ in self.rs.typer.evaluate(("name", name), self.ix.units[self.gid(spec)])}
+        return self.solved(self.rs.typer.node_of(("name", name), self.ix.units[self.gid(spec)]))
 
     def returned(self, spec: str) -> set:
-        typer = self.rs.typer
-        return {text for text, _ in typer.current(typer.ret_node(self.ix.units[self.gid(spec)]))}
+        return self.solved(self.rs.typer.ret_node(self.ix.units[self.gid(spec)]))
 
     def test_literal_constants(self):
         self.assertEqual({TRUE}, self.returned("yes"))
@@ -64,6 +74,49 @@ class Narrowing(FixtureCase):
 
     def test_narrowed_key_parameter(self):
         self.assertEqual({NULL}, self.returned("useKeyed"))      # the Tile's template: no Box, no Tile
+
+    def test_early_return(self):
+        self.assertEqual({BOX, UNDEFINED}, self.returned("early"))
+
+    def test_ternary_and_logical(self):
+        self.assertEqual({BOX, NULL}, self.returned("ternary"))
+        self.assertEqual({ENGINE, TILE}, self.returned("andRight"))
+        self.assertEqual({ENGINE, TILE}, self.returned("orRight"))
+
+    def test_typeof_and_equality(self):
+        self.assertEqual({TEXT + "s", NULL}, self.returned("textOnly"))
+        self.assertEqual({BOX, UNDEFINED}, self.returned("notNull"))
+        self.assertEqual({BOX, UNDEFINED}, self.returned("looseNull"))
+
+    def test_in_and_isarray(self):
+        self.assertEqual({BOX, NULL}, self.returned("hasOpen"))
+        found = self.returned("arrayOnly")
+        self.assertNotIn(BOX, found)
+        self.assertIn(ELEM + ENGINE, found)
+
+    def test_discriminant(self):
+        for spec in ("discriminant", "bySwitch"):
+            shapes = [v for v in self.returned(spec) if v.startswith(SHAPE)]
+            self.assertEqual(1, len(shapes), spec)                 # the box's shape, not the can's
+
+    def test_type_predicate(self):
+        for spec in ("viaPredicate", "viaAssertion"):
+            found = self.returned(spec)
+            self.assertIn(BOX, found, spec)
+            self.assertNotIn(CAN, found, spec)
+
+    def test_while_body(self):
+        self.assertEqual({BOX, NULL}, self.returned("looped"))
+
+    def test_negated_conjunction_proves_nothing_when_true(self):
+        self.assertEqual({BOX, TILE, NULL}, self.returned("notBoth"))
+
+    def test_optional_chain_member_guard(self):
+        self.assertEqual({V3, NULL}, self.returned("optional"))
+        self.assertEqual({TILE, NULL}, self.returned("optionalElse"))   # Tile has no `isV3`: undefined
+
+    def test_unknown_comparison_proves_nothing(self):
+        self.assertEqual({BOX, TILE, NULL}, self.returned("unknownTest"))
 
 
 if __name__ == "__main__":

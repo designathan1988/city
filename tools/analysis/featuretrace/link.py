@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import time
 
-from . import cpp_lifetime, js_link, names
+from . import cpp_lifetime, js_link, names, narrow_values
 from .cpp_implicit import IMPLICIT
 from .cpp_lifetime import Site as _Site
 from .model import FUNCTION_KINDS
@@ -52,6 +52,8 @@ def build(index, progress=None) -> Resolver:
     while True:
         typer.propagate()                  # every pending difference first: a consumer then reads settled values
         if not typer.work:
+            if narrow_values.settle(typer):    # at the fixpoint: a property no value reached is `undefined` (N1)
+                continue
             break
         node = typer.work.popleft()
         if node not in typer.dirty:

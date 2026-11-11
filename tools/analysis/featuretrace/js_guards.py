@@ -6,8 +6,10 @@ G1; TypeScript handbook, Narrowing; MDN `typeof`, `instanceof`, `in`, falsy valu
 name's truthiness `("truthy",)`, a property's truthiness `("member", p)` (`x.p`, `x?.p`), `("typeof", t)`,
 `("instance", class_tree)`, `("array",)` (the language's `Array.isArray`), `("has", p)` (`"p" in x`),
 `("equals", value)` (`===`, `!==` with a constant of the language or a string), `("nullish",)` (`== null`,
-`!= null`, `== undefined`), `("member-equals", p, value)` (`x.p === v`), `("predicate", callee_tree, index)` (a call of
-a function declared `x is T`). `!` swaps; `&&` keeps both when true, `||` both negations when false.
+`!= null`, `== undefined`), `("member-equals", p, value)` (`x.p === v`, a `switch` case), `("predicate", callee_tree,
+index)` (a call of a function declared `x is T`) and, after a call statement, `("asserts", callee_tree, index)` (one
+declared `asserts x is T`): only TypeScript declares those. `!` swaps; `&&` keeps both when true, `||` both negations
+when false.
 """
 from __future__ import annotations
 
@@ -17,7 +19,12 @@ from .source import field_of, named_children, string_value
 
 CONSTANTS = {"null": NULL, "undefined": UNDEFINED, "true": TRUE, "false": FALSE}
 EQUAL, DIFFERENT = ("===", "=="), ("!==", "!=")
-INNER = ("parenthesized_expression", "non_null_expression")
+INNER = ("parenthesized_expression", "non_null_expression", "expression_statement")
+TYPESCRIPT = (".ts", ".tsx", ".mts", ".cts")      # the files that can declare a type predicate or an assertion
+
+
+def typescript(r) -> bool:
+    return r.src.path.suffix.lower() in TYPESCRIPT
 
 
 def _inner(node):
@@ -130,9 +137,29 @@ def _call(r, node, unit) -> tuple[list, list]:
     if fn is not None and r.src.text(fn) == "Array.isArray" and "Array" not in unit.types and argv:
         name = name_of(r, argv[0], unit)
         return _both([(name, ("array",), True)] if name is not None else [])
-    if fn is None or fn.type == "import":
-        return [], []
+    return _both(_declared(r, fn, argv, unit, "predicate"))
+
+
+def _declared(r, fn, argv: list, unit, kind: str) -> list:
+    """A call that a function declared `x is T` or `asserts x is T` answers: a fact on each name passed, decided by the
+    callee's declaration when its values are known (TypeScript only)."""
+    if fn is None or fn.type == "import" or not typescript(r):
+        return []
     callee = r.ir(fn, unit)
-    found = [(name, ("predicate", callee, i), True) for i, name in enumerate(name_of(r, a, unit) for a in argv)
-             if name is not None]
-    return _both(found)
+    return [(name, (kind, callee, i), True) for i, name in enumerate(name_of(r, a, unit) for a in argv)
+            if name is not None]
+
+
+def asserted(r, st, unit) -> list:
+    """A statement that calls a function: if it is an assertion function, what follows holds its fact."""
+    call = _inner(st)
+    if call is None or call.type != "call_expression":
+        return []
+    args = field_of(call, "arguments")
+    argv = [a for a in named_children(args) if a.type != "comment"] if args is not None else []
+    return _declared(r, field_of(call, "function"), argv, unit, "asserts")
+
+
+def case_facts(r, value, test, unit) -> list:
+    """What a `switch` case proves when only its own test enters it: the discriminant equal to its literal."""
+    return _comparison(r, "===", value, test, unit)

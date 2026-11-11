@@ -8,7 +8,7 @@ captured local reaches the enclosing function's (closures share their variables,
 """
 from __future__ import annotations
 
-from . import c_family, js_class, js_decl, js_expr, js_guards, scopes
+from . import c_family, js_class, js_decl, js_expr, js_guards, narrowing, scopes
 from .cpp_implicit import IMPLICIT
 from .gd_body import squash
 from .ir import put
@@ -24,14 +24,30 @@ SILENT = ("break_statement", "continue_statement", "empty_statement", "debugger_
 
 
 def block(r, node, unit, cond) -> None:
+    """A block: its function declarations first (J7), then each statement; what a statement proves for the ones after
+    it (an `if` whose other branch leaves, an assertion call) holds over the rest of the block (R1)."""
     items = named_children(node) if node is not None else []
     scopes.open_scope(r)
     for st in items:
         if st.type in HOISTED:
             local_function(r, st, unit)
-    for st in items:
-        statement(r, st, unit, cond)
+    opened = 0
+    for i, st in enumerate(items):
+        after = statement(r, st, unit, cond)
+        if after:
+            narrowing.open(r, after, items[i + 1:], "js")
+            opened += 1
+    for _ in range(opened):
+        narrowing.close(r)
     scopes.close_scope(r)
+
+
+def guarded(r, facts: list, nodes: list, unit, cond) -> None:
+    """Statements read where facts hold (R1)."""
+    narrowing.open(r, facts, nodes, "js")
+    for node in nodes:
+        statement(r, node, unit, cond)
+    narrowing.close(r)
 
 
 def local_function(r, node, unit) -> int:
@@ -42,7 +58,8 @@ def local_function(r, node, unit) -> int:
     return unit.lambdas[name]
 
 
-def statement(r, st, unit, cond) -> None:
+def statement(r, st, unit, cond) -> list | None:
+    """One statement read by its rule; returns the facts it proves for the statements after it, if any."""
     src = r.src
     kind = st.type
     if kind == "statement_block":
@@ -57,17 +74,20 @@ def statement(r, st, unit, cond) -> None:
     elif kind == "enum_declaration":
         js_decl.declaration(r, st, unit.owner, unit)
     elif kind == "if_statement":
-        c_family.if_statement(r, st, unit, cond, statement, expr, js_guards.facts)
+        when_true, when_false = c_family.if_statement(r, st, unit, cond, statement, expr, js_guards.facts)
+        return narrowing.after_if(st, when_true, when_false, "js")
     elif kind == "switch_statement":
         value = field_of(st, "value")
         expr(r, value, unit, cond)
+        entered_alone = True                    # a case only its own test enters: the one before it leaves
         for case in named_children(field_of(st, "body")):
             test = field_of(case, "value")
+            body = [sub for sub in named_children(case) if sub is not test]
             label = f"switch {squash(src.text(value))}: " + ("case " + squash(src.text(test)) if test else "default")
             expr(r, test, unit, cond)
-            for sub in named_children(case):
-                if sub is not test:
-                    statement(r, sub, unit, cond + (label,))
+            facts = js_guards.case_facts(r, value, test, unit) if test is not None and entered_alone else []
+            guarded(r, facts, body, unit, cond + (label,))
+            entered_alone = any(narrowing.leaves(sub, "js") for sub in body)
     elif kind == "for_statement":
         scopes.open_scope(r)                    # `for (let ...)`: the loop's own scope
         parts = []
@@ -76,7 +96,9 @@ def statement(r, st, unit, cond) -> None:
             if part is not None:
                 parts.append(src.text(part).rstrip(";").strip())
                 statement(r, part, unit, cond)
-        statement(r, field_of(st, "body"), unit, cond + ("for " + squash("; ".join(parts)),))
+        body = field_of(st, "body")
+        facts = js_guards.facts(r, field_of(st, "condition"), unit)[0]
+        guarded(r, facts, [body], unit, cond + ("for " + squash("; ".join(parts)),))
         scopes.close_scope(r)
     elif kind == "for_in_statement":
         scopes.open_scope(r)
@@ -85,7 +107,8 @@ def statement(r, st, unit, cond) -> None:
     elif kind in ("while_statement", "do_statement"):
         test = field_of(st, "condition")
         expr(r, test, unit, cond)
-        statement(r, field_of(st, "body"), unit, cond + ("while " + squash(src.text(test)),))
+        facts = js_guards.facts(r, test, unit)[0] if kind == "while_statement" else []   # a do's body runs first
+        guarded(r, facts, [field_of(st, "body")], unit, cond + ("while " + squash(src.text(test)),))
     elif kind == "try_statement":
         block(r, field_of(st, "body"), unit, cond)
         handler = field_of(st, "handler")
@@ -112,9 +135,11 @@ def statement(r, st, unit, cond) -> None:
         for v in values:
             expr(r, v, unit, cond)
     elif kind in SILENT:
-        return
+        return None
     else:
         expr(r, st, unit, cond)
+        return js_guards.asserted(r, st, unit)         # a call of an assertion function (`asserts x is T`)
+    return None
 
 
 def local(r, declarator, unit, cond, function_scope: bool = False) -> None:

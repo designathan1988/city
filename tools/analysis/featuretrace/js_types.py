@@ -96,6 +96,21 @@ def generic(r, node) -> str:
     return UNKNOWN if head in r.type_scope() else head      # a class of the program's: its type arguments are erased
 
 
+def predicate(r, annotation, unit) -> tuple:
+    """A return type `x is T` or `asserts x is T` (TypeScript handbook, Narrowing: type predicates, assertion
+    functions): (x's parameter index, T's value trees, whether it asserts); () for any other (`this is T`, `asserts x`
+    included)."""
+    if annotation is None or annotation.type not in ("type_predicate_annotation", "asserts_annotation"):
+        return ()
+    asserts = annotation.type == "asserts_annotation"
+    holder = next((c for c in named_children(annotation) if c.type == "asserts"), None) if asserts else annotation
+    found = next((c for c in named_children(holder) if c.type == "type_predicate"), None) if holder else None
+    kids = named_children(found) if found is not None else []
+    if len(kids) < 2 or kids[0].type != "identifier" or r.src.text(kids[0]) not in unit.params:
+        return ()
+    return unit.params.index(r.src.text(kids[0])), tuple(values(r, kids[-1], unit)), asserts
+
+
 def parameters(r, node) -> set:
     """The type parameters a generic declaration introduces (`<T, U extends X>`)."""
     params = field_of(node, "type_parameters") if node is not None else None
