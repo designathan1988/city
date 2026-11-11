@@ -2,8 +2,8 @@
 // its way (the end of the lane it leaves, its curve, the start of the lane it enters) by a body of each class (traffic.json
 // body_*), a rectangle of its envelope sweep_margin_m larger at its middle every sweep_step_m, heading the way's chord. Two
 // connectors conflict where any of their rectangles overlap, and each keeps, per pair of classes, how far along the other's way
-// that other body has gone once it is clear. Two out of the same lane whose bodies meet near the split are diverging siblings,
-// kept apart from the conflicts with the same clear arcs: the one behind follows the other, no admission between them. A
+// that other body has gone once it is clear. Two out of the same lane are branches of that lane's fork: where their bodies meet,
+// they are kept apart from the conflicts with the same clear arcs (Conn::forks): who is behind follows, no admission between them. A
 // connector is driven only by the classes whose sweep over its curve keeps off the corners' footways (max_class): a turn too
 // tight for a body is not driven by it. The reference game's rule and envelopes.
 // The work follows where bodies meet, never every sample against every sample: a way's samples are bound in blocks by boxes that
@@ -217,7 +217,7 @@ SweepWork find_conflicts(CityState &s, const std::vector<int> &ids) {
 	for (size_t i = 0; i < ids.size(); i++)
 		for (size_t j = i + 1; j < ids.size(); j++) {
 			Conn &a = g.conns[size_t(ids[i])], &b = g.conns[size_t(ids[j])];
-			const bool siblings = a.from_ds == b.from_ds && a.from_lane == b.from_lane; // out of one lane: diverging siblings
+			const bool forked = a.from_ds == b.from_ds && a.from_lane == b.from_lane; // out of one lane: two branches of its fork
 			work.pairs++;
 			const Way &wa = ways[i], &wb = ways[j];
 			const std::vector<std::vector<int>> ab = meeting_blocks(wa, wb, work.tests);
@@ -248,10 +248,10 @@ SweepWork find_conflicts(CityState &s, const std::vector<int> &ids) {
 					clear_a[k] = fa[k] < 0 ? -NO_LEADER : wa.s[size_t(fa[k])].c + half_step;
 					clear_b[size_t(cb * BODY_CLASSES + ca)] = fb[k] < 0 ? -NO_LEADER : wb.s[size_t(fb[k])].c + half_step;
 				}
-			(siblings ? a.diverges : a.conflicts).push_back(ids[j]);
-			(siblings ? a.diverge_clear : a.conflict_clear).push_back(clear_b);
-			(siblings ? b.diverges : b.conflicts).push_back(ids[i]);
-			(siblings ? b.diverge_clear : b.conflict_clear).push_back(clear_a);
+			(forked ? a.forks : a.conflicts).push_back(ids[j]);
+			(forked ? a.fork_clear : a.conflict_clear).push_back(clear_b);
+			(forked ? b.forks : b.conflicts).push_back(ids[i]);
+			(forked ? b.fork_clear : b.conflict_clear).push_back(clear_a);
 		}
 	return work;
 }

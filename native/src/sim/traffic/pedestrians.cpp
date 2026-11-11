@@ -5,6 +5,7 @@
 // bodies ahead leave), before a kerb in its queue (ped_kerb.cpp); with somebody, as a party (ped_party.cpp).
 #include "sim/roads/parking_layout.h"
 #include "sim/traffic/kerb_stops.h"
+#include "sim/traffic/swaths.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
@@ -174,7 +175,7 @@ void walk(CityState &s, int id, float dt) {
 		return;
 	}
 	if (w.mode == PedMode::WAIT) {
-		step_off_held(s, w, dt); // off the way a car has taken through where it waits
+		step_off_swath(s, w, dt); // off the way a car drives through where it waits
 		w.wait += dt;
 		t.ped_waiting++;
 		if (w.cross_cd > 0) { // 5 Hz, not once per tick
@@ -300,7 +301,7 @@ void step_pedestrians(CityState &s, float dt) {
 	const float cx = s.camera_x.load(), cz = s.camera_z.load();
 	const float out = p.ped_window_m * p.ped_despawn_window_share, out2 = out * out; // beyond it: gone, not lost
 	t.ped_waiting = 0;
-	file_held_ground(s); // the vehicles off the lanes have moved (step_lots): where their ground is this tick
+	file_swaths(s); // the vehicles off the lanes have moved (step_lots): where their swaths are this tick
 	crowd_step(s, dt);
 	for (int id = 0; id < int(t.peds.size()); id++) {
 		Pedestrian &w = t.peds[size_t(id)];

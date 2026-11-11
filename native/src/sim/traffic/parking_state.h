@@ -50,16 +50,33 @@ struct ParkSource {
 	std::vector<int> bays;
 };
 
+// The swath of a vehicle off the lanes (swaths.h): discs of its body where it stands (the first `body`) and, while it drives in or out,
+// of the rest of its way; the order it started on that way (0: it has not) and whether the way leads out to the street.
+struct SwathDisc {
+	float x = 0, z = 0, r = 0;
+};
+struct Swath {
+	float x0 = 0, z0 = 0, x1 = 0, z1 = 0; // the box of its discs
+	int first = 0, count = 0, body = 0; // in ParkingState::swath_discs
+	int vehicle = -1;
+	uint32_t order = 0;
+	bool outward = false;
+};
+
 enum class CarPhase : uint8_t { COMING, PARKING, PARKED, LEAVING };
 
 // A car of the lots: on the road while it is COMING, off the lanes after that (Vehicle::off). Once PARKED it becomes its bay's
-// row at the next look, its Vehicle let go: a standing car costs nothing a tick, like a scenery one.
+// row at the next look, its Vehicle let go: a standing car costs nothing a tick, like a scenery one. Several cars of a lot drive at
+// once, kept apart by their swaths (swaths.h).
 struct LotCar {
 	int id = -1, bay = -1;
 	CarPhase phase = CarPhase::COMING;
 	Manoeuvre path;
 	float t = 0, waited = 0; // seconds in the phase; seconds waited for walkers
-	bool reserved = false; // holding the ground of the rest of its way: it no longer stops for anybody
+	// When it started on its way (ParkingState::starts; 0: it has not): from then on the rest of its way is its swath, it waits for no
+	// walker and gives way only to the swaths of those that started before it (swaths.h).
+	uint32_t start_order = 0;
+	std::vector<SwathDisc> way; // its body along `path`, laid once when the path is made (swaths.h lay_way)
 	// Its lane is closed to the traffic behind while its body stands on it (lot_traffic.cpp, LaneClosure owned by its vehicle id):
 	// going in, until its way has carried every corner past the lane's edge, `lane_clear_at` metres along it; coming out, from when
 	// it goes at the kerb until it is on the lane's list.
@@ -90,6 +107,8 @@ struct Lorry {
 	bool closed = false;
 	Manoeuvre path;
 	float t = 0, stay = 0, waited = 0;
+	uint32_t start_order = 0; // when it started on the way it drives now (into the yard or out of it), as a car's (LotCar)
+	std::vector<SwathDisc> way; // its body along `path`, laid once when the path is made (swaths.h lay_way)
 };
 
 struct ParkingState {
@@ -109,6 +128,11 @@ struct ParkingState {
 	int coming = 0, moving = 0; // cars on their way, and driving in or out of a bay now
 	int called = 0, parked_in = 0, left_by = 0; // probes: cars sent in, parked, driven out
 	std::vector<Lorry> lorries; // Vehicle::lorry is its index here
+	// The swaths of the cars and lorries off the lanes, filed before the lots move and before the walkers step (swaths.cpp), and the
+	// orders handed to those starting on their way.
+	std::vector<SwathDisc> swath_discs;
+	std::vector<Swath> swaths;
+	uint32_t starts = 0;
 	std::unordered_map<int, std::shared_ptr<const traffic::YardPlan>> yards; // by building, the ones planned
 	std::shared_ptr<traffic::YardPlanner> planner; // the yard being planned, a little each tick
 	int planner_building = -1;

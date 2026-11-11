@@ -2,6 +2,7 @@
 // people_purchasing), the people going in and coming out of it; a bay is drawn by those shares, then the nearest passing car.
 #include "sim/traffic/traffic_system.h"
 #include "sim/traffic/day_table.h"
+#include "sim/traffic/swaths.h"
 
 #include <algorithm>
 #include <cmath>
@@ -43,6 +44,7 @@ void take_row(CityState &s, int b) {
 	car.bay = b;
 	car.phase = CarPhase::LEAVING;
 	car.path = bay_departure(bay.at, bay.open, bay.via, bay.lane.p, bay.lane.t, p.man_lead_m, p.man_across_m, p.man_least_m, p.man_tangent);
+	lay_way(s, p.classes[int(v.type)], car.path, car.way); // its swath ahead, laid once (swaths.h)
 	v.car = int(t.park.cars.size());
 	t.park.cars.push_back(std::move(car));
 	t.park.moving++;
@@ -93,8 +95,8 @@ void lot_depart(CityState &s, double target) {
 		while (kind + 1 < PLACE_KINDS && roll >= w[kind]) roll -= w[kind++];
 		if (pk.row_of[kind].empty()) continue;
 		const int b = pk.row_of[kind][size_t(t.rng.next() % uint32_t(pk.row_of[kind].size()))];
-		// a car that has not stood its stay, or whose lot's drive another car is on, is left there: the draw goes to another next look
-		if (t.time >= pk.bays[size_t(b)].stay_until && !lot_busy(pk, pk.bays[size_t(b)].source) && read_bay_way(s, b)) take_row(s, b);
+		// a car that has not stood its stay is left there: the draw goes to another next look
+		if (t.time >= pk.bays[size_t(b)].stay_until && read_bay_way(s, b)) take_row(s, b);
 	}
 }
 

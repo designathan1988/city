@@ -206,7 +206,7 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 				// Only the lane head arbitrates at the junction; followers keep the IDM distance to their leader.
 				if (head) {
 					lead_beyond(s, ci, dist, l);
-					diverge_leads(s, ci, v, -dist, l); // a body that took another turn out of this lane, still at the split
+					fork_leads(s, ci, v, -dist, l); // a body that took another branch out of this lane, not yet clear of this one's way
 					open = gate(s, id, ci, dist, head, lights.here, released);
 					const float line = dist - t.g.ds[ds].stop_back; // the stop line is behind the crosswalk
 					if (!open && dist < p.look_ahead_m) l.take(line > -p.stop_margin_m ? std::max(0.f, line - p.stop_margin_m) : dist - p.stop_margin_m, 0.f);

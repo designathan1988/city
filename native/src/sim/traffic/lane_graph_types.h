@@ -57,10 +57,11 @@ struct Conn {
 	// two never meet. The junction's admission keeps them apart.
 	std::vector<int> conflicts;
 	std::vector<std::array<float, BODY_PAIRS>> conflict_clear;
-	// Its diverging siblings: the connectors out of the same lane whose bodies meet this one's near the split, with their clear arcs
-	// as above. No admission between them: the one behind drives against the one further along (diverge_leads, motion_law.h).
-	std::vector<int> diverges;
-	std::vector<std::array<float, BODY_PAIRS>> diverge_clear;
+	// Its lane's fork: the other connectors out of the same lane whose bodies meet this one's where the ways part, with their clear
+	// arcs as above. No admission between the branches of a fork: whoever is behind drives against whoever is further along
+	// (fork_leads, motion_law.h).
+	std::vector<int> forks;
+	std::vector<std::array<float, BODY_PAIRS>> fork_clear;
 };
 
 struct Junction {

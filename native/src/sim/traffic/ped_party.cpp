@@ -31,7 +31,7 @@ const Pedestrian *partner_of(const TrafficState &t, const Pedestrian &w) {
 	return id >= 0 ? &t.peds[size_t(id)] : nullptr;
 }
 
-// On its sidewalk at `arc`, `u` across: whether it stands there on the footway, in no piece of furniture and in nobody.
+// On its sidewalk at `arc`, `u` across: whether it stands there on the footway, in no piece of furniture, in nobody and on no swath.
 bool stands_clear(CityState &s, Pedestrian &w, float arc, float u) {
 	const RoadSegment &g = s.roads.segs[size_t(w.seg)];
 	const float body = s.catalog.traffic.ped_body_m;
@@ -40,7 +40,7 @@ bool stands_clear(CityState &s, Pedestrian &w, float arc, float u) {
 	w.u = u;
 	stand_on_sidewalk(s, w);
 	return !on_furniture(s, w.seg, w.side, w.cur.x, w.cur.z, body) && !walker_near(s.traffic, w.cur, 2 * body) &&
-			!on_held_ground(s.traffic, w.cur.x, w.cur.z, body);
+			!on_a_swath(s.traffic, w.cur.x, w.cur.z, body);
 }
 
 // Beside its leader on the sidewalk: abreast on its own side of the way, else a step behind in the leader's footsteps.

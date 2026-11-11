@@ -62,9 +62,9 @@ bool plan_trip(CityState &s, int from, std::vector<int> &route, int &side) {
 }
 
 // Whether a walker standing at `at` would be closer to another than the room walkers keep (two bodies and the gap):
-// against every walker, those born this step too (a few are born a step); or on ground a vehicle off the lanes holds.
+// against every walker, those born this step too (a few are born a step); or on the swath of a vehicle off the lanes.
 bool crowded(const TrafficState &t, const TrafficParams &p, const Pose &at) {
-	return walker_near(t, at, 2 * p.ped_body_m + p.ped_gap_m) || on_held_ground(t, at.x, at.z, p.ped_body_m);
+	return walker_near(t, at, 2 * p.ped_body_m + p.ped_gap_m) || on_a_swath(t, at.x, at.z, p.ped_body_m);
 }
 
 // Standing at the door, its way out to the sidewalk at `d`.

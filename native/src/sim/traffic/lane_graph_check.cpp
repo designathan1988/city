@@ -1,6 +1,6 @@
 // What the lane graph must always be, checked where it changes (the debug DLL, after every network change): a connection joins
-// live lanes at a live node, every list reaches exactly the live connections, a conflict or a diverging sibling is held by both
-// sides (siblings out of one lane, conflicts out of two) and its place comes with it. The first thing broken is kept in TrafficState::graph_fault for the tests: the cause shows on the tick
+// live lanes at a live node, every list reaches exactly the live connections, a conflict or a branch of a lane's fork is held by
+// both sides (a fork's branches out of one lane, conflicts out of two) and its place comes with it. The first thing broken is kept in TrafficState::graph_fault for the tests: the cause shows on the tick
 // the edit made it, not when a vehicle runs into it minutes later.
 #include "sim/state/city_state.h"
 #include "sim/traffic/lane_graph_internal.h"
@@ -20,9 +20,9 @@ bool live_lane(const LaneGraph &g, int ds, int lane) {
 	return ds >= 0 && size_t(ds) < g.ds.size() && g.ds[size_t(ds)].ok && lane >= 0 && lane < g.ds[size_t(ds)].lanes;
 }
 
-// The connectors `c` meets by one list (its conflicts or its diverging siblings): each alive, holding `c` back on the same list, out
-// of the same lane exactly when they are siblings, and each with its clear places.
-std::string meets_fault(const LaneGraph &g, const Conn &c, int ci, std::vector<int> Conn::*list, size_t clears, bool siblings) {
+// The connectors `c` meets by one list (its conflicts or the other branches of its lane's fork): each alive, holding `c` back on the
+// same list, out of the same lane exactly when the list is the fork's, and each with its clear places.
+std::string meets_fault(const LaneGraph &g, const Conn &c, int ci, std::vector<int> Conn::*list, size_t clears, bool fork) {
 	const std::vector<int> &meets = c.*list;
 	if (meets.size() != clears) return fault_of(c, ci, "a conflict without its clear places");
 	for (int o : meets) {
@@ -30,8 +30,8 @@ std::string meets_fault(const LaneGraph &g, const Conn &c, int ci, std::vector<i
 		const Conn &other = g.conns[size_t(o)];
 		const std::vector<int> &back = other.*list;
 		if (std::find(back.begin(), back.end(), ci) == back.end()) return fault_of(c, ci, "a conflict held by one side only");
-		if ((other.from_ds == c.from_ds && other.from_lane == c.from_lane) != siblings)
-			return fault_of(c, ci, siblings ? "a diverging sibling out of another lane" : "a conflict out of its own lane");
+		if ((other.from_ds == c.from_ds && other.from_lane == c.from_lane) != fork)
+			return fault_of(c, ci, fork ? "a branch of its fork out of another lane" : "a conflict out of its own lane");
 	}
 	return {};
 }
@@ -41,7 +41,7 @@ std::string conn_fault(const LaneGraph &g, int ci) {
 	if (!live_lane(g, c.from_ds, c.from_lane)) return fault_of(c, ci, "comes from a lane that is not there");
 	if (!live_lane(g, c.to_ds, c.to_lane)) return fault_of(c, ci, "goes to a lane that is not there");
 	const std::string conflicts = meets_fault(g, c, ci, &Conn::conflicts, c.conflict_clear.size(), false);
-	return conflicts.empty() ? meets_fault(g, c, ci, &Conn::diverges, c.diverge_clear.size(), true) : conflicts;
+	return conflicts.empty() ? meets_fault(g, c, ci, &Conn::forks, c.fork_clear.size(), true) : conflicts;
 }
 } // namespace
 

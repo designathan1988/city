@@ -25,8 +25,8 @@ struct WayFrame {
 struct Body {
 	float along_lo = 0, along_hi = 0, lat_lo = 0, lat_hi = 0, reach = 0;
 	bool furniture = false, oncoming = false;
-	bool held = false; // ground a vehicle off the lanes holds (ped_held.cpp): a furniture body
-	bool under = false; // held ground the walker stands on: no obstacle ahead (it walks on out of it), and it steps away from it
+	bool swath = false; // a disc of a vehicle off the lanes' swath (ped_swaths.cpp): a furniture body
+	bool under = false; // a swath's disc the walker stands on: no obstacle ahead (it walks on out of it), and it steps away from it
 };
 constexpr int MAX_BODIES = 64; // bodies a walker looks at in one step (the nearest first is not needed: all are near)
 
@@ -46,9 +46,9 @@ void sidewalk_frame(const CrowdEntry &w, float half, float stripe, bool world, W
 void line_frame(const CityState &s, const Pedestrian &w, WayFrame &f);
 V2 left_of(const V2 &d); // +u of a direction (lane_geometry.cpp: x + dz * u, z - dx * u)
 
-// ped_held.cpp: the ground the vehicles off the lanes hold near a walker at `at`, as bodies in its frame (ahead `fwd`, across
+// ped_swaths.cpp: the swaths of the vehicles off the lanes near a walker at `at`, as bodies in its frame (ahead `fwd`, across
 // `left`, its place across f.u), appended to the `n` in `out`; returns how many there are then.
-int held_bodies(const TrafficState &t, const V2 &at, const V2 &fwd, const V2 &left, const WayFrame &f, float look, float body, Body *out, int n);
+int swath_bodies(const TrafficState &t, const V2 &at, const V2 &fwd, const V2 &left, const WayFrame &f, float look, float body, Body *out, int n);
 
 // The walker's stripe, step aside and pace this step, from the bodies around it (all read at the step's start).
 StripeChoice choose_stripe(const StripeRules &r, const CrowdEntry &w, const WayFrame &f, const Body *bodies, int n);

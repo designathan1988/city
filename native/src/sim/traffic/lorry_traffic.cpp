@@ -1,9 +1,11 @@
 // Lorries to the docks of the works near the camera. A truck on the lanes is called to a stop before a gate; there it leaves the
-// lanes and, the street it sweeps clear and closed, backs onto the dock along the way a worker planned (yard.h), unloads, drives out
-// and is a truck of the traffic again past the gate.
+// lanes and, no standing car or lorry on its way and the street it sweeps clear and closed, backs onto the dock along the way a
+// worker planned (yard.h), unloads, drives out and is a truck of the traffic again past the gate. In and out it drives by its swath
+// as the lots' cars do (swaths.h): it gives way to the swaths of those that started before it.
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/traffic/lane_closures.h"
+#include "sim/traffic/swaths.h"
 
 #include "core/laps.h"
 #include "sim/traffic/yard.h"
@@ -127,6 +129,10 @@ void coming(CityState &s, int index) {
 	v.v = 0;
 	t.vehicle_count--;
 	set_off_pose(s, v, body_at(p, here));
+	// off the lane's list its body still stands on the lane: that stretch is closed to those behind it until it has left it
+	sweep_body(s, p.classes[int(v.type)].length * 0.5f, p.classes[int(v.type)].half_width, { body_at(p, here) }, p.lorry_closure_margin_m, l.id, t.closures);
+	l.path = shunt(p, l.into); // its way in from where it stands, and its swath along it, made once
+	lay_way(s, p.classes[int(v.type)], l.path, l.way);
 	l.phase = LorryPhase::WAITING;
 	l.t = 0;
 }
@@ -143,7 +149,7 @@ void drive(CityState &s, int index, float dt) {
 	}
 	if (!may_go(s, l, dt)) { v.v = 0; return; }
 	const float was = l.path.s, speed = l.path.speed(speeds(p));
-	l.path.advance(speed * dt);
+	l.path.advance(room_on_way(s, l.id, l.start_order, l.path, p.classes[int(v.type)], speed * dt));
 	if (leaving) l.path.s = std::min(l.path.s, l.street_at);
 	v.v = l.path.s > was ? speed : 0;
 	set_off_pose(s, v, l.path.pose());
@@ -154,6 +160,7 @@ void drive(CityState &s, int index, float dt) {
 	if (!l.path.done()) return;
 	if (l.phase == LorryPhase::ARRIVING) {
 		l.phase = LorryPhase::DOCKED;
+		l.start_order = 0; // it stands at the dock: a standing body until it starts on its way out
 		l.stay = p.lorry_unload_min_s + t.rng.f() * (p.lorry_unload_max_s - p.lorry_unload_min_s);
 		t.park.lorries_docked++;
 		v.v = 0;
@@ -171,17 +178,23 @@ void step_one(CityState &s, int index, float dt) {
 		case LorryPhase::COMING: coming(s, index); return;
 		case LorryPhase::WAITING:
 			v.v = 0;
-			if (!close_if_clear(s, l, l.close_in)) return;
-			l.path = shunt(p, l.into);
+			// a car or a lorry stands on its way into the yard: it waits where it stands, its street not closed for its way yet
+			if (way_has_standing(s, l.id, l.way, 0) || !close_if_clear(s, l, l.close_in)) return;
 			l.street_at = l.path.at_step(l.into_street);
+			l.start_order = next_start(s);
 			l.phase = LorryPhase::ARRIVING;
 			return;
 		case LorryPhase::DOCKED:
 			v.v = 0;
-			l.stay -= dt;
-			if (l.stay > 0) return;
-			l.path = shunt(p, l.away);
+			if (l.stay > 0) {
+				l.stay -= dt;
+				if (l.stay > 0) return;
+				l.path = shunt(p, l.away); // unloaded: its way out and its swath along it, made once
+				lay_way(s, p.classes[int(v.type)], l.path, l.way);
+			}
+			if (way_has_standing(s, l.id, l.way, 0)) return; // it stands at the dock until its way out is free of standing bodies
 			l.street_at = l.path.at_step(l.away_street);
+			l.start_order = next_start(s);
 			l.phase = LorryPhase::LEAVING;
 			return;
 		default: drive(s, index, dt); return;

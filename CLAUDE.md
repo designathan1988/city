@@ -13,10 +13,8 @@ Main as it stood is the tag `antes-da-volta-2026-11-10`: read it for WHAT was bu
 measured (memory, CPU, GPU, frame) and photographed in the 24 km city (map `km24`) before and after. Code translated from the 4.0 still stands here (the translated runtime in `core/`, `flow_control`): it is redone the same way, not regenerated.
 
 ## Metodologia de trabalho (toda tarefa, nesta ordem; trabalho direto)
-1. **Identifique:** leia o código envolvido e pergunte "por quê" até chegar à decisão de projeto que produz o sintoma.
-   Liste todos os problemas.
-2. **Pesquise** quando a tarefa toca API externa (Godot, godot-cpp, Terrain3D): documentação oficial e fontes relevantes,
-   nunca só a memória.
+1. **Identify:** read the code involved and ask "why" until you reach the design decision that produces the symptom. List every problem.
+2. **Research** when the task touches an outside API (Godot, godot-cpp, Terrain3D): the official documentation and relevant sources, never memory alone.
 3. **Compreenda:** ligue problema, causa e solução pelo código e, quando houve, pela pesquisa.
 4. **Plan** the fix of the cause, with one owner, always choosing the most expensive and laborious solution that solves the
    cause (owner, 2026-11-11): a cheap solution that does not solve the cause is forbidden, and so is offering cheap options.
@@ -25,8 +23,7 @@ measured (memory, CPU, GPU, frame) and photographed in the 24 km city (map `km24
    out of shape, overlapping or missing), never made equal pixel for pixel to another run, an older commit or a kept reference.
 7. **Pare e confira:** passou ou deu erro? Se deu erro, volte ao passo 1 com o que o erro mostrou.
 
-Ao fechar o tema, o registro da linha recebe os problemas, as fontes, o raciocínio, o plano e os arquivos criados, alterados
-e apagados.
+At a theme's close, the line's record gets the problems, the sources, the reasoning, the plan and the files created, changed and deleted.
 A reported problem is solved with the `trace-fix` skill (`python .claude/skills/trace-fix/ledger.py resume` first): the flow traced end to end, read whole with the Read tool, recorded on disk, fixed at the cause, tested and photographed; its hooks refuse an edit of a file not read whole.
 
 ## Correção de causa
@@ -70,8 +67,7 @@ A reported problem is solved with the `trace-fix` skill (`python .claude/skills/
 - Prova visual, só em mudança visual: do elemento, de perto e de vários ângulos.
 
 ## Ferramentas e processos
-- Tarefas independentes rodam em paralelo. Cada uma tem tempo-limite próprio; a que trava ou falha é parada e registrada,
-  e as outras seguem.
+- Independent tasks run in parallel, each with its own deadline; one that hangs or fails is stopped and recorded, and the others go on.
 - Nada é refeito sem mudança de entrada: o resultado fica guardado pela chave das suas entradas.
 - Cada ferramenta processa só o que a mudança alcança. A execução completa é uma opção explícita.
 - Ferramenta de verificação tem de poder reprovar: sai com código diferente de zero na falha, e conjunto vazio reprova.
@@ -172,13 +168,9 @@ compilar. Meshoptimizer e Clipper2 vêm pelo CMake na primeira compilação. À 
   a verdict; parallel pool, cache in `dist/cache/tasks`, Job Object kill, hidden desktop; `suites.json`).
 - `build/`: `build.sh`, `quick.sh` (a thin call of `tools/tasks`), `pgo.sh`, `photodiff.py`, `free_dll.sh`,
   `check_scripts.gd` (scripts that do not compile), `rename_english.py` (the English rename, with `--check`).
-- `analysis/`: `sampler.py` with `sampler_report.py` and `unwind.py`, `causes.py` with `detectors.py` and `code_parse.py`,
-  `arch.py` e `arch/` (o analisador de arquitetura), `arch_eval/` (gabaritos
-  que só o selfcheck dele lê).
+- `analysis/`: `sampler.py` with `sampler_report.py` and `unwind.py`, `causes.py` with `detectors.py` and `code_parse.py`, `arch.py` and `arch/` (the architecture analyser), `arch_eval/` (answer keys only its selfcheck reads).
 - `assets/`: cozinha de pessoas, marcos, ruído, móveis, postes e perfis de via.
-- `converter/`: the porting tool, with its own git: traces each feature of the source game, translates its pure simulation
-  logic into C++ for this architecture and audits the result (`node src/cli.ts feature`, `convert`, `differential`, `graph`,
-  `translate`, `audit`, `verify`). Translated code (e.g. `flow_control`) is regenerated, never fixed by hand.
+- `converter/`: the porting tool, with its own git (`node src/cli.ts feature`, `convert`, `differential`, `graph`, `translate`, `audit`, `verify`). Translated code (e.g. `flow_control`) is regenerated, never fixed by hand.
 - `converter-slice/`: the converter's older slice, with its own git.
 - `process/`: ferramentas de processo e registros. `ports/`: planos, coberturas e relatórios de cada porte.
 
