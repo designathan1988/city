@@ -8,7 +8,7 @@ captured local reaches the enclosing function's (closures share their variables,
 """
 from __future__ import annotations
 
-from . import c_family, js_bounds, js_class, js_decl, js_expr, js_guards, narrowing, scopes
+from . import c_family, js_bounds, js_class, js_decl, js_expr, js_guards, jsdoc, narrowing, scopes
 from .cpp_implicit import IMPLICIT
 from .gd_body import squash
 from .ir import put
@@ -161,6 +161,8 @@ def local(r, declarator, unit, cond, function_scope: bool = False) -> None:
                       function_scope=function_scope)
         if field_of(declarator, "type") is not None:
             unit.bounds[key] = js_bounds.of(r, field_of(declarator, "type"))      # what it can hold (S2)
+        elif jsdoc.is_js(r) and jsdoc.declared(r, declarator):
+            unit.bounds[key] = jsdoc.declared(r, declarator)                      # its JSDoc `@type` (S2')
     else:
         r.bind(target, tree, unit, None, cond)
     expr(r, value, unit, cond)
@@ -210,7 +212,9 @@ def target(r, node, unit, cond, value: tuple | None) -> None:
             return
         base = r.ir(obj, unit)
         if base == ("self",) and "#" in unit.owner:
-            js_class.field_unit(r, unit.owner, name, node, None)   # `this.x = v` makes the property x (J4)
+            field = js_class.field_unit(r, unit.owner, name, node, None)   # `this.x = v` makes the property x (J4)
+            if not field.bound and jsdoc.is_js(r):
+                field.bound = jsdoc.declared(r, node)                      # `/** @type {T} */ this.x = v` (S2')
         r.add(unit, "write", name, node, cond, base=base, args=args)
         if value is not None and name.startswith(HANDLER_PREFIX) and len(name) > len(HANDLER_PREFIX):
             # `x.on<type> = handler` subscribes to the event `<type>` (J6)

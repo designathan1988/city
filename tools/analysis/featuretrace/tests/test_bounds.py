@@ -62,5 +62,30 @@ class Bounds(Solved, FixtureCase):
         self.assertTrue({ELEM + TEXT + "s", ELEM + TILE} <= found, found)
 
 
+class JsDoc(Solved, FixtureCase):
+    """S2': JSDoc in a JavaScript file (fixture `jsvalues/jsdoc.js`)."""
+    ROOTS = ("jsvalues",)
+    BASE = "jsvalues"
+    VEC = CLASS + "jsdoc.js#DocVec"
+
+    def test_param_and_type_on_this(self):
+        self.assertEqual({NUMBER}, self.returned("docX"))           # `@param {number} [x=0]`, `@type {number}`
+
+    def test_closure_forms(self):
+        self.assertEqual({NULL, NUMBER}, self.returned("docNullable"))     # `{?number}`
+        self.assertEqual({UNDEFINED}, self.returned("docOptional"))        # `{number=}`
+        self.assertEqual({TEXT + "s"}, self.returned("docAny"))             # `{*}`
+        self.assertEqual({self.VEC}, self.returned("docBang"))              # `{!DocVec}`
+        found = self.returned("docArray")                                   # `{Array.<number>}`
+        self.assertNotIn(TEXT + "s", found)
+        self.assertTrue(found, found)
+        fns = self.returned("docFn")                                        # `{function(number): string}`
+        self.assertTrue(fns and all(v.startswith("<fn>") for v in fns), fns)
+
+    def test_returns_and_variable(self):
+        self.assertEqual({self.VEC}, self.returned("docMake"))             # `@returns {DocVec}`
+        self.assertEqual({NUMBER}, self.returned("docLetRead"))            # `@type {number}` on `let`
+
+
 if __name__ == "__main__":
     unittest.main()

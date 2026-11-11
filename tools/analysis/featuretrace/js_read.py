@@ -10,7 +10,7 @@ written to (J9). Module-level statements are read by `js_decl`, statements by `j
 """
 from __future__ import annotations
 
-from . import ir_js, js_body, js_bounds, js_class, js_decl, js_types, narrowing, scopes, ts_tree
+from . import ir_js, js_body, js_bounds, js_class, js_decl, js_types, jsdoc, narrowing, scopes, ts_tree
 from .model import ALIAS_KIND, ClassFact, FileFacts, Unit, add_ref, declare, enclose
 from .rules import CONSTRUCTOR
 from .solver import UNDEFINED
@@ -95,6 +95,8 @@ class JsReader:
         unit.declared = js_types.values(self, ret, unit) if ret is not None else []      # T3
         unit.bound = js_bounds.result(self, ret, node)                                  # S2
         self.params(field_of(node, "parameters") or field_of(node, "parameter"), unit)
+        if jsdoc.is_js(self):
+            jsdoc.function(self, node, unit)                    # a JavaScript file's JSDoc types (S2')
         unit.predicate = js_types.predicate(self, ret, unit)                       # `x is T`, `asserts x is T`
         body = field_of(node, "body")
         if body is None:

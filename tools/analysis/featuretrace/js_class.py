@@ -9,7 +9,7 @@ object type is an interface without a name (T1'); an optional property (`p?: T`)
 """
 from __future__ import annotations
 
-from . import ir_js, js_body, js_bounds, js_decl, js_types
+from . import ir_js, js_body, js_bounds, js_decl, js_types, jsdoc
 from .model import ClassFact, declare, enclose
 from .rules import CONSTRUCTOR, INDEX_MEMBER
 from .solver import UNDEFINED
@@ -83,6 +83,8 @@ def members(r, body, key: str, outer, class_node=None) -> None:
             optional = any(c.type == "?" for c in member.children)
             if field_of(member, "type") is not None:
                 field.bound = js_bounds.of(r, field_of(member, "type"), optional)   # what it can hold (S2)
+            elif jsdoc.is_js(r):
+                field.bound = jsdoc.declared(r, member)                            # its JSDoc `@type` (S2')
             if optional:
                 field.values.append(("cast", UNDEFINED))        # `p?: T`: undefined added to its type (T1')
             if value is not None:
