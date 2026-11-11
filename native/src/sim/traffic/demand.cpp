@@ -77,8 +77,10 @@ bool lane_free(const CityState &s, int key, float at, float len) {
 	return true;
 }
 
-// One trip attempt; returns false on failure (no destination, no route or no room).
-bool spawn_one(CityState &s) {
+// One trip attempt; returns false on failure (no destination, no route or no room). Past the city's opening (`filling`) a trip
+// starts only where nothing is drawn, beyond publish_radius_m of the camera: inside it cars come out of the lots or drive in, as
+// the reference game's do (they appear and leave only out of sight).
+bool spawn_one(CityState &s, bool filling) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	VehicleType type = draw_type(s);
@@ -88,6 +90,7 @@ bool spawn_one(CityState &s) {
 	int from = pick_ds(s, truck ? p.zone_truck : weights_now(p, hour, true));
 	if (from < 0 || (bike && !t.g.ds[size_t(from)].bikes)) return false;
 	V2 a = mid_of(s, from);
+	if (!filling && (a - V2(s.camera_x.load(), s.camera_z.load())).len() < p.publish_radius_m) return false;
 	int to = -1;
 	for (int k = 0; k < DEST_TRIES && to < 0; k++) {
 		int c = pick_ds(s, truck ? p.zone_truck : weights_now(p, hour, false));
@@ -106,7 +109,7 @@ bool spawn_one(CityState &s) {
 	if (at < vc.length + p.mouth_clear_m || at > stop || !lane_free(s, key, at, vc.length)) return false; // keep the lane mouth clear
 	if (float(lane_load(t, key) + 1) > d.len / p.slot_m) return false; // the lane is full, far vehicles included
 	std::vector<int> route;
-	if (!find_route(s, from, to, route, -1, -1, bike) || route.size() < 2) return false;
+	if (!find_route(s, from, to, route, type) || route.size() < 2) return false;
 	const int id = new_vehicle(s, type, uint8_t(t.rng.next() % PAINTS));
 	Vehicle &v = t.vehicles[size_t(id)];
 	assign_errand(s, v, id);
@@ -174,7 +177,7 @@ bool new_trip(CityState &s, int id, int from_ds) {
 		const float d = (mid_of(s, c) - a).len();
 		if (d <= p.trip_min_m || d >= p.trip_max_m || t.rng.f() >= std::exp(-d / p.trip_decay_m)) continue;
 		std::vector<int> route;
-		if (!find_route(s, from_ds, c, route, -1, -1, v.type == VehicleType::BICYCLE) || route.size() < 2) return false;
+		if (!find_route(s, from_ds, c, route, v.type) || route.size() < 2) return false;
 		route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
 		v.ri = 0;
 		v.goal_s = t.rng.range(GOAL_LO, GOAL_HI) * t.g.ds[size_t(c)].len;
@@ -204,7 +207,8 @@ void spawn_vehicles(CityState &s, float dt) {
 	int attempts = 0;
 	// a car driving in or out of a bay is a car driving: the demand counts it (it just is not on a lane)
 	const double driving = double(t.vehicle_count) + double(t.park.moving);
-	if (driving < p.fill_share * target) {
+	const bool filling = driving < p.fill_share * target; // the city's opening: the streets filled where they are
+	if (filling) {
 		attempts = int(p.spawn_fill_attempts);
 	} else {
 		t.spawn_credit += float(std::max(0.0, target - driving)) * dt / p.fleet_tau_s;
@@ -214,7 +218,7 @@ void spawn_vehicles(CityState &s, float dt) {
 	int failures = 0;
 	// a new trip's search can wait: past the tick's searches the rest of the attempts are not made (route_admission.cpp)
 	for (int k = 0; k < attempts && failures < MAX_FAILURES && may_request_search(s); k++)
-		if (!spawn_one(s)) failures++;
+		if (!spawn_one(s, filling)) failures++;
 }
 
 } // namespace traffic

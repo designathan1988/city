@@ -61,11 +61,28 @@ int pass_holder(const CityState &s, int ci) {
 	return v.pass == ci && v.conn < 0 ? u : -1;
 }
 
-bool box_clear(const CityState &s, int ci) {
+bool conflict_busy(const CityState &s, const Conn &c, size_t k, int mine) {
+	const TrafficState &t = s.traffic;
+	const int d = c.conflicts[k];
+	const Conn &o = t.g.conns[size_t(d)];
+	const auto busy = [&](const Vehicle &v, float centre) { return centre < c.conflict_clear[k][size_t(body_class(s.catalog.traffic, v.type) * BODY_CLASSES + mine)]; };
+	for (int id : t.conn_vehicles[size_t(d)])
+		if (busy(t.vehicles[size_t(id)], t.vehicles[size_t(id)].cs - body(s, id) * 0.5f)) return true;
+	// those come off it onto its lane, their bodies still on its way (vehicle_pose.cpp hangs them back onto it)
+	for (int id : t.lane_vehicles[key(o.to_ds, o.to_lane)]) {
+		const Vehicle &v = t.vehicles[size_t(id)];
+		if (v.came == d && busy(v, o.len + v.s - body(s, id) * 0.5f)) return true;
+	}
+	return false;
+}
+
+bool box_clear(const CityState &s, int ci, int vid) {
 	const TrafficState &t = s.traffic;
 	const Conn &c = t.g.conns[ci];
-	for (int d : c.conflicts) {
-		if (!t.conn_vehicles[d].empty()) return false;
+	const int mine = body_class(s.catalog.traffic, t.vehicles[size_t(vid)].type);
+	for (size_t k = 0; k < c.conflicts.size(); k++) {
+		if (conflict_busy(s, c, k, mine)) return false;
+		const int d = c.conflicts[k];
 		int u = pass_holder(s, d);
 		if (u < 0) continue;
 		// another one over its line for a crossing connector since before this one: it goes first
@@ -109,8 +126,9 @@ bool jam_release(CityState &s, int ci, int vid) {
 	const auto &on = t.conn_vehicles[ci];
 	if (!on.empty() && t.vehicles[on.back()].cs < body(s, on.back()) + tp.exit_room_pad_m) return false;
 	if (peds_in_way(s, ci)) return false;
-	for (int d : c.conflicts)
-		if (!t.conn_vehicles[d].empty() || pass_holder(s, d) >= 0) return false;
+	const int mine = body_class(tp, t.vehicles[size_t(vid)].type);
+	for (size_t k = 0; k < c.conflicts.size(); k++)
+		if (conflict_busy(s, c, k, mine) || pass_holder(s, c.conflicts[k]) >= 0) return false;
 	return true;
 }
 

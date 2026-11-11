@@ -63,15 +63,22 @@ struct View {
 	}
 };
 
+// Whether lane key `dst` leaves `front` metres ahead of the body of `id` and `back` behind it.
+bool gaps_open(const View &w, int id, int dst, float front, float back) {
+	const TrafficState &t = w.s.traffic;
+	const Vehicle &v = t.vehicles[id];
+	const Around n = around(t, dst, v.s, id);
+	if (n.lead >= 0 && t.vehicles[n.lead].s - w.len(n.lead) - v.s < front) return false;
+	return n.follow < 0 || v.s - w.len(id) - t.vehicles[n.follow].s >= back;
+}
+
 // Incentive of moving `id` into `dst` (or -BIG when unsafe); `force` keeps only the physical gaps.
 float evaluate(const View &w, int id, int cur, int dst, float bias, bool force) {
 	const TrafficState &t = w.s.traffic;
 	const TrafficParams &p = w.s.catalog.traffic;
 	const Vehicle &v = t.vehicles[id];
 	Around n = around(t, dst, v.s, id), o = around(t, cur, v.s, id);
-	float front = force ? FORCE_GAP_M : p.lc_gap_front_m, back = force ? FORCE_GAP_M : p.lc_gap_back_m;
-	if (n.lead >= 0 && t.vehicles[n.lead].s - w.len(n.lead) - v.s < front) return -BIG;
-	if (n.follow >= 0 && v.s - w.len(id) - t.vehicles[n.follow].s < back) return -BIG;
+	if (!gaps_open(w, id, dst, force ? FORCE_GAP_M : p.lc_gap_front_m, force ? FORCE_GAP_M : p.lc_gap_back_m)) return -BIG;
 	if (force) return BIG;
 	if (n.follow >= 0 && w.accel(n.follow, id) < -p.lc_safe_brake) return -BIG;
 	return w.accel(id, n.lead) - w.accel(id, o.lead) + bias;
@@ -117,6 +124,11 @@ int choose(const CityState &s, int id) {
 }
 
 } // namespace
+
+bool lane_room(const CityState &s, int id, int target) {
+	const Vehicle &v = s.traffic.vehicles[size_t(id)];
+	return gaps_open(View{ s, v.ds }, id, v.ds * MAX_LANES + target, FORCE_GAP_M, FORCE_GAP_M);
+}
 
 void change_lanes(CityState &s) {
 	TrafficState &t = s.traffic;

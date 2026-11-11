@@ -19,6 +19,14 @@ void build_node(CityState &s, int n); // allocates the node's connections from t
 void build_lane_graph(CityState &s); // full build: new map and load
 void drop_lane_state(CityState &s, int ds); // vehicles and meso entries of one directed segment leave
 
+// junction_sweeps.cpp: the conflicts among the connections a node just made (only among them) and each one's largest body class,
+// from the bodies swept along them. It writes only those connections: nodes may be swept in parallel. It answers the work it did:
+// the pairs of connectors it looked at and the rectangles it tested (LaneGraph::sweep_pairs, sweep_tests).
+struct SweepWork {
+	uint64_t pairs = 0, tests = 0;
+};
+SweepWork find_conflicts(CityState &s, const std::vector<int> &ids);
+
 // lane_graph_edit.cpp
 int alloc_conn(CityState &s); // a free pool entry (or a new one), with its per-connection state cleared
 void ensure_conn_state(TrafficState &t); // sizes conn_vehicles/conn_pass/... to LaneGraph::conns

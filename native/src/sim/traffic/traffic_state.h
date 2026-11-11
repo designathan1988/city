@@ -59,9 +59,17 @@ struct Vehicle {
 	VehicleType type = VehicleType::SEDAN;
 	uint8_t paint = 0;
 	int ds = -1, lane = 0, conn = -1;
+	int came = -1; // the connector it came off onto its lane: its body reaches back onto it (vehicle_pose.cpp)
+	uint64_t moved_tick = UINT64_MAX; // the tick it last moved: a vehicle moves once a tick (vehicle_motion.cpp integrate)
 	float s = 0, v = 0, acc = 0, cs = 0; // lane position, speed, acceleration, metres along the connector
 	float vf = 1, drift = 0; // share of the speed limit, phase of the speed drift
-	float lc_off = 0, lc_cool = 0; // lateral offset left after a lane change (decays), cooldown
+	// A lane change's sideways offset, left of its travel: the body keeps its place and slides to its new lane at lc_rate (m/s),
+	// reaching it exactly in lc_duration_s; on its lane and on the connector it goes on to alike. lc_cool: no change before 0.
+	float lc_off = 0, lc_rate = 0, lc_cool = 0;
+	// The lane key it changed out of while its body still stands over that lane (until |lc_off| is down to lc_clear): the traffic
+	// behind it there still follows it (TrafficState::sliders).
+	int slid_from = -1;
+	float lc_clear = 0;
 	float wait = 0, stuck = 0;
 	float held = 0; // stopped since it last reconsidered the route (Roadcraft micro.ts c.held)
 	int pass = -1; // connector it committed to at its line with the way open (Roadcraft c.pass + exitC)
@@ -143,6 +151,7 @@ struct TrafficState {
 	std::vector<int> active_lanes, active_conns;
 	std::vector<int> lane_active, conn_active; // per lane key / connector: its place in the active list plus one, 0 when off it
 	std::vector<int> step_lanes, step_conns; // per-step snapshot of the active lists
+	std::vector<int> sliders; // vehicles whose bodies still stand over the lane they changed out of (Vehicle::slid_from)
 	// Micro window (Roadcraft traffic.ts checkWindow/materialize): last camera position and time, sidewalk metres and
 	// the walkable segments inside ped_window_m.
 	float win_x = 0, win_z = 0;

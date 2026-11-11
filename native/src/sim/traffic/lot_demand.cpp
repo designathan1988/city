@@ -123,7 +123,7 @@ bool lot_call(CityState &s) {
 	Bay &bay = pk.bays[size_t(b)];
 	Vehicle &v = t.vehicles[size_t(id)];
 	std::vector<int> route;
-	if (!find_route(s, v.ds, bay.lane.ds, route) || route.empty()) return false;
+	if (!find_route(s, v.ds, bay.lane.ds, route, v.type) || route.empty()) return false;
 	route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
 	v.ri = 0;
 	v.stop_at = bay.lane.entry + p.classes[int(v.type)].length * 0.5f;

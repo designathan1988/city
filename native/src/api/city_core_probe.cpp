@@ -174,6 +174,16 @@ void park_probe(const TrafficState &t, Dictionary &d) {
 	d["lots_read"] = int(p.lots.size());
 	d["kerbs_read"] = int(p.kerbs.size());
 }
+
+// The lane graph: its lane kilometres, the connections that exist (the pool keeps freed entries), the signalled junctions, and
+// what the full build's junction sweeps did.
+void graph_probe(const TrafficState &t, Dictionary &d) {
+	d["lane_km"] = t.g.lane_metres / METRES_PER_KM;
+	d["connectors"] = int(std::count_if(t.g.conns.begin(), t.g.conns.end(), [](const Conn &c) { return c.alive; }));
+	d["signals"] = int(std::count_if(t.g.junctions.begin(), t.g.junctions.end(), [](const Junction &j) { return j.ctl == Control::SIGNAL; }));
+	d["sweep_pairs"] = int64_t(t.g.sweep_pairs); // connector pairs looked at
+	d["sweep_tests"] = int64_t(t.g.sweep_tests); // ... and the body rectangles tested for them
+}
 } // namespace
 
 static void push_sample(const TrafficState &t, const Vehicle &v, Array &poses, Array &dirs, Array &types, Array &mids, Array &speeds) {
@@ -208,11 +218,8 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["drawn_vehicles"] = render_.drawn_vehicles();
 	d["drawn_people"] = render_.drawn_people();
 	d["drawn_signal_lenses"] = render_.lit_lenses(); // lit on the signal posts, from the published lights
-	d["lane_km"] = t.g.lane_metres / METRES_PER_KM;
-	// the pool keeps freed entries: the probe reports the connections that exist
-	d["connectors"] = int(std::count_if(t.g.conns.begin(), t.g.conns.end(), [](const Conn &c) { return c.alive; }));
-	int signals = 0, moving = 0, waiting = 0, on_connectors = 0;
-	for (const Junction &j : t.g.junctions) signals += j.ctl == Control::SIGNAL ? 1 : 0;
+	graph_probe(t, d);
+	int moving = 0, waiting = 0, on_connectors = 0;
 	Array poses, dirs, types, mids, speeds, held, jams, jam_info, behind, box;
 	box.resize(int(traffic::BoxHold::COUNT));
 	box.fill(0);
@@ -244,7 +251,6 @@ Dictionary CityCore::traffic_probe(int sample) {
 		}
 		if (poses.size() < sample) push_sample(t, v, poses, dirs, types, mids, speeds);
 	}
-	d["signals"] = signals;
 	const int busy = busy_node(*state_);
 	d["busy_crossing"] = node_ground(*state_, busy); // the lit junction with the most people waiting or crossing
 	d["crossing_kerb"] = crossing_kerb(*state_, busy); // a dropped kerb of it: [kerb point, along the arm, across]

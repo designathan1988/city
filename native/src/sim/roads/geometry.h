@@ -43,6 +43,8 @@ bool seg_seg(double ax, double az, double bx, double bz, double cx, double cz, d
 // Intersection of two lines (point + direction): parameters, false when parallel.
 bool line_line(double px, double pz, double dx, double dz, double qx, double qz, double ex, double ez, double &s, double &t);
 
+constexpr double MAX_RETREAT = 60; // the farthest a segment's mouth stands from its node (arm_retreats, junction_retreats)
+
 // A node's arm: outward unit direction and the half widths to its left and right (total and asphalt).
 struct Arm {
 	double dx = 1, dz = 0, left = 0, right = 0, asph_left = 0, asph_right = 0;

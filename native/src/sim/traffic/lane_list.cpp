@@ -4,6 +4,7 @@
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace city {
 namespace traffic {
@@ -38,6 +39,8 @@ void lane_add(CityState &s, int key, int id) {
 	auto pos = std::lower_bound(list.begin(), list.end(), at, [&](int o, float x) { return t.vehicles[size_t(o)].s < x; });
 	list.insert(pos, id);
 	activate(t.active_lanes, t.lane_active, key);
+	// put on a lane, a vehicle came off no connector: the connector step and the lane change say otherwise after this
+	t.vehicles[size_t(id)].came = -1;
 }
 
 void lane_del(CityState &s, int key, int id) {
@@ -143,9 +146,19 @@ void move_vehicle_lane(CityState &s, int id, int target) {
 	if (v.ds < 0 || target < 0 || target >= t.g.ds[size_t(v.ds)].lanes || target == v.lane) return;
 	const DirSeg &d = t.g.ds[size_t(v.ds)];
 	lane_del(s, v.ds * MAX_LANES + v.lane, id);
-	v.lc_off += d.u[v.lane] - d.u[target];
+	// the body keeps its place: the old lane's line from the new one, left of its travel (u is left of a -> b), slid away in lc_duration_s
+	const float across = std::fabs(d.u[v.lane] - d.u[target]);
+	v.lc_off += (d.u[v.lane] - d.u[target]) * d.sign;
+	const float slide = s.catalog.traffic.lc_duration_s;
+	v.lc_rate = slide > 0 ? std::fabs(v.lc_off) / slide : NO_LEADER;
+	// over the old lane until it is a body's width (its own, for whoever follows there) off that lane's line
+	if (v.slid_from < 0) t.sliders.push_back(id);
+	v.slid_from = v.ds * MAX_LANES + v.lane;
+	v.lc_clear = std::max(0.f, across - 2 * s.catalog.traffic.classes[int(v.type)].half_width);
 	v.lane = target;
+	const int came = v.came; // the same body, the same connector behind it
 	lane_add(s, v.ds * MAX_LANES + target, id);
+	v.came = came;
 }
 
 } // namespace traffic

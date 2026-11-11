@@ -126,7 +126,7 @@ void send_bus(CityState &s, const TransitLine &l, Bus &b, Vehicle &v) {
 		if (it != run.stop_lanes.end()) {
 			std::vector<int> route;
 			if (it->second.ds == v.ds) route = { v.ds };
-			if (!route.empty() || (traffic::find_route(s, v.ds, it->second.ds, route) && route.size() >= 2)) {
+			if (!route.empty() || (traffic::find_route(s, v.ds, it->second.ds, route, v.type) && route.size() >= 2)) {
 				route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
 				v.ri = 0;
 				v.goal_s = NO_GOAL_M;

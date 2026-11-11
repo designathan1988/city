@@ -171,16 +171,6 @@ bool outranks(const LaneGraph &g, const Conn &o, const Conn &c) {
 	return ho.dot(V2(hc.y, -hc.x)) > 0;
 }
 
-// A vehicle on the k-th conflicting connector has not yet cleared the crossing point.
-bool conflict_busy(const CityState &s, const Conn &c, size_t k) {
-	const TrafficState &t = s.traffic;
-	for (int id : t.conn_vehicles[c.conflicts[k]]) {
-		const Vehicle &o = t.vehicles[id];
-		if (o.cs - s.catalog.traffic.classes[int(o.type)].length < c.conflict_at[k] + s.catalog.traffic.conflict_clear_m) return true;
-	}
-	return false;
-}
-
 } // namespace
 
 void build_junction(CityState &s, int n) {
@@ -279,8 +269,9 @@ bool may_enter(const CityState &s, int vid, int ci, float dist) {
 	bool claim = me.wait > tp.claim_after_s;
 	// whoever has waited its share claims the turn: those who can still stop comfortably let it through
 	const bool can_stop = line > me.v * me.v / (2 * tp.claim_brake) + 1;
+	const int mine = body_class(tp, me.type);
 	for (size_t k = 0; k < c.conflicts.size(); k++) {
-		if (conflict_busy(s, c, k)) return false;
+		if (conflict_busy(s, c, k, mine)) return false;
 		int holder = pass_holder(s, c.conflicts[k]);
 		if (holder >= 0 && holder != vid) return false; // someone over its line for a crossing connector
 		int oc = c.conflicts[k];
@@ -314,7 +305,7 @@ Hold hold_reason(const CityState &s, int vid) {
 	if (!is_splice(s, c.node) && !has_exit(s, c, vid)) return Hold::EXIT_ROOM;
 	if (peds_in_way(s, ci)) return Hold::CROSSING;
 	for (size_t k = 0; k < c.conflicts.size(); k++)
-		if (conflict_busy(s, c, k)) return Hold::CONFLICT_BUSY;
+		if (conflict_busy(s, c, k, body_class(s.catalog.traffic, v.type))) return Hold::CONFLICT_BUSY;
 	return may_enter(s, vid, ci, t.g.ds[v.ds].len - v.s) ? Hold::FREE : Hold::YIELD;
 }
 
@@ -325,14 +316,14 @@ int lane_head(const CityState &s, int vid) {
 	return lane.empty() ? -1 : lane.back();
 }
 
-int connector_to(const CityState &s, int ds, int lane, int next) {
+int connector_to(const CityState &s, int ds, int lane, int next, int cls) {
 	const LaneGraph &g = s.traffic.g;
 	const size_t key = size_t(ds) * MAX_LANES + lane;
 	if (ds < 0 || key >= g.lane_conn.size()) return -1;
 	int best = -1, bd = MAX_LANES * 2;
 	for (int ci = g.lane_conn[key]; ci >= 0; ci = g.conns[size_t(ci)].next_from) {
 		const Conn &c = g.conns[size_t(ci)];
-		if (!c.alive || c.to_ds != next) continue;
+		if (!c.alive || c.to_ds != next || c.max_class < cls) continue;
 		int d = std::abs(c.from_lane - lane);
 		if (d < bd) { bd = d; best = ci; }
 	}
@@ -341,7 +332,7 @@ int connector_to(const CityState &s, int ds, int lane, int next) {
 
 int pick_connector(const CityState &s, const Vehicle &v) {
 	if (v.ds < 0 || v.ri + 1 >= v.route.len) return -1;
-	return connector_to(s, v.ds, v.lane, route_at(s.traffic.route_pool, v.route, v.ri + 1));
+	return connector_to(s, v.ds, v.lane, route_at(s.traffic.route_pool, v.route, v.ri + 1), body_class(s.catalog.traffic, v.type));
 }
 
 } // namespace traffic

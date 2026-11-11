@@ -265,7 +265,7 @@ void call(CityState &s) {
 	if (id < 0) { pk.lorry_calls[CALL_NO_TRUCK]++; return; }
 	Vehicle &v = t.vehicles[size_t(id)];
 	std::vector<int> route;
-	if (!find_route(s, v.ds, gate.ds, route) || route.empty()) { pk.lorry_calls[CALL_NO_ROUTE]++; return; }
+	if (!find_route(s, v.ds, gate.ds, route, v.type) || route.empty()) { pk.lorry_calls[CALL_NO_ROUTE]++; return; }
 	route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
 	v.ri = 0;
 	v.stop_at = gate.stop_at + p.classes[int(v.type)].length * 0.5f;
@@ -281,9 +281,8 @@ void call(CityState &s) {
 	l.away = ways->away;
 	l.into_street = ways->into_street;
 	l.away_street = ways->away_street;
-	const int seg = gate.ds / 2;
-	sweep_lanes(s, l.into, 0, ways->into_street, seg, id, l.close_in);
-	sweep_lanes(s, l.away, ways->away_street, int(l.away.size()) - 1, seg, id, l.close_out);
+	sweep_lanes(s, l.into, 0, ways->into_street, id, l.close_in);
+	sweep_lanes(s, l.away, ways->away_street, int(l.away.size()) - 1, id, l.close_out);
 	pk.lorries.push_back(std::move(l));
 	pk.lorries_sent++;
 	pk.lorry_calls[CALL_SENT]++;

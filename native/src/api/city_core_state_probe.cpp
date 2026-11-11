@@ -91,7 +91,8 @@ Dictionary derived_of(const CityState &s) {
 		const float f[] = { c.x0, c.z0, c.x1, c.z1, c.len, float(c.alive), float(c.node) };
 		graph = fold(graph, f, sizeof(f));
 		graph = fold(graph, c.conflicts.data(), c.conflicts.size() * sizeof(int));
-		graph = fold(graph, c.conflict_at.data(), c.conflict_at.size() * sizeof(float));
+		graph = fold(graph, c.conflict_clear.data(), c.conflict_clear.size() * sizeof(c.conflict_clear[0]));
+		graph = fold(graph, &c.max_class, sizeof(c.max_class));
 	}
 	d["graph"] = String::num_uint64(graph, HEX);
 	uint64_t grades = FNV_BASIS;

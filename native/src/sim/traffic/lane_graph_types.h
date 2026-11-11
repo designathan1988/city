@@ -2,6 +2,7 @@
 // control and the graph that holds them. Pure C++ (no Godot types); written only by sim/traffic, read by render/agents.
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <vector>
 
@@ -9,6 +10,9 @@ namespace city {
 
 constexpr int MAX_LANES = 4; // lanes per direction (the widest one-way profile has 4)
 constexpr int CONN_STEPS = 8; // arc-length table of a connector curve
+// The body sizes the junctions are swept for (junction_sweeps.cpp, traffic.json body_*): two-wheelers, cars, heavy.
+constexpr int BODY_CLASSES = 3;
+constexpr int BODY_PAIRS = BODY_CLASSES * BODY_CLASSES;
 
 enum class Turn : uint8_t { STRAIGHT = 0, RIGHT = 1, LEFT = 2, UTURN = 3 };
 enum class Control : uint8_t { NONE = 0, PRIORITY = 1, SIGNAL = 2 };
@@ -46,8 +50,12 @@ struct Conn {
 	float len = 0;
 	int next_at_node = -1, next_from = -1; // next connection of the same node / of the same lane of origin
 	bool alive = false;
+	int8_t max_class = BODY_CLASSES - 1; // the largest body class whose sweep keeps off the footways (-1: none)
+	// The connectors whose bodies meet this one's (junction_sweeps.cpp), and per conflict, by [theirs * BODY_CLASSES + mine], the
+	// body-centre arc along THAT connector's way (negative on the lane before it, past its length on the lane after) past which a
+	// body of class `theirs` on it is clear of one of class `mine` on this one; NO_LEADER below zero: those two never meet.
 	std::vector<int> conflicts;
-	std::vector<float> conflict_at; // per conflict: metres along THAT connector after which its vehicles are clear
+	std::vector<std::array<float, BODY_PAIRS>> conflict_clear;
 };
 
 struct Junction {
@@ -79,6 +87,9 @@ struct LaneGraph {
 	std::vector<int> signal_nodes;
 	std::vector<int> signal_at;
 	double lane_metres = 0;
+	// What the full build's sweeps did (junction_sweeps.cpp, probe traffic_probe): the pairs of connectors looked at and the
+	// rectangles tested over every junction of the map.
+	uint64_t sweep_pairs = 0, sweep_tests = 0;
 };
 
 // Walks the connections leaving `ds` (all its lanes), skipping dead pool entries.

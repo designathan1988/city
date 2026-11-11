@@ -29,10 +29,11 @@ void remove_car(ParkingState &p, TrafficState &t, int index) {
 	p.cars.pop_back();
 }
 
-// Takes the car out of the lots' list and lets its bay go.
+// Takes the car out of the lots' list and lets its bay go, and the lane it kept closed.
 void untrack(CityState &s, LotCar &car) {
 	TrafficState &t = s.traffic;
 	ParkingState &p = t.park;
+	if (car.closing) open_lanes(t, car.id);
 	if (car.phase == CarPhase::COMING) p.coming--;
 	if (car.phase == CarPhase::PARKING || car.phase == CarPhase::LEAVING) p.moving--;
 	Bay &bay = p.bays[size_t(car.bay)];
@@ -67,18 +68,6 @@ bool may_go(CityState &s, LotCar &car, float dt) {
 	return false;
 }
 
-// Room in the traffic for a car joining `lane` at its joining point.
-bool gap_open(const CityState &s, const Vehicle &v, const LaneSpot &lane) {
-	const TrafficParams &p = s.catalog.traffic;
-	const float len = p.classes[int(v.type)].length, front = lane.at + len * 0.5f;
-	for (int id : s.traffic.lane_vehicles[size_t(lane.ds) * MAX_LANES + lane.lane]) {
-		const Vehicle &o = s.traffic.vehicles[size_t(id)];
-		const float rear = o.s - p.classes[int(o.type)].length;
-		if (o.s > front - len - p.parker_gap_behind_m && rear < front + p.parker_gap_ahead_m) return false;
-	}
-	return true;
-}
-
 void enter_phase(ParkingState &p, LotCar &car, CarPhase phase) {
 	if (car.phase == CarPhase::COMING) p.coming--;
 	if (car.phase == CarPhase::PARKING || car.phase == CarPhase::LEAVING) p.moving--;
@@ -88,21 +77,36 @@ void enter_phase(ParkingState &p, LotCar &car, CarPhase phase) {
 	car.reserved = false;
 }
 
-// Stopped before its gate: off the road, along the way in.
+// A car's body along its way from `from` to `to`, a pose every man_disc_step_m and both ends.
+std::vector<OffPose> way_between(const TrafficParams &p, const Manoeuvre &path, float from, float to) {
+	std::vector<OffPose> out;
+	for (float along = from; along < to; along += p.man_disc_step_m) out.push_back(path.pose_at(along));
+	out.push_back(path.pose_at(to));
+	return out;
+}
+
+// Stopped before its gate: off the road, along the way in. The lanes its body stands across on its way, up to where it stands on
+// none, are closed to the traffic behind it until it gets there (lane_closures.h).
 void leave_road(CityState &s, LotCar &car) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	Vehicle &v = t.vehicles[size_t(car.id)];
 	const Bay &bay = t.park.bays[size_t(car.bay)];
+	const VehicleClass &c = p.classes[int(v.type)];
 	Pose at;
-	lane_pose(s, v.ds, v.lane, v.s - p.classes[int(v.type)].length * 0.5f, at);
+	lane_pose(s, v.ds, v.lane, v.s - c.length * 0.5f, at);
+	car.path = bay_arrival(V2(at.x, at.z), std::atan2(at.fz, at.fx), bay.at, bay.open, bay.via, p.man_lead_m, p.man_across_m, p.man_least_m, p.man_tangent);
+	float along = 0;
+	while (along < car.path.length() && on_lanes(s, c.length * 0.5f, c.half_width, car.path.pose_at(along))) along = std::min(car.path.length(), along + p.man_disc_step_m);
+	car.lane_clear_at = along;
+	sweep_body(s, c.length * 0.5f, c.half_width, way_between(p, car.path, 0, along), p.parker_closure_margin_m, car.id, t.closures);
+	car.closing = true;
 	lane_del(s, v.ds * MAX_LANES + v.lane, car.id);
 	micro_remove(t, car.id);
 	v.ds = -1;
 	v.off = true;
 	v.v = 0;
 	t.vehicle_count--;
-	car.path = bay_arrival(V2(at.x, at.z), std::atan2(at.fz, at.fx), bay.at, bay.open, bay.via, p.man_lead_m, p.man_across_m, p.man_least_m, p.man_tangent);
 	enter_phase(t.park, car, CarPhase::PARKING);
 	set_off_pose(s, v, car.path.pose());
 }
@@ -139,6 +143,10 @@ void parking(CityState &s, LotCar &car, float dt) {
 	car.path.advance(top * dt);
 	v.v = car.path.done() ? 0 : top;
 	set_off_pose(s, v, car.path.pose());
+	if (car.closing && car.path.s >= car.lane_clear_at) { // its body is off the lanes: the traffic behind goes on
+		open_lanes(s.traffic, car.id);
+		car.closing = false;
+	}
 	if (!car.path.done()) return;
 	ParkingState &pk = s.traffic.park;
 	pk.parked_in++;
@@ -159,22 +167,38 @@ void join_lane(CityState &s, LotCar &car) {
 	if (!t.g.ds[size_t(lane.ds)].ok || lane.lane >= t.g.ds[size_t(lane.ds)].lanes) { despawn_vehicle(s, id, false); return; }
 	v.ds = lane.ds;
 	v.lane = lane.lane;
-	v.s = std::min(t.g.ds[size_t(lane.ds)].len, lane.at + p.classes[int(v.type)].length * 0.5f);
+	v.s =std::min(t.g.ds[size_t(lane.ds)].len, lane.at + p.classes[int(v.type)].length * 0.5f);
 	v.v = p.parker_join_ms;
 	micro_add(t, id);
 	lane_add(s, lane.ds * MAX_LANES + lane.lane, id);
 	if (!new_trip(s, id, lane.ds)) despawn_vehicle(s, id, true);
 }
 
+// It drives out to where its body still stands on no lane and waits there until every stretch of lane the rest of its way
+// sweeps is clear (nobody on it, nobody too near to stop short of it: lane_clear, the lorries' rule); then those stretches are
+// closed to the traffic and it goes, until it is on its lane's list.
 void leaving(CityState &s, LotCar &car, float dt) {
 	const TrafficParams &p = s.catalog.traffic;
 	Vehicle &v = s.traffic.vehicles[size_t(car.id)];
-	const Bay &bay = s.traffic.park.bays[size_t(car.bay)];
-	const bool at_kerb = car.path.length() - car.path.s <= p.parker_lane_edge_m;
-	if (!may_go(s, car, dt) || (at_kerb && !gap_open(s, v, bay.lane))) { v.v = 0; return; }
-	const float top = car.path.speed(speeds(p));
+	const VehicleClass &c = p.classes[int(v.type)];
+	if (!car.closing && car.lane_clear_at <= 0) {
+		float along = car.path.length();
+		while (along > 0 && on_lanes(s, c.length * 0.5f, c.half_width, car.path.pose_at(along))) along = std::max(0.f, along - p.man_disc_step_m);
+		car.lane_clear_at = along;
+	}
+	if (!may_go(s, car, dt)) { v.v = 0; return; }
+	if (car.path.s >= car.lane_clear_at && !car.closing) {
+		std::vector<LaneClosure> stretches;
+		sweep_body(s, c.length * 0.5f, c.half_width, way_between(p, car.path, car.lane_clear_at, car.path.length()), p.parker_closure_margin_m, car.id, stretches);
+		for (const LaneClosure &k : stretches)
+			if (!lane_clear(s, k)) { v.v = 0; return; }
+		s.traffic.closures.insert(s.traffic.closures.end(), stretches.begin(), stretches.end());
+		car.closing = true;
+	}
+	const float top = car.path.speed(speeds(p)), was = car.path.s;
 	car.path.advance(top * dt);
-	v.v = top;
+	if (!car.closing) car.path.s = std::min(car.path.s, car.lane_clear_at); // it stops short of the lane until the lane has room
+	v.v = car.path.s > was ? top : 0;
 	set_off_pose(s, v, car.path.pose());
 	if (car.path.done()) join_lane(s, car);
 }

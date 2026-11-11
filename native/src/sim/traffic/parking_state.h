@@ -59,6 +59,11 @@ struct LotCar {
 	Manoeuvre path;
 	float t = 0, waited = 0; // seconds in the phase; seconds waited for walkers
 	bool reserved = false; // holding the ground of the rest of its way: it no longer stops for anybody
+	// Its lane is closed to the traffic behind while its body stands on it (lot_traffic.cpp, LaneClosure owned by its vehicle id):
+	// going in, until its way has carried every corner past the lane's edge, `lane_clear_at` metres along it; coming out, from when
+	// it goes at the kerb until it is on the lane's list.
+	float lane_clear_at = 0;
+	bool closing = false;
 };
 
 // A stretch of lane closed while something off the lanes stands on it. `key`: ds * MAX_LANES + lane.

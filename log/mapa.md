@@ -196,6 +196,8 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/traffic/lane_change.cpp` — MOBIL
 - `native/src/sim/traffic/lane_geometry.cpp` — pontos de faixa, conector e calçada
 - `native/src/sim/traffic/lane_graph.cpp` — grafo de faixas e conectores com conflitos (build completo e por nó)
+- `native/src/sim/traffic/junction_sweeps.cpp` — the junctions' conflicts from the bodies swept along each connector's way (three body classes, the reference game's envelopes): which connectors' bodies meet, how far along each other's way a body is clear, and the largest class a turn keeps off the corners' footways; the work bound by blocks' boxes and the farthest meeting sample of each class pair
+- `project/tests/core/junction_sweep_test.gd` · `project/tests/core/junction_sweep_test.tscn` — the junction sweeps' work follows where bodies meet: few body rectangles tested a pair of connectors in the town's full build (traffic_probe sweep_*)
 - `native/src/sim/traffic/lane_graph_check.cpp` — o que o grafo de faixas nunca pode ser, conferido na DLL de debug a cada mudança da rede
 - `native/src/sim/traffic/lane_graph_edit.cpp` — rebuild incremental das faixas e nós sujos
 - `native/src/sim/traffic/lane_graph_internal.h` — superfície interna do grafo de faixas
@@ -218,7 +220,9 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/traffic/traffic_state.h` · `native/src/sim/traffic/lane_graph_types.h` · `native/src/sim/traffic/ped_state.h` — veículos, meso e pools; o vocabulário do grafo de faixas (faixas dirigidas, conectores, controle do cruzamento); os pedestres (caminho, multidão, mobiliário como corpos) e a fatia de rota
 - `native/src/sim/traffic/street_signs.cpp` — placas que as regras levantam: Pare, Dê a preferência e velocidade
 - `native/src/sim/traffic/traffic_system.cpp` · `native/src/sim/traffic/traffic_system.h` — passo do tráfego, publicação de poses e rebuild
-- `native/src/sim/traffic/vehicle_motion.cpp` — IDM e conectores
+- `native/src/sim/traffic/vehicle_motion.cpp` · `native/src/sim/traffic/motion_law.h` · `native/src/sim/traffic/connector_motion.cpp` — the lane's step (IDM, leaders on the lane, the head's gate at its junction, out over the end onto the connector); the motion law both steps share (the leader, the emergency cap and jerk limit, the move); the connector's step and what holds a vehicle on one
+- `native/src/sim/traffic/vehicle_pose.cpp` — where a drawn vehicle stands: its middle half its length behind its front along the way it drove (back onto the connector or the lane it came off), its heading the way's chord either side of that middle, the lane change's slide across
+- `project/tests/core/vehicle_motion_test.gd` · `project/tests/core/vehicle_motion_test.tscn` — the fleet round the camera tick by tick (probe vehicle_bodies): no body jumps farther than its speed carries it, none stands still while it drives, none appears or vanishes in view, none stands in another, none on the lanes climbs a footway
 - `native/src/sim/traffic/window.cpp` — janela micro em volta da câmera e materialização do meso
 
 **Render (só lê) — native/src/render**

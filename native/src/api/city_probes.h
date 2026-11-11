@@ -29,6 +29,8 @@ public:
 	godot::Dictionary look_twins(float reach_m, float alike); // of each building and its nearest neighbour within reach, the pairs closer in looks than `alike`
 	godot::Dictionary lot_clearance(); // how far the cars in lots stay from what is solid along their ways
 	godot::Array vehicles_near(const godot::Vector3 &at, float radius); // where each stands on its lane
+	godot::Dictionary vehicle_bodies(const godot::Vector3 &at, float radius); // the drawn bodies: in one another, over a footway
+	bool footway_under(const godot::Vector3 &at); // the footway rule vehicle_bodies judges by (sim/street/footway.h on_footway)
 	// Who is on foot within `radius` of `at` (0: everywhere): ages, parties, modes, doors, and the nearest of each to look at.
 	godot::Dictionary people_census(const godot::Vector3 &at, float radius);
 	void set_city_hour(float hour); // tests: the city's clock at that hour of the day

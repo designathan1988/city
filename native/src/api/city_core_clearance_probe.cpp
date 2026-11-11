@@ -1,10 +1,12 @@
-// What the photos cannot settle, measured: how far a car in a lot stays from what is solid along its whole way (lot_clearance), and
-// where each vehicle near a point stands on its lane (vehicles_near).
+// What the photos cannot settle, measured: how far a car in a lot stays from what is solid along its whole way (lot_clearance),
+// where each vehicle near a point stands on its lane (vehicles_near), and the drawn bodies near a point as the player sees them:
+// which stand in one another and which stand over a footway (vehicle_bodies).
 #include "api/city_probes.h"
 
 #include "core/units.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/buildings/lot_access.h"
+#include "sim/street/footway.h"
 #include "sim/traffic/traffic_system.h"
 #include "sim/state/city_state.h"
 
@@ -25,6 +27,8 @@ constexpr float HALF = 0.5f, FAR_GAP_M = 1e6f;
 constexpr float NEAR_BAY_M = 3.f, NEAR_GATE_M = 5.f; // what counts as in its bay and at its gate
 constexpr size_t GATE_POINTS = 4;
 constexpr int CASES = 8;
+constexpr float IN_ANOTHER_M = 0.1f; // a body this far into another stands in it (less is the boxes' own roundness)
+constexpr float KERB_FACE_M = 0.15f; // the kerb's own face: a corner past the kerb by more than this stands on the footway
 
 using Ring = std::vector<V2>;
 
@@ -56,9 +60,27 @@ float gap_between(const Ring &a, const Ring &b) {
 	return deepest > 0 ? -deepest : best;
 }
 
-Ring car_box(const OffPose &q, float half_len, float half_w) {
-	const V2 f(std::cos(q.angle), std::sin(q.angle)), l(-f.y, f.x), c(q.x, q.z);
+// A body's outline: its middle, its heading (unit) and its half length and width.
+Ring box_of(const V2 &c, const V2 &f, float half_len, float half_w) {
+	const V2 l(-f.y, f.x);
 	return { c + f * half_len + l * half_w, c + f * half_len - l * half_w, c - f * half_len - l * half_w, c - f * half_len + l * half_w };
+}
+
+Ring car_box(const OffPose &q, float half_len, float half_w) { return box_of(V2(q.x, q.z), V2(std::cos(q.angle), std::sin(q.angle)), half_len, half_w); }
+
+// A drawn body as vehicle_bodies gives it: id, middle x and z, speed, off the lanes, type, on a connector, and where it is on
+// its way (directed segment, lane, metres along it and along its connector, the connector it came off, the lane change's
+// offset, the connector it is on, its route's steps left, where it is called to stop, its lot car, that car's phase, metres along
+// its way and whether it keeps its lane closed, its lorry).
+Array body_row(const TrafficState &t, const Vehicle &v, int id) {
+	Array b;
+	const LotCar *car = v.car >= 0 && size_t(v.car) < t.park.cars.size() ? &t.park.cars[size_t(v.car)] : nullptr;
+	for (const Variant &x : { Variant(id), Variant(v.cur.x), Variant(v.cur.z), Variant(v.v), Variant(v.off), Variant(int(v.type)),
+			 Variant(v.conn >= 0), Variant(v.ds), Variant(v.lane), Variant(v.s), Variant(v.cs), Variant(v.came), Variant(v.lc_off),
+			 Variant(v.conn), Variant(v.route.len - v.ri), Variant(v.stop_at), Variant(v.car), Variant(car ? int(car->phase) : -1),
+			 Variant(car ? car->path.s : 0.f), Variant(car ? car->closing : false), Variant(v.lorry) })
+		b.push_back(x);
+	return b;
 }
 
 // What is solid to a car near a point: every lot's volumes and walls, its own included.
@@ -197,6 +219,66 @@ Array CityProbes::vehicles_near(const Vector3 &at, float radius) {
 		out.push_back(d);
 	}
 	return out;
+}
+
+Dictionary CityProbes::vehicle_bodies(const Vector3 &at, float radius) {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
+	const CityState &s = *state_;
+	const TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
+	std::vector<int> ids;
+	std::vector<Ring> boxes;
+	std::vector<float> reach;
+	Array bodies;
+	for (size_t i = 0; i < t.vehicles.size(); i++) {
+		const Vehicle &v = t.vehicles[i];
+		if (!v.alive || (!v.micro && !v.off) || std::hypot(v.cur.x - at.x, v.cur.z - at.z) > radius) continue;
+		const VehicleClass &c = p.classes[int(v.type)];
+		ids.push_back(int(i));
+		boxes.push_back(box_of(V2(v.cur.x, v.cur.z), V2(v.cur.fx, v.cur.fz), c.length * HALF, c.half_width));
+		reach.push_back(std::hypot(c.length * HALF, c.half_width));
+		bodies.push_back(body_row(t, v, int(i)));
+	}
+	int in_another = 0, over = 0;
+	float deepest = 0;
+	Array pair, footway;
+	for (size_t i = 0; i < boxes.size(); i++) {
+		const V2 ci = (boxes[i][0] + boxes[i][2]) * HALF;
+		for (size_t j = i + 1; j < boxes.size(); j++) {
+			if ((ci - (boxes[j][0] + boxes[j][2]) * HALF).len() > reach[i] + reach[j]) continue;
+			const float g = gap_between(boxes[i], boxes[j]);
+			if (g >= -IN_ANOTHER_M) continue;
+			in_another++;
+			if (-g > deepest) {
+				deepest = -g;
+				pair = Array::make(body_row(t, t.vehicles[size_t(ids[i])], ids[i]), body_row(t, t.vehicles[size_t(ids[j])], ids[j]));
+			}
+		}
+		// a car going in or out of a lot crosses the footway at its gate: only those on the lanes are asked
+		const Vehicle &v = t.vehicles[size_t(ids[i])];
+		if (v.off) continue;
+		const VehicleClass &c = p.classes[int(v.type)];
+		const Ring inner = box_of(ci, V2(v.cur.fx, v.cur.fz), c.length * HALF - KERB_FACE_M, c.half_width - KERB_FACE_M);
+		bool on = false;
+		for (const V2 &q : inner) on = on || on_footway(s.roads, q.x, q.y);
+		if (!on) continue;
+		over++;
+		if (footway.size() < CASES) footway.push_back(body_row(t, v, ids[i]));
+	}
+	Dictionary d;
+	d["bodies"] = bodies;
+	d["in_another"] = in_another; // pairs of bodies standing in one another
+	d["deepest_m"] = deepest;
+	d["deepest_pair"] = pair; // the two bodies' rows
+	d["over_footway"] = over; // bodies on the lanes with a corner over a footway
+	d["footway_cases"] = footway; // their rows
+	return d;
+}
+
+bool CityProbes::footway_under(const Vector3 &at) {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	return on_footway(state_->roads, at.x, at.z);
 }
 
 bool CityProbes::amber_stops(float v, float stop_m, float top, float left, int type) const {

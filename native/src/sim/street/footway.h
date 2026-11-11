@@ -2,7 +2,10 @@
 // landscape.ts footwayAt and medianAt): which sidewalk, at what arc and offset, and whether a crossing lands there.
 #pragma once
 
+#include "sim/roads/junction.h"
 #include "sim/roads/road_network.h"
+
+#include <vector>
 
 namespace city {
 
@@ -35,6 +38,19 @@ FootwayHit median_at(const RoadNetwork &net, double x, double z, double reach);
 bool on_road(const RoadNetwork &net, double x, double z); // on any segment's surface, sidewalks included
 // On a carriageway or its kerb (a kerb barrier may stand on the sidewalk behind them).
 bool on_carriageway(const RoadNetwork &net, double x, double z, float keep);
+// On a footway: a sidewalk between a segment's mouths (footway_at), or a junction's corner block (JunctionKerbs).
+bool on_footway(const RoadNetwork &net, double x, double z);
+// A junction's corners as its footways lie there (junction.h corner_fillet): its arms in turn round it, their mouths and each
+// corner's kerb return. A point stands on a corner's footway beyond both of its kerbs, short of both mouths, and off the asphalt
+// the kerb return (a fillet) or the cut (a bevel) gives the junction there.
+struct JunctionKerbs {
+	double x = 0, z = 0;
+	std::vector<Arm> arms; // anticlockwise (arm_angle)
+	std::vector<double> mouths; // each arm's setback
+	std::vector<Corner> corners; // corners[k]: between arms[k] and the next anticlockwise
+	JunctionKerbs(const RoadNetwork &net, int node);
+	bool on_footway(double px, double pz) const;
+};
 // Whether something of `radius` on `hit`'s sidewalk stands in a crosswalk's landing (a mouth of a three-arm node or more).
 bool on_landing(const RoadNetwork &net, const FootwayHit &hit, float radius, float clear);
 

@@ -1,6 +1,8 @@
 // Reading a point against the segments near it, see footway.h.
 #include "sim/street/footway.h"
 
+#include "sim/roads/junction.h"
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -44,6 +46,23 @@ bool on_band(const RoadNetwork &net, double x, double z, F &&band) {
 		on = past < BESIDE_M && band(p, u);
 	});
 	return on;
+}
+
+// Whether (px, pz), from a node, stands in the footway block of corner `c` between arm a and the next arm anticlockwise b:
+// beyond a's left kerb and b's right kerb, short of both mouths, and not on the asphalt the kerb return (a fillet) or the cut
+// (a bevel) gives the junction there.
+bool in_corner_block(const Arm &a, const Arm &b, const Corner &c, double mouth_a, double mouth_b, double px, double pz) {
+	if (c.mode != CornerMode::FILLET && c.mode != CornerMode::BEVEL) return false;
+	const double along_a = px * a.dx + pz * a.dz, along_b = px * b.dx + pz * b.dz;
+	// a's left is (dz, -dx), b's right (-dz, dx): the kerbs' lines as corner_fillet takes them
+	const bool beyond = px * a.dz - pz * a.dx > a.asph_left && -px * b.dz + pz * b.dx > b.asph_right;
+	if (!beyond || along_a > mouth_a || along_b > mouth_b) return false;
+	if (c.mode == CornerMode::FILLET) return along_a >= c.trim_a || along_b >= c.trim_b || std::hypot(px - c.cx, pz - c.cz) <= c.r;
+	// a bevel: the straight cut from a's kerb at its trim to b's kerb at its trim; the node's side of it is asphalt
+	const double ax = a.dx * c.trim_a + a.dz * a.asph_left, az = a.dz * c.trim_a - a.dx * a.asph_left;
+	const double bx = b.dx * c.trim_b - b.dz * b.asph_right, bz = b.dz * c.trim_b + b.dx * b.asph_right;
+	const auto side = [&](double x, double z) { return (bx - ax) * (z - az) - (bz - az) * (x - ax); };
+	return side(px, pz) * side(0, 0) < 0;
 }
 } // namespace
 
@@ -145,6 +164,59 @@ bool on_carriageway(const RoadNetwork &net, double x, double z, float keep) {
 		const float lo = r.strip.kind == StripKind::SIDEWALK ? r.u1 : r.u0, hi = l.strip.kind == StripKind::SIDEWALK ? l.u0 : l.u1;
 		return u > lo - keep && u < hi + keep;
 	});
+}
+
+bool on_footway(const RoadNetwork &net, double x, double z) {
+	bool on = false;
+	const double beside = band_reach(net);
+	// beside a segment between its mouths, across one of its sidewalks
+	net.for_segments_near(x - beside, z - beside, x + beside, z + beside, [&](int sid) {
+		const RoadSegment &g = net.segs[size_t(sid)];
+		const Profile &p = net.profile_of(sid);
+		if (on || p.edges.empty() || g.a == g.b) return;
+		double v;
+		float u, past;
+		segment_place(net, sid, x, z, v, u, past);
+		if (past >= BESIDE_M || v < g.retreat_a || v > g.len - g.retreat_b) return;
+		for (const StripEdge *e : { &p.edges.front(), &p.edges.back() })
+			on = on || (e->strip.kind == StripKind::SIDEWALK && u >= e->u0 && u <= e->u1);
+	});
+	if (on) return true;
+	const double r = MAX_RETREAT + double(net.cat->widest_half());
+	net.node_hash.query(float(x - r), float(z - r), float(x + r), float(z + r), [&](int n) {
+		if (!on && net.nodes[size_t(n)].alive && net.nodes[size_t(n)].segs.size() >= 2) on = JunctionKerbs(net, n).on_footway(x, z);
+	});
+	return on;
+}
+
+JunctionKerbs::JunctionKerbs(const RoadNetwork &net, int node) {
+	const RoadNode &nd = net.nodes[size_t(node)];
+	x = nd.x;
+	z = nd.z;
+	struct Leg {
+		Arm arm;
+		double mouth;
+	};
+	std::vector<Leg> legs;
+	for (int sid : nd.segs) {
+		const RoadSegment &g = net.segs[size_t(sid)];
+		const int end = g.a == node ? 0 : 1;
+		legs.push_back({ arm_of(g.q, net.profile_of(sid), end), end == 0 ? g.retreat_a : g.retreat_b });
+	}
+	std::sort(legs.begin(), legs.end(), [](const Leg &a, const Leg &b) { return arm_angle(a.arm.dx, a.arm.dz) < arm_angle(b.arm.dx, b.arm.dz); });
+	for (const Leg &l : legs) {
+		arms.push_back(l.arm);
+		mouths.push_back(l.mouth);
+	}
+	for (size_t k = 0; k < arms.size(); k++) corners.push_back(corner_fillet(arms[k], arms[(k + 1) % arms.size()]));
+}
+
+bool JunctionKerbs::on_footway(double px, double pz) const {
+	for (size_t k = 0; arms.size() >= 2 && k < arms.size(); k++) {
+		const size_t j = (k + 1) % arms.size();
+		if (in_corner_block(arms[k], arms[j], corners[k], mouths[k], mouths[j], px - x, pz - z)) return true;
+	}
+	return false;
 }
 
 bool on_landing(const RoadNetwork &net, const FootwayHit &hit, float radius, float clear) {

@@ -1,7 +1,7 @@
 // Stretches of lane closed by something off the lanes standing on them (lane_closures.h).
 #include "sim/traffic/lane_closures.h"
 
-#include "sim/roads/parking_layout.h"
+#include "sim/street/footway.h"
 #include "sim/traffic/lane_graph_internal.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -13,41 +13,74 @@ namespace city {
 namespace traffic {
 
 namespace {
+constexpr float BESIDE_M = 0.05f; // a point this near a segment's end along it still stands beside it
+
+// Each lane under point (x, z), with the metre along it: the lanes of any segment the point stands beside, between its mouths,
+// within half the lane's width of the lane's line.
+template <typename F>
+void lanes_under(const CityState &s, float x, float z, F &&take) {
+	const LaneGraph &g = s.traffic.g;
+	const float r = s.roads.cat->widest_half();
+	s.roads.for_segments_near(x - r, z - r, x + r, z + r, [&](int seg) {
+		if (size_t(seg) * 2 + 1 >= g.ds.size()) return;
+		double arc;
+		float across, past;
+		segment_place(s.roads, seg, x, z, arc, across, past);
+		if (past > BESIDE_M) return;
+		const Profile &pr = s.roads.profile_of(seg);
+		for (int dir = 0; dir < 2; dir++) {
+			const DirSeg &d = g.ds[size_t(seg) * 2 + dir];
+			if (!d.ok) continue;
+			const float at = (float(arc) - d.at0) * d.sign;
+			if (at < 0 || at > d.len) continue;
+			const std::vector<LaneInfo> &lanes = dir == 0 ? pr.fwd : pr.back;
+			for (int lane = 0; lane < d.lanes && lane < int(lanes.size()); lane++)
+				if (std::fabs(across - d.u[lane]) <= lanes[size_t(lane)].w * 0.5f) take((seg * 2 + dir) * MAX_LANES + lane, at);
+		}
+	});
+}
+
+// The points of a body (middle, heading, half length and width) that find the lanes under it: its corners and the middles of
+// its long sides.
+template <typename F>
+void body_points(const OffPose &q, float half_len, float half_w, F &&take) {
+	const V2 f = v2_from_angle(q.angle), l(-f.y, f.x), m(q.x, q.z);
+	for (const float a : { -half_len, 0.f, half_len })
+		for (const float b : { -half_w, half_w }) take(m + f * a + l * b);
+}
 } // namespace
 
-// The stretches of lane a street part sweeps: the lanes of the gate's segment under the body, with a margin each way.
-void sweep_lanes(const CityState &s, const std::vector<AxlePose> &poses, int from, int to, int seg, int owner, std::vector<LaneClosure> &out) {
-	const TrafficParams &p = s.catalog.traffic;
-	const LaneGraph &g = s.traffic.g;
-	const RoadSegment &r = s.roads.segs[size_t(seg)];
-	const float half = p.classes[int(VehicleType::TRUCK)].half_width, len = p.classes[int(VehicleType::TRUCK)].length;
+void sweep_body(const CityState &s, float half_len, float half_w, const std::vector<OffPose> &poses, float margin, int owner, std::vector<LaneClosure> &out) {
 	std::map<int, std::pair<float, float>> spans;
+	for (const OffPose &q : poses)
+		body_points(q, half_len, half_w, [&](const V2 &p) {
+			lanes_under(s, p.x, p.y, [&](int key, float at) {
+				auto hit = spans.emplace(key, std::make_pair(at, at));
+				hit.first->second.first = std::min(hit.first->second.first, at);
+				hit.first->second.second = std::max(hit.first->second.second, at);
+			});
+		});
+	for (const auto &kv : spans) out.push_back({ kv.first, kv.second.first - margin, kv.second.second + margin, owner });
+}
+
+bool on_lanes(const CityState &s, float half_len, float half_w, const OffPose &q) {
+	bool on = false;
+	body_points(q, half_len, half_w, [&](const V2 &p) {
+		if (!on) lanes_under(s, p.x, p.y, [&](int, float) { on = true; });
+	});
+	return on;
+}
+
+// The stretches of lane a lorry's swing sweeps: its body at every other axle pose of the stretch.
+void sweep_lanes(const CityState &s, const std::vector<AxlePose> &poses, int from, int to, int owner, std::vector<LaneClosure> &out) {
+	const TrafficParams &p = s.catalog.traffic;
+	const VehicleClass &c = p.classes[int(VehicleType::TRUCK)];
+	std::vector<OffPose> bodies;
 	for (int i = from; i <= to && i < int(poses.size()); i += 2) {
 		const AxlePose &q = poses[size_t(i)];
-		const double c = std::cos(q.angle), sn = std::sin(q.angle), back = len * 0.5 - p.lorry_rear_m, front = len * 0.5 + p.lorry_rear_m;
-		for (double u : { -back, (front - back) * 0.5, front })
-			for (double v : { -double(half), double(half) }) {
-				const double x = q.x + c * u - sn * v, z = q.z + sn * u + c * v;
-				double t, dist, cx, cz, dx, dz;
-				closest_t(r.q, x, z, t, dist);
-				r.q.at(t, cx, cz);
-				r.q.deriv(t, dx, dz);
-				const float across = float((dz * (x - cx) - dx * (z - cz)) / std::max(FLAT_TANGENT, std::hypot(dx, dz)));
-				const float arc = float(arc_of_t(r, t));
-				for (int dir = 0; dir < 2; dir++) {
-					const DirSeg &d = g.ds[size_t(seg) * 2 + dir];
-					if (!d.ok) continue;
-					const float at = (arc - d.at0) * d.sign;
-					for (int lane = 0; lane < d.lanes; lane++) {
-						if (std::fabs(across - d.u[lane]) > p.lorry_lane_half_m) continue;
-						auto hit = spans.emplace((seg * 2 + dir) * MAX_LANES + lane, std::make_pair(at, at));
-						hit.first->second.first = std::min(hit.first->second.first, at);
-						hit.first->second.second = std::max(hit.first->second.second, at);
-					}
-				}
-			}
+		bodies.push_back({ float(q.x + std::cos(q.angle) * p.lorry_rear_m), float(q.z + std::sin(q.angle) * p.lorry_rear_m), float(q.angle) });
 	}
-	for (const auto &kv : spans) out.push_back({ kv.first, kv.second.first - p.lorry_closure_margin_m, kv.second.second + p.lorry_closure_margin_m, owner });
+	sweep_body(s, c.length * 0.5f, c.half_width, bodies, p.lorry_closure_margin_m, owner, out);
 }
 
 // Nobody on a stretch or too near to stop short of it: the near vehicles on its lane, and those on the connectors that end on

@@ -35,13 +35,13 @@ constexpr auto GIVE_BACK_LIMIT = std::chrono::seconds(3); // how long the probe 
 constexpr auto GIVE_BACK_LOOK = std::chrono::milliseconds(5); // between two looks at it
 } // namespace
 
-// The pool's rule on a pool of one worker, held busy while the jobs queue: a key's newest job replaces a queued one, and only that.
 Dictionary CityProbes::bay_census() { return render_->bay_census(); }
 Dictionary CityProbes::far_form() const { return render_->far_form(); }
 Dictionary CityProbes::ground_drawn(const Vector3 &at) const { return render_->ground_drawn(*state_, at.x, at.z); }
 // The surface render/surface_data.h makes of `arrays`: a test lays it beside the engine's own (mesh_get_surface) byte for byte.
 Dictionary CityProbes::surface_probe(const Array &arrays, const Dictionary &lods, int64_t format) const { return surface_data(arrays, lods, uint64_t(format), RID()); }
 
+// The pool's rule on a pool of one worker, held busy while the jobs queue: a key's newest job replaces a queued one, and only that.
 Dictionary CityProbes::job_pool_probe() const {
 	constexpr int64_t CHUNK_ID = 7;
 	std::mutex gate;
@@ -180,6 +180,8 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("look_twins", "reach_m", "alike"), &CityProbes::look_twins);
 	ClassDB::bind_method(D_METHOD("lot_clearance"), &CityProbes::lot_clearance);
 	ClassDB::bind_method(D_METHOD("vehicles_near", "at", "radius"), &CityProbes::vehicles_near);
+	ClassDB::bind_method(D_METHOD("vehicle_bodies", "at", "radius"), &CityProbes::vehicle_bodies);
+	ClassDB::bind_method(D_METHOD("footway_under", "at"), &CityProbes::footway_under);
 	ClassDB::bind_method(D_METHOD("people_census", "at", "radius"), &CityProbes::people_census);
 	ClassDB::bind_method(D_METHOD("set_city_hour", "hour"), &CityProbes::set_city_hour);
 	ClassDB::bind_method(D_METHOD("people_clips"), &CityProbes::people_clips);

@@ -65,7 +65,7 @@ bool replan(CityState &s, Vehicle &v) {
 	const int goal = v.route.len > 0 ? route_at(t.route_pool, v.route, v.route.len - 1) : -1;
 	if (goal < 0 || v.ds < 0) return false;
 	std::vector<int> path;
-	if (!find_route(s, v.ds, goal, path) || path.empty()) return false;
+	if (!find_route(s, v.ds, goal, path, v.type) || path.empty()) return false;
 	route_set(t.route_pool, v.route, t.route_waste, path.data(), int(path.size()));
 	v.ri = 0;
 	t.reroutes++;
@@ -246,6 +246,15 @@ void advance(CityState &s, int id) {
 	}
 	const bool near = in_window(s, to);
 	const int tail = t.lane_vehicles[size_t(to_key)].empty() ? -1 : t.lane_vehicles[size_t(to_key)].back();
+	// a drawn vehicle coming onto that lane off a connector would land where it is put: it waits for the mouth to be its own
+	if (near && g.ds[size_t(to)].from >= 0 && size_t(g.ds[size_t(to)].from) < g.node_conn.size())
+		for (int x = g.node_conn[size_t(g.ds[size_t(to)].from)]; x >= 0; x = g.conns[size_t(x)].next_at_node) {
+			const Conn &k = g.conns[size_t(x)];
+			if (k.alive && k.to_ds == to && k.to_lane == to_lane && !t.conn_vehicles[size_t(x)].empty()) {
+				schedule(t, id, t.time + double(HANDOVER_RETRY_S));
+				return;
+			}
+		}
 	if (near && tail >= 0) { // behind drawn vehicles: it waits to fit behind them (never passes them unseen)
 		const Vehicle &o = t.vehicles[size_t(tail)];
 		if (o.s < s.catalog.traffic.classes[int(o.type)].length + s.catalog.traffic.meso_s0_m + HANDOVER_PAD_M) {

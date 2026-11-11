@@ -430,3 +430,60 @@ A defect the owner pointed at ("a face preta são as pessoas"); recorded here wi
   at crossings, lit by the street lamps at night, no black quad at any distance.
 - Not measured in the 24 km city yet (the batch's one measure comes at its close): the walkers between 90 m and the
   card's distance are now skinned meshes of the coarsest level where they were two triangles each.
+
+## P47, P53 to P67, P75 (2026-11-10, night): the vehicles drive as bodies on their paths; the junctions' sweeps cost what meets
+
+A defect the owner reported ("ficam dando solavancos indo para frente com tudo, sobem em calçadas, ficam um em cima dos outros
+... param no meio das vias"); the reference game read for its behaviour alone (`lab/roadcraft`), every piece written for this tree.
+
+- Lurches and erratic jumps: a drawn body hung between its two bumpers placed on the piece of path it was on, so it jumped and
+  turned where a piece changed (P53); the lane change's offset was dropped on a connector (P54); a vehicle over its lane's end
+  stood a tick before it went on (P55); connectors were padded past their curve's length (P66). Now `sim/traffic/vehicle_pose.cpp`
+  is the one owner of a drawn body's place: its middle half its length behind its front along the way it drove (back onto the
+  connector or lane it came off), its heading the way's chord `heading_chord_m` either side, the lane change sliding it across in
+  `lc_duration_s` exactly; a vehicle over its lane's end with the way open goes onto its connector that tick with the metres past.
+- Footways climbed (P56, P67): the middle is on the path, and a turn whose sweep reaches over a corner's footway is not driven by
+  the bodies it does not fit (`Conn::max_class`; routes, detours and connector choice skip it for a larger class).
+- Bodies in one another (P58, P60, P62, P67): the junctions' conflicts are swept by three body classes (the reference's
+  envelopes, `traffic.json` `body_*`, `sweep_*`), each pair of connectors keeping per pair of classes how far along the other's
+  way a body is clear (`junction_sweeps.cpp`, `junction_admission.cpp` `conflict_busy`); a car going into or out of a lot closes
+  every stretch of lane its body sweeps (the lorries' rule, `lane_closures.cpp` `sweep_body`) and waits off the lanes until they
+  are clear; a body sliding out of a lane is followed there until it is off it; a retry moves a vehicle only into room.
+- Appearing and vanishing in view (P59, P61): past the city's opening a trip starts only beyond `publish_radius_m` of the camera.
+- Test: `tests/core/vehicle_motion_test` (600 ticks, 300 m round the camera, probe `vehicle_bodies`): 0 jumps, 0 stands, 0
+  appearing, 0 vanishing, 0 bodies in one another, 0 over a footway. `traffic_hash_test`, `street_crossing_test`,
+  `flow_control_test`, `edit_fuzz_test`, `road_edit_test` pass. The digest's derived graph and fleet moved by design (the save's
+  bytes did not) and were written again.
+- P75, found by this batch's measure: the swept conflicts tested every sample of one way against every sample of the other for
+  all nine class pairs: the 24 km city opened in 39.7 s (24.2 s at `fc399112`). `find_conflicts` now bounds a way's samples in
+  blocks of eight by boxes holding their heavy bodies, never looks sample by sample at two blocks whose boxes stay apart, and of
+  each class pair searches only the farthest meeting sample on each way, from the way's end, the pairs from the largest bodies
+  down (the envelopes share middle and heading, each inside the next). Exact: the derived graph hash is the same before and
+  after on the test town (`fe554e1ab120984d`) and on the 24 km city (`8089372d7fbd6e4f`). `tests/core/junction_sweep_test`
+  (probe `traffic_probe` `sweep_pairs`, `sweep_tests`): 19,946 rectangle tests a pair before, 1,148 after.
+- `vehicle_motion.cpp` was split by responsibility (373 lines): `motion_law.h` (the leader, the cap and jerk limit, the move),
+  `connector_motion.cpp` (the connector's step, `box_hold`); `step_lane`'s leaders on the lane are `lane_leads`.
+- Measured, `dist/trace/port-from-nov7/plan-p47km24.json` (the 24 km city, `info` and 5 s of `usage` at two still views, then the
+  clock at 1x for 600 frames at the centre's street, `traffic_probe` before and after 5 s of `usage`), `fc399112`'s DLL from a
+  copy of the project against this batch's:
+
+| 24 km city | before (`fc399112`) | with the sweeps' first form | now |
+|---|---|---|---|
+| The city opens in | 24.2 s | 39.7 s | 25.8 and 26.1 s (two runs) |
+| 9 km out: video, static, GPU, CPU | 1,829 MiB, 418 MiB, 10.77 ms, 1.00 ms | 1,823, 418, 10.61, 1.03 | 1,834, 418, 10.96, 0.99 |
+| Centre: video, static, GPU, CPU | 3,237 MiB, 623 MiB, 11.87 ms, 1.09 ms | 3,223, 623, 11.76, 1.13 | 3,233, 623, 11.92, 1.11 |
+| Clock running: the fleet's step over 5 s | 219.9 ms | 225.8 ms | 221.1 ms |
+| Clock running: the walkers' step over 5 s | 67.5 ms | 66.8 ms | 66.1 ms |
+| Clock running: CPU and GPU a frame | 1.59 ms, 14.35 ms | 1.65, 14.72 | 1.53, 14.43 |
+
+- Left: the sweeps still cost the opening about 1.6 to 1.9 s over `fc399112` (3.45 million pairs of connectors, 4.08 billion
+  rectangle tests at 1,184 a pair, the sampling of every way and the footway test of its curve): to be taken down with the
+  opening's other costs. In the same run the centre's streets drew no vehicle while the HUD counted 1,330 vehicles (P74: the
+  fleet is one number for the whole map), as at `fc399112`.
+- Photos (`dist/trace/port-from-nov7/photos/00..11-p47-*`, read with their crops in `analysis.md`): three junctions of the test
+  town near, mid and far, by day and at night. Seen and recorded as problems of the trace: roads and buildings beyond the building
+  the camera stands in not drawn (P68) and the camera inside a building (P73), a lot's railing across its drive (P69), a van in a
+  bay with its front in the lot's wall (P70), a walker through a car waiting at a drive (P71), stair-stepped lamp shadows at night
+  (P72).
+- Gates on the changed files: the name-likeness findings left (`SEGUNDO_DONO` on `OPPOSITE_DOT`, `TAPER_*`, `VF_SPAN` and the
+  `Control`/`Light` enum values) stood before on lines this batch did not change.

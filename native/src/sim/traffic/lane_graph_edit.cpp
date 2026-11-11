@@ -55,7 +55,7 @@ void on_conn_removed(CityState &s, int ci) {
 		if (t.vehicles[size_t(id)].alive && t.vehicles[size_t(id)].pass == ci) t.vehicles[size_t(id)].pass = -1;
 	unlink_from_lane(g, ci);
 	c.conflicts.clear();
-	c.conflict_at.clear();
+	c.conflict_clear.clear();
 	c.alive = false;
 	if (size_t(ci) < t.conn_pass.size()) t.conn_pass[size_t(ci)] = -1;
 }

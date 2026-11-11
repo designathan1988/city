@@ -24,7 +24,7 @@ std::string conn_fault(const LaneGraph &g, int ci) {
 	const Conn &c = g.conns[size_t(ci)];
 	if (!live_lane(g, c.from_ds, c.from_lane)) return fault_of(c, ci, "comes from a lane that is not there");
 	if (!live_lane(g, c.to_ds, c.to_lane)) return fault_of(c, ci, "goes to a lane that is not there");
-	if (c.conflicts.size() != c.conflict_at.size()) return fault_of(c, ci, "a conflict without its place");
+	if (c.conflicts.size() != c.conflict_clear.size()) return fault_of(c, ci, "a conflict without its clear places");
 	for (int o : c.conflicts) {
 		if (o < 0 || size_t(o) >= g.conns.size() || !g.conns[size_t(o)].alive) return fault_of(c, ci, "conflicts with a dead connection");
 		const std::vector<int> &back = g.conns[size_t(o)].conflicts;

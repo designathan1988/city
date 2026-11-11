@@ -1,5 +1,5 @@
 // The lane graph (Roadcraft src/sim/lanes.ts): directed segments with their lanes between the two mouths, lane
-// connectors through every node (turn classes, lanes allowed by position, pairing) and their conflict sets. A road
+// connectors through every node (turn classes, lanes allowed by position, pairing) and their conflict sets (junction_sweeps.cpp). A road
 // edit rebuilds only the segments and nodes it touched (lane_graph_edit.cpp); build_lane_graph is the full build of a
 // new map or a load.
 #include "sim/traffic/lane_graph_internal.h"
@@ -66,7 +66,7 @@ void make_curve(const CityState &s, Conn &c, const TrafficParams &tp) {
 		c.table[i] = c.table[i - 1] + (q - prev).len();
 		prev = q;
 	}
-	c.len = std::max(c.table[CONN_STEPS], SHORTEST_PIECE_M);
+	c.len = c.table[CONN_STEPS]; // its curve's own: a vehicle never drives length the curve does not have (a road joint's is short)
 }
 
 // One connection, allocated from the pool and threaded onto the node and lane lists.
@@ -120,44 +120,6 @@ void link_pair(CityState &s, int node, int din, int dout, Turn turn, std::vector
 		bool from_left = turn == Turn::LEFT || turn == Turn::UTURN;
 		add_conn(s, node, din, ok[r], dout, from_left ? std::max(0, k - 1 - std::min(m - 1 - r, k - 1)) : std::min(r, k - 1), turn, made);
 	}
-}
-
-// Conflicts among the connections a node just made (and only among them: other nodes keep their own).
-void find_conflicts(LaneGraph &g, const std::vector<int> &ids, int samples) {
-	std::vector<std::vector<V2>> poly;
-	poly.reserve(ids.size());
-	for (int ci : ids) {
-		std::vector<V2> pts;
-		for (int k = 0; k <= samples; k++) {
-			Pose p;
-			conn_pose(g.conns[size_t(ci)], g.conns[size_t(ci)].len * float(k) / samples, p);
-			pts.push_back(V2(p.x, p.z));
-		}
-		poly.push_back(pts);
-	}
-	for (size_t i = 0; i < ids.size(); i++)
-		for (size_t j = i + 1; j < ids.size(); j++) {
-			Conn &a = g.conns[size_t(ids[i])], &b = g.conns[size_t(ids[j])];
-			if (a.from_ds == b.from_ds && a.from_lane == b.from_lane) continue;
-			bool merge = a.to_ds == b.to_ds && a.to_lane == b.to_lane;
-			float ta = 0, tb = 0;
-			int xa = -1, yb = -1;
-			const auto &pa = poly[i], &pb = poly[j];
-			for (int x = 0; x < samples && xa < 0 && a.from_ds != b.from_ds; x++)
-				for (int y = 0; y < samples && xa < 0; y++)
-					if (segments_cross(pa[x], pa[x + 1], pb[y], pb[y + 1], &ta)) {
-						segments_cross(pb[y], pb[y + 1], pa[x], pa[x + 1], &tb);
-						xa = x;
-						yb = y;
-					}
-			if (!merge && xa < 0) continue;
-			// where each path crosses the other (a merge meets at the end of both)
-			float at_a = merge ? a.len : a.len * (xa + ta) / samples, at_b = merge ? b.len : b.len * (yb + tb) / samples;
-			a.conflicts.push_back(ids[j]);
-			a.conflict_at.push_back(at_b);
-			b.conflicts.push_back(ids[i]);
-			b.conflict_at.push_back(at_a);
-		}
 }
 
 } // namespace
@@ -255,7 +217,7 @@ static bool link_node(CityState &s, int n, std::vector<int> &made) {
 
 void build_node(CityState &s, int n) {
 	std::vector<int> made;
-	if (link_node(s, n, made)) find_conflicts(s.traffic.g, made, std::max(2, int(s.catalog.traffic.conflict_samples)));
+	if (link_node(s, n, made)) find_conflicts(s, made); // an edit's node: the full build's counts stay what that build did
 }
 
 void build_lane_graph(CityState &s) {
@@ -273,10 +235,14 @@ void build_lane_graph(CityState &s) {
 		std::vector<int> made;
 		if (s.roads.nodes[n].alive && link_node(s, n, made)) junctions.push_back(std::move(made));
 	}
-	const int samples = std::max(2, int(s.catalog.traffic.conflict_samples));
-	auto conflicts = [&](size_t k) { find_conflicts(g, junctions[k], samples); };
+	std::vector<SweepWork> work(junctions.size());
+	auto conflicts = [&](size_t k) { work[k] = find_conflicts(s, junctions[k]); };
 	if (s.jobs) s.jobs->parallel_for(junctions.size(), conflicts);
 	else for (size_t k = 0; k < junctions.size(); k++) conflicts(k);
+	for (const SweepWork &w : work) {
+		g.sweep_pairs += w.pairs;
+		g.sweep_tests += w.tests;
+	}
 	ensure_conn_state(s.traffic);
 	build_junctions(s);
 }

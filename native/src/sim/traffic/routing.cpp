@@ -44,9 +44,9 @@ void end_point(const CityState &s, int ds, V2 &p) {
 	p = V2(d.ex, d.ez);
 }
 
-// The connectors the router relaxes from `ds`: of those leaving it, the first to each segment they reach. Every connector from `ds`
-// to one segment costs the same (the segment's time and load, the turn the two segments make, the node they share), so the others
-// only relaxed it again to no effect; the targets keep the order each_conn_from walks them in.
+// The connectors the router relaxes from `ds`: of those leaving it, to each segment they reach the one the largest body fits.
+// Every connector from `ds` to one segment costs the same (the segment's time and load, the turn the two segments make, the node
+// they share), so the others only relaxed it again to no effect; the targets keep the order each_conn_from walks them in.
 const std::vector<int> &next_of(CityState &s, int ds) {
 	TrafficState &t = s.traffic;
 	const LaneGraph &g = t.g;
@@ -59,8 +59,11 @@ const std::vector<int> &next_of(CityState &s, int ds) {
 	t.route_next_stamp[size_t(ds)] = s.lane_graph_serial + 1;
 	next.clear();
 	each_conn_from(g, ds, [&](int ci) {
-		for (int k : next)
-			if (g.conns[size_t(k)].to_ds == g.conns[size_t(ci)].to_ds) return;
+		for (int &k : next)
+			if (g.conns[size_t(k)].to_ds == g.conns[size_t(ci)].to_ds) {
+				if (g.conns[size_t(ci)].max_class > g.conns[size_t(k)].max_class) k = ci;
+				return;
+			}
 		next.push_back(ci);
 	});
 	return next;
@@ -80,10 +83,12 @@ float junction_cost(const CityState &s, const Conn &c) {
 	return turn + (s.traffic.g.junctions[c.node].ctl == Control::SIGNAL ? tp.signal_cost_s : 0.f);
 }
 
-bool find_route(CityState &s, int from_ds, int goal_ds, std::vector<int> &out, int max_expanded, int banned_ds, bool by_bike) {
+bool find_route(CityState &s, int from_ds, int goal_ds, std::vector<int> &out, VehicleType type, int max_expanded, int banned_ds) {
 	static thread_local AStarScratch sc;
 	const LaneGraph &g = s.traffic.g;
 	const TrafficParams &tp = s.catalog.traffic;
+	const bool by_bike = type == VehicleType::BICYCLE;
+	const int cls = body_class(tp, type); // a turn too tight for its body is no way for it (junction_sweeps.cpp)
 	out.clear();
 	if (from_ds < 0 || goal_ds < 0 || !g.ds[from_ds].ok || !g.ds[goal_ds].ok) return false;
 	note_search(s);
@@ -94,7 +99,7 @@ bool find_route(CityState &s, int from_ds, int goal_ds, std::vector<int> &out, i
 	auto expand = [&](int ds, auto relax) {
 		for (int ci : next_of(s, ds)) {
 			const Conn &c = g.conns[size_t(ci)];
-			if (c.to_ds == banned_ds) continue;
+			if (c.to_ds == banned_ds || c.max_class < cls) continue;
 			const DirSeg &d = g.ds[size_t(c.to_ds)];
 			if (by_bike && !d.bikes) continue;
 			relax(c.to_ds, (d.len / std::max(d.speed, 1.f) + tp.edge_extra_s) * load_factor(s, c.to_ds) + junction_cost(s, c));
@@ -117,13 +122,14 @@ bool detour(CityState &s, int id, int blocked, bool need_room) {
 		if (need_room && !has_exit(s, c, id)) return;
 		const int j = std::min(v.route.len - 1, v.ri + 1 + rejoin);
 		const int at_j = route_at(t.route_pool, v.route, j);
-		if (j > v.ri + 1 && at_j != c.to_ds && find_route(s, c.to_ds, at_j, path, local, -1, v.type == VehicleType::BICYCLE)) {
+		if (c.max_class < body_class(s.catalog.traffic, v.type)) return;
+		if (j > v.ri + 1 && at_j != c.to_ds && find_route(s, c.to_ds, at_j, path, v.type, local)) {
 			splice(s, v, path, j);
 			found = true;
 			return;
 		}
 		const int goal = route_at(t.route_pool, v.route, v.route.len - 1);
-		if (!find_route(s, c.to_ds, goal, path, -1, -1, v.type == VehicleType::BICYCLE)) return;
+		if (!find_route(s, c.to_ds, goal, path, v.type)) return;
 		splice(s, v, path, v.route.len);
 		found = true;
 	});
@@ -137,9 +143,9 @@ bool reconsider(CityState &s, int id) {
 	if (!may_request_search(s) || v.ri + 1 >= v.route.len) return false;
 	const int j = std::min(v.route.len - 1, v.ri + int(s.catalog.traffic.rejoin_ds));
 	std::vector<int> path;
-	if (!find_route(s, v.ds, route_at(t.route_pool, v.route, j), path, int(s.catalog.traffic.detour_max_expanded), -1, v.type == VehicleType::BICYCLE) || path.size() < 2) return false;
+	if (!find_route(s, v.ds, route_at(t.route_pool, v.route, j), path, v.type, int(s.catalog.traffic.detour_max_expanded)) || path.size() < 2) return false;
 	// only a detour this lane can reach, and only if it differs from the old route
-	if (!lane_reaches(s, v.ds, v.lane, path[1])) return false;
+	if (connector_to(s, v.ds, v.lane, path[1], body_class(s.catalog.traffic, v.type)) < 0) return false;
 	if (int(path.size()) == j - v.ri + 1) {
 		bool same = true;
 		for (size_t k = 0; k < path.size() && same; k++)
@@ -160,18 +166,20 @@ bool retry_route(CityState &s, int id) {
 	if (v.ds < 0 || v.ds >= int(t.g.ds.size()) || v.ri + 1 >= v.route.len) return false;
 	const int next = route_at(t.route_pool, v.route, v.ri + 1);
 	int alt = -1, bd = MAX_LANES + 1;
+	const int cls = body_class(s.catalog.traffic, v.type);
 	for (int lane = 0; lane < t.g.ds[size_t(v.ds)].lanes; lane++) {
-		if (lane == v.lane || !lane_reaches(s, v.ds, lane, next)) continue;
+		if (lane == v.lane || connector_to(s, v.ds, lane, next, cls) < 0) continue;
 		const int d = std::abs(lane - v.lane);
 		if (d < bd) { bd = d; alt = lane; }
 	}
 	if (alt >= 0) {
-		move_vehicle_lane(s, id, alt);
+		// into it once its body has room there (the gaps of a forced change); meanwhile it waits at its line on its own lane
+		if (lane_room(s, id, alt)) move_vehicle_lane(s, id, alt);
 		return true;
 	}
 	const int goal = route_at(t.route_pool, v.route, v.route.len - 1);
 	std::vector<int> path;
-	if (goal < 0 || !find_route(s, v.ds, goal, path) || path.empty()) return false;
+	if (goal < 0 || !find_route(s, v.ds, goal, path, v.type) || path.empty()) return false;
 	route_set(t.route_pool, v.route, t.route_waste, path.data(), int(path.size()));
 	v.ri = 0;
 	t.reroutes++;

@@ -22,6 +22,8 @@ inline int out_ds(const RoadNetwork &net, int seg, int node) { return seg * 2 + 
 void step(CityState &s, float dt); // applies the network changes, then advances everything near and far
 // After each tick: poses near the camera into CityState::poses, stamped with the tick's scheduled time.
 void publish_poses(CityState &s, int64_t stamp_ns);
+// vehicle_pose.cpp: where a vehicle on the lanes is drawn (its middle, heading and pitch into `out`), from its path.
+void vehicle_pose(const CityState &s, const Vehicle &v, Pose &out);
 float day_factor(const TrafficParams &p, float hour);
 void despawn_vehicle(CityState &s, int id, bool arrived);
 int new_vehicle(CityState &s, VehicleType type, uint8_t paint); // of that type, on no lane yet, counted in the fleet
@@ -113,7 +115,8 @@ Light light_for(const CityState &s, int ds); // the light the approach `ds` show
 float amber_left(const CityState &s, int ds); // seconds of amber left on approach `ds`, which shows amber
 double next_green(const CityState &s, int ds, double now); // when that approach next shows green (meso waits)
 bool may_enter(const CityState &s, int vehicle, int conn, float dist_to_line);
-int connector_to(const CityState &s, int ds, int lane, int next_ds); // from lane `lane` of `ds` onto `next_ds`, or -1
+// From lane `lane` of `ds` onto `next_ds` (from the nearest lane that has one), one a body of class `cls` fits, or -1.
+int connector_to(const CityState &s, int ds, int lane, int next_ds, int cls = 0);
 int pick_connector(const CityState &s, const Vehicle &v);
 Hold hold_reason(const CityState &s, int vehicle);
 int lane_head(const CityState &s, int vehicle); // the first vehicle of its lane (itself when it leads), -1 off lanes
@@ -144,11 +147,17 @@ struct LightStop {
 // last step's junction is never crossed.
 LightStop lights_ahead(const CityState &s, const Vehicle &v, int ri, int lane, float start);
 
+// junction_sweeps.cpp: the body class (BODY_CLASSES) a vehicle type is swept as at the junctions, the smallest envelope holding it.
+int body_class(const TrafficParams &p, VehicleType type);
+
 // junction_admission.cpp (anti-gridlock)
 bool is_splice(const CityState &s, int node); // a road joint: no junction to block
 bool has_exit(const CityState &s, const Conn &c, int vehicle); // room on the exit lane (exitRoom)
 int pass_holder(const CityState &s, int conn); // vehicle committed to `conn` and not yet on it, or -1
-bool box_clear(const CityState &s, int conn); // nobody inside (or committed earlier) on a crossing connector
+// Whether a body on conflicting connector `k` of `c` (on it, or come off it with its body still reaching back) is not yet clear of
+// a body of class `mine` on `c`: by the sweeps' clear arcs (Conn::conflict_clear).
+bool conflict_busy(const CityState &s, const Conn &c, size_t k, int mine);
+bool box_clear(const CityState &s, int conn, int vehicle); // no body in the way of this vehicle's on a crossing connector, nor committed earlier
 void commit(CityState &s, int vehicle, int conn);
 void release(CityState &s, int vehicle, int conn); // takes a commitment back before the vehicle used it
 void claim_exit(CityState &s, const Conn &c, int vehicle);
@@ -162,9 +171,10 @@ void step_governor(CityState &s, float dt);
 bool may_request_search(CityState &s);
 void note_search(CityState &s);
 
-// routing.cpp: directed segments from `from_ds` to `goal_ds` (inclusive), edge times raised by the load (BPR);
-// false when unreachable. `max_expanded` < 0 uses route_max_expanded; `banned_ds` is never entered. Counted on the tick's searches.
-bool find_route(CityState &s, int from_ds, int goal_ds, std::vector<int> &out, int max_expanded = -1, int banned_ds = -1, bool by_bike = false);
+// routing.cpp: directed segments from `from_ds` to `goal_ds` (inclusive) for a vehicle of `type`, edge times raised by the load
+// (BPR): a bicycle only where bicycles ride, and only through the turns its body fits (Conn::max_class); false when unreachable.
+// `max_expanded` < 0 uses route_max_expanded; `banned_ds` is never entered. Counted on the tick's searches.
+bool find_route(CityState &s, int from_ds, int goal_ds, std::vector<int> &out, VehicleType type, int max_expanded = -1, int banned_ds = -1);
 float junction_cost(const CityState &s, const Conn &c); // turn + signal time the router adds for a connector
 // The route's next turn is not reachable from this lane: another lane of the segment, else a new route, else false.
 bool retry_route(CityState &s, int id);
@@ -196,6 +206,8 @@ float top_speed(const CityState &s, const Vehicle &v, float limit); // the most 
 
 // lane_change.cpp
 void change_lanes(CityState &s);
+// Lane `target` of its segment has room for the vehicle's body beside it now (the physical gaps of a forced change).
+bool lane_room(const CityState &s, int id, int target);
 
 // ped_crossing.cpp
 float amber_wanted(const TrafficParams &tp, float v); // the amber a regulated speed `v` asks (m/s), before amber_max_s

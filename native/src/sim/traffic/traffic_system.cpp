@@ -1,6 +1,6 @@
 // The traffic step called by Simulation::step: applies the lane-graph changes the journal announced (only the segments
-// and nodes an edit touched), then runs the far model, demand, lane changes, motion and pedestrians, and computes the
-// poses render/agents draws (body centre between the front and rear points, so long vehicles follow curves).
+// and nodes an edit touched), then runs the far model, demand, lane changes, motion and pedestrians, and publishes the
+// poses render/agents draws (each vehicle's from its path: vehicle_pose.cpp).
 #include "sim/traffic/kerb_stops.h"
 
 #include "sim/traffic/lane_closures.h"
@@ -14,30 +14,6 @@
 
 namespace city {
 namespace traffic {
-
-namespace {
-
-constexpr float MIN_AXIS_M = 0.5f;
-
-// Front (`front` metres along) and rear points of a vehicle on its lane or connector.
-void ends(const CityState &s, const Vehicle &v, float front, float len, Pose &f, Pose &r) {
-	if (v.conn >= 0) {
-		const Conn &c = s.traffic.g.conns[v.conn];
-		conn_pose(c, front, f);
-		if (front - len >= 0) conn_pose(c, front - len, r);
-		else lane_pose(s, c.from_ds, c.from_lane, s.traffic.g.ds[c.from_ds].len + front - len, r);
-		return;
-	}
-	lane_pose(s, v.ds, v.lane, front, f);
-	lane_pose(s, v.ds, v.lane, front - len, r);
-	const DirSeg &d = s.traffic.g.ds[v.ds];
-	const float off = v.lc_off + cycle_shift(s, v, v.ds, front);
-	float lx = d.sign * f.fz * off, lz = -d.sign * f.fx * off; // left of a -> b, as lane offsets
-	f.x += lx; f.z += lz;
-	r.x += lx; r.z += lz;
-}
-
-} // namespace
 
 void despawn_vehicle(CityState &s, int id, bool arrived) {
 	TrafficState &t = s.traffic;
@@ -154,19 +130,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 		if (!v.alive) continue;
 		view_vehicle(s, view, v);
 		if (!v.micro && !v.off) continue; // far vehicles are queues and events, not poses
-		if (!v.off) {
-			float len = p.classes[int(v.type)].length;
-			Pose front, rear;
-			ends(s, v, v.conn >= 0 ? v.cs : v.s, len, front, rear);
-			V2 axis(front.x - rear.x, front.z - rear.z);
-			v.cur.x = (front.x + rear.x) * 0.5f;
-			v.cur.z = (front.z + rear.z) * 0.5f;
-			v.cur.y = (front.y + rear.y) * 0.5f + p.body_lift_m;
-			V2 h = axis.len() > MIN_AXIS_M ? axis.norm() : V2(front.fx, front.fz);
-			v.cur.rise = axis.len() > MIN_AXIS_M ? (front.y - rear.y) / axis.len() : 0.f;
-			v.cur.fx = h.x;
-			v.cur.fz = h.y;
-		}
+		if (!v.off) vehicle_pose(s, v, v.cur);
 		v.trail.push(v.cur, stamp_ns, before);
 		if (v.ds >= 0 && v.ds < int(t.g.ds.size())) {
 			const int seg = t.g.ds[v.ds].seg;
