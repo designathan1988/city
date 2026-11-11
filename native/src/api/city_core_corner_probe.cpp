@@ -1,7 +1,10 @@
 // The ways round the corners as the walkers would walk them, for the tests (corner_ways): every way round a corner with no
 // crosswalk on it (sim/traffic/ped_routes.cpp aim_onto_sidewalk), from each place across the sidewalk it leaves, against the
-// carriageway (sim/street/footway.h on_carriageway); a way that touches it is told with its node's arms and corners as drawn.
+// carriageway (sim/street/footway.h on_carriageway); a way that touches it is told with its node's arms and corners as drawn. And
+// what opens onto the corners (lot_gates): the lots' bays read near the camera whose way reaches a lane through a gate whose foot
+// lies in a corner or a crosswalk (sim/roads/parking_layout.h kerb_standing).
 #include "api/city_probes.h"
+#include "sim/roads/parking_layout.h"
 #include "sim/state/city_state.h"
 #include "sim/street/footway.h"
 #include "sim/traffic/traffic_system.h"
@@ -96,6 +99,30 @@ Dictionary CityProbes::corner_ways() {
 	Dictionary d;
 	d["ways"] = ways;
 	d["off"] = off;
+	d["cases"] = cases;
+	return d;
+}
+
+Dictionary CityProbes::lot_gates() {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
+	const CityState &s = *state_;
+	int reached = 0, in_corner = 0;
+	Array cases;
+	for (size_t b = 0; b < s.traffic.park.bays.size(); b++) {
+		const Bay &bay = s.traffic.park.bays[b];
+		if (!bay.alive || bay.kerb || !bay.way_read || !bay.reached) continue;
+		reached++;
+		const DirSeg &d = s.traffic.g.ds[size_t(bay.lane.ds)];
+		const int seg = bay.lane.ds / 2;
+		const double v = double(d.at0) + double(d.sign) * double(bay.lane.foot); // the gate's foot on its street
+		if (kerb_standing(s.roads, seg, v)) continue;
+		in_corner++;
+		if (cases.size() < CASES) cases.push_back(Array::make(int(b), bay.source, seg, v, Vector2(bay.lane.p.x, bay.lane.p.y)));
+	}
+	Dictionary d;
+	d["reached"] = reached;
+	d["in_corner"] = in_corner;
 	d["cases"] = cases;
 	return d;
 }

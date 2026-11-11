@@ -44,6 +44,11 @@ double arc_of_t(const RoadSegment &g, double t) {
 	return g.table[i] + (g.table[i + 1] - g.table[i]) * (at - double(i));
 }
 
+bool kerb_standing(const RoadNetwork &net, int sid, double v) {
+	const RoadSegment &g = net.segs[size_t(sid)];
+	return v >= end_clear(net, g.a, g.retreat_a) && v <= g.len - end_clear(net, g.b, g.retreat_b);
+}
+
 bool parks_along(const RoadNetwork &net, int sid) {
 	for (const StripEdge &e : net.profile_of(sid).edges)
 		if (e.strip.kind == StripKind::PARKING) return true;

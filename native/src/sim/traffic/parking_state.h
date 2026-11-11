@@ -18,10 +18,11 @@
 namespace city {
 
 // The place on a lane a vehicle joins it at and stops before a gate at. `at`: arc of the body's centre where it joins;
-// `entry`: arc of the body's centre where it stops to turn in; (p, t): the lane's point at `at` and its direction.
+// `entry`: arc of the body's centre where it stops to turn in; `foot`: arc of the gate's foot; (p, t): the lane's point at `at`
+// and its direction.
 struct LaneSpot {
 	int ds = -1, lane = 0;
-	float at = 0, entry = 0;
+	float at = 0, entry = 0, foot = 0;
 	V2 p, t;
 };
 

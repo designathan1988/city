@@ -35,6 +35,8 @@ bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out, YardReads *rea
 	const float reach = p.gate_lane_reach_m;
 	float best = reach;
 	bool found = false;
+	int street = -1;
+	double foot_v = 0; // the gate's foot on the nearest street, along it from its node a
 	if (reads) reads->read(s.roads, gate.x - reach, gate.y - reach, gate.x + reach, gate.y + reach);
 	s.roads.for_segments_near(gate.x - reach, gate.y - reach, gate.x + reach, gate.y + reach, [&](int seg) {
 		const RoadSegment &r = s.roads.segs[size_t(seg)];
@@ -63,12 +65,17 @@ bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out, YardReads *rea
 		out.lane = lane;
 		out.at = at;
 		out.entry = entry;
+		out.foot = foot;
 		out.p = V2(q.x, q.z);
 		out.t = V2(q.fx, q.fz);
 		best = float(dist);
 		found = true;
+		street = seg;
+		foot_v = arc_of_t(r, t);
 	});
-	return found;
+	// a car comes and goes by the gate standing at the kerb, so only where a car may stand there: never in a corner nor on a
+	// crosswalk, the stretch the kerb's own bays keep to (parking_layout.h); a gate there has no lane, never the next street's
+	return found && kerb_standing(s.roads, street, foot_v);
 }
 
 // Through the gate square on: a curve cut across the wall's line would swing the car's corners into the posts. The way's end is

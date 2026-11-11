@@ -31,6 +31,9 @@ using ArcSpan = std::pair<double, double>;
 bool parks_along(const RoadNetwork &net, int sid);
 // `gates`: what keeps bays off each side (sim/buildings/lot_access.h street_gates).
 void kerb_layout(const RoadNetwork &net, int sid, const std::vector<ArcSpan> gates[2], KerbLayout &out);
+// Whether a car may stand at the kerb at arc `v` of `sid`: past both ends' corners and crosswalks (CTB art. 181 I), the stretch
+// the kerb's bays are laid in; a lot's gate opens onto the street only there (sim/traffic/parking_lanes.cpp gate_lane).
+bool kerb_standing(const RoadNetwork &net, int sid, double v);
 // The arc of curve point `t` on segment `sid` (the inverse of t_at_length).
 double arc_of_t(const RoadSegment &g, double t);
 

@@ -38,6 +38,9 @@ public:
 	// Every way round a corner with no crosswalk (the whole map), walked from each place across its sidewalk: how many, how many
 	// touch a carriageway, and the first of them with the run and the node's arms and corners (city_core_people.cpp corner_case).
 	godot::Dictionary corner_ways();
+	// The lots' bays read near the camera whose way reaches a lane: how many, how many through a gate whose foot lies in a corner or a
+	// crosswalk, and the first (bay, building, street, the foot's arc, the lane's point).
+	godot::Dictionary lot_gates();
 	void set_city_hour(float hour); // tests: the city's clock at that hour of the day
 	godot::Array people_clips() const; // tests: the clips of people.bin
 	bool show_people_clip(const godot::String &name); // captures: everybody at rest in that clip

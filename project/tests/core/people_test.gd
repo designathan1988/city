@@ -55,6 +55,8 @@ func _ready() -> void:
 	check(float(c.party_gap_m) <= FAR_PARTY_M, "the two of a pair apart: %.2f m" % c.party_gap_m)
 	if float(c.party_gap_m) > FAR_PARTY_M:
 		_around(c.party_gap_case)
+	var gates: Dictionary = CityStore.query(&"lot_gates")
+	check(int(gates.reached) > 0 and int(gates.in_corner) == 0, "no lot's car comes or goes by a gate in a corner or on a crosswalk: %d of %d bays, the first (bay, building, street, the gate's foot, the lane's point) %s" % [gates.in_corner, gates.reached, gates.cases])
 	var probe: Dictionary = CityStore.query(&"traffic_probe", [0])
 	print("bodies: ", probe.people_overlaps, " furniture: ", probe.people_in_furniture)
 	check(int(probe.people_in_furniture) == 0, "inside furniture: %d" % probe.people_in_furniture)
