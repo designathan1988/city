@@ -78,11 +78,11 @@ void RoadChunks::draw(bool on) {
 	for (auto &kv : chunks_) kv.second.surface.visible(on && kv.second.made.triangles > 0);
 }
 
-// The job copies its chunk's roads, their ground and the lots that face them (the parking paint keeps off their car gates), then
-// builds from the copy with the map let go.
+// The job copies its chunk's roads, their ground, the lots that face them (the parking paint keeps off their car gates) and the car
+// gates where the kerbs it lays drop, then builds from the copy with the map let go.
 void RoadRenderer::submit(const CityState &s, int64_t key, JobPool &pool, float priority) {
 	submit_cut(pool, JobKey{ JobLane::ROADS, key }, key, priority,
-			[this, &s, key]() { return cut_for_roads(s, look_, key, CHUNK, CUT_ROADS | CUT_BUILDINGS); },
+			[this, &s, key]() { return cut_for_roads(s, look_, key, CHUNK, CUT_ROADS | CUT_BUILDINGS | CUT_GATES); },
 			[this, key](const CityCut &cut, MeshBuilder &mb) { build_cpu(cut, key, mb); });
 }
 

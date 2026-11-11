@@ -2,7 +2,7 @@
 #include "render/roads/kerb_drop.h"
 
 #include "render/roads/road_mesh.h"
-#include "sim/buildings/lot_access.h"
+#include "sim/state/city_cut.h"
 
 #include <algorithm>
 
@@ -53,7 +53,7 @@ KerbDrops kerb_drops_of(const CityView &s, int sid) {
 	const bool kerbs_drop = !p.ring && !p.rail;
 	k.ca = kerbs_drop && crosswalk_at(s, g.a, sid);
 	k.cb = kerbs_drop && crosswalk_at(s, g.b, sid);
-	if (kerbs_drop) street_gates(s.roads, s.buildings, s.designs, sid, 0.0, k.drives); // the gates themselves: no margin round them
+	if (kerbs_drop) kerb_gates_of(s, sid, k.drives); // the gates themselves: no margin round them (sim/state/city_cut.h)
 	return k;
 }
 

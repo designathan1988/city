@@ -9,10 +9,12 @@
 // writes none of the caches the simulation reads.
 #pragma once
 
+#include "sim/roads/parking_layout.h"
 #include "sim/roads/street_furniture.h"
 #include "sim/state/city_view.h"
 
 #include <algorithm>
+#include <array>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -31,13 +33,15 @@ struct CutBox {
 	CutBox grown(float by) const { return CutBox{ minx - by, minz - by, maxx + by, maxz + by }; }
 };
 
-// What a cut copies besides the final ground of its box.
-enum CutParts : unsigned { CUT_ROADS = 1, CUT_BUILDINGS = 2, CUT_GROUND_BASE = 4, CUT_WATER = 8, CUT_STREET = 16, CUT_NATURE = 32 };
+// What a cut copies besides the final ground of its box. CUT_GATES: the car gates facing the segments whose kerbs the job lowers,
+// kept as facts (keep_gates), for a junction's corner reads them along an arm whose lots stand past the box.
+enum CutParts : unsigned { CUT_ROADS = 1, CUT_BUILDINGS = 2, CUT_GROUND_BASE = 4, CUT_WATER = 8, CUT_STREET = 16, CUT_NATURE = 32, CUT_GATES = 64 };
 
 struct CutFacts {
 	std::unordered_map<int, std::vector<FurnitureSpot>> furniture; // by segment: its pieces of every kind
 	std::unordered_map<int, std::vector<SignStand>> signs; // by node: the plates its rules put up
 	std::unordered_set<int> signalled; // of those nodes, the ones whose junction runs a signal
+	std::unordered_map<int, std::array<std::vector<ArcSpan>, 2>> gates; // by segment: the car gates facing each side, no margin
 };
 
 struct CityCut {
@@ -60,9 +64,11 @@ inline CityView::CityView(const CityCut &cut) :
 
 // The cut of `box` with `parts`, made by a thread that holds the map.
 CityCut cut_held(const CityState &s, const CutBox &box, unsigned parts);
-// Facts taken into a cut while the map is held: segment `sid`'s furniture; node `node`'s control and plates.
+// Facts taken into a cut while the map is held: segment `sid`'s furniture; node `node`'s control and plates; the car gates facing
+// segment `sid`.
 void keep_furniture(CityCut &cut, const CityState &live, int sid);
 void keep_node(CityCut &cut, const CityState &live, int node);
+void keep_gates(CityCut &cut, const CityState &live, int sid);
 
 // The cut a job makes: the map taken shared here, for the copy alone; `box_of(s)` says the box once the map is held (a job's
 // box may depend on what stands in its place), and `keep(cut, s)` takes the facts the job reads.
@@ -84,5 +90,8 @@ void furniture_of(const CityView &s, int sid, uint32_t kinds, std::vector<Furnit
 // Whether node `node`'s junction runs a signal, and the plates its rules put up, appended to `out`.
 bool node_signalled(const CityView &s, int node);
 void node_signs(const CityView &s, int node, std::vector<SignStand> &out);
+// The car gates of the lots facing each side of segment `sid` (STREET_RIGHT, STREET_LEFT), the gates themselves with no margin, where
+// its kerbs drop: the live city's (sim/buildings/lot_access.h street_gates), or the ones the cut carries.
+void kerb_gates_of(const CityView &s, int sid, std::vector<ArcSpan> out[2]);
 
 } // namespace city

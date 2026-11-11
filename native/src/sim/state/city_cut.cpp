@@ -1,6 +1,7 @@
 // The parts of the city copied into a cut, and the facts it carries (city_cut.h).
 #include "sim/state/city_cut.h"
 
+#include "sim/buildings/lot_access.h"
 #include "sim/traffic/ped_system.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -42,6 +43,25 @@ void keep_node(CityCut &cut, const CityState &live, int node) {
 	if (!at.second) return;
 	traffic::junction_signs(live, node, at.first->second);
 	if (traffic::control_of(live, node) == Control::SIGNAL) cut.facts.signalled.insert(node);
+}
+
+void keep_gates(CityCut &cut, const CityState &live, int sid) {
+	const auto at = cut.facts.gates.try_emplace(sid);
+	if (at.second) street_gates(live.roads, live.buildings, sid, 0.0, at.first->second.data());
+}
+
+void kerb_gates_of(const CityView &s, int sid, std::vector<ArcSpan> out[2]) {
+	if (s.live) {
+		street_gates(s.roads, s.buildings, s.designs, sid, 0.0, out);
+		return;
+	}
+	const auto at = s.facts->gates.find(sid);
+	if (at == s.facts->gates.end()) {
+		if (CHECKS) city_stop("the car gates of a segment the job's cut did not keep");
+		return;
+	}
+	out[STREET_RIGHT] = at->second[STREET_RIGHT];
+	out[STREET_LEFT] = at->second[STREET_LEFT];
 }
 
 void furniture_of(const CityView &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out) {

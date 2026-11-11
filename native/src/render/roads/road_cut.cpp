@@ -22,15 +22,29 @@ float road_reach(const Catalog &catalog, const StreetLook &look) {
 }
 
 CityCut cut_for_roads(const CityState &s, const StreetLook &look, int64_t key, float size, unsigned parts) {
-	return cut_city(s, parts, [&](const CityState &live) {
-		const float x0 = float(key_x(key)) * size, z0 = float(key_y(key)) * size;
+	const float x0 = float(key_x(key)) * size, z0 = float(key_y(key)) * size;
+	const auto box_of = [&](const CityState &live) {
 		CutBox box{ x0, z0, x0 + size, z0 + size };
 		live.roads.for_segments_near(x0, z0, x0 + size, z0 + size, [&](int sid) {
 			const RoadSegment &g = live.roads.segs[size_t(sid)];
 			if (segment_chunk(g, size) == key) box.take(g.minx, g.minz, g.maxx, g.maxz); // owned: drawn whole from here
 		});
 		return box.grown(road_reach(live.catalog, look));
-	});
+	};
+	// The car gates where kerbs drop, of each segment the job lowers kerbs on: those it owns and every arm of a node it draws (a
+	// junction's corner meets its arms' footways at their mouths, kerb_drop.h), whose lots may stand past the box.
+	const auto keep = [&](CityCut &cut, const CityState &live) {
+		if (!(parts & CUT_GATES)) return;
+		live.roads.for_segments_near(x0, z0, x0 + size, z0 + size, [&](int sid) {
+			if (segment_chunk(live.roads.segs[size_t(sid)], size) == key) keep_gates(cut, live, sid);
+		});
+		live.roads.node_hash.query(x0, z0, x0 + size, z0 + size, [&](int n) {
+			const RoadNode &nd = live.roads.nodes[size_t(n)];
+			if (!nd.alive || nd.x < x0 || nd.z < z0 || nd.x >= x0 + size || nd.z >= z0 + size) return;
+			for (int arm : nd.segs) keep_gates(cut, live, arm);
+		});
+	};
+	return cut_city(s, parts, box_of, keep);
 }
 
 } // namespace city

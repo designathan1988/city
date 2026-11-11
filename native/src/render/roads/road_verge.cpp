@@ -3,6 +3,7 @@
 // in the terrain's grass; where the ribbon goes under, the terrain carries on.
 #include "render/roads/road_mesh.h"
 #include "render/roads/road_section.h"
+#include "sim/roads/parking_layout.h"
 
 #include <algorithm>
 
@@ -58,12 +59,17 @@ void emit_verge_segment(const RoadEmit &e, int sid) {
 	const double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
 	if (p.edges.empty() || p.rail || v1 <= v0) return;
 	const std::vector<Piece> ps = pieces_of(e.L, p, false); // the outer edges alone are read
-	// A straight road is linear in height and the ground is held to it, so the ribbon needs no more points than the road has (road_segment.cpp)
-	const int n = surface_steps(e, sid, v0, v1);
+	double from[2], to[2]; // each side's footway runs between its own mouths (road_corner.cpp)
+	footway_mouths(e, sid, from, to);
 	const float raised = e.s.catalog.tune.structure_raised_m;
 	for (const float side : { -1.f, 1.f }) {
 		const Piece &edge_piece = side < 0 ? ps.front() : ps.back();
 		const float across = side < 0 ? edge_piece.u0 : edge_piece.u1;
+		const int street = street_side(side);
+		const double w0 = from[street], w1 = to[street];
+		if (w1 <= w0) continue;
+		// A straight road is linear in height and the ground is held to it, so the ribbon needs no more points than the road has (road_segment.cpp)
+		const int n = surface_steps(e, sid, w0, w1);
 		std::vector<Vector3> edge, out;
 		auto flush = [&]() {
 			if (edge.size() > 1) verge_ribbon(e, edge, out);
@@ -71,7 +77,7 @@ void emit_verge_segment(const RoadEmit &e, int sid) {
 			out.clear();
 		};
 		for (int k = 0; k <= n; k++) {
-			const SegFrame f = seg_frame(e.s, sid, v0 + (v1 - v0) * k / n);
+			const SegFrame f = seg_frame(e.s, sid, w0 + (w1 - w0) * k / n);
 			// Nothing runs down to the ground from a deck in the air, nor from a road against its wall, nor where a lot meets the footway
 			// at its top (sim/terrain/lot_shape.h): the runs of open road beside open land only.
 			const Vector3 beyond = f.c + f.left * (across + side * LOT_LOOK_M);

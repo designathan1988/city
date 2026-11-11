@@ -102,4 +102,49 @@ std::vector<PlanRing> run(ClipType kind, const std::vector<PlanRing> &a, const s
 std::vector<PlanRing> plan_intersection(const std::vector<PlanRing> &a, const std::vector<PlanRing> &b) { return run(ClipType::Intersection, a, b); }
 std::vector<PlanRing> plan_difference(const std::vector<PlanRing> &a, const std::vector<PlanRing> &b) { return run(ClipType::Difference, a, b); }
 
+std::vector<int> ring_triangles(const std::vector<double> &x, const std::vector<double> &y) {
+	const int n = int(x.size());
+	std::vector<int> out;
+	if (n < 3) return out;
+	double twice = 0;
+	for (int i = 0; i < n; i++) twice += x[size_t(i)] * y[size_t((i + 1) % n)] - x[size_t((i + 1) % n)] * y[size_t(i)];
+	// The ring as a loop of links walked counter-clockwise, whichever way it was given.
+	std::vector<int> ahead(x.size()), behind(x.size());
+	for (int i = 0; i < n; i++) {
+		const int up = (i + 1) % n, down = (i + n - 1) % n;
+		ahead[size_t(i)] = twice >= 0 ? up : down;
+		behind[size_t(i)] = twice >= 0 ? down : up;
+	}
+	const auto turn = [&](int a, int b, int c) {
+		return (x[size_t(b)] - x[size_t(a)]) * (y[size_t(c)] - y[size_t(a)]) - (y[size_t(b)] - y[size_t(a)]) * (x[size_t(c)] - x[size_t(a)]);
+	};
+	const auto convex = [&](int i) { return turn(behind[size_t(i)], i, ahead[size_t(i)]) > 0; };
+	// Whether p stands in the counter-clockwise triangle a, b, c or on its sides.
+	const auto within = [&](int a, int b, int c, int p) { return turn(a, b, p) >= 0 && turn(b, c, p) >= 0 && turn(c, a, p) >= 0; };
+	const auto ear = [&](int i, int left) {
+		const int a = behind[size_t(i)], c = ahead[size_t(i)];
+		if (!convex(i)) return false;
+		for (int p = ahead[size_t(c)], k = 3; k < left; p = ahead[size_t(p)], k++)
+			if (!convex(p) && within(a, i, c, p)) return false;
+		return true;
+	};
+	int left = n, at = 0, tried = 0;
+	while (left > 3 && tried < left) {
+		if (!ear(at, left)) {
+			at = ahead[size_t(at)];
+			tried++;
+			continue;
+		}
+		const int a = behind[size_t(at)], c = ahead[size_t(at)];
+		out.insert(out.end(), { a, at, c });
+		ahead[size_t(a)] = c;
+		behind[size_t(c)] = a;
+		left--;
+		tried = 0;
+		at = a; // its neighbours are the corners whose ears changed
+	}
+	if (left == 3 && convex(at)) out.insert(out.end(), { behind[size_t(at)], at, ahead[size_t(at)] });
+	return out;
+}
+
 } // namespace city

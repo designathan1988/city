@@ -1,5 +1,10 @@
-// The kerbed edge round a corner or a turning bulb, band by band from the inner line out to the lot.
+// The kerbed edge round a junction's corner or a turning bulb: the kerb along its line, the footway as one polygon cut into triangles
+// (core/polygon_ops.h ring_triangles: whatever its shape, no triangle over another), and the face down from the footway's back.
 #include "render/roads/road_mesh.h"
+
+#include "core/polygon_ops.h"
+
+#include <algorithm>
 
 using namespace godot;
 
@@ -7,58 +12,90 @@ namespace city {
 
 namespace {
 const Vector3 UP(0, 1, 0);
+const Vector2 NO_POOL(POOL_NONE, 0);
+const Vector2 NO_POOLS[4] = { NO_POOL, NO_POOL, NO_POOL, NO_POOL };
 
-// One band of a kerbed edge between two sections (prev, cur): kerb face, stone top, 1 cm step, footway, skirt. `run` is how far
-// along the kerb a section stands, what its faces and its top read, as on a segment.
-struct Section {
-	Vector3 i, k, o, n;
-	float run;
-};
+constexpr float HALF = 0.5f;
 
-void band(const RoadEmit &e, const Section &a, const Section &b, float across, bool kerbed, const Color &walk) {
-	const StreetLook &L = e.L;
-	float top = kerbed ? L.h_curb : L.h_sidewalk, sh = L.h_sidewalk;
-	Vector3 up_t(0, top, 0), up_s(0, sh, 0), down(0, -L.skirt, 0);
-	Vector3 ak = kerbed ? a.k : a.i, bk = kerbed ? b.k : b.i;
-	const Vector2 none[4] = { Vector2(POOL_NONE, 0), Vector2(POOL_NONE, 0), Vector2(POOL_NONE, 0), Vector2(POOL_NONE, 0) };
-	auto xz = [](const Vector3 &p) { return Vector2(p.x, p.z); };
-	auto face = [&](const Vector3 p0, const Vector3 p1, const Vector3 p2, const Vector3 p3, const Color &c, const Vector3 &out) {
-		const Vector3 p[4] = { p0, p1, p2, p3 };
-		const Vector2 uv[4] = { Vector2(a.run, 0), Vector2(b.run, 0), Vector2(b.run, 0), Vector2(a.run, 0) };
-		emit_quad(e.mb, p, uv, none, road_color(c, RoadMat::SKIRT), out);
-	};
-	face(a.i, b.i, b.i + up_t, a.i + up_t, L.curb, a.n);
-	if (kerbed) {
-		const Vector3 p[4] = { a.i + up_t, b.i + up_t, b.k + up_t, a.k + up_t };
-		const float wa = (a.k - a.i).length(), wb = (b.k - b.i).length();
-		const Vector2 uv[4] = { Vector2(across, a.run), Vector2(across, b.run), Vector2(across + wb, b.run), Vector2(across + wa, a.run) };
-		emit_quad(e.mb, p, uv, none, road_color(L.curb, RoadMat::KERB), UP);
-		face(a.k + up_s, b.k + up_s, b.k + up_t, a.k + up_t, L.curb, -a.n);
+V2 plan(const Vector3 &p) { return V2(p.x, p.z); }
+
+// The point of the line through `pts` nearest `p`, in plan.
+V2 nearest_on(const V2 &p, const std::vector<Vector3> &pts) {
+	V2 best = plan(pts[0]);
+	for (size_t k = 0; k + 1 < pts.size(); k++) {
+		const V2 a = plan(pts[k]), b = plan(pts[k + 1]);
+		float t = 0;
+		dist_point_segment(p, a, b, &t);
+		const V2 q = a + (b - a) * t;
+		if ((q - p).len2() < (best - p).len2()) best = q;
 	}
-	{ // the footway round the corner: no kerb at the inner line, the lot at the outer
-		const float wa = (a.o - ak).length(), wb = (b.o - bk).length();
-		const Vector3 p[4] = { ak + up_s, bk + up_s, b.o + up_s, a.o + up_s };
-		const Vector2 uv[4] = { xz(p[0]) + Vector2(0, p[0].y), xz(p[1]) + Vector2(0, p[1].y), xz(p[2]) + Vector2(0, p[2].y), xz(p[3]) + Vector2(0, p[3].y) };
-		const Color cols[4] = { wear_color(0, wa, 0, RoadMat::FOOTWAY, 0), wear_color(0, wb, 0, RoadMat::FOOTWAY, 0),
-				wear_color(wb, 0, 0, RoadMat::FOOTWAY, 0), wear_color(wa, 0, 0, RoadMat::FOOTWAY, 0) };
-		emit_quad(e.mb, p, uv, none, cols, UP);
-	}
-	face(a.o + down, b.o + down, b.o + up_s, a.o + up_s, walk, -a.n);
+	return best;
+}
+
+float distance_to(const V2 &p, const std::vector<Vector3> &pts) { return (nearest_on(p, pts) - p).len(); }
+
+// A vertical face between two points of a line, from `lo` up to `hi` over each, facing `out`; `run` how far along the line each lies.
+void face(const RoadEmit &e, const Vector3 &a, const Vector3 &b, float lo, float hi, float run_a, float run_b, const Color &col, const Vector3 &out) {
+	if (hi <= lo) return;
+	const Vector3 p[4] = { a + Vector3(0, lo, 0), b + Vector3(0, lo, 0), b + Vector3(0, hi, 0), a + Vector3(0, hi, 0) };
+	const Vector2 uv[4] = { Vector2(run_a, lo), Vector2(run_b, lo), Vector2(run_b, hi), Vector2(run_a, hi) };
+	emit_quad(e.mb, p, uv, NO_POOLS, road_color(col, RoadMat::SKIRT), out);
 }
 } // namespace
 
-void kerbed_line(const RoadEmit &e, const std::vector<Vector3> &in, const std::vector<Vector3> &bk, const std::vector<Vector3> &out,
-		float across, bool kerbed, const Color &walk) {
-	Section prev;
+void kerb_band(const RoadEmit &e, const std::vector<Vector3> &in, const std::vector<Vector3> &stone, float top, float walk, bool has_stone) {
+	const StreetLook &L = e.L;
 	float run = 0;
-	for (size_t k = 0; k < in.size(); k++) {
-		Vector3 nn = in[k] - out[k];
-		nn.y = 0;
-		nn = nn.length() > 0 ? nn.normalized() : UP;
-		if (k > 0) run += (in[k] - in[k - 1]).length();
-		Section cur{ in[k], bk[k], out[k], nn, run };
-		if (k > 0) band(e, prev, cur, across, kerbed, walk);
-		prev = cur;
+	for (size_t k = 1; k < in.size(); k++) {
+		const Vector3 &a = in[k - 1], &b = in[k], &sa = stone[k - 1], &sb = stone[k];
+		Vector3 towards_road = (a + b) - (sa + sb); // from the stone's back to the kerb line
+		towards_road.y = 0;
+		towards_road = towards_road.length() > 0 ? towards_road.normalized() : UP;
+		const float step = (b - a).length();
+		face(e, a, b, 0, top, run, run + step, L.curb, towards_road);
+		if (has_stone) {
+			const Vector3 up(0, top, 0);
+			const Vector3 p[4] = { a + up, b + up, sb + up, sa + up };
+			const float wa = (sa - a).length(), wb = (sb - b).length();
+			const Vector2 uv[4] = { Vector2(0, run), Vector2(0, run + step), Vector2(wb, run + step), Vector2(wa, run) };
+			emit_quad(e.mb, p, uv, NO_POOLS, road_color(L.curb, RoadMat::KERB), UP);
+			face(e, sa, sb, walk, top, run, run + step, L.curb, -towards_road);
+		}
+		run += step;
+	}
+}
+
+void footway_patch(const RoadEmit &e, const std::vector<Vector3> &ring, const std::vector<Vector3> &inner, const std::vector<Vector3> &back) {
+	if (ring.size() < 3) return;
+	std::vector<double> x, z;
+	for (const Vector3 &p : ring) {
+		x.push_back(p.x);
+		z.push_back(p.z);
+	}
+	std::vector<int> ids;
+	for (const Vector3 &p : ring) {
+		const V2 at = plan(p);
+		const Color worn = wear_color(distance_to(at, inner), distance_to(at, back), 0, RoadMat::FOOTWAY, 0);
+		ids.push_back(e.mb.add(p, UP, worn, Vector2(p.x, p.z + p.y), NO_POOL));
+	}
+	const std::vector<int> tris = ring_triangles(x, z);
+	for (size_t k = 0; k + 2 < tris.size(); k += 3) e.mb.tri(ids[size_t(tris[k])], ids[size_t(tris[k + 1])], ids[size_t(tris[k + 2])], UP);
+}
+
+void footway_skirt(const RoadEmit &e, const std::vector<Vector3> &back, const std::vector<Vector3> &inner, const Color &walk) {
+	float run = 0;
+	for (size_t k = 1; k < back.size(); k++) {
+		const Vector3 &a = back[k - 1], &b = back[k];
+		const float step = Vector2(b.x - a.x, b.z - a.z).length();
+		if (step <= 0) continue;
+		Vector3 out(b.z - a.z, 0, a.x - b.x); // square to the side, then turned away from the footway's inner side
+		const V2 mid = plan((a + b) * HALF);
+		if ((mid - nearest_on(mid, inner)).dot(V2(out.x, out.z)) < 0) out = -out;
+		const float top = std::min(a.y, b.y), drop = top - e.L.skirt;
+		const Vector3 p[4] = { Vector3(a.x, a.y - e.L.skirt, a.z), Vector3(b.x, b.y - e.L.skirt, b.z), b, a };
+		const Vector2 uv[4] = { Vector2(run, drop), Vector2(run + step, drop), Vector2(run + step, top), Vector2(run, top) };
+		emit_quad(e.mb, p, uv, NO_POOLS, road_color(walk, RoadMat::SKIRT), out.normalized());
+		run += step;
 	}
 }
 
