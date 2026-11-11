@@ -13,7 +13,7 @@ namespace traffic {
 inline float arc_lo(const RoadSegment &g) { return float(g.retreat_a); } // the sidewalk's first and last arc
 inline float arc_hi(const RoadSegment &g) { return float(g.len - g.retreat_b); }
 void aim_line(Pedestrian &w); // a straight line toward ways[wi] from where the walker stands
-void onto_sidewalk(CityState &s, Pedestrian &w); // onto the sidewalk at the same place across as where it stands
+void onto_sidewalk(const CityState &s, Pedestrian &w); // onto the sidewalk at the same place across as where it stands
 void stand_on_sidewalk(const CityState &s, Pedestrian &w); // its pose at (seg, side, s, u), body and way heading the way it walks
 void despawn(TrafficState &t, int id, bool arrived);
 void despawn_party(CityState &s, int id, bool arrived); // with the one it walks with, when that one is within reach

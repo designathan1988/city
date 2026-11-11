@@ -2,7 +2,8 @@
 // crosswalk on it (sim/traffic/ped_routes.cpp aim_onto_sidewalk), from each place across the sidewalk it leaves, against the
 // carriageway (sim/street/footway.h on_carriageway); a way that touches it is told with its node's arms and corners as drawn. And
 // what opens onto the corners (lot_gates): the lots' bays read near the camera whose way reaches a lane through a gate whose foot
-// lies in a corner or a crosswalk (sim/roads/parking_layout.h kerb_standing).
+// lies in a corner or a crosswalk (sim/roads/parking_layout.h kerb_standing). And the step onto a sidewalk at the end of a way
+// (onto_sidewalk_moves): a body put onto its sidewalk where it stands stays where it stood.
 #include "api/city_probes.h"
 #include "sim/roads/parking_layout.h"
 #include "sim/state/city_state.h"
@@ -100,6 +101,50 @@ Dictionary CityProbes::corner_ways() {
 	d["ways"] = ways;
 	d["off"] = off;
 	d["cases"] = cases;
+	return d;
+}
+
+namespace {
+constexpr float LAID_EVERY_M = 5.f; // along a sidewalk, a body laid every this much
+constexpr float BEYOND_ROOM_M = 0.2f; // and this far past its room's edge either side, as a line may end
+} // namespace
+
+Dictionary CityProbes::onto_sidewalk_moves() {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	const CityState &s = *state_;
+	int laid = 0;
+	float worst = 0;
+	Array worst_case;
+	for (int seg = 0; seg < int(s.roads.segs.size()); seg++) {
+		if (!traffic::walkable(s, seg)) continue;
+		const RoadSegment &g = s.roads.segs[size_t(seg)];
+		const Profile &p = s.roads.profile_of(seg);
+		for (int side = 0; side < 2; side++) {
+			if (!(side == 0 ? p.has_walk_right : p.has_walk_left)) continue;
+			const float half = traffic::walk_half(s, seg, side);
+			for (float arc = traffic::arc_lo(g); arc <= traffic::arc_hi(g); arc += LAID_EVERY_M)
+				for (const float u : { -half - BEYOND_ROOM_M, -half, 0.f, half, half + BEYOND_ROOM_M }) {
+					Pedestrian w; // a body standing there, put onto the sidewalk where it stands and posed again
+					w.seg = seg;
+					w.side = side;
+					w.s = arc;
+					w.u = u;
+					traffic::stand_on_sidewalk(s, w);
+					const V2 was(w.cur.x, w.cur.z);
+					traffic::onto_sidewalk(s, w);
+					traffic::stand_on_sidewalk(s, w);
+					const float moved = (V2(w.cur.x, w.cur.z) - was).len();
+					laid++;
+					if (moved <= worst) continue;
+					worst = moved;
+					worst_case = Array::make(seg, side, arc, u, moved);
+				}
+		}
+	}
+	Dictionary d;
+	d["laid"] = laid;
+	d["worst_m"] = worst;
+	d["worst_case"] = worst_case; // street, side, arc, place across, metres moved
 	return d;
 }
 

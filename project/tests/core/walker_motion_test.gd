@@ -12,6 +12,7 @@ const VIEW_M := 300.0
 const EDGE_M := 40.0 # a walker this near the view's edge may walk into it or out of it
 const CATCH := 1.2 # traffic.json ped_company_catch: closing on the one it walks with, a walker goes this much faster than its pace
 const STEP_SLACK_M := 0.05 # a stripe change's step aside over a tick, and the tick's rounding
+const STAY_M := 0.001 # a body put onto its sidewalk moves less than this: the rounding of the curve's nearest point
 const REBORN_M := 5.0 # farther in one tick is another walker given the same index
 const MOVING_M := 0.01 # a walker that moved this much in a tick is walking
 const TURN_RAD_S := 6.0 # traffic.json ped_turn_rad_s: how fast a body turns
@@ -65,6 +66,8 @@ func _ready() -> void:
 		return
 	_dt = 1.0 / float(DataTables.tuning("sim_tick_hz"))
 	new_map(TOWN_MAP, SEED, true)
+	var onto: Dictionary = CityStore.query(&"onto_sidewalk_moves")
+	check(int(onto.laid) > 0 and float(onto.worst_m) < STAY_M, "a body put onto its sidewalk where it stands stays there: the farthest moved %.3f m of %d laid, at (street, side, arc, place across, metres) %s" % [onto.worst_m, onto.laid, onto.worst_case])
 	var corners: Dictionary = CityStore.query(&"corner_ways")
 	check(int(corners.ways) > 0 and int(corners.off) == 0, "every way round a corner with no crosswalk keeps off the carriageway: %d of %d step on it, the first (node, from, side, to, place across, where, the run, the node, its arms: dir x, dir z, asphalt left, right, setback; its corners: mode, trims, radius, centre) %s" % [corners.off, corners.ways, corners.cases])
 	CityStore.query(&"set_city_hour", [HOUR])

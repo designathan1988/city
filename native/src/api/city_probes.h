@@ -41,6 +41,9 @@ public:
 	// The lots' bays read near the camera whose way reaches a lane: how many, how many through a gate whose foot lies in a corner or a
 	// crosswalk, and the first (bay, building, street, the foot's arc, the lane's point).
 	godot::Dictionary lot_gates();
+	// Bodies laid on every sidewalk, inside their room and past it, put onto the sidewalk where they stand (pedestrians.cpp
+	// onto_sidewalk) and posed again: how many, the farthest one moved and where (street, side, arc, place across, metres).
+	godot::Dictionary onto_sidewalk_moves();
 	void set_city_hour(float hour); // tests: the city's clock at that hour of the day
 	godot::Array people_clips() const; // tests: the clips of people.bin
 	bool show_people_clip(const godot::String &name); // captures: everybody at rest in that clip

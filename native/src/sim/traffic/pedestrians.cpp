@@ -3,6 +3,7 @@
 // phase or a gap in the traffic (ped_crossing.cpp) and at the end of the route go in at a door of the street (ped_doors.cpp);
 // among the others and the street furniture on every way as ped_crowd.cpp moves them (a stripe across each way, the pace the
 // bodies ahead leave), before a kerb in its queue (ped_kerb.cpp); with somebody, as a party (ped_party.cpp).
+#include "sim/roads/parking_layout.h"
 #include "sim/traffic/kerb_stops.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -31,16 +32,19 @@ void aim_line(Pedestrian &w) {
 	onto_line(w);
 }
 
-// On the sidewalk where it stands: its arc `s` was the one it was heading for, and becomes the one its body is at (how far along
-// the sidewalk's tangent it stands from that arc's middle), with its place across; from there it aims at its own side of the way
-// again (the line it came by aimed it at the line).
-void onto_sidewalk(CityState &s, Pedestrian &w) {
+// On the sidewalk where it stands: its arc is the street curve's nearest point to its body and its place across is how far its
+// body stands from the sidewalk's middle there, whatever its room: a walker that ends its way past its room's edge is stepped back
+// in by the stripes at its lateral pace (ped_stripes.cpp side_limits), never moved there at once. From there it aims at its own side
+// of the way again (the line it came by aimed it at the line).
+void onto_sidewalk(const CityState &s, Pedestrian &w) {
 	w.mode = PedMode::SIDEWALK;
+	const RoadSegment &g = s.roads.segs[size_t(w.seg)];
+	double t, dist;
+	closest_t(g.q, w.cur.x, w.cur.z, t, dist);
+	w.s = float(arc_of_t(g, t));
 	Pose mid;
 	sidewalk_pose(s, w.seg, w.side, w.s, 0.f, mid);
-	const float half = walk_half(s, w.seg, w.side), dx = w.cur.x - mid.x, dz = w.cur.z - mid.z;
-	w.s = clampf(w.s + dx * mid.fx + dz * mid.fz, 0.f, float(s.roads.segs[size_t(w.seg)].len));
-	w.u = clampf(dx * mid.fz - dz * mid.fx, -half, half);
+	w.u = (w.cur.x - mid.x) * mid.fz - (w.cur.z - mid.z) * mid.fx;
 	w.u_goal = w.dir == 0 ? -w.track : w.track;
 	w.stripe_held = 0;
 }
