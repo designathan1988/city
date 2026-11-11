@@ -10,8 +10,8 @@
 - a name carried as a string: on the receiver's classes, or (handed to a call) every script method or signal and every
   bound method with that name — what the engine resolves by it.
 A parameter holds the arguments written at every call site, a field what every assignment puts in it: the values come
-from the links found so far: each link subscribes its arguments to the parameters, and only new values pass (`flows`,
-difference propagation, S2).
+from the links found so far: each call site subscribes its arguments to the parameters (two on one line, each its own),
+and only new values pass (`flows`, difference propagation, S2).
 """
 from __future__ import annotations
 
@@ -44,6 +44,7 @@ class Resolver(Flows):
         self.typer = Typer(index, self)
         self.edges: list[Edge] = []
         self.known = set()                  # the links found, by (src, dst, kind, line, file)
+        self.carried = set()                # the call sites whose values flow, by that key and the argument trees
         self.out = defaultdict(list)
         self.inn = defaultdict(list)
         self.status = {}                    # reference node -> ("external" | "unreached", name), its last outcome
@@ -224,14 +225,18 @@ class Resolver(Flows):
                             getattr(ref, "args", ())))
 
     def keep_edge(self, edge: Edge) -> None:
+        """One link per line for the report; the values flow from every call site (two calls of one function on one
+        line carry their own arguments), each set of argument trees once."""
         key = (edge.src, edge.dst, edge.kind, edge.line, edge.file)
-        if key in self.known:
-            return
-        self.known.add(key)
-        self.edges.append(edge)
-        self.out[edge.src].append(edge)
-        self.inn[edge.dst].append(edge)
-        self.flows_of(len(self.edges) - 1, edge)
+        if key not in self.known:
+            self.known.add(key)
+            self.edges.append(edge)
+            self.out[edge.src].append(edge)
+            self.inn[edge.dst].append(edge)
+        site = key + (edge.args,)
+        if site not in self.carried:
+            self.carried.add(site)
+            self.flows_of(edge)
 
     def note(self, outcome: str, name: str) -> None:
         """The outcome of the reference being linked when it reaches nothing of the program (none once it reached

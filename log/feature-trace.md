@@ -341,3 +341,27 @@ complete; ledgers with their rulings in `log/trace-rules-delta-progress.md` and 
 final review done by the author (agents are forbidden). The report shows one row per end when a call and an override
 reach it (`walk.ordered`); the city report from `road_tool.gd:229` now reaches 2,830 definitions ahead (2,217 before the
 day's rules) with 1,527 pieces of state written (1,058).
+
+## Cycles of identity subscriptions kept as one node; every call site carries its arguments (2026-11-11 05:30)
+`superpowers:systematic-debugging` → research → `superpowers:writing-plans` (`log/trace-rules-cycles-plan.md`) →
+`superpowers:executing-plans` (ledger `log/trace-rules-cycles-progress.md`). **Research** (`log/trace-rules.md`,
+"Collapsing cycles of identical values", "When the cycles are looked for"): PKH 2003 and 2004/2007, Hardekopf-Lin 2007;
+lazy detection and a kept topological order rejected for this graph (chains of one-valued nodes; targets wired before
+their sources); Tarjan's sweep run when the identity edges have doubled. **Code:** `solver.py` reads every node through
+`find` (union-find), `follow` is the solver's identity subscription, pending differences name the subscriptions they go
+to; `cycles.py` (new) finds the components and merges them exactly: each member's subscriptions get only what it lacked,
+waiting differences keep their member's subscriptions, a moved reader is owed exactly the values it had not read
+(`Solver.extra`, given before the tail by `take_deltas`). **Found by the test at the end and fixed at the cause:**
+`Resolver.keep_edge` carried the arguments of the first call site of a line only (`place(new Left()) + place(new
+Right())`: one of the two); the report keeps one link per line, the values now flow from every site
+(`Resolver.carried`, `flows_of(edge)`). **Tests:** 103 OK (8 in `test_cycles.py`, one in `test_pending.py` on
+`fixture/pending/sites.js`; each fails on 6aaab88f or with its part of the merge removed); city on the fixed snapshot:
+the same 100 290 links as 6aaab88f; the lab's own code (865 files, 76 437 definitions): sweeps off and on give the same
+170 800 links (45.9 s, 46.4 s). **Measured:** on the lab with three.js before the call-site fix the merge cut the drain
+196 s -> 180 s and the whole run not at all (383.6 s -> 382.7 s): cycles are not what the lab costs. With every call
+site carrying its arguments that run no longer ends within 840 s (2 009 318 links at 827 s; 785 524 before, from a flow
+that lost every call after the first on a line, which three's shading language writes everywhere): the next item, in
+`log/pendencias.md`. **Created:** `tools/analysis/featuretrace/cycles.py`, `tests/test_cycles.py`,
+`tests/fixture/pending/sites.js`, `log/trace-rules-cycles-plan.md`, `log/trace-rules-cycles-progress.md`. **Changed:**
+`solver.py`, `typer.py`, `resolve.py`, `flows.py`, `rules.py`, `tests/test_pending.py`, `log/trace-rules.md`,
+`log/mapa.md`, `log/pendencias.md`, `log/trace-rules-pending-progress.md`.

@@ -400,3 +400,66 @@ delta at each position in turn, the others whole).
 | Implicit destruction | C++ | a destructor (written or implicit) runs the destructors of the members held by value, of what a library owner holds (smart pointers, containers, optional, pair, tuple, variant), and of the bases |
 | Relinking a reference | all | when what it reads grew, only the difference is linked: each grown node's new values in its place, in turn, the others whole; a decision that depends on the whole set (anything reached, an overload that fits) uses what the reference already found |
 | Overrides of a call | all | every override below each target is linked as such, whatever else the same call reached (no dependence on the order of relinks) |
+
+## Collapsing cycles of identical values (research, 2026-11-11 02:00)
+
+Sources: D. J. Pearce, P. H. J. Kelly, C. Hankin, "Online Cycle Detection and Difference Propagation for Pointer
+Analysis" (SCAM 2003; TOPLAS 2007): nodes on a cycle of inclusion edges always hold the same set, so a cycle can be
+collapsed into one node, found online as edges are added; B. Hardekopf, C. Lin, "The Ant and the Grasshopper: Fast and
+Accurate Pointer Analysis for Millions of Lines of Code" (PLDI 2007): Lazy Cycle Detection — when a value set is
+propagated along an edge a -> b and the two sets come out equal, look for a cycle through that edge (once per edge) and
+collapse it; F. Pereira, D. Berlin (CGO 2009): wave propagation over the collapsed graph.
+
+| Rule | What the tracer does |
+|---|---|
+| Which edges form cycles | only subscriptions that pass values unchanged (`same`: an argument to a parameter, a local's value, a return); a transfer that changes values (member, call, step, operator, element) never joins a cycle |
+| When to look | after values pass along a `same` edge a -> b and a and b hold the same set, the first time for that edge |
+| What is collapsed | the strongly connected component of `same` edges through a and b: one representative holds the union of the values and every subscription of the members (union-find on node keys) |
+| What a reader sees | a node's values are its representative's; consumers that read a merged node are relinked over its values |
+
+### When the cycles are looked for (research continued, 2026-11-11 02:40)
+
+Read further before planning: Hardekopf and Lin's slides (PLDI 2007) state the trade-off of every online detector: too
+eager costs graph walks, too lazy finds cycles late. Pearce, Kelly and Hankin keep two forms: SCAM 2003 keeps a
+topological order of the graph and searches only from an edge that breaks it; PASTE 2004 / TOPLAS 2007 collapse every
+cycle with Tarjan's algorithm over the whole graph once per pass of the solver (Tarjan gives the order for free).
+Sources: https://www.doc.ic.ac.uk/~phjk/Publications/OnlineCycleDetectionSCAM2003.pdf,
+https://www.doc.ic.ac.uk/~phjk/Publications/EfficientFieldSensitivePointerAnalysisforCPASTE04.pdf,
+https://www.cs.utexas.edu/~lin/papers/pldi07.pdf, https://www.slideserve.com/jalen/the-ant-and-the-grasshopper-fast-and-accurate-pointer-analysis-for-millions-of-lines-of-code.
+
+What this tracer's graph does to each form, read from its code:
+- Lazy detection (the row "When to look" above) fires on every `same` edge out of a node with one value (a local
+  holding the one class its constructor gives): such chains are most of the graph, and each firing walks everything
+  downstream. Too eager here.
+- A kept topological order: nodes are wired on demand, a target before its sources (`Typer.node_of` wires the node, then
+  the trees it follows), so most new edges break the order and the region searched is every node added since.
+- A whole sweep with Tarjan: linear in the `same` edges, finds every cycle present, and needs no trigger per edge. The
+  solver here is a worklist, not passes, so a sweep runs when the `same` edges have doubled since the last one (the first
+  when the drain starts, after every reference was linked once): the sweeps together cost at most twice the final graph.
+
+Decision (replaces the row "When to look" above, kept as it was written): Tarjan's sweep over the `same` edges, run when
+they have doubled; each strongly connected component of two or more nodes becomes one node. A merge is exact: each
+member's subscriptions get only the values that member lacked, each difference still waiting for a member goes to that
+member's subscriptions, and a consumer that read a member reads the merged node from its start.
+
+### What the lab run showed (2026-11-11 04:30)
+
+Measured once at the end, base `6aaab88f` against the merge, on the lab (145 626 definitions): the same 785 524 links,
+the drain after the first linking 196 s -> 180 s, the whole run 383.6 s -> 382.7 s. Two findings, both read in the code:
+- A call site, not a line, carries arguments. `Resolver.keep_edge` keeps one link per (caller, callee, kind, line,
+  file) and subscribes the arguments of that first one only: `place(new Left()) + place(new Right())` on one line gave
+  `place`'s parameter one of the two, whichever was linked first (the two runs kept a different one of the lab's
+  `doc.addNode({...})` pair on one line of `groundRoads.ts`). Rule: the report keeps one link per line; the values
+  flow from every call site, each set of argument trees once.
+- A reader moved by a merge read the merged node from its start (the plan's rule), 17 318 more relinks: what the drain
+  saved, the relinking spent. Rule: a reader moved from a member gets exactly the values of the union it had not read
+  (those of the member past its mark, and the others' values), then the tail as before.
+
+### The lab with three.js after the call-site rule (2026-11-11 05:10)
+
+With every call site carrying its arguments, the lab with three.js (`src`, `tsconfig.json`, three's `package.json`,
+`build`, `examples/jsm`) is no longer the run measured above: 273 408 links after the first linking (273 231 before),
+and at 827 s 2 009 318 links with 169 225 consumers still waiting (785 524 at the end before), stopped at the deadline.
+The earlier numbers were those of a flow that lost every call after the first on a line: three's shading language is
+written that way (`add( mul( a, b ), mul( c, d ) )`), and its helpers' parameters now hold what every call gives them.
+The size of that context-insensitive flow, not cycles, is what the lab costs: the next item (`log/pendencias.md`).

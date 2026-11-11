@@ -15,3 +15,4 @@ Task 6: Ruling: every override is labelled as such even when the same call reach
 Final review: self-review (no subagent: the owner forbade agents, 2026-11-10)
 Final: Ruling: the duplicated call/override rows were merged in the report (walk.ordered shows an override only for an end no other running link reaches; the graph keeps both) — asked for by 'conclude every pending item' — cost if wrong: an override row hidden where a call row to the same end is shown
 Final: minor (deferred): lab run time (368-428 s) is dominated by the initial value drain; collapsing cycles of same-set nodes (PKH/HCD) would cut it
+Final: resolved 2026-11-11 05:30 (the deferred minor above): cycles of identity subscriptions are merged (log/trace-rules-cycles-plan.md); measured on the lab, the merge cut the drain 196 s -> 180 s and the whole run not at all (383.6 s -> 382.7 s): the cost is the size of the flow, not cycles (log/pendencias.md).

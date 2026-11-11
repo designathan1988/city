@@ -28,12 +28,6 @@ STEPS = {"index": ITEM, "elements": ITER, "deref": DEREF}
 CONSTANT_SHAPES = ("cast", "new", "callable", "self", "super", "strname", "module")
 
 
-def same(t):
-    def transfer_same(target, values):
-        t.add(target, values)
-    return transfer_same
-
-
 class Typer(TypeNames, Solver):
     def __init__(self, index, resolver):
         self.ix = index
@@ -56,9 +50,6 @@ class Typer(TypeNames, Solver):
     def values_of(self, node) -> list[tuple]:
         self.read(node)
         return self.current(node)
-
-    def follow(self, source, target) -> None:
-        self.subscribe(source, target, ("same",), same(self))
 
     # ---- wiring ------------------------------------------------------------------------------------------------
     def node_of(self, tree, unit):
@@ -171,7 +162,8 @@ class Typer(TypeNames, Solver):
         """A consumer value computed again whole from what it reads (its value only grows)."""
         node, compute = self.computed[consumer]
         self.dirty.discard(consumer)
-        self.grown.pop(consumer, None)         # computed again whole
+        self.grown.pop(consumer, None)         # computed again whole: nothing is owed to it
+        self.extra.pop(consumer, None)
         outer, self.substitution = self.substitution, None    # whole, even inside a reference linked by difference
         self.stack.append(consumer)
         try:

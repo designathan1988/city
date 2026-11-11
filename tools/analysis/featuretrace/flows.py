@@ -18,8 +18,8 @@ class Flows:
         """Adds values to a place (a parameter, a variable)."""
         self.typer.add(place, values)
 
-    def flows_of(self, number: int, edge) -> None:
-        """The subscriptions a new link brings."""
+    def flows_of(self, edge) -> None:
+        """The subscriptions a new link, or a new call site of a known link, brings."""
         typer, units = self.typer, self.ix.units
         source = units[edge.src]
         if edge.kind in CARRYING:
