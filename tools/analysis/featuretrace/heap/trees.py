@@ -26,9 +26,12 @@ def wire(an, node, tree, unit) -> None:
     if kind == NAME:
         names.wire_name(an, node, unit, tree[1])
     elif kind == MEMBER:
-        if tree[1] == (SUPER,):
-            return                                               # the base class's member (Task 2)
         name = tree[2]
+        if tree[1] == (SUPER,):                                  # `super.name`: the base classes' member, on `this`
+            bases = base_keys(an, unit)
+            solver.subscribe(this_of(an, unit), node, (SUPER, name), lambda t, objs: [
+                members.declared_read(an, t, o, k, name) for o in objs for k in bases])
+            return
         solver.subscribe(an.node(tree[1], unit), node, (MEMBER, name), lambda t, objs: [
             members.read(an, t, o, name) for o in objs])
     elif kind == INDEX:
@@ -38,7 +41,7 @@ def wire(an, node, tree, unit) -> None:
     elif kind == CONSTRUCT:
         site = tree[2] if len(tree) > 2 else -1
         solver.subscribe(an.node(tree[1], unit), node, (CONSTRUCT,), lambda t, objs: solver.add(t, [
-            an.objects.make(SITE_NEW, k, unit.file, site) for k in map(an.objects.class_itself, objs) if k]))
+            an.objects.make(SITE_NEW, k, unit.file, site) for k in map(an.made_by, objs) if k]))
     elif kind == CALLABLE:
         solver.add(node, [an.function_object(an.ix.offset[unit.file] + tree[1])])
     elif kind == CAST:
@@ -102,7 +105,18 @@ def wire_call(an, node, tree, unit) -> None:
                 solver.subscribe(held, target, (CALL, obj), lambda t, fns, obj=obj: [
                     an.call(t, fn, obj, args, CALL) for fn in fns])
         solver.subscribe(an.node(callee[1], unit), node, (CALL, name), by_receiver)
-    elif callee[0] != MEMBER:
+    elif callee[0] == MEMBER:                                    # `super.name(...)`, `super(...)`: on `this`
+        name, bases = callee[2], base_keys(an, unit)
+
+        def by_this(target, objs):
+            for obj in objs:
+                held = (SUPER, obj, name, unit.gid)
+                for k in bases:
+                    members.declared_read(an, held, obj, k, name)
+                solver.subscribe(held, target, (CALL, obj), lambda t, fns, obj=obj: [
+                    an.call(t, fn, obj, args, CALL) for fn in fns])
+        solver.subscribe(this_of(an, unit), node, (SUPER, name), by_this)
+    else:
         solver.subscribe(an.node(callee, unit), node, (CALL,), lambda t, fns: [
             an.call(t, fn, None, args, CALL) for fn in fns])
 
@@ -122,9 +136,20 @@ def wire_cast(an, node, text: str) -> None:
 
 def this_of(an, unit):
     """`this` where it is read: an arrow's or a lambda's is its enclosing function's (lexical), any other its own."""
+    return an.this(lexical(an, unit).gid)
+
+
+def lexical(an, unit):
+    """The function whose `this` and `super` a function reads: itself, or for an arrow its enclosing function's."""
     while unit.this_of == ARROW_THIS and unit.outer >= 0:
         unit = an.ix.units[an.ix.offset[unit.file] + unit.outer]
-    return an.this(unit.gid)
+    return unit
+
+
+def base_keys(an, unit) -> list[str]:
+    """The classes `super` names where it is written: the bases of the class its function belongs to."""
+    owner = lexical(an, unit).owner
+    return an.ix.base_keys(an.ix.classes[owner]) if owner in an.ix.classes else []
 
 
 def wire_local(an, node, unit, name: str) -> None:

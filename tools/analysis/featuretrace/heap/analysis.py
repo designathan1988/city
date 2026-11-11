@@ -28,6 +28,7 @@ class Analysis:
         self.edges, self.known = [], set()
         self.out, self.inn = defaultdict(list), defaultdict(list)
         self.entered = set()                 # the functions given the unknown object as entry points
+        self._constructed = None
 
     # ---- nodes -------------------------------------------------------------------------------------------------
     def node(self, tree, unit):
@@ -121,6 +122,20 @@ class Analysis:
 
     def any_field(self, obj: int):
         return self.field(obj, ANY_FIELD)
+
+    def made_by(self, obj: int) -> str | None:
+        """The class of the objects `new` on `obj` makes: a class itself, or a constructor function's own (N1'')."""
+        key = self.objects.class_itself(obj)
+        if key is not None:
+            return key if key in self.ix.classes else None
+        gid = self.objects.function(obj)
+        return self.ix.units[gid].constructs or None if gid is not None else None
+
+    def constructed(self) -> dict:
+        """A constructor function's class -> the function (its objects' prototype is the function's `prototype`)."""
+        if self._constructed is None:
+            self._constructed = {u.constructs: u.gid for u in self.ix.units if u.constructs}
+        return self._constructed
 
     def is_function_unit(self, gid: int) -> bool:
         return self.ix.units[gid].kind in FUNCTION_KINDS

@@ -20,8 +20,7 @@ def lower(an, unit) -> None:
         kind = ref.kind
         if kind == CALL:
             callee = (MEMBER, ref.base, ref.name, False) if ref.base is not None else (NAME, ref.name)
-            if ref.base != (SUPER,):
-                an.written(an.node((CALL, callee, ref.args), unit), unit.gid, ref.line)
+            an.written(an.node((CALL, callee, ref.args), unit), unit.gid, ref.line)
         elif kind == INVOKE and ref.base is not None:
             an.written(an.node((CALL, ref.base, ref.args), unit), unit.gid, ref.line)
         elif kind == NEW and ref.base is not None:
@@ -43,15 +42,17 @@ def construct(an, unit, ref) -> None:
     args = [an.node(a, unit) for a in ref.args]
 
     def by_class(_, objs):
-        for key in (an.objects.class_itself(o) for o in objs):
-            if key is None or key not in an.ix.classes:
+        for obj in objs:
+            key = an.made_by(obj)
+            if not key:
                 continue
             made = an.objects.make(SITE_NEW, key, unit.file, ref.site)
             call = (CONSTRUCTED, unit.gid, ref.site, key)
             an.written(call, unit.gid, ref.line)
-            for gid in an.ix.lookup(key, CONSTRUCTOR):
-                if an.is_function_unit(gid):
-                    an.call(call, an.function_object(gid), made, args, NEW)
+            fn = an.objects.function(obj)
+            ctors = [fn] if fn is not None else [g for g in an.ix.lookup(key, CONSTRUCTOR) if an.is_function_unit(g)]
+            for gid in ctors:                         # a class's constructor, or the function itself
+                an.call(call, an.function_object(gid), made, args, NEW)
     an.solver.subscribe(ctor, (CONSTRUCTED, unit.gid, ref.site), (NEW,), by_class)
 
 

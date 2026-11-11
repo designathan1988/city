@@ -60,6 +60,7 @@ SITE_LITERAL = "lit"       # an object literal, at its place
 SITE_ARRAY = "arr"         # an array literal, at its place
 SITE_FUNCTION = "fn"       # a function's object
 SITE_CLASS = "class"       # a class itself (its constructor)
+SITE_PROTOTYPE = "proto"   # the prototype object of a class or of a constructor function
 SITE_MODULE = "module"     # a module's namespace
 SITE_PRIMITIVE = "prim"    # a value of one of the language's primitive kinds
 SITE_TEXT = "str"          # a string the analysis knows the text of
