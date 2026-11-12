@@ -5,7 +5,7 @@ A file created or deleted enters `log/mapa.md` in the same commit: the `MAPA_DES
 The detail lives in `log/`: `mapa.md` (file by file), `ferramentas.md` (what each tool taught), `pendencias.md`
 (what is missing). Each line's records: `work-log.md` (port and graphics), `conversor.md`, `causa-raiz.md`, `lab.md`, `base.md`,
 `arquitetura.md` (the cause analyser), `review.md` (the full reading: findings, problems, process errors),
-`feature-trace.md` (the road flow traced by hand and the generic feature tracer's causes), `how-we-work.md` (the binding way, step by step, and the contradictions settled), `live-instance-design.md` (the live instance, the contracts' guards, the player's input, the order of the work).
+`feature-trace.md` (the road flow traced by hand and the generic feature tracer's causes), `how-we-work.md` (the binding way, step by step, and the contradictions settled), `live-instance-design.md` (the live instance, the contracts' guards, the player's input, the order of the work), `specification.md` (the goals with their targets, the reference hardware and budgets, what is not yet true, where the pause's three phases stand), `research.md` (every research: question, sources, test and proof).
 Before starting, read your line's record. When closing the theme, update it with the time and the commit, in the same commit. [c:records]
 
 **Where the tree stands (2026-11-10).** `native/`, `project/`, `tools/` and `log/` were taken back to `a1a771c4` (2026-11-07 20:29) by the owner's order: the city generated there is whole, and the lab ports made from 2026-11-08 21:30 on broke it.
