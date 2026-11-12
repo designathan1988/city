@@ -127,7 +127,7 @@ Android (arm64, armv8-a): JDK 17, Android SDK with build-tools 35.0.1 and platfo
 the JDK and SDK paths go in Godot's editor settings, `export/android/*`) and a release keystore outside the repository.
 
 **DLLs in a rebase:** never pick a side: rebuild both from the merged sources and run the suite. The build is reproducible in any
-folder (no link time or compile clock, root-relative paths, the release's function order from `native/pgo`: `native/CMakeLists.txt`):
+folder (no link time or compile clock, root-relative paths, the order printed by the release's first link: `native/sorted_link.cmake`):
 the same sources give the same bytes, so a rebuild of unchanged sources leaves the DLLs unchanged, in a clone or a worktree too.
 
 ## Estrutura do projeto

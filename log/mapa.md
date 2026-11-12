@@ -6,6 +6,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 **Raiz e ferramentas**
 - `native/CMakeLists.txt` — Godot 4.7 API, single precision, output in `project/bin`: the Windows DLLs (x86-64-v3) and the Android library (arm64)
 - `native/toolchain-mingw.cmake` — compilação cruzada Windows via llvm-mingw
+- `native/sorted_link.cmake` — the release DLL's link, its linker launcher: lld's call-graph sort prints the order in a first link, the second lays the DLL out by it, so the layout is the profile's and the same at every link
 - `project/export_presets.cfg` · `project/project.godot` — the Windows and Android (arm64 APK) exports and the Godot project (autoloads, first scene, ETC2/ASTC import for Android)
 
 **API GDExtension — native/src/api**
@@ -547,7 +548,6 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `tools/build/android.sh` — the Android build: the arm64 core library (NDK r28b) and the signed APK (`dist/android/Roadcraft.apk`)
 - `tools/build/free_dll.sh` — a DLL presa por um jogo aberto vai para `dist/held`, e a compilação segue sem fechar o jogo
 - `tools/build/pgo.sh` — o perfil da DLL de release: uma DLL instrumentada joga escondida e as contagens vão para `native/pgo/citycore.profdata`
-- `native/pgo/citycore.order` — the order of the release DLL's functions as the profile's call graph clusters them (lld's sort, printed by `tools/build/pgo.sh`): the link reads it, so every link lays the functions out alike
 - `tools/build/quick.sh` · `tools/build/check_scripts.gd` · `tools/build/photodiff.py` — a change checked in one command (a thin call of `tools/tasks`: only the tasks whose inputs changed); every GDScript compiled at once; the difference of two photo runs; the English rename of the tool folders (pending: the plan without `--apply`)
 - `tools/build/shader_contracts.json` · `tools/build/shader_contracts.py` — the values the shaders share with the core and the scripts, written once; the generator of each group's C++ header and shader include from it (`--check`: quick's `shader_contracts` task fails when any is not what the table makes, or one is there it does not make)
 - `tools/gates/gate_clones.py` · `tools/gates/gate_code.py` · `tools/gates/gate_data.py` · `tools/gates/gate_defs.py` —

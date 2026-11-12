@@ -78,6 +78,7 @@
     "native/src",
     "native/CMakeLists.txt",
     "native/toolchain-mingw.cmake",
+    "native/sorted_link.cmake",
     "project/game",
     "project/ui",
     "project/render",

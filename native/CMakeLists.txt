@@ -48,16 +48,15 @@ endfunction()
 # profile of a run of the game (native/pgo, tools/build/pgo.sh) it knows which branch is taken and what is worth inlining. The tests'
 # DLL leaves both out: it is linked many times an hour. CITY_PROFILE=generate is the instrumented build pgo.sh trains; none is a build
 # the profile was not trained on (the Android arm64 library: pgo.sh runs the PC game, and the NDK's clang is an older one).
-set(CITY_PROFILE "use" CACHE STRING "use: the release DLL reads native/pgo/citycore.profdata and .order; generate: instrumented, for tools/build/pgo.sh; order: the profile's function order written to native/pgo/citycore.order, for tools/build/pgo.sh; none: no profile")
+set(CITY_PROFILE "use" CACHE STRING "use: the release DLL reads native/pgo/citycore.profdata; generate: instrumented, for tools/build/pgo.sh; none: no profile")
 set(CITY_PROFILE_DATA "${CMAKE_CURRENT_SOURCE_DIR}/pgo/citycore.profdata")
-set(CITY_PROFILE_ORDER "${CMAKE_CURRENT_SOURCE_DIR}/pgo/citycore.order")
 if(GODOTCPP_TARGET STREQUAL "template_release" AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-flto=thin)
     add_link_options(-flto=thin -Wl,--lto-O3 "-Wl,--thinlto-cache-dir=${CMAKE_BINARY_DIR}/thinlto")
     if(CITY_PROFILE STREQUAL "generate")
         add_compile_options(-fprofile-generate)
         add_link_options(-fprofile-generate)
-    elseif(CITY_PROFILE MATCHES "^(use|order)$" AND EXISTS "${CITY_PROFILE_DATA}")
+    elseif(CITY_PROFILE STREQUAL "use" AND EXISTS "${CITY_PROFILE_DATA}")
         add_compile_options("-fprofile-use=${CITY_PROFILE_DATA}" -Wno-profile-instr-out-of-date -Wno-profile-instr-unprofiled -Wno-backend-plugin)
         add_link_options("-fprofile-use=${CITY_PROFILE_DATA}")
     endif()
@@ -112,7 +111,7 @@ city_profile_names(Clipper2 "${fetched}")
 
 # Every object of the link is compiled against the one profile: ThinLTO refuses two summaries, and Ninja knows nothing of a file read through
 # a flag, so a new profile would leave the libraries on the old one.
-if(GODOTCPP_TARGET STREQUAL "template_release" AND CITY_PROFILE MATCHES "^(use|order)$" AND EXISTS "${CITY_PROFILE_DATA}")
+if(GODOTCPP_TARGET STREQUAL "template_release" AND CITY_PROFILE STREQUAL "use" AND EXISTS "${CITY_PROFILE_DATA}")
     foreach(lib citycore godot-cpp meshoptimizer mimalloc-static Clipper2)
         get_target_property(lib_dir ${lib} SOURCE_DIR)
         get_target_property(lib_sources ${lib} SOURCES)
@@ -134,26 +133,18 @@ if(MINGW)
     # rebuild leaves the committed DLLs unchanged and two branches built from the same sources do not conflict.
     target_link_options(citycore PRIVATE "-Wl,--no-insert-timestamp")
 endif()
-# The order of the export DLL's functions, as the profile's call graph clusters them (lld's /call-graph-profile-sort), read from
-# native/pgo/citycore.order and not sorted at the link: lld hands its sort's result on through a map keyed by the sections'
-# addresses in memory and stores it by symbol name (lld/COFF/Writer.cpp, sortSections), so the sections that share a name (a
-# __cxx_global_var_init per file, 227 of them) took a priority that changed with every link, and every function after them moved:
-# two links of the same objects differed in 700 thousand bytes. Read from a file, the order is the same at every link.
-# tools/build/pgo.sh writes it with the profile (CITY_PROFILE=order: the sort on, /print-symbol-order into the build folder) and keeps
-# only the names every folder gives alike: a local function ThinLTO promotes is named after its module's hash (`.llvm.<n>`), and the
-# module holds its source's absolute path. A name the code no longer has is an order out of date, as the profile's counts are
-# (-Wno-profile-instr-out-of-date): LNK4037 is left out alike.
-if(MINGW AND GODOTCPP_TARGET STREQUAL "template_release" AND EXISTS "${CITY_PROFILE_DATA}")
-    if(CITY_PROFILE STREQUAL "order")
-        target_link_options(citycore PRIVATE "-Wl,--Xlink=-print-symbol-order:${CMAKE_BINARY_DIR}/citycore.order")
-    elseif(CITY_PROFILE STREQUAL "use")
-        if(NOT EXISTS "${CITY_PROFILE_ORDER}")
-            message(FATAL_ERROR "${CITY_PROFILE_ORDER} is missing: tools/build/pgo.sh writes it with the profile")
-        endif()
-        target_link_options(citycore PRIVATE "-Wl,--Xlink=-call-graph-profile-sort:no" "-Wl,--Xlink=-order:@${CITY_PROFILE_ORDER}"
-            "-Wl,--Xlink=-ignore:4037")
-        set_property(TARGET citycore APPEND PROPERTY LINK_DEPENDS "${CITY_PROFILE_ORDER}")
-    endif()
+# The order of the export DLL's functions: lld's sort by the call graph the profile wrote into the objects (/call-graph-profile-sort,
+# on by default; the edges are the -fprofile-use counts, emitted by LLVM's CGProfile pass as .llvm.call-graph-profile), at every
+# link, so every function the graph reaches is placed by it, a new one and one ThinLTO promoted (`.llvm.<n>`) too. lld hands its
+# sort's result on through a map keyed by the sections' addresses in memory and stores it by symbol name (lld/COFF/Writer.cpp,
+# sortSections), so the sections that share a name (a __cxx_global_var_init per file) took a priority that changed with every link;
+# the order it prints walks the sorted clusters and does not. native/sorted_link.cmake, the link's launcher, links twice: the first
+# sorts and prints the order to the build folder, the second lays the DLL out by it (/order). The same objects give the same bytes.
+if(MINGW AND GODOTCPP_TARGET STREQUAL "template_release" AND CITY_PROFILE STREQUAL "use" AND EXISTS "${CITY_PROFILE_DATA}")
+    set(CITY_SORTED_LINK "${CMAKE_CURRENT_SOURCE_DIR}/sorted_link.cmake")
+    set_property(TARGET citycore PROPERTY CXX_LINKER_LAUNCHER
+        "${CMAKE_COMMAND}" "-DORDER=${CMAKE_BINARY_DIR}/citycore.order" -P "${CITY_SORTED_LINK}" --)
+    set_property(TARGET citycore APPEND PROPERTY LINK_DEPENDS "${CITY_SORTED_LINK}")
 endif()
 target_include_directories(citycore PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 # Every warning on (the build must stay free of them: CLAUDE.md "Antes de concluir"); godot-cpp keeps its own flags.
