@@ -5,6 +5,7 @@
 #include "core/seeded.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/citygen/lot_gen.h"
+#include "sim/commands/lot_sites.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -165,7 +166,10 @@ Building record_for(const CityState &s, const std::vector<Lot> &cell_lots, int i
 	b.seed = l.seed;
 	b.style = uint16_t(l.seed & BUILDING_AUTO_STYLE_MASK);
 	b.profile = uint16_t(l.profile);
-	b.floors = uint16_t(fn == FN_NONE && tallest >= 0 ? std::max(1, tallest) + g.organic_extra_floors : 0);
+	b.edges = lot_edges(s, b); // what its lot's edges meet, as the streets stand: the candidates are the bodies that will stand
+	b.edges_read = true;
+	// what the body is made under, kept: the record always gives this body again, whose storeys `floors` says
+	b.cap = uint16_t(fn == FN_NONE && tallest >= 0 ? std::max(1, tallest) + g.organic_extra_floors : 0);
 	const Candidate kept = fn == FN_NONE ? best_candidate(s, b) : draw_candidate(s, b, b.seed);
 	b.seed = kept.seed;
 	b.style = uint16_t(kept.seed & BUILDING_AUTO_STYLE_MASK);

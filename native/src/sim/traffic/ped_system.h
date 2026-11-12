@@ -69,6 +69,8 @@ void flee_on(CityState &s, Pedestrian &w, int n); // frightened, at node n: by t
 void ease_facing(const TrafficState &t, const TrafficParams &p, Pedestrian &w, float dt); // round to the bang, and back to its way, no faster than a body turns
 // ped_wounds.cpp: the share of its own pace a hurt walker keeps (1 unhurt).
 float wounded_pace(const BlastParams &b, const Pedestrian &w);
+// pedestrians.cpp: what a walker's step is of the pace the crowd leaves it: more while it runs from a bang, less with a wound.
+float run_share(const CityState &s, const Pedestrian &w);
 
 // ped_demand.cpp: how many people the land use puts on its street now, by kind of place
 struct PeopleNow {

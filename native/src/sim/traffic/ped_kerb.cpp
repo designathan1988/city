@@ -2,7 +2,9 @@
 // line as they will cross it, from a body clear of that line out to kerb_wait_half_m or the zebra's edge (the waiting span):
 // the left is where those coming from the other kerb arrive, so the two ways never meet in a crowd. The way to the kerb has two
 // legs: to an approach point back from the kerb along the way across (as far back as the crossed arm's footway leaves with an
-// aisle behind it), reached at the place along the kerb the walker comes from (inside the span: no two ways to it converge),
+// aisle behind it), reached at the place along the kerb the walker comes from when that lies inside the span, else at the span's
+// nearer edge: the ways of those who come from past an edge converge on it, as people gather at a crosswalk, and their bodies are
+// kept apart on the way by the crowd's one rule for the room between two walkers (ped_apart.h);
 // then the queue: a leg begun parallel to the way across from where the walker stands. On the queue the room
 // across is the span along the kerb (ped_stripes.cpp line_frame) and the leg ends at the kerb stand, so the crowd step stops a
 // walker at the kerb or behind those already waiting, beside them where the span has room, and never on the asphalt. At the

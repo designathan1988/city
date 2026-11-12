@@ -7,7 +7,9 @@
 // footway less ped_margin_m; round a corner as wide either side of its line as the sidewalk it heads for, opening off
 // the line's start and closing toward a kerb place it must reach as fast as it steps aside (ped_lateral_share); over a
 // zebra its own right half (the other half is the other way's). Everything a choice reads is copied once a step into the walkers' entries
-// (CrowdEntry), each sidewalk's in order of arc, so a step reads arrays in order.
+// (CrowdEntry), each sidewalk's in order of arc, so a step reads arrays in order. A choice is made in its walker's own frame; the room
+// between two walkers on different ways is kept in the world, once for all of them, before any choice is applied (ped_apart.h).
+#include "sim/traffic/ped_apart.h"
 #include "sim/traffic/ped_stripes.h"
 
 #include <algorithm>
@@ -184,6 +186,47 @@ void sidewalk_choices(CityState &s, const StripeRules &rules, float zone, float 
 		for (size_t i = 0; i < t.crowd_keys.size(); i++) one(i);
 }
 
+// The room between any two walkers (ped_apart.h): every living walker is a body where it stands, each choice the step it takes this
+// tick in the world (ahead by its pace as walk() steps it, aside by its change of stripe), and each choice is cut to the share of
+// step its walker takes: the nearest to the one it chose that keeps the room (ahead no further, aside within what its choice allows).
+// Two whose ways converge or cross never see each other's step in their own frames: here neither takes more than its half of the
+// room between them.
+void hold_apart(CityState &s, float dt, float touch, std::vector<CrowdChoice> &next) {
+	TrafficState &t = s.traffic;
+	std::vector<Stride> &strides = t.crowd_strides;
+	std::vector<int> &of = t.crowd_stride_of;
+	strides.clear();
+	of.assign(t.peds.size(), -1);
+	for (int id = 0; id < int(t.peds.size()); id++) {
+		const Pedestrian &w = t.peds[size_t(id)];
+		if (!w.alive) continue;
+		of[size_t(id)] = int(strides.size());
+		strides.emplace_back();
+		strides.back().at = V2(w.cur.x, w.cur.z);
+	}
+	for (const CrowdChoice &d : next) {
+		if (d.first < 0) continue;
+		const Pedestrian &w = t.peds[size_t(d.first)];
+		Stride &st = strides[size_t(of[size_t(d.first)])];
+		st.ahead = V2(w.way_x, w.way_z); // the way it walks, where it stands
+		// across: a sidewalk's own u grows to the left of a -> b whichever way it is walked, a line's to the left of the line
+		st.left = left_of(w.mode == PedMode::SIDEWALK && w.dir == 1 ? -st.ahead : st.ahead);
+		st.far = d.second.pace * run_share(s, w) * dt;
+		st.aside = d.second.u - w.u;
+		st.lo = d.second.lo - w.u;
+		st.hi = d.second.hi - w.u;
+	}
+	keep_apart(strides, touch, t.crowd_apart);
+	for (CrowdChoice &d : next) {
+		if (d.first < 0) continue;
+		const Pedestrian &w = t.peds[size_t(d.first)];
+		const Stride &st = strides[size_t(of[size_t(d.first)])];
+		const float ahead = st.taken.dot(st.ahead);
+		if (st.far > 0) d.second.pace *= clampf(ahead / st.far, 0.f, 1.f); // the same share of its pace as of its step ahead
+		d.second.u = w.u + st.taken.dot(st.left);
+	}
+}
+
 } // namespace
 
 float walk_half(const CityState &s, int seg, int side) {
@@ -227,6 +270,7 @@ void crowd_step(CityState &s, float dt) {
 			next.emplace_back(e.id, choose_stripe(rules, e, f, bodies, sn.n));
 		}
 	}
+	hold_apart(s, dt, touch, next); // no two steps of this tick meet, whatever the ways they are taken on
 	for (const CrowdChoice &d : next) {
 		if (d.first < 0) continue; // a sidewalk that is no longer walked: no choice made
 		Pedestrian &w = t.peds[size_t(d.first)];

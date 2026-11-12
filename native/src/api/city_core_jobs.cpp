@@ -190,6 +190,7 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("footway_under", "at"), &CityProbes::footway_under);
 	ClassDB::bind_method(D_METHOD("people_census", "at", "radius"), &CityProbes::people_census);
 	ClassDB::bind_method(D_METHOD("walker_bodies", "at", "radius"), &CityProbes::walker_bodies);
+	ClassDB::bind_method(D_METHOD("walkers_apart", "at", "steps", "aside"),&CityProbes::walkers_apart);
 	ClassDB::bind_method(D_METHOD("corner_ways"), &CityProbes::corner_ways);
 	ClassDB::bind_method(D_METHOD("lot_gates"), &CityProbes::lot_gates);
 	ClassDB::bind_method(D_METHOD("drive_kerbs"), &CityProbes::drive_kerbs);

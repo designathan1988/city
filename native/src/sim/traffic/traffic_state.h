@@ -11,6 +11,7 @@
 #include "sim/traffic/kerb_state.h"
 #include "sim/traffic/lane_graph_types.h"
 #include "sim/traffic/parking_state.h"
+#include "sim/traffic/ped_apart.h"
 #include "sim/traffic/ped_state.h"
 #include "sim/traffic/traffic_view.h"
 
@@ -122,6 +123,11 @@ struct TrafficState {
 	std::vector<int> node_keys;
 	std::vector<CrowdChoice> crowd_next; // the step's choices, kept between steps for their room
 	std::vector<const StreetObstacle *> crowd_around; // the furniture round the junction being looked at
+	// The room between two walkers (ped_apart.h): every living walker as a body with the step its choice takes this tick, each walker's
+	// place among them (-1: none) and what the rule works with; kept between steps for their room.
+	std::vector<traffic::Stride> crowd_strides;
+	std::vector<int> crowd_stride_of;
+	traffic::ApartRoom crowd_apart;
 	// The street furniture of the segments the walkers met, as bodies standing on its sidewalks (ped_furniture.cpp);
 	// dropped when an edit touches the segment or a node of it, and far from the camera. `furniture_serial` moves whenever a segment's is
 	// built again (from the owner as it places it then, maybe not as it did): what was placed clear of it (a kerb stop's foot) is placed again.
@@ -154,6 +160,8 @@ struct TrafficState {
 	double window_lane_m = 0;
 	double ped_kind_m[PLACE_KINDS] = {}; // metres of street of each kind of place inside the window
 	std::vector<int> ped_segs;
+	// Of them, those with an end outside the window: where people come in from beyond it (ped_spawn.cpp), as they come out of a door.
+	std::vector<int> ped_edge_segs;
 	// The doors the walkers use (ped_doors.cpp): by sidewalk (seg * 2 + side), the lots read (seed + 1 by building id) and
 	// those to read, a few a step.
 	std::vector<std::vector<PedDoor>> doors;

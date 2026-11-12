@@ -35,6 +35,11 @@ void grow_ped_window(CityState &s, float cx, float cz) {
 	const float w = s.catalog.traffic.ped_window_m, w2 = w * w;
 	std::fill(std::begin(t.ped_kind_m), std::end(t.ped_kind_m), 0.0);
 	t.ped_segs.clear();
+	t.ped_edge_segs.clear();
+	const auto outside = [&](int node) {
+		const RoadNode &n = s.roads.nodes[size_t(node)];
+		return (float(n.x) - cx) * (float(n.x) - cx) + (float(n.z) - cz) * (float(n.z) - cz) >= w2;
+	};
 	s.roads.for_segments_near(cx - w, cz - w, cx + w, cz + w, [&](int seg) {
 		if (mid_dist2(s, seg, cx, cz) >= w2 || !walkable(s, seg)) return;
 		const Profile &p = s.roads.profile_of(seg);
@@ -47,6 +52,7 @@ void grow_ped_window(CityState &s, float cx, float cz) {
 			if (p.has_walk_left) t.ped_kind_m[k] += double(len) * STREET_SIDE * tp.zone_kinds[left * PLACE_KINDS + k];
 		}
 		t.ped_segs.push_back(seg);
+		if (outside(g.a) || outside(g.b)) t.ped_edge_segs.push_back(seg); // its sidewalks run on out of the window: people come in by it
 	});
 	list_doors(s, cx, cz, w);
 	prune_furniture(s, cx, cz, w * FURNITURE_KEEP_WINDOWS); // the walkers' street furniture far behind the camera

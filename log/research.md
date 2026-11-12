@@ -313,6 +313,43 @@ output. Anything less is `open`, with what failed written down. The questions co
   the budgets by stage and the state no tick writes. **Status: `proven`** for the log and the static readers; `open` for
   the readers still to add (T9).
 
+### Q8. How are two walkers kept out of each other when their ways are not the same way? (pending items S5, L6; 2026-11-12, session 2) — the first part of Q8
+
+- **Problem (before, a test's output):** `walker_motion_test` (town, seed 7, ticks stepped on a paused map: the same run every
+  time) failed "no walker stands in another: 1 times": walkers 568 and 569, a pair, 0.4570 m apart with two bodies 0.46 m
+  (`dist/tasks/20261112-022814-7880-fast-city_mass_test-walker_motion_test/walker_motion_test.log:366-370`). Read in the code
+  (trace `walkers-in-pair`): both walked abreast, 0.476 m apart, to a sidewalk's end; each began its own straight line to the
+  same approach point of a crosswalk's queue (`ped_kerb.cpp` `onto_approach` clamps the place along the kerb to the waiting
+  span), so their lines converged; in each one's frame the other stood beside it a hair past its lateral reach
+  (`ped_stripes.h` `Seen::walker`), so neither saw the other and one tick's two steps closed the 16 mm.
+- **Searches:** context7 `/snape/rvo2` (`src/Agent.cc` `computeNewVelocity`, `src/Agent.h`): ORCA (van den Berg, Guy, Lin,
+  Manocha 2011): for every neighbour one half-plane of permitted velocities from the relative position, the relative velocity
+  and the combined radius; each agent takes half of the change needed (`0.5F * u`), so two agents that both keep their
+  half-planes do not collide; the new velocity is the permitted one nearest the preferred, found by a linear programme;
+  neighbours from a spatial index. SUMO's striping model (this game's crowd step follows it, `ped_stripes.cpp` header) maps the
+  persons of a walking area's other paths into the current path as bodies where they stand, and lets a jammed person through
+  the others: it does not keep bodies out of each other.
+- **Found:** what is missing in a one-dimensional rule per way is an answer for the room *between* two bodies. The reciprocal
+  half gives it with a bound that reads only the places at the step's start: toward a body `d` away a walker may advance at
+  most `(d - two bodies) / 2` in the tick; the two bounds together leave them at least two bodies apart whatever each does
+  inside its own (the separation along the line between them is at least `d - 2 (d - two bodies) / 2`). Nothing of RVO2 is
+  used: the rule is written for this game's tick (a step, not a velocity; the walker's own bounds ahead and aside from its
+  stripe choice; the nearest feasible step by the feet on the bounds and the meeting points of two bounds).
+- **Test (a scene of its own, no city: the probe `walkers_apart` on bodies the test lays out, `project/tests/core/walker_apart_test.gd`,
+  2 s):** before, with a rule that holds nobody: five of ten one-tick scenes fail (the pair of the town 0.4570 m, head on
+  0.4000, crossing at a right angle 0.4243, into one who stands 0.4000). With the step only shortened along its own direction
+  the scenes pass and the same pair walked on tick by tick stalls: `walked 0.036 of 1.295 m and 0.076 of 1.260 m` in 60 ticks,
+  and in the town `people_test` then fails ("nobody used the mid-block crossing, kind 2 (waiting: 4)" over 45,000 ticks).
+  After, with the nearest step that keeps the bounds: `two abreast to one point: 29 ticks, walked 1.295 of 1.295 m and 1.260
+  of 1.260 m, never nearer than 0.4600 m`, every scene passes; in the town `walker_motion_test`, `people_test`,
+  `street_crossing_test`, `traffic_hash_test` (the same steps twice give the same hashes) pass.
+- **Steps to repeat:** `python tools/tasks/cli.py run fast walker_apart_test` and `... run fast walker_motion_test,people_test`.
+- **Conclusion:** one owner of the room between two walkers in the world (`native/src/sim/traffic/ped_apart.h`), after every
+  choice and before any is applied. **Status: `proven`** for two walkers on different ways. `open` for the rest of Q8: the
+  steps the crowd does not make (a kerb stop's hand, the walk between a door and the sidewalk, a fright's flight), the cost at
+  km24 (one sort of the walkers by cell a tick: to measure with M4), and whether the stripes' own rules should become the
+  same linear bounds.
+
 ## Open questions (each becomes an entry above when researched; the pending item it serves in the last column)
 
 | Q | Question | Serves |

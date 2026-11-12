@@ -35,6 +35,10 @@ public:
 	godot::Dictionary people_census(const godot::Vector3 &at, float radius);
 	// The walkers within `radius` of `at` one by one, and those standing in one another, on a carriageway away from a crossing or in a vehicle.
 	godot::Dictionary walker_bodies(const godot::Vector3 &at, float radius);
+	// Tests: the crowd's rule for the room between two walkers on bodies laid out by the test (each one's place, its step of this tick
+	// in the world, how far either side of that step's line it may give way): two bodies' width, and the step each takes
+	// (city_core_crowd_probe.cpp).
+	godot::Dictionary walkers_apart(const godot::PackedVector2Array &at, const godot::PackedVector2Array &steps, const godot::PackedFloat32Array &aside) const;
 	// Every way round a corner with no crosswalk (the whole map), walked from each place across its sidewalk: how many, how many
 	// touch a carriageway, and the first of them with the run and the node's arms and corners (city_core_people.cpp corner_case).
 	godot::Dictionary corner_ways();

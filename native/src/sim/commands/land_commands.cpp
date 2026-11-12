@@ -9,6 +9,7 @@
 #include "sim/buildings/b40/record.h"
 #include "sim/buildings/growth.h"
 #include "sim/commands/body_ops.h"
+#include "sim/commands/lot_sites.h"
 #include "sim/state/city_state.h"
 #include "sim/terrain/terrain_gen.h"
 
@@ -155,6 +156,8 @@ EditResult place_building(CityState &s, double ax, double az, double bx, double 
 	b.fn = uint8_t(fn);
 	b.seed = hash_combine(uint32_t(int32_t(std::lround(ax / SEED_GRID_M))), uint32_t(int32_t(std::lround(az / SEED_GRID_M))) ^ LOT_SALT);
 	b.style = uint16_t(b.seed & BUILDING_AUTO_STYLE_MASK);
+	b.edges = lot_edges(s, b); // its body is made to what its lot's edges meet: the storeys are the body's that will stand
+	b.edges_read = true;
 	b.floors = uint16_t(body_floors(s.buildings.designs, b));
 	b.built = s.clock.minutes.load();
 	r.placed = j_add_building(s, b);
@@ -178,8 +181,8 @@ EditResult edit_building(CityState &s, int id, int fn, int floors) {
 	const bool other_use = b.fn != fn;
 	b.fn = uint8_t(fn);
 	if (other_use) {
-		b.body = 0; // another use is another building, made again from the seed; undo brings the edited one back
-		b.floors = 0;
+		b.body = 0; // another use is another building, made again from the seed (no neighbours' cap); undo brings the edited one back
+		b.cap = 0;
 		b.floors = uint16_t(body_floors(s.buildings.designs, b));
 	}
 	if (floors != b.floors && floors > 0) {

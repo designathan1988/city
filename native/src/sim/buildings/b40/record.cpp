@@ -24,8 +24,8 @@ std::shared_ptr<const std::vector<LotElement>> record_elements(const Data &data,
 
 void make_seed_body(const Data &data, const Building &rec, Body &b) {
 	if (is_open_lot(rec.fn)) open_lot_body(data, b, rec.fn, rec.w, rec.d);
-	else if (is_civic(rec.fn)) civic_body(data, b, rec.fn, rec.floors, rec.w, rec.d, rec.seed, rec.edges);
-	else make_body(data, b, rec.zone, rec.floors, rec.w, rec.d, rec.seed, rec.edges);
+	else if (is_civic(rec.fn)) civic_body(data, b, rec.fn, rec.cap, rec.w, rec.d, rec.seed, rec.edges);
+	else make_body(data, b, rec.zone, rec.cap, rec.w, rec.d, rec.seed, rec.edges);
 }
 
 BodyKey body_key(const Building &r) {
@@ -37,7 +37,7 @@ BodyKey body_key(const Building &r) {
 		return k;
 	}
 	k.zone = r.zone;
-	k.floors = r.floors;
+	k.cap = r.cap;
 	std::memcpy(&k.w, &r.w, sizeof k.w);
 	std::memcpy(&k.d, &r.d, sizeof k.d);
 	static_assert(sizeof r.edges.from + sizeof r.edges.to == sizeof k.shut, "the key holds every stretch's bits");

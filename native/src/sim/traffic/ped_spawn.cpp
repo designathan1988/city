@@ -1,7 +1,8 @@
 // Who comes out on foot: a walker of an age and pace, on the streets the land use has people on at this hour, with a
 // destination 150-900 m away and a walking route to it. The crowd of a street just opened stands on its sidewalks; after
-// that they come out of the doors (ped_doors.cpp), on a street without one out of nowhere as before. Some come with company
-// (ped_party.cpp).
+// that they come out of the doors (ped_doors.cpp) and, where the drawn street has none, in from beyond the walking window at the
+// end of a street that runs on out of it (window.cpp ped_edge_segs): never out of nowhere on a footway in view, as the reference
+// game's people come from a door, a gate or a road's end. Some come with company (ped_party.cpp).
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
@@ -17,12 +18,12 @@ constexpr float SCALE_MIN = 0.9f, SCALE_MAX = 1.1f;
 
 bool has_side(const Profile &p, int side) { return side == 0 ? p.has_walk_right : p.has_walk_left; }
 
-// Only the walkable segments inside ped_window_m, by the people their zones have on the street now.
-int pick_seg(CityState &s, const PeopleNow &now) {
+// One of `segs` (the walkable segments inside ped_window_m, or those at its edge), by the people their zones have on the street now.
+int pick_seg(CityState &s, const PeopleNow &now, const std::vector<int> &segs) {
 	TrafficState &t = s.traffic;
-	const int n = int(t.ped_segs.size());
+	const int n = int(segs.size());
 	for (int k = 0; k < PICK_TRIES && n > 0 && now.peak > 0; k++) {
-		const int seg = t.ped_segs[size_t(t.rng.next() % uint32_t(n))];
+		const int seg = segs[size_t(t.rng.next() % uint32_t(n))];
 		if (!walkable(s, seg)) continue;
 		const RoadSegment &g = s.roads.segs[size_t(seg)];
 		const TrafficParams &p = s.catalog.traffic;
@@ -116,21 +117,33 @@ int alloc_walker(TrafficState &t) {
 bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
-	int seg = pick_seg(s, now);
+	int seg = pick_seg(s, now, t.ped_segs);
 	if (seg < 0) return false;
-	const Profile &pf = s.roads.profile_of(seg);
-	const RoadSegment &g = s.roads.segs[seg];
 	Pedestrian w;
 	dress_walker(t, p, w, roll_age(t, p), s.catalog.blast.walker_hp);
-	w.seg = seg;
 	w.dir = int(t.rng.next() & 1);
-	w.side = has_side(pf, 0) && (!has_side(pf, 1) || (t.rng.next() & 1)) ? 0 : 1;
-	w.s = t.rng.range(arc_lo(g), arc_hi(g));
-	on_sidewalk(w);
+	w.side = has_side(s.roads.profile_of(seg), 0) && (!has_side(s.roads.profile_of(seg), 1) || (t.rng.next() & 1)) ? 0 : 1;
 	PedDoor door;
-	const bool out = from_door && pick_door(s, now, seg, w.side, true, arc_lo(g), arc_hi(g), door);
+	const bool out = from_door && pick_door(s, now, seg, w.side, true, arc_lo(s.roads.segs[size_t(seg)]), arc_hi(s.roads.segs[size_t(seg)]), door);
+	const bool edge = from_door && !out; // no door to come out of: in from beyond the window, at a street's end outside it
+	if (edge) {
+		seg = pick_seg(s, now, t.ped_edge_segs);
+		if (seg < 0) return false;
+		const RoadSegment &e = s.roads.segs[size_t(seg)];
+		const RoadNode &na = s.roads.nodes[size_t(e.a)];
+		const float cx = t.win_x, cz = t.win_z; // the walking window's middle, as window.cpp listed its edge
+		const bool a_out = (float(na.x) - cx) * (float(na.x) - cx) + (float(na.z) - cz) * (float(na.z) - cz) >= p.ped_window_m * p.ped_window_m;
+		w.dir = a_out ? 0 : 1; // walking in, from the end outside
+		w.side = has_side(s.roads.profile_of(seg), 0) && (!has_side(s.roads.profile_of(seg), 1) || (t.rng.next() & 1)) ? 0 : 1;
+	}
+	const RoadSegment &g = s.roads.segs[size_t(seg)];
+	w.seg = seg;
+	w.s = edge ? (w.dir == 0 ? arc_lo(g) : arc_hi(g)) : t.rng.range(arc_lo(g), arc_hi(g));
+	on_sidewalk(w);
 	if (out) {
 		at_door(s, w, door);
+	} else if (edge) {
+		stand_on_sidewalk(s, w);
 	} else {
 		w.s = clear_arc(s, seg, w.side, w.s, w.u); // born clear of the street furniture and of the others
 		if (w.s > arc_hi(g)) return false;

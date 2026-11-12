@@ -59,6 +59,10 @@ void stand_on_sidewalk(const CityState &s, Pedestrian &w) {
 	w.way_z = w.cur.fz;
 }
 
+float run_share(const CityState &s, const Pedestrian &w) {
+	return (s.traffic.time < w.panic_until ? s.catalog.blast.panic_gain : 1.f) * wounded_pace(s.catalog.blast, w); // frightened by a bang: runs
+}
+
 // The one it walked with walks on by itself (ped_party.cpp).
 void despawn(TrafficState &t, int id, bool arrived) {
 	off_crosswalk(t, id);
@@ -109,8 +113,7 @@ void walk(CityState &s, int id, float dt) {
 		if (w.mode == PedMode::WAIT) return;
 	}
 	if (transit::walker_held(s, V2(w.cur.x, w.cur.z), V2(w.cur.fx, w.cur.fz))) return; // a train on the ground ahead
-	const float run = (t.time < w.panic_until ? s.catalog.blast.panic_gain : 1.f) * traffic::wounded_pace(s.catalog.blast, w); // frightened by a bang: runs
-	const float step = w.pace * run * dt; // the crowd sets the pace on every way (ped_crowd.cpp)
+	const float step = w.pace * run_share(s, w) * dt; // the crowd sets the pace on every way (ped_crowd.cpp), held by the same step (hold_apart)
 	w.walked += step;
 	if (w.mode == PedMode::WAY) {
 		w.ls += step;

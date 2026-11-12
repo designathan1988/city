@@ -97,13 +97,13 @@ bool read_roads(ByteReader &r, RoadNetwork &net, uint32_t version) {
 	return r.ok;
 }
 
-bool read_buildings(ByteReader &r, BuildingStore &bs) {
+bool read_buildings(ByteReader &r, BuildingStore &bs, uint32_t version) {
 	const uint32_t count = r.get_count(SLOT_MIN_BYTES);
 	if (!r.ok) return false;
 	for (uint32_t i = 0; i < count && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		Building b;
-		if (get_building(r, b)) bs.put(int(i), b, false);
+		if (get_building(r, b, version)) bs.put(int(i), b, false);
 	}
 	return r.ok;
 }
@@ -190,11 +190,13 @@ bool read_variants(ByteReader &r, Catalog &c, uint32_t version) {
 }
 } // namespace
 
-bool get_building(ByteReader &r, Building &b) {
+bool get_building(ByteReader &r, Building &b, uint32_t version) {
 	b.x = r.get<float>(); b.z = r.get<float>(); b.w = r.get<float>(); b.d = r.get<float>(); b.rot = r.get<float>();
 	b.zone = r.get<uint8_t>();
 	b.fn = r.get<uint8_t>();
 	b.floors = r.get<uint16_t>();
+	// an older file made the body under its storeys (the record's one number then): the same body it showed
+	b.cap = version >= CAP_SAVE_VERSION ? r.get<uint16_t>() : b.floors;
 	b.seed = r.get<uint32_t>();
 	b.style = r.get<uint16_t>();
 	b.profile = r.get<uint16_t>();
@@ -250,7 +252,7 @@ bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &erro
 	if (!r.ok || !read_terrain(r, s.terrain)) return false;
 	clear_variants(s.catalog);
 	if (version >= VARIANTS_VERSION && !read_variants(r, s.catalog, version)) return false;
-	if (!read_roads(r, s.roads, version) || !read_buildings(r, s.buildings)) return false;
+	if (!read_roads(r, s.roads, version) || !read_buildings(r, s.buildings, version)) return false;
 	if (version < GRADE_SAVE_VERSION) drop_baked_road_ground(s);
 	if (version >= NATURE_VERSION && !read_nature(r, s)) return false;
 	std::vector<int64_t> growth_cells;
@@ -267,7 +269,7 @@ bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &erro
 	} else {
 		r.o -= sizeof(uint32_t); // not the edited bodies: the tag is the first of the extra blocks
 	}
-	return r.ok && read_extra_blocks(r, s); // the tagged blocks (demolition, street), then the end
+	return r.ok && read_extra_blocks(r, s, version); // the tagged blocks (demolition, street), then the end
 }
 } // namespace
 

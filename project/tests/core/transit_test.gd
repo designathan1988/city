@@ -8,6 +8,8 @@ const SEED := 1
 const TRAIN := 1
 const STEP_M := 60.0
 const RUN_TICKS := 6000
+const BOARD_LOOK_TICKS := 600 # between two looks at who has got on a bus
+const BOARD_LOOKS := 120 # an hour of the town at the most: a call finds somebody walking by only now and then
 const SLOT := "transit_test"
 const TRACK_OUT_M := 80.0
 const TRACK_LONG_M := 400.0
@@ -61,7 +63,14 @@ func _buses() -> void:
 	check(CityStore.dispatch(&"transit_line", [ids]).get("ok", false), "bus line")
 	ticks(RUN_TICKS)
 	var run: Dictionary = CityStore.query(&"transit_run")
-	print("buses: ", run)
+	# a bus takes aboard whoever is walking alone past its stop as it calls (bus_calls.cpp): nobody walks to a stop for it (log/pendencias.md
+	# S7), so who gets on is who happens by. The test waits for it on the state, as long as it takes somebody to be there
+	var looks := 0
+	while int(run.boarded) == 0 and looks < BOARD_LOOKS:
+		ticks(BOARD_LOOK_TICKS)
+		looks += 1
+		run = CityStore.query(&"transit_run")
+	print("buses: ", run, " after ", looks, " more looks")
 	check(int(run.buses) > 0, "buses on the line")
 	check(int(run.stops_called) > 0, "a bus served a stop")
 	check(int(run.alighted) > 0, "people get off the bus: %s" % run.alighted)

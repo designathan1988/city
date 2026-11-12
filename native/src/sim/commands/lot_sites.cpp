@@ -210,7 +210,6 @@ void mark_stands(CityState &s, float minx, float minz, float maxx, float maxz) {
 
 b40::LotEdges lot_edges(const CityState &s, const Building &rec) {
 	b40::LotEdges e;
-	if (!rec.alive) return e;
 	const b40::LotFrame f = b40::lot_frame(rec);
 	front_stretches(s.roads, f, rec.w, e);
 	e.street = street_sides(s.roads, f, rec.w, rec.d);
@@ -233,7 +232,7 @@ void settle_sites(CityState &s, const std::vector<int> &streets) {
 		const Building &rec = s.buildings.items[size_t(id)];
 		if (rec.alive) { // what its edges meet, as the streets now stand: its body is made to them
 			const b40::LotEdges edges = lot_edges(s, rec);
-			if (edges != rec.edges) s.buildings.set_edges(id, edges);
+			if (edges != rec.edges || !rec.edges_read) s.buildings.set_edges(id, edges); // a record read from a file reads its edges now
 		}
 		const std::vector<LotShape> &shapes = s.terrain.lots.shapes;
 		const LotShape *was = id < int(shapes.size()) && shapes[size_t(id)].alive ? &shapes[size_t(id)] : nullptr;

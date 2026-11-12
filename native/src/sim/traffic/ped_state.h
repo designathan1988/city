@@ -61,9 +61,12 @@ struct CrowdEntry {
 	bool kerb = false; // under a stop's hand (PedMode::KERB): a body on its sidewalk that the stop moves, with no choice of its own
 };
 
-// What a walker's crowd step chose (ped_stripes.cpp): its stripe, the one it aims at and how long held, its pace, how long held up.
+// What a walker's crowd step chose (ped_stripes.cpp): its stripe, the one it aims at and how long held, its pace, how long held up;
+// and between which places across its step of this tick may end (its room, the furniture, the walkers beside it, its pace aside):
+// what the room between two walkers may move it within (ped_apart.h).
 struct StripeChoice {
 	float u = 0, u_goal = 0, held = 0, pace = 0, jam = 0;
+	float lo = 0, hi = 0;
 };
 using CrowdChoice = std::pair<int, StripeChoice>; // the walker's id (-1: none made) and its choice
 

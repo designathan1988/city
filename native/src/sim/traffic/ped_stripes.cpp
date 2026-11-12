@@ -245,6 +245,8 @@ StripeChoice choose_stripe(const StripeRules &r, const CrowdEntry &w, const WayF
 	if (n == 0 && r.settled_keeps && w.u_goal == f.u && f.u >= f.lo && f.u <= f.hi && f.u <= f.reserve_from && w.jam < jam_after) {
 		StripeChoice out;
 		out.u = out.u_goal = f.u;
+		out.lo = std::max(f.lo, f.u - r.aside_share * w.speed * r.dt);
+		out.hi = std::min(f.hi, f.u + r.aside_share * w.speed * r.dt);
 		out.held = w.held + r.dt;
 		out.pace = std::min(std::clamp((r.look - r.gap) * r.inv_headway, 0.f, w.speed), w.pace + r.accel * r.dt);
 		return out; // jam 0: free ahead
@@ -293,6 +295,8 @@ StripeChoice choose_stripe(const StripeRules &r, const CrowdEntry &w, const WayF
 	float lo, hi;
 	side_limits(f, b, n, aside, w.speed * r.dt, out.pace * r.dt, lo, hi);
 	out.u = clampf(f.u + std::clamp(out.u_goal - f.u, -aside, aside), lo, hi);
+	out.lo = std::min(out.u, std::max(lo, f.u - aside)); // where its step aside may end this tick: what ped_apart.h may move it within
+	out.hi = std::max(out.u, std::min(hi, f.u + aside));
 	// the step ahead is taken where it steps to: its gap is kept to the bodies across that place as well
 	if (out.u != f.u) out.pace = std::min(out.pace, pace_for(r, w, room_at(b, n, out.u, r.look, true), squeezing));
 	return out;
