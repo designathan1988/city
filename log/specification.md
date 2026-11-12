@@ -8,9 +8,9 @@ holds every research with its proof. This page is written as things are found: a
 
 | Phase | State | Last update |
 |---|---|---|
-| 1. Survey (records read, claims checked in the code, pending items listed) | in progress | 2026-11-11 night |
-| 2. Research until each question has a proven solution | not started | |
-| 3. Fixes, one theme each | not started (no new game code before phases 1 and 2) | |
+| 1. Survey (records read, claims checked in the code, pending items listed) | recorded; three parts still owed (features played as a player, the floor profile and the release DLL at km24, the rest of the earlier photos) | 2026-11-12, session 2 |
+| 2. Research until each question has a proven solution | in progress: Q1, Q2, Q4, Q5, Q6, Q16 proven in isolated tests (`log/research.md`); Q3, Q7 to Q15, Q17 to Q20 open | 2026-11-12, session 2 |
+| 3. Fixes, one theme each | not started (no new game code before phases 1 and 2); the first trace is open with its cause found: `pole-no-wires` (V1) | 2026-11-12 |
 
 Survey progress (each line is ticked only with what was actually read or run):
 
