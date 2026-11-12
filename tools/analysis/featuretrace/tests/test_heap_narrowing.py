@@ -1,7 +1,8 @@
 """Narrowing in the new core (log/trace-research.md F31): a name read where a test proved something of its value keeps
 only the values the test can be so of — ECMA-262 `typeof` (13.5.3.1), ToBoolean (7.1.2), IsStrictlyEqual, `== null`,
 `instanceof` (13.10.2, OrdinaryHasInstance 7.3.21, a class's own @@hasInstance), `in` (13.10.1: a primitive throws),
-Array.isArray, a property's truthiness and equality, the operands of `||`, a declared type predicate and assertion
+a property's truthiness and equality, the operands of `||`, a declared type predicate and assertion — the program's
+or the platform's (`isArray(arg: any): arg is any[]` as the fixture declares it): no function known by its name
 (fixture `heap/narrowing.ts`)."""
 from __future__ import annotations
 
@@ -49,7 +50,7 @@ class HeapNarrowing(HeapCase):
     def test_a_class_with_its_own_has_instance_decides_alone(self):
         self.assertEqual({"prim:number", "Pear"}, self.kinds("ownInstanceTest"))
 
-    def test_array_is_array_both_ways(self):
+    def test_a_platform_predicate_by_its_declaration_both_ways(self):
         self.assertEqual({"arr"}, self.kinds("isArray"))
         self.assertEqual({"Pear"}, self.kinds("notArray"))
 

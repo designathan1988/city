@@ -84,7 +84,7 @@ LANGUAGE = {
 # the declarations). The list only shrinks.
 DEBTS = {
     "bounds.py:ARRAY_MEMBERS", "cpp_expr.py:THREAD_NAMES", "gd_calls.py:PUTS", "js_bounds.py:SAME_TYPE",
-    "js_bounds.py:ANY_OBJECT", "js_bounds.py:LIBRARY", "js_defines.py:DEFINERS", "js_guards.py:LANGUAGE_PREDICATES",
+    "js_bounds.py:ANY_OBJECT", "js_bounds.py:LIBRARY", "js_defines.py:DEFINERS",
     "js_library.py:CANONICAL", "js_library.py:UNWRAP", "js_library.py:ELEMENT_CALLS", "js_library.py:SAME_CALLS",
     "js_library.py:COUNTS", "js_library.py:OBJECT_READS", "js_primitives.py:OBJECT_PROTOTYPE",
     "js_primitives.py:STRING_METHODS", "js_primitives.py:KINDS", "js_transfer.py:OBJECT_MEMBERS",

@@ -148,6 +148,7 @@ public:
     std::unordered_map<Obj, std::vector<Obj>> copies;        // an object -> the objects its properties are copied into
     std::unordered_map<Obj, std::vector<Value>> names_of;    // an object -> the names of its properties made so far
     std::unordered_set<uint64_t> copied;                     // (source, target) pairs copied
+    std::unordered_map<uint64_t, std::vector<Value>> required_members;   // an object type -> what it requires
 
 private:
     size_t grown_nodes_ = 0, grown_objects_ = 0;

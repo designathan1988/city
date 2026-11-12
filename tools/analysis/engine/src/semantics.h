@@ -168,11 +168,11 @@ bool can_equal(Analysis& an, Obj o, Value constant);
 bool can_differ(Analysis& an, Obj o, Value constant);
 uint8_t nullish(Analysis& an, Obj o);
 uint8_t array(Analysis& an, Obj o);
-uint8_t view(Analysis& an, Obj o);
-uint8_t number(Analysis& an, Obj o);
 uint8_t of_class(Analysis& an, Obj o, Value key);
 uint8_t outcomes(Analysis& an, Obj o, Obj target);       // what `o instanceof target` can give
 bool admits(Analysis& an, Value tree, Obj o);            // whether a value can be of a declared type
+bool surely(Analysis& an, Value tree, Obj o);            // whether a value surely is of a declared type
+bool structural(Analysis& an, Value key, Obj o);         // whether it has every member an object type requires
 }  // namespace verdicts
 
 namespace guards {                     // what a test proves where it holds (heap/guards.py)
@@ -182,8 +182,9 @@ void narrow_member(Analysis& an, Value target, Value guard, bool positive, bool 
 void member_passes(Analysis& an, Value target, Obj obj, Value constant, bool positive, std::span<const Obj> values);
 void instance_objects(Analysis& an, Value target, Value targets, bool positive, std::span<const Obj> objs);
 void instance_targets(Analysis& an, Value target, Value source, bool positive, std::span<const Obj> targets);
-void predicate_functions(Analysis& an, Value target, Value source, int64_t index, std::span<const Obj> fns);
-void predicate_admits(Analysis& an, Value target, Value tree, std::span<const Obj> objs);
+void predicate_functions(Analysis& an, Value target, Value source, int64_t index, bool positive,
+                         std::span<const Obj> fns);
+void predicate_admits(Analysis& an, Value target, Value tree, bool positive, std::span<const Obj> objs);
 }  // namespace guards
 
 namespace texts {

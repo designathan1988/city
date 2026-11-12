@@ -594,3 +594,23 @@ official declarations only, converging (finite, fast enough to run in seconds to
   ord(x) searches only the nodes ordered between them, forward from y and back from x, and either finds the cycle
   (collapse it) or reorders that region. Without contexts, at 4.2 M items, 70 k nodes stood in cycles holding 16.7 M
   object memberships: what the periodic collapse leaves to circulate.
+- Then the same for Pearce, Kelly and Hankin's dynamic topological order (built: solver_test red then green, a cycle
+  collapsed when its last edge is made, one made by a transfer while the node it closes the cycle through was being
+  delivered included): on src/world without contexts, 786 k items in 39 s, then none until the 90 s deadline. Almost
+  every new edge here runs from a node just made (the end of the order) to an older one, so each reorder searches most
+  of the graph. Removed. Kept: a delivery a collapse interrupts stops, and the collapse hands its objects on (Pending
+  from where the delivery began), so a collapse inside a transfer is safe.
+
+### F38. No function narrows by its name (owner's binding order) — 2026-11-12 17:30
+- The narrowing of F31 used the old core's table `js_guards.LANGUAGE_PREDICATES` (`Array.isArray`, `ArrayBuffer.isView`,
+  `Number.isInteger` and its kin, known by the text of the call), listed by test_generic as a debt of the old core: the
+  new core was made to depend on a rule for named API members, which the binding order forbids. The F31 test for
+  `Array.isArray` passed with no declaration in its fixture, which is how the table showed: the test confirmed it.
+- Removed from the readers and both cores (the table, its three guards, the old core's branches); test_generic's debt
+  removed. What such a call proves is its callee's declared predicate, read like any other: lib.es5.d.ts declares
+  `isArray(arg: any): arg is any[]`. Where true, the values that can be a T: a class of the program by its chain, an
+  object type or a declared class by structure (TypeScript Type Compatibility: every member it requires, declared on the
+  value's own types or written on it; `Unit.optional` now marks an optional property too); where false, the values not
+  surely a T (a primitive of the kind, an object whose own types or chain hold the class). The narrowing fixture
+  declares `Array` as the lib does; its test (`a_platform_predicate_by_its_declaration_both_ways`) passes on both cores
+  through the declaration alone. The old core's tests that asserted narrowing by those names were removed.

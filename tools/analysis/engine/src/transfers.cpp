@@ -210,10 +210,10 @@ void instance_targets(Analysis& an, Value t, const Captured& c, Objs objs) {
     guards::instance_targets(an, t, c[0], an.truthy(c[1]), objs);
 }
 void predicate_functions(Analysis& an, Value t, const Captured& c, Objs objs) {
-    guards::predicate_functions(an, t, c[0], c[1].data(), objs);
+    guards::predicate_functions(an, t, c[0], c[1].data(), an.truthy(c[2]), objs);
 }
 void predicate_admits(Analysis& an, Value t, const Captured& c, Objs objs) {
-    guards::predicate_admits(an, t, c[0], objs);
+    guards::predicate_admits(an, t, c[0], an.truthy(c[1]), objs);
 }
 void spread(Analysis& an, Value, const Captured& c, Objs objs) {
     std::vector<Obj> list(objs.begin(), objs.end());

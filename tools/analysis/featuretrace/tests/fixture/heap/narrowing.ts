@@ -6,6 +6,11 @@ export class Seed extends Apple {}
 export class Anything { static [Symbol.hasInstance](v: unknown) { return v !== undefined; } }
 
 declare const flag: boolean;
+declare global {                                    // as TypeScript's lib.es5.d.ts declares them
+  interface Array<T> { length: number; }
+  interface ArrayConstructor { isArray(arg: any): arg is any[]; }
+  var Array: ArrayConstructor;
+}
 
 export function typeofObject() {
   let v: unknown = new Apple();

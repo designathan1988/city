@@ -1,7 +1,8 @@
 // What the language's tests can give of one abstract value (heap/verdicts.py; log/trace-research.md F31): `typeof`
 // (ECMA-262 13.5.3.1 with B.3.6 [[IsHTMLDDA]]), ToBoolean (7.1.2), IsStrictlyEqual with a constant, `== null`,
-// IsArray, `ArrayBuffer.isView`, `Number.isInteger` and its kin, `instanceof` (13.10.2, OrdinaryHasInstance 7.3.21),
-// and whether a value can be of a declared type. What the analysis cannot decide can give either.
+// `instanceof` (13.10.2, OrdinaryHasInstance 7.3.21), and, for a declared type predicate, whether a value can be of a
+// declared type (a class of the program by its chain, an object type or a declared class by the members it requires)
+// and whether it surely is one. What the analysis cannot decide can give either.
 #include <string>
 
 #include "semantics.h"
@@ -60,8 +61,9 @@ bool admits_named(Analysis& an, Value tree, Obj o, std::vector<Value>& seen) {
         return out;
     }
     const ClassRec* c = an.in.cls(an.item(found, 1));
-    if (!c || c->shape) return nullish(an, o) != kYes;
-    return !primitive(an, o) && (c->ambient || can(of_class(an, o, an.item(found, 1)), true));
+    if (!c) return true;
+    if (c->shape || c->ambient) return structural(an, an.item(found, 1), o);
+    return !primitive(an, o) && can(of_class(an, o, an.item(found, 1)), true);
 }
 
 bool admits_in(Analysis& an, Value tree, Obj o, std::vector<Value>& seen) {
@@ -82,7 +84,7 @@ bool admits_in(Analysis& an, Value tree, Obj o, std::vector<Value>& seen) {
         return false;
     }
     if (kind == V.T_NAMED) return admits_named(an, tree, o, seen);
-    if (kind == V.T_OBJECT) return nullish(an, o) != kYes;
+    if (kind == V.T_OBJECT) return structural(an, an.item(tree, 1), o);
     if (kind == V.T_TUPLE) return can(array(an, o), true);
     if (kind == V.T_FN) return has_typeof(an, o, V.TYPEOF_FUNCTION);
     return true;
@@ -196,14 +198,6 @@ uint8_t array(Analysis& an, Obj o) {
     return open_kind(an, o) ? kEither : kNo;
 }
 
-uint8_t view(Analysis& an, Obj o) { return open_kind(an, o) ? kEither : kNo; }
-
-uint8_t number(Analysis& an, Obj o) {
-    Value kind = an.okind(o);
-    bool some = kind == an.V.SITE_UNKNOWN || (kind == an.V.SITE_PRIMITIVE && prim(an, o) == an.V.GD_NUMBER);
-    return some ? kEither : kNo;
-}
-
 uint8_t of_class(Analysis& an, Obj o, Value key) {
     if (primitive(an, o)) return kNo;
     Value kind = an.okind(o);
@@ -250,6 +244,93 @@ uint8_t outcomes(Analysis& an, Obj o, Obj target) {
 bool admits(Analysis& an, Value tree, Obj o) {
     std::vector<Value> seen;
     return admits_in(an, tree, o, seen);
+}
+
+const std::vector<Value>& required(Analysis& an, Value key) {   // each member it requires (not optional)
+    auto [found, made] = an.required_members.try_emplace(key.bits());
+    if (!made) return found->second;
+    const Vocab& V = an.V;
+    for (Value k : typesys::ancestors(an, key)) {
+        for (Value g : typesys::group(an, k)) {
+            for (const auto& [name, gids] : an.in.members_of(g)) {
+                if (name == V.CALL_SIGNATURE || name == V.CONSTRUCT_SIGNATURE || name == V.INDEX_SIGNATURE) continue;
+                bool needed = false;
+                for (int64_t g2 : gids) needed = needed || !an.unit(g2).optional;
+                if (needed && std::find(found->second.begin(), found->second.end(), name) == found->second.end()) {
+                    found->second.push_back(name);
+                }
+            }
+        }
+    }
+    return found->second;
+}
+
+bool structural(Analysis& an, Value key, Obj o) {
+    if (an.okind(o) == an.V.SITE_UNKNOWN || an.okind(o) == an.V.SITE_DECLARED) return true;
+    if (nullish(an, o) == kYes) return false;
+    auto names = required(an, key);
+    auto written = an.names_of.find(o);
+    for (Value name : names) {
+        if (typesys::has_member(an, o, name)) continue;
+        if (written == an.names_of.end() ||
+            std::find(written->second.begin(), written->second.end(), name) == written->second.end()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+namespace {
+
+bool surely_value(Analysis& an, Value v, Obj o) {
+    const Vocab& V = an.V;
+    Value kind = an.okind(o);
+    if (an.starts(v, V.TEXT)) return kind == V.SITE_TEXT && an.text(v) == joined(an, V.TEXT, prim(an, o));
+    if (v == V.S_STRING) {
+        return kind == V.SITE_TEXT || kind == V.SITE_KEY || (kind == V.SITE_PRIMITIVE && prim(an, o) == V.GD_STRING);
+    }
+    return kind == V.SITE_PRIMITIVE && an.text(v) == joined(an, V.LANG, prim(an, o)) &&
+           !an.in_set(prim(an, o), V.GD_OBJECT_KINDS);
+}
+
+bool surely_in(Analysis& an, Value tree, Obj o, std::vector<Value>& seen) {
+    const Vocab& V = an.V;
+    Value kind = an.item(tree, 0);
+    if (kind == V.T_UNION) {
+        for (Value part : an.at(an.item(tree, 1))) {
+            if (surely_in(an, part, o, seen)) return true;
+        }
+        return false;
+    }
+    if (kind == V.T_VALUES) {
+        for (Value v : an.at(an.item(tree, 1))) {
+            if (surely_value(an, v, o)) return true;
+        }
+        return false;
+    }
+    if (kind != V.T_NAMED || primitive(an, o) || an.okind(o) == V.SITE_UNKNOWN || an.okind(o) == V.SITE_DECLARED) {
+        return false;
+    }
+    Value found = typesys::resolve(an, an.item(tree, 1), an.item(tree, 3), an.item(tree, 4));
+    if (found.kind() == Kind::None || std::find(seen.begin(), seen.end(), found) != seen.end()) return false;
+    if (an.item(found, 0) == V.ALIAS) {
+        seen.push_back(found);
+        bool out = surely_in(an, an.unit(an.item(found, 1).data()).result_type, o, seen);
+        seen.pop_back();
+        return out;
+    }
+    Value key = an.item(found, 1);
+    for (Value own : typesys::own_types(an, o)) {
+        if (own == key) return true;
+    }
+    return of_class(an, o, key) == kYes;
+}
+
+}  // namespace
+
+bool surely(Analysis& an, Value tree, Obj o) {
+    std::vector<Value> seen;
+    return surely_in(an, tree, o, seen);
 }
 
 }  // namespace ftengine::verdicts

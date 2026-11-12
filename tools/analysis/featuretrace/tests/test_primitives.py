@@ -54,17 +54,10 @@ class JsPrimitives(Solved, FixtureCase):
 
 
 class LanguagePredicates(Solved, FixtureCase):
-    """G1'': the predicates ECMAScript itself defines narrow (fixture `jsvalues/builtins.ts`)."""
+    """Fixture `jsvalues/builtins.ts`. No function narrows by its name: what a call proves is its declaration's
+    predicate (log/trace-research.md F38; the new core's test_heap_narrowing)."""
     ROOTS = ("jsvalues",)
     BASE = "jsvalues"
-    GADGET = CLASS + "builtins.ts#Gadget"
-
-    def test_array_buffer_is_view(self):
-        self.assertEqual({ENGINE, NULL}, self.returned("viewOnly"))         # the typed array; no Gadget, no array
-        self.assertNotIn("Gadget.constructor", self.names("viewMakes"))    # a view's constructor is the host's
-
-    def test_number_predicates(self):
-        self.assertEqual({NUMBER, NULL}, self.returned("intOnly"))
 
     def test_an_object_of_the_language_can_be_an_array(self):
         self.assertIn(OBJECT, self.returned("anyObjectArray"))

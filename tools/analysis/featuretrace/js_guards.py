@@ -4,35 +4,24 @@ G1; TypeScript handbook, Narrowing; MDN `typeof`, `instanceof`, `in`, falsy valu
 `facts(r, node, unit)` gives the facts that hold when the condition is true and when it is false, each
 `(name_tree, guard, positive)` (`narrowing`). A name is a local or a parameter (never a property path). Guards: the
 name's truthiness `("truthy",)`, a property's truthiness `("member", p)` (`x.p`, `x?.p`), `("typeof", t)`,
-`("instance", class_tree)`, `("array",)`, `("view",)`, `("number",)` (the language's own predicates,
-`LANGUAGE_PREDICATES`), `("has", p)` (`"p" in x`),
+`("instance", class_tree)`, `("has", p)` (`"p" in x`),
 `("equals", value)` (`===`, `!==` with a constant of the language or a string), `("nullish",)` (`== null`,
 `!= null`, `== undefined`), `("member-equals", p, value)` (`x.p === v`, a `switch` case), `("predicate", callee_tree,
-index)` (a call of a function declared `x is T`) and, after a call statement, `("asserts", callee_tree, index)` (one
-declared `asserts x is T`): only TypeScript declares those. `!` swaps; `&&` keeps both when true, `||` both negations
-when false.
+index)` (any call: what its callee declares, `x is T`, decides) and, after a call statement, `("asserts", callee_tree,
+index)` (one declared `asserts x is T`): the program's declaration or the platform's (a lib's `isArray(arg: any): arg
+is any[]`), never a function known by its name. `!` swaps; `&&` keeps both when true, `||` both negations when false.
 """
 from __future__ import annotations
 
 from . import scopes
 from .solver import FALSE, NULL, TEXT, TRUE, UNDEFINED
 from .source import field_of, named_children, string_value
-from .vocab import (G_ARRAY, G_ASSERTS, G_EQUALS, G_HAS, G_INSTANCE, G_MEMBER, G_MEMBER_EQUALS, G_NULLISH, G_NUMBER,
-                    G_PREDICATE, G_TRUTHY, G_TYPEOF, G_VIEW)
+from .vocab import (G_ASSERTS, G_EQUALS, G_HAS, G_INSTANCE, G_MEMBER, G_MEMBER_EQUALS, G_NULLISH, G_PREDICATE,
+                    G_TRUTHY, G_TYPEOF)
 
 CONSTANTS = {"null": NULL, "undefined": UNDEFINED, "true": TRUE, "false": FALSE}
 EQUAL, DIFFERENT = ("===", "=="), ("!==", "!=")
 INNER = ("parenthesized_expression", "non_null_expression", "expression_statement")
-TYPESCRIPT = (".ts", ".tsx", ".mts", ".cts")      # the files that can declare a type predicate or an assertion
-# The predicates ECMAScript defines (G1''): `Array.isArray` (an array), `ArrayBuffer.isView` (a typed array or a
-# DataView), `Number.isInteger` and its kin (true of numbers alone).
-LANGUAGE_PREDICATES = {"Array.isArray": (G_ARRAY,), "ArrayBuffer.isView": (G_VIEW,),
-                       **dict.fromkeys(("Number.isInteger", "Number.isSafeInteger", "Number.isFinite", "Number.isNaN"),
-                                       (G_NUMBER,))}
-
-
-def typescript(r) -> bool:
-    return r.src.path.suffix.lower() in TYPESCRIPT
 
 
 def _inner(node):
@@ -138,21 +127,17 @@ def facts(r, node, unit) -> tuple[list, list]:
 
 
 def _call(r, node, unit) -> tuple[list, list]:
-    """A predicate ECMAScript defines, read on the language's own global (G1''); any other call: a type predicate on
-    each name passed, decided by the callee's declaration (`x is T`) when its values are known."""
+    """A call: a type predicate on each name passed, decided by the callee's declaration (`x is T`) when its values are
+    known."""
     fn, args = field_of(node, "function"), field_of(node, "arguments")
     argv = [a for a in named_children(args) if a.type != "comment"] if args is not None else []
-    guard = LANGUAGE_PREDICATES.get(r.src.text(fn)) if fn is not None else None
-    if guard is not None and r.src.text(fn).split(".")[0] not in unit.types and argv:
-        name = name_of(r, argv[0], unit)
-        return _both([(name, guard, True)] if name is not None else [])
     return _both(_declared(r, fn, argv, unit, G_PREDICATE))
 
 
 def _declared(r, fn, argv: list, unit, kind: str) -> list:
     """A call that a function declared `x is T` or `asserts x is T` answers: a fact on each name passed, decided by the
-    callee's declaration when its values are known (TypeScript only)."""
-    if fn is None or fn.type == "import" or not typescript(r):
+    callee's declaration when its values are known (a declaration file declares them for a JavaScript caller too)."""
+    if fn is None or fn.type == "import":
         return []
     callee = r.ir(fn, unit)
     return [(name, (kind, callee, i), True) for i, name in enumerate(name_of(r, a, unit) for a in argv)

@@ -12,7 +12,7 @@ sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
 
 from support import FixtureCase, Solved  # noqa: E402
-from featuretrace.solver import (BIGINT, CLASS, ELEM, FALSE, NULL, NUMBER, OBJECT, STRING, SYMBOL,  # noqa: E402
+from featuretrace.solver import (BIGINT, CLASS, FALSE, NULL, NUMBER, OBJECT, STRING, SYMBOL,  # noqa: E402
                                  TEXT, TRUE, UNDEFINED)
 
 BOX, TILE, V3 = CLASS + "types.ts#Box", CLASS + "helpers.ts#Tile", CLASS + "guards.js#V3"
@@ -73,11 +73,10 @@ class Narrowing(Solved, FixtureCase):
         self.assertEqual({BOX, UNDEFINED}, self.returned("notNull"))
         self.assertEqual({BOX, UNDEFINED}, self.returned("looseNull"))
 
-    def test_in_and_isarray(self):
+    def test_in(self):
+        # what a call such as `Array.isArray` proves is its declaration's predicate (`x is T`), never its name
+        # (log/trace-research.md F38): the new core's test_heap_narrowing
         self.assertEqual({BOX, NULL}, self.returned("hasOpen"))
-        found = self.returned("arrayOnly")
-        self.assertNotIn(BOX, found)
-        self.assertIn(ELEM + NUMBER, found)                       # `[1]`: an array of numbers (T1'')
 
     def test_discriminant(self):
         for spec in ("discriminant", "bySwitch"):

@@ -63,8 +63,8 @@ namespace ftengine {
     X(SETTLE, "heap.protocols.SETTLE") X(JSX_CALL, "heap.jsx.JSX_CALL") X(FACTORY, "heap.jsx.FACTORY")              \
     X(CHILDREN, "heap.jsx.CHILDREN") X(ALIAS, "heap.typesys.ALIAS") X(CLASS, "heap.typesys.CLASS")                   \
     X(G_TRUTHY, "vocab.G_TRUTHY") X(G_MEMBER, "vocab.G_MEMBER") X(G_TYPEOF, "vocab.G_TYPEOF")                        \
-    X(G_INSTANCE, "vocab.G_INSTANCE") X(G_ARRAY, "vocab.G_ARRAY") X(G_VIEW, "vocab.G_VIEW")                          \
-    X(G_NUMBER, "vocab.G_NUMBER") X(G_HAS, "vocab.G_HAS") X(G_EQUALS, "vocab.G_EQUALS")                              \
+    X(G_INSTANCE, "vocab.G_INSTANCE")                          \
+    X(G_HAS, "vocab.G_HAS") X(G_EQUALS, "vocab.G_EQUALS")                              \
     X(G_NULLISH, "vocab.G_NULLISH") X(G_MEMBER_EQUALS, "vocab.G_MEMBER_EQUALS") X(G_PREDICATE, "vocab.G_PREDICATE")  \
     X(G_ASSERTS, "vocab.G_ASSERTS") X(TYPEOF_UNDEFINED, "languages.TYPEOF_UNDEFINED")                                \
     X(TYPEOF_OBJECT, "languages.TYPEOF_OBJECT") X(TYPEOF_BOOLEAN, "languages.TYPEOF_BOOLEAN")                        \

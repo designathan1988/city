@@ -9,12 +9,12 @@ unknown object's properties are unknown, so the target's dictionary holds it. Ne
 """
 from __future__ import annotations
 
-from ..languages import CALL_SIGNATURE, CONSTRUCT_SIGNATURE, INDEX_SIGNATURE, TYPEOF_STRING
+from ..languages import TYPEOF_STRING
 from ..model import STATE_KINDS
 from ..vocab import ELEMENTS_FIELD, SITE_DECLARED, SITE_UNKNOWN
 from . import members, typesys, verdicts
 
-SIGNATURES = (CALL_SIGNATURE, CONSTRUCT_SIGNATURE, INDEX_SIGNATURE)    # a type's members that are no property
+SIGNATURES = verdicts.SIGNATURES
 
 
 def copy(an, source: int, target: int) -> None:

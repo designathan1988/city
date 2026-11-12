@@ -63,3 +63,4 @@ Task E6: Ruling: one callback node per site and function (F35) — exact (its ru
 Task E6: Ruling: an arrow function called on a receiver runs by its call, not by the receiver (F36; ECMA-262 lexical this) — exact — cost if wrong: none.
 Task E6: Ruling: entry points start in waves, unnamed functions first (F36) — sound in any order, fewer runs with unknown arguments — cost if wrong: a function named only by text that never calls it waits one wave.
 Task E6: Ruling: lazy cycle detection removed after measuring it slower on src/world (F37) — the next is a dynamic topological order — cost if wrong: none (the periodic collapse stays).
+Task E6: Ruling: no call narrows by its name (F38): LANGUAGE_PREDICATES removed, a call's predicate is its declaration's, an object type by structure — the owner's binding order — cost if wrong: none.

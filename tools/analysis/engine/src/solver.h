@@ -3,7 +3,8 @@
 // each object new to its source to a transfer, once per (source, target, key). Difference propagation (Pearce, Kelly
 // and Hankin): a node keeps its objects in the order they came and how many its edges and subscriptions have seen, so
 // the worklist holds nodes, never copies of sets; a new edge or subscription is first applied, as an item of its own,
-// to what its source already held. The least fixpoint is the same in any order, as the transfers are monotone.
+// to what its source already held. The least fixpoint is the same in any order, as the transfers are monotone. Cycles
+// of identity edges are collapsed (cycles.cpp); a delivery a collapse interrupts is handed on by the collapse.
 #pragma once
 
 #include <cstdint>
@@ -113,6 +114,7 @@ private:
     std::vector<uint32_t> stamp_, index_, low_;            // Tarjan's state, kept between searches
     std::vector<uint8_t> on_;
     uint32_t epoch_ = 0;
+    std::vector<uint32_t> merged_;                         // per node: how many collapses it was part of
 };
 
 }  // namespace ftengine

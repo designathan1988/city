@@ -9,10 +9,10 @@ one of its values whatever flows in, and a value the tracer cannot tell is that 
 """
 from __future__ import annotations
 
-from . import js_library, js_transfer, transfer, truth
+from . import js_transfer, transfer, truth
 from .solver import CLASS, ELEM, ENGINE, FN, LANG, OBJECT, TEXT, UNDEFINED, fn_of
-from .vocab import (G_ARRAY, G_ASSERTS, G_EQUALS, G_HAS, G_INSTANCE, G_IS, G_MEMBER, G_MEMBER_EQUALS, G_NULLISH,
-                    G_NUMBER, G_PREDICATE, G_TRUTHY, G_TYPEOF, G_VIEW)
+from .vocab import (G_ASSERTS, G_EQUALS, G_HAS, G_INSTANCE, G_IS, G_MEMBER, G_MEMBER_EQUALS, G_NULLISH, G_PREDICATE,
+                    G_TRUTHY, G_TYPEOF)
 
 
 def wire(t, node, tree, unit) -> None:
@@ -54,27 +54,9 @@ def passes(t, guard, positive: bool, text: str, ctx, unit) -> bool:
     if kind == G_NULLISH:
         nullish = truth.is_nullish(text)
         return nullish is not False if positive else nullish is not True
-    if kind == G_ARRAY:
-        array = text.startswith(ELEM) or js_library.head_args(text)[0] == "Array"
-        return (array or host_object(t, text, ctx)) if positive else not array
-    if kind == G_VIEW:                  # `ArrayBuffer.isView`: a typed array or a DataView, the host's (G1'')
-        return host_object(t, text, ctx) if positive else True
-    if kind == G_NUMBER:                # `Number.isInteger` and its kin: true of numbers alone (G1'')
-        return "number" in truth.typeof_results(text) if positive else True
     if kind == G_HAS:
         return has(t, guard[1], positive, text, ctx)
     return True
-
-
-def host_object(t, text: str, ctx) -> bool:
-    """Whether a value can be an object the program did not write: the engine's, an object of the language's, an object
-    of a class of the program whose chain reaches a base the tracer did not read (it may extend the host's)."""
-    if text in (ENGINE, OBJECT):
-        return True
-    if text.startswith(CLASS):
-        key = t.type_class(text, ctx)
-        return key is None or not js_transfer.chain_read(t.ix, key)
-    return False
 
 
 def has(t, name: str, positive: bool, text: str, ctx) -> bool:

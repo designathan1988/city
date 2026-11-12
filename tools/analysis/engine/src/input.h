@@ -24,7 +24,7 @@ struct UnitRec {
     int64_t line = 0, local_id = -1, gid = -1, outer = -1;
     std::vector<Value> params;                   // names
     bool variadic = false, is_static = false, generator = false, asynchronous = false, decl_only = false;
-    bool ambient = false;
+    bool ambient = false, optional = false;
     std::unordered_map<uint64_t, std::vector<Value>> types;      // name bits -> trees
     std::vector<Value> values, returns, yields, param_types, tparams;
     std::unordered_map<uint64_t, int64_t> lambdas;

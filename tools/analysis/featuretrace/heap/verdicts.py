@@ -1,14 +1,16 @@
-"""What the language's tests can give of one abstract value (log/trace-research.md F31; `guards` wires them where a
-test holds): `typeof` (ECMA-262 13.5.3.1, with B.3.6's [[IsHTMLDDA]]), ToBoolean (7.1.2), IsStrictlyEqual with a
-constant, `== null` (IsLooselyEqual), IsArray, `ArrayBuffer.isView`, `Number.isInteger` and its kin (false of any
-non-Number), `instanceof` (13.10.2, OrdinaryHasInstance 7.3.21: a class's own @@hasInstance decides alone, a primitive
-is no instance, an object by its prototype chain), and whether a value can be of a declared type (TypeScript handbook,
-Narrowing: a type predicate). A value the analysis cannot decide can give either: the unknown object, a host's declared
+"""What the language's tests can give of one abstract value (log/trace-research.md F31, F38; `guards` wires them where
+a test holds): `typeof` (ECMA-262 13.5.3.1, with B.3.6's [[IsHTMLDDA]]), ToBoolean (7.1.2), IsStrictlyEqual with a
+constant, `== null` (IsLooselyEqual), `instanceof` (13.10.2, OrdinaryHasInstance 7.3.21: a class's own @@hasInstance
+decides alone, a primitive is no instance, an object by its prototype chain); and, for a declared type predicate,
+whether a value can be of a declared type and whether it surely is one (TypeScript handbook, Narrowing; Type
+Compatibility: a class of the program by its chain, an interface or a declared class by its members, the structure
+TypeScript compares). A value the analysis cannot decide can give either: the unknown object, a host's declared
 object (it may be [[IsHTMLDDA]] or of any class), an object whose chain reaches what the program does not write.
 """
 from __future__ import annotations
 
-from ..languages import (HAS_INSTANCE, PROTO_PROPERTY, TYPEOF_BIGINT, TYPEOF_BOOLEAN, TYPEOF_FUNCTION, TYPEOF_NUMBER,
+from ..languages import (CALL_SIGNATURE, CONSTRUCT_SIGNATURE, HAS_INSTANCE, INDEX_SIGNATURE, PROTO_PROPERTY,
+                         TYPEOF_BIGINT, TYPEOF_BOOLEAN, TYPEOF_FUNCTION, TYPEOF_NUMBER,
                          TYPEOF_OBJECT, TYPEOF_STRING, TYPEOF_SYMBOL, TYPEOF_UNDEFINED)
 from ..solver import BIGINT, ENGINE, FALSE, FUNCTION, LANG, NULL, NUMBER, OBJECT, STRING, SYMBOL, TEXT, TRUE, UNDEFINED
 from ..vocab import (SITE_ARRAY, SITE_CLASS, SITE_DECLARED, SITE_DECLARED_FN, SITE_FUNCTION, SITE_GENERATOR, SITE_KEY,
@@ -31,6 +33,7 @@ ORDINARY = (SITE_LITERAL, SITE_ARRAY, SITE_PROTOTYPE, SITE_MODULE, SITE_GENERATO
 NOT_INSTANCES = (SITE_ARRAY, SITE_FUNCTION, SITE_CLASS, SITE_DECLARED_FN, SITE_RESOLVER, SITE_MODULE, SITE_GENERATOR,
                  SITE_PROMISE)             # their chains are the language's intrinsics: no class of the program's on them
 YES, NO, EITHER, NEITHER = frozenset({True}), frozenset({False}), frozenset({True, False}), frozenset()
+SIGNATURES = (CALL_SIGNATURE, CONSTRUCT_SIGNATURE, INDEX_SIGNATURE)    # a type's members that are no property
 
 
 def primitive(an, obj: int) -> bool:
@@ -141,21 +144,10 @@ def nullish(an, obj: int) -> frozenset:
 
 
 def array(an, obj: int) -> frozenset:
-    """What `Array.isArray(x)` can be (IsArray: an Array exotic object, or a proxy of one)."""
+    """Whether a value can be an array (IsArray: an Array exotic object, or a proxy of one): a tuple type's value."""
     if an.objects.kind(obj) == SITE_ARRAY:
         return YES
     return EITHER if open_kind(an, obj) else NO
-
-
-def view(an, obj: int) -> frozenset:
-    """What `ArrayBuffer.isView(x)` can be: true of a typed array or a DataView, which only a host's class makes."""
-    return EITHER if open_kind(an, obj) else NO
-
-
-def number(an, obj: int) -> frozenset:
-    """What `Number.isInteger(x)` and its kin can be: true of some Numbers, false of any other value."""
-    kind = an.objects.kind(obj)
-    return EITHER if kind == SITE_UNKNOWN or kind == SITE_PRIMITIVE and prim(an, obj) == NUMBER_K else NO
 
 
 def outcomes(an, obj: int, target: int) -> frozenset:
@@ -199,8 +191,9 @@ def of_class(an, obj: int, key: str) -> frozenset:
 
 
 def admits(an, tree: tuple, obj: int, seen: tuple = ()) -> bool:
-    """Whether a value can be of a declared type: a primitive of the kinds it admits, an object of an object type (a
-    class of the program by its chain; an interface by its shape, so any value but null and undefined)."""
+    """Whether a value can be of a declared type: a primitive of the kinds it admits; of a class of the program, an
+    object by its chain; of an interface, an object type or a declared class, a value with every member it requires
+    (`structural`)."""
     kind = tree[0] if tree else None
     if kind == T_UNION:
         return any(admits(an, part, obj, seen) for part in tree[1])
@@ -215,11 +208,13 @@ def admits(an, tree: tuple, obj: int, seen: tuple = ()) -> bool:
         if found[0] == typesys.ALIAS:
             return admits(an, an.ix.units[found[1]].result_type, obj, seen + (found,))
         cls = an.ix.classes.get(found[1])
-        if cls is None or cls.shape:
-            return nullish(an, obj) != YES
-        return not primitive(an, obj) and (cls.ambient or True in of_class(an, obj, found[1]))
+        if cls is None:
+            return True
+        if cls.shape or cls.ambient:
+            return structural(an, found[1], obj)
+        return not primitive(an, obj) and True in of_class(an, obj, found[1])
     if kind == T_OBJECT:
-        return nullish(an, obj) != YES
+        return structural(an, tree[1], obj)
     if kind == T_TUPLE:
         return True in array(an, obj)
     if kind == T_FN:
@@ -238,3 +233,56 @@ def value_admits(an, value: str, obj: int) -> bool:
     if kind in (SITE_TEXT, SITE_KEY):
         return value == STRING
     return kind == SITE_PRIMITIVE and value == LANG + prim(an, obj)
+
+
+def structural(an, key: str, obj: int) -> bool:
+    """Whether a value can be of an object type by its structure (TypeScript Type Compatibility): not null nor
+    undefined, and having every member the type requires — declared on the value's own types (a primitive's wrapper
+    included) or written on it. The unknown object and a host's declared object can be anything."""
+    if an.objects.kind(obj) in (SITE_UNKNOWN, SITE_DECLARED):
+        return True
+    if nullish(an, obj) == YES:
+        return False
+    written = an.names_of.get(obj, ())
+    return all(typesys.has_member(an, obj, name) or name in written for name in required(an, key))
+
+
+def required(an, key: str) -> tuple:
+    """The members an object type requires: each property or method it or its heritage declares, not optional."""
+    memo = an.memo.setdefault(required, {})
+    if key not in memo:
+        names = set()
+        for k in typesys.ancestors(an, key):
+            for g in typesys.group(an, k):
+                for name, gids in an.ix.members.get(g, {}).items():
+                    if name not in SIGNATURES and any(not an.ix.units[i].optional for i in gids):
+                        names.add(name)
+        memo[key] = tuple(sorted(names))
+    return memo[key]
+
+
+def surely(an, tree: tuple, obj: int, seen: tuple = ()) -> bool:
+    """Whether a value is surely of a declared type, where a predicate false of it says it is not: a primitive of the
+    kind (or the text) the type names; an object whose own types or prototype chain hold the class the type names."""
+    kind = tree[0] if tree else None
+    if kind == T_UNION:
+        return any(surely(an, part, obj, seen) for part in tree[1])
+    if kind == T_VALUES:
+        return any(surely_value(an, v, obj) for v in tree[1])
+    if kind != T_NAMED or primitive(an, obj) or an.objects.kind(obj) in (SITE_UNKNOWN, SITE_DECLARED):
+        return False
+    found = typesys.resolve(an, tree[1], tree[3], tree[4])
+    if found is None or found in seen:
+        return False
+    if found[0] == typesys.ALIAS:
+        return surely(an, an.ix.units[found[1]].result_type, obj, seen + (found,))
+    return found[1] in typesys.own_types(an, obj) or YES == of_class(an, obj, found[1])
+
+
+def surely_value(an, value: str, obj: int) -> bool:
+    kind = an.objects.kind(obj)
+    if value.startswith(TEXT):
+        return kind == SITE_TEXT and value == TEXT + an.objects.text(obj)
+    if value == STRING:
+        return kind in (SITE_TEXT, SITE_KEY) or kind == SITE_PRIMITIVE and prim(an, obj) == STRING_K
+    return kind == SITE_PRIMITIVE and value == LANG + prim(an, obj) and prim(an, obj) not in OBJECT_KINDS

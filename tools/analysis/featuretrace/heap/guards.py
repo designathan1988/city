@@ -1,17 +1,17 @@
-"""What a test of the program proves where it holds (log/trace-research.md F31; the readers' facts, `js_guards`): a
+"""What a test of the program proves where it holds (log/trace-research.md F31, F38; the readers' facts, `js_guards`): a
 value read where a guard is true (positive) or false of it keeps each object the guard can be so of, once and for all as
 it arrives (`verdicts` says what each test can give of one value). The language's own tests are decided by the object's
 kind; a property's truthiness or equality by that object's property as its values arrive (a property that may be
-missing reads undefined); `instanceof` by each value its right side holds, as either grows; a declared type predicate
-or assertion by the type its callee declares (TypeScript handbook, Narrowing). A value the analysis cannot decide
-passes.
+missing reads undefined); `instanceof` by each value its right side holds, as either grows; a call by the type
+predicate its callee declares (`x is T`, `asserts x is T`: the program's or the platform's declaration, TypeScript
+handbook, Narrowing): where true, the values that can be a T; where false, those that are not surely a T. A value the
+analysis cannot decide passes. No function is known by its name: what a call proves is what its declaration says.
 """
 from __future__ import annotations
 
 from ..solver import UNDEFINED
-from ..vocab import (G_ARRAY, G_ASSERTS, G_EQUALS, G_HAS, G_INSTANCE, G_MEMBER, G_MEMBER_EQUALS, G_NULLISH, G_NUMBER,
-                     G_PREDICATE, G_TRUTHY, G_TYPEOF, G_VIEW, NARROW, SITE_DECLARED, SITE_LITERAL, SITE_NEW,
-                     SITE_UNKNOWN)
+from ..vocab import (G_ASSERTS, G_EQUALS, G_HAS, G_INSTANCE, G_MEMBER, G_MEMBER_EQUALS, G_NULLISH, G_PREDICATE,
+                     G_TRUTHY, G_TYPEOF, NARROW, SITE_DECLARED, SITE_LITERAL, SITE_NEW, SITE_UNKNOWN)
 from . import members, typesys, verdicts
 
 GUARD_MEMBER = 80                    # a node: one object's property a guard reads
@@ -44,10 +44,6 @@ def passes(an, obj: int, guard, positive: bool) -> bool:
         return verdicts.can_equal(an, obj, guard[1]) if positive else verdicts.can_differ(an, obj, guard[1])
     if kind == G_NULLISH:
         return positive in verdicts.nullish(an, obj)
-    if kind == G_ARRAY:
-        return positive in verdicts.array(an, obj)
-    if kind in (G_VIEW, G_NUMBER):           # false of anything else; true of some views, some numbers
-        return not positive or True in (verdicts.view(an, obj) if kind == G_VIEW else verdicts.number(an, obj))
     if kind == G_HAS:
         return not verdicts.primitive(an, obj)
     return True
@@ -112,11 +108,9 @@ def by_instance(an, source, node, targets, positive: bool) -> None:
 
 
 def by_predicate(an, source, node, callee, index: int, positive: bool) -> None:
-    """A call of a function declared `x is T` (`asserts x is T`) where it is true: x's values that can be a T, for each
-    function the callee can be; a callee that declares nothing of that argument proves nothing."""
-    if not positive:
-        an.solver.follow(source, node)
-        return
+    """A call of a function declared `x is T` (`asserts x is T`): where true, x's values that can be a T; where false,
+    those that are not surely a T; for each function the callee can be. A callee that declares nothing of that
+    argument proves nothing."""
     solver = an.solver
 
     def by_function(target, fns):
@@ -127,6 +121,6 @@ def by_predicate(an, source, node, callee, index: int, positive: bool) -> None:
                 solver.follow(source, target)
                 continue
             tree = found[1]
-            solver.subscribe(source, target, (NARROW, G_PREDICATE, gid), lambda t, objs, tree=tree: solver.add(t, [
-                o for o in objs if verdicts.admits(an, tree, o)]))
-    solver.subscribe(callee, node, (NARROW, G_PREDICATE, index), by_function)
+            solver.subscribe(source, target, (NARROW, G_PREDICATE, gid, positive), lambda t, objs, tree=tree: solver.add(
+                t, [o for o in objs if (verdicts.admits(an, tree, o) if positive else not verdicts.surely(an, tree, o))]))
+    solver.subscribe(callee, node, (NARROW, G_PREDICATE, index, positive), by_function)

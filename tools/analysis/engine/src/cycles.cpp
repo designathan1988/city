@@ -92,7 +92,10 @@ void Solver::collapse_found(const std::vector<std::vector<Node>>& found) {
     if (found.empty()) return;
     std::vector<uint8_t> member(held_.size(), 0);
     for (const auto& scc : found) {
-        for (Node v : scc) member[v] = 1;
+        for (Node v : scc) {
+            member[v] = 1;
+            ++merged_[v];                              // a delivery of it in course stops: Pending re-hands it
+        }
     }
     std::deque<First> kept;                                // a member's first applications, made Pending items now:
     for (const First& f : firsts_) {                       // their `upto` counts the member's own objects

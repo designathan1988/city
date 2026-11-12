@@ -54,6 +54,7 @@ bool Solver::Set::insert(Obj o) {
 }
 
 Node Solver::node() {
+    merged_.push_back(0);
     rep_.push_back(static_cast<Node>(held_.size()));
     held_.emplace_back();
     seen_.push_back(0);
@@ -137,8 +138,9 @@ void Solver::deliver(Node source, uint32_t from, uint32_t upto, Transfers& trans
     size_t edges = edges_[source].order.size(), subs = subs_[source].size();
     if (cost_.size() <= source) cost_.resize(held_.size(), 0);
     cost_[source] += objects.size() * (edges + subs);
-    for (size_t i = 0; i < edges; ++i) add(edges_[source].order[i], objects);
-    for (size_t i = 0; i < subs; ++i) {
+    const uint32_t merged = merged_[source];        // a collapse of the source hands these objects on itself
+    for (size_t i = 0; i < edges && merged_[source] == merged; ++i) add(edges_[source].order[i], objects);
+    for (size_t i = 0; i < subs && merged_[source] == merged; ++i) {
         Sub sub = subs_[source][i];
         apply_sub(sub, objects, transfers);
     }
@@ -189,8 +191,8 @@ void Solver::run(Transfers& transfers, const std::function<void(uint64_t)>& tick
         auto upto = static_cast<uint32_t>(held_[n].order.size());
         uint32_t from = seen_[n];
         if (from == upto) continue;
-        seen_[n] = upto;
-        deliver(n, from, upto, transfers);
+        deliver(n, from, upto, transfers);          // seen stays at `from` until then: what a collapse re-hands
+        if (find(n) == n) seen_[n] = std::max(seen_[n], upto);
     }
 }
 

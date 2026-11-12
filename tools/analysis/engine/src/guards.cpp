@@ -2,7 +2,8 @@
 // guard is true (positive) or false of it keeps each object the guard can be so of, once and for all as it arrives
 // (verdicts.cpp says what each test can give of one value); a property's truthiness or equality by that object's
 // property as its values arrive; `instanceof` by each value its right side holds, as either grows; a declared type
-// predicate or assertion by the type its callee declares. What the analysis cannot decide passes.
+// predicate or assertion by the type its callee declares (the program's or the platform's declaration): where true,
+// the values that can be of it, where false those not surely of it. No function is known by its name.
 #include "semantics.h"
 
 namespace ftengine::guards {
@@ -23,9 +24,6 @@ bool passes(Analysis& an, Obj o, Value guard, bool positive) {
     if (kind == V.G_TRUTHY) return positive ? truthiness(an, o).first : truthiness(an, o).second;
     if (kind == V.G_EQUALS) return positive ? can_equal(an, o, an.item(guard, 1)) : can_differ(an, o, an.item(guard, 1));
     if (kind == V.G_NULLISH) return can(nullish(an, o), positive);
-    if (kind == V.G_ARRAY) return can(array(an, o), positive);
-    if (kind == V.G_VIEW) return !positive || can(view(an, o), true);
-    if (kind == V.G_NUMBER) return !positive || can(number(an, o), true);
     if (kind == V.G_HAS) return !primitive(an, o);
     return true;
 }
@@ -68,13 +66,9 @@ void wire(Analysis& an, Value node, Value tree, const UnitRec& unit, Value ctx) 
         an.subscribe(targets, node, key_of(an, {V.NARROW, V.G_INSTANCE, B(positive), targets}),
                      pack(an, kInstanceTargets, {source, B(positive)}));
     } else if (kind == V.G_PREDICATE || kind == V.G_ASSERTS) {
-        if (!positive) {
-            an.follow(source, node);
-            return;
-        }
         Value callee = an.node(an.item(guard, 1), unit, ctx), index = an.item(guard, 2);
-        an.subscribe(callee, node, key_of(an, {V.NARROW, V.G_PREDICATE, index}),
-                     pack(an, kPredicateFunctions, {source, index}));
+        an.subscribe(callee, node, key_of(an, {V.NARROW, V.G_PREDICATE, index, B(positive)}),
+                     pack(an, kPredicateFunctions, {source, index, B(positive)}));
     } else {
         an.subscribe(source, node, key_of(an, {V.NARROW, guard, B(positive)}),
                      pack(an, kNarrowValue, {guard, B(positive)}));
@@ -146,7 +140,8 @@ void instance_targets(Analysis& an, Value target, Value source, bool positive, s
     an.add(target, kept);
 }
 
-void predicate_functions(Analysis& an, Value target, Value source, int64_t index, std::span<const Obj> fns) {
+void predicate_functions(Analysis& an, Value target, Value source, int64_t index, bool positive,
+                         std::span<const Obj> fns) {
     std::vector<Obj> list(fns.begin(), fns.end());
     for (Obj fn : list) {
         int64_t gid = an.function(fn);
@@ -155,15 +150,15 @@ void predicate_functions(Analysis& an, Value target, Value source, int64_t index
             an.follow(source, target);                  // no predicate on that argument: nothing is proved
             continue;
         }
-        an.subscribe(source, target, key_of(an, {an.V.NARROW, an.V.G_PREDICATE, I(gid)}),
-                     pack(an, kPredicateAdmits, {an.item(found, 1)}));
+        an.subscribe(source, target, key_of(an, {an.V.NARROW, an.V.G_PREDICATE, I(gid), B(positive)}),
+                     pack(an, kPredicateAdmits, {an.item(found, 1), B(positive)}));
     }
 }
 
-void predicate_admits(Analysis& an, Value target, Value tree, std::span<const Obj> objs) {
+void predicate_admits(Analysis& an, Value target, Value tree, bool positive, std::span<const Obj> objs) {
     std::vector<Obj> kept;
     for (Obj o : objs) {
-        if (admits(an, tree, o)) kept.push_back(o);
+        if (positive ? admits(an, tree, o) : !surely(an, tree, o)) kept.push_back(o);
     }
     an.add(target, kept);
 }

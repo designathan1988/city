@@ -136,7 +136,7 @@ HANDLERS = {
                "js_guards:facts", "narrowing:open", "narrowing:close", "narrowing:apply", "narrowing:wrap",
                "narrowing:leaves", "narrowing:assigned_names", "narrowing:enter_function", "scopes:renamed",
                "narrow_values:wire", "narrow_values:passes", "narrow_values:by_member", "narrow_values:by_class",
-               "narrow_values:instance", "narrow_values:host_object", "narrow_values:named_classes", "narrow_values:settle", "js_guards:case_facts",
+               "narrow_values:instance", "narrow_values:named_classes", "narrow_values:settle", "js_guards:case_facts",
                "js_guards:asserted", "js_types:predicate", "narrowing:after_if", "narrowing:region_facts",
                "js_guards:operand_facts",
                "js_body:block", "js_body:guarded", "js_expr:guarded", "ir_js:guarded", "gd_guards:facts",

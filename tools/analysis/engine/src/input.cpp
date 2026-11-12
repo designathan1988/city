@@ -79,6 +79,7 @@ public:
         u.variadic = flag(get("variadic")); u.is_static = flag(get("static"));
         u.generator = flag(get("generator")); u.asynchronous = flag(get("asynchronous"));
         u.decl_only = flag(get("decl_only")); u.ambient = flag(get("ambient"));
+        u.optional = flag(get("optional"));
         auto types = seq(s_, get("types"));
         for (size_t i = 0; i + 1 < types.size(); i += 2) u.types[types[i].bits()] = list(s_, types[i + 1]);
         u.values = list(s_, get("values"));

@@ -99,7 +99,7 @@ class Unit:
     predicate: tuple = ()          # js: a return type `[asserts] x is T`: (x's index, T's value trees, asserts) (G1)
     predicate_type: tuple = ()     # js: the same with T kept whole (`js_sigs`): (x's index, T's type tree, asserts)
     defaults: set = field(default_factory=set)     # js: parameters written with a default (an omitted argument's)
-    optional: bool = False         # js: a method declared optional (`m?(): T`): reading it may give undefined (T1')
+    optional: bool = False         # js: a method or property declared optional (`m?(): T`, `p?: T`): may be missing
     bounds: dict = field(default_factory=dict)     # js: parameter or local -> its declared type's bound (S2)
     bound: tuple = ()              # js: a field's, variable's or alias's declared type's bound; a function's result's
     late_writes: dict = field(default_factory=dict)    # js: name -> what a closure writes to a variable its enclosing

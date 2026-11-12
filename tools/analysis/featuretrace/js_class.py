@@ -99,6 +99,7 @@ def members(r, body, key: str, outer, class_node=None) -> None:
             field.type_text = r.type_text(field_of(member, "type"))
             field.values += r.type_values(field_of(member, "type"), field)
             optional = any(c.type == "?" for c in member.children)
+            field.optional = optional                       # `p?: T`: an object of the type may lack it
             written = js_sigs.of(r, field_of(member, "type"), key)
             field.result_type = js_sigs.optional(written) if optional else written       # kept whole (Task 4)
             if field_of(member, "type") is not None:
