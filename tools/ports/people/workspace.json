@@ -1,8 +1,0 @@
-{
-  "version": 1,
-  "feature": "people",
-  "game": "${game}",
-  "base": "a11384aa2303e1913636063f5ffff7e6d12b98ed",
-  "branch": "convert/people",
-  "workspace": "${ports}/people/workspace"
-}

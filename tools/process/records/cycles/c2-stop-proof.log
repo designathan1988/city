@@ -1,9 +1,0 @@
-{"quando": "2026-11-05T06:28:18+00:00", "sessao": "4d7afc4e-f95e-49f9-b56c-1716cb48953e", "ciclo": 1, "fase": 1, "evento": "turno_segurado", "motivo": "Esta mensagem para e pede o que já está autorizado."}
-{"quando": "2026-11-05T06:28:25+00:00", "sessao": "4d7afc4e-f95e-49f9-b56c-1716cb48953e", "ciclo": 1, "fase": 1, "evento": "turno_segurado", "motivo": "Esta mensagem para e pede o que já está autorizado."}
-**Estado do portão:** o `portao-ver estado` que ficou pendente saiu igual ao do item 3: fase 1, ciclo 1, `penalidades: 0`, sem plano e sem arquivos alterados. Os dois bloqueios do Stop não geraram penalidade.
-
-**Primeiro bloqueio:** é o comportamento previsto. A bateria tem esse caso em `ferramentas/processo/testar.py:220`, onde exatamente a frase do item 4 deve ser segurada.
-
-**Segundo bloqueio:** provavelmente foi um falso positivo. Meu relatório não pedia nada, mas citava a frase do item 4 e a mensagem do próprio hook, e a detecção é feita por expressão regular sobre o texto (`ferramentas/processo/processo.py:33`, mensagem na linha 243). Isso é uma hipótese: só vi as linhas que o `grep` trouxe, não li a função inteira nem reproduzi o caso.
-
-Se for isso, um relatório que apenas cita a frase é tratado como se estivesse parando para pedir algo. Não alterei nada no portão, porque o pedido era só executar e relatar. Os itens 1 a 5 estão concluídos.
