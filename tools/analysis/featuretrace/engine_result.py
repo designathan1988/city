@@ -53,14 +53,17 @@ class EngineResult:
         return {self.label(o) for o in self.names.get((gid, tree[1]), ())}
 
 
-def analyse(ix, progress=None, contexts: bool = True, names: bool = False, deadline: float = DEADLINE) -> EngineResult:
+def analyse(ix, progress=None, contexts: bool = True, names: bool = False, deadline: float = DEADLINE,
+            collapse_every: int | None = None) -> EngineResult:
     """The analysis of the index by the engine, every line it prints handed to `progress`; with `names`, what each
-    local and name read holds (`points`)."""
+    local and name read holds (`points`); `collapse_every`: the items between two collapses of cycles (the engine's
+    own choice when not given)."""
     progress = progress or (lambda line: None)
     with tempfile.TemporaryDirectory() as folder:
         source, out = Path(folder) / "input.pickle", Path(folder) / "output.pickle"
         engine_input.write(ix, source)
-        flags = ([] if contexts else ["--no-contexts"]) + (["--names"] if names else [])
+        flags = ([] if contexts else ["--no-contexts"]) + (["--names"] if names else []) + (
+            ["--collapse-every", str(collapse_every)] if collapse_every else [])
         engine.run(["analyse", str(source), str(out)] + flags, deadline, progress)
         result = EngineResult(ix, pickle.loads(out.read_bytes()))
     if result.missing:

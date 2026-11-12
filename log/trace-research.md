@@ -449,3 +449,19 @@ official declarations only, converging (finite, fast enough to run in seconds to
       identity edges collapsed (Hardekopf & Lin's lazy and hybrid cycle detection), sets as sorted chunks;
   (b) answering the tracer's question instead of solving the whole program (F7, F9: demand-driven points-to,
       Sridharan & Bodik; Boomerang): a feature trace needs the flows from its seed, not every flow of the lab.
+
+### F30. The constraint graph's cycles, collapsed (P1) — 2026-11-12 08:30
+- Measured (the engine's cycle report, Tarjan over the identity edges): a cycle that grows to 74,421 nodes, the nodes of
+  the cycles holding 65.6 M object memberships (~880 each, the same set in every member): every object crossed the
+  whole cycle member by member.
+- Built (engine/src/cycles.cpp; Hardekopf & Lin, PLDI 2007): every `--collapse-every` items (2^22 by default) the cycles
+  of identity edges are found by Tarjan's algorithm over the representatives and each is collapsed into one node, which
+  takes its members' objects, edges and subscriptions; each member's edges and subscriptions are handed only what the
+  union holds that they had not been handed, and a member's first applications not yet run become such deliveries with
+  exactly the objects they were made for. The least fixpoint is the same.
+- Tests: solver_test's cycles_collapse_to_the_same_fixpoint (two solvers, one collapsing midway with a first
+  application pending: red before the pending firsts were carried over); every heap test runs the engine collapsing
+  every 4 items (support.COLLAPSE_OFTEN): 445 tests green.
+- The lab with contexts: 422 k links at 96 s (the best before: ~372 k at 150 s); the analysis reaches more of the lab
+  faster (11.4 M nodes, 888 k objects at 108 s) and still does not converge in 150 s; a representative that took tens
+  of thousands of subscriptions makes items long enough to hold the progress lines.

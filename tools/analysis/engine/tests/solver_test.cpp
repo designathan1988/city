@@ -93,9 +93,40 @@ void transfers_that_grow_the_graph() {
     CHECK(s.holds(b, 99) && !s.holds(b, 100));
 }
 
+// The same operations on two solvers, one collapsing its cycles midway: the same objects in every node.
+void cycles_collapse_to_the_same_fixpoint() {
+    auto build = [](ftengine::Solver& s, Plus& plus, bool collapse) {
+        std::vector<ftengine::Node> n;
+        for (int i = 0; i < 8; ++i) n.push_back(s.node());
+        s.follow(n[0], n[1]); s.follow(n[1], n[2]); s.follow(n[2], n[0]);   // a cycle
+        s.follow(n[2], n[3]); s.follow(n[3], n[4]); s.follow(n[4], n[3]);   // another, below it
+        s.add(n[0], 1);
+        s.subscribe(n[1], n[5], 0, {kShift, 10});
+        s.run(plus);
+        s.follow(n[1], n[7]);                      // a new edge not yet applied when the cycle collapses
+        if (collapse) s.collapse();
+        s.add(n[2], 2);
+        s.subscribe(n[4], n[6], 0, {kShift, 20});
+        s.follow(n[6], n[7]);
+        s.add(n[3], 3);
+        s.run(plus);
+        return n;
+    };
+    ftengine::Solver plain, folded;
+    Plus a, b;
+    auto x = build(plain, a, false);
+    auto y = build(folded, b, true);
+    for (size_t i = 0; i < x.size(); ++i) CHECK((held(plain, x[i]) == held(folded, y[i])));
+    CHECK((held(folded, y[0]) == std::set<ftengine::Obj>{1, 2}));
+    CHECK((held(folded, y[3]) == std::set<ftengine::Obj>{1, 2, 3}));
+    CHECK((held(folded, y[7]) == std::set<ftengine::Obj>{1, 2, 21, 22, 23}));
+    CHECK(folded.find(y[1]) == folded.find(y[0]) && folded.find(y[3]) == folded.find(y[4]));
+}
+
 }  // namespace
 
 int main() {
+    cycles_collapse_to_the_same_fixpoint();
     edges_and_cycles();
     subscriptions_and_first_applications();
     transfers_that_grow_the_graph();

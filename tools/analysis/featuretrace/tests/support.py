@@ -17,6 +17,7 @@ HEAP = FIXTURE / "heap"
 _LOADED = {}
 _ANALYSED = {}
 ENGINE = "engine"                    # a HeapCase's CORE: the native engine
+COLLAPSE_OFTEN = 4                   # the engine collapses its cycles every few items: every result must stay
 
 
 def loaded(roots: tuple = ("project", "native"), base: str = "") -> tuple:
@@ -58,7 +59,8 @@ def analysed(roots: tuple, base: str, declarations: bool, core: str = "python") 
     key = (roots, base, declarations, core)
     if key not in _ANALYSED:
         ix, _, _ = program.read([FIXTURE / r for r in roots], FIXTURE / base, None, declarations=declarations)
-        run = (lambda: engine_result.analyse(ix, names=True)) if core == ENGINE else (lambda: analysis.analyse(ix))
+        run = (lambda: engine_result.analyse(ix, names=True, collapse_every=COLLAPSE_OFTEN)) if core == ENGINE \
+            else (lambda: analysis.analyse(ix))
         _ANALYSED[key] = (ix, program.deep(run))
     return _ANALYSED[key]
 

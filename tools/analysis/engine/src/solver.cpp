@@ -54,6 +54,7 @@ bool Solver::Set::insert(Obj o) {
 }
 
 Node Solver::node() {
+    rep_.push_back(static_cast<Node>(held_.size()));
     held_.emplace_back();
     seen_.push_back(0);
     edges_.emplace_back();
@@ -64,6 +65,7 @@ Node Solver::node() {
 }
 
 bool Solver::add(Node n, Obj o) {
+    n = find(n);
     if (!held_[n].insert(o)) return false;
     if (edges_[n].order.empty() && subs_[n].empty()) {
         seen_[n] = static_cast<uint32_t>(held_[n].order.size());   // nothing to hand them to: seen
@@ -85,13 +87,26 @@ void Solver::queue(Node n) {
 }
 
 void Solver::follow(Node source, Node target) {
+    source = find(source);
+    target = find(target);
     if (source == target) return;
     if (!edges_[source].insert(target)) return;    // the source's own index: no global table to reach into
     auto upto = static_cast<uint32_t>(held_[source].order.size());
-    if (upto) firsts_.push_back({source, upto, true, target});
+    if (upto) firsts_.push_back({source, upto, true, target, {}});
 }
 
 bool Solver::subscribe(Node source, Node target, uint32_t key, const Transfer& transfer) {
+    source = find(source);
+    Sub sub{target, key, transfer};
+    if (!insert_sub(source, sub)) return false;
+    auto upto = static_cast<uint32_t>(held_[source].order.size());
+    if (upto) firsts_.push_back({source, upto, false, 0, sub});
+    return true;
+}
+
+bool Solver::insert_sub(Node source, const Sub& sub) {
+    Node target = sub.target;
+    uint32_t key = sub.key;
     uint64_t pair = static_cast<uint64_t>(target) << kHalf | key;
     auto& index = sub_index_[source];
     if (index) {
@@ -106,9 +121,7 @@ bool Solver::subscribe(Node source, Node target, uint32_t key, const Transfer& t
             index->insert(pair);
         }
     }
-    subs_[source].push_back({target, key, transfer});
-    auto upto = static_cast<uint32_t>(held_[source].order.size());
-    if (upto) firsts_.push_back({source, upto, false, static_cast<uint32_t>(subs_[source].size() - 1)});
+    subs_[source].push_back(sub);
     return true;
 }
 
@@ -145,25 +158,34 @@ std::vector<std::pair<uint64_t, Node>> Solver::take_costs(size_t count) {
 }
 
 void Solver::run(Transfers& transfers, const std::function<void(uint64_t)>& tick) {
-    while (!firsts_.empty() || !work_.empty()) {
+    while (!firsts_.empty() || !work_.empty() || !pending_.empty()) {
         ++items_;
         if (tick && items_ % kTickItems == 0) tick(items_);
+        if (collapse_every && items_ % collapse_every == 0) collapse();
+        if (!pending_.empty()) {                      // a collapsed member's edges and subs: what they had not seen
+            Pending p = std::move(pending_.front());
+            pending_.pop_front();
+            for (Node t : p.targets) add(t, p.objects);
+            for (const Sub& sub : p.subs) apply_sub(sub, p.objects, transfers);
+            continue;
+        }
         if (!firsts_.empty()) {
             First f = firsts_.front();
             firsts_.pop_front();
+            if (find(f.source) != f.source) continue;   // collapsed: its representative hands all of it again
             const auto& order = held_[f.source].order;
             std::vector<Obj> objects(order.begin(), order.begin() + f.upto);
             if (f.edge) {
-                add(f.index, objects);
+                add(f.target, objects);
             } else {
-                Sub sub = subs_[f.source][f.index];
-                apply_sub(sub, objects, transfers);
+                apply_sub(f.sub, objects, transfers);
             }
             continue;
         }
         Node n = work_.front();
         work_.pop_front();
         queued_[n] = 0;
+        if (find(n) != n) continue;                     // collapsed into its representative
         auto upto = static_cast<uint32_t>(held_[n].order.size());
         uint32_t from = seen_[n];
         if (from == upto) continue;

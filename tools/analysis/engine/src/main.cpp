@@ -26,6 +26,7 @@ constexpr int kUsage = 2;
 constexpr double kMegabyte = 1e6;
 constexpr uint64_t kGrowthEvery = 4;       // ticks between two reports of what grows
 constexpr size_t kLargest = 25;            // the nodes a report names
+constexpr uint64_t kCollapseEvery = uint64_t{1} << 22;   // items between two searches for cycles to collapse
 
 void say(const std::string& line) {
     double seconds = std::chrono::duration<double>(Clock::now() - kStart).count();
@@ -47,13 +48,14 @@ ftengine::Value parse(const std::vector<uint8_t>& data, ftengine::Store& store) 
     return root;
 }
 
-int analyse(const char* input, const char* output, bool sensitive, bool names) {
+int analyse(const char* input, const char* output, bool sensitive, bool names, uint64_t collapse_every) {
     ftengine::Input in;
     ftengine::Value root = parse(read_file(input), in.store);
     ftengine::decode(root, in);
     say("decoded: " + std::to_string(in.units.size()) + " units, " + std::to_string(in.classes.size()) + " classes");
     ftengine::Analysis an(in);
     an.contexts = sensitive;
+    an.solver.collapse_every = collapse_every;
     ftengine::Semantics semantics(an);
     uint64_t ticks = 0;
     auto tick = [&](uint64_t items) {
@@ -63,6 +65,7 @@ int analyse(const char* input, const char* output, bool sensitive, bool names) {
             say("  costliest:" + an.costliest(kLargest));
             say("  stores:" + an.stores(kLargest));
             if (ticks % (kGrowthEvery * kGrowthEvery) == 0) say("  runs:" + an.runs(kLargest));
+            if (ticks % (kGrowthEvery * kGrowthEvery) == 0) say("  cycles: " + an.solver.cycles());
         }
         say("  " + std::to_string(items) + " items, " + std::to_string(an.solver.nodes()) + " nodes, " +
             std::to_string(an.objects()) + " objects, " + std::to_string(an.links.size()) + " links, queue " +
@@ -101,13 +104,15 @@ int main(int argc, char** argv) {
         }
         if (command == "analyse" && argc >= 4) {
             bool sensitive = true, names = false;
+            uint64_t collapse_every = kCollapseEvery;
             for (int i = 4; i < argc; ++i) {
                 std::string flag = argv[i];
                 if (flag == "--no-contexts") sensitive = false;
                 else if (flag == "--names") names = true;
+                else if (flag == "--collapse-every" && i + 1 < argc) collapse_every = std::stoull(argv[++i]);
                 else throw std::runtime_error("unknown flag " + flag);
             }
-            return analyse(argv[2], argv[3], sensitive, names);
+            return analyse(argv[2], argv[3], sensitive, names, collapse_every);
         }
         if (command == "stats" && argc == 3) {
             ftengine::Store store;
@@ -119,6 +124,6 @@ int main(int argc, char** argv) {
         return 1;
     }
     std::fprintf(stderr, "usage: ftengine dump <input> <output> | stats <input> | analyse <input> <output> "
-                         "[--no-contexts] [--names]\n");
+                         "[--no-contexts] [--names] [--collapse-every N]\n");
     return kUsage;
 }

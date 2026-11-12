@@ -54,3 +54,4 @@ Task E6: Ruling: number keys name indexes in both cores (ECMA-262 ToPropertyKey;
 Task E7: Ruling: contexts only for functions whose outputs carry inputs' or their own objects (heap/flows.py; F26) — exact on every test and fixture; measured: most of the lab's functions keep their contexts — cost if wrong: a function whose output carries objects through a path the trees do not show runs once (none known).
 Task E6: Ruling: the engine skips a call of an object no call can run (cached per object; F27) — exact: such a call reached nothing in either core — cost if wrong: none.
 Task E6: Ruling: fields are initialized per object where it is made, literals' properties where the literal is evaluated (F28; ECMA-262 InitializeInstanceElements, PropertyDefinitionEvaluation) — cost if wrong: none (the old evaluation lost flows).
+Task E6: Ruling: the engine collapses cycles of identity edges (F30) — exact (same least fixpoint, tested both ways) — cost if wrong: none.
