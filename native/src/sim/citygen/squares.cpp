@@ -1,16 +1,14 @@
-// The squares of a generated city (squares.h): lots that touch make a block; a block of the right size on a main road may be a square,
-// one per neighbourhood, the nearest its middle. The square is a body of its own: lawn, two walks crossing at a round plaza, trees on a grid.
+// The squares of a generated city (squares.h): lots that touch make a block; a block of the right size on a main road that reaches
+// every line of its box may be a square, one per neighbourhood, the nearest its middle. The square is a body of its own: a lawn, two
+// walks crossing at a plaza, and trees on a lattice through the crossing, each an element whose rectangle is the room of its crown.
 #include "sim/citygen/squares.h"
 
 #include "core/math.h"
-#include "core/random.h"
 #include "sim/buildings/b40/civic.h"
-#include "sim/buildings/b40/record.h"
 #include "sim/citygen/lot_gen.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <map>
 #include <numeric>
@@ -22,8 +20,8 @@ using namespace b40;
 
 namespace {
 constexpr double FILE_CELL_M = 60; // the grid lots are filed in while they are joined
-constexpr float LAWN_H = 0.06f, LATTICE_FROM_M = 200;
-constexpr float SHARED_LINE_M = 1e-3f; // two lots' shared side, reached from each one's own centre in floats, within a millimetre
+constexpr float LAWN_H = 0.06f;
+constexpr double SHARED_LINE_M = 1e-3; // two lots' shared side, reached from each one's own middle, within a millimetre
 constexpr uint32_t LCG_MUL = 1664525U, LCG_ADD = 1013904223U, TREE_SEED_MUL = 31U, TREE_SEED_STEP = 7919U, SQUARE_SALT = 0x711eU;
 constexpr double LCG_UNIT = 4294967296.0;
 constexpr float PLAZA_WIDE = 0.45f; // the round plaza's rectangles: full size, and this share across
@@ -52,14 +50,6 @@ bool touches(const Plot &a, const Plot &b, float reach) {
 		for (int i = 0; i < 4; i++)
 			if (to_side(p, b.c[i], b.c[(i + 1) % 4]) < reach) return true;
 	return false;
-}
-
-bool inside(const Plot &p, V2 at) {
-	const Lot &l = *p.lot;
-	const float sn = std::sin(float(l.rot)), cs = std::cos(float(l.rot));
-	const V2 rel = at - p.centre;
-	// the lots of a block share their sides (lot_place.cpp): a point on the line two share is on both, no edge to a tree
-	return std::fabs(rel.x * cs - rel.y * sn) <= float(l.w) / 2 + SHARED_LINE_M && std::fabs(rel.x * sn + rel.y * cs) <= float(l.d) / 2 + SHARED_LINE_M;
 }
 
 struct Joined {
@@ -99,27 +89,108 @@ bool on_main_road(const CityState &s, const std::vector<int> &mains, V2 at, floa
 	return hit;
 }
 
+// The site a square would take of a block: the box of every lot's corners in the frame of the block's first lot (along its front,
+// in from its street), as a lot (its middle in the world, its width, its depth, the way it faces); where the walks cross in that
+// lot's frame (x from its middle, y from its front); and whether the block reaches every line of the box. A square is one record,
+// and a record's lot is a rectangle: a block that leaves a stretch of its box's lines to a street or to another block is no square.
+struct SquareSite {
+	V2 centre, middle, cross; // the block's middle and the box's in the world; the crossing in the lot's frame
+	float w = 0, d = 0, rot = 0;
+	bool whole = false;
+};
+
 struct Chosen {
-	std::vector<int> block;
-	V2 centre;
+	SquareSite site;
+	const Lot *first = nullptr; // what the square's record takes its zone, seed and street from
 	float score = 0;
 };
 
-// The body of a square on the block, and its record.
-void set_down(CityState &s, const std::vector<Plot> &plots, const Chosen &c, uint32_t &random) {
-	const CityPlanDef &d = s.catalog.growth.plan;
-	const Data &data = s.buildings.designs;
-	const Lot &first = *plots[size_t(c.block[0])].lot;
-	const float sn = std::sin(float(first.rot)), cs = std::cos(float(first.rot));
-	const V2 along(cs, -sn), in(-sn, -cs);
-	float a0 = FAR_AWAY, a1 = -FAR_AWAY, b0 = FAR_AWAY, b1 = -FAR_AWAY;
-	for (int i : c.block)
-		for (const V2 &p : plots[size_t(i)].c) {
-			const V2 rel = p - c.centre;
-			const float a = rel.x * along.x + rel.y * along.y, b = rel.x * in.x + rel.y * in.y;
-			a0 = std::min(a0, a); a1 = std::max(a1, a); b0 = std::min(b0, b); b1 = std::max(b1, b);
-		}
-	const float W = a1 - a0, D = b1 - b0, mid = (a0 + a1) / 2, cx = -mid, cy = -b0;
+// The middle of a block: its plots' middles weighed by their areas, and the areas' sum.
+struct Middle {
+	V2 at; // in the world
+	double dx = 0, dz = 0; // from the block's first lot's middle: as fine far from the map's origin as beside it
+	float area = 0;
+};
+Middle middle_of(const std::vector<Plot> &plots, const std::vector<int> &block) {
+	const Lot &first = *plots[size_t(block[0])].lot;
+	double sx = 0, sz = 0, area = 0;
+	for (int i : block) {
+		const Lot &l = *plots[size_t(i)].lot;
+		const double a = l.w * l.d;
+		area += a;
+		sx += (l.x - first.x) * a;
+		sz += (l.z - first.z) * a;
+	}
+	Middle m;
+	m.dx = sx / area;
+	m.dz = sz / area;
+	m.at = V2(float(first.x + m.dx), float(first.z + m.dz));
+	m.area = float(area);
+	return m;
+}
+
+// One lot of a block in the site's frame: how far it reaches along the first lot's front (a) and in from its street (b).
+struct Reach {
+	double a0 = FAR_AWAY, a1 = -FAR_AWAY, b0 = FAR_AWAY, b1 = -FAR_AWAY;
+	void take(const Reach &o) {
+		a0 = std::min(a0, o.a0);
+		a1 = std::max(a1, o.a1);
+		b0 = std::min(b0, o.b0);
+		b1 = std::max(b1, o.b1);
+	}
+	double wide() const { return a1 - a0; }
+	double deep() const { return b1 - b0; }
+};
+
+// The site of a block whose middle is `centre`, measured from the lots' own numbers about the first lot's middle, so a block far
+// from the map's origin is measured as finely as one beside it.
+SquareSite site_of(const std::vector<Plot> &plots, const std::vector<int> &block, const Middle &centre) {
+	const Lot &first = *plots[size_t(block[0])].lot;
+	const double sn = std::sin(first.rot), cs = std::cos(first.rot);
+	// in the first lot's frame, of a point (dx, dz) from its middle: a along its front, b in from its street
+	const auto a_of = [&](double dx, double dz) { return dx * cs - dz * sn; };
+	const auto b_of = [&](double dx, double dz) { return -dx * sn - dz * cs; };
+	std::vector<Reach> lots;
+	Reach box;
+	bool along = true; // every lot laid along the site's frame: its reach there is its own rectangle, no wider
+	for (int i : block) {
+		const Lot &l = *plots[size_t(i)].lot;
+		const double s = std::sin(l.rot), c = std::cos(l.rot);
+		Reach r;
+		for (double u : { -0.5, 0.5 })
+			for (double v : { -0.5, 0.5 }) {
+				const double dx = l.x - first.x + c * l.w * u + s * l.d * v, dz = l.z - first.z - s * l.w * u + c * l.d * v;
+				r.take(Reach{ a_of(dx, dz), a_of(dx, dz), b_of(dx, dz), b_of(dx, dz) });
+			}
+		along = along && r.wide() + r.deep() <= l.w + l.d + SHARED_LINE_M;
+		lots.push_back(r);
+		box.take(r);
+	}
+	SquareSite site;
+	site.centre = centre.at;
+	site.w = float(box.wide());
+	site.d = float(box.deep());
+	site.rot = float(first.rot);
+	const double ma = (box.a0 + box.a1) / 2, mb = (box.b0 + box.b1) / 2;
+	site.middle = V2(float(first.x + cs * ma - sn * mb), float(first.z - sn * ma - cs * mb));
+	site.cross = V2(float(a_of(centre.dx, centre.dz) - ma), float(b_of(centre.dx, centre.dz) - box.b0));
+	// The block reaches every line of its box: the lots standing on a line hold stretches of it that never lie in one another (the
+	// lots of a block share sides, never ground), so they hold the whole line when their stretches add up to its length.
+	double front = 0, back = 0, left = 0, right = 0;
+	for (const Reach &r : lots) {
+		front += r.b0 <= box.b0 + SHARED_LINE_M ? r.wide() : 0;
+		back += r.b1 >= box.b1 - SHARED_LINE_M ? r.wide() : 0;
+		left += r.a0 <= box.a0 + SHARED_LINE_M ? r.deep() : 0;
+		right += r.a1 >= box.a1 - SHARED_LINE_M ? r.deep() : 0;
+	}
+	site.whole = along && std::min(front, back) >= box.wide() - SHARED_LINE_M && std::min(left, right) >= box.deep() - SHARED_LINE_M;
+	return site;
+}
+
+// The body of a square on its site: a lawn from line to line, two walks crossing where the block's middle is, a plaza over the
+// crossing, and trees on a lattice through it, a step apart, so the rows stand the same either side of each walk.
+Body lay(const CityPlanDef &d, const Data &data, const SquareSite &site, uint32_t &random) {
+	const float W = site.w, D = site.d, cx = site.cross.x, cy = site.cross.y;
 	Body body;
 	body.plan.W = W;
 	body.plan.D = D;
@@ -131,34 +202,53 @@ void set_down(CityState &s, const std::vector<Plot> &plots, const Chosen &c, uin
 	put(body, EL_SURFACE, cx - w, 0, cx + w, D, LAWN_H * 2, walk);
 	put_at(body, EL_SURFACE, cx, cy, plaza * 2, plaza * 2 * PLAZA_WIDE, LAWN_H * 2, walk);
 	put_at(body, EL_SURFACE, cx, cy, plaza * 2 * PLAZA_WIDE, plaza * 2, LAWN_H * 2, walk);
-	auto in_block = [&](float a, float b) {
-		const V2 p = c.centre + along * a + in * b;
-		return std::any_of(c.block.begin(), c.block.end(), [&](int i) { return inside(plots[size_t(i)], p); });
-	};
 	const float step = float(d.square_tree_grid_m), clear = float(d.square_tree_edge_m);
-	for (float a = -LATTICE_FROM_M; a <= LATTICE_FROM_M; a += step) // squares.ts: the grid starts here, so it lies the same on any block
-		for (float b = -LATTICE_FROM_M; b <= LATTICE_FROM_M; b += step) {
-			if (!in_block(a, b) || std::fabs(a) < w || std::fabs(b) < w || std::hypot(a, b) < plaza) continue;
-			if (!in_block(a + clear, b) || !in_block(a - clear, b) || !in_block(a, b + clear) || !in_block(a, b - clear)) continue;
+	for (int i = int(std::ceil((-W / 2 - cx) / step)); cx + float(i) * step <= W / 2; i++)
+		for (int j = int(std::ceil(-cy / step)); cy + float(j) * step <= D; j++) {
+			const float a = float(i) * step, b = float(j) * step, x = cx + a, y = cy + b;
+			if (std::fabs(a) < w || std::fabs(b) < w || std::hypot(a, b) < plaza) continue; // no trunk on a walk or on the plaza
+			// How far the trunk stands from the square's nearest line: a trunk keeps its clearance from them.
+			const float edge = std::min(std::min(x + W / 2, W / 2 - x), std::min(y, D - y));
+			if (edge < clear) continue;
+			// The tree's element is the room of its crown: the square about the trunk that reaches neither the square's lines nor past
+			// half a step, where the next tree's room begins. A tree narrowed by the lines is the same tree smaller.
+			const float room = 2 * std::min(step / 2, edge);
 			random = random * LCG_MUL + LCG_ADD;
-			const float h = float(d.square_tree_low_m + double(random) / LCG_UNIT * (d.square_tree_high_m - d.square_tree_low_m));
-			put_at(body, EL_TREE, cx + a, cy + b, clear, clear, h, -1);
+			const float tall = float(d.square_tree_low_m + double(random) / LCG_UNIT * (d.square_tree_high_m - d.square_tree_low_m));
+			put_at(body, EL_TREE, x, y, room, room, tall * room / step, -1);
 		}
+	return body;
+}
+
+// The square of a chosen block, and its record.
+void set_down(CityState &s, const Chosen &c, uint32_t &random) {
 	Building rec;
-	const V2 front = c.centre + along * mid + in * b0, middle = front + in * (D / 2);
-	rec.x = middle.x;
-	rec.z = middle.y;
-	rec.w = W;
-	rec.d = D;
-	rec.rot = float(first.rot);
-	rec.zone = uint8_t(first.zone);
+	rec.x = c.site.middle.x;
+	rec.z = c.site.middle.y;
+	rec.w = c.site.w;
+	rec.d = c.site.d;
+	rec.rot = c.site.rot;
+	rec.zone = uint8_t(c.first->zone);
 	rec.fn = FN_SQUARE;
-	rec.seed = first.seed;
-	rec.profile = uint16_t(first.profile);
-	rec.body = s.buildings.designs.edited->add(std::move(body));
+	rec.seed = c.first->seed;
+	rec.profile = uint16_t(c.first->profile);
+	rec.body = s.buildings.designs.edited->add(lay(s.catalog.growth.plan, s.buildings.designs, c.site, random));
 	s.buildings.add(rec);
 }
 } // namespace
+
+bool square_on(const CityPlanDef &plan, const Data &data, const std::vector<Lot> &lots, uint32_t seed, Body &body) {
+	if (lots.empty()) return false;
+	std::vector<Plot> plots;
+	for (const Lot &l : lots) plots.push_back(plot_of(l));
+	std::vector<int> block(plots.size());
+	std::iota(block.begin(), block.end(), 0);
+	const SquareSite site = site_of(plots, block, middle_of(plots, block));
+	if (!site.whole) return false;
+	uint32_t random = seed;
+	body = lay(plan, data, site, random);
+	return true;
+}
 
 int plan_squares(CityState &s, uint32_t seed) {
 	const CityPlanDef &d = s.catalog.growth.plan;
@@ -173,30 +263,28 @@ int plan_squares(CityState &s, uint32_t seed) {
 	std::map<std::pair<int, int>, Chosen> by_cell;
 	const float cell = float(d.square_cell_m);
 	for (std::vector<int> &block : blocks_of(plots, float(d.square_touch_m))) {
-		float area = 0;
-		V2 sum(0, 0);
+		const Middle middle = middle_of(plots, block);
+		const float area = middle.area;
+		const V2 centre = middle.at;
 		bool fronting = false;
-		for (int i : block) {
-			const Plot &p = plots[size_t(i)];
-			const float a = float(p.lot->w * p.lot->d);
-			area += a;
-			sum = sum + p.centre * a;
-			fronting = fronting || on_main_road(s, mains, p.front, float(d.square_front_m));
-		}
+		for (int i : block) fronting = fronting || on_main_road(s, mains, plots[size_t(i)].front, float(d.square_front_m));
 		if (area < d.square_area_low || area > d.square_area_high || !fronting) continue;
-		const V2 centre = sum * (1 / area);
 		const int kx = int(std::floor(centre.x / cell)), kz = int(std::floor(centre.y / cell));
 		const float score = std::hypot(centre.x - (float(kx) + 0.5f) * cell, centre.y - (float(kz) + 0.5f) * cell);
 		auto it = by_cell.find({ kx, kz });
-		if (it == by_cell.end() || score < it->second.score) by_cell[{ kx, kz }] = Chosen{ std::move(block), centre, score };
+		if (it != by_cell.end() && score >= it->second.score) continue;
+		const SquareSite site = site_of(plots, block, middle);
+		if (site.whole) by_cell[{ kx, kz }] = Chosen{ site, plots[size_t(block[0])].lot, score };
 	}
 	std::vector<const Chosen *> chosen;
 	for (const auto &e : by_cell) chosen.push_back(&e.second);
-	std::sort(chosen.begin(), chosen.end(), [](const Chosen *a, const Chosen *b) { return a->centre.x != b->centre.x ? a->centre.x < b->centre.x : a->centre.y < b->centre.y; });
+	std::sort(chosen.begin(), chosen.end(), [](const Chosen *a, const Chosen *b) {
+		return a->site.centre.x != b->site.centre.x ? a->site.centre.x < b->site.centre.x : a->site.centre.y < b->site.centre.y;
+	});
 	uint32_t index = 0;
 	for (const Chosen *c : chosen) {
 		uint32_t random = seed * SQUARE_SALT * TREE_SEED_MUL + index * TREE_SEED_STEP;
-		set_down(s, plots, *c, random);
+		set_down(s, *c, random);
 		index++;
 	}
 	return int(chosen.size());

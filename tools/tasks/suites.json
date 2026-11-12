@@ -320,6 +320,7 @@
     {"name": "plate_tone_test", "scene": "tests/core/plate_tone_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "garden_room_test", "scene": "tests/core/garden_room_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "lot_parts_test", "scene": "tests/core/lot_parts_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "square_test", "scene": "tests/core/square_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {
      "name": "building_edit_test",
      "scene": "tests/core/building_edit_test",

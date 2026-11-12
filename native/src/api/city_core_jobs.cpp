@@ -261,6 +261,8 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("lot_parts", "zone", "cap", "w", "d", "seed", "count"), &CityProbes::lot_parts);
 	ClassDB::bind_method(D_METHOD("grove_fit", "fn", "w", "d", "seed"), &CityProbes::grove_fit);
 	ClassDB::bind_method(D_METHOD("grove_rooms"), &CityProbes::grove_rooms);
+	ClassDB::bind_method(D_METHOD("square_fit", "lots", "seed"), &CityProbes::square_fit);
+	ClassDB::bind_method(D_METHOD("square_rooms"), &CityProbes::square_rooms);
 	ClassDB::bind_method(D_METHOD("ground_drawn", "at"), &CityProbes::ground_drawn);
 	ClassDB::bind_method(D_METHOD("lamp_pools", "x", "z", "radius"), &CityProbes::lamp_pools);
 	ClassDB::bind_method(D_METHOD("wire_draws"), &CityProbes::wire_draws);

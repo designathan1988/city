@@ -22,6 +22,9 @@ const ROOMS := [
 	["hedge", 12.0, 0.7, 1.2], ["hedge", 0.7, 9.0, 1.8], ["hedge", 30.0, 0.8, 1.1], ["hedge", 1.1, 0.7, 1.0],
 	["flowers", 1.6, 1.2, 0.4], ["flowers", 1.6, 0.8, 0.35], ["flowers", 1.2, 1.2, 0.8], ["flowers", 1.4, 1.4, 0.4],
 ]
+## The rooms of a square's trees (sim/citygen/squares.cpp): a whole step of its lattice with the plan's tallest and lowest tree, and
+## the narrowest room, by the square's line.
+const SQUARE_TREES := [["tree", 9.0, 9.0, 14.0], ["tree", 9.0, 9.0, 9.0], ["tree", 6.0, 6.0, 6.0]]
 const TURNED := [["hedge", 14.0, 0.7, 1.4], ["flowers", 2.4, 1.0, 0.5]]
 const TURN_DEG := 37.0
 const ASKEW_M := 0.6 # a run's box in the lot's frame against its turned rectangle's: the pieces' rounded ends and corners are inside it
@@ -39,7 +42,7 @@ func _ready() -> void:
 		finish()
 		return
 	new_map(LAND_MAP, SEED, false)
-	for room: Array in ROOMS:
+	for room: Array in ROOMS + SQUARE_TREES:
 		_check_room(room[0], room[1], room[2], room[3], 0.0)
 	# A run the player traces across the lot is laid at an angle: the same plant, in its own turned frame.
 	for room: Array in TURNED:

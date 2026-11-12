@@ -119,6 +119,11 @@ public:
 	// their lots' layout laid: the planters, those with nothing growing in them, the plants that do not stand on their planter's soil
 	// (city_core_lot_parts_probe.cpp). No city is read.
 	godot::Dictionary lot_parts(int zone, int cap, float w, float d, int seed, int count) const;
+	// Tests: a square of the city's plan laid on a block of lots given by hand (rows of x, z, width, depth, facing), no city read, and
+	// every square of the city: each tree's room against the square's ground, the other trees' rooms, the plan's step and edge
+	// clearance, and its walks (city_core_square_probe.cpp).
+	godot::Dictionary square_fit(const godot::Array &lots, int seed) const;
+	godot::Dictionary square_rooms() const;
 	godot::Dictionary ground_drawn(const godot::Vector3 &at) const; // tests: the ground's height as the terrain's shader reads it there (render/terrain_bridge.h drawn)
 	// Tests: the street lamps' pools within `radius` of (x, z): drawn on the GPU, wanted by each lit lamp, and the lamps' lenses (RenderWorld::lamp_pools).
 	godot::Dictionary lamp_pools(float x, float z, float radius) const;

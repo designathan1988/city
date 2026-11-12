@@ -11,13 +11,16 @@
 ## its pavers, a court's lines over the court) it stands over it everywhere, never crossing it, never at its depth; and no band of lawn
 ## or bare ground too thin to plant stands beside a hard cover (a walk, a yard, a forecourt) of a lot. And every plant of a lot is drawn
 ## inside the room its element is (probe garden_rooms): no crown over the fence or the footway, no hedge thicker than its band; and
-## every tree of a park's or a square's grove inside its lot's lines (probe grove_rooms).
+## every tree of a park's or a square's grove inside its lot's lines (probe grove_rooms). And every tree of the plan's squares is an
+## element whose rectangle is its crown's room (probe square_rooms): on the square's ground, in no other tree's room, no narrower than
+## the lines and the step between two trees leave it, the tree no more slender than the plan's tallest on a whole step.
 ## Run: godot --path project res://tests/core/lot_front_test.tscn -- --no-flow
 extends TestCase
 
 const TOWN_MAP := 0
 const METROPOLIS_MAP := 5
 const SEED := 1
+const SLACK_M := 0.01
 
 
 func _ready() -> void:
@@ -53,12 +56,33 @@ func _ready() -> void:
 	# The metropolis: its avenues' wide footways give the corners whose back follows the kerb's return (junction_corner.h OFFSET, RUN).
 	_check_plants("the town", CityStore.query(&"garden_rooms"))
 	_check_groves("the town", CityStore.query(&"grove_rooms"))
+	var squares: Dictionary = CityStore.query(&"square_rooms")
+	check(int(squares.squares) > 0 and int(squares.trees) > 0, "the town has squares with trees: %d trees in %d squares" % [squares.trees, squares.squares])
+	_check_squares("the town", squares)
 	new_map(METROPOLIS_MAP, SEED, true)
 	_check_paving("the metropolis", CityStore.query(&"lot_paving"))
 	_check_covers("the metropolis", CityStore.query(&"lot_covers"))
 	_check_plants("the metropolis", CityStore.query(&"garden_rooms"))
 	_check_groves("the metropolis", CityStore.query(&"grove_rooms"))
+	_check_squares("the metropolis", CityStore.query(&"square_rooms"))
 	finish()
+
+
+## Every tree of the plan's squares: its element's rectangle is the room of its crown (probe square_rooms).
+func _check_squares(city: String, d: Dictionary) -> void:
+	var step := float(d.step_m)
+	var edge := float(d.edge_m)
+	print("%s: the squares' trees: %d in %d squares, rooms %.2f to %.2f m, the most slender %.2f, %d past their square, %d in one another, %d on a walk"
+			% [city, d.trees, d.squares, d.least_room_m, d.most_room_m, d.slender, d.out, d.meet, d.on_walk])
+	check(int(d.out) == 0, "%s: every tree's room of a square lies on the square's ground: %d of %d past it, the first (x, y, width, depth in the lot's frame) %s" % [city, d.out, d.trees, d.first_out])
+	check(int(d.meet) == 0, "%s: no two trees' rooms of a square lie in one another: %d pairs, the first %s" % [city, d.meet, d.first_meet])
+	check(int(d.on_walk) == 0, "%s: no trunk of a square stands on a walk: %d, the first %s" % [city, d.on_walk, d.first_walk])
+	if int(d.trees) == 0:
+		return
+	check(float(d.least_room_m) >= minf(step, 2.0 * edge) - SLACK_M, "%s: a square's tree has the room the lines and the next tree leave it: the narrowest %.2f m" % [city, d.least_room_m])
+	check(float(d.most_room_m) <= step + SLACK_M, "%s: no room of a square's tree wider than the step between two trees: %.2f m of %.1f" % [city, d.most_room_m, step])
+	check(float(d.slender) <= float(d.high_m) / step + SLACK_M, "%s: no tree of a square more slender than the plan's tallest on a whole step: %.2f against %.2f"
+			% [city, d.slender, float(d.high_m) / step])
 
 
 ## Every tree of an open lot's grove (a park, a square) is drawn inside its lot's lines, leaves and all (probe grove_rooms).
