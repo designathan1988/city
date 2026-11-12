@@ -31,7 +31,7 @@ void company_over(CityState &s, int id) {
 	o.ways[o.wi] = Waypoint{ w.lx, w.ly, w.lz, w.cross_seg, w.ways[w.wi - 1].side };
 	o.ways[o.wi + 1] = w.ways[w.wi];
 	o.line_off = w.line_off;
-	o.mode = PedMode::WAY;
+	enter_mode(o, PedMode::WAY);
 	aim_line(o);
 	o.cross_seg = w.cross_seg;
 	t.node_crossers[size_t(o.way_node)].push_back(other);
@@ -74,14 +74,14 @@ void begin_line(CityState &s, int id) {
 	const bool held = asks && ((!frightened && !with && !walk_ok(s, w.way_node, to.cross)) || cars_on_crossing(s, w.way_node, to.cross));
 	const bool waits = asks && !frightened && !company_ready(t, s.catalog.traffic, w);
 	if (waits || held) {
-		w.mode = PedMode::WAIT;
+		enter_mode(w, PedMode::WAIT);
 		return;
 	}
 	if (to.cross >= 0) cross_from_here(w); // over from where the queue left it at the kerb
 	else if (toward_queue(w)) onto_approach(s, w); // to the back of a kerb's queue, at its place along the kerb
 	else if (toward_kerb(w)) onto_queue(s, w); // the queue before the kerb, along the way across from where it stands
 	else if (w.wi + 1 == w.wn) aim_onto_sidewalk(s, w); // onto the next sidewalk, at its place across (ped_routes.cpp)
-	w.mode = PedMode::WAY;
+	enter_mode(w, PedMode::WAY);
 	aim_line(w);
 	if (to.cross >= 0) {
 		w.cross_seg = to.cross;

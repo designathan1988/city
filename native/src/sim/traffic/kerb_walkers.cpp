@@ -58,7 +58,7 @@ void kerb_came(const CityState &s, Pedestrian &w) {
 	stand_on_sidewalk(s, w);
 	w.cur.fx = faced.x;
 	w.cur.fz = faced.y;
-	w.mode = PedMode::KERB;
+	enter_mode(w, PedMode::KERB);
 }
 
 void kerb_forget_call(Pedestrian &w, bool back) {

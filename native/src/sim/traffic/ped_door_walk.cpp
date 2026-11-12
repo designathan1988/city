@@ -27,7 +27,7 @@ void go_in(CityState &s, int id) {
 	w.wn = n;
 	w.wi = 0;
 	w.way_node = -1;
-	w.mode = PedMode::LOT;
+	enter_mode(w, PedMode::LOT);
 	w.entering = true;
 	aim_line(w);
 }
@@ -47,7 +47,7 @@ void door_way_out(const CityState &s, Pedestrian &w, const PedDoor &d) {
 
 void leave_door(Pedestrian &w) {
 	w.wi = 0;
-	w.mode = PedMode::LOT;
+	enter_mode(w, PedMode::LOT);
 	w.lx = w.out_x;
 	w.ly = w.out_y;
 	w.lz = w.out_z;

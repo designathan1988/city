@@ -170,7 +170,7 @@ int ped_on_footway(CityState &s, int seg, int side, float arc) {
 	std::vector<int> route;
 	if (crowded(t, p, w.cur) || !plan_trip(s, w.dir == 0 ? g.b : g.a, route, w.goal_side)) return -1;
 	route_set(t.ped_pool, w.route, t.ped_waste, route.data(), int(route.size()));
-	w.mode = PedMode::KERB;
+	enter_mode(w, PedMode::KERB);
 	const int id = alloc_walker(t);
 	t.peds[size_t(id)] = std::move(w);
 	walker_born(t, id);

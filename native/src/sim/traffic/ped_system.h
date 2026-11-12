@@ -46,6 +46,9 @@ void door_way_out(const CityState &s, Pedestrian &w, const PedDoor &d);
 void leave_door(Pedestrian &w);
 void walk_lot(CityState &s, int id, float dt); // between a door and the sidewalk
 
+// ped_mode.cpp: a walker's mode, its one setter (PED_MODES: the moves a walker's life makes); false when the move is not one of them
+bool enter_mode(Pedestrian &w, PedMode next);
+
 // pedestrians.cpp
 void step_pedestrians(CityState &s, float dt);
 void reset_pedestrians(CityState &s);

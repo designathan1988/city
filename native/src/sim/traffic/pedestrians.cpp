@@ -39,7 +39,7 @@ void where_on_sidewalk(const CityState &s, Pedestrian &w) {
 // back in by the stripes at its lateral pace (ped_stripes.cpp side_limits), never moved there at once. From there it aims at its own side
 // of the way again (the line it came by aimed it at the line).
 void onto_sidewalk(const CityState &s, Pedestrian &w) {
-	w.mode = PedMode::SIDEWALK;
+	enter_mode(w, PedMode::SIDEWALK);
 	where_on_sidewalk(s, w);
 	w.u_goal = w.dir == 0 ? -w.track : w.track;
 	w.stripe_held = 0;
