@@ -44,11 +44,17 @@ class HeapContexts(HeapCase):
 
 
     def test_a_run_carrying_no_object_to_its_outputs_runs_once(self):
-        # each is also run once as an entry point (entries are chosen before `sized` and `both` run)
-        self.assertEqual(2, self.runs("area"))                 # a number made from its arguments: one run for both
-        self.assertEqual(3, self.runs("same"))                 # an identity: each call its own run
-        self.assertEqual(3, self.runs("keep"))                 # a store into a parameter's object: likewise
+        # none is an entry point: other code names them, so the entries wait for `sized` and `both` (F36)
+        self.assertEqual(1, self.runs("area"))                 # a number made from its arguments: one run for both
+        self.assertEqual(2, self.runs("same"))                 # an identity: each call its own run
+        self.assertEqual(2, self.runs("keep"))                 # a store into a parameter's object: likewise
         self.assertEqual({"Apple"}, self.classes("both"))
+
+
+    def test_an_arrow_called_on_receivers_runs_by_its_call_not_by_them(self):
+        # an arrow's `this` is its enclosing function's (ECMA-262 OrdinaryCallBindThis, lexical): the receiver
+        # is no input of it, so two receivers at one call are one run (log/trace-research.md F36)
+        self.assertEqual(1, self.runs("wrapped"))
 
 
 class HeapContextsEngine(HeapContexts):

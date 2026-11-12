@@ -60,3 +60,6 @@ Task E6: Ruling: a function unknown code calls back runs once per environment, a
 Task E6: Ruling: a string is the value of its text (F33, reversing F13's one object for all strings) — ECMA-262 ToPropertyKey: a key of a known text names its property — cost if wrong: sets holding many distinct strings where a variable takes many texts (messages); measured on src/world, not the cost that stops it.
 Task E6: Ruling: an object spread and a declared intersection copy properties by name (F34; ECMA-262 CopyDataProperties) — exact for program objects; a declared object's property members only — cost if wrong: a declared interface's method signature that describes an own property is not copied.
 Task E6: Ruling: one callback node per site and function (F35) — exact (its run never held the receiver) — cost if wrong: none.
+Task E6: Ruling: an arrow function called on a receiver runs by its call, not by the receiver (F36; ECMA-262 lexical this) — exact — cost if wrong: none.
+Task E6: Ruling: entry points start in waves, unnamed functions first (F36) — sound in any order, fewer runs with unknown arguments — cost if wrong: a function named only by text that never calls it waits one wave.
+Task E6: Ruling: lazy cycle detection removed after measuring it slower on src/world (F37) — the next is a dynamic topological order — cost if wrong: none (the periodic collapse stays).

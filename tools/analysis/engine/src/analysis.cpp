@@ -137,7 +137,7 @@ void Analysis::call(Value node, Obj fn, int64_t receiver, std::span<const Value>
     Value ctx;
     if (shared || !in.contextual.count(gid)) {     // nothing that differs between callers reaches out
         ctx = contexts::of_call(*this, env, V.ONCE);
-    } else if (receiver >= 0) {
+    } else if (receiver >= 0 && u.this_of != V.ARROW) {   // the call binds `this` (an arrow's is lexical)
         auto r = static_cast<Obj>(receiver);
         ctx = contexts::of_method(*this, env, I(object_site(r)), object_heap(r));
     } else {
@@ -201,40 +201,57 @@ void Analysis::link(int64_t src, int64_t dst, Value kind, int64_t line) {
     links.push_back({src, dst, kind, line});
 }
 
+// Module code, else the next wave of entry points (heap/entries.py): each uncalled function in each environment a
+// closure of it was made in before this pass, those no other code names first; a function written in one that had
+// not run yet waits until it has.
 bool Analysis::entries(bool modules) {
-    Obj unknown = make({V.SITE_UNKNOWN});
     bool started = false;
-    std::unordered_set<int64_t> called;
-    if (!modules) {
-        for (const Link& l : links) {
-            if (l.kind == V.CALL || l.kind == V.NEW || l.kind == V.HANDED) called.insert(l.dst);
+    if (modules) {
+        for (const UnitRec& u : in.units) {
+            if (is_function_unit(u.gid) && !u.decl_only && u.name == V.MODULE_UNIT) started |= enter(u.gid, ROOT, -1);
         }
+        return started;
     }
-    // The closures made and the functions run before this pass: a function written in one that had not run yet waits
-    // for the next pass, once the solver has run it (heap/analysis.py `entries`).
+    Obj unknown = make({V.SITE_UNKNOWN});
+    std::unordered_set<int64_t> called;
+    for (const Link& l : links) {
+        if (l.kind == V.CALL || l.kind == V.NEW || l.kind == V.HANDED) called.insert(l.dst);
+    }
     std::unordered_map<uint64_t, std::vector<Value>> known;
     std::unordered_set<int64_t> ran;
-    if (!modules) {
-        for (const auto& [gid, envs] : closure_order) {
-            if (!envs.empty()) known.emplace(gid, envs);
-        }
-        for (const auto& [gid, ctxs] : active_order) {
-            if (!ctxs.empty()) ran.insert(static_cast<int64_t>(gid));
-        }
+    for (const auto& [gid, envs] : closure_order) {
+        if (!envs.empty()) known.emplace(gid, envs);
     }
+    for (const auto& [gid, ctxs] : active_order) {
+        if (!ctxs.empty()) ran.insert(static_cast<int64_t>(gid));
+    }
+    std::vector<std::pair<int64_t, Value>> runs, first;
     for (const UnitRec& u : in.units) {
-        if (!is_function_unit(u.gid) || u.decl_only || (u.name == V.MODULE_UNIT) != modules) continue;
-        if (modules) {
-            started |= enter(u.gid, ROOT, -1);
-        } else if (!called.count(u.gid)) {
-            auto found = known.find(static_cast<uint64_t>(u.gid));
-            int64_t outer = u.outer >= 0 ? offset(u) + u.outer : -1;
-            if (found == known.end() && outer >= 0 && is_function_unit(outer) && !ran.count(outer)) continue;
-            std::vector<Value> envs = found != known.end() ? found->second : std::vector<Value>{ROOT};
-            for (Value env : envs) started |= enter(u.gid, contexts::of_call(*this, env, I(unknown)), unknown);
+        if (!is_function_unit(u.gid) || u.decl_only || u.name == V.MODULE_UNIT || called.count(u.gid)) continue;
+        auto found = known.find(static_cast<uint64_t>(u.gid));
+        int64_t outer = u.outer >= 0 ? offset(u) + u.outer : -1;
+        if (found == known.end() && outer >= 0 && is_function_unit(outer) && !ran.count(outer)) continue;
+        std::vector<Value> envs = found != known.end() ? found->second : std::vector<Value>{ROOT};
+        for (Value env : envs) {
+            Value ctx = contexts::of_call(*this, env, I(unknown));
+            if (entered_.contains({static_cast<uint64_t>(u.gid), ctx.bits(), 0})) continue;
+            runs.emplace_back(u.gid, ctx);
+            if (!named().count(u.name.bits())) first.emplace_back(u.gid, ctx);
         }
     }
+    for (const auto& [gid, ctx] : first.empty() ? runs : first) started |= enter(gid, ctx, unknown);
     return started;
+}
+
+const std::unordered_set<uint64_t>& Analysis::named() {
+    if (named_.empty()) {                          // the names the program's code reads or calls
+        for (const UnitRec& u : in.units) {
+            for (const RefRec& r : u.refs) {
+                if ((r.kind == V.CALL || r.kind == V.READ) && truthy(r.name)) named_.insert(r.name.bits());
+            }
+        }
+    }
+    return named_;
 }
 
 bool Analysis::enter(int64_t gid, Value ctx, int64_t unknown) {

@@ -86,3 +86,10 @@ function same(x) { return x; }
 function keep(into, value) { into.value = value; }
 export function sized() { return area(new Apple(), 2) + area(new Pear(), 3); }
 export function both() { same(new Pear()); keep({}, new Pear()); keep({}, new Apple()); return same(new Apple()); }
+
+const wrapped = (x) => [x];
+export function arrowAsMethod(flag) {
+  const a = { run: wrapped }, b = { run: wrapped };
+  const o = flag ? a : b;
+  return o.run(new Apple());
+}

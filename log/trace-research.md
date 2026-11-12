@@ -566,3 +566,31 @@ official declarations only, converging (finite, fast enough to run in seconds to
   shared by every site that calls that member on it, and each site took all of it to find the functions among it
   (`toString` of an object whose dictionary held 3,000 values, read by 1,900 coercions); a shared node of the
   functions among it feeds the sites now (the same least fixpoint: `call` runs nothing for the rest).
+
+### F36. An arrow's runs by its call; entries in waves (P1) — 2026-11-12 15:40
+- Measured (runs report): `RoadDoc.tell.<lambda:2423>` ran 3,644 times, each in a context of a receiver's site: an
+  arrow function kept in fields and called as `x.note(...)` on every receiver the merged records hold. ECMA-262
+  OrdinaryCallBindThis: an arrow's [[ThisMode]] is lexical, the call binds nothing, so the receiver is no input of it
+  and a context by receiver tells nothing apart.
+- Built (both cores): a call on a receiver takes the receiver's context only for a function whose `this` the call
+  binds; an arrow runs by its call (or once, when nothing differs between its callers).
+- The test (`wrapped`, an arrow called on two receivers at one call: 3 runs before) also showed the entry pass calling
+  `wrapped` with unknown arguments before the solver found that `arrowAsMethod` calls it, which the contexts test had
+  written down as expected ("each is also run once as an entry point"). Built (heap/entries.py, engine `entries`):
+  the entries start in waves, the solver run between them — first the uncalled functions no other code names (a
+  read or a call of their name), then those that stay uncalled; a function written in another waits for that one's
+  run (F32). The contexts test now expects 1, 2, 2 runs for `area`, `same`, `keep` (each its callers' runs only).
+- src/world after both: more of it runs with the program's own arguments instead of the unknown object (which
+  absorbs everything in one object), so more nodes (9.4 M at 90 s) and no convergence yet.
+
+### F37. Lazy cycle detection, measured (P1, cost) — 2026-11-12 16:20
+- Built and tested (Hardekopf & Lin's LCD: when an edge leaves its target as large as its source, look for a cycle
+  from the target, each edge once; solver_test red then green), then measured on src/world without contexts: 2.1 M
+  items in 72 s against 7.3 M in 28 s without it. Each trigger runs Tarjan over everything its root reaches, and in
+  this graph that is most of it. Removed; kept the search from given roots and the collapse as one function
+  (`sccs(roots)`, `collapse_found`).
+- What finds a cycle when it forms at a cost bounded by the region it changes is Pearce, Kelly and Hankin's online
+  cycle detection by a dynamic topological order (SCAM 2003; Pearce & Kelly, JEA 2006): an edge x->y with ord(y) <
+  ord(x) searches only the nodes ordered between them, forward from y and back from x, and either finds the cycle
+  (collapse it) or reorders that region. Without contexts, at 4.2 M items, 70 k nodes stood in cycles holding 16.7 M
+  object memberships: what the periodic collapse leaves to circulate.

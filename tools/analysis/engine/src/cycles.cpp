@@ -1,58 +1,73 @@
-// The solver's cycles of identity edges (log/trace-research.md F30; Hardekopf & Lin, "The Ant and the Grasshopper",
-// PLDI 2007): every node of such a cycle ends holding the same objects, so the cycle is collapsed into one node, its
-// representative, which takes every member's objects, edges and subscriptions; each member's edges and subscriptions
-// are handed what the union holds that the member had not handed them (a Pending item), never the whole set again.
-// The least fixpoint is the same; each object then crosses the cycle once instead of once per member. The cycles are
-// found by Tarjan's algorithm (iterative) over the representatives, every `collapse_every` items.
+// The solver's cycles of identity edges (log/trace-research.md F30, F37; Hardekopf & Lin, "The Ant and the
+// Grasshopper", PLDI 2007): every node of such a cycle ends holding the same objects, so the cycle is collapsed into one
+// node, its representative, which takes every member's objects, edges and subscriptions; each member's edges and
+// subscriptions are handed what the union holds that the member had not handed them (a Pending item), never the whole
+// set again. The least fixpoint is the same; each object then crosses the cycle once instead of once per member. The
+// cycles are found by Tarjan's algorithm (iterative) over the representatives reachable from given roots, or from
+// every node every `collapse_every` items.
 #include <algorithm>
 
 #include "solver.h"
 
 namespace ftengine {
 
-std::vector<std::vector<Node>> Solver::sccs() {
+std::vector<std::vector<Node>> Solver::sccs(std::span<const Node> roots) {
     const auto n = static_cast<uint32_t>(held_.size());
-    constexpr uint32_t kUnseen = UINT32_MAX;
-    std::vector<uint32_t> index(n, kUnseen), low(n, 0);
-    std::vector<uint8_t> on(n, 0);
+    if (stamp_.size() < n) {
+        stamp_.resize(n, 0);
+        index_.resize(n, 0);
+        low_.resize(n, 0);
+        on_.resize(n, 0);
+    }
+    const uint32_t epoch = ++epoch_;                       // a node is seen in this search when its stamp is this
     std::vector<Node> stack;
     std::vector<std::pair<Node, uint32_t>> calls;           // (node, next edge) of the explicit depth-first search
     std::vector<std::vector<Node>> out;
     uint32_t next = 0;
-    for (Node root = 0; root < n; ++root) {
-        if (index[root] != kUnseen || find(root) != root) continue;
+    auto search = [&](Node root) {
         calls.push_back({root, 0});
         while (!calls.empty()) {
             Node v = calls.back().first;
             uint32_t& e = calls.back().second;
-            if (e == 0 && index[v] == kUnseen) {
-                index[v] = low[v] = next++;
+            if (e == 0 && stamp_[v] != epoch) {
+                stamp_[v] = epoch;
+                index_[v] = low_[v] = next++;
                 stack.push_back(v);
-                on[v] = 1;
+                on_[v] = 1;
             }
             const auto& targets = edges_[v].order;
             if (e < targets.size()) {
                 Node w = find(targets[e++]);
                 if (w == v) continue;
-                if (index[w] == kUnseen) {
+                if (stamp_[w] != epoch) {
                     calls.push_back({w, 0});
-                } else if (on[w]) {
-                    low[v] = std::min(low[v], index[w]);
+                } else if (on_[w]) {
+                    low_[v] = std::min(low_[v], index_[w]);
                 }
                 continue;
             }
             calls.pop_back();
-            if (!calls.empty()) low[calls.back().first] = std::min(low[calls.back().first], low[v]);
-            if (low[v] != index[v]) continue;
+            if (!calls.empty()) low_[calls.back().first] = std::min(low_[calls.back().first], low_[v]);
+            if (low_[v] != index_[v]) continue;
             std::vector<Node> scc;
             Node w;
             do {
                 w = stack.back();
                 stack.pop_back();
-                on[w] = 0;
+                on_[w] = 0;
                 scc.push_back(w);
             } while (w != v);
             if (scc.size() > 1) out.push_back(std::move(scc));
+        }
+    };
+    if (roots.empty()) {
+        for (Node root = 0; root < n; ++root) {
+            if (stamp_[root] != epoch && find(root) == root) search(root);
+        }
+    } else {
+        for (Node root : roots) {
+            root = find(root);
+            if (stamp_[root] != epoch) search(root);
         }
     }
     return out;
@@ -60,7 +75,7 @@ std::vector<std::vector<Node>> Solver::sccs() {
 
 std::string Solver::cycles() {
     uint64_t nodes = 0, largest = 0, objects = 0;
-    auto found = sccs();
+    auto found = sccs({});
     for (const auto& scc : found) {
         nodes += scc.size();
         largest = std::max<uint64_t>(largest, scc.size());
@@ -71,8 +86,9 @@ std::string Solver::cycles() {
            std::to_string(collapsed_) + " nodes collapsed so far";
 }
 
-void Solver::collapse() {
-    auto found = sccs();
+void Solver::collapse() { collapse_found(sccs({})); }
+
+void Solver::collapse_found(const std::vector<std::vector<Node>>& found) {
     if (found.empty()) return;
     std::vector<uint8_t> member(held_.size(), 0);
     for (const auto& scc : found) {

@@ -123,6 +123,7 @@ public:
     std::string describe(Value v, int depth = 0);  // a key as text, objects by their keys
     std::string site_chain(Value key);             // the objects a key's site is made from, outward
     bool entries(bool modules);
+    const std::unordered_set<uint64_t>& named();   // the names the program's code reads or calls
     bool enter(int64_t gid, Value ctx, int64_t unknown);
     void run();
 
@@ -160,6 +161,7 @@ private:
     std::unordered_map<uint64_t, std::vector<Value>> relays_;
     FlatSet<Key3, Key3Hash> known_, entered_;
     FlatSet<Key3, Key3Hash> has_target_, has_line_, has_relay_;   // the lists above, indexed
+    std::unordered_set<uint64_t> named_;
 };
 
 // The contexts (heap/contexts.py).

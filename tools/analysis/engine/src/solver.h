@@ -90,7 +90,9 @@ private:
     };
     void queue(Node n);
     bool insert_sub(Node source, const Sub& sub);          // false when (target, key) is the source's already
-    std::vector<std::vector<Node>> sccs();                 // the cycles of identity edges, over representatives
+    std::vector<std::vector<Node>> sccs(std::span<const Node> roots);   // the cycles of identity edges reachable
+                                                           // from the roots (all: none given), over representatives
+    void collapse_found(const std::vector<std::vector<Node>>& found);
     void deliver(Node source, uint32_t from, uint32_t upto, Transfers& transfers);
     void apply_sub(const Sub& sub, std::span<const Obj> objects, Transfers& transfers);
 
@@ -108,6 +110,9 @@ private:
     std::vector<Obj> scratch_;
     uint64_t items_ = 0;
     std::vector<uint64_t> cost_;
+    std::vector<uint32_t> stamp_, index_, low_;            // Tarjan's state, kept between searches
+    std::vector<uint8_t> on_;
+    uint32_t epoch_ = 0;
 };
 
 }  // namespace ftengine

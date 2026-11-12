@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
+from ..js_functions import ARROW as ARROW_THIS
 from ..model import FUNCTION_KINDS
 from ..resolve import EXACT, Edge
 from ..model import STATE_KINDS as STATE
@@ -137,7 +138,7 @@ class Analysis:
         env = objects.env(fn)
         if shared or not flows.contextual(self, gid):     # nothing that differs between callers reaches out
             ctx = contexts.of_call(env, contexts.ONCE)
-        elif receiver is not None:
+        elif receiver is not None and unit.this_of != ARROW_THIS:   # the call binds `this` (an arrow's is lexical)
             ctx = contexts.of_method(env, objects.site(receiver), objects.heap(receiver))
         else:
             ctx = contexts.of_call(env, where[0])
