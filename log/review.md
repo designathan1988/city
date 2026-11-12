@@ -3860,6 +3860,36 @@ The arithmetic of the measure and the rule is the same as before, so a city's ch
 
 **What changes.** Nothing in the game. No converter output is left in the repository (CLAUDE.md), and the magic-number gate's exemption for `js_` is gone with the files. Left of B4: the source's random stream (`seeded.h`) and the generators built on it, and the 138 hand-ported files that still name a source file as their model. Their logic and values are to be re-sourced, owner by owner.
 
+### 6.75 The leaks at quit: a popup parented only in `_ready`, freed by its holder out of the tree (2026-11-08)
+
+**Cause.** A run with `--verbose --quit-after 900` named what was leaking, besides the six RID allocations (shadow atlas,
+render target, two textures, viewport, FontAdvanced):
+- one `PopupPanel` with an empty node path, plus its own `Panel` and a `VBoxContainer`;
+- the `World2D` and the `ViewportTexture` of that window;
+- the Window theme cache's items (`title_font`, `close`, `embedded_border`: the FontFile, the two DPITextures, four StyleBoxFlat);
+- "Resource still in use: res://ui/road_keys_panel.gd".
+It was one window, the road tool's keys panel, with everything a window owns. `RoadOptions` made it in a member initializer
+(`road_options.gd:15`) but made it its child only in `_ready`. `HudDrawer` holds `RoadOptions` the same way
+(`hud_drawer.gd:19`), puts it in the tree only while the road tool is in hand, and frees it out of the tree at its own
+predelete (`hud_drawer.gd:81-85`). In any run where the road tool was never picked, `RoadOptions._ready` never ran. The panel
+was then nobody's child, so freeing the options left it alive, viewport and all. `RoadKeysPanel` repeated the same pattern
+one level down: its `_rows` was made at construction and parented in `_ready`.
+
+**Fix.** Each holder parents its node at construction, the way `ReferenceModel._init` does with `_inner`:
+- `road_options.gd:20` `_init` adds `_keys_panel` as an internal child;
+- `road_keys_panel.gd:12` `_init` adds `_rows`.
+`_ready` keeps only what needs the tree: the theme, the signal and the first `refresh`.
+
+**Why it does not come back.** A node made by a member initializer is now a child from the moment its holder exists. Freeing
+the holder frees it whether or not the holder ever entered the tree, and the drawer's predelete is the only path that frees
+the options out of the tree. No other script holds a Node made at construction and parented later. A grep of member
+initializers that call `.new()` finds RefCounted helpers, resources, and `ReferenceModel._inner`, which is parented in `_init`
+already.
+
+**Proof.** The same quit run after the fix prints no "leaked at exit", no "Leaked instance", no "RIDs ... were leaked" and no
+"Resource still in use". Only one verbose line is left: the StringName `VISEMES`, from a shader's global const array. Nothing
+else leaks with it, and it is recorded in log/pendencias.md. Gates are clean on both scripts. quick: PROOF_PENDING.
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

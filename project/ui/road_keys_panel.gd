@@ -8,8 +8,12 @@ signal keys_changed
 var _rows := VBoxContainer.new()
 
 
-func _ready() -> void:
+## The rows are a child from construction, so the panel frees them even when it is freed without entering the tree.
+func _init() -> void:
 	add_child(_rows)
+
+
+func _ready() -> void:
 	window_input.connect(_key)
 	refresh()
 

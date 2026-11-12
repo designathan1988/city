@@ -115,9 +115,10 @@ O que falta fazer, por área.
     with the suite in parallel; the terrain's look change); alone they passed in 10 s, byte-equal to known states. The scene waits
     in `CaptureWait.until_drawn` on the render's pending work: to read there and in the render's pending counters which one
     did not drain.
-- The exported game leaks six render resources when it quits (`--quit-after`: a shadow atlas, a render target, two textures, a
-  viewport, a font, "RID allocations ... leaked at exit"): the same six at the C3 and C4 closes (2026-11-08), so older than
-  both; which owner frees them too late, or never, is to read in the quit path (`GameFlow` QUITTING).
+- At exit, `--verbose` still reports one unclaimed StringName, `VISEMES` (2026-11-08, after §6.75 of log/review.md). That is
+  the global const array of `render/shaders/people_face.gdshaderinc:13`. The report is printed only in verbose mode, and no
+  resource or RID leaks with it. Whether the engine's shader language keeps a global const array's name past the shader's
+  free, and what the shader should then declare, is still to read.
 - Android (the first APK, 2026-11-07, `tools/build/android.sh`): built and signed, never run on a device (none was connected), so
   whether it opens, and at what frame rate, is unknown.
   - Touch: the camera has only mouse gestures (`camera_gestures.gd`). A finger is the left button through Godot's mouse emulation,

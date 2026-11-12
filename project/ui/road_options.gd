@@ -15,10 +15,15 @@ signal road_picked(id: String)
 var _keys_panel := RoadKeysPanel.new()
 
 
+## The panel is a child from construction: the options may be freed without ever entering the tree (the drawer frees them so
+## when the road tool was never in hand), and a node parented only in _ready would then outlive them (a whole window leaked).
+func _init() -> void:
+	add_child(_keys_panel, false, Node.INTERNAL_MODE_BACK)
+
+
 func _ready() -> void:
 	theme_type_variation = &"VPad"
 	_keys_panel.theme = ThemeBuilder.theme()
-	add_child(_keys_panel, false, Node.INTERNAL_MODE_BACK)
 	_keys_panel.keys_changed.connect(refresh)
 	if tools:
 		tools.tool_changed.connect(func(_tool: int, _params: Dictionary) -> void:
