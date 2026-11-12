@@ -133,7 +133,7 @@ void coming(CityState &s, int index) {
 	sweep_body(s, p.classes[int(v.type)].length * 0.5f, p.classes[int(v.type)].half_width, { body_at(p, here) }, p.lorry_closure_margin_m, l.id, t.closures);
 	l.path = shunt(p, l.into); // its way in from where it stands, and its swath along it, made once
 	lay_way(s, p.classes[int(v.type)], l.path, l.way);
-	l.phase = LorryPhase::WAITING;
+	enter_lorry_phase(l, LorryPhase::WAITING);
 	l.t = 0;
 }
 
@@ -145,7 +145,7 @@ void drive(CityState &s, int index, float dt) {
 	const bool leaving = l.phase == LorryPhase::LEAVING;
 	if (leaving && l.path.s >= l.street_at) {
 		if (!close_if_clear(s, l, l.close_out)) { v.v = 0; return; }
-		l.phase = LorryPhase::JOINING;
+		enter_lorry_phase(l, LorryPhase::JOINING);
 	}
 	if (!may_go(s, l, dt)) { v.v = 0; return; }
 	const float was = l.path.s, speed = l.path.speed(speeds(p));
@@ -159,7 +159,7 @@ void drive(CityState &s, int index, float dt) {
 	}
 	if (!l.path.done()) return;
 	if (l.phase == LorryPhase::ARRIVING) {
-		l.phase = LorryPhase::DOCKED;
+		enter_lorry_phase(l, LorryPhase::DOCKED);
 		l.start_order = 0; // it stands at the dock: a standing body until it starts on its way out
 		l.stay = p.lorry_unload_min_s + t.rng.f() * (p.lorry_unload_max_s - p.lorry_unload_min_s);
 		t.park.lorries_docked++;
@@ -182,7 +182,7 @@ void step_one(CityState &s, int index, float dt) {
 			if (way_has_standing(s, l.id, l.way, 0) || !close_if_clear(s, l, l.close_in)) return;
 			l.street_at = l.path.at_step(l.into_street);
 			l.start_order = next_start(s);
-			l.phase = LorryPhase::ARRIVING;
+			enter_lorry_phase(l, LorryPhase::ARRIVING);
 			return;
 		case LorryPhase::DOCKED:
 			v.v = 0;
@@ -195,7 +195,7 @@ void step_one(CityState &s, int index, float dt) {
 			if (way_has_standing(s, l.id, l.way, 0)) return; // it stands at the dock until its way out is free of standing bodies
 			l.street_at = l.path.at_step(l.away_street);
 			l.start_order = next_start(s);
-			l.phase = LorryPhase::LEAVING;
+			enter_lorry_phase(l, LorryPhase::LEAVING);
 			return;
 		default: drive(s, index, dt); return;
 	}

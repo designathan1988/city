@@ -25,6 +25,8 @@ bool stretch_held(const TrafficState &t, int key, float from, float to);
 
 void step_lorries(CityState &s, float dt); // lorry_traffic.cpp
 void lorry_gone(CityState &s, int id); // its vehicle leaves the traffic
+// The one setter of Lorry::phase (lorry_phase.cpp LORRY_PHASES): false, the phase kept, for a move a delivery never makes.
+bool enter_lorry_phase(Lorry &l, LorryPhase next);
 
 } // namespace traffic
 } // namespace city
