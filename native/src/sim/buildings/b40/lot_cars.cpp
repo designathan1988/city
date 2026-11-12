@@ -37,7 +37,7 @@ void garage(LotSpace &s, const Rect &shed) {
 	g.faces[0].bays = 1;
 	g.bays[bay_key(0, 0, 0)] = BAY_GARAGE_DOOR;
 	g.roof_paint = s.paint("membrane");
-	s.built.push_back(shed);
+	s.block_added(shed);
 }
 
 void house_car(LotSpace &s) {
@@ -83,12 +83,14 @@ void house_car(LotSpace &s) {
 	LotElement slab;
 	slab.kind = EL_SLAB; slab.x = port.cx(); slab.y = port.cy(); slab.w = port.w(); slab.d = port.d();
 	slab.z = l.car_clear_h; slab.h = CARPORT_SLAB; slab.paint = roof;
-	s.b.elements.push_back(slab);
+	s.hang(slab);
 }
 
-void alley(LotSpace &s, const Rect &w) {
+// A side path used as an alley; `left`: the strip lies on the lot's left, the building on its right.
+void alley(LotSpace &s, const Rect &w, bool left) {
 	const float len = w.d();
-	if (len > ALLEY_LAMP_MIN) s.put(EL_LAMP, Rect::around(w.x0 + LAMP, w.cy(), LAMP, LAMP), ALLEY_LAMP_H, s.paint("lamp_post"));
+	// The lamp's post on the lot's side of the path, away from the wall and what it holds over the path (an awning, a balcony).
+	if (len > ALLEY_LAMP_MIN) s.put(EL_LAMP, Rect::around(left ? w.x0 + LAMP : w.x1 - LAMP, w.cy(), LAMP, LAMP), ALLEY_LAMP_H, s.paint("lamp_post"));
 	for (float y = w.y0 + DRAIN_EVERY * HALF; y < w.y1 - 1; y += DRAIN_EVERY)
 		s.flat(EL_DRAIN, Rect::around(w.cx(), y, ALLEY_DRAIN, ALLEY_DRAIN), DRAIN_H, s.paint("grille"));
 	const float x = w.x1 - BIN_D * HALF - LAMP;
@@ -99,7 +101,7 @@ void alley(LotSpace &s, const Rect &w) {
 void side_garden(LotSpace &s, const Rect &g) {
 	bool tree = true;
 	for (float y = g.y0 + SIDE_TREE_EVERY * HALF; y < g.y1 - SIDE_TREE * HALF; y += SIDE_TREE_EVERY, tree = !tree)
-		s.put(tree ? EL_TREE : EL_SHRUB, Rect::around(g.cx(), y, SIDE_TREE, SIDE_TREE), tree ? SIDE_TREE_H : SIDE_SHRUB_H, s.paint("hedge"));
+		s.plant(tree ? EL_TREE : EL_SHRUB, g.cx(), y, SIDE_TREE, tree ? SIDE_TREE_H : SIDE_SHRUB_H, s.paint("hedge"), tree ? TREE_ROOM_LEAST : SHRUB_ROOM_LEAST);
 }
 } // namespace
 
@@ -124,7 +126,7 @@ void lay_cars(LotSpace &s) {
 	for (const Strip &st : s.strips) {
 		if (!house && !st.drive.empty() && s.B - s.F > DRIVE_DRAIN_AT)
 			s.flat(EL_DRAIN, Rect::around(st.drive.cx(), s.F + DRIVE_DRAIN_AT, DRAIN, DRAIN), DRAIN_H, s.paint("grille"));
-		if (!house && st.use == SIDE_PATH) alley(s, st.walk);
+		if (!house && st.use == SIDE_PATH) alley(s, st.walk, st.left);
 		if (st.use == SIDE_GARDEN) side_garden(s, st.r);
 	}
 }

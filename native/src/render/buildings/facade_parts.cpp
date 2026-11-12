@@ -4,18 +4,21 @@
 // mesh); what is no box (railing cards, awnings, door panels, glass guards) stays where its material is.
 #include "render/buildings/facade_bay.h"
 
+#include "sim/buildings/b40/body_air.h"
+
 namespace city::b40 {
 
 namespace {
 constexpr float FRAME_D = 0.06f, FRAME_THIN = 0.05f, FRAME_IN = 0.03f, SILL_PAST = 0.14f, SILL_T = 0.06f, SILL_OUT = 0.07f;
-constexpr float BAL_EDGE = 0.3f, BAL_SLAB = 0.18f, BAL_OUT = 1.3f;
-constexpr float CANOPY_PAD = 0.7f, CANOPY_T = 0.12f, CANOPY_OUT = 0.9f, FASCIA_H = 0.2f, FASCIA_T = 0.05f, FASCIA_DROP = 0.04f;
+// How far a balcony, a canopy and a sun rack stand out is the body's (body_air.h): the lot's layout keeps its tall parts out of them.
+constexpr float BAL_EDGE = 0.3f, BAL_SLAB = BALCONY_SLAB_M, BAL_OUT = BALCONY_OUT_M;
+constexpr float CANOPY_PAD = 0.7f, CANOPY_T = 0.12f, CANOPY_OUT = DOOR_CANOPY_OUT_M, FASCIA_H = 0.2f, FASCIA_T = 0.05f, FASCIA_DROP = 0.04f;
 constexpr float CANOPY_RISE = 0.3f, CANOPY_ROOM = 0.48f, BRACKET_W = 0.06f, BRACKET_H = 0.3f, BRACKET_D = 0.5f, BRACKET_OFF = 0.2f;
 constexpr float LEAF_MAX = 2.5f, LEAF_GAP = 0.04f, LIGHT_INSET = 0.5f, LIGHT_SHARE = 0.5f, LIGHT_AT = 0.62f, FAN_MIN = 0.4f;
-constexpr float FAN_GAP = 0.12f, TRANSOM_T = 0.08f, DD_PAD = 1.f, DD_T = 0.14f, DD_OUT = 1.1f, DD_FASCIA = 0.24f, DD_ROOM = 0.49f;
+constexpr float FAN_GAP = 0.12f, TRANSOM_T = 0.08f, DD_PAD = 1.f, DD_T = 0.14f, DD_OUT = WIDE_DOOR_CANOPY_OUT_M, DD_FASCIA = 0.24f, DD_ROOM = 0.49f;
 constexpr float AWNING_TRIM = 0.2f, AWNING_H = 0.75f, AWNING_UP = 0.45f;
 constexpr float LOGGIA_PANE = 0.02f, GLASS_RAIL_IN = -0.02f, CAP_H = 0.05f, CAP_T = 0.06f;
-constexpr float BRISE_OUT = 0.6f, SURROUND = 0.14f, SURROUND_T = 0.06f, SURROUND_OUT = -0.03f, LOUVRE_T = 0.04f, LOUVRE_OUT = -0.05f;
+constexpr float BRISE_OUT = SUN_RACK_OUT_M, SURROUND = 0.14f, SURROUND_T = 0.06f, SURROUND_OUT = -0.03f, LOUVRE_T = 0.04f, LOUVRE_OUT = -0.05f;
 constexpr float LOUVRE_SPREAD = 0.75f, SHUT_SILL_PAST = 0.38f, SHUT_SILL_T = 0.08f, SHUT_SILL_OUT = 0.1f;
 constexpr float G_SLAB_T = 0.24f, G_OUT = 1.6f, G_BEAM_H = 0.18f, G_BEAM_T = 0.16f, G_BEAM_DROP = 0.2f, G_BEAM_OUT = 1.54f;
 constexpr float G_SHADE = 0.92f, G_END = 0.103f, G_RAIL_OUT = 1.56f, G_WALL_T = 0.2f, G_WALL_D = 1.661f, G_WALL_DROP = 0.307f;
@@ -24,6 +27,12 @@ constexpr float WINDOW_SILL_MIN = 0.3f, LAMP_W = 0.16f, LAMP_H = 0.26f, LAMP_D =
 constexpr float LAMP_OUT = -0.06f, LAMP_ROOM = 0.13f, HALF = 0.5f, SHUTTER_CHROMA = 0.06f, SHUTTER_MAX = 0.75f;
 constexpr float WASH_HALF = 1.1f, WASH_UP = 1.3f, WASH_FOOT = 0.3f, WASH_OUT = 0.03f; // a lantern's light on its wall, each way from it; off the wall
 constexpr uint32_t SHUTTER_BROWN = 0x7a5538, SHUTTER_BLUE = 0x557392;
+// The deep balcony's pieces stand inside the box the body gives it (body_air.h), which the lot's layout keeps clear.
+constexpr float ENVELOPE_ROUNDING = 1e-3f;
+static_assert(G_OUT <= DEEP_BALCONY_OUT_M && G_RAIL_OUT <= DEEP_BALCONY_OUT_M && GARDEN_WALL_U + G_WALL_D * HALF <= DEEP_BALCONY_OUT_M + ENVELOPE_ROUNDING,
+		"a deep balcony's slab, rail or side wall stands farther out than DEEP_BALCONY_OUT_M");
+static_assert(G_WALL_DROP <= DEEP_BALCONY_UNDER_M && G_BEAM_DROP + G_BEAM_H * HALF <= DEEP_BALCONY_UNDER_M && G_SLAB_T <= DEEP_BALCONY_UNDER_M,
+		"a deep balcony's slab, beam or side wall hangs lower than DEEP_BALCONY_UNDER_M");
 
 struct Ctx {
 	Shell &shell, &parts;

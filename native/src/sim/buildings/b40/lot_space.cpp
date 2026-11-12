@@ -18,6 +18,8 @@ constexpr float LAWN_LEAST = 0.6f; // a band of ground narrower than this is too
 constexpr float EDGE_BOX = 1.f; // a lot's edge stands as a box this thick just outside it, among what ends a band
 constexpr size_t NO_COVER = size_t(-1);
 constexpr int SLIVER_ROUNDS = 4; // a piece laid may face another across a corner: looked at again this often at the most
+constexpr float POST_TRY_M = 0.1f; // a post moved out from under what hangs over it is tried this often
+constexpr int ROOM_HALVINGS = 10; // of the span between a room that is clear and one that is not: to a thousandth of it
 
 Rect footprint(const Volume &v) { return { v.x, v.y, v.x + v.w, v.y + v.d }; }
 } // namespace
@@ -59,6 +61,7 @@ LotSpace::LotSpace(const Data &d, Body &body, Xoshiro128 &rng) : data(d), b(body
 	}
 	std::sort(loading_x.begin(), loading_x.end());
 	own_parts = built.size();
+	air_ = body_overhangs(b);
 	door_x = b.entrance_x;
 	door_wall = F;
 	bool walled = false;
@@ -175,7 +178,23 @@ bool LotSpace::on_building(const Rect &rc) const {
 	return false;
 }
 
-bool LotSpace::clear(const Rect &rc) const {
+bool LotSpace::open_above(const Rect &rc, float top) const {
+	for (const Overhang &o : air_)
+		if (top > o.under && o.over(rc.x0, rc.y0, rc.x1, rc.y1)) return false;
+	return true;
+}
+
+void LotSpace::block_added(const Rect &footprint) {
+	built.push_back(footprint);
+	air_ = body_overhangs(b);
+}
+
+void LotSpace::hang(const LotElement &piece) {
+	b.elements.push_back(piece);
+	air_ = body_overhangs(b);
+}
+
+bool LotSpace::ground_free(const Rect &rc) const {
 	if (rc.x0 < L + LOT_CLEAR_IN || rc.x1 > R - LOT_CLEAR_IN || rc.y0 < LOT_CLEAR_IN || rc.y1 > D - LOT_CLEAR_IN) return false;
 	if (on_building(rc)) return false;
 	for (const Rect &w : ways_)
@@ -187,9 +206,55 @@ bool LotSpace::clear(const Rect &rc) const {
 }
 
 bool LotSpace::put(Element k, const Rect &rc, float h, int p, int facing, float z) {
-	if (full() || rc.empty() || !clear(rc)) return false;
+	if (full() || rc.empty() || !clear(rc, z + h)) return false;
 	add(k, rc, h, p, facing, z, 0);
 	solid_.push_back(rc);
+	return true;
+}
+
+namespace {
+// The largest share of a room, between `least` and the whole, that `fits`; 0 when not even the least does. A smaller share of a
+// room, lower in proportion, lies inside a larger one: what fits at a share fits at every smaller one.
+template <typename F>
+float largest_share(float least, F &&fits) {
+	if (fits(1.f)) return 1.f;
+	if (least >= 1.f || !fits(least)) return 0.f;
+	float lo = least, hi = 1.f; // lo fits, hi does not
+	for (int i = 0; i < ROOM_HALVINGS; i++) {
+		const float mid = (lo + hi) * HALF;
+		(fits(mid) ? lo : hi) = mid;
+	}
+	return lo;
+}
+} // namespace
+
+bool LotSpace::post(Element k, float x, float y, float side, float h, int p, float dx, float dy) {
+	for (float out = 0; out <= DEEP_BALCONY_OUT_M + side; out += POST_TRY_M)
+		if (put(k, Rect::around(x + dx * out, y + dy * out, side, side), h, p)) return true;
+	return false;
+}
+
+bool LotSpace::plant(Element k, float x, float y, float wide, float tall, int p, float least) {
+	const auto room = [&](float share) { return Rect::around(x, y, wide * share, wide * share); };
+	if (full() || wide <= 0 || !ground_free(room(1.f))) return false;
+	const float share = largest_share(least / wide, [&](float f) { return open_above(room(f), tall * f); });
+	return share > 0 && put(k, room(share), tall * share, p);
+}
+
+bool LotSpace::planter(const Rect &box, float h, int p, Element grows, const Rect &room, float tall, int plant_paint) {
+	if (!put(EL_PLANTER, box, h, p)) return false;
+	const float soil = h - PLANTER_SOIL_DROP_M;
+	const auto part = [&](float share) { return Rect::around(room.cx(), room.cy(), room.w() * share, room.d() * share); };
+	const float least = grows == EL_TREE ? TREE_ROOM_LEAST / std::max(room.w(), room.d()) : 1.f;
+	const float share = largest_share(least, [&](float f) { return open_above(part(f), soil + tall * f); });
+	if (share > 0) edge(grows, part(share), tall * share, plant_paint, 0, soil);
+	else {
+		float head = PLANTER_SHRUB_H; // what hangs over the planter's box, over its soil: the shrub keeps under it
+		for (const Overhang &o : air_)
+			if (o.over(box.x0, box.y0, box.x1, box.y1)) head = std::min(head, o.under - soil);
+		edge(EL_SHRUB, box, head, plant_paint, 0, soil);
+	}
+	grown_++;
 	return true;
 }
 

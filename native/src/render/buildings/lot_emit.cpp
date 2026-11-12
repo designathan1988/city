@@ -16,7 +16,7 @@ constexpr float FOOT = 0.3f, PIECE = 4.f, COPING_H = 0.07f, COPING_OUT = 0.04f, 
 constexpr float SPLASH = 0.22f, SPLASH_SHADE = 0.78f, RAIL_T = 0.04f, RAIL_LOW = 0.45f, LOW_RAIL_H = 0.06f, POST = 0.12f, POST_EVERY = 2.f, POST_OVER = 0.05f;
 constexpr float LIGHT_POST = 0.06f, LIGHT_EVERY = 0.45f, BAR_EVERY = 0.14f, GATE_POST = 0.17f, GATE_RAIL = 0.08f;
 constexpr float LAMP_HEAD = 0.44f, LAMP_HEAD_H = 0.12f, GARDEN_LAMP_STEM = 0.12f, BOLLARD_BAND = 0.25f, BOLLARD_BAND_H = 0.1f, BOLLARD_BAND_OUT = 0.01f;
-constexpr float SOIL_IN = 0.06f, BENCH_SEAT = 0.4f, BENCH_SEAT_T = 0.06f, BENCH_BACK = 0.95f, BENCH_BACK_T = 0.06f;
+constexpr float BENCH_SEAT = 0.4f, BENCH_SEAT_T = 0.06f, BENCH_BACK = 0.95f, BENCH_BACK_T = 0.06f;
 constexpr float FASCIA_SHADE = 0.95f, FASCIA_H = 0.2f, AWN_SHADE = 0.8f, HALF = 0.5f, GRILLE_T = 0.02f;
 constexpr uint32_t BAND_LIGHT = 0xffe8c8, LAMP_WARM = 0xf1ebdd;
 
@@ -144,7 +144,8 @@ void LotEmit::prop(const LotElement &e) {
 	switch (e.kind) {
 		case EL_PLANTER:
 			shell.box(pl.lot, x0, x1, y0, y1, g - FOOT, g + e.h, lin, f, SKIP_E2_NEG | SKIP_E2_POS);
-			shell.rect(pl.lot, x0 + SOIL_IN, x1 - SOIL_IN, y0 + SOIL_IN, y1 - SOIL_IN, g + e.h - SOIL_IN, paint_lin(pl.data->color("planter_soil")), FIN_NONE);
+			shell.rect(pl.lot, x0 + PLANTER_SOIL_DROP_M, x1 - PLANTER_SOIL_DROP_M, y0 + PLANTER_SOIL_DROP_M, y1 - PLANTER_SOIL_DROP_M, g + e.h - PLANTER_SOIL_DROP_M,
+					paint_lin(pl.data->color("planter_soil")), FIN_NONE); // the soil inside the rim, where what grows in it stands (types.h)
 			break;
 		case EL_BENCH:
 			parts.box(pl.lot, x0, x1, y0, y1, g + BENCH_SEAT, g + BENCH_SEAT + BENCH_SEAT_T, lin, FIN_WOOD);

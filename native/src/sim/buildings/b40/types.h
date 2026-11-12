@@ -177,6 +177,11 @@ enum Element : uint8_t { EL_PAVEMENT, EL_SLAB, EL_PILLAR, EL_CANOPY, EL_AWNING, 
 	EL_TREE, EL_SHRUB, EL_FLOWERS, EL_POOL, EL_LOUNGER, EL_TABLE, EL_SWING, EL_SHED, EL_LINE, EL_PALLET, EL_CAGE, EL_STAIR, EL_RAMP,
 	EL_ROCKS, EL_PARKING, EL_CLOCK };
 enum Facing : uint8_t { FACE_STREET, FACE_RIGHT, FACE_BACK, FACE_LEFT };
+// A planter's soil lies this far under its rim (drawn by render/buildings/lot_emit.cpp). What grows in a planter stands on that soil:
+// its element's z is the planter's height less this (lot_space.cpp LotSpace::planter; render/trees/garden_place.cpp stands it there).
+constexpr float PLANTER_SOIL_DROP_M = 0.06f;
+// The elements that are plants of the gardens: a tree, a shrub, a run of hedge, a flower bed (drawn by render/trees/garden_place.h).
+inline bool is_plant(Element kind) { return kind == EL_TREE || kind == EL_SHRUB || kind == EL_HEDGE || kind == EL_FLOWERS; }
 struct LotElement {
 	Element kind = EL_PAVEMENT;
 	float x = 0, y = 0, w = 1, d = 1, z = 0, h = 1;

@@ -6,6 +6,7 @@
 // always find their way (the simulation reads the bays, docks and gates back from the elements).
 #pragma once
 
+#include "sim/buildings/b40/body_air.h"
 #include "sim/buildings/b40/cover_layers.h"
 #include "sim/buildings/b40/gen.h"
 
@@ -16,6 +17,9 @@ namespace city::b40 {
 
 constexpr float BOUNDARY_WALL_T = 0.2f, FENCE_THICK = 0.12f, HEDGE_THICK = 0.7f; // thickness of a wall, a fence or railing, a hedge
 constexpr float PART_GAP = 0.05f; // two solid parts never touch
+constexpr float PLANTER_SHRUB_H = 0.9f; // a shrub in a court's or a forecourt's planter stands this tall over its soil
+// The least room a tree and a shrub are planted in: a narrower one is left unplanted (LotSpace::plant; a car park's planter).
+constexpr float TREE_ROOM_LEAST = 1.4f, SHRUB_ROOM_LEAST = 0.6f;
 
 // How near a lot's edge a ground block's face closes it (the block's wall is the boundary along it): the rules' reach, and never less
 // than the room the thickest run needs to stand before the block, so no run is ever laid into a wall. The one owner: the boundary
@@ -85,8 +89,9 @@ public:
 	float loading_y = 0;
 	BoundaryPlan bounds; // open_boundary's plan, laid by lay_boundary
 
-	// The lot's budget of parts is spent, the boundary's pieces kept for it until they are laid.
-	bool full() const { return int(b.elements.size()) + bounds.pieces >= rules.max_elements; }
+	// The lot's budget of parts is spent, the boundary's pieces kept for it until they are laid. A planter and what grows in it are
+	// one part (planter): the plant's element is not counted again.
+	bool full() const { return int(b.elements.size()) - grown_ + bounds.pieces >= rules.max_elements; }
 	int paint(const char *name);
 	int paint(const Paint &p) { return b.add_paint(p); }
 	// Ground cover over `r`, drawn under the parts, on its layer of the one cover scale (cover_layers.h).
@@ -97,8 +102,24 @@ public:
 	// with a piece of that cover, stretch by stretch of the side they share, so no such band shows between two surfaces that meet.
 	// Run once every zone has laid its covers.
 	void close_slivers();
-	// A part standing on the lot: refused (false) when it meets the building, a way, a solid part or the lot's edge.
+	// A part standing on the lot: refused (false) when it meets the building, a way, a solid part or the lot's edge, or stands as tall
+	// as something the building holds over it there (its eaves, a balcony, an upper block: body_air.h).
 	bool put(Element k, const Rect &r, float h, int paint, int facing = FACE_STREET, float z = 0);
+	// A post `side` across and `h` tall (a lamp) at (x, y), or at the first clear place from there along (dx, dy), a step at a time
+	// and no farther than the deepest thing a building holds over its foot: out from under a canopy, an awning or a balcony, never
+	// left out because the place asked lies under one. False where no place that near is clear.
+	bool post(Element k, float x, float y, float side, float h, int paint, float dx, float dy);
+	// A tree or a shrub about (x, y), where a room `wide` across stands on the ground: in that room, or, under something the building
+	// holds over it, in the largest square room about (x, y) that keeps under it, never narrower than `least`: `tall` in the room
+	// asked and in the same proportion in a narrower one (a side garden's tree beside a house's eaves takes what they leave). False
+	// where the room's ground is not free, or not even the least room keeps under what hangs there.
+	bool plant(Element k, float x, float y, float wide, float tall, int paint, float least);
+	// A planter with what grows in it, laid as one, so none stands bare: the box put (refused as any part is: then nothing is laid and
+	// it answers false), and the plant `grows` in `room` (its element: a tree's crown may be wider than its planter), `tall` over the
+	// planter's soil, on which it stands (its element's z: types.h PLANTER_SOIL_DROP_M under the rim). Under something the building
+	// holds over the planter the plant is narrower and lower in proportion (a tree never in less than its least room), and where not
+	// even that keeps under it, a shrub as low as what hangs there.
+	bool planter(const Rect &box, float h, int paint, Element grows, const Rect &room, float tall, int plant_paint);
 	// A part flat on the ground (a bay, a dock, a drain): it may lie in a way, never on the building; a bay or a dock
 	// keeps its own ground clear (a car or a lorry stands there).
 	bool flat(Element k, const Rect &r, float h, int paint, int facing = FACE_STREET);
@@ -109,7 +130,15 @@ public:
 	void hold(const Rect &r) { solid_.push_back(r); }
 	// The lot's land inside its boundary's bands: where a structure that is not the boundary (a carport) stands.
 	Rect inner() const { return { L + bounds.band(0), bounds.front_t, R - bounds.band(1), D - bounds.side_t }; }
-	bool clear(const Rect &r) const; // nothing solid, no way, no building there, inside the lot
+	// Nothing solid, no way, no building there, inside the lot (ground_free), and nothing of the building hanging lower than `top`
+	// over it (open_above).
+	bool clear(const Rect &r, float top) const { return ground_free(r) && open_above(r, top); }
+	bool ground_free(const Rect &r) const;
+	bool open_above(const Rect &r, float top) const;
+	// A block added to the body while the lot is laid (a garage): its footprint is the building's, and what it holds over the ground
+	// (its roof's edge) the air's. A piece hung over the lot (a carport's slab on its posts): laid, and the air's too.
+	void block_added(const Rect &footprint);
+	void hang(const LotElement &piece);
 	bool on_building(const Rect &r) const;
 	// The deepest built edge over the x span [x0, x1] (F when nothing is built there).
 	float built_back(float x0, float x1) const;
@@ -122,6 +151,7 @@ public:
 
 private:
 	std::vector<Rect> ways_, solid_;
+	std::vector<Overhang> air_; // what the building holds over the ground past its walls (body_air.h), as it stood when the lot was begun
 	std::vector<std::pair<const char *, int>> paints_;
 	// A cover laid: its element, whether it is hard (anything but lawn) and whether it is the lot's own ground.
 	struct Laid {
@@ -129,6 +159,7 @@ private:
 		bool hard = false, whole = false;
 	};
 	std::vector<Laid> covers_;
+	int grown_ = 0; // the plants laid with their planters
 	void add(Element k, const Rect &r, float h, int paint, int facing, float z, float base);
 	float people_gate_x() const; // gate_x
 };

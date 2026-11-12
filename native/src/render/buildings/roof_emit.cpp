@@ -2,6 +2,7 @@
 // floors, parapets cut per bay (outer wall face, inner face, coping and lip; attic crowns 1.5 m), terrace railings,
 // cornices (cornice / deco / slab), lift machine rooms, roof plant and used terraces (roof_terrace.cpp); pitched roofs go to roof_pitched.cpp.
 #include "render/buildings/facade_bay.h"
+#include "sim/buildings/b40/body_air.h"
 #include "sim/buildings/b40/gen.h"
 #include "render/buildings/roof_util.h"
 
@@ -11,11 +12,13 @@ namespace city::b40 {
 
 namespace {
 constexpr float ROOF_EDGE_H = 0.85f, ATTIC_H = 1.5f, PARAPET_T = 0.25f, COPING_OUT = 0.05f, COPING_IN = 0.3f, LIP_H = 0.06f;
-constexpr float INNER_SHADE = 0.9f, LIP_SHADE = 0.9f, TEST_OUT = 0.03f, CORNICE_DROP = 0.2f, CORNICE_OUT = 0.16f, CORNICE_H = 0.36f;
-constexpr float DECO_OUT = 0.55f, DECO_H = 0.55f, DECO2_DROP = 1.05f, DECO2_OUT = 0.28f, DECO2_H = 0.32f, SLAB_UP = 0.73f;
-constexpr float SLAB_OUT = 0.45f, SLAB_H = 0.26f, RAIL_IN = 0.12f;
+constexpr float INNER_SHADE = 0.9f, LIP_SHADE = 0.9f, TEST_OUT = 0.03f, RAIL_IN = 0.12f;
+// A crown's bands, their reach, place and height, are the body's (sim/buildings/b40/body_air.h): the lot's layout keeps its tall parts out of them.
+constexpr float CORNICE_DROP = CORNICE_DROP_M, CORNICE_OUT = CORNICE_OUT_M, CORNICE_H = CORNICE_H_M;
+constexpr float DECO_OUT = STEP_OUT_M, DECO_H = STEP_H_M, DECO2_DROP = STEP_LOW_DROP_M, DECO2_OUT = STEP_LOW_OUT_M, DECO2_H = STEP_LOW_H_M;
+constexpr float SLAB_UP = CROWN_SLAB_UP_M, SLAB_OUT = CROWN_SLAB_OUT_M, SLAB_H = CROWN_SLAB_H_M;
 constexpr float MACHINE_H = 3.f, MACHINE_IN = 0.3f;
-constexpr float ROOF_MODULE_LEN = 3.f, MACHINE_MIN = 1.f, SLAB_LIFT = 0.002f;
+constexpr float ROOF_MODULE_LEN = 3.f, MACHINE_MIN = 1.f;
 
 // A volume standing at or over this volume's top storey covers its parapet there.
 bool roof_covered(const Body &b, const Volume &v, Point2 p) {
@@ -128,7 +131,7 @@ void emit_roofs(Shell &shell, Shell &parts, const Placed &whole) {
 		if (!roof_flat(v.roof)) { emit_pitched(shell, pl, v, eaves); continue; }
 		Paint rp = terrace ? pl.data->color("terrace") : flat_roof_of(pl, v);
 		shell.grime_floor = -FAR_AWAY;
-		top_face(shell, pl, v, eaves + SLAB_LIFT, paint_lin(rp), rp.finish);
+		top_face(shell, pl, v, eaves + pl.look->cover_step, paint_lin(rp), rp.finish); // over the walls' top plane by the step a face laid over another keeps
 		RoofEmit re{ shell, parts, pl, v, eaves };
 		for (const Side &sd : sides_of(pl, v, 0)) {
 			re.edge(sd, terrace, v.crown); // bay by bay, only where the roof really ends: a setback's ledge has its own

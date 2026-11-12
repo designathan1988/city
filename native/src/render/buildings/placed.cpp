@@ -2,6 +2,8 @@
 // outlines), the covered test between volumes of one building, and the paints of walls, trims and mouldings.
 #include "render/buildings/facade.h"
 
+#include "sim/buildings/b40/body_air.h"
+
 #include <cmath>
 
 using namespace godot;
@@ -15,30 +17,18 @@ constexpr int ID_OFF = 7;
 } // namespace
 
 std::vector<Side> sides_of(const Placed &pl, const Volume &v, float z) {
-	std::vector<Point2> pts;
-	if (v.outline.empty()) pts = { { v.x, v.y }, { v.x + v.w, v.y }, { v.x + v.w, v.y + v.d }, { v.x, v.y + v.d } };
-	else
-		for (const Point2 &q : v.outline) pts.push_back({ v.x + q.x * v.w, v.y + q.y * v.d });
-	float area = 0;
-	for (size_t i = 0; i < pts.size(); i++) {
-		const Point2 &a = pts[i], &b = pts[(i + 1) % pts.size()];
-		area += a.x * b.y - b.x * a.y;
-	}
+	// The sides in plan are the body's (sim/buildings/b40/body_air.h face_runs: what the lot's layout reads too); here their frames.
 	std::vector<Side> out;
-	for (size_t i = 0; i < pts.size(); i++) {
-		Point2 a = pts[i], b = pts[(i + 1) % pts.size()];
-		if (area < 0) std::swap(a, b);
-		float len = std::hypot(b.x - a.x, b.y - a.y);
-		if (len < EPS) continue;
+	for (const FaceRun &r : face_runs(v)) {
 		Side s;
-		s.side = int(i);
-		s.length = len;
-		s.p0 = a; s.p1 = b;
-		Point2 e{ (b.x - a.x) / len, (b.y - a.y) / len };
-		s.n = Point2{ e.y, -e.x };
+		s.side = r.side;
+		s.length = r.length;
+		s.p0 = r.a; s.p1 = r.b;
+		s.n = r.out;
+		const Point2 e{ (r.b.x - r.a.x) / r.length, (r.b.y - r.a.y) / r.length };
 		Vector3 along = (pl.lot.e0 * e.x + pl.lot.e1 * e.y).normalized();
 		Vector3 nrm = (pl.lot.e0 * s.n.x + pl.lot.e1 * s.n.y).normalized();
-		s.f = Basis{ pl.lot.at(a.x, a.y, z), along, pl.lot.e2, nrm };
+		s.f = Basis{ pl.lot.at(r.a.x, r.a.y, z), along, pl.lot.e2, nrm };
 		out.push_back(s);
 	}
 	return out;

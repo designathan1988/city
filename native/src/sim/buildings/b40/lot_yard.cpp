@@ -19,6 +19,7 @@ constexpr float CORNER_TREE = 3.f, TREE_H = 5.f, CORNER_TREE_IN = 2.6f, CORNER_T
 constexpr float BUSH = 1.3f, BUSH_TOP = 1.4f, SHRUB_IN = 1.5f, SHRUB_EVERY = 3.2f, SHRUB_TO = 3.f;
 constexpr float CLOTHES_SHARE = 0.5f, LINE_MIN_D = 6.f, LINE_H = 1.9f, LINE_SPAN = 0.4f, LINE_FROM = 0.2f, LINE_D = 0.2f;
 constexpr float BENCH_W = 1.4f, BENCH_D = 0.45f, BENCH_H = 0.45f, BENCH_X = 1.5f, POT = 0.5f, POT_H = 0.55f, POT_EVERY = 1.6f;
+constexpr float POT_SHRUB_H = 0.5f, BOX_PLANT_H = 0.3f; // over their soil: a terrace pot's shrub, a kitchen garden's plants
 constexpr float POT_IN = 0.4f, CORNER = 3.f, BIN_W = 1.3f, BIN_D = 0.65f, BIN_H = 1.1f, DRAIN = 0.5f, DRAIN_H = 0.02f;
 constexpr float LIFE_FROM = 0.45f, LIFE_IN = 0.5f, ORCHARD_EVERY = 4.f, FRUIT = 3.f, FRUIT_H = 4.2f;
 constexpr float PLOT_W = 1.15f, BOX_D = 0.85f, BOX_H = 0.35f, BOX_X = 1.5f, BOX_Y = 1.25f, BOX_IN = 0.8f;
@@ -44,13 +45,15 @@ void yard_life(LotSpace &s, const Rect &a) {
 	switch (s.r.irange(0, THEMES - 1)) {
 		case 0: // an orchard
 			for (float y = a.y0 + FRUIT * HALF; y < a.y1 - FRUIT * HALF; y += ORCHARD_EVERY)
-				for (float x = a.x0 + FRUIT * HALF; x < a.x1 - FRUIT * HALF; x += ORCHARD_EVERY) s.put(EL_TREE, Rect::around(x, y, FRUIT, FRUIT), FRUIT_H, tree);
+				for (float x = a.x0 + FRUIT * HALF; x < a.x1 - FRUIT * HALF; x += ORCHARD_EVERY) s.plant(EL_TREE, x, y, FRUIT, FRUIT_H, tree, TREE_ROOM_LEAST);
 			break;
 		case 1: { // a kitchen garden in raised beds, a coop
-			const int bed = s.paint("deck");
+			const int bed = s.paint("deck"), crop = s.paint("flowers");
 			for (int i = 0; i < BOX_COLS; i++)
-				for (int j = 0; j < BOX_ROWS; j++)
-					s.put(EL_PLANTER, Rect::around(fx(a.x0 + BOX_IN + PLOT_W * HALF + float(i) * BOX_X), a.y0 + BOX_IN + float(j) * BOX_Y, PLOT_W, BOX_D), BOX_H, bed);
+				for (int j = 0; j < BOX_ROWS; j++) {
+					const Rect box = Rect::around(fx(a.x0 + BOX_IN + PLOT_W * HALF + float(i) * BOX_X), a.y0 + BOX_IN + float(j) * BOX_Y, PLOT_W, BOX_D);
+					s.planter(box, BOX_H, bed, EL_FLOWERS, box.grown(-PLANTER_SOIL_DROP_M), BOX_PLANT_H, crop); // what is grown, inside the box's rim
+				}
 			s.put(EL_CAGE, Rect::around(fx(a.x1 - COOP_IN - COOP_W * HALF), a.y1 - COOP_IN - COOP_D * HALF, COOP_W, COOP_D), COOP_H, s.paint("fence"));
 			break;
 		}
@@ -73,7 +76,7 @@ void yard_life(LotSpace &s, const Rect &a) {
 			Rect ed = Rect::around(a.cx(), a.y1 - EDICULA_D * HALF, EDICULA_W, EDICULA_D);
 			if (s.put(EL_SHED, ed, EDICULA_H, s.paint("edicula"))) s.cover({ ed.x0, ed.y0 - DECK_D, ed.x1, ed.y0 }, "deck", COVER_OWN);
 			table(s, fx(a.x0 + TABLE * 2), a.y0 + TABLE * 2);
-			for (float x : { a.x0 + FRUIT * HALF, a.x1 - FRUIT * HALF }) s.put(EL_TREE, Rect::around(x, a.y0 + FRUIT * HALF, FRUIT, FRUIT), FRUIT_H, tree);
+			for (float x : { a.x0 + FRUIT * HALF, a.x1 - FRUIT * HALF }) s.plant(EL_TREE, x, a.y0 + FRUIT * HALF, FRUIT, FRUIT_H, tree, TREE_ROOM_LEAST);
 			break;
 		}
 	}
@@ -85,12 +88,15 @@ void house_yard(LotSpace &s) {
 	if (hb.empty()) return;
 	// A terrace behind every ground volume of the house, on its own back face; the lawn begins past the deepest one.
 	Rect widest;
-	const int pot = s.paint("planter");
+	const int pot = s.paint("planter"), potted = s.paint("hedge");
 	for (size_t i = 0; i < s.own_parts; i++) {
 		const Rect &f = s.built[i];
 		const Rect t{ f.x0, f.y1, f.x1, std::min(s.D, f.y1 + l.terrace) };
 		s.cover(t, "tiles", COVER_OWN);
-		for (float x = t.x0 + POT_IN; x < t.x1 - POT_IN; x += POT_EVERY) s.put(EL_PLANTER, Rect::around(x, t.y1 - POT_IN, POT, POT), POT_H, pot);
+		for (float x = t.x0 + POT_IN; x < t.x1 - POT_IN; x += POT_EVERY) {
+			const Rect box = Rect::around(x, t.y1 - POT_IN, POT, POT);
+			s.planter(box, POT_H, pot, EL_SHRUB, box, POT_SHRUB_H, potted); // a potted shrub, no wider than its pot
+		}
 		if (t.w() > widest.w()) widest = t;
 	}
 	s.put(EL_BENCH, Rect::around(widest.cx() + BENCH_X, widest.cy(), BENCH_W, BENCH_D), BENCH_H, s.paint("bench"), FACE_STREET);
@@ -120,9 +126,9 @@ void house_yard(LotSpace &s) {
 	}
 	const int flowers = s.paint("flowers"), tree = s.paint("hedge");
 	for (float x = s.L + FLOWERBEDS_IN; x < s.R - FLOWERBEDS_IN; x += BED_EVERY) s.put(EL_FLOWERS, Rect::around(x, s.D - BED_BACK, BED_W, BED_D), BED_H, flowers);
-	for (float x : { s.L + CORNER_TREE_IN, s.R - CORNER_TREE_IN }) s.put(EL_TREE, Rect::around(x, s.D - CORNER_TREE_BACK, CORNER_TREE, CORNER_TREE), TREE_H, tree);
+	for (float x : { s.L + CORNER_TREE_IN, s.R - CORNER_TREE_IN }) s.plant(EL_TREE, x, s.D - CORNER_TREE_BACK, CORNER_TREE, TREE_H, tree, TREE_ROOM_LEAST);
 	for (float x : { s.L + SHRUB_IN, s.R - SHRUB_IN })
-		for (float y = lawn + SHRUB_IN; y < s.D - SHRUB_TO; y += SHRUB_EVERY) s.put(EL_SHRUB, Rect::around(x, y, BUSH, BUSH), BUSH_TOP, tree);
+		for (float y = lawn + SHRUB_IN; y < s.D - SHRUB_TO; y += SHRUB_EVERY) s.plant(EL_SHRUB, x, y, BUSH, BUSH_TOP, tree, SHRUB_ROOM_LEAST);
 	if (depth >= LINE_MIN_D && s.r.f() < CLOTHES_SHARE) {
 		float x0 = s.L + (s.R - s.L) * LINE_FROM, x1 = x0 + (s.R - s.L) * LINE_SPAN, y = lawn + depth * HALF;
 		s.put(EL_LINE, { x0, y - LINE_D * HALF, x1, y + LINE_D * HALF }, LINE_H, s.paint("lamp_post"));
@@ -141,7 +147,8 @@ void free_court(LotSpace &s, const Rect &c) {
 	}
 	if (c.w() <= SMALL_W && c.d() <= SMALL_D) {
 		s.cover(c, "tiles", COVER_OWN);
-		s.put(EL_PLANTER, Rect::around(c.x1 - PLANTER, c.y1 - PLANTER, PLANTER, PLANTER), PLANTER_H, s.paint("planter"));
+		const Rect box = Rect::around(c.x1 - PLANTER, c.y1 - PLANTER, PLANTER, PLANTER);
+		s.planter(box, PLANTER_H, s.paint("planter"), EL_SHRUB, box, PLANTER_SHRUB_H, s.paint("hedge"));
 		s.put(EL_BENCH, Rect::around(c.cx(), c.y1 - BENCH_D, BENCH_W, BENCH_D), BENCH_H, s.paint("bench"), FACE_STREET);
 		return;
 	}
@@ -149,8 +156,8 @@ void free_court(LotSpace &s, const Rect &c) {
 	s.cover(sq, "square_paving", COVER_OWN);
 	for (float dy : { -1.f, 1.f }) s.put(EL_BENCH, Rect::around(sq.cx(), sq.cy() + dy * (sq.d() * HALF - BENCH_D), BENCH_W, BENCH_D), BENCH_H, s.paint("bench"), dy < 0 ? FACE_BACK : FACE_STREET);
 	const int tree = s.paint("hedge");
-	s.put(EL_TREE, Rect::around(c.x0 + FREE_TREE_IN, c.y0 + FREE_TREE_IN, CORNER_TREE, CORNER_TREE), TREE_H, tree);
-	s.put(EL_TREE, Rect::around(c.x1 - FREE_TREE_IN, c.y1 - FREE_TREE_IN, CORNER_TREE, CORNER_TREE), TREE_H, tree);
+	s.plant(EL_TREE, c.x0 + FREE_TREE_IN, c.y0 + FREE_TREE_IN, CORNER_TREE, TREE_H, tree, TREE_ROOM_LEAST);
+	s.plant(EL_TREE, c.x1 - FREE_TREE_IN, c.y1 - FREE_TREE_IN, CORNER_TREE, TREE_H, tree, TREE_ROOM_LEAST);
 	s.put(EL_FLOWERS, Rect::around(c.x1 - FREE_FLOWERS, c.y0 + FREE_FLOWERS, FREE_FLOWERS, FREE_FLOWERS), FLOWERS_H, s.paint("flowers"));
 }
 

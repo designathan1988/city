@@ -54,6 +54,12 @@ struct Stand {
 		const V2 p = f.at(x, y);
 		return Vector3(p.x, s.terrain.height_at(p.x, p.y) - PLANT_FOOT_BELOW, p.y);
 	}
+	// A plant's foot: on the ground under its middle, or as far over it as its element stands (a plant in a planter, on the planter's soil).
+	Vector3 foot(const b40::LotElement &p) const {
+		Vector3 at = ground(p.x, p.y);
+		at.y += p.z;
+		return at;
+	}
 	const DrawnBody &drawn(int species) const { return kit.species(species).drawn; }
 	// An instance with no size along one of its axes draws nothing and gives the shader no basis: it is not made.
 	void add(const TreeInstance &t) const {
@@ -73,7 +79,7 @@ void plant_tree(const Stand &at, const TreeLook &T, const b40::LotElement &p, Dr
 	const float yaw = r.get() * TAU_F, flat = TREE_DEEP + r.get() * TREE_DEEP_SPAN;
 	const DrawnBody &m = at.drawn(species);
 	const float width = round_width(m, std::min(p.w, p.d) * HALF * fill, flat);
-	at.add({ at.ground(p.x, p.y), std::min(p.h, m.tall_within(width, p.h)), width, yaw, 0, 0, species, foliage_tint(r), width * flat });
+	at.add({ at.foot(p), std::min(p.h, m.tall_within(width, p.h)), width, yaw, 0, 0, species, foliage_tint(r), width * flat });
 }
 
 void plant_shrub(const Stand &at, const TreeLook &T, const b40::LotElement &p, Draws &r) {
@@ -82,7 +88,7 @@ void plant_shrub(const Stand &at, const TreeLook &T, const b40::LotElement &p, D
 	const DrawnBody &m = at.drawn(species);
 	const float reach = std::min(p.w, p.d) * HALF * SHRUB_FILL, wide = round_width(m, reach, flat);
 	const float tall = m.tall_within(wide, std::min(p.h, 2 * reach * SHRUB_TALL));
-	at.add({ at.ground(p.x, p.y), tall, wide, yaw, 0, 0, species, foliage_tint(r), wide * flat });
+	at.add({ at.foot(p), tall, wide, yaw, 0, 0, species, foliage_tint(r), wide * flat });
 }
 
 // The pieces of a run (a hedge, a flower bed) in a room `run` long and `thick` across: each the model in its own plan proportions,
@@ -115,7 +121,7 @@ void stand_run(const Stand &at, const b40::LotElement &p, const Pieces &q, int s
 	for (int k = 0; k < q.n; k++) {
 		const float t = q.first + float(k) * q.step;
 		Vector3 foot = at.ground(p.x + (along_x ? t : 0), p.y + (along_x ? 0 : t));
-		foot.y += lift;
+		foot.y += lift + p.z;
 		at.add({ foot, piece(k), q.sx, yaw, 0, 0, species, tint, q.sz });
 	}
 }
@@ -135,12 +141,14 @@ void plant_bed(const Stand &at, const TreeLook &T, const b40::LotElement &p, Dra
 	const int species = T.bed_species[size_t(r.get() * float(FLOWERING_KINDS)) % FLOWERING_KINDS];
 	const DrawnBody &m = at.drawn(species);
 	const Pieces q = run_pieces(m, std::max(p.w, p.d), std::min(p.w, p.d));
-	stand_run(at, p, q, species, Color(1, 1, 1, 1), PLANT_FOOT_BELOW + BED_LIFT_M,
-			[&](int) { return std::max(q.sx * BED_FLAT, m.tall_within(q.sx, p.h * (BED_TALL + r.get() * BED_TALL_SPAN) - BED_LIFT_M)); });
+	// A bed on the ground stands on its own soil, over the ground; one in a planter on the planter's (its element's z), its foot just under it.
+	const float soil = p.z > 0 ? 0.f : BED_LIFT_M, lift = p.z > 0 ? 0.f : PLANT_FOOT_BELOW + BED_LIFT_M;
+	stand_run(at, p, q, species, Color(1, 1, 1, 1), lift,
+			[&](int) { return std::max(q.sx * BED_FLAT, m.tall_within(q.sx, p.h * (BED_TALL + r.get() * BED_TALL_SPAN) - soil)); });
 }
 } // namespace
 
-bool planted_kind(b40::Element kind) { return kind == b40::EL_TREE || kind == b40::EL_SHRUB || kind == b40::EL_HEDGE || kind == b40::EL_FLOWERS; }
+bool planted_kind(b40::Element kind) { return b40::is_plant(kind); }
 
 PlantRoom plant_room(const b40::LotFrame &f, const b40::LotElement &p) {
 	if (p.angle == 0) return { f, p };

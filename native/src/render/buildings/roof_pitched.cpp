@@ -4,6 +4,7 @@
 #include "render/buildings/facade.h"
 #include "render/buildings/roof_clip.h"
 
+#include "sim/buildings/b40/body_air.h"
 #include "sim/buildings/b40/roof_shape.h"
 
 #include <algorithm>
@@ -14,35 +15,10 @@ using namespace godot;
 namespace city::b40 {
 
 namespace {
-constexpr float EAVES = 0.45f, THICK = 0.18f, FASCIA = 0.92f, SOFFIT = 0.7f, CAP_W = 0.14f, CAP_LIFT = 0.07f, CAP_SHADE = 0.85f;
+// How far the eaves reach and how thick the roof's body is are the body's (sim/buildings/b40/body_air.h, with roof_reach: the reach
+// past each side of a block): the lot's layout keeps its tall parts out of them.
+constexpr float EAVES = EAVES_OUT_M, THICK = ROOF_BODY_M, FASCIA = 0.92f, SOFFIT = 0.7f, CAP_W = 0.14f, CAP_LIFT = 0.07f, CAP_SHADE = 0.85f;
 constexpr float HALF = 0.5f, MULLION = 0.08f;
-
-// How far a roof may reach past each side of its block (lot frame: -x, +x, the front, the back): its eaves, but never past the
-// lot's own line (a wall on it ends flush, as a party wall does) nor into another block of the body that stands as high.
-struct Reach {
-	float left = EAVES, right = EAVES, front = EAVES, back = EAVES;
-};
-
-Reach reach_of(const Body &b, const Volume &v) {
-	Reach r;
-	auto room = [](float &side, float free) { side = std::clamp(free, 0.f, side); };
-	if (b.plan.W > 0 && b.plan.D > 0) { // the lot's lines, where the body knows its lot
-		room(r.left, v.x + b.plan.W / 2);
-		room(r.right, b.plan.W / 2 - (v.x + v.w));
-		room(r.front, v.y);
-		room(r.back, b.plan.D - (v.y + v.d));
-	}
-	const float eave_z = b.block_z(v, v.top());
-	for (const Volume &o : b.volumes) {
-		if (&o == &v || b.block_z(o, o.top()) < eave_z) continue; // a lower block: the eave passes over it
-		const bool beside_x = o.y < v.y + v.d && o.y + o.d > v.y, beside_y = o.x < v.x + v.w && o.x + o.w > v.x;
-		if (beside_x && o.x + o.w <= v.x + EPS) room(r.left, v.x - (o.x + o.w));
-		if (beside_x && o.x >= v.x + v.w - EPS) room(r.right, o.x - (v.x + v.w));
-		if (beside_y && o.y + o.d <= v.y + EPS) room(r.front, v.y - (o.y + o.d));
-		if (beside_y && o.y >= v.y + v.d - EPS) room(r.back, o.y - (v.y + v.d));
-	}
-	return r;
-}
 
 struct Pitch {
 	Shell &s;
@@ -169,7 +145,7 @@ void emit_pitched(Shell &shell, const Placed &pl, const Volume &v, float eaves) 
 		return;
 	}
 	const Basis &lot = pl.lot;
-	const Reach room = reach_of(b, v);
+	const RoofReach room = roof_reach(b, v);
 	// The frame's ridge along the lot's x, s running to the back (`flip`: to the front); or along its y, s to the right (`flip`: to the left).
 	auto frame_x = [&](bool flip) {
 		P.R = Basis{ lot.at(v.x, flip ? v.y + v.d : v.y, eaves), lot.e0, flip ? -lot.e1 : lot.e1, lot.e2 };

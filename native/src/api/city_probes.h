@@ -111,6 +111,10 @@ public:
 	// Tests: one plant element of a kind ("tree", "shrub", "hedge", "flowers") `w` by `d` and `h` tall, laid `turn` radians to its
 	// lot, stood alone with the draws of `seed`: the box its instances draw, their top and how far past the room they stand.
 	godot::Dictionary garden_fit(const godot::String &kind, float w, float d, float h, float turn, int seed) const;
+	// Tests: `count` bodies of `zone` (storeys capped at `cap`, 0: none) made on the spot on a lot `w` by `d`, from `seed` on, and what
+	// their lots' layout laid: the planters, those with nothing growing in them, the plants that do not stand on their planter's soil
+	// (city_core_lot_parts_probe.cpp). No city is read.
+	godot::Dictionary lot_parts(int zone, int cap, float w, float d, int seed, int count) const;
 	godot::Dictionary ground_drawn(const godot::Vector3 &at) const; // tests: the ground's height as the terrain's shader reads it there (render/terrain_bridge.h drawn)
 	// Tests: the street lamps' pools within `radius` of (x, z): drawn on the GPU, wanted by each lit lamp, and the lamps' lenses (RenderWorld::lamp_pools).
 	godot::Dictionary lamp_pools(float x, float z, float radius) const;

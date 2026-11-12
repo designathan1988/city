@@ -12,7 +12,7 @@
 namespace city::b40 {
 
 namespace {
-constexpr float BAY_OFF_WALL = 0.25f, ROW_FROM = 0.3f, DOOR_GAP = 0.9f, PLANTER_MIN = 1.4f, PLANTER_D = 1.6f, PLANTER_H = 0.5f;
+constexpr float BAY_OFF_WALL = 0.25f, ROW_FROM = 0.3f, DOOR_GAP = 0.9f, PLANTER_MIN = TREE_ROOM_LEAST, PLANTER_D = 1.6f, PLANTER_H = 0.5f;
 constexpr float CROWN_TOP = 5.f, LAMP = 0.3f, DRAIN = 0.5f, DRAIN_H = 0.02f, WALK_W = 1.4f;
 constexpr float BIN_W = 1.4f, BIN_D = 0.7f, BIN_H = 1.1f, SKIP_W = 2.2f, SKIP_D = 1.4f, SKIP_H = 1.3f, BIN_X = 2.2f, SKIP_X = 4.f;
 constexpr float BIN_Y = 0.6f, SKIP_Y = 0.9f, PALLET = 1.1f, PALLET_H = 0.28f, PALLET_X = 3.f, PALLET_Y = 1.f;
@@ -46,8 +46,7 @@ void row(LotSpace &s, float y0, float y1, int facing, std::vector<std::pair<floa
 		// the planter's width is its tree's room: the crown as wide, the tree as tall as a lot's tree of that crown
 		const float wide = std::min(spare, PLANTER_D);
 		for (float x : { a + spare * HALF, b - spare * HALF })
-			if (s.put(EL_PLANTER, Rect::around(x, (y0 + y1) * HALF, wide, PLANTER_D), PLANTER_H, planter))
-				s.edge(EL_TREE, Rect::around(x, (y0 + y1) * HALF, wide, wide), wide * TREE_TALL, tree);
+			s.planter(Rect::around(x, (y0 + y1) * HALF, wide, PLANTER_D), PLANTER_H, planter, EL_TREE, Rect::around(x, (y0 + y1) * HALF, wide, wide), wide * TREE_TALL, tree);
 	}
 }
 
@@ -87,7 +86,7 @@ void service(LotSpace &s) {
 			float wall = s.built_back(x - AC_W * HALF, x + AC_W * HALF);
 			s.put(EL_AC, { x - AC_W * HALF, wall, x + AC_W * HALF, wall + AC_D }, AC_H, ac, FACE_BACK, AC_Z);
 		}
-	s.put(EL_LAMP, Rect::around(std::max(s.L + 1, bd - SERVICE_LAMP_X), s.B + SERVICE_LAMP_Y + LAMP, LAMP, LAMP), SERVICE_LAMP_H, s.paint("lamp_post"));
+	s.post(EL_LAMP, std::max(s.L + 1, bd - SERVICE_LAMP_X), s.B + SERVICE_LAMP_Y + LAMP, LAMP, SERVICE_LAMP_H, s.paint("lamp_post"), 0, 1); // out into the yard
 	s.flat(EL_DRAIN, Rect::around(bd, (s.B + s.D) * HALF, DRAIN, DRAIN), DRAIN_H, s.paint("grille"));
 }
 
@@ -104,7 +103,7 @@ void court(LotSpace &s) {
 		s.put(EL_SWING, Rect::around(play.cx(), play.cy(), SWING_W, SWING_D), SWING_H, s.paint("play_blue"));
 	}
 	const int tree = s.paint("hedge");
-	for (float x : { s.L + COURT_TREE_IN, s.R - COURT_TREE_IN }) s.put(EL_TREE, Rect::around(x, s.D - COURT_TREE_BACK, COURT_TREE, COURT_TREE), CROWN_TOP, tree);
+	for (float x : { s.L + COURT_TREE_IN, s.R - COURT_TREE_IN }) s.plant(EL_TREE, x, s.D - COURT_TREE_BACK, COURT_TREE, CROWN_TOP, tree, TREE_ROOM_LEAST);
 	s.put(EL_BIN, Rect::around(s.L + COURT_BIN_IN, s.B + BIN_Y, BIN_W, BIN_D), BIN_H, s.paint("bin"));
 }
 

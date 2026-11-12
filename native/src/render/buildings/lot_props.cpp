@@ -13,7 +13,7 @@ constexpr float LINE_LIFT = 0.09f; // over the ground covers (lot_space.cpp lays
 constexpr float BUMPER = 0.3f, BUMPER_T = 0.15f, BUMPER_LO = 0.9f, BUMPER_HI = 1.3f, BUMPER_IN = 0.4f;
 constexpr float SHADE_SPAN = 0.2f;
 constexpr float BED_KERB_H = 0.16f, BED_KERB_W = 0.12f, BED_SOIL_H = 0.2f; // the 4.0's (buildingMesh.ts emitFlowers)
-constexpr float WATER_LIFT = 0.02f, COPING_W = 0.3f, COPING_OVER = 0.07f; // water over the covers, coping over the water
+constexpr float WATER_LIFT = 0.02f, COPING_W = 0.3f, POOL_RIM_UP = 0.07f; // water over the covers, the pool's stone rim over the water
 constexpr float LOUNGER_SEAT = 0.3f, LOUNGER_T = 0.07f, LOUNGER_HEAD = 0.5f, LOUNGER_BACK = 0.65f;
 constexpr float TABLE_TOP = 0.05f, LEG = 0.1f, SWING_POST = 0.08f, SWING_SEAT_Z = 0.45f, SWING_SEAT = 0.5f, SWING_SEAT_D = 0.25f;
 constexpr float SWING_SEAT_T = 0.05f, ROPE = 0.02f, ROPE_X = 0.22f;
@@ -58,12 +58,13 @@ struct PropEmit {
 	}
 	// The bed's kerb and its soil; the flowers are the gardens' plants (render/trees/garden_place.h).
 	void flowers() const {
+		if (e.z > 0) return; // grown in a planter (LotSpace::planter): the planter is its box and its soil
 		shell.box(pl.lot, x0(), x1(), y0(), y1(), g, g + BED_KERB_H, named("planter"), FIN_NONE, SKIP_E2_NEG);
 		shell.box(pl.lot, x0() + BED_KERB_W, x1() - BED_KERB_W, y0() + BED_KERB_W, y1() - BED_KERB_W, g + BED_KERB_H, g + BED_SOIL_H, named("planter_soil"), FIN_NONE, SKIP_E2_NEG);
 	}
 	// The water just over the ground covers, the stone coping round it higher still: a pool read from above.
 	void pool() const {
-		const float water = g + LINE_LIFT + WATER_LIFT, top = water + COPING_OVER;
+		const float water = g + LINE_LIFT + WATER_LIFT, top = water + POOL_RIM_UP;
 		shell.rect(pl.lot, x0(), x1(), y0(), y1(), water, lin, FIN_NONE);
 		const Lin coping = named("pool_coping");
 		const float c = COPING_W;

@@ -41,21 +41,22 @@ void garden(LotSpace &s) {
 	}
 	if (s.F >= TREE_MIN_F && !s.built_box.empty())
 		for (float x = s.built_box.x0 + TREE_FROM; x < s.built_box.x1 - 1; x += TREE_EVERY)
-			if (s.put(EL_TREE, Rect::around(x, s.F - TREE_IN, FRONT_CROWN, FRONT_CROWN), FRONT_CROWN_TOP, shrub)) break;
+			if (s.plant(EL_TREE, x, s.F - TREE_IN, FRONT_CROWN, FRONT_CROWN_TOP, shrub, TREE_ROOM_LEAST)) break;
 	if (!s.built_box.empty())
 		for (float x = s.built_box.x0 + 1; x < s.built_box.x1 - WINDOW_BED_D; x += WINDOW_BED_EVERY)
 			s.put(EL_FLOWERS, Rect::around(x, s.F - WINDOW_BED_OUT, WINDOW_BED_W, WINDOW_BED_D), WINDOW_BED_H, flowers);
 }
 
 void forecourt(LotSpace &s) {
-	const int bench = s.paint("bench"), planter = s.paint("planter");
+	const int bench = s.paint("bench"), planter = s.paint("planter"), shrub = s.paint("hedge");
 	for (float x = s.L + PAIR_EVERY * HALF; x < s.R - PAIR_GAP; x += PAIR_EVERY) {
 		if (s.r.f() < PAIR_SHARE && s.F >= PAIR_MIN_F) {
 			float y = s.F * PAIR_AT;
 			s.put(EL_BENCH, Rect::around(x, y, BENCH_W, BENCH_D), BENCH_H, bench, FACE_BACK);
 			s.put(EL_BENCH, Rect::around(x, y + PAIR_GAP, BENCH_W, BENCH_D), BENCH_H, bench, FACE_STREET);
 		} else {
-			s.put(EL_PLANTER, Rect::around(x, s.F * HALF, PLANTER, PLANTER), PLANTER_H, planter);
+			const Rect box = Rect::around(x, s.F * HALF, PLANTER, PLANTER);
+			s.planter(box, PLANTER_H, planter, EL_SHRUB, box, PLANTER_SHRUB_H, shrub);
 		}
 	}
 	const int bollard = s.paint("lamp_post");
@@ -68,12 +69,12 @@ void plaza(LotSpace &s) {
 	const int planter = s.paint("planter"), tree = s.paint("hedge"), bench = s.paint("bench");
 	for (float x = s.L + PLAZA_FROM; x < s.R - PLAZA_FROM; x += PLAZA_EVERY) {
 		float y = s.F * PLAZA_AT;
-		if (!s.put(EL_PLANTER, Rect::around(x, y, PLAZA_PLANTER, PLAZA_PLANTER), PLANTER_H, planter)) continue;
-		s.edge(EL_TREE, Rect::around(x, y, PLAZA_TREE, PLAZA_TREE), PLAZA_TREE_H, tree);
+		if (!s.planter(Rect::around(x, y, PLAZA_PLANTER, PLAZA_PLANTER), PLANTER_H, planter, EL_TREE, Rect::around(x, y, PLAZA_TREE, PLAZA_TREE), PLAZA_TREE_H, tree))
+			continue;
 		s.put(EL_BENCH, Rect::around(x, y + PLAZA_PLANTER * HALF + PLAZA_BENCH_D, PLAZA_BENCH, PLAZA_BENCH_D), BENCH_H, bench, FACE_STREET);
 	}
 	const int post = s.paint("lamp_post");
-	for (float x : { s.L + LAMP_IN, s.R - LAMP_IN }) s.put(EL_LAMP, Rect::around(x, s.F - LAMP_BACK, LAMP, LAMP), LAMP_H, post);
+	for (float x : { s.L + LAMP_IN, s.R - LAMP_IN }) s.post(EL_LAMP, x, s.F - LAMP_BACK, LAMP, LAMP_H, post, 0, -1); // out toward the street
 	for (float x = s.L + PLAZA_BOLLARD_EVERY * HALF; x < s.R - BOLLARD; x += PLAZA_BOLLARD_EVERY)
 		s.put(EL_BOLLARD, Rect::around(x, BOLLARD_AT, BOLLARD, BOLLARD), BOLLARD_H, post);
 }
@@ -88,7 +89,7 @@ void apron(LotSpace &s) {
 			s.flat(EL_STALL, { x, s.F - l.stall_d, x + l.stall_w, s.F }, 0, line, FACE_STREET);
 		}
 	}
-	s.put(EL_LAMP, Rect::around(s.door_x + APRON_LAMP_X, s.F - APRON_LAMP_IN, LAMP, LAMP), APRON_LAMP_H, s.paint("lamp_post"));
+	s.post(EL_LAMP, s.door_x + APRON_LAMP_X, s.F - APRON_LAMP_IN, LAMP, APRON_LAMP_H, s.paint("lamp_post"), 0, -1); // out from under the door's canopy
 }
 } // namespace
 
