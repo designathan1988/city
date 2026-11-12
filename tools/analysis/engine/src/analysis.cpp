@@ -104,7 +104,21 @@ Value last(const Analysis& an, Value key) {
 }
 }  // namespace
 
+bool Analysis::callable(Obj fn) {
+    if (callable_of.size() <= fn) callable_of.resize(objects(), -1);
+    if (callable_of[fn] >= 0) return callable_of[fn] != 0;
+    Value kind = okind(fn);
+    bool runs = kind == V.SITE_FUNCTION || kind == V.SITE_DECLARED_FN || kind == V.SITE_UNKNOWN ||
+                kind == V.SITE_RESOLVER;
+    for (size_t i = 0; !runs && i < typesys::own_types(*this, fn).size(); ++i) {
+        runs = !typesys::lookup(*this, typesys::own_types(*this, fn)[i], V.CALL_SIGNATURE).empty();
+    }
+    callable_of[fn] = runs ? 1 : 0;
+    return runs;
+}
+
 void Analysis::call(Value node, Obj fn, int64_t receiver, std::span<const Value> args, Value kind, Value site) {
+    if (!callable(fn)) return;                     // calling what is no function runs nothing (it throws)
     Value where = site.kind() != Kind::None ? site : declared::call_site(*this, node);
     Value key = okey(fn);
     if (okind(fn) != V.SITE_FUNCTION) {

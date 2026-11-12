@@ -134,6 +134,9 @@ public:
     std::unordered_map<uint64_t, bool> reads_memo;                         // whether a declared type reads its env
     std::unordered_map<uint64_t, Value> call_sites;                        // a call node -> its static site
     std::deque<std::vector<Value>> own_types_of;   // an object -> its types (once known); a deque: never moved
+    std::vector<int8_t> callable_of;               // an object -> whether a call of it runs anything (-1: not known)
+    bool callable(Obj fn);                         // a function, a declared function, the unknown, a resolver, or
+                                                   // an object a type of which has a call signature
     std::vector<uint8_t> own_types_known;
     bool contexts = true;                                                  // false: every run in ROOT
     uint64_t progress_every = 0;

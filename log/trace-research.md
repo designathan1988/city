@@ -402,3 +402,19 @@ official declarations only, converging (finite, fast enough to run in seconds to
   The two ways the literature bounds it are a cheaper context (call-site contexts only where the precision of call
   targets depends on them, judged by a pre-analysis that converges: the context-insensitive run does on every part of
   the lab but `src/world`) and a faster solver (collapsing the cycles the bidirectional places and copy loops make).
+
+### F27. What a call of a value that is no function costs, and where the slow phase is (P1) — 2026-11-12 05:50
+- The tail of the lab's run (tail.log): the transfer that calls what a member read holds received ~10 M objects every
+  2 s, ~150 per delivery, most of them no function (values reaching member reads through dictionary parts); each went to
+  `call_object` and `signatures` to find no call signature. A call of what is no function runs nothing (it throws), so
+  the engine now asks once per object whether a call of it can run anything (a function, a declared function, the
+  unknown object, a resolver, or an object one of whose types has a call signature) and skips the others: the same
+  result (441 tests, fixture links identical), the early phase faster (337 k links at 25.7 s).
+- The lab still does not converge in 150 s: between ~40 s and ~80 s the run is slow (~135 k items/s) while it makes
+  nodes for named declared types produced per receiver (`PRODUCED` with a receiver in its environment) and protocol
+  probes, and calls, index reads and coercions keep receiving sets of 100-400 objects (array elements merged per
+  allocation site and heap context: e.g. `items[i]` in a method's run holding 307-438).
+- Open, in the order the evidence gives: (1) where those large sets come from (the elements and dictionary parts of
+  objects made at one site and reached by many callers); (2) declared types read as what a place admits (TypeScript's
+  annotations as filters: an `items: Lot[]` holds no iterator) — a choice to weigh against the Task 6 ruling that an
+  annotation is no value; (3) the solver's cycles.
