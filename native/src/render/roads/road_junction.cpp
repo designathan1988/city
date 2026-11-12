@@ -1,6 +1,6 @@
-// Node shapes: an asphalt plate fanned from the node to every arm's mouth, the corners between neighbouring arms (road_corner.cpp, as
-// sim/roads/junction_corner.h lays them: kerb face, kerb stone and footway), dead ends closed by a face across the cut or a turning
-// bulb behind a kerb; and the ground round each.
+// Node shapes: a junction's paving from the node out to every arm's mouth and every corner's kerb (road_plate.cpp draws it), the
+// corners between neighbouring arms (road_corner.cpp, as sim/roads/junction_corner.h lays them: kerb face, kerb stone and footway),
+// dead ends closed by a face across the cut or a turning bulb behind a kerb; and the ground round each.
 #include "render/roads/road_node.h"
 #include "sim/roads/junction.h"
 
@@ -19,8 +19,6 @@ Vector3 flat_unit(Vector3 v) {
 	return v.length() > 0 ? v.normalized() : UP;
 }
 
-Vector3 side(const ArmEnd &e, double u) { return e.p + Vector3(e.d.z, 0, -e.d.x) * float(u); }
-
 // Width of the kerb stone on the arm's left (+1) or right (-1) side, 0 when that side has none (junction_corner.h side_section).
 float kerb_w(const ArmEnd &e, int hand) {
 	const SideSection s = side_section(*e.prof, (hand > 0) == e.at_a);
@@ -34,41 +32,17 @@ std::vector<Vector3> lifted(const Vector3 &node, const ArmEnd &a, const ArmEnd &
 	return out;
 }
 
-// A plate from the node out to `ring`, each point in the tone of the road nearest it: the paving that is not asphalt and the turning
-// bulb, which have no tones to share.
-void fan(const RoadEmit &e, const Vector3 &centre, const std::vector<ArmEnd> &ends, const std::vector<Vector3> &ring) {
-	auto add = [&](const Vector3 &p, const Color &c) { return e.mb.add(p, UP, road_color(c, RoadMat::PLATE), Vector2(p.x, p.z), Vector2()); };
-	Color mean(0, 0, 0);
-	for (const ArmEnd &en : ends) mean += e.L.carriage(*en.prof);
-	const int c0 = add(centre, mean / float(ends.size()));
-	std::vector<int> out;
-	for (const Vector3 &p : ring) {
-		const ArmEnd *nearest = &ends[0];
-		for (const ArmEnd &en : ends) nearest = (p - en.p).length() < (p - nearest->p).length() ? &en : nearest;
-		out.push_back(add(p, e.L.carriage(*nearest->prof)));
+// The rim of the paving between two arms: from a's centre line across the left half of its mouth, round the corner's kerb line
+// `line` (from a's mouth to b's), across the right half of b's mouth to its centre line. Each half mouth reads its arm's own kerb
+// line carried on, so the grime by a lane's kerb is met where the lane ends.
+void corner_rim(const Vector3 &node, const ArmEnd &a, const ArmEnd &b, const std::vector<Vector3> &line, std::vector<PlateSlice> &rim) {
+	if (line.empty()) {
+		rim.push_back(mouth_slice(node, a.p, b.p, mouth_point(a, a.arm.asph_left), a.d));
+		return;
 	}
-	for (size_t i = 0; i < ring.size(); i++) e.mb.tri(c0, out[i], out[(i + 1) % ring.size()], UP);
-}
-
-// The asphalt between two arms, from a's centre line round the kerb to b's. Across a wedge the difference of the distances to the
-// two lines is linear, so the mesh carries it and the shader lays the passage between the tones over a width of its own, the same
-// from the kerb to the node (road.gdshader M_JOIN). Fans of arms of one tone are the same, and no more triangles.
-void wedge(const RoadEmit &e, const Vector3 &node, const ArmEnd &a, const ArmEnd &b, const std::vector<Vector3> &line) {
-	const Vector3 left_a(a.d.z, 0, -a.d.x), left_b(b.d.z, 0, -b.d.x);
-	Color tones = wear_color(0, 0, 0, RoadMat::JOIN, int(a.prof->road_class));
-	tones.r = (float(int(b.prof->road_class)) + MAT_HALF) / TONE_SLOTS;
-	auto add = [&](const Vector3 &p) {
-		const Vector3 v = p - node;
-		return e.mb.add(p, UP, tones, Vector2(p.x, p.z), Vector2(0, v.dot(left_a) + v.dot(left_b)));
-	};
-	const int c0 = add(node);
-	int prev = add(a.p);
-	for (const Vector3 &p : line) {
-		const int next = add(p);
-		e.mb.tri(c0, prev, next, UP);
-		prev = next;
-	}
-	e.mb.tri(c0, prev, add(b.p), UP);
+	rim.push_back(mouth_slice(node, a.p, line.front(), line.front(), a.d));
+	for (size_t k = 1; k < line.size(); k++) rim.push_back(kerb_slice(node, line[k - 1], line[k]));
+	rim.push_back(mouth_slice(node, line.back(), b.p, line.back(), b.d));
 }
 
 void junction(const RoadEmit &e, int n, const std::vector<ArmEnd> &ends) {
@@ -76,20 +50,15 @@ void junction(const RoadEmit &e, int n, const std::vector<ArmEnd> &ends) {
 	const Vector3 node(float(nd.x), float(nd.y), float(nd.z));
 	std::vector<SurfaceLayout> lays;
 	for (const ArmEnd &en : ends) lays.push_back(surface_layout(e, en.sid));
-	std::vector<Vector3> ring;
-	bool asphalt = true;
-	for (const ArmEnd &en : ends) asphalt = asphalt && en.prof->surface == Surface::ASPHALT;
+	std::vector<PlateSlice> rim;
 	const size_t k = ends.size();
 	for (size_t i = 0; i < k; i++) {
 		const ArmEnd &a = ends[i], &b = ends[(i + 1) % k];
-		ring.push_back(side(a, -a.arm.asph_right));
 		const CornerOutline o = corner_of(e, a, b);
-		const std::vector<Vector3> in = lifted(node, a, b, o.kerb, o.share, 0);
-		ring.insert(ring.end(), in.begin(), in.end());
-		if (asphalt) wedge(e, node, a, b, in);
+		corner_rim(node, a, b, lifted(node, a, b, o.kerb, o.share, 0), rim);
 		draw_corner(e, node, a, b, o, lays[i], lays[(i + 1) % k]);
 	}
-	if (!asphalt) fan(e, node, ends, ring);
+	draw_plate(e, node, ends, rim);
 }
 
 struct EndFrame {
@@ -146,7 +115,14 @@ void bulb(const RoadEmit &e, int n, const ArmEnd &en) {
 		return pts;
 	};
 	const std::vector<Vector3> in = ring(BULB_R, 0);
-	fan(e, f.node, { en }, in);
+	// the paving: round the ring its kerb, and across the opening the road comes in by, from the ring's end to the mouth's middle and
+	// on to its start, each as far from the ring as it stands inside it
+	std::vector<PlateSlice> rim;
+	for (size_t k = 1; k < in.size(); k++) rim.push_back(kerb_slice(f.node, in[k - 1], in[k]));
+	const float mouth_in = float(BULB_R) - Vector2(en.p.x - f.node.x, en.p.z - f.node.z).length();
+	rim.push_back({ in.back(), en.p, float(BULB_R), 0, mouth_in });
+	rim.push_back({ en.p, in.front(), float(BULB_R), mouth_in, 0 });
+	draw_plate(e, f.node, { en }, rim);
 	kerb_band(e, in, ring(BULB_R + f.kw, 0), f.kw > 0 ? L.h_curb : L.h_sidewalk, L.h_sidewalk, f.kw > 0);
 	const std::vector<Vector3> inner = ring(BULB_R + f.kw, L.h_sidewalk), back = ring(BULB_R + BULB_WALK, L.h_sidewalk);
 	std::vector<Vector3> patch = inner;
@@ -155,19 +131,25 @@ void bulb(const RoadEmit &e, int n, const ArmEnd &en) {
 	footway_skirt(e, back, inner, footway_colour(L, en));
 }
 
-// What a node is, and the function that draws that shape.
+// What a node is drawn as: nothing (no end, a rail's end, ends that all stand on it), a road's cut end, a turning bulb, a junction.
+enum class NodeShape { NONE, CUT, BULB, JUNCTION };
+
+NodeShape shape_of(const RoadNode &nd, const std::vector<ArmEnd> &ends) {
+	if (ends.empty()) return NodeShape::NONE;
+	if (ends.size() > 1) return plated(ends) ? NodeShape::JUNCTION : NodeShape::NONE;
+	return ends[0].prof->rail ? NodeShape::NONE : nd.bulb ? NodeShape::BULB : NodeShape::CUT;
+}
+
+// The function that draws a node's shape.
 template <typename Junction, typename Cut, typename Bulb>
 void each_shape(const RoadEmit &e, int n, Junction &&plate, Cut &&cut, Bulb &&turn) {
-	const RoadNode &nd = e.s.roads.nodes[n];
-	if (nd.segs.empty()) return;
-	std::vector<ArmEnd> ends = arm_ends(e, n);
-	if (ends.size() == 1) {
-		if (ends[0].prof->rail) return;
-		if (nd.bulb) turn(e, n, ends[0]);
-		else cut(e, n, ends[0]);
-		return;
+	const std::vector<ArmEnd> ends = arm_ends(e, n);
+	switch (shape_of(e.s.roads.nodes[size_t(n)], ends)) {
+		case NodeShape::JUNCTION: plate(e, n, ends); break;
+		case NodeShape::BULB: turn(e, n, ends[0]); break;
+		case NodeShape::CUT: cut(e, n, ends[0]); break;
+		default: break;
 	}
-	if (plated(ends)) plate(e, n, ends);
 }
 
 // The verge along a line of the paving, each point taken `rise` up and sent out towards `from` the other way.
@@ -220,6 +202,11 @@ void bulb_verge(const RoadEmit &e, int n, const ArmEnd &en) {
 	verge_from(e, ring, away, f.kw > 0 ? e.L.h_sidewalk : 0.f);
 }
 } // namespace
+
+bool node_paved(const RoadEmit &e, int n) {
+	const NodeShape shape = shape_of(e.s.roads.nodes[size_t(n)], arm_ends(e, n));
+	return shape == NodeShape::JUNCTION || shape == NodeShape::BULB;
+}
 
 void emit_verge_node(const RoadEmit &e, int n) { each_shape(e, n, junction_verge, cut_verge, bulb_verge); }
 

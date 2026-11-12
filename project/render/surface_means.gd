@@ -20,7 +20,6 @@ static func apply(m: ShaderMaterial, params: Dictionary, load_param: Callable) -
 		tones.push_back(Vector3(c.r, c.g, c.b))
 	tones.resize(LANE_TONES)
 	m.set_shader_parameter("lane_tone", tones)
-	m.set_shader_parameter("plate_blend", streets.plate_blend_m)
 	var walk := Color.html(streets.paving_colors[0]).srgb_to_linear()
 	m.set_shader_parameter("footway_tone", Vector3(walk.r, walk.g, walk.b))
 

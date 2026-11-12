@@ -3,12 +3,14 @@
 // their top faces looked at two by two (CityProbes::road_overlaps): two tops at one height over the same ground stand in one another,
 // and whichever is drawn last shows through the other (a corner's paving over an arm's planting strip, two arms' footways over one
 // corner). How many pairs, how much ground, and where the first and a few more lie, for the photos to look at; and how many junction
-// corners there are and how many of their footway outlines cross themselves.
+// corners there are and how many of their footway outlines cross themselves; and the asphalt's wear as those meshes carry it (Wear:
+// a junction's paving in each arm's own colour on its mouth and at nought from its kerb, a lane across itself and off a mouth).
 #include "api/city_probes.h"
 
 #include "render/mesh_builder.h"
 #include "render/render_world.h"
 #include "render/roads/road_mesh.h"
+#include "render/roads/road_node.h"
 #include "sim/state/city_state.h"
 #include "sim/terrain/height_patch.h"
 
@@ -157,6 +159,94 @@ struct Buried {
 		if (first.is_empty()) first = Array::make(at.x, at.y, over, t.from);
 	}
 };
+
+constexpr float MM = 1000.f;
+constexpr float ON_M = 2.f / MM, ON_Y_M = 0.01f; // a vertex this near a line in plan, and at its height, stands on it
+constexpr float WEAR_AT_M = 0.06f; // a wear coordinate within this of a value is at it (a colour channel holds a tenth of a metre)
+constexpr float OFF_MOUTH_M = 1.f; // a lane's vertex farther than this from a mouth stands off it
+constexpr float TONE_STEP = 1.5f / 255.f; // two colours farther apart than this in a channel are two tones on the screen
+
+// How far `p` stands from the stretch a-b, in plan.
+float off_stretch(const Vector3 &p, const Vector3 &a, const Vector3 &b) { return dist_point_segment(V2(p.x, p.z), V2(a.x, a.z), V2(b.x, b.z)); }
+
+// The asphalt's wear as the meshes carry it (road_look.h), counted on the vertices each segment and each junction just wrote.
+struct Wear {
+	int mouths = 0, mouth_points = 0, mouth_off = 0, split = 0, kerb_points = 0, kerb_off = 0;
+	int lane_points = 0, lane_off = 0, lane_wide = 0, lane_past_mouth = 0, bay_points = 0, bay_inner = 0;
+	Array first_off;
+
+	static bool top(const MeshBuilder &mb, int64_t i, RoadMat m) { return mb.n[i].y > UP_DOT && int(std::floor(mb.c[i].a * MAT_SCALE)) == int(m); }
+
+	// A segment's lanes (across themselves, off a mouth) and its other asphalt (off the kerb).
+	void segment(const MeshBuilder &mb, int64_t from) {
+		for (int64_t i = from; i < mb.v.size(); i++) {
+			const Vector2 w = mb.uv2[i];
+			if (top(mb, i, RoadMat::LANE)) {
+				const bool wide = w.x >= mb.c[i].b * WEAR_LANE_M - WEAR_AT_M;
+				lane_points++;
+				lane_wide += wide;
+				lane_off += w.x < -WEAR_AT_M;
+				lane_past_mouth += w.y > OFF_MOUTH_M;
+			} else if (top(mb, i, RoadMat::ASPHALT)) {
+				bay_points++;
+				bay_inner += w.x > WEAR_AT_M;
+			}
+		}
+	}
+
+	// A junction's paving: its vertices on an arm's mouth, on a corner's kerb line, and those that share a point.
+	void node(const RoadEmit &e, int n, int64_t from) {
+		const std::vector<ArmEnd> ends = arm_ends(e, n);
+		if (ends.size() < 2 || !plated(ends)) return;
+		const RoadNode &nd = e.s.roads.nodes[size_t(n)];
+		mouths += int(ends.size());
+		std::vector<Vector3> kerb;
+		for (size_t k = 0; k < ends.size(); k++)
+			for (const V2 &p : corner_of(e, ends[k], ends[(k + 1) % ends.size()]).kerb) kerb.push_back(Vector3(float(nd.x) + p.x, 0, float(nd.z) + p.y));
+		std::unordered_map<int64_t, Color> seen; // a point of the paving, in millimetres, and the colour first found there
+		for (int64_t i = from; i < e.mb.v.size(); i++) {
+			if (!top(e.mb, i, RoadMat::PLATE)) continue;
+			const Vector3 p = e.mb.v[i];
+			const uint32_t colour = e.mb.c[i].to_rgba32();
+			const auto found = seen.try_emplace(top_cell(int(std::lround(p.x * MM)), int(std::lround(p.z * MM))), e.mb.c[i]);
+			const Color apart = found.first->second - e.mb.c[i];
+			split += std::max({ std::fabs(apart.r), std::fabs(apart.g), std::fabs(apart.b) }) > TONE_STEP;
+			bool on = false, own = false; // on a mouth; in the colour of an arm whose mouth it is on
+			for (const ArmEnd &en : ends) {
+				if (std::fabs(p.y - en.p.y) > ON_Y_M || off_stretch(p, mouth_point(en, -en.arm.asph_right), mouth_point(en, en.arm.asph_left)) > ON_M) continue;
+				on = true;
+				own = own || colour == road_color(e.L.carriage(*en.prof), RoadMat::PLATE).to_rgba32();
+			}
+			mouth_points += on;
+			mouth_off += on && !own;
+			if (on && !own && first_off.is_empty()) first_off = Array::make(p.x, p.y, p.z);
+			for (const Vector3 &q : kerb) {
+				if (off_stretch(p, q, q) > ON_M) continue;
+				kerb_points++;
+				kerb_off += std::fabs(e.mb.uv2[i].x) > ON_M;
+				break;
+			}
+		}
+	}
+
+	Dictionary report() const {
+		Dictionary d;
+		d["mouths"] = mouths; // carriageway mouths on a junction's paving
+		d["mouth_points"] = mouth_points; // the paving's vertices on one of them
+		d["mouth_off"] = mouth_off; // of those, not in the colour of an arm whose mouth they are on
+		d["first_off"] = first_off; // the first such: x, y, z
+		d["split"] = split; // the paving's vertices that share a point with another of another colour
+		d["kerb_points"] = kerb_points; // the paving's vertices on a corner's kerb line
+		d["kerb_off"] = kerb_off; // of those, whose distance to the kerb is not nought
+		d["lane_points"] = lane_points; // the lanes' vertices
+		d["lane_off"] = lane_off; // of those, before the lane's own edge across it
+		d["lane_wide"] = lane_wide; // of those, at the lane's width across it or past it (its far edge)
+		d["lane_past_mouth"] = lane_past_mouth; // of those, off a mouth that opens on a node's paving
+		d["bay_points"] = bay_points; // the vertices of the carriageway's asphalt that is no lane (bays, bike strips, shoulders)
+		d["bay_inner"] = bay_inner; // of those, off the carriageway's edge
+		return d;
+	}
+};
 } // namespace
 
 Dictionary CityProbes::road_overlaps() {
@@ -165,19 +255,22 @@ Dictionary CityProbes::road_overlaps() {
 	MeshBuilder mb;
 	const RoadEmit e{ CityView(s), render_->street_look(), mb };
 	std::vector<Top> tops;
+	Wear wear;
 	for (int sid = 0; sid < int(s.roads.segs.size()); sid++) {
 		if (!s.roads.segs[size_t(sid)].alive) continue;
-		const int64_t at = mb.idx.size();
+		const int64_t at = mb.idx.size(), first = mb.v.size();
 		emit_segment(e, sid);
 		tops_of(mb, at, sid, tops);
+		wear.segment(mb, first);
 	}
 	CornerCensus census;
 	for (int n = 0; n < int(s.roads.nodes.size()); n++) {
 		if (!s.roads.nodes[size_t(n)].alive) continue;
-		const int64_t at = mb.idx.size();
+		const int64_t at = mb.idx.size(), first = mb.v.size();
 		emit_node(e, n);
 		tops_of(mb, at, -1 - n, tops);
 		corner_census(e, n, census);
+		wear.node(e, n, first);
 	}
 	Buried buried;
 	for (const Top &t : tops) buried.count(t, s.terrain);
@@ -237,6 +330,7 @@ Dictionary CityProbes::road_overlaps() {
 	d["buried_m2"] = buried.ground;
 	d["buried_by"] = buried.by; // by what drew them: segment, node
 	d["buried_first"] = buried.first; // x, z, how far the ground stands over, what drew it
+	d["wear"] = wear.report(); // the asphalt's wear as the meshes carry it
 	return d;
 }
 

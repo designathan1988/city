@@ -30,9 +30,10 @@ SegFrame seg_frame(const CityView &s, int sid, double at);
 bool crossing_node(const CityView &s, int node);
 bool crosswalk_at(const CityView &s, int node, int seg); // a crosswalk over this arm there; a crossing between junctions has a stop line on both
 
-// Four corners with their own uv (texture metres), flat normal facing `out`.
+// Four corners with their own uv (texture metres), flat normal facing `out`; `wear`: each corner's UV2 (road_look.h), none without.
 void emit_quad(MeshBuilder &mb, const godot::Vector3 p[4], const godot::Vector2 uv[4], const godot::Color &col, const godot::Vector3 &out);
-void emit_quad(MeshBuilder &mb, const godot::Vector3 p[4], const godot::Vector2 uv[4], const godot::Color cols[4], const godot::Vector3 &out);
+void emit_quad(MeshBuilder &mb, const godot::Vector3 p[4], const godot::Vector2 uv[4], const godot::Color cols[4], const godot::Vector3 &out,
+		const godot::Vector2 wear[4] = nullptr);
 
 void emit_segment(const RoadEmit &e, int sid);
 void emit_markings(const RoadEmit &e, int sid);
@@ -43,10 +44,12 @@ void emit_chunk(const RoadEmit &e, int64_t chunk);
 // How a segment's surface is laid (road_segment.cpp), arcs from its node a: its carriageway's mouths v0 and v1, where each side's
 // footway starts and ends (index STREET_RIGHT its -u, STREET_LEFT its +u: at the carriageway's mouths, or on past them where a
 // junction's corner runs the footway on, sim/roads/junction_corner.h), its lowered kerbs, its island's noses (v0 and v1 when it has
-// none) and every arc it is drawn at; each mouth and nose is one of those arcs.
+// none) and every arc it is drawn at; each mouth and nose is one of those arcs. `paved`: whether its mouth at a, and at b, opens on
+// its node's paving (node_paved).
 struct SurfaceLayout {
 	double v0 = 0, v1 = 0, lo = 0, hi = 0;
 	double walk_from[2] = { 0, 0 }, walk_to[2] = { 0, 0 };
+	bool paved[2] = { false, false };
 	KerbDrops drops;
 	std::vector<double> arcs;
 };
@@ -57,6 +60,8 @@ struct SectionPoint {
 	float u = 0, h = 0;
 };
 std::vector<SectionPoint> footway_section(const RoadEmit &e, int sid, const SurfaceLayout &lay, int side, double at);
+// Whether a node draws paving of its own, which its segments' mouths open on: a junction's plate, a turning bulb (road_junction.cpp).
+bool node_paved(const RoadEmit &e, int node);
 // Where each side's footway starts (`from`) and ends (`to`) along segment `sid`, as the corners of its two nodes say (road_corner.cpp).
 void footway_mouths(const RoadEmit &e, int sid, double from[2], double to[2]);
 // The junction corners of the city as the probe counts them (CityProbes::road_overlaps): how many, of which back (junction_corner.h

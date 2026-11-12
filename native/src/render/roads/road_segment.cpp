@@ -48,6 +48,7 @@ struct Sample {
 	SegFrame f;
 	float at = 0;
 	float tex = 0; // how far along its street, what the maps read
+	float off_mouth = 0; // how far along from the nearest mouth that opens on a node's paving
 };
 
 // The first of `arcs` at `v` or past it.
@@ -64,6 +65,8 @@ void lay_arcs(const RoadEmit &e, int sid, SurfaceLayout &lay) {
 	const int n = surface_steps(e, sid, lay.v0, lay.v1);
 	for (int k = 0; k <= n; k++) at.push_back(lay.v0 + (lay.v1 - lay.v0) * k / n);
 	std::vector<double> marks{ lay.lo, lay.hi, lay.walk_from[0], lay.walk_from[1], lay.walk_to[0], lay.walk_to[1] };
+	// between two paved mouths the nearer one changes at the middle: an arc there keeps that distance linear on every stretch
+	if (lay.paved[0] && lay.paved[1]) marks.push_back((lay.v0 + lay.v1) * HALF);
 	kerb_marks(e.L, lay.drops, marks);
 	for (double m : marks)
 		if (m > lay.v0 && m < lay.v1) at.push_back(m);
@@ -72,14 +75,16 @@ void lay_arcs(const RoadEmit &e, int sid, SurfaceLayout &lay) {
 	for (double *v : { &lay.lo, &lay.hi, &lay.walk_from[0], &lay.walk_from[1], &lay.walk_to[0], &lay.walk_to[1] }) *v = at[arc_index(at, *v)];
 }
 
-std::vector<Sample> samples_of(const RoadEmit &e, int sid, const std::vector<double> &arcs) {
+std::vector<Sample> samples_of(const RoadEmit &e, int sid, const SurfaceLayout &lay) {
 	std::vector<Sample> out;
 	const double start = e.s.roads.street_run(sid).start;
-	for (double a : arcs) {
+	for (double a : lay.arcs) {
 		Sample sm;
 		sm.f = seg_frame(e.s, sid, a);
 		sm.at = float(a);
 		sm.tex = float(start + a);
+		const double from_a = a - lay.v0, to_b = lay.v1 - a;
+		sm.off_mouth = float(lay.paved[0] && lay.paved[1] ? std::min(from_a, to_b) : lay.paved[0] ? from_a : lay.paved[1] ? to_b : double(WEAR_SPAN_M));
 		out.push_back(sm);
 	}
 	return out;
@@ -99,6 +104,14 @@ Color wear_at(const Piece &pc, float u) {
 	return wear_color(std::fabs(u - pc.edge0), std::fabs(u - pc.edge1), pc.lane, pc.mat, pc.tone);
 }
 
+// The asphalt's wear at `u` of a piece (road_look.h, UV2): a lane across itself and off a paved mouth; the carriageway's other
+// asphalt off its nearer edge (a strip of no carriageway, a rail's bed, wears by none).
+Vector2 wear_uv(const Piece &pc, float u, float off_mouth) {
+	if (pc.mat == RoadMat::LANE) return Vector2(u - pc.lane_u0, off_mouth);
+	if (pc.mat != RoadMat::ASPHALT) return Vector2();
+	return Vector2(pc.edge0 == pc.edge1 ? WEAR_SPAN_M : std::min(std::fabs(u - pc.edge0), std::fabs(u - pc.edge1)), 0);
+}
+
 void tops(const Ctx &c, const Piece &pc) {
 	for (size_t k = c.k0; k < c.k1; k++) {
 		float a0, a1, b0, b1;
@@ -111,7 +124,9 @@ void tops(const Ctx &c, const Piece &pc) {
 		const bool wears = pc.mat == RoadMat::LANE || pc.mat == RoadMat::FOOTWAY;
 		const Color at_u0 = wears ? wear_at(pc, pc.u0) : plain, at_u1 = wears ? wear_at(pc, pc.u1) : plain;
 		const Color cols[4] = { at_u0, at_u1, at_u1, at_u0 };
-		emit_quad(c.e.mb, p, uv, cols, Vector3(0, 1, 0));
+		const float ma = c.sm[k].off_mouth, mb = c.sm[k + 1].off_mouth;
+		const Vector2 wear[4] = { wear_uv(pc, pc.u0, ma), wear_uv(pc, pc.u1, ma), wear_uv(pc, pc.u1, mb), wear_uv(pc, pc.u0, mb) };
+		emit_quad(c.e.mb, p, uv, cols, Vector3(0, 1, 0), wear);
 	}
 }
 
@@ -194,7 +209,7 @@ void span(const Ctx &c, const std::vector<Piece> &ps, const Hold &h, const bool 
 void stretches(const RoadEmit &e, int sid, const SurfaceLayout &lay, const std::vector<Piece> &ps, bool island) {
 	const Profile &p = e.s.catalog.profile(e.s.roads.segs[size_t(sid)].profile);
 	const SideSection sec[2] = { side_section(p, false), side_section(p, true) };
-	const std::vector<Sample> sm = samples_of(e, sid, lay.arcs);
+	const std::vector<Sample> sm = samples_of(e, sid, lay);
 	const std::vector<Piece> bare = without_island(ps);
 	bool walks[2] = { false, false };
 	for (const Piece &pc : ps)
@@ -237,6 +252,8 @@ SurfaceLayout surface_layout(const RoadEmit &e, int sid) {
 	lay.v0 = lay.lo = g.retreat_a;
 	lay.v1 = lay.hi = g.len - g.retreat_b;
 	footway_mouths(e, sid, lay.walk_from, lay.walk_to);
+	lay.paved[0] = node_paved(e, g.a);
+	lay.paved[1] = node_paved(e, g.b);
 	lay.drops.v0 = lay.v0;
 	lay.drops.v1 = lay.v1;
 	float island0, island1;

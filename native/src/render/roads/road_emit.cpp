@@ -59,14 +59,14 @@ void emit_quad(MeshBuilder &mb, const Vector3 p[4], const Vector2 uv[4], const C
 	emit_quad(mb, p, uv, cols, out);
 }
 
-void emit_quad(MeshBuilder &mb, const Vector3 p[4], const Vector2 uv[4], const Color cols[4], const Vector3 &out) {
+void emit_quad(MeshBuilder &mb, const Vector3 p[4], const Vector2 uv[4], const Color cols[4], const Vector3 &out, const Vector2 wear[4]) {
 	Vector3 nn = (p[1] - p[0]).cross(p[3] - p[0]);
 	if (nn.length_squared() < DEGENERATE) nn = (p[2] - p[1]).cross(p[0] - p[1]);
 	if (nn.length_squared() < DEGENERATE) return;
 	nn = nn.normalized();
 	if (nn.dot(out) < 0) nn = -nn;
 	int i[4];
-	for (int k = 0; k < 4; k++) i[k] = mb.add(p[k], nn, cols[k], uv[k], Vector2());
+	for (int k = 0; k < 4; k++) i[k] = mb.add(p[k], nn, cols[k], uv[k], wear ? wear[k] : Vector2());
 	mb.tri(i[0], i[1], i[2], nn);
 	mb.tri(i[0], i[2], i[3], nn);
 }

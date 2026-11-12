@@ -59,6 +59,7 @@ void load_shape(StreetLook &L, const Dictionary &t, const Tuning &tn, PackedStri
 	L.far_step = float(t["far_step_m"]);
 	L.far_pull = float(t["far_pull_m"]);
 	L.face_eps = float(t["face_eps_m"]);
+	L.plate_tone_power = float(t["plate_tone_power"]);
 	Dictionary r = sub(t, "dropped_kerb", errors);
 	L.ramp_flare = float(r["flare_m"]);
 	L.ramp_low = float(r["low_m"]);

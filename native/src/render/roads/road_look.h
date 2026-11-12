@@ -3,7 +3,8 @@
 // footway's top), and so are a junction corner's and a turning bulb's outlines (sim/roads/node_outline.h: the lots are cut by them);
 // where the crosswalks lie is the simulation's (sim/roads/street_furniture.h). The light the lamps lay at night is no part of the road:
 // each lamp's own pool (render/props/lamp_pools.h). Also the vertex conventions shared with render/shaders/road.gdshader (material id
-// in COLOR.a; UV2 zero but on a wedge between two arms, RoadMat::JOIN, whose y carries the difference of the distances to their lines).
+// in COLOR.a; UV2 the asphalt's wear in metres: x how far from the carriageway's edge on a node's paving, a bay, a bike strip or a
+// shoulder, and on a lane how far across it from its own edge; y, on a lane, how far from the nearest mouth on a node's paving).
 #pragma once
 
 #include "sim/catalog/catalog.h"
@@ -19,7 +20,7 @@ namespace city {
 
 // Road shader materials (render/shaders/road.gdshader decodes COLOR.a * MAT_SCALE).
 enum class RoadMat : int { ASPHALT = 0, PLATE, FOOTWAY, KERB, GRASS, CONCRETE, LANE, PAINT, PAVERS, STONE, COBBLE,
-	BALLAST, SKIRT, JOIN };
+	BALLAST, SKIRT };
 constexpr float MAT_SCALE = 16.f;
 constexpr float MAT_HALF = 0.5f;
 
@@ -41,6 +42,7 @@ struct StreetLook {
 	float far_step = 0, far_pull = 0; // the far level: its stretches on a curve; how far towards the eye it is drawn, over the coarser ground out there
 	float h_curb = 0, h_curb_median = 0, h_sidewalk = 0, h_median = 0, h_barrier = 0, step = 1, skirt = 0, median_nose = 0;
 	float face_eps = 0; // coplanar faces closer than this are one
+	float plate_tone_power = 0; // how fast an arm's asphalt gives way on a node's paving, off its mouth (road_plate.cpp)
 	float verge_reach = 0, verge_under = 0;
 	int verge_strips = 1;
 	// dropped kerbs at crossings (metres from the mouth) and the ramp band of the footway

@@ -1,7 +1,9 @@
 // Roads: the mesher (native/src/render/roads/road_look.h) writes the sRGB strip colour in
 // COLOR.rgb, the material id in COLOR.a * 16, texture metres in UV ((u, v) on segments, world xz on plates and
-// corners, (across, along) on a kerb's top, the run along it on any face) and, on a wedge between two arms, the difference of the
-// distances to their centre lines in UV2.y. The cooked maps are tinted so their mean becomes the strip colour. Everything in linear
+// corners, (across, along) on a kerb's top, the run along it on any face) and the asphalt's wear in UV2 (metres: off the carriageway's
+// edge on a node's paving and on a bay; on a lane across itself, and off the nearest mouth on a node's paving). A node's paving
+// comes in each arm's own asphalt on that arm's mouth (render/roads/road_plate.cpp): its strip colour is its tone. The cooked maps
+// are tinted so their mean becomes the strip colour. Everything in linear
 // on both renderers (color_space.gdshaderinc). The street lamps' light at night is their own pools', laid over whatever lies under
 // them (render/shaders/lamp_pool.gdshader).
 
@@ -27,7 +29,6 @@ uniform float kerb_m = 3.2;
 uniform float verge_m = 8.8;
 uniform vec3 lane_tone[8]; // linear, by road class (road_look.h wear_color)
 uniform vec3 footway_tone;
-uniform float plate_blend = 2.26; // metres of that difference over which two arms share a plate
 uniform float normal_asphalt = 1.0;
 uniform float normal_footway = 1.0;
 uniform float normal_kerb = 0.85;
@@ -64,12 +65,11 @@ const int M_STONE = 9;
 const int M_COBBLE = 10;
 const int M_BALLAST = 11;
 const int M_SHOULDER_EDGE = 12;
-const int M_ARM_MEET = 13; // a plate between two arms: tones in the alpha and in red, how far from the one to the other in UV2.y
 
 varying flat int v_mat;
 varying float v_id;
 varying vec3 v_world;
-varying float v_join; // across a wedge between two arms: the difference of the distances to their centre lines (UV2.y)
+varying vec2 v_wear; // the asphalt's wear (UV2)
 
 const float MEAN_FLOOR = 0.001;
 
@@ -97,15 +97,13 @@ void vertex() {
 		VERTEX = ((chunk_mask >> int(CUSTOM0.r * 255.0 + 0.5)) & 1) != 0 ? vec3(0.0) : VERTEX + to_eye * (far_pull / max(length(to_eye), far_pull));
 	}
 #endif
-	v_join = UV2.y;
+	v_wear = UV2;
 }
 
 void fragment() {
 	vec3 base = srgb_to_linear(COLOR.rgb); // the strip colour, sRGB in the mesh; everything below in linear
 	if (v_mat == M_LANE) {
 		base = lane_tone[int(fract(v_id) * TONE_SLOTS)];
-	} else if (v_mat == M_ARM_MEET) {
-		base = mix(lane_tone[int(fract(v_id) * TONE_SLOTS)], lane_tone[int(COLOR.r * TONE_SLOTS)], clamp(0.5 + v_join / (2.0 * plate_blend), 0.0, 1.0));
 	} else if (v_mat == M_FOOTPATH) {
 		base = footway_tone;
 	}
@@ -122,7 +120,7 @@ void fragment() {
 	vec3 nw = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	bool up = nw.y > 0.7;
 	if (v_mat == M_PAINT && road_paint < 0.5) discard;
-	if (v_mat == M_ROAD || v_mat == M_PLATE || v_mat == M_ARM_MEET || v_mat == M_PAINT || v_mat == M_LANE) {
+	if (v_mat == M_ROAD || v_mat == M_PLATE || v_mat == M_PAINT || v_mat == M_LANE) {
 		vec3 t = source_linear(texture(asphalt_map, uv / asphalt_m, near * detail_asphalt.z).rgb);
 		vec2 duv = uv / asphalt_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
 		if (near > 0.0) {
@@ -133,15 +131,19 @@ void fragment() {
 		albedo = (v_mat == M_PAINT) ? base * mix(1.0, dot(t / asphalt_avg, vec3(0.333)), 0.25) : t * base / max(source_linear(asphalt_reference), vec3(MEAN_FLOOR)) * blotch;
 		if (v_mat == M_LANE) {
 			float grain = source_linear(texture(asphalt_map, uv / asphalt_m * 2.7).rgb).r;
-			albedo *= lane_wear(min(COLOR.r, COLOR.g) * WEAR_SPAN_M, COLOR.b * WEAR_LANE_M, grain);
+			float edge = min(COLOR.r, COLOR.g) * WEAR_SPAN_M, lane = COLOR.b * WEAR_LANE_M;
+			albedo *= gutter_wear(edge, grain) * track_wear(v_wear.x, lane, v_wear.y, grain);
 #ifdef ROAD_FAR
-			if (far_pull > 0.0) { // the lines between the lanes, filtered: a box of the pixel's width over the line's
-				float edge = min(COLOR.r, COLOR.g) * WEAR_SPAN_M, lane = max(COLOR.b * WEAR_LANE_M, MEAN_FLOOR);
-				float off = abs(edge - max(round(edge / lane), 1.0) * lane), wide = max(fwidth(edge), FAR_LINE_M);
+			if (far_pull > 0.0) { // the lines along the lanes' own edges, filtered: a box of the pixel's width over the line's
+				float wide_lane = max(lane, MEAN_FLOOR), across = mod(v_wear.x, wide_lane);
+				float off = min(across, wide_lane - across), wide = max(fwidth(v_wear.x), FAR_LINE_M);
 				float seen = clamp(min(FAR_LINE_M * 0.5, off + wide * 0.5) - max(-FAR_LINE_M * 0.5, off - wide * 0.5), 0.0, FAR_LINE_M) / wide;
+				seen *= step(0.5 * wide_lane, edge + off); // none along the carriageway's own edge
 				albedo = mix(albedo, FAR_LINE_TONE, seen * FAR_LINE_DUTY);
 			}
 #endif
+		} else if (v_mat == M_ROAD || v_mat == M_PLATE) { // a bay, a bike strip, a shoulder, a node's paving: the grime by the kerb
+			albedo *= gutter_wear(v_wear.x, source_linear(texture(asphalt_map, uv / asphalt_m * 2.7).rgb).r);
 		}
 		bend = (texture(asphalt_normal, uv / asphalt_m, near * detail_asphalt.z).xy - 0.5) * 2.0;
 		if (v_mat != M_PAINT) albedo = wear_asphalt(albedo, wear_at(v_world.xz).x, v_world.xz);

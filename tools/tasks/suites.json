@@ -317,6 +317,7 @@
     {"name": "drive_kerb_test", "scene": "tests/core/drive_kerb_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "lot_front_test", "scene": "tests/core/lot_front_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "road_overlap_test", "scene": "tests/core/road_overlap_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "plate_tone_test", "scene": "tests/core/plate_tone_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {
      "name": "building_edit_test",
      "scene": "tests/core/building_edit_test",

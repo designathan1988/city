@@ -163,11 +163,15 @@ std::vector<Piece> pieces_of(const StreetLook &L, const Profile &p, bool drops) 
 			case StripKind::BARRIER: pc.mat = RoadMat::CONCRETE; pc.col = L.barrier; pc.h = L.h_barrier; break;
 			default: break;
 		}
-		if (s.kind == StripKind::LANE && pc.mat == RoadMat::ASPHALT && !p.rail) {
-			pc.mat = RoadMat::LANE;
-			pc.lane = s.width;
-			pc.tone = int(p.road_class);
+		// Every asphalt strip of a carriageway wears by how far it is from the carriageway's edges; a lane also across itself.
+		if (pc.mat == RoadMat::ASPHALT && !p.rail) {
 			carriage_span(p, i, pc.edge0, pc.edge1);
+			if (s.kind == StripKind::LANE) {
+				pc.mat = RoadMat::LANE;
+				pc.lane = s.width;
+				pc.lane_u0 = p.edges[i].u0; // the strip's own edge: an island's kerb takes the piece's first centimetres, not the lane's
+				pc.tone = int(p.road_class);
+			}
 		}
 		pc.face = pc.col;
 		out.push_back(pc);

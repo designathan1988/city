@@ -17,6 +17,7 @@ struct Piece {
 	RoadMat mat = RoadMat::ASPHALT;
 	godot::Color col;
 	float edge0 = 0, edge1 = 0, lane = 0; // where wear is read: the surface's two edges, and the lanes' width
+	float lane_u0 = 0; // a lane's own edge, which its tracks are counted from
 	int tone = 0;
 	Ramp ramp = Ramp::NONE;
 	float kerb_d0 = 0, kerb_d1 = 0, band = 0; // a footway band's edges' distances from its kerb, and its footway's crossing band

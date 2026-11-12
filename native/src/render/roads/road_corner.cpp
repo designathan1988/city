@@ -169,6 +169,8 @@ std::vector<ArmEnd> arm_ends(const RoadEmit &e, int n) {
 	return ends;
 }
 
+Vector3 mouth_point(const ArmEnd &en, double u) { return en.p + Vector3(en.d.z, 0, -en.d.x) * float(u); }
+
 bool plated(const std::vector<ArmEnd> &ends) {
 	std::vector<NodeEnd> plain;
 	for (const ArmEnd &en : ends) plain.push_back(en.end);
