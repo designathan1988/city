@@ -46,7 +46,7 @@ public:
 	void set_detail_scale(float scale); // the graphics tier's reach of the buildings' near level
 	void set_lamp_lights(int count, int casting, int heads); // the graphics tier's street lamps with a light of their own, those with a shadow, and the vehicles' headlamps
 	void set_lamp_night(float night); // how much of the night it is, as daylight.gd reckons it
-	void set_vegetation(float share); // the tier's share of the wild trees
+	void set_tree_share(float share); // the tier's share of the wild trees
 	void set_agent_detail(float cabin_m, int cabin_cap, int people_floor); // the tier's reach and cap of the cabins, the people's nearest level
 	void set_population(float share); // the Optimisations tab: the share of the fleet and the walkers allowed
 	void set_upload_every(int frames); // the Optimisations tab: mesh uploads only every N frames

@@ -4,7 +4,6 @@
 extends MeshInstance3D
 
 const SCREEN_QUAD := Vector2(2, 2)
-const WITH_LINEAR_PICTURE := "forward_plus"
 
 
 func lay(shader: String) -> ShaderMaterial:
@@ -27,4 +26,4 @@ func _ready() -> void:
 
 ## Whether the renderer in use has the linear picture the pass multiplies.
 func available() -> bool:
-	return RenderingServer.get_current_rendering_method() == WITH_LINEAR_PICTURE
+	return RenderMethod.draws(&"linear_picture")

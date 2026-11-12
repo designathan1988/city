@@ -40,6 +40,8 @@ public:
 	void set_lamp_budget(int count, int casting) { lights_.set_budget(count, casting); }
 	void set_lamp_night(float night) { lights_.set_night(night); }
 	int lit_lamps() const { return lights_.lit(); }
+	int lamp_budget() const { return lights_.budget(); }
+	int lamp_casting() const { return lights_.casting(); }
 	const LightLook &lamp_look() const { return lights_.look(); }
 	godot::Vector2 lamps_hand_over() const { return lights_.handed_over(); }
 	const FurnitureLook &furniture_look() const { return furniture_; } // the lamps' lenses and pools as streets.json draws them

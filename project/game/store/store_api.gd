@@ -40,7 +40,7 @@ const COMMANDS := {
 	&"transit_drop_line": "transit/transit_drop_line", &"transit_vehicles": "transit/transit_vehicles",
 	&"set_interior": "set_interior", &"set_lamp_lights": "set_lamp_lights", &"set_lamp_night": "set_lamp_night",
 	&"strike": "strike", &"shoot": "shoot", &"demolish_box": "demolish_box",
-	&"show_every_zone": "show_every_zone", &"set_style": "set_style", &"reverse_road": "reverse_road", &"duplicate_road": "duplicate_road", &"set_marking_style": "set_marking_style", &"set_detail_scale": "set_detail_scale", &"set_vegetation": "set_vegetation", &"set_agent_detail": "set_agent_detail", &"set_population": "set_population", &"set_upload_every": "set_upload_every", &"set_lots_drawn": "set_lots_drawn",
+	&"show_every_zone": "show_every_zone", &"set_style": "set_style", &"reverse_road": "reverse_road", &"duplicate_road": "duplicate_road", &"set_marking_style": "set_marking_style", &"set_detail_scale": "set_detail_scale", &"set_tree_share": "set_tree_share", &"set_agent_detail": "set_agent_detail", &"set_population": "set_population", &"set_upload_every": "set_upload_every", &"set_lots_drawn": "set_lots_drawn",
 	&"place_item": "street/place_item", &"place_item_row": "street/place_item_row", &"build_barrier": "street/build_barrier", &"remove_street": "street/remove_street",
 	&"build_pole_run": "street/build_pole_run", &"preview_pole_line": "street/show_pole_preview", &"set_road_furniture": "street/set_road_furniture", &"set_road_height": "street/set_road_height", &"set_road_walls": "street/set_road_walls",
 }

@@ -25,6 +25,7 @@
 #include "render/props/lamp_pools.h"
 #include "render/props/prop_renderer.h"
 #include "render/render_context.h"
+#include "render/render_tier.h"
 #include "render/roads/far_road_renderer.h"
 #include "render/roads/road_renderer.h"
 #include "render/roads/structure_renderer.h"
@@ -91,16 +92,20 @@ public:
 		props_.update_lamps(eye, view, frame_s);
 		agents_.shine_heads(frame_s);
 	}
-	void set_lamp_budget(int count, int casting, int heads) {
-		props_.set_lamp_budget(count, casting);
-		agents_.set_head_lights(heads);
-	}
+	// The graphics tier's values for the render (render_tier.h, render_world_tier.cpp): kept whenever they are given, so a tier
+	// applied before the core's boot reaches the render as one applied after it.
+	void set_lamp_budget(int count, int casting, int heads);
+	void set_agent_detail(float cabin_m, int cabin_cap, int people_floor);
+	void set_detail_scale(float scale);
+	void set_tree_share(float share);
 	void set_lamp_night(float night) {
 		props_.set_lamp_night(night);
 		pools_.lay_by_night(night);
 		agents_.set_night(night);
 	}
 	int lit_lamps() const { return props_.lit_lamps(); }
+	int lamp_budget() const { return props_.lamp_budget(); } // the tier as the lamps' pool holds it (render_cost probe)
+	int lamp_casting() const { return props_.lamp_casting(); }
 	const LightLook &lamp_look() const { return props_.lamp_look(); } // the street lamps' lights as they are made (render_cost probe)
 	int lit_heads() const { return agents_.lit_heads(); }
 	godot::Vector2 lamps_hand_over() const { return props_.lamps_hand_over(); }
@@ -142,9 +147,6 @@ public:
 	godot::Dictionary building_cost() const { return buildings_.building_cost(); }
 	godot::Dictionary bay_census() { return buildings_.bay_census(); }
 	godot::Dictionary far_form() const { return buildings_.far_form(); }
-	void set_detail_scale(float scale) { buildings_.set_detail_scale(scale); }
-	void set_vegetation(float share) { trees_.set_share(share); }
-	void set_agent_detail(float cabin_m, int cabin_cap, int people_floor) { agents_.set_detail(cabin_m, cabin_cap, people_floor); }
 	void set_upload_every(int frames) { upload_every_ = std::max(1, frames); }
 	void set_lots_drawn(bool on) { buildings_.set_lots_drawn(on); }
 	// A body drawn apart from the city (body_stage.h).
@@ -181,6 +183,11 @@ public:
 	godot::Dictionary ground_drawn(const CityState &s, float x, float z) const { return terrain_.drawn(s.terrain, x, z); }
 
 private:
+	bool stand(bool made); // init's end: whether every renderer was made; if so the tier's parts given so far are handed on
+	void apply_lamps();
+	void apply_agents();
+	RenderTier tier_;
+	bool made_ = false; // init made every renderer: a tier's value can be handed on
 	TerrainBridge terrain_;
 	RoadRenderer roads_;
 	FarRoadRenderer far_roads_;

@@ -250,6 +250,7 @@
     },
     {"name": "wire_level_test", "scene": "tests/core/wire_level_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "wire_level_test@forward_plus", "scene": "tests/core/wire_level_test", "renderer": "forward_plus", "timeout_s": 600},
+    {"name": "tier_order_test@forward_plus", "scene": "tests/core/tier_order_test", "renderer": "forward_plus", "timeout_s": 600},
     {"name": "look_view_test", "scene": "tests/core/look_view_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "reference_test", "scene": "tests/core/reference_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {

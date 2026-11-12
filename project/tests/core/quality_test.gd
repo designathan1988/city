@@ -241,5 +241,8 @@ func _entry() -> void:
 	Settings.set_preset("ultra")
 	check(_sky.clouds_drawn, "ultra draws the clouds")
 	# ultra asks for a temporal filter, which only Forward+ has: there the bars are a grain it resolves
-	var by_frames: String = card.shader if QualityTier.has_temporal() else card.blend_shader
+	var by_frames: String = card.shader if RenderMethod.draws(&"temporal") else card.blend_shader
 	check(world.materials().building_card.shader.resource_path == by_frames, "ultra: the railings' bars by the filter the renderer has")
+	# ultra asks for the light surfaces throw back on each other too: asked of the engine only where the method draws it
+	check(bool(Settings.current().ssil) and world.environment.ssil_enabled == RenderMethod.draws(&"ssil"),
+			"ultra: the bounced light is asked only of a method that draws it (asked %s, drawn %s)" % [world.environment.ssil_enabled, RenderMethod.draws(&"ssil")])

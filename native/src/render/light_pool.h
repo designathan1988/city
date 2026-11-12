@@ -53,6 +53,8 @@ public:
 	void update(std::vector<LightWanted> &list, float most_m, float frame_s, bool moving);
 	godot::Vector2 lit_span() const; // on the ground from the eye, from where they fade to where they end
 	int lit() const { return lit_; }
+	int budget() const { return budget_; } // the lights the tier pays for, as last given (render_cost probe)
+	int casting() const { return cast_budget_; }
 	const LightLook &look() const { return look_; } // what every light of it is made with (render_cost probe)
 
 private:

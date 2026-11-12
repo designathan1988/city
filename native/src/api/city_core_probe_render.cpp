@@ -36,6 +36,10 @@ Dictionary CityCore::render_cost() const {
 		shadow["normal_bias"] = lamp.shadow->normal_bias;
 	}
 	d["lamp_shadow"] = shadow;
+	Dictionary tier; // the graphics tier as the lamps' pool holds it: its lights, and those of them that cast
+	tier["lamps"] = render_.lamp_budget();
+	tier["lamp_casting"] = render_.lamp_casting();
+	d["tier"] = tier;
 	d["process"] = process_ms_; // constant time: the game reads it on every long frame (health log), so it must not make one
 	d["agents"] = agents_ms_;
 	d["lock"] = c.lock;

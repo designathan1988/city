@@ -221,7 +221,7 @@ void CityCore::set_sim_switch(const String &name, bool on) {
 void CityCore::set_detail_scale(float scale) { render_.set_detail_scale(scale); }
 void CityCore::set_lamp_lights(int count, int casting, int heads) { render_.set_lamp_budget(count, casting, heads); }
 void CityCore::set_lamp_night(float night) { render_.set_lamp_night(night); }
-void CityCore::set_vegetation(float share) { render_.set_vegetation(share); }
+void CityCore::set_tree_share(float share) { render_.set_tree_share(share); }
 void CityCore::set_agent_detail(float cabin_m, int cabin_cap, int people_floor) { render_.set_agent_detail(cabin_m, cabin_cap, people_floor); }
 void CityCore::set_population(float share) {
 	state_->traffic_levels.population = share;

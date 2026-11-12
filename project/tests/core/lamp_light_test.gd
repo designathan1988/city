@@ -48,7 +48,7 @@ func _ready() -> void:
 	var budget: int = Settings.current().lamp_lights
 	_check_casting(Settings.current())
 	var lit := _handed_over()
-	if world.contact.available():
+	if RenderMethod.draws(&"many_lights"):
 		print("  lamps lit %d of %d, the road's pools from %.0f to %.0f m" % [_lit(), budget, lit.x, lit.y])
 		check(_lit() > 0 and _lit() <= budget, "by night the near lamps are lit, within the tier's: %d of %d" % [_lit(), budget])
 		check(lit.y > lit.x and lit.x > 0.0, "the road takes over past them: %s" % lit)
@@ -59,7 +59,7 @@ func _ready() -> void:
 	await _settled()
 	var heads: int = CityStore.query(&"render_cost").lit_head_lamps
 	var most: int = Settings.current().head_lights
-	if world.contact.available():
+	if RenderMethod.draws(&"many_lights"):
 		print("  headlamps lit %d of %d" % [heads, most])
 		check(heads > 0 and heads <= most, "the vehicles near the eye throw their light: %d of %d" % [heads, most])
 	else:
@@ -85,7 +85,7 @@ func _check_casting(q: Dictionary) -> void:
 	check(maps >= int(q.lamp_shadows), "every casting lamp gets a shadow map: %d maps for %d lamps" % [maps, q.lamp_shadows])
 	check(near_maps >= mini(NEAREST_CASTERS, int(q.lamp_shadows)), "the lamps nearest the eye get maps of the tier's side: %d of %d px" % [near_maps,
 			q.lamp_shadow_px])
-	if int(q.lamp_shadows) == 0 or not world.contact.available():
+	if int(q.lamp_shadows) == 0 or not RenderMethod.draws(&"many_lights"):
 		return
 	# a spot's shadow blur scales its lens's penumbra, its filter and its depth bias (Godot light_storage.cpp, spot): at 0 all three are
 	# gone, one hard tap that shows the map's texels as stairs and a surface that shades itself in bands

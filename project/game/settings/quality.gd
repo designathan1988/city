@@ -1,6 +1,7 @@
 ## The graphics tiers on the running game: a tier's table (data/game/settings.json "tiers") with the player's kept choices and
 ## the optimisations over it, and each of its fields on the renderer that owns it: the Viewport (MSAA, SMAA, 3D scale,
-## anisotropy), the sun (shadows), the Environment (SSAO), the RenderingServer (shadow atlas, SSAO quality) and the core.
+## anisotropy), the sun (shadows), the Environment (the bounced light), the RenderingServer (shadow atlases) and the core. What the
+## rendering method in force does not draw is not asked of it (render/render_method.gd).
 class_name QualityTier
 extends RefCounted
 
@@ -14,8 +15,6 @@ const MS_PER_S := 1000.0
 const ATLAS_PER_CASCADE := 2
 ## The quadrants of a positional shadow atlas (Viewport.set_positional_shadow_atlas_quadrant_subdiv).
 const POSITIONAL_QUADRANTS := 4
-const COMPATIBILITY := "gl_compatibility"
-const FORWARD_PLUS := "forward_plus"
 ## settings.json tiers "temporal": what resolves the shimmer of edges, shaders and shadows over the frames. FSR2 at the full resolution
 ## is the sharper of the two, and pays its own pass (Godot docs: FSR2 as the antialiasing when the GPU has room).
 const TEMPORAL_NONE := 0
@@ -83,16 +82,6 @@ static func cap_scale(pixel_ratio: float) -> float:
 	return minf(1.0, pixel_ratio / ratio)
 
 
-## SMAA: Forward+ and Mobile only (Godot docs, 3D antialiasing).
-static func has_smaa() -> bool:
-	return RenderingServer.get_current_rendering_method() != COMPATIBILITY
-
-
-## TAA and FSR2 read the motion vectors of Forward+ alone (Godot docs, 3D antialiasing).
-static func has_temporal() -> bool:
-	return RenderingServer.get_current_rendering_method() == FORWARD_PLUS
-
-
 ## The cabin level's reach: where a vehicle stands at occupant_zoom, drawn out by the error the tier accepts (a fixed shape's error on
 ## the screen falls with the distance).
 static func cabin_reach(q: Dictionary, height_px: float) -> float:
@@ -114,10 +103,11 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	for i in POSITIONAL_QUADRANTS:
 		viewport.set_positional_shadow_atlas_quadrant_subdiv(i, int(q.lamp_shadow_quadrants[i]) as Viewport.PositionalShadowAtlasQuadrantSubdiv)
 	RenderingServer.positional_soft_shadow_filter_set_quality(int(q.shadow_filter) as RenderingServer.ShadowQuality)
-	var temporal: int = int(q.temporal) if has_temporal() else TEMPORAL_NONE
+	var temporal: int = int(q.temporal) if RenderMethod.draws(&"temporal") else TEMPORAL_NONE
 	# one filter resolves the edges: where the frames do (TAA, FSR2), SMAA over them was a second full-screen pass that only softened
-	var smaa: bool = q.smaa and has_smaa() and temporal == TEMPORAL_NONE
-	viewport.msaa_3d = Viewport.MSAA_DISABLED if temporal == TEMPORAL_FSR2 else MSAA_MODES[maxi(int(q.msaa), FALLBACK_AA if q.smaa and not has_smaa() else 0)]
+	var has_smaa := RenderMethod.draws(&"smaa")
+	var smaa: bool = q.smaa and has_smaa and temporal == TEMPORAL_NONE
+	viewport.msaa_3d = Viewport.MSAA_DISABLED if temporal == TEMPORAL_FSR2 else MSAA_MODES[maxi(int(q.msaa), FALLBACK_AA if q.smaa and not has_smaa else 0)]
 	# The engine precompiles every mesh's pipelines for the project's MSAA (Godot render_forward_clustered.cpp update():
 	# _update_global_pipeline_data_requirements_from_project reads this setting each frame), never the viewport's: told the same here, or at a
 	# tier with MSAA no precompiled pipeline fits the frame and each is made on the frame its mesh is first drawn.
@@ -133,11 +123,12 @@ static func apply(q: Dictionary, world: CityWorld, viewport: Viewport, dynamic_s
 	EffectMaterials.cover_by_frames(world.materials(), temporal != TEMPORAL_NONE)
 	world.occlusion.turn(q.ssao)
 	world.sky.clouds_drawn = q.sky_clouds or q.cloud_shadows
-	world.environment.ssil_enabled = bool(q.ssil) # the light the walls and the street throw back on each other: shade stops being one flat blue
+	# the light the walls and the street throw back on each other: shade stops being one flat blue
+	world.environment.ssil_enabled = bool(q.ssil) and RenderMethod.draws(&"ssil")
 	CityStore.dispatch(&"set_detail_scale", [sqrt(float(q.triangle_share))])
-	var lamps: bool = world.contact.available() # a mesh takes 8 lights in Compatibility
+	var lamps := RenderMethod.draws(&"many_lights") # elsewhere the lamps' own pools light every street
 	CityStore.dispatch(&"set_lamp_lights", [int(q.lamp_lights) if lamps else 0, int(q.lamp_shadows) if lamps else 0, int(q.head_lights) if lamps else 0])
-	CityStore.dispatch(&"set_vegetation", [float(q.vegetation)])
+	CityStore.dispatch(&"set_tree_share", [float(q.vegetation)])
 	CityStore.dispatch(&"set_agent_detail", [cabin_reach(q, viewport.get_visible_rect().size.y), int(q.vehicle_whole_cap),
 			0 if q.pedestrian_detail > 0 else PEOPLE_FAR])
 	CityStore.dispatch(&"set_population", [float(q.population)])

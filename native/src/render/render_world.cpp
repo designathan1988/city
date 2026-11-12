@@ -57,7 +57,7 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 		effects_.set_wrecks(bodies, sizes);
 	}
 	ok = wear_.init(ctx, errors) && ok;
-	return ok && errors.is_empty();
+	return stand(ok && errors.is_empty()); // the tier given before this boot goes to the renderers now (render_world_tier.cpp)
 }
 
 void RenderWorld::reset() {

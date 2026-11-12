@@ -93,7 +93,7 @@ func _resolution() -> void:
 func _options(rig: CityCamera) -> void:
 	Settings.set_preset("ultra")
 	# SMAA where it exists and the frames do not already resolve the edges (ultra's FSR2: one filter, QualityTier.apply)
-	var aa := Viewport.SCREEN_SPACE_AA_SMAA if QualityTier.has_smaa() and not QualityTier.has_temporal() else Viewport.SCREEN_SPACE_AA_DISABLED
+	var aa := Viewport.SCREEN_SPACE_AA_SMAA if RenderMethod.draws(&"smaa") and not RenderMethod.draws(&"temporal") else Viewport.SCREEN_SPACE_AA_DISABLED
 	check(world.occlusion.visible == world.occlusion.available() and get_viewport().screen_space_aa == aa, "ultra turns occlusion on, and SMAA where no temporal filter is")
 	Settings.set_preset("low")
 	check(not world.sun.shadow_enabled and not world.occlusion.visible, "low takes shadow and occlusion off")
