@@ -3860,6 +3860,56 @@ The arithmetic of the measure and the rule is the same as before, so a city's ch
 
 **What changes.** Nothing in the game. No converter output is left in the repository (CLAUDE.md), and the magic-number gate's exemption for `js_` is gone with the files. Left of B4: the source's random stream (`seeded.h`) and the generators built on it, and the 138 hand-ported files that still name a source file as their model. Their logic and values are to be re-sourced, owner by owner.
 
+### 6.75 The frozen photos' hang under load: a frame's deadline could refuse its first act (2026-11-08)
+
+**Symptom.** With the suite running in parallel, `photos` once printed "city opened" and nothing more, and was killed at its 90 s
+deadline. Alone it passes in 10 s. The scene waits in `CaptureWait.until_drawn` until `render_pending` is 0, for at most 400 frames.
+
+**Read.** The chain from `look.gd` (`_step` "shot") through `capture_wait.gd:25` to `CityCore::render_pending`
+(`city_core.h:189`) and `RenderWorld::pending` (`render_world.h:164`). The counters it sums, and where each one falls:
+- `ChunkStream::pending` (`chunk_queue.h:99-111`) and the trees' and cover's `pending_`: a unit offered and not yet submitted.
+  They fall in `FrameAdmission::submit` (`frame_admission.h`).
+- `ChunkResults::pending` = `ChunkRevisions::flying` (`chunk_results.h:103`, `chunk_jobs.h:89`): a chunk asked whose result is not
+  drawn yet. Its flight ends in `land`, called from `hand` (`chunk_results.h:81`). A busy chunk is not asked again
+  (`chunk_queue.h:104`).
+- `BuildingRenderer::pending` (`building_renderer_probe.cpp:20`): `requested_` and `super_requested_`, erased only when a result
+  is handed over (`chunk_jobs.h` `commit_baked`).
+None of them can be dropped without being decremented. A superseded job is replaced by the newer ticket of the same key
+(`job_pool.cpp:42`), `land` matches only the newest `asked`, and drops and resets clear the revisions and the ledgers together. All
+of them fall only when a frame acts: a unit submitted, a result handed over. Every one of those acts was gated by the frame's one
+deadline, `until` = top of `RenderWorld::sync` + `render.commit_budget_ms` (4 ms, `render_world.cpp:226`). The gates were
+`frame_admission.h` `submit` (`!due()`), `commit` (`at >= until`), `commit_baked` (`clock::now() < until`) and
+`SignatureBodies::sync` (`!f.due()`).
+
+**Cause.** The deadline also refused a frame's first act. The time it measures includes everything before the acts: the shared
+lock, the drain, the offers, and above all `flush_uploads` (`force_sync`). That call runs every upload of the bakes admitted the frame
+before, which the ledger admits up to 64 MB a frame with no regard to the deadline. It also includes the time a loaded machine
+leaves the main thread waiting for a core: in the parallel suite, each Godot has `hardware_concurrency - 1` workers of its own.
+When that time passes 4 ms, the frame submits nothing and draws nothing. Nothing falls, and the next frame starts the same way.
+Progress depended on the machine's load, while the wait assumed it. The build credits (at least one a frame:
+`render_world.cpp:232`) and the upload window (a unit larger than it goes alone: `UploadBudget::whole`) already guaranteed theirs.
+The deadline was the one budget without that guarantee. With frames slowed by a shared GPU, the 400 frames of the wait outlast the
+task's 90 s, so the capture was killed before it could report the incomplete photo.
+
+**Fix.** `frame_admission.h`: the deadline bounds a frame's acts past its first of each kind, never the first.
+- `submit` always submits its first unit (`n > 0 && !due()`).
+- `may_hand()` is true before the frame's first hand-over, then while the deadline lasts. `handed()` counts a result drawn.
+- `commit` (`ChunkResults::hand`), `commit_baked` (now handed the frame, not a bare deadline: `BuildingRenderer::commit(FrameAdmission &)`)
+  and `SignatureBodies::sync` hand over by `may_hand` and count.
+The credits, the ledger and the 4 ms are unchanged.
+
+**Why it does not come back.** Every frame now submits a unit while any is offered and credits remain, and draws a result while
+any is ready. For a still view the work is finite, so every pending counter reaches 0 in a bounded count of frames, whatever the
+time before the acts took. Load can make a frame slower, but no longer makes it idle. The same change ends a second symptom: under
+a slow frame, a signature building's design waited (`SignatureBodies::sync`) while `pending` already said 0, so a photo could
+lack a landmark. The transit items, the ruin pieces and the overlays keep `due()`: they are not in `pending`, and the photos do
+not wait for them.
+
+**Not the same cause.** `photos_check` failing on an unchanged tree (§6.9) is the ubershader's pixels. The photo waits for 0
+pending, so it holds the same meshes whatever order the frames drew them in.
+
+**Proof.** PROOF
+
 ## 7. The catalogue: every finding under its cause (generated from §2-§4 by the method of §6)
 
 Each line: the review section, the first file and line the finding names, its lead. The full text and the fix are at

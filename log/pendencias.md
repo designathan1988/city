@@ -110,11 +110,11 @@ O que falta fazer, por área.
   - The frozen photos keep run-to-run pixels (`00-cidade`, `02-rua`: 1 to 7 single pixels, 1 level, one of 11; log/review.md §6.9):
     Godot draws with the ubershader until a specialized pipeline is compiled in the background and gives no signal when it is, so
     `photos_check` fails on an unchanged tree. Until a completion signal exists (an engine change), a change's photos are judged
-    against the states the unchanged tree gives over several runs.
-  - The frozen photos (`photos`, quick) once stopped after "city opened" and were killed at their 90 s deadline (2026-11-08 11:34,
-    with the suite in parallel; the terrain's look change); alone they passed in 10 s, byte-equal to known states. The scene waits
-    in `CaptureWait.until_drawn` on the render's pending work: to read there and in the render's pending counters which one
-    did not drain.
+    against the states the unchanged tree gives over several runs. Not the cause of the frozen photos' hang under load (log/review.md
+    §6.75): that photo waits until nothing is pending, so it holds the same meshes whatever order the frames drew them in.
+  - `CaptureWait.until_drawn` bounds its wait in frames (`BUILD_FRAMES`) and the task in seconds: when frames are slow (a GPU shared
+    by the parallel suite), a photo whose drawing does not finish is killed at the task's deadline before it can say so. The render
+    now always progresses (§6.75), so this no longer hides a hang; a capture that still reaches the deadline names no step.
 - The exported game leaks six render resources when it quits (`--quit-after`: a shadow atlas, a render target, two textures, a
   viewport, a font, "RID allocations ... leaked at exit"): the same six at the C3 and C4 closes (2026-11-08), so older than
   both; which owner frees them too late, or never, is to read in the quit path (`GameFlow` QUITTING).
