@@ -1,6 +1,7 @@
-# The project's PreToolUse hooks on the shell (.claude/hooks): the standing authorisation's limits (deletions by a relative
-# path, through "..", by a variable or outside the allowed places; force pushes; rewritten history) and both hooks as Claude
-# Code runs them (the event on stdin; exit 2 refuses, 0 lets the call through).
+# The project's hooks (.claude/hooks): on the shell, the standing authorisation's limits (deletions by a relative path, through
+# "..", by a variable or outside the allowed places; force pushes; rewritten history) and the block rule; on the Agent tool,
+# agents that only read and few at once (the reader alone, no worktree, at most AT_ONCE, the places given back when one stops or
+# fails to start); each hook as Claude Code runs it (the event on stdin; exit 2 refuses, 0 lets the call through).
 import importlib.util
 import json
 import os
@@ -22,12 +23,17 @@ def _load(name):
 
 
 destructive = _load("destructive_guard")
+agents = _load("agent_guard")
+
+
+def run_event(name, event):
+    r = subprocess.run([sys.executable, str(HOOKS / f"{name}.py")], input=json.dumps(event), capture_output=True, text=True,
+                       timeout=60)
+    return r.returncode, r.stderr
 
 
 def run_hook(name, command):
-    event = json.dumps({"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": command}})
-    r = subprocess.run([sys.executable, str(HOOKS / f"{name}.py")], input=event, capture_output=True, text=True, timeout=60)
-    return r.returncode, r.stderr
+    return run_event(name, {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": command}})
 
 
 class Destructive(unittest.TestCase):
@@ -63,6 +69,41 @@ class BlockHook(unittest.TestCase):
         if state.is_file() and json.loads(state.read_text(encoding="utf-8")).get("state") == "open":
             self.skipTest("a block of this checkout is open: the hook's refusal is test_block's case")
         self.assertEqual(run_hook("block_guard", "godot --path project")[0], 0)
+
+
+class AgentHook(unittest.TestCase):
+    def setUp(self):
+        self.session = f"test-agent-guard-{os.getpid()}"
+        self.count = Path(agents._count_file(self.session))
+        self.addCleanup(lambda: self.count.unlink(missing_ok=True))
+        self.addCleanup(lambda: Path(f"{self.count}.lock").unlink(missing_ok=True))
+
+    def call(self, n, **given):
+        return run_event("agent_guard", {"hook_event_name": "PreToolUse", "tool_name": "Agent", "session_id": self.session,
+                                         "tool_use_id": f"use-{n}", "tool_input": {"prompt": "read", **given}})
+
+    def test_only_the_reader_and_never_in_a_worktree(self):
+        for given in [{}, {"subagent_type": "general-purpose"}, {"subagent_type": "Explore"}, {"subagent_type": "fork"},
+                      {"subagent_type": "reader", "isolation": "worktree"}]:
+            with self.subTest(given=given):
+                self.assertIsNotNone(agents.refusal(given, 0))
+        self.assertIsNone(agents.refusal({"subagent_type": "reader"}, agents.AT_ONCE - 1))
+        self.assertIsNotNone(agents.refusal({"subagent_type": "reader"}, agents.AT_ONCE))
+
+    def test_the_count_held_and_given_back(self):
+        for n in range(agents.AT_ONCE):
+            self.assertEqual(self.call(n, subagent_type="reader")[0], 0)
+        code, said = self.call(agents.AT_ONCE, subagent_type="reader")
+        self.assertEqual(code, REFUSED)
+        self.assertIn("at most", said)
+        stop = {"hook_event_name": "SubagentStop", "session_id": self.session, "agent_type": "reader", "agent_id": "a1"}
+        self.assertEqual(run_event("agent_guard", stop)[0], 0)
+        self.assertEqual(self.call(agents.AT_ONCE + 1, subagent_type="reader")[0], 0, "a stopped reader gives its place back")
+        failed = {"hook_event_name": "PostToolUseFailure", "tool_name": "Agent", "session_id": self.session,
+                  "tool_use_id": f"use-{agents.AT_ONCE + 1}"}
+        self.assertEqual(run_event("agent_guard", failed)[0], 0)
+        self.assertEqual(self.call(agents.AT_ONCE + 2, subagent_type="reader")[0], 0, "a reader that never started holds none")
+        self.assertEqual(self.call(agents.AT_ONCE + 3, subagent_type="general-purpose")[0], REFUSED)
 
 
 if __name__ == "__main__":

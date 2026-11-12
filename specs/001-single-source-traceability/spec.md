@@ -40,6 +40,10 @@ the previous specification to assess and judge, and so find the right solution."
   authorisation (2026-11-12: "I do not want to keep answering things and giving permission"): every removal the tasks name runs
   once its list is written and what has value is kept under a tag; the skill is deployed when its self-test and a real cycle pass
   whole (that authorisation is the word FR-045 asks for).
+- Q (the owner's addendum during US2, 2026-11-12): may agents be used? → A: Yes, with moderation and only to read. "The rule of
+  not using agents can be revoked: use them without abuse, never many at once; never delegate editing or writing code, removals
+  or any action that is yours, you answer for the whole project; agents only read, sent well-built prompts; whatever they return
+  is checked, never trusted blind." CLAUDE.md's `[c:no-agents]` becomes `[c:agents-read-only]`, held by FR-053.
 
 ## Audit Findings (2026-11-12, tree at `89be3acd`)
 
@@ -512,6 +516,10 @@ unsupported processor with a message, writes a crash report, and carries no test
 - **FR-052**: A block's close MUST run the whole gates and fail on any finding that is not an open problem of the register; the
   gates themselves are not loosened, baselined or silenced: the standing findings keep them failing, visibly, until the area
   specification that owns each fixes it.
+- **FR-053** (the owner's addendum, 2026-11-12): Agents MUST only read, few at a time, by mechanism: the one agent type the
+  project allows has tools that read and nothing else; a call that starts another type, gives an agent its own worktree, or would
+  run more than two at once is refused by a project hook; editing, writing code, removing, building, running and deciding stay with
+  the main session, which checks every report against the files before using it.
 
 **Documents (J1, J2)**
 
@@ -688,7 +696,8 @@ unsupported processor with a message, writes a crash report, and carries no test
   traffic, walkers, terrain, buildings, visual defects, performance, code from the reference) is done after it, one area per
   specification, each using this foundation and meeting the budgets.
 - The owner's standing orders stay as they are and move into CLAUDE.md unchanged in sense: blocks coded with nothing run inside; one
-  verification at the block's end; no agents unless ordered; the costliest fix at the cause; the reference read for behaviour only;
+  verification at the block's end; agents only to read, few at once, every report checked (the owner's addendum of 2026-11-12,
+  which revoked "no agents unless ordered"); the costliest fix at the cause; the reference read for behaviour only;
   the image protocol; one engine process at a time while working; the repository in English, the conversation in Portuguese.
 - The second request ("worktrees worth something and not merged, merge, but verify") is read with the copy rule: work made on the
   ported tree or from the reference is not merged as code; its behaviour is kept to be redone.

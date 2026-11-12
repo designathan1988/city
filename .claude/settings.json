@@ -5,7 +5,6 @@
   ],
   "permissions": {
     "deny": [
-      "Agent",
       "Read(~/.claude/projects/*/*.jsonl)",
       "Read(~/.claude/projects/*/*/tool-results/**)",
       "Read(~/.claude/projects/*/*/subagents/**)",
@@ -29,6 +28,42 @@
             "type": "command",
             "command": "python",
             "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/destructive_guard.py"],
+            "timeout": 20
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/agent_guard.py"],
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/agent_guard.py"],
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/agent_guard.py"],
             "timeout": 20
           }
         ]

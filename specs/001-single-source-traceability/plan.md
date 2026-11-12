@@ -40,7 +40,8 @@ probes (`project/tests/perf`), visual captures (`project/tests/visual`), tool te
 block-close check < 10 min; run report < 10 s after a run; the game's budgets of `log/specification.md` (median 1080p `medium` 60 fps,
 floor 1080p `low` 30 fps).
 
-**Constraints**: CLAUDE.md whole (block rule: coded with nothing run, verified once at the end; no agents; costliest fix at the cause;
+**Constraints**: CLAUDE.md whole (block rule: coded with nothing run, verified once at the end; agents only to read, the project's
+`reader`, at most two at once, every report checked, `[c:agents-read-only]` since the owner's addendum of 2026-11-12; costliest fix at the cause;
 the reference read for behaviour only; English in the repository; one engine process at a time while working; never close the
 owner's game; processes watched with deadlines); the trace-fix skill and hooks change only staged and on the owner's word; every
 removal written whole in `log/history/process.md` before it happens (the owner's standing authorisation of 2026-11-12 stands for
@@ -65,6 +66,7 @@ The check below is therefore made against CLAUDE.md's tagged rules.
 | `[c:fix-decision]`, `[c:no-patch]`, `[c:plan-costliest]` | each cause removed at its owner (declarations instead of a fourth tracer; engine-free tests instead of faster engine boots; bounds in each owner instead of a cleaning script) | pass |
 | `[c:no-roadcraft-copy]`, `[c:lab-reference]` | branches built from the reference are not merged; their behaviour is registered to be designed | pass |
 | `[c:no-trial]`, `[c:verify-reach]` | the work is coded as blocks; `quickstart.md` runs once at each block's close | pass |
+| `[c:agents-read-only]` (the owner's addendum, 2026-11-12) | every edit, removal, build and run done by the main session; a `reader` only surveys, its report checked against the files | pass |
 | `[c:hidden-runs]`, `[c:watched-process]`, `[c:no-blind-wait]`, `[c:parallel-tasks]` | every run through `tools/tasks` with deadline, heartbeat and PID stop | pass |
 | `[c:checks-can-fail]` | every new check exits non-zero on a finding and fails on an empty input | pass |
 | `[c:generic-tracer]` | `tools/tracer` stays generic; the game's own knowledge comes from the game's declarations, not from rules in the tracer | pass |
@@ -100,7 +102,9 @@ specs/001-single-source-traceability/
 ```text
 CLAUDE.md                         # the only instructions (< 200 lines)
 .claude/
-├── settings.json                 # tracked: autoMemoryEnabled false, claudeMdExcludes, the skill's hooks (project scope)
+├── settings.json                 # tracked: autoMemoryEnabled false, claudeMdExcludes, the project's hooks, the skill's hooks
+├── hooks/                        # block_guard, destructive_guard, agent_guard (agents only read, at most two at once)
+├── agents/reader.md              # the one agent: tools that read and nothing else
 └── skills/trace-fix/             # the procedure; uses the atlas and the register
 .specify/                         # Spec Kit; constitution = pointer to CLAUDE.md
 specs/NNN-name/                   # one folder per specification

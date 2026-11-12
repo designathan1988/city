@@ -8,21 +8,14 @@ project/bin/*.dll
 dist/
 __pycache__/
 *.tmp
-# .claude/: only the project's settings, hooks and skills are versioned; everything else there is the sessions' runtime
+# .claude/: only the project's settings, hooks, skills and agents are versioned; everything else there is the sessions' runtime
 /.claude/*
 !/.claude/settings.json
 !/.claude/hooks/
 !/.claude/skills/
+!/.claude/agents/
 # the trace-fix hooks' own failures, kept beside the skill for whoever reads them: this machine's, never committed
 /.claude/skills/trace-fix/read_guard_errors.txt
 *.translation
 # Where this machine's tools are (tools/tasks/locations.py): the machine's own, never committed
 tools/tasks/local.json
-# The tools: the converter's worktree is pushed as its branch; the instrumented 4.0's sessions, caches and token file stay out
-tools/converter-slice/
-tools/oracle-4.0/.claude/
-tools/oracle-4.0/.cache/
-tools/oracle-4.0/.vite-oracle-cache/
-tools/oracle-4.0/.playwright-mcp/
-tools/oracle-4.0/node_modules
-tools/oracle-4.0/.mcp.json

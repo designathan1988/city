@@ -22,7 +22,7 @@ list, the archive tags) lives in `log/mapa.md`; nothing here is status.
   value is lost (what leaves the tree stays under a named tag, listed in the map). [c:records]
 
 ## Method (every task, in this order)
-1. **Read.** The code involved, whole, with the Read tool, personally (no agent; `cat` or `grep` is no reading); ask "why" until
+1. **Read.** The code involved, whole, with the Read tool, personally (an agent's report is a lead; `cat` or `grep` is no reading); ask "why" until
    the design decision that produces the symptom; list every problem. A reported problem of the game goes through the `trace-fix`
    skill; a problem only found on the way enters the register and is left for its area. [c:identify]
 2. **Research.** Context7 (`resolve-library-id`, then `query-docs`) on every implementation, fix and research, or the vendored
@@ -74,7 +74,11 @@ list, the archive tags) lives in `log/mapa.md`; nothing here is status.
   that can fail; a limit found is a cause to resolve, never a list at the end. [c:do-it-whole]
 - A check takes seconds: the most likely place first (the newest folders, one targeted search); an empty result of a fragile
   search is a failed search, not a "no". Slowness of the work is a defect, recorded and fixed at its cause. [c:fast-checks]
-- No agents, subagents, forks or new sessions unless the owner orders them in so many words; never resume a stopped one. [c:no-agents]
+- Agents only read, and few (the owner, 2026-11-12): the project's `reader` (`.claude/agents/reader.md`), at most two at once,
+  each sent a prompt that names the goal, the files, what is known and the answer's form; editing, writing code, removing,
+  building, running and deciding stay with the main session, which answers for the whole project; what a reader returns is
+  checked against the files before it is used, never trusted blind. No fork, worktree agent or new session unless the owner
+  orders it in so many words; never resume a stopped one (`.claude/hooks/agent_guard.py`). [c:agents-read-only]
 - Skills: `speckit-*` for a specification; `trace-fix` for a reported problem of the game; `superpowers:systematic-debugging`
   for a failure's cause; `superpowers:verification-before-completion` at each close; `update-config` for settings; the LSP tool
   for C++; context7 always. Never: brainstorming, writing-plans, executing-plans, test-driven-development,
@@ -87,9 +91,11 @@ list, the archive tags) lives in `log/mapa.md`; nothing here is status.
 - Tests and captures run hidden on a private desktop (`tools/tasks`); the live instance alone may show a window, never taking
   focus. [c:hidden-runs]
 - Every block that changes the game delivers an executable: `tools/build/deliver.sh export` writes
-  `dist/builds/<date>_<commit>/Roadcraft.exe` and points the Desktop's Roadcraft shortcut at it. [c:deliver-exe]
+  `dist/builds/<date>_<commit>/Roadcraft.exe`, points the Desktop's Roadcraft shortcut at it and keeps the last two builds (and
+  any an open problem names). Every folder under `dist/` has one owner and a bound (`tools/tasks/suites.json` lifecycle). [c:deliver-exe]
 - Direct work on `main`, in `C:\Users\Jonathan\Desktop\city`, without a worktree; a commit per theme at the block's close and one
-  push to `origin/main` (`https://github.com/designathan1988/city`). [c:main-direct]
+  push to `origin/main` (`https://github.com/designathan1988/city`). A worktree or copy exists only with an owner and an end:
+  `python tools/tasks/cli.py worktrees` fails while one is older than its work. [c:main-direct]
 - Work from another branch, worktree, stash or session enters `main` only read whole against the copy rule, redone on today's
   tree where its base is gone, and verified at a block's close; otherwise its behaviour enters the register. [c:bring-in]
 - Never read another session's transcript (its `.jsonl`, tool results, subagent folders, `list_events`, the episodic archive):
