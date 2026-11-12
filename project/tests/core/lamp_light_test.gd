@@ -1,6 +1,8 @@
 ## The street lamps' light, on each renderer: by day none is on and the sun casts; by night the lamps near the eye have a real light,
-## as many as the tier pays for, the road takes over past them (`lamp_lit`) and the moon casts the city's shadows; on Compatibility, and
-## on a tier with no lights, the road draws every pool itself.
+## as many as the tier pays for, the lamps' own pools take over past them (`lamp_lit`) and the moon casts the city's shadows; on
+## Compatibility, and on a tier with no lights, the pools light every street. Each lit lamp casts one pool, from where it stands, and
+## none lies where no lamp stands (render/props/lamp_pools.h): the pools drawn on the GPU against the lamps the placement stands and
+## against the lenses the props hand the lights.
 extends TestCase
 
 const TOWN_MAP := 0
@@ -15,6 +17,9 @@ const WITHOUT_LIGHTS := "low"
 const TRAFFIC_TICKS := 600
 const QUADRANTS := 4 # of a positional shadow atlas
 const NEAREST_CASTERS := 2 # the lamps either side of the eye: what a view of a street shows up close
+const POOL_REACH_M := 300.0 # round the eye's focus: the streets a view of the town shows
+const POOL_EDGE_M := 40.0 # past a pool's own reach from its lamp: what the census leaves at the rim, where a pool and its lamp fall either side
+const SAME_PLACE_M := 0.05 # a pool drawn is the wanted one, a lamp's head the lens it hands the lights, within this
 
 
 func _ready() -> void:
@@ -32,8 +37,10 @@ func _ready() -> void:
 	await _settled()
 	check(_lit() == 0, "by day no lamp is on: %d" % _lit())
 	check(world.sun.shadow_enabled, "by day the sun casts")
+	_check_pools(rig.focus, false)
 	world.set_hour(daylight.night_hour)
 	await _settled()
+	_check_pools(rig.focus, true)
 	# the moon is the sun's light at night and keeps its cascades, as the reference's does (environment.ts setTimeOfDay): the city's
 	# shadows fall from it, faint as its light, whole
 	check(world.sun.shadow_enabled and is_equal_approx(world.sun.shadow_opacity, 1.0), "by night the moon casts the city's shadows: %s, %.2f" % [
@@ -60,7 +67,8 @@ func _ready() -> void:
 	Settings.set_preset(WITHOUT_LIGHTS)
 	await _settled()
 	lit = _handed_over()
-	check(_lit() == 0 and lit.y == 0.0, "a tier with no lights leaves the pools to the road: %d, %s" % [_lit(), lit])
+	check(_lit() == 0 and lit.y == 0.0, "a tier with no lights leaves the street to the pools: %d, %s" % [_lit(), lit])
+	_check_pools(rig.focus, true)
 	Settings.set_preset(WITH_LIGHTS)
 	world.set_hour(daylight.day_hour)
 	await _settled()
@@ -92,6 +100,53 @@ func _check_casting(q: Dictionary) -> void:
 
 func _lit() -> int:
 	return int(CityStore.query(&"render_cost").lit_street_lamps)
+
+
+## The pools round `focus` (query lamp_pools): `drawn`, the centres of the pools on the GPU; `wanted`, one a lit lamp as the placement stands
+## them, its lamp's head in `heads` at the same index; `lenses`, the lit lamps' lenses the props hand the lights. By night every lit lamp's pool
+## is drawn where it is wanted, every pool drawn is one a lamp wants, and every lamp head is a lens that stands; by day none is drawn.
+func _check_pools(focus: Vector3, night: bool) -> void:
+	var p: Dictionary = CityStore.query(&"lamp_pools", [focus.x, focus.z, POOL_REACH_M + POOL_EDGE_M])
+	var drawn: PackedVector3Array = p.drawn
+	if not night:
+		check(drawn.is_empty(), "by day no pool is drawn: %d" % drawn.size())
+		return
+	var wanted: PackedVector3Array = p.wanted
+	var heads: PackedVector3Array = p.heads
+	var lenses: PackedVector3Array = p.lenses
+	var inner := POOL_REACH_M - POOL_EDGE_M
+	var lost := 0 # a lamp's pool not drawn where it is wanted
+	var stray := 0 # a pool drawn that no lamp wants
+	var orphan := 0 # a pool wanted from a head no lens stands at
+	var dark := 0 # a lens with no pool
+	for i in wanted.size():
+		if _flat(heads[i], focus) <= POOL_REACH_M and not _near(wanted[i], drawn):
+			lost += 1
+		if _flat(heads[i], focus) <= inner and not _near(heads[i], lenses):
+			orphan += 1
+	for at in drawn:
+		if _flat(at, focus) <= inner and not _near(at, wanted):
+			stray += 1
+	for at in lenses:
+		if _flat(at, focus) <= inner and not _near(at, heads):
+			dark += 1
+	print("  pools within %.0f m: %d drawn, %d wanted, %d lenses" % [POOL_REACH_M + POOL_EDGE_M, drawn.size(), wanted.size(), lenses.size()])
+	check(wanted.size() > 0 and lenses.size() > 0, "by night the town's lamps want their pools: %d, %d lenses" % [wanted.size(), lenses.size()])
+	check(lost == 0, "every lit lamp's pool is drawn where it falls: %d not" % lost)
+	check(stray == 0, "no pool is drawn where no lamp wants one: %d" % stray)
+	check(orphan == 0 and dark == 0, "each pool is a standing lamp's and each lit lamp has one: %d without a lamp, %d lamps without" % [orphan, dark])
+
+
+## Whether a point of `among` stands within SAME_PLACE_M of `at` on the ground.
+func _near(at: Vector3, among: PackedVector3Array) -> bool:
+	for q in among:
+		if _flat(at, q) <= SAME_PLACE_M:
+			return true
+	return false
+
+
+func _flat(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length()
 
 
 ## How many maps of the viewport's positional atlas have a side of `px` or more: each quadrant is a quarter of the atlas, split in

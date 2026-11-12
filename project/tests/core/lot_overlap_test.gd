@@ -79,7 +79,8 @@ func _ready() -> void:
 ## no party wall along a street.
 func _street_checks() -> void:
 	var street: Dictionary = CityStore.query(&"traffic_probe", [FURNITURE_SAMPLE])
-	check(street.furniture_in_gates == 0, "no street piece stands in front of a lot's gate: %d" % street.furniture_in_gates)
+	check(street.furniture_in_gates == 0, "no street piece stands in front of a lot's gate: %d, the first (segment, kind, row, node, corner, side, arc, across, gate from, to) %s"
+			% [street.furniture_in_gates, street.furniture_in_gates_first])
 	check(street.signals_in_gates == 0, "no traffic signal's post stands in front of a lot's gate: %d" % street.signals_in_gates)
 	check(street.gates_on_junctions == 0, "no lot's gate opens onto a junction's kerb (its corner, crosswalk, the place of its signal posts): %d (%d a car's), the first (lot, kind, x, z, street, arc, front x, w, shut stretches, street sides) %s"
 			% [street.gates_on_junctions, street.car_gates_on_junctions, street.gates_on_junctions_first])

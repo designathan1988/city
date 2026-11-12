@@ -1,8 +1,9 @@
 // What the road meshes look like, read once from project/data/render/streets.json: strip colours, painted markings, gutters and
 // dropped kerbs. The raised strips' heights are the catalogue's (tuning.json street, which the simulation reads too: a lot meets the
 // footway's top), and so are a junction corner's and a turning bulb's outlines (sim/roads/node_outline.h: the lots are cut by them);
-// where the lamps the night light pools follow stand and where the crosswalks lie is the simulation's (sim/roads/street_furniture.h).
-// Also the vertex conventions shared with render/shaders/road.gdshader (material id in COLOR.a).
+// where the crosswalks lie is the simulation's (sim/roads/street_furniture.h). The light the lamps lay at night is no part of the road:
+// each lamp's own pool (render/props/lamp_pools.h). Also the vertex conventions shared with render/shaders/road.gdshader (material id
+// in COLOR.a; UV2 zero but on a wedge between two arms, RoadMat::JOIN, whose y carries the difference of the distances to their lines).
 #pragma once
 
 #include "sim/catalog/catalog.h"
@@ -21,8 +22,6 @@ enum class RoadMat : int { ASPHALT = 0, PLATE, FOOTWAY, KERB, GRASS, CONCRETE, L
 	BALLAST, SKIRT, JOIN };
 constexpr float MAT_SCALE = 16.f;
 constexpr float MAT_HALF = 0.5f;
-// UV2.x of a vertex that is not lit by a lamp pool, and of a junction plate (lit evenly).
-constexpr float POOL_NONE = 1000.f, POOL_PLATE = -1000.f;
 
 inline godot::Color road_color(const godot::Color &srgb, RoadMat m) {
 	return godot::Color(srgb.r, srgb.g, srgb.b, (float(int(m)) + MAT_HALF) / MAT_SCALE);

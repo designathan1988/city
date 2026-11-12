@@ -30,7 +30,7 @@ int surface_steps(const RoadEmit &e, int sid, double v0, double v1) {
 	const RoadSegment &g = e.s.roads.segs[size_t(sid)];
 	const int fine = std::max(1, int(std::ceil((v1 - v0) / (e.far ? e.L.far_step : e.L.step))));
 	if (!g.q.is_straight(STRAIGHT_TOL)) return fine;
-	// A straight road on one grade is linear in position, height, texture and pool coordinates: its two mouths are enough.
+	// A straight road on one grade is linear in position, height and texture coordinates: its two mouths are enough.
 	const double ya = e.s.roads.seg_y(sid, v0), yb = e.s.roads.seg_y(sid, v1);
 	for (int k = 1; k < fine; k++) {
 		const double share = double(k) / fine;
@@ -54,19 +54,19 @@ void emit_chunk(const RoadEmit &e, int64_t chunk) {
 	});
 }
 
-void emit_quad(MeshBuilder &mb, const Vector3 p[4], const Vector2 uv[4], const Vector2 uv2[4], const Color &col, const Vector3 &out) {
+void emit_quad(MeshBuilder &mb, const Vector3 p[4], const Vector2 uv[4], const Color &col, const Vector3 &out) {
 	const Color cols[4] = { col, col, col, col };
-	emit_quad(mb, p, uv, uv2, cols, out);
+	emit_quad(mb, p, uv, cols, out);
 }
 
-void emit_quad(MeshBuilder &mb, const Vector3 p[4], const Vector2 uv[4], const Vector2 uv2[4], const Color cols[4], const Vector3 &out) {
+void emit_quad(MeshBuilder &mb, const Vector3 p[4], const Vector2 uv[4], const Color cols[4], const Vector3 &out) {
 	Vector3 nn = (p[1] - p[0]).cross(p[3] - p[0]);
 	if (nn.length_squared() < DEGENERATE) nn = (p[2] - p[1]).cross(p[0] - p[1]);
 	if (nn.length_squared() < DEGENERATE) return;
 	nn = nn.normalized();
 	if (nn.dot(out) < 0) nn = -nn;
 	int i[4];
-	for (int k = 0; k < 4; k++) i[k] = mb.add(p[k], nn, cols[k], uv[k], uv2[k]);
+	for (int k = 0; k < 4; k++) i[k] = mb.add(p[k], nn, cols[k], uv[k], Vector2());
 	mb.tri(i[0], i[1], i[2], nn);
 	mb.tri(i[0], i[2], i[3], nn);
 }

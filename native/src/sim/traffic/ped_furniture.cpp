@@ -261,7 +261,7 @@ void prune_furniture(CityState &s, float cx, float cz, float radius) {
 	}
 }
 
-int furniture_in_gates(const CityState &s, bool signals) {
+int furniture_in_gates(const CityState &s, bool signals, GateBlock *first) {
 	int in = 0;
 	std::vector<FurnitureSpot> spots;
 	std::vector<ArcSpan> gates[2];
@@ -278,7 +278,7 @@ int furniture_in_gates(const CityState &s, bool signals) {
 			if (f.side < 0) continue;
 			for (const ArcSpan &gate : gates[size_t(f.side)])
 				if (f.v + f.half_v > gate.first + TOUCH_EPS_M && f.v - f.half_v < gate.second - TOUCH_EPS_M) {
-					in++;
+					if (in++ == 0 && first) *first = GateBlock{ f, gate };
 					break;
 				}
 		}

@@ -1,10 +1,10 @@
 // Roads: the mesher (native/src/render/roads/road_look.h) writes the sRGB strip colour in
 // COLOR.rgb, the material id in COLOR.a * 16, texture metres in UV ((u, v) on segments, world xz on plates and
-// corners, (across, along) on a kerb's top, the run along it on any face) and the lamp pool coordinates in UV2 (|u - lamp| and metres from the first lamp; -1000 = junction plate,
-// lit evenly; 1000 = no lamp). The cooked maps are tinted so their mean becomes the strip colour. Everything in linear
-// on both renderers (color_space.gdshaderinc).
+// corners, (across, along) on a kerb's top, the run along it on any face) and, on a wedge between two arms, the difference of the
+// distances to their centre lines in UV2.y. The cooked maps are tinted so their mean becomes the strip colour. Everything in linear
+// on both renderers (color_space.gdshaderinc). The street lamps' light at night is their own pools', laid over whatever lies under
+// them (render/shaders/lamp_pool.gdshader).
 
-global uniform float night;
 global uniform float road_paint; // 0: the detail cut-off of the graphics tier leaves the paint out
 
 uniform sampler2D asphalt_map : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -39,12 +39,6 @@ uniform vec3 detail_verge = vec3(1.0, 1.2, 2.0);
 uniform float paver_w = 0.2;
 uniform float paver_h = 0.1;
 uniform float cobble_per_m = 4.2;
-uniform vec3 pool_color : source_color = vec3(1.0, 0.82, 0.55);
-uniform float pool_along_m = 11.5; // a lamp's pool along the road: where it ends; across, the street furniture owner sets it
-uniform float pool_step = 1.0; // the lamp step, set by the road renderer from the street furniture catalog
-uniform float pool_gain = 0.32;
-uniform float plate_glow = 0.55;
-global uniform vec2 lamp_lit; // where the lamps with a light of their own give way to these pools (render/props/lamp_lights.h)
 
 // The far level (render/roads/far_road_renderer.h): a superchunk's mesh, whose vertices carry their chunk in CUSTOM0; the chunks drawn in detail fold
 // away, and the rest stands `far_pull` metres towards the eye, along its ray, so the coarser ground out there never comes through.
@@ -75,8 +69,7 @@ const int M_ARM_MEET = 13; // a plate between two arms: tones in the alpha and i
 varying flat int v_mat;
 varying float v_id;
 varying vec3 v_world;
-varying vec2 v_pool;
-varying float v_eye_m;
+varying float v_join; // across a wedge between two arms: the difference of the distances to their centre lines (UV2.y)
 
 const float MEAN_FLOOR = 0.001;
 
@@ -104,23 +97,7 @@ void vertex() {
 		VERTEX = ((chunk_mask >> int(CUSTOM0.r * 255.0 + 0.5)) & 1) != 0 ? vec3(0.0) : VERTEX + to_eye * (far_pull / max(length(to_eye), far_pull));
 	}
 #endif
-	v_pool = UV2;
-	v_eye_m = length(v_world.xz - CAMERA_POSITION_WORLD.xz);
-}
-
-#include "res://render/shaders/lamp_pool.gdshaderinc"
-
-float lamp_pools() {
-	if (v_pool.x < -500.0) {
-		return plate_glow;
-	}
-	if (v_pool.x > 500.0) {
-		return 0.0;
-	}
-	float dv = v_pool.y - pool_step * round(v_pool.y / pool_step);
-	float du = abs(v_pool.x);
-	float far = pool_step - abs(dv);
-	return pool_fall(length(vec2(du, dv / pool_along_m))) + pool_fall(length(vec2(du, far / pool_along_m)));
+	v_join = UV2.y;
 }
 
 void fragment() {
@@ -128,7 +105,7 @@ void fragment() {
 	if (v_mat == M_LANE) {
 		base = lane_tone[int(fract(v_id) * TONE_SLOTS)];
 	} else if (v_mat == M_ARM_MEET) {
-		base = mix(lane_tone[int(fract(v_id) * TONE_SLOTS)], lane_tone[int(COLOR.r * TONE_SLOTS)], clamp(0.5 + v_pool.y / (2.0 * plate_blend), 0.0, 1.0));
+		base = mix(lane_tone[int(fract(v_id) * TONE_SLOTS)], lane_tone[int(COLOR.r * TONE_SLOTS)], clamp(0.5 + v_join / (2.0 * plate_blend), 0.0, 1.0));
 	} else if (v_mat == M_FOOTPATH) {
 		base = footway_tone;
 	}
@@ -229,7 +206,4 @@ void fragment() {
 	SPECULAR = 0.5; // the F0 of 0.04 of the roads of the Roadcraft (three: dielectric default; Godot: 0.08 * specular)
 	float fade = 1.0 - smoothstep(0.02, 0.5, pix);
 	NORMAL = bent_normal(NORMAL, VERTEX, frame, bend * bend_scale * fade + fine);
-	float far = pool_handed_over(v_eye_m, lamp_lit);
-	float pools = night > 0.0 && far > 0.0 ? lamp_pools() * far : 0.0; // daylight and near: skip the two falls per pixel
-	EMISSION = linear_out(albedo * source_linear(pool_color) * pools * night * pool_gain); // the surface's own colour: dark asphalt stays dark, the paint shows
 }

@@ -2,8 +2,8 @@
 // map lock and the log's own mutex (never the map exclusively: that would wait for every mesh job reading the map). It is
 // handed the city const and the log apart: the log is the one thing of the state it changes (tools/gates RENDER_SO_LEITURA).
 // Road, furniture and building chunks are streamed around the camera (render.road_end_m,
-// render.props_end_m, render.building_far_end_m): built nearest-first within a per-frame budget, freed when the camera leaves, so memory
-// follows the view and not the size of the map.
+// render.props_end_m, render.building_far_end_m), and the lamps' pools by superchunk as far as the buildings: built nearest-first within a
+// per-frame budget, freed when the camera leaves, so memory follows the view and not the size of the map.
 #pragma once
 
 #include <algorithm>
@@ -22,6 +22,7 @@
 #include "render/effects/effect_world.h"
 #include "render/overlays/overlay_renderer.h"
 #include "render/wear/wear_field.h"
+#include "render/props/lamp_pools.h"
 #include "render/props/prop_renderer.h"
 #include "render/render_context.h"
 #include "render/roads/far_road_renderer.h"
@@ -96,12 +97,15 @@ public:
 	}
 	void set_lamp_night(float night) {
 		props_.set_lamp_night(night);
+		pools_.lay_by_night(night);
 		agents_.set_night(night);
 	}
 	int lit_lamps() const { return props_.lit_lamps(); }
 	const LightLook &lamp_look() const { return props_.lamp_look(); } // the street lamps' lights as they are made (render_cost probe)
 	int lit_heads() const { return agents_.lit_heads(); }
 	godot::Vector2 lamps_hand_over() const { return props_.lamps_hand_over(); }
+	// Tests: the street lamps' pools round (x, z) within `r` (render/props/lamp_pools.h lamp_pool_census). Takes the map shared.
+	godot::Dictionary lamp_pools(const CityState &s, float x, float z, float r) const { return lamp_pool_census(s, roads_.look(), pools_, props_, x, z, r); }
 	float shake() const { return effects_.shake(); } // metres the blasts move the camera now
 	float since_blast() const { return effects_.since_blast(); } // effect seconds since the last blast
 	int ruin_pieces() const { return effects_.ruin_pieces(); }
@@ -168,8 +172,9 @@ public:
 	int64_t wear_bytes() const { return wear_.bytes(); }
 	void wear_paint(float x0, float z0, float x1, float z1, float value) { wear_.paint(x0, z0, x1, z1, value); }
 	int pending() const {
-		return road_stream_.pending + raised_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + far_roads_.pending() + far_roads_.waiting_supers() + verges_.pending() +
-				structures_.pending() + props_.pending() + buildings_.pending() + trees_.pending() + cover_.pending() + water_.pending() + terrain_.pending();
+		return road_stream_.pending + raised_stream_.pending + props_stream_.pending + pools_stream_.pending + building_stream_.pending + roads_.pending() +
+				far_roads_.pending() + far_roads_.waiting_supers() + verges_.pending() + structures_.pending() + props_.pending() + pools_.pending() +
+				buildings_.pending() + trees_.pending() + cover_.pending() + water_.pending() + terrain_.pending();
 	}
 	// Tests: the ground's height as the terrain's shader reads it at a world point (terrain_bridge.h drawn).
 	godot::Dictionary ground_drawn(const CityState &s, float x, float z) const { return terrain_.drawn(s.terrain, x, z); }
@@ -181,6 +186,7 @@ private:
 	VergeRenderer verges_;
 	StructureRenderer structures_;
 	PropRenderer props_;
+	LampPools pools_;
 	TreeRenderer trees_;
 	CoverRenderer cover_;
 	WaterRenderer water_;
@@ -196,6 +202,7 @@ private:
 	WearField wear_;
 	ChunkStream road_stream_, props_stream_, building_stream_;
 	ChunkStream raised_stream_; // the chunks with a bridge, a viaduct or a tunnel: those stand out from afar, as far as the buildings
+	ChunkStream pools_stream_; // the superchunks holding a street (render/props/lamp_pools.h): as far as the far roads
 	// The ChangeLog's render lists are swapped into these each frame (capacity kept on both sides).
 	std::vector<int64_t> road_keys_, building_keys_, view_keys_, prop_keys_;
 	std::vector<int> terrain_rects_, paint_rects_;

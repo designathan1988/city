@@ -33,9 +33,29 @@ CityCut cut_held(const CityState &s, const CutBox &box, unsigned parts) {
 	return c;
 }
 
+void take_pole_reach(CutBox &box, const StreetWorks &street, float x0, float z0, float x1, float z1) {
+	street.poles_in(x0, z0, x1, z1, [&](int id) {
+		for (int span : street.poles.items[size_t(id)].spans) {
+			const UtilitySpan &sp = street.spans.items[size_t(span)];
+			for (int end : { sp.a, sp.b }) {
+				const UtilityPole &o = street.poles.items[size_t(end)];
+				box.take(o.x, o.z, o.x, o.z);
+			}
+		}
+	});
+}
+
 void keep_furniture(CityCut &cut, const CityState &live, int sid) {
+	if (CHECKS && cut.facts.kinds_kept != FURNITURE_ALL) city_stop("a cut keeping the lamps alone asked for every piece");
 	const auto at = cut.facts.furniture.try_emplace(sid);
 	if (at.second) traffic::street_furniture_of(live, sid, FURNITURE_ALL, at.first->second);
+}
+
+void keep_lamps(CityCut &cut, const CityState &live, int sid) {
+	if (CHECKS && cut.facts.kinds_kept != LIT_FURNITURE && !cut.facts.furniture.empty()) city_stop("a cut keeping every piece asked for the lamps alone");
+	cut.facts.kinds_kept = LIT_FURNITURE;
+	const auto at = cut.facts.furniture.try_emplace(sid);
+	if (at.second) traffic::street_furniture_of(live, sid, LIT_FURNITURE, at.first->second, FurnitureRead::PLACED);
 }
 
 void keep_node(CityCut &cut, const CityState &live, int node) {
@@ -74,6 +94,7 @@ void furniture_of(const CityView &s, int sid, uint32_t kinds, std::vector<Furnit
 		if (CHECKS) city_stop("the furniture of a segment the job's cut did not keep");
 		return;
 	}
+	if (CHECKS && (kinds & ~s.facts->kinds_kept)) city_stop("a kind of furniture the job's cut did not keep");
 	for (const FurnitureSpot &f : at->second)
 		if (kinds & furniture_bit(f.kind)) out.push_back(f);
 }

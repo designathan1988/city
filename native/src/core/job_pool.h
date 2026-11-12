@@ -31,7 +31,10 @@
 namespace city {
 
 // One lane for each user of the pool. A new user adds its own: never shares one, never does arithmetic on an id to stay clear of another.
-enum class JobLane : uint8_t { ROADS, ROADS_FAR, VERGES, STRUCTURES, PROPS, BUILDING, BUILDING_SUPER, TREES_NEAR, TREES_FAR, COVER, ZONES, FOG, CANYON, SHORE, RUINS, WATER, SIGNATURES };
+enum class JobLane : uint8_t {
+	ROADS, ROADS_FAR, VERGES, STRUCTURES, PROPS, BUILDING, BUILDING_SUPER, TREES_NEAR, TREES_FAR, COVER, ZONES, FOG, CANYON, SHORE, RUINS, WATER, SIGNATURES,
+	LAMP_POOLS
+};
 const char *job_lane_name(JobLane lane); // what the probes call a lane
 
 // What a job is the latest of. `baked`: the second job of a result, the upload's conversion of what the first built.

@@ -3,6 +3,7 @@
 
 #include "render/owned_segments.h"
 #include "render/roads/road_cut.h"
+#include "sim/roads/street_lines.h"
 #include "sim/street/footway.h"
 
 #include <algorithm>
@@ -138,43 +139,40 @@ void PropRenderer::commit_one(Built &b) {
 // What chunk `key`'s furniture reads of the city, copied under the map's shared lock: the roads and the ground of the chunk, of
 // the segments it owns and of the poles a span away from its own (a pole stands by its footway, a span hangs from both its
 // poles' arms), the player's works there, and the facts a box of records cannot give: the furniture of each owned segment and of
-// the segment it runs on into at a joint (their lines share a pole there), the control and the plates of the chunk's nodes.
+// every segment the lines of the chunk's nodes read (sim/roads/street_lines.h line_reads: a joint's other arm, a corner pole's
+// listing arm, the far end a row with no pole of its own runs on to), the control and the plates of the chunk's nodes.
 CityCut PropRenderer::gather(const CityState &s, int64_t key) const {
 	const float x0 = float(key_x(key)) * CHUNK, z0 = float(key_y(key)) * CHUNK;
 	return cut_city(
 			s, CUT_ROADS | CUT_STREET,
 			[&](const CityState &live) {
 				CutBox box{ x0, z0, x0 + CHUNK, z0 + CHUNK };
-				each_owned_segment(live, key, [&](int sid) {
+				const auto take = [&](int sid) {
 					const RoadSegment &g = live.roads.segs[size_t(sid)];
 					box.take(g.minx, g.minz, g.maxx, g.maxz);
+				};
+				each_owned_segment(live, key, take);
+				std::vector<int> reads;
+				live.roads.node_hash.query(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int n) {
+					const RoadNode &nd = live.roads.nodes[size_t(n)];
+					if (nd.alive && chunk_of(float(nd.x), float(nd.z)) == key) line_reads(live.roads, n, reads);
 				});
-				live.street.poles_in(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int id) {
-					for (int span : live.street.poles.items[size_t(id)].spans) {
-						const UtilitySpan &sp = live.street.spans.items[size_t(span)];
-						for (int end : { sp.a, sp.b }) {
-							const UtilityPole &o = live.street.poles.items[size_t(end)];
-							box.take(o.x, o.z, o.x, o.z);
-						}
-					}
-				});
+				for (int sid : reads) take(sid);
+				take_pole_reach(box, live.street, x0, z0, x0 + CHUNK, z0 + CHUNK);
 				// past them: what the road pieces read, a footway looked for round a point, a barrier's piece past its middle
 				const float stand = float(footway_reach(live.roads, live.catalog.furniture.items.stand_reach_m));
 				return box.grown(road_reach(live.catalog, *look_) + stand + barriers_.piece_m);
 			},
 			[&](CityCut &cut, const CityState &live) {
-				each_owned_segment(live, key, [&](int sid) {
-					keep_furniture(cut, live, sid);
-					const RoadSegment &g = live.roads.segs[size_t(sid)];
-					for (int n : { g.a, g.b }) {
-						const int on = live.roads.going_on(n, sid);
-						if (on >= 0) keep_furniture(cut, live, on);
-					}
-				});
+				each_owned_segment(live, key, [&](int sid) { keep_furniture(cut, live, sid); });
+				std::vector<int> reads;
 				live.roads.node_hash.query(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int n) {
 					const RoadNode &nd = live.roads.nodes[size_t(n)];
-					if (nd.alive && chunk_of(float(nd.x), float(nd.z)) == key) keep_node(cut, live, n);
+					if (!nd.alive || chunk_of(float(nd.x), float(nd.z)) != key) return;
+					keep_node(cut, live, n);
+					line_reads(live.roads, n, reads);
 				});
+				for (int sid : reads) keep_furniture(cut, live, sid);
 			});
 }
 

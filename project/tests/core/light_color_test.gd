@@ -7,9 +7,9 @@
 ##   (PropTag::NIGHT_GLOW, lamp glass) must show glow_color x its colour x glow_gain x night, tone mapped as
 ##   render/tone_map.gd does. Its colour is a mid grey so that the glow stays inside ACES's range (a white one would
 ##   saturate and hide an error);
-## - by night likewise, a grey road surface under the even light of a junction plate, seen as the road draws it past the lamps
-##   with a light of their own (`lamp_lit` 0), must show its albedo x pool_color x plate_glow x pool_gain x night (road.gdshader);
-##   the concrete's own mottle is +-6% of that, so this one is looser.
+## - by night likewise, a dark surface (a road square no light reaches) at the middle of a lamp's pool, past the lamps with a light
+##   of their own (`lamp_lit` 0), must show the pool's colour as the reference adds it: display_colour x opacity x night of the
+##   "lamp_pool" material (lamp_pool.gdshader, the surface read back from the depth buffer on either renderer).
 ## The tolerance is one 8-bit step: the screen keeps 8 bits a channel, and the scene radiance (half floats, 11-bit
 ## mantissa) is far finer than that.
 ## Run: godot --path project [--rendering-method gl_compatibility] res://tests/core/light_color_test.tscn -- --no-flow
@@ -30,10 +30,9 @@ const GLOW_AT := Vector3(-1.0, -2.0, 0)
 const ROAD_AT := Vector3(1.0, -2.0, 0)
 const ROAD_CONCRETE := 5 # road.gdshader M_CONCRETE: no map, albedo = the strip colour
 const ROAD_GREY := 0.5 # sRGB
-const ROAD_STEPS := 16 # the mottle
 const ROAD_IDS := 16.0 # road.gdshader: the material id is COLOR.a * 16
-const ROAD_PLATE := Vector2(-1000.0, 0.0) # road.gdshader UV2 of a junction plate, lit evenly
-const ROAD_PLATE_GLOW := 1.0
+const POOL_HALF_M := 1.5 # the pool's half-axes across and along: the square's middle is its middle, the glow's square out of it
+const POOL_SLAB_M := 0.5 # its half-height, along the square's normal
 const GLOW_GREY := 0.2 # sRGB
 const FRAMES := 10 # the sky's radiance and the tone mapping settle
 const BYTE := 255.0
@@ -54,7 +53,7 @@ func _ready() -> void:
 	add_child(cam)
 	cam.make_current()
 	await _lenses(material)
-	await _night(material, world.materials()["road"])
+	await _night(material, world.materials()["road"], world.materials()["lamp_pool"])
 	print("renderer: ", RenderingServer.get_current_rendering_method())
 	_check_grade()
 	finish()
@@ -89,13 +88,11 @@ func _lenses(material: ShaderMaterial) -> void:
 		n.queue_free()
 
 
-func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
+func _night(material: ShaderMaterial, road: ShaderMaterial, pool: ShaderMaterial) -> void:
 	world.set_hour(DataTables.game("daylight").night_hour)
 	world.environment.ambient_light_energy = 0.0
 	world.sun.light_energy = 0.0
 	world.environment.glow_enabled = false
-	road = road.duplicate()
-	road.set_shader_parameter("plate_glow", ROAD_PLATE_GLOW)
 	RenderingServer.global_shader_parameter_set(&"lamp_lit", Vector2.ZERO)
 	var node := MeshInstance3D.new()
 	node.mesh = _square(Vector2(GLOW_TAG, 0), Color(GLOW_GREY, GLOW_GREY, GLOW_GREY))
@@ -104,11 +101,19 @@ func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	node.position = GLOW_AT
 	add_child(node)
 	var plate := MeshInstance3D.new()
-	plate.mesh = _square(ROAD_PLATE, Color(ROAD_GREY, ROAD_GREY, ROAD_GREY, (ROAD_CONCRETE + 0.5) / ROAD_IDS))
+	plate.mesh = _square(Vector2.ZERO, Color(ROAD_GREY, ROAD_GREY, ROAD_GREY, (ROAD_CONCRETE + 0.5) / ROAD_IDS))
 	plate.material_override = road
 	plate.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	plate.position = ROAD_AT
 	add_child(plate)
+	# the pool as lamp_pools.h lays one: a unit box whose basis is its whole axes, across and along the square, up its normal (toward
+	# the camera), turning as x, y, z do
+	var light := MeshInstance3D.new()
+	light.mesh = BoxMesh.new()
+	light.material_override = pool
+	light.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	light.transform = Transform3D(Basis(Vector3(2.0 * POOL_HALF_M, 0, 0), Vector3(0, 0, 2.0 * POOL_SLAB_M), Vector3(0, -2.0 * POOL_HALF_M, 0)), ROAD_AT)
+	add_child(light)
 	await _frames(FRAMES)
 	var night: float = world.daylight.night # what daylight.gd published to the shaders
 	var g: Color = Color(material.get_shader_parameter("glow_color")).srgb_to_linear()
@@ -119,11 +124,11 @@ func _night(material: ShaderMaterial, road: ShaderMaterial) -> void:
 	var want := Color(shown.x, shown.y, shown.z).linear_to_srgb()
 	var img := get_viewport().get_texture().get_image()
 	_compare(img, GLOW_AT, want, "night glow (night %.2f)" % night)
-	var p: Color = Color(road.get_shader_parameter("pool_color")).srgb_to_linear()
-	var lit: float = float(road.get_shader_parameter("plate_glow")) * float(road.get_shader_parameter("pool_gain")) * night
-	var albedo: float = Color(ROAD_GREY, ROAD_GREY, ROAD_GREY).srgb_to_linear().r
-	var pool := ToneMap.aces(Vector3(p.r, p.g, p.b) * lit * albedo, world.environment.tonemap_exposure, world.environment.tonemap_white)
-	_compare(img, ROAD_AT, Color(pool.x, pool.y, pool.z).linear_to_srgb(), "road light (junction plate)", ROAD_STEPS)
+	# the shader adds the radiance the Environment's ACES shows as display_colour x opacity x night (tone_inverse.gdshaderinc): the screen
+	# shows that colour, over a surface no other light reaches
+	var pool_colour: Color = pool.get_shader_parameter("display_colour")
+	var lit: float = float(pool.get_shader_parameter("opacity")) * night
+	_compare(img, ROAD_AT, Color(pool_colour.r * lit, pool_colour.g * lit, pool_colour.b * lit), "a lamp's pool on the road (night %.2f)" % night)
 
 
 ## The grade against the 4.0's own (postprocess.ts GRADED_OUTPUT_FRAGMENT), levels of grey in and out.

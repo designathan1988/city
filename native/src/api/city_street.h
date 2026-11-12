@@ -45,6 +45,8 @@ protected:
 	static void _bind_methods();
 
 private:
+	// The streets' lines as one network, counted into the census (city_core_street_lines.cpp).
+	void line_census(godot::Dictionary &d) const;
 	CityState *state_ = nullptr; // the core's: it outlives this area (CityCore frees its areas first)
 	RenderWorld *render_ = nullptr;
 };

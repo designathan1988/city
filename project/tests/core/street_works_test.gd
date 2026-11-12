@@ -48,16 +48,34 @@ func _ready() -> void:
 	finish()
 
 
-## The streets' own lines (the kit's main rows): every pole strung to the pole the layout strings it to, which stands (a station the
-## layout could not stand is bridged), and no span longer than a wire is strung (streets.json wires.max_span_m).
+## The streets' lines as one network (the owner's report of 2026-11-11: no wire between the poles of a crossing, two poles side by
+## side): a line runs on through a joint with no end pole of each segment's own there, and ends at a junction on the one pole of its
+## corner, which every line reaching that corner shares; the lines of a junction are strung to each other across it; every pole is
+## strung to poles that stand; no span is longer than a wire, no span along a street shorter than two poles may stand apart
+## (poles.min_gap_m); no two poles of the lines stand closer than that unless a span across a mouth joins them; none stands against a
+## signal post (items.gap_m between their footprints).
 func _kit_lines() -> void:
 	var c: Dictionary = CityStore.query(&"furniture_census")
-	var most: float = DataTables.render_table("streets").wires.max_span_m
-	check(int(c.row_poles) > 0 and int(c.row_spans) > 0, "the streets carry lines: %d poles, %d spans" % [c.row_poles, c.row_spans])
-	check(int(c.row_broken) == 0, "every pole of a street's line is strung to one that stands: %d not" % c.row_broken)
-	check(float(c.row_longest_m) <= most, "no span of a street's line is longer than a wire: %.1f m, at most %.1f" % [c.row_longest_m, most])
-	var least: float = DataTables.render_table("streets").wires.min_span_m
-	check(float(c.row_shortest_m) >= least, "no span of a street's line is shorter than a wire: %.1f m, at least %.1f" % [c.row_shortest_m, least])
+	var wires: Dictionary = DataTables.render_table("streets").wires
+	var furniture: Dictionary = DataTables.catalog_table("street_furniture")
+	var gap: float = furniture.poles.min_gap_m
+	check(int(c.line_poles) > 0 and int(c.line_spans) > 0, "the streets carry lines: %d poles, %d spans" % [c.line_poles, c.line_spans])
+	check(int(c.corner_poles) > 0 and int(c.junction_spans) > 0,
+		"the lines are strung across the junctions: %d corner poles, %d spans across" % [c.corner_poles, c.junction_spans])
+	check(int(c.junctions_unjoined) == 0, "every junction's lines are joined to each other: %d junctions not" % c.junctions_unjoined)
+	check(int(c.joints_unjoined) == 0, "a line runs on through each joint, the next row strung to the joint's pole: %d not" % c.joints_unjoined)
+	check(int(c.line_broken) == 0, "every pole of a line is strung to one that stands: %d not" % c.line_broken)
+	check(float(c.line_longest_m) <= float(wires.max_span_m), "no span is longer than a wire: %.1f m, at most %.1f" % [c.line_longest_m, wires.max_span_m])
+	check(float(c.line_shortest_m) >= gap, "no span along a street is shorter than two poles stand apart: %.1f m, at least %.1f (its poles: segment, station, node, corner, x, z each %s)"
+			% [c.line_shortest_m, gap, c.line_shortest_poles])
+	check(float(c.junction_shortest_m) >= float(wires.min_span_m),
+		"no span across a junction is shorter than a wire: %.1f m, at least %.1f" % [c.junction_shortest_m, wires.min_span_m])
+	check(int(c.line_close_pairs) == 0, "no two poles of the lines stand together (under %.1f m, no span across a mouth between them): %d pairs" % [gap, c.line_close_pairs])
+	check(int(c.line_signal_touch) == 0, "no pole of a line stands against a signal post: %d" % c.line_signal_touch)
+	# a street's light reaches over the street: every lamp's arm toward its carriageway, and a street lit from both faces has its
+	# lighting columns on the face across from its line's poles, none beside them (the reference keeps its columns off the line's face)
+	check(int(c.lamps_faced_away) == 0, "every street lamp's arm and light reach over its street, none over the lots: %d turned away" % c.lamps_faced_away)
+	check(int(c.line_face_columns) == 0, "a street's lighting columns stand across from its line, never on its face: %d on it" % c.line_face_columns)
 
 
 ## A point on a footway: asked of the core, walking out from the middle of the town.

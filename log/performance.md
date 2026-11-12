@@ -491,3 +491,63 @@ A defect the owner reported ("ficam dando solavancos indo para frente com tudo, 
   (P72).
 - Gates on the changed files: the name-likeness findings left (`SEGUNDO_DONO` on `OPPOSITE_DOT`, `TAPER_*`, `VF_SPAN` and the
   `Control`/`Light` enum values) stood before on lines this batch did not change.
+
+## P393 to P395, P463 to P467 (2026-11-11, 20:55): the streets' lines as one network; each lit lamp's own pool
+
+Defects the owner reported (two poles side by side, a junction's poles with no wire between them) and the night light the photos of
+that fix showed wrong; the reference game read for its behaviour alone, every piece written for this tree.
+
+- The lines (P393 to P395): `sim/roads/street_lines` is the one owner of the streets' lines as a network: a line's face (one face
+  through a street's joints), one pole at a joint, one corner pole per junction corner a line reaches, the spans across a junction
+  to the line going straight on; a line's end pole stands clear of the signal posts. `street_works_test` (`furniture_census`):
+  line poles and spans, corner poles and spans across, no junction unjoined, no pole strung to one that does not stand, no two
+  poles together, none against a signal post.
+- The light (P463 to P465, C44): the road's pools were a period along each segment's lamp row in the road's shader, a second
+  owner of the lamps' places: a pool stood where no lamp did (a joint), a cut lamp kept its pool, a junction had none under its lit
+  corner poles. `render/props/lamp_pools` lays one pool per lit lamp from the lamp's own foot, facing and lens (a column's across
+  its street, a pole lamp's round under its head, a corner pole's toward its junction), one MultiMesh of light volumes a
+  superchunk streamed to the buildings' reach; `lamp_pool.gdshader` lights what the depth buffer shows inside the volume, only at
+  night and past the lamps with a real light. The road's period pools are gone. `segment_furniture` places what comes after the
+  lamps only when asked, so a superchunk's job pays for its lamps alone.
+- P466: a colour handed to a shader is linear on Forward+ and not on Compatibility; `color_space.gdshaderinc` `source_display`
+  reads it as the screen shows it on both (the pools and the lanterns' wash).
+- P467, seen in the night photos of this batch: on a street lit from both faces whose line took face 1, the lighting columns stood
+  on the line's own face, their arms, lenses and pools over the lots (`lamp_row` wrote the columns' place for face 1 always). The
+  columns stand on the face across from the line (`street_furniture_posts.cpp`); `faces_road` states the rule, and the census's
+  `lamps_faced_away` and `line_face_columns` went from 300 and 300 to 0 and 0.
+- P471 to P473, found by `quick.sh --ready` at the close: `lot_overlap_test` had 10 street pieces in front of a lot's gate, the first
+  a corner pole on the straight side of a T (`traffic_probe` now names the first piece and its gate). Between two arms in line the
+  kerb runs straight past the lots' gates: no corner pole there (`street_lines.cpp` `straight_pair`); the line runs on through the
+  node as through a joint (`line_runs_on`), its pole the lower segment's own, placed by its row through the gate rule, every row
+  pole kept past both mouths' crosswalks and signal posts (`LampRow::first_v`, `last_v`). The census's new `joints_unjoined` found
+  148 joints whose next row was not strung to the joint's pole (`terminal` named the row's own station first): a carried end is
+  named first now, the row beyond a joint is spaced from the joint's pole by its straight distance (round a bend the poles on the
+  inner side stand nearer than the arc: a 9.9 m span at the town's corner), and a block too short for a line is judged on the
+  straight distance between its end poles (`line_end_point`). `lot_overlap_test` 0, `joints_unjoined` 0.
+- Tests, one Godot at a time: `street_works_test`, `lot_overlap_test`, `lamp_light_test` and `light_color_test` on both renderers,
+  `walker_motion_test`, `vehicle_motion_test`, `street_crossing_test`, `drive_kerb_test`, `edit_fuzz_test`, `traffic_hash_test`,
+  `lot_front_test`; `city_mass_test` fails at `8a1858e0` as here (two buildings' probe and body disagree on their storeys: P476).
+  The digest moved in its fleet alone (`d2d336826b256f2b` to `3c99a8669af87cef`; grades, graph, heights and lots the same): the
+  walkers keep off the street pieces, which this batch stands elsewhere by design; written again (`digest_bless`). Photos (`dist/trace/port-from-nov7/photos`, `analysis.md` P463-P467): the joint and
+  a junction near, the town from 216 m and whole, by night and by day; the columns near from two sides by night and by day.
+  Recorded from them: a park's paths meet in stepped notches (P468).
+- Measured, `dist/trace/port-from-nov7/plan-p463km24.json` (the 24 km city at 22:00 from 9 km out, the centre and the centre's
+  street, and the street at 16:00; `info` and 5 s of `usage` each), a clean copy of `8a1858e0`'s project (`dist/measure`) against
+  this tree, one after the other:
+
+| 24 km city | before (`8a1858e0`) | now |
+|---|---|---|
+| The city opens in | 121.5 s | 116.2 s |
+| 9 km out, night: video, static, GPU, CPU | 1,808 MiB, 443 MiB, 11.49 ms, 1.67 ms | 1,823, 470, 10.99, 1.47 |
+| Centre, night: video, static, GPU, CPU | 3,109 MiB, 637 MiB, 12.02 ms, 2.20 ms | 3,142, 691, 12.11, 1.82 |
+| Centre's street, night: video, static, GPU, CPU | 2,799 MiB, 693 MiB, 13.70 ms, 2.57 ms | 2,821, 731, 13.86, 2.55 |
+| Centre's street, day: GPU, CPU | 13.97 ms, 2.59 ms | 14.07, 2.47 |
+| Draws and primitives, centre at night | 415, 4.13 M | 423, 4.29 M |
+
+- The pools cost 15 to 33 MiB of video memory and 27 to 54 MiB of static memory (their rows, held by the engine for each
+  superchunk's MultiMesh, by day as by night), 8 draws and about 0.15 M primitives in view; the GPU frame moves within the spread
+  of one run, the CPU frame not at all.
+- Recorded, not of this batch: the 24 km city opened in 116 to 121 s at both ends, where P47's runs had 24 to 26 s; other
+  sessions' processes were running through both runs (P470: to read at its cause on an idle machine, against `9bf7c372`). The
+  orphan gate takes no data table as a referrer, so a native shader is also written into `CityWorld.NATIVE_SHADERS` (P469).
+- Gates on the changed files: none of this batch left; `tools/analysis/engine/src/flat.h` (another session's) is not in the map.

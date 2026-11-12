@@ -158,7 +158,8 @@ int CityStreet::road_furniture() {
 Array CityStreet::sign_cells() { return render_->take_sign_cells(); }
 
 // What stands along the streets, kit and player's alike, for a comparison per kilometre: the pieces of each FurnitureKind (`kinds`,
-// in its order), the street length and the poles that carry a light.
+// in its order), the street length and the poles that carry a light; the lamps turned away from their street (`lamps_faced_away`) and
+// the lighting columns standing on the face of their street's line (`line_face_columns`).
 Dictionary CityStreet::furniture_census() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
@@ -166,13 +167,21 @@ Dictionary CityStreet::furniture_census() {
 	kinds.resize(FURNITURE_KINDS);
 	kinds.fill(0);
 	double metres = 0, longest = 0, shortest = 0;
-	int lit = 0, row_poles = 0, row_spans = 0, row_broken = 0;
+	int lit = 0, row_poles = 0, row_spans = 0, row_broken = 0, faced_away = 0, line_face_columns = 0;
 	std::vector<FurnitureSpot> spots;
 	for (int sid = 0; sid < int(s.roads.segs.size()); sid++) {
 		if (!s.roads.segs[size_t(sid)].alive) continue;
 		metres += s.roads.segs[size_t(sid)].len;
 		spots.clear();
 		traffic::street_furniture_of(s, sid, FURNITURE_ALL, spots);
+		int line_side = -1; // the face the segment's line stands on: its main row's own poles
+		for (const FurnitureSpot &p : spots)
+			if (p.kind == FurnitureKind::LAMP && p.row == 0 && p.corner < 0) line_side = p.side;
+		for (const FurnitureSpot &p : spots) {
+			if (p.kind != FurnitureKind::LAMP && p.kind != FurnitureKind::COLUMN) continue;
+			faced_away += faces_road(p) ? 0 : 1;
+			line_face_columns += p.row != 0 && line_side >= 0 && p.side == line_side ? 1 : 0;
+		}
 		for (const FurnitureSpot &p : spots) {
 			kinds[int(p.kind)] += 1;
 			lit += p.kind == FurnitureKind::LAMP && p.lit ? 1 : 0;
@@ -204,6 +213,9 @@ Dictionary CityStreet::furniture_census() {
 	d["row_broken"] = row_broken; // a pole strung to a pole that does not stand (a span the render cannot draw)
 	d["row_longest_m"] = longest; // the longest of those spans, across
 	d["row_shortest_m"] = shortest; // and the shortest
+	d["lamps_faced_away"] = faced_away; // a lamp or column whose arm reaches over the lots, not its street (faces_road)
+	d["line_face_columns"] = line_face_columns; // a lighting column on the face its street's line stands on, not across from it
+	line_census(d); // the lines as one network: joints, corner poles and the spans across the junctions (under the same lock)
 	return d;
 }
 

@@ -48,6 +48,10 @@
     "pool_back_m": {
      "type": "number"
     },
+    "pool_along_m": {
+     "type": "number",
+     "exclusiveMinimum": 0
+    },
     "twin_stagger": {
      "type": "number"
     },
@@ -69,6 +73,7 @@
     "pool_margin_m",
     "pool_least_m",
     "pool_back_m",
+    "pool_along_m",
     "twin_stagger",
     "column_every_m",
     "column_first_m",

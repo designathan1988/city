@@ -169,8 +169,12 @@ int walkers_in_furniture(const CityState &s, std::vector<std::pair<int, StreetOb
 // unforgotten (the probes').
 int stale_furniture(const CityState &s);
 // The pieces of the whole map standing in front of a lot's gate, a car's or a person's (traffic_probe): the signal posts alone
-// with `signals` (their place is the signals' rule), every other kind without.
-int furniture_in_gates(const CityState &s, bool signals);
+// with `signals` (their place is the signals' rule), every other kind without; `first`, when given, the first of them and the gate.
+struct GateBlock {
+	FurnitureSpot piece;
+	ArcSpan gate{ 0, 0 };
+};
+int furniture_in_gates(const CityState &s, bool signals, GateBlock *first = nullptr);
 
 // ped_routes.cpp
 bool walkable(const CityState &s, int seg);

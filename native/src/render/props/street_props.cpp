@@ -8,6 +8,7 @@
 #include "core/color.h"
 #include "core/random.h"
 #include "render/roads/road_mesh.h"
+#include "sim/roads/street_lines.h"
 #include "sim/state/city_cut.h"
 #include "sim/street/footway.h"
 #include "sim/street/pole_arms.h"
@@ -15,6 +16,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
 
 using namespace godot;
 
@@ -33,12 +35,6 @@ constexpr float PHASE_STEP = 2.399f; // the golden angle: neighbouring spans swi
 constexpr float KIND_STRIDE = 8.f;
 constexpr int KIND_B_WEIGHT = 2;
 const Vector3 UP(0, 1, 0);
-
-Vector3 world_of(const CityView &s,const StreetLook &L, const FurnitureSpot &p, Basis *basis) {
-	const SegFrame f = seg_frame(s, p.seg, p.v);
-	if (basis) *basis = PropKit::facing(f.left * p.face_left + f.fwd * p.face_fwd);
-	return f.c + f.left * p.u + UP * L.h_sidewalk;
-}
 
 void push_part(PackedFloat32Array &buf, const Basis &b, const Vector3 &o, int mask) {
 	mm_push_plain(buf, b.get_column(0), b.get_column(1), b.get_column(2), o, 0, 0, 0, float(mask));
@@ -64,17 +60,13 @@ void push_span(StreetInstances &inst, const WireLook &w, const Vector3 &a, const
 
 Vector3 flat(ArmDir a) { return Vector3(a.x, 0, a.z); }
 
-// What the light of a lamp asks of it: how far out its lens hangs and how tall it stands.
-struct LampLens {
-	float reach = 0, height = 0;
-};
-
-// A lamp's light: its lens for the lights of render/props/lamp_lights.h, and the lit air under it.
-void push_light(StreetInstances &inst, const FurnitureLook &F, const Vector3 &foot, const Vector3 &toward, const LampLens &lens) {
-	const Vector3 head = foot + toward * lens.reach;
-	inst.lamps.push_back(head + UP * lens.height);
+// A lamp's light: its lens for the lights of render/props/lamp_lights.h, and the lit air under it. Its pool on the ground is
+// render/props/lamp_pools.h's, from the same lens.
+void push_light(StreetInstances &inst, const FurnitureLook &F, const Vector3 &foot, const Vector3 &toward, const ArmReach &lens) {
+	const Vector3 lens_point = lens_at(foot, toward, lens);
+	inst.lamps.push_back(lens_point);
 	if (F.beams) // lit air: rain and storm, and there is no weather yet
-		mm_push_plain(inst.light, Vector3(F.beam_radius, 0, 0), UP * lens.height, Vector3(0, 0, F.beam_radius), head, 0, 0, 0, 0);
+		mm_push_plain(inst.light, Vector3(F.beam_radius, 0, 0), UP * lens.height, Vector3(0, 0, F.beam_radius), lens_point - UP * lens.height, 0, 0, 0, 0);
 }
 
 struct PoleFrame {
@@ -111,7 +103,7 @@ void place_pole(const CityView &s,const StreetLook &L, const FurnitureLook &F, i
 	if (id % CAN_PERIOD == CAN_PHASE) mask |= int(rural ? PolePart::CAN_RURAL : PolePart::CAN);
 	push_part(inst.poles, PropKit::facing(f.kerb), f.foot, mask);
 	for (const ArmDir &a : f.arms.arms) push_part(inst.poles, PropKit::facing(flat(street_arm(a, toward))), f.foot, int(rural ? PolePart::ARM_RURAL : PolePart::ARM));
-	if (p.lamp) push_light(inst, F, f.foot, f.kerb, { F.lamp_reach, F.lamp_height });
+	if (p.lamp) push_light(inst, F, f.foot, f.kerb, arm_reach(F, false));
 	for (size_t i = 0; i < p.spans.size(); i++) {
 		const UtilitySpan &sp = s.street.spans.items[size_t(p.spans[i])];
 		if (sp.a != id) continue;
@@ -123,33 +115,41 @@ void place_pole(const CityView &s,const StreetLook &L, const FurnitureLook &F, i
 	}
 }
 
-// The end pole of `seg`'s main row at node `n` (the layout's ROW_HEAD at a, ROW_TAIL at b: sim/roads/street_furniture.h), when it stands
-// on `side`; none when that pole is gone (cut, knocked out, buried).
-bool row_end(const CityView &s,const StreetLook &L, int seg, int n, int side, PropPlace &out) {
-	const LampRow row = lamp_row(s.roads, seg);
-	if (!row.any || row.stations == 0 || row.side != side) return false;
-	std::vector<FurnitureSpot> spots;
-	furniture_of(s, seg, furniture_bit(FurnitureKind::LAMP), spots);
-	const uint8_t end = s.roads.segs[size_t(seg)].a == n ? ROW_HEAD : ROW_TAIL;
-	for (const FurnitureSpot &p : spots) {
-		if (p.row != 0 || !(p.row_ends & end)) continue;
-		out.origin = world_of(s, L, p, &out.basis);
-		return true;
-	}
-	return false;
-}
-
-// A street going on through its node keeps its line: the last pole of `sid` strung to the first of the next (Roadcraft
-// powerLine.ts join), by the lower segment of the two. Both poles' arms reach over the same street, as the wires' seats want.
-void join_rows(const CityView &s, const StreetLook &L, const FurnitureLook &F, int sid, int row_side, StreetInstances &inst) {
-	const RoadSegment &g = s.roads.segs[size_t(sid)];
-	for (int n : { g.a, g.b }) {
-		const int other = s.roads.going_on(n, sid);
-		if (other <= sid) continue; // none (-1), or the lower segment of the two strings them
-		const bool same_way = (g.b == n) == (s.roads.segs[size_t(other)].a == n); // the sides keep their names through the node
+// The spans node `n`'s lines string beyond any one segment's row (sim/roads/street_lines.h node_line_spans: a joint's, a corner
+// pole's, across the junction), drawn by the chunk the node stands in; each pole found where its segment's placement lists it.
+void place_node_lines(const CityView &s, const StreetLook &L, const FurnitureLook &F, int n, StreetInstances &inst) {
+	std::unordered_map<int, std::vector<FurnitureSpot>> kept;
+	const auto spots_of = [&](int seg) -> const std::vector<FurnitureSpot> & {
+		auto it = kept.find(seg);
+		if (it == kept.end()) {
+			it = kept.emplace(seg, std::vector<FurnitureSpot>()).first;
+			furniture_of(s, seg, furniture_bit(FurnitureKind::LAMP), it->second);
+		}
+		return it->second;
+	};
+	const FirstStation first = [&](int seg, int end) {
+		int best = -1;
+		for (const FurnitureSpot &p : spots_of(seg))
+			if (p.row == 0 && p.corner < 0 && p.station >= 0 && (best < 0 || (end == 0 ? p.station < best : p.station > best))) best = p.station;
+		return best;
+	};
+	const auto place_of = [&](const LinePole &lp, PropPlace &out) {
+		for (const FurnitureSpot &p : spots_of(lp.seg)) {
+			if (p.row != 0 || p.kind != FurnitureKind::LAMP) continue;
+			if (lp.corner >= 0 ? (p.corner == lp.corner && p.node == lp.node) : (p.corner < 0 && p.station == lp.station)) {
+				out.origin = spot_world(s, L, p, &out.basis);
+				return true;
+			}
+		}
+		return false;
+	};
+	std::vector<LineSpan> spans;
+	node_line_spans(s.roads, n, first, spans);
+	for (size_t i = 0; i < spans.size(); i++) {
 		PropPlace a, b;
-		if (!row_end(s, L, sid, n, row_side, a) || !row_end(s, L, other, n, same_way ? row_side : 1 - row_side, b)) continue;
-		push_span(inst, F.wire, a.origin, a.basis.get_column(2), b.origin, b.basis.get_column(2), float(sid) * PHASE_STEP, PoleKind::URBAN, PoleKind::URBAN);
+		if (!place_of(spans[i].a, a) || !place_of(spans[i].b, b)) continue; // a pole cut, knocked out or buried takes its wires
+		push_span(inst, F.wire, a.origin, a.basis.get_column(2), b.origin, b.basis.get_column(2), float(n + int(i)) * PHASE_STEP, PoleKind::URBAN,
+				PoleKind::URBAN);
 	}
 }
 
@@ -160,7 +160,7 @@ void place_row_pole(const FurnitureLook &F, const FurnitureSpot &p, int sid, con
 	int mask = column ? int(PolePart::COLUMN) : int(PolePart::MAST) | int(PolePart::ARM) | (p.lit ? int(PolePart::LAMP) : 0);
 	if (!column && h % uint32_t(CAN_PERIOD) == uint32_t(CAN_PHASE)) mask |= int(PolePart::CAN);
 	push_part(inst.poles, at.basis, at.origin, mask);
-	if (p.lit) push_light(inst, F, at.origin, at.basis.get_column(2), { column ? F.column_reach : F.lamp_reach, column ? F.column_height : F.lamp_height });
+	if (p.lit) push_light(inst, F, at.origin, at.basis.get_column(2), arm_reach(F, column));
 }
 
 PropKind prop_kind(FurnitureKind k) {
@@ -182,14 +182,12 @@ void place_segment(const CityView &s,const StreetLook &L, const FurnitureLook &F
 	furniture_of(s, sid, PROP_KINDS, spots);
 	std::vector<std::pair<int, PropPlace>> row; // the main row's poles standing, by station
 	std::vector<std::pair<int, PropPlace>> strung; // each pole's place and the station its wires come from
-	int row_side = 0;
 	for (const FurnitureSpot &p : spots) {
 		PropPlace place;
-		place.origin = world_of(s, L, p, &place.basis);
+		place.origin = spot_world(s, L, p, &place.basis);
 		if (p.kind == FurnitureKind::LAMP || p.kind == FurnitureKind::COLUMN) {
 			place_row_pole(F, p, sid, place, inst);
-			if (p.kind != FurnitureKind::LAMP || p.row != 0) continue;
-			row_side = p.side;
+			if (p.kind != FurnitureKind::LAMP || p.row != 0 || p.corner >= 0) continue; // a corner pole's spans are its node's
 			row.emplace_back(p.station, place);
 			if (p.strung >= 0) strung.emplace_back(p.strung, place);
 			continue;
@@ -204,9 +202,23 @@ void place_segment(const CityView &s,const StreetLook &L, const FurnitureLook &F
 					PoleKind::URBAN, PoleKind::URBAN);
 			break;
 		}
-	if (!row.empty()) join_rows(s, L, F, sid, row_side, inst);
 }
 } // namespace
+
+ArmReach arm_reach(const FurnitureLook &F, bool column) { return column ? ArmReach{ F.column_reach, F.column_height } : ArmReach{ F.lamp_reach, F.lamp_height }; }
+
+Vector3 lens_at(const Vector3 &foot, const Vector3 &toward, const ArmReach &lens) { return foot + toward * lens.reach + UP * lens.height; }
+
+Vector3 spot_world(const CityView &s, const StreetLook &L, const FurnitureSpot &p, Basis *basis) {
+	const SegFrame f = seg_frame(s, p.seg, p.v);
+	if (basis) *basis = PropKit::facing(f.left * p.face_left + f.fwd * p.face_fwd);
+	return f.c + f.left * p.u + UP * L.h_sidewalk;
+}
+
+PoleFoot pole_foot(const CityView &s, const StreetLook &L, int id) {
+	const PoleFrame f = frame_of(s, L, id);
+	return PoleFoot{ f.foot, f.kerb, f.seg };
+}
 
 float street_ground(const CityView &s,const StreetLook &L, double x, double z) {
 	const FootwayHit h = footway_at(s.roads, x, z, s.catalog.furniture.items.stand_reach_m);
@@ -234,13 +246,15 @@ void place_street_props(const CityView &s,const StreetLook &L, const FurnitureLo
 	});
 	s.roads.node_hash.query(x0, z0, x0 + CHUNK, z0 + CHUNK, [&](int n) {
 		const RoadNode &nd = s.roads.nodes[n];
-		if (!nd.alive || chunk_of(float(nd.x), float(nd.z)) != key || !node_signalled(s, n)) return;
+		if (!nd.alive || chunk_of(float(nd.x), float(nd.z)) != key) return;
+		place_node_lines(s, L, F, n, inst);
+		if (!node_signalled(s, n)) return;
 		FurnitureSpot post;
 		for (int sid : nd.segs) {
 			if (!signal_post(s.roads, n, sid, post)) continue;
 			SignalHead h;
 			h.ds = traffic::in_ds(s.roads, sid, n);
-			h.origin = world_of(s, L, post, &h.basis);
+			h.origin = spot_world(s, L, post, &h.basis);
 			inst.heads.push_back(h);
 		}
 	});
@@ -275,7 +289,7 @@ void place_street_trees(const CityView &s, const StreetLook &L, int64_t key, std
 		for (const FurnitureSpot &p : spots) {
 			uint32_t h = hash_combine(uint32_t(sid) * TREE_SALT, uint32_t(p.v * p.side + p.v));
 			const float scale = (CANOPY_SCALE_MIN + TREE_SCALE_SPAN * hash_float(h)) * (p.kind == FurnitureKind::SHRUB ? SHRUB_SCALE : 1.f);
-			out.push_back({ world_of(s, L, p, nullptr), scale, TAU_F * hash_float(h + 1), int(hash_u32(h) % TREE_SPECIES) });
+			out.push_back({ spot_world(s, L, p, nullptr), scale, TAU_F * hash_float(h + 1), int(hash_u32(h) % TREE_SPECIES) });
 		}
 	});
 }
@@ -289,7 +303,7 @@ bool FurnitureLook::load(const Dictionary &t, PackedStringArray &errors) {
 	wire.sag = w["sag"]; wire.max_sag = w["max_sag_m"]; wire.min_span = w["min_span_m"]; wire.max_span = w["max_span_m"];
 	wire.near_end = w["tube_end_m"]; wire.far_end = w["far_end_m"];
 	beams = l["beams"]; beam_radius = l["beam_radius_m"]; lamp_height = l["lamp_height_m"]; lamp_reach = l["lamp_reach_m"];
-	column_height = l["column_height_m"]; column_reach = l["column_reach_m"];
+	column_height = l["column_height_m"]; column_reach = l["column_reach_m"]; pool_slab = l["pool_slab_m"];
 	return true;
 }
 

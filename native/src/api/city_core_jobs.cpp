@@ -38,6 +38,7 @@ constexpr auto GIVE_BACK_LOOK = std::chrono::milliseconds(5); // between two loo
 Dictionary CityProbes::bay_census() { return render_->bay_census(); }
 Dictionary CityProbes::far_form() const { return render_->far_form(); }
 Dictionary CityProbes::ground_drawn(const Vector3 &at) const { return render_->ground_drawn(*state_, at.x, at.z); }
+Dictionary CityProbes::lamp_pools(float x, float z, float radius) const { return render_->lamp_pools(*state_, x, z, radius); }
 // The surface render/surface_data.h makes of `arrays`: a test lays it beside the engine's own (mesh_get_surface) byte for byte.
 Dictionary CityProbes::surface_probe(const Array &arrays, const Dictionary &lods, int64_t format) const { return surface_data(arrays, lods, uint64_t(format), RID()); }
 
@@ -216,6 +217,7 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("bay_census"), &CityProbes::bay_census);
 	ClassDB::bind_method(D_METHOD("far_form"), &CityProbes::far_form);
 	ClassDB::bind_method(D_METHOD("ground_drawn", "at"), &CityProbes::ground_drawn);
+	ClassDB::bind_method(D_METHOD("lamp_pools", "x", "z", "radius"), &CityProbes::lamp_pools);
 	ClassDB::bind_method(D_METHOD("surface_probe", "arrays", "lods", "format"), &CityProbes::surface_probe);
 	ClassDB::bind_method(D_METHOD("traffic_hashes", "ticks"), &CityProbes::traffic_hashes);
 	ClassDB::bind_method(D_METHOD("graph_fault"), &CityProbes::graph_fault);

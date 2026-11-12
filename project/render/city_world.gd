@@ -13,7 +13,7 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/people.gdshader", "res://render/shaders/people_blob.gdshader", "res://render/shaders/overlay.gdshader", "res://render/shaders/agent_glass.gdshader",
 	"res://render/shaders/vegetation.gdshader", "res://render/shaders/lamp_glow.gdshader", "res://render/shaders/vegetation_cards.gdshader", "res://render/shaders/building_ghost.gdshader",
 	"res://render/shaders/building_glass.gdshader", "res://render/shaders/building_sheer.gdshader", "res://render/shaders/building_card.gdshader",
-	"res://render/shaders/building_wash.gdshader",
+	"res://render/shaders/building_wash.gdshader", "res://render/shaders/lamp_pool.gdshader",
 	"res://render/shaders/verge.gdshader", "res://render/shaders/people_far.gdshader", "res://render/shaders/people_held.gdshader",
 	"res://render/shaders/people_helmet.gdshader", "res://render/shaders/rubble.gdshader", "res://render/shaders/signature.gdshader",
 	"res://render/shaders/signature_glass.gdshader",

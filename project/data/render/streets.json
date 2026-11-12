@@ -308,13 +308,14 @@
   "beam_section": [[-0.5, -0.5], [-0.42, -0.32], [-0.22, 0.5], [-0.1, 0.42], [0, 0.1], [0.1, 0.42], [0.22, 0.5], [0.42, -0.32], [0.5, -0.5]]
  },
  "lamp_light": {
-  "_doc": "A lamp's lens and the lit air under it. The light on the ground is render/props/lamp_lights.h, its numbers in tuning.json render.lamp_*. beam_radius_m: the lit air under the lens in rain. lamp_* and column_*: height and reach of the lens on a utility pole and on a lighting column.",
+  "_doc": "A lamp's lens and the lit air under it. The light on the ground: the lamps nearest the eye a real light each (render/props/lamp_lights.h, its numbers in tuning.json render.lamp_*), every lit lamp a pool of its own (render/props/lamp_pools.h; its size is the catalogue's lamps.pool_*, data/catalog/street_furniture.json). beam_radius_m: the lit air under the lens in rain. lamp_* and column_*: height and reach of the lens on a utility pole and on a lighting column. pool_slab_m: how far over and under the street's top a pool lights what stands there (the ground it lies on and the feet of what stands on it, the kerb and a footway's step within it), a modelling choice, no norm.",
   "beams": false,
   "beam_radius_m": 3.68,
   "lamp_height_m": 7.16,
   "lamp_reach_m": 1.6,
   "column_height_m": 9.02,
-  "column_reach_m": 2.1
+  "column_reach_m": 2.1,
+  "pool_slab_m": 1.0
  },
  "signs": {
   "_doc": "The plates (render/props/street_signs.cpp, project/render/sign_sheet.gd). sheet_*, plate_cell_px: a layer of the pictures; the layers grow with what a city uses, 45 name plates or 32 plates each. sheet_round_s: the least time between two pictures read back from the viewport. A 0.5 m plate gets 256 px per metre, and the camera at its closest (view_half_min 0.8) shows 562 per metre on 900 lines. plates and drawings: by style. The round plates, the warnings and the name plates, and the picture of every plate (rims, words, the walker, the arrow), follow the Roadcraft 4.0 look: no norm was read for them. outline_points 0 is a rectangle; rotation the first corner, in turns. drawings: the picture of each type, in SignType order, in shares of the plate: rim a colour round the field, inner_share how far the field comes out, word_height and word_width the lettering's height and room, bar, slash and the walker in shares of its radius, arrow its tip, its base and its half height. word_bold: FontVariation.variation_embolden of the lettering.",

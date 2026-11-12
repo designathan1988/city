@@ -64,6 +64,13 @@ void LampLights::set_chunk(int64_t key, std::vector<Vector3> &&lamps) {
 
 void LampLights::drop_chunk(int64_t key) { chunks_.erase(key); }
 
+void LampLights::lenses_near(float x, float z, float r, PackedVector3Array &out) const {
+	const Vector3 at(x, 0, z);
+	for (const auto &kv : chunks_)
+		for (const Vector3 &lens : kv.second)
+			if (flat_distance(lens, at) <= r) out.push_back(lens);
+}
+
 // The lamps whose light can reach the view: one behind the eye still counts when its light lies before it.
 void LampLights::gather(const Vector3 &eye, const ViewCull &view) {
 	const Basis down(Vector3(1, 0, 0), real_t(STRAIGHT_DOWN));

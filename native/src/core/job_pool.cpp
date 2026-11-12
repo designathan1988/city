@@ -140,6 +140,7 @@ const char *job_lane_name(JobLane lane) {
 		case JobLane::RUINS: return "ruins";
 		case JobLane::WATER: return "water";
 		case JobLane::SIGNATURES: return "signatures";
+		case JobLane::LAMP_POOLS: return "lamp_pools";
 	}
 	return "";
 }

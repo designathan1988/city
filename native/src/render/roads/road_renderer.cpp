@@ -1,6 +1,6 @@
 // Road chunk meshes: every segment (by its midpoint) and node of a 256 m chunk meshed into one surface drawn with the
-// "road" material; the pieces are in road_segment.cpp, road_junction.cpp and road_markings.cpp. The material's night
-// pools repeat every lamp step of the simulation's street furniture (its only owner).
+// "road" material; the pieces are in road_segment.cpp, road_junction.cpp and road_markings.cpp. The light of the street lamps
+// at night is their own pools' (render/props/lamp_pools.h), laid on the road as on whatever else lies under them.
 #include "render/roads/road_renderer.h"
 
 #include "render/roads/road_cut.h"
@@ -23,8 +23,6 @@ bool RoadRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 		errors.push_back("render sem catálogo");
 		return false;
 	}
-	RenderingServer *rs = RenderingServer::get_singleton();
-	rs->material_set_param(surface_material_, "pool_step", ctx.catalog->furniture.lamps.span_m);
 	if (!look_.load(t, ctx.catalog->tune, errors)) return false;
 	look_.ramp_full = ctx.catalog->furniture.crossing.zebra_from_m; // a dropped kerb is the zebra's: its ramp lands where the zebra does
 	look_.ramp_flat = ctx.catalog->furniture.crossing.zebra_to_m;

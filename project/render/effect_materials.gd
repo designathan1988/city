@@ -5,7 +5,7 @@ class_name EffectMaterials
 extends RefCounted
 
 ## Kept as text so the orphan gate sees the shaders the native effects load by name from materials.json.
-const TONE_INVERTED := ["puffs", "building_wash"] ## what tone_inverse.gdshaderinc reads
+const TONE_INVERTED := ["puffs", "building_wash", "lamp_pool"] ## what tone_inverse.gdshaderinc reads
 const SHADERS := ["res://render/shaders/puffs.gdshader", "res://render/shaders/debris.gdshader", "res://render/shaders/marks.gdshader",
 	"res://render/shaders/building_card_blend.gdshader"]
 

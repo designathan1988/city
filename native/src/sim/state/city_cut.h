@@ -38,7 +38,8 @@ struct CutBox {
 enum CutParts : unsigned { CUT_ROADS = 1, CUT_BUILDINGS = 2, CUT_GROUND_BASE = 4, CUT_WATER = 8, CUT_STREET = 16, CUT_NATURE = 32, CUT_GATES = 64 };
 
 struct CutFacts {
-	std::unordered_map<int, std::vector<FurnitureSpot>> furniture; // by segment: its pieces of every kind
+	std::unordered_map<int, std::vector<FurnitureSpot>> furniture; // by segment: its pieces of the kinds the cut keeps
+	uint32_t kinds_kept = FURNITURE_ALL; // those kinds: every one (keep_furniture), or the lamps alone (keep_lamps)
 	std::unordered_map<int, std::vector<SignStand>> signs; // by node: the plates its rules put up
 	std::unordered_set<int> signalled; // of those nodes, the ones whose junction runs a signal
 	std::unordered_map<int, std::array<std::vector<ArcSpan>, 2>> gates; // by segment: the car gates facing each side, no margin
@@ -64,9 +65,14 @@ inline CityView::CityView(const CityCut &cut) :
 
 // The cut of `box` with `parts`, made by a thread that holds the map.
 CityCut cut_held(const CityState &s, const CutBox &box, unsigned parts);
+// `box` grown to hold every pole a span reaches from the player's poles standing in [x0, x1) x [z0, z1) (a pole's arms turn by its
+// spans and a span hangs from both its ends): the one reach of the street works a job's box takes, read under the map held.
+void take_pole_reach(CutBox &box, const StreetWorks &street, float x0, float z0, float x1, float z1);
 // Facts taken into a cut while the map is held: segment `sid`'s furniture; node `node`'s control and plates; the car gates facing
-// segment `sid`.
+// segment `sid`. keep_lamps: its lamps alone (LIT_FURNITURE), placed anew and kept nowhere else (a light reads the lamps of streets as
+// far as the eye sees: their every piece kept would be the whole map's); a cut keeps one or the other.
 void keep_furniture(CityCut &cut, const CityState &live, int sid);
+void keep_lamps(CityCut &cut, const CityState &live, int sid);
 void keep_node(CityCut &cut, const CityState &live, int node);
 void keep_gates(CityCut &cut, const CityState &live, int sid);
 

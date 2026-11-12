@@ -55,6 +55,16 @@ vec3 source_linear(vec3 c) {
 #endif
 }
 
+// A colour uniform authored as the colour the screen shows (not a source_color: tone_inverse.gdshaderinc display_to_radiance takes
+// it), encoded on both renderers: Forward+ linearised it, so it is encoded back; Compatibility handed it over as it is.
+vec3 source_display(vec3 c) {
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	return c;
+#else
+	return linear_to_srgb(c);
+#endif
+}
+
 // A linear colour as ALBEDO or EMISSION (and as a sky's COLOR, which Compatibility decodes alike: drivers/gles3/shaders/
 // sky.glsl).
 vec3 linear_out(vec3 c) {

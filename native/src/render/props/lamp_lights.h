@@ -1,12 +1,13 @@
 // The street lamps' real light: a spot under the lens of the lamps nearest the eye, as many as the graphics tier pays for, so
 // what is lit shows its own albedo and whatever stands in the street is lit too. Past them (`lamp_lit`, a global of the shaders)
-// the road draws the lamps' pools itself (render/shaders/road_body.gdshaderinc), and the two fade into each other.
+// each lamp's own pool lights the ground (render/props/lamp_pools.h), and the two fade into each other.
 #pragma once
 
 #include "render/light_pool.h"
 #include "render/view_cull.h"
 #include "sim/catalog/catalog.h"
 
+#include <godot_cpp/variant/packed_vector3_array.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
@@ -29,6 +30,8 @@ public:
 	int lit() const { return pool_.lit(); } // lights on now (render_cost probe)
 	const LightLook &look() const { return pool_.look(); } // their lens and how their shadows are read (render_cost probe)
 	godot::Vector2 handed_over() const { return published_; } // `lamp_lit`, for the tests: the engine reads a global back only in the editor
+	// The lenses the props handed it within `r` of (x, z) on the ground, appended (the tests' census of the pools, lamp_pools.h).
+	void lenses_near(float x, float z, float r, godot::PackedVector3Array &out) const;
 
 private:
 	void gather(const godot::Vector3 &eye, const ViewCull &view);

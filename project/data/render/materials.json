@@ -1,5 +1,5 @@
 {
- "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h); each params key is a uniform of its shader or of the files it includes, set by name (render/city_world.gd materials()), which the gates check (gate_materials.py). road pool_color, pool_gain, pool_along_m: the street lamps' light on the road (road_body.gdshaderinc): its colour, its strength and its reach along the road. Colours as '#rrggbb', textures as res:// paths. prop lens_roughness and lens_ior: the signal lens, polished polycarbonate (Physically Based database, physicallybased.info, 'Plastic (PC)': roughness 0, index of refraction 1.5848 from refractiveindex.info). Vegetation wind (vegetation.gdshaderinc): wind_speed_ms 3 = Beaufort 2, light breeze 1.6-3.3 m/s (WMO); sway_per_ms2 = top bend per (m/s)^2 from Peltola et al. 1993 (crown-centre bending under 5 cm on a 13.5 m pine at 8 m/s: 0.0037 of the height, times (1/0.6)^2 to the top, over 64); gust_m = 22 x 10 m (Kaimal et al. 1972 spectral peak n z / U = 1/22); turbulence = 1 / ln(10 m / 0.05 m) (EN 1991-1-4 eq. 4.7, terrain category II); sway_hz = natural frequency of leafy trees of 8-15 m, 0.2-0.3 Hz (Jackson et al. 2019). wind_dir_x and wind_dir_z: a unit vector; the map has no geographic north, so no climate record applies to the way the wind blows. vegetation_cards cover_per_mip 0.25: alpha rescaled by mip level so a card keeps its coverage far away (Golus 2021, Anti-aliased Alpha Test: The Esoteric Alpha To Coverage). vegetation roughness 0.85: modelling choice for matte leaves, no published value.",
+ "_doc": "Materials the native renderers draw with, by name (native/src/render/render_context.h); each params key is a uniform of its shader or of the files it includes, set by name (render/city_world.gd materials()), which the gates check (gate_materials.py). Colours as '#rrggbb', textures as res:// paths. prop lens_roughness and lens_ior: the signal lens, polished polycarbonate (Physically Based database, physicallybased.info, 'Plastic (PC)': roughness 0, index of refraction 1.5848 from refractiveindex.info). Vegetation wind (vegetation.gdshaderinc): wind_speed_ms 3 = Beaufort 2, light breeze 1.6-3.3 m/s (WMO); sway_per_ms2 = top bend per (m/s)^2 from Peltola et al. 1993 (crown-centre bending under 5 cm on a 13.5 m pine at 8 m/s: 0.0037 of the height, times (1/0.6)^2 to the top, over 64); gust_m = 22 x 10 m (Kaimal et al. 1972 spectral peak n z / U = 1/22); turbulence = 1 / ln(10 m / 0.05 m) (EN 1991-1-4 eq. 4.7, terrain category II); sway_hz = natural frequency of leafy trees of 8-15 m, 0.2-0.3 Hz (Jackson et al. 2019). wind_dir_x and wind_dir_z: a unit vector; the map has no geographic north, so no climate record applies to the way the wind blows. vegetation_cards cover_per_mip 0.25: alpha rescaled by mip level so a card keeps its coverage far away (Golus 2021, Anti-aliased Alpha Test: The Esoteric Alpha To Coverage). vegetation roughness 0.85: modelling choice for matte leaves, no published value.",
  "verge": { "shader": "res://render/shaders/verge.gdshader", "params": {} },
  "road": {
   "fade_shader": "res://render/shaders/road_far.gdshader",
@@ -34,11 +34,7 @@
    "detail_far_m": 0.064,
    "paver_w": 0.2,
    "paver_h": 0.1,
-   "cobble_per_m": 4.2,
-   "pool_color": "#ffe2c4",
-   "pool_gain": 0.9,
-   "plate_glow": 0.3,
-   "pool_along_m": 11.5
+   "cobble_per_m": 4.2
   }
  },
  "building": {
@@ -310,5 +306,10 @@
  "lamp_glow": {
   "shader": "res://render/shaders/lamp_glow.gdshader",
   "params": {"glow_color": "#ffe2c4", "beam_gain": 0.4, "beam_softness": 1.6, "beam_fade_near_m": 60, "beam_fade_far_m": 140, "haze": 0}
+ },
+ "lamp_pool": {
+  "_doc": "Each lit lamp's pool of light on whatever lies under it (lamp_pool.gdshader, render/props/lamp_pools.h), added as the Roadcraft 4.0 adds its pools (scenery.ts poolMaterial): the street lights' white LED, some 4500 K, as the screen shows it (display_colour, its STREET_LED 0xffe2c4), at opacity 0.32 of it at full night, overlapping pools adding up.",
+  "shader": "res://render/shaders/lamp_pool.gdshader",
+  "params": {"display_colour": "#ffe2c4", "opacity": 0.32}
  }
 }

@@ -19,8 +19,6 @@ namespace {
 constexpr int CHUNKS_PER_SUPER = int(SUPERCHUNK / CHUNK); // per axis
 constexpr float MID = 0.5f;
 
-int64_t super_of(int64_t chunk) { return chunk_of((float(key_x(chunk)) + MID) * CHUNK, (float(key_y(chunk)) + MID) * CHUNK, SUPERCHUNK); }
-
 int bit_of(int64_t chunk, int64_t super) {
 	return (key_y(chunk) - key_y(super) * CHUNKS_PER_SUPER) * CHUNKS_PER_SUPER + (key_x(chunk) - key_x(super) * CHUNKS_PER_SUPER);
 }

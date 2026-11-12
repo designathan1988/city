@@ -89,14 +89,7 @@ struct Ctx {
 	const RoadEmit &e;
 	const std::vector<Sample> &sm;
 	const KerbDrops &drops;
-	LampRow lamp;
 	size_t k0 = 0, k1 = 0; // the stretch drawn: samples k0 to k1
-	Vector2 pool(float u, float at) const {
-		if (!lamp.any) return Vector2(POOL_NONE, 0);
-		float du, dv;
-		lamp.pool(u, at, du, dv);
-		return Vector2(du, dv);
-	}
 	Vector3 at_u(size_t k, float u, float h) const { return sm[k].f.c + sm[k].f.left * u + Vector3(0, h, 0); }
 };
 
@@ -112,25 +105,22 @@ void tops(const Ctx &c, const Piece &pc) {
 		heights(c.e.L, c.drops, pc, c.sm[k].at, a0, a1);
 		heights(c.e.L, c.drops, pc, c.sm[k + 1].at, b0, b1);
 		const Vector3 p[4] = { c.at_u(k, pc.u0, a0), c.at_u(k, pc.u1, a1), c.at_u(k + 1, pc.u1, b1), c.at_u(k + 1, pc.u0, b0) };
-		float va = c.sm[k].at, vb = c.sm[k + 1].at, ta = c.sm[k].tex, tb = c.sm[k + 1].tex;
+		const float ta = c.sm[k].tex, tb = c.sm[k + 1].tex;
 		const Vector2 uv[4] = { Vector2(pc.u0, ta), Vector2(pc.u1, ta), Vector2(pc.u1, tb), Vector2(pc.u0, tb) };
-		const Vector2 uv2[4] = { c.pool(pc.u0, va), c.pool(pc.u1, va), c.pool(pc.u1, vb), c.pool(pc.u0, vb) };
 		const Color plain = road_color(pc.col, pc.mat);
 		const bool wears = pc.mat == RoadMat::LANE || pc.mat == RoadMat::FOOTWAY;
 		const Color at_u0 = wears ? wear_at(pc, pc.u0) : plain, at_u1 = wears ? wear_at(pc, pc.u1) : plain;
 		const Color cols[4] = { at_u0, at_u1, at_u1, at_u0 };
-		emit_quad(c.e.mb, p, uv, uv2, cols, Vector3(0, 1, 0));
+		emit_quad(c.e.mb, p, uv, cols, Vector3(0, 1, 0));
 	}
 }
 
 // Vertical quad at u between heights lo/hi at samples k and k+1, facing `side` (+1 = +u).
 void wall(const Ctx &c, size_t k, float u, float lo0, float hi0, float lo1, float hi1, float side, const Color &col) {
 	const Vector3 p[4] = { c.at_u(k, u, lo0), c.at_u(k + 1, u, lo1), c.at_u(k + 1, u, hi1), c.at_u(k, u, hi0) };
-	float va = c.sm[k].at, vb = c.sm[k + 1].at;
 	const float ta = c.sm[k].tex, tb = c.sm[k + 1].tex;
 	const Vector2 uv[4] = { Vector2(ta, lo0), Vector2(tb, lo1), Vector2(tb, hi1), Vector2(ta, hi0) }; // a face: the run along it first
-	const Vector2 uv2[4] = { c.pool(u, va), c.pool(u, vb), c.pool(u, vb), c.pool(u, va) };
-	emit_quad(c.e.mb, p, uv, uv2, road_color(col, RoadMat::SKIRT), c.sm[k].f.left * side);
+	emit_quad(c.e.mb, p, uv, road_color(col, RoadMat::SKIRT), c.sm[k].f.left * side);
 }
 
 void steps(const Ctx &c, const Piece &a, const Piece &b) {
@@ -169,8 +159,7 @@ void end_faces(const Ctx &c, const std::vector<Piece> &ps, size_t end, float alo
 		if ((h0 < L.face_eps && h1 < L.face_eps) || (island_only && !pc.island)) continue;
 		const Vector3 p[4] = { c.at_u(end, pc.u0, 0), c.at_u(end, pc.u1, 0), c.at_u(end, pc.u1, h1), c.at_u(end, pc.u0, h0) };
 		const Vector2 uv[4] = { Vector2(pc.u0, 0), Vector2(pc.u1, 0), Vector2(pc.u1, h1), Vector2(pc.u0, h0) };
-		const Vector2 uv2[4] = { c.pool(pc.u0, s.at), c.pool(pc.u1, s.at), c.pool(pc.u1, s.at), c.pool(pc.u0, s.at) };
-		emit_quad(c.e.mb, p, uv, uv2, road_color(pc.face, RoadMat::SKIRT), s.f.fwd * along);
+		emit_quad(c.e.mb, p, uv, road_color(pc.face, RoadMat::SKIRT), s.f.fwd * along);
 	}
 }
 
@@ -222,7 +211,7 @@ void stretches(const RoadEmit &e, int sid, const SurfaceLayout &lay, const std::
 		for (int s : { STREET_RIGHT, STREET_LEFT }) h.walk[s] = mid > lay.walk_from[s] && mid < lay.walk_to[s];
 		return h;
 	};
-	Ctx c{ e, sm, lay.drops, lamp_row(e.s.roads, sid) };
+	Ctx c{ e, sm, lay.drops };
 	for (size_t i = 0; i < n; i++) {
 		c.k0 = cuts[i];
 		c.k1 = cuts[i + 1];

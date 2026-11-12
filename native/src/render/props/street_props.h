@@ -27,13 +27,31 @@ struct WireLook {
 	float sag = 0, max_sag = 0, min_span = 0, max_span = 0, near_end = 0, far_end = 0;
 };
 
-// How the furniture looks beyond its meshes (data/render/streets.json "wires" and "lamp_light").
+// How the furniture looks beyond its meshes (data/render/streets.json "wires" and "lamp_light"); pool_slab: how far over and under
+// the ground a lamp's pool lights what stands there (render/props/lamp_pools.h).
 struct FurnitureLook {
 	WireLook wire;
 	bool beams = false;
-	float beam_radius = 0, lamp_height = 0, lamp_reach = 0, column_height = 0, column_reach = 0;
+	float beam_radius = 0, lamp_height = 0, lamp_reach = 0, column_height = 0, column_reach = 0, pool_slab = 0;
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 };
+
+// What the light of a lamp asks of it: how far out its lens hangs and how tall it stands, on a utility pole or a lighting column.
+struct ArmReach {
+	float reach = 0, height = 0;
+};
+ArmReach arm_reach(const FurnitureLook &F, bool column);
+// A lamp's lens in the world: from its foot, `lens.reach` out `toward` the road and `lens.height` up.
+godot::Vector3 lens_at(const godot::Vector3 &foot, const godot::Vector3 &toward, const ArmReach &lens);
+// A piece's world point (its footway's top, or the ground) and, given `basis`, its facing (+z toward the road or the traffic).
+godot::Vector3 spot_world(const CityView &s, const StreetLook &L, const FurnitureSpot &p, godot::Basis *basis);
+// A pole the player put up: its foot on the ground, the way it faces (toward the kerb of the street it stands by, else along its
+// arms) and that street (-1: none).
+struct PoleFoot {
+	godot::Vector3 foot, toward;
+	int seg = -1;
+};
+PoleFoot pole_foot(const CityView &s, const StreetLook &L, int id);
 
 // A signal post: the approach it shows (directed segment into the junction) and its place (PropKind::SIGNAL).
 struct SignalHead {

@@ -1,7 +1,7 @@
-// Where a piece of street furniture stands, see street_furniture.h: a piece's spot and footprint, a plate's post, the
-// hydrants' coverage squares and the stretch of a road open to the sky. Shared by the layout (street_furniture.cpp, which owns
-// the sidewalk's clearances and the kerbside places), the posts (street_furniture_posts.cpp) and the player's pieces
-// (sim/street); every distance comes from data/catalog/street_furniture.json.
+// Where a piece of street furniture stands, see street_furniture.h: a piece's spot and footprint, its place in from the kerb, a
+// plate's post, the hydrants' coverage squares and the stretch of a road open to the sky. Shared by the layout
+// (street_furniture.cpp, which owns the walkers' way past the pieces), the posts (street_furniture_posts.cpp) and the player's
+// pieces (sim/street); every distance comes from data/catalog/street_furniture.json.
 #include "sim/roads/street_furniture_internal.h"
 
 #include <cmath>
@@ -41,6 +41,30 @@ FurnitureSpot furniture::spot(const RoadNetwork &net, FurnitureKind k, int sid, 
 bool sidewalk_on(const Profile &p, int side) { return !p.edges.empty() && walk_on(p, side); }
 
 float sidewalk_u(const Profile &p, int side, float from_kerb) { return kerb_in(p, side, from_kerb); }
+
+float kerbside_reach(const RoadNetwork &net, FurnitureKind k) {
+	return defs(net).sidewalk.kerb_clear_m + defs(net).footprint[int(k)].z_m * 0.5f;
+}
+
+bool kerbside_place(const RoadNetwork &net, int seg, const Profile &p, int side, FurnitureKind k, float &u) {
+	const StreetFurnitureDef &d = defs(net);
+	if (!sidewalk_on(p, side)) return false;
+	if (k == FurnitureKind::DRAIN) {
+		u = kerb_in(p, side, 0);
+		return true;
+	}
+	if (k == FurnitureKind::TREE) {
+		u = kerb_in(p, side, d.trees.kerb_clear_m + d.trees.pit_m * 0.5f);
+		return fits_walk(net, p, side, d.trees.kerb_clear_m + d.trees.pit_m);
+	}
+	if (k == FurnitureKind::SIGN) {
+		u = kerb_in(p, side, plate_kerb(net, seg));
+		return true;
+	}
+	const float across = d.footprint[int(k)].z_m;
+	u = kerb_in(p, side, kerbside_reach(net, k));
+	return k == FurnitureKind::COLUMN || fits_walk(net, p, side, d.sidewalk.kerb_clear_m + across);
+}
 
 float plate_kerb(const RoadNetwork &net, int seg) {
 	const RoadSegment &g = net.segs[size_t(seg)];

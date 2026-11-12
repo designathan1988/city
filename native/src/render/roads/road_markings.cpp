@@ -1,7 +1,7 @@
 // Painted markings as thin lifted geometry: centre and lane lines with their dashes, zebra crossings and stop lines at
 // crossing mouths: sized as data/render/streets.json markings says (CONTRAN's horizontal signage manual), where the
-// simulation's crosswalk lies (catalog street_furniture.json "crossing"). Material PAINT, lit by the same lamp pools as
-// the road.
+// simulation's crosswalk lies (catalog street_furniture.json "crossing"). Material PAINT; at night the lamps' pools light it with
+// the road under it (render/props/lamp_pools.h).
 #include "render/roads/road_mesh.h"
 #include "render/roads/road_section.h"
 
@@ -19,14 +19,7 @@ namespace {
 struct Painter {
 	const RoadEmit &e;
 	int sid;
-	LampRow lamp;
 
-	Vector2 pool(float u, float at) const {
-		if (!lamp.any) return Vector2(POOL_NONE, 0);
-		float du, dv;
-		lamp.pool(u, at, du, dv);
-		return Vector2(du, dv);
-	}
 	// A rectangle u0..u1 across, va..vb metres along from node a, in pieces of at most one sample step.
 	void rect(float u0, float u1, double va, double vb, const Color &c) const {
 		bool straight = e.s.roads.segs[sid].q.is_straight(STRAIGHT_TOL);
@@ -38,8 +31,7 @@ struct Painter {
 			Vector3 lift(0, e.L.paint_lift, 0);
 			const Vector3 p[4] = { fa.c + fa.left * u0 + lift, fa.c + fa.left * u1 + lift, fb.c + fb.left * u1 + lift, fb.c + fb.left * u0 + lift };
 			const Vector2 uv[4] = { Vector2(u0, float(a)), Vector2(u1, float(a)), Vector2(u1, float(b)), Vector2(u0, float(b)) };
-			const Vector2 uv2[4] = { pool(u0, float(a)), pool(u1, float(a)), pool(u1, float(b)), pool(u0, float(b)) };
-			emit_quad(e.mb, p, uv, uv2, col, Vector3(0, 1, 0));
+			emit_quad(e.mb, p, uv, col, Vector3(0, 1, 0));
 		}
 	}
 };
@@ -145,7 +137,7 @@ void emit_markings(const RoadEmit &e, int sid) {
 	if (p.rail) return;
 	double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
 	bool ca = !p.ring && crossing_node(e.s, g.a), cb = !p.ring && crossing_node(e.s, g.b);
-	Painter pt{ e, sid, lamp_row(e.s.roads, sid) };
+	Painter pt{ e, sid };
 	const double clear = e.s.catalog.furniture.crossing.stop_to_m; // the lines end at the stop line
 	crossings(pt, p, v0, v1, ca, cb, crosswalk_at(e.s, g.a, sid), crosswalk_at(e.s, g.b, sid));
 	if (e.far) return; // the lane lines are filtered by the road's shader there

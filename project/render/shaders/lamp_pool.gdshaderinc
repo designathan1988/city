@@ -1,5 +1,5 @@
-// How far past the lamps with a light of their own a point of the road is, 0 .. 1 (`lit`: from where they start giving way to
-// where they end, render/props/lamp_lights.h): beyond them the road draws the pools itself (road.gdshader).
+// How far past the lamps with a light of their own a point of the ground is, 0 .. 1 (`lit`: from where they start giving way to
+// where they end, render/props/lamp_lights.h): beyond them each lamp's own pool lights it (lamp_pool.gdshader).
 float pool_handed_over(float eye_m, vec2 lit) {
 	return clamp((eye_m - lit.x) / max(lit.y - lit.x, 0.001), 0.0, 1.0);
 }

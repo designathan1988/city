@@ -1,4 +1,4 @@
-// Chunks streamed around the camera (roads, furniture, buildings).
+// Chunks streamed around the camera (roads, furniture, buildings, the lamps' pools by superchunk).
 #pragma once
 
 #include "core/grid.h"
@@ -17,10 +17,11 @@ namespace city {
 // rebuilt when marked dirty and freed beyond reach x drop_k, so memory follows the view, not the map size. The candidates
 // (known chunks not built inside the window round the camera's cell, and built chunks marked dirty) are kept as they change:
 // a mark, a build, a drop, the camera entering another cell or the reach changing. A frame sorts only them, and looks for
-// chunks to free only when the camera or the reach moved.
+// chunks to free only when the camera or the reach moved. `cell`: the side of its keys' cells (core/grid.h CHUNK, SUPERCHUNK).
 struct ChunkStream {
 	std::unordered_set<int64_t> known, built, dirty;
 	int pending = 0;
+	float cell = CHUNK;
 
 	void clear() {
 		known.clear();
@@ -48,9 +49,9 @@ struct ChunkStream {
 	}
 	// Horizontal distance: the camera's height must not push a chunk out of its reach (it hid the whole city when
 	// the eye rose above render.road_end_m on a zoomed-out view).
-	static float distance(int64_t k, float cx, float cz) {
+	float distance(int64_t k, float cx, float cz) const {
 		constexpr float MID = 0.5f;
-		float dx = (float(key_x(k)) + MID) * CHUNK - cx, dz = (float(key_y(k)) + MID) * CHUNK - cz;
+		float dx = (float(key_x(k)) + MID) * cell - cx, dz = (float(key_y(k)) + MID) * cell - cz;
 		return std::sqrt(dx * dx + dz * dz);
 	}
 	// The frame's build units of this stream (rank 0 a chunk not built, 1 a dirty one rebuilt; jobs(key) credits each), the chunks past reach
@@ -76,7 +77,7 @@ struct ChunkStream {
 				if (in_window(k) && known.count(k)) cand_.insert(k);
 			}
 		}
-		const int r = int(std::ceil(reach / CHUNK)), ix = int(std::floor(cx / CHUNK)), iz = int(std::floor(cz / CHUNK));
+		const int r = int(std::ceil(reach / cell)), ix = int(std::floor(cx / cell)), iz = int(std::floor(cz / cell));
 		if (!window_ok_ || r != r_ || ix != ix_ || iz != iz_) {
 			r_ = r;
 			ix_ = ix;

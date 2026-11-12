@@ -12,8 +12,6 @@ namespace city {
 
 namespace {
 const Vector3 UP(0, 1, 0);
-const Vector2 NO_POOL(POOL_NONE, 0);
-const Vector2 NO_POOLS[4] = { NO_POOL, NO_POOL, NO_POOL, NO_POOL };
 
 constexpr float HALF = 0.5f;
 
@@ -39,7 +37,7 @@ void face(const RoadEmit &e, const Vector3 &a, const Vector3 &b, float lo, float
 	if (hi <= lo) return;
 	const Vector3 p[4] = { a + Vector3(0, lo, 0), b + Vector3(0, lo, 0), b + Vector3(0, hi, 0), a + Vector3(0, hi, 0) };
 	const Vector2 uv[4] = { Vector2(run_a, lo), Vector2(run_b, lo), Vector2(run_b, hi), Vector2(run_a, hi) };
-	emit_quad(e.mb, p, uv, NO_POOLS, road_color(col, RoadMat::SKIRT), out);
+	emit_quad(e.mb, p, uv, road_color(col, RoadMat::SKIRT), out);
 }
 } // namespace
 
@@ -58,7 +56,7 @@ void kerb_band(const RoadEmit &e, const std::vector<Vector3> &in, const std::vec
 			const Vector3 p[4] = { a + up, b + up, sb + up, sa + up };
 			const float wa = (sa - a).length(), wb = (sb - b).length();
 			const Vector2 uv[4] = { Vector2(0, run), Vector2(0, run + step), Vector2(wb, run + step), Vector2(wa, run) };
-			emit_quad(e.mb, p, uv, NO_POOLS, road_color(L.curb, RoadMat::KERB), UP);
+			emit_quad(e.mb, p, uv, road_color(L.curb, RoadMat::KERB), UP);
 			face(e, sa, sb, walk, top, run, run + step, L.curb, -towards_road);
 		}
 		run += step;
@@ -76,7 +74,7 @@ void footway_patch(const RoadEmit &e, const std::vector<Vector3> &ring, const st
 	for (const Vector3 &p : ring) {
 		const V2 at = plan(p);
 		const Color worn = wear_color(distance_to(at, inner), distance_to(at, back), 0, RoadMat::FOOTWAY, 0);
-		ids.push_back(e.mb.add(p, UP, worn, Vector2(p.x, p.z + p.y), NO_POOL));
+		ids.push_back(e.mb.add(p, UP, worn, Vector2(p.x, p.z + p.y), Vector2()));
 	}
 	const std::vector<int> tris = ring_triangles(x, z);
 	for (size_t k = 0; k + 2 < tris.size(); k += 3) e.mb.tri(ids[size_t(tris[k])], ids[size_t(tris[k + 1])], ids[size_t(tris[k + 2])], UP);
@@ -94,7 +92,7 @@ void footway_skirt(const RoadEmit &e, const std::vector<Vector3> &back, const st
 		const float top = std::min(a.y, b.y), drop = top - e.L.skirt;
 		const Vector3 p[4] = { Vector3(a.x, a.y - e.L.skirt, a.z), Vector3(b.x, b.y - e.L.skirt, b.z), b, a };
 		const Vector2 uv[4] = { Vector2(run, drop), Vector2(run + step, drop), Vector2(run + step, top), Vector2(run, top) };
-		emit_quad(e.mb, p, uv, NO_POOLS, road_color(walk, RoadMat::SKIRT), out.normalized());
+		emit_quad(e.mb, p, uv, road_color(walk, RoadMat::SKIRT), out.normalized());
 		run += step;
 	}
 }

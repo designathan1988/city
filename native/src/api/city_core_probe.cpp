@@ -188,7 +188,10 @@ void graph_probe(const TrafficState &t, Dictionary &d) {
 // of a lot's gate. Every segment is placed again, so the tests ask for it only with a sample.
 void furniture_probe(const CityState &s, Dictionary &d) {
 	d["street_furniture"] = furniture_counts(s);
-	d["furniture_in_gates"] = traffic::furniture_in_gates(s, false); // pieces standing in front of a lot's gate
+	traffic::GateBlock block;
+	d["furniture_in_gates"] = traffic::furniture_in_gates(s, false, &block); // pieces standing in front of a lot's gate
+	const FurnitureSpot &p = block.piece; // the first: segment, kind, row, node, corner, side, arc, across; its gate's arcs
+	d["furniture_in_gates_first"] = Array::make(p.seg, int(p.kind), p.row, p.node, p.corner, p.side, p.v, p.u, block.gate.first, block.gate.second);
 	d["signals_in_gates"] = traffic::furniture_in_gates(s, true); // ... of them signal posts, which the signals' rule places
 	GateOnJunction first;
 	d["gates_on_junctions"] = gates_on_junctions(s.roads, s.buildings, s.buildings.designs, &first); // lots' gates opening onto a junction's kerb

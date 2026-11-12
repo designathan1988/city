@@ -25,6 +25,11 @@ inline int key_y(int64_t k) { return int(int32_t(uint32_t(k & 0xFFFFFFFF))); }
 inline int64_t chunk_of(float x, float z, float size = CHUNK) {
 	return cell_key(int(std::floor(x / size)), int(std::floor(z / size)));
 }
+// The superchunk holding chunk `chunk`.
+inline int64_t super_of(int64_t chunk) {
+	constexpr float MID = 0.5f; // a chunk's middle, in chunks
+	return chunk_of((float(key_x(chunk)) + MID) * CHUNK, (float(key_y(chunk)) + MID) * CHUNK, SUPERCHUNK);
+}
 
 // Calls fn(key) for every CHUNK the box touches.
 template <typename F>

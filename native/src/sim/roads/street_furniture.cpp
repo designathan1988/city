@@ -6,6 +6,8 @@
 // in as well as the furniture (NBR 9050; Decreto SP 59.671/2020), so a piece is moved along past the gates of its side.
 #include "sim/roads/street_furniture_internal.h"
 
+#include "sim/roads/street_lines.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -14,8 +16,10 @@ namespace city {
 using namespace furniture;
 
 namespace {
-constexpr int FURN_FULL = 0, FURN_NONE = 2; // RoadSegment furniture level (SEG_FURNITURE_MASK)
 constexpr int BASE_RESIDENTIAL = 1, BASE_INDUSTRIAL = 3; // ZoneDef::base
+// What is placed after the lamps, keeping off them and off each other; the lamps read none of it.
+constexpr uint32_t AFTER_LAMPS = furniture_bit(FurnitureKind::HYDRANT) | furniture_bit(FurnitureKind::BIN) | furniture_bit(FurnitureKind::BENCH) |
+		furniture_bit(FurnitureKind::TREE);
 constexpr int MAX_BESIDE = 16; // pieces a passage check looks at across one cross-section
 constexpr int SLOT_TRIES = 64; // a piece is moved along past at most this many others before it gives up
 // Two places closer than what they need by under this are apart: a piece moved to just touch another must not find it
@@ -24,11 +28,6 @@ constexpr double TOUCH_EPS_M = 1e-3;
 
 // The sidewalk of `sid` at the right of its way out of node `n`: the corner it faces (one per corner of the node).
 int corner_side(const RoadSegment &g, int n) { return g.a == n ? 0 : 1; }
-
-// Leaves the free width (NBR 9050) beside a piece reaching `depth` from the kerb on `side`.
-bool fits_walk(const RoadNetwork &net, const Profile &p, int side, float depth) {
-	return walk_on(p, side) && depth <= walk_width(p, side) - defs(net).sidewalk.free_width_m;
-}
 
 // A kerbside piece of kind `k` on `side`, its face kerb_clear_m from the kerb's face, facing the road.
 FurnitureSpot kerbside(const RoadNetwork &net, FurnitureKind k, int sid, const Profile &p, int side, double v) {
@@ -95,12 +94,13 @@ struct Placer {
 		}
 		return false;
 	}
-	// A pole the rule stations (a lamp, a column): moved past the gates of its side, ahead or else back, kept within the mouths.
-	void station(const FurnitureSpot &s) {
+	// A pole the rule stations (a lamp, a column): moved past the gates of its side, ahead or else back, its middle kept within
+	// [lo, hi] (a row's: past both mouths' crosswalks and signal posts).
+	void station(const FurnitureSpot &s, double lo, double hi) {
 		for (const int dir : { 1, -1 }) {
 			FurnitureSpot q = s;
 			for (int tries = 0; tries < SLOT_TRIES && off_gates(q, dir); tries++) {}
-			if (q.v - q.half_v < v0 || q.v + q.half_v > v1) continue;
+			if (q.v < lo || q.v > hi) continue;
 			all.push_back(q);
 			return;
 		}
@@ -142,26 +142,29 @@ void lamps(Placer &c) {
 		FurnitureSpot light = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, row.origin, row.pole_u, toward_road(row.side), 0.f);
 		light.row = 1;
 		light.station = 0;
-		c.station(light);
-		if (row.twin) c.station(column(c, row, row.origin, 0));
+		const double lo = c.v0 + light.half_v, hi = c.v1 - light.half_v; // a block too short for a line: within its mouths
+		c.station(light, lo, hi);
+		if (row.twin) c.station(column(c, row, row.origin, 0), lo, hi);
 		return;
 	}
 	const size_t first = c.all.size();
 	for (int k = 0; k < row.stations; k++) {
-		const double v = row.origin + row.spacing * k;
+		if ((k == 0 && !row.own_first) || (k + 1 == row.stations && !row.own_last)) continue; // a corner's or a joint's pole
+		const double v = std::min(std::max(row.origin + row.spacing * k, row.first_v), row.last_v); // past both mouths' crosswalks
 		FurnitureSpot main_pole = spot(c.net, FurnitureKind::LAMP, c.sid, c.p, v, row.pole_u, toward_road(row.side), 0.f);
 		main_pole.station = k;
 		main_pole.lit = !row.twin || k % int(d.pole_lit_every) == 0;
-		c.station(main_pole);
+		c.station(main_pole, row.first_v, row.last_v);
 		const bool one = row.stations == 1; // a short block's only station has the other face's lamp beside it
 		if (!row.twin || d.column_every_m > 0.f || (!one && k + 1 == row.stations)) continue;
 		const double between = one ? v : v + row.spacing * d.twin_stagger;
-		c.station(column(c, row, between, k));
+		c.station(column(c, row, between, k), row.first_v, row.last_v);
 	}
 	string_row(c, first);
 	if (!row.twin || row.stations == 0 || d.column_every_m <= 0.f) return;
 	int k = 0;
-	for (double v = c.v0 + d.column_first_m; v <= c.v1 - defs(c.net).furniture.row_end_m; v += d.column_every_m) c.station(column(c, row, v, k++));
+	for (double v = c.v0 + d.column_first_m; v <= c.v1 - defs(c.net).furniture.row_end_m; v += d.column_every_m)
+		c.station(column(c, row, v, k++), row.first_v, row.last_v);
 }
 
 // The arm of node `n` a hydrant may stand on: the lowest-numbered one with room at the corner it faces, or -1.
@@ -171,7 +174,7 @@ int hydrant_arm(const RoadNetwork &net, int n) {
 	for (int sid : net.nodes[size_t(n)].segs) {
 		const RoadSegment &g = net.segs[size_t(sid)];
 		const Profile &p = net.profile_of(sid);
-		if (!g.alive || g.a == g.b || p.edges.empty() || ((g.flags & SEG_FURNITURE_MASK) >> SEG_FURNITURE_SHIFT) == FURN_NONE) continue;
+		if (!g.alive || g.a == g.b || p.edges.empty() || furniture_level(g) == FURNITURE_LEVEL_NONE) continue;
 		if (fits_walk(net, p, corner_side(g, n), depth) && (best < 0 || sid < best)) best = sid;
 	}
 	return best;
@@ -284,30 +287,6 @@ void trees(Placer &c) {
 
 } // namespace
 
-float kerbside_reach(const RoadNetwork &net, FurnitureKind k) {
-	return defs(net).sidewalk.kerb_clear_m + defs(net).footprint[int(k)].z_m * 0.5f;
-}
-
-bool kerbside_place(const RoadNetwork &net, int seg, const Profile &p, int side, FurnitureKind k, float &u) {
-	const StreetFurnitureDef &d = defs(net);
-	if (!sidewalk_on(p, side)) return false;
-	if (k == FurnitureKind::DRAIN) {
-		u = kerb_in(p, side, 0);
-		return true;
-	}
-	if (k == FurnitureKind::TREE) {
-		u = kerb_in(p, side, d.trees.kerb_clear_m + d.trees.pit_m * 0.5f);
-		return fits_walk(net, p, side, d.trees.kerb_clear_m + d.trees.pit_m);
-	}
-	if (k == FurnitureKind::SIGN) {
-		u = kerb_in(p, side, plate_kerb(net, seg));
-		return true;
-	}
-	const float across = d.footprint[int(k)].z_m;
-	u = kerb_in(p, side, kerbside_reach(net, k));
-	return k == FurnitureKind::COLUMN || fits_walk(net, p, side, d.sidewalk.kerb_clear_m + across);
-}
-
 void segment_furniture(const RoadNetwork &net, int sid, const bool signalled[2], const std::vector<ArcSpan> *gates, uint32_t kinds,
 		std::vector<FurnitureSpot> &out) {
 	thread_local std::vector<FurnitureSpot> all;
@@ -324,12 +303,15 @@ void segment_furniture(const RoadNetwork &net, int sid, const bool signalled[2],
 			for (int approach : net.nodes[size_t(n)].segs)
 				if (signal_post(net, n, approach, post) && post.seg == sid) all.push_back(post);
 		}
-	const int level = (g.flags & SEG_FURNITURE_MASK) >> SEG_FURNITURE_SHIFT;
-	if (level != FURN_NONE) {
+	const int level = furniture_level(g);
+	if (level != FURNITURE_LEVEL_NONE) {
+		list_corner_poles(net, sid, all); // on the corner, before the mouth: never stationed between the mouths
 		lamps(c);
-		hydrants(c);
-		if (level == FURN_FULL) bins_and_benches(c);
-		trees(c);
+		if (kinds & AFTER_LAMPS) { // each keeps off the ones before it: asked one, all of them are placed
+			hydrants(c);
+			if (level == FURNITURE_LEVEL_FULL) bins_and_benches(c);
+			trees(c);
+		}
 	}
 	float open0 = 0, open1 = 1;
 	const bool open = open_stretch(net, g, open0, open1);

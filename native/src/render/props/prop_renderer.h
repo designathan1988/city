@@ -39,6 +39,8 @@ public:
 	int lit_lamps() const { return lights_.lit(); }
 	const LightLook &lamp_look() const { return lights_.look(); }
 	godot::Vector2 lamps_hand_over() const { return lights_.handed_over(); }
+	const FurnitureLook &furniture_look() const { return furniture_; } // the lamps' lenses and pools as streets.json draws them
+	void lenses_near(float x, float z, float r, godot::PackedVector3Array &out) const { lights_.lenses_near(x, z, r, out); }
 	// The run under the pointer, drawn as it will stand; empty lists take it away. Main thread, map held.
 	void set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles);
 	godot::Array take_sign_cells() { return atlas_.take_pending(); }

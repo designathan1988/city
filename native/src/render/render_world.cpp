@@ -23,7 +23,7 @@ constexpr size_t LOT_BOX_FLOATS = 4; // ChangeLog::lot_boxes: x0, z0, x1, z1
 // The frame's one order of the chunk queues that hand over after the buildings (sync's f.commit), and where each one's hand-over
 // time lands in hand_ms_.
 enum HandOrder : size_t {
-	HAND_ROADS, HAND_FAR_ROADS, HAND_VERGES, HAND_STRUCTURES, HAND_PROPS, HAND_TREES_NEAR, HAND_TREES_FAR, HAND_COVER, HAND_WATER, HAND_QUEUES
+	HAND_ROADS, HAND_FAR_ROADS, HAND_VERGES, HAND_STRUCTURES, HAND_PROPS, HAND_POOLS, HAND_TREES_NEAR, HAND_TREES_FAR, HAND_COVER, HAND_WATER, HAND_QUEUES
 };
 } // namespace
 
@@ -33,6 +33,8 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	ok = ok && verges_.init(ctx, roads_.look(), errors);
 	ok = ok && structures_.init(ctx, roads_.look(), errors);
 	ok = ok && props_.init(ctx, roads_.look(), errors);
+	ok = ok && pools_.init(ctx, roads_.look(), props_.furniture_look(), errors);
+	pools_stream_.cell = SUPERCHUNK;
 	ok = ok && trees_.init(ctx, roads_.look(), errors);
 	ok = ok && cover_.init(ctx, errors);
 	ok = ok && water_.init(ctx, errors);
@@ -68,6 +70,7 @@ void RenderWorld::reset() {
 	verges_.reset();
 	structures_.reset();
 	props_.reset();
+	pools_.reset();
 	trees_.reset();
 	cover_.reset();
 	water_.reset();
@@ -80,6 +83,7 @@ void RenderWorld::reset() {
 	road_stream_.clear();
 	raised_stream_.clear();
 	props_stream_.clear();
+	pools_stream_.clear();
 	building_stream_.clear();
 }
 
@@ -95,6 +99,7 @@ void RenderWorld::full_rebuild(const CityState &s, ChangeLog &log, Object *terra
 			const int64_t k = segment_chunk(g); // the chunk that draws it
 			road_stream_.mark(k);
 			far_roads_.mark(k);
+			pools_stream_.mark(super_of(k));
 			if (structure_of(g.flags) != Structure::GROUND) raised_stream_.mark(k);
 			overlays_.mark_dirty(k);
 		}
@@ -106,6 +111,8 @@ void RenderWorld::full_rebuild(const CityState &s, ChangeLog &log, Object *terra
 			overlays_.mark_dirty(k);
 		}
 	props_stream_.adopt_known(road_stream_);
+	for (const UtilityPole &p : s.street.poles.items)
+		if (p.alive && p.lamp) pools_stream_.mark(super_of(chunk_of(p.x, p.z))); // a lit pole the player put up away from any street
 	for (const Building &b : s.buildings.items)
 		if (b.alive) building_stream_.mark(chunk_of(b.x, b.z));
 	buildings_.set_ranges(s);
@@ -160,6 +167,7 @@ void RenderWorld::mark_changed(const CityState &s) {
 		});
 		if (raised_stream_.known.count(k)) raised_stream_.rebuild(k);
 		props_stream_.mark(k);
+		pools_stream_.mark(super_of(k));
 		trees_.mark_dirty(k);
 		cover_.mark_dirty(k);
 		overlays_.mark_dirty(k);
@@ -169,8 +177,9 @@ void RenderWorld::mark_changed(const CityState &s) {
 		trees_.mark_dirty(k);
 		cover_.mark_dirty(k);
 	}
-	for (int64_t k : prop_keys_) { // what the player built on a street (sim/street): its props and the trees round it
+	for (int64_t k : prop_keys_) { // what the player built on a street (sim/street): its props, its lamps' pools and the trees round it
 		props_stream_.mark(k);
+		pools_stream_.mark(super_of(k));
 		trees_.mark_dirty(k);
 	}
 	// A lot that came, went or changed: the near surfaces of the streets it may face draw its car gates again (kerb_drop.h, the parking
@@ -183,6 +192,7 @@ void RenderWorld::mark_changed(const CityState &s) {
 			const int64_t k = segment_chunk(s.roads.segs[size_t(sid)]);
 			road_stream_.rebuild(k);
 			props_stream_.rebuild(k);
+			pools_stream_.rebuild(super_of(k)); // its lamps stand off the lot's gates too
 		});
 	lot_boxes_.clear();
 	transit_.touch(road_keys_);
@@ -195,13 +205,13 @@ void RenderWorld::mark_changed(const CityState &s) {
 }
 
 int64_t RenderWorld::baking() const {
-	return roads_.baking() + far_roads_.baking() + verges_.baking() + structures_.baking() + props_.baking() + buildings_.baking() + trees_.baking() +
-			water_.baking();
+	return roads_.baking() + far_roads_.baking() + verges_.baking() + structures_.baking() + props_.baking() + pools_.baking() + buildings_.baking() +
+			trees_.baking() + water_.baking();
 }
 
 int64_t RenderWorld::waiting() const {
-	return roads_.waiting() + far_roads_.waiting() + verges_.waiting() + structures_.waiting() + props_.waiting() + buildings_.waiting() + trees_.waiting() +
-			water_.waiting();
+	return roads_.waiting() + far_roads_.waiting() + verges_.waiting() + structures_.waiting() + props_.waiting() + pools_.waiting() + buildings_.waiting() +
+			trees_.waiting() + water_.waiting();
 }
 
 // The streamed chunks' build units: a road chunk's are its road, verge and (unless it stands out from afar) structure jobs, one
@@ -228,6 +238,10 @@ void RenderWorld::offer_streams(const CityState &s, const Vector3 &cam, std::vec
 	far_roads_.offer(s, pool, cam, buildings_.stream_reach(s, cam), STREAM_DROP_K, units); // as far as the buildings' far level: no street ends before them
 	props_stream_.offer(cam.x, cam.z, t.render_props_end_m, STREAM_DROP_K, one, units, [this, &s, &pool](int64_t k, float d) { props_.submit(s, k, pool, d); },
 			[this](int64_t k) { props_.drop_chunk(k); }, [this](int64_t k) { return props_.busy(k); });
+	// the lamps' pools as far as the far roads: no street goes dark before its buildings end
+	pools_stream_.offer(cam.x, cam.z, buildings_.stream_reach(s, cam), STREAM_DROP_K, one, units,
+			[this, &s, &pool](int64_t k, float d) { pools_.submit(s, k, pool, d); }, [this](int64_t k) { pools_.drop_super(k); },
+			[this](int64_t k) { return pools_.busy(k); });
 	// a building chunk's "build" only registers it (its levels are meshed and admitted by update_view), so no credit is spent
 	// on it and a superchunk knows all its chunks at once
 	building_stream_.update_all(cam.x, cam.z, buildings_.stream_reach(s, cam), STREAM_DROP_K, [this, &s](int64_t k, float) { buildings_.rebuild_chunk(s, k); },
@@ -320,6 +334,7 @@ void RenderWorld::hand_over(FrameAdmission &f) {
 	hand_order_[HAND_VERGES] = &verges_;
 	hand_order_[HAND_STRUCTURES] = &structures_;
 	hand_order_[HAND_PROPS] = &props_;
+	hand_order_[HAND_POOLS] = &pools_;
 	hand_order_[HAND_TREES_NEAR] = trees_.near_queue();
 	hand_order_[HAND_TREES_FAR] = trees_.far_queue();
 	hand_order_[HAND_COVER] = cover_.queue();
@@ -327,7 +342,7 @@ void RenderWorld::hand_over(FrameAdmission &f) {
 	f.commit(hand_order_, &hand_ms_);
 	far_roads_.fold(roads_);
 	cost_.roads = hand_ms_[HAND_ROADS] + hand_ms_[HAND_FAR_ROADS] + hand_ms_[HAND_VERGES] + hand_ms_[HAND_STRUCTURES];
-	cost_.props = hand_ms_[HAND_PROPS];
+	cost_.props = hand_ms_[HAND_PROPS] + hand_ms_[HAND_POOLS];
 	cost_.trees = hand_ms_[HAND_TREES_NEAR] + hand_ms_[HAND_TREES_FAR] + hand_ms_[HAND_COVER];
 }
 

@@ -22,7 +22,8 @@
 namespace city {
 
 // Who asks for a segment's furniture: a reader under the map's shared lock reads the placement kept for the streets' revision; an
-// edit, which may read a segment before and after changing it, has it placed anew.
+// edit, which may read a segment before and after changing it, has it placed anew, and so does a reader of a few kinds over streets as
+// far as the eye sees (the lamps' pools, city_cut.h keep_lamps): kept, every piece of all those streets would be held.
 enum class FurnitureRead : uint8_t { KEPT, PLACED };
 
 class FurnitureKept {

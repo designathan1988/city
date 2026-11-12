@@ -56,8 +56,7 @@ void run_faces(const RoadEmit &e, const std::vector<Vector3> &tops, const std::v
 	for (size_t k = 1; k < tops.size(); k++) {
 		const Vector3 p[4] = { bases[k - 1], bases[k], tops[k], tops[k - 1] };
 		const Vector2 uv[4] = { Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1) };
-		const Vector2 none(POOL_NONE, 0), pools[4] = { none, none, none, none };
-		emit_quad(e.mb, p, uv, pools, road_color(e.L.curb, RoadMat::SKIRT), towards_road);
+		emit_quad(e.mb, p, uv, road_color(e.L.curb, RoadMat::SKIRT), towards_road);
 	}
 }
 
