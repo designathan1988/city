@@ -12,11 +12,6 @@ using namespace godot;
 
 namespace city {
 
-namespace {
-constexpr float NEVER_END = 0.f; // a visibility range without an end
-constexpr float HALF_DIAGONAL = 0.7071f; // of a chunk, from its middle to a corner
-} // namespace
-
 void PropRenderer::Draws::free() {
 	if (cast.is_valid()) RenderingServer::get_singleton()->free_rid(cast);
 	cast = RID();
@@ -87,25 +82,47 @@ void PropRenderer::show(Draws &d, StreetInstances &inst, const AABB &box) {
 	instances_ -= d.count;
 	d.count = int((inst.poles.size() + inst.wires.size() + inst.light.size()) / MM_PLAIN_STRIDE + (inst.boxes.size() + inst.beams.size()) / MM_STRIDE);
 	instances_ += d.count;
+	d.box = box;
+	d.wire_error = furniture_.wire.chord_miss(inst.wire_sag);
 	d.poles.set(scenario_, pole_mesh_.rid, inst.poles, box, false, LAYER_FURNITURE, false);
 	d.pole_shadow_near.shadow_only = d.pole_shadow_far.shadow_only = true;
 	d.pole_shadow_near.set(scenario_, pole_mesh_.rid, inst.poles, box, true, LAYER_FURNITURE, false);
 	d.pole_shadow_far.set(scenario_, pole_cast_mesh_.rid, inst.poles, box, true, LAYER_FURNITURE, false);
-	d.pole_shadow_near.range(NEVER_END, kit_.cast_from());
-	d.pole_shadow_far.range(kit_.cast_from(), shadow_end());
 	d.wires_near.set(scenario_, wire_near_mesh_.rid, inst.wires, box, true, LAYER_FURNITURE, false);
 	d.wires_far.set(scenario_, wire_far_mesh_.rid, inst.wires, box, false, LAYER_FURNITURE, false);
 	d.boxes.set(scenario_, box_mesh_.rid, inst.boxes, box, true, LAYER_FURNITURE);
 	d.beams.set(scenario_, beam_mesh_.rid, inst.beams, box, true, LAYER_FURNITURE);
 	d.light.set(scenario_, light_mesh_.rid, inst.light, box, false, LAYER_FURNITURE, false);
-	d.wires_near.range(NEVER_END, furniture_.wire.near_end);
-	d.wires_far.range(furniture_.wire.near_end, furniture_.wire.far_end);
+	pick(d); // a chunk shown between two frames stands at its level at once
 }
 
-// Past where the wires stop being tubes a pole or a bin is thinner than a texel of the farther cascades: its shadow costs the whole shadow pass and shows nothing. Measured by
-// the middle of the chunk: the chunks a view stands over cast whole.
-float PropRenderer::shadow_end() const {
-	return furniture_.wire.near_end + float(CHUNK) * HALF_DIAGONAL;
+// The one decision of which level of a chunk's furniture stands, from the frame's view (render/detail.h) and the eye's distance to
+// the nearest point of the chunk's box. Its wires stand wherever the chunk does, their poles' company: as tubes while the coarse
+// level's own error would show on the frame's lens, at the coarse level from there. Its poles cast whole nearer than
+// pole_cast.from_m and by their long parts to end_m, where the chunk's other furniture stops casting too: past it a pole or a bin
+// is thinner than a texel of the far cascades, its shadow costs the whole pass and shows nothing. Each draw is told to the engine
+// as drawn or not, and none carries a visibility range: exactly one level of a thing stands whatever stood the frame before.
+// (Two ranges handing over to each other each keep a hysteresis of their own, measured to the box's centre: a camera arriving
+// between them was shown neither, a pole with no wires.) Before the first frame's view the finest levels stand.
+void PropRenderer::pick(Draws &d) const {
+	const bool seen = view_.ready();
+	const double at = seen ? view_.distance_to(d.box) : 0;
+	const bool tubes = !seen || !view_.fits(d.wire_error, at);
+	d.wires_near.visible(tubes);
+	d.wires_far.visible(!tubes);
+	const bool casts = at < kit_.cast_end(), whole = at < kit_.cast_from();
+	d.pole_shadow_near.visible(casts && whole);
+	d.pole_shadow_far.visible(casts && !whole);
+	if (d.cast.is_valid() && casts != d.casting) {
+		RenderingServer::get_singleton()->instance_set_visible(d.cast, casts);
+		d.casting = casts;
+	}
+}
+
+void PropRenderer::update_view(const DetailView &view) {
+	view_ = view;
+	for (auto &kv : draws_) pick(kv.second);
+	pick(preview_);
 }
 
 void PropRenderer::cast_chunk(Draws &d, const RID &mesh, const AABB &box) {
@@ -117,7 +134,7 @@ void PropRenderer::cast_chunk(Draws &d, const RID &mesh, const AABB &box) {
 	rs->instance_set_layer_mask(d.cast, LAYER_FURNITURE);
 	rs->instance_geometry_set_cast_shadows_setting(d.cast, RenderingServer::SHADOW_CASTING_SETTING_SHADOWS_ONLY);
 	rs->instance_set_custom_aabb(d.cast, box);
-	rs->instance_geometry_set_visibility_range(d.cast, 0, shadow_end(), 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
+	d.casting = true; // an instance is made drawn: the pick tells it otherwise
 }
 
 void PropRenderer::commit_one(Built &b) {
@@ -195,6 +212,22 @@ void PropRenderer::drop_chunk(int64_t key) {
 	if (it == chunks_.end()) return;
 	it->second.free();
 	chunks_.erase(it);
+}
+
+Array PropRenderer::wire_draws() const {
+	Array out;
+	for (const auto &[key, d] : draws_) {
+		Dictionary row;
+		row["x"] = key_x(key);
+		row["z"] = key_y(key);
+		row["spans"] = d.wires_near.count;
+		row["near"] = d.wires_near.told_drawn();
+		row["far"] = d.wires_far.told_drawn();
+		row["shadow_near"] = d.pole_shadow_near.told_drawn();
+		row["shadow_far"] = d.pole_shadow_far.told_drawn();
+		out.push_back(row);
+	}
+	return out;
 }
 
 void PropRenderer::set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles) {

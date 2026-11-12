@@ -195,15 +195,15 @@ void TreeRenderer::commit_near(Built &b) {
 		// A flower bed casts nothing: its shadow would not read, and the town's beds cost as much as its buildings'.
 		const bool casts = std::find(trees_.bed_species.begin(), trees_.bed_species.end(), i) == trees_.bed_species.end();
 		ch.body[size_t(i)].set(scenario_, sp.body.rid, b.bufs[size_t(i)], box, false, LAYER_VEGETATION);
-		ch.body[size_t(i)].range(0, end);
+		ch.body[size_t(i)].range(end);
 		if (casts) {
 			ch.cast[size_t(i)].shadow_only = true;
 			ch.cast[size_t(i)].set(scenario_, sp.caster.rid, b.bufs[size_t(i)], box, true, LAYER_VEGETATION);
-			ch.cast[size_t(i)].range(0, end);
+			ch.cast[size_t(i)].range(end);
 		}
 		if (!sp.cards.valid()) continue;
 		ch.cards[size_t(i)].set(scenario_, sp.cards.rid, b.bufs[size_t(i)], box, sp.cards_cast, LAYER_VEGETATION);
-		ch.cards[size_t(i)].range(0, end);
+		ch.cards[size_t(i)].range(end);
 	}
 }
 

@@ -36,6 +36,22 @@ func _ready() -> void:
 	check(reach <= end * MOST_PAST, "and stop there: %.0f m, %.2f of the view's end" % [reach, reach / end])
 	check(reach * world.sun.directional_shadow_fade_start >= end * FADE_SLACK, "no shadow fades inside the picture: from %.0f m" % (reach * world.sun.directional_shadow_fade_start))
 	check(first > nearest, "the first cascade holds ground the view shows: it ends at %.0f m, the nearest ground is at %.0f m" % [first, nearest])
+	# the same view through the orthographic lens the Camera popover switches to: its edges are parallel, half its size off the axis
+	rig.camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	await _stand(rig, DOWN_VIEW)
+	end = _ground_depth(cam, 0.0)
+	nearest = _ground_depth(cam, get_viewport().get_visible_rect().size.y)
+	reach = world.sun.directional_shadow_max_distance
+	first = reach * world.sun.directional_shadow_split_1
+	print("orthographic: the view shows the ground from %.0f to %.0f m; the shadows reach %.0f m, the first cascade to %.0f m" % [nearest, end, reach, first])
+	check(reach >= end, "orthographic: the shadows reach the farthest ground the view shows: %.0f of %.0f m" % [reach, end])
+	# fitted to this lens and not left from the other: two steps past the view's end (the stepping and the fade), one more of slack for the step kept
+	var most: float = pow(1.0 + float(day.shadow_reach_step), 3.0)
+	check(reach <= end * most, "orthographic: and stop there, fitted to this lens: %.0f m, %.2f of the view's end (%.2f at most)" % [reach, reach / end, most])
+	check(reach * world.sun.directional_shadow_fade_start >= end * FADE_SLACK, "orthographic: no shadow fades inside the picture: from %.0f m" % (reach * world.sun.directional_shadow_fade_start))
+	check(first > nearest, "orthographic: the first cascade holds ground the view shows: it ends at %.0f m, the nearest ground is at %.0f m" % [first, nearest])
+	rig.camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+	_on_the_ground(day)
 	await _stand(rig, LEVEL_VIEW)
 	reach = world.sun.directional_shadow_max_distance
 	print("along the streets: the shadows reach %.0f m, fading from %.2f" % [reach, world.sun.directional_shadow_fade_start])
@@ -43,6 +59,22 @@ func _ready() -> void:
 	check(reach >= world.daylight.cascades.least_m, "there the shadows reach what the tier asks at least: %.0f of %.0f m" % [reach, world.daylight.cascades.least_m])
 	check(is_equal_approx(world.sun.directional_shadow_fade_start, day.shadow_fade_start), "and fade out by the data's share: %.2f" % world.sun.directional_shadow_fade_start)
 	finish()
+
+
+## A camera standing at the height of the ground under it, looking level (a view from the ground itself, an eye below the land's height
+## in a cut), as the first view a sun's cascades are ever fitted to: every cascade has an end, a share of the reach in its order.
+func _on_the_ground(day: Dictionary) -> void:
+	var low := Camera3D.new()
+	add_child(low)
+	low.global_position = Vector3(0.0, float(CityStore.query(&"height_at", [0.0, 0.0])), 0.0)
+	var sun := DirectionalLight3D.new()
+	add_child(sun)
+	SunCascades.new(day, sun).fit(low)
+	var splits := [sun.directional_shadow_split_1, sun.directional_shadow_split_2, sun.directional_shadow_split_3]
+	check(splits.all(func(s: float) -> bool: return is_finite(s) and s > 0.0 and s < 1.0), "an eye at the ground's height: every cascade ends inside the reach: %s" % [splits])
+	check(splits[0] < splits[1] and splits[1] < splits[2], "an eye at the ground's height: the cascades end in their order: %s" % [splits])
+	sun.queue_free()
+	low.queue_free()
 
 
 func _stand(rig: CityCamera, view: Array) -> void:

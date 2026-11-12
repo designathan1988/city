@@ -290,6 +290,7 @@ void RenderWorld::sync(const CityState &s, ChangeLog &log, Object *terrain3d, co
 		units_.clear();
 		offer_streams(s, cam, units_);
 		roads_.update_view(cam);
+		props_.update_view(view_);
 		cost_.stream = laps.lap();
 		transit_.sync(s, f);
 		// The buildings first, with the frame's credits: a chunk they leave for the next frame is a hole in the city (rank 0 of the

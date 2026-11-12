@@ -89,6 +89,9 @@ public:
 	godot::Dictionary ground_drawn(const godot::Vector3 &at) const; // tests: the ground's height as the terrain's shader reads it there (render/terrain_bridge.h drawn)
 	// Tests: the street lamps' pools within `radius` of (x, z): drawn on the GPU, wanted by each lit lamp, and the lamps' lenses (RenderWorld::lamp_pools).
 	godot::Dictionary lamp_pools(float x, float z, float radius) const;
+	// Tests: every furniture chunk drawn, its spans and which level of its wires and of its poles' shadows the engine is told to draw
+	// (PropRenderer::wire_draws): exactly one wire level where there are spans, never two.
+	godot::Array wire_draws() const;
 	godot::Dictionary surface_probe(const godot::Array &arrays, const godot::Dictionary &lods, int64_t format) const; // tests: render/surface_data.h's surface of these arrays
 
 protected:

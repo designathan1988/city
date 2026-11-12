@@ -31,14 +31,12 @@ func _ready() -> void:
 			_world = sibling
 	_lights = InteriorLights.new(_cfg.lights)
 	add_child(_lights)
-	_bar = InteriorBar.new()
-	_bar.floor_step.connect(_move_floor)
-	_bar.closed.connect(func() -> void: set_enabled(false))
 	var root := hud.root if hud else null
-	if root:
+	if root: # the floor bar belongs to the HUD: where none stands (a capture, a test) the layer works and nothing shows its floor
+		_bar = InteriorBar.new()
+		_bar.floor_step.connect(_move_floor)
+		_bar.closed.connect(func() -> void: set_enabled(false))
 		root.add_child(_bar)
-	else:
-		push_warning("InteriorController: sem HUD, a barra do andar não aparece")
 
 
 ## The layers popover's switch. True when the layer is on after the call (false: nothing in the middle of the view).
@@ -126,7 +124,7 @@ func _send(on: bool, target: int, level: int, step := -1) -> void:
 func refresh() -> void:
 	_state = CityStore.query(&"interior")
 	_revision = _state.revision
-	if _bar.is_inside_tree(): # with no HUD the layer still works: nothing shows its floor
+	if _bar:
 		_bar.show_state(_state)
 	_lights.set_lamps(_state.lamps if is_on() else PackedVector3Array())
 

@@ -23,8 +23,13 @@ struct PreviewPole {
 	PoleKind kind = PoleKind::URBAN;
 };
 
+// The wires' look (streets.json "wires"): how deep a span hangs, what is strung, and what the coarse level keeps of a wire.
 struct WireLook {
-	float sag = 0, max_sag = 0, min_span = 0, max_span = 0, near_end = 0, far_end = 0;
+	float sag = 0, max_sag = 0, min_span = 0, max_span = 0, radius = 0;
+	int far_chords = 0, far_sides = 0;
+	// How far the coarse level is off a wire hanging `sag_m` deep: the parabola against its chords and the round against its
+	// sides. What render/detail.h holds against the frame's lens to say where that level may stand.
+	float chord_miss(float sag_m) const;
 };
 
 // How the furniture looks beyond its meshes (data/render/streets.json "wires" and "lamp_light"); pool_slab: how far over and under
@@ -71,6 +76,7 @@ struct StreetInstances {
 	godot::PackedFloat32Array poles, wires, boxes, beams, light;
 	std::vector<SignalHead> heads;
 	std::vector<godot::Vector3> lamps; // the lenses of the street lamps
+	float wire_sag = 0; // the deepest sag among its spans (metres): what its coarse wires' error is worked out from
 };
 
 // The height of what stands on the footway at (x, z), or on the ground off it.

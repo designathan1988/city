@@ -126,9 +126,14 @@ struct MultiMeshDraw {
 	void visible(bool on) const {
 		if (inst.is_valid()) tell_drawn(on && count > 0);
 	}
-	void range(float begin, float end) const {
+	// Whether the engine was last told to draw it (the probes: what a chunk shows of a thing's levels).
+	bool told_drawn() const { return inst.is_valid() && count > 0 && drawn_; }
+	// Not drawn past `end` from its box's centre (the engine's visibility range), with the linger above. Only an end: a draw that
+	// takes over from another draw of the same thing is shown and hidden by that thing's owner (visible), never by a range with a
+	// begin. Two such ranges would each keep a hysteresis of their own, and a camera arriving between them was shown neither.
+	void range(float end) const {
 		if (inst.is_valid())
-			godot::RenderingServer::get_singleton()->instance_geometry_set_visibility_range(inst, begin, end, begin * RANGE_LINGER_SHARE, end * RANGE_LINGER_SHARE,
+			godot::RenderingServer::get_singleton()->instance_geometry_set_visibility_range(inst, 0, end, 0, end * RANGE_LINGER_SHARE,
 					godot::RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
 	}
 	void free() {

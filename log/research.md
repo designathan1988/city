@@ -274,6 +274,45 @@ output. Anything less is `open`, with what failed written down. The questions co
   be on (T8 first), or `tier_gpu` must print the passes; then: `low` with the render scale at 1, 0.75 and 0.5, each pass's
   time, and the photos of each by the image protocol.
 
+### Q21. How are a game's defects of every kind found by a mechanism, and their causes named, without looking at pictures? (pending item T9; 2026-11-12, session 2)
+
+- **Problem (before):** every defect of this session was found by eye in a photo, one at a time (the wires, the signal post in
+  a pole, the view with no ground), and a run that "passed" was never read: `quick --ready` of 2026-11-12 00:53 passed 59 of
+  61 tasks with 240 engine errors in each of four of them.
+- **Searches (WebSearch, standard):** "automated detection of game world defects invariants geometry overlap floating objects
+  procedural generation validation invariant checker"; "procedural content generation constraint validation overlap detection
+  oriented bounding box spatial hash world validation automated testing"; "data provenance root cause grouping invariant
+  violations by owner automated fault localization runtime assertion checking".
+- **Sources:** https://bugnet.io/blog/how-to-handle-bugs-in-procedurally-generated-content ;
+  https://bugnet.io/blog/how-to-fix-validating-procedural-output-before-use ;
+  https://pulsegeek.com/articles/automatic-map-validation-rules-catch-errors-early/ ; https://arxiv.org/abs/2206.11037v1
+  (World of Bugs) ; https://arxiv.org/pdf/2108.00056 (snappable meshes: overlap by box volumes, validation after
+  generation) ; https://docs.rs/crate/terrain-forge/0.7.0/source/src/constraints.rs (constraints as a kind and an evaluate,
+  collected into a report) ; https://web.njit.edu/%7Eineamtiu/pubs/cc16singh.pdf (Singh et al.: a violated data-structure
+  constraint located back to the faulty code) ; https://cs.fit.edu/~pkc/id/related/hangal-icse02.pdf (DIDUCE: a violation
+  shows the first symptom, not the source).
+- **Found:** (1) the practice is a validation pass after generation that asserts invariants (structure first: geometry,
+  connectivity, bounds; static checks find most breakages faster than watching a run), run headless over many seeds, each
+  failure reproducible by its seed; (2) constraints are pluggable rules, each a kind and an evaluation, collected in one
+  report; (3) a violation names a symptom: the source is found by who wrote the violating state (the constraint's owner), so
+  a finding must carry its owner; (4) no library exists for it: it is built on the game's own state and code.
+- **Test (in the tree's `dist/`, the tool under `tools/audit`, its tests on made-up trees):** `python tools/audit/cli.py all
+  dist/tasks/20261112-005334-38036-quick`: 8 s, real output `1042 cause(s), 2493 occurrence(s)`: by rule: text nothing shows
+  940, data key nothing reads 40, command only tests send 14, text key not in the tables 9, command nothing sends 8, log
+  error 5 (one of them 240 times a run in four runs), leaked instance 5, log warning 4, bound and never called 4, question
+  nobody asks 3, left at exit 3, field nothing reads 2, check failed 2, key twice 2, resource in use at exit 1. Each class
+  was checked against the code by hand on a sample (the first run's false positives, 12 weather fields read through a macro
+  and tokens built from a prefix, were causes in the tool and were fixed in its rules, not listed away).
+- **After (the criterion: a cause found by the mechanism, fixed, and the mechanism reading none):** the leak of the floor
+  bar (`interior_controller.gd`, P10): found by the log reader in `building_tool_test` (5 leaked instances, a leaked RID, a
+  resource in use), fixed at its cause, and `python tools/audit/cli.py logs <the run>` of that test then reads `0 cause(s)`.
+  The 240 errors led by reading to `sun_cascades.gd:74` (0 times infinity when the eye stands at the ground's height, P12),
+  which no test or photo had shown.
+- **Conclusion:** the mechanism is an audit with one report grouped by owner, fed by readers: the runs' logs, the tree's
+  declared links (static, seconds), and, to add, the core's own audits run headless (standing bodies, drawn against state),
+  the budgets by stage and the state no tick writes. **Status: `proven`** for the log and the static readers; `open` for
+  the readers still to add (T9).
+
 ## Open questions (each becomes an entry above when researched; the pending item it serves in the last column)
 
 | Q | Question | Serves |

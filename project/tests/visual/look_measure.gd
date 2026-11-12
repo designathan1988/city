@@ -9,6 +9,34 @@ const BYTES_PER_MB := 1048576.0
 const USAGE_EVERY_MS := 250.0
 const USAGE_SECONDS := 4.0
 
+var _record_name := "" # the name the frames being recorded were asked under
+
+
+## A plan's step that reads the servers: {"record": name} … {"recordEnd": true}, {"usage": seconds}, {"info": true}, {"clock": true},
+## {"switch": [key, on]}, {"passes": true}, {"view": name} (look.gd's header says what each gives). False: not one of them.
+func plan_step(step: Dictionary) -> bool:
+	if step.has("record"):
+		record()
+		_record_name = str(step.record)
+	elif step.has("recordEnd"):
+		print("frames %s: %s" % [_record_name, record_end()])
+	elif step.has("usage"):
+		print("usage: %s" % await usage(self, float(step.usage) if step.usage is float else USAGE_SECONDS))
+	elif step.has("info"):
+		print("info: %s" % info())
+	elif step.has("clock"):
+		clock_on(get_viewport().get_camera_3d(), DataTables.game("render_switches").doctor.stages)
+	elif step.has("switch"):
+		Settings.switches.set_on(str(step.switch[0]), bool(step.switch[1]))
+		Settings.switches_changed()
+	elif step.has("passes"):
+		print("passes: %s" % [passes()])
+	elif step.has("view"):
+		get_viewport().debug_draw = ClassDB.class_get_integer_constant(&"Viewport", ("DEBUG_DRAW_%s" % str(step.view)).to_upper())
+	else:
+		return false
+	return true
+
 
 ## What the process uses over `seconds` (every USAGE_EVERY_MS): each figure's peak, mean and least, not one last reading.
 func usage(host: Node, seconds: float = USAGE_SECONDS) -> Dictionary:

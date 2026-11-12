@@ -87,7 +87,7 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 		// a box throws its shadow as long as it stands; the balcony pieces, fine as they are, to lod.cast_props_m
 		for (int k = 0; k < BAND_CASTS; k++) ch.prop_casts[i][size_t(k)].range(k < BAND_COUNT - 1 ? near_end_ * detail_scale_ : look_.cast_props_m);
 		// the parts stand on the near shell: past it the mid level draws its own, or they would hang in the air
-		for (size_t b = 0; b < BAND_DRAWS; b++) ch.bands[i][b].range(0, (ch.cut ? band_end_[b] : std::min(band_end_[b], near_end_)) * detail_scale_);
+		for (size_t b = 0; b < BAND_DRAWS; b++) range(ch.bands[i][b].inst, 0, (ch.cut ? band_end_[b] : std::min(band_end_[b], near_end_)) * detail_scale_);
 	}
 	const float mid_from = ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ : 0; // where the near level ends
 	for (auto &sub : ch.mid_draws) {
@@ -103,7 +103,7 @@ void BuildingRenderer::ranges(Chunk &ch) const {
 	// Until the chunk's openings stand (their own level, streamed by their reach) the flat draws from the mid level's start: no wall is bare.
 	const float flat_from = ch.built[LEVEL_BAYS] ? bay_end_ : mid_from;
 	for (MeshDraw &d : ch.flat) range(d, ch.cut ? NEVER_M : flat_from, 0);
-	ch.flags.range(0, ch.cut ? 0 : near_end_ * detail_scale_); // the masts' cloths, with the near level they fly from
+	range(ch.flags.inst, 0, ch.cut ? 0 : near_end_ * detail_scale_); // the masts' cloths, with the near level they fly from
 }
 
 float BuildingRenderer::near_reach() const { return near_end_ * detail_scale_ + CHUNK * REACH_PAD; }

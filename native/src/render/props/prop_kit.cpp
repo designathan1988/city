@@ -213,6 +213,11 @@ bool PropKit::build(const Dictionary &props, const Dictionary &wires, const Arra
 	const Dictionary cast = props["pole_cast"];
 	pole_cast_ = cast_parts(props, "pole", cast, errors);
 	cast_from_ = cast["from_m"];
+	cast_end_ = cast.get("end_m", 0.f);
+	if (cast_end_ <= cast_from_) {
+		errors.push_back("streets.json props.pole_cast: end_m missing or not past from_m");
+		return false;
+	}
 	for (const char *key : { "y_m", "z_m", "rural_z_m", "secondary_z_m" })
 		if (!wires.has(key)) errors.push_back(String("streets.json wires: falta ") + key);
 	if (!errors.is_empty()) return false;

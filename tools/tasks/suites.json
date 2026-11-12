@@ -89,6 +89,13 @@
    "inputs": ["**"],
    "resources": {"cores": 2}
   },
+  "audit": {
+   "doc": "the game's audit of the tree and of the newest run's logs (tools/audit/cli.py all): every broken link by owner; run by name, in no suite until its list is empty (log/pendencias.md T9)",
+   "argv": ["{python}", "tools/audit/cli.py", "all"],
+   "timeout_s": 300,
+   "inputs": ["**"],
+   "resources": {"cores": 2}
+  },
   "digest": {
    "doc": "a fixed city hashed (open_probe --digest) and held to its golden: an optimisation leaves it equal",
    "argv": ["{godot}", "--verbose", "--headless", "--path", "project", "res://tests/perf/open_probe.tscn", "--", "--no-flow", "--digest"],
@@ -242,6 +249,9 @@
      "renderer": "forward_plus",
      "timeout_s": 600
     },
+    {"name": "wire_level_test", "scene": "tests/core/wire_level_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "wire_level_test@forward_plus", "scene": "tests/core/wire_level_test", "renderer": "forward_plus", "timeout_s": 600},
+    {"name": "look_view_test", "scene": "tests/core/look_view_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "reference_test", "scene": "tests/core/reference_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {
      "name": "street_crossing_test",

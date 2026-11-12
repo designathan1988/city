@@ -168,17 +168,17 @@ void CoverRenderer::commit_one(Built &b) {
 		for (size_t v = 0; v < k.variants.size(); v++) {
 			size_t at = size_t(first_[size_t(p)]) + v;
 			ch[at].set(scenario_, k.variants[v].rid, b.bufs[at], box, k.casts, LAYER_VEGETATION);
-			ch[at].range(0, end);
+			ch[at].range(end);
 		}
 	}
 	for (size_t i = 0; i < models_.all().size(); i++) {
 		size_t at = size_t(draws_) + i;
 		ch[at].set(scenario_, models_.all()[i].mesh->get_rid(), b.bufs[at], box, false, LAYER_VEGETATION); // a loaded model: its own materials
-		ch[at].range(0, end);
+		ch[at].range(end);
 	}
 	for (size_t v = 0; v < rocks.variants.size(); v++) {
 		ch[stones + v].set(scenario_, rocks.shore[v].rid, b.bufs[stones + v], box, rocks.casts, LAYER_VEGETATION);
-		ch[stones + v].range(0, shore_.reach_m + kit_.fade_m + CHUNK * DIAGONAL * HALF);
+		ch[stones + v].range(shore_.reach_m + kit_.fade_m + CHUNK * DIAGONAL * HALF);
 	}
 }
 

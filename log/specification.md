@@ -12,6 +12,13 @@ holds every research with its proof. This page is written as things are found: a
 | 2. Research until each question has a proven solution | in progress: Q1, Q2, Q4, Q5, Q6, Q16 proven in isolated tests (`log/research.md`); Q3, Q7 to Q15, Q17 to Q20 open | 2026-11-12, session 2 |
 | 3. Fixes, one theme each | not started (no new game code before phases 1 and 2); the first trace is open with its cause found: `pole-no-wires` (V1) | 2026-11-12 |
 
+The owner's decisions of 2026-11-12 (his words, answering the three questions of session 2's report):
+1. Economy, growth, weather and ecology: "Sim, tudo deve virar simulação. Mas primeiro garanta resolver os problemas que já
+   existem no jogo": each becomes a real simulation (S4, Q9), after the problems the game already has are solved.
+2. The trace-fix hook's cost (L1, L2, S6): "Pode! Pense bem no que vai fazer": a change is proposed in a copy, tested whole,
+   deployed only on his word (memory `stage-skill-changes`).
+3. The other session committing `tools/analysis/**` in this tree stays as it is; its files are never touched by this line.
+
 Survey progress (each line is ticked only with what was actually read or run):
 
 - [x] CLAUDE.md (in the session's context), `log/how-we-work.md` read whole.

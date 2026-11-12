@@ -123,7 +123,7 @@ A reported problem is solved with the `trace-fix` skill (`python .claude/skills/
 | Look at the game through a plan | `godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<json> --capture-dir=<folder>` |
 | Where two photo sets differ | `python tools/build/photodiff.py <a> <b> <out>` (a help to find where to look, never a verdict: two runs of the same code differ in pixels) |
 | Where each thread spends | `python tools/analysis/sampler.py --hidden --cmd "<godot> --path project <scene>" --seconds 30 --symbolizer <llvm-symbolizer>` |
-| Causes by the code's shape | `python tools/analysis/causes.py` |
+| Causes by the code's shape; everything a run or the tree states is broken, by owner | `python tools/analysis/causes.py`; `python tools/audit/cli.py all [dist/tasks/<run>]` (`logs`, `static`; report in `dist/audit/latest.md`, exit 1 while a cause stands) |
 | Causes by the architecture | `python tools/analysis/arch.py scan`, `status`, `next`, `explain <id>`, `predict <id>`, `done <id>`, `selfcheck` (`--only x` redoes only what failed; queue in `dist/arch/queue.json`) |
 | The release DLL's profile | `tools/build/pgo.sh` (redo it after changing hot loops) |
 | The roadcraft's code still standing | `python tools/gates/lab_scan.py` (the report in `dist/`, exit 1 while anything stands) |
@@ -170,7 +170,7 @@ building. Meshoptimizer and Clipper2 come through CMake on the first build. Apar
   a verdict; parallel pool, cache in `dist/cache/tasks`, Job Object kill, hidden desktop; `suites.json`).
 - `build/`: `build.sh`, `quick.sh` (a thin call of `tools/tasks`), `pgo.sh`, `photodiff.py`, `free_dll.sh`,
   `check_scripts.gd` (scripts that do not compile), `rename_english.py` (the English rename, with `--check`).
-- `analysis/`: `sampler.py` with `sampler_report.py` and `unwind.py`, `causes.py` with `detectors.py` and `code_parse.py`, `arch.py` and `arch/` (the architecture analyser), `arch_eval/` (answer keys only its selfcheck reads).
+- `analysis/`: `sampler.py` with `sampler_report.py` and `unwind.py`, `causes.py` with `detectors.py` and `code_parse.py`, `arch.py` and `arch/` (the architecture analyser), `arch_eval/` (answer keys only its selfcheck reads). `audit/`: the game's audit (logs and tree read for every broken link, grouped by owner).
 - `assets/`: the kitchen of people, landmarks, noise, furniture, poles and road profiles.
 - `converter/`: the old porting tool, with its own git; it produces and regenerates no game code (translating the roadcraft is forbidden). What it translated and still stands (`flow_control`) is a debt, redesigned at its cause.
 - `converter-slice/`: the converter's older slice, with its own git.

@@ -29,7 +29,7 @@ func _init(day: Dictionary, sun: DirectionalLight3D) -> void:
 ## The cascades for this view, when the eye, its tilt, the ground under it, the lens, the screen or the shadow settings changed.
 func fit(camera: Camera3D) -> void:
 	var ground := CityCamera.ground_below(camera)
-	var view := [camera.global_position, camera.global_basis.z.y, ground, camera.near, camera.far, camera.fov,
+	var view := [camera.global_position, camera.global_basis.z.y, ground, camera.near, camera.far, camera.projection, camera.fov, camera.size,
 			camera.get_viewport().get_visible_rect().size, side_px, filter_radius, _sun.shadow_blur, least_m]
 	if view != _fitted_for:
 		_fitted_for = view
@@ -70,8 +70,8 @@ func _fit(camera: Camera3D, ground: float) -> void:
 	# above it would cover only air; it ends one cascade of the four, in ratio, into what is shown.
 	var cap: float = end * _d.shadow_first_share
 	var nearest := _ground_depth(camera, ground, BOTTOM_EDGE)
-	if nearest < end:
-		cap = maxf(cap, nearest * pow(end / nearest, ONE_OF_FOUR))
+	if nearest < end: # the step in ratio from the nearest ground to the end, written so that it holds where the nearest ground is the eye's own (0)
+		cap = maxf(cap, pow(nearest, 1.0 - ONE_OF_FOUR) * pow(end, ONE_OF_FOUR))
 	var fitted: float = minf(maxf(look * _d.shadow_first_past_look, _d.shadow_first_least_m), cap)
 	# by steps, as the far end: a slice that changes size with every metre of the ground under the eye changes the width of the
 	# cascade's texels with it, and every edge of every shadow crawls while the camera moves
@@ -91,15 +91,33 @@ func _fit(camera: Camera3D, ground: float) -> void:
 ## where the edge meets the ground (every point of it falls the same height a metre of depth), the lower of the ground under the eye
 ## and the ground where it lands; INF when the edge looks at the horizon or over it.
 func _ground_depth(camera: Camera3D, ground: float, edge: float) -> float:
-	var rise: float = tan(deg_to_rad(camera.fov) * HALF) * edge # of the edge, a metre of depth
-	var fall: float = camera.global_basis.z.y - camera.global_basis.y.y * rise
-	if fall <= 0.0:
+	var from := _edge_from(camera, edge)
+	var way := _edge_way(camera, edge)
+	if way.y >= 0.0:
 		return INF
-	var eye := camera.global_position
-	var depth: float = maxf(eye.y - ground, 0.0) / fall
-	var lands: Vector3 = eye + (camera.global_basis.y * rise - camera.global_basis.z) * depth
+	var depth: float = maxf(from.y - ground, 0.0) / -way.y
+	var lands: Vector3 = from + way * depth
 	var there: float = CityStore.query(&"height_at", [lands.x, lands.z])
-	return maxf(eye.y - minf(ground, there), 0.0) / fall
+	return maxf(from.y - minf(ground, there), 0.0) / -way.y
+
+
+## An edge of the picture as the camera's own lens draws it: where its ray leaves from and how it goes for each metre of depth. A
+## perspective lens's edges leave the eye and open by its angle; an orthographic one's run along the axis, half its size off it.
+func _edge_from(camera: Camera3D, edge: float) -> Vector3:
+	if camera.projection == Camera3D.PROJECTION_ORTHOGONAL:
+		return camera.global_position + camera.global_basis.y * (camera.size * HALF * edge)
+	return camera.global_position
+
+
+func _edge_way(camera: Camera3D, edge: float) -> Vector3:
+	if camera.projection == Camera3D.PROJECTION_ORTHOGONAL:
+		return -camera.global_basis.z
+	return camera.global_basis.y * (tan(deg_to_rad(camera.fov) * HALF) * edge) - camera.global_basis.z
+
+
+## Half the picture's height at a depth into the view, by the same lens.
+func _picture_half(camera: Camera3D, depth: float) -> float:
+	return camera.size * HALF if camera.projection == Camera3D.PROJECTION_ORTHOGONAL else depth * tan(deg_to_rad(camera.fov) * HALF)
 
 
 ## A split given to the light only when it moved.
@@ -115,6 +133,6 @@ func _first_depth(camera: Camera3D, end: float) -> float:
 	var near := camera.near
 	var far: float = near + _sun.directional_shadow_split_1 * (minf(end, camera.far) - near)
 	var screen := camera.get_viewport().get_visible_rect().size
-	var across: float = far * tan(deg_to_rad(camera.fov) * HALF) * Vector2(screen.x / screen.y, 1.0).length()
+	var across: float = _picture_half(camera, far) * Vector2(screen.x / screen.y, 1.0).length()
 	var radius: float = Vector2(across, (far - near) * HALF).length() * side_px / (side_px - MARGIN_TEXELS)
 	return 2.0 * radius + _d.shadow_pancake_m

@@ -119,6 +119,7 @@ public:
 	bool effects_busy() const { return effects_.busy(); }
 	int lit_lenses() const { return props_.lit_lenses(); }
 	int street_instances() const { return props_.instances(); }
+	godot::Array wire_draws() const { return props_.wire_draws(); } // tests: the furniture chunks' wire and pole shadow levels as drawn
 	int sign_cells() const { return props_.sign_cells(); }
 	int64_t sign_generation() const { return props_.sign_generation(); }
 	godot::Array take_sign_cells() { return props_.take_sign_cells(); }

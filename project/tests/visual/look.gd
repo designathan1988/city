@@ -1,8 +1,9 @@
-## LOOK AT THE GAME FROM A PLAN, as the Roadcraft 4.0's scripts/look.mjs does: a JSON plan of steps, so a view is a line of
-## data and not a scene of its own, and one plan serves both games (the same setView, in metres, gives the same camera:
-## PairCamera; its y is the 4.0's, whose map north is our -z). The plan: {"city": {"map": 0, "seed": 1, "generate": true}, "steps": [...]}; `generate` false opens the
+## LOOK AT THE GAME FROM A PLAN: a JSON plan of steps, so a view is a line of data and not a scene of its own. Every view is the
+## player's: the game's own camera rig stood at the plan's point (LookAim.stand), at the tests' graphics tier or the one named
+## (--preset=<tier>). The plan: {"city": {"map": 0, "seed": 1, "generate": true}, "steps": [...]}; `generate` false opens the
 ## bare land of the map, with no town to make and draw.
-## Steps: {"setView": [x, y, zoom, azimuth, elevation]} (the 4.0's map and degrees), {"shot": name} (after the world is drawn),
+## Steps: {"setView": [x, y, zoom, azimuth, elevation]} (metres with y to the map's north, which is -z; the zoom in screen pixels a
+## metre at the point looked at; degrees, the azimuth from +x towards +z), {"shot": name} (after the world is drawn),
 ## {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
 ## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"blastShot": name, "at": s}, {"walker": [zoom, azimuth, elevation]}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
 ## In args, {"at": [x, z]} is the point of the ground there (what the player's pointer would hit), {"profile": id} the index of
@@ -26,7 +27,6 @@ var ui: UiDriver
 var failures := 0
 var shots := 0
 var measure: LookMeasure
-var recording := ""
 var frozen := false
 
 
@@ -47,7 +47,9 @@ func _ready() -> void:
 	add_child(world)
 	if frozen: # a temporal filter's history is the frames before the photo, which the machine's speed decides: none here
 		Settings.kept = {"temporal": QualityTier.TEMPORAL_NONE}
-	PairCamera.quality(world, get_viewport())
+	if not _quality():
+		get_tree().quit(2)
+		return
 	rig = CityCamera.new()
 	add_child(rig)
 	var errors := CityStore.boot(world.terrain, world.materials())
@@ -77,10 +79,24 @@ func _ready() -> void:
 	get_tree().quit(1 if failures > 0 else 0)
 
 
+## The run's graphics as the game applies them: the tests' tier of the data, or the tier `--preset=` names. False: no such tier.
+func _quality() -> bool:
+	for arg in OS.get_cmdline_user_args():
+		if not arg.begins_with("--preset="):
+			continue
+		var tier := arg.trim_prefix("--preset=")
+		if Settings.known_preset(tier) != tier:
+			push_error("unknown preset: %s" % tier)
+			return false
+		Settings.preset = tier
+	Settings.apply(world, get_viewport())
+	return true
+
+
 func _step(step: Dictionary) -> void:
 	if step.has("setView"):
 		var v: Array = step.setView
-		await PairCamera.stand(rig, ui, ui.ground(v[0], -v[1]), v[3], v[4], v[2])
+		await LookAim.stand(rig, ui, ui.ground(v[0], -v[1]), [v[2], v[3], v[4]])
 	elif step.has("shot"):
 		await CaptureWait.until_drawn(self, SETTLE_FRAMES, step.shot)
 		if frozen:
@@ -117,7 +133,7 @@ func _step(step: Dictionary) -> void:
 		_reference(step.reference)
 	elif step.has("until"):
 		await _until(step)
-	elif not await _pointer_step(step) and not await _measure_step(step):
+	elif not await _pointer_step(step) and not await measure.plan_step(step):
 		failures += 1
 		print("FAIL unknown step: ", step)
 
@@ -162,31 +178,6 @@ func _press_control(said: String) -> void:
 		print("FAIL no control says: ", said)
 		return
 	await ui.press(found)
-
-
-## The steps that read the servers. False: not one of them.
-func _measure_step(step: Dictionary) -> bool:
-	if step.has("record"):
-		measure.record()
-		recording = str(step.record)
-	elif step.has("recordEnd"):
-		print("frames %s: %s" % [recording, measure.record_end()])
-	elif step.has("usage"):
-		print("usage: %s" % await measure.usage(self, float(step.usage) if step.usage is float else LookMeasure.USAGE_SECONDS))
-	elif step.has("info"):
-		print("info: %s" % measure.info())
-	elif step.has("clock"):
-		measure.clock_on(get_viewport().get_camera_3d(), DataTables.game("render_switches").doctor.stages)
-	elif step.has("switch"):
-		Settings.switches.set_on(str(step.switch[0]), bool(step.switch[1]))
-		Settings.switches_changed()
-	elif step.has("passes"):
-		print("passes: %s" % [measure.passes()])
-	elif step.has("view"):
-		get_viewport().debug_draw = ClassDB.class_get_integer_constant(&"Viewport", ("DEBUG_DRAW_%s" % str(step.view)).to_upper())
-	else:
-		return false
-	return true
 
 
 ## A model translucent over the map: [file, x, z, scale].

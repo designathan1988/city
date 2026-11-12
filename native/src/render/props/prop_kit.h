@@ -44,6 +44,7 @@ public:
 	const MeshBuilder &pole_levels() { pole_.levels = true; return pole_; } // for the MultiMeshes: a chunk of poles thins out with its distance
 	const MeshBuilder &pole_cast_levels() { pole_cast_.levels = true; return pole_cast_; }
 	float cast_from() const { return cast_from_; }
+	float cast_end() const { return cast_end_; } // from where a pole, and the chunk's other furniture, casts nothing (props.pole_cast.end_m)
 	// A wire from t = 0 to 1 along x, as a tube round it (near) or a coarser one (far): props.gdshader bends it.
 	const MeshBuilder &wire(bool near) const { return near ? wire_near_ : wire_far_; }
 	const MeshBuilder &unit_box() const { return box_; }
@@ -59,7 +60,7 @@ public:
 
 private:
 	MeshBuilder meshes_[int(PropKind::COUNT)];
-	float cast_from_ = 0;
+	float cast_from_ = 0, cast_end_ = 0;
 	MeshBuilder lenses_, pole_, pole_cast_, wire_near_, wire_far_, box_, beam_, light_;
 };
 

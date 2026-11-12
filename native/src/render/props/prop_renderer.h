@@ -5,6 +5,7 @@
 #pragma once
 
 #include "core/job_pool.h"
+#include "render/detail.h"
 #include "render/mesh_builder.h"
 #include "render/mesh_queue.h"
 #include "render/props/barrier_boxes.h"
@@ -31,6 +32,8 @@ public:
 	void reset();
 	void submit(const CityState &s, int64_t key, JobPool &pool, float priority);
 	void drop_chunk(int64_t key);
+	// The frame's view (render/detail.h): the level of every chunk's wires and of its poles' shadows is picked by it (pick).
+	void update_view(const DetailView &view);
 	void update_signals(const PoseFrame &f, bool fresh) { lamps_.update(f, fresh); }
 	int lit_lenses() const { return lamps_.lit(); }
 	void update_lamps(const godot::Vector3 &eye, const ViewCull &view, float frame_s) { lights_.update(eye, view, frame_s); }
@@ -46,6 +49,8 @@ public:
 	godot::Array take_sign_cells() { return atlas_.take_pending(); }
 	int64_t sign_generation() const { return atlas_.generation(); } // moves when the sheets start empty again (a new city)
 	int instances() const { return instances_; } // poles, wires, boxes and lights drawn (render_cost probe)
+	// Tests: each chunk's spans and which levels of its wires and of its poles' shadows the engine is told to draw (probe wire_draws).
+	godot::Array wire_draws() const;
 	int sign_cells() const { return atlas_.cells_used(); }
 
 private:
@@ -54,15 +59,20 @@ private:
 		MultiMeshDraw poles, wires_near, wires_far, boxes, beams, light;
 		MultiMeshDraw pole_shadow_near, pole_shadow_far; // the poles' shadow: the whole mesh in the near chunks, the light one past them
 		godot::RID cast; // the chunk's mesh in the shadow maps alone, as far as a thin thing's shadow reads
+		godot::AABB box; // the chunk's, as its draws were given it: what the pick measures the eye's distance to
+		float wire_error = 0; // how far the coarse wires are off the chunk's deepest span, in metres (WireLook::chord_miss)
+		bool casting = true; // `cast` as the engine was told last (an instance is made drawn)
 		int count = 0;
 		void free();
 	};
+	// The one decision of which level of a chunk's wires and of its poles' shadows stands, by view_ (prop_renderer.cpp).
+	void pick(Draws &d) const;
 	CityCut gather(const CityState &s, int64_t key) const;
 	void build_cpu(const CityView &s, int64_t key, MeshBuilder &mb, StreetInstances &inst) const;
 	void commit_one(Built &b) override;
 	void show(Draws &d, StreetInstances &inst, const godot::AABB &box);
 	void cast_chunk(Draws &d, const godot::RID &mesh, const godot::AABB &box);
-	float shadow_end() const;
+	DetailView view_; // the last frame's (update_view): a chunk committed between two frames is picked by it
 	godot::RID scenario_, material_, glow_material_;
 	const StreetLook *look_ = nullptr;
 	FurnitureLook furniture_;

@@ -144,7 +144,7 @@
   ]
  },
  "wires": {
-  "_doc": "The wires of a span, on the seats of each pole (Roadcraft 4.0 world/utilities.ts primarySeats, secondarySeats, spanCarries): the three primary wires on the cross-arm's insulators, z_m along it from the mast toward the street on an urban pole (B1), the style's rural_z_m on a rural one (N1, across the crown), the wire i from the seat i of one pole to the seat i of the other; the two secondary wires on the urban pole's rack (S1), the style's secondary_z_m out from the mast, only between two urban poles. The style's y_m: the primary wires' height, then the secondary ones'. sag: share of the span, up to max_sag_m. radius_m: thicker than life so a cable reads at play zoom, as the 4.0 draws it. min_span_m, max_span_m: what is strung. near_chords and near_sides are the tube up to tube_end_m, far_chords and far_sides the coarse one up to far_end_m, where a wire is under a pixel at the 1600 x 900 view. Sag and these distances have no norm behind them: measured against the 4.0 in play.",
+  "_doc": "The wires of a span, on the seats of each pole (Roadcraft 4.0 world/utilities.ts primarySeats, secondarySeats, spanCarries): the three primary wires on the cross-arm's insulators, z_m along it from the mast toward the street on an urban pole (B1), the style's rural_z_m on a rural one (N1, across the crown), the wire i from the seat i of one pole to the seat i of the other; the two secondary wires on the urban pole's rack (S1), the style's secondary_z_m out from the mast, only between two urban poles. The style's y_m: the primary wires' height, then the secondary ones'. sag: share of the span, up to max_sag_m. radius_m: thicker than life so a cable reads at play zoom, as the 4.0 draws it. min_span_m, max_span_m: what is strung. near_chords and near_sides are the tube, far_chords and far_sides the coarse level. A chunk's wires stand wherever its poles stand and at one level, picked each frame (render/props/prop_renderer.cpp pick): the coarse one from where its own error (the chunk's deepest sag over far_chords squared, plus what far_sides leave of the round) is under render.detail_error_px on the frame's lens at the nearest point of the chunk (render/detail.h), the tube nearer; no distance is set here. Sag has no norm behind it: measured against the 4.0 in play.",
   "z_m": [0.55, 1.25, 1.85],
   "radius_m": 0.035,
   "sag": 0.018,
@@ -155,9 +155,7 @@
   "near_sides": 4,
   "far_chords": 4,
   "far_sides": 3,
-  "far_end_m": 700,
-  "color": "#1e2224",
-  "tube_end_m": 220
+  "color": "#1e2224"
  },
  "wear": { "_doc": "Streets and footways that age with use (render/wear): the field's cell, how much a wheel and a foot leave on the cell under it each simulated second (share of full wear: a busy lane darkens in a few minutes of traffic), the track of a car between its wheels (a sedan's 1.78 m width less a 205 mm tyre, agents.json), how often a tile is sent and how many a frame, and the most a publication counts for (ticks stepped with no frame drawn leave no wear: an agent stands on one cell for one publication).", "field_cell_m": 5, "wheels_per_s": 0.05, "feet_per_s": 0.02, "track_m": 1.58, "upload_every_s": 2, "most_step_s": 0.25, "tiles_per_frame": 2 },
  "trees": {
@@ -338,7 +336,7 @@
   "roadcraft": {
    "_doc": "What the Roadcraft 4.0 draws (src/render/signs.ts PLATE; src/world/utilities.ts and src/render/utilities.ts placePole: the urban and the rural pole, 8.5 m, made by tools/assets/make_pole_parts.py). The look of this style, not a norm.",
    "props": {
-    "pole_cast": {"_doc": "What a pole casts past from_m: only its parts of least_m or longer, round ones of `segments` sides. Nearer the whole pole casts: an insulator shows there.", "from_m": 140, "least_m": 0.3, "segments": 5},
+    "pole_cast": {"_doc": "What a pole casts, by the distance from the eye to the nearest point of its chunk: nearer than from_m the whole pole (an insulator shows there); from there only its parts of least_m or longer, round ones of `segments` sides; nothing from end_m, where a pole or a bin is thinner than a texel of the far cascades, and the chunk's other furniture stops casting there too. One level at a time, picked each frame (render/props/prop_renderer.cpp pick).", "from_m": 140, "end_m": 220, "least_m": 0.3, "segments": 5},
     "pole": [
      {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 8.5, "segments": 12, "color": "#4e3b2a", "part": 1, "wood": true},
      {"shape": "frustum", "base": [0, 8.49, 0], "radius": 0.1265, "top_radius": 0.044, "height": 0.08, "segments": 10, "color": "#8c9590", "part": 1},
@@ -406,7 +404,7 @@
   "brasil": {
    "_doc": "The pole: Neoenergia DIS-NOR-012 rev. 08, in the catalog's poles. CONTRAN MBST vol. I (2022) 3.7, recommended for town: stop, R-1, side 0.35 m, 0.845 m across, an octagon; yield, R-2, side 0.90 m; round plates 0.50 m. z_m is the plate centre: 3.11 puts the bottom edge 2.0 to 2.5 m up, here 2.1 m.",
    "props": {
-    "pole_cast": {"_doc": "What a pole casts past from_m: only its parts of least_m or longer, round ones of `segments` sides. Nearer the whole pole casts: an insulator shows there.", "from_m": 140, "least_m": 0.3, "segments": 5},
+    "pole_cast": {"_doc": "What a pole casts, by the distance from the eye to the nearest point of its chunk: nearer than from_m the whole pole (an insulator shows there); from there only its parts of least_m or longer, round ones of `segments` sides; nothing from end_m, where a pole or a bin is thinner than a texel of the far cascades, and the chunk's other furniture stops casting there too. One level at a time, picked each frame (render/props/prop_renderer.cpp pick).", "from_m": 140, "end_m": 220, "least_m": 0.3, "segments": 5},
     "pole": [
      {"shape": "frustum", "base": [0, 0, 0], "radius": 0.18, "top_radius": 0.11, "height": 10.2, "segments": 12, "color": "#4e3b2a", "part": 1, "wood": true},
      {"shape": "frustum", "base": [0, 10.19, 0], "radius": 0.1265, "top_radius": 0.044, "height": 0.08, "segments": 10, "color": "#8c9590", "part": 1},

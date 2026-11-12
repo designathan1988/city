@@ -55,7 +55,9 @@ void push_span(StreetInstances &inst, const WireLook &w, const Vector3 &a, const
 	if (span < w.min_span || span > w.max_span) return;
 	const Vector3 across = Vector3(-d.z, 0, d.x).normalized();
 	const float kinds = KIND_STRIDE * float(int(kind_a) + KIND_B_WEIGHT * int(kind_b));
-	mm_push_plain(inst.wires, d, UP, across, a, std::min(w.max_sag, span * w.sag), std::fmod(phase, TAU_F) + kinds, heading(arm_a), heading(arm_b));
+	const float sag = std::min(w.max_sag, span * w.sag);
+	inst.wire_sag = std::max(inst.wire_sag, sag);
+	mm_push_plain(inst.wires, d, UP, across, a, sag, std::fmod(phase, TAU_F) + kinds, heading(arm_a), heading(arm_b));
 }
 
 Vector3 flat(ArmDir a) { return Vector3(a.x, 0, a.z); }
@@ -205,6 +207,12 @@ void place_segment(const CityView &s,const StreetLook &L, const FurnitureLook &F
 }
 } // namespace
 
+// A wire hangs in a parabola `sag_m` deep at its middle: `far_chords` equal chords leave it sag / chords^2 off at the most (the
+// parabola over one chord's width), and a tube of `far_sides` sides the radius times 1 - cos(pi / sides) off its round.
+float WireLook::chord_miss(float sag_m) const {
+	return sag_m / float(far_chords * far_chords) + radius * (1.f - std::cos(PI_F / float(far_sides)));
+}
+
 ArmReach arm_reach(const FurnitureLook &F, bool column) { return column ? ArmReach{ F.column_reach, F.column_height } : ArmReach{ F.lamp_reach, F.lamp_height }; }
 
 Vector3 lens_at(const Vector3 &foot, const Vector3 &toward, const ArmReach &lens) { return foot + toward * lens.reach + UP * lens.height; }
@@ -301,7 +309,11 @@ bool FurnitureLook::load(const Dictionary &t, PackedStringArray &errors) {
 	}
 	Dictionary w = t["wires"], l = t["lamp_light"];
 	wire.sag = w["sag"]; wire.max_sag = w["max_sag_m"]; wire.min_span = w["min_span_m"]; wire.max_span = w["max_span_m"];
-	wire.near_end = w["tube_end_m"]; wire.far_end = w["far_end_m"];
+	wire.radius = w["radius_m"]; wire.far_chords = int(w["far_chords"]); wire.far_sides = int(w["far_sides"]);
+	if (wire.far_chords < 1 || wire.far_sides < 3) {
+		errors.push_back("streets.json wires: far_chords under 1 or far_sides under 3");
+		return false;
+	}
 	beams = l["beams"]; beam_radius = l["beam_radius_m"]; lamp_height = l["lamp_height_m"]; lamp_reach = l["lamp_reach_m"];
 	column_height = l["column_height_m"]; column_reach = l["column_reach_m"]; pool_slab = l["pool_slab_m"];
 	return true;
