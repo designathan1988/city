@@ -44,6 +44,14 @@ capture() { # [dir]: one folder per capture task under it
 
 deliver() { bash "$ROOT/tools/build/deliver.sh" "$@"; } # the export, the Desktop's shortcut and the zip
 
+# The block rule (CLAUDE.md, Method step 5): nothing is built, tested, captured or exported while a block's code is written.
+# tools/tasks/block.py gives the one answer; the git hooks are this repository's own (core.hooksPath), installed by `hooks`.
+case "${1:-}" in
+	hooks) git -C "$ROOT" config core.hooksPath tools/build/git-hooks; exit ;;
+	core|core-windows|dll-debug|dll-release|gates|e2e|capture|export|package|all)
+		"${PY:-python}" "$ROOT/tools/tasks/block.py" check "build $1" || exit 1 ;;
+esac
+
 case "${1:-}" in
 	core) core_linux ;; # so para testes/capturas neste ambiente; o jogo e Windows
 	core-windows) core_windows ;;
@@ -55,5 +63,5 @@ case "${1:-}" in
 	export) deliver export ;;
 	package) deliver package ;;
 	all) core_linux; core_windows; gates; e2e; deliver export; deliver package ;;
-	*) echo "targets: core | core-windows | dll-debug | dll-release | gates | e2e | capture [dir] | export | package | all"; exit 2 ;;
+	*) echo "targets: core | core-windows | dll-debug | dll-release | gates | e2e | capture [dir] | export | package | all | hooks"; exit 2 ;;
 esac

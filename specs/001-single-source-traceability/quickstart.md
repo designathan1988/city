@@ -9,7 +9,8 @@ expected outcome. Commands are run from the repository root.
 python tools/gates/run_gates.py --summary
 ```
 
-Expected: no `INSTRUCTION_ELSEWHERE`, `PRECEDENCE_CLAIM`, `RULE_CONFLICT`, `NESTED_CLAUDE` or `MEMORY_ON` finding;
+Expected: no `INSTRUCTION_ELSEWHERE`, `PRECEDENCE_CLAIM`, `CONTRACT_UNGUARDED` (FR-006's contradiction check), `NESTED_CLAUDE`
+or `MEMORY_ON` finding;
 `python tools/gates/run_gates.py --register log/problems.jsonl` reports 0 NEW findings; CLAUDE.md under 200 lines; the
 project's `.claude/settings.json` has `autoMemoryEnabled: false` and the fixtures in `claudeMdExcludes`. In a fresh session, ask
 "where is the work method and what wins in a conflict": the answer is CLAUDE.md, alone.

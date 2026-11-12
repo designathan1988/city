@@ -4,6 +4,7 @@ import os
 
 import cpp_syntax
 import gd_syntax
+from scope import FIXTURES
 from source import language_of
 
 
@@ -86,6 +87,27 @@ def check_headers(ctx, src, err):
         err("CABECALHO", src.path, "the file must start with a comment that states its responsibility")
 
 
+def line_ending_inputs(ctx, path):
+    """A file the change reached, wherever it lies (records and excluded folders included): the work wrote there."""
+    return path in ctx.changed and not path.startswith(FIXTURES)
+
+
+def check_line_endings(ctx, err):
+    """LINE_ENDINGS (CLAUDE.md, files written as bytes): a file whose committed version had no carriage return gains none, and a
+    new file has none. A file that was already CRLF keeps its form (the repository mixes them; the form is the file's own)."""
+    for path in sorted(p for p in ctx.listed if line_ending_inputs(ctx, p)):
+        with open(os.path.join(ctx.root, path), "rb") as fh:
+            data = fh.read()
+        if b"\r" not in data or b"\0" in data[:BINARY_PROBE]:
+            continue
+        before = ctx.before_bytes(path)
+        if before is None or b"\r" not in before:
+            what = "a new file" if before is None else "a file that had none"
+            err("LINE_ENDINGS", path, f"carriage returns written into {what}: write the file's bytes with LF (the Edit and Write "
+                                      "tools, or a script writing bytes)")
+
+
+BINARY_PROBE = 8000  # git's own rule for telling a binary file: a NUL in its first 8000 bytes
 SIDECARS = (".uid", ".import")
 
 

@@ -1,0 +1,9 @@
+{
+ "rule": "instructions",
+ "expect": [
+  "INSTRUCTION_ELSEWHERE docs/notes.md:1",
+  "MEMORY_ON .claude/settings.json",
+  "NESTED_CLAUDE sub/CLAUDE.md",
+  "PRECEDENCE_CLAIM docs/notes.md:2"
+ ]
+}

@@ -1,11 +1,11 @@
-# The command line of tools/tasks: run suites or tasks (suites.json), serve tasks to other tools (JSON lines), status, and a
-# machine var (suites.json vars: where Godot, bash and llvm-mingw are) for the shell scripts.
+# The command line of tools/tasks: run suites or tasks (suites.json), serve tasks to other tools (JSON lines), status, a
+# machine var (suites.json vars: where Godot, bash and llvm-mingw are) for the shell scripts, and the block rule (block.py).
 # Exit codes of `run`: 0 only when the selection is non-empty and every task passed; 1 for any FAIL, TIMEOUT, BROKEN or
-# SKIPPED; 2 for a usage error, an unknown name or an empty selection.
+# SKIPPED, and for a run refused while a block is open; 2 for a usage error, an unknown name or an empty selection.
 # While tasks run, `run` prints a line of what it is doing every few seconds; `status` shows every run that lives.
 # Use: python tools/tasks/cli.py run <suite|task ...> [--all] [--<variant>] [--list] [--json OUT] [--jobs N]
 #      python tools/tasks/cli.py serve [--jobs N]      python tools/tasks/cli.py status [--watch]      python tools/tasks/cli.py --list
-#      python tools/tasks/cli.py var <name>
+#      python tools/tasks/cli.py var <name>      python tools/tasks/cli.py block open <name>|verify|close|status
 from __future__ import annotations
 
 import argparse
@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tasks import verdicts  # noqa: E402
+from tasks import block, verdicts  # noqa: E402
 from tasks.cache import remove, write_atomic  # noqa: E402
 from tasks.pool import Pool, run  # noqa: E402
 from tasks.runs import RUNS, live_runs, newest_run  # noqa: E402
@@ -121,6 +121,10 @@ def cmd_run(argv: list[str]) -> int:
     if not sel.tasks:
         print("empty selection: no task to run", file=sys.stderr)
         return USAGE
+    why = block.refusal("run " + " ".join(names), root)
+    if why:
+        print(why, file=sys.stderr)
+        return FAILED
     for stamp in sel.stamps:
         remove(root / stamp)  # no approval outlives the check that follows
     capacity = s.doc.get("capacity", {})
@@ -259,9 +263,9 @@ def cmd_var(argv: list[str]) -> int:
 def main(argv: list[str]) -> int:
     if argv[:1] == ["--list"]:
         return cmd_run(["--list"] + argv[1:])
-    commands = {"run": cmd_run, "serve": cmd_serve, "status": cmd_status, "var": cmd_var}
+    commands = {"run": cmd_run, "serve": cmd_serve, "status": cmd_status, "var": cmd_var, "block": block.main}
     if not argv or argv[0] not in commands:
-        print(__doc__ if __doc__ else "", "usage: cli.py run|serve|status|var ... (or --list)", file=sys.stderr)
+        print(__doc__ if __doc__ else "", "usage: cli.py run|serve|status|var|block ... (or --list)", file=sys.stderr)
         return USAGE
     try:
         return commands[argv[0]](argv[1:])

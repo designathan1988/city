@@ -35,11 +35,26 @@ _LEXERS = {
 _BINARY_PROBE = 8192
 
 
+INTERPRETERS = {"sh": "sh", "bash": "sh", "dash": "sh", "python": "py", "python3": "py", "pwsh": "ps1"}
+
+
 def language_of(path):
     name = os.path.basename(path)
     if name == ".gitignore":
         return "sh"
     return LANGUAGES.get(os.path.splitext(path)[1].lower())
+
+
+def language_of_script(text):
+    """The language a script with no extension declares on its first line (POSIX's #! interpreter line: `#!/bin/sh`,
+    `#!/usr/bin/env python3`), or None."""
+    if not text.startswith("#!"):
+        return None
+    words = text.split("\n", 1)[0][2:].split()
+    if not words:
+        return None
+    program = os.path.basename(words[1] if os.path.basename(words[0]) == "env" and len(words) > 1 else words[0])
+    return INTERPRETERS.get(program)
 
 
 class Source:
@@ -57,6 +72,8 @@ class Source:
             except UnicodeDecodeError:
                 self.binary = True
         self.lang = language_of(path)
+        if self.lang is None and not os.path.splitext(path)[1] and not self.binary:
+            self.lang = language_of_script(self.text)
         self._tokens = None
         self._error = None
 

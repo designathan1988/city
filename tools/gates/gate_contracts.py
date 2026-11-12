@@ -1,9 +1,11 @@
 """CONTRACT_UNGUARDED: no rule of CLAUDE.md without a guard. Every item of a rule section of CLAUDE.md (a bullet, a numbered
 step or a paragraph; a table is no item) carries a marker [c:<id>]; every marker names an entry of tools/gates/contracts.json
 and every entry is marked once; every entry has guards, and every guard is real: a gate a rule the gates declare (its name or
-one of its ids), a test or a
-tool a file of the repository, a hook a file of .claude/skills/trace-fix/, a runtime probe a name the store's API declares;
-conduct, for a rule no mechanism can hold, says why no mechanism can."""
+one of its ids), a test or a tool a file of the repository, a hook a file of .claude/skills/trace-fix/ or .claude/hooks/, a
+runtime probe a name the store's API declares, a setting a key of the project's .claude/settings.json holding the value it
+names (a list holding it as a member); conduct, for a rule no mechanism can hold, says why no mechanism can. Since only
+CLAUDE.md holds instructions, this is also where two rules contradicting each other are caught: a tag defined twice, two rules
+under one tag, a tag with no guard, a guard naming no tag."""
 import json
 import os
 import re
@@ -13,14 +15,15 @@ import registry
 CLAUDE_MD = "CLAUDE.md"
 CONTRACTS = "tools/gates/contracts.json"
 STORE_API = "project/game/store/store_api.gd"
-HOOKS = ".claude/skills/trace-fix/"
+SETTINGS = ".claude/settings.json"
+HOOKS = (".claude/skills/trace-fix/", ".claude/hooks/")
 MARK = re.compile(r"\[c:([a-z0-9-]+)\]")
 ITEM_START = re.compile(r"^(- |\d+\. )")
-KINDS = frozenset({"gate", "test", "tool", "hook", "runtime", "conduct"})
+KINDS = frozenset({"gate", "test", "tool", "hook", "runtime", "setting", "conduct"})
 
 
 def inputs(ctx, path):
-    return path in (CLAUDE_MD, CONTRACTS, STORE_API)
+    return path in (CLAUDE_MD, CONTRACTS, STORE_API, SETTINGS)
 
 
 def extra(ctx):
@@ -33,6 +36,29 @@ def extra(ctx):
     files = sorted({g["name"] for g in guards if g.get("kind") in ("test", "tool", "hook")})
     return [sorted(i for r in registry.all_rules(ctx.rules) for i in (r.name, *r.ids)),
             [f for f in files if os.path.isfile(os.path.join(ctx.root, f))]]
+
+
+def _settings(ctx):
+    """The project's settings as JSON, or None when the file is missing or broken."""
+    try:
+        with open(os.path.join(ctx.root, SETTINGS), encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def setting_holds(settings, name):
+    """Whether `path=value` holds in the settings: the dotted path's value equals the value as JSON text would write it, or
+    is a list holding the value."""
+    path, _, want = name.partition("=")
+    node = settings
+    for part in path.split("."):
+        if not isinstance(node, dict) or part not in node:
+            return False
+        node = node[part]
+    if isinstance(node, list):
+        return want in [str(v) for v in node]
+    return json.dumps(node) == want or node == want
 
 
 def items(text, sections):
@@ -68,7 +94,7 @@ def items(text, sections):
     return [(n, t) for n, t, _step in out]
 
 
-def _guard_problem(ctx, guard, gate_ids, probes):
+def _guard_problem(ctx, guard, gate_ids, probes, settings):
     kind, name = guard.get("kind"), guard.get("name", "")
     if kind not in KINDS:
         return f"a guard of kind '{kind}', none of {sorted(KINDS)}"
@@ -77,9 +103,11 @@ def _guard_problem(ctx, guard, gate_ids, probes):
     if kind in ("test", "tool") and not os.path.isfile(os.path.join(ctx.root, name)):
         return f"the {kind} '{name}' is no file of the repository"
     if kind == "hook" and (not name.startswith(HOOKS) or not os.path.isfile(os.path.join(ctx.root, name))):
-        return f"the hook '{name}' is no file of {HOOKS}"
+        return f"the hook '{name}' is no file of {' or '.join(HOOKS)}"
     if kind == "runtime" and name not in probes:
         return f"the runtime probe '{name}' is no name {STORE_API} declares"
+    if kind == "setting" and (settings is None or not setting_holds(settings, name)):
+        return f"the setting '{name}' does not hold in {SETTINGS}"
     if kind == "conduct" and not guard.get("why"):
         return f"the conduct '{name}' does not say why no mechanism can hold its rule"
     return None
@@ -110,13 +138,14 @@ def check_contracts(ctx, err):
             err("CONTRACT_UNGUARDED", f"{CLAUDE_MD}:{lines[1]}", f"the marker [c:{cid}] stands more than once")
     gate_ids = {i for r in registry.all_rules(ctx.rules) for i in (r.name, *r.ids)}
     probes = _probes(ctx)
+    settings = _settings(ctx)
     for cid, entry in sorted(entries.items()):
         if cid not in marked:
             err("CONTRACT_UNGUARDED", CONTRACTS, f"the contract '{cid}' is marked nowhere in {CLAUDE_MD}")
         if not entry.get("guards"):
             err("CONTRACT_UNGUARDED", CONTRACTS, f"the contract '{cid}' has no guard")
         for guard in entry.get("guards", []):
-            wrong = _guard_problem(ctx, guard, gate_ids, probes)
+            wrong = _guard_problem(ctx, guard, gate_ids, probes, settings)
             if wrong:
                 err("CONTRACT_UNGUARDED", CONTRACTS, f"the contract '{cid}': {wrong}")
 

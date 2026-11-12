@@ -33,6 +33,16 @@ def git(root: Path | str, *args: str, stdin: str | None = None) -> str:
     return r.stdout
 
 
+def git_bytes(root: Path | str, *args: str) -> bytes:
+    """git's answer as bytes, for content whose bytes matter (a blob's line endings): the text form above reads with universal
+    newlines and would turn every CRLF into LF. Same wrapper otherwise: a deadline, no console window, no optional locks."""
+    r = subprocess.run(["git", "--no-optional-locks", "-C", str(root), *args], capture_output=True, stdin=subprocess.DEVNULL,
+                       timeout=GIT_TIMEOUT_S, creationflags=NO_WINDOW)
+    if r.returncode != 0:
+        raise RuntimeError(f"git {' '.join(args)} failed ({r.returncode}): {r.stderr.decode('utf-8', 'replace').strip()}")
+    return r.stdout
+
+
 def blob_id(path: Path) -> str:
     """The git blob id of a file's bytes, for files git does not track (ignored outputs, paths outside the repo)."""
     h = hashlib.sha1()

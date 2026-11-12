@@ -1,7 +1,28 @@
-"""Memory gates: the map file lists every source file and no file that no longer exists; CLAUDE.md stays short."""
+"""Memory gates: the map file lists every source file and no file that no longer exists; CLAUDE.md stays short and is the only
+source of instructions (INSTRUCTION_ELSEWHERE, PRECEDENCE_CLAIM, NESTED_CLAUDE, MEMORY_ON: CLAUDE.md, the authority rule)."""
+import json
+import os
 import re
+import sys
+
+TOOLS_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+if TOOLS_DIR not in sys.path:
+    sys.path.insert(0, TOOLS_DIR)
+from tasks import inputs as tree  # noqa: E402  the one owner of path globs
 
 GENERATED = (".uid", ".import", ".translation")  # Godot sidecars and import outputs: they belong to their source file
+CLAUDE_MD = "CLAUDE.md"
+CONTRACTS = "tools/gates/contracts.json"
+SETTINGS = ".claude/settings.json"
+INSTRUCTION_NAMES = ("CLAUDE.md", "CLAUDE.local.md")  # the files Claude Code loads as instructions wherever they stand
+RULES_DIR = ".claude/rules/"  # path-scoped rules, instructions too (Claude Code's memory documentation)
+MARK = re.compile(r"\[c:[a-z0-9-]+\]")
+# A claim of precedence among instructions: the words below, with a source of orders as their object (a right of way in the
+# game's own words, one road given way to by another, is no claim of this kind).
+CLAIM = re.compile(r"(?i:\bbinding over\b|\b(wins?|outranks?|overrides?|takes? precedence)\b[^.;\n]{0,40}"
+                   r"\b(claude\.md|memor(y|ies)|skills?|records?|instructions?|orders?)\b)|\bBINDING\b")
+QUOTED = re.compile(r'"[^"]*"|`[^`]*`|\u201c[^\u201d]*\u201d')  # a citation: the words are someone else's, not a claim here
+BINARY_PROBE = 8000
 
 
 def mapped(f, rules):
@@ -41,3 +62,74 @@ def check_claude_md(ctx, err):
     limit = rules["claude_md_max_lines"]
     if lines > limit:
         err("CLAUDE_MD", "CLAUDE.md", f"{lines} lines: keep it concise (up to {limit}); the detail goes to log/")
+
+
+def memory_folder(root):
+    """The folder Claude Code keeps a project's auto memory in: ~/.claude/projects/<the root with every character that is no
+    letter or digit written as '-'>/memory."""
+    name = re.sub(r"[^A-Za-z0-9]", "-", os.path.abspath(root))
+    return os.path.join(os.path.expanduser("~"), ".claude", "projects", name, "memory")
+
+
+def _scanned(ctx, path):
+    return not any(path == s or path.startswith(s + "/") for s in ctx.rules["instruction_skip"])
+
+
+def instruction_inputs(ctx, path):
+    return _scanned(ctx, path)
+
+
+def instruction_extra(ctx):
+    """What the verdict reads besides the files: the memory folder's notes."""
+    folder = memory_folder(ctx.root)
+    return sorted(os.listdir(folder)) if os.path.isdir(folder) else []
+
+
+def _settings(ctx):
+    try:
+        with open(os.path.join(ctx.root, SETTINGS), encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _excluded(ctx, path, settings):
+    """A file the settings keep from loading (claudeMdExcludes, globs matched against the absolute path)."""
+    full = os.path.abspath(os.path.join(ctx.root, path)).replace("\\", "/")
+    return any(tree.glob_regex(g).match(full) for g in (settings or {}).get("claudeMdExcludes", []))
+
+
+def _text(ctx, path):
+    try:
+        with open(os.path.join(ctx.root, path), "rb") as fh:
+            data = fh.read()
+    except OSError:
+        return ""
+    return "" if b"\0" in data[:BINARY_PROBE] else data.decode("utf-8", "replace")
+
+
+def check_instructions(ctx, err):
+    """CLAUDE.md is the only source of instructions: no rule marker or precedence claim anywhere else (a citation in quotes or
+    backticks is no claim), no other instruction file Claude Code would load, auto memory off and no note left in it."""
+    settings = _settings(ctx)
+    for path in sorted(p for p in ctx.listed if _scanned(ctx, p)):
+        name = os.path.basename(path)
+        if path != CLAUDE_MD and (name in INSTRUCTION_NAMES or path.startswith(RULES_DIR)) and not _excluded(ctx, path, settings):
+            err("NESTED_CLAUDE", path, "an instruction file other than the root's CLAUDE.md: its orders belong in CLAUDE.md")
+        if path == CLAUDE_MD:
+            continue
+        for n, line in enumerate(_text(ctx, path).splitlines(), 1):
+            bare = QUOTED.sub(" ", line)
+            if path != CONTRACTS and MARK.search(bare):
+                err("INSTRUCTION_ELSEWHERE", f"{path}:{n}", "a rule marker outside CLAUDE.md: the rule belongs in CLAUDE.md "
+                                                            "(a citation of one is written in backticks)")
+            if CLAIM.search(bare):
+                err("PRECEDENCE_CLAIM", f"{path}:{n}", "a claim of precedence outside CLAUDE.md: only CLAUDE.md states what "
+                                                       "wins (a citation of one is written in quotes)")
+    if settings is None or settings.get("autoMemoryEnabled") is not False:
+        err("MEMORY_ON", SETTINGS, "auto memory must be off for this project (autoMemoryEnabled false)")
+    folder = memory_folder(ctx.root)
+    notes = sorted(n for n in os.listdir(folder) if n.endswith(".md")) if os.path.isdir(folder) else []
+    if notes:
+        err("MEMORY_ON", folder.replace("\\", "/"), f"{len(notes)} note(s) left in the project's memory folder: their orders "
+                                                    "belong in CLAUDE.md, their facts in the documents")

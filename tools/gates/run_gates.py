@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Project gates: python tools/gates/run_gates.py [--file PATH ...] [--files-from LIST] [--summary] [--selftest]
+"""Project gates: python tools/gates/run_gates.py [--file PATH ...] [--files-from LIST] [--summary] [--selftest] [--json]
+[--register log/problems.jsonl]
 Exit 0 clean; 1 when any rule reports a problem or crashes; 2 when no file is given or the scope is empty, or a given
 path is unknown (not on disk and not in git). Given paths that every gate leaves out by a declared rule are listed and
 skipped; when all of them are, the exit is 0. Each rule runs on its own: one crashing rule is a failure and the others
-still run."""
+still run. --register joins the findings with the register (a block's close, FR-052): each finding shown with the open
+problem whose origin names it (gate:<RULE>:<file>) or as NEW, and the exit is 1 only for a NEW finding; the findings
+themselves are the same, never filtered, baselined or silenced. --json prints the findings as JSON instead of text."""
 import argparse
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -15,7 +19,11 @@ import scope  # noqa: E402
 from context import REPO, Cache, Context, digest  # noqa: E402
 from lex_other import LexError  # noqa: E402
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")))
+from atlas import problems as register  # noqa: E402  the register's one owner
+
 SUMMARY_SHOWN = 15
+WHERE_LINE = re.compile(r"^(.*?):(\d+)$")
 
 
 def load_config(root):
@@ -133,6 +141,8 @@ def main(argv=None):
     ap.add_argument("--files-from", help="judge only the files listed in this file, one repo-relative path per line")
     ap.add_argument("--summary", action="store_true", help="print a count per rule and the first problems")
     ap.add_argument("--selftest", action="store_true", help="run every rule on its must-fail and must-pass fixtures")
+    ap.add_argument("--json", action="store_true", help="print the findings as JSON (rule, where, file, line, message)")
+    ap.add_argument("--register", help="join the findings with this register: only a finding no open problem names fails")
     args = ap.parse_args(argv)
     sys.stdout.reconfigure(encoding="utf-8")  # paths and rules.json messages are UTF-8, whatever the console's code page
     if args.selftest:
@@ -163,8 +173,51 @@ def main(argv=None):
     ctx.cache.warm(ctx.listed)
     problems = run_rules(ctx, [t for t in targets if t in ctx.file_set], rules_list, None if requested is None else targets)
     problems.sort(key=lambda p: (p[0], p[1]))
-    report(problems, len(targets), args.summary)
+    findings = [finding(*p) for p in problems]
+    if args.register:
+        join(findings, os.path.join(REPO, args.register))
+    if args.json:
+        print(json.dumps(findings, ensure_ascii=False, indent=1))
+    elif args.register:
+        report_joined(findings, len(targets))
+    else:
+        report(problems, len(targets), args.summary)
+    if args.register:
+        return 1 if any(f["problem"] is None for f in findings) else 0
     return 1 if problems else 0
+
+
+def finding(gid, where, msg):
+    """A finding as data: its rule, where it stands (a file, a file:line or a whole rule's place) and the file alone."""
+    m = WHERE_LINE.match(where)
+    return {"rule": gid, "where": where, "file": m.group(1) if m else where, "line": int(m.group(2)) if m else None,
+            "message": msg}
+
+
+def join(findings, register_path):
+    """Each finding with the id of the open problem whose origin names it (gate:<RULE>:<file>), or None: a NEW finding."""
+    named = {}
+    for p in register.read(register_path):
+        if p.get("status") not in register.FINAL:
+            for origin in p.get("origin") or []:
+                named.setdefault(origin, p["id"])
+    for f in findings:
+        f["problem"] = named.get(register.gate_origin(f["rule"], f["file"]))
+
+
+def report_joined(findings, judged):
+    new = [f for f in findings if f["problem"] is None]
+    for f in new:
+        print(f"NEW [{f['rule']}] {f['where']}: {f['message']}")
+    known = {}
+    for f in findings:
+        if f["problem"]:
+            known[f["rule"]] = known.get(f["rule"], 0) + 1
+    if known:
+        print("registered (open problems of the register): " + ", ".join(f"{g} {n}" for g, n in sorted(known.items())))
+    verdict = "FAILED" if new else "OK"
+    print(f"Gates against the register {verdict}: {len(findings)} finding(s) in {judged} file(s), {len(new)} NEW, "
+          f"{len(findings) - len(new)} registered as open problems.")
 
 
 def report(problems, judged, summary):

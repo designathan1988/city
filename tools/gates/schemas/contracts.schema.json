@@ -17,7 +17,7 @@
             "items": {
               "type": "object", "strict": true,
               "properties": {
-                "kind": {"enum": ["gate", "test", "tool", "hook", "runtime", "conduct"]},
+                "kind": {"enum": ["gate", "test", "tool", "hook", "runtime", "setting", "conduct"]},
                 "name": {"type": "string", "minLength": 1},
                 "why": {"type": "string", "minLength": 1}
               },

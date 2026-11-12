@@ -32,6 +32,11 @@ MOVES = {
 }
 
 
+def gate_origin(rule, file):
+    """The origin a standing gate finding is registered by: the gates' join (run_gates --register) and import-gates agree on it."""
+    return f"gate:{rule}:{file}"
+
+
 class RegisterError(Exception):
     """A register that cannot be read, or a change the rules refuse: the message says which problem and why."""
 

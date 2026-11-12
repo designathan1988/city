@@ -1,0 +1,5 @@
+{
+ "rule": "line_endings",
+ "expect": [],
+ "changed": {"c.txt": "all", "d.txt": "all"}
+}

@@ -1,6 +1,7 @@
 # Mapa do código, arquivo por arquivo
 
-Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO` confere. A estrutura por pasta está no `CLAUDE.md`.
+A file created or deleted enters here in the same commit: the gate `MAPA_DESATUALIZADO` checks it. The structure by folder, the
+threads and the whole command list follow the map; the rules are CLAUDE.md's.
 
 <!-- MAPA:INICIO -->
 **Raiz e ferramentas**
@@ -177,7 +178,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/roads/profiles.cpp` · `native/src/sim/roads/profiles.h` — derivação do perfil (faixas, linhas, calçadas, preço)
 - `native/src/sim/roads/road_network.cpp` · `native/src/sim/roads/road_network.h` · `native/src/sim/roads/road_network_deck.cpp` · `native/src/sim/roads/road_network_node.cpp` · `native/src/sim/roads/road_network_shape.cpp` · `native/src/sim/roads/road_network_runs.cpp` — the road graph's storage, ids, spatial queries, heights over the grade line and change marks; where a ray lands on a deck (`ray_deck`); what a node is to whoever goes through it (crossing, U-turn, banned movement); the nodes' shapes (setbacks, a dead end's bulb, a joint); the streets' runs and the pieces a laid road was cut into
 - `native/src/sim/roads/road_network_cut.cpp` — a cut of the road network: the records a reader of a box needs (the box's segments and nodes, twice their nodes' arms, each segment's street and solved heights), under their own ids
-- `native/src/sim/roads/flow_stats.h` · `native/src/sim/roads/flow_stats_types.h` · `native/src/sim/roads/flow_stats_query.cpp` · `native/src/sim/roads/control_advisor.h` · `native/src/sim/roads/control_advisor_enums.h` · `native/src/sim/roads/control_advisor_types.h` · `native/src/sim/roads/control_advisor_query.cpp` — translated by the converter from the roadcraft (`tools/converter/configs/plans/flow-control.json`): the flow measured at each crossing and the control it calls for; a debt, never regenerated: redesigned at its cause for this game (log/how-we-work.md)
+- `native/src/sim/roads/flow_stats.h` · `native/src/sim/roads/flow_stats_types.h` · `native/src/sim/roads/flow_stats_query.cpp` · `native/src/sim/roads/control_advisor.h` · `native/src/sim/roads/control_advisor_enums.h` · `native/src/sim/roads/control_advisor_types.h` · `native/src/sim/roads/control_advisor_query.cpp` — translated by the converter from the roadcraft (`tools/converter/configs/plans/flow-control.json`): the flow measured at each crossing and the control it calls for; a debt, never regenerated: redesigned at its cause for this game (CLAUDE.md)
 - `native/src/sim/roads/road_grade.cpp` · `native/src/sim/roads/road_grade.h` · `native/src/sim/roads/road_grade_internal.h` · `native/src/sim/roads/road_grade_profile.cpp` · `native/src/sim/roads/road_grade_solve.cpp` — single owner of road heights: the stations of each segment, ground read at 7 points, junction and transition plates, the ground, variable, elevated and sunken solvers, the rounds until the nodes settle; a segment's structure (ground, elevated, bridge, tunnel)
 - `native/src/sim/roads/road_variants.cpp` · `native/src/sim/roads/road_variants.h` · `native/src/sim/roads/road_spec.cpp` · `native/src/sim/roads/road_spec.h` · `native/src/api/city_core_road_spec.cpp` — a class road with the lanes, width and parking of the tool options, one more profile in the catalogue; the road the player composes element by element, what blocks it, and the editor API
 - `native/src/sim/roads/parking_layout.cpp` · `native/src/sim/roads/parking_layout.h` — dono único das vagas da guia e da pintura delas (CTB art. 181 I, MBST vol. IV: MER e LPP), lido pelo tráfego e pelo render
@@ -672,7 +673,6 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `tools/analysis/featuretrace/js_specifiers.py` — where a JavaScript/TypeScript module specifier leads (relative paths with extension substitution, tsconfig `paths`, `node_modules` packages by `exports`), the base of `js_modules`
 - `tools/analysis/featuretrace/tests/test_narrowing.py` · `tools/analysis/featuretrace/tests/fixture/jsvalues/guards.js` · `tools/analysis/featuretrace/tests/fixture/jsvalues/predicates.ts` · `tools/analysis/featuretrace/tests/fixture/jsvalues/declared.ts` · `tools/analysis/featuretrace/tests/fixture/pending/guards.gd` · `tools/analysis/featuretrace/tests/fixture/pending/accessors.gd` · `tools/analysis/featuretrace/tests/fixture/pending/receivers.gd` — narrowing, the values a declaration admits, accessors, parameter properties and structural typing checked on the values and links they give
 - `log/trace-rules-narrowing-plan.md` · `log/trace-rules-narrowing-progress.md` — the plan of the narrowing theme and its ledger (rulings, tasks, measurements)
-- `log/how-we-work.md` — the binding way of developing the game, step by step, and the contradictions settled on 2026-11-11 (CLAUDE.md, memories, skills)
 - `log/guards-plan.md` · `log/guards-progress.md` — the plan of Part B of that design (the roadcraft's fingerprints and COPIA_DO_LAB, the scan of what stands, CONTRATO_SEM_GUARDA, ESCRITOR_DO_ESTADO, CONTROLADOR_DE_ESTADO, REMENDO; built as LAB_COPY, CONTRACT_UNGUARDED, MAP_WRITER_UNNAMED, STATE_CONTROLLER and NUMBER_MOVED) and its execution ledger: each task's commits and tests, the rulings, the final review (copied from `.superpowers/sdd/`)
 - `log/specification.md` — the specification the owner ordered on 2026-11-11 (the pause): where the three phases stand, the goals with their targets, the constraints, the reference hardware and the budgets, the game measured against them, the divergences between documents and code, why development is slow, the simulations as the code steps them, the documents' inventory, the photos of earlier fixes analysed again
 - `log/research.md` — every research of that order: the question, the searches, the sources, what was found, the test in an isolated folder with its real output, the conclusion and its status; the open questions
@@ -717,12 +717,104 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `tools/atlas/__init__.py` · `tools/atlas/cli.py` — the atlas, the project's one traceability tool: its command line (`problems`; `--json`; exit 0 an answer, 1 a failure or a refused change, 2 a usage error)
 - `tools/atlas/problems.py` · `tools/atlas/problems_cli.py` — the problem register's one owner: read, judged (`faults`, the rule the register gate holds), changed through one setter of the status (`MOVES`) and written as LF bytes; its commands (list with filters, add, update, close, drop, render)
 - `tools/atlas/render.py` — the register's generated view `log/problems.md`, by area then status (`--check` for the generated-files gate)
+- `tools/atlas/areas.py` · `tools/atlas/imports.py` — the register's area of a file by its place (longest prefix); what enters the register from a tool's own output, deduplicated (the gates' standing findings, one problem per rule and file), and the register's statistics (the median minutes from a report to its cause)
+- `tools/tasks/block.py` · `tools/tasks/tests/test_block.py` — the block rule's mechanism: the block's state (dist/block/state.json, out of git) moved by one setter through `MOVES` (closed, open, verify), the one refusal the orchestrator, `tools/build/build.sh`, `tools/build/deliver.sh`, the pre-commit hook and the project's shell hook ask while a block is open, the block's times appended to the process history at its close; its tests
+- `tools/build/git-hooks/**` — the repository's own git hooks (git's core.hooksPath, set by `tools/build/build.sh hooks`): `pre-commit` refuses a commit of the main checkout while a block is open
+- `tools/tasks/tests/test_guards.py` — the project's shell hooks (`.claude/hooks`): the standing authorisation's limits and the block's refusal, as Claude Code runs them
+- `tools/gates/tests/test_register_join.py` — the gates against the register: a finding an open problem names is registered, any other NEW, nothing filtered
+- `CLAUDE.md` — the project's only source of instructions: the authority, the method, the orders, the rules, each tagged and guarded in `tools/gates/contracts.json`
+- `.claude/settings.json` · `.claude/hooks/block_guard.py` · `.claude/hooks/destructive_guard.py` — the project's Claude Code settings (auto memory off, the fixtures' instruction files excluded, no agents, no transcript read, the shell hooks); the hooks: the block rule at the shell, the standing authorisation's limits
+- `.claude/skills/trace-fix/**` — the trace-fix skill: the procedure of tracing and fixing one reported problem, its ledger and its hooks
 - `tools/atlas/tests/**` — the atlas's tests and their fixture register
 - `log/problems.jsonl` · `log/problems.md` — the one register of every known problem of the game and the project (one JSON object a line, schema `tools/gates/schemas/problem.schema.json`) and its generated view
 - `log/history/tools.md` · `log/history/process.md` — one history per area of work: the tools; the process (the method, the triage and cleanup, the progress of a specification, the time each step takes)
 - `.specify/**` — Spec Kit's own files (its scripts, templates and workflow, copied from the user-level template); `.specify/memory/constitution.md` points to CLAUDE.md and holds no rule
 - `specs/001-single-source-traceability/**` — the specification of one source of truth, a clean project and end-to-end traceability: spec, plan, research, data model, contracts, quickstart, checklist and tasks
 <!-- MAPA:FIM -->
+
+## The project's structure (reference; the rules are CLAUDE.md's)
+
+`C:\Users\Jonathan\Desktop\city` is the whole project.
+
+**`native/src`, the C++ core**
+- `core/`: bytes, colour, grid, job pool, maths, memory, polygons, random, units; the translated runtime still there is a debt,
+  redone at its cause.
+- `sim/state/`: `CityState`, `ChangeLog` (the single "dirty" channel), `PoseBuffer`. `sim/catalog/`: the catalogue's types, no
+  values. `sim/commands/`: the player's commands, the edit journal, undo and redo. `sim/simulation/`: tick, speeds, clock and
+  growth.
+- `sim/roads/`, `sim/street/`: road network, grade, profiles, junctions; street furniture and street works. `sim/traffic/`:
+  vehicles, lanes, crossings, signals, walkers, lorries, yard. `sim/transit/`: buses, trains and lines.
+- `sim/buildings/`: records, the body generator (`b40/`) and interiors (`interior/`). `sim/lots/`, `sim/citygen/`: lots; the
+  generated city. `sim/terrain/`, `sim/nature/`: relief; landscape, weather and ecology. `sim/demolition/`, `sim/economy/`,
+  `sim/persistence/`: blast and damage; the roads' money; save.
+- `render/`: `RenderWorld` (consumes the `ChangeLog`, applies the budgets), `rs_util.h`, `mesh_builder`, `chunk_queue.h`,
+  `chunk_jobs.h` (upload budget), queues, mesh levels and order, lights, film grading and the bridge to Terrain3D;
+  `render/{agents,buildings,roads,props,trees,cover,water,transit,effects,overlays,atmosphere,wear}/`: each thing drawn.
+- `api/`: `CityCore` (split by area into `city_core_*.cpp`) and the script areas (`builder`, `landscape`, `transit`, `street`,
+  `probes`, `lab`), data loaders.
+
+**`project`, Godot**
+- `game/`: `store/` (`CityStore`, `StoreApi`, saves), `flow/` (`GameFlow`), `data/` (`DataTables`), `camera/`, `tools/` (the
+  player's tools), `settings/` (options, graphics tiers), `interior/`, `lab/` (F7), `health/`, `play.gd`.
+- `render/`: world, sky, light, water and screen passes; `render/shaders/`: every shader. `ui/`: HUD, panels and drawers;
+  `ui/theme/`: styles; `ui/icons/`: icons.
+- `data/`: `catalog/` (rules and tuning), `game/` (camera, light, options), `render/` (looks), `ui/` (interface), `i18n/` (texts).
+- `assets/`: textures, baked people, lots and models. `addons/terrain_3d/`: Terrain3D. `bin/`: the core's DLLs.
+- `tests/`: `core/` (tests), `e2e/`, `perf/` (probes), `visual/` (captures, `look.gd`, `ui_driver.gd`).
+
+**`tools`**
+- `atlas/`: the one traceability tool and the problem register's writer. `gates/`: the checked rules (`rules.json`,
+  `owners.json`, `contracts.json`, `schemas/`). `tasks/`: the one orchestration owner (tasks as data, inputs keyed by content, a
+  deadline each, a verdict; parallel pool, cache in `dist/cache/tasks`, Job Object kill, hidden desktop; `suites.json`; the block
+  mechanism). `build/`: `build.sh`, `deliver.sh`, `quick.sh`, `pgo.sh`, `photodiff.py`, `free_dll.sh`, `check_scripts.gd`,
+  `rename_english.py`, the git hooks. `tracer/`: the generic code reader. `assets/`: the kitchen of people, landmarks, noise,
+  furniture, poles and road profiles. `analysis/`: the stack sampler, the cause analysers. `audit/`: the game's audit.
+- Leaving with specification 001 (history under the archive tags below): `converter/`, `process/`, `ports/`, `oracle-4.0/`.
+
+**Others:** `dist/` (builds, captures and logs, out of git), `log/` (the documents of CLAUDE.md), `.specify/` and `specs/` (Spec Kit).
+
+## Data flow, threads, light and state machines (reference; each rule is in CLAUDE.md with its tag)
+
+- `DataTables` reads `data/**` → `CityStore.boot` sends the catalogue to the `CityCore`, which refuses a missing key.
+- `Simulation` runs on its own thread with a fixed tick (`sim_tick_hz`), under the shared `map_mutex` and `traffic_mutex`;
+  commands and the clock take `map_mutex` exclusively, each hold naming its writer (`map_hold::WriterHold`: command, tick, load,
+  generation, save, probe); growth decides under the shared lock and takes the exclusive one only to add (`grow_step`).
+- `ChangeLog` is drained under the shared lock and the log's mutex; `RenderWorld.sync` is handed the city const and the
+  `ChangeLog` apart, and sends the meshes to the `JobPool`; a mesh job copies under a short shared lock (`MapRead`, `CityCut`,
+  `HeightPatch`) and builds with the lock let go.
+- The land's maps are `TerrainBridge`'s (fine ground round the view, far ground whole). A record's derived body has one owner, the
+  tables' `BodyCache`, bounded in bytes. Mesh conversion enters `render.upload_budget_mb` per frame; the commit only swaps meshes,
+  within `render.commit_budget_ms`. Poses through `PoseBuffer`; the save writes on its own thread.
+- `Daylight` owns the sun, the ambient and the sky; at night the sun becomes the moon, which casts all night (P347); the street's
+  light is `LampLights`. `CityWorld.set_sky_mode("day"|"night"|"cycle")`: day and night fix `daylight.json`'s hours (16h, 22h).
+- `GameFlow.State`: BOOT → MENU → PLAYING → QUITTING (`TRANSITIONS`; closing the window goes through `quit`). `SimSpeed` (C++):
+  STOPPED, PAUSED, NORMAL, FAST, FASTEST; only `start()`/`stop()` enter and leave STOPPED, every move through `enter` and
+  `SPEED_MOVES`. `ToolController.Tool`: one per tool, INSPECT when empty-handed; only `set_tool` changes it; the stroke is its
+  `Phase` (held `drag`/`tick`, released `release`), and a tool change cancels a held one.
+
+## Commands, the whole list
+
+| What | Command |
+|---|---|
+| Run the game | `godot --path project` (without Vulkan: `--rendering-method gl_compatibility`) |
+| A block (nothing run inside it) | `python tools/tasks/cli.py block open <name>`, `block verify`, `block close`, `block status` |
+| Build both DLLs | `MINGW=... tools/build/build.sh core-windows` (Linux: `core`); one: `dll-debug`, `dll-release` |
+| Install the git hooks | `tools/build/build.sh hooks` |
+| Check a change | `tools/build/quick.sh [task,task]` (= `python tools/tasks/cli.py run quick`: only the tasks whose inputs changed; `--ready` at a block's close, `--all` nothing from the cache, `--bless` the city's digest written again, only for a change meant to move it, its cause written; its frozen photos are for looking, compared with nothing) |
+| Run one test | `python tools/tasks/cli.py run fast <scene>` |
+| Suite in parallel | `python tools/tasks/cli.py run tests` (logs in `dist/tasks/<run>`, `cli.py status`; every task has its own deadline and is killed by PID) |
+| Gates | `python tools/gates/run_gates.py` (`--file X`, `--files-from F`, `--summary`, `--selftest`, `--json`, `--register log/problems.jsonl`); changed files only: `python tools/tasks/cli.py run gates_changed` |
+| The register | `python tools/atlas/cli.py problems [--area --owner --status --cause]`, `add`, `update`, `close`, `drop`, `render`, `import-gates` |
+| Scripts that do not compile | `python tools/tasks/cli.py run scripts` (`tools/build/check_scripts.gd`) |
+| Orchestrator | `python tools/tasks/cli.py run <suite or task> [--list]`, `serve` (JSON lines), `status`; its tests: `python -m unittest discover tools/tasks/tests` |
+| Export and package | `tools/build/deliver.sh export` (`dist/builds/<date>_<commit>/Roadcraft.exe`, the Desktop shortcut), `tools/build/deliver.sh package` |
+| Captures | `tools/build/build.sh capture [folder]` (= `cli.py run capture`, hidden, one task per plan) |
+| Look at the game through a plan | `godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<json> --capture-dir=<folder>` |
+| Where two photo sets differ | `python tools/build/photodiff.py <a> <b> <out>` (a help to find where to look, never a verdict) |
+| Where each thread spends | `python tools/analysis/sampler.py --hidden --cmd "<godot> --path project <scene>" --seconds 30 --symbolizer <llvm-symbolizer>` |
+| Causes by the code's shape; what a run or the tree states is broken, by owner | `python tools/analysis/causes.py`; `python tools/audit/cli.py all [dist/tasks/<run>]` |
+| The release DLL's profile | `tools/build/pgo.sh` (redo it after changing hot loops) |
+| The roadcraft's code still standing | `python tools/gates/lab_scan.py` (the report in `dist/`, exit 1 while anything stands) |
 
 ## Archive tags
 

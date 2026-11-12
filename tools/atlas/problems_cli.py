@@ -7,6 +7,7 @@ import sys
 TOOLS_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 if TOOLS_DIR not in sys.path:
     sys.path.insert(0, TOOLS_DIR)
+from atlas import imports  # noqa: E402
 from atlas import problems as register  # noqa: E402
 from atlas import render  # noqa: E402
 
@@ -31,6 +32,9 @@ def add_parser(commands, common):
     drop.add_argument("id")
     drop.add_argument("--why", required=True)
     actions.add_parser("render", parents=[common], help="write the generated view log/problems.md")
+    gates = actions.add_parser("import-gates", parents=[common], help="the gates' standing findings, one problem per rule and file")
+    gates.add_argument("findings", help="the JSON python tools/gates/run_gates.py --json wrote")
+    actions.add_parser("stats", parents=[common], help="counts by area, status and origin; the median minutes to a cause")
     return p
 
 
@@ -63,6 +67,20 @@ def run(args, root=register.ROOT):
         _show(reg.query(args.area, args.owner, args.status, args.cause), args.json)
         return 0
     if args.action == "render":
+        return render.main(["--root", root])
+    if args.action == "stats":
+        doc = imports.stats(reg)
+        print(json.dumps(doc, indent=1) if args.json else "\n".join(f"{k}: {v}" for k, v in doc.items()))
+        return 0
+    if args.action == "import-gates":
+        with open(args.findings, encoding="utf-8") as fh:
+            added = imports.gate_findings(reg, json.load(fh))
+        try:
+            reg.save()
+        except register.RegisterError as e:
+            print(f"refused: {e}")
+            return 1
+        print(f"{len(added)} problem(s) entered from the gates' findings")
         return render.main(["--root", root])
     try:
         if args.action == "add":

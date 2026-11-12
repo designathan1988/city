@@ -13,6 +13,8 @@
     "root_allowed": {"$ref": "#/$defs/some_paths"},
     "allowed_docs": {"$ref": "#/$defs/some_paths"},
     "doc_places": {"$ref": "#/$defs/some_paths"},
+    "instruction_skip": {"$ref": "#/$defs/some_paths"},
+    "_instruction_skip_doc": {"$ref": "#/$defs/doc"},
     "_doc_places_doc": {"$ref": "#/$defs/doc"},
     "register": {
       "type": "object", "strict": true,
@@ -207,7 +209,7 @@
     "_uniform_tables_doc": {"$ref": "#/$defs/doc"},
     "_generated_doc": {"$ref": "#/$defs/doc"}
   },
-  "required": ["exclude_dirs", "root_allowed", "allowed_docs", "doc_places", "register", "doc_exempt_names", "doc_extensions", "junk_globs", "max_lines", "max_function_lines",
+  "required": ["exclude_dirs", "root_allowed", "allowed_docs", "doc_places", "instruction_skip", "register", "doc_exempt_names", "doc_extensions", "junk_globs", "max_lines", "max_function_lines",
     "header_comment_extensions", "mapped_roots", "map_file", "map_markers", "claude_md_max_lines", "cpp_layers", "forbidden", "schemas",
     "magic_numbers", "clones", "lab_reference", "lab_copy", "states", "patch", "mirrors", "generated", "styled_tables", "material_tables",
     "uniform_tables"]

@@ -75,6 +75,14 @@ def before_text(root, path):
         return None
 
 
+def before_bytes(root, path):
+    """The file's bytes as HEAD holds them (line endings kept), or None when HEAD has no such file."""
+    try:
+        return inputs.git_bytes(root, "-c", "core.quotePath=false", "show", f"HEAD:{path}")
+    except (RuntimeError, OSError, subprocess.TimeoutExpired):
+        return None
+
+
 def changed_lines(root, paths=None):
     """{path: new-side line numbers changed against HEAD, or None for a file git does not track yet}; limited to
     `paths` when given."""

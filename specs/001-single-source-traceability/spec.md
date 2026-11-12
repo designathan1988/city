@@ -264,7 +264,7 @@ repository). The **player** benefits through the game's quality and performance.
 
 The owner gives an order once. It is written in CLAUDE.md, with a mechanism that makes it hold, and from then on every session
 follows it without the owner repeating it. No other file — a memory note, a record, a nested instruction file, a skill, a goal
-record or the Spec Kit constitution — carries an order of its own or claims to win over CLAUDE.md.
+record or the Spec Kit constitution — carries an order of its own or claims a precedence above CLAUDE.md.
 
 **Why this priority**: every other problem is made worse by sessions that follow the wrong one of several contradictory
 instructions; the owner has repeated the same orders many times. (J2)
@@ -501,7 +501,8 @@ unsupported processor with a message, writes a crash report, and carries no test
   load as instructions.
 - **FR-006**: A check MUST fail when any file other than CLAUDE.md carries an order or a precedence claim, or when two instructions
   contradict each other; it is part of the gates. Since only CLAUDE.md may hold instructions, a contradiction is checked there as:
-  a tag defined twice, two rules under one tag, a tag with no guard in `tools/gates/contracts.json`, or a guard naming no tag.
+  a tag defined twice, two rules under one tag, a tag with no guard in `tools/gates/contracts.json`, or a guard naming no tag
+  (CONTRACT_UNGUARDED, `tools/gates/gate_contracts.py`, owns it).
 - **FR-007**: Auto memory MUST be turned off for this project; its 33 notes are migrated (orders to CLAUDE.md, facts to the subject
   documents, history to the register or nowhere) and the memory folder emptied of them.
 - **FR-051**: The block rule MUST be kept by a mechanism, not by conduct: while a block is open, every build, test, game run,

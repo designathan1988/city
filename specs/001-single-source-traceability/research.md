@@ -172,3 +172,49 @@ messages and whether their added lines name the reference. Classes and the actio
   stopped at its deadline by PID through its Job Object); `quick --ready` split into what a block reaches (engine-free tags first, in
   seconds; engine scenes after); the engine-free tests as a task with its own deadline.
 - **Rationale**: the mechanisms exist; what is missing is the engine-free level and a heartbeat check.
+
+## R14. Every order, where it lived and where it goes (T012, read whole 2026-11-12)
+
+Read whole: the 33 memory notes and `MEMORY.md`; `log/how-we-work.md`; `log/specification.md`; `.claude/skills/trace-fix/SKILL.md`;
+`tools/process/CLAUDE.md`; `tools/oracle-4.0/CLAUDE.md`; the owner's goal of 2026-11-12 (standing authorisation, the skills, the
+limits); CLAUDE.md as it stood. Each order goes to one CLAUDE.md tag with its guard (`tools/gates/contracts.json`); a fact goes to
+its document; history to `log/history/process.md`; what a later order replaced is marked superseded or revoked.
+
+| Order (in short) | Source | Goes to | Guard |
+|---|---|---|---|
+| CLAUDE.md the only source; memory off; nothing else holds orders or precedence | spec FR-001/FR-007; owner's goal; `tools/process/CLAUDE.md` (memory off, the owner's decision) | `[c:authority]` | gates INSTRUCTION_ELSEWHERE, PRECEDENCE_CLAIM, NESTED_CLAUDE, MEMORY_ON; setting `autoMemoryEnabled=false` |
+| Standing authorisation: never ask nor wait; what an accepted specification's tasks name is done; the limits (no force push, rewritten history, relative-path or outside deletion, the owner's game, a running process) | owner's goal 2026-11-12; `tools/process/CLAUDE.md` ("no permission asked") | `[c:standing-authorisation]` | hook `.claude/hooks/destructive_guard.py` |
+| The owner's order wins and revokes the contrary notes (mandatory pause, hands off the skill, stage-skill-changes as a bar, never delete records, the old tracer kept, `tools/analysis` untouched) | owner's goal 2026-11-12 | `[c:standing-authorisation]` (the revocation) and `log/history/process.md` | the notes removed (MEMORY_ON) |
+| One current document per subject; files created or deleted in the map; nothing of value lost; read the area's history first, append at the close | CLAUDE.md `[c:records]`; memory `mandatory-pause` (10); `never-delete-records` (revoked into "nothing of value lost") | `[c:records]` | gates map, DOC_UNICO, PROBLEMS_ELSEWHERE (US3) |
+| Read the code whole, personally, to the design decision; `cat`/`grep`/an agent's reading is no reading | CLAUDE.md `[c:identify]`; how-we-work 1; memory `read-before-delegating`; SKILL.md | `[c:identify]` | hook `read_guard.py` |
+| Context7 on every implementation, fix and research (D3); known bugs of the exact versions; never memory | how-we-work 2; spec D3; memories `study-before-coding`, `request-is-one-node` | `[c:research]` | hook `owed.py` |
+| Quick research tests in an isolated folder, real output recorded (D2) | spec D2; memory `mandatory-pause` (points changed) | `[c:research]` | conduct |
+| The costliest solution at the cause; no cheap options | CLAUDE.md; memory `fix-cause-effort-neutral` | `[c:plan-costliest]` | as before |
+| The block rule: nothing run inside a block; one verification at its end | CLAUDE.md `[c:no-trial]`; how-we-work 6, 7, 9; memory `no-city-tests-mid-work` | `[c:no-trial]`, `[c:verify-reach]`, `[c:theme-record]` | tool `tools/tasks/block.py`; hook `.claude/hooks/block_guard.py`; `tools/build/git-hooks/pre-commit` |
+| The whole gates close a block, failing on any finding that is no open problem; never loosened | spec FR-052 | `[c:verify-reach]` | tool `tools/gates/run_gates.py` (`--register`) |
+| Fail → read to the cause (systematic-debugging); pass confirmed (verification-before-completion) | owner's goal; how-we-work 11 | `[c:stop-check]` | tool `tools/tasks/cli.py` |
+| No patch; no re-bless to pass; frozen photos compared with nothing | CLAUDE.md; memory `judge-photos-by-quality` | `[c:no-patch]` | gate NUMBER_MOVED |
+| Nothing of the roadcraft copied; the lab read for behaviour only; own fixes of the tag were authorised; translated code redone, never regenerated | CLAUDE.md `[c:no-roadcraft-copy]`, `[c:lab-reference]`, `[c:tree-back]`; memories `no-reference-game`, `fix-cause-effort-neutral`, `tree-back-to-nov7`, `delegate-port-with-trace` | `[c:no-roadcraft-copy]` (lab-reference and tree-back merged into it) | gate lab_copy; tool `lab_scan.py` |
+| Proof, not claims: what was read, run and verified said with where the proof is; a slow, heavy or failing result is a failure with numbers; an unproven cause is "unknown"; no fakes; the whole output read | memory `mandatory-pause` (4, 5); `tools/oracle-4.0/CLAUDE.md` (rules 3 to 6, 9b) | `[c:proof]` | conduct |
+| Steam-quality bar: the reference profiles and budgets; every change measured against them, km24 previous and this build | memory `mandatory-pause` (2); spec FR-048; CLAUDE.md `[c:investigate-reading]` | `[c:budgets]` | tool `project/tests/perf/camera_pan.gd` |
+| Do it whole; cover the goal; every rule a mechanism; a limit found is a cause to resolve | CLAUDE.md `[c:do-it-whole]`; memory `request-is-one-node` | `[c:do-it-whole]` | conduct |
+| A check takes seconds; most likely place first; an empty fragile search is no answer; slowness is a defect | memories `fast-direct-checks`, `mandatory-pause` (6) | `[c:fast-checks]` | tool `tools/tasks/pool.py` |
+| No agents, subagents, forks or sessions unless ordered; never resume a stopped agent | memories `never-wake-stopped-agents`, `coordinate-parallel-sessions`, `mandatory-pause` (12); owner's goal | `[c:no-agents]` | setting `permissions.deny=Agent` |
+| The skills to use and never to use | owner's goal 2026-11-12; how-we-work 11; SKILL.md's last line (TDD: superseded) | `[c:skills]` | conduct |
+| One engine process at a time while working; the suite only at a verification | memory `one-godot-at-a-time` | `[c:one-engine]` | tool `tools/tasks/admission.py`; tool `tools/tasks/block.py` |
+| Never read another session's transcript | memory `no-session-transcripts` | `[c:no-transcripts]` | setting `permissions.deny` (the transcripts' globs) |
+| Files changed with Edit and Write, never by a shell command; bytes with LF; a file gains no carriage return | memory `bytes-not-write-text`; SKILL.md ("never by a shell command"); owner's goal ("never sed") | `[c:lf-bytes]` | gate LINE_ENDINGS |
+| The session's clangd watched, stopped by PID past about 3 GB | memory `watch-session-clangd` | `[c:clangd]` | conduct |
+| Delete only by absolute path inside the project or its listed copies; never `rm -rf` with a relative path | memory `agents-no-destructive-commands`; owner's goal | `[c:standing-authorisation]` | hook `.claude/hooks/destructive_guard.py` |
+| Another session's or branch's work enters main only read whole, redone where its base is gone, verified | memory `coordinate-parallel-sessions`; spec FR-015 | `[c:bring-in]` | conduct |
+| The image protocol (expectation first, plan by the change, every photo and crop opened, regions at real size, defect kinds, street seams, analysis written, judged alone, defect or unanalysed photo fails) | memories `mandatory-pause`, `judge-photos-by-quality`, `photos-follow-the-change`, `label-and-wait-photos`, `review-street-edges`; spec D5; SKILL.md step 5 | `[c:image-protocol]` (and `[c:drawn-photo]`; `[c:visual-proof]` merged into it) | hook `photos.py` |
+| Tests and captures hidden; the live instance alone may show a window, never taking focus (D4) | CLAUDE.md; spec D4 | `[c:hidden-runs]` | tool `tools/tasks/win32.py` |
+| The executable: `deliver.sh export` to `dist/builds/<date>_<commit>/`, the Desktop shortcut (D1) | spec D1; memory `deliver-exe-after-each-fix` | `[c:deliver-exe]` | tool `tools/build/deliver.sh` |
+| Commits per theme and one push at the block's close | CLAUDE.md; memories `commit-push-regularly`, `deliver-exe-after-each-fix` (cadence superseded) | `[c:main-direct]` | conduct |
+| The DLLs are versioned; no generic ignore pattern drops them; rebuilt both in a rebase | CLAUDE.md `[c:dll-rebase]`; owner's goal (.gitignore) | `[c:dlls]` (was dll-rebase) | tool `tools/build/build.sh` |
+| Investigating is reading; both builds measured at the end | CLAUDE.md; memory `code-first-measure-at-end` | `[c:investigate-reading]` | conduct |
+| The tracer is generic | memory `feature-tracer-generic`; CLAUDE.md | `[c:generic-tracer]` | test `tools/tracer/tests/test_generic.py` |
+| Fact: the old generic tracer was replaced by `tools/tracer`; the old one leaves | memory `new-generic-tracer` (revoked in what it ordered) | `log/mapa.md`, `log/history/tools.md` | — |
+| Fact: how the promo video was recorded | memory `promo-video-pipeline` | `log/history/process.md` | — |
+| History: the tree taken back to 2026-11-07; the diagnosis of 2026-11-08; the pause's phases and status; the 2026-11-11 and 2026-11-12 contradiction tables | memories `tree-back-to-nov7`, `diagnosis-2026-11-08`, `mandatory-pause`; `log/how-we-work.md` | `log/history/process.md` | — |
+| Superseded: the port process (sessions, clones, translating the 4.0), the JavaScript game's facts, the per-problem "test it, photograph it" and test-first of the skill | `tools/process/CLAUDE.md`, `tools/oracle-4.0/CLAUDE.md`, SKILL.md | nowhere (their files leave; history under the archive tag) | — |

@@ -76,6 +76,16 @@ class Context:
         with open(full, encoding="utf-8") as fh:
             return fh.read()
 
+    def before_bytes(self, path):
+        """The bytes of `path` before the change (line endings kept), or None when it did not exist."""
+        if self.before_root is None:
+            return scope.before_bytes(self.root, path)
+        full = os.path.join(self.before_root, path)
+        if not os.path.isfile(full):
+            return None
+        with open(full, "rb") as fh:
+            return fh.read()
+
     def source(self, path):
         return self.sources.get(path)
 

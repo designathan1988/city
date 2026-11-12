@@ -59,6 +59,9 @@ package() {
 	echo "$OUT/Roadcraft.zip"
 }
 
+# The block rule (CLAUDE.md, Method step 5): no export while a block's code is written (tools/tasks/block.py answers).
+"${PY:-python}" "$ROOT/tools/tasks/block.py" check "export ${1:-}" || exit 1
+
 case "${1:-}" in
 	export) export_game ;;
 	package) package ;;

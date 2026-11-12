@@ -1,0 +1,2 @@
+a file that was CRLF
+and stays so
