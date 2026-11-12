@@ -1,6 +1,7 @@
 // Building record storage.
 #include "sim/buildings/building_store.h"
 
+#include "sim/buildings/growth.h"
 #include "sim/catalog/catalog.h"
 #include "sim/roads/furniture_kept.h"
 
@@ -100,7 +101,17 @@ void BuildingStore::mark(int id) {
 }
 
 void BuildingStore::set_edges(int id, const b40::LotEdges &edges) {
-	items[size_t(id)].edges = edges;
+	Building &b = items[size_t(id)];
+	// a body made from the seed, under edges it was made to, is made again to the new ones: the storeys are the new body's (a record
+	// whose edges were never read keeps the storeys it came with: they stand under the edges read now)
+	const bool remade = b.edges_read && !b.body && b.floors > 0;
+	b.edges = edges;
+	b.edges_read = true;
+	if (remade) {
+		tally(b, -1);
+		b.floors = uint16_t(body_floors(designs, b));
+		tally(b, 1);
+	}
 	changed(id);
 }
 

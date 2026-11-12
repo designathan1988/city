@@ -125,6 +125,7 @@ void put_building(ByteWriter &w, const Building &b) {
 	w.put<uint8_t>(b.zone);
 	w.put<uint8_t>(b.fn);
 	w.put<uint16_t>(b.floors);
+	w.put<uint16_t>(b.cap);
 	w.put<uint32_t>(b.seed);
 	w.put<uint16_t>(b.style);
 	w.put<uint16_t>(b.profile);

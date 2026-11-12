@@ -154,6 +154,8 @@ struct TrafficState {
 	double window_lane_m = 0;
 	double ped_kind_m[PLACE_KINDS] = {}; // metres of street of each kind of place inside the window
 	std::vector<int> ped_segs;
+	// Of them, those with an end outside the window: where people come in from beyond it (ped_spawn.cpp), as they come out of a door.
+	std::vector<int> ped_edge_segs;
 	// The doors the walkers use (ped_doors.cpp): by sidewalk (seg * 2 + side), the lots read (seed + 1 by building id) and
 	// those to read, a few a step.
 	std::vector<std::vector<PedDoor>> doors;

@@ -29,7 +29,11 @@ struct Building {
 	float x = 0, z = 0, w = 0, d = 0, rot = 0; // lot centre, frontage, depth; local +z faces the street
 	uint8_t zone = 0; // base zone (1..4) or a density zone (5..8)
 	uint8_t fn = 0; // BuildingFn
-	uint16_t floors = 0; // 0 = empty lot
+	uint16_t floors = 0; // the storeys its body has (0 = empty lot): what every reader reads
+	// What a body made from the seed was made under, apart from what it came out as: the most storeys its neighbours allowed a
+	// middling block when it grew (0: no limit). The body is keyed and made again by it (b40/record.h body_key), so the same record
+	// always gives the same body, whose top `floors` keeps.
+	uint16_t cap = 0;
 	uint32_t seed = 0;
 	uint16_t style = 0; // 0..127 automatic, 128 + arch = chosen
 	uint16_t profile = 0; // profile of the street it faces
@@ -40,6 +44,10 @@ struct Building {
 	// What the lot's edges meet (b40::LotEdges): derived from the streets, settled with the lot's site (sim/commands/lot_sites.h) after
 	// every edit, the generation, growth and the load, never saved; a body made from the seed is made to it (b40/record.h body_key).
 	b40::LotEdges edges;
+	// Its edges were read from the streets (when its body was first made, or settled since), so its storeys stand under them: a change
+	// of them is a change of its body (BuildingStore::set_edges). Never saved: a record read from a file has its storeys from the file
+	// and its edges still to read.
+	bool edges_read = false;
 };
 
 // The records and their filing by place: what a reader takes of the buildings, the live city's store or a cut of it (a job's
