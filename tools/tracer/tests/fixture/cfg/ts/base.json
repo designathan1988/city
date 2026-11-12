@@ -1,0 +1,9 @@
+{
+  // the aliases a project shares, written in the file another extends
+  "compilerOptions": {
+    "paths": {
+      "~kit/*": ["./src/kit/*"],
+      "#tool": ["./src/tool/index.ts"],
+    },
+  },
+}

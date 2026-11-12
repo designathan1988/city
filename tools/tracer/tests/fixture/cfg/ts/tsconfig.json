@@ -1,0 +1,2 @@
+/* the project's own file: it extends the shared one */
+{ "extends": "./base.json", "compilerOptions": { "strict": true, }, }

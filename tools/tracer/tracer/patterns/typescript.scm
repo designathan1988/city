@@ -46,8 +46,8 @@
 (catch_clause parameter: (identifier) @name) @variable
 
 (required_parameter pattern: (identifier) @name type: (_)? @type value: (_)? @value) @param
-(optional_parameter pattern: (identifier) @name type: (_)? @type value: (_)? @value) @param
-(required_parameter pattern: (rest_pattern (identifier) @name) type: (_)? @type) @param
+(optional_parameter pattern: (identifier) @name type: (_)? @type value: (_)? @value) @param @optional
+(required_parameter pattern: (rest_pattern (identifier) @name) @rest type: (_)? @type) @param
 (required_parameter pattern: (object_pattern) type: (_)? @type) @param
 (required_parameter pattern: (array_pattern) type: (_)? @type) @param
 (required_parameter pattern: (object_pattern (shorthand_property_identifier_pattern) @name @variable)) @object
@@ -58,8 +58,8 @@
 (assignment_expression left: (_) @left right: (_) @right) @assign
 (augmented_assignment_expression left: (_) @left right: (_) @right) @assign
 
-(call_expression function: (_) @callee arguments: (arguments) @args) @call
-(new_expression constructor: (_) @callee arguments: (arguments)? @args) @new
+(call_expression function: (_) @callee type_arguments: (_)? @type arguments: (arguments) @args) @call
+(new_expression constructor: (_) @callee type_arguments: (_)? @type arguments: (arguments)? @args) @new
 (member_expression object: (_) @object property: (_) @property) @member
 (subscript_expression object: (_) @object index: (_) @key) @index
 
@@ -82,6 +82,16 @@
 (return_statement (_) @value) @return
 (arrow_function body: (expression) @value) @return
 
+; The types that may be any value: the ones the language leaves open (TypeScript handbook, Everyday Types: `any`,
+; `unknown`, `object`), one written in place, `this`, and the ones computed from others.
+((predefined_type) @open (#any-of? @open "any" "unknown" "object"))
+(object_type) @open
+(this_type) @open
+(type_query) @open
+(lookup_type) @open
+(index_type_query) @open
+(conditional_type) @open
+
 (this) @self
 (super) @super
 (identifier) @ident
@@ -102,4 +112,10 @@
 (pair key: (_) @key value: (_) @value) @pair
 (object (method_definition name: (_) @key) @value @pair)
 (object (shorthand_property_identifier) @key @value @pair)
+
+; An object written in place is an object of its own shape: each entry written with a name (a key that is a name or
+; a text, a name written alone, a method) is a member of it.
+(object) @shape
+(object (pair key: [(property_identifier) (string)] @name value: (_) @value) @variable)
+(object (shorthand_property_identifier) @name @value @variable)
 [(string) (template_string) (number) (array) (object) (true) (false) (null) (undefined) (regex)] @literal

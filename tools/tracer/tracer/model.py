@@ -10,6 +10,7 @@ PREFIX = 3                                              # how far into a text it
 WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 BRACKETS = {"<": ">"}                                   # and the pairs a source's path may be written between
 LAMBDA = "<lambda:{}>"
+OBJECT = "<object:{}>"
 
 
 @dataclass
@@ -40,6 +41,7 @@ class File:
     display: str
     lang: object
     tree: object
+    path: object = None              # where it is (the language's own files that apply to it are found from here)
     module: int = -1
     span: range = range(0)           # its definitions
     roles: dict = field(default_factory=dict)        # node id -> (role, parts), where a pattern with parts says it
@@ -51,6 +53,7 @@ class File:
     includes: list = field(default_factory=list)     # the sources whose every name is a name of this file
     exports: dict = field(default_factory=dict)      # exported name -> name in the file
     default: list = field(default_factory=list)      # the nodes exported by default
+    open: set = field(default_factory=set)           # the types written there that may be any value
 
     def role(self, node):
         """What a node is as an expression, (role, parts): by a pattern that matched it, else by its kind alone."""

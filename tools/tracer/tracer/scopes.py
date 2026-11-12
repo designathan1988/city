@@ -1,15 +1,16 @@
 """What a name means where it is written, by the language's scopes: the function around it, the class around it (and
 its bases) where the language reads members by a plain name, the namespaces, the file with what it imports and
 includes, a file its own words name; a name no scope gives is none of the code read. A member of a class is found in
-the class, then up its bases, and down in the classes below it (an override may be the one that runs).
+the class, then up its bases, and down in the classes below it (an override may be the one that runs). What an object
+nothing is known of may hold under a name, found by that name alone, is the member reads' (`reads`).
 """
 from __future__ import annotations
 
 from collections import defaultdict
 
 from .model import text, unquoted
-from .vocab import (ARGS, DEFAULT, EXACT, FUNCTION, IDENT, MEMBER, MODULE, NAMESPACE, OBJECT, PARAM, PROPERTY,
-                    SCOPES, STORED, TYPE, VARIABLE, WHOLE)
+from .vocab import (ARGS, CLASS, DEFAULT, EXACT, FUNCTION, IDENT, MEMBER, MODULE, NAMESPACE, OBJECT, PARAM, PROPERTY,
+                    SCOPES, SHAPE, STORED, TYPE, VARIABLE, WHOLE)
 
 
 class Scopes:
@@ -17,10 +18,11 @@ class Scopes:
         self.p = program
         self.sources = program.sources
         self.base_of, self.below_of, self.local_of = {}, {}, {}
-        self.rooted_of, self.named_of, self.member_of = {}, {}, {}
+        self.rooted_of, self.member_of = {}, {}
         self.params = defaultdict(lambda: defaultdict(list))     # function -> place -> its parameters there
         self.subs = defaultdict(list)
         self.open = set()                # the classes extending one the code read does not define
+        self.entries_of, self.named_classes = {}, None
         self.ready = False
         for c in list(program.base_nodes):
             for b in self.bases(c):
@@ -48,6 +50,8 @@ class Scopes:
         kind = p.defs[c].kind
         if kind == FUNCTION:
             return p.held(c, name)
+        if kind == SHAPE:                # an entry is no name of the code written in its object
+            return ()
         if p.is_class(c):
             return self.members(c, name, True) if f.lang.implicit_members else ()
         if kind == NAMESPACE:
@@ -160,20 +164,6 @@ class Scopes:
             self.rooted_of[c] = lang.implicit_base or c in self.open or any(self.rooted(b, seen) for b in self.bases(c))
         return self.rooted_of[c]
 
-    def by_name(self, name: str, lang) -> list:
-        """The members of that name an object nothing is known of may hold a function in (a function, or a variable a
-        class declares), read from a file of a language: every class's of that language; where the language looks a
-        member up in the object as it runs, also those of the other languages' classes below a type not defined
-        here (what reaches one language from another)."""
-        if (name, lang.package) not in self.named_of:
-            p = self.p
-            holder = lambda i: p.defs[i].owner if p.is_class(p.defs[i].owner) else p.defs[i].holder    # noqa: E731
-            same = lambda i: p.files[p.defs[i].file].lang.package == lang.package                      # noqa: E731
-            found = [i for i in p.bodies(p.member.get(name, ())) if p.defs[i].kind in (FUNCTION,) + STORED]
-            self.named_of[(name, lang.package)] = [i for i in found
-                                                   if same(i) or (lang.duck_typed and self.rooted(holder(i)))]
-        return self.named_of[(name, lang.package)]
-
     def makers(self, c: int, seen=None) -> list:
         """What runs when an object of a class is made: its constructors (the class itself where it writes none), and
         its bases'."""
@@ -228,11 +218,14 @@ class Scopes:
 
     def types(self, f, node) -> tuple:
         """What a written type names: the classes, the variables standing for a type (an alias, a type's parameter),
-        and whether some name in it is none the code read defines."""
-        classes, stored, missing = [], [], False
+        whether some name in it is none the code read defines, and whether it may be any value."""
+        classes, stored, missing, open_ = [], [], False, False
         todo = [node]
         while todo:
             node = todo.pop()
+            if node.id in f.open:            # a type that may be any value
+                open_ = True
+                continue
             at = self.p.at.get((f.index, node.id))
             if at is not None and self.p.defs[at].kind == FUNCTION:
                 continue
@@ -244,7 +237,7 @@ class Scopes:
             classes += [(i, how) for i, how in found if self.p.is_class(i)]
             stored += [i for i, _ in found if self.p.defs[i].kind in STORED]
             todo += self.given(f, node)
-        return list(dict.fromkeys(classes)), list(dict.fromkeys(stored)), missing
+        return list(dict.fromkeys(classes)), list(dict.fromkeys(stored)), missing, open_
 
     def reread(self) -> None:
         """A function declared with no body inside a function's body, every parameter one name that is no class's: an
@@ -264,12 +257,34 @@ class Scopes:
 
     # ---- around a node -------------------------------------------------------------------------------------------
     def class_around(self, f, node) -> int | None:
-        return next((c for c in self.p.containers(f, node) if self.p.is_class(c)), None)
+        """The class code is written in (a shape is not one: `this` in it is the class's around it)."""
+        return next((c for c in self.p.containers(f, node) if self.p.is_class(c) and not self.p.is_shape(c)), None)
 
     def function_at(self, f, node) -> int | None:
         return next((c for c in self.p.containers(f, node) if self.p.defs[c].kind == FUNCTION), None)
 
     def unit(self, f, node) -> int:
-        """What a piece of code belongs to: the function around it, else the class, else the file."""
-        first = self.p.containers(f, node)[0]
+        """What a piece of code belongs to: the function around it, else the class, else the file (code written in
+        an object written in place belongs to what is around that object)."""
+        first = next(c for c in self.p.containers(f, node) if not self.p.is_shape(c))
         return first if self.p.defs[first].kind == FUNCTION or self.p.is_class(first) else f.module
+
+    def entries(self, c: int) -> list:
+        """A shape's members."""
+        if c not in self.entries_of:
+            self.entries_of[c] = [i for held in self.p.names.get(c, {}).values() for i in held]
+        return self.entries_of[c]
+
+    def foreign(self, name: str, lang) -> list:
+        """The classes of that name another language read defines below a type not defined here: what a name no
+        scope gives may be, read where members are looked up as the program runs (a class the platform runs that
+        code of another language registered)."""
+        if not lang.duck_typed:
+            return []
+        if self.named_classes is None:
+            self.named_classes = {}
+            for d in self.p.defs:
+                if d.kind == CLASS and d.name:
+                    self.named_classes.setdefault(d.name, []).append(d.id)
+        return [c for c in self.named_classes.get(name, ())
+                if self.p.files[self.p.defs[c].file].lang.package != lang.package and self.rooted(c)]

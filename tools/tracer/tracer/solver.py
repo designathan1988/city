@@ -6,14 +6,15 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 
-from .vocab import AS_BUILT, AS_KEPT, AS_NAME, BY_NAME, EXACT, FN, KEPT, TOLD, TXT
+from .vocab import AS_BUILT, AS_GUESS, AS_KEPT, AS_NAME, AS_OBJECTS, BY_NAME, CLS, EXACT, FN, INST, KEPT, OBJECTS, TOLD, TXT
 
 KEEPS = {FN: KEPT, KEPT: KEPT, TXT: TOLD, TOLD: TOLD}
 
 
 def marked(how: str) -> str | None:
-    """The edge a value found that way goes along."""
-    return AS_NAME if how == BY_NAME else None
+    """The edge a value found that way goes along: what a guess reaches is a guess, and carries the functions it
+    finds, not the ones the objects it finds keep."""
+    return AS_GUESS if how == BY_NAME else None
 
 
 class Solver:
@@ -23,8 +24,11 @@ class Solver:
         self.edges = defaultdict(dict)       # node -> {(node after it, what the edge carries): None}
         self.watchers = defaultdict(list)    # node -> the functions shown each value
         self.work = deque()
+        self.plain = set()                   # nodes that hold no object of a class (declared as plain values)
 
     def add(self, key, value: tuple) -> None:
+        if value[0] in (CLS, INST) and key in self.plain:
+            return
         held = self.values[key]
         if value not in held:
             held.add(value)
@@ -34,11 +38,14 @@ class Solver:
         kind, d, how = value
         if mark is None:
             self.add(dst, value)
+        elif mark == AS_OBJECTS:                                  # the objects alone, as they are
+            if kind in OBJECTS:
+                self.add(dst, value)
         elif how != EXACT:
             return
         elif (mark == AS_BUILT and kind in KEEPS) or (mark == AS_KEPT and kind in (FN, KEPT)):
             self.add(dst, (KEEPS[kind], d, EXACT))                # what an object is handed: kept by it
-        elif mark == AS_NAME and kind in (FN, KEPT):
+        elif (mark == AS_NAME and kind in (FN, KEPT)) or (mark == AS_GUESS and kind == FN):
             self.add(dst, (kind, d, BY_NAME))
 
     def follow(self, src, dst, mark=None) -> None:

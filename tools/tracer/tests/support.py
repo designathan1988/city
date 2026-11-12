@@ -13,6 +13,7 @@ from tracer.languages import PATTERNS  # noqa: E402,F401
 from tracer.solver import Solver  # noqa: E402,F401
 from tracer.vocab import (AS_KEPT, AS_NAME, BY_NAME, BY_TEXT, CALL, EXACT, FN, HANDED, INST, KEPT,  # noqa: E402,F401
                           NEW, RUNNING)
+from tracer.walk import backward, find, forward  # noqa: E402,F401
 
 FIXTURE = HERE / "fixture"
 WORDS = {value for value in vars(vocab).values() if isinstance(value, str)}      # every word of the vocabulary

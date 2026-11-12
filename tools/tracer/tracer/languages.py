@@ -41,6 +41,9 @@ class Language:
     #                                         object's unless its parameters name types (C++ [dcl.ambig.res])
     beside: bool = False               # a source not written as relative is still looked for beside the file
     folder_file: tuple = ()            # the file a folder stands for in an import (TypeScript module resolution)
+    project: str = ""                  # the file the language reads to resolve names (`configs.READERS`)
+    operators: str = ""                # what an operator applied to an object of a class calls: the function of
+    #                                    this name followed by the operator (C++ [over.oper])
 
     @cached_property
     def grammar(self) -> Grammar:
@@ -82,12 +85,15 @@ class Language:
 
 
 GDSCRIPT = Language("gdscript", "tree_sitter_gdscript", "language", ("gdscript.scm",), implicit_members=True,
-                    file_is_class=True, implicit_base=True, duck_typed=True, super_names_method=True, beside=True)
+                    file_is_class=True, implicit_base=True, duck_typed=True, super_names_method=True, beside=True,
+                    project="godot")
 CPP = Language("cpp", "tree_sitter_cpp", "language", ("cpp.scm",), implicit_members=True,
-               class_named_constructor=True, ambiguous_declarations=True, beside=True)
+               class_named_constructor=True, ambiguous_declarations=True, beside=True, project="database",
+               operators="operator")
 TYPESCRIPT = Language("typescript", "tree_sitter_typescript", "language_typescript",
-                      ("typescript.scm", "typescript_only.scm"), folder_file=("index",))
-TSX = Language("tsx", "tree_sitter_typescript", "language_tsx", ("typescript.scm", "jsx.scm"), folder_file=("index",))
+                      ("typescript.scm", "typescript_only.scm"), folder_file=("index",), project="typescript")
+TSX = Language("tsx", "tree_sitter_typescript", "language_tsx", ("typescript.scm", "jsx.scm"), folder_file=("index",),
+               project="typescript")
 BY_EXTENSION = {
     ".gd": GDSCRIPT,
     ".cpp": CPP, ".cc": CPP, ".cxx": CPP, ".h": CPP, ".hpp": CPP, ".hh": CPP, ".hxx": CPP, ".inl": CPP,

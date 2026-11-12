@@ -151,6 +151,7 @@ Appended by `python tools/tasks/cli.py block close` (FR-050: the time each step 
 |---|---|---|---|---|---|
 | US1-mechanism-check | 2026-11-12T15:47 | 2026-11-12T15:47 | 2026-11-12T15:47 | 0 | 0 |
 | US2 | 2026-11-12T15:50 | 2026-11-12T16:47 | 2026-11-12T16:50 | 57 | 3 |
+| tracer | 2026-11-12T16:51 | 2026-11-12T17:00 | 2026-11-12T17:01 | 9 | 1 |
 
 ## How the work was done before 2026-11-12 (history; the orders themselves live in CLAUDE.md)
 

@@ -9,8 +9,8 @@ from dataclasses import dataclass
 
 from .model import text, unquoted
 from .solver import marked
-from .vocab import (ARGS, AS_NAME, CALL, CHAIN, CLS, CONSTRUCT, EXPR, IDENT, INDEX, INST, KEY, MEMBER, OBJECT, OUT, PART,
-                    PROP, PROPERTY, STEP, STORED, VAR)
+from .vocab import (ARGS, AS_NAME, CALL, CHAIN, CLS, CONSTRUCT, ELEM, EXPR, IDENT, INDEX, INST, KEY, MEMBER, OBJECT, OUT,
+                    PART, PROP, PROPERTY, STEP, STORED, VAR)
 
 
 @dataclass
@@ -46,7 +46,9 @@ class Stores:
             return [(PROP,) + fl.spine(f, node, parts)]
         if kind == INDEX:
             name = unquoted(parts[KEY])
-            return self.place(f, parts[OBJECT]) if name is None else [(PROP, fl.ev(f, parts[OBJECT]), name)]
+            if name is None:                 # an element: of a shape, its elements; of anything else, the object
+                return [(ELEM, fl.ev(f, parts[OBJECT]), tuple(self.place(f, parts[OBJECT])))]
+            return [(PROP, fl.ev(f, parts[OBJECT]), name)]
         return self.upto(f, node, len(node.named_children) - 2) if kind == CHAIN else []
 
     def upto(self, f, node, j: int) -> list:
@@ -68,8 +70,23 @@ class Stores:
         for place in places:
             if place[0] == VAR:
                 self.fl.s.follow(value, (VAR, place[1]), mark)
+            elif place[0] == ELEM:
+                self.element(place[1], list(place[2]), value, f, node, mark)
             else:
                 self.write(place[1], place[2], value, f, node, mark)
+
+    def element(self, target, places: list, value, f, node, mark) -> None:
+        """An element written by a key not written there: in a shape, among its elements; in anything else, in the
+        places the object is kept (a list holds what is put in it)."""
+        fl, done = self.fl, []
+
+        def seen(v: tuple) -> None:
+            if v[0] == INST and fl.p.is_shape(v[1]):
+                fl.s.follow(value, (ELEM, v[1]), mark)
+            elif not done:
+                done.append(v)
+                self.store(places, value, f, node, mark)
+        fl.s.watch(target, seen)
 
     def write(self, target, name: str, value, f, node, mark) -> None:
         """A member written: in the member each class of the object declares (a setter runs); under its name where

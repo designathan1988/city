@@ -2,86 +2,51 @@
 runs with the arguments as its parameters and gives back its result; a class makes an object and runs what makes it.
 Where no definition written with a body answers, the functions among the arguments (and the ones the object called on
 holds) are handed to code the tracer did not read, which may run them, and stay with the object they were handed to.
+Where no definition answers at all, that code gives back the objects it was given and called on (and of the types the
+call is written with), and runs the functions it is handed with them as their arguments (`through`).
+
+Each link keeps what the call wrote: the functions and functions' names it gave, and the texts written as its
+arguments; a function that reads an entry of an object written in place by a key it was not written with keeps, for
+each function or name an entry holds, the entries' keys (`Result.tables`), for a trace to follow only what its
+caller's texts select. The records (`Link`, `Site`, `Result`) are `links`'; what an object written in place hands over,
+`shapes`'.
 """
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
 
+from .links import Link, Result, Site
+from .model import named
 from .solver import marked
-from .vocab import (AS_BUILT, AS_KEPT, BY_NAME, BY_TEXT, CALL, CLS, EXACT, FN, FUNCTION, HANDED, INST, KEPT, NEW, PART,
-                    RET, STRENGTH, TOLD, TXT, VALUE, VAR)
+from .vocab import (AS_BUILT, AS_KEPT, AS_OBJECTS, BY_NAME, BY_TEXT, CALL, CLS, EXACT, EXPR, FN, FUNCTION, HANDED, INST, KEPT,
+                    NEW, OUT, OUTSIDE, PART, RET, STRENGTH, TOLD, TXT, VAR)
 
 SHOWN = 80                           # how much of a callee's text a report shows
-
-
-@dataclass
-class Link:
-    src: int
-    dst: int
-    kind: str
-    how: str
-    file: int
-    line: int
-    texts: frozenset = frozenset()   # the functions' names given in texts where the link is written
-    fns: frozenset = frozenset()     # the functions given there
-
-
-@dataclass
-class Site:
-    f: object
-    node: object
-    kind: str
-    args: list
-    key: tuple
-    unit: int
-    receiver: tuple | None = None    # the node holding the object the callee is a member of
-    places: list | None = None       # where that object is kept
-    shown: str = ""                  # the callee as written
-    exact: bool = False              # a definition answers it by the scopes or the declared types
-    found: bool = False              # a definition answers it, by them or by name
-    answered: bool = False           # and one of them is written with a body
-    handed: bool = False
-    direct: bool = False             # the object called on is read as a member where it is called
-    name: str = ""                   # the member called, where the callee is one
-    gave: bool = False               # a function is among its arguments
-    kept: list | None = None         # the functions the object called on holds
-    around: int | None = None        # the class whose member a callee written as a plain name may be
-    fns: list | None = None          # the functions among its arguments, known exactly
-    texts: set | None = None         # the functions' names written in the texts it is given
-    targets: list | None = None      # what it links to: (definition, kind)
-    given: set | None = None         # the functions among its arguments, however they were found
-    told: set | None = None          # the ones the object it is called on was handed, and keeps
-    objects: set | None = None       # the classes of the objects it is given or called on
-
-
-@dataclass
-class Result:
-    program: object
-    scopes: object
-    out: dict                        # definition -> its links, in the order written
-    into: dict                       # definition -> the links reaching it
-    outside: dict                    # definition -> the callees it writes that no definition answers
 
 
 class Calls:
     def __init__(self, flow):
         self.fl = flow
         self.sites, self.links, self.outside = [], {}, defaultdict(set)
+        self.by_callee = {}                  # the node read to be called -> its call
+        self.guessed = defaultdict(set)      # a link found by name -> the calls it was found at
+        self.ambiguous = defaultdict(set)    # unit -> (callee as written, how many functions of its name)
 
     def site(self, f, node, kind: str, callee, given: list, key, shown: str, receiver=None, places=None, props=None,
-             sup: bool = False, direct: bool = False, name: str = "", around=None) -> None:
+             sup: bool = False, direct: bool = False, name: str = "", around=None, typed=None) -> None:
         """One place of the code that calls (or makes): its arguments wired, its callee watched."""
         fl = self.fl
         args = [fl.ev(f, one) for one in given]
-        if props is not None:
+        if props is not None:                    # the one argument: the object of the attributes' shape
             one = (PART, f.index, props.id)
-            for child in props.named_children:
-                if child.id in f.pairs:
-                    fl.s.follow(fl.ev(f, f.pairs[child.id][VALUE]), one)
+            at = fl.p.at.get((f.index, props.id))
+            if at is not None and fl.p.is_shape(at):
+                fl.shapes.shaped(at, one)
             args = [one]
         site = Site(f, node, kind, args, key, fl.sc.unit(f, node), receiver, places, " ".join(shown.split())[:SHOWN])
         site.direct, site.name, site.around, site.texts, site.targets, site.given = direct, name, around, set(), [], set()
+        site.typed, site.words, site.guesses = typed, frozenset(w for w in (named(one) for one in given) if w), set()
+        self.by_callee.setdefault(callee, site)
 
         def noted(v: tuple) -> None:
             if v[0] in (TXT, TOLD):
@@ -95,10 +60,19 @@ class Calls:
             self.same_name(site)
         else:
             fl.s.watch(callee, lambda v: self.reach(site, v))
+        if receiver is not None:
+            fl.s.watch(receiver, lambda v: self.on_platform(site, v))
+
+    @staticmethod
+    def on_platform(site: Site, v: tuple) -> None:
+        if v[0] == OUT:
+            site.platform = True
 
     def reach(self, site: Site, v: tuple) -> None:
         kind, d, how = v
-        if kind == FN:
+        if kind == OUT:
+            site.platform = True
+        elif kind == FN:
             self.run(site, d, how)
         elif kind == KEPT:                   # what is called keeps the function: it may be the one that runs
             self.run(site, d, BY_NAME)
@@ -109,6 +83,9 @@ class Calls:
         """A function runs: linked, given the arguments, its result the call's value."""
         self.link(site.unit, d, NEW if site.kind == NEW else CALL, how, site.f, site.node)
         site.targets.append((d, NEW if site.kind == NEW else CALL))
+        if how == BY_NAME:
+            site.guesses.add(d)
+            self.guessed[(site.unit, d, NEW if site.kind == NEW else CALL)].add(id(site))
         self.bind(site, d, how)
         self.fl.s.follow((RET, d), site.key, marked(how))
         site.found, site.exact = True, site.exact or how == EXACT
@@ -153,13 +130,15 @@ class Calls:
         if not site.found:
             self.outside[site.unit].add(site.shown)
 
+        def handed(v: tuple) -> None:
+            site.gave = True
+            site.fns += [v[1]] if v[2] == EXACT else []
+            self.link(site.unit, v[1], HANDED, v[2], site.f, site.node)
+
         def given(v: tuple) -> None:
             if v[0] in (INST, CLS):
                 site.objects.add(v[1])
-            elif v[0] == FN:
-                site.gave = True
-                site.fns += [v[1]] if v[2] == EXACT else []
-                self.link(site.unit, v[1], HANDED, v[2], site.f, site.node)
+            fl.shapes.functions_in(v, handed, set())
 
         def called_on(v: tuple) -> None:
             if v[0] == TOLD:
@@ -170,12 +149,44 @@ class Calls:
                 site.kept.append(v)
         for arg in site.args:
             fl.s.watch(arg, given)
-            if not site.answered:                        # what code not read is handed, what it gives back may keep
-                fl.s.follow(arg, site.key, AS_BUILT)
+            written = fl.p.at.get((arg[1], arg[2])) if arg[0] == EXPR else None
+            if not site.answered and (written is None or fl.p.defs[written].kind != FUNCTION):
+                fl.s.follow(arg, site.key, AS_BUILT)     # what code not read is handed, what it gives back may keep
+                #                                          (a function written there it runs: `through`)
             if site.places:
                 fl.st.store(site.places, arg, site.f, site.node, AS_KEPT)
         if site.receiver is not None:
             fl.s.watch(site.receiver, called_on)
+
+    def through(self) -> bool:
+        """Each call no definition answers, once: what the object it is called on holds (the objects), and what the
+        functions written in place as its arguments give back, it gives back; with those objects and the ones it is
+        given it runs those functions (a function written elsewhere and handed to many such calls is not made to
+        carry one's objects to another's); called on the platform's object or made of a class not defined here, it
+        gives an object of a type not defined here. True when a call was gone through."""
+        fl, done = self.fl, False
+        for site in self.sites:
+            if site.found or site.passed:
+                continue
+            site.passed = done = True
+            sources = list(site.args) + ([site.receiver] if site.receiver is not None else [])
+            if site.receiver is not None:            # what an object of code not read holds, it gives back
+                fl.s.follow(site.receiver, site.key, AS_OBJECTS)
+            for written in site.typed or ():
+                fl.typed(site.f, written, site.key)
+            if site.platform or site.kind == NEW:
+                fl.s.add(site.key, OUTSIDE)
+            for arg in site.args:
+                d = fl.p.at.get((arg[1], arg[2])) if arg[0] == EXPR else None
+                if d is None or fl.p.defs[d].kind != FUNCTION:
+                    continue
+                for params in fl.sc.params[d].values():
+                    for param in params:
+                        for one in sources:
+                            if one != arg:
+                                fl.s.follow(one, (VAR, param), AS_OBJECTS)
+                fl.s.follow((RET, d), site.key, AS_OBJECTS)
+        return done
 
     def by_text(self) -> None:
         """A function handed over together with the text of its name is known by that text to the code not read: a
@@ -218,6 +229,7 @@ class Calls:
         """The links by where they start and where they end; a call given no function hands over what the object it
         is called on holds (`runs`); making an object of a class also runs what the class writes at its own level."""
         p = self.fl.p
+        self.unguess()
         keeping = {(site.f.lang.package, site.name) for site in self.sites if site.gave and site.name}
         for site in self.sites:
             for v in site.kept or () if not site.gave and not site.answered else ():
@@ -225,9 +237,11 @@ class Calls:
                     self.link(site.unit, v[1], HANDED, v[2], site.f, site.node)
         self.by_text()
         for site in self.sites:
-            for d, kind in site.targets if site.texts or site.given else ():
-                link = self.links[(site.unit, d, kind)]
-                link.texts, link.fns = link.texts | site.texts, link.fns | site.given
+            for d, kind in site.targets if site.texts or site.given or site.words else ():
+                link = self.links.get((site.unit, d, kind))
+                if link is None:
+                    continue
+                link.texts, link.fns, link.words = link.texts | site.texts, link.fns | site.given, link.words | site.words
         starts = {src for src, _, _ in self.links}
         for link in list(self.links.values()):
             owner = p.defs[link.dst].owner
@@ -237,4 +251,42 @@ class Calls:
         for link in sorted(self.links.values(), key=lambda one: (one.src, one.file, one.line, one.dst, one.kind)):
             out[link.src].append(link)
             into[link.dst].append(link)
-        return Result(p, self.fl.sc, dict(out), dict(into), {unit: sorted(names) for unit, names in self.outside.items()})
+        return Result(p, self.fl.sc, dict(out), dict(into), {unit: sorted(names) for unit, names in self.outside.items()},
+                      self.tables(), {unit: sorted(calls) for unit, calls in self.ambiguous.items()})
+
+    def unguess(self) -> None:
+        """A call that runs more functions found by name alone than a trace follows is ambiguous: its guesses are
+        no links (where no other call found them), and it is said so."""
+        among = self.fl.rd.among
+        if among is None:
+            return
+        for site in self.sites:
+            if len(site.guesses) <= among:
+                continue
+            self.ambiguous[site.unit].add((site.shown, len(site.guesses)))
+            kind = NEW if site.kind == NEW else CALL
+            for d in site.guesses:
+                key = (site.unit, d, kind)
+                self.guessed[key].discard(id(site))
+                if not self.guessed[key] and key in self.links and self.links[key].how == BY_NAME:
+                    del self.links[key]
+            site.targets = [(d, k) for d, k in site.targets if (site.unit, d, k) in self.links]
+
+    def tables(self) -> dict:
+        """For each unit reading an entry of a shape by a key it was not written with: what each entry holds (a
+        function, or a function's name) and the entries' keys."""
+        fl, out = self.fl, {}
+        for unit, shapes in fl.tables.items():
+            held = defaultdict(set)
+            for c in shapes:
+                for entry in fl.sc.entries(c):
+                    d = fl.p.defs[entry]
+                    if d.kind == FUNCTION:
+                        held[entry].add(d.name)
+                    for v in fl.s.of((VAR, entry)):
+                        if v[0] == FN:
+                            held[v[1]].add(d.name)
+                        elif v[0] in (TXT, TOLD):
+                            held[v[1]].add(d.name)
+            out[unit] = dict(held)
+        return out

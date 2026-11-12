@@ -31,13 +31,16 @@ OWN = {
     "store_true", "append",                              # argparse's own actions
     "__main__",                                          # Python's name for the script being run
 }
-# Where each language's file names a language, a grammar package or a pattern file (languages.py only).
-REGISTRY = {"languages.py"}
+# Where each language's file names a language, a grammar package or a pattern file (languages.py), and the keys of
+# the files each language itself reads to resolve names, each from the language's own reference (configs.py:
+# tsconfig/jsconfig, project.godot, compile_commands.json). Neither names a program, a library or a platform.
+REGISTRY = {"languages.py", "configs.py"}
 
 # The words a pattern file compares a node's text with, each a word of its language.
 LANGUAGE_WORDS = {
     "gdscript.scm": {"self", "super", "preload", "new"},          # GDScript reference: keywords, `preload`, `.new()`
-    "typescript.scm": {"constructor"},                             # ECMA-262: ClassElement `constructor`
+    "typescript.scm": {"constructor", "any", "unknown", "object"},  # ECMA-262: ClassElement `constructor`;
+    #                                                                TypeScript handbook, Everyday Types: the open types
     "typescript_only.scm": set(),
     "jsx.scm": set(),
     "cpp.scm": {"static_cast", "dynamic_cast", "const_cast", "reinterpret_cast"},   # ISO C++ [expr.post]

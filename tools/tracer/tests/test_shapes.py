@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import unittest
 
-from support import BY_NAME, BY_TEXT, CALL, EXACT, HANDED, NEW, reached, traced
+from support import BY_NAME, BY_TEXT, CALL, EXACT, HANDED, NEW, backward, find, forward, reached, traced
 
 
 class GDScript(unittest.TestCase):
@@ -91,9 +91,12 @@ class Outside(unittest.TestCase):
         self.assertEqual(set(), reached(r, "boxed", (CALL,), BY_NAME))
 
     def test_a_script_reaches_another_language_through_a_type_not_defined(self):
+        """`panel.nudge` reads `body.fire`: once it was also found `panel.lift`, the value of the entry `"fire"` of
+        the dictionary `table`, through a store every literal's entries went to by their keys. An entry is a member of
+        its own object only (spec 001, FR-005): `table.fire` finds it, `body.fire` does not."""
         r = traced("mix")
         self.assertEqual({"Core.fire", "panel.lift"}, reached(r, "panel.press", (CALL,), BY_NAME))
-        self.assertEqual({"Core.fire", "panel.lift"}, reached(r, "panel.nudge", (CALL,), BY_NAME))
+        self.assertEqual({"Core.fire"}, reached(r, "panel.nudge", (CALL,), BY_NAME))
 
     def test_a_compiled_language_does_not_reach_a_script_by_name(self):
         r = traced("mix")
@@ -130,6 +133,43 @@ class Text(unittest.TestCase):
 
     def test_a_sentence_names_no_function(self):
         self.assertEqual(set(), reached(self.r, "panel.say", (CALL,), BY_TEXT))
+
+
+class Forms(unittest.TestCase):
+    """An object written in place is an object of its own shape (fixture `rules`, spec 001 D3): a factory's object is
+    called exactly; its entries are never found by name for an object nothing is known of."""
+
+    def setUp(self):
+        self.r = traced("rules")
+
+    def test_a_factory_s_object_is_called_exactly(self):
+        self.assertLessEqual({"makeDesk.stamp", "makeDesk.file"}, reached(self.r, "office", (CALL,), EXACT))
+
+    def test_an_entry_is_no_guess_for_an_object_nothing_is_known_of(self):
+        self.assertEqual(set(), reached(self.r, "stray", (CALL,)))
+
+
+class Table(unittest.TestCase):
+    """A table of functions' names read by the key a caller gives (fixture `table`, spec 001 D5): the caller's key
+    selects its entry, forward and back; with no caller, every entry."""
+
+    def setUp(self):
+        self.r = traced("table")
+
+    def labels(self, steps):
+        return {self.r.program.label(step.at) for step in steps}
+
+    def test_the_key_a_caller_gives_selects_its_entry(self):
+        ahead = self.labels(forward(self.r, find(self.r, "routes.seal")))
+        self.assertIn("Core.seal_box", ahead)
+        self.assertNotIn("Core.wipe_box", ahead)
+
+    def test_with_no_caller_every_entry(self):
+        self.assertLessEqual({"Core.seal_box", "Core.wipe_box"}, self.labels(forward(self.r, find(self.r, "routes.send"))))
+
+    def test_back_only_to_the_callers_that_gave_its_key(self):
+        self.assertNotIn("routes.seal", self.labels(backward(self.r, find(self.r, "Core.wipe_box"))))
+        self.assertIn("routes.seal", self.labels(backward(self.r, find(self.r, "Core.seal_box"))))
 
 
 class Visible(unittest.TestCase):

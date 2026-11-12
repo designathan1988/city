@@ -73,6 +73,20 @@ class Command(unittest.TestCase):
         self.assertEqual(0, code)
         self.assertIn("Shop.open  shop.gd:14", out.splitlines())
 
+    def test_an_ambiguous_call_is_said_in_text_and_in_data(self):
+        rules = FIXTURE.parent / "rules"
+        self.assertIn("ambiguous (functions of the name): thing.spin (9)", trace("many", root=rules)[1])
+        data = json.loads(trace("many", "--json", root=rules)[1])
+        self.assertEqual([["thing.spin", 9]], data["forward"][0]["ambiguous"])
+        self.assertIn("thing.spin (9)", trace("many", "--among", "8", root=rules)[1])
+        self.assertIn("Fan1.spin", trace("many", "--among", "9", root=rules)[1])
+
+    def test_a_guess_is_followed_one_step_unless_asked(self):
+        mix = FIXTURE.parent / "mix"
+        near = trace("hoist", "--depth", "1", root=mix)[1]
+        self.assertIn("[by name]", near)
+        self.assertNotIn("[by name]", trace("hoist", "--guesses", "none", root=mix)[1].split("What reaches it:")[0])
+
     def test_a_start_naming_nothing_fails(self):
         code, _, err = trace("no_such_name")
         self.assertEqual(1, code)

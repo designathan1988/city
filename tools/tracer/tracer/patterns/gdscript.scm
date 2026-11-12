@@ -50,4 +50,10 @@
 (call (identifier) @_load arguments: (arguments (string) @source) (#eq? @_load "preload")) @import
 
 (pair left: (_) @key value: (_) @value) @pair
+
+; A dictionary written in place is an object of its own shape: each entry whose key is written as a text, or as a
+; name before `=`, is a member of it (GDScript reference: Dictionary; a key written as a name before `:` is a value).
+(dictionary) @shape
+(dictionary (pair left: [(string) (string_name)] @name value: (_) @value) @variable)
+(dictionary (pair left: (identifier) @name "=" value: (_) @value) @variable)
 [(string) (string_name) (node_path) (integer) (float) (array) (dictionary) (true) (false) (null)] @literal

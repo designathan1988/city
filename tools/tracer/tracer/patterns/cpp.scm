@@ -110,7 +110,16 @@
   arguments: (argument_list (_) @value)) @cast
  (#any-of? @_cast "static_cast" "dynamic_cast" "const_cast" "reinterpret_cast"))
 
+; An operator applied to an object: a call of the function its class writes for that operator ([over.oper]).
+(binary_expression left: (_) @object operator: _ @property right: (_) @args) @operate
+(unary_expression operator: _ @property argument: (_) @object) @operate
+
 (return_statement (_) @value) @return
+
+; The types that may be any value: deduced ([dcl.spec.auto], [dcl.type.decltype]) or depending on a parameter.
+(placeholder_type_specifier) @open
+(decltype) @open
+(dependent_type) @open
 
 (this) @self
 (identifier) @ident

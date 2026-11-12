@@ -1,0 +1,6 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "%shelf/*": ["lib/shelf/*"] }
+  }
+}

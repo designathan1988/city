@@ -1,0 +1,11 @@
+; A project file: two of its autoloads are globals (written with `*`), one is not.
+config_version=5
+
+[application]
+
+config/name="Fixture"
+
+[autoload]
+
+Ledger="*res://store/ledger.gd"
+Quiet="res://store/quiet.gd"

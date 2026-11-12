@@ -1,22 +1,32 @@
 """The program as definitions: every file a definition (a module), every fact that defines something a definition
 inside the one around it, each container with the names it holds. Built the same way for every language from the facts
 its patterns found; what differs between languages is read from `languages` (a file that is a class, a method named as
-its class). A definition whose name is written as a member of a scope (`A::f`) is given to that scope.
+its class). A definition whose name is written as a member of a scope (`A::f`) is given to that scope (`adopt`).
+
+An object written in place (a shape) is a definition whose members are the entries written in it with a name. It is
+no scope of a plain name, no class `this` is an object of, no unit code belongs to, and no part of a label; its
+members are never offered by name to an object nothing is known of.
 """
 from __future__ import annotations
 
 import posixpath
 from collections import defaultdict
 
-from .model import LAMBDA, Definition, File, spelled, text
+from .adopt import adopt
+from .configs import Configs
+from .model import LAMBDA, OBJECT as SHAPED, Definition, File, named as text_named, spelled, text
 from .sources import Sources
-from .vocab import (ALIAS, BASE, BODY, CLASS, CONSTRUCTOR, CONTAINERS, DEFAULT, DEFINING, DRIVEN, EXPORT, EXPORT_DEFAULT,
-                    FIELD, FUNCTION, GETTER, IMPORT, INCLUDE, KEY, KIND, MEMBER, MODULE, MODULE_NAME, NAME, NAMED,
-                    NAMESPACE, OBJECT, PAIR, PARAM, PASS, PROPERTY, ROLES, SETTER, SOURCE, VALUE, WHOLE)
+from .vocab import (ALIAS, BASE, BODY, CLASS, CLASSES, CONSTRUCTOR, CONTAINERS, DEFAULT, DEFINING, DRIVEN, EXPORT,
+                    EXPORT_DEFAULT, FIELD, FUNCTION, GETTER, IMPORT, INCLUDE, KEY, KIND, MEMBER, MODULE, MODULE_NAME,
+                    NAME, NAMED, NAMESPACE, OBJECT, OPEN, PAIR, PARAM, PASS, PROPERTY, ROLES, SETTER, SHAPE, SOURCE,
+                    VALUE, WHOLE)
+
 
 class Program:
-    def __init__(self, parsed: list):
-        self.files = [File(i, p.display, p.lang, p.tree) for i, p in enumerate(parsed)]
+    def __init__(self, parsed: list, base=None):
+        self.base = base
+        self.configs = Configs()                      # the files each language reads to resolve names
+        self.files = [File(i, p.display, p.lang, p.tree, p.path) for i, p in enumerate(parsed)]
         self.defs: list[Definition] = []
         self.at = {}                                  # (file, node id) -> definition
         self.names = defaultdict(lambda: defaultdict(list))   # container -> name -> definitions
@@ -32,7 +42,7 @@ class Program:
         self.sources = Sources(self)
         for f in self.files:
             self.own(f)
-        self.adopt()
+        adopt(self)                                   # definitions written out of their scope, given to it
         self.labels = [self.label_of(d) for d in self.defs]
         self.index()
         for f in self.files:                          # what is left to read of the facts: the ones the flow starts from
@@ -64,6 +74,7 @@ class Program:
             if ALIAS in parts and NAME in parts:
                 f.exports[text(parts[ALIAS])] = text(parts[NAME])
         f.default = [parts[VALUE] for node, parts in f.facts.get(EXPORT_DEFAULT, ()) if VALUE in parts]
+        f.open = {node.id for node, _ in f.facts.get(OPEN, ())}
 
     def new(self, kind: str, name: str, f: File, node) -> Definition:
         d = Definition(len(self.defs), kind, name, f.index, node.start_point[0] + 1, node)
@@ -104,6 +115,7 @@ class Program:
                 d.body = d.body or BODY in parts
                 if NAME in parts:
                     d.scopes, d.name = self.path(f, parts[NAME])
+                    d.name = text_named(parts[NAME]) or d.name      # a name written as a text (an entry's key)
                 if VALUE in parts:
                     self.value_names[(f.index, parts[VALUE].id)] = d.name
         for anchor, flag in ((GETTER, "getter"), (SETTER, "setter")):
@@ -145,66 +157,6 @@ class Program:
             if holder is not None or f.lang.file_is_class:
                 self.base_nodes[holder if holder is not None else f.module].append((f.index, node))
 
-    def held_scopes(self, c: int, name: str) -> list:
-        return [i for i in self.held(c, name) if self.defs[i].kind in (CLASS, NAMESPACE)]
-
-    def move(self, d: Definition, owner: int) -> None:
-        if d.id in self.names[d.owner].get(d.name, ()):
-            self.names[d.owner][d.name].remove(d.id)
-        d.owner, d.adopted = owner, True
-        self.names[owner][d.name].append(d.id)
-
-    def adopt(self) -> None:
-        """Definitions written out of their scope go to it: a namespace under the namespaces its name writes (made
-        where no file writes them alone), then every other one under the class or namespace its name's scopes name.
-        A namespace written in several places is one scope: its parts keep one table of names."""
-        for d in [d for d in self.defs if d.kind == NAMESPACE and d.scopes]:
-            holder = d.owner
-            for part in d.scopes:
-                found = [i for i in self.names[holder].get(part, ()) if self.defs[i].kind == NAMESPACE]
-                if not found:
-                    made = self.new(NAMESPACE, part, self.files[d.file], d.node)
-                    made.owner = holder
-                    self.names[holder][part].append(made.id)
-                    found = [made.id]
-                holder = found[0]
-            self.move(d, holder)
-        groups, known = defaultdict(list), defaultdict(list)
-        for d in self.defs:
-            if d.kind == NAMESPACE:
-                groups[self.label_of(d)].append(d.id)
-            if d.kind in (CLASS, NAMESPACE) and d.name:
-                known[d.name].append(d.id)
-        for ids in groups.values():
-            shared = self.names[ids[0]]
-            for other in ids[1:]:
-                for name, held in self.names[other].items():
-                    shared[name] += held
-                self.names[other] = shared
-        for d in [d for d in self.defs if d.kind != NAMESPACE and d.scopes]:
-            found = None
-            for part in d.scopes:
-                if found is None:
-                    cands = [i for c in self.chain(d.owner) for i in self.held_scopes(c, part)] or known.get(part, [])
-                else:
-                    cands = self.held_scopes(found, part)
-                seen = [i for i in cands if self.sources.sees(d.file, self.defs[i].file)]    # the one it can see first
-                found = (seen or cands)[0] if cands else None
-                if found is None:
-                    break
-            if found is not None:
-                self.move(d, found)
-        for d in self.defs:
-            if d.kind != FUNCTION:
-                continue
-            owner = self.defs[d.owner]
-            if self.files[d.file].lang.class_named_constructor and owner.kind == CLASS and d.name == owner.name:
-                d.constructor = True
-                if d.id in self.names[d.owner][d.name]:
-                    self.names[d.owner][d.name].remove(d.id)
-            if d.constructor and self.is_class(d.owner):
-                self.constructors[d.owner].append(d.id)
-
     def index(self) -> None:
         """Where a name is found beyond its scope: a file its own words name, by that name anywhere; a member, by its
         name among every class's."""
@@ -219,6 +171,8 @@ class Program:
                     self.top[d.name].append(d.id)
                 continue
             if not d.name or d.constructor:
+                continue
+            if self.defs[d.owner].kind == SHAPE:      # an entry is never a guess for an object nothing is known of
                 continue
             if d.holder >= 0 or (d.kind != PARAM and self.is_class(d.owner)):
                 self.member[d.name].append(d.id)
@@ -250,19 +204,25 @@ class Program:
         return names.get(name, ()) if names else ()
 
     def is_class(self, i: int) -> bool:
+        """Whether a definition's objects have members: a class, a shape, a file that is a class."""
         d = self.defs[i]
-        return d.kind == CLASS or (d.kind == MODULE and self.files[d.file].lang.file_is_class)
+        return d.kind in CLASSES or (d.kind == MODULE and self.files[d.file].lang.file_is_class)
+
+    def is_shape(self, i: int) -> bool:
+        return self.defs[i].kind == SHAPE
 
     def name_of(self, d: Definition) -> str:
-        return d.name or self.value_names.get((d.file, d.node.id)) or LAMBDA.format(d.line)
+        unnamed = SHAPED if d.kind == SHAPE else LAMBDA
+        return d.name or self.value_names.get((d.file, d.node.id)) or unnamed.format(d.line)
 
     def label_of(self, d: Definition) -> str:
         """A definition as it is shown: the names around it, then its own; a module that is no class, its path."""
         if d.kind == MODULE:
             return d.name if self.files[d.file].lang.file_is_class else self.files[d.file].display
-        parts = []
+        parts = [] if d.kind != SHAPE else [self.name_of(d)]
         while d.kind != MODULE:
-            parts.append(self.name_of(d))
+            if d.kind != SHAPE:                       # a shape is no part of the labels written in it
+                parts.append(self.name_of(d))
             d = self.defs[d.owner]
         if self.files[d.file].lang.file_is_class:
             parts.append(d.name)
@@ -270,6 +230,12 @@ class Program:
 
     def label(self, i: int) -> str:
         return self.labels[i]
+
+    def global_object(self, f: File, name: str) -> int | None:
+        """The file whose object a name is, where the language's own project file makes the name a global."""
+        project = self.configs.of(f.lang.project, f.path) if f.path is not None else None
+        path = project.globals.get(name) if project is not None else None
+        return self.sources.module_at(path) if path is not None else None
 
     def where(self, i: int) -> str:
         d = self.defs[i]
