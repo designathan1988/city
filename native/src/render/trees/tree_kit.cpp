@@ -116,6 +116,7 @@ TreeSpecies make_species(const Dictionary &d, int row, float caster_error_m, Tre
 		Shade own = sh; // a palm's crownshaft and nuts are not leaves: their own tones
 		if (c.has("dark")) own.leaf = Tones{ hexc(c["dark"]), hexc(c["lit"]) };
 		sum += tree_crown(body, cards, cs, own, r);
+		sp.crown_wide = std::max(sp.crown_wide, 2 * (std::abs(cs.centre.x) + cs.radius.x));
 	}
 	if (d.has("fronds")) tree_fronds(cards, top, fronds_of(d["fronds"]), sh.leaf, r);
 	sp.far_tone = crowns.is_empty() || d.has("fronds") ? sh.leaf.tone(HALF_F) : sum / float(crowns.size());

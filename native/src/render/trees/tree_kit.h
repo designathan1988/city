@@ -30,6 +30,7 @@ struct TreeSpecies {
 	OwnedMesh body, cards; // no cards mesh when the species has none
 	OwnedMesh caster; // the body simplified: what it throws on the ground, swaying as it does
 	float crown_reach = 0; // crown radius as a share of the height (keeps trees off the roads)
+	float crown_wide = 0; // the model's crowns across its x, for a height of one: what a plant sized by its width is laid out by
 	bool cards_cast = false; // a palm's fronds are its crown and throw its shadow; other cards do not
 	godot::Color far_tone; // the crown's mean tone (sRGB), for its far card
 };

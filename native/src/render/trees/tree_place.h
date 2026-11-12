@@ -75,6 +75,7 @@ struct TreeLook {
 	float eco_gain = 0, eco_mean = 0, forest_gain = 0; // how the ecosystem and painted forest raise the density
 	std::vector<int> planted_species; // the species of each model slot of a planted tree (sim/nature/planted_trees.h)
 	int shrub_species = 0, hedge_species = 0; // the gardens' plants that are no tree (garden_place.h)
+	float shrub_wide = 1; // the shrub model's width for a height of one (the kit's: its species' crown)
 	std::array<int, FLOWERING_KINDS> flowering_species{}, bed_species{}; // a flowering bush and a flower bed, in each tone
 	int park_max = 0, far_shadows = 0;
 	std::array<BandLook, WOOD_BANDS> band;

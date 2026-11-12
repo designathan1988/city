@@ -16,11 +16,11 @@ namespace city {
 namespace {
 constexpr uint32_t GARDEN_SALT = 0x6a4dU;
 constexpr float PLANT_FOOT_BELOW = 0.05f; // a plant's foot under the ground
-// A tree: how wide against its height, and how much deeper than wide.
-constexpr float TREE_SPREAD = 0.82f, TREE_SPREAD_SPAN = 0.3f, TREE_DEEP = 0.9f, TREE_DEEP_SPAN = 0.2f;
-// A shrub: the share of its element it fills, how tall it may be against that, and how many flower. The model's span is the crown's
-// in streets.json (species shrub), its width for a height of one.
-constexpr float SHRUB_FILL = 0.8f, SHRUB_TALL = 1.3f, SHRUB_FLOWERING = 0.25f, SHRUB_SPAN = 1.24f;
+// A tree: the share of its element its crown fills, and its depth against its width (never past the element either).
+constexpr float TREE_FILL = 0.86f, TREE_FILL_SPAN = 0.14f, TREE_DEEP = 0.88f, TREE_DEEP_SPAN = 0.12f;
+// A shrub: the share of its element it fills, how tall it may be against that, and how many flower. The model's width for a height
+// of one is the kit's (TreeLook::shrub_wide, from its species' crown in streets.json).
+constexpr float SHRUB_FILL = 0.8f, SHRUB_TALL = 1.3f, SHRUB_FLOWERING = 0.25f;
 // A hedge: the most a clipped piece runs, against the least and its height, the overlap and the model's length and depth.
 constexpr float HEDGE_LEAST_M = 2.2f, HEDGE_PER_H = 1.5f, HEDGE_LONG = 1.9f, HEDGE_OVERLAP = 1.25f, HEDGE_DEEP = 0.9f;
 // A flower bed: the most one piece runs, the share of the bed it covers, how tall it is and how far it stands out of its soil.
@@ -53,15 +53,17 @@ struct Stand {
 	}
 };
 
+// A tree stands in the room the lot's layout gave it: its crown as wide as its element at the most (the lot's own tree, b40::lot_trees:
+// half the element is its radius), so it keeps off the fence, the footway and the walls the layout kept the element clear of.
 void plant_tree(const Stand &at, const TreeLook &T, const b40::LotElement &p, Draws &r) {
-	const float spread = TREE_SPREAD + r.get() * TREE_SPREAD_SPAN;
+	const float fill = TREE_FILL + r.get() * TREE_FILL_SPAN;
 	const int species = T.park.pick(r.get());
-	const float yaw = r.get() * TAU_F, width = p.h * spread, deep = width * (TREE_DEEP + r.get() * TREE_DEEP_SPAN);
+	const float yaw = r.get() * TAU_F, width = std::max(p.w, p.d) * fill, deep = width * (TREE_DEEP + r.get() * TREE_DEEP_SPAN);
 	at.out.push_back({ at.ground(p.x, p.y), p.h, width, yaw, 0, 0, species, foliage_tint(r), deep });
 }
 
 void plant_shrub(const Stand &at, const TreeLook &T, const b40::LotElement &p, Draws &r) {
-	const float across = std::min(p.w, p.d) * SHRUB_FILL / SHRUB_SPAN;
+	const float across = std::min(p.w, p.d) * SHRUB_FILL / T.shrub_wide;
 	const float tall = std::min(p.h, across * SHRUB_TALL), wide = std::max(across, tall / SHRUB_TALL);
 	const int species = r.get() < SHRUB_FLOWERING ? flowering(T, r) : T.shrub_species;
 	const float yaw = r.get() * TAU_F, deep = wide * (TREE_DEEP + r.get() * TREE_DEEP_SPAN);
