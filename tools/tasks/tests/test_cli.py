@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
@@ -16,8 +17,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))  # tools:
 from support import PY, TOOLS, RepoCase, proc  # noqa: E402
 
 from tasks import cli  # noqa: E402
+from tasks.machine import Machine  # noqa: E402
+from tasks.pool import Pool  # noqa: E402
+from tasks.suites import Suites  # noqa: E402
+from tasks.task import Task  # noqa: E402
 
 SERVE_TIMEOUT_S = 120
+STATUS_WAIT_S = 20  # for a started task's first line to reach its log
 # One trivial task's answer, keying included (a git listing of a one-file repo): well under inputs.GIT_TIMEOUT_S (120 s),
 # the deadline a blocked git is held to, so a git that blocks fails here and a git that answers passes with room.
 OPEN_INPUT_ANSWER_S = 60
@@ -87,6 +93,36 @@ class CliTest(RepoCase):
         self.assertEqual(self.cli("good"), 0)
         self.assertEqual(self.cli("mixed"), 1)
         self.assertEqual(self.cli("bad"), 1)
+
+    def test_status_shows_a_running_task_with_its_time_and_what_it_last_said(self):
+        pool = Pool(root=self.root, machine=Machine(self.root / "machine"), label="live")
+        pool.submit(Task("slow", [PY, "-u", "-c", "import time; print('half way there', flush=True); time.sleep(4)"], timeout_s=60))
+        try:
+            said = ""
+            end = time.monotonic() + STATUS_WAIT_S
+            while "half way there" not in said and time.monotonic() < end:
+                time.sleep(0.2)
+                out = StringIO()
+                with redirect_stdout(out):
+                    code = cli.main(["status", "--root", str(self.root)])
+                said = out.getvalue()
+            self.assertEqual(code, 0)
+            self.assertIn("(live: 0 done, 1 running)", said)
+            self.assertRegex(said, r"RUNNING\s+slow\s+\d+ s, \d+ cores\s+\| half way there")
+        finally:
+            pool.wait_all()
+            pool.close()
+
+    def test_an_item_lays_its_own_resources_over_its_template(self):
+        doc = json.loads(self.suites.read_text(encoding="utf-8"))
+        doc["templates"] = {"scene": {"argv": ["{python}", "-c", "pass"],
+                                      "resources": {"cores": 2, "memory_mb": 900, "locks": {"dll": "shared", "gpu": "shared"}}}}
+        doc["groups"] = {"scenes": {"template": "scene", "items": [
+            {"name": "plain", "timeout_s": 5}, {"name": "timed", "timeout_s": 5, "resources": {"locks": {"gpu": "exclusive"}}}]}}
+        self.suites.write_text(json.dumps(doc), encoding="utf-8")
+        s = Suites(self.suites, root=self.root)
+        self.assertEqual(s.build("plain").resources, {"cores": 2, "memory_mb": 900, "locks": {"dll": "shared", "gpu": "shared"}})
+        self.assertEqual(s.build("timed").resources, {"cores": 2, "memory_mb": 900, "locks": {"dll": "shared", "gpu": "exclusive"}})
 
     def test_serve_answers_each_line(self):
         lines = [json.dumps({"id": "a", "name": "ok", "argv": [PY, "-c", "pass"], "timeout_s": 60}),

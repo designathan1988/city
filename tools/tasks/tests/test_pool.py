@@ -1,6 +1,8 @@
 # pool: a hung task does not block a sibling, a failure SKIPs its dependents only, results are cached by content (hit on
 # unchanged inputs, miss on changed content), timeouts are never cached, outputs come back on a hit.
+import json
 import sys
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -12,16 +14,110 @@ from support import RepoCase, py  # noqa: E402
 
 from tasks import Task, key_of, memo, proc, run  # noqa: E402
 from tasks.inputs import invalidate  # noqa: E402
+from tasks.machine import Machine  # noqa: E402
+from tasks.runs import newest_run  # noqa: E402
 from tasks.task import CACHED_PASS, FAIL, PASS, SKIPPED, TIMEOUT  # noqa: E402
 
 HANG_S = 120
 
 
+def stamped(seconds: float) -> list[str]:
+    """A task that writes when it started and when it ended to $OUT.start and $OUT.end."""
+    return py("import os, time\n"
+              "open(os.environ['OUT'] + '.start', 'w').write(repr(time.time()))\n"
+              f"time.sleep({seconds})\n"
+              "open(os.environ['OUT'] + '.end', 'w').write(repr(time.time()))\n")
+
+
 class PoolTest(RepoCase):
     def run_tasks(self, tasks, **kw):
         finished = []
+        kw.setdefault("machine", Machine(self.root / "machine"))  # this test's own: no other run of the machine in its way
         results = run(tasks, root=self.root, on_result=lambda r: finished.append((r.name, time.monotonic())), **kw)
         return {r.name: r for r in results}, finished
+
+    def span(self, name: str) -> tuple[float, float]:
+        return float((self.root / f"{name}.start").read_text()), float((self.root / f"{name}.end").read_text())
+
+    def together(self, a: str, b: str) -> bool:
+        (a0, a1), (b0, b1) = self.span(a), self.span(b)
+        return a0 < b1 and b0 < a1
+
+    def stamping(self, name: str, seconds: float, **resources) -> Task:
+        return Task(name, stamped(seconds), timeout_s=60, env={"OUT": str(self.root / name)}, resources=resources)
+
+    def test_tasks_run_together_while_the_memory_they_take_fits(self):
+        machine = Machine(self.root / "machine", memory=lambda: (1000, 1000))  # MiB available now, MiB in all
+        results, _ = self.run_tasks([self.stamping("a", 1.5, memory_mb=300), self.stamping("b", 1.5, memory_mb=300)], machine=machine)
+        self.assertEqual({r.status for r in results.values()}, {PASS})
+        self.assertTrue(self.together("a", "b"), "two tasks whose memory fits waited for one another")
+
+    def test_a_task_waits_for_the_memory_another_still_has_to_take(self):
+        machine = Machine(self.root / "machine", memory=lambda: (1000, 1000))
+        results, _ = self.run_tasks([self.stamping("big", 1.5, memory_mb=600), self.stamping("big2", 1.5, memory_mb=600)], machine=machine)
+        self.assertEqual({r.status for r in results.values()}, {PASS})
+        self.assertFalse(self.together("big", "big2"), "two tasks that do not fit in the machine's memory ran at once")
+
+    def test_a_task_that_fits_goes_ahead_of_one_that_does_not_when_it_delays_nobody(self):
+        """EASY backfilling: `big` does not fit beside `first` and waits for its end; `small` fits now and takes no more than
+        what will be left when `big` starts, so it runs beside `first` instead of waiting behind `big`."""
+        machine = Machine(self.root / "machine", memory=lambda: (1000, 1000))
+        tasks = [self.stamping("first", 2.0, memory_mb=300), self.stamping("big", 0.5, memory_mb=800),
+                 self.stamping("small", 0.5, memory_mb=40)]
+        results, _ = self.run_tasks(tasks, machine=machine)
+        self.assertEqual({r.status for r in results.values()}, {PASS})
+        self.assertFalse(self.together("first", "big"), "the task that does not fit started beside the running one")
+        self.assertTrue(self.together("first", "small"), "a task that fits and delays nobody waited behind one that does not fit")
+
+    def test_a_task_that_would_delay_the_one_ahead_waits_its_turn(self):
+        machine = Machine(self.root / "machine", memory=lambda: (1000, 1000))
+        # `medium` fits beside `first`, but would still run when `big` can start; it becomes ready after `gate`, when `big`
+        # already waits (a task whose key is still being worked out is ahead of nobody yet)
+        medium = self.stamping("medium", 0.5, memory_mb=400)
+        medium.after = ["gate"]
+        tasks = [self.stamping("first", 3.0, memory_mb=300), self.stamping("big", 0.5, memory_mb=800),
+                 self.stamping("gate", 0.8, memory_mb=10), medium]
+        results, _ = self.run_tasks(tasks, machine=machine)
+        self.assertEqual({r.status for r in results.values()}, {PASS})
+        self.assertFalse(self.together("first", "medium"), "a task took the memory the one ahead of it was waiting for")
+
+    def test_a_task_larger_than_the_machine_runs_alone_not_never(self):
+        machine = Machine(self.root / "machine", memory=lambda: (500, 1000))
+        results, _ = self.run_tasks([self.stamping("huge", 0.2, memory_mb=5000)], machine=machine)
+        self.assertEqual(results["huge"].status, PASS)
+
+    @unittest.skipUnless(sys.platform == "win32", "the job's peak memory is read on Windows")
+    def test_the_memory_a_task_took_is_kept_for_the_next_run(self):
+        hold = py("import time\nb = bytearray(160 * 1024 * 1024)\ntime.sleep(0.5)\n")
+        self.run_tasks([Task("holds", hold, timeout_s=60)])
+        kept = json.loads((newest_run(self.root) / "memory.json").read_text(encoding="utf-8"))
+        self.assertGreaterEqual(kept["holds"], 150, "the peak memory of the task's processes was not recorded")
+
+    def test_two_runs_never_share_a_processor(self):
+        cores = proc.usable_cores()[:2]
+        if len(cores) < 2:
+            self.skipTest("needs two processors")
+        machine = Machine(self.root / "machine", cores=cores)
+        done = {}
+
+        def one(name: str) -> None:
+            done[name] = run([self.stamping(name, 1.5, cores=2)], root=self.root, machine=machine, label=name)[0].status
+        runs = [threading.Thread(target=one, args=(n,)) for n in ("left", "right")]
+        for t in runs:
+            t.start()
+        for t in runs:
+            t.join()
+        self.assertEqual(done, {"left": PASS, "right": PASS})
+        self.assertFalse(self.together("left", "right"), "two runs ran on the same processors at once")
+
+    def test_a_run_says_what_it_is_doing_while_it_runs(self):
+        seen = []
+        self.run_tasks([self.stamping("slow", 2.0)], on_progress=seen.append, progress_s=0.4)
+        self.assertTrue(seen, "a run with a task of two seconds said nothing while it ran")
+        last = seen[-1]
+        self.assertEqual((last["done"], last["total"]), (0, 1))
+        self.assertEqual([r["task"] for r in last["running"]], ["slow"])
+        self.assertGreater(last["running"][0]["seconds"], 0.0)
 
     def test_hung_task_does_not_block_a_sibling(self):
         hang = Task("hang", py(f"import time; time.sleep({HANG_S})"), timeout_s=3)

@@ -2,8 +2,9 @@
 # machine var (suites.json vars: where Godot, bash and llvm-mingw are) for the shell scripts.
 # Exit codes of `run`: 0 only when the selection is non-empty and every task passed; 1 for any FAIL, TIMEOUT, BROKEN or
 # SKIPPED; 2 for a usage error, an unknown name or an empty selection.
+# While tasks run, `run` prints a line of what it is doing every few seconds; `status` shows every run that lives.
 # Use: python tools/tasks/cli.py run <suite|task ...> [--all] [--<variant>] [--list] [--json OUT] [--jobs N]
-#      python tools/tasks/cli.py serve [--jobs N]      python tools/tasks/cli.py status      python tools/tasks/cli.py --list
+#      python tools/tasks/cli.py serve [--jobs N]      python tools/tasks/cli.py status [--watch]      python tools/tasks/cli.py --list
 #      python tools/tasks/cli.py var <name>
 from __future__ import annotations
 
@@ -19,11 +20,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tasks import verdicts  # noqa: E402
 from tasks.cache import remove, write_atomic  # noqa: E402
 from tasks.pool import Pool, run  # noqa: E402
-from tasks.runs import RUNS, newest_run  # noqa: E402
+from tasks.runs import RUNS, live_runs, newest_run  # noqa: E402
 from tasks.suites import Suites, UsageError  # noqa: E402
 from tasks.task import PASSED, ROOT, Task  # noqa: E402
 
 OK, FAILED, USAGE = 0, 1, 2
+SHOWN_RUNNING = 6  # running tasks named in a progress line; the rest are counted
+MB_PER_GB = 1024.0
+WATCH_S = 2.0  # status --watch: the state printed again this often, until no run lives
+TAIL_BYTES = 4096  # of a running task's log read for its last line
+STATUS_LINE = 100  # characters of that line shown
 
 
 def _print_result(r) -> None:
@@ -37,6 +43,25 @@ def _print_result(r) -> None:
         for x in verdicts.failure_lines(r.log):
             print(f"    | {x}")
         print(f"    log: {r.log}", flush=True)
+
+
+def _spent(seconds: float, expected: float | None) -> str:
+    return f"{seconds:.0f} s" + (f" of ~{expected:.0f}" if expected else "")
+
+
+def _print_progress(p: dict) -> None:
+    """One line of what the run is doing: how far it is, each running task with its seconds against what it took before,
+    how many wait and for what, and the memory the machine has free."""
+    running = ", ".join(f"{r['task']} {_spent(r['seconds'], r['expected'])}" for r in p["running"][:SHOWN_RUNNING])
+    more = len(p["running"]) - SHOWN_RUNNING
+    reasons: dict[str, int] = {}
+    for why in p["waiting"].values():
+        key = "the tasks before them" if why.startswith("after ") else why.split(" (")[0]
+        reasons[key] = reasons.get(key, 0) + 1
+    waits = ", ".join(f"{n} for {why}" for why, n in sorted(reasons.items(), key=lambda kv: -kv[1]))
+    print(f"  .. {p['done']}/{p['total']} done | running {len(p['running'])}: {running}{f' (+{more})' if more > 0 else ''}"
+          f" | waiting {len(p['waiting'])}{f' ({waits})' if waits else ''} | {p['memory_free_mb'] / MB_PER_GB:.1f} GB free",
+          flush=True)
 
 
 def _list(s: Suites, sel=None) -> int:
@@ -101,7 +126,7 @@ def cmd_run(argv: list[str]) -> int:
     capacity = s.doc.get("capacity", {})
     t0 = time.monotonic()
     results = run(sel.tasks, jobs=a.jobs, on_result=_print_result, root=root, use_cache=not sel.no_cache,
-                  capacity=capacity, label="-".join(names)[:40])
+                  capacity=capacity, label="-".join(names)[:40], on_progress=_print_progress)
     passed = sum(r.status in PASSED for r in results)
     counts = {}
     for r in results:
@@ -164,30 +189,61 @@ def cmd_serve(argv: list[str]) -> int:
     return OK
 
 
-def cmd_status(argv: list[str]) -> int:
-    ap = argparse.ArgumentParser(prog="cli.py status")
-    ap.add_argument("--root", help=argparse.SUPPRESS)
-    a = ap.parse_args(argv)
-    root = Path(a.root).resolve() if a.root else ROOT
-    run_dir = newest_run(root)  # the folder of the latest name (runs.py): no file every run must win
-    if run_dir is None:
-        print("no run yet")
-        return USAGE
+def _last_line(log: Path) -> str:
+    """The last line with anything on it of a log another process is still writing."""
+    try:
+        with open(log, "rb") as fh:
+            fh.seek(max(0, log.stat().st_size - TAIL_BYTES))
+            lines = [x.strip() for x in fh.read().decode("utf-8", errors="replace").splitlines() if x.strip()]
+    except OSError:
+        return ""
+    return lines[-1] if lines else ""
+
+
+def _print_run(run_dir: Path, live: bool) -> None:
     events = run_dir / "events.jsonl"
     state: dict[str, dict] = {}
     if events.is_file():
         for line in events.read_text(encoding="utf-8").splitlines():
             e = json.loads(line)
             state[e["task"]] = e
-    print(f"run {run_dir.name}")
+    running = [task for task, e in state.items() if e["event"] == "start"]
+    done = len(state) - len(running)
+    print(f"run {run_dir.name}  ({'live' if live else 'ended'}: {done} done, {len(running)} running)")
     for task, e in state.items():
         if e["event"] == "start":
-            print(f"RUNNING      {task}  since {time.strftime('%H:%M:%S', time.localtime(e['t']))}")
+            said = _last_line(run_dir / f"{task}.log") if live else ""
+            print(f"RUNNING      {task}  {_spent(time.time() - e['t'], e.get('expected'))}, {len(e.get('cores', []))} cores"
+                  + (f"  | {said[:STATUS_LINE]}" if said else ""))
         else:
             print(f"{e['status']:<12} {task}  {e['seconds']:.1f} s" + (f"  {e['message'].splitlines()[0]}"
                                                                       if e.get("message") and e["status"] not in PASSED
                                                                       else ""))
-    return OK
+
+
+def cmd_status(argv: list[str]) -> int:
+    """Every run whose process lives, each task with its state (a running one with its seconds against what it took before
+    and the last line of its log), or the newest run when none lives. --watch prints it again until no run lives."""
+    ap = argparse.ArgumentParser(prog="cli.py status")
+    ap.add_argument("--watch", action="store_true", help="print the state again every few seconds while a run lives")
+    ap.add_argument("--root", help=argparse.SUPPRESS)
+    a = ap.parse_args(argv)
+    root = Path(a.root).resolve() if a.root else ROOT
+    while True:
+        live = live_runs(root)
+        if live:
+            for run_dir in live:
+                _print_run(run_dir, True)
+        else:
+            run_dir = newest_run(root)  # the folder of the latest name (runs.py): no file every run must win
+            if run_dir is None:
+                print("no run yet")
+                return USAGE
+            _print_run(run_dir, False)
+        if not a.watch or not live:
+            return OK
+        print(flush=True)
+        time.sleep(WATCH_S)
 
 
 def cmd_var(argv: list[str]) -> int:

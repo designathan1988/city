@@ -59,6 +59,7 @@
    "additionalProperties": {"type": "integer", "minimum": 1},
    "properties": {
     "cores": {"oneOf": [{"type": "integer", "minimum": 1}, {"const": "all"}]},
+    "memory_mb": {"type": "integer", "minimum": 1, "description": "the memory the task is admitted for until a run has measured what it takes"},
     "locks": {"type": "object", "additionalProperties": {"enum": ["shared", "exclusive"]}}
    }
   },
@@ -100,7 +101,11 @@
      "items": {
       "type": "object",
       "required": ["name"],
-      "properties": {"name": {"type": "string", "minLength": 1}, "timeout_s": {"type": "number", "exclusiveMinimum": 0}},
+      "properties": {
+       "name": {"type": "string", "minLength": 1},
+       "timeout_s": {"type": "number", "exclusiveMinimum": 0},
+       "resources": {"$ref": "#/$defs/resources", "description": "what this item alone needs, laid over its template's (locks by name)"}
+      },
       "additionalProperties": {"type": "string"}
      }
     }

@@ -148,7 +148,7 @@ class Suites:
         kw = dict(inputs=self._inputs(f.get("inputs", []), ex, argv, params, name), extra=[ex(x) for x in f.get("extra", [])],
                   outputs=[ex(x) for x in f.get("outputs", [])], after=list(f.get("after", [])),
                   cwd=ex(f["cwd"]) if "cwd" in f else None, env={k: ex(v) for k, v in f.get("env", {}).items()} or None,
-                  hidden=f.get("hidden", False), verdict=f.get("verdict"), resources=f.get("resources", {}),
+                  hidden=f.get("hidden", False), verdict=f.get("verdict"), resources=self._resources(f, item),
                   params=params, fresh=f.get("fresh", False), hint=f.get("hint", ""))
         if "call" in f:
             spec = self._deep(f.get("spec", {}), ex)
@@ -157,6 +157,13 @@ class Suites:
         if not argv:
             raise ValueError(f"{name}: a task needs argv or call")
         return Task(name=name, argv=argv, timeout_s=timeout, **kw)
+
+    @staticmethod
+    def _resources(fields: dict, item: dict | None) -> dict:
+        """A task's resources: its template's (or its own), with what its item alone needs laid over them, locks by name."""
+        base, own = fields.get("resources", {}), (item or {}).get("resources", {})
+        locks = {**base.get("locks", {}), **own.get("locks", {})}
+        return {**base, **own, **({"locks": locks} if locks else {})}
 
     def _changed_list(self) -> str:
         """The changed files written one per line to a file named by its content (any number of paths fits; no command line

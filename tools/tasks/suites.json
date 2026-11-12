@@ -1,5 +1,5 @@
 {
- "_doc": "The support tools' work as data, run by tools/tasks/cli.py (schema: tools/gates/schemas/suites.schema.json). A task is a process with its own deadline (timeout_s), the inputs and extra strings that key its result, the outputs restored on a cache hit, the tasks it runs after, its resources and its verdict. {name} is a var (vars, versions, or the built-in root, python); an inputs element @name is a set; a suite element @name is a group or another suite; an argv element {changed_list:--files-from} expands to --files-from and a file listing the changed files (the task is dropped when none changed) and {changed} in inputs to the changed files; {loads} in inputs is every file the Godot run of the task's argv may load (tools/tasks/godot_deps.py: the scene, the plan, the project settings, the extensions, and every script, scene, shader, table and asset they reach), and such a run is --verbose so its verdict fails on a resource it loaded outside them. Every Godot task loads the debug DLL: it runs after build_debug, whose output that DLL is, and the DLL is among what it loads (bin/citycore.gdextension), so a scene reruns exactly when what it loads changed. capacity counts what cores do not: `godot` is a Godot process with a city in it, which takes gigabytes of memory and the machine's one GPU whatever its share of processors, so at most that many run at once (six at once took 85% of the memory and 76% of the GPU on 2026-11-10).",
+ "_doc": "The support tools' work as data, run by tools/tasks/cli.py (schema: tools/gates/schemas/suites.schema.json). A task is a process with its own deadline (timeout_s), the inputs and extra strings that key its result, the outputs restored on a cache hit, the tasks it runs after, its resources and its verdict. {name} is a var (vars, versions, or the built-in root, python); an inputs element @name is a set; a suite element @name is a group or another suite; an argv element {changed_list:--files-from} expands to --files-from and a file listing the changed files (the task is dropped when none changed) and {changed} in inputs to the changed files; {loads} in inputs is every file the Godot run of the task's argv may load (tools/tasks/godot_deps.py: the scene, the plan, the project settings, the extensions, and every script, scene, shader, table and asset they reach), and such a run is --verbose so its verdict fails on a resource it loaded outside them. Every Godot task loads the debug DLL: it runs after build_debug, whose output that DLL is, and the DLL is among what it loads (bin/citycore.gdextension), so a scene reruns exactly when what it loads changed. How many tasks run at once follows from the tasks and the machine (tools/tasks/pool.py): a task holds the processors it asks for (cores), which every run on the machine shares, and starts while the machine's free memory holds what it was measured to take (memory_mb is its estimate until a run has measured it); a Godot run shares the GPU (lock gpu: shared) and one that measures the GPU's own time (lab_test) takes it alone (exclusive), so nothing else draws while it measures; a task that does not fit waits with a reservation, and what fits and does not delay it goes ahead (admission.py).",
  "vars": {
   "test_fps": {
    "doc": "the tests' simulated time: each frame moves the game 1/test_fps s (Godot --fixed-fps, real-time synchronisation off) and frames run uncapped (--disable-vsync, --max-fps 0, Settings keeps no cap under it): a test takes the time its work takes, never 16.7 ms a frame; a test that measures real frame times sets -1 (wall time) on its item",
@@ -23,7 +23,6 @@
   "clang_version": {"doc": "the compiler of the Windows DLLs (llvm-mingw)", "argv": ["{mingw}/bin/clang++", "--version"]}
  },
  "loads": {"doc": "{loads}: the C++ folders whose res:// paths the loaded core library opens", "native": ["native/src"]},
- "capacity": {"godot": 2},
  "changed": {
   "doc": "the changed files the gates look at (run_gates.py --files-from: a path outside every gate is reported and skipped there)",
   "include": ["**"],
@@ -105,7 +104,7 @@
    "after": ["build_debug", "import", "scripts"],
    "verdict": "matches_golden",
    "params": {"line": "^DIGEST ", "golden": "dist/quick/golden.txt"},
-   "resources": {"cores": 3, "godot": 1, "locks": {"dll": "shared"}},
+   "resources": {"cores": 3, "memory_mb": 3000, "locks": {"dll": "shared", "gpu": "shared"}},
    "hint": "a change meant to move the digest: run with --bless"
   },
   "digest_bless": {
@@ -118,7 +117,7 @@
    "outputs": ["dist/quick/golden.txt"],
    "verdict": "write_golden",
    "params": {"line": "^DIGEST ", "golden": "dist/quick/golden.txt"},
-   "resources": {"cores": 3, "godot": 1, "locks": {"dll": "shared"}}
+   "resources": {"cores": 3, "memory_mb": 3000, "locks": {"dll": "shared", "gpu": "shared"}}
   },
   "photos": {
    "doc": "the still world photographed frozen (look --frozen: no clock, no TIME, waits by frames)",
@@ -144,7 +143,7 @@
    "outputs": ["dist/quick/photos"],
    "fresh": true,
    "verdict": "godot",
-   "resources": {"cores": 3, "godot": 1, "locks": {"dll": "shared"}}
+   "resources": {"cores": 3, "memory_mb": 3000, "locks": {"dll": "shared", "gpu": "shared"}}
   },
   "photos_check": {
    "doc": "where the frozen photos differ from a kept set (photos_bless), run by name only: a help to find where to look, never a verdict on the game and in no suite (a photo is judged on its own; two runs of the same code differ in pixels)",
@@ -189,7 +188,7 @@
    "extra": ["{godot_version}"],
    "after": ["build_debug", "import", "scripts"],
    "verdict": "godot",
-   "resources": {"cores": 3, "godot": 1, "locks": {"dll": "shared"}}
+   "resources": {"cores": 3, "memory_mb": 3000, "locks": {"dll": "shared", "gpu": "shared"}}
   },
   "look": {
    "argv": [
@@ -212,7 +211,7 @@
    "outputs": ["{captures}/{name}"],
    "fresh": true,
    "verdict": "godot",
-   "resources": {"cores": 3, "godot": 1, "locks": {"dll": "shared"}}
+   "resources": {"cores": 3, "memory_mb": 3000, "locks": {"dll": "shared", "gpu": "shared"}}
   },
   "capture_scene": {
    "argv": [
@@ -234,7 +233,7 @@
    "outputs": ["{captures}/{name}"],
    "fresh": true,
    "verdict": "godot",
-   "resources": {"cores": 3, "godot": 1, "locks": {"dll": "shared"}}
+   "resources": {"cores": 3, "memory_mb": 3000, "locks": {"dll": "shared", "gpu": "shared"}}
   }
  },
  "groups": {
@@ -272,8 +271,8 @@
      "renderer": "gl_compatibility",
      "timeout_s": 600
     },
-    {"name": "lab_test", "scene": "tests/core/lab_test", "renderer": "gl_compatibility", "test_fps": "-1", "timeout_s": 600},
-    {"name": "lab_test@forward_plus", "scene": "tests/core/lab_test", "renderer": "forward_plus", "test_fps": "-1", "timeout_s": 600},
+    {"name": "lab_test", "scene": "tests/core/lab_test", "renderer": "gl_compatibility", "test_fps": "-1", "resources": {"locks": {"gpu": "exclusive"}}, "timeout_s": 600},
+    {"name": "lab_test@forward_plus", "scene": "tests/core/lab_test", "renderer": "forward_plus", "test_fps": "-1", "resources": {"locks": {"gpu": "exclusive"}}, "timeout_s": 600},
     {
      "name": "boot_refusal_test",
      "scene": "tests/core/boot_refusal_test",
@@ -307,7 +306,7 @@
     {"name": "vehicle_motion_test", "scene": "tests/core/vehicle_motion_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "junction_sweep_test", "scene": "tests/core/junction_sweep_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "walker_motion_test", "scene": "tests/core/walker_motion_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "window_traffic_test", "scene": "tests/core/window_traffic_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "window_traffic_test", "scene": "tests/core/window_traffic_test", "renderer": "gl_compatibility", "resources": {"cores": 12}, "timeout_s": 600},
     {"name": "strike_test", "scene": "tests/core/strike_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "shoot_test", "scene": "tests/core/shoot_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "transit_test", "scene": "tests/core/transit_test", "renderer": "gl_compatibility", "timeout_s": 600},

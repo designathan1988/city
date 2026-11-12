@@ -63,6 +63,12 @@ class Process:
         except subprocess.TimeoutExpired:
             return None
 
+    def peak_memory_mb(self) -> float:
+        """The most memory the tree held at once so far, MiB; 0 where the platform keeps no such figure for a tree."""
+        if os.name == "nt" and not self._done:
+            return self._tree.peak_memory_mb()
+        return 0.0
+
     def kill_tree(self) -> None:
         """Kills the process and everything it started (only that: the tree is known by its job or its process group)."""
         if self._done:
@@ -112,6 +118,14 @@ def usable_cores() -> list[int]:
     if hasattr(os, "sched_getaffinity"):
         return sorted(os.sched_getaffinity(0))
     return list(range(os.cpu_count() or 1))
+
+
+def memory_mb() -> tuple[float, float]:
+    """(MiB of physical memory available now, MiB in all) on this machine."""
+    if os.name == "nt":
+        return win32.memory_mb()
+    page = os.sysconf("SC_PAGE_SIZE") / (1 << 20)
+    return os.sysconf("SC_AVPHYS_PAGES") * page, os.sysconf("SC_PHYS_PAGES") * page
 
 
 def alive(pid: int) -> bool:

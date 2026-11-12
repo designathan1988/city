@@ -54,6 +54,13 @@ class JOBOBJECT_EXTENDED_LIMIT_INFORMATION(C.Structure):
                 ("PeakProcessMemoryUsed", C.c_size_t), ("PeakJobMemoryUsed", C.c_size_t)]
 
 
+class MEMORYSTATUSEX(C.Structure):
+    _fields_ = [("dwLength", W.DWORD), ("dwMemoryLoad", W.DWORD)] + [(n, C.c_uint64) for n in (
+        "ullTotalPhys", "ullAvailPhys", "ullTotalPageFile", "ullAvailPageFile", "ullTotalVirtual", "ullAvailVirtual",
+        "ullAvailExtendedVirtual")]
+
+
+BYTES_PER_MIB = 1 << 20
 JobObjectBasicProcessIdList, JobObjectExtendedLimitInformation = 3, 9
 JOB_PID_ROOM = 64  # process ids asked for at first; the list grows when the job holds more
 ERROR_MORE_DATA = 234
@@ -88,6 +95,7 @@ k32.GetExitCodeProcess.argtypes = [W.HANDLE, C.POINTER(W.DWORD)]
 k32.CloseHandle.argtypes = [W.HANDLE]
 k32.GetCurrentProcess.restype = W.HANDLE
 k32.GetProcessAffinityMask.argtypes = [W.HANDLE, C.POINTER(C.c_size_t), C.POINTER(C.c_size_t)]
+k32.GlobalMemoryStatusEx.argtypes = [C.c_void_p]
 k32.InitializeProcThreadAttributeList.argtypes = [C.c_void_p, W.DWORD, W.DWORD, C.POINTER(C.c_size_t)]
 k32.UpdateProcThreadAttribute.argtypes = [C.c_void_p, W.DWORD, C.c_size_t, C.c_void_p, C.c_size_t, C.c_void_p, C.c_void_p]
 k32.DeleteProcThreadAttributeList.argtypes = [C.c_void_p]
@@ -143,6 +151,14 @@ def usable_cores() -> list[int]:
     mine, system = C.c_size_t(), C.c_size_t()
     _check(k32.GetProcessAffinityMask(k32.GetCurrentProcess(), C.byref(mine), C.byref(system)), "GetProcessAffinityMask")
     return [n for n in range(C.sizeof(C.c_size_t) * 8) if mine.value >> n & 1]
+
+
+def memory_mb() -> tuple[float, float]:
+    """(MiB of physical memory available now, MiB in all), as the operating system counts them for the whole machine."""
+    status = MEMORYSTATUSEX()
+    status.dwLength = C.sizeof(MEMORYSTATUSEX)
+    _check(k32.GlobalMemoryStatusEx(C.byref(status)), "GlobalMemoryStatusEx")
+    return status.ullAvailPhys / BYTES_PER_MIB, status.ullTotalPhys / BYTES_PER_MIB
 
 
 class JobTree:
@@ -220,6 +236,13 @@ class JobTree:
                 raise OSError(C.get_last_error(), "WaitForSingleObject")
             if end is not None and time.monotonic() >= end:
                 return None
+
+    def peak_memory_mb(self) -> float:
+        """The most memory the job's processes held committed at once so far, MiB (the job keeps the figure itself)."""
+        info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
+        _check(k32.QueryInformationJobObject(self.job, JobObjectExtendedLimitInformation, C.byref(info), C.sizeof(info), None),
+               "QueryInformationJobObject")
+        return info.PeakJobMemoryUsed / BYTES_PER_MIB
 
     def _pids(self) -> list[int]:
         room = JOB_PID_ROOM
