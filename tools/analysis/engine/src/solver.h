@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <memory>
 #include <span>
 #include <vector>
 
@@ -71,27 +72,18 @@ private:
         bool edge;
         uint32_t index;                                    // the target node, or the subscription's index
     };
-    struct Key {
-        Node source, target;
-        uint32_t key;
-        bool operator==(const Key&) const = default;
-    };
-    struct KeyHash {
-        size_t operator()(const Key& k) const;
-    };
     void queue(Node n);
     void deliver(Node source, uint32_t from, uint32_t upto, Transfers& transfers);
     void apply_sub(const Sub& sub, std::span<const Obj> objects, Transfers& transfers);
 
     std::vector<Set> held_;
     std::vector<uint32_t> seen_;                           // per node: how many objects its edges and subs have seen
-    std::vector<std::vector<Node>> edges_;
+    std::vector<Set> edges_;                               // per node: its targets, indexed once they are many
     std::vector<std::vector<Sub>> subs_;
+    std::vector<std::unique_ptr<FlatSet<uint64_t, U64Hash>>> sub_index_;   // per node: (target, key), once many
     std::vector<uint8_t> queued_;
     std::deque<Node> work_;
     std::deque<First> firsts_;
-    FlatSet<uint64_t, U64Hash> edge_keys_;
-    FlatSet<Key, KeyHash> sub_keys_;
     std::vector<Obj> scratch_;
     uint64_t items_ = 0;
     std::vector<uint64_t> cost_;

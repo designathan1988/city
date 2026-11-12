@@ -53,23 +53,19 @@ bool Solver::Set::insert(Obj o) {
     return true;
 }
 
-size_t Solver::KeyHash::operator()(const Key& k) const {
-    uint64_t h = (static_cast<uint64_t>(k.source) << kHalf | k.target) * kMix;
-    return static_cast<size_t>(h ^ (k.key * kMix >> 1));
-}
-
 Node Solver::node() {
     held_.emplace_back();
     seen_.push_back(0);
     edges_.emplace_back();
     subs_.emplace_back();
+    sub_index_.emplace_back();
     queued_.push_back(0);
     return static_cast<Node>(held_.size() - 1);
 }
 
 bool Solver::add(Node n, Obj o) {
     if (!held_[n].insert(o)) return false;
-    if (edges_[n].empty() && subs_[n].empty()) {
+    if (edges_[n].order.empty() && subs_[n].empty()) {
         seen_[n] = static_cast<uint32_t>(held_[n].order.size());   // nothing to hand them to: seen
     } else {
         queue(n);
@@ -90,14 +86,26 @@ void Solver::queue(Node n) {
 
 void Solver::follow(Node source, Node target) {
     if (source == target) return;
-    if (!edge_keys_.insert(static_cast<uint64_t>(source) << kHalf | target)) return;
-    edges_[source].push_back(target);
+    if (!edges_[source].insert(target)) return;    // the source's own index: no global table to reach into
     auto upto = static_cast<uint32_t>(held_[source].order.size());
     if (upto) firsts_.push_back({source, upto, true, target});
 }
 
 bool Solver::subscribe(Node source, Node target, uint32_t key, const Transfer& transfer) {
-    if (!sub_keys_.insert({source, target, key})) return false;
+    uint64_t pair = static_cast<uint64_t>(target) << kHalf | key;
+    auto& index = sub_index_[source];
+    if (index) {
+        if (!index->insert(pair)) return false;
+    } else {
+        for (const Sub& s : subs_[source]) {
+            if (s.target == target && s.key == key) return false;
+        }
+        if (subs_[source].size() + 1 >= kIndexAt) {     // many now: index them all
+            index = std::make_unique<FlatSet<uint64_t, U64Hash>>();
+            for (const Sub& s : subs_[source]) index->insert(static_cast<uint64_t>(s.target) << kHalf | s.key);
+            index->insert(pair);
+        }
+    }
     subs_[source].push_back({target, key, transfer});
     auto upto = static_cast<uint32_t>(held_[source].order.size());
     if (upto) firsts_.push_back({source, upto, false, static_cast<uint32_t>(subs_[source].size() - 1)});
@@ -113,10 +121,10 @@ void Solver::deliver(Node source, uint32_t from, uint32_t upto, Transfers& trans
     scratch_.assign(order.begin() + from, order.begin() + upto);
     std::vector<Obj> objects;
     objects.swap(scratch_);                        // a transfer may deliver nothing, but may add to this node
-    size_t edges = edges_[source].size(), subs = subs_[source].size();
+    size_t edges = edges_[source].order.size(), subs = subs_[source].size();
     if (cost_.size() <= source) cost_.resize(held_.size(), 0);
     cost_[source] += objects.size() * (edges + subs);
-    for (size_t i = 0; i < edges; ++i) add(edges_[source][i], objects);
+    for (size_t i = 0; i < edges; ++i) add(edges_[source].order[i], objects);
     for (size_t i = 0; i < subs; ++i) {
         Sub sub = subs_[source][i];
         apply_sub(sub, objects, transfers);
