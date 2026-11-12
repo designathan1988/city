@@ -78,8 +78,9 @@ list, the archive tags) lives in `log/map.md`; nothing here is status.
 - A check takes seconds: the most likely place first (the newest folders, one targeted search); an empty result of a fragile
   search is a failed search, not a "no". Slowness of the work is a defect, recorded and fixed at its cause. [c:fast-checks]
 - Agents are used to go faster, up to five at once (the owner, 2026-11-12): any kind, reading, researching and writing code as
-  the task needs, but **an agent executes nothing** (no Bash or PowerShell: no build, test, game run or script; an agent's run
-  froze the owner's machine): what must run is run by the main session, one at a time, watched. Each agent is sent a prompt that
+  the task needs; **an agent runs commands only to validate research, in the isolated research folder**
+  (`C:\Users\Jonathan\Documents\Projects\defect-finder-research`), never in the game's tree, in the foreground, each command
+  with a deadline of at most 10 minutes (an agent's run froze the owner's machine before these bounds). Each agent is sent a prompt that
   names the goal, the files, what is known, what it may change and the answer's form; the main session checks what it returns
   against the files before it is used, never trusted blind (`.claude/hooks/agent_guard.py` keeps the count and refuses an
   agent's Bash and PowerShell). [c:agents-read-only]

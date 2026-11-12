@@ -88,17 +88,18 @@ class AgentHook(unittest.TestCase):
                 self.assertIsNone(agents.refusal(given, agents.AT_ONCE - 1))
                 self.assertIsNotNone(agents.refusal(given, agents.AT_ONCE))
 
-    def test_an_agent_executes_nothing(self):
+    def test_an_agent_runs_only_in_the_research_folder(self):
+        lab = "cd C:/Users/Jonathan/Documents/Projects/defect-finder-research/experiments && python x.py"
         for tool in ("Bash", "PowerShell"):
-            with self.subTest(tool=tool):
-                inside = {"hook_event_name": "PreToolUse", "tool_name": tool, "session_id": self.session, "agent_id": "a1",
-                          "agent_type": "general-purpose", "tool_input": {"command": "ls"}}
-                code, said = run_event("agent_guard", inside)
-                self.assertEqual(code, REFUSED)
-                self.assertIn("execute nothing", said)
-                main = dict(inside)
-                del main["agent_id"], main["agent_type"]
-                self.assertEqual(run_event("agent_guard", main)[0], 0, "the main session runs commands")
+            for given, allowed in [({"command": lab, "timeout": 60000}, True), ({"command": "ls"}, False),
+                                   ({"command": lab}, False), ({"command": lab, "timeout": 60000, "run_in_background": True}, False),
+                                   ({"command": lab + " C:/Users/Jonathan/Desktop/city", "timeout": 60000}, False)]:
+                with self.subTest(tool=tool, given=given):
+                    inside = {"hook_event_name": "PreToolUse", "tool_name": tool, "session_id": self.session, "agent_id": "a1",
+                              "agent_type": "general-purpose", "tool_input": given}
+                    self.assertEqual(run_event("agent_guard", inside)[0], 0 if allowed else REFUSED)
+        main = {"hook_event_name": "PreToolUse", "tool_name": "Bash", "session_id": self.session, "tool_input": {"command": "ls"}}
+        self.assertEqual(run_event("agent_guard", main)[0], 0, "the main session runs commands")
 
     def test_the_count_held_and_given_back(self):
         for n in range(agents.AT_ONCE):

@@ -1,6 +1,7 @@
 """The project's hook on agents (PreToolUse on the Agent, Bash and PowerShell tools, PostToolUseFailure on Agent, SubagentStop):
-CLAUDE.md's rule that at most AT_ONCE agents run at once and that an agent executes nothing (the owner, 2026-11-12): a Bash or
-PowerShell call made inside an agent (the event carries agent_id) is refused. A call to the Agent
+CLAUDE.md's rule that at most AT_ONCE agents run at once and that an agent runs commands only in the isolated research folder,
+never in the game's tree, in the foreground and under a deadline (the owner, 2026-11-12): any other Bash or PowerShell call made
+inside an agent (the event carries agent_id) is refused. A call to the Agent
 tool is refused (exit 2, the reason on stderr; Claude Code's hooks reference: exit 2 blocks a PreToolUse call) only while AT_ONCE
 agents of the session run. A call let
 through holds a place in the session's count; an agent that stops (SubagentStop) or a call that failed to start one
@@ -57,7 +58,26 @@ def refusal(tool_input: dict, running: int) -> str | None:
     return None
 
 
-RUNS = ("Bash", "PowerShell")  # the tools that execute: an agent never calls them (the owner, 2026-11-12)
+RUNS = ("Bash", "PowerShell")  # the tools that execute
+# The owner, 2026-11-12: an agent may write code and test it to validate research, only in the isolated research folder, never in
+# the game's tree, in the foreground and under a deadline (an agent's run froze the machine before these bounds).
+RESEARCH = "documents/projects/defect-finder-research"
+GAME = "desktop/city"
+AGENT_DEADLINE_MS = 600_000
+
+
+def agent_run_refusal(tool_input: dict) -> str | None:
+    """Why a command an agent asked to run may not run, or None."""
+    text = str(tool_input.get("command") or "").replace("\\", "/").lower()
+    if RESEARCH not in text:
+        return f"an agent runs commands only in the research folder (cd into C:/Users/Jonathan/Documents/Projects/defect-finder-research)"
+    if GAME in text:
+        return "an agent runs nothing in the game's tree"
+    if tool_input.get("run_in_background"):
+        return "an agent runs nothing in the background"
+    if not tool_input.get("timeout") or int(tool_input.get("timeout")) > AGENT_DEADLINE_MS:
+        return f"an agent's command carries a timeout of at most {AGENT_DEADLINE_MS} ms"
+    return None
 
 
 def handle(event: dict) -> tuple[int, str]:
@@ -65,8 +85,8 @@ def handle(event: dict) -> tuple[int, str]:
     name = event.get("hook_event_name")
     # Claude Code's hooks reference: inside a subagent the event carries agent_id and agent_type
     if name == "PreToolUse" and event.get("tool_name") in RUNS and event.get("agent_id"):
-        return REFUSED, ("agents execute nothing (CLAUDE.md, the rule on agents: the owner, 2026-11-12, after an agent's run froze "
-                         "the machine): no build, test, game run or script; return what must be run to the main session")
+        why = agent_run_refusal(event.get("tool_input") or {})
+        return (REFUSED, why) if why else (0, "")
     path = _count_file(str(event.get("session_id") or ""))
     lock = FileLock(path + ".lock")
     deadline = time.monotonic() + LOCK_WAIT_S
