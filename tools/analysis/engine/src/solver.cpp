@@ -147,6 +147,21 @@ void Solver::deliver(Node source, uint32_t from, uint32_t upto, Transfers& trans
     objects.swap(scratch_);
 }
 
+std::vector<Node> Solver::sources(Node target) const {
+    std::vector<Node> out;
+    Node t = find(target);
+    for (Node n = 0; n < edges_.size(); ++n) {
+        if (rep_[n] != n || n == t) continue;
+        for (Node e : edges_[n].order) {
+            if (find(e) == t) {
+                out.push_back(n);
+                break;
+            }
+        }
+    }
+    return out;
+}
+
 std::vector<std::pair<uint64_t, Node>> Solver::take_costs(size_t count) {
     std::vector<std::pair<uint64_t, Node>> rows;
     for (Node n = 0; n < cost_.size(); ++n) {

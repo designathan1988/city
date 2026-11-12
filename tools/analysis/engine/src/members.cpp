@@ -51,11 +51,15 @@ std::vector<int64_t> declared(Analysis& an, Obj obj, Value name) {
     return out;
 }
 
+}  // namespace
+
 bool keeps_nothing(Analysis& an, Obj obj) {        // a primitive or the unknown object: no property written is kept
     Value kind = an.okind(obj);
     return kind == an.V.SITE_PRIMITIVE || kind == an.V.SITE_TEXT || kind == an.V.SITE_KEY ||
            kind == an.V.SITE_UNKNOWN;
 }
+
+namespace {
 
 std::vector<int64_t> lookup_in(Analysis& an, Value key, Value name, std::unordered_set<uint64_t>& seen) {
     if (!an.truthy(key) || !seen.insert(key.bits()).second) return {};
@@ -88,6 +92,26 @@ Value runs(Analysis& an, const UnitRec& prop, Value which, const UnitRec* reader
     if (reader != nullptr && reader->accessor_of == prop.name && reader->owner == prop.owner) return NONE;
     (void)an;
     return found->second;
+}
+
+// Whether every property name of an object reads its dictionary part: a type it is of declares an index signature
+// whose key is no number. What a write through an unknown key put in any other object is read through a key, not by
+// a name (log/trace-research.md F40).
+bool named_by_index(Analysis& an, Obj obj) {
+    auto& memo = an.named_by_index_of;
+    if (memo.size() <= obj) memo.resize(an.objects(), -1);
+    if (memo[obj] >= 0) return memo[obj] != 0;
+    bool found = false;
+    for (Value own : typesys::own_types(an, obj)) {
+        for (int64_t gid : typesys::lookup(an, own, an.V.INDEX_SIGNATURE)) {
+            for (const auto& [key_type, value] : an.unit(gid).indexes) {
+                auto vs = typesys::values(an, key_type);
+                found = found || std::find(vs.begin(), vs.end(), an.V.NUMBER) == vs.end();
+            }
+        }
+    }
+    memo[obj] = found ? 1 : 0;
+    return found;
 }
 
 void read(Analysis& an, Value target, Obj obj, Value name) {
@@ -126,7 +150,7 @@ void read(Analysis& an, Value target, Obj obj, Value name) {
     statics(an, target, obj, name);
     an.follow(field(an, obj, name), target);
     if (an.in.numeric_names.count(name.bits())) an.follow(field(an, obj, V.ELEMENTS_FIELD), target);
-    an.follow(an.any_field(obj), target);
+    if (named_by_index(an, obj)) an.follow(an.any_field(obj), target);
 }
 
 bool declared_read(Analysis& an, Value target, Obj obj, Value key, Value name) {
@@ -228,28 +252,10 @@ bool is_index(Analysis& an, Obj key) {
     return an.okind(key) == an.V.SITE_PRIMITIVE && an.member_of(an.item(an.okey(key), 1), an.V.INDEX_KINDS);
 }
 
-void store_by_key(Analysis& an, Value source, Obj obj, Obj key) {
-    if (an.okind(key) == an.V.SITE_TEXT) {           // a known text: the property it names (ToPropertyKey)
-        write(an, source, obj, an.item(an.okey(key), 1));
-        return;
-    }
+void put_dictionary(Analysis& an, Value source, Obj obj) {
     if (keeps_nothing(an, obj)) return;
     an.follow(source, field(an, obj, an.V.ELEMENTS_FIELD));
-    if (!is_index(an, key)) an.follow(source, an.any_field(obj));
-}
-
-void load_by_key(Analysis& an, Value target, Obj obj, Obj key) {
-    if (an.okind(key) == an.V.SITE_TEXT) {           // a known text: the property it names, as `obj.text`
-        read(an, target, obj, an.item(an.okey(key), 1));
-        return;
-    }
-    if (keeps_nothing(an, obj)) return;
-    if (is_index(an, key)) {
-        an.follow(field(an, obj, an.V.ELEMENTS_FIELD), target);
-        return;
-    }
-    if (an.okind(key) == an.V.SITE_KEY && an.item(an.okey(key), 1) == I(obj)) an.follow(every(an, obj), target);
-    read_all(an, target, obj);
+    an.follow(source, an.any_field(obj));
 }
 
 void link_fields(Analysis& an, const UnitRec& unit, Obj obj, Value name, int64_t line, bool writing) {
@@ -270,6 +276,10 @@ Value field(Analysis& an, Obj obj, Value name) {
     if (!an.wire_once(node)) return node;
     an.follow(node, every(an, obj));
     an.names_of[obj].push_back(name);
+    if (auto puts = an.key_puts.find(obj); puts != an.key_puts.end()) {   // each write by a key enumerating it
+        auto entries = puts->second;
+        for (const auto& [source, target] : entries) write(an, source, target, name);
+    }
     auto found = an.copies.find(obj);              // each object its properties are copied into (copies.cpp)
     if (found == an.copies.end()) return node;
     std::vector<Obj> targets = found->second;

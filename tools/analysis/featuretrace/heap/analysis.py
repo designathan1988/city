@@ -45,6 +45,7 @@ class Analysis:
         self.memo = {}                       # what a declared type resolves to, merges with, looks up
         self.copies = defaultdict(set)       # an object -> the objects its properties are copied into (`copies`)
         self.names_of = defaultdict(set)     # an object -> the names of its properties made so far
+        self.key_puts = defaultdict(dict)    # an object -> (value node, target) of each write by a key of it
 
     # ---- nodes -------------------------------------------------------------------------------------------------
     def node(self, tree, unit, ctx):

@@ -43,3 +43,45 @@ export function assignedOther() {
   const r = assign(t, { x: new Apple() });
   return r.y;
 }
+
+// `for (k in src) dst[k] = v`: k is the name of a property src has (ECMA-262 EnumerateObjectProperties), so the write
+// makes that property of dst, never any other.
+export function enumerated() {
+  const src = { x: new Apple() };
+  const dst: any = {};
+  for (const k in src) dst[k] = src[k];
+  return dst.x;
+}
+
+export function enumeratedOther() {
+  const src = { x: new Apple() };
+  const dst: any = {};
+  for (const k in src) dst[k] = src[k];
+  return dst.y;
+}
+
+export function enumeratedLater() {
+  const src: any = {};
+  const dst: any = {};
+  for (const k in src) dst[k] = new Pear();
+  src.z = new Apple();
+  return dst.z;
+}
+
+// `o[k] = v` with a key no text names: v is in o as a dictionary (what `o[k]` reads), no property a name reads
+// (log/trace-research.md F40) — unless o's declared type says every name reads it (a string index signature).
+export function byUnknownKey(k: string) {
+  const o: any = {};
+  o[k] = new Apple();
+  return o.x;
+}
+
+export function byUnknownKeyRead(k: string) {
+  const o: any = {};
+  o[k] = new Apple();
+  return o[k];
+}
+
+declare const table: { [name: string]: Pear };
+
+export function indexedByName() { return table.row; }

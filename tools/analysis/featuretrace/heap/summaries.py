@@ -22,10 +22,10 @@ from ..library import ENGINE
 from ..solver import OBJECT, SYMBOL, TEXT
 from ..vocab import (CALL, HANDED, PLATFORM_FIELD, SITE_KEY, SITE_PRIMITIVE, SITE_TEXT, SITE_UNKNOWN, T_BOTH, T_FN,
                      T_NAMED, T_OBJECT, T_OPEN, T_PARAM, T_UNION, T_VALUES)
-from . import members, texts, typesys
+from . import by_key, members, texts, typesys
 
 POOL, TEXTS, RECEIVE, FIELDS, CALLED, REFLECT, MEMBER_OF, SUMMARY_SITE = 50, 51, 52, 53, 54, 55, 56, 57   # node tags
-KEPT, KEPT_SITE, KEPT_ENTRY, GIVEN, UNKNOWN_ARG, KEYED = 58, 59, 62, 63, 64, 65
+KEPT, KEPT_SITE, KEPT_ENTRY, GIVEN, UNKNOWN_ARG, KEYED = 58, 59, 62, 63, 64, 66
 
 
 def is_open(an, tree: tuple) -> bool:
@@ -152,7 +152,7 @@ def receive(an, node, obj: int, names, keys, where) -> None:
         an.solver.subscribe(pool(node), held, (FIELDS, obj), lambda t, objs: an.solver.add(t, [
             o for o in objs if o != obj]))
         an.solver.subscribe(keys, (KEYED, node, obj, TEXTS), (KEYED,), lambda _, ks: [
-            members.store_by_key(an, held, obj, k) for k in ks])
+            by_key.store_by_key(an, held, obj, k) for k in ks])
 
 
 def named(an, node, obj: int, name: str, where) -> None:

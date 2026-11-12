@@ -40,7 +40,7 @@ namespace ftengine {
     X(ARROW, "js_functions.ARROW") X(MODULE_UNIT, "js_read.MODULE_UNIT") X(LIB_ENGINE, "library.ENGINE")             \
     X(FUNCTION_KINDS, "model.FUNCTION_KINDS") X(STATE_KINDS, "model.STATE_KINDS") X(CONSTRUCTOR, "rules.CONSTRUCTOR") \
     X(ENGINE, "solver.ENGINE") X(LANG, "solver.LANG") X(NUMBER, "solver.NUMBER") X(OBJECT, "solver.OBJECT")          \
-    X(SYMBOL, "solver.SYMBOL") X(TEXT, "solver.TEXT") X(STRING_KIND, "heap.trees.STRING_KIND")                       \
+    X(SYMBOL, "solver.SYMBOL") X(TEXT, "solver.TEXT")                       \
     X(NO_ENV, "heap.values.NO_ENV") X(MADE, "heap.objects.MADE") X(PROGRAM_MADE, "heap.declared.PROGRAM_MADE")       \
     X(ONCE, "heap.contexts.ONCE") X(TREE, "heap.analysis.TREE") X(LOCAL, "heap.analysis.LOCAL") X(PARAM, "heap.analysis.PARAM")                   \
     X(THIS, "heap.analysis.THIS") X(RET, "heap.analysis.RET") X(HOLD, "heap.analysis.HOLD")                         \
@@ -59,6 +59,7 @@ namespace ftengine {
     X(KEPT, "heap.summaries.KEPT") X(KEPT_SITE, "heap.summaries.KEPT_SITE") X(KEPT_ENTRY, "heap.summaries.KEPT_ENTRY") \
     X(GIVEN, "heap.summaries.GIVEN") X(UNKNOWN_ARG, "heap.summaries.UNKNOWN_ARG")                                    \
     X(S_TEXTS, "heap.summaries.TEXTS") X(KEYED, "heap.summaries.KEYED") X(D_REST, "heap.declared.REST")             \
+    X(KEYPUT, "heap.copies.KEYPUT")                                                                                \
     X(ITERATOR_CALL, "heap.protocols.ITERATOR_CALL") X(NEXT_CALL, "heap.protocols.NEXT_CALL")                        \
     X(THEN_CALL, "heap.protocols.THEN_CALL") X(PROBE, "heap.protocols.PROBE") X(RESOLVING, "heap.protocols.RESOLVING") \
     X(SETTLE, "heap.protocols.SETTLE") X(JSX_CALL, "heap.jsx.JSX_CALL") X(FACTORY, "heap.jsx.FACTORY")              \

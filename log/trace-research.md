@@ -659,3 +659,46 @@ official declarations only, converging (finite, fast enough to run in seconds to
   them. Suite 506 OK, solver_test OK.
 - Engine: one owner for a named type resolved along the aliases being expanded (`typesys::resolve_named`,
   `expand_alias`), used by `verdicts` and `summaries`.
+
+### F40. A write through an unknown key is read through a key, not by a name; the whole lab converges — 2026-11-12 02:40
+- Measured after F39: src/world still not solved in 90 s (20.9 M items, 10.3 M nodes, 464 k runs of 3144 functions).
+  Two diagnostics added to the engine: for the functions run in the most contexts, the units whose calls the runs come
+  from (`Analysis::callers`); for the costliest properties, the nodes with an identity edge into them
+  (`Solver::sources`).
+- What they showed. The function run most (25 k runs) is a callback the program stores in a `before` property
+  (`doc.ts`, `RoadDoc.listen`); its runs came from 3850 calls of any member of anything: `x.blockedMovements.push(m)`,
+  `a.barriers.has(id)`, `this.worldPart('economy')`, `[Symbol.iterator]()` of a `for...of`, `[Symbol.toPrimitive]()`
+  of a number in an arithmetic. The costliest nodes were `[[any]]` fields (10.8 M objects handed by one), each holding
+  the same 1200 objects, fed by thousands of nodes: values written through a key (`this.people[at] = person`, `at`
+  the result of a call that held the unknown object) and the `[[any]]` of other objects (spreads). The rule doing it:
+  a write `o[k] = v` whose key no text names put v in `[[any]]`, and every read by a name read `[[any]]`. One unknown
+  key makes every object of the base hold the value under every name; a named read then gives it as the receiver of
+  the next write through a key, and as a function at every member call. The sets feed themselves.
+- Sources. Jelly's authors ("Reducing Static Analysis Unsoundness with Approximate Interpretation", PLDI 2024, https://cs.au.dk/~amoeller/papers/approx/paper.pdf): the state-of-the-art JavaScript
+  analyses ignore dynamic property reads and writes whose property name is not statically known, the main reason of
+  their unsoundness; the field-based ACG (Feldthaus et al., ICSE 2013) and its reference implementation
+  (https://github.com/Efficient-development/js-callgraph: "dynamic property reads and writes are ignored") do the
+  same. F14 already took that side for reads (a read through an unknown key reads the object as a dictionary, never
+  its named members).
+- Decision, the same side for writes, keeping more than those analyses do: a write through a key no text names puts the
+  value in the object's dictionary part (its elements and `[[any]]`), which a read through a key reads (`o[k] = v; o[k]`
+  holds), and a read by a name does not — except on an object whose declared type says every name reads it (an index
+  signature whose key is no number: TypeScript's property access on such a type). `members.named_by_index`.
+- A key enumerating an object (`for (k in o)`) is exact, by the language: k is the name of a property o has (ECMA-262
+  EnumerateObjectProperties), so `t[k] = v` makes t's property of each name o has, those made so far and later
+  (`copies.put`, `members.field`); where o's names are not known (the unknown object, a primitive, a dictionary part)
+  it is a dictionary write. The primitive string a `for...in` variable also held is gone (it made every such write a
+  dictionary write; the key itself is a string: SITE_KEY). Measured alone on src/world: no difference (the program
+  enumerates little); kept because it is what the language says and what keeps a clone's members by name under the
+  decision above. `summaries` uses the same for a map of property keys (defineProperties: each name of the map).
+- `heap/members.py` passed its size: reads and writes through a key are their own module (`heap/by_key.py`,
+  `engine/src/by_key.cpp`).
+- Tests (red on both cores first): `test_heap_copies` — `a_write_by_an_enumerated_key_makes_the_property_of_that_name`,
+  `a_write_by_an_unknown_key_is_read_by_a_key_not_by_a_name`, `a_name_reads_a_declared_string_index_signature`;
+  `test_heap_core`'s two cases that asserted the old rule now assert this one (`computedAlias` reads through the key;
+  `unknownKeyKeepsNamesApart`). Suite 512 OK on both cores, solver_test OK.
+- Measured (engine, contexts on, this machine):
+  - src/world (303 files, 43,922 units): solved in 3.26 s — 75,189 links, 150,236 objects, 1,078,142 nodes, 1.6 M
+    items, 7 entry rounds, 0 resolutions missing. Before: not solved in 90 s.
+  - the whole lab (`src`): solved in 31.58 s — 336,948 links, 758,780 objects, 5,585,561 nodes, 6.6 M items, 14 entry
+    rounds, 0 resolutions missing (84.7 s with the reading of the files, uncached).

@@ -60,6 +60,7 @@ public:
     uint64_t items() const { return items_; }              // worklist items processed so far
     // Per node, objects handed times the edges and subscriptions they were handed to, since the last take.
     std::vector<std::pair<uint64_t, Node>> take_costs(size_t count);
+    std::vector<Node> sources(Node target) const;          // the nodes with an identity edge into it (a scan)
     // The cycles of identity edges (Tarjan, iterative): nodes in a cycle, cycles, the largest's nodes, and the
     // objects held by the nodes of the cycles (what one copy per cycle would save).
     std::string cycles();

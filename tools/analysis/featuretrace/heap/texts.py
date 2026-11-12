@@ -1,5 +1,5 @@
 """The texts a key position can have, read from the code around it (log/trace-research.md F13, F33): a string is a
-value of its own text in the heap (`members.load_by_key`), and where a string names a member — a computed key `o[k]`,
+value of its own text in the heap (`by_key.load_by_key`), and where a string names a member — a computed key `o[k]`,
 a write `o[k] = v`, an argument a property-key type takes — what its expression says is known before any value
 arrives: a string literal its text; a union, a narrowing either side; a name, the values its declarations give
 (a local's assignments, an enclosing function's for a captured name, a module constant's initializers), when every one

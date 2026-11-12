@@ -1,3 +1,4 @@
+// A write by a key enumerating an object (`for...in`) makes the target's property of each name that object has.
 // Copies of an object's properties by name (heap/copies.py; log/trace-research.md F34; ECMA-262 CopyDataProperties
 // for a literal's spread, a declared intersection for one object that is both): each own property of the source into
 // the target's property of the same name — those made so far and those made later (members::field hands each new
@@ -54,6 +55,24 @@ void copy(Analysis& an, Obj source, Obj target) {
     an.follow(an.any_field(source), an.any_field(target));
     if (kind != V.SITE_DECLARED) return;
     for (Value name : declared_names(an, source)) members::read(an, members::field(an, target, name), source, name);
+}
+
+void put(Analysis& an, Value source, Obj enumerated, Obj target) {
+    const Vocab& V = an.V;
+    Value kind = an.okind(enumerated);
+    if (kind == V.SITE_UNKNOWN || kind == V.SITE_PRIMITIVE || kind == V.SITE_TEXT || kind == V.SITE_KEY) {
+        members::put_dictionary(an, source, target);       // names not known: the target as a dictionary
+        return;
+    }
+    Value node = an.tuple({V.KEYPUT, source, I(target)});
+    if (!an.wire_once(an.tuple({V.KEYPUT, source, I(enumerated), I(target)}))) return;
+    an.key_puts[enumerated].emplace_back(source, target);
+    std::vector<Value> names = an.names_of[enumerated];
+    if (kind == V.SITE_DECLARED) {
+        for (Value name : declared_names(an, enumerated)) names.push_back(name);
+    }
+    for (Value name : names) members::write(an, source, target, name);
+    an.subscribe(an.any_field(enumerated), node, an.tuple({V.KEYPUT}), pack(an, kPutDictionary, {source, I(target)}));
 }
 
 }  // namespace ftengine::copies

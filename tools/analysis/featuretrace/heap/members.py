@@ -2,7 +2,8 @@
 chain): a read gives what was written to that object's property, what its class's chain declares under the name (a
 method's function object, an instance field's initializers, an accessor's getter run on the object), what was written
 on the prototype objects of its chain (a class's, the prototype object of the function object that made it or the
-object its `prototype` was set to: each function object its own), what a write through an unknown key put in it;
+object its `prototype` was set to: each function object its own), its dictionary part where its declared type says
+every name reads it (a string index signature);
 `constructor` its class or that function object; a class or a function as a value its own
 properties (a class's statics, its prototype object). A write puts the value in that object's property, or runs the
 setter its class declares. A read through a key no text names reads every property.
@@ -10,7 +11,7 @@ setter its class declares. A read through a key no text names reads every proper
 from __future__ import annotations
 
 from ..js_transfer import chain
-from ..languages import GETTER, PROTOTYPE, PROTOTYPE_CONSTRUCTOR, SETTER, canonical_numeric
+from ..languages import GETTER, INDEX_SIGNATURE, PROTOTYPE, PROTOTYPE_CONSTRUCTOR, SETTER, canonical_numeric
 from ..solver import BIGINT, NUMBER
 from ..truth import KINDS
 from ..model import STATE_KINDS
@@ -60,7 +61,21 @@ def read(an, target, obj: int, name: str) -> None:
     an.solver.follow(field(an, obj, name), target)
     if canonical_numeric(name):                   # an index named by its text: the elements
         an.solver.follow(field(an, obj, ELEMENTS_FIELD), target)
-    an.solver.follow(an.any_field(obj), target)
+    if named_by_index(an, obj):
+        an.solver.follow(an.any_field(obj), target)
+
+
+def named_by_index(an, obj: int) -> bool:
+    """Whether every property name of `obj` reads its dictionary part: a type it is of declares an index signature
+    whose key is no number (TypeScript: a property access on such a type reads the index signature). What a write
+    through an unknown key put in any other object is read through a key, not by a name (log/trace-research.md
+    F40)."""
+    memo = an.memo.setdefault(named_by_index, {})
+    if obj not in memo:
+        memo[obj] = any(NUMBER not in typesys.values(key_type) for own in typesys.own_types(an, obj)
+                        for gid in typesys.lookup(an, own, INDEX_SIGNATURE)
+                        for key_type, _ in an.ix.units[gid].indexes)
+    return memo[obj]
 
 
 def declared_read(an, target, obj: int, key: str, name: str) -> bool:
@@ -211,35 +226,12 @@ def is_index(an, key: int) -> bool:
     return an.objects.kind(key) == SITE_PRIMITIVE and an.objects.keys[key][1] in INDEX_KINDS
 
 
-def store_by_key(an, source, obj: int, key: int) -> None:
-    """`obj[k] = value` for one value of k: a string of a known text writes the property it names (ECMA-262
-    ToPropertyKey; a canonical numeric one, an index); an index puts it in the elements; any other key may name any
-    property: the elements and the dictionary part."""
-    if an.objects.kind(key) == SITE_TEXT:
-        write(an, source, obj, an.objects.text(key))
-        return
+def put_dictionary(an, source, obj: int) -> None:
+    """A value put in an object through a key that may name any property: its elements and its dictionary part."""
     if an.objects.kind(obj) in KEEP_NOTHING:
         return
     an.solver.follow(source, field(an, obj, ELEMENTS_FIELD))
-    if not is_index(an, key):
-        an.solver.follow(source, an.any_field(obj))
-
-
-def load_by_key(an, target, obj: int, key: int) -> None:
-    """`obj[k]` for one value of k: a string of a known text reads the property it names, as `obj.text` does; an index
-    reads the elements; a key enumerating this same object (`for...in`) every property of it; any other key, the
-    object as a dictionary (`read_all`)."""
-    if an.objects.kind(key) == SITE_TEXT:
-        read(an, target, obj, an.objects.text(key))
-        return
-    if an.objects.kind(obj) in KEEP_NOTHING:
-        return
-    if is_index(an, key):
-        an.solver.follow(field(an, obj, ELEMENTS_FIELD), target)
-        return
-    if an.objects.kind(key) == SITE_KEY and an.objects.keys[key][1] == obj:
-        an.solver.follow(every(an, obj), target)
-    read_all(an, target, obj)
+    an.solver.follow(source, an.any_field(obj))
 
 
 def declared(an, obj: int, name: str) -> list[int]:
@@ -269,7 +261,8 @@ def prototype(an, key: str, maker: int | None = None) -> int:
 
 def field(an, obj: int, name: str):
     """A named property of one object; every named property also reaches the object's `every` node and the
-    property of that name of each object it is copied into (`copies`)."""
+    property of that name of each object it is copied into, and is a name each write by a key enumerating the
+    object makes (`copies`)."""
     node = an.field(obj, name)
     if node not in an.wired:
         an.wired.add(node)
@@ -277,6 +270,8 @@ def field(an, obj: int, name: str):
         an.names_of[obj].add(name)
         for target in sorted(an.copies.get(obj, ())):
             an.solver.follow(node, field(an, target, name))
+        for source, target in list(an.key_puts.get(obj, ())):
+            write(an, source, target, name)
     return node
 
 

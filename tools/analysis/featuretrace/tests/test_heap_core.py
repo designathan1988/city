@@ -34,14 +34,15 @@ class HeapCore(HeapCase):
         found = self.returned("arrayAlias")
         self.assertTrue(any(v.startswith("new:") and "Tile" in v for v in found), found)
 
-    def test_a_computed_key_written_reaches_a_named_read(self):
+    def test_a_computed_key_written_reaches_a_read_by_a_key(self):
         found = self.returned("computedAlias")
         self.assertTrue(any(v.startswith("new:") and "Tile" in v for v in found), found)
 
     def test_a_number_key_names_an_index_never_a_named_property(self):
         self.assertEqual({"Box"}, self.classes("indexKeepsNamesApart"))   # ECMA-262 ToPropertyKey
         self.assertEqual({"Tile"}, self.classes("indexReadBack"))         # "0" is a canonical numeric index
-        self.assertEqual({"Box", "Tile"}, self.classes("textKeyMayNameAny"))  # a text may name any property
+        # a key no text names writes the dictionary part, which a name does not read (log/trace-research.md F40)
+        self.assertEqual({"Box"}, self.classes("unknownKeyKeepsNamesApart"))
 
     def test_each_instance_initializes_its_own_fields(self):
         self.assertEqual({"Box"}, self.classes("bagBoxes"))      # ECMA-262 InitializeInstanceElements

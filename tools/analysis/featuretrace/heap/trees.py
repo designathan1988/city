@@ -16,12 +16,11 @@ from ..vocab import (AWAIT, CALL, CALLABLE, CAST, COLLECTION, CONSTRUCT, EACH, E
                      JSX, KEYS, LITERAL, MEMBER, NAME, NARROW, NEW, OP, SELF, SITE_CLASS, SITE_PRIMITIVE, SITE_TEXT,
                      SITE_KEY, STRNAME, SUPER, UNARY, UNION)
 from ..model import STATE_KINDS
-from . import contexts, copies, declared, guards, jsx, members, names, protocols, texts, typesys
+from . import by_key, contexts, copies, declared, guards, jsx, members, names, protocols, texts, typesys
 
 CONSTRUCTED = 10           # a node: what a constructor's call returns (the `new` itself is the object made)
 SPREAD = 65                # a node: the object a literal's spread copies into (`copies`)
 
-STRING_KIND = truth.KINDS[STRING]
 
 
 def wire(an, node, tree, unit, ctx) -> None:
@@ -74,15 +73,14 @@ def wire(an, node, tree, unit, ctx) -> None:
                           if v.startswith(LANG)])
     elif kind == JSX:
         jsx.value(an, node, tree, unit, ctx)
-    elif kind == KEYS:                             # `for (k in o)`: a key of each object o (a string)
-        solver.add(node, [an.objects.primitive(STRING_KIND)])
+    elif kind == KEYS:                             # `for (k in o)`: a key of each object o (a string: SITE_KEY)
         solver.subscribe(an.node(tree[1], unit, ctx), node, (KEYS,), lambda t, objs: solver.add(t, [
             an.objects.make(SITE_KEY, o) for o in objs]))
 
 
 def wire_index(an, node, tree, unit, ctx) -> None:
     """`o[k]`: the property each text k can have names (`texts`); where its texts are not known, what each value of k
-    names (`members.load_by_key`: an index the elements, a key enumerating that same object every member, any other
+    names (`by_key.load_by_key`: an index the elements, a key enumerating that same object every member, any other
     key the object as a dictionary)."""
     key = an.node(tree[2], unit, ctx)
     known = texts.of(an, tree[2], unit)
@@ -95,7 +93,7 @@ def wire_index(an, node, tree, unit, ctx) -> None:
                     members.read(an, target, o, text)
                 continue
             solver.subscribe(key, target, (INDEX, o), lambda t, keys, o=o: [
-                members.load_by_key(an, t, o, k) for k in keys])
+                by_key.load_by_key(an, t, o, k) for k in keys])
     solver.subscribe(an.node(tree[1], unit, ctx), node, (INDEX,), by_object)
 
 

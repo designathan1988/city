@@ -13,7 +13,7 @@ enum TransferKind : uint32_t {
     kSummaryReceive, kSummaryCalled, kSummaryFields, kSummaryMemberOf, kKept, kIterElements, kIterIterator,
     kIterNext, kIterValue, kMethodCall, kSettle, kJsxFactory, kJsxChildren, kOpenCalled, kStoreByKey,
     kNarrowValue, kNarrowMember, kMemberPasses, kInstanceObjects, kInstanceTargets, kPredicateFunctions,
-    kPredicateAdmits, kSpread, kCallableOnly,
+    kPredicateAdmits, kSpread, kCallableOnly, kPutDictionary,
 };
 
 // The dispatcher the solver calls (transfers.cpp).
@@ -72,7 +72,9 @@ Value runs(Analysis& an, const UnitRec& prop, Value which, const UnitRec* reader
 bool is_index(Analysis& an, Obj key);
 void initialize(Analysis& an, Obj obj);           // a class instance's fields, as `new` initializes them
 void initialize_literal(Analysis& an, Obj obj, Value key, Value ctx);   // an object literal's properties
-void store_by_key(Analysis& an, Value source, Obj obj, Obj key);
+bool keeps_nothing(Analysis& an, Obj obj);        // a primitive or the unknown object keeps no property
+void store_by_key(Analysis& an, Value source, Obj obj, Obj key);   // by_key.cpp, with load_by_key
+void put_dictionary(Analysis& an, Value source, Obj obj);   // through a key that may name any property
 void load_by_key(Analysis& an, Value target, Obj obj, Obj key);
 }  // namespace members
 
@@ -164,6 +166,7 @@ void named_children(Analysis& an, Obj obj, Value name);
 
 namespace copies {                     // copies of an object's properties by name (heap/copies.py)
 void copy(Analysis& an, Obj source, Obj target);
+void put(Analysis& an, Value source, Obj enumerated, Obj target);   // `target[k] = v`, k a key of `enumerated`
 }  // namespace copies
 
 namespace verdicts {                   // what the language's tests can give of one value (heap/verdicts.py)

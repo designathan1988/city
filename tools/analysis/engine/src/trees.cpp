@@ -155,8 +155,7 @@ void wire(Analysis& an, Value node, Value tree, const UnitRec& unit, Value ctx) 
         for (Value k : found->second) an.add(node, an.make({V.SITE_PRIMITIVE, k}));
     } else if (kind == V.JSX) {
         jsx::value(an, node, tree, unit, ctx);
-    } else if (kind == V.KEYS) {
-        an.add(node, an.make({V.SITE_PRIMITIVE, V.STRING_KIND}));
+    } else if (kind == V.KEYS) {                   // `for (k in o)`: a key of each object o (a string: SITE_KEY)
         an.subscribe(an.node(an.item(tree, 1), unit, ctx), node, an.tuple({V.KEYS}), pack(an, kKeys, {}));
     }
 }

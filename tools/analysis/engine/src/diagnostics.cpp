@@ -10,6 +10,8 @@ namespace ftengine {
 namespace {
 constexpr size_t kGrowthShown = 6;
 constexpr size_t kComposed = 6;          // the largest nodes whose objects are listed
+constexpr size_t kFedShown = 2;          // the costliest properties whose sources are listed
+constexpr size_t kFedSources = 12;       // how many sources of each
 constexpr size_t kComposedKinds = 12;
 constexpr size_t kLabel = 60;
 constexpr size_t kContextsShown = 3;     // the functions with the most runs whose last contexts are shown, and how many
@@ -162,7 +164,36 @@ std::string Analysis::runs(size_t count) {
         for (size_t j = 0; j < ctxs.size() && j < kContextsShown; ++j) {   // the last ones made: what grows
             out += "\n         context " + context_text(*this, ctxs[ctxs.size() - 1 - j], kContextDepth);
         }
-        out += "\n         " + context_spread(ctxs);
+        out += "\n         " + context_spread(ctxs) + callers(ctxs);
+    }
+    return out;
+}
+
+// The units whose calls a function's runs come from (each context's own call), the most first, one call of each shown.
+std::string Analysis::callers(const std::vector<Value>& ctxs) {
+    constexpr size_t kCallers = 10;
+    constexpr int kDeeper = -2;
+    std::unordered_map<int64_t, std::pair<size_t, Value>> by_unit;     // gid -> (distinct calls, one call's key)
+    std::unordered_set<uint64_t> seen;
+    for (Value c : ctxs) {
+        Value site = item(c, 1);
+        if (!seen.insert(site.bits()).second) continue;
+        Value key = site.kind() == Kind::Int && site.data() >= 0 ? okey(static_cast<Obj>(site.data())) : site;
+        Value gid = item(key, 1);
+        auto& row = by_unit[gid.kind() == Kind::Int ? gid.data() : -1];
+        ++row.first;
+        row.second = key;
+    }
+    std::vector<std::pair<size_t, int64_t>> rows;
+    for (const auto& [gid, row] : by_unit) rows.emplace_back(row.first, gid);
+    std::sort(rows.rbegin(), rows.rend());
+    std::string out;
+    for (size_t i = 0; i < rows.size() && i < kCallers; ++i) {
+        int64_t gid = rows[i].second;
+        bool known = gid >= 0 && gid < static_cast<int64_t>(in.units.size());
+        out += "\n            " + std::to_string(rows[i].first) + " calls in " +
+               (known ? std::string(text(unit(gid).qual)) : std::string("?")) + ": " +
+               describe(by_unit[gid].second, kDeeper);
     }
     return out;
 }
@@ -200,6 +231,15 @@ std::string Analysis::costliest(size_t count) {
         out += "\n      " + std::to_string(cost) + " held " + std::to_string(solver.held(n).size()) + " " + describe(key);
         if (item(key, 0) == V.FIELD || item(key, 0) == V.MEMBER) {
             out += " obj=" + describe(okey(static_cast<Obj>(item(key, 1).data())));
+        }
+        if (shown < kFedShown && item(key, 0) == V.FIELD) {      // what feeds a costly property: its identity edges
+            auto from = solver.sources(n);
+            out += "\n         fed by " + std::to_string(from.size()) + " nodes:";
+            for (size_t j = 0; j < from.size() && j < kFedSources; ++j) {
+                Value source = node_keys_[from[j]];
+                out += "\n            held " + std::to_string(solver.held(from[j]).size()) + " " + describe(source, -1);
+                if (item(source, 0) == V.FIELD) out += " obj=" + describe(okey(static_cast<Obj>(item(source, 1).data())));
+            }
         }
         if (shown++ < kComposed) out += composition(n);
     }

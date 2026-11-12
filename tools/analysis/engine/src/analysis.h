@@ -118,6 +118,7 @@ public:
     std::string composition(Node n);             // the kinds of object a node holds, the most first
     std::string runs(size_t count);              // the functions run in the most contexts, and their nodes
     std::string context_spread(const std::vector<Value>& ctxs);   // how many values each level of contexts takes
+    std::string callers(const std::vector<Value>& ctxs);          // the units whose calls the runs come from
     std::string costliest(size_t count);         // the nodes whose deliveries cost the most, named
     std::string stores(size_t count);            // the stores by unknown keys writing the most
     std::string describe(Value v, int depth = 0);  // a key as text, objects by their keys
@@ -139,6 +140,7 @@ public:
     std::unordered_map<uint64_t, Value> call_sites;                        // a call node -> its static site
     std::deque<std::vector<Value>> own_types_of;   // an object -> its types (once known); a deque: never moved
     std::vector<int8_t> callable_of;               // an object -> whether a call of it runs anything (-1: not known)
+    std::vector<int8_t> named_by_index_of;         // an object -> whether every name reads its dictionary part
     bool callable(Obj fn);                         // a function, a declared function, the unknown, a resolver, or
                                                    // an object a type of which has a call signature
     std::vector<uint8_t> own_types_known;
@@ -148,6 +150,8 @@ public:
     std::unordered_map<Obj, std::vector<Obj>> copies;        // an object -> the objects its properties are copied into
     std::unordered_map<Obj, std::vector<Value>> names_of;    // an object -> the names of its properties made so far
     std::unordered_set<uint64_t> copied;                     // (source, target) pairs copied
+    std::unordered_map<Obj, std::vector<std::pair<Value, Obj>>> key_puts;   // an object -> (value node, target) of
+                                                                            // each write by a key enumerating it
     std::unordered_map<uint64_t, std::vector<Value>> required_members;   // an object type -> what it requires
 
 private:

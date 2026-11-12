@@ -11,7 +11,7 @@ from ..js_read import MODULE_UNIT
 from ..model import STATE_KINDS
 from ..vocab import (CALL, CONSTRUCT, IMPORT, INVOKE, JSX, LAMBDA, MEMBER, NAME, NEW,
                      READ, SITE_PRIMITIVE, SITE_UNKNOWN, STORE, WRITE)
-from . import declared, jsx, members, names, summaries, texts, trees
+from . import by_key, declared, jsx, members, names, summaries, texts, trees
 
 WRITTEN = 11               # a node: the subscription a `new` reference writes its line through
 ESCAPE = 14                # a node: the open call a write into the unknown object is
@@ -91,7 +91,7 @@ def escape(an, unit, ref, value, ctx) -> None:
 
 def store(an, unit, ref, ctx) -> None:
     """`o[k] = v`: the property each text k can have names (`texts`), else what each value of k names (an index: the
-    elements; any other key: the elements and the dictionary part: `members.store_by_key`)."""
+    elements; any other key: the elements and the dictionary part: `by_key.store_by_key`)."""
     if not ref.args or ref.key is None:
         return
     value = an.node(ref.args[0], unit, ctx)
@@ -111,7 +111,7 @@ def store(an, unit, ref, ctx) -> None:
                     members.write(an, value, obj, text)
             else:                                       # by what each value of the key is
                 an.solver.subscribe(key, (STORE, unit.gid, ref.line, ctx, obj), (STORE, obj),
-                                    lambda _, keys, obj=obj: [members.store_by_key(an, value, obj, k) for k in keys])
+                                    lambda _, keys, obj=obj: [by_key.store_by_key(an, value, obj, k) for k in keys])
     an.solver.subscribe(an.node(ref.base, unit, ctx), (STORE, unit.gid, ref.line, ctx), (STORE,), by_object)
 
 

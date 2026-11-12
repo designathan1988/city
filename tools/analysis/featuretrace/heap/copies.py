@@ -6,6 +6,8 @@ part and its elements hold into the target's. A declared object's properties are
 property members: a method signature describes a prototype's method, which is no own property); a
 string's characters are its indexed properties (ToObject); null, undefined and the other primitives copy nothing; the
 unknown object's properties are unknown, so the target's dictionary holds it. Never every property into every one.
+A write by a key enumerating an object (`for (k in o) t[k] = v`; ECMA-262 EnumerateObjectProperties: k is the name of
+a property o has) makes the target's property of each name o has, those made so far and those made later.
 """
 from __future__ import annotations
 
@@ -15,6 +17,7 @@ from ..vocab import ELEMENTS_FIELD, SITE_DECLARED, SITE_UNKNOWN
 from . import members, typesys, verdicts
 
 SIGNATURES = verdicts.SIGNATURES
+KEYPUT = 67                # a node: the subscription a write by an enumerated key reads the dictionary part through
 
 
 def copy(an, source: int, target: int) -> None:
@@ -38,6 +41,23 @@ def copy(an, source: int, target: int) -> None:
     if kind == SITE_DECLARED:
         for name in declared_names(an, source):
             members.read(an, members.field(an, target, name), source, name)
+
+
+def put(an, source, enumerated: int, target: int) -> None:
+    """`target[k] = value` for k a key enumerating `enumerated`: the value in the target's property of each name
+    that object has (a declared object's: its declared properties); where its names are not known (the unknown
+    object, a primitive's indices, a dictionary part written through unknown keys), in the target as a dictionary."""
+    kind = an.objects.kind(enumerated)
+    if kind == SITE_UNKNOWN or kind in members.PRIMITIVES:
+        members.put_dictionary(an, source, target)
+        return
+    if (source, target) in an.key_puts[enumerated]:
+        return
+    an.key_puts[enumerated][(source, target)] = True
+    for name in sorted(an.names_of[enumerated]) + (declared_names(an, enumerated) if kind == SITE_DECLARED else []):
+        members.write(an, source, target, name)
+    an.solver.subscribe(an.any_field(enumerated), (KEYPUT, source, target), (KEYPUT,), lambda _, objs: [
+        members.put_dictionary(an, source, target)])
 
 
 def declared_names(an, obj: int) -> list[str]:
