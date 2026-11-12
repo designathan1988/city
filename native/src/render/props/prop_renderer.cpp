@@ -30,6 +30,7 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 	scenario_ = ctx.scenario;
 	material_ = ctx.material("prop", errors);
 	glow_material_ = ctx.material("lamp_glow", errors);
+	wire_material_ = ctx.material("wire", errors); // the cables' own shader: bent, swung and covering their share of a pixel
 	look_ = &look;
 	Dictionary t = ctx.table("streets", errors);
 	if (!errors.is_empty()) return false;
@@ -43,8 +44,8 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 	// the unit meshes are shared (mesh_draw.h): a chunk's draws of them are made when it streams in
 	pole_mesh_ = kit_.pole_levels().bake(material_).shared();
 	pole_cast_mesh_ = kit_.pole_cast_levels().bake(material_).shared();
-	wire_near_mesh_ = kit_.wire(true).bake(material_).shared();
-	wire_far_mesh_ = kit_.wire(false).bake(material_).shared();
+	wire_near_mesh_ = kit_.wire(true).bake(wire_material_).shared();
+	wire_far_mesh_ = kit_.wire(false).bake(wire_material_).shared();
 	box_mesh_ = kit_.unit_box().bake(material_).shared();
 	beam_mesh_ = kit_.w_beam().bake(material_).shared();
 	light_mesh_ = kit_.light().bake(glow_material_).shared();

@@ -1,6 +1,6 @@
 // Street furniture chunks: every small prop and plate of a 256 m chunk (render/props/street_props.h, street_signs.h) merged
-// into one mesh drawn with the "prop" material (data/render/materials.json), and its poles, wires, barrier boxes and lamp
-// beams as one MultiMesh each. Rebuilt with the road chunks and when the player places something there. The chunk's signal
+// into one mesh drawn with the "prop" material (data/render/materials.json), and its poles, wires (the "wire" material),
+// barrier boxes and lamp beams as one MultiMesh each. Rebuilt with the road chunks and when the player places something there. The chunk's signal
 // posts go with its mesh to SignalLamps, which lights their lenses, and its street lamps to LampLights, which lights the street.
 #pragma once
 
@@ -75,7 +75,7 @@ private:
 	void show(Draws &d, StreetInstances &inst, const godot::AABB &box);
 	void cast_chunk(Draws &d, const godot::RID &mesh, const godot::AABB &box);
 	DetailView view_; // the last frame's (update_view): a chunk committed between two frames is picked by it
-	godot::RID scenario_, material_, glow_material_;
+	godot::RID scenario_, material_, glow_material_, wire_material_;
 	const StreetLook *look_ = nullptr;
 	FurnitureLook furniture_;
 	BarrierLook barriers_;

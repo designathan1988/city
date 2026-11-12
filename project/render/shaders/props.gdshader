@@ -16,8 +16,6 @@ uniform vec3 lit_radiance[5]; // per Lens (prop_kit.h Lens::COUNT)
 uniform vec3 dark_radiance[5]; // an unlit lens's faint glow (render/lamp_radiance.gd)
 uniform float lens_roughness = 0.0;
 uniform float lens_ior = 1.5;
-uniform float wire_min_px = 0.7; // a wire never narrower than this on the screen
-uniform float wire_sway_m = 0.35; // how far a wire swings at mid-span in a full gust
 uniform float wood_grain = 0.5;
 uniform float post_metal = 0.6; // a sign post, galvanised
 uniform float post_roughness = 0.45;
@@ -35,40 +33,6 @@ varying vec3 v_faces;
 
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/lattice_noise.gdshaderinc"
-
-// A span's phase and its poles' kinds share INSTANCE_CUSTOM.y (street_props.cpp push_span): phase + KIND_STRIDE (kind_a + 2 kind_b),
-// a kind 0 urban, 1 rural. A secondary wire carries SECONDARY_MARK in its rural seat (prop_kit.h WIRE_SECONDARY_MARK).
-const float KIND_STRIDE = 8.0;
-const float SECONDARY_MARK = 10000.0;
-
-// A wire's vertex: VERTEX.x is t along the span's chord (the instance's x axis), y and z its ring, UV its height up the poles
-// and its seat along an urban pole's arm, `rural` its seat along a rural pole's; the arms (turned toward the street) have the
-// headings INSTANCE_CUSTOM.z (t = 0) and .w (t = 1). The arm between them is horizontal, and the chord may climb, so the offset
-// goes into the instance's axes by parts. The wire hangs in a parabola of depth INSTANCE_CUSTOM.x, swings across in the wind by
-// its phase, and keeps wire_min_px on the screen. A secondary wire with a rural pole at either end is not strung: nothing.
-vec3 wire_vertex(vec3 v, vec2 place, float rural, vec2 headings, mat4 model, mat4 model_view, mat4 projection, vec2 viewport, float sag, float phase_kinds, float time, bool shadow) {
-	float kinds = floor(phase_kinds / KIND_STRIDE);
-	float phase = phase_kinds - kinds * KIND_STRIDE;
-	bool rural_a = mod(kinds, 2.0) > 0.5, rural_b = kinds > 1.5;
-	if (rural > 0.5 * SECONDARY_MARK && (rural_a || rural_b)) {
-		return vec3(0.0);
-	}
-	float seat_a = rural_a ? rural : place.y, seat_b = rural_b ? rural : place.y;
-	float t = v.x, u = t * 2.0 - 1.0;
-	vec3 chord = model[0].xyz;
-	vec2 arm = mix(vec2(cos(headings.x), sin(headings.x)) * seat_a, vec2(cos(headings.y), sin(headings.y)) * seat_b, t);
-	float ahead = dot(arm, chord.xz) / dot(chord.xz, chord.xz);
-	vec3 hung = vec3(t + ahead, place.x - ahead * chord.y, dot(arm, model[2].xz));
-	float depth = max(-(model_view * vec4(hung, 1.0)).z, 0.01);
-	float pixel = depth / (projection[1][1] * viewport.y * 0.5);
-	float radius = max(length(v.yz), 1e-4);
-	// In the shadow pass the wire is at rest, at its own width: the sun's projection is no screen, and read as one it swelled the wires
-	// into shadows tens of metres wide along every line (the 4.0: wireMaterials, the depth material).
-	float keep = shadow ? 1.0 : max(1.0, wire_min_px * pixel * 0.5 / radius);
-	vec2 ring = v.yz * keep;
-	float swing = shadow ? 0.0 : 4.0 * t * (1.0 - t) * wire_sway_m * (0.55 + 0.45 * sin(time * 1.9 + phase)) * 0.5;
-	return hung + vec3(0.0, ring.x - sag * (1.0 - u * u), ring.y + swing);
-}
 
 // The surface of a thing out in the street, in world metres, for what the eye can tell apart: paint gone blotchy, dirt in the grain of it, and grime rising from the ground, as
 // far as UV.y, its height. Near only: past `SURFACE_END_M` a pixel holds more than the noise does.
@@ -111,9 +75,7 @@ void vertex() {
 	v_finish = INSTANCE_CUSTOM.ba;
 	v_layer = UV2.y;
 	v_local = VERTEX;
-	if (abs(v_tag - 4.0) < 0.5) {
-		VERTEX = wire_vertex(VERTEX, UV, UV2.y, INSTANCE_CUSTOM.zw, MODEL_MATRIX, MODELVIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.y, TIME, IN_SHADOW_PASS);
-	} else if (INSTANCE_CUSTOM.a > 0.5 && UV2.y > 0.5 && abs(v_tag - 3.0) > 0.5) {
+	if (INSTANCE_CUSTOM.a > 0.5 && UV2.y > 0.5 && abs(v_tag - 3.0) > 0.5) {
 		if ((int(INSTANCE_CUSTOM.a + 0.5) & int(UV2.y + 0.5)) == 0) {
 			VERTEX = vec3(0.0); // a part this pole does not have
 		}
