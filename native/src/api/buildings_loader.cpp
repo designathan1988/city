@@ -143,6 +143,13 @@ bool lot_rules(const Dictionary &d, LotRules &l, PackedStringArray &errors) {
 	}
 	return errors.is_empty();
 }
+
+// The grove of a lot with no building (the style's "grove" block).
+void grove_rules(const Dictionary &grove, GroveRules &g) {
+	g.m2_per_tree = float(at(grove, "m2_per_tree")); g.edge = float(at(grove, "edge_m")); g.trunk_clear = float(at(grove, "trunk_clear_m"));
+	pair_of(at(grove, "height_m"), g.height);
+	g.crown_share = float(at(grove, "crown_share")); g.height_least = float(at(grove, "height_least_m")); g.most = int(at(grove, "most"));
+}
 } // namespace
 
 uint8_t bay_named(const std::string &s, PackedStringArray &errors) { return uint8_t(index_of(BAY_NAMES, s, "componente", errors)); }
@@ -186,6 +193,7 @@ bool load_buildings(const Dictionary &table, Data &d, PackedStringArray &errors)
 		o = OpeningDef{ true, float(r[W_IN]), float(r[W_MAX]), float(r[SILL]), float(r[HEAD_IN]), float(r[HEAD_MAX]), float(r[DEPTH]) };
 	}
 	if (!lot_rules(at(t, "lots"), d.lots, errors)) return false;
+	grove_rules(at(t, "grove"), d.grove);
 	Dictionary props = at(t, "props");
 	Array lit = at(props, "lit_share");
 	d.lit_share[0] = float(lit[0]); d.lit_share[1] = float(lit[1]);

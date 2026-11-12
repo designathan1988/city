@@ -111,16 +111,13 @@ public:
 	// Tests: one plant element of a kind ("tree", "shrub", "hedge", "flowers") `w` by `d` and `h` tall, laid `turn` radians to its
 	// lot, stood alone with the draws of `seed`: the box its instances draw, their top and how far past the room they stand.
 	godot::Dictionary garden_fit(const godot::String &kind, float w, float d, float h, float turn, int seed) const;
-	// Tests: an open lot's grove alone (function `fn`, `w` by `d`, the draws of `seed`) and every grove of the city, each tree as it
-	// is drawn against its lot's lines (render/trees/garden_census.h grove_fit, grove_rooms).
-	godot::Dictionary grove_fit(int fn, float w, float d, int seed) const;
-	godot::Dictionary grove_rooms() const;
 	// Tests: `count` bodies of `zone` (storeys capped at `cap`, 0: none) made on the spot on a lot `w` by `d`, from `seed` on, and what
 	// their lots' layout laid: the planters, those with nothing growing in them, the plants that do not stand on their planter's soil
 	// (city_core_lot_parts_probe.cpp). No city is read.
 	godot::Dictionary lot_parts(int zone, int cap, float w, float d, int seed, int count) const;
 	// Tests: `count` bodies of an open lot (a park, a square, a sports court: BuildingFn `fn`) `w` by `d` made on the spot, from `seed`
-	// on: their benches, those laid with their long side along the way they look, those that do not look at the cover they stand by.
+	// on: their benches, those laid with their long side along the way they look, those that do not look at the cover they stand by;
+	// and their grove: each tree's room against the lot's lines, the other parts, the other trees' rooms, and its trunk's ground.
 	godot::Dictionary open_lot_parts(int fn, float w, float d, int seed, int count) const;
 	// Tests: a square of the city's plan laid on a block of lots given by hand (rows of x, z, width, depth, facing), no city read, and
 	// every square of the city: each tree's room against the square's ground, the other trees' rooms, the plan's step and edge

@@ -45,6 +45,16 @@ struct BoundaryStyle {
 	float h = 0, base = 0;
 };
 
+// The grove of a lot with no building (buildings.json "grove"): how many trees a park, a square or a court's lawn takes, how near
+// the lot's lines and a hard cover a trunk stands, how tall its trees are and how wide a crown one asks for against its height.
+struct GroveRules {
+	float m2_per_tree = 0, edge = 0, trunk_clear = 0;
+	float height[2] = {}; // the lowest and the tallest
+	float crown_share = 0; // the room a tree asks for, of its height
+	float height_least = 0; // a tree its room holds lower than this is not planted
+	int most = 0;
+};
+
 // The lot layout's rules (buildings.json "lots"; the sources are in its _doc). Metres.
 struct LotRules {
 	float stall_w = 0, stall_d = 0, aisle = 0, stall_line = 0; // a car bay, the lane in front of it, its painted line
@@ -78,6 +88,7 @@ struct Data {
 	std::shared_ptr<BodyTable> edited = std::make_shared<BodyTable>(); // the bodies the player made; the rest of Data is read-only
 	std::shared_ptr<BodyCache> made = std::make_shared<BodyCache>(); // the records' bodies made from these tables (record.h), shared by a copy
 	LotRules lots;
+	GroveRules grove;
 	InteriorTables interior;
 	std::vector<StyleDef> styles;
 	std::vector<std::pair<int, float>> weights[KIND_COUNT];

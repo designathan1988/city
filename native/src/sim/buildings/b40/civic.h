@@ -21,9 +21,8 @@ bool is_civic(int fn);
 // True when the function is an open lot (square, park, sports court): no volumes, elements only.
 bool is_open_lot(int fn);
 void civic_body(const Data &data, Body &b, int fn, int floors, float W, float D, uint32_t seed, const LotEdges &edges);
-void open_lot_body(const Data &data, Body &b, int fn, float W, float D);
-// Where the tree renderer may stand a tree in an open lot (lot frame): on the lawn, off paths, courts and fountains.
-bool open_lot_tree_ok(int fn, float W, float D, float x, float y);
+// An open lot's parts, its grove among them: the trees the draws of `seed` stand on its planted ground (buildings.json grove).
+void open_lot_body(const Data &data, Body &b, int fn, float W, float D, uint32_t seed);
 
 // civic_services.cpp: the service buildings (one per function), on a body whose plan, paints and heights are set.
 void gas_station(const Data &data, Body &b, Xoshiro128 &r);

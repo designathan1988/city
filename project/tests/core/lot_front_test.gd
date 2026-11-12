@@ -10,8 +10,8 @@
 ## And a lot's covers lie in their order (probe lot_covers): wherever a later cover lies over an earlier one (a forecourt's asphalt over
 ## its pavers, a court's lines over the court) it stands over it everywhere, never crossing it, never at its depth; and no band of lawn
 ## or bare ground too thin to plant stands beside a hard cover (a walk, a yard, a forecourt) of a lot. And every plant of a lot is drawn
-## inside the room its element is (probe garden_rooms): no crown over the fence or the footway, no hedge thicker than its band; and
-## every tree of a park's or a square's grove inside its lot's lines (probe grove_rooms). And every tree of the plan's squares is an
+## inside the room its element is (probe garden_rooms): no crown over the fence or the footway, no hedge thicker than its band; the
+## open lots' trees (a park's grove, a square's) are among them, and there are some. And every tree of the plan's squares is an
 ## element whose rectangle is its crown's room (probe square_rooms): on the square's ground, in no other tree's room, no narrower than
 ## the lines and the step between two trees leave it, the tree no more slender than the plan's tallest on a whole step.
 ## Run: godot --path project res://tests/core/lot_front_test.tscn -- --no-flow
@@ -55,7 +55,6 @@ func _ready() -> void:
 			% [b.parts_meet, b.meet_first, b.meet_by])
 	# The metropolis: its avenues' wide footways give the corners whose back follows the kerb's return (junction_corner.h OFFSET, RUN).
 	_check_plants("the town", CityStore.query(&"garden_rooms"))
-	_check_groves("the town", CityStore.query(&"grove_rooms"))
 	var squares: Dictionary = CityStore.query(&"square_rooms")
 	check(int(squares.squares) > 0 and int(squares.trees) > 0, "the town has squares with trees: %d trees in %d squares" % [squares.trees, squares.squares])
 	_check_squares("the town", squares)
@@ -63,7 +62,6 @@ func _ready() -> void:
 	_check_paving("the metropolis", CityStore.query(&"lot_paving"))
 	_check_covers("the metropolis", CityStore.query(&"lot_covers"))
 	_check_plants("the metropolis", CityStore.query(&"garden_rooms"))
-	_check_groves("the metropolis", CityStore.query(&"grove_rooms"))
 	_check_squares("the metropolis", CityStore.query(&"square_rooms"))
 	finish()
 
@@ -85,18 +83,14 @@ func _check_squares(city: String, d: Dictionary) -> void:
 			% [city, d.slender, float(d.high_m) / step])
 
 
-## Every tree of an open lot's grove (a park, a square) is drawn inside its lot's lines, leaves and all (probe grove_rooms).
-func _check_groves(city: String, d: Dictionary) -> void:
-	print("%s: the open lots' groves: %d trees in %d lots, %d lots with a crown past their lines" % [city, d.trees, d.lots, d.out])
-	check(int(d.trees) > 0, "%s has groves: %d trees in %d open lots" % [city, d.trees, d.lots])
-	check(int(d.out) == 0, "%s: every grove's crowns stand inside their lot's lines: %d of %d lots not, %.2f m past them at the most" % [city, d.out, d.lots, d.worst_m])
-
-
 ## Every plant of every lot (a tree, a shrub, a run of hedge, a flower bed) is drawn inside the room its element is, and a tree, a shrub
-## and a hedge no taller than it: the room the layout kept off the boundary, the walls and the other parts (probe garden_rooms).
+## and a hedge no taller than it: the room the layout kept off the boundary, the walls and the other parts (probe garden_rooms). The
+## open lots' trees (a park's grove, a square's) are parts of their lots like the rest: drawn, and held the same way.
 func _check_plants(city: String, d: Dictionary) -> void:
-	print("%s: the lots' plants: %d in %d lots, %d drawn past their room, %d taller than their element" % [city, d.plants, d.lots, d.out, d.over])
+	print("%s: the lots' plants: %d in %d lots, %d drawn past their room, %d taller than their element; %d trees on %d open lots"
+			% [city, d.plants, d.lots, d.out, d.over, d.open_trees, d.open_lots])
 	check(int(d.plants) > 0, "%s has lots with plants: %d" % [city, d.plants])
+	check(int(d.open_trees) > 0, "%s has open lots with trees: %d trees drawn on %d open lots" % [city, d.open_trees, d.open_lots])
 	check(int(d.out) == 0, "%s: every plant of a lot is drawn inside its room: %d of %d past it, %.2f m at the most, the first (building, kind, x, z, metres) %s, by kind %s"
 			% [city, d.out, d.plants, d.worst_m, d.first, d.by_kind])
 	check(int(d.over) == 0, "%s: no tree, shrub or hedge of a lot is drawn taller than its element: %d, %.2f m at the most" % [city, d.over, d.over_m])

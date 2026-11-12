@@ -16,6 +16,8 @@ const LOTS := [[10.0, 28.0], [14.0, 32.0], [20.0, 36.0], [30.0, 40.0]]
 ## the open lots: function (BuildingFn: 5 a square, 6 a park), width and depth
 const OPEN_LOTS := [[6, 24.0, 32.0], [6, 44.0, 60.0], [6, 70.0, 70.0], [5, 40.0, 40.0], [5, 60.0, 50.0]]
 const OPEN_BODIES := 4
+## a sports court (BuildingFn 13): its grove stands round the court's run, outside its fence
+const COURTS := [[13, 30.0, 44.0]]
 
 
 func _ready() -> void:
@@ -50,13 +52,20 @@ func _ready() -> void:
 	check(benches > 0, "the lots lay benches (%d)" % benches)
 	# The open lots: a park's benches along its paths, a square's round its fountain. Each looks at the path or the fountain it stands by.
 	var open_benches := 0
-	for lot: Array in OPEN_LOTS:
+	for lot: Array in OPEN_LOTS + COURTS:
 		var open: Dictionary = CityStore.query(&"open_lot_parts", [lot[0], lot[1], lot[2], 1, OPEN_BODIES])
 		var where := "open lot (function %d) %.0f x %.0f" % [lot[0], lot[1], lot[2]]
 		open_benches += int(open.benches)
 		check(int(open.bench_askew) == 0, "%s: a bench's seat runs across the way it looks (%d of %d laid along it; the first: %s)" % [where, open.bench_askew, open.benches, open.first_askew])
 		check(int(open.bench_away) == 0, "%s: a bench looks at the path or the fountain it stands by (%d of %d look away; the first: %s)" % [where, open.bench_away, open.benches, open.first_away])
 		check(int(open.bench_on_cover) == 0, "%s: a bench stands beside a path, never on one (%d of %d; the first: %s)" % [where, open.bench_on_cover, open.benches, open.first_on])
+		# Its trees are parts of the lot: each one's element is the room of its crown, as a lot garden's tree.
+		print("%s: %d trees in %d bodies, the narrowest room %.2f m, the most slender %.2f" % [where, open.trees, open.bodies, open.room_least_m, open.slender])
+		check(int(open.bare) == 0, "%s: every body has its trees (%d of %d bodies with none)" % [where, open.bare, open.bodies])
+		check(int(open.tree_out) == 0, "%s: every tree's room inside the lot's lines (%d of %d past them; the first: %s)" % [where, open.tree_out, open.trees, open.first_out])
+		check(int(open.tree_holds) == 0, "%s: no tree's room holds another part (a lamp, a bench, a hedge, a fountain's rim): %d of %d; the first: %s" % [where, open.tree_holds, open.trees, open.first_holds])
+		check(int(open.tree_meet) == 0, "%s: no two trees' rooms in one another (%d pairs; the first: %s)" % [where, open.tree_meet, open.first_meet])
+		check(int(open.trunk_on_hard) == 0, "%s: every trunk stands on planted ground (%d of %d on a hard cover; the first: %s)" % [where, open.trunk_on_hard, open.trees, open.first_hard])
 	check(open_benches > 0, "the open lots lay benches (%d)" % open_benches)
 	print("lot_parts: lamps on posts by zone %s" % posts)
 	print("lot_parts: %d planters, %d trees over %d bodies; planters by zone %s" % [planters, trees, ZONES.size() * LOTS.size() * BODIES, by_zone])

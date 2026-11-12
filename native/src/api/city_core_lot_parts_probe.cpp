@@ -96,11 +96,74 @@ struct Benches {
 		r["first_on"] = first_on; // seed, the bench's middle, the cover's middle, width and depth
 	}
 };
+// The trees of an open lot's body: each one's element is the room of its crown (as a lot garden's tree: nothing else stands in it).
+struct Grove {
+	int trees = 0, bodies_bare = 0, out = 0, holds = 0, meet = 0, on_hard = 0;
+	float least = b40::FAR_AWAY, slender = 0;
+	Array first_out, first_holds, first_meet, first_hard;
+	static bool lap(const b40::LotElement &a, const b40::LotElement &b) {
+		return std::fabs(a.x - b.x) < (a.w + b.w) * HALF - b40::EPS && std::fabs(a.y - b.y) < (a.d + b.d) * HALF - b40::EPS;
+	}
+	void take(const b40::Body &b, int seed) {
+		const float W = b.plan.W, D = b.plan.D;
+		int mine = 0;
+		for (size_t i = 0; i < b.elements.size(); i++) {
+			const b40::LotElement &p = b.elements[i];
+			if (p.kind != b40::EL_TREE) continue;
+			mine++;
+			least = std::min(least, std::min(p.w, p.d));
+			slender = std::max(slender, p.h / std::min(p.w, p.d));
+			if (p.x - p.w * HALF < -W * HALF - b40::EPS || p.x + p.w * HALF > W * HALF + b40::EPS || p.y - p.d * HALF < -b40::EPS || p.y + p.d * HALF > D + b40::EPS) {
+				out++;
+				if (first_out.is_empty()) first_out = Array::make(seed, p.x, p.y, p.w);
+			}
+			// the cover its trunk stands on: the last laid of those under it (a later cover lies over an earlier one)
+			const b40::LotElement *under = nullptr;
+			for (size_t k = 0; k < b.elements.size(); k++) {
+				const b40::LotElement &q = b.elements[k];
+				if (q.kind == b40::EL_SURFACE) {
+					if (std::fabs(p.x - q.x) <= q.w * HALF && std::fabs(p.y - q.y) <= q.d * HALF) under = &q;
+					continue;
+				}
+				if (k == i || !lap(p, q)) continue;
+				if (q.kind == b40::EL_TREE) {
+					if (k < i) continue; // a pair once
+					meet++;
+					if (first_meet.is_empty()) first_meet = Array::make(seed, p.x, p.y, p.w, q.x, q.y, q.w);
+					continue;
+				}
+				holds++;
+				if (first_holds.is_empty()) first_holds = Array::make(seed, p.x, p.y, p.w, int(q.kind), q.x, q.y);
+			}
+			if (under && under->paint >= 0 && b.paints[size_t(under->paint)].finish != b40::FIN_NONE) {
+				on_hard++;
+				if (first_hard.is_empty()) first_hard = Array::make(seed, p.x, p.y, under->x, under->y, under->w, under->d);
+			}
+		}
+		trees += mine;
+		bodies_bare += mine == 0 ? 1 : 0;
+	}
+	void answer(Dictionary &r) const {
+		r["trees"] = trees;
+		r["bare"] = bodies_bare; // bodies with no tree at all
+		r["tree_out"] = out; // rooms past the lot's lines
+		r["first_out"] = first_out; // seed, the tree's middle, its room's width
+		r["tree_holds"] = holds; // rooms with another standing part in them (a lamp, a bench, a hedge, a fountain's rim)
+		r["first_holds"] = first_holds; // seed, the tree's middle, its room, the part's kind and middle
+		r["tree_meet"] = meet; // pairs of rooms in one another
+		r["first_meet"] = first_meet;
+		r["trunk_on_hard"] = on_hard; // trunks standing on a cover that is no lawn
+		r["first_hard"] = first_hard; // seed, the trunk, the cover's middle, width and depth
+		r["room_least_m"] = trees > 0 ? least : 0.f;
+		r["slender"] = slender; // the most a tree's height is of its room's side
+	}
+};
 } // namespace
 
 // Bodies of an open lot (a park, a square, a sports court: BuildingFn) `w` by `d` made on the spot, from `seed` on: what stands on them.
 Dictionary CityProbes::open_lot_parts(int fn, float w, float d, int seed, int count) const {
 	Benches benches;
+	Grove grove;
 	for (int k = 0; k < count; k++) {
 		b40::Body b;
 		Building rec;
@@ -111,10 +174,12 @@ Dictionary CityProbes::open_lot_parts(int fn, float w, float d, int seed, int co
 		b40::make_seed_body(state_->buildings.designs, rec, b);
 		benches.take(b, seed + k);
 		benches.take_sight(b, seed + k);
+		grove.take(b, seed + k);
 	}
 	Dictionary r;
 	r["bodies"] = count;
 	benches.answer(r);
+	grove.answer(r);
 	return r;
 }
 

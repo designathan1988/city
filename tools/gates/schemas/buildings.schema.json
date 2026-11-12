@@ -40,7 +40,7 @@
   },
   "style": {
    "type": "object", "strict": true,
-   "required": ["architectures", "kind_weights", "era_affinity", "palettes", "colors", "openings", "parts", "lot", "roof", "props", "lots"],
+   "required": ["architectures", "kind_weights", "era_affinity", "palettes", "colors", "openings", "parts", "lot", "roof", "props", "lots", "grove"],
    "properties": {
     "architectures": {"type": "array", "minItems": 1, "unique_key": "name", "items": {"$ref": "#/$defs/architecture"}},
     "kind_weights": {"type": "object", "strict": true, "required": ["house", "flats", "tower", "shop", "office", "works"],
@@ -95,6 +95,16 @@
       "boundary": {"type": "object", "strict": true, "required": ["house", "flats", "tower", "shop", "office", "works"],
                    "properties": {"house": {"$ref": "#/$defs/boundary"}, "flats": {"$ref": "#/$defs/boundary"}, "tower": {"$ref": "#/$defs/boundary"},
                                   "shop": {"$ref": "#/$defs/boundary"}, "office": {"$ref": "#/$defs/boundary"}, "works": {"$ref": "#/$defs/boundary"}}}
+     }
+    },
+    "grove": {
+     "type": "object", "strict": true, "required": ["_doc", "m2_per_tree", "edge_m", "trunk_clear_m", "most", "height_m", "crown_share", "height_least_m"],
+     "description": "the trees of a lot with no building: a park, a square, a sports court (sim/buildings/b40/open_lots.cpp)",
+     "properties": {
+      "_doc": {"type": "string", "minLength": 1}, "m2_per_tree": {"$ref": "#/$defs/length"}, "edge_m": {"$ref": "#/$defs/metres"},
+      "trunk_clear_m": {"$ref": "#/$defs/metres"}, "most": {"type": "integer", "minimum": 1},
+      "height_m": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/length"}},
+      "crown_share": {"$ref": "#/$defs/length"}, "height_least_m": {"$ref": "#/$defs/length"}
      }
     }
    }

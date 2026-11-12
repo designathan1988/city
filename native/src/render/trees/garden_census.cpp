@@ -1,6 +1,8 @@
 // The gardens' plants against their rooms (see garden_census.h).
 #include "render/trees/garden_census.h"
 
+#include "sim/buildings/b40/civic.h"
+
 #include <godot_cpp/variant/array.hpp>
 
 #include <algorithm>
@@ -66,7 +68,7 @@ struct Sights {
 } // namespace
 
 Dictionary garden_rooms(const CityView &s, const TreeLook &T, const TreeKit &kit) {
-	int lots = 0, plants = 0, out = 0, over = 0;
+	int lots = 0, plants = 0, out = 0, over = 0, open_lots = 0, open_trees = 0;
 	float worst = 0, tallest = 0;
 	Array first;
 	Dictionary by_kind;
@@ -76,10 +78,12 @@ Dictionary garden_rooms(const CityView &s, const TreeLook &T, const TreeKit &kit
 		const Building &rec = s.buildings.items[size_t(id)];
 		if (!rec.alive) continue;
 		const b40::LotFrame f = b40::lot_frame(rec);
-		const int before = plants;
+		const int before = plants, trees_before = open_trees;
+		const bool open = b40::is_open_lot(rec.fn);
 		each_garden_plant(s, rec, [&](const b40::LotElement &p, uint32_t draws) {
 			made.clear();
 			place_plant(s, T, kit, f, p, draws, GardenView::NEAR, made);
+			if (open && p.kind == b40::EL_TREE && !made.empty()) open_trees++;
 			const PlantRoom room = plant_room(f, p); // an element laid at an angle is held in its own turned frame
 			Drawn d;
 			for (const TreeInstance &t : made) d.take(kit, t, room.f);
@@ -98,10 +102,12 @@ Dictionary garden_rooms(const CityView &s, const TreeLook &T, const TreeKit &kit
 			worst = std::max(worst, past);
 		});
 		if (plants > before) lots++;
+		if (open_trees > trees_before) open_lots++;
 	}
 	Dictionary r;
 	r["lots"] = lots; r["plants"] = plants; r["out"] = out; r["worst_m"] = worst; r["first"] = first; r["by_kind"] = by_kind;
 	r["over"] = over; r["over_m"] = tallest;
+	r["open_lots"] = open_lots; r["open_trees"] = open_trees;
 	r["sights"] = sights.where;
 	return r;
 }
@@ -127,66 +133,6 @@ Dictionary garden_fit(const CityView &s, const TreeLook &T, const TreeKit &kit, 
 	r["top"] = box.top;
 	r["past_m"] = box.past(p);
 	r["over_m"] = box.over(p);
-	return r;
-}
-
-namespace {
-// A grove against its lot: the lot's whole rectangle as the room (lot frame: across from the front's middle, back from the street).
-struct GroveFit {
-	int trees = 0;
-	float past = 0, slender = 0, least_tall = NOWHERE, least_wide = NOWHERE;
-	void take(const CityView &s, const TreeLook &T, const TreeKit &kit, const Building &lot) {
-		std::vector<TreeInstance> made;
-		place_grove(s, T, kit, lot, made);
-		b40::LotElement room;
-		room.x = 0; room.y = lot.d * HALF; room.w = lot.w; room.d = lot.d;
-		const b40::LotFrame f = b40::lot_frame(lot);
-		for (const TreeInstance &t : made) {
-			Drawn d;
-			d.take(kit, t, f);
-			past = std::max(past, d.past(room));
-			slender = std::max(slender, t.height / t.width);
-			least_tall = std::min(least_tall, t.height);
-			least_wide = std::min(least_wide, t.width);
-			trees++;
-		}
-	}
-};
-} // namespace
-
-Dictionary grove_fit(const CityView &s, const TreeLook &T, const TreeKit &kit, int fn, float w, float d, int seed) {
-	Building lot;
-	lot.alive = true;
-	lot.fn = uint8_t(fn);
-	lot.w = w; lot.d = d;
-	lot.seed = uint32_t(seed);
-	GroveFit g;
-	g.take(s, T, kit, lot);
-	Dictionary r;
-	r["trees"] = g.trees;
-	r["past_m"] = g.past;
-	r["slender"] = g.slender;
-	r["slender_most"] = T.slender_most();
-	r["least_tall_m"] = g.trees > 0 ? g.least_tall : 0.f;
-	r["least_wide_m"] = g.trees > 0 ? g.least_wide : 0.f;
-	return r;
-}
-
-Dictionary grove_rooms(const CityView &s, const TreeLook &T, const TreeKit &kit) {
-	int lots = 0, trees = 0, out = 0;
-	float worst = 0;
-	for (const Building &rec : s.buildings.items) {
-		if (!rec.alive) continue;
-		GroveFit g;
-		g.take(s, T, kit, rec);
-		if (g.trees == 0) continue;
-		lots++;
-		trees += g.trees;
-		if (g.past > ROOM_SLACK_M) out++;
-		worst = std::max(worst, g.past);
-	}
-	Dictionary r;
-	r["lots"] = lots; r["trees"] = trees; r["out"] = out; r["worst_m"] = worst;
 	return r;
 }
 

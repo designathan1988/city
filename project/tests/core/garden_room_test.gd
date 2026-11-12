@@ -4,8 +4,8 @@
 ## their element; and each fills its room (a hedge its run from end to end and its thickness, a tree and a shrub most of theirs), so
 ## no plant fits by being nothing, and a hedge is not cut into more pieces than its length asks; a run laid at an angle to its lot (a
 ## hedge the player traces) is planted along its own line. On an empty land, with no generated city: the rooms are those the lots'
-## layout gives (sim/buildings/b40: lot_front, lot_yard, lot_back, lot_boundary, open_lots). And an open lot's grove (probe grove_fit:
-## a park or a square alone): no crown past the lot's lines, no tree more slender than a wood's, every tree still a tree.
+## layout gives (sim/buildings/b40: lot_front, lot_yard, lot_back, lot_boundary, open_lots), a square's trees and an open lot's
+## grove among them (the rooms themselves are held by square_test and lot_parts_test).
 ## Run: godot --path project res://tests/core/garden_room_test.tscn -- --no-flow
 extends TestCase
 
@@ -31,10 +31,9 @@ const ASKEW_M := 0.6 # a run's box in the lot's frame against its turned rectang
 ## The least a plant fills of its room: a tree and a shrub of its smaller side, by their wider side; a hedge of its thickness; a bed of each side.
 const FILLS := {"tree": 0.6, "shrub": 0.5, "hedge": 0.9, "flowers": 0.6}
 const TALL := {"tree": 0.6, "shrub": 0.5, "hedge": 0.9} # the least of its element's height a plant stands
-## The open lots' groves: the lot's function (BuildingFn: 5 a square, 6 a park), its width and depth
-const GROVES := [[6, 30.0, 40.0], [6, 44.0, 60.0], [6, 24.0, 30.0], [6, 70.0, 70.0], [5, 40.0, 40.0]]
-const GROVE_DRAWS := 12
-const GROVE_TREE_LEAST_M := 4.0 # a grove's tree stands at least this tall, however near the lot's line
+## The rooms of an open lot's grove (sim/buildings/b40/open_lots.cpp Lay::grove, buildings.json grove): the narrowest a tree
+## is planted in, with its least height, and the widest, with the tallest tree's.
+const GROVE_TREES := [["tree", 3.4, 3.4, 4.0], ["tree", 10.2, 10.2, 12.0]]
 
 
 func _ready() -> void:
@@ -42,39 +41,12 @@ func _ready() -> void:
 		finish()
 		return
 	new_map(LAND_MAP, SEED, false)
-	for room: Array in ROOMS + SQUARE_TREES:
+	for room: Array in ROOMS + SQUARE_TREES + GROVE_TREES:
 		_check_room(room[0], room[1], room[2], room[3], 0.0)
 	# A run the player traces across the lot is laid at an angle: the same plant, in its own turned frame.
 	for room: Array in TURNED:
 		_check_room(room[0], room[1], room[2], room[3], deg_to_rad(TURN_DEG))
-	for lot: Array in GROVES:
-		_check_grove(lot[0], lot[1], lot[2])
 	finish()
-
-
-## An open lot's grove (probe grove_fit): no leaf past the lot's lines, and a tree narrowed by its room still a tree.
-func _check_grove(fn: int, w: float, d: float) -> void:
-	var trees := 0
-	var past := 0.0
-	var slender := 0.0
-	var most := 0.0
-	var low := 1e9
-	for draw in GROVE_DRAWS:
-		var fit: Dictionary = CityStore.query(&"grove_fit", [fn, w, d, draw + 1])
-		trees += int(fit.trees)
-		most = float(fit.slender_most)
-		if int(fit.trees) == 0:
-			continue
-		past = maxf(past, float(fit.past_m))
-		slender = maxf(slender, float(fit.slender))
-		low = minf(low, float(fit.least_tall_m))
-	var name := "grove of an open lot (function %d) %.0f x %.0f" % [fn, w, d]
-	print("%s: %d trees in %d draws, past %.3f m, most slender %.2f (the land's %.2f), least %.1f m tall" % [name, trees, GROVE_DRAWS, past, slender, most, low])
-	if not check(trees > 0, "%s: it has trees" % name):
-		return
-	check(past <= SLACK_M, "%s: every crown inside the lot's lines: %.3f m past them" % [name, past])
-	check(slender <= most + SLACK_M, "%s: no tree more slender than a wood's (%.2f against %.2f)" % [name, slender, most])
-	check(low >= GROVE_TREE_LEAST_M, "%s: its trees are trees: the least %.1f m tall" % [name, low])
 
 
 func _check_room(kind: String, w: float, d: float, h: float, turn: float) -> void:

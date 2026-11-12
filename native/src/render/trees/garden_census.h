@@ -15,16 +15,11 @@ namespace city {
 // farthest, `first` the first: building, kind, x, z, metres), `over` drawn taller than their element (`over_m`; a flower bed's clumps
 // have their own height), `by_kind` the count of `out` by element kind. A plant laid at an angle is held in its own turned frame.
 // `sights`: where a capture looks, of each kind the plant with the longest room and the one with the shortest (building, x, z, w, d, h).
+// `open_trees`: the trees drawn on the open lots (a park's grove, a square's), in `open_lots` of them.
 godot::Dictionary garden_rooms(const CityView &s, const TreeLook &T, const TreeKit &kit);
 // One plant element of that kind (b40::Element) `w` by `d` and `h` tall, laid `turn` radians to its lot, alone on the ground with
 // the draws of `seed`: how many instances it is, the box they draw in its own frame (x0, y0, x1, y1 from its middle) and in the
 // lot's (`lot_box`), their top, and how far past the room and over its height they stand.
 godot::Dictionary garden_fit(const CityView &s, const TreeLook &T, const TreeKit &kit, int kind, float w, float d, float h, float turn, int seed);
-// The grove of an open lot of function `fn` (BuildingFn), `w` by `d`, alone at the land's middle with the draws of `seed`
-// (tree_place.h place_grove): its `trees`, how far past the lot's lines the farthest leaf stands (`past_m`), the most slender tree
-// (`slender`, its height over its width) against the land's bound (`slender_most`), the least height and the least width drawn.
-godot::Dictionary grove_fit(const CityView &s, const TreeLook &T, const TreeKit &kit, int fn, float w, float d, int seed);
-// Every open lot of the city with a grove: `lots`, `trees`, `out` with a leaf past their lot's lines (`worst_m` the farthest).
-godot::Dictionary grove_rooms(const CityView &s, const TreeLook &T, const TreeKit &kit);
 
 } // namespace city

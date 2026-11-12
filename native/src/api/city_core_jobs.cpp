@@ -65,14 +65,6 @@ Dictionary CityProbes::garden_fit(const String &kind, float w, float d, float h,
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	return render_->garden_fit(*state_, int(k), w, d, h, turn, seed);
 }
-Dictionary CityProbes::grove_fit(int fn, float w, float d, int seed) const {
-	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	return render_->grove_fit(*state_, fn, w, d, seed);
-}
-Dictionary CityProbes::grove_rooms() const {
-	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	return render_->grove_rooms(*state_);
-}
 // The surface render/surface_data.h makes of `arrays`: a test lays it beside the engine's own (mesh_get_surface) byte for byte.
 Dictionary CityProbes::surface_probe(const Array &arrays, const Dictionary &lods, int64_t format) const { return surface_data(arrays, lods, uint64_t(format), RID()); }
 
@@ -260,8 +252,6 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("garden_fit", "kind", "w", "d", "h", "turn", "seed"), &CityProbes::garden_fit);
 	ClassDB::bind_method(D_METHOD("lot_parts", "zone", "cap", "w", "d", "seed", "count"), &CityProbes::lot_parts);
 	ClassDB::bind_method(D_METHOD("open_lot_parts", "fn", "w", "d", "seed", "count"), &CityProbes::open_lot_parts);
-	ClassDB::bind_method(D_METHOD("grove_fit", "fn", "w", "d", "seed"), &CityProbes::grove_fit);
-	ClassDB::bind_method(D_METHOD("grove_rooms"), &CityProbes::grove_rooms);
 	ClassDB::bind_method(D_METHOD("square_fit", "lots", "seed"), &CityProbes::square_fit);
 	ClassDB::bind_method(D_METHOD("square_rooms"), &CityProbes::square_rooms);
 	ClassDB::bind_method(D_METHOD("ground_drawn", "at"), &CityProbes::ground_drawn);

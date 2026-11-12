@@ -95,8 +95,7 @@ bool TreeLook::load(const Dictionary &t, const TreeKit &kit, PackedStringArray &
 	crowd_tall = p["crowd_tall"]; crowd_narrow = p["crowd_narrow"]; edge_lean = p["edge_lean"]; lean_rise = p["lean_rise"]; width_vary = p["width_vary"];
 	open_tall = p["open_tall"]; open_wide = p["open_wide"];
 	tint_vary = p["tint_vary"]; min_y = p["min_y_m"]; max_grade = p["max_grade"]; road_margin = p["road_margin_m"]; lot_margin = p["lot_margin_m"];
-	park_m2_per_tree = p["park_m2_per_tree"]; park_edge = p["park_edge_m"]; park_max = p["park_max"];
-	park_h0 = at(p["park_height_m"], 0); park_h1 = at(p["park_height_m"], 1); street_height_m = p["street_height_m"];
+	street_height_m = p["street_height_m"];
 	eco_gain = p["eco_gain"]; eco_mean = p["eco_mean"]; forest_gain = p["forest_gain"];
 	for (const Variant &name : Array(p["planted_models"])) planted_species.push_back(std::max(kit.find(String(name)), 0));
 	shrub_species = kit.find("shrub");

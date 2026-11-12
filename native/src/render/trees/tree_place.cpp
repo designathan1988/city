@@ -4,9 +4,7 @@
 #include "core/math.h"
 #include "core/random.h"
 #include "core/seeded.h"
-#include "sim/buildings/b40/civic.h"
 #include "render/trees/garden_place.h"
-#include "sim/buildings/b40/record.h"
 #include "sim/buildings/building_store.h"
 
 #include <algorithm>
@@ -17,14 +15,14 @@ using namespace godot;
 namespace city {
 
 namespace {
-constexpr uint32_t WILD_SALT = 0x51ed27u, PARK_SALT = 0x9a2cu, STREET_SALT = 0x57ee7u;
+constexpr uint32_t WILD_SALT = 0x51ed27u, STREET_SALT = 0x57ee7u;
 // The woods' hash streams of one cell (Roadcraft's numbers: the same tree in the same spot).
 constexpr uint32_t WOOD_KEEP = 41, WOOD_X = 43, WOOD_Z = 44, WOOD_SIZE = 45, WOOD_YAW = 47, WOOD_MODEL = 48, WOOD_KIND = 49;
 constexpr float NEIGHBOUR_LEAST_M = 1e-3f; // nearer than this two trees give no direction
-constexpr int PARK_TRIES = 4; // draws per wanted tree: spots on paths, courts and fountains are skipped
 constexpr float GRADE_PROBE = 2.f, LIST_MARGIN = 80.f;
-// Hash streams of one candidate: keep, position x and z, height, width, species, yaw, tint.
-enum Stream : uint32_t { KEEP = 0, POS_X, POS_Z, HEIGHT, WIDTH, SPECIES, YAW, TINT, STREAMS };
+// Hash streams of one candidate: its species and its tint, at the places they have always had among a candidate's streams, so
+// every street tree keeps its species and every tree its tone.
+enum Stream : uint32_t { SPECIES = 5, TINT = 7 };
 
 uint32_t cell_hash(int ix, int iz, uint32_t salt) { return hash_combine(hash_combine(uint32_t(ix), uint32_t(iz)), salt); }
 float h01(uint32_t h, Stream s) { return hash_float(h + s); }
@@ -240,13 +238,12 @@ void wild(const CityView &s, const TreeLook &T, const TreeKit &kit, const ChunkG
 	}
 }
 
-// The lots' plants: each lot's garden, and the grove of a park or a square that has not been edited.
+// The lots' plants: every planted element of each lot (a garden's, a square's, a park's grove), as its layout laid it.
 void parks(const CityView &s, const TreeLook &T, const TreeKit &kit, const ChunkGround &l, int64_t key, GardenView view, std::vector<TreeInstance> &out) {
 	for (int id : l.lots) {
 		const Building &b = s.buildings.items[size_t(id)];
 		if (chunk_of(b.x, b.z) != key) continue;
 		place_garden(s, T, kit, b, view, out);
-		place_grove(s, T, kit, b, out);
 	}
 }
 
@@ -275,27 +272,6 @@ void planted(const CityView &s, const TreeLook &T, int64_t key, std::vector<Tree
 	});
 }
 } // namespace
-
-void place_grove(const CityView &s, const TreeLook &T, const TreeKit &kit, const Building &b, std::vector<TreeInstance> &out) {
-	if (b.body != 0 || !b40::is_open_lot(b.fn)) return;
-	int n = std::min(T.park_max, int(b.w * b.d / T.park_m2_per_tree));
-	Vector3 ax(std::cos(b.rot), 0, -std::sin(b.rot)), az(std::sin(b.rot), 0, std::cos(b.rot));
-	for (int k = 0, placed = 0; k < n * PARK_TRIES && placed < n; k++) {
-		uint32_t h = hash_combine(b.seed, uint32_t(k) + PARK_SALT);
-		float lx = (h01(h, POS_X) - 0.5f) * std::max(0.f, b.w - 2 * T.park_edge), lz = (h01(h, POS_Z) - 0.5f) * std::max(0.f, b.d - 2 * T.park_edge);
-		if (!b40::open_lot_tree_ok(b.fn, b.w, b.d, lx, b.d / 2 - lz)) continue; // lot frame y runs from the street (+z side)
-		Vector3 p = Vector3(b.x, 0, b.z) + ax * lx + az * lz;
-		p.y = s.terrain.height_at(p.x, p.z);
-		// The tree as its draws would grow it in the open, then held by its room: its crown, leaves and all, reaches no farther than the
-		// lot's nearest line, and a tree narrowed by that stands no taller against its width than the most slender tree of this land.
-		const int species = T.park.pick(h01(h, SPECIES));
-		const float tall = T.park_h0 + (T.park_h1 - T.park_h0) * h01(h, HEIGHT), open = tall * (1.f + (h01(h, WIDTH) * 2.f - 1.f) * T.width_vary);
-		const float room = std::min(b.w / 2 - std::fabs(lx), b.d / 2 - std::fabs(lz));
-		const float width = std::min(open, room / kit.species(species).drawn.around(1.f, 1.f));
-		out.push_back({ p, std::min(tall, width * T.slender_most()), width, TAU_F * h01(h, YAW), 0, 0, species, tint_of(T, h01(h, TINT)) });
-		placed++;
-	}
-}
 
 void place_trees(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key, std::vector<TreeInstance> &out) {
 	ChunkGround l = chunk_ground(s, key);
