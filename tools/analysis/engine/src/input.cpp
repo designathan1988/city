@@ -223,6 +223,10 @@ void decode(Value root, Input& in) {
     }
     for (Value name : seq(s, part(s, root, "numeric_names"))) in.numeric_names.insert(name.bits());
     for (Value gid : seq(s, part(s, root, "contextual"))) in.contextual.insert(num(gid));
+    for (Value row : seq(s, part(s, root, "carried"))) {
+        auto r = seq(s, row);
+        in.carried[num(r[0])] = num(r[1]);
+    }
     Value module_unit = in.vocab("js_read.MODULE_UNIT");
     for (const UnitRec& u : in.units) {
         if (u.name == module_unit) in.module_units[u.file.bits()].push_back(u.gid);

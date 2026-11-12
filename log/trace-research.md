@@ -775,3 +775,29 @@ official declarations only, converging (finite, fast enough to run in seconds to
   declared objects of such types (each a dictionary whose every name reads `[[any]]`, F40) — the place where unrelated
   records meet.
 - Suite 531 OK on both cores.
+
+### F43. A wrapper's callers each get their own object: 1st-parameter sensitivity — 2026-11-12
+- Read in the code from the origin chain of F42 (no change tried): the lab's `rescaleSerializedDoc` calls the wrappers
+  `at = (r) => placed(r, place)` and `scale(keys)` from dozens of places (nodes, poles, stops, lots, buildings); inside
+  them `placed(record, ...)` and `lengths(record, ...)` are called from one place each. A plain call ran in the context
+  of its call's site (`analysis.call`, `contexts.of_call`: 1-call-site), so every caller of `at` shared one run of
+  `placed`: its `record` held every record, the `{ ...record }` it returns was one object with the properties of all,
+  and it went back to every caller.
+- Sources: Wei and Ryder, "Adaptive Context-sensitive Analysis for JavaScript" (ECOOP 2015,
+  https://dokk.org/library/Adaptive_Context-sensitive_Analysis_for_JavaScript_ECOOP_2015): 1-call-site, 1-object and
+  1st-parameter sensitivity compared on JavaScript, chosen per function; Agesen, "The Cartesian Product Algorithm"
+  (ECOOP 1995): a function analysed per abstract value of its arguments.
+- The decision, per function, from its own trees (`flows.carried`): a plain call of a function whose returns or yields
+  carry a parameter's objects (directly, through its locals, or through an object literal whose spreads or properties
+  read them) runs once per object of the first such argument, its context that object's site and heap context, as a
+  method's is its receiver's (`analysis.argument_context`, `run`; engine `Analysis::run`, `kCallByArgument`, input
+  `carried`). A value of the language's primitive kinds tells no object apart: the call's site. Test:
+  `test_heap_contexts.test_a_wrapper_s_callers_each_get_their_own_copy` (red on both cores first).
+- Measured once after: the whole lab is still not solved in 200 s (60.8 M items, 15.2 M nodes, 405 k runs). The origin
+  chain now ends in the lab's interning (`world/buildings/intern.ts`: `intern(value)` gives back the canonical object a
+  table of every interned object holds — at the level of allocation sites every caller may get any of them, which is
+  the program's own sharing), and the runs multiply by the objects of the sets that meet there. Three fixes in a row,
+  each right and tested, did not bring the fixpoint: the next step is the architecture's — which runs get contexts,
+  bounded by what the analysis can hold (Li, Tan, Moller, Smaragdakis, "Scalability-First Pointer Analysis with
+  Self-Tuning Context-Sensitivity", ESEC/FSE 2018, https://cs.au.dk/~amoeller/papers/scaler).
+- Suite 533 OK on both cores.

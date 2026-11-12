@@ -75,3 +75,4 @@ Task 7: step 1 done (tool and test); step 2 on src/world: 664 links only the cur
 Task 7: Ruling: the nearest tsconfig above the roots is read with them and the displayed paths start at it (F42; tsc and tsserver look for it up the folders) — cost if wrong: paths show one folder more.
 Task 7: Ruling: a write whose value reads the write's key is evaluated per name (F42; Sridharan et al. ECOOP 2012) — exact for the value's tree and its locals — cost if wrong: none.
 Task 7: the whole lab with its aliases resolved is not solved in 200 s (F42); the origin chain points at Record<string, unknown> parameters in world/rescale.ts; step 3 (the CLI on the engine) waits for it.
+Task 7: Ruling: a plain call of a function whose result carries a parameter's objects runs once per object of the first such argument (F43; Wei & Ryder ECOOP 2015, Agesen's CPA) — cost if wrong: more runs where a large set reaches that parameter (bounded next by Scaler's per-function selection).

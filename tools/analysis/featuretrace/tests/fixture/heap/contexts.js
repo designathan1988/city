@@ -93,3 +93,10 @@ export function arrowAsMethod(flag) {
   const o = flag ? a : b;
   return o.run(new Apple());
 }
+
+// A function whose result carries what a parameter holds runs once per object of it (Wei & Ryder, ECOOP 2015, 1st-
+// parameter sensitivity; Agesen's CPA): through a wrapper that calls it from one place, each caller still gets back a
+// copy of its own object.
+function copyOf(r) { return { ...r }; }
+const at = (r) => copyOf(r);
+export function wrappedApple() { at({ a: new Pear() }); return at({ a: new Apple() }).a; }

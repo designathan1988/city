@@ -103,6 +103,10 @@ public:
     void call(Value node, Obj fn, int64_t receiver, std::span<const Value> args, Value kind, Value site = NONE,
               bool shared = false);           // shared: every such call hands the same arguments (unknown code's)
     Value result(int64_t gid, Value ctx, Value where);
+    // One run of a function for a call: the parameter `only` names (-1: none) takes `only_obj` alone.
+    void run(Value node, int64_t gid, Value ctx, int64_t receiver, std::span<const Value> args, Value kind,
+             Value where, int64_t only, Obj only_obj);
+    Value argument_context(Value env, Obj o, Value where);   // a run told apart by an object of its argument
     void reached(Value node, int64_t gid, Value kind);
     void relay(Value origin, Value node);
     void written(Value node, int64_t caller, int64_t line);

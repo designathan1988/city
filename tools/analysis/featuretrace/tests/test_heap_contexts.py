@@ -12,6 +12,9 @@ from .support import ENGINE, HeapCase
 class HeapContexts(HeapCase):
     ROOT = "contexts.js"
 
+    def test_a_wrapper_s_callers_each_get_their_own_copy(self):
+        self.assertEqual({"Apple"}, self.classes("wrappedApple"))
+
     def test_each_memo_runs_its_own_function(self):
         self.assertEqual({"Apple"}, self.classes("memoApple"))
 

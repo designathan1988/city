@@ -13,7 +13,7 @@ enum TransferKind : uint32_t {
     kSummaryReceive, kSummaryCalled, kSummaryFields, kSummaryMemberOf, kKept, kIterElements, kIterIterator,
     kIterNext, kIterValue, kMethodCall, kSettle, kJsxFactory, kJsxChildren, kOpenCalled, kStoreByKey,
     kNarrowValue, kNarrowMember, kMemberPasses, kInstanceObjects, kInstanceTargets, kPredicateFunctions,
-    kPredicateAdmits, kSpread, kCallableOnly, kPutDictionary,
+    kPredicateAdmits, kSpread, kCallableOnly, kPutDictionary, kCallByArgument,
 };
 
 // The dispatcher the solver calls (transfers.cpp).

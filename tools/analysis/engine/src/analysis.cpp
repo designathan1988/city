@@ -142,12 +142,38 @@ void Analysis::call(Value node, Obj fn, int64_t receiver, std::span<const Value>
         auto r = static_cast<Obj>(receiver);
         ctx = contexts::of_method(*this, env, I(object_site(r)), object_heap(r));
     } else {
+        auto carried = in.carried.find(gid);     // its result carries a parameter's objects: one run per object
+        if (carried != in.carried.end() && static_cast<size_t>(carried->second) < args.size() &&
+            args[static_cast<size_t>(carried->second)].kind() != Kind::None) {
+            subscribe(args[static_cast<size_t>(carried->second)], node, tuple({V.BY_ARGUMENT, I(fn)}),
+                      pack(*this, kCallByArgument, {I(gid), tuple(args), kind, where, I(carried->second), env,
+                                                    I(receiver)}));
+            return;
+        }
         ctx = contexts::of_call(*this, env, item(where, 0));
     }
+    run(node, gid, ctx, receiver, args, kind, where, -1, 0);
+}
+
+Value Analysis::argument_context(Value env, Obj o, Value where) {
+    Value kind = okind(o);                         // a primitive's value tells no object apart: the call's site
+    if (kind == V.SITE_PRIMITIVE || kind == V.SITE_TEXT || kind == V.SITE_KEY) {
+        return contexts::of_call(*this, env, item(where, 0));
+    }
+    return contexts::of_method(*this, env, I(object_site(o)), object_heap(o));
+}
+
+void Analysis::run(Value node, int64_t gid, Value ctx, int64_t receiver, std::span<const Value> args, Value kind,
+                   Value where, int64_t only, Obj only_obj) {
+    const UnitRec& u = unit(gid);
     activate(gid, ctx);
     for (size_t index = 0; index < args.size(); ++index) {
-        if (args[index].kind() != Kind::None && index < u.params.size()) {
-            follow(args[index], param(gid, static_cast<int64_t>(index), ctx));
+        if (args[index].kind() == Kind::None || index >= u.params.size()) continue;
+        Value p = param(gid, static_cast<int64_t>(index), ctx);
+        if (static_cast<int64_t>(index) == only) {
+            add(p, only_obj);
+        } else {
+            follow(args[index], p);
         }
     }
     if (receiver >= 0) add(this_(gid, ctx), static_cast<Obj>(receiver));

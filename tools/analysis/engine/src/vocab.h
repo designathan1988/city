@@ -59,7 +59,7 @@ namespace ftengine {
     X(KEPT, "heap.summaries.KEPT") X(KEPT_SITE, "heap.summaries.KEPT_SITE") X(KEPT_ENTRY, "heap.summaries.KEPT_ENTRY") \
     X(GIVEN, "heap.summaries.GIVEN") X(UNKNOWN_ARG, "heap.summaries.UNKNOWN_ARG")                                    \
     X(S_TEXTS, "heap.summaries.TEXTS") X(KEYED, "heap.summaries.KEYED") X(D_REST, "heap.declared.REST")             \
-    X(KEYPUT, "heap.copies.KEYPUT") X(CORRELATED, "heap.correlation.CORRELATED")                                                                                \
+    X(KEYPUT, "heap.copies.KEYPUT") X(CORRELATED, "heap.correlation.CORRELATED") X(BY_ARGUMENT, "heap.analysis.BY_ARGUMENT")                                                                                \
     X(ITERATOR_CALL, "heap.protocols.ITERATOR_CALL") X(NEXT_CALL, "heap.protocols.NEXT_CALL")                        \
     X(THEN_CALL, "heap.protocols.THEN_CALL") X(PROBE, "heap.protocols.PROBE") X(RESOLVING, "heap.protocols.RESOLVING") \
     X(SETTLE, "heap.protocols.SETTLE") X(JSX_CALL, "heap.jsx.JSX_CALL") X(FACTORY, "heap.jsx.FACTORY")              \

@@ -28,7 +28,7 @@ from .ir_js import CLASS_VALUE
 from .vocab import CAST, IMPORT, JSX, LITERAL, NAME, OP, T_NAMED, T_QUERY, UNARY
 
 ROOT_PARTS = ("units", "classes", "members", "names", "types", "class_tables", "intrinsics", "modules", "exports",
-              "jsx", "queries", "operators", "literals", "numeric_names", "contextual", "vocabulary")
+              "jsx", "queries", "operators", "literals", "numeric_names", "contextual", "carried", "vocabulary")
 NUMERIC_START = "-0123456789NI"              # what a canonical numeric string can begin with (Number::toString)
 PROTOCOL = 5                                 # the pickle protocol the engine reads (PEP 574)
 HEAP = Path(__file__).resolve().parent / "heap"
@@ -149,7 +149,9 @@ def tables(ix) -> list:
                      {r.name for u in ix.units for r in u.refs if r.name and canonical_numeric(r.name)})
     return [list(ix.units), sorted(ix.classes.values(), key=lambda c: c.key), members, name_rows, type_rows,
             class_rows, intrinsics, modules, exports, jsx_rows, queries, operators, literals, numeric,
-            [u.gid for u in ix.units if u.kind in FUNCTION_KINDS and flows.contextual(light, u.gid)], vocabulary()]
+            [u.gid for u in ix.units if u.kind in FUNCTION_KINDS and flows.contextual(light, u.gid)],
+            [(u.gid, flows.carried(light, u.gid)) for u in ix.units
+             if u.kind in FUNCTION_KINDS and flows.carried(light, u.gid) is not None], vocabulary()]
 
 
 class Scope:

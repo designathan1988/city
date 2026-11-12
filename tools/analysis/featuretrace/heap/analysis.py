@@ -25,6 +25,7 @@ from .solver import Solver
 
 TREE, LOCAL, PARAM, THIS, RET, HOLD, FIELD, INITIAL = range(8)       # what a node is
 INSTANCES, MADE_BY_CALL = 60, 61               # every object of a class; the generator or promise a call makes
+BY_ARGUMENT = 69                               # a subscription: a call run once per object of an argument
 ROOT = contexts.ROOT
 
 
@@ -121,6 +122,8 @@ class Analysis:
     def call(self, node, fn: int, receiver: int | None, args: list, kind: str, site=None, shared=False) -> None:
         """A call whose node is `node` runs the function object `fn` on `receiver` with `args`, in its context: its
         parameters take the arguments, its `this` the receiver, the call its result; a link for each reference.
+        A plain call of a function whose result carries a parameter's objects runs once per object of that argument
+        (`flows.carried`), its context that object's, as a method's is its receiver's.
         A plain call's site is its node without the caller's context, or `site`, (static site, heap context), when the
         caller gives it (a callback's node carries objects no site may hold); `shared`: every such call hands the
         function the same arguments (unknown code's), so one run in its environment serves them all. A function only
@@ -144,11 +147,33 @@ class Analysis:
         elif receiver is not None and unit.this_of != ARROW_THIS:   # the call binds `this` (an arrow's is lexical)
             ctx = contexts.of_method(env, objects.site(receiver), objects.heap(receiver))
         else:
+            index = flows.carried(self, gid)
+            if index is not None and index < len(args) and args[index] is not None:
+                self.solver.subscribe(args[index], node, (BY_ARGUMENT, fn), lambda _, objs: [self.run(
+                    node, gid, self.argument_context(env, o, where), receiver, args, kind, where, (index, o))
+                    for o in objs])
+                return
             ctx = contexts.of_call(env, where[0])
+        self.run(node, gid, ctx, receiver, args, kind, where, None)
+
+    def argument_context(self, env, obj: int, where):
+        """The context of a run told apart by an object of its argument: that object's site and heap context; a value of
+        the language's primitive kinds tells no object apart: the call's site."""
+        if self.objects.kind(obj) in members.PRIMITIVES:
+            return contexts.of_call(env, where[0])
+        return contexts.of_method(env, self.objects.site(obj), self.objects.heap(obj))
+
+    def run(self, node, gid: int, ctx, receiver, args: list, kind: str, where, only) -> None:
+        """One run of a function for a call: its parameters take the arguments (the one `only` names, (index, object),
+        that object alone), its `this` the receiver, the call its result."""
+        unit = self.ix.units[gid]
         self.activate(gid, ctx)
         for index, arg in enumerate(args):
             if arg is not None and index < len(unit.params):
-                self.solver.follow(arg, self.param(gid, index, ctx))
+                if only is not None and index == only[0]:
+                    self.solver.add(self.param(gid, index, ctx), [only[1]])
+                else:
+                    self.solver.follow(arg, self.param(gid, index, ctx))
         if receiver is not None:
             self.solver.add(self.this(gid, ctx), [receiver])
         self.solver.follow(self.result(gid, ctx, where), node)
