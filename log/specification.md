@@ -50,7 +50,7 @@ Survey progress (each line is ticked only with what was actually read or run):
 | D4 | CLAUDE.md `[c:hidden-runs]` | tests and captures never open a window | the live instance may open a window that does not steal focus; tests and captures stay hidden | to fix |
 | D5 | `log/how-we-work.md` step 7, CLAUDE.md `[c:verify-reach]` | photos judged, km24 before and after | the image protocol (expectation written first, every photo opened, 3x3 regions, defect list, analysis recorded, a guard at the close); every measurement also against the median-profile budgets | to fix, with the guard |
 | D6 | `native/src/sim/traffic/ped_kerb.cpp:4` | "no two ways to it converge" | `onto_approach` gives one approach point to every walker from outside the span on one side and to two abreast coming along the kerb (ledger P494) | open |
-| D7 | `street_works_test` (census of spans) | the lines are strung | the owner's photo of the delivered build shows a line pole with no wire; nothing checks that a strung span is drawn (ledger P495) | open, cause unknown |
+| D7 | `street_works_test` (census of spans) | the lines are strung | the owner's photo of the delivered build shows a line pole with no wire; nothing checks that a strung span is drawn (ledger P495) | cause found and reproduced in isolation (session 2): the two wire levels swapped by the engine's visibility ranges leave a band of distance where neither is drawn (`log/research.md` Q16; trace `pole-no-wires` P1); fix pending (V1) |
 
 ## Why development is slow (found so far; each is a pending item to fix at its cause)
 
@@ -280,6 +280,25 @@ machine without it is pending item M2.
 | high | 10.8 / 11.0 | **13.2 / 13.3** | 7.1 / 7.3 | 137.7 / 140.7 | 171.1 / 172.6 | 129.7 / 135.6 |
 | ultra | 11.1 / 11.1 | **13.3 / 13.6** | 7.5 / 7.6 | 153.6 / 157.3 | 184.9 / 200.9 | 106.0 / 107.9 |
 
+**km24 on the median profile** (`tests/perf/camera_pan.tscn --map=4`, the tests' tier `medium`, 1920x1080, vsync, the debug
+DLL, 473,845 buildings; `dist/research/measure/pan_km24_median.log`, 2026-11-12):
+
+| Move | Frames | Frame p50 / p95 / p99 (ms) | Over 33 ms / 50 ms | GPU mean / p95 / max (ms) | Core on the main thread mean / p95 / max (ms) | Static / video memory (MiB) |
+|---|---|---|---|---|---|---|
+| still | 597 | 16.7 / 16.8 / 21.6 | 1 / 1 | 12.1 / 12.5 / 12.8 | 1.2 / 2.1 / 3.0 | 668 / 2,501 |
+| cross the city | 5,702 | 16.6 / 20.4 / **41.8** | **119 / 10** | 13.3 / **14.9** / 16.3 | 1.8 / 3.8 / **157.0** | 860 / 2,664 |
+| circle | 899 | 16.7 / 18.3 / 33.7 | 18 / 0 | 13.0 / **14.0** / 14.3 | 1.0 / 1.8 / 26.1 | 846 / 2,776 |
+| turn | 357 | 16.7 / 19.2 / 27.2 | 2 / 1 | 10.2 / 12.3 / 14.0 | 2.0 / 3.7 / **84.3** | 960 / 2,633 |
+| zoom | 478 | 16.6 / 21.4 / 35.2 | 5 / 0 | 10.3 / **13.4** / 14.1 | 4.3 / **8.6** / 28.5 | 707 / 1,983 |
+| close to walls | 707 | 16.6 / 22.6 / 29.5 | 6 / 1 | 11.6 / **13.9** / 15.2 | 1.9 / 3.9 / 20.1 | 798 / 2,418 |
+
+- Against the budgets: the frame's p95 passes 16.7 ms in every move but standing still; **151 frames over 33 ms** (119 while
+  crossing the city) where the budget is none; the GPU's p95 passes 13 ms in four of six moves (up to 14.9); the main
+  thread's core time reaches 157 ms in one frame (budget 8 ms) and 84 ms on the first frame of the turn (66 ms of it in
+  `levels`); video memory 2.0 to 2.8 GB (inside 4 GB), static 0.7 to 1.0 GB. The city took **73.6 s to generate** (debug DLL;
+  23.6 s on the release DLL in `log/performance.md`; budget 15 s). Pending items M4, M6.
+- Owed: the same on the floor profile at `low` (its run does not fit one 590 s deadline: the task must run it in parts, T4),
+  the process's RAM and CPU by thread (Q5), and all of it on the release DLL (T5).
 - Median: every tier is inside 16.7 ms in the town; `high` and `ultra` pass the 13 ms GPU budget at the neighbourhood view
   (13.3, 13.6). The town is not the measure that matters: km24 on this GPU was 11.75 and 13.67 ms at 1600x900 `medium`
   (`log/performance.md`), so at 1920x1080 (1.44 times the pixels) it is expected over budget: to measure (pending item M4).
