@@ -7,11 +7,8 @@ PostToolUse Edit, Write: the file the session has just changed itself stays know
 PostToolUse of context7's query-docs: the lookup is kept, the proof the documentation was read (owed.py).
 SessionStart, source compact: what the session read before the compaction left its context and no longer counts.
 PreToolUse Edit, Write: REFUSED (exit 2, the reason goes to Claude) unless
-  1. the file to change, when it exists, was read whole by this session since its last compaction, as it is now;
-  2. no file it opened (of the repository or a reference tree) is left read in part; and
-  3. it owes nothing to the traces it works on (owed.py: its readings recorded by itself, the code it read on a flow, the
-     plan of the problems in the file, the documentation of a file that calls the engine).
-  The refusal lists everything missing at once. The trace folder (records, analysis) is always writable.
+  the file to change, when it exists, was read whole by this session since its last compaction, as it is now (the owner,
+  2026-11-12: nothing else holds an edit back). The refusal lists the Read calls missing. The trace folder (records, analysis) is always writable.
 
 Only the PreToolUse answer can stop a tool; a failure of the hook itself never does (it is kept in
 read_guard_errors.txt beside this file). A session of another project is left alone.
@@ -134,10 +131,8 @@ def unread_calls(relative, path, seen, store):
         gaps = unread_now(relative, seen, store)
         if gaps:
             missing.append((relative, gaps, "the file to change"))
-    # outputs, builds and vendored code are looked up, not studied: only the repository's own files are read to the end
-    opened = [other for other in sorted(seen)
-              if other != relative and not set(other.split("/")[:-1]) & store.SKIP_DIRS
-              and os.path.isfile(os.path.join(store.ROOT, other)) and left_in_part(seen[other], store)]
+    # only the file to change is asked for whole (the owner, 2026-11-12); a file looked up in part holds no edit back
+    opened = []
     mine = [other for other in opened if not os.path.isabs(other)]  # a reference tree's files are not this repository's to ask git of
     ignored = ignored_by_git(mine, store) if mine else set()
     for other in opened:
@@ -162,9 +157,10 @@ def guard(event, proof, store, owed):
     reader = reader_of(event)
     path, relative = target(event, store)
     calls = unread_calls(relative, path, proof.seen_by(reader), store)
-    content = str(tool_input.get("content") or tool_input.get("new_string") or "").encode("utf-8")
-    debts = owed.owed(reader, relative, content)
-    if not calls and not debts:
+    # The owner, 2026-11-12: an edit waits only for the reading that prevents a wrong change (the file to change, read
+    # whole). The ledger's notes, flows and plans and the other files opened in part no longer hold an edit back.
+    debts = []
+    if not calls:
         return 0
     text = ["trace-fix: this edit is refused. Do all of this first, then send the same edit again."]
     if calls:

@@ -24,9 +24,12 @@ list, the archive tags) lives in `log/map.md`; nothing here is status.
 ## Method (every task, in this order)
 1. **Read.** The code involved, whole, with the Read tool, personally (an agent's report is a lead; `cat` or `grep` is no reading); ask "why" until
    the design decision that produces the symptom; list every problem. A reported problem of the game goes through the `trace-fix`
-   skill; a problem only found on the way enters the register and is left for its area. [c:identify]
+   skill; a problem only found on the way enters the register and is left for its area. The defects the game shows are found
+   first by `python tools/hunt/hunt.py`, which names each one's owning code. [c:identify]
 2. **Research.** Context7 (`resolve-library-id`, then `query-docs`) on every implementation, fix and research, or the vendored
-   source: what the API guarantees, on which thread, at what cost, its known bugs in the exact version; never memory. A quick
+   source: what the API guarantees, on which thread, at what cost, its known bugs in the exact version; never memory. A feature
+   the reference game has is read there first, for what it must do (the owner, 2026-11-12: nothing is worked out from nothing
+   that the reference already shows working). A quick
    research test runs in an isolated folder outside the game tree, its real output recorded in `log/research.md`. [c:research]
 3. **Understand.** Problem, cause and solution tied through the code and the research. [c:understand]
 4. **Plan** the fix of the cause with one owner, the costliest and most laborious solution that solves it; a cheap one that does
@@ -191,6 +194,9 @@ list, the archive tags) lives in `log/map.md`; nothing here is status.
 | Gates | `python tools/gates/run_gates.py` (`--file X`, `--summary`, `--selftest`, `--register log/problems.jsonl`, `--json`) |
 | The register | `python tools/atlas/cli.py problems [--area A --status S]`, `add`, `update`, `close`, `drop`, `render` |
 | Deliver | `tools/build/deliver.sh export` |
+| Find the game's defects | `python tools/hunt/hunt.py`: one hidden run of the town that lists every defect the core's probes see (vehicles in one another classed by mechanism, street pieces in one another, wires drawn at no level, road surfaces in one another, the engine's errors), each with where and the owning file; `dist/hunt/hunt.json` |
+| Photograph a place | `TRACE_FIX_SLUG=<slug> python .claude/skills/trace-fix/ledger.py photos <plan.json>` (a plan of look.gd's steps; the crops printed to open with Read); `... crops <photo>` |
+| How the reference does a feature | read its code in `C:\Users\Jonathan\Documents\Projects\lab\roadcraft\src` for the behaviour (never copied: [c:no-roadcraft-copy]) |
 
 The DLLs in `project/bin` are versioned, so a clone opens the game without building: no ignore pattern may drop them, and in a
 rebase they are rebuilt from the joined sources, never one side picked. A clone also needs Godot 4.7.2, llvm-mingw
