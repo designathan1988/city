@@ -1,19 +1,12 @@
 // The audit of a port judges the port, not the game it lands in: a finding counts when the unit it names (or its
 // line, when it names none) touches a line the port added or changed since its base. The lines come from git: the
 // diff of the working tree against the base, and files not tracked yet, whole.
-import { spawnSync } from 'node:child_process';
-import { MAX_CHILD_OUTPUT_BYTES } from '../common/files.ts';
+import { git } from '../common/git.ts';
 import type { GraphIR } from '../graph/ir.ts';
 import type { Finding } from './context.ts';
 
 /** Inclusive line ranges, by file relative to the repository. */
 export type ChangedLines = ReadonlyMap<string, readonly (readonly [number, number])[]>;
-
-function git(repo: string, args: readonly string[]): string {
-  const run = spawnSync('git', ['-C', repo, ...args], { encoding: 'utf8', maxBuffer: MAX_CHILD_OUTPUT_BYTES });
-  if (run.status !== 0) throw new Error(`git ${args.join(' ')} in ${repo} failed (${run.status}):\n${run.stderr}`);
-  return run.stdout;
-}
 
 const HUNK = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
 

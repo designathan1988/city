@@ -6,13 +6,14 @@
 //  - what is left is translated by a pool of worker threads (one per core, the parser loaded once in each);
 //  - a shader whose code Godot already compiled and drew is not compiled again (out/cache/godot-pass.json): the
 //    check project skips it (res://live-skip.txt) and the verdict counts it as passed from the cache.
-// Every item says ITEM BEGIN/END (scripts/live-run.mjs watches them).
+// Every item says ITEM BEGIN/END (a reader of its log sees which items finished).
 // `node scripts/shaders.ts <programs.json> <out dir> --glsl <dir> [--skip <file>] [--jobs <n>] [--no-cache]`
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
+import { machine } from '../src/common/machine.ts';
 import { loadGlsl, translateProgram, type ThreeProgram } from '../src/render/godot-shader.ts';
 
 type Program = ThreeProgram & { instanced?: string[]; options?: Record<string, unknown>; name?: string };
@@ -37,7 +38,7 @@ if (!isMainThread) {
   const args = process.argv.slice(2);
   const flag = (n: string): string | undefined => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : undefined; };
   const [programsFile, outDir] = args;
-  const glslDir = flag('--glsl') ?? process.env['CONVERTER_GLSL'];
+  const glslDir = flag('--glsl') ?? machine().get('glsl');
   if (!programsFile || !outDir || !glslDir) { console.error('usage: shaders.ts <programs.json> <out dir> --glsl <dir>'); process.exit(2); }
   const programs = JSON.parse(fs.readFileSync(programsFile, 'utf8')) as Program[];
   const here = path.resolve(import.meta.dirname, '..');
@@ -111,7 +112,7 @@ if (!isMainThread) {
   const report = programs.map((_, i) => {
     const id = String(i).padStart(3, '0');
     const file = path.join(reportDir, `${id}.json`);
-    return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { id, error: 'translation hung (scripts/live-run.mjs killed it)' };
+    return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { id, error: 'translation left no result' };
   });
   fs.writeFileSync(path.join(outDir, 'translation.json'), JSON.stringify(report, null, 1));
   // Godot's cache: a shader whose code already compiled and drew is skipped by the check (and passed by the verdict)

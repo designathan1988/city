@@ -4,12 +4,15 @@
 // two can write a shared file differently, and the fixed cost of a translation is paid per round, not per module.
 import fs from 'node:fs';
 import path from 'node:path';
-import { removeTree, writeTree } from '../common/files.ts';
+import { writeTree } from '../common/files.ts';
+import { textsKey } from '../common/tasks.ts';
 import { compileFiles, compileHeaders, scanUnits } from './quarantine.ts';
 import { translate, type PreparedProgram, type TranslationResult } from '../translate/run.ts';
 import type { TranslationSpec } from '../translate/spec.ts';
 
 const MOST_ROUNDS = 200;
+/** Characters of the content key that name a round's overlay. */
+const OVERLAY_NAME_CHARS = 16;
 /** Errors taken from one header in a round: the later ones are often what the first one broke. */
 const FIRST_IN_A_HEADER = 3;
 
@@ -139,7 +142,6 @@ export async function convertWhole(specs: readonly TranslationSpec[], input: Who
   const base = specs[0]!;
   const roots = specs.flatMap((s) => s.units.map((u) => `${s.source}#${u}`));
   const left = new Map<string, string>();
-  const overlay = path.join(input.candidate, 'whole');
   let last: TranslationResult | null = null;
   let failing: string[] = [];
   for (let round = 1; round <= MOST_ROUNDS; round++) {
@@ -161,8 +163,9 @@ export async function convertWhole(specs: readonly TranslationSpec[], input: Who
       log(`round ${round}: ${left.size} left out, ${result.units.length} written (${translated - started} ms)`);
       continue;
     }
-    removeTree(overlay);
-    writeTree(overlay, result.files);
+    // one overlay per content: a round that writes what an earlier one wrote compiles the same files, nothing is wiped
+    const overlay = path.join(input.candidate, 'whole', textsKey(result.files).slice(0, OVERLAY_NAME_CHARS));
+    if (!fs.existsSync(overlay)) writeTree(overlay, result.files);
     // the headers first, in one compile: a broken one fails everything that includes it
     const headerErrors = await compileHeaders(input.cxx, overlay, input.targetRoot, result.files);
     if (headerErrors.length > 0) {

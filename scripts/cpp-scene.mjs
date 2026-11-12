@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFile, execFileSync } from 'node:child_process';
+import { machine } from '../src/common/machine.ts';
 
 const [replayDir] = process.argv.slice(2);
 const flag = (n, d) => { const i = process.argv.indexOf(n); return i >= 0 ? process.argv[i + 1] : d; };
@@ -98,9 +99,8 @@ fs.writeFileSync(path.join(genDir, 'scene_index.cpp'), header + cases.map((c) =>
 say(`${cases.length} draws written as C++ (${chunks.length + 1} generated files)`);
 
 // ---- compile: every file in parallel, objects cached by the source's and the flags' hash
-const TC = 'C:/Projects/toolchains/llvm-mingw-20261020-ucrt-x86_64/bin';
-const NATIVE = 'C:/Users/Jonathan/Desktop/city/native';
-const CXX = `${TC}/x86_64-w64-mingw32-clang++.exe`;
+const NATIVE = `${machine().get('game')}/native`;
+const CXX = machine().get('cxx');
 const flags = ['-std=c++17', '-O2', '-DNDEBUG', '-DGDEXTENSION', '-DTHREADS_ENABLED', '-DWINDOWS_ENABLED', '-fvisibility=hidden', '-Wall', '-Wextra',
   `-I${path.join(here, 'cpp', 'runtime')}`, '-isystem', `${NATIVE}/build-win/godot-cpp/gen/include`, '-isystem', `${NATIVE}/godot-cpp/include`, '-isystem', `${NATIVE}/godot-cpp/gdextension`];
 const objDir = path.join(here, 'out', 'cache', 'cpp-obj');

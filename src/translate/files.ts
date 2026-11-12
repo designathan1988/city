@@ -153,8 +153,10 @@ function ordered(structs: readonly CppStruct[]): CppStruct[] {
   const visit = (s: CppStruct): void => {
     if (seen.has(s.name)) return;
     seen.add(s.name);
-    const parent = s.base ? byName.get(s.base) : undefined;
-    if (parent) visit(parent);
+    for (const name of [s.base, ...(s.interfaces ?? [])]) {
+      const parent = name ? byName.get(name) : undefined;
+      if (parent) visit(parent);
+    }
     for (const f of s.fields) for (const n of held(f.type)) {
       const dep = byName.get(n);
       if (dep && dep !== s) visit(dep);
@@ -455,7 +457,9 @@ function structLines(s: CppStruct, source: string): string[] {
   if (s.line > 0) head.push(`// (Roadcraft 4.0 ${source}:${s.line})`);
   const fields = s.fields.map((f) => `\t${declare(f.type, f.name)}${f.init};${f.comment ? ` // ${f.comment}` : ''}`);
   const self = s.typeParams?.length ? `${s.name}<${s.typeParams.join(', ')}>` : s.name;
-  const base = s.base ? ` : ${s.base}` : s.isClass ? ` : std::enable_shared_from_this<${self}>` : '';
+  // an interface shares no instance of its own: its class's enable_shared_from_this does
+  const parents = [s.base ?? (s.isClass && !s.isInterface ? `std::enable_shared_from_this<${self}>` : null), ...(s.interfaces ?? [])].filter((p) => p !== null);
+  const base = parents.length > 0 ? ` : ${parents.join(', ')}` : '';
   const destructor = s.polymorphic ? [`\tvirtual ~${s.name}() = default;`] : [];
   return [...head, `${templateHead(s)}struct ${s.name}${base} {`, ...fields, ...destructor, ...(s.methods ?? []).map((m) => `\t${m}`), '};', ''];
 }

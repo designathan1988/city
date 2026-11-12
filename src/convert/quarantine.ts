@@ -2,11 +2,9 @@
 // validation (Pnueli, Siegel, Singerman, TACAS 1998): the translator is not trusted, each output is judged on its own.
 // Nothing the ledger stopped was emitted, none of the catalog's wrong forms is in the C++, the target's size limits
 // hold, and the code compiles against the target's own headers. Any finding refuses that module's whole output.
-import { execFile } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { MAX_CHILD_OUTPUT_BYTES } from '../common/files.ts';
+import { keyOf, logOf, mustRun, passed, runTask, textsKey, toolKey, treeKey } from '../common/tasks.ts';
 import { isRuntimeFile } from '../translate/files.ts';
 
 export interface QuarantineFinding {
@@ -78,22 +76,47 @@ export function scanUnits(stopOf: (id: string) => string | null, emitted: readon
   return out;
 }
 
-/** Every source file compiled against the overlay first, then the target's own headers (C++17, the target's standard). */
-/** Compile results by content: the .cpp, every header the overlay holds, the compiler and the target (an identical
- *  input gives the identical result: a file the judgments meet again is not compiled again). Lives for the run. */
-const compiled = new Map<string, QuarantineFinding | null>();
+/** A syntax check of one translation unit against the generated and the target's headers; past this its process is stopped. */
+const COMPILE_TIMEOUT_S = 300;
+/** The same check of every generated header at once, which one compile reads together. */
+const HEADERS_TIMEOUT_S = 900;
+const SYNTAX_ONLY = ['-std=c++17', '-fsyntax-only', '-ferror-limit=0'];
+
+/** Each compile context, read once per run: a conversion reads the target and never writes it (it writes only its --out). */
+const contexts = new Map<string, string>();
+
+/** What every compile's answer also depends on: the compiler and the target's headers (by content), the flags. */
+function compileContext(cxx: string, targetRoot: string): string {
+  const at = `${cxx}\0${path.resolve(targetRoot)}`;
+  const known = contexts.get(at);
+  if (known !== undefined) return known;
+  const key = keyOf('syntax-check', cxx, toolKey(cxx), treeKey(targetRoot, ['native/src']), ...SYNTAX_ONLY);
+  contexts.set(at, key);
+  return key;
+}
+
+/**
+ * The compile of `file` (relative to the overlay) as a task: run in the overlay with relative paths, so the same content
+ * in another overlay is the same task. Its key is `content` (what the file reaches) with the compile's context; the
+ * answer is the compiler's log.
+ */
+async function syntaxCheck(cxx: string, overlay: string, targetRoot: string, file: string, content: string, timeoutS: number): Promise<{ ok: boolean; log: string }> {
+  const r = mustRun(`the compile of ${file}`, await runTask({ name: 'converter-syntax-check', cwd: overlay, timeoutS, extra: [content, compileContext(cxx, targetRoot)],
+    argv: [cxx, ...SYNTAX_ONLY, '-I', 'native/src', '-I', path.join(targetRoot, 'native', 'src').split(path.sep).join('/'), file] }));
+  return { ok: passed(r), log: logOf(r) };
+}
 
 /** Every generated header in one compile: one broken header would otherwise fail each file that includes it, compiled one by one. */
 export async function compileHeaders(cxx: string, overlay: string, targetRoot: string, files: ReadonlyMap<string, string>): Promise<string[]> {
-  const all = path.join(overlay, 'all_headers.cpp');
-  fs.writeFileSync(all, [...files.keys()].filter((f) => f.endsWith('.h')).sort().map((f) => `#include "${f.replace(/^native\/src\//, '')}"`).join('\n') + '\n');
-  const stderr = await new Promise<string>((resolve) => {
-    execFile(cxx, ['-std=c++17', '-fsyntax-only', '-ferror-limit=0', '-I', path.join(overlay, 'native', 'src'), '-I', path.join(targetRoot, 'native', 'src'), all],
-      { encoding: 'utf8', windowsHide: true, maxBuffer: MAX_CHILD_OUTPUT_BYTES }, (_error, _stdout, err) => resolve(err));
-  });
-  return stderr.split(/\r?\n/).filter((l) => l.includes(': error:') || l.includes('requested here'));
+  const all = 'all_headers.cpp';
+  const text = [...files.keys()].filter((f) => f.endsWith('.h')).sort().map((f) => `#include "${f.replace(/^native\/src\//, '')}"`).join('\n') + '\n';
+  fs.writeFileSync(path.join(overlay, all), text);
+  const headers = [...files].filter(([f]) => f.endsWith('.h'));
+  const { log } = await syntaxCheck(cxx, overlay, targetRoot, all, textsKey([[all, text], ...headers]), HEADERS_TIMEOUT_S);
+  return log.split(/\r?\n/).filter((l) => l.includes(': error:') || l.includes('requested here'));
 }
 
+/** Every source file compiled against the overlay first, then the target's own headers (C++17, the target's standard). */
 export async function compileFiles(cxx: string, overlay: string, targetRoot: string, files: ReadonlyMap<string, string>): Promise<QuarantineFinding[]> {
   // what a file's result depends on: itself and the generated headers it reaches, so a change recompiles only who includes it
   const reached = (file: string): string => {
@@ -105,25 +128,14 @@ export async function compileFiles(cxx: string, overlay: string, targetRoot: str
         if (files.has(next) && !seen.has(next)) { seen.add(next); queue.push(next); }
       }
     }
-    const hash = createHash('sha256').update(cxx).update(targetRoot);
-    for (const f of [...seen].sort()) hash.update(f).update('\0').update(files.get(f)!).update('\0');
-    return hash.digest('hex');
+    return textsKey([...seen].map((f) => [f, files.get(f)!] as const));
   };
-  // every .cpp at once, each its own compiler process
-  const results = await Promise.all([...files].filter(([file]) => file.endsWith('.cpp')).map(async ([file]) => {
-    const key = reached(file);
-    if (compiled.has(key)) return compiled.get(key)!;
-    const run = await new Promise<{ status: number | null; stderr: string; error?: Error }>((resolve) => {
-      execFile(cxx, ['-std=c++17', '-fsyntax-only', '-ferror-limit=0', '-I', path.join(overlay, 'native', 'src'), '-I', path.join(targetRoot, 'native', 'src'), path.join(overlay, file)],
-        { encoding: 'utf8', windowsHide: true, maxBuffer: MAX_CHILD_OUTPUT_BYTES }, (error, _stdout, stderr) => resolve({ status: error ? (typeof error.code === 'number' ? error.code : 1) : 0, stderr: String(stderr), error: error ?? undefined }));
-    });
-    let finding: QuarantineFinding | null = null;
-    if (run.status !== 0) {
-      const errors = run.stderr.split(/\r?\n/).filter((l) => l.includes('error:') || l.includes('requested here')).slice(0, 40).join(' | ');
-      finding = { file, rule: 'does-not-compile', detail: errors || String(run.error ?? 'the compiler failed') };
-    }
-    compiled.set(key, finding);
-    return finding;
+  // every .cpp at once, each its own task in the shared pool
+  const results = await Promise.all([...files.keys()].filter((file) => file.endsWith('.cpp')).map(async (file): Promise<QuarantineFinding | null> => {
+    const { ok, log } = await syntaxCheck(cxx, overlay, targetRoot, file, reached(file), COMPILE_TIMEOUT_S);
+    if (ok) return null;
+    const errors = log.split(/\r?\n/).filter((l) => l.includes('error:') || l.includes('requested here')).slice(0, 40).join(' | ');
+    return { file, rule: 'does-not-compile', detail: errors || 'the compiler failed' };
   }));
   return results.filter((f): f is QuarantineFinding => f !== null);
 }

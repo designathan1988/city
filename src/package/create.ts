@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { removeTree, sha256 } from '../common/files.ts';
 import { cloneIsolated, git, revParse, uncommitted } from '../common/git.ts';
+import { CONVERTER_ROOT } from '../common/machine.ts';
 import { normalizePath } from '../common/paths.ts';
 import { MANIFEST, PACKAGE_VERSION, PATCHES, type PackageManifest } from './manifest.ts';
 
@@ -33,7 +34,7 @@ export interface PackageInput {
 }
 
 /** The converter's own repository. */
-export const CONVERTER_ROOT = path.resolve(import.meta.dirname, '..', '..');
+export { CONVERTER_ROOT };
 
 /** The converter's commit; refused when its tree has changes, which that commit would not describe. */
 function converterCommit(root: string): string {

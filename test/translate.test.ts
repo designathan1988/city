@@ -13,7 +13,7 @@ import { runDifferential, runObjectDifferential } from '../src/translate/differe
 import { translate } from '../src/translate/run.ts';
 import { loadTypeScript } from '../src/graph/typescript.ts';
 import { readTranslationSpec } from '../src/translate/spec.ts';
-import { typescriptDir } from './support.ts';
+import { cxxPath, typescriptDir } from './support.ts';
 
 const root = path.join(import.meta.dirname, 'fixtures', 'translate');
 const target = path.join(root, 'target');
@@ -29,14 +29,14 @@ describe('translate', () => {
   it('translates the whole feature', () => {
     assert.deepEqual(result.errors, []);
     assert.deepEqual([...result.files.keys()].sort(), [
-      ...['geo.h', 'geo_query.cpp', 'geo_types.h', 'js_array.h', 'js_map.h', 'js_number.h', 'js_runtime.h', 'js_string.h', 'js_value.h'].map((f) => `native/src/core/${f}`),
+      ...['geo.h', 'geo_query.cpp', 'geo_types.h', 'js_array.h', 'js_map.h', 'js_number.h', 'js_random.h', 'js_runtime.h', 'js_string.h', 'js_value.h'].map((f) => `native/src/core/${f}`),
       ...['yard.h', 'yard_edit.cpp', 'yard_index.cpp', 'yard_query.cpp', 'yard_types.h'].map((f) => `native/src/sim/yard/${f}`),
     ]);
   });
 
   it('names a literal the target forbids bare from what receives it, in its module', () => {
     assert.match(file('yard_types.h'), /constexpr int MAX_SPEED = 30;/);
-    assert.match(file('yard_query.cpp'), /const float speed = std::min\(float\(MAX_SPEED\), n\);/);
+    assert.match(file('yard_query.cpp'), /const float speed = js::math_min\(float\(MAX_SPEED\), n\);/);
   });
 
   it('finds the target types by shape, within what the layers may include', () => {
@@ -119,9 +119,19 @@ describe('translate', () => {
     assert.doesNotMatch(file('yard_types.h'), /\bnamed\(\);/);
   });
 
+  it('makes an interface classes implement an abstract struct, a value of it read through an accessor', () => {
+    const types = file('yard_types.h');
+    assert.match(types, /struct Gauge \{\n\tvirtual ~Gauge\(\) = default;/, types);
+    assert.match(types, /virtual float get_level\(\) = 0;/);
+    assert.match(types, /virtual float read\(float scale\) = 0;/);
+    assert.match(types, /struct Tank : std::enable_shared_from_this<Tank>, Gauge \{/);
+    assert.match(types, /float get_level\(\) override \{ return this->level; \}/);
+    assert.match(types, /float get_level\(\) override \{ return this->level\(\); \}/);
+    assert.match(file('yard_query.cpp'), /g->get_level\(\) \+ g->read\(scale\)/);
+  });
+
   it('checks classes against the source with no game, and catches a wrong member', (t) => {
-    const cxx = process.env['CONVERTER_CXX'];
-    if (!cxx) return t.skip('set CONVERTER_CXX to run the translation');
+    const cxx = cxxPath();
     const work = fs.mkdtempSync(path.join(os.tmpdir(), 'converter-objects-'));
     after(() => removeTree(work));
     const base = { ts: loadTypeScript(root, typescriptDir()), tsconfig: path.join(root, 'tsconfig.json'), sourceRoot: root, includes: [path.join(target, 'native/src')], cxx, steps: 300, seed: 7,
@@ -138,8 +148,7 @@ describe('translate', () => {
   });
 
   it('writes C++ that compiles without a warning against the target headers', (t) => {
-    const cxx = process.env['CONVERTER_CXX'];
-    if (!cxx) return t.skip('set CONVERTER_CXX to compile the translation');
+    const cxx = cxxPath();
     const work = fs.mkdtempSync(path.join(os.tmpdir(), 'converter-translate-'));
     after(() => removeTree(work));
     for (const [name, text] of result.files) {
@@ -155,8 +164,7 @@ describe('translate', () => {
   });
 
   it('agrees with its source on a random scenario, and the comparison catches a wrong translation', (t) => {
-    const cxx = process.env['CONVERTER_CXX'];
-    if (!cxx) return t.skip('set CONVERTER_CXX to run the translation');
+    const cxx = cxxPath();
     const work = fs.mkdtempSync(path.join(os.tmpdir(), 'converter-differential-'));
     after(() => removeTree(work));
     const base = { ts: loadTypeScript(root, typescriptDir()), tsconfig: path.join(root, 'tsconfig.json'), sourceRoot: root,

@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ArgsError, parseFlags, type FlagSpec } from '../common/args.ts';
+import { targetGraph as derivedTargetGraph } from '../common/derived.ts';
 import { createPackage, type Topic } from '../package/create.ts';
 import { addLayer, addMapLine, addStateMember } from './registry.ts';
 import { renderTranslation, translate } from './run.ts';
@@ -14,7 +15,6 @@ export const PACKAGE_FLAGS: readonly FlagSpec[] = [
   { name: 'tsconfig', help: 'the source\'s tsconfig.json (default: <source-root>/tsconfig.json)' },
   { name: 'typescript', help: 'TypeScript package directory (default: the source project\'s own)' },
   { name: 'spec', required: true, help: 'translation spec JSON' },
-  { name: 'target-graph', required: true, help: 'the target\'s C++ graph JSON (converter cppgraph): the types it already has' },
   { name: 'target-root', required: true, help: 'root of the target game (read only; cloned to build the package)' },
   { name: 'out', required: true, help: 'package folder (outside the target; must be empty or absent)' },
   { name: 'author-name', required: true, help: 'name the package\'s commits are by' },
@@ -28,7 +28,7 @@ export function runPackageCommand(argv: readonly string[]): void {
   const spec = readTranslationSpec(flags.require('spec'));
   const { registry, state } = spec;
   if (!registry || !state.anchor || !state.memberLine) throw new ArgsError('the spec needs registry (doc, mapLine) and state.anchor / state.memberLine to package');
-  const result = translate({ sourceRoot, tsconfig: flags.one('tsconfig') ?? path.join(sourceRoot, 'tsconfig.json'), typescriptDir: flags.one('typescript'), spec, targetRoot, targetGraph: path.resolve(flags.require('target-graph')) });
+  const result = translate({ sourceRoot, tsconfig: flags.one('tsconfig') ?? path.join(sourceRoot, 'tsconfig.json'), typescriptDir: flags.one('typescript'), spec, targetRoot, targetGraph: derivedTargetGraph({ targetRoot }) });
   if (result.errors.length > 0) throw new Error(`the translation has errors; nothing is packaged:\n${result.errors.join('\n')}`);
   const out = path.resolve(flags.require('out'));
   const rulesPath = spec.layer.rules;

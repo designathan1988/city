@@ -1,11 +1,13 @@
 // `converter differential`: the translation of a feature run against its source on the same random scenario, in two
 // builds. The logic build makes every number a double (JavaScript's own) and the target's value types doubles too:
 // it must agree with the source but for the libraries' last bit. The target build is the translation as the game
-// gets it (floats): it is compared within float precision. Everything happens in the output folder.
+// gets it (floats): it is compared within float precision. Everything happens in the output folder and the converter's
+// cache: each build is compiled once for every seed (keyed by what it compiles), each scenario's answers are overwritten.
 import fs from 'node:fs';
 import path from 'node:path';
 import { ArgsError, parseFlags, type FlagSpec } from '../common/args.ts';
-import { removeTree } from '../common/files.ts';
+import { targetGraph as derivedTargetGraph } from '../common/derived.ts';
+import { machine } from '../common/machine.ts';
 import { normalizePath } from '../common/paths.ts';
 import { loadTypeScript } from '../graph/typescript.ts';
 import { runDifferential, type DifferentialResult } from './differential.ts';
@@ -17,9 +19,8 @@ export const DIFFERENTIAL_FLAGS: readonly FlagSpec[] = [
   { name: 'tsconfig', help: 'the source\'s tsconfig.json (default: <source-root>/tsconfig.json)' },
   { name: 'typescript', help: 'TypeScript package directory (default: the source project\'s own)' },
   { name: 'spec', required: true, help: 'translation spec JSON' },
-  { name: 'target-graph', required: true, help: 'the target\'s C++ graph JSON (converter cppgraph): the types it already has' },
-  { name: 'target-root', required: true, help: 'root of the target game (read only: its headers and gate rules)' },
-  { name: 'cxx', required: true, help: 'the C++ compiler driver' },
+  { name: 'target-root', required: true, help: 'root of the target game (read only: its headers, gate rules and C++ graph, derived from its code)' },
+  { name: 'cxx', help: 'the C++ compiler driver (default: the machine file\'s "cxx")' },
   { name: 'out', required: true, help: 'work folder (outside the target)' },
   { name: 'steps', help: 'calls per scenario (default 3000)' },
   { name: 'seeds', help: 'how many scenarios, seeds 1..n (default 3)' },
@@ -77,15 +78,16 @@ export function runDifferentialCommand(argv: readonly string[]): void {
   const targetRoot = path.resolve(flags.require('target-root'));
   const out = path.resolve(flags.require('out'));
   if (normalizePath(out).startsWith(normalizePath(targetRoot) + '/')) throw new ArgsError(`--out must be outside the target (${out})`);
-  // A clean work folder: nothing left by an earlier run may stand in for what this run makes.
-  removeTree(out);
+  // Nothing is wiped: each scenario's answers are written again, and a build is named by what it compiles.
+  fs.mkdirSync(out, { recursive: true });
   const tsconfig = path.resolve(flags.one('tsconfig') ?? path.join(sourceRoot, 'tsconfig.json'));
   const spec = readTranslationSpec(flags.require('spec'));
   if (!spec.state.empty) throw new ArgsError('the spec names no state.empty: the scenario needs the empty state');
   const steps = Number(flags.one('steps') ?? 3000);
   const seeds = Number(flags.one('seeds') ?? 3);
   const typescriptDir = flags.one('typescript');
-  const targetGraph = path.resolve(flags.require('target-graph'));
+  const targetGraph = derivedTargetGraph({ targetRoot });
+  const cxx = flags.one('cxx') ?? machine().get('cxx');
   const ts = loadTypeScript(sourceRoot, typescriptDir);
   const hand = flags.all('hand');
   // With files written by hand only the target build runs: hand-written code has the game's own number types, which
@@ -106,7 +108,7 @@ export function runDifferentialCommand(argv: readonly string[]): void {
     const results: DifferentialResult[] = [];
     for (let seed = 1; seed <= seeds; seed++) {
       results.push(runDifferential({ ts, tsconfig, sourceRoot, empty: spec.state.empty, translation,
-        includes: [...build.includes, path.join(targetRoot, 'native', 'src')], cxx: flags.require('cxx'),
+        includes: [...build.includes, path.join(targetRoot, 'native', 'src')], cxx,
         work: path.join(out, `${build.spec.number}-seed${seed}`), steps, seed, tolerance: build.tolerance, valueTypes }));
     }
     lines.push(...report(build.name, results));

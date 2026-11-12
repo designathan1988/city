@@ -8,8 +8,9 @@
 import type * as TS from 'typescript';
 import type { FunctionPlan, MemoPlan, TranslateContext, MemberOwner } from './context.ts';
 import { holdsTypeParameter, paramType, render, type CppType, target } from './cpptype.ts';
-import { pascal, snake, upper } from './names.ts';
+import { pascal, snake, staticName, upper } from './names.ts';
 import { Emitter } from './statements.ts';
+import { isMathRandom, RANDOM_CONTEXT } from './expressions.ts';
 
 export interface EmittedFunction {
   /** A class's member: its declaration is in the struct. */
@@ -157,7 +158,7 @@ export class Translator extends Emitter {
 
   /**
    * The context parameters each function takes: a context pattern it uses (in its body, or through a module constant
-   * mapped to one), or a function it calls that takes one, to the fixed point. They follow its own parameters, by
+   * mapped to one), Math.random (the generator the caller supplies), or a function it calls that takes one, to the fixed point. They follow its own parameters, by
    * name, and every call passes them on (the caller has them as its own).
    */
   #propagateContext(): void {
@@ -177,6 +178,7 @@ export class Translator extends Emitter {
         if (ts.isExpression(n)) {
           const m = this.c.patterns.match(n);
           if (m?.pattern.context) own.set(m.pattern.context.name, m.pattern.context);
+          if (isMathRandom(ts, n)) own.set(RANDOM_CONTEXT.name, RANDOM_CONTEXT);
         }
         if (ts.isCallExpression(n) && ts.isIdentifier(n.expression)) {
           const s = this.symbolOf(n.expression);
@@ -348,6 +350,7 @@ export class Translator extends Emitter {
   /** `class D extends B`: D's struct on B's, their members virtual. A class of a library's (Error, Map) gives nothing to inherit but its name. */
   #inherit(node: TS.ClassDeclaration, struct: string): void {
     const ts = this.c.ts;
+    this.#implement(node, struct);
     const clause = node.heritageClauses?.find((h) => h.token === ts.SyntaxKind.ExtendsKeyword)?.types[0];
     if (!clause) return;
     const baseType = this.c.checker.getTypeAtLocation(clause);
@@ -360,6 +363,69 @@ export class Translator extends Emitter {
     own.polymorphic = true;
     this.c.types.structs.get(base.name)!.polymorphic = true;
     (own.methodTypes ??= []).push(base);
+  }
+
+  /** `class C implements I`: C's struct on I's, and what I reads as a value answered from C's field or getter. */
+  #implement(node: TS.ClassDeclaration, struct: string): void {
+    const ts = this.c.ts;
+    const own = this.c.types.structs.get(struct)!;
+    for (const h of node.heritageClauses ?? []) {
+      if (h.token !== ts.SyntaxKind.ImplementsKeyword) continue;
+      for (const clause of h.types) {
+        const type = this.c.checker.getTypeAtLocation(clause);
+        if (!this.c.types.isAbstract(type)) continue;
+        const parent = this.#planInterface(type);
+        if (!parent) continue;
+        (own.interfaces ??= []).push(parent);
+        own.polymorphic = true;
+        const made = this.c.checker.getTypeAtLocation(node);
+        for (const prop of this.c.checker.getPropertiesOfType(type)) {
+          const plan = this.c.functions.get(prop);
+          const mine = made.getProperty(prop.name);
+          if (plan?.owner?.abstract && plan.owner.kind === 'getter' && mine) {
+            const read = `this->${snake(prop.name)}${mine.flags & ts.SymbolFlags.Accessor ? '()' : ''}`;
+            this.#answers.push({ struct, line: `${render(plan.ret)} ${plan.cpp}() override { return ${read}; }` });
+          }
+        }
+      }
+    }
+  }
+
+  /** What a class writes for the values of its interfaces, again at each round of writing. */
+  readonly #answers: { readonly struct: string; readonly line: string }[] = [];
+
+  /** An interface's struct and its pure members, once: a method as it is, a value read through `get_<name>()` (a class may hold a field of that name). */
+  #planInterface(type: TS.Type): string | null {
+    const ts = this.c.ts;
+    const made = target(this.c.types.ofType(type, 'local', null));
+    if (made.k !== 'struct') return null;
+    const struct = made.name;
+    const own = this.c.types.structs.get(struct)!;
+    if (own.polymorphic) return struct;
+    own.polymorphic = true;
+    const symbol = type.getSymbol()!;
+    for (const d of symbol.declarations ?? []) {
+      if (!ts.isInterfaceDeclaration(d)) continue;
+      for (const h of d.heritageClauses ?? []) for (const clause of h.types) {
+        const parent = this.#planInterface(this.c.checker.getTypeAtLocation(clause));
+        if (parent) (own.interfaces ??= []).push(parent);
+      }
+      const module = this.c.relative(d.getSourceFile());
+      const source = d.name.text;
+      for (const m of d.members) {
+        const at = d.getSourceFile().getLineAndCharacterOfPosition(m.getStart()).line + 1;
+        const name = m.name!.getText();
+        const owner = (kind: MemberOwner['kind']): MemberOwner => ({ struct, source, kind, node: d, isStatic: false, abstract: true });
+        if (ts.isMethodSignature(m)) {
+          this.#planFunction(m, name, at, m, owner('method'));
+          continue;
+        }
+        const prop = this.symbolOf(m.name!)!;
+        this.c.functions.set(prop, { source: `${source}.${name}`, cpp: `get_${snake(name)}`, owner: owner('getter'), decl: m as unknown as FunctionPlan['decl'], params: [],
+          ret: this.c.types.slot(this.c.flow.symbolSlot(prop), 'return'), typeParams: [], edit: null, exported: true, module, line: at, doc: null });
+      }
+    }
+    return struct;
   }
 
   #planFunction(fn: TS.SignatureDeclaration & { body?: TS.ConciseBody }, name: string, line: number, holder: TS.Node, owner?: MemberOwner): void {
@@ -585,13 +651,14 @@ export class Translator extends Emitter {
   /** The classes' static fields: written in their struct, with the value the source gives. */
   readonly #statics: { readonly field: TS.PropertyDeclaration; readonly struct: string }[] = [];
   #emitStatics(): void {
+    for (const { struct, line } of this.#answers) this.c.types.structs.get(struct)!.methods!.push(line);
     for (const { field, struct } of this.#statics) {
       this.unit = (field.parent as TS.ClassDeclaration).name?.text ?? '';
       this.module = this.c.relative(field.getSourceFile());
       const symbol = this.symbolOf(field.name);
       if (!symbol || !field.initializer) { this.fail(field, 'a static field with no value'); continue; }
       const type = this.c.types.slot(this.c.flow.symbolSlot(symbol), 'local');
-      this.c.types.structs.get(struct)!.methods!.push(`static inline const ${render(type)} ${snake(field.name.getText().replace(/^#/, ''))} = ${this.expr(field.initializer, type)};`);
+      this.c.types.structs.get(struct)!.methods!.push(`static inline const ${render(type)} ${staticName(field.name.getText())} = ${this.expr(field.initializer, type)};`);
     }
   }
 
@@ -746,6 +813,12 @@ export class Translator extends Emitter {
 
   #emitFunction(plan: FunctionPlan): void {
     this.unit = plan.owner?.source ?? plan.source;
+    if (plan.owner?.abstract) {
+      const struct = this.c.types.structs.get(plan.owner.struct)!;
+      (struct.methods ??= []).push(`virtual ${this.#signature(plan, plan.cpp)} = 0;`);
+      (struct.methodTypes ??= []).push(...plan.params.map((p) => p.type), plan.ret);
+      return;
+    }
     this.fn = plan;
     this.module = plan.module;
     this.scopes.push(new Map());
@@ -817,11 +890,22 @@ export class Translator extends Emitter {
     return null;
   }
 
+  /** The member answers one of a class or interface above: said in C++, so a signature that drifts apart fails to compile instead of hiding it. */
+  #overrides(plan: FunctionPlan, owner: MemberOwner): boolean {
+    const name = (plan.decl as { name?: TS.Node }).name?.getText();
+    if (!name) return false;
+    return (owner.node.heritageClauses ?? []).flatMap((h) => [...h.types]).some((clause) => {
+      const above = this.c.checker.getTypeAtLocation(clause).getProperty(name);
+      return above !== undefined && this.c.functions.get(above)?.cpp === plan.cpp;
+    });
+  }
+
   /** A member: declared in its struct, defined by its qualified name. */
   #emitMember(plan: FunctionPlan, owner: MemberOwner, body: string[]): void {
     const struct = this.c.types.structs.get(owner.struct)!;
     const virtual = struct.polymorphic && !owner.isStatic && owner.kind !== 'constructor' ? 'virtual ' : '';
-    (struct.methods ??= []).push(`${owner.isStatic ? 'static ' : virtual}${this.#signature(plan, plan.cpp)};`);
+    const over = virtual && this.#overrides(plan, owner);
+    (struct.methods ??= []).push(`${owner.isStatic ? 'static ' : over ? '' : virtual}${this.#signature(plan, plan.cpp)}${over ? ' override' : ''};`);
     (struct.methodTypes ??= []).push(...plan.params.map((p) => p.type), plan.ret);
     // a generic class's members are templates: their bodies go where the callers see them
     const params = struct.typeParams ?? [];

@@ -6,7 +6,11 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import { machine } from '../src/common/machine.ts';
+import { filesKey, folderKey, keyOf, logOf, mustRun, runTasksSync, toolKey } from '../src/common/tasks.ts';
+
+/** Godot drawing every parity case and reading each back; past this its process tree is stopped. */
+const PARITY_TIMEOUT_S = 600;
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
@@ -353,10 +357,15 @@ fs.writeFileSync(path.join(outDir, 'three.json'), JSON.stringify(threeResults.ma
 // ---- Godot: the same scene in a SubViewport, read back
 fs.writeFileSync(path.join(outDir, 'project.godot'), ['config_version=5', '', '[application]', 'config/name="three parity"', '', '[rendering]', 'renderer/rendering_method="forward_plus"', ''].join('\n'));
 fs.writeFileSync(path.join(outDir, 'parity.gd'), fs.readFileSync(path.resolve(import.meta.dirname, 'parity.gd'), 'utf8'));
-const hidden = 'C:\\Users\\Jonathan\\Desktop\\city\\tools\\build\\hidden_run.ps1';
-const godot = 'C:\\Users\\Jonathan\\AppData\\Local\\Microsoft\\WinGet\\Links\\godot_console.exe';
+const godot = machine().get('godot');
 const win = path.resolve(outDir);
-execFileSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', hidden, '-Command', `"${godot}" --path "${win}" --script res://parity.gd --rendering-driver vulkan > "${win}\\godot.log" 2>&1`, '-WorkDir', win, '-TimeoutS', '600'], { stdio: 'inherit' });
+// a hidden task (tools/tasks), keyed by what Godot reads: the cases, the shaders, the script; its images restored on a hit
+const parityRun = runTasksSync([{ name: 'converter-parity-godot', cwd: win, hidden: true, timeoutS: PARITY_TIMEOUT_S,
+  outputs: godotCases.map((c) => path.join(win, `godot_${c.id}.rgba`)),
+  extra: [keyOf(filesKey(['cases.json', 'parity.gd', 'project.godot'].map((f) => path.join(win, f))), folderKey(path.join(win, 'shaders'))), toolKey(godot)],
+  argv: [godot, '--path', win, '--script', 'res://parity.gd', '--rendering-driver', 'vulkan'] }])[0];
+mustRun('Godot\'s parity run', parityRun);
+fs.writeFileSync(path.join(win, 'godot.log'), logOf(parityRun));
 
 // ---- compare
 const report = [];

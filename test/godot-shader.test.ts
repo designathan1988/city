@@ -3,14 +3,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { loadGlsl, translateProgram } from '../src/render/godot-shader.ts';
+import { glslDir } from './support.ts';
 
-const dir = process.env['CONVERTER_GLSL'];
-const glsl = dir ? loadGlsl(dir) : null;
-const t = (vertex: string, fragment: string, options = {}) => translateProgram(glsl!, { vertex, fragment }, options);
+const glsl = loadGlsl(glslDir());
+const t = (vertex: string, fragment: string, options = {}) => translateProgram(glsl, { vertex, fragment }, options);
 const MVP = 'in vec3 position; uniform mat4 projectionMatrix; uniform mat4 modelViewMatrix;';
 const POS = 'gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);';
 
-describe('three.js program → Godot spatial shader', { skip: !glsl && 'set CONVERTER_GLSL to the directory holding @shaderfrog/glsl-parser' }, () => {
+describe('three.js program → Godot spatial shader', () => {
   it('one spatial shader, unshaded; three\'s matrices and attributes are Godot\'s built-ins; gl_Position is POSITION', () => {
     const s = t(`${MVP} void main() { ${POS} }`, 'out vec4 c; void main() { c = vec4(1.0); }');
     assert.match(s.code, /^shader_type spatial;$/m);

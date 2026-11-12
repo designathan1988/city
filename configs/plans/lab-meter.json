@@ -1,0 +1,12 @@
+{
+"source": "src/lab/resources/meter.ts",
+"units": [
+"MeterBook",
+"slope",
+"percentileOf"
+],
+"owner": "native/src/api/lab",
+"summary": "the lab's consumers: the samples of one thing that costs, read over a window",
+"library": "${game}/tools/ports/road-elevation/conversion-library.json",
+"targetRoot": "${game}"
+}

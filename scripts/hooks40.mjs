@@ -4,10 +4,10 @@ import fs from 'node:fs';
 import { createRequire, registerHooks } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { machine } from '../src/common/machine.ts';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
-const machine = JSON.parse(fs.readFileSync(path.join(HERE, '..', 'configs', 'roadcraft-machine.json'), 'utf8'));
-const root = machine.source;
+const root = machine().get('source');
 
 // what the game's build gives its code (vite.config.ts `define`, import.meta.env of a production build)
 globalThis.__MAP_TILES__ = Number(process.env.ROADCRAFT_MAP_TILES ?? 20);

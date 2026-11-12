@@ -29,6 +29,8 @@ function repo(files: Record<string, string>): string {
 }
 
 const node = (code: string): string[] => [process.execPath, '-e', code];
+/** A test step's deadline: each is one Node process printing a line. */
+const STEP_TIMEOUT_S = 120;
 
 describe('package and sandbox', () => {
   const game = repo({ 'readme.txt': 'game\n', '.gitignore': 'vendor/\n' });
@@ -76,10 +78,10 @@ describe('package and sandbox', () => {
   it('verifies the base and the package in an isolated clone, never touching the game', () => {
     const config: SandboxConfig = {
       copy: ['vendor'], hiddenRunner: 'unused.ps1',
-      setup: [{ name: 'setup', run: node("require('fs').writeFileSync('setup.txt', 'ready')") }],
+      setup: [{ name: 'setup', timeoutSeconds: STEP_TIMEOUT_S, run: node("require('fs').writeFileSync('setup.txt', 'ready')") }],
       verify: [
-        { name: 'vendor', run: node("process.stdout.write(require('fs').readFileSync('vendor/lib.txt', 'utf8'))"), expect: { includes: ['outside version control'] } },
-        { name: 'readme', run: node("process.stdout.write(require('fs').readFileSync('readme.txt', 'utf8'))") },
+        { name: 'vendor', timeoutSeconds: STEP_TIMEOUT_S, run: node("process.stdout.write(require('fs').readFileSync('vendor/lib.txt', 'utf8'))"), expect: { includes: ['outside version control'] } },
+        { name: 'readme', timeoutSeconds: STEP_TIMEOUT_S, run: node("process.stdout.write(require('fs').readFileSync('readme.txt', 'utf8'))") },
       ],
     };
     const sandbox = path.join(out, 'sandbox');
@@ -96,8 +98,8 @@ describe('package and sandbox', () => {
 
   it('stops at the first expectation a step fails, saying which', () => {
     const config: SandboxConfig = {
-      copy: [], hiddenRunner: 'unused.ps1', setup: [],
-      verify: [{ name: 'wants', run: node("process.stdout.write('nothing')"), expect: { includes: ['something'] } }],
+      copy: [], setup: [],
+      verify: [{ name: 'wants', timeoutSeconds: STEP_TIMEOUT_S, run: node("process.stdout.write('nothing')"), expect: { includes: ['something'] } }],
     };
     const pkgCopy = path.join(out, 'transit-copy');
     fs.cpSync(pkg, pkgCopy, { recursive: true });
@@ -111,7 +113,7 @@ describe('package and sandbox', () => {
     assert.throws(() => createPackage({
       feature: 'x', sourceRoot: source, sourceFiles: [], gameRoot: game, outDir: path.join(game, 'pkg'), author, converterRoot, topics: () => [],
     }), /outside the game/);
-    assert.throws(() => runSandbox({ packageDir: pkg, config: { copy: [], hiddenRunner: '', setup: [], verify: [] }, sandboxDir: path.join(game, 'sb') }), /outside the game/);
+    assert.throws(() => runSandbox({ packageDir: pkg, config: { copy: [], setup: [], verify: [] }, sandboxDir: path.join(game, 'sb') }), /outside the game/);
   });
 });
 
@@ -132,10 +134,10 @@ describe('workspace and pack', () => {
   });
   const config: SandboxConfig = {
     copy: ['vendor'], hiddenRunner: 'unused.ps1',
-    setup: [{ name: 'setup', run: node("process.stdout.write('configured')") }],
+    setup: [{ name: 'setup', timeoutSeconds: STEP_TIMEOUT_S, run: node("process.stdout.write('configured')") }],
     verify: [
-      { name: 'vendor', run: node("process.stdout.write(require('fs').readFileSync('vendor/lib.txt', 'utf8'))"), expect: { includes: ['outside version control'] } },
-      { name: 'readme', run: node("process.stdout.write(require('fs').readFileSync('readme.txt', 'utf8'))") },
+      { name: 'vendor', timeoutSeconds: STEP_TIMEOUT_S, run: node("process.stdout.write(require('fs').readFileSync('vendor/lib.txt', 'utf8'))"), expect: { includes: ['outside version control'] } },
+      { name: 'readme', timeoutSeconds: STEP_TIMEOUT_S, run: node("process.stdout.write(require('fs').readFileSync('readme.txt', 'utf8'))") },
     ],
   };
   const port = path.join(out, 'port');
@@ -206,7 +208,7 @@ describe('workspace and pack', () => {
 
   it('applies a package that commits a file the base verification writes, recording what it left', () => {
     // As a Godot import writes a .uid the game lacks: the port commits it, and the base's verification writes it too.
-    const writes: SandboxConfig = { ...config, verify: [...config.verify, { name: 'import', run: node("require('fs').writeFileSync('made.uid', 'uid')") }] };
+    const writes: SandboxConfig = { ...config, verify: [...config.verify, { name: 'import', timeoutSeconds: STEP_TIMEOUT_S, run: node("require('fs').writeFileSync('made.uid', 'uid')") }] };
     commit('made.uid', 'uid', 'Commit the UID the game lacks');
     pack('package-made');
     const result = runSandbox({ packageDir: path.join(out, 'package-made'), config: writes, sandboxDir: path.join(out, 'sandbox-made') });

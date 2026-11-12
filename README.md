@@ -188,15 +188,13 @@ RenderingServer calls of godot-cpp) and the rule that carries values (column-maj
 MultiMesh rows, linear colors, sampler hints...). `node scripts/catalog-check.mjs <catalog> <features dir> <godot>`
 checks it is complete for the features' traces and that every Godot class and method it names exists.
 
-## Running long jobs live
+## Child processes
 
-`node scripts/live-run.mjs --name <n> --status <file.jsonl> [--log <file>] --begin <re> --end <re> -- <command>`
-runs a queue of items in one process and prints one JSON event per settled item (ok, fail, hung) as it happens. There
-is no time limit: an item is hung when it has run longer than `--factor` × the slowest item so far (at least
-`--min-idle`); the process (its own PID, from a `LIVE PID` line) is killed and the queue resumes after the item
-(`--skip-file`), so the items that remain never wait on it. A process that falls silent with no item in flight
-(it never began one: an extension that did not load, say) is reported `stalled` with the errors it printed, and
-stopped. `out/live-shaders.sh` runs the translation and Godot's compile this way.
+Every process the converter starts (Jelly, the graph builds, each compile, the differential's builds and runs, the
+sandbox steps, Godot in the replay, parity and catalog checks) is a task of the repository's orchestration owner
+(`python tools/tasks/cli.py serve`, through `src/common/tasks.ts`): its own deadline (the whole process tree is stopped
+past it), no window on the user's desktop when it draws, and a result keyed by the content of what it reads, so it is not
+made again while its inputs stay the same.
 
 The GLSL parser runs from a copy whose peggy memo table is a `Map` (`scripts/glsl-parser-fast.cjs <parser.js>`):
 the generated object, keyed position × rules, falls into dictionary mode and took 96 % of the time; the 277 programs
@@ -204,6 +202,7 @@ translate byte-identically, 4× faster (14.5 s cold on 22 workers).
 
 ## Tests
 
-`CONVERTER_TYPESCRIPT=<typescript package dir> CONVERTER_POSTCSS=<postcss package dir> CONVERTER_JELLY=<jelly package dir>
-CONVERTER_CLANGD=<clangd> CONVERTER_CXX=<clang++> node --test "test/**/*.test.ts"`; type check with
+`node --test "test/**/*.test.ts"`: every tool (TypeScript, Jelly, PostCSS, the GLSL parser, clangd, the C++ compiler) comes
+from `configs/roadcraft-machine.json` through `src/common/machine.ts`; an environment variable (`CONVERTER_TYPESCRIPT`,
+`CONVERTER_JELLY`, `CONVERTER_POSTCSS`, `CONVERTER_GLSL`, `CONVERTER_CLANGD`, `CONVERTER_CXX`) only overrides one. Type check with
 `node scripts/typecheck.ts --typescript <dir> --types <node_modules/@types dir>`.

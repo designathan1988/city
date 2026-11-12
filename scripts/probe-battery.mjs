@@ -4,12 +4,16 @@
 // `node scripts/probe-battery.mjs <capture> <draws a,b,c> <jobs> <expr>...`
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { machine } from '../src/common/machine.ts';
+import { filesKey, mustRun, runTask } from '../src/common/tasks.ts';
+
+/** One probe: the WebGL and Godot replays of the given draws (frame-replay.mjs, its own processes tasks too); past this it is stopped. */
+const PROBE_TIMEOUT_S = 3600;
 
 const [capDir, draws, jobsArg, ...exprs] = process.argv.slice(2);
 const here = path.resolve(import.meta.dirname, '..');
-const PW = 'C:/Users/Jonathan/Desktop/city/tools/oracle-4.0/node_modules/playwright';
-const GLSL = 'C:/Projects/toolchains/glsl-parser-fast';
+const PW = `${machine().get('game')}/tools/oracle-4.0/node_modules/playwright`;
+const GLSL = machine().get('glsl');
 const jobs = Number(jobsArg);
 const results = new Map();
 let next = 0;
@@ -21,8 +25,11 @@ await new Promise((resolve) => {
       const k = next++; running++;
       const out = path.join(here, 'out', `battery${k}`);
       const t = Date.now();
-      const p = spawn(process.execPath, [path.join(here, 'scripts', 'frame-replay.mjs'), capDir, out, PW, GLSL, '--only', draws, '--probe', exprs[k]], { stdio: 'ignore' });
-      p.on('exit', () => {
+      // a probe is a task keyed by the capture's index and the replay's code: the same probe of the same capture is not replayed again
+      const replay = path.join(here, 'scripts', 'frame-replay.mjs');
+      runTask({ name: 'converter-probe', argv: [process.execPath, replay, capDir, out, PW, GLSL, '--only', draws, '--probe', exprs[k]], cwd: here, timeoutS: PROBE_TIMEOUT_S,
+        extra: [filesKey([path.join(capDir, 'index.json'), replay, path.join(here, 'scripts', 'replay.gd'), path.join(here, 'src', 'render', 'godot-shader.ts')])],
+        outputs: [path.join(out, 'replay.json')] }).then((r) => mustRun(`probe ${exprs[k]}`, r), (e) => console.error(String(e))).catch((e) => console.error(String(e))).finally(() => {
         running--;
         const r = fs.existsSync(path.join(out, 'replay.json')) ? JSON.parse(fs.readFileSync(path.join(out, 'replay.json'), 'utf8')) : [];
         results.set(exprs[k], new Map(r.map((x) => [x.index, x.tier])));

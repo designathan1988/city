@@ -4,7 +4,7 @@ extends SceneTree
 # placed each attribute, every texture uploaded through the RenderingDevice in the format three's GPU held (sRGB
 # decoded by the format, like WebGL; uint and int as integer formats; arrays; every mip level), every uniform three
 # set. Drawn in a SubViewport with HDR 2D (the values the program wrote, unencoded), read back as RGBA8.
-# Prints LIVE PID, REPLAY BEGIN/END <draw> (scripts/live-run.mjs watches them); skips res://live-skip.txt.
+# Prints REPLAY BEGIN/END <draw> (its log says which draws finished); skips the draws res://live-skip.txt names.
 
 var rd: RenderingDevice
 var cache := {}

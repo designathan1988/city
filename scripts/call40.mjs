@@ -6,10 +6,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { machine } from '../src/common/machine.ts';
 
 const HERE = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
-const machine = JSON.parse(fs.readFileSync(path.join(HERE, '..', 'configs', 'roadcraft-machine.json'), 'utf8'));
-const root = machine.source;
+const root = machine().get('source');
 const args = process.argv.slice(2);
 const also = args.filter((a) => a.startsWith('--also=')).map((a) => a.slice('--also='.length));
 const scene = args.includes('--scene');

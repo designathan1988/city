@@ -1,15 +1,17 @@
 // The driver for porting one feature of the Roadcraft 4.0 into the game: one command per stage, every path from
-// configs/roadcraft-machine.json, every stage a converter command. The source's code (the extracted feature, the
-// cached program analysis) stays in the converter's out/; the game's code (the workspace, its evidence, the package)
-// goes to the port folder <ports>/<feature>. The game is only read. `node scripts/port.ts help`.
+// configs/roadcraft-machine.json (src/common/machine.ts), every stage a converter command. The source's code (the
+// extracted feature) stays in the converter's out/, the program's graph and Jelly's analysis in its cache (derived from
+// the source's content); the game's code (the workspace, its evidence, the package) goes to the port folder
+// <ports>/<feature>. The game is only read. `node scripts/port.ts help`.
 import { spawn, spawnSync } from 'node:child_process';
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { RULE_BY_ID } from '../src/audit/catalog.ts';
 import { changedLines, findingsInChanges } from '../src/audit/changed.ts';
 import type { AuditResult } from '../src/audit/run.ts';
+import { targetGraph } from '../src/common/derived.ts';
 import { removeTree } from '../src/common/files.ts';
+import { MACHINE_FILE, readMachine as readMachineFile, type Machine as MachineFile } from '../src/common/machine.ts';
 import { folderName, portFile, readInventory } from '../src/convert/inventory.ts';
 import type { GraphIR } from '../src/graph/ir.ts';
 import { readWorkspace } from '../src/sandbox/workspace.ts';
@@ -20,14 +22,13 @@ const CLI = path.join(CONVERTER, 'src', 'cli.ts');
 const SANDBOX_CONFIG = path.join(CONVERTER, 'configs', 'roadcraft-game.sandbox.json');
 const AUDIT_CONFIG = path.join(CONVERTER, 'configs', 'roadcraft-game.audit.json');
 const FEATURES = path.join(CONVERTER, 'out', 'features');
-const CACHE = path.join(CONVERTER, 'out', 'cache');
 /** The 4.0's dev server, where its own photo tool (scripts/look.mjs) looks. */
 const SOURCE_SERVER = 'http://127.0.0.1:5300/';
 const SERVER_WAIT_MS = 120_000;
 const POLL_MS = 1000;
 const LOOK_TIMEOUT_S = 3600;
 /** The shared 4.0 server's bookkeeping (inside the ignored cache): a lock, one lease per run using it, and who started it. */
-const SERVER_DIR = path.join(CACHE, 'source-server');
+const SERVER_DIR = path.join(CONVERTER, 'out', 'cache', 'source-server');
 const SERVER_STATE = path.join(SERVER_DIR, 'server.json');
 const LOCK_STALE_MS = 30_000;
 const LOCK_WAIT_MS = 10_000;
@@ -40,71 +41,40 @@ const SLOT_STALE_GRACE_S = 600;
 /** Win32_ProcessStartup.ShowWindow takes the nCmdShow values of ShowWindow(); 0 is SW_HIDE (Microsoft Learn: Win32_ProcessStartup, Create method of Win32_Process). Without it the 4.0 server's console opens on the user's desktop. */
 const SW_HIDE = 0;
 const MIN_NODE = [23, 6];
+/** A converter command run by the driver: each process it starts is a task with its own deadline; this one bounds the command's own work. */
+const COMMAND_TIMEOUT_MS = 6 * 3_600_000;
 
-const MACHINE_KEYS = ['source', 'game', 'ports', 'inventory', 'jelly', 'typescript', 'types', 'postcss', 'mingw', 'clangd', 'cxx', 'godot', 'bash', 'python'] as const;
-type Machine = Record<(typeof MACHINE_KEYS)[number], string>;
+/** The machine file's keys the driver uses (doctor checks each exists). */
+const MACHINE_KEYS = ['source', 'game', 'ports', 'inventory', 'tasks', 'jelly', 'typescript', 'types', 'postcss', 'mingw', 'clangd', 'cxx', 'godot', 'bash', 'python'] as const;
+type Machine = Record<(typeof MACHINE_KEYS)[number], string> & { readonly file: MachineFile };
 
 function fail(message: string): never {
   console.error(`port: ${message}`);
   process.exit(1);
 }
 
-/** The machine file with every `${key}` resolved. */
+/** The machine file (src/common/machine.ts: every `${key}` resolved, an environment variable overriding only its key). */
 function readMachine(file: string): Machine {
-  const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
-  const resolve = (key: string, seen: readonly string[]): string => {
-    const value = raw[key];
-    if (typeof value !== 'string') fail(`${file} has no "${key}"`);
-    if (seen.includes(key)) fail(`${file}: "${key}" refers to itself`);
-    return value.replace(/\$\{(\w+)\}/g, (_m, other: string) => resolve(other, [...seen, key]));
-  };
-  return Object.fromEntries(MACHINE_KEYS.map((k) => [k, resolve(k, [])])) as Machine;
-}
-
-function environment(m: Machine): NodeJS.ProcessEnv {
-  return {
-    ...process.env, GODOT: m.godot, MINGW: m.mingw, BASH: m.bash, PYTHON: m.python, CONVERTER_JELLY: m.jelly,
-    CONVERTER_TYPESCRIPT: m.typescript, CONVERTER_POSTCSS: m.postcss, CONVERTER_CLANGD: m.clangd, CONVERTER_CXX: m.cxx,
-  };
+  const m = readMachineFile(file);
+  try {
+    return { ...Object.fromEntries(MACHINE_KEYS.map((k) => [k, m.get(k)])), file: m } as Machine;
+  } catch (error) {
+    fail((error as Error).message);
+  }
 }
 
 /** Runs a converter command, its output shown as it comes; returns its exit code. */
-function converter(m: Machine, args: readonly string[]): number {
+function converter(args: readonly string[]): number {
   console.log(`\n> converter ${args.join(' ')}`);
-  const run = spawnSync(process.execPath, ['--max-old-space-size=12288', CLI, ...args], { cwd: CONVERTER, env: environment(m), stdio: 'inherit', windowsHide: true });
+  const run = spawnSync(process.execPath, ['--max-old-space-size=12288', CLI, ...args], { cwd: CONVERTER, stdio: 'inherit', windowsHide: true, timeout: COMMAND_TIMEOUT_MS });
+  if (run.error) console.error(`port: converter ${args[0]}: ${run.error.message}`);
   return run.status ?? 1;
 }
 
 function git(dir: string, args: readonly string[]): string {
-  const run = spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, windowsHide: true });
-  if (run.status !== 0) fail(`git ${args.join(' ')} in ${dir}: ${run.stderr.trim()}`);
+  const run = spawnSync('git', ['-C', dir, ...args], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, windowsHide: true, timeout: COMMAND_TIMEOUT_MS });
+  if (run.status !== 0) fail(`git ${args.join(' ')} in ${dir}: ${String(run.stderr).trim()}`);
   return run.stdout;
-}
-
-const hash = (...parts: readonly string[]): string => crypto.createHash('sha256').update(parts.join('\0')).digest('hex').slice(0, 16);
-const contents = (files: readonly string[]): string => files.map((f) => `${f}\0${fs.readFileSync(f, 'utf8')}`).join('\0');
-
-/** What identifies the source as it is now: its commit, its uncommitted changes and their sizes and times. */
-function sourceFingerprint(root: string): string {
-  const status = git(root, ['status', '--porcelain', '--untracked-files=all']);
-  const changed = status.split(/\r?\n/).filter(Boolean).map((line) => line.slice(3).split(' -> ').at(-1)!.replace(/^"|"$/g, ''));
-  const stats = changed.map((file) => {
-    const full = path.join(root, file);
-    if (!fs.existsSync(full)) return `${file} gone`;
-    const s = fs.statSync(full);
-    return `${file} ${s.size} ${s.mtimeMs}`;
-  });
-  return hash(git(root, ['rev-parse', 'HEAD']), status, ...stats);
-}
-
-/** The whole program's graph and Jelly's analysis, kept per state of the source and of the converter code that makes them. */
-function programCache(m: Machine): { readonly graph: string; readonly jelly: string } {
-  const graphCode = fs.readdirSync(path.join(CONVERTER, 'src', 'graph')).map((f) => path.join(CONVERTER, 'src', 'graph', f));
-  const dir = path.join(CACHE, `source-${sourceFingerprint(m.source)}`);
-  return {
-    graph: path.join(dir, `program-${hash(contents(graphCode))}.json`),
-    jelly: path.join(dir, `jelly-${hash(contents([path.join(CONVERTER, 'src', 'feature', 'callgraph.ts'), path.join(m.jelly, 'package.json')]))}`),
-  };
 }
 
 const FEATURE_NAME = /^[a-z0-9][a-z0-9-]*$/;
@@ -133,27 +103,17 @@ function doctor(m: Machine): number {
     const status = git(m.game, ['status', '--porcelain']).trim();
     console.log(`info game: ${git(m.game, ['log', '-1', '--format=%h %s']).trim()}${status ? `; not committed: ${status.split(/\r?\n/).join(', ')}` : ''}`);
   }
-  if (fs.existsSync(m.source)) {
-    const cache = programCache(m);
-    console.log(`info source cache: graph ${fs.existsSync(cache.graph) ? 'ready' : 'to build'}, Jelly ${fs.existsSync(cache.jelly) ? 'ready' : 'to run'} (${path.dirname(cache.graph)})`);
-  }
-  console.log(bad === 0 ? '\ndoctor OK' : `\ndoctor: ${bad} problem(s); fix ${path.join(CONVERTER, 'configs', 'roadcraft-machine.json')}`);
+  console.log(bad === 0 ? '\ndoctor OK' : `\ndoctor: ${bad} problem(s); fix ${MACHINE_FILE}`);
   return bad === 0 ? 0 : 1;
 }
 
 function extract(m: Machine, feature: string, entries: readonly string[]): number {
   if (entries.length === 0) fail('give the feature\'s entry files, relative to the 4.0 root (e.g. src/editor/poles.ts)');
-  const cache = programCache(m);
-  if (!fs.existsSync(cache.graph)) {
-    const code = converter(m, ['graph', '--source-root', m.source, '--typescript', m.typescript, '--out', cache.graph]);
-    if (code !== 0) return code;
-  }
+  // the program's graph and Jelly's analysis are derived inside the command, from the source's content
   const out = featureDir(feature);
-  const analysis = fs.existsSync(cache.jelly) ? ['--analysis', cache.jelly] : ['--jelly', m.jelly];
-  const code = converter(m, ['feature', '--source-root', m.source, '--typescript', m.typescript, '--postcss', m.postcss, '--graph', cache.graph,
-    ...analysis, ...entries.flatMap((e) => ['--entry', e]), '--out', out]);
+  const code = converter(['feature', '--source-root', m.source, '--typescript', m.typescript, '--postcss', m.postcss, '--jelly', m.jelly,
+    ...entries.flatMap((e) => ['--entry', e]), '--out', out]);
   if (code !== 0) return code;
-  if (!fs.existsSync(cache.jelly)) fs.cpSync(path.join(out, 'jelly'), cache.jelly, { recursive: true });
   console.log(`\nfeature ${feature}: read ${path.join(out, 'feature.md')}, then the code in ${path.join(out, 'source')} and the shared ` +
     `declarations it uses in ${path.join(out, 'interface')} (boundary.json has every list)`);
   return 0;
@@ -208,13 +168,10 @@ function convert(m: Machine, id: string | undefined, rest: readonly string[]): n
     const code = extract(m, feature, known.sementes);
     if (code !== 0) return code;
   }
-  const cache = programCache(m);
-  if (!fs.existsSync(cache.graph)) fail(`${cache.graph} is missing: extract a feature first`);
-  const targetGraph = path.join(CONVERTER, 'out', 'game', 'cppgraph.json');
-  if (!fs.existsSync(targetGraph)) fail(`${targetGraph} is missing: run converter cppgraph on the game`);
+  // the source's and the game's graphs are derived inside the command, from their content
   const dir = path.join(portDir(m, feature), 'conversion');
-  const code = converter(m, ['convert', '--feature', feature, '--source-root', m.source, '--typescript', m.typescript, '--graph', cache.graph, '--boundary', boundary,
-    '--target-root', m.game, '--target-graph', targetGraph, '--library', path.join(CONVERTER, 'configs', 'conversion-library.json'), '--ports', m.ports,
+  const code = converter(['convert', '--feature', feature, '--source-root', m.source, '--typescript', m.typescript, '--boundary', boundary,
+    '--target-root', m.game, '--library', path.join(CONVERTER, 'configs', 'conversion-library.json'), '--ports', m.ports,
     '--cxx', m.cxx, '--constants', portFile(portDir(m, feature), 'constants.json', 'constantes.json'), '--out', dir]);
   console.log(`\nwhat stays open, unit by unit: ${path.join(dir, 'conversao.md')}`);
   if (rest.includes('--apply')) {
@@ -226,11 +183,11 @@ function convert(m: Machine, id: string | undefined, rest: readonly string[]): n
 
 function workspace(m: Machine, feature: string): number {
   if (!fs.existsSync(featureDir(feature))) console.log(`note: no extraction of ${feature} yet (node scripts/port.ts extract ${feature} <entry>...)`);
-  return converter(m, ['workspace', '--game', m.game, '--feature', feature, '--port', portDir(m, feature), '--config', SANDBOX_CONFIG]);
+  return converter(['workspace', '--game', m.game, '--feature', feature, '--port', portDir(m, feature), '--config', SANDBOX_CONFIG]);
 }
 
 function verify(m: Machine, feature: string, steps: readonly string[]): number {
-  return converter(m, ['verify', '--port', portDir(m, feature), '--config', SANDBOX_CONFIG, ...steps.flatMap((s) => ['--step', s])]);
+  return converter(['verify', '--port', portDir(m, feature), '--config', SANDBOX_CONFIG, ...steps.flatMap((s) => ['--step', s])]);
 }
 
 function audit(m: Machine, feature: string): number {
@@ -240,12 +197,10 @@ function audit(m: Machine, feature: string): number {
   const compileCommands = path.join(record.workspace, config.compileCommands);
   if (!fs.existsSync(compileCommands)) fail(`${compileCommands} is missing: the workspace's debug build is configured without CMAKE_EXPORT_COMPILE_COMMANDS`);
   const dir = path.join(port, 'audit');
-  const graph = path.join(dir, 'cppgraph.json');
+  // the workspace's C++ graph, derived from its code and its compilation database
+  const graph = targetGraph({ targetRoot: record.workspace, compileCommands, include: config.include });
   const result = path.join(dir, 'audit.json');
-  let code = converter(m, ['cppgraph', '--root', record.workspace, '--compile-commands', compileCommands, '--clangd', m.clangd,
-    `--clangd-arg=--query-driver=${m.cxx}`, ...config.include.flatMap((i) => ['--include', i]), '--cache', path.join(dir, 'clangd'), '--out', graph]);
-  if (code !== 0) return code;
-  code = converter(m, ['audit', '--graph', graph, '--target-rules', path.join(record.workspace, config.rules), ...config.flags,
+  const code = converter(['audit', '--graph', graph, '--target-rules', path.join(record.workspace, config.rules), ...config.flags,
     '--out', result, '--markdown', path.join(dir, 'audit.md')]);
   if (code !== 0) return code;
   // Only the port is judged here: the findings in lines it added or changed.
@@ -267,13 +222,13 @@ function audit(m: Machine, feature: string): number {
 function pack(m: Machine, feature: string): number {
   const out = path.join(portDir(m, feature), 'package');
   removeTree(out);
-  return converter(m, ['pack', '--port', portDir(m, feature), '--feature-dir', featureDir(feature), '--source-root', m.source, '--out', out]);
+  return converter(['pack', '--port', portDir(m, feature), '--feature-dir', featureDir(feature), '--source-root', m.source, '--out', out]);
 }
 
 function sandbox(m: Machine, feature: string): number {
   const dir = path.join(portDir(m, feature), 'sandbox');
   removeTree(dir);
-  return converter(m, ['sandbox', '--package', path.join(portDir(m, feature), 'package'), '--config', SANDBOX_CONFIG, '--dir', dir]);
+  return converter(['sandbox', '--package', path.join(portDir(m, feature), 'package'), '--config', SANDBOX_CONFIG, '--dir', dir]);
 }
 
 async function answers(url: string): Promise<boolean> {
@@ -547,7 +502,7 @@ const HELP = `node scripts/port.ts <command> [--machine <file>] ...
 
 async function main(argv: readonly string[]): Promise<number> {
   const at = argv.indexOf('--machine');
-  const machineFile = at >= 0 ? argv[at + 1] : path.join(CONVERTER, 'configs', 'roadcraft-machine.json');
+  const machineFile = at >= 0 ? argv[at + 1] : MACHINE_FILE;
   const args = at >= 0 ? [...argv.slice(0, at), ...argv.slice(at + 2)] : [...argv];
   const [command, name, ...rest] = args;
   if (!command || command === 'help' || !machineFile) {
