@@ -176,6 +176,9 @@ double fleet_target(const CityState &s); // how many vehicles the demand asks fo
 double demand_for(const CityState &s, double lane_metres); // the vehicles these lane metres carry at this hour and these levels
 void free_vehicle(TrafficState &t, int id); // the slot of a vehicle off the lanes, out of the fleet count
 bool new_trip(CityState &s, int id, int from_ds); // a route from `from_ds` to a destination the demand draws
+// A vehicle of `type` put on lane `lane` of `ds`, its nose at arc `at`, going `speed`, on the route `route` (directed segments, the
+// first `ds`): a trip given, not drawn (a test's scene). -1 where the lane has no room for its body there.
+int vehicle_on_lane(CityState &s, VehicleType type, int ds, int lane, float at, float speed, const std::vector<int> &route);
 
 // vehicle_motion.cpp
 float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl);

@@ -96,6 +96,10 @@ PedAge roll_age_alone(TrafficState &t, const TrafficParams &p);
 void dress_walker(TrafficState &t, const TrafficParams &p, Pedestrian &w, PedAge age, float hp); // a body of that age and its own pace
 int alloc_walker(TrafficState &t);
 bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door);
+// A grown-up stood on the sidewalk `side` of `seg` at `arc`, walking toward the node route[0] (an end of `seg`) on the trip `route`
+// (nodes), which ends on the sidewalk `goal_side` of its last street (-1: either): a trip given, not drawn (a test's scene). -1
+// with no sidewalk or no room there.
+int walker_with_trip(CityState &s, int seg, int side, float arc, const std::vector<int> &route, int goal_side);
 
 // walker_cells.cpp: who stands near a point (TrafficState::walker_cells, spawn_cells)
 bool walker_within(CityState &s, float x, float z, float r); // somebody on foot within `r` of the point, as filed this tick

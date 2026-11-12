@@ -6,6 +6,7 @@
 // in as well as the furniture (NBR 9050; Decreto SP 59.671/2020), so a piece is moved along past the gates of its side.
 #include "sim/roads/street_furniture_internal.h"
 
+#include "sim/roads/standing_body.h"
 #include "sim/roads/street_lines.h"
 
 #include <algorithm>
@@ -22,9 +23,7 @@ constexpr uint32_t AFTER_LAMPS = furniture_bit(FurnitureKind::HYDRANT) | furnitu
 		furniture_bit(FurnitureKind::TREE);
 constexpr int MAX_BESIDE = 16; // pieces a passage check looks at across one cross-section
 constexpr int SLOT_TRIES = 64; // a piece is moved along past at most this many others before it gives up
-// Two places closer than what they need by under this are apart: a piece moved to just touch another must not find it
-// in the way again through the rounding of the sum it was moved by.
-constexpr double TOUCH_EPS_M = 1e-3;
+constexpr double TOUCH_EPS_M = BODY_ROUNDING_M; // the bodies' one rounding (standing_body.h)
 
 // The sidewalk of `sid` at the right of its way out of node `n`: the corner it faces (one per corner of the node).
 int corner_side(const RoadSegment &g, int n) { return g.a == n ? 0 : 1; }
@@ -81,13 +80,16 @@ struct Placer {
 		}
 		return moved;
 	}
-	// Moves `s` along by `dir` from where its rule wants it until no placed footprint and no gate on its side covers it.
+	// Moves `s` along by `dir` from where its rule wants it until it stands off every gate of its side and the hand's gap two pieces
+	// of the street keep (items.gap_m) clear of every placed piece of its side: never against one, edge to edge.
 	bool slot(FurnitureSpot &s, int dir) const {
+		const float gap = defs(net).items.gap_m;
 		for (int tries = 0; tries < SLOT_TRIES; tries++) {
 			bool moved = off_gates(s, dir);
 			for (const FurnitureSpot &q : all) {
-				if (q.side != s.side || std::fabs(q.u - s.u) >= q.half_u + s.half_u || std::fabs(q.v - s.v) > q.half_v + s.half_v - TOUCH_EPS_M) continue;
-				s.v = dir > 0 ? q.v + q.half_v + s.half_v : q.v - q.half_v - s.half_v;
+				const float across = q.half_u + s.half_u + gap, along = q.half_v + s.half_v + gap;
+				if (q.side != s.side || std::fabs(q.u - s.u) >= across || std::fabs(q.v - s.v) > along - TOUCH_EPS_M) continue;
+				s.v = dir > 0 ? q.v + along : q.v - along;
 				moved = true;
 			}
 			if (!moved) return s.v - s.half_v >= v0 && s.v + s.half_v <= v1;

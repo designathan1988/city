@@ -11,8 +11,8 @@ namespace traffic {
 
 float stop_room(const TrafficParams &p, float line_m) { return line_m >= p.stop_margin_m ? line_m - p.stop_margin_m : std::min(line_m, 0.f); }
 
-bool stop_is_comfortable(const CityState &s, const Vehicle &v, float stop_m) {
-	return stop_m >= 0 && v.v * v.v <= 2 * s.catalog.traffic.classes[int(v.type)].b * stop_m;
+bool stop_is_comfortable(const CityState &s, const Vehicle &v, float line_m) {
+	return line_m >= 0 && v.v * v.v <= 2 * s.catalog.traffic.classes[int(v.type)].b * line_m;
 }
 
 // How far a vehicle needs to stop the way the intergreen is timed (CONTRAN MBST vol. V 5.7.1): reacting in
@@ -32,35 +32,36 @@ float time_to_line(float v, float top, float b, float line_m) {
 } // namespace
 
 // The driver stops at the amber unless the vehicle cannot be brought to rest safely (MBST vol. V table 3.1). Whoever
-// can stop as the intergreen is timed stops. The others are what the amber is there for (5.7.1), but it only covers a
-// vehicle reaching the line before it ends: timed for the regulated speed held from the amber's first instant, it says
-// nothing of one that gets here late in it, or slower (moving off, slowing down, just out of the far model), so that
-// one must stop too, as hard as it takes, while its emergency brake can still do it.
+// can stop where it stops as the intergreen is timed stops. The others are what the amber is there for (5.7.1), but it
+// only covers a vehicle reaching its line before it ends: timed for the regulated speed held from the amber's first
+// instant, it says nothing of one that gets here late in it, or slower (moving off, slowing down, just out of the far
+// model), so that one must stop too, as hard as it takes, while its emergency brake can still keep it behind its line.
+// What it must not pass is the line, however near: within the stop margin the rule is the same. A red is an amber with
+// nothing left: nobody reaches the line before it ends.
 bool amber_stops(const TrafficParams &p, const AmberApproach &a) {
-	if (a.stop_m < 0) return false;
-	if (a.stop_m >= amber_reach(p, a.v)) return true;
-	if (a.v * a.v > 2 * a.brake_hard * a.stop_m) return false;
-	return time_to_line(a.v, std::min(a.v, a.top), a.brake, a.stop_m + p.stop_margin_m) > a.left;
+	if (a.line_m < 0) return false;
+	if (stop_room(p, a.line_m) >= amber_reach(p, a.v)) return true;
+	if (a.v * a.v > 2 * a.brake_hard * a.line_m) return false;
+	return time_to_line(a.v, std::min(a.v, a.top), a.brake, a.line_m) > a.left;
 }
 
-bool stops_at_amber(const CityState &s, const Vehicle &v, int ds, float stop_m, int ci) {
+bool light_recalls(const CityState &s, const Vehicle &v, int ds, float line_m, int ci) {
+	const Light light = light_for(s, ds);
+	if (light == Light::GREEN) return false;
+	if (light == Light::AMBER && v.amber_hold == ds) return true;
 	const VehicleClass &vc = s.catalog.traffic.classes[int(v.type)];
 	AmberApproach a;
 	a.v = v.v;
-	a.stop_m = stop_m;
+	a.line_m = line_m;
 	a.top = ci >= 0 ? turn_limit(s, v, s.traffic.g.conns[size_t(ci)], s.traffic.g.ds[size_t(ds)].stop_back) : v.v;
 	a.brake = vc.b;
 	a.brake_hard = vc.b_emergency;
-	a.left = amber_left(s, ds);
+	a.left = light == Light::AMBER ? amber_left(s, ds) : 0.f;
 	return amber_stops(s.catalog.traffic, a);
 }
 
-bool light_stops(const CityState &s, const Vehicle &v, int ds, float stop_m, int ci) {
-	switch (light_for(s, ds)) {
-		case Light::RED: return true;
-		case Light::AMBER: return v.amber_hold == ds || stops_at_amber(s, v, ds, stop_m, ci);
-		default: return false;
-	}
+bool light_stops(const CityState &s, const Vehicle &v, int ds, float line_m, int ci) {
+	return light_for(s, ds) == Light::RED || light_recalls(s, v, ds, line_m, ci);
 }
 
 LightStop lights_ahead(const CityState &s, const Vehicle &v, int ri, int lane, float start) {
@@ -85,7 +86,7 @@ LightStop lights_ahead(const CityState &s, const Vehicle &v, int ri, int lane, f
 		if (t.g.junctions[size_t(d.to)].ctl == Control::SIGNAL && !(own && (line < 0 || v.pass >= 0))) {
 			const Light l = light_for(s, ds);
 			if (l != Light::GREEN && v.amber_hold == ds) out.amber_hold = ds;
-			if (light_stops(s, v, ds, stop, ci)) {
+			if (light_stops(s, v, ds, line, ci)) {
 				if (l == Light::AMBER) out.amber_hold = ds;
 				// a line too close past a junction for the body: the stop moves back to that junction's own line
 				const bool behind = room < vc.length && back < NO_LEADER;
@@ -95,7 +96,7 @@ LightStop lights_ahead(const CityState &s, const Vehicle &v, int ri, int lane, f
 			}
 		}
 		if (ci < 0) break;
-		const bool can_back = !own || (stop >= 0 && (v.pass < 0 || stop_is_comfortable(s, v, stop)));
+		const bool can_back = !own || (line >= 0 && (v.pass < 0 || stop_is_comfortable(s, v, line)));
 		back = can_back ? stop : NO_LEADER;
 		back_own = own;
 		start += d.len + t.g.conns[size_t(ci)].len;

@@ -350,6 +350,44 @@ output. Anything less is `open`, with what failed written down. The questions co
   km24 (one sort of the walkers by cell a tick: to measure with M4), and whether the stripes' own rules should become the
   same linear bounds.
 
+### Q22. What must a vehicle do at an amber and a red when it is nearer its line than the margin a stop keeps to it, and what does a car owe somebody on a zebra between junctions? (pending items S8, S9, L3; 2026-11-12, session 2)
+
+- **Problem (before, a test's output):** `e2e` (town, seed 1, 2400 ticks on a paused map: the same run every time) failed
+  "nobody went in on red (1; 0 of them from a stand; the last: type, speed, approach, time [7.0, 1.1639, 807.0, 80.0])": a
+  lorry crawling at 1.16 m/s crossed its stop line on red. Read in the code (trace `pole-no-wires` P20): `light_rule.cpp`
+  `stop_room` gives the room to the stopping place, a margin (`stop_margin_m` 1 m) short of the line, and 0 inside that
+  margin; "can it still stop" was asked of that number, so a committed vehicle inside the last metre could never stop
+  (`v^2 <= 2 b 0` only at a stand) and went in at a red once its box was clear; the amber's rule let the same vehicle go on
+  without asking whether it reaches its line before the amber ends.
+- **Sources:** CONTRAN MBST vol. V (table 3.1: the driver stops at the amber unless it cannot be done safely; 5.7.1: the
+  intergreen), already the amber rule's source. The reference game, read whole for what it does and never for its code
+  (the owner's reminder of 2026-11-12; its signals' permission and query, the crossings' permission, the vehicles'
+  obstacles and the junctions' admission; notes in `dist/trace/pole-no-wires/rec-033.json`): it asks "can it stop" of the
+  distance to the line itself, never of a place short of it; a red holds every vehicle without a grant; a grant is taken
+  back at a light only from who can stop comfortably, and who cannot goes in, at a red too; a walker steps off by a gap
+  (the car arrives later than the critical gap and can stop comfortably); a car is refused while somebody is on the stretch
+  of the zebra its movement drives over, held with its whole body before the zebra, and goes on after. context7
+  `/godotengine/godot-cpp` (`ClassDB::bind_method`, `D_METHOD`) and `/godotengine/godot-docs` (`Object.callv`) for the
+  probes' binding.
+- **Found:** the two distances are two quantities. What must not be passed is the line; the stopping place only says where a
+  stop ends. The reference agrees on the line. This game is stricter than the reference at a red on purpose: its amber rule
+  already asks a hard stop of whoever will not reach its line before the amber ends, so a red is that rule with nothing left
+  (whoever the reference stops, this stops; and also who can only stop hard).
+- **Test (the rule in numbers, and the town):** `e2e` `_check_light_rule`, the probe `light_holds(speed, metres to the line,
+  speed at the line, amber left, class)`: before, with the probe on the old rule, "red: a crawl a step before its line
+  stops" and "amber: a crawl that does not reach its line before the amber ends stops" fail, and the town's red entry
+  stands (3 failures); after, eleven cases pass and the town reads `nobody went in on red (0; ...)`. The crossings, on a
+  scene by construction (`scene_walker`, `scene_car`, `scene_watch`): `street_crossing_test` real output `the zebra's scene:
+  held by the crossing true, its slowest 0.943, the nearest it came 9.504`, the walker on the other sidewalk, the car gone on;
+  its first form asked a stand and failed (the car reached its line at 3.8 m/s as the walker left the crosswalk): a stand is
+  a matter of timing, the rule guarantees giving way. `people_test`: the scene's walker goes over a zebra and a signalled
+  crossing (`seen on it: true, on the other sidewalk: true`), where the old check waited 45,000 ticks for a draw and failed.
+- **Steps to repeat:** `python tools/tasks/cli.py run fast e2e,street_crossing_test,people_test`.
+- **Conclusion:** one rule of the lights asked of the line (`native/src/sim/traffic/light_rule.h`); tests of what agents do at
+  a place stand on scenes made, not on the town's draws. **Status: `proven`** for the rule and the two scenes; `open`: what
+  a car owes a walker waiting at an unsignalled zebra and a committed car a walker in its way (S9), and a stop that never
+  asks more than the emergency rate (S10).
+
 ## Open questions (each becomes an entry above when researched; the pending item it serves in the last column)
 
 | Q | Question | Serves |

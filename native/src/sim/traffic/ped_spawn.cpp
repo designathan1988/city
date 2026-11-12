@@ -77,6 +77,15 @@ void at_door(const CityState &s, Pedestrian &w, const PedDoor &d) {
 	door_way_out(s, w, d);
 }
 
+// The walker made is one of the crowd from now on: its place in the list, filed where it stands, counted.
+int born(TrafficState &t, Pedestrian &w) {
+	const int id = alloc_walker(t);
+	t.peds[size_t(id)] = std::move(w);
+	walker_born(t, id);
+	t.ped_count++;
+	return id;
+}
+
 } // namespace
 
 PedAge roll_age(TrafficState &t, const TrafficParams &p) {
@@ -184,11 +193,28 @@ int ped_on_footway(CityState &s, int seg, int side, float arc) {
 	if (crowded(t, p, w.cur) || !plan_trip(s, w.dir == 0 ? g.b : g.a, route, w.goal_side)) return -1;
 	route_set(t.ped_pool, w.route, t.ped_waste, route.data(), int(route.size()));
 	enter_mode(w, PedMode::KERB);
-	const int id = alloc_walker(t);
-	t.peds[size_t(id)] = std::move(w);
-	walker_born(t, id);
-	t.ped_count++;
-	return id;
+	return born(t, w);
+}
+
+int walker_with_trip(CityState &s, int seg, int side, float arc, const std::vector<int> &route, int goal_side) {
+	TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
+	const RoadSegment &g = s.roads.segs[size_t(seg)];
+	if (route.empty() || (route[0] != g.a && route[0] != g.b) || !has_side(s.roads.profile_of(seg), side)) return -1;
+	Pedestrian w;
+	dress_walker(t, p, w, PedAge::ADULT, s.catalog.blast.walker_hp);
+	w.seg = seg;
+	w.side = side;
+	w.dir = route[0] == g.b ? 0 : 1;
+	w.s = clampf(arc, arc_lo(g), arc_hi(g));
+	on_sidewalk(w);
+	w.s = clear_arc(s, seg, side, w.s, w.u); // clear of the street furniture, as anybody born on a sidewalk
+	if (w.s > arc_hi(g)) return -1;
+	stand_on_sidewalk(s, w);
+	if (crowded(t, p, w.cur)) return -1;
+	route_set(t.ped_pool, w.route, t.ped_waste, route.data(), int(route.size()));
+	w.goal_side = goal_side;
+	return born(t, w);
 }
 
 } // namespace traffic

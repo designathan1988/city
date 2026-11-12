@@ -190,7 +190,8 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("footway_under", "at"), &CityProbes::footway_under);
 	ClassDB::bind_method(D_METHOD("people_census", "at", "radius"), &CityProbes::people_census);
 	ClassDB::bind_method(D_METHOD("walker_bodies", "at", "radius"), &CityProbes::walker_bodies);
-	ClassDB::bind_method(D_METHOD("walkers_apart", "at", "steps", "aside"),&CityProbes::walkers_apart);
+	ClassDB::bind_method(D_METHOD("walkers_apart", "at", "steps", "aside"), &CityProbes::walkers_apart);
+	ClassDB::bind_method(D_METHOD("bodies_audit"), &CityProbes::bodies_audit);
 	ClassDB::bind_method(D_METHOD("corner_ways"), &CityProbes::corner_ways);
 	ClassDB::bind_method(D_METHOD("lot_gates"), &CityProbes::lot_gates);
 	ClassDB::bind_method(D_METHOD("drive_kerbs"), &CityProbes::drive_kerbs);
@@ -203,7 +204,7 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_city_hour", "hour"), &CityProbes::set_city_hour);
 	ClassDB::bind_method(D_METHOD("people_clips"), &CityProbes::people_clips);
 	ClassDB::bind_method(D_METHOD("show_people_clip", "name"), &CityProbes::show_people_clip);
-	ClassDB::bind_method(D_METHOD("amber_stops", "v", "stop_m", "top", "left", "type"), &CityProbes::amber_stops);
+	ClassDB::bind_method(D_METHOD("light_holds", "v", "line_m", "top", "left", "type"), &CityProbes::light_holds);
 	ClassDB::bind_method(D_METHOD("amber_wanted", "kmh"), &CityProbes::amber_wanted);
 	ClassDB::bind_method(D_METHOD("job_pool_probe"), &CityProbes::job_pool_probe);
 	ClassDB::bind_method(D_METHOD("memory_churn", "mib", "keep_one_in"), &CityProbes::memory_churn);
@@ -212,6 +213,9 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("flow_push", "n", "seconds"), &CityProbes::flow_push);
 	ClassDB::bind_method(D_METHOD("flow_state", "n"), &CityProbes::flow_state);
 	ClassDB::bind_method(D_METHOD("street_watch", "near_m"), &CityProbes::street_watch);
+	ClassDB::bind_method(D_METHOD("scene_walker", "at"), &CityProbes::scene_walker);
+	ClassDB::bind_method(D_METHOD("scene_car", "walker", "metres", "speed"), &CityProbes::scene_car);
+	ClassDB::bind_method(D_METHOD("scene_watch", "walker", "look", "car"), &CityProbes::scene_watch);
 	ClassDB::bind_method(D_METHOD("probe_set_money", "money"), &CityProbes::probe_set_money);
 	ClassDB::bind_method(D_METHOD("probe_road_build", "profile", "structure", "height_a", "height_b", "len"), &CityProbes::probe_road_build);
 	ClassDB::bind_method(D_METHOD("grade_probe", "scene"), &CityProbes::grade_probe);

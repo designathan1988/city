@@ -44,7 +44,7 @@ bool may_enter(const CityState &s, int vid, int ci, float dist) {
 	// road joint (two-way node without control): no junction to block; IDM follows whoever is beyond it
 	if (is_splice(s, c.node)) return true;
 	const float line = dist - t.g.ds[c.from_ds].stop_back;
-	if (light_stops(s, me, c.from_ds, stop_room(tp, line), ci)) return false;
+	if (light_stops(s, me, c.from_ds, line, ci)) return false;
 	if (t.g.ds[c.from_ds].must_stop && me.stood_at != c.from_ds) return false; // a Stop is more than a lower rank: it is taken from a stand
 	if (!has_exit(s, c, vid)) return false;
 	const float top = top_speed(s, me, conn_speed(s, c));

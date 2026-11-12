@@ -123,14 +123,12 @@ bool gate(CityState &s, int id, int &ci, float dist, bool head, bool held, bool 
 	}
 	if (ci < 0 || t.g.conns[ci].from_lane != v.lane || dist >= p.look_ahead_m) return false;
 	if (v.pass == ci) {
-		// a commitment is taken back while the nose is still behind the line: the light went against it and it can still
-		// stop (at an amber by the amber's rule, at a red comfortably; standing behind the line it has stopped), a light past
-		// the junction stops it before it, or it stands and its exit filled meanwhile; else it goes once the box is clear, never
-		// into a junction it cannot leave nor against the light (a jammed junction's release lets its one vehicle in whatever its exit)
-		const Light light = light_for(s, v.ds);
-		const float room = stop_room(p, line);
-		const bool can_stop = light == Light::AMBER ? stops_at_amber(s, v, v.ds, room, ci) || v.amber_hold == v.ds : stop_is_comfortable(s, v, room);
-		const bool stale = held || (can_stop && light != Light::GREEN) ||
+		// a commitment is taken back while the nose is still behind the line: the light went against it and it can still be
+		// kept behind its line (light_rule.h light_recalls: the amber's rule, a red an amber with nothing left; standing behind
+		// the line it has stopped), a light past the junction stops it before it, or it stands and its exit filled meanwhile;
+		// else it goes once the box is clear, never into a junction it cannot leave nor against the light (a jammed junction's
+		// release lets its one vehicle in whatever its exit)
+		const bool stale = held || light_recalls(s, v, v.ds, line, ci) ||
 				(!released && v.v < WAIT_SPEED && !is_splice(s, t.g.conns[ci].node) && !has_exit(s, t.g.conns[ci], id));
 		if (!stale) return box_clear(s, ci, id);
 		release(s, id, ci);
@@ -197,7 +195,7 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 				// the route's turn is not reachable from this lane (a connector went, the lanes were rearranged): it drives on
 				// toward its line, which it does not cross, and its way is looked for once every lane has moved
 				retry.push_back(id);
-				l.take(std::max(0.f, dist - t.g.ds[ds].stop_back - p.stop_margin_m), 0.f);
+				l.take(std::max(0.f, stop_room(p, dist - t.g.ds[ds].stop_back)), 0.f);
 			} else {
 				onto = ci;
 				v0 = std::min(v0, turn_limit(s, v, t.g.conns[ci], dist));
@@ -210,7 +208,7 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 					fork_leads(s, ci, v, -dist, l); // a body that took another branch out of this lane, not yet clear of this one's way
 					open = gate(s, id, ci, dist, head, lights.here, released);
 					const float line = dist - t.g.ds[ds].stop_back; // the stop line is behind the crosswalk
-					if (!open && dist < p.look_ahead_m) l.take(line > -p.stop_margin_m ? std::max(0.f, line - p.stop_margin_m) : dist - p.stop_margin_m, 0.f);
+					if (!open && dist < p.look_ahead_m) l.take(line > -p.stop_margin_m ? std::max(0.f, stop_room(p, line)) : dist - p.stop_margin_m, 0.f);
 					if (v.v < WAIT_SPEED && line >= 0 && line < p.at_line_m) v.stood = true;
 				}
 			}

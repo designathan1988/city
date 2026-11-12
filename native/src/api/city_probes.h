@@ -39,6 +39,9 @@ public:
 	// in the world, how far either side of that step's line it may give way): two bodies' width, and the step each takes
 	// (city_core_crowd_probe.cpp).
 	godot::Dictionary walkers_apart(const godot::PackedVector2Array &at, const godot::PackedVector2Array &steps, const godot::PackedFloat32Array &aside) const;
+	// Tests: every piece of the street of the whole map as a body standing in the world, and every two of them nearer than the hand's
+	// gap two pieces keep, by the two kinds, with the first case of each (city_core_bodies_probe.cpp).
+	godot::Dictionary bodies_audit();
 	// Every way round a corner with no crosswalk (the whole map), walked from each place across its sidewalk: how many, how many
 	// touch a carriageway, and the first of them with the run and the node's arms and corners (city_core_people.cpp corner_case).
 	godot::Dictionary corner_ways();
@@ -64,8 +67,9 @@ public:
 	void set_city_hour(float hour); // tests: the city's clock at that hour of the day
 	godot::Array people_clips() const; // tests: the clips of people.bin
 	bool show_people_clip(const godot::String &name); // captures: everybody at rest in that clip
-	// Tests: the amber's decision for a vehicle class in numbers (traffic::amber_stops), the amber a speed in km/h asks.
-	bool amber_stops(float v, float stop_m, float top, float left, int type) const;
+	// Tests: the decision of a light gone against a vehicle of a class in numbers (traffic::amber_stops): going `v`, `line_m` before
+	// its line, which it may take at `top`, with `left` seconds of amber (none: the light is red). The amber a speed in km/h asks.
+	bool light_holds(float v, float line_m, float top, float left, int type) const;
 	float amber_wanted(float kmh) const;
 	godot::Dictionary job_pool_probe() const;
 	// Tests: the vertices and instances builders took while their thread held the map, by job lane, since the last `reset`
@@ -79,6 +83,13 @@ public:
 	godot::Dictionary flow_push(int n, int seconds); // tests: that much traffic through it, the choice applied; empty while the clock runs
 	godot::Dictionary flow_state(int n); // tests: what is measured, and the control of `n`
 	godot::Dictionary street_watch(float near_m); // tests: who is on a crossing between junctions, what stopped for them, who is turning back
+	// Tests: a scene by construction at the crossing between junctions nearest `at` (city_core_scene_probe.cpp): somebody stood on
+	// the footway before it whose trip ends on the other sidewalk past it (id -1 with no room; its look, the street and sidewalk it
+	// is bound for); a car stood on the lane into the crossing beside the kerb that walker (on the crosswalk) is crossing to, `metres`
+	// before its line at `speed` (-1 with no room); and what the two are doing now.
+	godot::Dictionary scene_walker(const godot::Vector3 &at);
+	int scene_car(int walker, float metres, float speed);
+	godot::Dictionary scene_watch(int walker, int64_t look, int car);
 	void probe_set_money(double money); // tests: a balance to reach the refusal without spending it
 	// Tests: how a road would be built and what it would cost (structure: Structure, sim/roads/road_grade.h).
 	godot::Dictionary probe_road_build(int profile, int structure, double height_a, double height_b, double len);

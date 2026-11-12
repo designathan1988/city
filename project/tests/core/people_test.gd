@@ -19,8 +19,11 @@ const MAX_CHILDREN := 0.25
 const FAR_PARTY_M := 4.0 # the two of a pair are never further apart than a few steps
 const AROUND_M := 6.0 # a pair that parted: the walkers this near each of the two are printed
 const MAX_TOUCHING := 0.01 # a stride's overlap as one turns while the other stands: not more than one pair in a hundred
-const CROSS_STEPS := 1500 # a street sees few people an hour: as long as it takes somebody to cross
-const CROSS_TICKS := 30
+const CROSS_LOOKS := 4500 # as long as a signal's cycle and a street's traffic may keep somebody at the kerb
+const CROSS_TICKS := 10 # a look twice a second: nobody is over a street between two
+const SETTLE_TICKS := 4 # the lane graph and the junction's control take the crossing
+const SIDEWALK := 0 # ped_state.h PedMode::SIDEWALK
+const NO_CAR := -1
 const NEAR_M := 150.0 # the census of the Roadcraft 4.0: 86 people within this of the camera at 16:00
 const MORE_TICKS := 9000
 const MIN_INDOORS := 0.5 # of those who arrive; the others, on a street without a door, end at the node
@@ -107,28 +110,38 @@ func _clips() -> void:
 	CityStore.query(&"show_people_clip", ["idle"])
 
 
-## People go over a crossing between junctions, a zebra and one with a signal of its own: put where walkers are, and counted while they use it.
+## Somebody goes over a crossing between junctions, a zebra and one with a signal of its own: the crossing put where walkers are, and a walker stood
+## before it whose trip ends on the other sidewalk past it (the scene's: nobody's draw decides whether anybody wants it), watched until they are there.
 func _mid_block() -> void:
 	for kind: int in [RoadPanel.CROSS_ZEBRA, RoadPanel.CROSS_SIGNAL]:
-		var made := false
+		var at: Variant = null
 		var census: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, 0.0])
 		for key: String in census.spots:
 			var seg: Dictionary = CityStore.query(&"segment_at", [census.spots[key][0]])
-			if seg.get("seg", -1) >= 0:
-				var points: Array = seg.points
-				made = CityStore.dispatch(&"add_crossing", [points[points.size() / 2], kind]).get("ok", false)
-			if made:
+			if seg.get("seg", -1) < 0:
+				continue
+			var points: Array = seg.points
+			if CityStore.dispatch(&"add_crossing", [points[points.size() / 2], kind]).get("ok", false):
+				at = points[points.size() / 2]
 				break
-		check(made, "a mid-block crossing where there are people, kind %d" % kind)
-		var crossed := 0
-		var waited := 0
-		for i in CROSS_STEPS:
-			ticks(CROSS_TICKS)
-			var now: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, 0.0])
-			crossed = maxi(crossed, now.mid_crossing)
-			waited = maxi(waited, now.mid_waiting)
-			if crossed > 0:
-				break
-		print("crossing kind ", kind, ": crossing ", crossed, " waiting ", waited)
-		check(crossed > 0, "nobody used the mid-block crossing, kind %d (waiting: %d)" % [kind, waited])
+		if not check(at != null, "a mid-block crossing where there are people, kind %d" % kind):
+			continue
+		ticks(SETTLE_TICKS)
+		var walker: Dictionary = CityStore.query(&"scene_walker", [at])
+		if check(int(walker.id) >= 0, "somebody stands before it, bound for the other sidewalk, kind %d" % kind):
+			var stepped := false
+			var across := false
+			var now := {}
+			for i in CROSS_LOOKS:
+				ticks(CROSS_TICKS)
+				now = CityStore.query(&"scene_watch", [walker.id, walker.look, NO_CAR])
+				if not now.walker:
+					break
+				stepped = stepped or now.crossing
+				across = int(now.mode) == SIDEWALK and int(now.seg) == int(walker.goal_seg) and int(now.side) == int(walker.goal_side)
+				if across:
+					break
+			var mid: Dictionary = CityStore.query(&"people_census", [Vector3.ZERO, 0.0])
+			print("crossing kind ", kind, ": the walker ", now, "; in the town on one ", mid.mid_crossing, ", waiting at one ", mid.mid_waiting)
+			check(stepped and across, "who wants the other sidewalk goes over the mid-block crossing, kind %d (seen on it: %s, on the other sidewalk: %s)" % [kind, stepped, across])
 		CityStore.dispatch(&"undo")

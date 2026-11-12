@@ -1,5 +1,6 @@
-## The street's two gestures of the Inspector, seen working in traffic: a car stops for who is on a zebra between junctions and never reaches them, and a car
-## turns back through the opening of a median. Run: godot --path project res://tests/core/street_crossing_test.tscn -- --no-flow
+## The street's two gestures of the Inspector, seen working in traffic: a car gives way to who is on a zebra between junctions and never reaches them (a
+## scene of its own: a street, a zebra, somebody bound for the other sidewalk and a car coming while they are on it), and a car turns back through the
+## opening of a median. Run: godot --path project res://tests/core/street_crossing_test.tscn -- --no-flow
 extends TestCase
 
 const TOWN_MAP := 0
@@ -11,16 +12,27 @@ const NEAR_M := 14.0
 const CLEAR_M := 1.5 # the middle of a car to the middle of a walker: under this they touch
 const STEPS := 4000
 const TICKS := 4
-const BUSY_STREETS := 6
 const OPENINGS := 10
+const STREET_HALF_M := 150.0
+const PX := 0.25 # metres a pixel the road tool snaps by (road_commands_test.gd)
+const SETTLE_TICKS := 4 # the lane graph and the junction's control take what was built
+const SCENE_TICKS := 2400 # two minutes of the clock: the most any step of the scene takes
+const CAR_MS := 8.0
+const CAR_M := 15.0 # half as far again as a comfortable stop from CAR_MS takes (traffic.json classes, sedan: b 2,9): it can stop, and gets there before anybody is across
+const STREET_LANES := 2
+const SIDEWALKS := 2
+const HOLD_CROSSING := 8 # lane_graph_types.h Hold::CROSSING
+const SIDEWALK := 0 # ped_state.h PedMode::SIDEWALK
+const EVERYBODY := 1.0 # the Optimisations tab's share of the fleet and the walkers: all of them again after the scene
+const NO_CAR := -1
 
 func _ready() -> void:
 	if not boot():
 		finish()
 		return
+	_zebra()
 	new_map(TOWN_MAP, SEED, true)
 	ticks(WARM_TICKS)
-	_zebras()
 	_openings()
 	finish()
 
@@ -33,35 +45,71 @@ func _middle_of(at: Vector3) -> Variant:
 	return points[points.size() / 2]
 
 
-## Zebras on the streets with cars on them, the camera's window over the town.
-func _zebras() -> void:
-	var sample: Array = CityStore.query(&"traffic_probe", [SAMPLE]).sample
-	var made := 0
-	for p: Vector3 in sample:
-		var at: Variant = _middle_of(p)
-		if at != null and CityStore.dispatch(&"add_crossing", [at, ZEBRA]).get("ok", false):
-			made += 1
-		if made == BUSY_STREETS:
+## The first profile of a street with a lane each way, a sidewalk each side and no median.
+func _two_way_street() -> int:
+	for p: Dictionary in CityStore.query(&"road_profiles"):
+		var kinds := {}
+		for strip: Dictionary in p.strips:
+			kinds[strip.kind] = int(kinds.get(strip.kind, 0)) + 1
+		if not p.one_way and not p.rail and not p.ring and int(p.lanes) == STREET_LANES and int(kinds.get("sidewalk", 0)) == SIDEWALKS and not kinds.has("median"):
+			return p.index
+	return -1
+
+
+## The scene stepped tick by tick until `done` says so of what it shows, SCENE_TICKS at most: what it shows then.
+func _until(walker: Dictionary, car: int, done: Callable) -> Dictionary:
+	var now: Dictionary = CityStore.query(&"scene_watch", [walker.id, walker.look, car])
+	for i in SCENE_TICKS:
+		if done.call(now):
 			break
-	check(made > 0, "crossings put on streets with cars: %d" % made)
-	var crossers := 0
-	var near := 0
-	var held := 0
+		ticks(1)
+		now = CityStore.query(&"scene_watch", [walker.id, walker.look, car])
+	return now
+
+
+## A zebra on a street of its own, with nobody else on it: somebody bound for the other sidewalk steps onto it; a car is then stood on the lane beside
+## the kerb they are going to, where it can still stop and gets there before they are across.
+func _zebra() -> void:
+	new_map(TOWN_MAP, SEED, false)
+	CityStore.dispatch(&"set_population", [0.0])
+	var profile := _two_way_street()
+	var built: Dictionary = CityStore.dispatch(&"build_road", [Vector3(-STREET_HALF_M, 0, 0), Vector3(STREET_HALF_M, 0, 0), false, Vector3.ZERO, profile, PX])
+	var street: bool = profile >= 0 and built.get("ok", false) and CityStore.dispatch(&"add_crossing", [Vector3.ZERO, ZEBRA]).get("ok", false)
+	ticks(SETTLE_TICKS)
+	var walker: Dictionary = CityStore.query(&"scene_walker", [Vector3.ZERO]) if street else {"id": -1}
+	if check(street and int(walker.id) >= 0, "a street with a zebra at its middle, and somebody before it bound for the other sidewalk (profile %d, %s)" % [profile, built]):
+		_car_gives_way(walker)
+	CityStore.dispatch(&"set_population", [EVERYBODY])
+
+
+func _car_gives_way(walker: Dictionary) -> void:
+	var now := _until(walker, NO_CAR, func(w: Dictionary) -> bool: return not w.walker or w.crossing)
+	if not check(now.walker and now.crossing, "they step onto the zebra"):
+		return
+	var car: int = CityStore.query(&"scene_car", [walker.id, CAR_M, CAR_MS])
+	if not check(car >= 0, "a car comes on the lane beside the kerb they are going to, %.0f m before its line at %.0f m/s" % [CAR_M, CAR_MS]):
+		return
+	# giving way is braking for them, to a stand only when they are still in its way as it gets to its line: what is asked is that the
+	# crossing holds it at its line (the reason the game itself gives), that it slows, and that it never reaches them
+	var refused := false
+	var slowest := CAR_MS
 	var closest := INF
-	for i in STEPS:
-		ticks(TICKS)
-		var w: Dictionary = CityStore.query(&"street_watch", [NEAR_M])
-		crossers = maxi(crossers, w.crossers)
-		near += w.near
-		held += w.held
-		closest = minf(closest, w.closest_m)
-		if near > 0 and held > 0 and i * TICKS > WARM_TICKS:
+	for i in SCENE_TICKS:
+		ticks(1)
+		now = CityStore.query(&"scene_watch", [walker.id, walker.look, car])
+		if not now.walker or not now.crossing:
 			break
-	print("on the crossing ", crossers, " cars near ", near, " stopped ", held, " the nearest ", closest)
-	check(crossers > 0, "people cross")
-	check(near > 0, "with a car coming")
-	check(held > 0, "a car stops for who crosses")
+		if now.car:
+			closest = minf(closest, now.apart_m)
+			slowest = minf(slowest, now.speed)
+			refused = refused or (int(now.ds) >= 0 and int(now.hold) == HOLD_CROSSING)
+	print("the zebra's scene: held by the crossing ", refused, ", its slowest ", slowest, ", the nearest it came ", closest, ", at the end ", now)
+	check(refused and slowest < CAR_MS, "a car gives way to who crosses: held at its line by the crossing, slowed from %.0f to %.1f m/s" % [CAR_MS, slowest])
 	check(closest >= CLEAR_M, "no car reaches who is on the crossing (%.2f m)" % closest)
+	now = _until(walker, car, func(w: Dictionary) -> bool: return not w.walker or int(w.mode) == SIDEWALK)
+	check(now.walker and int(now.seg) == int(walker.goal_seg) and int(now.side) == int(walker.goal_side), "they reach the other sidewalk")
+	now = _until(walker, car, func(w: Dictionary) -> bool: return not w.car or int(w.ds) < 0)
+	check(not now.car or int(now.ds) < 0, "the car goes on once they are across")
 
 
 ## Openings along the avenues, and somebody using one.

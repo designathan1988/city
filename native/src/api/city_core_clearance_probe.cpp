@@ -281,12 +281,12 @@ bool CityProbes::footway_under(const Vector3 &at) {
 	return on_footway(state_->roads, at.x, at.z);
 }
 
-bool CityProbes::amber_stops(float v, float stop_m, float top, float left, int type) const {
+bool CityProbes::light_holds(float v, float line_m, float top, float left, int type) const {
 	const TrafficParams &p = state_->catalog.traffic;
 	const VehicleClass &vc = p.classes[size_t(type)];
 	traffic::AmberApproach a;
 	a.v = v;
-	a.stop_m = stop_m;
+	a.line_m = line_m;
 	a.top = top;
 	a.brake = vc.b;
 	a.brake_hard = vc.b_emergency;

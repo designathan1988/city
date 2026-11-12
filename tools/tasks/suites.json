@@ -308,6 +308,7 @@
     {"name": "junction_sweep_test", "scene": "tests/core/junction_sweep_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "walker_motion_test", "scene": "tests/core/walker_motion_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "walker_apart_test", "scene": "tests/core/walker_apart_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "bodies_audit_test", "scene": "tests/core/bodies_audit_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "window_traffic_test", "scene": "tests/core/window_traffic_test", "renderer": "gl_compatibility", "resources": {"cores": 12}, "timeout_s": 600},
     {"name": "strike_test", "scene": "tests/core/strike_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "shoot_test", "scene": "tests/core/shoot_test", "renderer": "gl_compatibility", "timeout_s": 600},

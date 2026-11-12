@@ -162,6 +162,25 @@ int new_vehicle(CityState &s, VehicleType type, uint8_t paint) {
 	return id;
 }
 
+int vehicle_on_lane(CityState &s, VehicleType type, int ds, int lane, float at, float speed, const std::vector<int> &route) {
+	TrafficState &t = s.traffic;
+	const VehicleClass &vc = s.catalog.traffic.classes[int(type)];
+	const int key = ds * MAX_LANES + lane;
+	if (route.size() < 2 || route[0] != ds || at < vc.length || !lane_free(s, key, at, vc.length)) return -1;
+	if (stretch_held(t, key, at - vc.length - vc.min_gap, at + vc.min_gap)) return -1;
+	const int id = new_vehicle(s, type, 0);
+	Vehicle &v = t.vehicles[size_t(id)];
+	v.ds = ds;
+	v.lane = lane;
+	v.s = at;
+	v.v = speed;
+	route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
+	v.goal_s = t.g.ds[size_t(route.back())].len * GOAL_HI;
+	micro_add(t, id);
+	lane_add(s, key, id);
+	return id;
+}
+
 void free_vehicle(TrafficState &t, int id) {
 	Vehicle &v = t.vehicles[size_t(id)];
 	t.route_waste += size_t(v.route.cap);

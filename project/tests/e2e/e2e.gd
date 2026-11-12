@@ -12,6 +12,9 @@ const MIN_DRAWN_VEHICLES := 1
 const MIN_DRAWN_PEOPLE := 1
 const LENSES_PER_POST := 2
 const SUV := 2 # traffic.json classes: b 2,8 and b_emergency 5,8 m/s²
+const TRUCK := 7 # b 2,8 and b_emergency 4,4 m/s²
+const RED := 0.0 # s of amber left: the light is red
+const CRAWL_MS := 1.16 # the lorry the town saw go in on red, a step before its line
 const NO_TURN := 1000.0 # m/s: no limit at the line
 const TURN_MS := 6.11 # turn_speed_kmh in m/s
 const AMBER_EPS_S := 0.01
@@ -49,8 +52,9 @@ func _ready() -> void:
 	# every signal post near the camera lights its car lens and its walkers' lens from the lights the simulation published
 	print("signals: ", probe.signals, ", lenses lit ", probe.drawn_signal_lenses)
 	check(int(probe.signals) == 0 or int(probe.drawn_signal_lenses) >= LENSES_PER_POST, "signal lenses lit")
-	check(int(probe.red_entries) == 0, "nobody went in on red (%d)" % probe.red_entries)
-	_check_amber_rule()
+	check(int(probe.red_entries) == 0, "nobody went in on red (%d; %d of them from a stand; the last: type, speed, approach, time %s)" % [
+			probe.red_entries, probe.red_from_stop, probe.red_last])
+	_check_light_rule()
 	# from high up the eye stands past the city's edge: the walkers stay where the camera looks
 	cam.look_at_from_position(HIGH_EYE, Vector3.ZERO)
 	await _frames(5)
@@ -60,15 +64,22 @@ func _ready() -> void:
 	finish()
 
 
-## The amber's decision (light_rule.cpp) in numbers: speed, metres to where it stops, speed at the line, amber left.
-func _check_amber_rule() -> void:
-	check(CityStore.query(&"amber_stops", [10.0, 30.0, NO_TURN, 4.0, SUV]), "amber: who can stop as the intergreen supposes stops")
-	check(not CityStore.query(&"amber_stops", [16.67, 50.0, NO_TURN, 4.0, SUV]), "amber: who does not stop and reaches the line goes on")
+## The decision of a light gone against a vehicle (light_rule.cpp) in numbers: speed, metres to its line, speed at the line,
+## amber left (none: the light is red), class.
+func _check_light_rule() -> void:
+	check(CityStore.query(&"light_holds", [10.0, 31.0, NO_TURN, 4.0, SUV]), "amber: who can stop as the intergreen supposes stops")
+	check(not CityStore.query(&"light_holds", [16.67, 51.0, NO_TURN, 4.0, SUV]), "amber: who does not stop and reaches the line goes on")
 	# just out of the far model near the line, as the soak saw it: slow enough to stop, the amber nearly over
-	check(CityStore.query(&"amber_stops", [7.32, 9.57, NO_TURN, 0.1, SUV]), "amber: who does not reach the line in time stops")
-	check(not CityStore.query(&"amber_stops", [14.0, 40.0, NO_TURN, 3.5, SUV]), "amber: straight on arrives in time")
-	check(CityStore.query(&"amber_stops", [14.0, 40.0, TURN_MS, 3.5, SUV]), "amber: braking for the turn it does not arrive and stops")
-	check(not CityStore.query(&"amber_stops", [14.0, 10.0, NO_TURN, 0.1, SUV]), "amber: who not even an emergency stops goes on")
+	check(CityStore.query(&"light_holds", [7.32, 10.57, NO_TURN, 0.1, SUV]), "amber: who does not reach the line in time stops")
+	check(not CityStore.query(&"light_holds", [14.0, 41.0, NO_TURN, 3.5, SUV]), "amber: straight on arrives in time")
+	check(CityStore.query(&"light_holds", [14.0, 41.0, TURN_MS, 3.5, SUV]), "amber: braking for the turn it does not arrive and stops")
+	check(not CityStore.query(&"light_holds", [14.0, 11.0, NO_TURN, 0.1, SUV]), "amber: who not even an emergency stops goes on")
+	# nearer its line than the margin a stop keeps to it: the line is what it must not pass
+	check(CityStore.query(&"light_holds", [CRAWL_MS, 0.25, NO_TURN, RED, TRUCK]), "red: a crawl a step before its line stops")
+	check(CityStore.query(&"light_holds", [CRAWL_MS, 0.25, NO_TURN, 0.1, TRUCK]), "amber: a crawl that does not reach its line before the amber ends stops")
+	check(not CityStore.query(&"light_holds", [CRAWL_MS, 0.25, NO_TURN, 2.0, TRUCK]), "amber: a crawl that reaches its line in time goes on")
+	check(not CityStore.query(&"light_holds", [CRAWL_MS, 0.1, NO_TURN, RED, TRUCK]), "red: who not even an emergency keeps behind its line goes on")
+	check(CityStore.query(&"light_holds", [0.0, 0.5, NO_TURN, RED, TRUCK]), "red: who stands behind its line stays")
 	check(absf(CityStore.query(&"amber_wanted", [60.0]) - 4.0) < AMBER_EPS_S, "4 s of amber at 60 km/h (MBST vol. V 5.7.1)")
 	check(absf(CityStore.query(&"amber_wanted", [70.0]) - 5.0) < AMBER_EPS_S, "5 s of amber at 70 km/h")
 
