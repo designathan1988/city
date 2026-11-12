@@ -227,6 +227,37 @@ output. Anything less is `open`, with what failed written down. The questions co
   Q5. **Status: `proven`** for the mechanism in isolation; `open` for the game itself (a teardown that leaves nothing, the
   time to carry and rebuild the town and km24, Terrain3D across it, and the scripts, shaders and data reloaded in place).
 
+### Q5. Which sources give the process's GPU, memory and CPU live, from outside it? (pending item T2; 2026-11-12, session 2)
+
+- **Problem (before):** the in-game readings (F7, F9, Shift+F9) live in the window; the budgets are of the whole process
+  (GPU use, video memory, RAM, CPU by thread), which the engine's own monitors do not give.
+- **Searches:** the machine's own counters (`Get-Counter -ListSet 'GPU*'`: `GPU Engine`, `GPU Process Memory`); context7
+  `/godotengine/godot-docs` `class_renderingserver.rst` (`RENDERING_INFO_VIDEO_MEM_USED`: what the renderer tracks, "always
+  greater than the sum of texture and buffer memory").
+- **Test:** `dist/research/q5/` (`proj/`: the Q2 scene rendering hidden for 24 s, printing its PID; `run.py <gpu index>`
+  samples by PID from another process five times: PDH `\GPU Engine(pid_N_*)\Utilization Percentage`,
+  `\GPU Process Memory(pid_N_*)\Dedicated Usage` and `Shared Usage`, the working set and each thread's processor time).
+  Real output (`python run.py 0`):
+
+  ```
+  [0] sample_ms=1775 gpu_engines: ..._eng_0_engtype_3d=71.7 | dedicated_mb=340 shared_mb=109 | ws_mb=501 cpu_s=2.1 threads=55 top_thread_ms: t24932=1406 t20156=281 ...
+  [2] sample_ms=1475 gpu_engines: ..._eng_0_engtype_3d=73.8 | dedicated_mb=340 shared_mb=109 | ws_mb=501 cpu_s=6.9 threads=55 top_thread_ms: t24932=3328 t20156=3109 ...
+  [4] sample_ms=1476 gpu_engines: ..._eng_0_engtype_3d=53.1 | dedicated_mb=340 shared_mb=109 | ws_mb=502 cpu_s=12.7 threads=55 top_thread_ms: t20156=6109 t24932=6031 ...
+  engine: pid=6828 static_mb=56
+  engine: gpu_ms p50=1.14 p90=1.36 | frame_ms p50=1.19 p90=1.39 | video_mb=109
+  ```
+- **Found:** (1) the operating system gives, by PID and with nothing compiled into the game: the GPU's 3D engine use, the
+  dedicated and shared GPU memory, the working set, the CPU time of every thread. (2) **The engine's own numbers understate
+  the budgets' quantities**: video memory 109 MB by `RENDERING_INFO_VIDEO_MEM_USED` against 340 MB dedicated on the card;
+  static memory 56 MB against a 501 MB working set. A budget of memory checked on the engine's monitors would pass a game
+  that fails on a real 8 GB machine: the measures of `log/specification.md` (video 2.0 to 2.8 GB at km24) are the engine's
+  and must be taken again by PID. (3) A PowerShell `Get-Counter` sample costs about 1.5 s: fine for a measure's summary, too
+  slow for a live monitor, which must query PDH natively (`pdh.dll`: `PdhOpenQuery`, `PdhAddEnglishCounter`,
+  `PdhCollectQueryData`, milliseconds a sample) from the supervisor, outside the game, so the game pays nothing.
+- **Status: `proven`** for the sources and for what they change in the budgets' measure; `open` for the native sampler's cost,
+  for GPU time by pass and lock waits (inside the game: `RenderingServer` measured times, the core's own stamps), and for
+  Tracy (whether the engine's zones are worth an engine build, now that Q4 shows the reload does not need one).
+
 ## Open questions (each becomes an entry above when researched; the pending item it serves in the last column)
 
 | Q | Question | Serves |
