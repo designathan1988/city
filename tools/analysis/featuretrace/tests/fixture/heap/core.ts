@@ -46,3 +46,18 @@ export function computedAlias(k: string) {
 }
 
 export function literalRead() { const o = { k: new Box() }; return o.k; }
+export function indexKeepsNamesApart() {
+  const o: any = { name: new Box() };
+  for (let i = 0; i < 2; i++) o[i] = new Tile();
+  return o.name;
+}
+export function indexReadBack() {
+  const o: any = {};
+  for (let i = 0; i < 2; i++) o[i] = new Tile();
+  return o["0"];
+}
+export function textKeyMayNameAny(k: string) {
+  const o: any = { name: new Box() };
+  o[k] = new Tile();
+  return o.name;
+}

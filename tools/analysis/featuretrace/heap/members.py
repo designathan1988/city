@@ -10,9 +10,11 @@ setter its class declares. A read through a key no text names reads every proper
 from __future__ import annotations
 
 from ..js_transfer import chain
-from ..languages import GETTER, PROTOTYPE, PROTOTYPE_CONSTRUCTOR, SETTER
+from ..languages import GETTER, PROTOTYPE, PROTOTYPE_CONSTRUCTOR, SETTER, canonical_numeric
+from ..solver import BIGINT, NUMBER
+from ..truth import KINDS
 from ..model import STATE_KINDS
-from ..vocab import (CALL, ELEMENTS_FIELD, READ, SITE_CLASS, SITE_DECLARED, SITE_LITERAL, SITE_MODULE,
+from ..vocab import (CALL, ELEMENTS_FIELD, READ, SITE_CLASS, SITE_DECLARED, SITE_KEY, SITE_LITERAL, SITE_MODULE,
                      SITE_PRIMITIVE, SITE_PROTOTYPE, SITE_UNKNOWN, WRITE)
 
 from . import contexts, names, typesys, values  # noqa: E402  (they read members: imported once it is defined)
@@ -20,6 +22,7 @@ from . import contexts, names, typesys, values  # noqa: E402  (they read members
 ALL, ACCESSOR, PROTOTYPES, PROPERTY = 9, 11, 12, 13    # nodes: every property of one object; an accessor's call; a
                                                      # prototype; a site: a declared property's
 KEEP_NOTHING = (SITE_PRIMITIVE, SITE_UNKNOWN)          # the kinds of value no property written to is kept on
+INDEX_KINDS = (KINDS[NUMBER], KINDS[BIGINT])          # a key of these kinds names an index (ToPropertyKey)
 
 
 def read(an, target, obj: int, name: str) -> None:
@@ -53,6 +56,8 @@ def read(an, target, obj: int, name: str) -> None:
         an.solver.add(target, [maker if maker is not None else an.objects.make(SITE_CLASS, key)])
     statics(an, target, obj, name)
     an.solver.follow(field(an, obj, name), target)
+    if canonical_numeric(name):                   # an index named by its text: the elements
+        an.solver.follow(field(an, obj, ELEMENTS_FIELD), target)
     an.solver.follow(an.any_field(obj), target)
 
 
@@ -165,7 +170,36 @@ def write(an, source, obj: int, name: str) -> None:
         setter = ix.units[gid].runs(SETTER, None) if ix.units[gid].kind in STATE_KINDS else None
         if setter is not None:
             accessor(an, (ACCESSOR, obj, -gid), obj, ix.units[gid], setter, [source])
-    an.solver.follow(source, field(an, obj, name))
+    an.solver.follow(source, field(an, obj, ELEMENTS_FIELD if canonical_numeric(name) else name))
+
+
+def is_index(an, key: int) -> bool:
+    """Whether a key value names an index: a number or a BigInt (ECMA-262 ToPropertyKey: Number::toString gives a
+    canonical numeric string, never a name a property is read by)."""
+    return an.objects.kind(key) == SITE_PRIMITIVE and an.objects.keys[key][1] in INDEX_KINDS
+
+
+def store_by_key(an, source, obj: int, key: int) -> None:
+    """`obj[k] = value` for one value of k whose text is not known: an index puts it in the elements; any other key
+    may name any property: the elements and the dictionary part."""
+    if an.objects.kind(obj) in KEEP_NOTHING:
+        return
+    an.solver.follow(source, field(an, obj, ELEMENTS_FIELD))
+    if not is_index(an, key):
+        an.solver.follow(source, an.any_field(obj))
+
+
+def load_by_key(an, target, obj: int, key: int) -> None:
+    """`obj[k]` for one value of k whose text is not known: an index reads the elements; a key enumerating this same
+    object (`for...in`) every property of it; any other key, the object as a dictionary (`read_all`)."""
+    if an.objects.kind(obj) in KEEP_NOTHING:
+        return
+    if is_index(an, key):
+        an.solver.follow(field(an, obj, ELEMENTS_FIELD), target)
+        return
+    if an.objects.kind(key) == SITE_KEY and an.objects.keys[key][1] == obj:
+        an.solver.follow(every(an, obj), target)
+    read_all(an, target, obj)
 
 
 def declared(an, obj: int, name: str) -> list[int]:

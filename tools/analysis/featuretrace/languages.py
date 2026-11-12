@@ -3,6 +3,9 @@
 """
 from __future__ import annotations
 
+import math
+from decimal import Decimal
+
 from .js_class import ACCESSORS
 from .js_config import JSX_OPTIONS
 from .js_sigs import ARRAY, CALL_MEMBER, CONSTRUCT_MEMBER
@@ -54,3 +57,40 @@ JSX_NAMESPACE = "JSX"
 JSX_CHILDREN_ATTRIBUTE = "ElementChildrenAttribute"
 # A position typed by what every object or every function is constrains nothing of where a value goes.
 OPEN_INTRINSICS = (SITE_LITERAL, SITE_FUNCTION)
+
+
+def canonical_numeric(text: str) -> bool:
+    """Whether a property key is a canonical numeric string (ECMA-262 CanonicalNumericIndexString): one a Number turned
+    into a key gives, so that a key computed from a number names it and no other (ToPropertyKey: Number::toString)."""
+    if text == "-0":
+        return True
+    try:
+        value = float(text)
+    except ValueError:
+        return False
+    return number_string(value) == text
+
+
+def number_string(value: float) -> str:
+    """ECMA-262 Number::toString(value) in radix 10: the shortest digits that give the value back, written plainly from
+    1e-6 up to 1e21 and with an exponent outside."""
+    if math.isnan(value):
+        return "NaN"
+    if value == 0:
+        return "0"
+    if value < 0:
+        return "-" + number_string(-value)
+    if math.isinf(value):
+        return "Infinity"
+    sign, digits, exponent = Decimal(repr(value)).normalize().as_tuple()
+    text, k = "".join(map(str, digits)), len(digits)
+    n = exponent + k                                     # the value is 0.digits x 10^n
+    if k <= n <= 21:
+        return text + "0" * (n - k)
+    if 0 < n <= 21:
+        return text[:n] + "." + text[n:]
+    if -6 < n <= 0:
+        return "0." + "0" * -n + text
+    e = n - 1
+    mantissa = text if k == 1 else text[0] + "." + text[1:]
+    return f"{mantissa}e{'+' if e > 0 else '-'}{abs(e)}"

@@ -38,6 +38,11 @@ class HeapCore(HeapCase):
         found = self.returned("computedAlias")
         self.assertTrue(any(v.startswith("new:") and "Tile" in v for v in found), found)
 
+    def test_a_number_key_names_an_index_never_a_named_property(self):
+        self.assertEqual({"Box"}, self.classes("indexKeepsNamesApart"))   # ECMA-262 ToPropertyKey
+        self.assertEqual({"Tile"}, self.classes("indexReadBack"))         # "0" is a canonical numeric index
+        self.assertEqual({"Box", "Tile"}, self.classes("textKeyMayNameAny"))  # a text may name any property
+
     def test_an_object_literal_property(self):
         found = self.returned("literalRead")
         self.assertTrue(any(v.startswith("new:") and "Box" in v for v in found), found)

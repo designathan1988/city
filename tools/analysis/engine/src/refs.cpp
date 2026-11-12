@@ -45,7 +45,8 @@ void store(Analysis& an, const UnitRec& unit, const RefRec& ref, Value ctx) {
     an.node(ref.key, unit, ctx);
     Value known = texts::of(an, ref.key, unit);
     an.subscribe(an.node(ref.base, unit, ctx), an.tuple({an.V.STORE, I(unit.gid), I(ref.line), ctx}),
-                 an.tuple({an.V.STORE}), pack(an, kStoreByObject, {value, known, I(unit.gid), I(ref.line), ctx}));
+                 an.tuple({an.V.STORE}), pack(an, kStoreByObject, {value, known, I(unit.gid), I(ref.line), ctx,
+                                                                an.node(ref.key, unit, ctx)}));
 }
 
 void read(Analysis& an, const UnitRec& unit, const RefRec& ref, Value ctx) {

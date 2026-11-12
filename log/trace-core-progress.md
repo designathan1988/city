@@ -50,3 +50,4 @@ Task E3-E5: Ruling: three merges against ECMA-262 fixed in both cores (log/trace
 Task E6: open — the lab does not converge in 150 s with or without contexts (F19, F21); selective contexts next.
 Task E6: Ruling: the sampler's failure on a system module is fixed at its cause (pe_debug.py reads the module's CodeView record; a .pdb that is nowhere means no debug information here), not by catching the symbolizer's error — cost if wrong: a module whose .pdb sits on a symbol server is named by offset.
 Task E6: Ruling: a declared function is never run (no context, parameters or result of its own; never an entry): its call is its link and what its declaration says — exact, as nothing read those nodes — cost if wrong: none.
+Task E6: Ruling: number keys name indexes in both cores (ECMA-262 ToPropertyKey; F25) — cost if wrong: a property named by a number's text and read by that name is still found (canonical numeric names are indexes too).

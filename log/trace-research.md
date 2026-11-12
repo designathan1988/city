@@ -378,3 +378,13 @@ official declarations only, converging (finite, fast enough to run in seconds to
   2. contexts for every function: 127 k runs; the literature's answer (Zipper, introspective analysis) is contexts only
      where values flow from parameters to results or into other parameters' fields, measured on the lab;
   3. the engine's constant factors (making key terms, allocation; an SCC collapse of copy cycles, Hardekopf & Lin).
+
+### F25. A number names an index (P1) — 2026-11-12 04:40
+- Both cores: a store or a read by a key whose text is not known goes by what each value of the key is (ECMA-262
+  ToPropertyKey): a number or a BigInt names an index (the elements only), a key enumerating the same object every
+  member, any other key the elements and the dictionary part; a name that is a canonical numeric string
+  (CanonicalNumericIndexString, Number::toString: languages.canonical_numeric) is an index too, read and written in the
+  elements. The engine gets those names from the input (`numeric_names`), the rule's one owner being Python.
+- Test: test_a_number_key_names_an_index_never_a_named_property (red on both cores before, green after); 439 tests.
+- The lab with contexts: 60.8 M items in 142 s, 8.7 M nodes, 838 k objects, 355.5 k links, the queue 120-210 k: not
+  converged in 150 s. The dictionary part is not the main cost any more; contexts for every function are (F24, item 2).

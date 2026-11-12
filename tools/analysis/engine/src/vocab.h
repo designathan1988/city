@@ -47,7 +47,7 @@ namespace ftengine {
     X(FIELD, "heap.analysis.FIELD") X(INITIAL, "heap.analysis.INITIAL") X(INSTANCES, "heap.analysis.INSTANCES")      \
     X(MADE_BY_CALL, "heap.analysis.MADE_BY_CALL") X(CONSTRUCTED, "heap.trees.CONSTRUCTED")                           \
     X(WRITTEN, "heap.refs.WRITTEN") X(ESCAPE, "heap.refs.ESCAPE") X(ALL, "heap.members.ALL") X(ACCESSOR, "heap.members.ACCESSOR")                  \
-    X(PROTOTYPES, "heap.members.PROTOTYPES") X(PROPERTY, "heap.members.PROPERTY")                                    \
+    X(PROTOTYPES, "heap.members.PROTOTYPES") X(PROPERTY, "heap.members.PROPERTY") X(INDEX_KINDS, "heap.members.INDEX_KINDS")                                    \
     X(PRODUCED, "heap.values.PRODUCED") X(CONSUMED, "heap.values.CONSUMED") X(OWN_PLACE, "heap.values.OWN_PLACE")    \
     X(RESULT, "heap.values.RESULT") X(V_MEMBER, "heap.values.MEMBER") X(BOUND, "heap.values.BOUND")                  \
     X(CALLBACK, "heap.declared.CALLBACK") X(CALLBACK_SITE, "heap.declared.CALLBACK_SITE")                            \

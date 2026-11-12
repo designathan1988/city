@@ -218,6 +218,7 @@ void decode(Value root, Input& in) {
         auto r = seq(s, row);
         in.literals[r[0].bits()] = list(s, r[1]);
     }
+    for (Value name : seq(s, part(s, root, "numeric_names"))) in.numeric_names.insert(name.bits());
     Value module_unit = in.vocab("js_read.MODULE_UNIT");
     for (const UnitRec& u : in.units) {
         if (u.name == module_unit) in.module_units[u.file.bits()].push_back(u.gid);

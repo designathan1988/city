@@ -79,8 +79,9 @@ def wire(an, node, tree, unit, ctx) -> None:
 
 
 def wire_index(an, node, tree, unit, ctx) -> None:
-    """`o[k]`: the property each text k can have names (`texts`); where its texts are not known, the object as a
-    dictionary (`members.read_all`), and every named member where k is a key enumerating that same object gave."""
+    """`o[k]`: the property each text k can have names (`texts`); where its texts are not known, what each value of k
+    names (`members.load_by_key`: an index the elements, a key enumerating that same object every member, any other
+    key the object as a dictionary)."""
     key = an.node(tree[2], unit, ctx)
     known = texts.of(an, tree[2], unit)
     solver = an.solver
@@ -91,10 +92,8 @@ def wire_index(an, node, tree, unit, ctx) -> None:
                 for text in known:
                     members.read(an, target, o, text)
                 continue
-            members.read_all(an, target, o)
             solver.subscribe(key, target, (INDEX, o), lambda t, keys, o=o: [
-                solver.follow(members.every(an, o), t) for k in keys
-                if an.objects.kind(k) == SITE_KEY and an.objects.keys[k][1] == o])
+                members.load_by_key(an, t, o, k) for k in keys])
     solver.subscribe(an.node(tree[1], unit, ctx), node, (INDEX,), by_object)
 
 

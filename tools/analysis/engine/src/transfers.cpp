@@ -36,10 +36,10 @@ void index_by_object(Analysis& an, Value t, const Captured& c, Objs objs) {
     trees::index_by_object(an, t, c[0], c[1], objs);
 }
 void index_keys(Analysis& an, Value t, const Captured& c, Objs objs) {
-    Obj o = obj_of(c[0]);
-    for (Obj k : objs) {
-        if (an.okind(k) == an.V.SITE_KEY && an.item(an.okey(k), 1) == I(o)) an.follow(members::every(an, o), t);
-    }
+    for (Obj k : objs) members::load_by_key(an, t, obj_of(c[0]), k);
+}
+void store_by_key(Analysis& an, Value, const Captured& c, Objs objs) {
+    for (Obj k : objs) members::store_by_key(an, c[0], obj_of(c[1]), k);
 }
 void call_by_receiver(Analysis& an, Value t, const Captured& c, Objs objs) {
     for (Obj obj : objs) {
@@ -105,8 +105,8 @@ void store_by_object(Analysis& an, Value, const Captured& c, Objs objs) {
             auto& probe = an.store_probe[an.tuple({c[2], c[3]}).bits()];
             ++probe.first;
             probe.second = an.held(c[0]).size();
-            an.follow(c[0], members::field(an, o, an.V.ELEMENTS_FIELD));
-            an.follow(c[0], an.any_field(o));
+            an.subscribe(c[5], an.tuple({an.V.STORE, c[2], c[3], c[4], I(o)}), an.tuple({an.V.STORE, I(o)}),
+                         pack(an, kStoreByKey, {c[0], I(o)}));
         }
     }
 }
@@ -183,12 +183,12 @@ void jsx_children(Analysis& an, Value, const Captured& c, Objs objs) {
 }
 
 // The handler of each kind, in the order of TransferKind (from kMemberRead).
-constexpr std::array<Handler, kOpenCalled> kHandlers = {
+constexpr std::array<Handler, kStoreByKey> kHandlers = {
     member_read, super_read, index_by_object, index_keys, call_by_receiver, call_functions, super_by_this,
     plain_call, keys, construct_by_value, construct_returned, new_written, write_by_object, store_by_object,
     read_link, prototypes, type_index, both_outer, both_inner, consumed, structural_fn, receivers,
     summary_receive, summary_called, summary_fields, summary_member_of, kept, iter_elements, iter_iterator,
-    iter_next, iter_value, method_call, settle, jsx_factory, jsx_children, summary_called,
+    iter_next, iter_value, method_call, settle, jsx_factory, jsx_children, summary_called, store_by_key,
 };
 
 }  // namespace

@@ -157,7 +157,6 @@ void index_by_object(Analysis& an, Value target, Value key, Value known, std::sp
             for (Value text : an.at(known)) members::read(an, target, o, text);
             continue;
         }
-        members::read_all(an, target, o);
         an.subscribe(key, target, an.tuple({an.V.INDEX, I(o)}), pack(an, kIndexKeys, {I(o)}));
     }
 }

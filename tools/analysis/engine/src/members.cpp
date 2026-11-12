@@ -119,6 +119,7 @@ void read(Analysis& an, Value target, Obj obj, Value name) {
     }
     statics(an, target, obj, name);
     an.follow(field(an, obj, name), target);
+    if (an.in.numeric_names.count(name.bits())) an.follow(field(an, obj, V.ELEMENTS_FIELD), target);
     an.follow(an.any_field(obj), target);
 }
 
@@ -187,7 +188,27 @@ void write(Analysis& an, Value source, Obj obj, Value name) {
             }
         }
     }
-    an.follow(source, field(an, obj, name));
+    an.follow(source, field(an, obj, an.in.numeric_names.count(name.bits()) ? an.V.ELEMENTS_FIELD : name));
+}
+
+bool is_index(Analysis& an, Obj key) {
+    return an.okind(key) == an.V.SITE_PRIMITIVE && an.member_of(an.item(an.okey(key), 1), an.V.INDEX_KINDS);
+}
+
+void store_by_key(Analysis& an, Value source, Obj obj, Obj key) {
+    if (an.okind(obj) == an.V.SITE_PRIMITIVE || an.okind(obj) == an.V.SITE_UNKNOWN) return;
+    an.follow(source, field(an, obj, an.V.ELEMENTS_FIELD));
+    if (!is_index(an, key)) an.follow(source, an.any_field(obj));
+}
+
+void load_by_key(Analysis& an, Value target, Obj obj, Obj key) {
+    if (an.okind(obj) == an.V.SITE_PRIMITIVE || an.okind(obj) == an.V.SITE_UNKNOWN) return;
+    if (is_index(an, key)) {
+        an.follow(field(an, obj, an.V.ELEMENTS_FIELD), target);
+        return;
+    }
+    if (an.okind(key) == an.V.SITE_KEY && an.item(an.okey(key), 1) == I(obj)) an.follow(every(an, obj), target);
+    read_all(an, target, obj);
 }
 
 void link_fields(Analysis& an, const UnitRec& unit, Obj obj, Value name, int64_t line, bool writing) {

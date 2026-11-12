@@ -20,13 +20,14 @@ from pathlib import Path
 from . import truth
 from .heap import jsx, names, trees, typesys
 from .js_transfer import chain
-from .languages import INTRINSICS, JSX_CLASSIC, JSX_FACTORY_DEFAULT, JSX_FACTORY_OPTION
+from .languages import INTRINSICS, JSX_CLASSIC, JSX_FACTORY_DEFAULT, JSX_FACTORY_OPTION, canonical_numeric
 from .model import ClassFact, Ref, Unit
 from .solver import LANG
 from .vocab import IMPORT, JSX, LITERAL, NAME, OP, T_NAMED, T_QUERY, UNARY
 
 ROOT_PARTS = ("units", "classes", "members", "names", "types", "class_tables", "intrinsics", "modules", "exports",
-              "jsx", "queries", "operators", "literals", "vocabulary")
+              "jsx", "queries", "operators", "literals", "numeric_names", "vocabulary")
+NUMERIC_START = "-0123456789NI"              # what a canonical numeric string can begin with (Number::toString)
 PROTOCOL = 5                                 # the pickle protocol the engine reads (PEP 574)
 HEAP = Path(__file__).resolve().parent / "heap"
 
@@ -45,6 +46,7 @@ class Found:
     def __init__(self):
         self.types, self.queries, self.operators, self.literals = set(), set(), set(), set()
         self.elements = False                  # the walk met a JSX element
+        self.numeric = set()                   # the texts that are canonical numeric strings (an index's names)
 
     def walk(self, value, names_read: set) -> None:
         todo = [value]
@@ -71,6 +73,8 @@ class Found:
                 todo.extend(v)
             elif isinstance(v, dict):
                 todo.extend(v.values())
+            elif isinstance(v, str) and v[:1] and v[:1] in NUMERIC_START and canonical_numeric(v):
+                self.numeric.add(v)
 
     def unit(self, unit) -> tuple[set, bool]:
         """The names a unit reads, and whether a JSX element is written in it."""
@@ -134,8 +138,10 @@ def tables(ix) -> list:
                  for op, unary in sorted(found.operators)]
     literals = [(kind, trees.literal_kinds(kind)) for kind in sorted(found.literals)]
     members = [(owner, name, list(g)) for owner, by_name in ix.members.items() for name, g in by_name.items()]
+    numeric = sorted(found.numeric | {n for _, n, _ in members if canonical_numeric(n)} |
+                     {r.name for u in ix.units for r in u.refs if r.name and canonical_numeric(r.name)})
     return [list(ix.units), sorted(ix.classes.values(), key=lambda c: c.key), members, name_rows, type_rows,
-            class_rows, intrinsics, modules, exports, jsx_rows, queries, operators, literals, vocabulary()]
+            class_rows, intrinsics, modules, exports, jsx_rows, queries, operators, literals, numeric, vocabulary()]
 
 
 class Scope:

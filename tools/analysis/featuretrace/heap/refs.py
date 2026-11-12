@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from ..js_read import MODULE_UNIT
 from ..model import STATE_KINDS
-from ..vocab import (ANY_FIELD, CALL, CONSTRUCT, ELEMENTS_FIELD, IMPORT, INVOKE, JSX, LAMBDA, MEMBER, NAME, NEW,
+from ..vocab import (CALL, CONSTRUCT, IMPORT, INVOKE, JSX, LAMBDA, MEMBER, NAME, NEW,
                      READ, SITE_PRIMITIVE, SITE_UNKNOWN, STORE, WRITE)
 from . import declared, jsx, members, names, summaries, texts, trees
 
@@ -90,11 +90,12 @@ def escape(an, unit, ref, value, ctx) -> None:
 
 
 def store(an, unit, ref, ctx) -> None:
-    """`o[k] = v`: the property each text k can have names (`texts`), else every property (and the elements)."""
+    """`o[k] = v`: the property each text k can have names (`texts`), else what each value of k names (an index: the
+    elements; any other key: the elements and the dictionary part: `members.store_by_key`)."""
     if not ref.args or ref.key is None:
         return
     value = an.node(ref.args[0], unit, ctx)
-    an.node(ref.key, unit, ctx)
+    key = an.node(ref.key, unit, ctx)
     known = texts.of(an, ref.key, unit)
 
     def by_object(_, objs):
@@ -108,9 +109,9 @@ def store(an, unit, ref, ctx) -> None:
             if known is not None:
                 for text in known:
                     members.write(an, value, obj, text)
-            else:
-                an.solver.follow(value, members.field(an, obj, ELEMENTS_FIELD))
-                an.solver.follow(value, an.field(obj, ANY_FIELD))
+            else:                                       # by what each value of the key is
+                an.solver.subscribe(key, (STORE, unit.gid, ref.line, ctx, obj), (STORE, obj),
+                                    lambda _, keys, obj=obj: [members.store_by_key(an, value, obj, k) for k in keys])
     an.solver.subscribe(an.node(ref.base, unit, ctx), (STORE, unit.gid, ref.line, ctx), (STORE,), by_object)
 
 

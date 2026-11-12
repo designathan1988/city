@@ -11,7 +11,7 @@ enum TransferKind : uint32_t {
     kPlainCall, kKeys, kConstructByValue, kConstructReturned, kNewWritten, kWriteByObject, kStoreByObject,
     kReadLink, kPrototypes, kTypeIndex, kBothOuter, kBothInner, kConsumed, kStructuralFn, kReceivers,
     kSummaryReceive, kSummaryCalled, kSummaryFields, kSummaryMemberOf, kKept, kIterElements, kIterIterator,
-    kIterNext, kIterValue, kMethodCall, kSettle, kJsxFactory, kJsxChildren, kOpenCalled,
+    kIterNext, kIterValue, kMethodCall, kSettle, kJsxFactory, kJsxChildren, kOpenCalled, kStoreByKey,
 };
 
 // The dispatcher the solver calls (transfers.cpp).
@@ -67,6 +67,9 @@ Value field(Analysis& an, Obj obj, Value name);
 Value every(Analysis& an, Obj obj);
 const std::vector<int64_t>& lookup(Analysis& an, Value key, Value name);   // Index.lookup: members, exports, bases
 Value runs(Analysis& an, const UnitRec& prop, Value which, const UnitRec* reader);   // Unit.runs
+bool is_index(Analysis& an, Obj key);
+void store_by_key(Analysis& an, Value source, Obj obj, Obj key);
+void load_by_key(Analysis& an, Value target, Obj obj, Obj key);
 }  // namespace members
 
 namespace typesys {
