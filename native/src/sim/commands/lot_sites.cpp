@@ -26,7 +26,7 @@ constexpr float FRONT_REACH_M = 100.f;
 constexpr float SHUT_STEP_M = 0.5f; // a front is read for a junction's kerb this often where its ends and middle disagree
 constexpr float SHUT_EDGE_M = 0.02f; // a shut stretch's ends are found to this, the stretch taken the larger
 constexpr float BESIDE_M = 1.f; // a point this far past a street's band, or nearer, lies beside that street
-constexpr float SIDE_SHARES[] = { 0.25f, 0.5f, 0.75f }; // where along a side, in depths from the front, a street beside it is looked for
+constexpr float SIDE_SHARES[] = { 0.25f, 0.5f, 0.75f }; // where along a line, in shares of its length, a street beside it is looked for
 
 // What the street outside a lot's front is at a point: the segment the point lies beside (the one whose band is nearest, -1 none), and
 // whether a car's gate (open[CAR]: a car may stand at its kerb there) and a person's (open[WALK]: off a crosswalk's landing and its post)
@@ -115,20 +115,20 @@ void front_stretches(const RoadNetwork &net, const b40::LotFrame &f, float w, b4
 	for (int kind = 0; kind < b40::LotEdges::KINDS; kind++) front_shut(read, w, kind, out);
 }
 
-// The sides of a lot a street runs along: a sidewalk, or a road's surface, just outside it.
+// The lines of a lot, besides its front, a street runs along: a sidewalk, or a road's surface, just outside its left side, its
+// right side or its back (the line across from the front: a lot that runs through its block).
 uint8_t street_sides(const RoadNetwork &net, const b40::LotFrame &f, float w, float d) {
+	const auto beside = [&](float x, float y) {
+		const V2 p = f.at(x, y);
+		const FootwayHit hit = footway_at(net, p.x, p.y, FOOTWAY_FIND_M);
+		return (hit.ok && hit.side >= 0) || on_road(net, p.x, p.y);
+	};
+	const auto any = [&](const auto &at) { return std::any_of(std::begin(SIDE_SHARES), std::end(SIDE_SHARES), at); };
+	const float out_x = w * HALF + FRONT_LOOK_M;
 	uint8_t out = 0;
-	for (int side = 0; side < 2; side++) {
-		const float x = (side == 0 ? -1.f : 1.f) * (w * HALF + FRONT_LOOK_M);
-		for (float share : SIDE_SHARES) {
-			const V2 p = f.at(x, share * d);
-			const FootwayHit hit = footway_at(net, p.x, p.y, FOOTWAY_FIND_M);
-			if ((hit.ok && hit.side >= 0) || on_road(net, p.x, p.y)) {
-				out |= side == 0 ? b40::LotEdges::LEFT_ON_STREET : b40::LotEdges::RIGHT_ON_STREET;
-				break;
-			}
-		}
-	}
+	if (any([&](float share) { return beside(-out_x, share * d); })) out |= b40::LotEdges::LEFT_ON_STREET;
+	if (any([&](float share) { return beside(out_x, share * d); })) out |= b40::LotEdges::RIGHT_ON_STREET;
+	if (any([&](float share) { return beside((share - HALF) * w, d + FRONT_LOOK_M); })) out |= b40::LotEdges::BACK_ON_STREET;
 	return out;
 }
 

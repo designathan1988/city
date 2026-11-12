@@ -25,8 +25,16 @@ constexpr float SEAT_Z = 0.5f, SEESAW_L = 3.6f, SEESAW_W = 0.3f, SEESAW_Z = 0.45
 constexpr float LOT_EDGE = 5.f, BAND_MIN = 40.f, BAND = 7.f, BAND_COL = 0.3f, BAND_H = 3.f, BAND_ROOF = 0.4f, BAND_DECK = 0.6f;
 constexpr float COURT_W = 15.f, COURT_D = 28.f, COURT_RUN = 2.f, LINE = 0.12f, FENCE_H = 3.f, GOAL_W = 3.f, GOAL_H = 2.f;
 constexpr float GOAL_D = 0.8f, CIRCLE = 3.f, HALF = 0.5f;
+constexpr float END_GAP = 0.3f; // between a way's end and the bench there, and that bench and the hedge
+constexpr float WAY_END = LAWN_CLEAR + HEDGE_T + 2 * END_GAP + BENCH_D; // a way that leads to no street stops this short of the line
 constexpr int GROVE_TRIES = 4; // draws per tree wanted: a place on a path, by a paving or with no room is passed over
 constexpr uint32_t GROVE_SALT = 0x9a2cU;
+
+// The lines of an open lot a street runs along, besides its front (which always faces one): a way leads to a line, and the hedge
+// opens there, only where a street does; the others are the neighbours' walls.
+struct Streets {
+	bool left = false, right = false, back = false;
+};
 
 struct Lay {
 	const Data &data;
@@ -68,7 +76,7 @@ struct Lay {
 	void benches_along_x(float y, float x0, float x1, int bench, int lamp, int bin);
 	void benches_along_y(float x, float y0, float y1, int bench, int lamp, int bin);
 	void playground(float cx, float cy);
-	void hedges(float gap);
+	void hedges(float gap, const Streets &on);
 };
 
 void Lay::fountain(float cx, float cy, bool plaza) {
@@ -119,17 +127,20 @@ void Lay::playground(float cx, float cy) {
 	put_at(b, EL_CANOPY, cx + PLAY / 4, cy - PLAY / 4, SEESAW_L, SEESAW_W, POST, yellow, SEESAW_Z);
 }
 
-void Lay::hedges(float gap) {
-	int h = paint("hedge");
-	float x0 = -W / 2 + LAWN_CLEAR, x1 = W / 2 - LAWN_CLEAR, y0 = LAWN_CLEAR, y1 = D - LAWN_CLEAR;
-	for (float y : { y0, y1 }) {
-		put(b, EL_HEDGE, x0, y, -gap / 2, y + HEDGE_T, HEDGE_H, h);
-		put(b, EL_HEDGE, gap / 2, y, x1, y + HEDGE_T, HEDGE_H, h);
-	}
-	for (float x : { x0, x1 - HEDGE_T }) {
-		put(b, EL_HEDGE, x, y0, x + HEDGE_T, D / 2 - gap / 2, HEDGE_H, h);
-		put(b, EL_HEDGE, x, D / 2 + gap / 2, x + HEDGE_T, y1, HEDGE_H, h);
-	}
+// The hedge round the lot, LAWN_CLEAR inside its lines on every side: whole along a line no street runs along, cut by the way's gap
+// at the line's middle where one does (the front always).
+void Lay::hedges(float gap, const Streets &on) {
+	const int h = paint("hedge");
+	const float x0 = -W / 2 + LAWN_CLEAR, x1 = W / 2 - LAWN_CLEAR, y0 = LAWN_CLEAR, y1 = D - LAWN_CLEAR;
+	const auto run = [&](bool open, float from, float to, float mid, const auto &piece) {
+		if (!open) return piece(from, to);
+		piece(from, mid - gap / 2);
+		piece(mid + gap / 2, to);
+	};
+	run(true, x0, x1, 0, [&](float a, float c) { put(b, EL_HEDGE, a, y0, c, y0 + HEDGE_T, HEDGE_H, h); });
+	run(on.back, x0, x1, 0, [&](float a, float c) { put(b, EL_HEDGE, a, y1 - HEDGE_T, c, y1, HEDGE_H, h); });
+	run(on.left, y0, y1, D / 2, [&](float a, float c) { put(b, EL_HEDGE, x0, a, x0 + HEDGE_T, c, HEDGE_H, h); });
+	run(on.right, y0, y1, D / 2, [&](float a, float c) { put(b, EL_HEDGE, x1 - HEDGE_T, a, x1, c, HEDGE_H, h); });
 }
 
 // How far a point stands from a footprint: half the side of the largest square about it that does not reach it (0 inside it).
@@ -171,26 +182,32 @@ bool play_fits(float W, float D) { return std::min(W, D) >= PLAY_MIN; }
 float play_x(float W, float D) { return (PATH_W / 2 + W / 2 - ring_of(W, D)) * HALF; }
 float play_y(float W, float D) { return (D / 2 + PATH_W / 2 + D - ring_of(W, D)) * HALF; }
 
-void park(Lay &L) {
+void park(Lay &L, const Streets &on) {
 	const float W = L.W, D = L.D, rg = ring_of(W, D);
 	L.ground("square_lawn", true);
-	int path = L.paint("path");
-	// the cross of paths from line to line: each end opens on the footway, through the hedge's gap
-	L.path(-W / 2, D / 2 - PATH_W / 2, W / 2, D / 2 + PATH_W / 2, path);
-	L.path(-PATH_W / 2, 0, PATH_W / 2, D, path);
+	const int path = L.paint("path"), bench = L.paint("bench"), lamp = L.paint("lamp_post"), bin = L.paint("bin");
+	// The cross of paths. An arm runs to its line, through the hedge's gap onto the footway, where a street runs along that line (the
+	// front always); elsewhere it stops short of the hedge and ends at a bench that looks back along it.
+	const float xl = on.left ? -W / 2 : -W / 2 + WAY_END, xr = on.right ? W / 2 : W / 2 - WAY_END, yb = on.back ? D : D - WAY_END;
+	L.path(xl, D / 2 - PATH_W / 2, xr, D / 2 + PATH_W / 2, path);
+	L.path(-PATH_W / 2, 0, PATH_W / 2, yb, path);
+	const float off = END_GAP + BENCH_D / 2;
+	if (!on.left) put_at(L.b, EL_BENCH, xl - off, D / 2, BENCH_D, BENCH_W, BENCH_H, bench, 0, FACE_RIGHT);
+	if (!on.right) put_at(L.b, EL_BENCH, xr + off, D / 2, BENCH_D, BENCH_W, BENCH_H, bench, 0, FACE_LEFT);
+	if (!on.back) put_at(L.b, EL_BENCH, 0, yb + off, BENCH_W, BENCH_D, BENCH_H, bench, 0, FACE_STREET);
 	float rx0 = -W / 2 + rg, rx1 = W / 2 - rg, ry0 = rg, ry1 = D - rg;
 	if (has_ring(W, D)) {
 		for (float y : { ry0, ry1 }) L.path(rx0, y - RING_W / 2, rx1, y + RING_W / 2, path);
 		for (float x : { rx0, rx1 }) L.path(x - RING_W / 2, ry0, x + RING_W / 2, ry1, path);
 	}
-	int bench = L.paint("bench"), lamp = L.paint("lamp_post"), bin = L.paint("bin");
-	L.benches_along_x(D / 2, -W / 2 + LAWN_CLEAR, -POOL_PLAZA / 2, bench, lamp, bin);
-	L.benches_along_x(D / 2, POOL_PLAZA / 2, W / 2 - LAWN_CLEAR, bench, lamp, bin);
+	// along each arm as it is laid
+	L.benches_along_x(D / 2, std::max(xl, -W / 2 + LAWN_CLEAR), -POOL_PLAZA / 2, bench, lamp, bin);
+	L.benches_along_x(D / 2, POOL_PLAZA / 2, std::min(xr, W / 2 - LAWN_CLEAR), bench, lamp, bin);
 	L.benches_along_y(0, LAWN_CLEAR, D / 2 - POOL_PLAZA / 2, bench, lamp, bin);
-	L.benches_along_y(0, D / 2 + POOL_PLAZA / 2, D - LAWN_CLEAR, bench, lamp, bin);
+	L.benches_along_y(0, D / 2 + POOL_PLAZA / 2, std::min(yb, D - LAWN_CLEAR), bench, lamp, bin);
 	if (fountain_fits(W, D)) L.fountain(0, D / 2, true);
 	if (play_fits(W, D)) L.playground(play_x(W, D), play_y(W, D));
-	L.hedges(PATH_W + RING_W);
+	L.hedges(PATH_W + RING_W, on);
 }
 
 void square(Lay &L) {
@@ -243,14 +260,14 @@ void court(Lay &L) {
 }
 } // namespace
 
-void open_lot_body(const Data &data, Body &b, int fn, float W, float D, uint32_t seed) {
+void open_lot_body(const Data &data, Body &b, int fn, float W, float D, uint32_t seed, const LotEdges &edges) {
 	b = Body{};
 	b.plan.W = W;
 	b.plan.D = D;
 	b.wall = b.add_paint(data.color("square_paving"));
 	b.trim = b.roof = b.wall;
 	Lay L{ data, b, W, D, {}, {}, {} };
-	if (fn == FN_PARK) park(L);
+	if (fn == FN_PARK) park(L, Streets{ edges.on_street(0), edges.on_street(1), edges.back_on_street() });
 	else if (fn == FN_SPORTS_COURT) court(L);
 	else square(L);
 	L.grove(seed);

@@ -19,6 +19,8 @@ namespace city {
 
 namespace {
 constexpr float HALF = 0.5f;
+constexpr float HEDGE_NEAR_M = 2.f; // a hedge whose outer face stands this near a lot's line runs along that line
+constexpr float HEDGE_SHORT_M = 2.f; // a line's hedge this much shorter than the line, at the most, runs whole (it keeps off the corners)
 
 // What grows in the planter: the plant whose middle lies over it, or null.
 const b40::LotElement *grown_in(const b40::Body &b, const b40::LotElement &planter) {
@@ -158,12 +160,64 @@ struct Grove {
 		r["slender"] = slender; // the most a tree's height is of its room's side
 	}
 };
+
+// An open lot's ways against its lines. Its front faces its street; of the other three lines only those a street runs along (the
+// record's edges) lead anywhere: a hard cover laid over the lot's ground (a path) that reaches another line ends at a neighbour's
+// wall, and a hedge along such a line runs whole.
+struct Ways {
+	enum : int { LEFT = 0, RIGHT, BACK, LINES };
+	int blind = 0, gaps = 0;
+	Array first_blind, first_gap;
+	void take(const b40::Body &b, const b40::LotEdges &edges, int seed) {
+		const float W = b.plan.W, D = b.plan.D;
+		const bool street[LINES] = { edges.on_street(0), edges.on_street(1), edges.back_on_street() };
+		float hedged[LINES] = {};
+		bool hedge = false, ground = true; // the first cover is the lot's own ground
+		for (const b40::LotElement &c : b.elements) {
+			const float x0 = c.x - c.w * HALF, x1 = c.x + c.w * HALF, y1 = c.y + c.d * HALF;
+			if (c.kind == b40::EL_HEDGE) {
+				hedge = true;
+				if (c.d > c.w && x0 < -W * HALF + HEDGE_NEAR_M) hedged[LEFT] += c.d;
+				else if (c.d > c.w && x1 > W * HALF - HEDGE_NEAR_M) hedged[RIGHT] += c.d;
+				else if (c.w > c.d && y1 > D - HEDGE_NEAR_M) hedged[BACK] += c.w;
+				continue;
+			}
+			if (c.kind != b40::EL_SURFACE) continue;
+			if (ground) {
+				ground = false;
+				continue;
+			}
+			if (c.paint < 0 || b.paints[size_t(c.paint)].finish == b40::FIN_NONE) continue; // a lawn leads nowhere
+			const bool reaches[LINES] = { x0 <= -W * HALF + b40::EPS, x1 >= W * HALF - b40::EPS, y1 >= D - b40::EPS };
+			for (int k = 0; k < LINES; k++) {
+				if (!reaches[k] || street[k]) continue;
+				blind++;
+				if (first_blind.is_empty()) first_blind = Array::make(seed, k, c.x, c.y, c.w, c.d);
+			}
+		}
+		if (!hedge) return;
+		const float line[LINES] = { D, D, W };
+		for (int k = 0; k < LINES; k++) {
+			if (street[k] || hedged[k] >= line[k] - HEDGE_SHORT_M) continue;
+			gaps++;
+			if (first_gap.is_empty()) first_gap = Array::make(seed, k, hedged[k], line[k]);
+		}
+	}
+	void answer(Dictionary &r) const {
+		r["path_ends_blind"] = blind; // hard covers reaching a line no street runs along
+		r["first_blind"] = first_blind; // seed, the line (0 left, 1 right, 2 back), the cover's middle, width and depth
+		r["hedge_gaps_blind"] = gaps; // lines no street runs along whose hedge does not run whole
+		r["first_gap"] = first_gap; // seed, the line, the hedge's length along it, the line's length
+	}
+};
 } // namespace
 
-// Bodies of an open lot (a park, a square, a sports court: BuildingFn) `w` by `d` made on the spot, from `seed` on: what stands on them.
-Dictionary CityProbes::open_lot_parts(int fn, float w, float d, int seed, int count) const {
+// Bodies of an open lot (a park, a square, a sports court: BuildingFn) `w` by `d` made on the spot, from `seed` on, a street running
+// along its front and along the lines `streets` names (b40::LotEdges::street): what stands on them.
+Dictionary CityProbes::open_lot_parts(int fn, float w, float d, int seed, int count, int streets) const {
 	Benches benches;
 	Grove grove;
+	Ways ways;
 	for (int k = 0; k < count; k++) {
 		b40::Body b;
 		Building rec;
@@ -171,15 +225,18 @@ Dictionary CityProbes::open_lot_parts(int fn, float w, float d, int seed, int co
 		rec.w = w;
 		rec.d = d;
 		rec.seed = uint32_t(seed + k);
+		rec.edges.street = uint8_t(streets);
 		b40::make_seed_body(state_->buildings.designs, rec, b);
 		benches.take(b, seed + k);
 		benches.take_sight(b, seed + k);
 		grove.take(b, seed + k);
+		ways.take(b, rec.edges, seed + k);
 	}
 	Dictionary r;
 	r["bodies"] = count;
 	benches.answer(r);
 	grove.answer(r);
+	ways.answer(r);
 	return r;
 }
 
