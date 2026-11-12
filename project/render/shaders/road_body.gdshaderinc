@@ -1,6 +1,7 @@
 // Roads: the mesher (native/src/render/roads/road_look.h) writes the sRGB strip colour in
 // COLOR.rgb, the material id in COLOR.a * 16, texture metres in UV ((u, v) on segments, world xz on plates and
-// corners, (across, along) on a kerb's top, the run along it on any face) and the asphalt's wear in UV2 (metres: off the carriageway's
+// corners, (across, along) on a kerb's top, the run along it on any face; the asphalt reads its maps by the world's xz whatever
+// its UV) and the asphalt's wear in UV2 (metres: off the carriageway's
 // edge on a node's paving and on a bay; on a lane across itself, and off the nearest mouth on a node's paving). A node's paving
 // comes in each arm's own asphalt on that arm's mouth (render/roads/road_plate.cpp): its strip colour is its tone. The cooked maps
 // are tinted so their mean becomes the strip colour. Everything in linear
@@ -121,6 +122,10 @@ void fragment() {
 	bool up = nw.y > 0.7;
 	if (v_mat == M_PAINT && road_paint < 0.5) discard;
 	if (v_mat == M_ROAD || v_mat == M_PLATE || v_mat == M_PAINT || v_mat == M_LANE) {
+		// the carriageway's asphalt is one surface, laid in one frame: the world's, on a lane as on a node's paving, so its map
+		// runs on across every mouth and joint
+		uv = v_world.xz;
+		frame = uv;
 		vec3 t = source_linear(texture(asphalt_map, uv / asphalt_m, near * detail_asphalt.z).rgb);
 		vec2 duv = uv / asphalt_detail_m, ddx = dFdx(duv), ddy = dFdy(duv);
 		if (near > 0.0) {
