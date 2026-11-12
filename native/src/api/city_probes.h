@@ -121,6 +121,10 @@ public:
 	// and their ways against the lines a street runs along (`streets`: b40::LotEdges::street, the front always): no path to a line with
 	// no street, the hedge whole along it.
 	godot::Dictionary open_lot_parts(int fn, float w, float d, int seed, int count, int streets) const;
+	// Tests: the basins of water of `count` lots made on the spot (`fn` an open lot's function, or 0: a lot of `zone` round a building),
+	// each drawn alone and read from its mesh: its water to its outline, its rim right past it all round; and the paving a basin
+	// stands on, round as the basin (city_core_basin_probe.cpp).
+	godot::Dictionary basin_rims(int fn, int zone, float w, float d, int seed, int count) const;
 	// Tests: a square of the city's plan laid on a block of lots given by hand (rows of x, z, width, depth, facing), no city read, and
 	// every square of the city: each tree's room against the square's ground, the other trees' rooms, the plan's step and edge
 	// clearance, and its walks (city_core_square_probe.cpp).

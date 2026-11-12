@@ -21,7 +21,7 @@ constexpr size_t RELIEF_BYTES = 5 * sizeof(int32_t) + sizeof(float);
 constexpr size_t ROOF_PART_MIN_BYTES = sizeof(uint8_t) + 6 * sizeof(float); // without the flag of the later versions
 constexpr size_t PAINT_BYTES = sizeof(int8_t) + sizeof(uint32_t);
 constexpr size_t VOLUME_MIN_BYTES = 5 * sizeof(float) + 6 * sizeof(int32_t) + 4 * sizeof(uint8_t); // its fixed head
-constexpr size_t ELEMENT_MIN_BYTES = sizeof(uint8_t) + 7 * sizeof(float) + 2 * sizeof(int32_t); // without the angle
+constexpr size_t ELEMENT_MIN_BYTES = sizeof(uint8_t) + 7 * sizeof(float) + 2 * sizeof(int32_t); // without the angle and the shape
 constexpr size_t CORE_MIN_BYTES = 2 * sizeof(float) + sizeof(int32_t); // without the kind
 constexpr size_t FLOOR_MIN_BYTES = sizeof(int32_t) + sizeof(uint32_t); // its level and its pieces' count
 constexpr size_t PIECE_BYTES = sizeof(uint8_t) + 3 * sizeof(float);
@@ -31,7 +31,8 @@ constexpr uint32_t BODY_MAGIC = 0x31594442U; // 'BDY1'
 constexpr int FACES_BEFORE = 16; // a block's faces in the bytes of version 2 and earlier
 constexpr uint32_t FACES_VERSION = 3;
 constexpr uint32_t MODE_VERSION = 4, INSIDE_VERSION = 5, ANGLE_VERSION = 6, LIFT_VERSION = 7;
-constexpr uint32_t BODY_VERSION = 7, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
+constexpr uint32_t SHAPE_VERSION = 8; // an element's round outline (a plaza, a fountain's basin)
+constexpr uint32_t BODY_VERSION = 8, FLAG_VERSION = 1, SIGNATURE_VERSION = 2, UNVERSIONED = 0;
 
 void put_side(ByteWriter &w, const SidePlan &p) {
 	w.put<uint8_t>(uint8_t(p.use));
@@ -196,6 +197,7 @@ void put_element(ByteWriter &w, const LotElement &e) {
 	w.put<int32_t>(e.facing);
 	w.put<int32_t>(e.paint);
 	w.put<float>(e.angle);
+	w.put<uint8_t>(e.round ? 1 : 0);
 }
 
 LotElement get_element(ByteReader &r, uint32_t version) {
@@ -205,6 +207,7 @@ LotElement get_element(ByteReader &r, uint32_t version) {
 	e.facing = r.get<int32_t>();
 	e.paint = r.get<int32_t>();
 	if (version >= ANGLE_VERSION) e.angle = r.get<float>();
+	if (version >= SHAPE_VERSION) e.round = r.get<uint8_t>() != 0;
 	return e;
 }
 } // namespace

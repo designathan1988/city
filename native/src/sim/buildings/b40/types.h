@@ -189,6 +189,7 @@ struct LotElement {
 	int paint = -1;
 	float base = 0; // walls/fences: the base wall under a fence; a flight of a traced stair: how far up it starts
 	float angle = 0; // radians about its middle: a piece of a run traced across the lot
+	bool round = false; // a cover whose outline is the ellipse its rectangle holds (cover_shape.h): a plaza, a basin, a court's circle
 };
 
 // A core (stair and lift shaft) is a square of this side in the lot frame, from its (x, y) corner: the generator places it, the cut view draws it.

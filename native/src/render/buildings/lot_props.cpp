@@ -1,8 +1,10 @@
 // The lot's furniture and its marks on the ground (sim/buildings/b40/lot_*.cpp lays them): car bays (their painted
-// lines), lorry docks (the dock plate and the wall bumpers), drains, shrubs, flower beds, a pool with its coping,
+// lines), lorry docks (the dock plate and the wall bumpers), drains, shrubs, flower beds, a pool or a fountain's basin with its coping,
 // loungers, garden tables, swings, sheds and edicula (walls under an overhanging roof), clothes lines, pallets and caged
 // stores. Trees are drawn by the trees' renderer from the same elements. Heights over the building's floor.
 #include "render/buildings/facade.h"
+
+#include "sim/buildings/b40/element_shape.h"
 
 #include <cmath>
 
@@ -62,16 +64,35 @@ struct PropEmit {
 		shell.box(pl.lot, x0(), x1(), y0(), y1(), g, g + BED_KERB_H, named("planter"), FIN_NONE, SKIP_E2_NEG);
 		shell.box(pl.lot, x0() + BED_KERB_W, x1() - BED_KERB_W, y0() + BED_KERB_W, y1() - BED_KERB_W, g + BED_KERB_H, g + BED_SOIL_H, named("planter_soil"), FIN_NONE, SKIP_E2_NEG);
 	}
-	// The water just over the ground covers, the stone coping round it higher still: a pool read from above.
+	// A basin of water and the stone rim round it (a house's pool, a fountain's basin), their one drawing: the water just over the
+	// ground covers, raised by the element's z (a fountain's basin stands over its paving), out to the element's outline
+	// (element_shape.h); the rim higher still, COPING_W wide outside the outline from the ground up, closed all round. A rectangle's
+	// rim is four boxes, two over its whole outer length and two between them; a round basin's is a ring of faces, one side of the
+	// outline each, the corners where the sides meet shared by the two.
 	void pool() const {
-		const float water = g + LINE_LIFT + WATER_LIFT, top = water + POOL_RIM_UP;
-		shell.rect(pl.lot, x0(), x1(), y0(), y1(), water, lin, FIN_NONE);
+		const float water = g + e.z + LINE_LIFT + WATER_LIFT, top = water + POOL_RIM_UP, c = COPING_W;
 		const Lin coping = named("pool_coping");
-		const float c = COPING_W;
-		shell.box(pl.lot, x0() - c, x1() + c, y0() - c, y0(), g, top, coping, FIN_STONE, SKIP_E2_NEG);
-		shell.box(pl.lot, x0() - c, x1() + c, y1(), y1() + c, g, top, coping, FIN_STONE, SKIP_E2_NEG);
-		shell.box(pl.lot, x0() - c, x0(), y0(), y1(), g, top, coping, FIN_STONE, SKIP_E2_NEG);
-		shell.box(pl.lot, x1(), x1() + c, y0(), y1(), g, top, coping, FIN_STONE, SKIP_E2_NEG);
+		if (!e.round) {
+			shell.rect(pl.lot, x0(), x1(), y0(), y1(), water, lin, FIN_NONE);
+			shell.box(pl.lot, x0() - c, x1() + c, y0() - c, y0(), g, top, coping, FIN_STONE, SKIP_E2_NEG);
+			shell.box(pl.lot, x0() - c, x1() + c, y1(), y1() + c, g, top, coping, FIN_STONE, SKIP_E2_NEG);
+			shell.box(pl.lot, x0() - c, x0(), y0(), y1(), g, top, coping, FIN_STONE, SKIP_E2_NEG);
+			shell.box(pl.lot, x1(), x1() + c, y0(), y1(), g, top, coping, FIN_STONE, SKIP_E2_NEG);
+			return;
+		}
+		const Outline in = outline_of(e), out = in.grown(c);
+		const auto at = [&](const Point2 &p, float z) { return pl.lot.at(p.x, p.y, z); };
+		godot::Vector3 face[OUTLINE_MOST];
+		for (int k = 0; k < in.n; k++) face[k] = at(in.p[k], water);
+		shell.poly(face, in.n, pl.lot.e2, lin, FIN_NONE, SK_SHELL);
+		for (int k = 0; k < in.n; k++) {
+			const int next = (k + 1) % in.n;
+			const Point2 &a = in.p[k], &b = in.p[next], &far_b = out.p[next], &far_a = out.p[k];
+			const godot::Vector3 away = (pl.lot.e0 * (b.y - a.y) + pl.lot.e1 * (a.x - b.x)).normalized(); // out of the basin across this side
+			shell.quad(at(a, top), at(b, top), at(far_b, top), at(far_a, top), pl.lot.e2, coping, FIN_STONE);
+			shell.quad(at(far_a, g), at(far_b, g), at(far_b, top), at(far_a, top), away, coping, FIN_STONE);
+			shell.quad(at(b, water), at(a, water), at(a, top), at(b, top), -away, coping, FIN_STONE);
+		}
 	}
 	void lounger() const {
 		parts.box(pl.lot, x0(), x1(), y0(), y1(), g + LOUNGER_SEAT - LOUNGER_T, g + LOUNGER_SEAT, lin, FIN_WOOD);

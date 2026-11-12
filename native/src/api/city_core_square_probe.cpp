@@ -3,12 +3,15 @@
 // the crown inside it, the camera's clearance reads the crown's reach from it): so every tree's room lies inside the square's own
 // ground, no two rooms lie in one another, no room is narrower than the clearance a trunk keeps from the square's lines on either
 // side nor wider than the step between two trees, no tree is more slender than the plan's tallest on a whole step, and no trunk
-// stands on a walk. square_fit lays a square on a block of lots given by hand, with no city; square_rooms reads the city's own.
+// stands on a walk or on the plaza (each by its outline, element_shape.h); the plaza is one round cover about the walks' crossing,
+// and stays so through a save's bytes. square_fit lays a square on a block of lots given by hand, with no city; square_rooms reads the city's own.
 #include "api/city_probes.h"
 
+#include "sim/buildings/b40/element_shape.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/citygen/lot_gen.h"
 #include "sim/citygen/squares.h"
+#include "sim/persistence/body_codec.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -27,21 +30,33 @@ constexpr float ROOM_PITCH_M = 0.25f; // a room is held against its square's gro
 constexpr float ROOM_SLACK_M = 0.01f; // two rooms side by side share a line; a room on the lot's line stands on it
 constexpr int LOT_FIELDS = 5; // a lot laid by hand: x, z, width, depth, the way it faces
 
+constexpr size_t PLAZA_FROM = 3; // a square's covers in the order it lays them: its lawn, its two walks, then its plaza
+
 struct Tally {
 	int squares = 0, trees = 0, out = 0, meet = 0, on_walk = 0;
+	int plaza_covers = 0, plazas_round = 0; // the covers laid for the squares' plazas, and the squares whose plaza is one round cover
+	Array first_plaza;
 	float least = b40::FAR_AWAY, most = 0, slender = 0;
 	Array first_out, first_meet, first_walk;
 };
 
-bool lies_on(const b40::LotElement &e, float x, float y) { return std::fabs(x - e.x) <= e.w * HALF && std::fabs(y - e.y) <= e.d * HALF; }
-
 // Every tree of a square's body, in the lot's frame: `inside` says whether a point is the square's own ground.
-void measure(const b40::Body &body, const std::function<bool(float, float)> &inside, Tally &t) {
+void measure(const b40::Body &body, const std::function<bool(float, float)> &inside, float plaza_m, Tally &t) {
 	t.squares++;
 	std::vector<const b40::LotElement *> trees, covers;
 	for (const b40::LotElement &e : body.elements) {
 		if (e.kind == b40::EL_TREE) trees.push_back(&e);
 		if (e.kind == b40::EL_SURFACE) covers.push_back(&e);
+	}
+	// The plaza: one round cover, `plaza_m` across, about the point where the two walks cross.
+	if (covers.size() > PLAZA_FROM) {
+		const b40::LotElement &p = *covers[PLAZA_FROM];
+		const float cx = covers[2]->x, cy = covers[1]->y;
+		t.plaza_covers += int(covers.size() - PLAZA_FROM);
+		const bool one = covers.size() == PLAZA_FROM + 1 && p.round && std::fabs(p.w - plaza_m) <= ROOM_SLACK_M && std::fabs(p.d - plaza_m) <= ROOM_SLACK_M &&
+				std::fabs(p.x - cx) <= ROOM_SLACK_M && std::fabs(p.y - cy) <= ROOM_SLACK_M;
+		t.plazas_round += one ? 1 : 0;
+		if (!one && t.first_plaza.is_empty()) t.first_plaza = Array::make(int(covers.size() - PLAZA_FROM), p.round, p.x - cx, p.y - cy, p.w, p.d);
 	}
 	for (size_t i = 0; i < trees.size(); i++) {
 		const b40::LotElement &p = *trees[i];
@@ -69,7 +84,7 @@ void measure(const b40::Body &body, const std::function<bool(float, float)> &ins
 		}
 		// its trunk on the lawn: the first cover is the square's lawn, the others its walks
 		for (size_t k = 1; k < covers.size(); k++) {
-			if (!lies_on(*covers[k], p.x, p.y)) continue;
+			if (!b40::outline_of(*covers[k]).holds(p.x, p.y)) continue;
 			t.on_walk++;
 			if (t.first_walk.is_empty()) t.first_walk = Array::make(p.x, p.y, covers[k]->x, covers[k]->y, covers[k]->w, covers[k]->d);
 			break;
@@ -87,6 +102,10 @@ Dictionary answer(const Tally &t, const CityPlanDef &plan) {
 	r["first_meet"] = t.first_meet; // each one's middle and width
 	r["on_walk"] = t.on_walk; // trunks standing on a walk
 	r["first_walk"] = t.first_walk; // the trunk, the walk's middle, width and depth
+	r["plaza_covers"] = t.plaza_covers; // the covers laid for the plazas: one a square
+	r["plazas_round"] = t.plazas_round; // the squares whose plaza is one round cover of the plan's size about the walks' crossing
+	r["first_plaza"] = t.first_plaza; // of the first that is not: its covers, whether the first is round, its middle off the crossing, its size
+	r["plaza_m"] = 2 * plan.square_plaza_m;
 	r["least_room_m"] = t.trees > 0 ? t.least : 0.f; // the narrowest room's side
 	r["most_room_m"] = t.most;
 	r["slender"] = t.slender; // the most a tree's height is of its room's side
@@ -113,10 +132,13 @@ Dictionary CityProbes::square_fit(const Array &lots, int seed) const {
 		block.push_back(l);
 	}
 	const CityPlanDef &plan = state_->catalog.growth.plan;
-	b40::Body body;
+	b40::Body laid_body, body;
 	Tally t;
-	const bool laid = square_on(plan, state_->buildings.designs, block, uint32_t(seed), body);
-	if (laid) {
+	// The square is measured as a save keeps it (a square's body is stored with its record): written to bytes and read back.
+	ByteWriter bytes;
+	const bool laid = square_on(plan, state_->buildings.designs, block, uint32_t(seed), laid_body) && (write_body(bytes, laid_body), true);
+	ByteReader kept{ bytes.buf.data(), bytes.buf.size() };
+	if (laid && read_body(kept, body)) {
 		// The square's frame is its first lot's, its front the box's nearest line to that lot's street: a point of the body in the
 		// world, then in each lot's own frame.
 		const Lot &first = block[0];
@@ -142,10 +164,10 @@ Dictionary CityProbes::square_fit(const Array &lots, int seed) const {
 				const V2 rel = p - V2(float(l.x), float(l.z));
 				return std::fabs(rel.dot(V2(c, -s))) <= float(l.w) * HALF + ROOM_SLACK_M && std::fabs(rel.dot(V2(s, c))) <= float(l.d) * HALF + ROOM_SLACK_M;
 			});
-		}, t);
+		}, float(2 * plan.square_plaza_m), t);
 	}
 	Dictionary r = answer(t, plan);
-	r["laid"] = laid;
+	r["laid"] = t.squares > 0; // laid, and whole after its bytes
 	r["w"] = body.plan.W;
 	r["d"] = body.plan.D;
 	return r;
@@ -158,7 +180,8 @@ Dictionary CityProbes::square_rooms() const {
 	for (const Building &rec : state_->buildings.items) {
 		if (!rec.alive || rec.fn != FN_SQUARE) continue;
 		const std::shared_ptr<const b40::Body> body = b40::record_body(state_->buildings.designs, rec);
-		measure(*body, [&](float x, float y) { return std::fabs(x) <= rec.w * HALF + ROOM_SLACK_M && y >= -ROOM_SLACK_M && y <= rec.d + ROOM_SLACK_M; }, t);
+		measure(*body, [&](float x, float y) { return std::fabs(x) <= rec.w * HALF + ROOM_SLACK_M && y >= -ROOM_SLACK_M && y <= rec.d + ROOM_SLACK_M; },
+				float(2 * state_->catalog.growth.plan.square_plaza_m), t);
 	}
 	return answer(t, state_->catalog.growth.plan);
 }

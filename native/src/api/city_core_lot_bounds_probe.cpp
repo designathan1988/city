@@ -6,6 +6,7 @@
 #include "api/city_probes.h"
 
 #include "sim/buildings/b40/civic.h"
+#include "sim/buildings/b40/element_shape.h"
 #include "sim/buildings/b40/lot_layout.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/commands/lot_sites.h"
@@ -141,10 +142,11 @@ void parts_in_boundary(const b40::Body &b, const b40::LotFrame &f, int id, Bound
 	}
 }
 
-// A part's footprint on the ground: its box, a pool's with the deck laid round it (lots.pool_deck_m, lot_yard.cpp).
+// A part's footprint on the ground, asked of its owner (element_shape.h part_ground): its box, a pool's with the deck laid round it
+// (lots.pool_deck_m, lot_yard.cpp).
 PlanBox footprint(const b40::LotElement &e, float deck) {
-	const PlanBox r = plan_box(e);
-	return e.kind == b40::EL_POOL ? PlanBox{ r.x0 - deck, r.y0 - deck, r.x1 + deck, r.y1 + deck } : r;
+	const b40::Footprint f = b40::part_ground(e, deck);
+	return { f.x0, f.y0, f.x1, f.y1 };
 }
 
 // A slab laid on the ground (a fuel island, a portico's floor) is a platform: what stands on it stands on it, not in it.

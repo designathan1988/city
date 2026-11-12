@@ -3,7 +3,7 @@
 // draws its back where this says (render/buildings/lot_emit.cpp) and the tests hold both (api/city_core_lot_parts_probe.cpp).
 #pragma once
 
-#include "sim/buildings/b40/types.h"
+#include "sim/buildings/b40/element_shape.h"
 
 namespace city::b40 {
 
@@ -21,9 +21,6 @@ inline Point2 bench_look(const LotElement &e) {
 // A bench laid with its long side along the way it looks is laid wrong.
 inline bool bench_across(const LotElement &e) { return looks_along_y(e) ? e.w >= e.d : e.d >= e.w; }
 
-struct Footprint {
-	float x0 = 0, y0 = 0, x1 = 0, y1 = 0;
-};
 // The back's footprint, `thick` deep, along the side away from where the bench looks.
 inline Footprint bench_back(const LotElement &e, float thick) {
 	const float x0 = e.x - e.w / 2, x1 = e.x + e.w / 2, y0 = e.y - e.d / 2, y1 = e.y + e.d / 2;

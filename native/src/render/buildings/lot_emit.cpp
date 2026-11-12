@@ -246,6 +246,7 @@ void turned_element(Shell &shell, Shell &parts, const Placed &pl, const LotEleme
 	LotElement local = e;
 	local.x = 0;
 	local.y = 0;
+	local.angle = 0; // in its own frame the piece lies straight: who reads its outline there (element_shape.h) reads it unturned
 	LotEmit{ shell, parts, at, pl.lot.o.y }.element(local);
 }
 } // namespace

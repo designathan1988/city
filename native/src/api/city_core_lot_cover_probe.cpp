@@ -6,6 +6,7 @@
 #include "api/city_probes.h"
 
 #include "render/buildings/lot_covers.h"
+#include "sim/buildings/b40/element_shape.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/state/city_state.h"
 
@@ -64,31 +65,37 @@ constexpr float THIN_M = 0.6f; // a planted or bare band narrower than this besi
 constexpr float JOINT_M = 0.01f; // a band thinner than this is two edges meeting
 enum Ground : uint8_t { BARE, SOFT, HARD, WALL };
 
-// A lot's ground as its body lays it, in the lot's frame: every cover's rectangle (the later over the earlier) and every ground volume.
+// A lot's ground as its body lays it, in the lot's frame: every cover's outline (sim/buildings/b40/element_shape.h: its rectangle,
+// turned with it, or a round cover's ellipse; the later over the earlier) and every ground volume's rectangle.
 struct GroundBoxes {
 	struct Box {
-		float x0, y0, x1, y1;
+		b40::Outline shape;
+		float x0, y0, x1, y1; // the box that holds it
 		Ground is;
 	};
 	std::vector<Box> boxes; // covers in their order, then the ground volumes
 	float x0 = 0, x1 = 0, depth = 0;
 
+	void add(const b40::Outline &o, Ground is) {
+		const b40::Footprint f = o.bounds();
+		boxes.push_back({ o, f.x0, f.y0, f.x1, f.y1, is });
+	}
 	GroundBoxes(const b40::Body &b, const b40::Paint &lawn) : x0(-b.plan.W * HALF), x1(b.plan.W * HALF), depth(b.plan.D) {
 		std::vector<const b40::LotElement *> covers;
 		for (const b40::LotElement &e : b.elements)
-			if (e.kind == b40::EL_SURFACE && e.angle == 0) covers.push_back(&e);
+			if (e.kind == b40::EL_SURFACE) covers.push_back(&e);
 		std::stable_sort(covers.begin(), covers.end(), [](const b40::LotElement *p, const b40::LotElement *q) { return p->h < q->h; });
 		for (const b40::LotElement *e : covers) {
 			const b40::Paint &p = b.paints[size_t(e->paint)];
-			boxes.push_back({ e->x - e->w * HALF, e->y - e->d * HALF, e->x + e->w * HALF, e->y + e->d * HALF, p.finish == lawn.finish && p.rgb == lawn.rgb ? SOFT : HARD });
+			add(b40::outline_of(*e), p.finish == lawn.finish && p.rgb == lawn.rgb ? SOFT : HARD);
 		}
 		for (const b40::Volume &v : b.volumes)
-			if (v.base == 0) boxes.push_back({ v.x, v.y, v.x + v.w, v.y + v.d, WALL });
+			if (v.base == 0) add(b40::outline_of(b40::Footprint{ v.x, v.y, v.x + v.w, v.y + v.d }), WALL);
 	}
 	Ground at(float x, float y) const {
 		Ground g = BARE;
 		for (const Box &c : boxes)
-			if (x > c.x0 && x < c.x1 && y > c.y0 && y < c.y1) g = c.is;
+			if (x > c.x0 && x < c.x1 && y > c.y0 && y < c.y1 && c.shape.holds(x, y)) g = c.is;
 		return g;
 	}
 	// Along one line (across the lot at depth `line`, or along it at `line` across): the bare length, and the thin planted or bare bands
@@ -98,8 +105,10 @@ struct GroundBoxes {
 		std::vector<float> cuts{ across ? x0 : 0.f, across ? x1 : depth };
 		const float lo = cuts[0], hi = cuts[1];
 		for (const Box &c : boxes) {
-			cuts.push_back(std::clamp(across ? c.x0 : c.y0, lo, hi));
-			cuts.push_back(std::clamp(across ? c.x1 : c.y1, lo, hi));
+			float from, to; // the stretch of the line this one lies over
+			if (!c.shape.span(across, line, from, to)) continue;
+			cuts.push_back(std::clamp(from, lo, hi));
+			cuts.push_back(std::clamp(to, lo, hi));
 		}
 		std::sort(cuts.begin(), cuts.end());
 		float run = 0, from = lo;

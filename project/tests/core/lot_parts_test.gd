@@ -21,6 +21,8 @@ const COURTS := [[13, 30.0, 44.0]]
 ## the lines of an open lot a street runs along besides its front (b40::LotEdges street: 1 the left, 2 the right, 4 the back): the
 ## front alone (a lot between neighbours), a lot through its block, a whole block
 const STREET_SIDES := [0, 4, 7]
+const PARK_FN := 6
+const COURT_FN := 13
 
 
 func _ready() -> void:
@@ -59,6 +61,9 @@ func _ready() -> void:
 		for sides: int in STREET_SIDES:
 			open_benches += _check_open_lot(lot[0], lot[1], lot[2], sides)
 	check(open_benches > 0, "the open lots lay benches (%d)" % open_benches)
+	for lot: Array in OPEN_LOTS:
+		_check_fountain(lot[0], lot[1], lot[2])
+	_check_pools()
 	print("lot_parts: lamps on posts by zone %s" % posts)
 	print("lot_parts: %d planters, %d trees over %d bodies; planters by zone %s" % [planters, trees, ZONES.size() * LOTS.size() * BODIES, by_zone])
 	finish()
@@ -82,4 +87,36 @@ func _check_open_lot(fn: int, w: float, d: float, sides: int) -> int:
 	# Its ways lead somewhere: a path reaches a line only where a street runs along it, and the hedge is cut only there.
 	check(int(open.path_ends_blind) == 0, "%s: no path leads to a line no street runs along (%d; the first (seed, line, the cover): %s)" % [where, open.path_ends_blind, open.first_blind])
 	check(int(open.hedge_gaps_blind) == 0, "%s: the hedge runs whole along a line no street runs along (%d lines; the first (seed, line, hedged, length): %s)" % [where, open.hedge_gaps_blind, open.first_gap])
+	# What is a circle is laid round: a court's centre circle, its ring and what lies inside it.
+	check(int(open.circles_round) == int(open.circles), "%s: a mark as wide as it is deep is a circle, laid round (%d of %d; the first square one (seed, middle, size): %s)" % [where, open.circles_round, open.circles, open.first_circle])
+	if fn == COURT_FN:
+		check(int(open.circles) > 0, "%s: the court has its centre circle (%d marks)" % [where, open.circles])
 	return int(open.benches)
+
+
+## An open lot's fountain (probe basin_rims: each basin drawn alone on level ground and read from its mesh): every body has its basin,
+## round; looking out from its middle every way the water runs to its outline and the rim stands right past it, over the water, with
+## no gap at any corner; and the paving a park's fountain stands on is round as the basin is.
+func _check_fountain(fn: int, w: float, d: float) -> void:
+	var rims: Dictionary = CityStore.query(&"basin_rims", [fn, 0, w, d, 1, OPEN_BODIES])
+	var where := "open lot (function %d) %.0f x %.0f" % [fn, w, d]
+	check(int(rims.basins) == int(rims.bodies), "%s: every body has its fountain's basin (%d basins in %d bodies)" % [where, rims.basins, rims.bodies])
+	check(int(rims.basins_round) == int(rims.basins), "%s: a fountain's basin is round (%d of %d)" % [where, rims.basins_round, rims.basins])
+	check(int(rims.dry) == 0, "%s: a basin's water runs to its outline (%d of %d looks dry; the first (seed, middle, turn, reach): %s)" % [where, rims.dry, rims.looks, rims.first_dry])
+	check(int(rims.rim_open) == 0, "%s: a basin's rim stands closed all round it (%d of %d looks with no rim past the water; the first (seed, middle, turn, reach): %s)" % [where, rims.rim_open, rims.looks, rims.first_open])
+	check(int(rims.pavings_round) == int(rims.pavings), "%s: the paving a fountain stands on is round (%d of %d; the first square one (seed, middle, size): %s)" % [where, rims.pavings_round, rims.pavings, rims.first_square])
+	if fn == PARK_FN:
+		check(int(rims.pavings) == int(rims.basins), "%s: a park's fountain stands on its round-point (%d pavings for %d basins)" % [where, rims.pavings, rims.basins])
+
+
+## The houses' pools, drawn by the same owner as a fountain's basin: the water to the pool's outline, the coping closed round it.
+func _check_pools() -> void:
+	var pools := 0
+	for zone: int in ZONES:
+		for lot: Array in LOTS:
+			var rims: Dictionary = CityStore.query(&"basin_rims", [0, zone, lot[0], lot[1], 1, BODIES])
+			var where := "zone %d on %.0f x %.0f" % [zone, lot[0], lot[1]]
+			pools += int(rims.basins)
+			check(int(rims.dry) == 0, "%s: a pool's water runs to its outline (%d of %d looks dry; the first: %s)" % [where, rims.dry, rims.looks, rims.first_dry])
+			check(int(rims.rim_open) == 0, "%s: a pool's coping stands closed all round it (%d of %d looks with none past the water; the first: %s)" % [where, rims.rim_open, rims.looks, rims.first_open])
+	check(pools > 0, "the lots' yards lay pools (%d)" % pools)

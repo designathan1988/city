@@ -15,6 +15,11 @@ void put(Body &b, Element k, float x0, float y0, float x1, float y1, float h, in
 inline void put_at(Body &b, Element k, float x, float y, float w, float d, float h, int paint, float z = 0, Facing facing = FACE_STREET) {
 	put(b, k, x - w / 2, y - d / 2, x + w / 2, y + d / 2, h, paint, z, facing);
 }
+// A round one: a ground cover or a basin whose outline is the ellipse its rectangle holds (element_shape.h).
+inline void put_round(Body &b, Element k, float x, float y, float w, float d, float h, int paint, float z = 0) {
+	put_at(b, k, x, y, w, d, h, paint, z);
+	b.elements.back().round = true;
+}
 
 // True when the record function draws a civic body (not an ordinary building or an open lot).
 bool is_civic(int fn);

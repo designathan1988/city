@@ -24,7 +24,6 @@ constexpr float LAWN_H = 0.06f;
 constexpr double SHARED_LINE_M = 1e-3; // two lots' shared side, reached from each one's own middle, within a millimetre
 constexpr uint32_t LCG_MUL = 1664525U, LCG_ADD = 1013904223U, TREE_SEED_MUL = 31U, TREE_SEED_STEP = 7919U, SQUARE_SALT = 0x711eU;
 constexpr double LCG_UNIT = 4294967296.0;
-constexpr float PLAZA_WIDE = 0.45f; // the round plaza's rectangles: full size, and this share across
 
 struct Plot {
 	const Lot *lot;
@@ -187,8 +186,8 @@ SquareSite site_of(const std::vector<Plot> &plots, const std::vector<int> &block
 	return site;
 }
 
-// The body of a square on its site: a lawn from line to line, two walks crossing where the block's middle is, a plaza over the
-// crossing, and trees on a lattice through it, a step apart, so the rows stand the same either side of each walk.
+// The body of a square on its site: a lawn from line to line, two walks crossing where the block's middle is, a round plaza over
+// the crossing, and trees on a lattice through it, a step apart, so the rows stand the same either side of each walk.
 Body lay(const CityPlanDef &d, const Data &data, const SquareSite &site, uint32_t &random) {
 	const float W = site.w, D = site.d, cx = site.cross.x, cy = site.cross.y;
 	Body body;
@@ -200,8 +199,7 @@ Body lay(const CityPlanDef &d, const Data &data, const SquareSite &site, uint32_
 	put(body, EL_SURFACE, -W / 2, 0, W / 2, D, LAWN_H, lawn);
 	put(body, EL_SURFACE, -W / 2, cy - w, W / 2, cy + w, LAWN_H * 2, walk);
 	put(body, EL_SURFACE, cx - w, 0, cx + w, D, LAWN_H * 2, walk);
-	put_at(body, EL_SURFACE, cx, cy, plaza * 2, plaza * 2 * PLAZA_WIDE, LAWN_H * 2, walk);
-	put_at(body, EL_SURFACE, cx, cy, plaza * 2 * PLAZA_WIDE, plaza * 2, LAWN_H * 2, walk);
+	put_round(body, EL_SURFACE, cx, cy, plaza * 2, plaza * 2, LAWN_H * 2, walk); // the circle the trees stand clear of, below
 	const float step = float(d.square_tree_grid_m), clear = float(d.square_tree_edge_m);
 	for (int i = int(std::ceil((-W / 2 - cx) / step)); cx + float(i) * step <= W / 2; i++)
 		for (int j = int(std::ceil(-cy / step)); cy + float(j) * step <= D; j++) {

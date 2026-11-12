@@ -6,6 +6,8 @@
 
 #include "sim/buildings/b40/bench.h"
 #include "sim/buildings/b40/body_air.h"
+#include "sim/buildings/b40/cover_layers.h"
+#include "sim/buildings/b40/element_shape.h"
 #include "sim/buildings/b40/gen.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/state/city_state.h"
@@ -54,7 +56,8 @@ struct Benches {
 			if (first_askew.is_empty()) first_askew = Array::make(seed, p.x, p.y, p.w, p.d, p.facing);
 		}
 	}
-	// An open lot's bench looks at the cover it stands by: the nearest cover that is not the lot's own ground (a path, a fountain's water).
+	// An open lot's bench looks at what it stands by: the nearest cover that is not the lot's own ground (a path, a round-point) or
+	// basin (a fountain's), each by its outline (element_shape.h).
 	void take_sight(const b40::Body &b, int seed) {
 		for (const b40::LotElement &p : b.elements) {
 			if (p.kind != b40::EL_BENCH) continue;
@@ -62,13 +65,14 @@ struct Benches {
 			float near = b40::FAR_AWAY, to_x = 0, to_y = 0;
 			bool ground = true; // the first cover is the lot's ground
 			for (const b40::LotElement &c : b.elements) {
-				if (c.kind != b40::EL_SURFACE) continue;
-				if (ground) {
+				if (c.kind != b40::EL_SURFACE && c.kind != b40::EL_POOL) continue;
+				if (c.kind == b40::EL_SURFACE && ground) {
 					ground = false;
 					continue;
 				}
-				// from the bench's middle to the cover's nearest point
-				const float dx = std::clamp(p.x, c.x - c.w * HALF, c.x + c.w * HALF) - p.x, dy = std::clamp(p.y, c.y - c.d * HALF, c.y + c.d * HALF) - p.y;
+				// from the bench's middle to the outline's nearest point
+				const b40::Point2 to = b40::outline_of(c).nearest(p.x, p.y);
+				const float dx = to.x - p.x, dy = to.y - p.y;
 				const float away = std::max(std::fabs(dx), std::fabs(dy));
 				if (away >= near) continue;
 				near = away;
@@ -103,10 +107,12 @@ struct Grove {
 	int trees = 0, bodies_bare = 0, out = 0, holds = 0, meet = 0, on_hard = 0;
 	float least = b40::FAR_AWAY, slender = 0;
 	Array first_out, first_holds, first_meet, first_hard;
-	static bool lap(const b40::LotElement &a, const b40::LotElement &b) {
-		return std::fabs(a.x - b.x) < (a.w + b.w) * HALF - b40::EPS && std::fabs(a.y - b.y) < (a.d + b.d) * HALF - b40::EPS;
+	// A tree's room and the ground another part keeps to itself (element_shape.h part_ground: a basin's with its deck) in one another.
+	static bool lap(const b40::LotElement &tree, const b40::Footprint &f) {
+		return std::min(tree.x + tree.w * HALF, f.x1) - std::max(tree.x - tree.w * HALF, f.x0) > b40::EPS &&
+				std::min(tree.y + tree.d * HALF, f.y1) - std::max(tree.y - tree.d * HALF, f.y0) > b40::EPS;
 	}
-	void take(const b40::Body &b, int seed) {
+	void take(const b40::Body &b, int seed, float pool_deck) {
 		const float W = b.plan.W, D = b.plan.D;
 		int mine = 0;
 		for (size_t i = 0; i < b.elements.size(); i++) {
@@ -124,10 +130,10 @@ struct Grove {
 			for (size_t k = 0; k < b.elements.size(); k++) {
 				const b40::LotElement &q = b.elements[k];
 				if (q.kind == b40::EL_SURFACE) {
-					if (std::fabs(p.x - q.x) <= q.w * HALF && std::fabs(p.y - q.y) <= q.d * HALF) under = &q;
+					if (b40::outline_of(q).holds(p.x, p.y)) under = &q;
 					continue;
 				}
-				if (k == i || !lap(p, q)) continue;
+				if (k == i || !lap(p, b40::part_ground(q, pool_deck))) continue;
 				if (q.kind == b40::EL_TREE) {
 					if (k < i) continue; // a pair once
 					meet++;
@@ -161,6 +167,26 @@ struct Grove {
 	}
 };
 
+// The circles painted on an open lot's ground (a court's centre circle: its ring, and what lies inside it): a mark as wide as it is
+// deep (a line is long and thin), laid round (element_shape.h).
+struct Circles {
+	int count = 0, round = 0;
+	Array first_square;
+	void take(const b40::Body &b, int seed) {
+		for (const b40::LotElement &c : b.elements) {
+			if (c.kind != b40::EL_SURFACE || c.h < b40::cover_h(b40::COVER_MARK) - b40::EPS || std::fabs(c.w - c.d) > b40::EPS) continue;
+			count++;
+			round += c.round ? 1 : 0;
+			if (!c.round && first_square.is_empty()) first_square = Array::make(seed, c.x, c.y, c.w, c.d);
+		}
+	}
+	void answer(Dictionary &r) const {
+		r["circles"] = count; // marks as wide as they are deep
+		r["circles_round"] = round; // of them, those laid round
+		r["first_circle"] = first_square; // the first that is not: seed, its middle, width and depth
+	}
+};
+
 // An open lot's ways against its lines. Its front faces its street; of the other three lines only those a street runs along (the
 // record's edges) lead anywhere: a hard cover laid over the lot's ground (a path) that reaches another line ends at a neighbour's
 // wall, and a hedge along such a line runs whole.
@@ -174,7 +200,8 @@ struct Ways {
 		float hedged[LINES] = {};
 		bool hedge = false, ground = true; // the first cover is the lot's own ground
 		for (const b40::LotElement &c : b.elements) {
-			const float x0 = c.x - c.w * HALF, x1 = c.x + c.w * HALF, y1 = c.y + c.d * HALF;
+			const b40::Footprint reach = b40::outline_of(c).bounds();
+			const float x0 = reach.x0, x1 = reach.x1, y1 = reach.y1;
 			if (c.kind == b40::EL_HEDGE) {
 				hedge = true;
 				if (c.d > c.w && x0 < -W * HALF + HEDGE_NEAR_M) hedged[LEFT] += c.d;
@@ -218,6 +245,7 @@ Dictionary CityProbes::open_lot_parts(int fn, float w, float d, int seed, int co
 	Benches benches;
 	Grove grove;
 	Ways ways;
+	Circles circles;
 	for (int k = 0; k < count; k++) {
 		b40::Body b;
 		Building rec;
@@ -229,14 +257,16 @@ Dictionary CityProbes::open_lot_parts(int fn, float w, float d, int seed, int co
 		b40::make_seed_body(state_->buildings.designs, rec, b);
 		benches.take(b, seed + k);
 		benches.take_sight(b, seed + k);
-		grove.take(b, seed + k);
+		grove.take(b, seed + k, state_->buildings.designs.lots.pool_deck);
 		ways.take(b, rec.edges, seed + k);
+		circles.take(b, seed + k);
 	}
 	Dictionary r;
 	r["bodies"] = count;
 	benches.answer(r);
 	grove.answer(r);
 	ways.answer(r);
+	circles.answer(r);
 	return r;
 }
 

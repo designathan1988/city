@@ -63,6 +63,8 @@ func _check_square(name: String, lots: Array, trees_least: int, narrowed: bool) 
 		check(int(fit.out) == 0, "%s: every tree's room lies on the square's ground: %d of %d past it, the first (x, y, width, depth) %s" % [name, fit.out, fit.trees, fit.first_out])
 		check(int(fit.meet) == 0, "%s: no two trees' rooms lie in one another: %d pairs, the first %s" % [name, fit.meet, fit.first_meet])
 		check(int(fit.on_walk) == 0, "%s: no trunk stands on a walk: %d, the first %s" % [name, fit.on_walk, fit.first_walk])
+		check(int(fit.plazas_round) == 1 and int(fit.plaza_covers) == 1, "%s: its plaza is one round cover %.1f m across about the walks' crossing: %d cover(s), the first (covers, round, off the crossing, size) %s"
+				% [name, fit.plaza_m, fit.plaza_covers, fit.first_plaza])
 		check(float(fit.least_room_m) >= minf(step, 2.0 * edge) - SLACK, "%s: a tree's room is the room it has: the narrowest %.2f m, with %.1f m to the lines on either side and %.1f m between trees"
 				% [name, fit.least_room_m, edge, step])
 		check(float(fit.most_room_m) <= step + SLACK, "%s: no room wider than the step between two trees: %.2f m of %.1f" % [name, fit.most_room_m, step])
