@@ -26,9 +26,11 @@ def wire_name(an, node, unit, name: str, ctx) -> None:
     found = definitions(an, unit, name)
     for gid in found:
         value_of(an, gid, node)
-    if not found:                                 # a module's namespace an import binds (`import * as m`)
-        an.solver.add(node, [an.objects.make(SITE_MODULE, m) for m in an.ix.js.binding(unit.file, name)[1]])
-    key = an.ix.js.class_of(name, unit.file, unit.owner) if not found else None
+    if found:
+        return
+    modules = an.ix.js.binding(unit.file, name)[1]          # a module's namespace an import binds (`import * as m`)
+    an.solver.add(node, [an.objects.make(SITE_MODULE, m) for m in modules])
+    key = an.ix.js.class_of(name, unit.file, unit.owner)
     if key is not None and key in an.ix.classes:            # a class no definition of the scope names (ambient)
         an.solver.add(node, [an.objects.make(SITE_CLASS, key)])
 

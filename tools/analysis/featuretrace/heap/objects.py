@@ -12,6 +12,7 @@ from ..vocab import (SITE_ARRAY, SITE_CLASS, SITE_DECLARED, SITE_DECLARED_FN, SI
                      SITE_LITERAL, SITE_NEW, SITE_PRIMITIVE, SITE_PROMISE, SITE_TEXT)
 from . import contexts
 
+INSTANCE_SITE = (-1,)       # the site of a class's instance from outside (`Objects.from_outside`)
 MADE = (SITE_NEW, SITE_LITERAL, SITE_ARRAY, SITE_FUNCTION, SITE_DECLARED, SITE_DECLARED_FN, SITE_GENERATOR,
         SITE_PROMISE)                                         # the kinds whose key ends with a heap context
 
@@ -109,6 +110,12 @@ class Objects:
         """The generator or the promise a call of `gid` makes at a site (where, the heap context)."""
         assert kind in (SITE_GENERATOR, SITE_PROMISE)
         return self.make(kind, gid, site[0], site[1])
+
+    def from_outside(self, key: str) -> int:
+        """The object standing for the instances of a class of the program that come from outside the code read
+        (an entry method's `this`, a value of the class a declaration gives): one for the class, so what its
+        constructor writes its methods read."""
+        return self.make(SITE_DECLARED, key, INSTANCE_SITE, None, contexts.ROOT)
 
     def declared(self, key: str, site, env) -> int:
         """An object of the declared type `key` made at a site (where, the heap context); an object type written in

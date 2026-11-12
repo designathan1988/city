@@ -229,7 +229,7 @@ std::string Analysis::costliest(size_t count) {
     for (const auto& [cost, n] : solver.take_costs(count)) {
         Value key = node_keys_[n];
         out += "\n      " + std::to_string(cost) + " held " + std::to_string(solver.held(n).size()) + " " + describe(key);
-        if (item(key, 0) == V.FIELD || item(key, 0) == V.MEMBER) {
+        if (item(key, 0) == V.FIELD || item(key, 0) == V.MEMBER || item(key, 0) == V.GD_MEMBER) {
             out += " obj=" + describe(okey(static_cast<Obj>(item(key, 1).data())));
         }
         if (shown < kFedShown && item(key, 0) == V.FIELD) {      // what feeds a costly property: its identity edges

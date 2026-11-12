@@ -272,7 +272,11 @@ def call_object(an, node, fn: int, receiver, args: list, where) -> None:
 
 
 def construct(an, node, obj: int, args: list) -> None:
-    """`new` on an object of a declared type: its construct signatures."""
+    """`new` on an object of a declared type: its construct signatures; on what no declaration describes, an open
+    call (what it is handed is called back; it gives the unknown object)."""
+    if an.objects.kind(obj) == SITE_UNKNOWN:
+        summaries.open_call(an, node, args, call_site(an, node))
+        return
     signatures(an, node, obj, CONSTRUCT_SIGNATURE, args, call_site(an, node))
 
 

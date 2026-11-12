@@ -56,8 +56,12 @@ void named(Analysis& an, Value node, Value tree, Value env, Value site) {
         return;
     }
     Value key = an.item(found, 1);
-    Obj made = an.make({an.V.SITE_DECLARED, key, an.item(site, 0), NONE, an.item(site, 1)});
+    const ClassRec* cls = an.in.cls(key);      // a class of the program: one from outside is one the program made
+    bool own = cls && !cls->shape && !cls->ambient;
+    Obj made = own ? an.from_outside(key)
+                   : an.make({an.V.SITE_DECLARED, key, an.item(site, 0), NONE, an.item(site, 1)});
     an.add(node, made);
+    if (own) an.follow(an.instances(key), node);
     size_t params = 0;
     for (Value k : typesys::group(an, key)) {
         const ClassRec* c = an.in.cls(k);

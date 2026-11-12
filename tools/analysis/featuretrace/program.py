@@ -3,8 +3,10 @@ each phase that builds what the run keeps runs as a building phase (`building`).
 from __future__ import annotations
 
 import gc
+import os
 import sys
 import threading
+import time
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -20,6 +22,21 @@ READERS = (read_gd, read_cpp, read_js, read_tsconfig, read_package, engine_read.
            engine_read.read_data)            # what turns a file into facts: the facts cache's version covers them
 RECURSION = 200_000
 STACK_BYTES = 255 << 20         # under 256 MiB, the most CPython gives a thread on Windows: room for deep chains
+
+
+def rooted(paths: list[Path]) -> tuple[list[Path], Path, list[str]]:
+    """The roots a tool was given, resolved; the folder the displayed paths start at; the roots that do not exist."""
+    roots = [p.resolve() for p in paths]
+    missing = [str(p) for p in roots if not p.exists()]
+    base = Path(os.path.commonpath([r if r.is_dir() else r.parent for r in roots])) if not missing else Path()
+    return roots, base, missing
+
+
+def teller(began: float):
+    """What prints a line of progress to stderr with the seconds since `began`."""
+    def progress(message) -> None:
+        print(f"[{time.perf_counter() - began:6.1f}s] {str(message).strip()}", file=sys.stderr, flush=True)
+    return progress
 
 
 def godot_root(path: Path) -> Path | None:

@@ -138,7 +138,8 @@ def both(an, node, tree, env, site) -> None:
 
 def named(an, node, tree, env, site) -> None:
     """A named type: an alias's type with its arguments, or an object of the class or interface made at the site, its
-    type arguments in its places and what its index signatures give in its elements."""
+    type arguments in its places and what its index signatures give in its elements; a class of the program gives
+    every instance of it the program made as well."""
     found = typesys.resolve(an, tree[1], tree[3], tree[4])
     solver = an.solver
     if found is None:
@@ -157,8 +158,12 @@ def named(an, node, tree, env, site) -> None:
                               sub(site, found)), node)
         return
     key = found[1]
-    made = an.objects.declared(key, site, None)
+    cls = an.ix.classes.get(key)
+    own = cls is not None and not cls.shape and not cls.ambient   # a class of the program: only the program makes
+    made = an.objects.from_outside(key) if own else an.objects.declared(key, site, None)
     solver.add(node, [made])
+    if own:                                                       # its objects: one from outside is one it made
+        solver.follow(an.instances(key), node)
     params = max((len(an.ix.classes[k].tparams) for k in typesys.group(an, key)), default=0)
     for i in range(params):
         arg = tree[2][i] if i < len(tree[2]) else None

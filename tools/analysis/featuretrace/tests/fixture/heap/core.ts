@@ -69,3 +69,39 @@ export function unknownKeyKeepsNamesApart(k: string) {
   o[k] = new Tile();
   return o.name;
 }
+
+// A module's code initializes each of its variables, read or not (ECMA-262 module evaluation); a call written in a
+// literal inside a literal is a link of the property that holds it.
+function tone() { return new Tile(); }
+export const SHADES = { warm: { skin: tone() } };
+
+// A method no call reaches runs on an object of its class, whether or not the code read makes one.
+export class Crate {
+  open() { return this.lid(); }
+  lid() { return new Tile(); }
+}
+
+// A value of a class of the program that comes from outside (an entry point's parameter) is an instance the
+// program made: what its constructor wrote is on it.
+export class Depot {
+  stock;
+  constructor() { this.stock = new Tile(); }
+}
+export function builds() { return new Depot(); }
+export function stocked(d: Depot) { return d.stock; }
+
+// What an entry point returns is made, in its run: a closure it returns sees what it captured.
+function peek(d: Depot) { return d.stock; }
+export function watcher(d: Depot) { return () => peek(d); }
+
+// The instance of a class the code read does not make is one object: what its constructor writes, its methods read.
+interface Plug { fit(): Tile; }
+export class Socket {
+  constructor(private plug: Plug) {}
+  use() { return this.plug.fit(); }
+}
+
+// `new` on what no declaration describes is an open call, as a call of it is: what it is handed is called back and
+// it gives the unknown object.
+declare const outside: any;
+export function forged() { return new outside.Blade(() => new Tile()); }

@@ -94,6 +94,8 @@ class Analysis:
             unit = self.ix.units[gid]
             for tree in unit.values:
                 self.solver.follow(self.node(tree, unit, ROOT), node)
+            if unit.refs:                        # what its initializer writes (a literal's calls): its own links
+                self.activate(gid, ROOT)
             if unit.ambient and unit.result_type and unit.kind in STATE:     # declared: an object of its type
                 self.solver.follow(values.produce(self, unit.result_type, (None, None, None), ((gid,), ROOT)), node)
         return node

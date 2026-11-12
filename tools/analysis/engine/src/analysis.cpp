@@ -82,6 +82,7 @@ Value Analysis::initial(int64_t gid) {
     if (wire_once(key)) {
         const UnitRec& u = unit(gid);
         for (Value tree : u.values) follow(node(tree, u, ROOT), key);
+        if (!u.refs.empty()) activate(gid, ROOT);  // what its initializer writes (a literal's calls): its links
         if (u.ambient && truthy(u.result_type) && is_state(gid)) {
             Value site = tuple({tuple({I(gid)}), ROOT});
             follow(values::produce(*this, u.result_type, V.NO_ENV, site), key);
@@ -257,8 +258,15 @@ const std::unordered_set<uint64_t>& Analysis::named() {
 bool Analysis::enter(int64_t gid, Value ctx, int64_t unknown) {
     if (!entered_.insert({static_cast<uint64_t>(gid), ctx.bits(), 0})) return false;
     activate(gid, ctx);
-    if (unknown < 0) return true;
     const UnitRec& u = unit(gid);
+    if (unknown < 0) {                             // a module's code: each variable it declares is initialized
+        for (const auto& [name, gids] : in.members_of(u.owner)) {
+            for (int64_t variable : gids) {
+                if (is_state(variable)) hold(variable);
+            }
+        }
+        return true;
+    }
     auto o = static_cast<Obj>(unknown);
     for (size_t index = 0; index < u.params.size(); ++index) {
         Value tree = index < u.param_types.size() ? u.param_types[index] : tuple({});
@@ -270,8 +278,13 @@ bool Analysis::enter(int64_t gid, Value ctx, int64_t unknown) {
             add(p, o);
         }
     }
-    add(this_(gid, ctx), o);
-    if (in.cls(u.owner) && !u.is_static) follow(instances(u.owner), this_(gid, ctx));
+    if (in.cls(u.owner) && !u.is_static) {         // a method: an object of its class, and any the program made
+        add(this_(gid, ctx), from_outside(u.owner));
+        follow(instances(u.owner), this_(gid, ctx));
+    } else {
+        add(this_(gid, ctx), o);
+    }
+    ret(gid, ctx);                                 // what it returns is made, in this run (a closure's object)
     return true;
 }
 

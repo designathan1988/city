@@ -702,3 +702,47 @@ official declarations only, converging (finite, fast enough to run in seconds to
     items, 7 entry rounds, 0 resolutions missing. Before: not solved in 90 s.
   - the whole lab (`src`): solved in 31.58 s — 336,948 links, 758,780 objects, 5,585,561 nodes, 6.6 M items, 14 entry
     rounds, 0 resolutions missing (84.7 s with the reading of the files, uncached).
+
+### F41. Acceptance against the current core (Task 7, step 1): what the new core lacked at its entry points — 2026-11-12
+- The tool: `python -m featuretrace.accept <roots>` (`featuretrace/accept.py`, not under `heap/`, whose gate allows no
+  written name and a command line writes its options' names). Both cores read the same roots — the current one as the
+  CLI runs it, the new one with the declaration files, solved by the engine — and their links are compared by the two
+  definitions' qualified names, in the groups the walk makes of them (a link that runs its target, a write, a read,
+  any other); the new core's links into declaration files are counted apart. Test: `tests/test_accept.py`.
+- On the lab's `src/world` (173 files; the current core 37,843 links in 5.5 s, the new one 78,719 in 6.8 s), links that
+  run: first 6625 in both, 664 only in the current core, 152 only in the new. Each kind of the 664 read on its lines;
+  what was a rule the new core lacked, fixed in both cores with a test red first (`test_heap_core`):
+  - A module's code initializes each of its variables, read or not (ECMA-262 module evaluation): a `const` no code
+    read was never evaluated, nor the calls in it (`entries.enter`). A property whose value is a literal holds that
+    literal's references (`js_class.object_literal`): lowered when the property is initialized
+    (`members.initialize_literal`, `analysis.initial`).
+  - A method no call reaches ran with the unknown object as `this`: `this.m()` linked nothing. TypeScript: `this` in a
+    method is of its class. It runs on the object standing for the class's instances from outside, and on every one
+    the program made (`entries.enter`, `objects.from_outside`): one object for the class, so what the constructor
+    writes its methods read.
+  - A value of a class of the program a declaration gives (an entry point's parameter) was a fresh object with no
+    field the constructors write. Only the program makes objects of its classes, so one from outside is one it made:
+    that position holds every instance of the class the program made, and the class's object from outside
+    (`values.named`).
+  - What an entry point returns was never made (no caller reads it): a closure it returns, an object literal's
+    methods, ran later with no environment, their captured variables empty. Its result is evaluated in its run.
+  - `new` on the unknown object gave nothing: an open call, as a call of it (`declared.construct`).
+  After them: 6868 in both, 421 only in the current core, 139 only in the new.
+- The 421 left, by what they are (the scratch queries kept the comparison):
+  - 284 are links to a signature of an interface or an object type (no body). The current core links a call to the
+    signature its receiver's type declares, beside what the values give; the new core links what runs. In 276 of them
+    the new core links the same source to an implementation of that name; in 8 the receiver holds nothing.
+    Ruling: a link to a signature is no link the new core must have.
+  - 80 `handed` to a lambda and 8 to a function the new core never reaches, and most of the rest: the receiver is a
+    value of a module the roots do not hold (`@core/...`, a package): its import resolves to nothing, so calls on it
+    link nothing and what is handed to it is never called back. See the next point.
+- Tried and withdrawn: "a name the code read does not define is the unknown object". With it the acceptance's
+  `handed` links appear, but the whole lab is not solved in 240 s (38.8 M items, 603 k links, fields of literals fed by
+  31 k nodes); without it, 17.4 s. Isolated by turning each of the changes above off in turn: only this one. One
+  unknown object for every module not read merges them all with what `any` gives. Jelly, whose design this follows,
+  tracks values of libraries by access paths (JAM, TAPIR), not by one object
+  (https://github.com/cs-au-dk/jelly: "access paths for tracking library usage"). Pending: an unknown value per
+  module not read (and what it gives by path), then this rule again, measured on the whole lab.
+- Measured (engine, contexts on): the whole lab solved in 17.4 s — 351,826 links, 769,789 objects, 5,909,180 nodes,
+  12 entry rounds, 0 resolutions missing; src/world in 6.8 s with its reading. Suite 527 OK on both cores.
+- The engine's diagnostics also name the object of a guard's property node.

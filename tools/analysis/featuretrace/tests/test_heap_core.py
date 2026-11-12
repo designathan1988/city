@@ -53,6 +53,26 @@ class HeapCore(HeapCase):
     def test_a_literal_property_is_evaluated_where_the_literal_is(self):
         self.assertEqual({"Box"}, self.classes("wrapped"))       # PropertyDefinitionEvaluation
 
+    def test_a_module_initializes_its_variables_and_a_nested_literal_links_its_calls(self):
+        self.assertIn(("call", "core.ts.tone"), self.links("warm"))
+
+    def test_an_uncalled_method_runs_on_an_object_of_its_class(self):
+        self.assertIn(("call", "Crate.lid"), self.links("Crate.open"))
+        self.assertEqual({"Tile"}, self.classes("Crate.open"))
+
+    def test_a_value_of_a_program_class_from_outside_is_an_instance_the_program_made(self):
+        self.assertEqual({"Tile"}, self.classes("stocked"))
+
+    def test_what_an_entry_point_returns_is_made_in_its_run(self):
+        self.assertEqual({"Tile"}, self.classes("peek"))
+
+    def test_the_instance_from_outside_is_one_object_for_its_class(self):
+        self.assertIn(("call", "Plug.fit"), self.links("Socket.use"))
+
+    def test_new_on_the_unknown_object_is_an_open_call(self):
+        self.assertEqual({"unknown:"}, self.returned("forged"))
+        self.assertTrue(any(kind == "handed" for kind, _ in self.links("forged")), self.links("forged"))
+
     def test_an_object_literal_property(self):
         found = self.returned("literalRead")
         self.assertTrue(any(v.startswith("new:") and "Box" in v for v in found), found)

@@ -1,13 +1,16 @@
 """The entry points (log/trace-core-plan.md, Task 3; log/trace-research.md F32, F36): module code runs first, in ROOT;
 then a function no call of the program reaches is called by the unknown caller, once for each environment a closure
-of it was made in, with an object of its declared type (else the unknown object) in each parameter and the unknown
-object in `this`. Entries start in waves, the solver run between them, so that a function the program calls is found
+of it was made in, with an object of its declared type (else the unknown object) in each parameter and, in `this`,
+an object of its class for a method (TypeScript: `this` in a method is of its class) and every one the program made,
+else the unknown object. A module's code initializes each of its variables, read or not (ECMA-262 module evaluation).
+Entries start in waves, the solver run between them, so that a function the program calls is found
 called before it would be entered: first the functions no other code names (a read or a call of their name), then
 those that stay uncalled; a function written in another waits until that one has run.
 """
 from __future__ import annotations
 
 from ..js_read import MODULE_UNIT
+from ..model import STATE_KINDS
 from ..vocab import CALL, HANDED, NEW, READ, SITE_UNKNOWN, T_OPEN
 from . import contexts, values
 
@@ -54,8 +57,13 @@ def enter(an, gid: int, ctx, unknown) -> bool:
         return False
     an.entered.add((gid, ctx))
     an.activate(gid, ctx)
-    if unknown is not None:                  # each parameter: an object of its declared type, else the unknown one
-        unit = an.ix.units[gid]
+    unit = an.ix.units[gid]
+    if unknown is None:                      # a module's code: each variable it declares is initialized
+        for gids in an.ix.members.get(unit.owner, {}).values():
+            for variable in gids:
+                if an.ix.units[variable].kind in STATE_KINDS:
+                    an.hold(variable)
+    else:                                    # each parameter: an object of its declared type, else the unknown one
         for index in range(len(unit.params)):
             tree = unit.param_types[index] if index < len(unit.param_types) else ()
             if tree and tree[0] != T_OPEN:
@@ -63,7 +71,10 @@ def enter(an, gid: int, ctx, unknown) -> bool:
                 an.solver.follow(values.produce(an, tree, (None, None, None), site), an.param(gid, index, ctx))
             else:
                 an.solver.add(an.param(gid, index, ctx), [unknown])
-        an.solver.add(an.this(gid, ctx), [unknown])
-        if unit.owner in an.ix.classes and not unit.static:      # a method: any object of its class
+        if unit.owner in an.ix.classes and not unit.static:      # a method: an object of its class, and any made
+            an.solver.add(an.this(gid, ctx), [an.objects.from_outside(unit.owner)])
             an.solver.follow(an.instances(unit.owner), an.this(gid, ctx))
+        else:
+            an.solver.add(an.this(gid, ctx), [unknown])
+        an.ret(gid, ctx)                     # what it returns is made, in this run (a closure, a literal's methods)
     return True

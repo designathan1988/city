@@ -310,6 +310,10 @@ void call_object(Analysis& an, Value node, Obj fn, int64_t receiver, std::span<c
 }
 
 void construct(Analysis& an, Value node, Obj obj, std::span<const Value> args) {
+    if (an.okind(obj) == an.V.SITE_UNKNOWN) {      // what no declaration describes: an open call
+        summaries::open_call(an, node, args, call_site(an, node));
+        return;
+    }
     signatures(an, node, obj, an.V.CONSTRUCT_SIGNATURE, args, call_site(an, node));
 }
 

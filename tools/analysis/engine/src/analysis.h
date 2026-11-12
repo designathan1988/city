@@ -93,6 +93,8 @@ public:
     Obj object_site(Obj o);                       // its site without that context
     Value declared_env(Obj o) const;              // a declared object's environment, NONE
     Obj primitive(Value kind) { return make({V.SITE_PRIMITIVE, kind}); }
+    // The object standing for the instances of a class of the program that come from outside the code read: one.
+    Obj from_outside(Value key) { return make({V.SITE_DECLARED, key, tuple({I(-1)}), NONE, ROOT}); }
 
     // ---- running units ------------------------------------------------------------------------------------------
     const UnitRec& unit(int64_t gid) const { return in.units[static_cast<size_t>(gid)]; }

@@ -243,6 +243,7 @@ void initialize_literal(Analysis& an, Obj obj, Value key, Value ctx) {
         for (int64_t gid : gids) {
             const UnitRec& prop = an.unit(gid);
             if (!an.is_state(gid) || prop.is_static) continue;
+            if (!prop.refs.empty()) an.activate(gid, run);   // a literal inside it is written as its own
             for (Value tree : prop.values) an.follow(an.node(tree, prop, run), field(an, obj, name));
         }
     }

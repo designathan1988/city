@@ -216,6 +216,8 @@ def initialize_literal(an, obj: int, key: str, ctx) -> None:
         for gid in gids:
             prop = an.ix.units[gid]
             if prop.kind in STATE_KINDS and not prop.static:
+                if prop.refs:                        # a literal inside it is written as its own (`js_class`)
+                    an.activate(gid, run)
                 for tree in prop.values:
                     an.solver.follow(an.node(tree, prop, run), field(an, obj, name))
 

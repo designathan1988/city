@@ -14,7 +14,6 @@ Exit code: 0 traced, 2 the starting point names no definition, 1 a root does not
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 import tempfile
 import time
@@ -40,17 +39,11 @@ def main(argv=None) -> int:
     parser.add_argument("--no-cache", action="store_true", help="read every file again")
     args = parser.parse_args(argv)
 
-    began = time.perf_counter()
-    roots = [p.resolve() for p in (args.root or [Path.cwd()])]
-    missing = [str(p) for p in roots if not p.exists()]
+    progress = program.teller(time.perf_counter())
+    roots, base, missing = program.rooted(args.root or [Path.cwd()])
     if missing:
         print(f"no such root: {', '.join(missing)}", file=sys.stderr)
         return 1
-    base = Path(os.path.commonpath([r if r.is_dir() else r.parent for r in roots]))
-
-    def progress(message: str) -> None:
-        print(f"[{time.perf_counter() - began:5.1f}s] {message}", file=sys.stderr, flush=True)
-
     index, rs, count, broken = program.load(roots, base, None if args.no_cache else args.cache, progress)
     progress(f"{count} files, {len(index.units)} definitions, {len(rs.edges)} links"
              + (f"; {len(broken)} files with syntax the grammar did not fully parse" if broken else ""))
