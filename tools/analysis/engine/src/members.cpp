@@ -277,6 +277,7 @@ Value field(Analysis& an, Obj obj, Value name) {
     if (!an.wire_once(node)) return node;
     an.follow(node, every(an, obj));
     an.names_of[obj].push_back(name);
+    if (an.waiting.count(obj)) an.refit(obj);    // positions of a declared type it did not fit yet (Analysis::admit)
     if (auto puts = an.key_puts.find(obj); puts != an.key_puts.end()) {   // each write by a key enumerating it
         auto entries = puts->second;
         for (const auto& [source, target] : entries) copies::put_name(an, source, target, name);

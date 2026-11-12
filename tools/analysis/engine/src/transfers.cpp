@@ -225,20 +225,21 @@ void call_by_argument(Analysis& an, Value t, const Captured& c, Objs objs) {   /
         an.run(t, c[0].data(), an.argument_context(c[5], o, c[3]), c[6].data(), args, c[2], c[3], index, o);
     }
 }
+void typed(Analysis& an, Value t, const Captured& c, Objs objs) { an.fit(c[0], t, objs); }
 void spread(Analysis& an, Value, const Captured& c, Objs objs) {
     std::vector<Obj> list(objs.begin(), objs.end());
     for (Obj o : list) copies::copy(an, o, obj_of(c[0]));
 }
 
 // The handler of each kind, in the order of TransferKind (from kMemberRead).
-constexpr std::array<Handler, kCallByArgument> kHandlers = {
+constexpr std::array<Handler, kTyped> kHandlers = {
     member_read, super_read, index_by_object, index_keys, call_by_receiver, call_functions, super_by_this,
     plain_call, keys, construct_by_value, construct_returned, new_written, write_by_object, store_by_object,
     read_link, prototypes, type_index, both_outer, both_inner, consumed, structural_fn, receivers,
     summary_receive, summary_called, summary_fields, summary_member_of, kept, iter_elements, iter_iterator,
     iter_next, iter_value, method_call, settle, jsx_factory, jsx_children, summary_called, store_by_key,
     narrow_value, narrow_member, member_passes, instance_objects, instance_targets, predicate_functions,
-    predicate_admits, spread, callable_only, put_dictionary, call_by_argument,
+    predicate_admits, spread, callable_only, put_dictionary, call_by_argument, typed,
 };
 
 }  // namespace

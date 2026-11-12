@@ -3,6 +3,7 @@
 #include "output.h"
 
 #include <algorithm>
+#include <map>
 
 #include "semantics.h"
 
@@ -122,6 +123,32 @@ void ints(Writer& w, std::vector<Obj> objs) {
     w.close_list();
 }
 
+struct Volume {                                    // what a function's nodes hold (heap/scaler.py reads it)
+    size_t facts = 0, receivers = 0;
+    std::vector<size_t> params;
+};
+
+std::map<int64_t, Volume> volumes(Analysis& an) {
+    const Vocab& V = an.V;
+    std::map<int64_t, Volume> out;
+    for (Node n = 0; n < an.solver.nodes(); ++n) {
+        Value key = an.key_of(n);
+        Value tag = an.item(key, 0);
+        if (tag != V.TREE && tag != V.LOCAL && tag != V.PARAM && tag != V.THIS && tag != V.RET) continue;
+        if (an.item(key, 1).kind() != Kind::Int) continue;
+        size_t held = an.solver.held(n).size();
+        Volume& v = out[an.item(key, 1).data()];
+        v.facts += held;
+        if (tag == V.THIS) v.receivers += held;
+        if (tag == V.PARAM) {
+            auto index = static_cast<size_t>(an.item(key, 2).data());
+            if (v.params.size() <= index) v.params.resize(index + 1);
+            v.params[index] += held;
+        }
+    }
+    return out;
+}
+
 }  // namespace
 
 std::string result_pickle(Analysis& an, Semantics& semantics, bool names) {
@@ -196,6 +223,19 @@ std::string result_pickle(Analysis& an, Semantics& semantics, bool names) {
     for (const auto& [gid, ctxs] : an.active_order) {
         w.integer(static_cast<int64_t>(gid));
         w.integer(static_cast<int64_t>(ctxs.size()));
+    }
+    w.close_dict();
+    w.text("volumes");                              // per function: its nodes' facts, `this`'s and each parameter's
+    w.open_dict();
+    for (const auto& [gid, v] : volumes(an)) {
+        w.integer(gid);
+        w.op(kMark);
+        w.integer(static_cast<int64_t>(v.facts));
+        w.integer(static_cast<int64_t>(v.receivers));
+        w.open_list();
+        for (size_t n : v.params) w.integer(static_cast<int64_t>(n));
+        w.close_list();
+        w.op(kTuple);
     }
     w.close_dict();
     w.text("missing");

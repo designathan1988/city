@@ -92,7 +92,7 @@ public:
     std::unordered_map<Key3, std::vector<Value>, Key3Hash> operators;     // (op, unary)
     std::unordered_map<uint64_t, std::vector<Value>> literals;            // kind
     std::unordered_set<uint64_t> numeric_names;                           // canonical numeric strings: indexes
-    std::unordered_set<int64_t> contextual;                               // functions whose runs need contexts
+    std::unordered_map<int64_t, int64_t> levels;     // a function -> what its runs are told apart by (heap/scaler.py)
     std::unordered_map<int64_t, int64_t> carried;    // a function -> the parameter a plain call is told apart by
     std::unordered_map<uint64_t, int64_t> offset;                         // file -> first gid
     std::unordered_map<uint64_t, std::vector<int64_t>> module_units;      // file -> its module unit

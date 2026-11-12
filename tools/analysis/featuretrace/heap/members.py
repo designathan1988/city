@@ -272,6 +272,8 @@ def field(an, obj: int, name: str):
         an.names_of[obj].add(name)
         for target in sorted(an.copies.get(obj, ())):
             an.solver.follow(node, field(an, target, name))
+        if an.waiting.get(obj):              # positions of a declared type it did not fit yet (`analysis.admit`)
+            an.refit(obj)
         if an.key_puts.get(obj):
             from .copies import put_name
             for source, target in list(an.key_puts[obj]):

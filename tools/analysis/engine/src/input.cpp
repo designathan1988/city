@@ -222,7 +222,10 @@ void decode(Value root, Input& in) {
         in.literals[r[0].bits()] = list(s, r[1]);
     }
     for (Value name : seq(s, part(s, root, "numeric_names"))) in.numeric_names.insert(name.bits());
-    for (Value gid : seq(s, part(s, root, "contextual"))) in.contextual.insert(num(gid));
+    for (Value row : seq(s, part(s, root, "levels"))) {
+        auto r = seq(s, row);
+        in.levels[num(r[0])] = num(r[1]);
+    }
     for (Value row : seq(s, part(s, root, "carried"))) {
         auto r = seq(s, row);
         in.carried[num(r[0])] = num(r[1]);

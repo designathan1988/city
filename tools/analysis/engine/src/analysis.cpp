@@ -66,7 +66,8 @@ Value Analysis::ret(int64_t gid, Value ctx) {
     Value key = tuple({V.RET, I(gid), ctx});
     if (wire_once(key)) {
         const UnitRec& u = unit(gid);
-        for (Value tree : u.returns) follow(node(tree, u, ctx), key);
+        Value declared = u.asynchronous || u.generator ? NONE : u.result_type;   // its own value's type
+        for (Value tree : u.returns) admit(declared, node(tree, u, ctx), key);
     }
     return key;
 }
@@ -118,6 +119,10 @@ bool Analysis::callable(Obj fn) {
     return runs;
 }
 
+namespace {
+constexpr int64_t kOnce = 0, kByCall = 1;          // heap/scaler.py ONCE, CALL (OBJECT: 2)
+}  // namespace
+
 void Analysis::call(Value node, Obj fn, int64_t receiver, std::span<const Value> args, Value kind, Value site,
                     bool shared) {
     if (!callable(fn)) return;                     // calling what is no function runs nothing (it throws)
@@ -136,8 +141,12 @@ void Analysis::call(Value node, Obj fn, int64_t receiver, std::span<const Value>
     }
     Value env = last(*this, key);
     Value ctx;
-    if (shared || !in.contextual.count(gid)) {     // nothing that differs between callers reaches out
+    auto chosen = in.levels.find(gid);             // what its runs are told apart by (heap/scaler.py)
+    int64_t level = chosen == in.levels.end() ? kOnce : chosen->second;
+    if (shared || level == kOnce) {                // nothing that differs between callers, or the total allows none
         ctx = contexts::of_call(*this, env, V.ONCE);
+    } else if (level == kByCall) {
+        ctx = contexts::of_call(*this, env, item(where, 0));
     } else if (receiver >= 0 && u.this_of != V.ARROW) {   // the call binds `this` (an arrow's is lexical)
         auto r = static_cast<Obj>(receiver);
         ctx = contexts::of_method(*this, env, I(object_site(r)), object_heap(r));
@@ -155,6 +164,37 @@ void Analysis::call(Value node, Obj fn, int64_t receiver, std::span<const Value>
     run(node, gid, ctx, receiver, args, kind, where, -1, 0);
 }
 
+void Analysis::admit(Value tree, Value source, Value target) {
+    if (!verdicts::filtering(*this, tree)) {
+        follow(source, target);
+        return;
+    }
+    subscribe(source, target, tuple({V.TYPED, tree}), pack(*this, kTyped, {tree}));
+}
+
+void Analysis::fit(Value tree, Value target, std::span<const Obj> objs) {
+    std::vector<Obj> kept;
+    for (Obj o : objs) {
+        if (verdicts::assignable(*this, tree, o)) {
+            kept.push_back(o);
+        } else {
+            waiting[o].emplace_back(tree, target);
+        }
+    }
+    add(target, kept);
+}
+
+void Analysis::refit(Obj obj) {
+    auto found = waiting.find(obj);
+    if (found == waiting.end()) return;
+    auto entries = std::move(found->second);
+    waiting.erase(found);
+    for (const auto& [tree, target] : entries) {
+        Obj one[] = {obj};
+        fit(tree, target, one);
+    }
+}
+
 Value Analysis::argument_context(Value env, Obj o, Value where) {
     Value kind = okind(o);                         // a primitive's value tells no object apart: the call's site
     if (kind == V.SITE_PRIMITIVE || kind == V.SITE_TEXT || kind == V.SITE_KEY) {
@@ -167,13 +207,16 @@ void Analysis::run(Value node, int64_t gid, Value ctx, int64_t receiver, std::sp
                    Value where, int64_t only, Obj only_obj) {
     const UnitRec& u = unit(gid);
     activate(gid, ctx);
+    size_t rest = u.variadic ? u.params.size() - 1 : u.params.size();   // a rest parameter's type is its array's
     for (size_t index = 0; index < args.size(); ++index) {
         if (args[index].kind() == Kind::None || index >= u.params.size()) continue;
         Value p = param(gid, static_cast<int64_t>(index), ctx);
+        Value tree = index < u.param_types.size() && index != rest ? u.param_types[index] : NONE;
         if (static_cast<int64_t>(index) == only) {
-            add(p, only_obj);
+            Obj one[] = {only_obj};
+            if (verdicts::filtering(*this, tree)) fit(tree, p, one); else add(p, only_obj);
         } else {
-            follow(args[index], p);
+            admit(tree, args[index], p);
         }
     }
     if (receiver >= 0) add(this_(gid, ctx), static_cast<Obj>(receiver));

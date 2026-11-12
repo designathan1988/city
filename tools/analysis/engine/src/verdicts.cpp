@@ -9,6 +9,8 @@
 
 namespace ftengine::verdicts {
 
+const std::vector<Value>& required(Analysis& an, Value key);   // what an object type requires (below)
+
 namespace {
 
 bool known_kind(Analysis& an, Value k) {          // one of the language's kinds `typeof` decides alone
@@ -82,6 +84,58 @@ bool admits_in(Analysis& an, Value tree, Obj o, std::vector<Value>& seen) {
     }
     if (kind == V.T_NAMED) return admits_named(an, tree, o, seen);
     if (kind == V.T_OBJECT) return structural(an, an.item(tree, 1), o);
+    if (kind == V.T_TUPLE) return can(array(an, o), true);
+    if (kind == V.T_FN) return has_typeof(an, o, V.TYPEOF_FUNCTION);
+    return true;
+}
+
+bool fits(Analysis& an, Value key, Obj o) {        // every member it requires, or a dictionary every name reads
+    if (nullish(an, o) == kYes) return false;
+    for (Value own : typesys::own_types(an, o)) {
+        for (int64_t gid : typesys::lookup(an, own, an.V.INDEX_SIGNATURE)) {
+            for (const auto& [key_type, value] : an.unit(gid).indexes) {
+                auto vs = typesys::values(an, key_type);
+                if (std::find(vs.begin(), vs.end(), an.V.NUMBER) == vs.end()) return true;
+            }
+        }
+    }
+    auto written = an.names_of.find(o);
+    for (Value name : required(an, key)) {
+        if (typesys::has_member(an, o, name)) continue;
+        if (written == an.names_of.end() ||
+            std::find(written->second.begin(), written->second.end(), name) == written->second.end()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool assignable_in(Analysis& an, Value tree, Obj o, std::vector<Value>& seen) {
+    const Vocab& V = an.V;
+    Value kind = an.item(tree, 0);
+    if (kind == V.T_UNION || kind == V.T_BOTH) {
+        for (Value part : an.at(an.item(tree, 1))) {
+            bool in = assignable_in(an, part, o, seen);
+            if (kind == V.T_UNION && in) return true;
+            if (kind == V.T_BOTH && !in) return false;
+        }
+        return kind == V.T_BOTH;
+    }
+    if (kind == V.T_VALUES) {
+        for (Value v : an.at(an.item(tree, 1))) {
+            if (value_admits(an, v, o)) return true;
+        }
+        return false;
+    }
+    if (kind == V.T_NAMED) {
+        Value found = typesys::resolve_named(an, tree, seen);
+        if (found.kind() == Kind::None) return true;
+        if (an.item(found, 0) == V.ALIAS) {
+            return typesys::expand_alias(an, found, seen, [&](Value type) { return assignable_in(an, type, o, seen); });
+        }
+        return fits(an, an.item(found, 1), o);
+    }
+    if (kind == V.T_OBJECT) return fits(an, an.item(tree, 1), o);
     if (kind == V.T_TUPLE) return can(array(an, o), true);
     if (kind == V.T_FN) return has_typeof(an, o, V.TYPEOF_FUNCTION);
     return true;
@@ -325,6 +379,22 @@ bool surely_in(Analysis& an, Value tree, Obj o, std::vector<Value>& seen) {
 bool surely(Analysis& an, Value tree, Obj o) {
     std::vector<Value> seen;
     return surely_in(an, tree, o, seen);
+}
+
+// Whether a value is assignable to a type the program declares for a position (heap/verdicts.py `assignable`).
+bool assignable(Analysis& an, Value tree, Obj o) {
+    if (an.okind(o) == an.V.SITE_UNKNOWN) return true;
+    std::vector<Value> seen;
+    return assignable_in(an, tree, o, seen);
+}
+
+bool filtering(Analysis& an, Value tree) {
+    const Vocab& V = an.V;
+    if (!an.truthy(tree)) return false;
+    Value kind = an.item(tree, 0);
+    bool tells = kind == V.T_NAMED || kind == V.T_OBJECT || kind == V.T_VALUES || kind == V.T_UNION ||
+                 kind == V.T_BOTH || kind == V.T_TUPLE || kind == V.T_FN;
+    return tells && !summaries::is_open(an, tree);
 }
 
 }  // namespace ftengine::verdicts

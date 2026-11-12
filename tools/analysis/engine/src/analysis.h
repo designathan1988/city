@@ -107,6 +107,12 @@ public:
     void run(Value node, int64_t gid, Value ctx, int64_t receiver, std::span<const Value> args, Value kind,
              Value where, int64_t only, Obj only_obj);
     Value argument_context(Value env, Obj o, Value where);   // a run told apart by an object of its argument
+    // `source`'s values into a position of the declared type `tree`: each assignable to it, one that is not once it
+    // fits (an object gains members as it is written: `refit`).
+    void admit(Value tree, Value source, Value target);
+    void fit(Value tree, Value target, std::span<const Obj> objs);
+    void refit(Obj obj);
+    std::unordered_map<Obj, std::vector<std::pair<Value, Value>>> waiting;   // an object -> (type, position)
     void reached(Value node, int64_t gid, Value kind);
     void relay(Value origin, Value node);
     void written(Value node, int64_t caller, int64_t line);

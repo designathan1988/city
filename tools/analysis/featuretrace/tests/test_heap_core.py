@@ -73,6 +73,11 @@ class HeapCore(HeapCase):
         self.assertEqual({"unknown:"}, self.returned("forged"))
         self.assertTrue(any(kind == "handed" for kind, _ in self.links("forged")), self.links("forged"))
 
+    def test_a_typed_position_takes_only_what_is_assignable_to_it(self):
+        self.assertEqual({"Pot"}, self.classes("kept"))       # a parameter
+        self.assertEqual({"Pot"}, self.classes("handed"))     # a return
+        self.assertTrue(any(v.startswith("lit:") for v in self.returned("lidded")), self.returned("lidded"))
+
     def test_an_object_literal_property(self):
         found = self.returned("literalRead")
         self.assertTrue(any(v.startswith("new:") and "Box" in v for v in found), found)

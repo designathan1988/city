@@ -19,7 +19,7 @@ import pickle
 from pathlib import Path
 
 from . import truth
-from .heap import flows, jsx, names, trees, typesys, verdicts
+from .heap import flows, jsx, names, scaler, trees, typesys, verdicts
 from .js_transfer import chain
 from .languages import INTRINSICS, JSX_CLASSIC, JSX_FACTORY_DEFAULT, JSX_FACTORY_OPTION, canonical_numeric
 from .model import FUNCTION_KINDS, ClassFact, Ref, Unit
@@ -28,7 +28,7 @@ from .ir_js import CLASS_VALUE
 from .vocab import CAST, IMPORT, JSX, LITERAL, NAME, OP, T_NAMED, T_QUERY, UNARY
 
 ROOT_PARTS = ("units", "classes", "members", "names", "types", "class_tables", "intrinsics", "modules", "exports",
-              "jsx", "queries", "operators", "literals", "numeric_names", "contextual", "carried", "vocabulary")
+              "jsx", "queries", "operators", "literals", "numeric_names", "levels", "carried", "vocabulary")
 NUMERIC_START = "-0123456789NI"              # what a canonical numeric string can begin with (Number::toString)
 PROTOCOL = 5                                 # the pickle protocol the engine reads (PEP 574)
 HEAP = Path(__file__).resolve().parent / "heap"
@@ -94,7 +94,7 @@ class Found:
         return found, self.elements or any(ref.kind == JSX for ref in unit.refs)
 
 
-def tables(ix) -> list:
+def tables(ix, levels: dict | None = None) -> list:
     light, js = Light(ix), ix.js
     found = Found({CLASS_VALUE + key: cls.spreads for key, cls in ix.classes.items() if cls.spreads})
     for cls in ix.classes.values():
@@ -149,7 +149,8 @@ def tables(ix) -> list:
                      {r.name for u in ix.units for r in u.refs if r.name and canonical_numeric(r.name)})
     return [list(ix.units), sorted(ix.classes.values(), key=lambda c: c.key), members, name_rows, type_rows,
             class_rows, intrinsics, modules, exports, jsx_rows, queries, operators, literals, numeric,
-            [u.gid for u in ix.units if u.kind in FUNCTION_KINDS and flows.contextual(light, u.gid)],
+            sorted(levels.items()) if levels is not None else
+            [(u.gid, scaler.OBJECT) for u in ix.units if u.kind in FUNCTION_KINDS and flows.contextual(light, u.gid)],
             [(u.gid, flows.carried(light, u.gid)) for u in ix.units
              if u.kind in FUNCTION_KINDS and flows.carried(light, u.gid) is not None], vocabulary()]
 
@@ -212,8 +213,9 @@ def vocabulary() -> list:
         for record in (Unit, Ref, ClassFact)]
 
 
-def write(ix, path: Path) -> int:
-    """The file, written whole (pickle's own C writer): each part by its name. Its size in bytes."""
-    data = pickle.dumps(dict(zip(ROOT_PARTS, tables(ix))), protocol=PROTOCOL)
+def write(ix, path: Path, levels: dict | None = None) -> int:
+    """The file, written whole (pickle's own C writer): each part by its name; `levels`, what each function's runs
+    are told apart by (`scaler`; None: by objects wherever they need contexts). Its size in bytes."""
+    data = pickle.dumps(dict(zip(ROOT_PARTS, tables(ix, levels))), protocol=PROTOCOL)
     path.write_bytes(data)
     return len(data)

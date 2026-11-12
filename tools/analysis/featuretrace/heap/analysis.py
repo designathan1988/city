@@ -18,7 +18,7 @@ from ..resolve import EXACT, Edge
 from ..model import STATE_KINDS as STATE
 from ..vocab import (ANY_FIELD, CALL, ELEMENTS_FIELD, NEW, RESULT_FIELD, SITE_FUNCTION, SITE_GENERATOR,
                      SITE_PROMISE)
-from . import contexts, declared, flows, members, protocols, refs, trees, typesys, values
+from . import contexts, declared, flows, members, protocols, refs, scaler, trees, typesys, values, verdicts
 from .entries import entries
 from .objects import Objects
 from .solver import Solver
@@ -26,6 +26,7 @@ from .solver import Solver
 TREE, LOCAL, PARAM, THIS, RET, HOLD, FIELD, INITIAL = range(8)       # what a node is
 INSTANCES, MADE_BY_CALL = 60, 61               # every object of a class; the generator or promise a call makes
 BY_ARGUMENT = 69                               # a subscription: a call run once per object of an argument
+TYPED = 70                                     # a subscription: the values a position of a declared type takes
 ROOT = contexts.ROOT
 
 
@@ -46,6 +47,8 @@ class Analysis:
         self.memo = {}                       # what a declared type resolves to, merges with, looks up
         self.copies = defaultdict(set)       # an object -> the objects its properties are copied into (`copies`)
         self.names_of = defaultdict(set)     # an object -> the names of its properties made so far
+        self.levels = None                   # gid -> what its runs are told apart by (`scaler`), None: all
+        self.waiting = defaultdict(list)     # an object -> (type, position) it did not fit yet (`admit`)
         self.key_puts = defaultdict(dict)    # an object -> (value node, target) of each write by a key of it
 
     # ---- nodes -------------------------------------------------------------------------------------------------
@@ -75,9 +78,33 @@ class Analysis:
         if node not in self.wired:
             self.wired.add(node)
             unit = self.ix.units[gid]
+            declared = () if unit.asynchronous or unit.generator else unit.result_type   # its own value's type
             for _, _, tree in unit.returns:
-                self.solver.follow(self.node(tree, unit, ctx), node)
+                self.admit(declared, self.node(tree, unit, ctx), node)
         return node
+
+    def admit(self, tree, source, target) -> None:
+        """`source`'s values into a position of the declared type `tree`: each assignable to it (TypeScript Type
+        Compatibility, `verdicts.assignable`); one that is not, once it fits — an object gains members as it is written
+        (`members.field` calls `refit`). A type that can refuse nothing takes every value."""
+        if not verdicts.filtering(self, tree):
+            self.solver.follow(source, target)
+            return
+        self.solver.subscribe(source, target, (TYPED, tree), lambda t, objs: self.fit(tree, t, objs))
+
+    def fit(self, tree, target, objs) -> None:
+        kept = []
+        for obj in objs:
+            if verdicts.assignable(self, tree, obj):
+                kept.append(obj)
+            else:
+                self.waiting[obj].append((tree, target))
+        self.solver.add(target, kept)
+
+    def refit(self, obj: int) -> None:
+        """An object that gained a property: the positions it did not fit yet, again."""
+        for tree, target in self.waiting.pop(obj, ()):
+            self.fit(tree, target, [obj])
 
     def hold(self, gid: int):
         """What a variable or a static field holds: its initializers and every value written to it."""
@@ -136,14 +163,17 @@ class Analysis:
             declared.call_object(self, node, fn, receiver, args, where)
             return
         unit = self.ix.units[gid]
+        level = self.level(gid)
         if unit.decl_only:                   # no body: nothing runs (no context, no parameter, no result of its own)
             self.reached(node, gid, kind)
             if typesys.declared(self, gid):
                 declared.apply(self, node, gid, receiver, args, where)
             return
         env = objects.env(fn)
-        if shared or not flows.contextual(self, gid):     # nothing that differs between callers reaches out
+        if shared or level == scaler.ONCE:  # nothing that differs between callers reaches out, or the total allows none
             ctx = contexts.of_call(env, contexts.ONCE)
+        elif level == scaler.CALL:
+            ctx = contexts.of_call(env, where[0])
         elif receiver is not None and unit.this_of != ARROW_THIS:   # the call binds `this` (an arrow's is lexical)
             ctx = contexts.of_method(env, objects.site(receiver), objects.heap(receiver))
         else:
@@ -155,6 +185,13 @@ class Analysis:
                 return
             ctx = contexts.of_call(env, where[0])
         self.run(node, gid, ctx, receiver, args, kind, where, None)
+
+    def level(self, gid: int) -> int:
+        """What a function's runs are told apart by (`scaler`): the levels given, else by objects where its runs need
+        contexts at all (`flows.contextual`)."""
+        if self.levels is not None:
+            return self.levels.get(gid, scaler.ONCE)
+        return scaler.OBJECT if flows.contextual(self, gid) else scaler.ONCE
 
     def argument_context(self, env, obj: int, where):
         """The context of a run told apart by an object of its argument: that object's site and heap context; a value of
@@ -168,12 +205,15 @@ class Analysis:
         that object alone), its `this` the receiver, the call its result."""
         unit = self.ix.units[gid]
         self.activate(gid, ctx)
+        rest = len(unit.params) - 1 if unit.variadic else -1    # a rest parameter's type is its array's
         for index, arg in enumerate(args):
             if arg is not None and index < len(unit.params):
+                tree = unit.param_types[index] if index < len(unit.param_types) and index != rest else ()
                 if only is not None and index == only[0]:
-                    self.solver.add(self.param(gid, index, ctx), [only[1]])
+                    self.fit(tree, self.param(gid, index, ctx), [only[1]]) if verdicts.filtering(self, tree) else \
+                        self.solver.add(self.param(gid, index, ctx), [only[1]])
                 else:
-                    self.solver.follow(arg, self.param(gid, index, ctx))
+                    self.admit(tree, arg, self.param(gid, index, ctx))
         if receiver is not None:
             self.solver.add(self.this(gid, ctx), [receiver])
         self.solver.follow(self.result(gid, ctx, where), node)
@@ -280,9 +320,11 @@ class Result:
         return {an.objects.label(o) for node in nodes for o in an.solver.held(node)}
 
 
-def analyse(index, progress=None) -> Result:
-    """Module code, then the entry points, each solved to the least fixpoint, until no function starts."""
+def analyse(index, progress=None, levels: dict | None = None) -> Result:
+    """Module code, then the entry points, each solved to the least fixpoint, until no function starts; with `levels`,
+    each function's runs told apart as `scaler` chose."""
     an = Analysis(index)
+    an.levels = levels
     entries(an, modules=True)
     an.solver.run()
     while entries(an, modules=False):

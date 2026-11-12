@@ -222,6 +222,56 @@ def admits(an, tree: tuple, obj: int, seen: tuple = ()) -> bool:
     return True
 
 
+FILTERING = (T_NAMED, T_OBJECT, T_VALUES, T_UNION, T_BOTH, T_TUPLE, T_FN)   # the types a typed position can refuse by
+
+
+def assignable(an, tree: tuple, obj: int, seen: tuple = ()) -> bool:
+    """Whether a value is assignable to a type the program declares for a position (TypeScript Type Compatibility,
+    the rule a typed parameter or return keeps): an object type, a class's included, by structure (`fits`); a union by
+    any part, an intersection by every part; the unknown object can be anything."""
+    if an.objects.kind(obj) == SITE_UNKNOWN:
+        return True
+    kind = tree[0] if tree else None
+    if kind == T_UNION:
+        return any(assignable(an, part, obj, seen) for part in tree[1])
+    if kind == T_BOTH:
+        return all(assignable(an, part, obj, seen) for part in tree[1])
+    if kind == T_VALUES:
+        return any(value_admits(an, v, obj) for v in tree[1])
+    if kind == T_NAMED:
+        found = typesys.resolve(an, tree[1], tree[3], tree[4])
+        if found is None or found in seen:
+            return True
+        if found[0] == typesys.ALIAS:
+            return assignable(an, an.ix.units[found[1]].result_type, obj, seen + (found,))
+        return fits(an, found[1], obj)
+    if kind == T_OBJECT:
+        return fits(an, tree[1], obj)
+    if kind == T_TUPLE:
+        return True in array(an, obj)
+    if kind == T_FN:
+        return TYPEOF_FUNCTION in typeof(an, obj)
+    return True
+
+
+def fits(an, key: str, obj: int) -> bool:
+    """Whether a value has every member an object type requires — declared on its own types (a declared object's,
+    a primitive's wrapper's) or written on it — or is a dictionary every name reads (a string index signature)."""
+    if nullish(an, obj) == YES:
+        return False
+    if any(NUMBER not in typesys.values(key_type) for own in typesys.own_types(an, obj)
+           for gid in typesys.lookup(an, own, INDEX_SIGNATURE) for key_type, _ in an.ix.units[gid].indexes):
+        return True
+    written = an.names_of.get(obj, ())
+    return all(typesys.has_member(an, obj, name) or name in written for name in required(an, key))
+
+
+def filtering(an, tree: tuple) -> bool:
+    """Whether a declared type can refuse a value: written, not open (`summaries.is_open`), of a kind it can tell."""
+    from .summaries import is_open
+    return bool(tree) and tree[0] in FILTERING and not is_open(an, tree)
+
+
 def value_admits(an, value: str, obj: int) -> bool:
     if value == ENGINE or an.objects.kind(obj) == SITE_UNKNOWN:
         return True

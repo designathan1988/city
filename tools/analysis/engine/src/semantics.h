@@ -13,7 +13,7 @@ enum TransferKind : uint32_t {
     kSummaryReceive, kSummaryCalled, kSummaryFields, kSummaryMemberOf, kKept, kIterElements, kIterIterator,
     kIterNext, kIterValue, kMethodCall, kSettle, kJsxFactory, kJsxChildren, kOpenCalled, kStoreByKey,
     kNarrowValue, kNarrowMember, kMemberPasses, kInstanceObjects, kInstanceTargets, kPredicateFunctions,
-    kPredicateAdmits, kSpread, kCallableOnly, kPutDictionary, kCallByArgument,
+    kPredicateAdmits, kSpread, kCallableOnly, kPutDictionary, kCallByArgument, kTyped,
 };
 
 // The dispatcher the solver calls (transfers.cpp).
@@ -194,6 +194,8 @@ uint8_t outcomes(Analysis& an, Obj o, Obj target);       // what `o instanceof t
 bool admits(Analysis& an, Value tree, Obj o);            // whether a value can be of a declared type
 bool surely(Analysis& an, Value tree, Obj o);            // whether a value surely is of a declared type
 bool structural(Analysis& an, Value key, Obj o);         // whether it has every member an object type requires
+bool assignable(Analysis& an, Value tree, Obj o);        // whether it is assignable to a type the program declares
+bool filtering(Analysis& an, Value tree);                // whether a declared type can refuse a value
 }  // namespace verdicts
 
 namespace guards {                     // what a test proves where it holds (heap/guards.py)

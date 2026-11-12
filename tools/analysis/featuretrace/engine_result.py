@@ -10,6 +10,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from . import engine, engine_input
+from .heap import scaler
 from .heap.objects import MADE
 from .resolve import EXACT, Edge
 from .vocab import NAME
@@ -32,6 +33,7 @@ class EngineResult:
         self.names = data["names"]
         self.missing = data["missing"]
         self.runs_of = data["runs"]
+        self.volumes = data["volumes"]      # gid -> (points-to facts of its nodes, `this` objects, each parameter's)
 
     def label(self, obj: int) -> str:
         """A readable name, as `heap.objects.Objects.label` makes it: its kind, then what identifies its site."""
@@ -54,14 +56,21 @@ class EngineResult:
 
 
 def analyse(ix, progress=None, contexts: bool = True, names: bool = False, deadline: float = DEADLINE,
-            collapse_every: int | None = None) -> EngineResult:
+            collapse_every: int | None = None, levels: dict | None = None, total: int = scaler.TOTAL) -> EngineResult:
     """The analysis of the index by the engine, every line it prints handed to `progress`; with `names`, what each
     local and name read holds (`points`); `collapse_every`: the items between two collapses of cycles (the engine's
-    own choice when not given)."""
+    own choice when not given). With contexts, what each function's runs are told apart by is `levels`, else chosen
+    by `scaler` from a context-insensitive run first, within `total` points-to facts."""
     progress = progress or (lambda line: None)
+    if contexts and levels is None:
+        insensitive = analyse(ix, progress, False, False, deadline, collapse_every)
+        levels = scaler.levels(ix, insensitive, total)
+        progress(f"contexts chosen: {sum(1 for v in levels.values() if v == scaler.OBJECT)} by objects, "
+                 f"{sum(1 for v in levels.values() if v == scaler.CALL)} by call sites, "
+                 f"{sum(1 for v in levels.values() if v == scaler.ONCE)} once")
     with tempfile.TemporaryDirectory() as folder:
         source, out = Path(folder) / "input.pickle", Path(folder) / "output.pickle"
-        engine_input.write(ix, source)
+        engine_input.write(ix, source, levels if contexts else None)
         flags = ([] if contexts else ["--no-contexts"]) + (["--names"] if names else []) + (
             ["--collapse-every", str(collapse_every)] if collapse_every else [])
         engine.run(["analyse", str(source), str(out)] + flags, deadline, progress)

@@ -105,3 +105,19 @@ export class Socket {
 // it gives the unknown object.
 declare const outside: any;
 export function forged() { return new outside.Blade(() => new Tile()); }
+
+// A position the program declares a type for takes only values assignable to it (TypeScript Type Compatibility:
+// structural, a class's members included): a container holding anything still gives a typed parameter, and a typed
+// return, only what fits; an object that gains the members later fits then.
+class Pot { boil() { return new Tile(); } }
+class Pan { fry() { return new Box(); } }
+interface Lidded { lid: Tile; }
+const shelf: any[] = [];
+shelf[0] = new Pan();
+shelf[1] = new Pot();
+function keep(p: Pot): Pot { return p; }
+export function kept() { return keep(shelf[0]); }
+function handOut(): Pot { return shelf[0]; }
+export function handed() { return handOut(); }
+function lidOf(x: Lidded) { return x; }
+export function lidded() { const later: any = {}; const r = lidOf(later); later.lid = new Tile(); return r; }
