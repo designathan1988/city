@@ -15,13 +15,14 @@ from ..solver import BIGINT, NUMBER
 from ..truth import KINDS
 from ..model import STATE_KINDS
 from ..vocab import (CALL, ELEMENTS_FIELD, READ, SITE_CLASS, SITE_DECLARED, SITE_KEY, SITE_LITERAL, SITE_MODULE,
-                     SITE_NEW, SITE_PRIMITIVE, SITE_PROTOTYPE, SITE_UNKNOWN, WRITE)
+                     SITE_NEW, SITE_PRIMITIVE, SITE_PROTOTYPE, SITE_TEXT, SITE_UNKNOWN, WRITE)
 
 from . import contexts, names, typesys, values  # noqa: E402  (they read members: imported once it is defined)
 
 ALL, ACCESSOR, PROTOTYPES, PROPERTY = 9, 11, 12, 13    # nodes: every property of one object; an accessor's call; a
                                                      # prototype; a site: a declared property's
-KEEP_NOTHING = (SITE_PRIMITIVE, SITE_UNKNOWN)          # the kinds of value no property written to is kept on
+PRIMITIVES = (SITE_PRIMITIVE, SITE_TEXT, SITE_KEY)    # the language's primitive values: no property of their own
+KEEP_NOTHING = PRIMITIVES + (SITE_UNKNOWN,)           # the kinds of value no property written to is kept on
 INDEX_KINDS = (KINDS[NUMBER], KINDS[BIGINT])          # a key of these kinds names an index (ToPropertyKey)
 OWN_FIELDS = (SITE_NEW, SITE_LITERAL)                 # objects whose fields are initialized where they are made
 
@@ -40,7 +41,7 @@ def read(an, target, obj: int, name: str) -> None:
     if kind == SITE_UNKNOWN:
         an.solver.add(target, [obj])
         return
-    if kind == SITE_PRIMITIVE:                    # no property of its own: its wrapper's prototype's (none for null
+    if kind in PRIMITIVES:                        # no property of its own: its wrapper's prototype's (none for null
         for own in typesys.own_types(an, obj):   # and undefined: ECMA-262 GetValue, RequireObjectCoercible)
             if declared_read(an, target, obj, own, name):
                 break
@@ -211,8 +212,12 @@ def is_index(an, key: int) -> bool:
 
 
 def store_by_key(an, source, obj: int, key: int) -> None:
-    """`obj[k] = value` for one value of k whose text is not known: an index puts it in the elements; any other key
-    may name any property: the elements and the dictionary part."""
+    """`obj[k] = value` for one value of k: a string of a known text writes the property it names (ECMA-262
+    ToPropertyKey; a canonical numeric one, an index); an index puts it in the elements; any other key may name any
+    property: the elements and the dictionary part."""
+    if an.objects.kind(key) == SITE_TEXT:
+        write(an, source, obj, an.objects.text(key))
+        return
     if an.objects.kind(obj) in KEEP_NOTHING:
         return
     an.solver.follow(source, field(an, obj, ELEMENTS_FIELD))
@@ -221,8 +226,12 @@ def store_by_key(an, source, obj: int, key: int) -> None:
 
 
 def load_by_key(an, target, obj: int, key: int) -> None:
-    """`obj[k]` for one value of k whose text is not known: an index reads the elements; a key enumerating this same
-    object (`for...in`) every property of it; any other key, the object as a dictionary (`read_all`)."""
+    """`obj[k]` for one value of k: a string of a known text reads the property it names, as `obj.text` does; an index
+    reads the elements; a key enumerating this same object (`for...in`) every property of it; any other key, the
+    object as a dictionary (`read_all`)."""
+    if an.objects.kind(key) == SITE_TEXT:
+        read(an, target, obj, an.objects.text(key))
+        return
     if an.objects.kind(obj) in KEEP_NOTHING:
         return
     if is_index(an, key):

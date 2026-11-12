@@ -66,8 +66,8 @@ def wire(an, node, tree, unit, ctx) -> None:
         solver.follow(this_of(an, unit, ctx), node)
     elif kind == LITERAL:
         solver.add(node, [an.objects.primitive(v) for v in literal_kinds(tree[1])])
-    elif kind == STRNAME:                          # the language's string: its text is read where it names a key
-        solver.add(node, [an.objects.primitive(STRING_KIND)])
+    elif kind == STRNAME:                          # a string literal: the value of its own text (F33)
+        solver.add(node, [an.objects.make(SITE_TEXT, tree[1])])
     elif kind in (OP, UNARY):
         solver.add(node, [an.objects.primitive(v[len(LANG):]) for v in truth.operator_values(tree[1], kind == UNARY)
                           if v.startswith(LANG)])

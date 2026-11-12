@@ -28,7 +28,7 @@ class HeapNarrowing(HeapCase):
         self.assertEqual({"fn"}, self.kinds("typeofFunction"))
 
     def test_typeof_string_keeps_the_strings_alone(self):
-        self.assertEqual({"prim:string"}, self.kinds("typeofString"))
+        self.assertEqual({"str:a"}, self.kinds("typeofString"))
 
     def test_truthiness_both_ways(self):
         self.assertEqual({"prim:null"}, self.kinds("falsy"))
@@ -40,7 +40,7 @@ class HeapNarrowing(HeapCase):
 
     def test_strict_equality_with_a_constant(self):
         self.assertEqual({"prim:null"}, self.kinds("strictNull"))
-        self.assertEqual({"prim:string"}, self.kinds("sameText"))
+        self.assertEqual({"str:a"}, self.kinds("sameText"))
 
     def test_instanceof_by_the_prototype_chain(self):
         self.assertEqual({"Apple", "Seed"}, self.kinds("instance"))

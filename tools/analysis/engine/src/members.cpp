@@ -51,6 +51,12 @@ std::vector<int64_t> declared(Analysis& an, Obj obj, Value name) {
     return out;
 }
 
+bool keeps_nothing(Analysis& an, Obj obj) {        // a primitive or the unknown object: no property written is kept
+    Value kind = an.okind(obj);
+    return kind == an.V.SITE_PRIMITIVE || kind == an.V.SITE_TEXT || kind == an.V.SITE_KEY ||
+           kind == an.V.SITE_UNKNOWN;
+}
+
 std::vector<int64_t> lookup_in(Analysis& an, Value key, Value name, std::unordered_set<uint64_t>& seen) {
     if (!an.truthy(key) || !seen.insert(key.bits()).second) return {};
     if (an.in.modules.count(key.bits())) return an.in.export_of(key, name).gids;
@@ -97,7 +103,7 @@ void read(Analysis& an, Value target, Obj obj, Value name) {
         an.add(target, obj);
         return;
     }
-    if (kind == V.SITE_PRIMITIVE) {                 // no property of its own: its wrapper's prototype's
+    if (kind == V.SITE_PRIMITIVE || kind == V.SITE_TEXT || kind == V.SITE_KEY) {   // its wrapper's prototype's
         for (Value own : typesys::own_types(an, obj)) {
             if (declared_read(an, target, obj, own, name)) break;
         }
@@ -164,13 +170,13 @@ Value environment(Analysis& an, Obj obj, Value owner) {
 }
 
 void read_all(Analysis& an, Value target, Obj obj) {
-    if (an.okind(obj) == an.V.SITE_PRIMITIVE || an.okind(obj) == an.V.SITE_UNKNOWN) return;
+    if (keeps_nothing(an, obj)) return;
     an.follow(field(an, obj, an.V.ELEMENTS_FIELD), target);
     an.follow(an.any_field(obj), target);
 }
 
 void write(Analysis& an, Value source, Obj obj, Value name) {
-    if (an.okind(obj) == an.V.SITE_PRIMITIVE || an.okind(obj) == an.V.SITE_UNKNOWN) return;
+    if (keeps_nothing(an, obj)) return;
     Value cls = an.class_itself(obj);
     if (cls.kind() != Kind::None && an.in.cls(cls)) {
         for (int64_t gid : lookup(an, cls, name)) {
@@ -223,13 +229,21 @@ bool is_index(Analysis& an, Obj key) {
 }
 
 void store_by_key(Analysis& an, Value source, Obj obj, Obj key) {
-    if (an.okind(obj) == an.V.SITE_PRIMITIVE || an.okind(obj) == an.V.SITE_UNKNOWN) return;
+    if (an.okind(key) == an.V.SITE_TEXT) {           // a known text: the property it names (ToPropertyKey)
+        write(an, source, obj, an.item(an.okey(key), 1));
+        return;
+    }
+    if (keeps_nothing(an, obj)) return;
     an.follow(source, field(an, obj, an.V.ELEMENTS_FIELD));
     if (!is_index(an, key)) an.follow(source, an.any_field(obj));
 }
 
 void load_by_key(Analysis& an, Value target, Obj obj, Obj key) {
-    if (an.okind(obj) == an.V.SITE_PRIMITIVE || an.okind(obj) == an.V.SITE_UNKNOWN) return;
+    if (an.okind(key) == an.V.SITE_TEXT) {           // a known text: the property it names, as `obj.text`
+        read(an, target, obj, an.item(an.okey(key), 1));
+        return;
+    }
+    if (keeps_nothing(an, obj)) return;
     if (is_index(an, key)) {
         an.follow(field(an, obj, an.V.ELEMENTS_FIELD), target);
         return;

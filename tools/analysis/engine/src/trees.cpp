@@ -140,8 +140,8 @@ void wire(Analysis& an, Value node, Value tree, const UnitRec& unit, Value ctx) 
         an.follow(this_of(an, unit, ctx), node);
     } else if (kind == V.LITERAL) {
         for (Value k : literal_kinds(an, an.item(tree, 1))) an.add(node, an.make({V.SITE_PRIMITIVE, k}));
-    } else if (kind == V.STRNAME) {
-        an.add(node, an.make({V.SITE_PRIMITIVE, V.STRING_KIND}));
+    } else if (kind == V.STRNAME) {                // a string literal: the value of its own text (F33)
+        an.add(node, an.make({V.SITE_TEXT, an.item(tree, 1)}));
     } else if (kind == V.OP || kind == V.UNARY) {
         auto found = an.in.operators.find({an.item(tree, 1).bits(), static_cast<uint64_t>(kind == V.UNARY), 0});
         if (found == an.in.operators.end()) {

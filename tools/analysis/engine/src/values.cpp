@@ -193,8 +193,8 @@ std::vector<Obj> language_objects(Analysis& an, Value values) {
     for (Value v : an.at(values)) {
         if (v == an.V.ENGINE) {
             out.push_back(an.make({an.V.SITE_UNKNOWN}));
-        } else if (an.starts(v, an.V.TEXT)) {
-            out.push_back(an.primitive(an.V.STRING_KIND));
+        } else if (an.starts(v, an.V.TEXT)) {        // a string literal type: the value of its text (F33)
+            out.push_back(an.make({an.V.SITE_TEXT, an.rest(v, an.V.TEXT)}));
         } else if (an.starts(v, an.V.LANG)) {
             out.push_back(an.primitive(an.rest(v, an.V.LANG)));
         }

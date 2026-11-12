@@ -10,8 +10,8 @@ from .js_class import ACCESSORS
 from .js_config import JSX_OPTIONS
 from .js_sigs import ARRAY, CALL_MEMBER, CONSTRUCT_MEMBER
 from .rules import CONSTRUCTOR, INDEX_MEMBER
-from .vocab import (ELEMENTS_FIELD, RESULT_FIELD, SITE_ARRAY, SITE_FUNCTION, SITE_GENERATOR, SITE_LITERAL, SITE_NEW,
-                    SITE_PROMISE, SITE_TEXT)
+from .vocab import (ELEMENTS_FIELD, RESULT_FIELD, SITE_ARRAY, SITE_FUNCTION, SITE_GENERATOR, SITE_KEY, SITE_LITERAL,
+                    SITE_NEW, SITE_PROMISE, SITE_TEXT)
 
 # ECMA-262 MakeConstructor: an ordinary function's own property naming the object its `new` gives as [[Prototype]];
 # ClassDefinitionEvaluation: a class's, likewise. OrdinaryCreateFromConstructor reads it.
@@ -37,7 +37,8 @@ THEN = "then"
 # their chain, class instances, ToObject's wrappers for primitives), by the names TypeScript's lib declares its members
 # under, in the order the checker reads them (a function's apparent type: CallableFunction, then Function).
 INTRINSICS = {SITE_ARRAY: ("Array",), SITE_FUNCTION: ("CallableFunction", "Function"), SITE_LITERAL: ("Object",),
-              SITE_NEW: ("Object",), SITE_TEXT: ("String",), "string": ("String",), "number": ("Number",),
+              SITE_NEW: ("Object",), SITE_TEXT: ("String",), SITE_KEY: ("String",), "string": ("String",),
+              "number": ("Number",),
               "bigint": ("BigInt",), "symbol": ("Symbol",), "true": ("Boolean",), "false": ("Boolean",),
               SITE_GENERATOR: ("Generator",), SITE_PROMISE: ("Promise",)}
 # The internal slot of a generator object (what it yields, its elements) and of a promise (ECMA-262 [[PromiseResult]]),

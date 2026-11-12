@@ -11,15 +11,13 @@ back with the values its parameters' types give, its result taken as the functio
 from __future__ import annotations
 
 from ..languages import ARRAY_TYPE, INDEX_SIGNATURE
-from ..solver import ENGINE, LANG, NUMBER, STRING, TEXT
-from ..truth import KINDS
+from ..solver import ENGINE, LANG, NUMBER, TEXT
 from ..vocab import (ELEMENTS_FIELD, LEVEL_ALIAS, LEVEL_OWN, LEVEL_TYPE, SITE_DECLARED_FN, SITE_TEXT, SITE_UNKNOWN,
                      T_BOTH,
                      T_FN, T_INDEX, T_NAMED, T_OBJECT, T_PARAM, T_QUERY, T_THIS, T_TUPLE, T_UNION, T_VALUES)
 from . import members, names, summaries, typesys
 
 PRODUCED, CONSUMED, OWN_PLACE, RESULT, MEMBER, BOUND = 20, 21, 22, 23, 24, 25   # node tags; a site's parts
-STRING_KIND = KINDS[STRING]
 NO_ENV = (None, None, None)          # the environment of a type that reads none
 
 
@@ -204,8 +202,8 @@ def language_objects(an, values: tuple) -> list[int]:
     for v in values:
         if v == ENGINE:
             out.append(an.objects.make(SITE_UNKNOWN))
-        elif v.startswith(TEXT):                      # a string literal type: the language's string
-            out.append(an.objects.primitive(STRING_KIND))
+        elif v.startswith(TEXT):                      # a string literal type: the value of its text (F33)
+            out.append(an.objects.make(SITE_TEXT, v[len(TEXT):]))
         elif v.startswith(LANG):
             out.append(an.objects.primitive(v[len(LANG):]))
     return out

@@ -519,3 +519,19 @@ official declarations only, converging (finite, fast enough to run in seconds to
   function written in one that had not run before the pass waits for the next pass; one whose enclosing function ran
   and made no closure of it is entered in ROOT as before.
 - src/world after both: 29,403 runs at 34 s (340,309 before); the work left is calls on large merged sets (F33).
+
+### F33. A string is the value of its text (P1, soundness and precision) — 2026-11-12 12:40
+- Measured (src/world, the engine's store report): the stores by keys of unknown text that write the most go through
+  keys that are string literals somewhere else — `for (const key of ['terrace', 'lift', 'ramp'])`, `lengths(record,
+  factor, ['x', 'y', 'w', 'd'])` handing an array of names to a loop over a parameter, `listOf(part)` with `part` a
+  union of literal types — and each wrote into every property of its bases (the dictionary part), which every named
+  read then returned: every record's fields held the same ~1,950 objects.
+- F13 had made a string one object for all (cost); ECMA-262 makes each string its own value, and ToPropertyKey of a
+  string is that string: `o[k]` with k "x" is `o.x`, `o[k] = v` writes `o.x`, "0" is an index.
+- Built (both cores; tests first, red on both, tests/test_heap_texts.py with fixture heap/texts.ts): a string literal
+  is the value of its text (SITE_TEXT, one object per text), a declared literal type likewise; a read or a write
+  through a key whose value is a known text reads or writes the property it names (an index when canonical numeric);
+  a string, like every primitive, keeps no property written to it and reads its wrapper's prototype's. The narrowing
+  tests now see the text itself (`str:a`). 487 tests on both cores.
+- src/world after it: no convergence yet; the costliest nodes are now named reads (`source.lotStore`, `copy.changes`)
+  holding ~2,160 objects: the dictionary of the document objects themselves (F34).

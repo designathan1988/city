@@ -1,7 +1,7 @@
-"""The texts a key position can have, read from the code around it (log/trace-research.md F13): in the heap a string is
-the language's string, one object for all, so a thousand string literals do not ride every edge; where a string names a
-member — a computed key `o[k]`, a write `o[k] = v`, an argument a property-key type takes — its texts are what its
-expression says: a string literal its text; a union, a narrowing either side; a name, the values its declarations give
+"""The texts a key position can have, read from the code around it (log/trace-research.md F13, F33): a string is a
+value of its own text in the heap (`members.load_by_key`), and where a string names a member — a computed key `o[k]`,
+a write `o[k] = v`, an argument a property-key type takes — what its expression says is known before any value
+arrives: a string literal its text; a union, a narrowing either side; a name, the values its declarations give
 (a local's assignments, an enclosing function's for a captured name, a module constant's initializers), when every one
 of them is such a text. Anything else (a computed string, a parameter) is no known text: every member, as before.
 """
