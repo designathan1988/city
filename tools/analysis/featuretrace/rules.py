@@ -126,12 +126,11 @@ HANDLERS = {
              "cpp_body:object_or_function", "cpp_ambig:deciding_names", "cpp_ambig:as_arguments",
              "cpp_ambig:decide", "cpp_ambig:classify",
              "cpp_implicit:range_calls", "cpp_implicit:destroyed", "gd_read:GdReader.accessors", "link_calls:invoked_leads", "link_calls:site_of", "link_calls:form_on_functions", "types_of:TypeNames.callables",
-             "solver:fn_of", "solver:bound", "transfer:function_member", "js_expr:function_form",
+             "solver:fn_of", "solver:bound", "transfer:function_member",
              "link_calls:handed", "link_calls:engine_receiver", "cpp_lifetime:implicit_construction", "cpp_lifetime:implicit_destruction",
              "cpp_lifetime:destruction_of", "cpp_lifetime:owned_classes", "cpp_lifetime:destructors",
              "cpp_lifetime:constructors", "link:link_node", "solver:Solver.substituted", "js_link:constructors", "js_link:module_run", "js_link:jsx", "js_link:callback_args",
-             "js_expr:call", "js_expr:implicit", "js_body:loop", "js_defines:definer", "js_defines:define",
-             "js_defines:described", "js_defines:written", "js_defines:computed"),
+             "js_expr:call", "js_expr:implicit", "js_body:loop"),
     "BRANCH": ("gd_body:statement", "cpp_body:statement", "js_body:statement", "c_family:if_statement",
                "js_guards:facts", "narrowing:open", "narrowing:close", "narrowing:apply", "narrowing:wrap",
                "narrowing:leaves", "narrowing:assigned_names", "narrowing:enter_function", "scopes:renamed",
@@ -144,7 +143,7 @@ HANDLERS = {
                "narrow_values:is_of", "narrow_values:by_value"),
     "JUMP": ("gd_body:statement", "cpp_body:statement", "js_body:statement"),
     "NAME": ("resolve:Resolver.by_string", "names:made_by_name", "names:callable_of", "names:texts"),
-    "SIGNAL": ("link:connect", "js_link:listen", "js_link:fire", "js_expr:events"),
+    "SIGNAL": ("link:connect",),
     "BIND": ("cpp_expr:registration", "index:Index.bind", "resolve:Resolver.engine_members",
              "resolve:Resolver.engine_accessors", "resolve:Resolver.with_bases", "resolve:Resolver.accessor_units",
              "model:Unit.runs"),
@@ -184,14 +183,6 @@ LIBRARY_OWNERS = frozenset({"unique_ptr", "shared_ptr", "vector", "deque", "list
 PASS_THROUGH = frozenset({"move", "forward", "move_if_noexcept", "as_const", "ref", "cref"})
 
 
-# Events by type (J6, J11): subscribing a handler, firing an event; the host's or a library's when no class of the
-# program defines the method called. (method -> index of the type argument, index of the handler argument)
-EVENT_SUBSCRIBE = {"addEventListener": (0, 1), "on": (0, 1), "once": (0, 1), "addListener": (0, 1),
-                   "prependListener": (0, 1), "prependOnceListener": (0, 1)}
-EVENT_FIRE = {"dispatchEvent": 0, "emit": 0}           # the event object / its type
-MESSAGE_FIRE = {"postMessage": "message"}              # a message to the other side of a channel or worker
-HANDLER_PREFIX = "on"                                  # `x.on<type> = handler` (HTML event handler properties)
-EVENT_OBJECTS = ("Event", "CustomEvent", "MessageEvent", "KeyboardEvent", "MouseEvent", "PointerEvent")
 # Callbacks of the language's own containers and promises: what each parameter of the callback receives (J1, J6).
 ELEMENTS, ACCUMULATOR, AWAITED, ENGINE_VALUE = "elements", "accumulator", "awaited", "engine"
 HIGHER_ORDER = {
@@ -201,11 +192,13 @@ HIGHER_ORDER = {
     "reduce": (ACCUMULATOR, ELEMENTS), "reduceRight": (ACCUMULATOR, ELEMENTS),
     "then": (AWAITED,), "catch": (ENGINE_VALUE,), "finally": (),
 }
-# Function.prototype.call/apply/bind (J2): the arguments after thisArg reach the function's parameters.
-CALL_FORMS = {"call": "spread", "apply": "array"}
+# Function.prototype.call/apply/bind (J2): the current core's (`transfer`, `link_calls`); the new core reads what the
+# platform's declarations state of them.
+CALL_FORMS = ("call", "apply")
 BIND_FORMS = ("bind",)
 FUNCTION_FORMS = (*CALL_FORMS, *BIND_FORMS)     # Function.prototype's members that run a function or bind it (J2'')
-# Calls the language makes (J5): the member it calls, written as the program names it.
+# Calls the language makes (J5): the member it calls, written as the program names it (ECMA-262 GetIterator; ToPrimitive
+# and OrdinaryToPrimitive: @@toPrimitive, then valueOf and toString; Await's thenable `then`).
 ITERATOR_MEMBER = "[Symbol.iterator]"
 COERCION_MEMBERS = ("valueOf", "toString", "[Symbol.toPrimitive]")
 THEN_MEMBER = "then"

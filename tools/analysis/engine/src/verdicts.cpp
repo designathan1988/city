@@ -52,13 +52,10 @@ bool value_admits(Analysis& an, Value v, Obj o) {
 bool admits_in(Analysis& an, Value tree, Obj o, std::vector<Value>& seen);
 
 bool admits_named(Analysis& an, Value tree, Obj o, std::vector<Value>& seen) {
-    Value found = typesys::resolve(an, an.item(tree, 1), an.item(tree, 3), an.item(tree, 4));
-    if (found.kind() == Kind::None || std::find(seen.begin(), seen.end(), found) != seen.end()) return true;
+    Value found = typesys::resolve_named(an, tree, seen);
+    if (found.kind() == Kind::None) return true;
     if (an.item(found, 0) == an.V.ALIAS) {
-        seen.push_back(found);
-        bool out = admits_in(an, an.unit(an.item(found, 1).data()).result_type, o, seen);
-        seen.pop_back();
-        return out;
+        return typesys::expand_alias(an, found, seen, [&](Value type) { return admits_in(an, type, o, seen); });
     }
     const ClassRec* c = an.in.cls(an.item(found, 1));
     if (!c) return true;
@@ -311,13 +308,10 @@ bool surely_in(Analysis& an, Value tree, Obj o, std::vector<Value>& seen) {
     if (kind != V.T_NAMED || primitive(an, o) || an.okind(o) == V.SITE_UNKNOWN || an.okind(o) == V.SITE_DECLARED) {
         return false;
     }
-    Value found = typesys::resolve(an, an.item(tree, 1), an.item(tree, 3), an.item(tree, 4));
-    if (found.kind() == Kind::None || std::find(seen.begin(), seen.end(), found) != seen.end()) return false;
+    Value found = typesys::resolve_named(an, tree, seen);
+    if (found.kind() == Kind::None) return false;
     if (an.item(found, 0) == V.ALIAS) {
-        seen.push_back(found);
-        bool out = surely_in(an, an.unit(an.item(found, 1).data()).result_type, o, seen);
-        seen.pop_back();
-        return out;
+        return typesys::expand_alias(an, found, seen, [&](Value type) { return surely_in(an, type, o, seen); });
     }
     Value key = an.item(found, 1);
     for (Value own : typesys::own_types(an, o)) {

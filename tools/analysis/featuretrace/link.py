@@ -27,7 +27,7 @@ from .typer import CLASS
 
 REF = "#ref"
 PROGRESS_SECONDS = 5.0      # a line of progress this often, however long the work
-JS_KINDS = {"import": js_link.module_run, "listen": js_link.listen, "fire": js_link.fire, "jsx": js_link.jsx}
+JS_KINDS = {"import": js_link.module_run, "jsx": js_link.jsx}
 WANT = {"call": "func", "value": "func", "thread": "func", "read": "read", "write": "state", "emit": "signal",
         "operator": "func"}
 
@@ -133,12 +133,9 @@ def link_ref(rs, unit, ref) -> None:
     if kind == "destroy":
         cpp_lifetime.destructors(rs, unit, ref)
         return
-    if kind == "hand":                     # functions the language runs (a property's accessors, J14)
-        handed(rs, unit, ref)
-        return
-    if kind in ("invoke", "bound"):        # a value called (a bound function: after its bound arguments); `bind`
-        for gid, lead in invoked_leads(rs, unit, ref.base):    # making one (J2'')
-            rs.link(unit.gid, gid, "call" if kind == "invoke" else "bound", site_of(rs, ref, gid, lead), EXACT)
+    if kind == "invoke":                   # a value called (a bound function: after its bound arguments, J2'')
+        for gid, lead in invoked_leads(rs, unit, ref.base):
+            rs.link(unit.gid, gid, "call", site_of(rs, ref, gid, lead), EXACT)
         return
     if kind == "name":
         targets, how = rs.by_string(unit, ref.base, ref.text or ref.name)

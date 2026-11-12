@@ -69,6 +69,7 @@ LANGUAGE = {
     "rules.py:CPP_KEYWORDS": "C++ keywords", "rules.py:CPP_PREPROCESSOR": "C++ preprocessor directives",
     "rules.py:JS_KEYWORDS": "ECMA-262 and TypeScript keywords", "rules.py:ROLES": "the tracer's roles",
     "rules.py:HANDLERS": "the tracer's handler registry", "source.py:LANG_BY_EXT": "the languages' file extensions",
+    "rules.py:COERCION_MEMBERS": "ECMA-262 ToPrimitive and OrdinaryToPrimitive (@@toPrimitive, valueOf, toString)",
     "source.py:CONFIG_FILES": "tsconfig and jsconfig file names", "source.py:_GRAMMARS": "the grammars",
     "templates.py:PASS_SHAPES": "the tracer's tree shapes", "transfer.py:OPERATORS": "C++ operators, [stmt.ranged]",
     "transfer.py:COMPARISONS": "the languages' comparison operators", "truth.py:JS_CONSTANTS": "ECMA-262 constants",
@@ -84,16 +85,15 @@ LANGUAGE = {
 # the declarations). The list only shrinks.
 DEBTS = {
     "bounds.py:ARRAY_MEMBERS", "cpp_expr.py:THREAD_NAMES", "gd_calls.py:PUTS", "js_bounds.py:SAME_TYPE",
-    "js_bounds.py:ANY_OBJECT", "js_bounds.py:LIBRARY", "js_defines.py:DEFINERS",
+    "js_bounds.py:ANY_OBJECT", "js_bounds.py:LIBRARY",
     "js_library.py:CANONICAL", "js_library.py:UNWRAP", "js_library.py:ELEMENT_CALLS", "js_library.py:SAME_CALLS",
     "js_library.py:COUNTS", "js_library.py:OBJECT_READS", "js_primitives.py:OBJECT_PROTOTYPE",
     "js_primitives.py:STRING_METHODS", "js_primitives.py:KINDS", "js_transfer.py:OBJECT_MEMBERS",
     "js_transfer.py:FUNCTION_MEMBERS", "library.py:ITERATOR_CALLS", "library.py:HELD_CALLS", "library.py:PAIR_PARTS",
     "model.py:ENGINE_CALLBACKS", "model.py:STD_MUTATORS", "rules.py:NAME_CALLS", "rules.py:SIGNAL_OPS",
     "rules.py:BIND_CALLS", "rules.py:GDEXT_BIND", "rules.py:NAME_CONSTRUCTORS", "rules.py:CASTS", "rules.py:MAKERS",
-    "rules.py:LIBRARY_OWNERS", "rules.py:PASS_THROUGH", "rules.py:EVENT_SUBSCRIBE", "rules.py:EVENT_FIRE",
-    "rules.py:MESSAGE_FIRE", "rules.py:EVENT_OBJECTS", "rules.py:HIGHER_ORDER", "rules.py:CALL_FORMS",
-    "rules.py:COERCION_MEMBERS", "transfer.py:CALLABLE_CALLS", "transfer.py:BIND_CALLS",
+    "rules.py:LIBRARY_OWNERS", "rules.py:PASS_THROUGH", "rules.py:HIGHER_ORDER", "rules.py:CALL_FORMS",
+    "transfer.py:CALLABLE_CALLS", "transfer.py:BIND_CALLS",
 }
 
 

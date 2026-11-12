@@ -14,7 +14,7 @@ from .gd_body import squash
 from .ir import put
 from .ir_js import FUNCTIONS, member_name
 from .model import assign, declare, declare_function
-from .rules import HANDLER_PREFIX, ITERATOR_MEMBER
+from .rules import ITERATOR_MEMBER
 from .source import field_of, named_children, string_value
 
 __all__ = ("IMPLICIT", "squash")
@@ -220,9 +220,6 @@ def target(r, node, unit, cond, value: tuple | None) -> None:
             if not field.bound and jsdoc.is_js(r):
                 field.bound = jsdoc.declared(r, node)                      # `/** @type {T} */ this.x = v` (S2')
         r.add(unit, "write", name, node, cond, base=base, args=args)
-        if value is not None and name.startswith(HANDLER_PREFIX) and len(name) > len(HANDLER_PREFIX):
-            # `x.on<type> = handler` subscribes to the event `<type>` (J6)
-            r.add(unit, "listen", name[len(HANDLER_PREFIX):], node, cond, base=base, handler=value)
     elif kind in ("parenthesized_expression", "non_null_expression"):
         target(r, (named_children(node) or [None])[0], unit, cond, value)
     elif kind in ("object_pattern", "array_pattern"):

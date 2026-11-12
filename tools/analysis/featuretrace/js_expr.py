@@ -3,18 +3,17 @@
 Every name read, member read or written, call and `new` becomes a reference with its receiver and arguments kept as
 trees. The language's own calls are references too, marked implicit (silent when nothing of the program answers):
 `[Symbol.iterator]` for spread and `yield*`, `then` for `await`, `valueOf`/`toString`/`[Symbol.toPrimitive]` for
-arithmetic, comparison and template substitutions (J5). A `yield` records what its generator gives. Events by type: subscribing (`addEventListener`, `on`, ...)
-and firing (`dispatchEvent`, `emit`, `postMessage`) (J6). A capitalized JSX tag is a component handed to the JSX
-runtime (J10). `f.call(t, ...)` / `f.apply(t, a)` call f with the arguments after t, `f.bind(t, ...)` makes the
-function that does (J2''), each beside the member call an object's own method of that name answers.
+arithmetic, comparison and template substitutions (J5). A `yield` records what its generator gives. A capitalized
+JSX tag is a component handed to the JSX runtime (J10). A call of a member is that member's call, whatever its
+name: what a platform's function does (`call`, `bind`, `addEventListener`, `defineProperty`) is what its declaration
+states (log/trace-rules.md, "The feature tracer is generic").
 """
 from __future__ import annotations
 
-from . import js_body, js_defines, js_guards, js_jsx, narrowing, scopes
+from . import js_body, js_guards, js_jsx, narrowing, scopes
 from .cpp_implicit import IMPLICIT
 from .ir_js import args_of, member_name
-from .rules import (BIND_FORMS, CALL_FORMS, COERCION_MEMBERS, CONSTRUCTOR, EVENT_FIRE, EVENT_OBJECTS,
-                    EVENT_SUBSCRIBE, ITERATOR_MEMBER, MESSAGE_FIRE, THEN_MEMBER)
+from .rules import COERCION_MEMBERS, CONSTRUCTOR, ITERATOR_MEMBER, THEN_MEMBER
 from .source import field_of, named_children, string_value
 
 COERCING = ("+", "-", "*", "/", "%", "**", "<", ">", "<=", ">=", "==", "!=", "+=", "-=", "*=", "/=")
@@ -175,73 +174,12 @@ def call(r, node, unit, cond) -> None:
     elif fn.type == "member_expression":
         obj = field_of(fn, "object")
         method = member_name(r.src, field_of(fn, "property"))
-        which = js_defines.definer(r, fn, unit)
-        if which:                                               # the language defines the properties (J14)
-            js_defines.define(r, node, which, argv, unit, cond)
         expression(r, obj, unit, cond)
-        base = r.ir(obj, unit)
-        forms = method in CALL_FORMS or method in BIND_FORMS
-        r.add(unit, "call", method, node, cond, base=base, args=trees, argc=len(argv), text=IMPLICIT if forms else "")
-        if forms:
-            function_form(r, node, method, base, trees, unit, cond)
-        else:
-            events(r, node, method, base, argv, unit, cond)
+        r.add(unit, "call", method, node, cond, base=r.ir(obj, unit), args=trees, argc=len(argv))
     else:
         expression(r, fn, unit, cond)
         r.add(unit, "invoke", "", node, cond, base=r.ir(fn, unit), args=trees, argc=len(trees))
     arguments(r, args, unit, cond)
-
-
-def function_form(r, node, method: str, base, trees: tuple, unit, cond) -> None:
-    """`x.call(t, ...a)`, `x.apply(t, arr)`, `x.bind(t, ...a)` on a function x (J2''; MDN Function.prototype): call
-    runs x with `this` t and the arguments a; apply with the elements of arr in every place (`text` "apply"); bind
-    makes the function that runs x with `this` t and a put first (a `bound` reference: no call here). On an object of
-    the program with a method of that name, the member call written beside it is that method's."""
-    this = trees[0] if trees else ("literal", "undefined")
-    rest = trees[1:]
-    if method in BIND_FORMS:
-        r.add(unit, "bound", "", node, cond, base=base, args=rest, receiver=this)
-    elif CALL_FORMS[method] == "array":
-        r.add(unit, "invoke", "", node, cond, base=base, args=tuple(("elements", a) for a in rest[:1]), argc=-1,
-              receiver=this, text=method)
-    else:
-        r.add(unit, "invoke", "", node, cond, base=base, args=rest, argc=len(rest), receiver=this)
-
-
-def events(r, node, method: str, base, argv, unit, cond) -> None:
-    """Events by type (J6): a subscription links the handler to the event; firing links to the event."""
-    if method in EVENT_SUBSCRIBE:
-        at_type, at_handler = EVENT_SUBSCRIBE[method]
-        if len(argv) > at_handler:
-            kind = string_value(r.src, argv[at_type])
-            r.add(unit, "listen", kind or "", node, cond, base=base, handler=r.ir(argv[at_handler], unit),
-                  args=(r.ir(argv[at_type], unit),))
-    elif method in EVENT_FIRE and len(argv) > EVENT_FIRE[method]:
-        event = argv[EVENT_FIRE[method]]
-        kind = event_type(r, event)
-        payload = (r.ir(event, unit),) if method == "dispatchEvent" else tuple(r.ir(a, unit) for a in argv[1:])
-        r.add(unit, "fire", kind or "", node, cond, base=base, handler=None if kind else r.ir(event, unit),
-              args=payload)
-    elif method in MESSAGE_FIRE:
-        r.add(unit, "fire", MESSAGE_FIRE[method], node, cond, base=base, args=(("literal", ""),))
-
-
-def event_type(r, event) -> str | None:
-    """The type of an event written at the call: a string, `{type: "t"}`, `new Event("t")`."""
-    text = string_value(r.src, event)
-    if text is not None:
-        return text
-    if event.type == "object":
-        for pair in (c for c in named_children(event) if c.type == "pair"):
-            if member_name(r.src, field_of(pair, "key")) == "type":
-                return string_value(r.src, field_of(pair, "value"))
-    if event.type == "new_expression":
-        ctor = r.src.text(field_of(event, "constructor")).split(".")[-1]
-        args = field_of(event, "arguments")
-        first = (named_children(args) or [None])[0] if args is not None else None
-        if ctor in EVENT_OBJECTS and first is not None:
-            return string_value(r.src, first)
-    return None
 
 
 def jsx(r, node, unit, cond) -> None:

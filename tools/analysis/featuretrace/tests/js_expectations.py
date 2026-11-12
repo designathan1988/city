@@ -17,13 +17,12 @@ class WebExpectations:
         self.assertIn("Actor.constructor", self.names("Game.frame"))       # Hero = Actor through two barrels
         self.assertIn("Actor.measure", self.names("Game.frame"))
 
-    def test_getter_iterator_object_literal_and_bind(self):
+    def test_getter_iterator_and_object_literal(self):
         start = self.names("Game.start")
         self.assertIn("Actor.pace.get", start)                             # a read calls the getter
         self.assertIn("Actor.[Symbol.iterator]", start)                    # for...of
         self.assertIn("Actor.measure", start)                              # the loop variable is an Actor
         self.assertTrue(any(n.endswith(".greet") for n in start))          # an object literal's method
-        self.assertIn("Game.frame", start)                                 # this.frame.bind(this) ... .call(this)
 
     def test_global_script_name(self):
         self.assertIn("legacy.js.legacyHelper", self.names("Game.start"))
@@ -36,12 +35,22 @@ class WebExpectations:
         self.assertIn("Game.frame", self.reached("WebGLRenderer.tick"))    # setAnimationLoop(cb) ... this._loop(t)
         self.assertIn("Game.start.<lambda:20>", self.names("WebGLRenderer.tick"))
 
-    def test_host_callbacks_and_events(self):
+    def test_host_callbacks(self):
         self.assertTrue({"Game.start.<lambda:21>", "Game.start.<lambda:22>"} <= self.names("Game.start", ("handed",)))
-        self.assertIn("Game.onReady", self.reached("announce"))            # dispatchEvent(new Event("ready"))
 
     def test_jsx_component(self):
         self.assertIn("ui.tsx.Panel", self.names("ui.tsx:5", ("handed",)))
+
+
+class DeclaredWebExpectations:
+    """What the web fixture's platform does by its declarations alone (the new core): `bind` and `call` by
+    `CallableFunction`'s, an event by `EventTarget`'s kept listeners — no name of either read."""
+
+    def test_bind_and_call_by_their_declarations(self):
+        self.assertIn("Game.frame", self.names("Game.start"))           # this.frame.bind(this) ... .call(this)
+
+    def test_an_event_by_the_target_s_declarations(self):
+        self.assertIn("Game.onReady", self.reached("announce"))          # dispatchEvent(new Event("ready"))
 
 
 class JsValuesExpectations:

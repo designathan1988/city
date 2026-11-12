@@ -14,7 +14,7 @@ from .model import FUNCTION_KINDS
 from .places import ARG, ENGINE_CALLED, HELD
 from .solver import ENGINE, UNDEFINED
 
-CARRYING = ("call", "override", "name", "thread", "emit", "new", "handed", "bound")   # links whose arguments reach
+CARRYING = ("call", "override", "name", "thread", "emit", "new", "handed")   # links whose arguments reach
                                                                                   # parameters
 WRITTEN_CALLS = ("call", "override", "new")      # links of a call whose arguments are written at the site
 FLOW = "#flow"

@@ -88,6 +88,11 @@ void inherited(Analysis& an, Obj obj, Value key, int64_t index, Value node) {
 
 Value resolve(Analysis& an, Value text, Value file, Value owner) { return an.in.resolve(text, file, owner); }
 
+Value resolve_named(Analysis& an, Value tree, const std::vector<Value>& path) {
+    Value found = resolve(an, an.item(tree, 1), an.item(tree, 3), an.item(tree, 4));
+    return found.kind() == Kind::None || std::find(path.begin(), path.end(), found) != path.end() ? NONE : found;
+}
+
 const std::vector<Value>& group(Analysis& an, Value key) {
     const ClassRec* c = an.in.cls(key);
     if (c && !c->group.empty()) return c->group;

@@ -1,6 +1,7 @@
 // What a declared function does: what its declaration says (heap/declared.py): each argument where its parameter's
 // type says, the result its type gives, a function handed to a function type called back, an object of the program
-// given to a type it is not nominally read through what that type declares, construct and call signatures.
+// given to a type it is not nominally read through what that type declares, construct and call signatures; a rest
+// parameter typed by a type parameter takes its arguments as one array made at the call and gives each element.
 #include "semantics.h"
 
 namespace ftengine::declared {
@@ -35,6 +36,21 @@ std::vector<Value> function_types(Analysis& an, Value tree) {
     std::vector<Value> out;
     for (int64_t g : typesys::lookup(an, an.item(found, 1), an.V.CALL_SIGNATURE)) out.push_back(signature(an, an.unit(g)));
     return out;
+}
+
+void rest_array(Analysis& an, Value types, int64_t rest, std::span<const Value> args, Value env, Value site,
+                Value origin) {
+    auto all = an.at(types);
+    if (rest < 0 || rest >= static_cast<int64_t>(all.size())) return;
+    Value tree = all[static_cast<size_t>(rest)];
+    if (!an.truthy(tree) || an.item(tree, 0) != an.V.T_PARAM) return;
+    Obj array = an.make({an.V.SITE_ARRAY, NONE, site, an.ROOT});
+    Value node = an.tuple({an.V.D_REST, site});
+    an.add(node, array);
+    for (size_t i = static_cast<size_t>(rest); i < args.size(); ++i) {
+        if (args[i].kind() != Kind::None) an.follow(args[i], members::field(an, array, an.V.ELEMENTS_FIELD));
+    }
+    values::consume(an, tree, env, node, site, origin);
 }
 
 Value argument(Analysis& an, Value node, Value tree, Value env, Value site, Value origin) {
@@ -120,6 +136,8 @@ void apply(Analysis& an, Value node, int64_t gid, int64_t holder, std::span<cons
                             node);
         }
     }
+    rest_array(an, an.tuple(unit.param_types), unit.variadic ? static_cast<int64_t>(unit.param_types.size()) - 1 : -1,
+               args, env, values::sub(an, site, an.tuple({I(gid), an.V.D_REST})), node);
     if (an.truthy(unit.this_type) && holder >= 0) {
         values::consume(an, unit.this_type, env, an_node(an, static_cast<Obj>(holder)),
                         values::sub(an, site, an.tuple({I(gid), an.V.D_THIS})), node);
@@ -150,6 +168,9 @@ Value positional(Analysis& an, Value types, int64_t rest, size_t index) {
             auto parts = an.at(an.item(tree, 1));
             size_t at = index - static_cast<size_t>(rest);
             return at < parts.size() ? parts[at] : an.tuple({});
+        }
+        if (an.truthy(tree) && kind == an.V.T_PARAM) {           // `...args: A`: an element of A (`A[number]`)
+            return an.tuple({an.V.T_INDEX, tree, an.tuple({an.V.T_VALUES, an.tuple({an.V.NUMBER})})});
         }
         return tree;
     }
@@ -274,6 +295,7 @@ void call_object(Analysis& an, Value node, Obj fn, int64_t receiver, std::span<c
                 values::consume(an, part, env, args[i], values::sub(an, site, I(static_cast<int64_t>(i))), node);
             }
         }
+        rest_array(an, an.item(tree, 1), an.item(tree, 3).data(), args, env, values::sub(an, site, V.D_REST), node);
         if (an.truthy(an.item(tree, 2))) {
             an.follow(values::produce(an, an.item(tree, 2), env, values::sub(an, site, V.RESULT)), node);
         }

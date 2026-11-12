@@ -70,27 +70,6 @@ class HostBase(Solved, FixtureCase):
         self.assertIn(ENGINE, self.returned("hostGet"))         # `Map.prototype.get`, the host's
 
 
-class DefinedProperties(Solved, FixtureCase):
-    """J14: `Object.defineProperty`, `Object.defineProperties` (fixture `jsvalues/defineprops.js`)."""
-    ROOTS = ("jsvalues",)
-    BASE = "jsvalues"
-    SPOT = CLASS + "defineprops.js#Spot"
-
-    def test_value_and_getter(self):
-        self.assertEqual({self.SPOT}, self.returned("heldSpot"))
-        self.assertEqual({NUMBER}, self.returned("heldId"))
-        self.assertEqual({self.SPOT}, self.returned("heldTwice"))
-
-    def test_descriptor_members_by_their_values(self):
-        self.assertEqual({self.SPOT}, self.returned("heldShort"))         # `{ value }`
-        self.assertEqual({self.SPOT}, self.returned("heldByRef"))         # `{ get: spotGetter }`
-        self.assertIn(self.SPOT, self.returned("heldViaVar"))             # a descriptor held in a variable
-        self.assertIn(self.SPOT, self.returned("heldComputed"))           # a key no literal names: `o[k] = v`
-        self.assertIn(self.SPOT, self.returned("heldMap"))                # a map of descriptors held in a variable
-        handed = self.names("Holder2.constructor", ("handed",))          # the getter handed to the language
-        self.assertTrue(any("spotGetter" in n for n in handed), handed)
-
-
 class LateWrites(Solved, FixtureCase):
     """J7': a hoisted closure writes a variable declared before it in the text (fixture `jsvalues/latewrite.js`)."""
     ROOTS = ("jsvalues",)
@@ -129,8 +108,6 @@ class FunctionConstructors(Solved, FixtureCase):
     def test_this_of_a_function_by_its_calls(self):
         self.assertIn(UNDEFINED, self.returned("thisPlain"))             # a plain call in strict code
         self.assertFalse(any("newfn.js" == v.lstrip("#") for v in self.returned("thisPlain")))
-        made = self.returned("thisCall")                                 # `f.call(o)`
-        self.assertTrue(any("Shape2" in v for v in made), made)
         self.assertEqual({ENGINE}, self.returned("thisHanded"))          # the engine decides it
         self.assertEqual({ENGINE}, self.returned("sloppyRead"))          # sloppy code: the global object
         self.assertEqual({UNDEFINED}, self.returned("strictRead"))       # "use strict"

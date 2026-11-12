@@ -1,8 +1,9 @@
 // What no declaration states, summarized from the declarations themselves (heap/summaries.py): the values a declared
-// call takes in open positions are its pool; a property-key text names the member of its open object arguments the
-// pool reaches and is read and called on them; an open result holds the pool; a function in it is called back. The
-// platform's kept state: a function a declared method takes under a function type, called back by a later call on the
-// same receiver that passes a value of a plain named type the function's parameters name.
+// call takes in open positions are its pool; a property-key text names the member of its object arguments (open or of
+// a type parameter) the pool reaches and is read and called on them, and the own keys of an object it passes where a
+// map from property keys is declared put the pool in them by key; an open result holds the pool; a function in it is
+// called back. The platform's kept state: a function a declared method takes under a function type, called back by a
+// later call on the same receiver that passes a value of a plain named type the function's parameters name.
 #include "semantics.h"
 
 namespace ftengine::summaries {
@@ -17,12 +18,9 @@ void key_values(Analysis& an, Value tree, std::vector<Value>& out, std::vector<V
     } else if (kind == an.V.T_UNION) {
         for (Value part : an.at(an.item(tree, 1))) key_values(an, part, out, seen);
     } else if (kind == an.V.T_NAMED) {
-        Value found = typesys::resolve(an, an.item(tree, 1), an.item(tree, 3), an.item(tree, 4));
-        if (found.kind() != Kind::None && an.item(found, 0) == an.V.ALIAS &&
-            std::find(seen.begin(), seen.end(), found) == seen.end()) {
-            seen.push_back(found);
-            key_values(an, an.unit(an.item(found, 1).data()).result_type, out, seen);
-            seen.pop_back();
+        Value found = typesys::resolve_named(an, tree, seen);
+        if (found.kind() != Kind::None && an.item(found, 0) == an.V.ALIAS) {
+            typesys::expand_alias(an, found, seen, [&](Value type) { key_values(an, type, out, seen); return 0; });
         }
     }
 }
@@ -67,6 +65,39 @@ Value plain_type(Analysis& an, Value tree) {
         if (c && !c->tparams.empty()) return NONE;
     }
     return key;
+}
+
+bool receives(Analysis& an, Value tree) {
+    return is_open(an, tree) || (an.truthy(tree) && an.item(tree, 0) == an.V.T_PARAM);
+}
+
+bool indexed(Analysis& an, Value tree, std::vector<Value>& seen) {
+    if (!an.truthy(tree)) return false;
+    Value kind = an.item(tree, 0), key;
+    if (kind == an.V.T_UNION || kind == an.V.T_BOTH) {
+        for (Value part : an.at(an.item(tree, 1))) {
+            if (indexed(an, part, seen)) return true;
+        }
+        return false;
+    }
+    if (kind == an.V.T_OBJECT) {
+        key = an.item(tree, 1);
+    } else if (kind == an.V.T_NAMED) {
+        Value found = typesys::resolve_named(an, tree, seen);
+        if (found.kind() == Kind::None) return false;
+        if (an.item(found, 0) == an.V.ALIAS) {
+            return typesys::expand_alias(an, found, seen, [&](Value type) { return indexed(an, type, seen); });
+        }
+        key = an.item(found, 1);
+    } else {
+        return false;
+    }
+    for (int64_t gid : typesys::lookup(an, key, an.V.INDEX_SIGNATURE)) {
+        for (const auto& [key_type, value] : an.unit(gid).indexes) {
+            if (keyed(an, key_type)) return true;
+        }
+    }
+    return false;
 }
 
 std::vector<Value> arguments(Analysis& an, Obj fn) {
@@ -135,19 +166,26 @@ Value pool(Analysis& an, Value origin) { return an.tuple({an.V.POOL, origin}); }
 void summarize(Analysis& an, Value node, const UnitRec& unit, std::span<const Value> args, Value site) {
     Value where = an.tuple({I(an.make({an.V.SUMMARY_SITE, an.item(site, 0)})), an.item(site, 1)});
     std::vector<Value> names;
+    Value keys = NONE;
     for (size_t i = 0; i < args.size(); ++i) {
-        if (args[i].kind() == Kind::None || !keyed(an, declared::parameter(an, unit, i))) continue;
-        Value found = texts::argument(an, node, i);
-        for (Value text : an.at(found)) {
-            if (std::find(names.begin(), names.end(), text) == names.end()) names.push_back(text);
+        if (args[i].kind() == Kind::None) continue;
+        Value tree = declared::parameter(an, unit, i);
+        std::vector<Value> seen;
+        if (keyed(an, tree)) {
+            for (Value text : an.at(texts::argument(an, node, i))) {
+                if (std::find(names.begin(), names.end(), text) == names.end()) names.push_back(text);
+            }
+        } else if (indexed(an, tree, seen)) {          // a map from property keys: its own keys (`for...in`'s)
+            keys = an.tuple({an.V.S_TEXTS, node});
+            an.subscribe(args[i], keys, an.tuple({an.V.S_TEXTS, I(static_cast<int64_t>(i))}), pack(an, kKeys, {}));
         }
     }
-    if (!names.empty()) {
+    if (!names.empty() || keys.kind() != Kind::None) {
         Value known = TV(an.s.term(Shape::FrozenSet, 0, names));
         for (size_t i = 0; i < args.size(); ++i) {
-            if (args[i].kind() == Kind::None || !is_open(an, declared::parameter(an, unit, i))) continue;
+            if (args[i].kind() == Kind::None || !receives(an, declared::parameter(an, unit, i))) continue;
             an.subscribe(args[i], an.tuple({an.V.RECEIVE, node, I(static_cast<int64_t>(i))}), an.tuple({an.V.RECEIVE}),
-                         pack(an, kSummaryReceive, {node, known, where}));
+                         pack(an, kSummaryReceive, {node, known, where, keys}));
         }
     }
     an.subscribe(pool(an, node), an.tuple({an.V.CALLED, node}), an.tuple({an.V.CALLED}),
@@ -165,8 +203,13 @@ void open_call(Analysis& an, Value node, std::span<const Value> args, Value site
     an.add(node, an.make({an.V.SITE_UNKNOWN}));
 }
 
-void receive(Analysis& an, Value node, Obj obj, Value names, Value where) {
+void receive(Analysis& an, Value node, Obj obj, Value names, Value keys, Value where) {
     for (Value name : an.at(names)) named(an, node, obj, name, where);
+    if (keys.kind() == Kind::None) return;
+    Value held = an.tuple({an.V.KEYED, node, I(obj)});      // the pool but the object itself, put by each key
+    an.subscribe(pool(an, node), held, an.tuple({an.V.FIELDS, I(obj)}), pack(an, kSummaryFields, {I(obj)}));
+    an.subscribe(keys, an.tuple({an.V.KEYED, node, I(obj), an.V.S_TEXTS}), an.tuple({an.V.KEYED}),
+                 pack(an, kStoreByKey, {held, I(obj)}));
 }
 
 void reflected(Analysis& an, Value node, Value call, Obj obj, Obj value) {

@@ -1,6 +1,6 @@
-"""How a call reaches what it runs (log/trace-rules.md: CALL, J2'', J6, J6', J11, G7): a value called (the functions
-it holds, a bound function after its bound arguments, `operator()` of its classes), the site one function receives
-for `call`, `apply` and `bind`, the callables handed to the engine or a library, and a method named by a string.
+"""How a call reaches what it runs (log/trace-rules.md: CALL, J2'', J6', J11, G7): a value called (the functions
+it holds, a bound function after its bound arguments, `operator()` of its classes), the site a bound function
+receives, the callables handed to the engine or a library, and a method named by a string.
 """
 from __future__ import annotations
 
@@ -19,24 +19,19 @@ def invoked_leads(rs, unit, tree) -> list[tuple[int, int]]:
 
 
 class _FormSite:
-    """A call site as one function receives it (J2''): the arguments a `bind` put first stand before the written ones
-    (they reach the first parameters where the function was bound), `apply`'s array in every parameter, and `this`
-    the object written for it."""
+    """A call site as a bound function receives it (J2''): the arguments a `bind` put first stand before the written
+    ones (they reach the first parameters where the function was bound)."""
 
     def __init__(self, ref, args: tuple, argc: int, base):
         self.line, self.cond, self.args, self.argc, self.base = ref.line, ref.cond, args, argc, base
 
 
 def site_of(rs, ref, gid: int, lead: int):
-    """The site of a call, `call`, `apply` or `bind` of function `gid` holding `lead` bound arguments."""
-    args = ref.args
-    if ref.kind == "invoke" and ref.text == "apply":
-        args = args[:1] * max(len(rs.ix.units[gid].params) - lead, 0)
-    base = ref.receiver if ref.receiver is not None else ref.base
-    if not lead and args is ref.args and base is ref.base:
+    """The site of a call of function `gid` holding `lead` bound arguments."""
+    if not lead:
         return ref
     argc = ref.argc + lead if ref.argc >= 0 else -1
-    return _FormSite(ref, (None,) * lead + tuple(args), argc, base)
+    return _FormSite(ref, (None,) * lead + tuple(ref.args), argc, ref.base)
 
 
 def form_on_functions(rs, unit, ref) -> bool:

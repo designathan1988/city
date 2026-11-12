@@ -3,17 +3,22 @@ that is only declared (a platform's, a library's) puts each argument where its p
 its result type gives, in the environment of the receiver it is called on and of this call's own type parameters; a
 function the program hands to a function type is called back by it; `new` on an object of a declared type runs its
 construct signature, a call of it its call signature; a function of a declared function type the platform gave, called
-by the program, takes its arguments the same way; the function `await` hands a thenable takes the awaited value.
+by the program, takes its arguments the same way; the function `await` hands a thenable takes the awaited value. A rest
+parameter typed by a type parameter (`...args: A`) takes the arguments from it on as one array of type A, and gives a
+function called back each element of it (TypeScript: a rest parameter's type is its array's; ECMA-262 makes the array
+at the call).
 """
 from __future__ import annotations
 
 from ..languages import ARRAY_TYPE, CALL_SIGNATURE, CONSTRUCT_SIGNATURE
+from ..solver import NUMBER
 from ..vocab import (ELEMENTS_FIELD, HANDED, SITE_ARRAY, SITE_DECLARED_FN, SITE_FUNCTION, SITE_LITERAL, SITE_NEW,
-                     SITE_RESOLVER, SITE_UNKNOWN, T_FN, T_NAMED, T_OBJECT, T_OPEN, T_PARAM, T_TUPLE)
+                     SITE_RESOLVER, SITE_UNKNOWN, T_FN, T_INDEX, T_NAMED, T_OBJECT, T_OPEN, T_PARAM, T_TUPLE,
+                     T_VALUES)
 from . import contexts, members, summaries, typesys, values
 
 CALLBACK, CALLBACK_SITE, READ_MEMBER, THIS, RECEIVERS, CALLBACK_ARG = 30, 31, 32, 33, 34, 35   # node tags, site parts
-STRUCTURAL = 36
+STRUCTURAL, REST = 36, 37
 PROGRAM_MADE = (SITE_NEW, SITE_LITERAL, SITE_FUNCTION, SITE_ARRAY)     # the objects the program's own code makes
 
 
@@ -34,6 +39,8 @@ def apply(an, node, gid: int, holder, args: list, site) -> None:
         tree = parameter(unit, i)
         if tree and arg is not None:
             values.consume(an, tree, env, arg, values.sub(site, (gid, i)), node)
+    rest_array(an, tuple(unit.param_types), len(unit.param_types) - 1 if unit.variadic else -1, args, env,
+               values.sub(site, (gid, REST)), node)
     if unit.this_type and holder is not None:      # `this: T`: the receiver given to its declared type
         values.consume(an, unit.this_type, env, an_node(an, holder), values.sub(site, (gid, THIS)), node)
     if unit.result_type:
@@ -51,15 +58,31 @@ def parameter(unit, index: int) -> tuple:
 
 def positional(types: tuple, rest: int, index: int) -> tuple:
     """The declared type an argument at `index` takes: its parameter's; from the rest parameter on, one element of
-    the rest type (an array's element type, a tuple's part, a variadic type parameter itself)."""
+    the rest type (an array's element type, a tuple's part, a type parameter's element: `A[number]`)."""
     if 0 <= rest < len(types) and index >= rest:
         tree = types[rest]
         if tree and tree[0] == T_NAMED and tree[1] == ARRAY_TYPE and tree[2]:
             return tree[2][0]
         if tree and tree[0] == T_TUPLE:
             return tree[1][index - rest] if index - rest < len(tree[1]) else ()
+        if tree and tree[0] == T_PARAM:
+            return (T_INDEX, tree, (T_VALUES, (NUMBER,)))
         return tree
     return types[index] if index < len(types) else ()
+
+
+def rest_array(an, types: tuple, rest: int, args: list, env, site, origin) -> None:
+    """`...args: A` with A a type parameter: the arguments from the rest parameter on are one array made at the call,
+    given to A."""
+    if not 0 <= rest < len(types) or not types[rest] or types[rest][0] != T_PARAM:
+        return
+    array = an.objects.array(None, site, ())
+    node = (REST, site)
+    an.solver.add(node, [array])
+    for arg in args[rest:]:
+        if arg is not None:
+            an.solver.follow(arg, members.field(an, array, ELEMENTS_FIELD))
+    values.consume(an, types[rest], env, node, site, origin)
 
 
 def taken(an, obj: int, tree: tuple, env, site, origin) -> None:
@@ -235,6 +258,7 @@ def call_object(an, node, fn: int, receiver, args: list, where) -> None:
             part = positional(tree[1], tree[3], i)
             if part and arg is not None:
                 values.consume(an, part, env, arg, values.sub(site, i), node)
+        rest_array(an, tree[1], tree[3], args, env, values.sub(site, REST), node)
         if tree[2]:
             an.solver.follow(values.produce(an, tree[2], env, values.sub(site, values.RESULT)), node)
     elif kind == SITE_UNKNOWN:                     # what no declaration describes: an open call

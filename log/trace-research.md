@@ -614,3 +614,48 @@ official declarations only, converging (finite, fast enough to run in seconds to
   surely a T (a primitive of the kind, an object whose own types or chain hold the class). The narrowing fixture
   declares `Array` as the lib does; its test (`a_platform_predicate_by_its_declaration_both_ways`) passes on both cores
   through the declaration alone. The old core's tests that asserted narrowing by those names were removed.
+
+### F39. The shared reader wrote facts by the names of API members; the new core read two of them — 2026-11-11 23:59
+- After F38 every table test_generic lists as a debt was replaced by a probe and the new core's tests run (both
+  cores): which tables the reading of a program touches, and from where. Touched on the new core's path: `js_expr`
+  (`CALL_FORMS`, `EVENT_SUBSCRIBE`, `EVENT_FIRE`, `MESSAGE_FIRE`, `EVENT_OBJECTS`, `COERCION_MEMBERS`), `js_defines`
+  (`DEFINERS`), `js_bounds`/`js_types` (`LIBRARY`, `SAME_TYPE`, `ANY_OBJECT`, `CANONICAL`, `UNWRAP`), and `js_body`'s
+  `HANDLER_PREFIX` (one string, so no table). Read in the code what each one writes and whether `heap/refs.lower`
+  takes it:
+  - `f.call(t, a)` / `f.apply(t, arr)` wrote, beside the member call, an `invoke` of f with the arguments after t: the
+    new core lowered it as a call of f. A rule by the name of an API member, in the new core.
+  - `Object.defineProperty(o, k, d)` / `defineProperties` wrote `write` references of o's property: lowered as writes.
+    The same.
+  - `listen`, `fire`, `bound`, `hand`: kinds the new core never lowers. The bounds and the erased type texts: fields the
+    new core never reads (`wire_cast` takes a cast of a class made in the code alone).
+  - `COERCION_MEMBERS`: the members ECMA-262's ToPrimitive and OrdinaryToPrimitive call (@@toPrimitive, valueOf,
+    toString) for an operator's operand: the language's own, like GetIterator's and Await's. Moved from the debts to
+    the languages' data, with its source.
+- Removed from the reader, whatever core reads it: the forms (`js_expr.function_form`), the events by method name and
+  by `on<type>` (`js_expr.events`, `js_body.target`), the definers (`js_defines.py`, deleted). A member call is that
+  member's call. The old core's code that took those facts went with them (`js_link.listen`, `fire`, the `hand` and
+  `bound` kinds, the `apply` site, `Ref.receiver`); its tables `rules.EVENT_*`, `MESSAGE_FIRE`, `EVENT_OBJECTS`,
+  `HANDLER_PREFIX` and `js_defines.DEFINERS` are gone from the debts. The old core keeps `call`/`bind` on a function
+  through its own debts (`transfer`, `link_calls`); it no longer has events by name or defined properties.
+- With the rules gone the new core's tests showed what its generic mechanism lacked (both cores the same):
+  - `defineProperty<T>(o: T, p: PropertyKey, attributes: PropertyDescriptor & ThisType<any>): T` (lib.es5.d.ts): the
+    summary gave the pool only to object arguments of an open type; `o: T` is a type parameter. A type parameter says
+    where the object goes, nothing of its members (the function knows it only as itself): such an argument receives
+    the members the call's keys name, as an open one does (`summaries.receives`).
+  - `defineProperties<T>(o: T, properties: PropertyDescriptorMap & ThisType<any>)`: no argument is a property key; the
+    keys are the map's own (`[key: PropertyKey]: PropertyDescriptor`). An object given where the declaration types a
+    map from property keys passes its own keys (`for...in`'s abstract key), and the pool is put in the receiving
+    objects by that key, as `o[k] = v` (`summaries.indexed`, `members.store_by_key`).
+  - `apply<T, A extends any[], R>(this: (this: T, ...args: A) => R, thisArg: T, args: A): R`: `positional` gave a rest
+    parameter typed by a type parameter the parameter itself, so A held the elements at `call` and the array at
+    `apply`. TypeScript: a rest parameter's type is its array's. The arguments from the rest parameter on are one array
+    made at the call, given to A (`declared.rest_array`); a function called back takes, from its rest parameter on,
+    an element of A (`A[number]`, T_INDEX).
+- Tests (red on both cores first, then green): `test_heap_js.JsValuesHeap.test_properties_defined_by_what_the_definers_
+  declare` (the seven cases of `jsvalues/defineprops.js`), `test_call_and_apply_by_their_declarations`; the web
+  fixture's `bind`/`call` and `dispatchEvent` expectations are the new core's alone now (`DeclaredWebExpectations`),
+  passing through the test lib's `CallableFunction` and `EventTarget`. The test lib gained `apply`, `PropertyKey`,
+  `PropertyDescriptor`, `PropertyDescriptorMap`, `ThisType`, `defineProperty`, `defineProperties` as lib.es5 declares
+  them. Suite 506 OK, solver_test OK.
+- Engine: one owner for a named type resolved along the aliases being expanded (`typesys::resolve_named`,
+  `expand_alias`), used by `verdicts` and `summaries`.

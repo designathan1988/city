@@ -148,7 +148,7 @@ void receivers(Analysis& an, Value, const Captured& c, Objs objs) {
 }
 void summary_receive(Analysis& an, Value, const Captured& c, Objs objs) {
     for (Obj o : objs) {
-        if (summaries::is_object(an, o)) summaries::receive(an, c[0], o, c[1], c[2]);
+        if (summaries::is_object(an, o)) summaries::receive(an, c[0], o, c[1], c[3], c[2]);
     }
 }
 void summary_called(Analysis& an, Value, const Captured& c, Objs objs) {

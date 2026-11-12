@@ -18,8 +18,8 @@ from . import js_transfer, templates
 from .solver import CLASS, ENGINE, FN, UNDEFINED, fn_of
 
 THIS = "#this"
-RECEIVING = ("call", "override", "new", "bound")    # the links of a call (and of a `bind`, J2''): what they reach
-                                                   # runs on the call's receiver
+RECEIVING = ("call", "override", "new")           # the links of a call: what they reach runs on the call's
+                                                   # receiver
 HANDED = "handed"                                  # a link to a function the engine or a library runs
 
 

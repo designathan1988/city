@@ -1088,3 +1088,15 @@ as TAJS filters by `.d.ts`):
    (`Object.defineProperty`, `bind`, `Reflect`) a finite set enumerated from ECMA-262's standard built-in objects.
 4. Measurement becomes acceptance: the new core holds the current tracer's correct links, on the city, the lab app and
    the lab with three.js.
+
+## 2026-11-11: rows whose rule was a name of an API member (log/trace-research.md F39)
+
+J6's events by the method called (`addEventListener`, `on`, `once`, `dispatchEvent`, `emit`, `postMessage`) and by
+`on<type>` properties, the SIGNAL row's JavaScript events, J2''’s forms written by the reader (`call`, `apply`, `bind`
+as an `invoke` or a `bound` reference with `this` the first argument), J14 and J14' (`Object.defineProperty`,
+`Object.defineProperties`) are no longer rules of the readers: each was a rule for named API members, which "The
+feature tracer is generic" forbids. A member call is that member's call; what the platform's function does is what its
+declaration states, read by the new core (`heap/declared`, `heap/summaries`): `CallableFunction.call/apply/bind`,
+`EventTarget.addEventListener/dispatchEvent` (the kept listener), `ObjectConstructor.defineProperty/defineProperties`.
+The current core keeps `call`/`bind` on a function of the program through its own debts (`transfer`, `link_calls`)
+until it is retired, and has no events by name and no defined properties.

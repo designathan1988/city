@@ -7,11 +7,11 @@ from __future__ import annotations
 
 import unittest
 
-from .js_expectations import JsValuesExpectations, WebExpectations
+from .js_expectations import DeclaredWebExpectations, JsValuesExpectations, WebExpectations
 from .support import ENGINE, HeapCase
 
 
-class WebHeap(HeapCase, WebExpectations):
+class WebHeap(HeapCase, WebExpectations, DeclaredWebExpectations):
     ROOTS = ("web", "web/node_modules/three")
     BASE = "web"
     DECLARATIONS = True
@@ -47,6 +47,18 @@ class JsValuesHeap(HeapCase, JsValuesExpectations):
     def test_a_program_annotation_is_no_value(self):
         self.assertIn("types.ts.boxes", self.names("walk"))     # `boxes(): Box[]` returns `[]`: nothing to open
         self.assertNotIn("Box.open", self.names("walk"))
+
+    def test_properties_defined_by_what_the_definers_declare(self):
+        # `Object.defineProperty` / `defineProperties` by their declarations alone: `o: T` (the function knows the
+        # object only as itself), a `PropertyKey` naming the member, a `PropertyDescriptor` whose `value` is `any` and
+        # whose `get` is called back, a map whose keys an index signature types as property keys
+        for spec in ("heldSpot", "heldTwice", "heldShort", "heldByRef", "heldViaVar", "heldComputed", "heldMap"):
+            self.assertEqual({"Spot"}, self.classes(spec), spec)
+
+    def test_call_and_apply_by_their_declarations(self):
+        self.assertEqual({"<new Shape2@16>"}, self.classes("thisCall"))     # `this` is what `call` is given
+        self.assertEqual({"str:c"}, self.returned("callForm"))
+        self.assertEqual({"str:x", "str:y"}, self.returned("applyForm"))   # `...args: A`: an element of the array A
 
 
 class WebHeapEngine(WebHeap):

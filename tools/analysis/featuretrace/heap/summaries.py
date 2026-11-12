@@ -3,10 +3,13 @@ log/trace-research.md F2, F10 and its Decision): a declared function, whatever i
 takes in positions whose types say nothing of where they go (`any`, `unknown`, `object`, `{}`, the intrinsic object and
 function types, a type not written) what unknown code does in Jelly and JAM: the values reaching such positions — each
 open argument, what reaches an open position inside an argument's declared types (a property, a callback's result) —
-are the call's pool; a string the call passes names the member of its open object arguments the pool reaches
-(defineProperty's shape) and the member read and called on them (reflection by name); an open result holds the pool;
-a function in the pool is called back with what its own declared parameters give. Nothing is spread into every field
-and no callback is called with everything (Averroes's whole pool made every set large: F10).
+are the call's pool; a string the call passes names the member of its object arguments the pool reaches
+(defineProperty's shape) and the member read and called on them (reflection by name), and an object it passes where
+the declaration types a map from property keys passes its own keys, through which the pool reaches them
+(defineProperties' shape) — an object argument whose type is open or a type parameter (the function knows it only as
+itself); an open result holds the pool; a function in the pool is called back with what its own declared parameters
+give. Nothing is spread into every field and no callback is called with everything (Averroes's whole pool made every
+set large: F10).
 
 The platform's kept state (Decision, item 3): a function a declared method takes under a declared function type is kept
 on the receiver, and called back by a later declared call on that receiver that hands no function and passes a value of
@@ -14,14 +17,15 @@ a named, non-generic type the kept function's declared parameters name (an Event
 """
 from __future__ import annotations
 
+from ..languages import INDEX_SIGNATURE
 from ..library import ENGINE
 from ..solver import OBJECT, SYMBOL, TEXT
-from ..vocab import (CALL, HANDED, PLATFORM_FIELD, SITE_KEY, SITE_PRIMITIVE, SITE_TEXT, SITE_UNKNOWN, T_FN, T_NAMED,
-                     T_OBJECT, T_OPEN, T_UNION, T_VALUES)
+from ..vocab import (CALL, HANDED, PLATFORM_FIELD, SITE_KEY, SITE_PRIMITIVE, SITE_TEXT, SITE_UNKNOWN, T_BOTH, T_FN,
+                     T_NAMED, T_OBJECT, T_OPEN, T_PARAM, T_UNION, T_VALUES)
 from . import members, texts, typesys
 
 POOL, TEXTS, RECEIVE, FIELDS, CALLED, REFLECT, MEMBER_OF, SUMMARY_SITE = 50, 51, 52, 53, 54, 55, 56, 57   # node tags
-KEPT, KEPT_SITE, KEPT_ENTRY, GIVEN, UNKNOWN_ARG = 58, 59, 62, 63, 64
+KEPT, KEPT_SITE, KEPT_ENTRY, GIVEN, UNKNOWN_ARG, KEYED = 58, 59, 62, 63, 64, 65
 
 
 def is_open(an, tree: tuple) -> bool:
@@ -66,23 +70,60 @@ def key_values(an, tree: tuple, seen=()):
     return []
 
 
+def receives(an, tree: tuple) -> bool:
+    """Whether an object given to a declared type may have the members a key of the call names written: an open type,
+    or a type parameter (TypeScript's generics: the function knows the object only as itself, none of its members)."""
+    return is_open(an, tree) or bool(tree) and tree[0] == T_PARAM
+
+
+def indexed(an, tree: tuple, seen=()) -> bool:
+    """Whether a declared type is a map from property keys (an index signature whose key type is `keyed`): the own
+    keys of an object given there are property keys the call passes."""
+    if not tree:
+        return False
+    kind = tree[0]
+    if kind in (T_UNION, T_BOTH):
+        return any(indexed(an, part, seen) for part in tree[1])
+    if kind == T_OBJECT:
+        key = tree[1]
+    elif kind == T_NAMED:
+        found = typesys.resolve(an, tree[1], tree[3], tree[4])
+        if found is None or found in seen:
+            return False
+        if found[0] == typesys.ALIAS:
+            return indexed(an, an.ix.units[found[1]].result_type, seen + (found,))
+        key = found[1]
+    else:
+        return False
+    return any(keyed(an, key_type) for gid in typesys.lookup(an, key, INDEX_SIGNATURE)
+               for key_type, _ in an.ix.units[gid].indexes)
+
+
 def pool(origin):
     return (POOL, origin)
 
 
 def summarize(an, node, unit, args: list, site, parameter) -> None:
     """The generic summary of the call `node` of the declared function `unit` (`parameter(unit, i)`: the type its
-    argument at i takes). The pool is filled where the call's values reach open positions (`values.consume`)."""
+    argument at i takes). The pool is filled where the call's values reach open positions (`values.consume`). The
+    keys the call passes: the texts its property-key arguments have, as written, and the own keys (`for...in`'s) of
+    each object it passes where a map from property keys is declared."""
     solver, objects = an.solver, an.objects
     where = (objects.make(SUMMARY_SITE, site[0]), site[1])
-    names = set()
-    for i in range(len(args)):                     # the texts the call's property-key arguments have, as written
-        if args[i] is not None and keyed(an, parameter(unit, i)):
-            names |= texts.argument(an, node, i) or set()
+    names, keys = set(), None
     for i, arg in enumerate(args):
-        if arg is not None and names and is_open(an, parameter(unit, i)):
+        if arg is None:
+            continue
+        if keyed(an, parameter(unit, i)):
+            names |= texts.argument(an, node, i) or set()
+        elif indexed(an, parameter(unit, i)):
+            keys = (TEXTS, node)
+            solver.subscribe(arg, keys, (TEXTS, i), lambda t, objs: solver.add(t, [
+                objects.make(SITE_KEY, o) for o in objs]))
+    for i, arg in enumerate(args):
+        if arg is not None and (names or keys is not None) and receives(an, parameter(unit, i)):
             solver.subscribe(arg, (RECEIVE, node, i), (RECEIVE,), lambda _, objs: [
-                receive(an, node, o, names, where) for o in objs if is_object(an, o)])
+                receive(an, node, o, names, keys, where) for o in objs if is_object(an, o)])
     solver.subscribe(pool(node), (CALLED, node), (CALLED,), lambda _, objs: [
         called(an, node, o, where) for o in objs if objects.function(o) is not None])
     if is_open(an, unit.result_type):
@@ -100,11 +141,18 @@ def open_call(an, node, args: list, site) -> None:
     an.solver.add(node, [an.objects.make(SITE_UNKNOWN)])
 
 
-def receive(an, node, obj: int, keys, where) -> None:
-    """An open object argument: the pool reaches the member each text the call's property-key arguments have names
-    (never the object itself), and that member is read and, a function, called on it (reflection by name)."""
-    for name in keys:
+def receive(an, node, obj: int, names, keys, where) -> None:
+    """An object argument the call may write: the pool reaches the member each text the call's property-key arguments
+    have names (never the object itself), and that member is read and, a function, called on it (reflection by name);
+    through each own key of a map it passes, the pool is put in the object as `o[k] = v` puts it."""
+    for name in names:
         named(an, node, obj, name, where)
+    if keys is not None:
+        held = (KEYED, node, obj)
+        an.solver.subscribe(pool(node), held, (FIELDS, obj), lambda t, objs: an.solver.add(t, [
+            o for o in objs if o != obj]))
+        an.solver.subscribe(keys, (KEYED, node, obj, TEXTS), (KEYED,), lambda _, ks: [
+            members.store_by_key(an, held, obj, k) for k in ks])
 
 
 def named(an, node, obj: int, name: str, where) -> None:

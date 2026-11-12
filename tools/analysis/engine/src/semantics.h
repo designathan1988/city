@@ -92,6 +92,17 @@ std::vector<Value> parts(Analysis& an, Value tree);
 std::vector<Value> values(Analysis& an, Value tree);
 const std::vector<Value>& chain(Analysis& an, Value key);
 const std::vector<Value>& base_keys(Analysis& an, Value key);
+// A named type resolved where it is written, NONE where it names nothing or an alias already on `path` (an alias
+// inside its own expansion).
+Value resolve_named(Analysis& an, Value tree, const std::vector<Value>& path);
+// What `fn` gives of an alias's type, with the alias on `path` while it runs.
+template <class F>
+auto expand_alias(Analysis& an, Value found, std::vector<Value>& path, F fn) {
+    path.push_back(found);
+    auto out = fn(an.unit(an.item(found, 1).data()).result_type);
+    path.pop_back();
+    return out;
+}
 }  // namespace typesys
 
 namespace values {
@@ -128,7 +139,7 @@ bool is_open(Analysis& an, Value tree);
 Value pool(Analysis& an, Value origin);
 void summarize(Analysis& an, Value node, const UnitRec& unit, std::span<const Value> args, Value site);
 void open_call(Analysis& an, Value node, std::span<const Value> args, Value site);
-void receive(Analysis& an, Value node, Obj obj, Value names, Value where);
+void receive(Analysis& an, Value node, Obj obj, Value names, Value keys, Value where);
 void reflected(Analysis& an, Value node, Value call, Obj obj, Obj value);
 void called(Analysis& an, Value node, Obj fn, Value where);
 void keep(Analysis& an, Obj holder, Obj fn, Value tree);

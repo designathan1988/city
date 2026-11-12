@@ -52,7 +52,6 @@ STORE = "store"            # a write through a key no literal names (`o[k] = v`)
 VALUE = "value"
 LAMBDA = "lambda"
 INVOKE = "invoke"
-BOUND = "bound"
 HAND = "hand"
 IMPORT = "import"
 JSX = "jsx"                # a JSX element: its tag handed to the JSX runtime with its props

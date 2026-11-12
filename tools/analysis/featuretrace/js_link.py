@@ -1,17 +1,15 @@
-"""JavaScript / TypeScript links (log/trace-rules.md: CALL, SIGNAL, ENTRY for JS; J3, J4, J6, J10): `new C` to C's
-constructor (inherited up the bases), an imported module's top-level code, events by type (a subscription links the
-handler to the event, firing links to it), JSX components, and what a callback handed to the language's containers or
-promises receives.
+"""JavaScript / TypeScript links (log/trace-rules.md: CALL, ENTRY for JS; J3, J4, J10): `new C` to C's constructor
+(inherited up the bases), an imported module's top-level code, JSX components, and what a callback handed to the
+language's containers or promises receives.
 """
 from __future__ import annotations
 
-from . import js_transfer, names
+from . import js_transfer
 from .ir import LITERAL
 from .solver import FN, env_of, fn_of
 from .rules import (ACCUMULATOR, AWAITED, CONSTRUCTOR, ELEMENTS, ENGINE_VALUE, HIGHER_ORDER)
 
 MODULE_UNIT = "<module>"
-HANDLE_EVENT = "handleEvent"       # an object listener's method (EventTarget, J6)
 RENDER = "render"                  # a class component's method the JSX runtime calls (J10)
 
 
@@ -35,36 +33,6 @@ def module_run(rs, unit, ref) -> None:
     target = rs.ix.js.resolve(unit.file, ref.text)
     for gid in rs.ix.by_qual.get(f"{target}:{MODULE_UNIT}", []) if target else []:
         rs.link(unit.gid, gid, "call", ref, "exact")
-
-
-def handlers(rs, unit, tree) -> list[int]:
-    """The functions a listener value can be: a callable, or an object's `handleEvent` (J6)."""
-    keys, _, callables = rs.typer.receiver(tree, unit)
-    found = list(callables)
-    for key in keys:
-        found += rs.keep(rs.ix.lookup(key, HANDLE_EVENT), "func", unit.file)
-    return list(dict.fromkeys(found))
-
-
-def event_types(rs, unit, name: str, tree) -> list[str]:
-    if name:
-        return [name]
-    return names.texts(rs.typer, tree, unit) if tree is not None else []
-
-
-def listen(rs, unit, ref) -> None:
-    """A subscription: the handler is connected to the event of each type the call can name."""
-    for kind in event_types(rs, unit, ref.name, ref.args[0] if ref.args else None):
-        signal = rs.ix.engine_signal(kind)
-        for handler in handlers(rs, unit, ref.handler):
-            rs.link(unit.gid, handler, "connect", ref, "exact")
-            rs.link(signal, handler, "signal", ref, "exact", unit.file)
-
-
-def fire(rs, unit, ref) -> None:
-    """Firing an event: the event of each type the call can name, with the values it carries."""
-    for kind in event_types(rs, unit, ref.name, ref.handler):
-        rs.link(unit.gid, rs.ix.engine_signal(kind), "emit", ref, "exact")
 
 
 def jsx(rs, unit, ref) -> None:
