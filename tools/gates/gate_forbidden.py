@@ -229,15 +229,15 @@ def machine_paths(ctx, src, rule, err):
 
 
 CHECKS = {
-    "SEM_MARCADORES_SOLTOS": markers,
-    "SIM_SEM_GODOT": includes_prefix("godot"),
-    "RENDER_SO_LEITURA": render_reads,
+    "NO_LOOSE_MARKERS": markers,
+    "SIM_WITHOUT_GODOT": includes_prefix("godot"),
+    "RENDER_READ_ONLY": render_reads,
     "MAP_WRITER_UNNAMED": map_writer,
-    "UM_DONO_DO_CORE": core_owner,
-    "FLUXO_CENTRAL": central_flow,
-    "UI_SEM_ESTILO_SOLTO": loose_style,
-    "TEXTO_VIA_TR": gate_text.untranslated,
-    "DADOS_POR_UM_LEITOR": data_reader,
-    "JOB_SEM_CHAVE": job_keys,
+    "ONE_CORE_OWNER": core_owner,
+    "CENTRAL_FLOW": central_flow,
+    "UI_LOOSE_STYLE": loose_style,
+    "TEXT_THROUGH_TR": gate_text.untranslated,
+    "DATA_ONE_READER": data_reader,
+    "JOB_WITHOUT_KEY": job_keys,
     "MACHINE_PATH": machine_paths,
 }

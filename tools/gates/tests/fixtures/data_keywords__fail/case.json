@@ -1,16 +1,16 @@
 {
  "rule": "data",
  "expect": [
-  "DADOS project/data/c.json",
-  "DADOS project/data/c.json",
-  "DADOS project/data/c.json",
-  "DADOS project/data/c.json",
-  "DADOS project/data/c.json",
-  "DADOS project/data/c.json",
-  "DADOS project/data/c.json",
-  "DADOS project/data/c.json",
-  "DADOS project/data/d.json",
-  "DADOS project/data/e.json"
+  "DATA project/data/c.json",
+  "DATA project/data/c.json",
+  "DATA project/data/c.json",
+  "DATA project/data/c.json",
+  "DATA project/data/c.json",
+  "DATA project/data/c.json",
+  "DATA project/data/c.json",
+  "DATA project/data/c.json",
+  "DATA project/data/d.json",
+  "DATA project/data/e.json"
  ],
  "overrides": {
   "schemas": {

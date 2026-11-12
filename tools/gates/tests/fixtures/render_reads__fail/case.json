@@ -1,9 +1,9 @@
 {
- "rule": "RENDER_SO_LEITURA",
+ "rule": "RENDER_READ_ONLY",
  "expect": [
-  "RENDER_SO_LEITURA native/src/render/a.cpp:2",
-  "RENDER_SO_LEITURA native/src/render/b.cpp:2",
-  "RENDER_SO_LEITURA native/src/render/b.cpp:3",
-  "RENDER_SO_LEITURA native/src/render/b.cpp:4"
+  "RENDER_READ_ONLY native/src/render/a.cpp:2",
+  "RENDER_READ_ONLY native/src/render/b.cpp:2",
+  "RENDER_READ_ONLY native/src/render/b.cpp:3",
+  "RENDER_READ_ONLY native/src/render/b.cpp:4"
  ]
 }

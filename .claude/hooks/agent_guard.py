@@ -17,8 +17,11 @@ sys.path.insert(0, os.path.join(ROOT, "tools", "tasks"))
 from locks import FileLock  # noqa: E402  the OS file lock every tool of this machine shares
 
 READER = "reader"
+# The agents whose tools only read: the project's own, and Claude Code's built-in Explore (no Edit, Write or NotebookEdit),
+# which a session has from its start while a project agent added during a session loads only in the next one.
+READERS = (READER, "Explore")
 DEFAULT_TYPE = "general-purpose"  # what the Agent tool starts when no subagent_type is given
-AT_ONCE = 2  # the owner's "with moderation, never many at the same time" (2026-11-12)
+AT_ONCE = 5  # the owner's limit (2026-11-12: "limit it to 5")
 REFUSED = 2
 COUNTS = os.path.join(tempfile.gettempdir(), "city-agent-guard")
 LOCK_WAIT_S = 5.0  # inside the hook's own deadline (.claude/settings.json timeout)
@@ -48,8 +51,8 @@ def _write(path: str, places: list) -> None:
 def refusal(tool_input: dict, running: int) -> str | None:
     """Why this call to the Agent tool may not start, or None."""
     kind = str(tool_input.get("subagent_type") or DEFAULT_TYPE)
-    if kind != READER:
-        return (f"agents only read (CLAUDE.md, the rule on agents): start the project's '{READER}' agent "
+    if kind not in READERS:
+        return (f"agents only read (CLAUDE.md, the rule on agents): start one of {', '.join(READERS)} "
                 f"(.claude/agents/reader.md), not '{kind}'; editing, removing, building and running stay with the main session")
     if tool_input.get("isolation"):
         return f"a reader works in no worktree of its own ('isolation': {tool_input.get('isolation')!r})"
@@ -78,7 +81,7 @@ def handle(event: dict) -> tuple[int, str]:
         elif name == "PostToolUseFailure" and event.get("tool_name") == "Agent":
             gone = str(event.get("tool_use_id") or "")
             _write(path, [p for p in places if p != gone] if gone in places else places[1:])
-        elif name == "SubagentStop" and event.get("agent_type") == READER:
+        elif name == "SubagentStop" and event.get("agent_type") in READERS:
             _write(path, places[1:])
         return 0, ""
     finally:

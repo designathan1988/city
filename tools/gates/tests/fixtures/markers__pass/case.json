@@ -1,4 +1,4 @@
 {
- "rule": "SEM_MARCADORES_SOLTOS",
+ "rule": "NO_LOOSE_MARKERS",
  "expect": []
 }

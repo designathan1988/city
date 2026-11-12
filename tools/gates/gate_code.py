@@ -22,13 +22,13 @@ def check_layers(ctx, src, err):
     layers = ctx.rules["cpp_layers"]
     layer = layer_of(src.path, layers)
     if layer is None:
-        err("CAMADA_DESCONHECIDA", src.path, "folder without a rule in rules.json/cpp_layers")
+        err("UNKNOWN_LAYER", src.path, "folder without a rule in rules.json/cpp_layers")
         return
     for inc, angle, line in cpp_syntax.includes(src):
         if angle and "/" not in inc:
             continue  # standard library
         if not any(inc.startswith(p) for p in layers[layer]):
-            err("CAMADA", f"{src.path}:{line}", f"'{inc}' is not allowed in {layer} (rules.json/cpp_layers)")
+            err("LAYER", f"{src.path}:{line}", f"'{inc}' is not allowed in {layer} (rules.json/cpp_layers)")
 
 
 def orphan_inputs(ctx, path):
@@ -49,7 +49,7 @@ def check_orphans(ctx, err):
     for f in files:
         facts = ctx.facts(f)
         if facts.get("lex_error"):
-            err("ORFAO", f, f"cannot be read as code: {facts['lex_error']}")
+            err("ORPHAN", f, f"cannot be read as code: {facts['lex_error']}")
             continue
         for ref in facts.get("refs", []):
             target = uid_to_path.get(ref) or ("project/" + ref[len("res://"):] if ref.startswith("res://") else None)
@@ -65,4 +65,4 @@ def check_orphans(ctx, err):
         if cls:
             users |= set(word_files.get(cls, ())) - {f}
         if not users:
-            err("ORFAO", f, "no scene, script, shader or project.godot names this file: delete it or connect it")
+            err("ORPHAN", f, "no scene, script, shader or project.godot names this file: delete it or connect it")

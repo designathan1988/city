@@ -1,9 +1,9 @@
 {
  "rule": "data",
  "expect": [
-  "DADOS project/data/a.json",
-  "DADOS project/data/a.json",
-  "DADOS_SEM_SCHEMA project/data/b.json"
+  "DATA project/data/a.json",
+  "DATA project/data/a.json",
+  "DATA_WITHOUT_SCHEMA project/data/b.json"
  ],
  "overrides": {
   "schemas": {

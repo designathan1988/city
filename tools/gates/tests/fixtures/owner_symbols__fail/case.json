@@ -1,8 +1,8 @@
 {
  "rule": "owner_symbols",
  "expect": [
-  "DONO_AUSENTE native/src/a.cpp",
-  "DONO_AUSENTE native/src/none.cpp"
+  "OWNER_MISSING native/src/a.cpp",
+  "OWNER_MISSING native/src/none.cpp"
  ],
  "owners": {
   "concepts": [

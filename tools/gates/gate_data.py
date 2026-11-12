@@ -53,9 +53,9 @@ def _load(ctx, rel, err, owner):
     try:
         return load_strict(full)
     except DuplicateKey as e:
-        err("DADOS", owner, f"{rel}: key '{e.key}' written twice in one object (lines {', '.join(map(str, _key_lines(full, e.key)))})")
+        err("DATA", owner, f"{rel}: key '{e.key}' written twice in one object (lines {', '.join(map(str, _key_lines(full, e.key)))})")
     except (OSError, json.JSONDecodeError) as e:
-        err("DADOS", owner, f"{rel}: invalid JSON: {e}")
+        err("DATA", owner, f"{rel}: invalid JSON: {e}")
     return None
 
 
@@ -121,17 +121,17 @@ def check_data(ctx, err):
     rules = ctx.rules
     for f in ctx.files:
         if f.startswith("project/data/") and f.endswith(".json") and f not in rules["schemas"]:
-            err("DADOS_SEM_SCHEMA", f, "every data table needs a schema in rules.json/schemas")
+            err("DATA_WITHOUT_SCHEMA", f, "every data table needs a schema in rules.json/schemas")
     for data_path, schema_path in rules["schemas"].items():
         if not os.path.exists(os.path.join(ctx.root, data_path)):
-            err("DADOS", data_path, "data table missing")
+            err("DATA", data_path, "data table missing")
             continue
         data = _load(ctx, data_path, err, data_path)
         schema = _load(ctx, schema_path, err, data_path)
         if data is None or schema is None:
             continue
         for e in json_schema.errors(data, schema, complete=True):
-            err("DADOS", data_path, e)
+            err("DATA", data_path, e)
         if data_path in rules.get("styled_tables", []):
             for e in _styled_errors(data, schema):
-                err("DADOS", data_path, e)
+                err("DATA", data_path, e)

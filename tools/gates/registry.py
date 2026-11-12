@@ -54,7 +54,7 @@ def _function_files(ctx, path):
 def _forbidden(entry):
     check = gate_forbidden.CHECKS.get(entry["id"], gate_forbidden.pattern_on_code)
     context = None
-    if entry["id"] == "JOB_SEM_CHAVE":
+    if entry["id"] == "JOB_WITHOUT_KEY":
         context = lambda ctx: sorted(gate_forbidden.job_pool_members(ctx))  # noqa: E731
     elif check is gate_text.untranslated:  # its verdict reads the owner of shown values' class
         context = lambda ctx: [gate_text.shown_owner(ctx)]  # noqa: E731
@@ -68,17 +68,17 @@ def _data_files(ctx):
 
 def per_file_rules(rules):
     return [
-        PerFile("junk", ["SEM_LIXO"], _everything, gate_files.check_junk),
-        PerFile("single_doc", ["DOC_UNICO"], _everything, gate_files.check_single_doc),
-        PerFile("sizes", ["TAMANHO_ARQUIVO", "ARQUIVO_VAZIO"], _ext_in("max_lines"), gate_files.check_sizes),
-        PerFile("function_sizes", ["TAMANHO_FUNCAO"], _function_files, gate_files.check_function_sizes),
-        PerFile("headers", ["CABECALHO"], _ext_in("header_comment_extensions"), gate_files.check_headers),
-        PerFile("layers", ["CAMADA", "CAMADA_DESCONHECIDA"], gate_code.applies_layers, gate_code.check_layers),
+        PerFile("junk", ["NO_JUNK"], _everything, gate_files.check_junk),
+        PerFile("single_doc", ["SINGLE_DOC"], _everything, gate_files.check_single_doc),
+        PerFile("sizes", ["FILE_SIZE", "EMPTY_FILE"], _ext_in("max_lines"), gate_files.check_sizes),
+        PerFile("function_sizes", ["FUNCTION_SIZE"], _function_files, gate_files.check_function_sizes),
+        PerFile("headers", ["HEADER"], _ext_in("header_comment_extensions"), gate_files.check_headers),
+        PerFile("layers", ["LAYER", "UNKNOWN_LAYER"], gate_code.applies_layers, gate_code.check_layers),
         *[_forbidden(e) for e in rules["forbidden"]],
-        PerFile("magic_numbers", ["NUMERO_MAGICO"], gate_defs.applies_magic, gate_defs.check_magic_numbers),
-        PerFile("ui_state", ["ESTADO_NA_UI"], gate_ui.applies, gate_ui.check_ui_state, gate_ui.context_inputs),
-        PerFile("single_owner", ["DONO_UNICO"], gate_defs.applies_owners, gate_defs.check_single_owner),
-        PerFile("data_copies", ["SEGUNDO_DONO", "VALOR_DUPLICADO"], gate_defs.applies_data_copies,
+        PerFile("magic_numbers", ["MAGIC_NUMBER"], gate_defs.applies_magic, gate_defs.check_magic_numbers),
+        PerFile("ui_state", ["STATE_IN_UI"], gate_ui.applies, gate_ui.check_ui_state, gate_ui.context_inputs),
+        PerFile("single_owner", ["SINGLE_OWNER"], gate_defs.applies_owners, gate_defs.check_single_owner),
+        PerFile("data_copies", ["SECOND_OWNER", "DUPLICATED_VALUE"], gate_defs.applies_data_copies,
                 gate_defs.check_data_copies, lambda ctx: ctx.cache.key_of(_data_files(ctx))),
         PerFile("english", ["NON_ENGLISH_TEXT"], gate_language.applies, gate_language.check_english,
                 lambda ctx: ctx.cache.key_of(gate_language.inputs(ctx))),
@@ -99,21 +99,21 @@ def _site_listing():
 
 def whole_rules(rules):
     return [
-        Whole("root", ["RAIZ_LIMPA"], lambda ctx, p: "/" not in p, gate_files.check_root,
+        Whole("root", ["CLEAN_ROOT"], lambda ctx, p: "/" not in p, gate_files.check_root,
               lambda ctx: sorted(os.listdir(ctx.root))),
         Whole("sidecars", ["SIDECAR_WITHOUT_SOURCE"], _in_scope(lambda ctx, p: p.endswith(SIDECARS)), gate_files.check_sidecars,
               lambda ctx: sorted(ctx.listed)),
-        Whole("orphans", ["ORFAO"], _in_scope(gate_code.orphan_inputs), gate_code.check_orphans),
-        Whole("map", ["CLAUDE_MD", "MAPA_DESATUALIZADO"], gate_docs.inputs, gate_docs.check_claude_md,
+        Whole("orphans", ["ORPHAN"], _in_scope(gate_code.orphan_inputs), gate_code.check_orphans),
+        Whole("map", ["CLAUDE_MD", "MAP_OUTDATED"], gate_docs.inputs, gate_docs.check_claude_md,
               lambda ctx: sorted(ctx.listed)),
-        Whole("data", ["DADOS", "DADOS_SEM_SCHEMA"], _in_scope(gate_data.inputs), gate_data.check_data),
+        Whole("data", ["DATA", "DATA_WITHOUT_SCHEMA"], _in_scope(gate_data.inputs), gate_data.check_data),
         Whole("register", ["PROBLEM_REGISTER"], gate_data.register_inputs, gate_data.check_register, gate_data.register_extra),
         Whole("materials", ["SHADER_PARAM"], _in_scope(gate_materials.inputs), gate_materials.check_materials),
-        Whole("owner_symbols", ["DONO_AUSENTE"], gate_defs.owner_inputs, gate_defs.check_owner_symbols,
+        Whole("owner_symbols", ["OWNER_MISSING"], gate_defs.owner_inputs, gate_defs.check_owner_symbols,
               lambda ctx: sorted(c["owner"] in ctx.listed_set for c in ctx.owners["concepts"])),
-        Whole("clones", ["CODIGO_DUPLICADO"], _in_scope(gate_clones.applies), gate_clones.check_clones),
-        Whole("tuning", ["TUNING", "TUNING_SEM_USO"], _in_scope(gate_tuning.inputs), gate_tuning.check_tuning),
-        Whole("mirrors", ["ESPELHO"], gate_tuning.mirror_inputs, gate_tuning.check_mirrors),
+        Whole("clones", ["DUPLICATED_CODE"], _in_scope(gate_clones.applies), gate_clones.check_clones),
+        Whole("tuning", ["TUNING", "TUNING_UNUSED"], _in_scope(gate_tuning.inputs), gate_tuning.check_tuning),
+        Whole("mirrors", ["MIRROR"], gate_tuning.mirror_inputs, gate_tuning.check_mirrors),
         Whole("generated", ["GENERATED_DRIFT"], gate_generated.inputs, gate_generated.check_generated,
               lambda ctx: ctx.rules.get("generated", [])),
         Whole("python_imports", ["PYTHON_IMPORT_UNRESOLVED"], gate_python.applies, gate_python.check_imports,
@@ -123,6 +123,8 @@ def whole_rules(rules):
               lambda ctx: sorted(ctx.changed)),
         Whole("instructions", ["INSTRUCTION_ELSEWHERE", "PRECEDENCE_CLAIM", "NESTED_CLAUDE", "MEMORY_ON"],
               gate_docs.instruction_inputs, gate_docs.check_instructions, gate_docs.instruction_extra),
+        Whole("problems_elsewhere", ["PROBLEMS_ELSEWHERE"], gate_docs.problems_inputs, gate_docs.check_problems_elsewhere,
+              lambda ctx: sorted(ctx.listed)),
     ]
 
 

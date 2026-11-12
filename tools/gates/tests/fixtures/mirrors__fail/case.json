@@ -1,7 +1,7 @@
 {
  "rule": "mirrors",
  "expect": [
-  "ESPELHO project/render/a.gdshader"
+  "MIRROR project/render/a.gdshader"
  ],
  "overrides": {
   "mirrors": [

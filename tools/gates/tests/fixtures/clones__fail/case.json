@@ -1,7 +1,7 @@
 {
  "rule": "clones",
  "expect": [
-  "CODIGO_DUPLICADO native/src/b.cpp:3"
+  "DUPLICATED_CODE native/src/b.cpp:3"
  ],
  "overrides": {
   "clones": {

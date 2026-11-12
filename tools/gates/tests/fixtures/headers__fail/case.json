@@ -1,8 +1,8 @@
 {
  "rule": "headers",
  "expect": [
-  "CABECALHO a.cpp",
-  "CABECALHO b.gd",
-  "CABECALHO c.py"
+  "HEADER a.cpp",
+  "HEADER b.gd",
+  "HEADER c.py"
  ]
 }

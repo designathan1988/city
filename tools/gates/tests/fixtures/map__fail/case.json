@@ -2,8 +2,8 @@
  "rule": "map",
  "expect": [
   "CLAUDE_MD CLAUDE.md",
-  "MAPA_DESATUALIZADO log/mapa.md",
-  "MAPA_DESATUALIZADO tools/b.py"
+  "MAP_OUTDATED log/mapa.md",
+  "MAP_OUTDATED tools/b.py"
  ],
  "overrides": {
   "mapped_roots": [

@@ -1,8 +1,8 @@
 {
  "rule": "sizes",
  "expect": [
-  "TAMANHO_ARQUIVO a.gd",
-  "ARQUIVO_VAZIO empty.gd"
+  "FILE_SIZE a.gd",
+  "EMPTY_FILE empty.gd"
  ],
  "overrides": {
   "max_lines": {

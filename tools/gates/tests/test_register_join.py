@@ -23,7 +23,7 @@ class Join(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp(prefix="gates-join-")
         self.register = os.path.join(self.dir, "problems.jsonl")
-        rows = [problem("Ptools-1", "gate:NUMERO_MAGICO:tools/a.py"), problem("Ptools-2", "gate:TAMANHO_ARQUIVO:tools/b.py", "fixed")]
+        rows = [problem("Ptools-1", "gate:MAGIC_NUMBER:tools/a.py"), problem("Ptools-2", "gate:FILE_SIZE:tools/b.py", "fixed")]
         with open(self.register, "wb") as fh:
             fh.write("".join(json.dumps(r) + "\n" for r in rows).encode("utf-8"))
 
@@ -31,9 +31,9 @@ class Join(unittest.TestCase):
         shutil.rmtree(self.dir, ignore_errors=True)
 
     def test_registered_and_new(self):
-        findings = [run_gates.finding("NUMERO_MAGICO", "tools/a.py:12", "a number"),
-                    run_gates.finding("NUMERO_MAGICO", "tools/c.py:3", "a number"),
-                    run_gates.finding("TAMANHO_ARQUIVO", "tools/b.py", "too long")]
+        findings = [run_gates.finding("MAGIC_NUMBER", "tools/a.py:12", "a number"),
+                    run_gates.finding("MAGIC_NUMBER", "tools/c.py:3", "a number"),
+                    run_gates.finding("FILE_SIZE", "tools/b.py", "too long")]
         run_gates.join(findings, self.register)
         self.assertEqual([f["problem"] for f in findings], ["Ptools-1", None, None])
         self.assertEqual(findings[0]["file"], "tools/a.py")

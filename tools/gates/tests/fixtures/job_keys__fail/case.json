@@ -1,6 +1,6 @@
 {
- "rule": "JOB_SEM_CHAVE",
+ "rule": "JOB_WITHOUT_KEY",
  "expect": [
-  "JOB_SEM_CHAVE native/src/render/r.cpp:6"
+  "JOB_WITHOUT_KEY native/src/render/r.cpp:6"
  ]
 }

@@ -1,7 +1,7 @@
 {
  "rule": "single_owner",
  "expect": [
-  "DONO_UNICO native/src/b.cpp:2"
+  "SINGLE_OWNER native/src/b.cpp:2"
  ],
  "owners": {
   "concepts": [

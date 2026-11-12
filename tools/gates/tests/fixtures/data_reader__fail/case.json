@@ -1,7 +1,7 @@
 {
- "rule": "DADOS_POR_UM_LEITOR",
+ "rule": "DATA_ONE_READER",
  "expect": [
-  "DADOS_POR_UM_LEITOR project/ui/a.gd:3",
-  "DADOS_POR_UM_LEITOR project/ui/a.gd:5"
+  "DATA_ONE_READER project/ui/a.gd:3",
+  "DATA_ONE_READER project/ui/a.gd:5"
  ]
 }

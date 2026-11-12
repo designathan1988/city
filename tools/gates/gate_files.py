@@ -14,13 +14,13 @@ def check_root(ctx, err):
     allowed = set(ctx.rules["root_allowed"])
     for entry in sorted({p.split("/", 1)[0] for p in ctx.listed}):
         if entry not in allowed and not entry.startswith(".git"):
-            err("RAIZ_LIMPA", entry, "entry outside rules.json/root_allowed at the repository root")
+            err("CLEAN_ROOT", entry, "entry outside rules.json/root_allowed at the repository root")
 
 
 def check_junk(ctx, src, err):
     name = os.path.basename(src.path)
     if any(fnmatch.fnmatch(name, g) for g in ctx.rules["junk_globs"]):
-        err("SEM_LIXO", src.path, "temporary file or copy: delete it or fold it into its owner")
+        err("NO_JUNK", src.path, "temporary file or copy: delete it or fold it into its owner")
 
 
 def in_doc_place(rules, path):
@@ -34,7 +34,7 @@ def check_single_doc(ctx, src, err):
         return
     if (os.path.splitext(src.path)[1].lower() in rules["doc_extensions"] and src.path not in set(rules["allowed_docs"])
             and not in_doc_place(rules, src.path)):
-        err("DOC_UNICO", src.path, "the project's documents are CLAUDE.md, log/ and the declared places (rules.json doc_places): "
+        err("SINGLE_DOC", src.path, "the project's documents are CLAUDE.md, log/ and the declared places (rules.json doc_places): "
                                    "move the content there")
 
 
@@ -45,9 +45,9 @@ def check_sizes(ctx, src, err):
         return
     n = len(src.lines)
     if n > limits[ext]:
-        err("TAMANHO_ARQUIVO", src.path, f"{n} lines (max {limits[ext]}): split it by responsibility")
+        err("FILE_SIZE", src.path, f"{n} lines (max {limits[ext]}): split it by responsibility")
     if n == 0:
-        err("ARQUIVO_VAZIO", src.path, "empty file")
+        err("EMPTY_FILE", src.path, "empty file")
 
 
 def function_limit(rules, path):
@@ -71,7 +71,7 @@ def check_function_sizes(ctx, src, err):
         spans = cpp_syntax.function_spans(src.code())
     for name, start, length in spans:
         if length > limit:
-            err("TAMANHO_FUNCAO", f"{src.path}:{start}", f"function '{name}' has {length} lines (max {limit})")
+            err("FUNCTION_SIZE", f"{src.path}:{start}", f"function '{name}' has {length} lines (max {limit})")
 
 
 def check_headers(ctx, src, err):
@@ -84,7 +84,7 @@ def check_headers(ctx, src, err):
     first = toks[0] if toks else None
     is_doc = first is not None and src.lang == "py" and first.kind == "string"
     if first is None or not (first.kind == "comment" or is_doc) or not any(c.isalpha() for c in first.text):
-        err("CABECALHO", src.path, "the file must start with a comment that states its responsibility")
+        err("HEADER", src.path, "the file must start with a comment that states its responsibility")
 
 
 def line_ending_inputs(ctx, path):

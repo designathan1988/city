@@ -1,9 +1,9 @@
 {
  "rule": "magic_numbers",
  "expect": [
-  "NUMERO_MAGICO native/src/sim/a.cpp:2",
-  "NUMERO_MAGICO native/src/sim/a.cpp:3",
-  "NUMERO_MAGICO project/game/b.gd:3",
-  "NUMERO_MAGICO project/game/b.gd:5"
+  "MAGIC_NUMBER native/src/sim/a.cpp:2",
+  "MAGIC_NUMBER native/src/sim/a.cpp:3",
+  "MAGIC_NUMBER project/game/b.gd:3",
+  "MAGIC_NUMBER project/game/b.gd:5"
  ]
 }

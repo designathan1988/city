@@ -1,5 +1,6 @@
 """Memory gates: the map file lists every source file and no file that no longer exists; CLAUDE.md stays short and is the only
-source of instructions (INSTRUCTION_ELSEWHERE, PRECEDENCE_CLAIM, NESTED_CLAUDE, MEMORY_ON: CLAUDE.md, the authority rule)."""
+source of instructions (INSTRUCTION_ELSEWHERE, PRECEDENCE_CLAIM, NESTED_CLAUDE, MEMORY_ON: CLAUDE.md, the authority rule);
+known problems are kept in the register alone (PROBLEMS_ELSEWHERE: CLAUDE.md, the records rule)."""
 import json
 import os
 import re
@@ -23,6 +24,14 @@ CLAIM = re.compile(r"(?i:\bbinding over\b|\b(wins?|outranks?|overrides?|takes? p
                    r"\b(claude\.md|memor(y|ies)|skills?|records?|instructions?|orders?)\b)|\bBINDING\b")
 QUOTED = re.compile(r'"[^"]*"|`[^`]*`|\u201c[^\u201d]*\u201d')  # a citation: the words are someone else's, not a claim here
 BINARY_PROBE = 8000
+# Known problems live in log/problems.jsonl alone: no ledger of problems and no table of symptoms and causes elsewhere. The
+# register's generated view and the histories (records of what was, by their place) are no tracker.
+REGISTER_VIEW = "log/problems.md"
+HISTORIES = "log/history/"
+LEDGER_NAMES = ("ledger.json",)
+TABLE_ROW = re.compile(r"^\s*\|.+\|\s*$")
+SYMPTOM = {"symptom", "sintoma"}
+CAUSE = {"cause", "root cause", "causa", "causa raiz"}
 
 
 def mapped(f, rules):
@@ -54,10 +63,10 @@ def check_claude_md(ctx, err):
     listed_dirs = set(re.findall(r"`([^`\s]+)/\*\*`", section))
     for f in ctx.files:
         if mapped(f, rules) and f not in listed and not any(f.startswith(d + "/") for d in listed_dirs):
-            err("MAPA_DESATUALIZADO", f, f"file missing from {map_file} (add a line with its responsibility)")
+            err("MAP_OUTDATED", f, f"file missing from {map_file} (add a line with its responsibility)")
     for p in sorted(listed):
         if p not in listed_files:
-            err("MAPA_DESATUALIZADO", map_file, f"the map names `{p}`, which no longer exists")
+            err("MAP_OUTDATED", map_file, f"the map names `{p}`, which no longer exists")
     lines = ctx.source("CLAUDE.md").text.count("\n")
     limit = rules["claude_md_max_lines"]
     if lines > limit:
@@ -133,3 +142,24 @@ def check_instructions(ctx, err):
     if notes:
         err("MEMORY_ON", folder.replace("\\", "/"), f"{len(notes)} note(s) left in the project's memory folder: their orders "
                                                     "belong in CLAUDE.md, their facts in the documents")
+
+
+def problems_inputs(ctx, path):
+    return _scanned(ctx, path) and (path.endswith(".md") or os.path.basename(path) in LEDGER_NAMES)
+
+
+def check_problems_elsewhere(ctx, err):
+    """No problem tracker but the register: a ledger of problems, or a table whose header names a symptom and a cause, in
+    any tracked file but the register's view and the histories."""
+    for path in sorted(p for p in ctx.listed if problems_inputs(ctx, p)):
+        if path == REGISTER_VIEW or path.startswith(HISTORIES):
+            continue
+        if os.path.basename(path) in LEDGER_NAMES:
+            err("PROBLEMS_ELSEWHERE", path, "a problem ledger outside log/problems.jsonl: its problems belong in the register "
+                                            "(python tools/atlas/cli.py problems add)")
+            continue
+        for n, line in enumerate(_text(ctx, path).splitlines(), 1):
+            columns = {c.strip().strip("*").lower() for c in line.strip().strip("|").split("|")} if TABLE_ROW.match(line) else ()
+            if columns and columns & SYMPTOM and columns & CAUSE:
+                err("PROBLEMS_ELSEWHERE", f"{path}:{n}", "a table of symptoms and causes outside the register: each open "
+                                                         "problem belongs in log/problems.jsonl, what was belongs in a history")

@@ -1,7 +1,7 @@
 {
- "rule": "UM_DONO_DO_CORE",
+ "rule": "ONE_CORE_OWNER",
  "expect": [
-  "UM_DONO_DO_CORE project/ui/a.gd:3",
-  "UM_DONO_DO_CORE project/ui/a.gd:4"
+  "ONE_CORE_OWNER project/ui/a.gd:3",
+  "ONE_CORE_OWNER project/ui/a.gd:4"
  ]
 }

@@ -129,5 +129,5 @@ def check_ui_state(ctx, src, err):
         if not ok:
             what = "".join(t.text for t in d.type_toks) or "a value"
             why = "an exported value the script writes" if exported else what
-            err("ESTADO_NA_UI", f"{src.path}:{d.line}",
+            err("STATE_IN_UI", f"{src.path}:{d.line}",
                 f"member '{d.name}' holds {why}: UI keeps no game state, read CityStore.snapshot/ToolController/GameFlow")

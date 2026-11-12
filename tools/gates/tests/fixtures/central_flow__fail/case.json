@@ -1,8 +1,8 @@
 {
- "rule": "FLUXO_CENTRAL",
+ "rule": "CENTRAL_FLOW",
  "expect": [
-  "FLUXO_CENTRAL project/ui/a.gd:5",
-  "FLUXO_CENTRAL project/ui/a.gd:6",
-  "FLUXO_CENTRAL project/ui/a.gd:7"
+  "CENTRAL_FLOW project/ui/a.gd:5",
+  "CENTRAL_FLOW project/ui/a.gd:6",
+  "CENTRAL_FLOW project/ui/a.gd:7"
  ]
 }

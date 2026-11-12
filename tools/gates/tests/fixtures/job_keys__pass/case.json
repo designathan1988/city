@@ -1,4 +1,4 @@
 {
- "rule": "JOB_SEM_CHAVE",
+ "rule": "JOB_WITHOUT_KEY",
  "expect": []
 }

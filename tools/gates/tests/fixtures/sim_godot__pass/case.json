@@ -1,4 +1,4 @@
 {
- "rule": "SIM_SEM_GODOT",
+ "rule": "SIM_WITHOUT_GODOT",
  "expect": []
 }

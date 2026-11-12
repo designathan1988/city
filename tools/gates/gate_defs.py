@@ -22,11 +22,11 @@ def check_owner_symbols(ctx, err):
     for c in ctx.owners["concepts"]:
         owner = c["owner"]
         if owner not in ctx.listed_set:
-            err("DONO_AUSENTE", owner, f"owner of concept '{c['id']}' does not exist")
+            err("OWNER_MISSING", owner, f"owner of concept '{c['id']}' does not exist")
             continue
         sym = c["symbol"].split("::")[-1]
         if not any(t.kind == "ident" and t.text == sym for t in ctx.source(owner).code()):
-            err("DONO_AUSENTE", owner, f"symbol '{c['symbol']}' (owner of '{c['id']}') is not in its code")
+            err("OWNER_MISSING", owner, f"symbol '{c['symbol']}' (owner of '{c['id']}') is not in its code")
 
 
 def owner_inputs(ctx, path):
@@ -48,7 +48,7 @@ def check_single_owner(ctx, src, err):
         lines = lines if lines is not None else src.blanked()
         for n, line in enumerate(lines, 1):
             if any(r.search(line) for r in rx):
-                err("DONO_UNICO", f"{src.path}:{n}", f"re-implements '{c['id']}': use {c['symbol']} ({c['owner']})")
+                err("SINGLE_OWNER", f"{src.path}:{n}", f"re-implements '{c['id']}': use {c['symbol']} ({c['owner']})")
 
 
 # ---- named constants and number literals ------------------------------------------------------------------------
@@ -96,7 +96,7 @@ def check_magic_numbers(ctx, src, err):
         if t.kind == "number" and id(t) not in inside:
             v = _value(src, t)
             if v is None or v not in allowed:
-                err("NUMERO_MAGICO", f"{src.path}:{t.line}", f"literal {t.text}: name it (a constant in its owner) or move it to data/")
+                err("MAGIC_NUMBER", f"{src.path}:{t.line}", f"literal {t.text}: name it (a constant in its owner) or move it to data/")
 
 
 # ---- data values copied into code -------------------------------------------------------------------------------
@@ -204,10 +204,10 @@ def check_data_copies(ctx, src, err):
         if key is not None:
             line = min(t.line for t in src.code() if id(t) in ids)
             at = key_vals[key].get(float(value), keys[key][0]) if value is not None else keys[key][0]
-            err("SEGUNDO_DONO", f"{src.path}:{line}", f"{name} repeats the definition of '{key}' ({at}): read the data")
+            err("SECOND_OWNER", f"{src.path}:{line}", f"{name} repeats the definition of '{key}' ({at}): read the data")
             skip |= ids
     for t in src.code():
         if t.kind == "number" and id(t) not in skip:
             v = _value(src, t)
             if v in distinct:
-                err("VALOR_DUPLICADO", f"{src.path}:{t.line}", f"{t.text} is already defined in {distinct[v][0]}: read the data")
+                err("DUPLICATED_VALUE", f"{src.path}:{t.line}", f"{t.text} is already defined in {distinct[v][0]}: read the data")

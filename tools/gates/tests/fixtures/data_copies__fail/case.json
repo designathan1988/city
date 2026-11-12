@@ -1,12 +1,12 @@
 {
  "rule": "data_copies",
  "expect": [
-  "SEGUNDO_DONO native/src/a.cpp:3",
-  "SEGUNDO_DONO native/src/a.cpp:5",
-  "SEGUNDO_DONO native/src/a.cpp:6",
-  "SEGUNDO_DONO native/src/a.cpp:7",
-  "SEGUNDO_DONO project/game/c.gd:2",
-  "VALOR_DUPLICADO native/src/a.cpp:4"
+  "SECOND_OWNER native/src/a.cpp:3",
+  "SECOND_OWNER native/src/a.cpp:5",
+  "SECOND_OWNER native/src/a.cpp:6",
+  "SECOND_OWNER native/src/a.cpp:7",
+  "SECOND_OWNER project/game/c.gd:2",
+  "DUPLICATED_VALUE native/src/a.cpp:4"
  ],
  "overrides": {
   "schemas": {

@@ -1,7 +1,7 @@
 # City: a city builder in Godot 4.7 with a C++ core (GDExtension), to be sold on Steam
 
 This file is the project's only source of instructions. Reference (every file, the structure, the threads, the full command
-list, the archive tags) lives in `log/mapa.md`; nothing here is status.
+list, the archive tags) lives in `log/map.md`; nothing here is status.
 
 ## Authority
 - This file alone holds the method, every order of the owner, the constraints, the architecture rules and the commands the work
@@ -15,7 +15,7 @@ list, the archive tags) lives in `log/mapa.md`; nothing here is status.
   pause, hands off the skill, never delete records, the old tracer and `tools/analysis` untouched). Never: a force push, a
   rewritten history, `rm -rf` or any deletion by a relative path, a deletion outside the project and its listed copies, the
   owner's open game closed, what a running process uses touched. [c:standing-authorisation]
-- One current document per subject: `log/mapa.md`; `log/problems.jsonl`, the one register of known problems, written only through
+- One current document per subject: `log/map.md`; `log/problems.jsonl`, the one register of known problems, written only through
   `python tools/atlas/cli.py problems` (view `log/problems.md`); `log/specification.md` (goals, reference hardware, budgets);
   `log/research.md` (research with proofs); `log/history/<area>.md` (one history per area); `.specify/` and `specs/NNN-name/`
   (Spec Kit). Read your area's history before starting. A file created or deleted enters the map in the same commit; nothing of
@@ -74,7 +74,8 @@ list, the archive tags) lives in `log/mapa.md`; nothing here is status.
   that can fail; a limit found is a cause to resolve, never a list at the end. [c:do-it-whole]
 - A check takes seconds: the most likely place first (the newest folders, one targeted search); an empty result of a fragile
   search is a failed search, not a "no". Slowness of the work is a defect, recorded and fixed at its cause. [c:fast-checks]
-- Agents only read, and few (the owner, 2026-11-12): the project's `reader` (`.claude/agents/reader.md`), at most two at once,
+- Agents only read, and few (the owner, 2026-11-12), and are used to go faster: the project's `reader` (`.claude/agents/reader.md`;
+  Claude Code's read-only `Explore` in a session that has not loaded it), up to five at once,
   each sent a prompt that names the goal, the files, what is known and the answer's form; editing, writing code, removing,
   building, running and deciding stay with the main session, which answers for the whole project; what a reader returns is
   checked against the files before it is used, never trusted blind. No fork, worktree agent or new session unless the owner
@@ -180,7 +181,7 @@ list, the archive tags) lives in `log/mapa.md`; nothing here is status.
 - A clone's `user://` is isolated by `project/override.cfg` (`application/config/use_custom_user_dir`, `custom_user_dir_name`). [c:user-dir]
 - Memory and timing bugs are not hunted with load: the debug DLL has libc++'s hardening; the failure is read in the stack and the code. [c:no-load-hunt]
 
-## Commands (the whole list: `log/mapa.md`)
+## Commands (the whole list: `log/map.md`)
 | What | Command |
 |---|---|
 | A block | `python tools/tasks/cli.py block open <name>` · `block verify` · `block close` · `block status` |

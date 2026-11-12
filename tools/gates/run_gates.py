@@ -231,7 +231,7 @@ def report(problems, judged, summary):
         print(f"... and {len(problems) - len(shown)} more")
     if problems:
         print("by rule: " + ", ".join(f"{g} {n}" for g, n in sorted(counts.items())))
-        print(f"Gates FAILED: {len(problems)} problem(s) in {judged} file(s). Rules: CLAUDE.md; map: log/mapa.md.")
+        print(f"Gates FAILED: {len(problems)} problem(s) in {judged} file(s). Rules: CLAUDE.md; map: log/map.md.")
     else:
         print(f"Gates OK: {judged} file(s).")
 

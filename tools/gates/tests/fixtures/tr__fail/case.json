@@ -1,14 +1,14 @@
 {
- "rule": "TEXTO_VIA_TR",
+ "rule": "TEXT_THROUGH_TR",
  "expect": [
-  "TEXTO_VIA_TR project/ui/a.gd:4",
-  "TEXTO_VIA_TR project/ui/a.gd:5",
-  "TEXTO_VIA_TR project/ui/a.gd:6",
-  "TEXTO_VIA_TR project/ui/a.gd:7",
-  "TEXTO_VIA_TR project/ui/a.gd:8",
-  "TEXTO_VIA_TR project/ui/a.gd:9",
-  "TEXTO_VIA_TR project/ui/a.gd:10",
-  "TEXTO_VIA_TR project/ui/a.gd:11",
-  "TEXTO_VIA_TR project/ui/a.gd:12"
+  "TEXT_THROUGH_TR project/ui/a.gd:4",
+  "TEXT_THROUGH_TR project/ui/a.gd:5",
+  "TEXT_THROUGH_TR project/ui/a.gd:6",
+  "TEXT_THROUGH_TR project/ui/a.gd:7",
+  "TEXT_THROUGH_TR project/ui/a.gd:8",
+  "TEXT_THROUGH_TR project/ui/a.gd:9",
+  "TEXT_THROUGH_TR project/ui/a.gd:10",
+  "TEXT_THROUGH_TR project/ui/a.gd:11",
+  "TEXT_THROUGH_TR project/ui/a.gd:12"
  ]
 }

@@ -105,7 +105,7 @@
     "tools",
     "tools/gates/owners.json"
   ],
-  "map_file": "log/mapa.md",
+  "map_file": "log/map.md",
   "map_markers": [
     "<!-- MAPA:INICIO -->",
     "<!-- MAPA:FIM -->"
@@ -218,24 +218,24 @@
   },
   "forbidden": [
     {
-      "id": "JOB_SEM_CHAVE",
+      "id": "JOB_WITHOUT_KEY",
       "paths": [
         "native/src/"
       ],
       "pattern": "(jobs->|pool\\.)submit\\(\\s*(?!JobKey\\{|job,|b->job\\.bake\\(\\))",
-      "message": "todo job vai à fila com uma JobKey (lane e id, core/job_pool.h): a fila substitui o job da mesma chave em silêncio, e uma chave feita à mão colide com a de outro renderizador"
+      "message": "every job goes to the queue with a JobKey (lane and id, core/job_pool.h): the queue replaces the job of the same key silently, and a key made by hand collides with another renderer's"
     },
     {
-      "id": "SIM_SEM_GODOT",
+      "id": "SIM_WITHOUT_GODOT",
       "paths": [
         "native/src/core/",
         "native/src/sim/"
       ],
       "pattern": "#include\\s*<godot",
-      "message": "core/ e sim/ são C++ puro (thread-safe, fonte única da verdade); Godot só em render/ e api/"
+      "message": "core/ and sim/ are pure C++ (thread-safe, the single source of truth); Godot only in render/ and api/"
     },
     {
-      "id": "RENDER_SO_LEITURA",
+      "id": "RENDER_READ_ONLY",
       "paths": [
         "native/src/render/"
       ],
@@ -254,7 +254,7 @@
       "message": "the city's map is held exclusively only by map_hold::WriterHold, which names its writer (command, tick, load, generation, save, probe: sim/state/map_hold.h); a reader holds it shared"
     },
     {
-      "id": "UM_DONO_DO_CORE",
+      "id": "ONE_CORE_OWNER",
       "paths": [
         "project/"
       ],
@@ -262,10 +262,10 @@
       "except": [
         "project/game/store/city_store.gd"
       ],
-      "message": "Só game/store/city_store.gd conversa com o núcleo C++ (CityCore)"
+      "message": "only game/store/city_store.gd talks to the C++ core (CityCore)"
     },
     {
-      "id": "FLUXO_CENTRAL",
+      "id": "CENTRAL_FLOW",
       "paths": [
         "project/"
       ],
@@ -274,11 +274,11 @@
         "project/game/flow/game_flow.gd",
         "project/tests/"
       ],
-      "message": "Troca de tela/pausa/saída só pelo GameFlow (game/flow/game_flow.gd)",
-      "_except_doc": "Testes encerram o processo com o código de saída do resultado."
+      "message": "screen changes, pause and quit only through GameFlow (game/flow/game_flow.gd)",
+      "_except_doc": "Tests end the process with the result's exit code."
     },
     {
-      "id": "UI_SEM_ESTILO_SOLTO",
+      "id": "UI_LOOSE_STYLE",
       "paths": [
         "project/ui/",
         "project/game/"
@@ -288,19 +288,19 @@
         "project/ui/icons/",
         "project/ui/theme/theme_builder.gd"
       ],
-      "message": "Cores/estilos só via design tokens (data/ui/tokens.json) aplicados por ui/theme/theme_builder.gd"
+      "message": "colours and styles only through the design tokens (data/ui/tokens.json) applied by ui/theme/theme_builder.gd"
     },
     {
-      "id": "TEXTO_VIA_TR",
+      "id": "TEXT_THROUGH_TR",
       "paths": [
         "project/ui/",
         "project/game/"
       ],
       "pattern": "(\\.text|tooltip_text|\\.title)\\s*=\\s*\"[^\"]*[A-Za-zÀ-ú]{2}",
-      "message": "Textos visíveis usam tr(\"CHAVE\") com data/i18n/strings.csv"
+      "message": "visible texts go through tr(\"KEY\") with data/i18n/strings.csv"
     },
     {
-      "id": "DADOS_POR_UM_LEITOR",
+      "id": "DATA_ONE_READER",
       "paths": [
         "project/"
       ],
@@ -308,10 +308,10 @@
       "except": [
         "project/game/data/data_tables.gd"
       ],
-      "message": "JSON de dados só é lido por game/data/data_tables.gd"
+      "message": "data JSON is read only by game/data/data_tables.gd"
     },
     {
-      "id": "SEM_MARCADORES_SOLTOS",
+      "id": "NO_LOOSE_MARKERS",
       "paths": [
         "native/src/",
         "project/game/",
@@ -324,7 +324,7 @@
       "except": [
         "tools/gates/rules.json"
       ],
-      "message": "Pendências vão para log/pendencias.md, não para comentários"
+      "message": "known problems go to the register (log/problems.jsonl), not to comments"
     },
     {
       "id": "MACHINE_PATH",

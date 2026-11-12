@@ -15,7 +15,7 @@ def check_clones(ctx, err):
             continue
         facts = ctx.facts(f)
         if facts.get("lex_error"):
-            err("CODIGO_DUPLICADO", f, f"cannot be read as code: {facts['lex_error']}")
+            err("DUPLICATED_CODE", f, f"cannot be read as code: {facts['lex_error']}")
             continue
         for h, line in facts.get("windows", []):
             prev = seen.get(h)
@@ -27,4 +27,4 @@ def check_clones(ctx, err):
             if (prev[0], f) in reported:
                 continue
             reported.add((prev[0], f))
-            err("CODIGO_DUPLICADO", f"{f}:{line}", f"{width}+ tokens identical to {prev[0]}:{prev[1]}: extract a single owner")
+            err("DUPLICATED_CODE", f"{f}:{line}", f"{width}+ tokens identical to {prev[0]}:{prev[1]}: extract a single owner")

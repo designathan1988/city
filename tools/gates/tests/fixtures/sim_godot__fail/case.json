@@ -1,6 +1,6 @@
 {
- "rule": "SIM_SEM_GODOT",
+ "rule": "SIM_WITHOUT_GODOT",
  "expect": [
-  "SIM_SEM_GODOT native/src/sim/a.cpp:2"
+  "SIM_WITHOUT_GODOT native/src/sim/a.cpp:2"
  ]
 }

@@ -41,7 +41,7 @@ def check_tuning(ctx, err):
             read.update(facts.get("idents", []))
             read.update(facts.get("strings", []))
     for key in sorted(declared - read):
-        err("TUNING_SEM_USO", HEADER, f"'{key}' is never read in code: remove the field or use it")
+        err("TUNING_UNUSED", HEADER, f"'{key}' is never read in code: remove the field or use it")
 
 
 CONST = re.compile(r"constexpr\s+(?:int|float)\s+([A-Z][A-Z0-9_]*)\s*=\s*([^;]+);")
@@ -69,4 +69,4 @@ def check_mirrors(ctx, err):
         want = _eval_constant(m["constant"], defs)
         found = re.search(m["pattern"], "\n".join(ctx.source(m["file"]).blanked()))
         if not found or int(found.group(1)) != int(want):
-            err("ESPELHO", m["file"], f"must use {m['constant']} = {want} (owner: {m['headers'][-1]})")
+            err("MIRROR", m["file"], f"must use {m['constant']} = {want} (owner: {m['headers'][-1]})")

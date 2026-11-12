@@ -1,0 +1,7 @@
+{
+ "rule": "problems_elsewhere",
+ "expect": [
+  "PROBLEMS_ELSEWHERE log/pending.md:3",
+  "PROBLEMS_ELSEWHERE notes/ledger.json"
+ ]
+}

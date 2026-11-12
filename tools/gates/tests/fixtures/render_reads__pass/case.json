@@ -1,4 +1,4 @@
 {
- "rule": "RENDER_SO_LEITURA",
+ "rule": "RENDER_READ_ONLY",
  "expect": []
 }

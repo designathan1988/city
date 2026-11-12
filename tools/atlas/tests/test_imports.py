@@ -12,11 +12,11 @@ from test_problems import RegisterCase  # noqa: E402
 from atlas import areas, imports  # noqa: E402
 
 FINDINGS = [
-    {"rule": "NUMERO_MAGICO", "where": "native/src/sim/traffic/lane_change.cpp:40", "file": "native/src/sim/traffic/lane_change.cpp",
+    {"rule": "MAGIC_NUMBER", "where": "native/src/sim/traffic/lane_change.cpp:40", "file": "native/src/sim/traffic/lane_change.cpp",
      "line": 40, "message": "a magic number"},
-    {"rule": "NUMERO_MAGICO", "where": "native/src/sim/traffic/lane_change.cpp:52", "file": "native/src/sim/traffic/lane_change.cpp",
+    {"rule": "MAGIC_NUMBER", "where": "native/src/sim/traffic/lane_change.cpp:52", "file": "native/src/sim/traffic/lane_change.cpp",
      "line": 52, "message": "a magic number"},
-    {"rule": "ESTADO_NA_UI", "where": "project/ui/compass.gd:13", "file": "project/ui/compass.gd", "line": 13, "message": "state"},
+    {"rule": "STATE_IN_UI", "where": "project/ui/compass.gd:13", "file": "project/ui/compass.gd", "line": 13, "message": "state"},
 ]
 
 
@@ -24,8 +24,8 @@ class GateImport(RegisterCase):
     def test_one_problem_per_rule_and_file_once(self):
         reg = self.reg()
         added = imports.gate_findings(reg, FINDINGS)
-        self.assertEqual([(p["area"], p["kind"]) for p in added], [("interface", "architecture"), ("traffic", "architecture")])
-        self.assertIn("lines 40, 52", added[1]["symptom"])
+        self.assertEqual([(p["area"], p["kind"]) for p in added], [("traffic", "architecture"), ("interface", "architecture")])
+        self.assertIn("lines 40, 52", added[0]["symptom"])
         reg.save()
         reg = self.reg()
         self.assertEqual(imports.gate_findings(reg, FINDINGS), [])

@@ -1,7 +1,7 @@
 {
  "rule": "layers",
  "expect": [
-  "CAMADA native/src/sim/roads/x.cpp:2",
-  "CAMADA_DESCONHECIDA native/src/newlayer/y.cpp"
+  "LAYER native/src/sim/roads/x.cpp:2",
+  "UNKNOWN_LAYER native/src/newlayer/y.cpp"
  ]
 }

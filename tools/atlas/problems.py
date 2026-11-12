@@ -5,6 +5,7 @@ the schema's (tools/gates/schemas/problem.schema.json); `faults` is the rule the
 import datetime
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -201,6 +202,37 @@ class Register:
         problem["fix"] = why
         self.move(problem, "dropped")
         return problem
+
+    def rename_rule(self, old, new):
+        """A gate rule renamed: every origin `gate:<old>:<file>` becomes `gate:<new>:<file>` and the rule's name is replaced in
+        each problem's words, so the gates' join still finds the problems the rule's standing findings were entered as. The
+        problems changed are returned."""
+        changed = []
+        old_origin, new_origin = gate_origin(old, ""), gate_origin(new, "")
+        for problem in self.problems:
+            origins = [new_origin + o[len(old_origin):] if o.startswith(old_origin) else o for o in problem.get("origin") or []]
+            name = re.compile(rf"\b{re.escape(old)}\b")      # the name whole: DADOS is no part of DADOS_SEM_SCHEMA
+            words = {k: name.sub(new, problem[k]) for k in ("title", "symptom", "reading", "criterion")
+                     if isinstance(problem.get(k), str) and name.search(problem[k])}
+            if origins != (problem.get("origin") or []) or words:
+                problem["origin"] = list(dict.fromkeys(origins))
+                problem.update(words)
+                changed.append(problem)
+        return changed
+
+    def rename_path(self, old, new):
+        """A file or folder moved: the evidence and the owner that name it follow, so no evidence is left pointing at a
+        path that is gone. The problems changed are returned."""
+        changed = []
+        moved = lambda p: new + p[len(old):] if p == old or p.startswith(old.rstrip("/") + "/") else p  # noqa: E731
+        for problem in self.problems:
+            evidence = [moved(e) if isinstance(e, str) else e for e in problem.get("evidence") or []]
+            owner = problem.get("owner")
+            if evidence != (problem.get("evidence") or []) or (isinstance(owner, str) and moved(owner) != owner):
+                problem["evidence"] = list(dict.fromkeys(evidence))
+                problem["owner"] = moved(owner) if isinstance(owner, str) else owner
+                changed.append(problem)
+        return changed
 
     def query(self, area=None, owner=None, status=None, cause=None):
         """The problems matching every filter given: area and status exactly, owner as a part of it, cause by all its words."""

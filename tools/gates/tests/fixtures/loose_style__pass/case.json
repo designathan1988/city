@@ -1,4 +1,4 @@
 {
- "rule": "UI_SEM_ESTILO_SOLTO",
+ "rule": "UI_LOOSE_STYLE",
  "expect": []
 }

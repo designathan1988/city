@@ -1,5 +1,6 @@
-"""The register's commands of the atlas (`python tools/atlas/cli.py problems ...`): list with filters, add, update, close, drop and
-render. Every change goes through tools/atlas/problems.py (the one writer) and the view is written again after it."""
+"""The register's commands of the atlas (`python tools/atlas/cli.py problems ...`): list with filters, add, update, close, drop,
+render, import-gates, stats and rename-rule. Every change goes through tools/atlas/problems.py (the one writer) and the view is
+written again after it."""
 import json
 import os
 import sys
@@ -35,6 +36,12 @@ def add_parser(commands, common):
     gates = actions.add_parser("import-gates", parents=[common], help="the gates' standing findings, one problem per rule and file")
     gates.add_argument("findings", help="the JSON python tools/gates/run_gates.py --json wrote")
     actions.add_parser("stats", parents=[common], help="counts by area, status and origin; the median minutes to a cause")
+    rename = actions.add_parser("rename-rule", parents=[common], help="a gate rule renamed: its problems' origins and words follow")
+    rename.add_argument("old")
+    rename.add_argument("new")
+    moved = actions.add_parser("rename-path", parents=[common], help="a file or folder moved: its problems' evidence and owner follow")
+    moved.add_argument("old")
+    moved.add_argument("new")
     return p
 
 
@@ -72,6 +79,15 @@ def run(args, root=register.ROOT):
         doc = imports.stats(reg)
         print(json.dumps(doc, indent=1) if args.json else "\n".join(f"{k}: {v}" for k, v in doc.items()))
         return 0
+    if args.action in ("rename-rule", "rename-path"):
+        changed = (reg.rename_rule if args.action == "rename-rule" else reg.rename_path)(args.old, args.new)
+        try:
+            reg.save()
+        except register.RegisterError as e:
+            print(f"refused: {e}")
+            return 1
+        print(f"{len(changed)} problem(s) now name {args.new} instead of {args.old}")
+        return render.main(["--root", root])
     if args.action == "import-gates":
         with open(args.findings, encoding="utf-8") as fh:
             added = imports.gate_findings(reg, json.load(fh))

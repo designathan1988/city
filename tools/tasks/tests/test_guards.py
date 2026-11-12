@@ -83,11 +83,12 @@ class AgentHook(unittest.TestCase):
                                          "tool_use_id": f"use-{n}", "tool_input": {"prompt": "read", **given}})
 
     def test_only_the_reader_and_never_in_a_worktree(self):
-        for given in [{}, {"subagent_type": "general-purpose"}, {"subagent_type": "Explore"}, {"subagent_type": "fork"},
+        for given in [{}, {"subagent_type": "general-purpose"}, {"subagent_type": "Plan"}, {"subagent_type": "fork"},
                       {"subagent_type": "reader", "isolation": "worktree"}]:
             with self.subTest(given=given):
                 self.assertIsNotNone(agents.refusal(given, 0))
         self.assertIsNone(agents.refusal({"subagent_type": "reader"}, agents.AT_ONCE - 1))
+        self.assertIsNone(agents.refusal({"subagent_type": "Explore"}, 0), "the built-in agent that only reads")
         self.assertIsNotNone(agents.refusal({"subagent_type": "reader"}, agents.AT_ONCE))
 
     def test_the_count_held_and_given_back(self):

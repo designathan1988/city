@@ -1,9 +1,9 @@
 {
- "rule": "SEM_MARCADORES_SOLTOS",
+ "rule": "NO_LOOSE_MARKERS",
  "expect": [
-  "SEM_MARCADORES_SOLTOS native/src/sim/a.cpp:2",
-  "SEM_MARCADORES_SOLTOS native/src/sim/a.cpp:3",
-  "SEM_MARCADORES_SOLTOS project/ui/b.gd:2",
-  "SEM_MARCADORES_SOLTOS tools/c.py:2"
+  "NO_LOOSE_MARKERS native/src/sim/a.cpp:2",
+  "NO_LOOSE_MARKERS native/src/sim/a.cpp:3",
+  "NO_LOOSE_MARKERS project/ui/b.gd:2",
+  "NO_LOOSE_MARKERS tools/c.py:2"
  ]
 }

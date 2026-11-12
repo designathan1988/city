@@ -11,7 +11,7 @@
    "guards": [
     {
      "kind": "gate",
-     "name": "MAPA_DESATUALIZADO"
+     "name": "MAP_OUTDATED"
     }
    ]
   },
@@ -21,7 +21,7 @@
    "guards": [
     {
      "kind": "gate",
-     "name": "CABECALHO"
+     "name": "HEADER"
     },
     {
      "kind": "conduct",
