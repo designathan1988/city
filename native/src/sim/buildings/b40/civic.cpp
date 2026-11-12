@@ -150,9 +150,10 @@ LotPlan civic_plan(float W, float D, const LotEdges &edges) {
 }
 } // namespace
 
-void put(Body &b, Element k, float x0, float y0, float x1, float y1, float h, int paint, float z) {
+void put(Body &b, Element k, float x0, float y0, float x1, float y1, float h, int paint, float z, Facing facing) {
 	LotElement e;
 	e.kind = k;
+	e.facing = facing;
 	e.x = (x0 + x1) / 2;
 	e.y = (y0 + y1) / 2;
 	e.w = std::fabs(x1 - x0);

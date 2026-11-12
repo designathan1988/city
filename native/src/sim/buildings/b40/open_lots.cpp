@@ -6,6 +6,7 @@
 // open_lot_tree_ok allows (the same layout numbers).
 #include "sim/buildings/b40/civic.h"
 
+#include "sim/buildings/b40/bench.h"
 #include "sim/buildings/b40/cover_layers.h"
 #include "sim/buildings/building_store.h"
 
@@ -34,6 +35,18 @@ struct Lay {
 	// The lot's own ground, from line to line: no part of an open lot is left to whatever lies under it (the hedges, the lawn
 	// borders and the furniture stand LAWN_CLEAR in from the lines; the ground does not).
 	void ground(const char *n) { surface(-W / 2, 0, W / 2, D, paint(n)); }
+	// A path: its cover, and its footprint kept, so what is stood beside one path never stands on another.
+	std::vector<Footprint> paths;
+	void path(float x0, float y0, float x1, float y1, int p) {
+		surface(x0, y0, x1, y1, p, COVER_WAY);
+		paths.push_back({ x0, y0, x1, y1 });
+	}
+	// A part stood beside a path (a bench, a lamp, a bin), where no path lies under it.
+	void beside(Element k, float x, float y, float w, float d, float h, int p, Facing facing = FACE_STREET) {
+		for (const Footprint &f : paths)
+			if (x + w / 2 > f.x0 && x - w / 2 < f.x1 && y + d / 2 > f.y0 && y - d / 2 < f.y1) return;
+		put_at(b, k, x, y, w, d, h, p, 0, facing);
+	}
 	void fountain(float cx, float cy, bool plaza);
 	void benches_along_x(float y, float x0, float x1, int bench, int lamp, int bin);
 	void benches_along_y(float x, float y0, float y1, int bench, int lamp, int bin);
@@ -55,17 +68,17 @@ void Lay::fountain(float cx, float cy, bool plaza) {
 
 void Lay::benches_along_x(float y, float x0, float x1, int bench, int lamp, int bin) {
 	for (float x = x0 + PARK_BENCH_EVERY / 2; x < x1 - BENCH_W; x += PARK_BENCH_EVERY) {
-		put_at(b, EL_BENCH, x, y - PATH_W / 2 - BENCH_D, BENCH_W, BENCH_D, BENCH_H, bench);
-		if (std::fmod(x - x0, LAMP_EVERY) < PARK_BENCH_EVERY) put_at(b, EL_LAMP, x + BENCH_W, y + PATH_W / 2 + LAMP, LAMP, LAMP, LAMP_H, lamp);
-		else put_at(b, EL_BIN, x + BENCH_W, y - PATH_W / 2 - BIN, BIN, BIN, BIN_H, bin);
+		beside(EL_BENCH, x, y - PATH_W / 2 - BENCH_D, BENCH_W, BENCH_D, BENCH_H, bench, FACE_BACK); // on the path's street side, looking at it
+		if (std::fmod(x - x0, LAMP_EVERY) < PARK_BENCH_EVERY) beside(EL_LAMP, x + BENCH_W, y + PATH_W / 2 + LAMP, LAMP, LAMP, LAMP_H, lamp);
+		else beside(EL_BIN, x + BENCH_W, y - PATH_W / 2 - BIN, BIN, BIN, BIN_H, bin);
 	}
 }
 
 void Lay::benches_along_y(float x, float y0, float y1, int bench, int lamp, int bin) {
 	for (float y = y0 + PARK_BENCH_EVERY / 2; y < y1 - BENCH_W; y += PARK_BENCH_EVERY) {
-		put_at(b, EL_BENCH, x - PATH_W / 2 - BENCH_D, y, BENCH_D, BENCH_W, BENCH_H, bench);
-		if (std::fmod(y - y0, LAMP_EVERY) < PARK_BENCH_EVERY) put_at(b, EL_LAMP, x + PATH_W / 2 + LAMP, y + BENCH_W, LAMP, LAMP, LAMP_H, lamp);
-		else put_at(b, EL_BIN, x - PATH_W / 2 - BIN, y + BENCH_W, BIN, BIN, BIN_H, bin);
+		beside(EL_BENCH, x - PATH_W / 2 - BENCH_D, y, BENCH_D, BENCH_W, BENCH_H, bench, FACE_RIGHT); // on the path's left, looking at it
+		if (std::fmod(y - y0, LAMP_EVERY) < PARK_BENCH_EVERY) beside(EL_LAMP, x + PATH_W / 2 + LAMP, y + BENCH_W, LAMP, LAMP, LAMP_H, lamp);
+		else beside(EL_BIN, x - PATH_W / 2 - BIN, y + BENCH_W, BIN, BIN, BIN_H, bin);
 	}
 }
 
@@ -114,12 +127,12 @@ void park(Lay &L) {
 	L.ground("square_lawn");
 	int path = L.paint("path");
 	// the cross of paths from line to line: each end opens on the footway, through the hedge's gap
-	L.surface(-W / 2, D / 2 - PATH_W / 2, W / 2, D / 2 + PATH_W / 2, path, COVER_WAY);
-	L.surface(-PATH_W / 2, 0, PATH_W / 2, D, path, COVER_WAY);
+	L.path(-W / 2, D / 2 - PATH_W / 2, W / 2, D / 2 + PATH_W / 2, path);
+	L.path(-PATH_W / 2, 0, PATH_W / 2, D, path);
 	float rx0 = -W / 2 + rg, rx1 = W / 2 - rg, ry0 = rg, ry1 = D - rg;
 	if (has_ring(W, D)) {
-		for (float y : { ry0, ry1 }) L.surface(rx0, y - RING_W / 2, rx1, y + RING_W / 2, path, COVER_WAY);
-		for (float x : { rx0, rx1 }) L.surface(x - RING_W / 2, ry0, x + RING_W / 2, ry1, path, COVER_WAY);
+		for (float y : { ry0, ry1 }) L.path(rx0, y - RING_W / 2, rx1, y + RING_W / 2, path);
+		for (float x : { rx0, rx1 }) L.path(x - RING_W / 2, ry0, x + RING_W / 2, ry1, path);
 	}
 	int bench = L.paint("bench"), lamp = L.paint("lamp_post"), bin = L.paint("bin");
 	L.benches_along_x(D / 2, -W / 2 + LAWN_CLEAR, -POOL_PLAZA / 2, bench, lamp, bin);
@@ -140,8 +153,9 @@ void square(Lay &L) {
 	int bench = L.paint("bench"), lamp = L.paint("lamp_post");
 	float rb = BASIN / 2 + PATH_W;
 	for (float s : { -1.f, 1.f }) {
-		put_at(L.b, EL_BENCH, s * rb, D / 2, BENCH_D, BENCH_W, BENCH_H, bench);
-		put_at(L.b, EL_BENCH, 0, D / 2 + s * rb, BENCH_W, BENCH_D, BENCH_H, bench);
+		// each of the four looks at the fountain
+		put_at(L.b, EL_BENCH, s * rb, D / 2, BENCH_D, BENCH_W, BENCH_H, bench, 0, s > 0 ? FACE_LEFT : FACE_RIGHT);
+		put_at(L.b, EL_BENCH, 0, D / 2 + s * rb, BENCH_W, BENCH_D, BENCH_H, bench, 0, s > 0 ? FACE_STREET : FACE_BACK);
 		for (float t : { -1.f, 1.f }) put_at(L.b, EL_LAMP, s * rb, D / 2 + t * rb, LAMP, LAMP, LAMP_H, lamp);
 	}
 	if (std::min(W, D) < BAND_MIN) return;
@@ -186,7 +200,7 @@ void open_lot_body(const Data &data, Body &b, int fn, float W, float D) {
 	b.plan.D = D;
 	b.wall = b.add_paint(data.color("square_paving"));
 	b.trim = b.roof = b.wall;
-	Lay L{ data, b, W, D };
+	Lay L{ data, b, W, D, {} };
 	if (fn == FN_PARK) park(L);
 	else if (fn == FN_SPORTS_COURT) court(L);
 	else square(L);

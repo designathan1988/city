@@ -5,6 +5,8 @@
 // and posts.
 #include "render/buildings/lot_covers.h"
 
+#include "sim/buildings/b40/bench.h"
+
 #include <cmath>
 
 using namespace godot;
@@ -147,12 +149,20 @@ void LotEmit::prop(const LotElement &e) {
 			shell.rect(pl.lot, x0 + PLANTER_SOIL_DROP_M, x1 - PLANTER_SOIL_DROP_M, y0 + PLANTER_SOIL_DROP_M, y1 - PLANTER_SOIL_DROP_M, g + e.h - PLANTER_SOIL_DROP_M,
 					paint_lin(pl.data->color("planter_soil")), FIN_NONE); // the soil inside the rim, where what grows in it stands (types.h)
 			break;
-		case EL_BENCH:
+		case EL_BENCH: {
+			// The seat, its back on the side away from where the bench looks (types.h bench_back), an end at each end of its length.
+			const Footprint back = bench_back(e, BENCH_BACK_T);
 			parts.box(pl.lot, x0, x1, y0, y1, g + BENCH_SEAT, g + BENCH_SEAT + BENCH_SEAT_T, lin, FIN_WOOD);
-			parts.box(pl.lot, x0, x1, y1 - BENCH_BACK_T, y1, g + BENCH_SEAT, g + BENCH_BACK, lin, FIN_WOOD);
-			parts.box(pl.lot, x0, x0 + BENCH_BACK_T, y0, y1, g, g + BENCH_SEAT, lin, FIN_WOOD);
-			parts.box(pl.lot, x1 - BENCH_BACK_T, x1, y0, y1, g, g + BENCH_SEAT, lin, FIN_WOOD);
+			parts.box(pl.lot, back.x0, back.x1, back.y0, back.y1, g + BENCH_SEAT, g + BENCH_BACK, lin, FIN_WOOD);
+			if (looks_along_y(e)) {
+				parts.box(pl.lot, x0, x0 + BENCH_BACK_T, y0, y1, g, g + BENCH_SEAT, lin, FIN_WOOD);
+				parts.box(pl.lot, x1 - BENCH_BACK_T, x1, y0, y1, g, g + BENCH_SEAT, lin, FIN_WOOD);
+			} else {
+				parts.box(pl.lot, x0, x1, y0, y0 + BENCH_BACK_T, g, g + BENCH_SEAT, lin, FIN_WOOD);
+				parts.box(pl.lot, x0, x1, y1 - BENCH_BACK_T, y1, g, g + BENCH_SEAT, lin, FIN_WOOD);
+			}
 			break;
+		}
 		case EL_BOLLARD:
 			parts.box(pl.lot, x0, x1, y0, y1, g, g + e.h, lin, FIN_METAL);
 			parts.box(pl.lot, x0 - BOLLARD_BAND_OUT, x1 + BOLLARD_BAND_OUT, y0 - BOLLARD_BAND_OUT, y1 + BOLLARD_BAND_OUT, g + e.h - BOLLARD_BAND, g + e.h - BOLLARD_BAND + BOLLARD_BAND_H, lin_of(BAND_LIGHT), FIN_NONE);

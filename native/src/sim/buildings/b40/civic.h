@@ -9,10 +9,11 @@
 
 namespace city::b40 {
 
-// Element helper in any frame: a box element from (x0, y0) to (x1, y1), `h` tall, raised to `z` (hung kinds).
-void put(Body &b, Element k, float x0, float y0, float x1, float y1, float h, int paint, float z = 0);
-inline void put_at(Body &b, Element k, float x, float y, float w, float d, float h, int paint, float z = 0) {
-	put(b, k, x - w / 2, y - d / 2, x + w / 2, y + d / 2, h, paint, z);
+// Element helper in any frame: a box element from (x0, y0) to (x1, y1), `h` tall, raised to `z` (hung kinds), looking `facing`
+// (what has an open end: a bench).
+void put(Body &b, Element k, float x0, float y0, float x1, float y1, float h, int paint, float z = 0, Facing facing = FACE_STREET);
+inline void put_at(Body &b, Element k, float x, float y, float w, float d, float h, int paint, float z = 0, Facing facing = FACE_STREET) {
+	put(b, k, x - w / 2, y - d / 2, x + w / 2, y + d / 2, h, paint, z, facing);
 }
 
 // True when the record function draws a civic body (not an ordinary building or an open lot).

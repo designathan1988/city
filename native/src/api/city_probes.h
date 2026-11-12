@@ -119,6 +119,9 @@ public:
 	// their lots' layout laid: the planters, those with nothing growing in them, the plants that do not stand on their planter's soil
 	// (city_core_lot_parts_probe.cpp). No city is read.
 	godot::Dictionary lot_parts(int zone, int cap, float w, float d, int seed, int count) const;
+	// Tests: `count` bodies of an open lot (a park, a square, a sports court: BuildingFn `fn`) `w` by `d` made on the spot, from `seed`
+	// on: their benches, those laid with their long side along the way they look, those that do not look at the cover they stand by.
+	godot::Dictionary open_lot_parts(int fn, float w, float d, int seed, int count) const;
 	// Tests: a square of the city's plan laid on a block of lots given by hand (rows of x, z, width, depth, facing), no city read, and
 	// every square of the city: each tree's room against the square's ground, the other trees' rooms, the plan's step and edge
 	// clearance, and its walks (city_core_square_probe.cpp).
