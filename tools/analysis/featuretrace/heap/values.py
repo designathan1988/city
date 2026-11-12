@@ -15,7 +15,7 @@ from ..solver import ENGINE, LANG, NUMBER, TEXT
 from ..vocab import (ELEMENTS_FIELD, LEVEL_ALIAS, LEVEL_OWN, LEVEL_TYPE, SITE_DECLARED_FN, SITE_TEXT, SITE_UNKNOWN,
                      T_BOTH,
                      T_FN, T_INDEX, T_NAMED, T_OBJECT, T_PARAM, T_QUERY, T_THIS, T_TUPLE, T_UNION, T_VALUES)
-from . import members, names, summaries, typesys
+from . import copies, members, names, summaries, typesys
 
 PRODUCED, CONSUMED, OWN_PLACE, RESULT, MEMBER, BOUND = 20, 21, 22, 23, 24, 25   # node tags; a site's parts
 NO_ENV = (None, None, None)          # the environment of a type that reads none
@@ -124,16 +124,16 @@ def wire(an, node, tree, env, site) -> None:
 
 
 def both(an, node, tree, env, site) -> None:
-    """An intersection: the objects of each part, each one with the members of the others' objects (a value of
-    `A & B` is one object that is both)."""
+    """An intersection: the objects of each part, each one with the properties of the others' objects by name (a
+    value of `A & B` is one object that is both: `copies`)."""
     parts = [produce(an, part, env, sub(site, i)) for i, part in enumerate(tree[1])]
     for i, held in enumerate(parts):
         an.solver.follow(held, node)
         for j, other in enumerate(parts):
             if i != j:
                 an.solver.subscribe(held, (T_BOTH, node, i, j), (T_BOTH,), lambda _, objs, other=other: [
-                    an.solver.subscribe(other, an.any_field(o), (T_BOTH, o), lambda t, srcs: [
-                        an.solver.follow(members.every(an, s), t) for s in srcs if s != o]) for o in objs])
+                    an.solver.subscribe(other, an.any_field(o), (T_BOTH, o), lambda _, srcs, o=o: [
+                        copies.copy(an, s, o) for s in srcs]) for o in objs])
 
 
 def named(an, node, tree, env, site) -> None:

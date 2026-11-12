@@ -16,9 +16,10 @@ from ..vocab import (AWAIT, CALL, CALLABLE, CAST, COLLECTION, CONSTRUCT, EACH, E
                      JSX, KEYS, LITERAL, MEMBER, NAME, NARROW, NEW, OP, SELF, SITE_CLASS, SITE_PRIMITIVE, SITE_TEXT,
                      SITE_KEY, STRNAME, SUPER, UNARY, UNION)
 from ..model import STATE_KINDS
-from . import contexts, declared, guards, jsx, members, names, protocols, texts, typesys
+from . import contexts, copies, declared, guards, jsx, members, names, protocols, texts, typesys
 
 CONSTRUCTED = 10           # a node: what a constructor's call returns (the `new` itself is the object made)
+SPREAD = 65                # a node: the object a literal's spread copies into (`copies`)
 
 STRING_KIND = truth.KINDS[STRING]
 
@@ -141,6 +142,9 @@ def wire_cast(an, node, text: str, unit, ctx) -> None:
         an.instance_made(obj)
         literal_methods(an, obj, key, unit, ctx)
         members.initialize_literal(an, obj, key, ctx)
+        for spread in an.ix.classes[key].spreads:      # `{ ...x }`: x's properties by name (CopyDataProperties)
+            an.solver.subscribe(an.node(spread, unit, ctx), (SPREAD, obj), (SPREAD,), lambda _, objs, obj=obj: [
+                copies.copy(an, o, obj) for o in objs])
     elif made == CLASS_MADE:                       # evaluated in this run: its methods are closures of it
         an.solver.add(node, [an.objects.class_value(key, ctx, unit.gid)])
 

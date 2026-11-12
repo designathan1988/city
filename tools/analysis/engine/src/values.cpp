@@ -247,10 +247,9 @@ void both_outer(Analysis& an, Value other, std::span<const Obj> objs) {
     }
 }
 
-void both_inner(Analysis& an, Value target, Obj o, std::span<const Obj> srcs) {
-    for (Obj s : srcs) {
-        if (s != o) an.follow(members::every(an, s), target);
-    }
+void both_inner(Analysis& an, Value, Obj o, std::span<const Obj> srcs) {   // one object that is both: by name
+    std::vector<Obj> list(srcs.begin(), srcs.end());
+    for (Obj s : list) copies::copy(an, s, o);
 }
 
 }  // namespace ftengine::values

@@ -267,7 +267,13 @@ Obj prototype(Analysis& an, Value key, int64_t maker) {
 
 Value field(Analysis& an, Obj obj, Value name) {
     Value node = an.field(obj, name);
-    if (an.wire_once(node)) an.follow(node, every(an, obj));
+    if (!an.wire_once(node)) return node;
+    an.follow(node, every(an, obj));
+    an.names_of[obj].push_back(name);
+    auto found = an.copies.find(obj);              // each object its properties are copied into (copies.cpp)
+    if (found == an.copies.end()) return node;
+    std::vector<Obj> targets = found->second;
+    for (Obj target : targets) an.follow(node, field(an, target, name));
     return node;
 }
 

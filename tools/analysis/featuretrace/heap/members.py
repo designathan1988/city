@@ -268,11 +268,15 @@ def prototype(an, key: str, maker: int | None = None) -> int:
 
 
 def field(an, obj: int, name: str):
-    """A named property of one object; every named property also reaches the object's `every` node."""
+    """A named property of one object; every named property also reaches the object's `every` node and the
+    property of that name of each object it is copied into (`copies`)."""
     node = an.field(obj, name)
     if node not in an.wired:
         an.wired.add(node)
         an.solver.follow(node, every(an, obj))
+        an.names_of[obj].add(name)
+        for target in sorted(an.copies.get(obj, ())):
+            an.solver.follow(node, field(an, target, name))
     return node
 
 

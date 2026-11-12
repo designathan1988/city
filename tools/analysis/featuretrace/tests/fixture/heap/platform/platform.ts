@@ -65,3 +65,9 @@ export function undefinedKeepsNothing() { const v: any = undefined; v.q = new Pe
 export function escaped(host: any) { host.onload = () => new Pear(); }
 export function unboxApple() { return unbox({ value: new Apple() }); }
 export function unboxPear() { return unbox({ value: new Pear() }); }
+export function mappedOverMany() {
+  const lists = [[new Apple()], [new Pear()], [new Apple(), new Pear()]];
+  let out: unknown[] = [];
+  for (const list of lists) out = list.map((x) => x);
+  return out[0];
+}

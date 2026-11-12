@@ -121,6 +121,7 @@ public:
         c.key = get("key"); c.name = get("name"); c.file = get("file"); c.outer = get("outer");
         c.shape = flag(get("shape")); c.made = num(get("made")); c.ambient = flag(get("ambient"));
         c.tparams = list(s_, get("tparams")); c.heritage = list(s_, get("heritage"));
+        c.spreads = list(s_, get("spreads"));
         c.identity = c.key;
         in_.classes.emplace(c.key.bits(), std::move(c));
     }

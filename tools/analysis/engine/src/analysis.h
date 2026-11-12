@@ -121,6 +121,7 @@ public:
     std::string costliest(size_t count);         // the nodes whose deliveries cost the most, named
     std::string stores(size_t count);            // the stores by unknown keys writing the most
     std::string describe(Value v, int depth = 0);  // a key as text, objects by their keys
+    std::string site_chain(Value key);             // the objects a key's site is made from, outward
     bool entries(bool modules);
     bool enter(int64_t gid, Value ctx, int64_t unknown);
     void run();
@@ -143,6 +144,9 @@ public:
     bool contexts = true;                                                  // false: every run in ROOT
     uint64_t progress_every = 0;
     std::unordered_map<uint64_t, std::pair<uint64_t, uint64_t>> store_probe;   // store site -> (bases, values)
+    std::unordered_map<Obj, std::vector<Obj>> copies;        // an object -> the objects its properties are copied into
+    std::unordered_map<Obj, std::vector<Value>> names_of;    // an object -> the names of its properties made so far
+    std::unordered_set<uint64_t> copied;                     // (source, target) pairs copied
 
 private:
     size_t grown_nodes_ = 0, grown_objects_ = 0;

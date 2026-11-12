@@ -167,6 +167,7 @@ def object_literal(r, node, unit) -> str:
             inner = (named_children(item) or [None])[0]
             if inner is not None:
                 cls.bases.append(" ".join(r.src.text(inner).split()))
+                cls.spreads.append(r.ir(inner, unit))          # CopyDataProperties where it is evaluated (F34)
                 js_body.expr(r, inner, unit, ())
         elif item.type == "method_definition":
             members(r, _Single(item), key, outer or unit)

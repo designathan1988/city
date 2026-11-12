@@ -193,15 +193,19 @@ def signature(unit) -> tuple:
 
 def callback(an, fn: int, tree: tuple, env, site, origin, this) -> None:
     """The platform calls `fn` back as a function of type `tree`: its arguments what the parameters' types give, its
-    result taken as the result type; a link from the call that handed it."""
+    result taken as the result type; a link from the call that handed it. One call node for the function at a site
+    whatever receiver the declared call had (its run is the same for all: log/trace-research.md F35): each receiver's
+    environment gives its arguments into the node's own, and the result is taken into each receiver's places."""
     static = an.objects.make(CALLBACK_SITE, site[0])
-    node = (CALLBACK, static, fn, env, site[1])
+    node = (CALLBACK, static, fn, this, site[1])
     where = (static, site[1])
     gid = an.objects.function(fn)
     count = len(an.ix.units[gid].params) if gid is not None else len(tree[1])
     args = [argument(an, node, positional(tree[1], tree[3], i), env, values.sub(site, i), origin) for i in range(count)]
     an.relay(origin, node)
-    an.call(node, fn, this, args, HANDED, site=where)
+    if node not in an.wired:                                    # called once; later receivers only add arguments
+        an.wired.add(node)
+        an.call(node, fn, this, args, HANDED, site=where)
     if this is None and tree[4] and tree[4][0] != T_OPEN:       # the `this` its declared type gives
         receivers = values.produce(an, tree[4], env, values.sub(site, THIS))
         an.solver.subscribe(receivers, (RECEIVERS, node), (RECEIVERS,), lambda _, objs: [
@@ -211,14 +215,13 @@ def callback(an, fn: int, tree: tuple, env, site, origin, this) -> None:
 
 
 def argument(an, node, tree: tuple, env, site, origin):
-    """What the platform passes a callback's parameter: what its declared type gives and, where that type is open,
-    whatever the call handing the callback took (its pool: Averroes's placeholder principle)."""
-    given = values.produce(an, tree, env, site)
-    if origin is None or not summaries.is_open(an, tree):
-        return given
+    """What the platform passes a callback's parameter, in the call node's own argument: what its declared type gives
+    in this environment and, where that type is open, whatever the call handing the callback took (its pool:
+    Averroes's placeholder principle)."""
     held = (CALLBACK_ARG, node, site)
-    an.solver.follow(given, held)
-    an.solver.follow(summaries.pool(origin), held)
+    an.solver.follow(values.produce(an, tree, env, site), held)
+    if origin is not None and summaries.is_open(an, tree):
+        an.solver.follow(summaries.pool(origin), held)
     return held
 
 

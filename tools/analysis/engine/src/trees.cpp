@@ -62,6 +62,10 @@ void wire_cast(Analysis& an, Value node, Value text, const UnitRec& unit, Value 
         an.instance_made(obj);
         literal_methods(an, obj, key, unit, ctx);
         members::initialize_literal(an, obj, key, ctx);
+        for (Value spread : c->spreads) {              // `{ ...x }`: x's properties by name (copies.cpp)
+            an.subscribe(an.node(spread, unit, ctx), an.tuple({an.V.SPREAD, I(obj)}), an.tuple({an.V.SPREAD}),
+                         pack(an, kSpread, {I(obj)}));
+        }
     } else if (made == an.V.MADE_CLASS.data()) {
         an.add(node, an.make({an.V.SITE_CLASS, key, ctx, I(unit.gid)}));
     }

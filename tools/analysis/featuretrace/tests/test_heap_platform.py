@@ -74,6 +74,9 @@ class HeapPlatform(HeapCase):
     def test_a_host_method_called_is_linked(self):
         self.assertTrue(any(k == "call" and d.endswith("Element.focus") for k, d in self.links("focused")))
 
+    def test_a_callback_over_many_receivers_gets_each_receivers_elements(self):
+        self.assertEqual({"Apple", "Pear"}, self.classes("mappedOverMany"))
+
 
 class DeclarationFiles(unittest.TestCase):
     def names(self, folder: str) -> set:
@@ -95,8 +98,23 @@ class DeclarationFiles(unittest.TestCase):
                          self.names("plain"))
 
 
+
 class HeapPlatformEngine(HeapPlatform):
     CORE = ENGINE
+
+
+class HeapPlatformNodes(HeapCase):
+    """What the analysis makes (the Python core's own nodes): one call node for a function the platform calls
+    back at a site, whatever receivers the declared call has (log/trace-research.md F35)."""
+    ROOT = "platform"
+
+    def test_one_callback_node_for_many_receivers(self):
+        from ..heap.declared import CALLBACK
+        an, gid = self.result.analysis, self.gid("mappedOverMany")
+        fns = {o for o, key in enumerate(an.objects.keys) if key[0] == "fn" and an.ix.units[key[1]].outer >= 0
+               and an.ix.units[an.ix.offset[an.ix.units[key[1]].file] + an.ix.units[key[1]].outer].gid == gid}
+        nodes = {n for n in an.solver.ids if isinstance(n, tuple) and n and n[0] == CALLBACK and n[2] in fns}
+        self.assertEqual(1, len(nodes), nodes)
 
 
 if __name__ == "__main__":

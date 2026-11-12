@@ -41,7 +41,7 @@ struct ClassRec {
     Value key, name, file, outer;
     bool shape = false, ambient = false;
     int64_t made = -1;
-    std::vector<Value> tparams, heritage;
+    std::vector<Value> tparams, heritage, spreads;   // spreads: a literal's `...x` trees
     // class tables
     std::vector<Value> bases, group, chain;
     std::vector<Value> proto_chain;              // what its `extends` reaches, itself first (heap/guards.py)

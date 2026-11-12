@@ -24,7 +24,8 @@ from .js_transfer import chain
 from .languages import INTRINSICS, JSX_CLASSIC, JSX_FACTORY_DEFAULT, JSX_FACTORY_OPTION, canonical_numeric
 from .model import FUNCTION_KINDS, ClassFact, Ref, Unit
 from .solver import LANG
-from .vocab import IMPORT, JSX, LITERAL, NAME, OP, T_NAMED, T_QUERY, UNARY
+from .ir_js import CLASS_VALUE
+from .vocab import CAST, IMPORT, JSX, LITERAL, NAME, OP, T_NAMED, T_QUERY, UNARY
 
 ROOT_PARTS = ("units", "classes", "members", "names", "types", "class_tables", "intrinsics", "modules", "exports",
               "jsx", "queries", "operators", "literals", "numeric_names", "contextual", "vocabulary")
@@ -44,8 +45,9 @@ class Found:
     """What the facts' trees ask of the readers: names read, declared type names, `typeof` names, operators, literals,
     and the units a JSX element is written in (a tree of one, or a reference: each reads its factory)."""
 
-    def __init__(self):
+    def __init__(self, spreads=None):
         self.types, self.queries, self.operators, self.literals = set(), set(), set(), set()
+        self.spreads = spreads or {}             # a literal's value tree -> the trees it spreads, read where it is
         self.elements = False                  # the walk met a JSX element
         self.numeric = set()                   # the texts that are canonical numeric strings (an index's names)
 
@@ -69,6 +71,8 @@ class Found:
                     self.literals.add(v[1])
                 elif tag == JSX:
                     self.elements = True
+                elif tag == CAST and len(v) == 2 and v[1] in self.spreads:
+                    todo.extend(self.spreads[v[1]])
                 todo.extend(v)
             elif isinstance(v, (list, set, frozenset)):
                 todo.extend(v)
@@ -91,7 +95,8 @@ class Found:
 
 
 def tables(ix) -> list:
-    light, js, found = Light(ix), ix.js, Found()
+    light, js = Light(ix), ix.js
+    found = Found({CLASS_VALUE + key: cls.spreads for key, cls in ix.classes.items() if cls.spreads})
     for cls in ix.classes.values():
         found.walk((cls.heritage, cls.tparams), set())
     read, elements = {}, set()

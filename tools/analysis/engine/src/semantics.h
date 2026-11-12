@@ -13,7 +13,7 @@ enum TransferKind : uint32_t {
     kSummaryReceive, kSummaryCalled, kSummaryFields, kSummaryMemberOf, kKept, kIterElements, kIterIterator,
     kIterNext, kIterValue, kMethodCall, kSettle, kJsxFactory, kJsxChildren, kOpenCalled, kStoreByKey,
     kNarrowValue, kNarrowMember, kMemberPasses, kInstanceObjects, kInstanceTargets, kPredicateFunctions,
-    kPredicateAdmits,
+    kPredicateAdmits, kSpread, kCallableOnly,
 };
 
 // The dispatcher the solver calls (transfers.cpp).
@@ -150,6 +150,10 @@ Value call_node(Analysis& an, Value node, Value tree, const UnitRec& unit, Value
 void written(Analysis& an, const UnitRec& unit, const RefRec& ref, Value ctx);
 void named_children(Analysis& an, Obj obj, Value name);
 }  // namespace jsx
+
+namespace copies {                     // copies of an object's properties by name (heap/copies.py)
+void copy(Analysis& an, Obj source, Obj target);
+}  // namespace copies
 
 namespace verdicts {                   // what the language's tests can give of one value (heap/verdicts.py)
 inline constexpr uint8_t kNeither = 0, kNo = 1, kYes = 2, kEither = 3;   // bit 1 false, bit 2 true; none: throws

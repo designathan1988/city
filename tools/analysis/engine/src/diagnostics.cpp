@@ -56,10 +56,48 @@ std::string Analysis::growth() {
         }
         ++nodes[tag];
     }
-    for (size_t o = grown_objects_; o < objects_.size(); ++o) ++objects[tag_text(*this, objects_[o])];
+    std::unordered_map<std::string, Value> sample;            // the last key made of each tag, shown for the most made
+    for (size_t o = grown_objects_; o < objects_.size(); ++o) {
+        std::string tag = tag_text(*this, objects_[o]);
+        if (item(objects_[o], 0) == V.SITE_DECLARED) tag += ":" + describe(item(objects_[o], 1));   // of which type
+        ++objects[tag];
+        sample[tag] = objects_[o];
+    }
+    std::string shown;
+    size_t most = 0;
+    for (auto& [tag, n] : objects) {
+        if (n > most) most = n, shown = "\n         e.g. " + describe(sample[tag], kContextDepth) + site_chain(sample[tag]);
+    }
     grown_nodes_ = node_keys_.size();
     grown_objects_ = objects_.size();
-    return "new nodes:" + top(nodes) + " | new objects:" + top(objects);
+    return "new nodes:" + top(nodes) + " | new objects:" + top(objects) + shown;
+}
+
+// The objects a key's site is made from, outward: the first object id among its parts after its tag, then that
+// object's, and so on (a site made from a site made from a site shows how its keys nest).
+std::string Analysis::site_chain(Value key) {
+    constexpr int kLinks = 5;
+    std::string out;
+    for (int link = 0; link < kLinks; ++link) {
+        std::vector<Value> todo;
+        auto parts = at(key);
+        for (size_t i = parts.size(); i > 1; --i) todo.push_back(parts[i - 1]);
+        int64_t found = -1;
+        while (!todo.empty() && found < 0) {
+            Value v = todo.back();
+            todo.pop_back();
+            if (v.kind() == Kind::Int && v.data() >= 0 && static_cast<size_t>(v.data()) < objects_.size()) {
+                found = v.data();
+            } else if (v.kind() == Kind::Term) {
+                auto inner = at(v);
+                for (size_t i = inner.size(); i > 0; --i) todo.push_back(inner[i - 1]);
+            }
+        }
+        if (found < 0) break;
+        key = objects_[static_cast<size_t>(found)];
+        out += "\n            from #" + std::to_string(found) + " " + describe(key, kContextDepth);
+    }
+    return out;
 }
 
 std::string Analysis::describe(Value v, int depth) {

@@ -41,12 +41,25 @@ void index_keys(Analysis& an, Value t, const Captured& c, Objs objs) {
 void store_by_key(Analysis& an, Value, const Captured& c, Objs objs) {
     for (Obj k : objs) members::store_by_key(an, c[0], obj_of(c[1]), k);
 }
+// A member read on one object for a call, and the functions among what it holds: every site calling that member on
+// that object shares both, so what is no function is set aside once, not at each site (`call` runs nothing for it).
 void call_by_receiver(Analysis& an, Value t, const Captured& c, Objs objs) {
     for (Obj obj : objs) {
         Value held = an.tuple({an.V.MEMBER, I(obj), c[0]});
-        members::read(an, held, obj, c[0]);
-        an.subscribe(held, t, an.tuple({an.V.CALL, I(obj)}), pack(an, kCallFunctions, {I(obj), c[1]}));
+        Value callable = an.tuple({an.V.CALLABLE, held});
+        if (an.wire_once(callable)) {
+            members::read(an, held, obj, c[0]);
+            an.subscribe(held, callable, an.tuple({an.V.CALLABLE}), pack(an, kCallableOnly, {}));
+        }
+        an.subscribe(callable, t, an.tuple({an.V.CALL, I(obj)}), pack(an, kCallFunctions, {I(obj), c[1]}));
     }
+}
+void callable_only(Analysis& an, Value t, const Captured&, Objs objs) {
+    std::vector<Obj> kept;
+    for (Obj o : objs) {
+        if (an.callable(o)) kept.push_back(o);
+    }
+    an.add(t, kept);
 }
 void call_functions(Analysis& an, Value t, const Captured& c, Objs objs) {
     auto args = list(an, c[1]);
@@ -202,16 +215,20 @@ void predicate_functions(Analysis& an, Value t, const Captured& c, Objs objs) {
 void predicate_admits(Analysis& an, Value t, const Captured& c, Objs objs) {
     guards::predicate_admits(an, t, c[0], objs);
 }
+void spread(Analysis& an, Value, const Captured& c, Objs objs) {
+    std::vector<Obj> list(objs.begin(), objs.end());
+    for (Obj o : list) copies::copy(an, o, obj_of(c[0]));
+}
 
 // The handler of each kind, in the order of TransferKind (from kMemberRead).
-constexpr std::array<Handler, kPredicateAdmits> kHandlers = {
+constexpr std::array<Handler, kCallableOnly> kHandlers = {
     member_read, super_read, index_by_object, index_keys, call_by_receiver, call_functions, super_by_this,
     plain_call, keys, construct_by_value, construct_returned, new_written, write_by_object, store_by_object,
     read_link, prototypes, type_index, both_outer, both_inner, consumed, structural_fn, receivers,
     summary_receive, summary_called, summary_fields, summary_member_of, kept, iter_elements, iter_iterator,
     iter_next, iter_value, method_call, settle, jsx_factory, jsx_children, summary_called, store_by_key,
     narrow_value, narrow_member, member_passes, instance_objects, instance_targets, predicate_functions,
-    predicate_admits,
+    predicate_admits, spread, callable_only,
 };
 
 }  // namespace

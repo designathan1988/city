@@ -217,6 +217,7 @@ class ClassFact:
     heritage: list = field(default_factory=list)   # js: what it extends and implements, as declared types (`js_sigs`)
     extends: str = ""              # js: what its `extends` clause names, as written (its prototype's [[Prototype]])
     ambient: bool = False          # js: declared only (a declaration file, `declare`): no code of the program makes it
+    spreads: list = field(default_factory=list)    # js: an object literal's `...x`, as trees read where it is written
 
 
 @dataclass

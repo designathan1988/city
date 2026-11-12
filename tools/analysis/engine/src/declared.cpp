@@ -38,11 +38,9 @@ std::vector<Value> function_types(Analysis& an, Value tree) {
 }
 
 Value argument(Analysis& an, Value node, Value tree, Value env, Value site, Value origin) {
-    Value given = values::produce(an, tree, env, site);
-    if (origin.kind() == Kind::None || !summaries::is_open(an, tree)) return given;
-    Value held = an.tuple({an.V.CALLBACK_ARG, node, site});
-    an.follow(given, held);
-    an.follow(summaries::pool(an, origin), held);
+    Value held = an.tuple({an.V.CALLBACK_ARG, node, site});   // the call node's own: every receiver's arguments
+    an.follow(values::produce(an, tree, env, site), held);
+    if (origin.kind() != Kind::None && summaries::is_open(an, tree)) an.follow(summaries::pool(an, origin), held);
     return held;
 }
 
@@ -241,7 +239,8 @@ Value signature(Analysis& an, const UnitRec& unit) {
 void callback(Analysis& an, Obj fn, Value tree, Value env, Value site, Value origin, int64_t this_obj) {
     const Vocab& V = an.V;
     Obj stat = an.make({V.CALLBACK_SITE, an.item(site, 0)});
-    Value node = an.tuple({V.CALLBACK, I(stat), I(fn), env, an.item(site, 1)});
+    // One call node for the function at a site whatever the receiver (its run is the same for all: F35).
+    Value node = an.tuple({V.CALLBACK, I(stat), I(fn), this_obj >= 0 ? I(this_obj) : NONE, an.item(site, 1)});
     Value where = an.tuple({I(stat), an.item(site, 1)});
     int64_t gid = an.function(fn);
     size_t count = gid >= 0 ? an.unit(gid).params.size() : an.at(an.item(tree, 1)).size();
@@ -251,7 +250,7 @@ void callback(Analysis& an, Obj fn, Value tree, Value env, Value site, Value ori
         args.push_back(argument(an, node, part, env, values::sub(an, site, I(static_cast<int64_t>(i))), origin));
     }
     an.relay(origin, node);
-    an.call(node, fn, this_obj, args, V.HANDED, where);
+    if (an.wire_once(node)) an.call(node, fn, this_obj, args, V.HANDED, where);   // later receivers: arguments only
     Value receiver_type = an.item(tree, 4);
     if (this_obj < 0 && an.truthy(receiver_type) && an.item(receiver_type, 0) != V.T_OPEN) {
         Value receivers = values::produce(an, receiver_type, env, values::sub(an, site, V.D_THIS));

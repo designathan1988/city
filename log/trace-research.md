@@ -535,3 +535,34 @@ official declarations only, converging (finite, fast enough to run in seconds to
   tests now see the text itself (`str:a`). 487 tests on both cores.
 - src/world after it: no convergence yet; the costliest nodes are now named reads (`source.lotStore`, `copy.changes`)
   holding ~2,160 objects: the dictionary of the document objects themselves (F34).
+
+### F34. Copies of properties by name (P1, soundness) — 2026-11-12 14:10
+- Found reading the costliest nodes after F33 (`source.lotStore`, `copy.changes` holding ~2,160 objects): the readers
+  wrote an object literal's `...x` as a base class named by x's text (an old-core convention), which the new core
+  never resolves, so a spread copied nothing (a loss of flow); and a declared intersection result (`assign<T, U>(target:
+  T, source: U): T & U`, the shape of Object.assign) put every property of each part into the dictionary part of the
+  others, which every named read of them then returned.
+- ECMA-262 CopyDataProperties (the spread in PropertyDefinitionEvaluation): each own enumerable property of the source,
+  by its key, into the target; a string's characters are indexed properties; null and undefined copy nothing.
+- Built (both cores; heap/copies.py, engine copies.cpp; tests/test_heap_copies.py with fixture heap/copies.ts, red on
+  both): `copies.copy(source, target)` follows each property of the source into the target's property of that name,
+  those made later too (`members.field` hands each new property of an object on to the objects it is copied into),
+  and the source's dictionary part into the target's; a declared object's property members (not its method
+  signatures, which describe a prototype's methods) by what its declared types give. A literal's spreads are kept as
+  trees (`ClassFact.spreads`) and copied where the literal is evaluated; the intersection uses the same copy.
+- src/world after it: no more declared objects and callback nodes multiplying (F35); 2.3 M nodes and 178 k objects
+  steady from 9 M items on; not converged at 90 s.
+
+### F35. One callback node per site, not per receiver (P1, cost) — 2026-11-12 14:40
+- Measured (the engine's growth report now names a declared object's type and the chain of site objects a key is
+  made from): even without contexts, src/world made 2.6 M callback nodes and 153 k declared arrays in seconds; the
+  callback node was keyed by the declared call's environment, which holds the receiver, so `list.map(f)` over
+  thousands of merged lists made a node per list — all running the same run of f (its context never held the
+  receiver).
+- Built (both cores; test_one_callback_node_for_many_receivers, red with 3 nodes for 3 receivers): one callback node
+  per (site, function, `this`); each receiver's environment gives its arguments into the node's own argument nodes and
+  takes its result into that receiver's places; the call is made once.
+- The engine also sets aside what is no function once per member read: the member read a call makes on one object is
+  shared by every site that calls that member on it, and each site took all of it to find the functions among it
+  (`toString` of an object whose dictionary held 3,000 values, read by 1,900 coercions); a shared node of the
+  functions among it feeds the sites now (the same least fixpoint: `call` runs nothing for the rest).

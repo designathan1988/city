@@ -42,6 +42,8 @@ class Analysis:
         self.closures = defaultdict(set)     # gid -> the environments its function objects were made in
         self.relays = defaultdict(list)      # a call's node -> the nodes of the calls it hands functions to
         self.memo = {}                       # what a declared type resolves to, merges with, looks up
+        self.copies = defaultdict(set)       # an object -> the objects its properties are copied into (`copies`)
+        self.names_of = defaultdict(set)     # an object -> the names of its properties made so far
 
     # ---- nodes -------------------------------------------------------------------------------------------------
     def node(self, tree, unit, ctx):
