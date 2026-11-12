@@ -1,0 +1,63 @@
+{
+  "docTimestamps": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193542525.6726,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\dist\\agent-realism\\notes.md": 1794202862111.6865
+  },
+  "readFiles": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193542525.6726,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\dist\\agent-realism\\explore_plan.json": 1794200468827.0996,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\look.py": 1794200473306.9763,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\dist\\agent-realism\\views_plan.json": 1794201446120.041,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\scene.py": 1794200773601.7654,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\dist\\agent-realism\\diag_plan.json": 1794200912085.289,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\native\\src\\render\\buildings\\building_look.h": 1794201264180.2446,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\native\\src\\render\\buildings\\building_look.cpp": 1794201274662.0303,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\native\\src\\render\\buildings\\building_renderer.h": 1794202400935.315,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\native\\src\\render\\buildings\\building_renderer.cpp": 1794202394585.8313,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\native\\src\\render\\buildings\\building_renderer_reach.cpp": 1794201370479.774,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\dist\\agent-realism\\wide_plan.json": 1794201465459.271,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\project\\render\\shaders\\building_lamps.gdshaderinc": 1794201588762.105,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\project\\render\\shaders\\building_far_window.gdshaderinc": 1794201642457.3103,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\project\\render\\shaders\\building_far.gdshader": 1794201633608.2727,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\project\\render\\daylight.gd": 1794201699987.5908,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\project\\render\\shaders\\building_pane.gdshaderinc": 1794202060932.7622,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\dist\\agent-realism\\notes.md": 1794203186456.019,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\tests.py": 1794202117009.8647,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\project\\game\\settings\\quality.gd": 1794202715422.1597,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\project\\render\\city_world.gd": 1794202718437.3743,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\native\\src\\render\\buildings\\building_renderer_probe.cpp": 1794203528915.189,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\project\\tests\\core\\level_hand_over_test.gd": 1794204896035.0583,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\project\\tests\\core\\level_hand_over_test.tscn": 1794203562472.663
+  },
+  "readCover": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab26643948be1a82d\\dist\\agent-realism\\build2.log": {
+      "mtime": 1794203461018.306,
+      "total": 283,
+      "ranges": [
+        [
+          1,
+          3
+        ]
+      ]
+    }
+  },
+  "goalsDefined": false,
+  "shellSnapshots": {
+    "toolu_01DgiaMb1kZ5xgZirbyu4NFt": {}
+  },
+  "codeModified": true,
+  "visualModified": true,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "photodiffFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": false,
+  "photodiffRanAfterEdit": false,
+  "photosReadAfterEdit": [],
+  "lastEditTime": 1794203989152,
+  "lastTestTime": 0,
+  "goals": [],
+  "editedFiles": []
+}

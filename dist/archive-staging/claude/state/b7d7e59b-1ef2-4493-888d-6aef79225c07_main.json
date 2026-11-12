@@ -1,0 +1,295 @@
+{
+  "docTimestamps": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\CLAUDE.md": 1794208138748.879,
+    "C:\\Users\\Jonathan\\Desktop\\city\\log\\work-log.md": 1794209314145.8596,
+    "C:\\Users\\Jonathan\\Desktop\\city\\log\\pendencias.md": 1794217702001.2732,
+    "C:\\Users\\Jonathan\\Desktop\\city\\log\\mapa.md": 1794217702001.2732
+  },
+  "readFiles": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\citygen\\block_lots.cpp": 1794214591626.1614,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\citygen\\lot_place.cpp": 1794213798621.656,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\lots\\lot_cache.cpp": 1794215387954.1145,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\buildings\\likeness.cpp": 1794142895858.5222,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\buildings\\b40\\gen.h": 1794214220545.7961,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\buildings\\b40\\record.cpp": 1794212958423.2178,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\buildings\\b40\\facade_compose.cpp": 1794214247509.2615,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\buildings\\b40\\massing_core.cpp": 1794215942385.5295,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\probe\\tower_probe.gd": 1794215866057.9014,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\probe\\tower_probe.tscn": 1794214419293.4304,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\citygen\\lot_gen.h": 1794215380048.6804,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\buildings\\b40\\data.h": 1794215944689.4695,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\citygen\\lot_strips.h": 1794214715664.225,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\probe\\park_probe.gd": 1794215300841.134,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\probe\\park_probe.tscn": 1794215303250.943,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\catalog\\scenic.h": 1794215374526.5044,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\citygen\\lot_gen.cpp": 1794215385538.844,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\citygen\\scenic_rules.cpp": 1794215377463.8948,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\dense_plan.json": 1794215788114.5813,
+    "C:\\Users\\Jonathan\\Desktop\\city\\log\\work-log.md": 1794216786151.0657,
+    "C:\\Users\\Jonathan\\Desktop\\city\\log\\pendencias.md": 1794218596884.0322,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\buildings\\b40\\types.h": 1794216967398.7932,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\buildings\\building_renderer_probe.cpp": 1794216939668.0476,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\buildings\\body_stage.h": 1793993869429.2903,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\buildings\\building_bodies.h": 1794216919149.349,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\buildings\\building_renderer_build.cpp": 1794216932698.8806,
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\buildings\\b40\\roof_gear.h": 1794216954159.6855,
+    "C:\\Users\\Jonathan\\Desktop\\city\\log\\mapa.md": 1794218552873.3164,
+    "C:\\Users\\Jonathan\\Documents\\Projects\\lab\\roadcraft\\src\\editor\\repair.ts": 1793107067503.205,
+    "C:\\Users\\Jonathan\\Documents\\Projects\\lab\\roadcraft\\src\\editor\\roadParking.ts": 1793220390720.1172,
+    "C:\\Users\\Jonathan\\Documents\\Projects\\lab\\roadcraft\\src\\editor\\storeTurns.ts": 1792324565000,
+    "C:\\Users\\Jonathan\\Documents\\Projects\\lab\\roadcraft\\src\\steamAchievements.ts": 1792324565000,
+    "C:\\Users\\Jonathan\\Desktop\\city\\project\\game\\play.gd": 1794218486271.9167,
+    "C:\\Users\\Jonathan\\Desktop\\city\\project\\game\\steam_achievements.gd": 1794218470643.807,
+    "C:\\Users\\Jonathan\\Desktop\\city\\project\\tests\\core\\steam_achievements_test.gd": 1794218479183.3562,
+    "C:\\Users\\Jonathan\\Desktop\\city\\project\\tests\\core\\steam_achievements_test.tscn": 1794218481637.3748,
+    "C:\\Users\\Jonathan\\Desktop\\city\\tools\\tasks\\suites.json": 1794218510077.1914,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\people_far_plan2.json": 1794241533367.011
+  },
+  "readCover": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core_query.cpp": {
+      "mtime": 1794212958420.2222,
+      "total": 338,
+      "ranges": [
+        [
+          185,
+          279
+        ]
+      ]
+    },
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\buildings\\b40\\lot_plan.cpp": {
+      "mtime": 1794203732622.201,
+      "total": 146,
+      "ranges": [
+        [
+          30,
+          69
+        ]
+      ]
+    },
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\simulation\\growth.cpp": {
+      "mtime": 1794209277830.3977,
+      "total": 249,
+      "ranges": [
+        [
+          60,
+          229
+        ]
+      ]
+    },
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\buildings_loader.cpp": {
+      "mtime": 1794212958420.2222,
+      "total": 313,
+      "ranges": [
+        [
+          225,
+          264
+        ]
+      ]
+    },
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core_state_probe.cpp": {
+      "mtime": 1794142537722.8992,
+      "total": 143,
+      "ranges": [
+        [
+          60,
+          99
+        ]
+      ]
+    },
+    "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\citygen\\block_lots.cpp": {
+      "mtime": 1794214540168.9856,
+      "total": 291,
+      "ranges": [
+        [
+          176,
+          255
+        ]
+      ]
+    },
+    "C:\\Users\\Jonathan\\Desktop\\city\\log\\conversor.md": {
+      "mtime": 1794191023856.661,
+      "total": 825,
+      "ranges": [
+        [
+          375,
+          539
+        ]
+      ]
+    }
+  },
+  "goalsDefined": true,
+  "shellSnapshots": {
+    "toolu_012B3jZnYmju9gcqsp4g7XPn": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core.h": 1794177325633.1028,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core_bind.cpp": 1794177338296.925,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core_probe_render.cpp": 1794177313479.2683,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\core\\job_pool.h": 1794177157647.3645,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\render_world.cpp": 1794177259051.5737,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\render_world.h": 1794177261490.986,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\roads\\road_chunks.h": 1794177076917.891,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\roads\\road_junction.cpp": 1794177408623.2078,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\roads\\road_layer.cpp": 1794177470712.8357,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\roads\\road_layer.h": 1794177452811.8142,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\roads\\road_look.cpp": 1794177501966.9062,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\roads\\road_look.h": 1794177499084.8008,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\roads\\road_mesh.h": 1794177427293.9001,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\roads\\road_renderer.cpp": 1794177085233.086,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\terrain_bridge.cpp": 1794177189017.838,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\terrain_bridge.h": 1794177169371.223,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\commands\\road_grade_sync.cpp": 1794176677001.7961,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\terrain\\compose.cpp": 1794176649504.4846,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\terrain\\heightfield.h": 1794176646709.0867,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\terrain\\road_shape.cpp": 1794176671370.2322,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\sim\\terrain\\road_shape.h": 1794176655830.2195,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\data\\render\\materials.json": 1794177862908.403,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\data\\render\\streets.json": 1794177582814.2383,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\game\\store\\store_api.gd": 1794177659625.3503,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\render\\city_world.gd": 1794177925197.3384,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\render\\shaders\\terrain.gdshader": 1794177826212.8552,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\tests\\core\\road_commands_test.gd": 1794178050302.6382,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\tests\\perf\\camera_pan.gd": 1794177675674.381,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\gates\\schemas\\materials.schema.json": 1794177862908.403,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\gates\\schemas\\streets.schema.json": 1794177629974.977,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\roads\\ground_seam.cpp": 1794178152958.4387,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\roads\\ground_seam.h": 1794177103599.167,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\roads\\ground_seam_layer.cpp": 1794177117287.2861,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\roads\\ground_seam_layer.h": 1794177111612.5637,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\render\\shaders\\terrain_common.gdshaderinc": 1794177776044.9336,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\render\\shaders\\terrain_ground.gdshaderinc": 1794177796582.8962,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\render\\shaders\\terrain_seam.gdshader": 1794177852810.724
+    },
+    "toolu_018VBx7GwBtPzQsv659WSg5K": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core.h": 1794185062419.35,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core_bind.cpp": 1794185109685.7112,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core_probe_render.cpp": 1794185086139.101,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\props\\prop_renderer.cpp": 1794184941336.3962,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\props\\prop_renderer.h": 1794184956875.945,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\render_world.h": 1794184969837.3347,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\game\\store\\store_api.gd": 1794185113707.211
+    },
+    "toolu_01Hr41gLPMZrsJezt7QK8gNx": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core.h": 1794185062419.35,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core_bind.cpp": 1794185109685.7112,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core_probe_render.cpp": 1794185086139.101,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\props\\prop_renderer.cpp": 1794184941336.3962,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\props\\prop_renderer.h": 1794184956875.945,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\render_world.h": 1794184969837.3347,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\game\\store\\store_api.gd": 1794185113707.211,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\common\\derived.ts": 1794187192356.98,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\cppgraph\\build.ts": 1794187177341.3745,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\cppgraph\\command.ts": 1794187189303.595,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\cppgraph\\session.ts": 1794186642739.2097,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\cppgraph\\symbol-cache.ts": 1794187164932.5315
+    },
+    "toolu_01PXe1dLsdt2wFa6GukWLNNx": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core.h": 1794185062419.35,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core_bind.cpp": 1794185109685.7112,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core_probe_render.cpp": 1794185086139.101,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\props\\prop_renderer.cpp": 1794184941336.3962,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\props\\prop_renderer.h": 1794184956875.945,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\render_world.h": 1794184969837.3347,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\game\\store\\store_api.gd": 1794185113707.211,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\common\\derived.ts": 1794187192356.98,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\cppgraph\\build.ts": 1794187177341.3745,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\cppgraph\\command.ts": 1794187189303.595,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\cppgraph\\session.ts": 1794186642739.2097,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\cppgraph\\symbol-cache.ts": 1794187164932.5315
+    },
+    "toolu_017Ftxw2ySbYJraepGMr9WYg": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core.h": 1794185062419.35,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core_bind.cpp": 1794185109685.7112,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\api\\city_core_probe_render.cpp": 1794185086139.101,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\props\\prop_renderer.cpp": 1794184941336.3962,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\props\\prop_renderer.h": 1794184956875.945,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\render_world.h": 1794184969837.3347,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\game\\store\\store_api.gd": 1794185113707.211,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\common\\derived.ts": 1794187192356.98,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\common\\tasks.ts": 1794188223291.922,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\cppgraph\\build.ts": 1794187177341.3745,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\cppgraph\\command.ts": 1794187189303.595,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\cppgraph\\session.ts": 1794186642739.2097,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\tasks\\inputs.py": 1794188209836.3564,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\tasks\\tests\\test_cli.py": 1794188119410.151,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\cppgraph\\symbol-cache.ts": 1794187164932.5315
+    },
+    "toolu_01JH9tUyTbK1wkJgQGeyDzsC": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\translate\\expressions.ts": 1794189189131.068,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\translate\\flow.ts": 1794189261219.4106,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\translate\\translator.ts": 1794189226880.021,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\fixtures\\translate\\src\\world\\yard.ts": 1794188994776.4546,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\fixtures\\translate\\yard.translate.json": 1794189007556.2483,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\translate.test.ts": 1794189061069.3213
+    },
+    "toolu_01M7gHEHVD97ukTGFQYHTJZm": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\translate\\expressions.ts": 1794189476966.8672,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\translate\\flow.ts": 1794189261219.4106,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\translate\\translator.ts": 1794189226880.021,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\fixtures\\translate\\src\\world\\yard.ts": 1794189441642.325,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\fixtures\\translate\\yard.translate.json": 1794189007556.2483,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\translate.test.ts": 1794189525870.4429
+    },
+    "toolu_018xs2gA9YPpnjV5qGJQLVHs": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\js\\js_map.h": 1794190010167.8516,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\js\\js_runtime.h": 1794190056975.079,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\audit\\state.ts": 1794190406187.552,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794190481274.458,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\quarantine.ts": 1794190275098.094,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\translate\\modules.ts": 1794190461650.4807,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\audit.test.ts": 1794190347531.4866,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794190390835.6611,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\cppgraph.test.ts": 1794190563432.9795,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\js-runtime.test.ts": 1794190071433.216
+    },
+    "toolu_01Qfhdfhoz6JTEHiyteGYPNf": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\js\\js_map.h": 1794190010167.8516,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\js\\js_runtime.h": 1794190056975.079,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\audit\\state.ts": 1794190406187.552,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\command.ts": 1794190645935.194,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794190481274.458,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\quarantine.ts": 1794190275098.094,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\translate\\modules.ts": 1794190461650.4807,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\translate\\statements.ts": 1794190702051.9028,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\translate\\translator.ts": 1794190737602.7822,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\audit.test.ts": 1794190347531.4866,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794190390835.6611,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\cppgraph.test.ts": 1794190563432.9795,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\js-runtime.test.ts": 1794190071433.216
+    },
+    "toolu_012i3jMAdSHokMSNbqm4e44B": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451
+    },
+    "toolu_0175fWpc13bP7LyCXukYhgz6": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\tests\\core\\edit_fuzz_test.gd": 1794205358721.3271,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\tests\\core\\fuzz_brush_edits.gd": 1794205362528.9036
+    },
+    "toolu_01WBMA3hrUAtrz3SMchV2RLf": {},
+    "toolu_01H5frMDaMzHjTonfLr9aU1w": {}
+  },
+  "codeModified": false,
+  "visualModified": false,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": true,
+  "photosReadAfterEdit": [
+    "C:\\Users\\Jonathan\\Desktop\\city\\dist\\captures\\people_far\\01-z14.png",
+    "C:\\Users\\Jonathan\\Desktop\\city\\dist\\captures\\people_far\\02-z8.png"
+  ],
+  "lastEditTime": 1794218510171,
+  "lastTestTime": 1794218510171,
+  "goals": [
+    "Pedestres viram caixa preta ao afastar: achar a causa",
+    "Veículos parados nas faixas: achar a causa",
+    "Ruas que não são do jogo: identificar quais",
+    "Prédios de vidro feios: causa no desenho",
+    "Visual feio a média distância: causa",
+    "Memória, GPU e CPU altas: onde vai o custo",
+    "Verificar no jogo de verdade, de perto e de longe"
+  ],
+  "editedFiles": [],
+  "photodiffFailed": true,
+  "photodiffRanAfterEdit": false
+}

@@ -1,0 +1,55 @@
+{
+  "docTimestamps": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\CLAUDE.md": 1794184784336.382
+  },
+  "readFiles": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\CLAUDE.md": 1794208138748.879
+  },
+  "readCover": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\gatekeeper.js": {
+      "mtime": 1794173213165.8494,
+      "total": 755,
+      "ranges": [
+        [
+          636,
+          747
+        ]
+      ]
+    }
+  },
+  "goalsDefined": true,
+  "shellSnapshots": {
+    "toolu_01SYLj9Z5nT4QwedSDi6YLwm": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\effects\\effect_shapes_blow.h": 1794208057757.117,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\effects\\gore.cpp": 1794208041258.0903,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\effects\\wires.cpp": 1794208050924.6814
+    },
+    "toolu_01W4h9Wrycz9CXmCLhPVCqB1": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\effects\\effect_shapes_blow.h": 1794208057757.117,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\effects\\gore.cpp": 1794208041258.0903,
+      "C:\\Users\\Jonathan\\Desktop\\city\\native\\src\\render\\effects\\wires.cpp": 1794208050924.6814,
+      "C:\\Users\\Jonathan\\Desktop\\city\\project\\data\\render\\effects.json": 1794208101578.114,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\gates\\schemas\\effects.schema.json": 1794208101743.475
+    }
+  },
+  "codeModified": true,
+  "visualModified": false,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": false,
+  "photosReadAfterEdit": [],
+  "lastEditTime": 1794208104918,
+  "lastTestTime": 0,
+  "goals": [
+    "Ler os trechos do photodiff no gatekeeper",
+    "Remover os bloqueios e o rastreio do photodiff",
+    "Ajustar os testes de regressão",
+    "Rodar os testes do gatekeeper"
+  ],
+  "editedFiles": [],
+  "photodiffFailed": false,
+  "photodiffRanAfterEdit": false
+}

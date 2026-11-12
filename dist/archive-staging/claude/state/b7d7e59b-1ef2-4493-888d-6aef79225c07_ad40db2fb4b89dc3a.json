@@ -1,0 +1,87 @@
+{
+  "docTimestamps": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193168563.1443
+  },
+  "readFiles": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193168563.1443,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ad40db2fb4b89dc3a\\native\\src\\sim\\traffic\\vehicle_signals.cpp": 1794193417573.713,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ad40db2fb4b89dc3a\\project\\render\\lamp_radiance.gd": 1794193529891.0535,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ad40db2fb4b89dc3a\\native\\src\\sim\\traffic\\vehicle_speed.cpp": 1794193769741.3274,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ad40db2fb4b89dc3a\\project\\tests\\visual\\capture_vehicle_looks.gd": 1794203518013.657,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ad40db2fb4b89dc3a\\project\\tests\\visual\\capture_vehicle_looks.tscn": 1794194071785.506,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\a030f034ab8116e4\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\tasks\\b5hvavd6u.output": 1794194584768.0774,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\fix_eol.py": 1794194844153.5256,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ad40db2fb4b89dc3a\\native\\src\\sim\\traffic\\vehicle_drive.h": 1794195245156.3425,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ad40db2fb4b89dc3a\\native\\src\\sim\\traffic\\vehicle_drive.cpp": 1794195264867.2996,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\vehicle_units.py": 1794198614306.9128,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\replace.py": 1794199418118.015,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r1.json": 1794199425829.277,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r2.json": 1794199460909.918,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r3.json": 1794199545146.2905,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ad40db2fb4b89dc3a\\native\\src\\sim\\traffic\\lane_change_path.cpp": 1794199573365.1438,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r4.json": 1794199600832.593,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r5.json": 1794199622703.943,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r6.json": 1794199644203.6384,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r7.json": 1794199796043.3394,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r8.json": 1794199836098.552,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r9.json": 1794199859361.2097,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r10.json": 1794199882157.323,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r11.json": 1794199940563.8872,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ad40db2fb4b89dc3a\\native\\src\\render\\effects\\exhaust.h": 1794200093438.2727,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r12.json": 1794200123771.411,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ad40db2fb4b89dc3a\\native\\src\\render\\effects\\exhaust.cpp": 1794200160205.5674,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r13.json": 1794200232788.9722,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r14.json": 1794200254802.726,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ad40db2fb4b89dc3a\\native\\src\\sim\\traffic\\far_traffic.cpp": 1794200400543.124,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r15.json": 1794200446125.7415,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r16.json": 1794200474986.1267,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r17.json": 1794200500281.8857,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r18.json": 1794200535788.152,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r19.json": 1794200595901.319,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\files5.txt": 1794201325517.3743,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\split_header.py": 1794201451047.886,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\split_renderer.py": 1794201494258.98,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r20.json": 1794201520922.3755,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r21.json": 1794201562031.0515,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r22.json": 1794201593327.7493,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\vehicles\\r23.json": 1794202299636.832,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ad40db2fb4b89dc3a\\native\\src\\sim\\traffic\\kerb_stops.cpp": 1794202877777.931
+  },
+  "readCover": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ad40db2fb4b89dc3a\\native\\src\\sim\\traffic\\vehicle_motion.cpp": {
+      "mtime": 1794194876373.5984,
+      "total": 387,
+      "ranges": [
+        [
+          1,
+          100
+        ]
+      ]
+    }
+  },
+  "goalsDefined": false,
+  "shellSnapshots": {
+    "toolu_01GbHD9tJGh2ShnGNAs325E8": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    }
+  },
+  "codeModified": true,
+  "visualModified": true,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "photodiffFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": false,
+  "photodiffRanAfterEdit": false,
+  "photosReadAfterEdit": [],
+  "lastEditTime": 1794203815473,
+  "lastTestTime": 0,
+  "goals": [],
+  "editedFiles": []
+}

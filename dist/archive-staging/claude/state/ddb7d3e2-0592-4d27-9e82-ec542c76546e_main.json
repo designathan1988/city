@@ -1,0 +1,30 @@
+{
+  "docTimestamps": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\CLAUDE.md": 1794173590286.1648
+  },
+  "readFiles": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\a030f034ab8116e4\\ddb7d3e2-0592-4d27-9e82-ec542c76546e\\tasks\\bcrovnd7w.output": 1794179603992.545
+  },
+  "readCover": {},
+  "goalsDefined": true,
+  "shellSnapshots": {},
+  "codeModified": false,
+  "visualModified": false,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "photodiffFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": false,
+  "photodiffRanAfterEdit": false,
+  "photosReadAfterEdit": [],
+  "lastEditTime": 0,
+  "lastTestTime": 0,
+  "goals": [
+    "Analyze source folder and target drive",
+    "Copy with robocopy in background",
+    "Verify copy matches source"
+  ],
+  "editedFiles": []
+}

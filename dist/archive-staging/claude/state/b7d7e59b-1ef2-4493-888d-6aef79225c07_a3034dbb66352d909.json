@@ -1,0 +1,31 @@
+{
+  "docTimestamps": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193542525.6726
+  },
+  "readFiles": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193542525.6726,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a3034dbb66352d909\\native\\src\\render\\agents\\people_renderer.h": 1794203858688.815,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a3034dbb66352d909\\dist\\agent-people-looks\\looks_plan.json": 1794203940166.0505,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\plk\\before_import.jsonl": 1794203968117.9644,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\plk\\before_look.jsonl": 1794203973295.1545,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\plk\\after_look.jsonl": 1794204157761.6016
+  },
+  "readCover": {},
+  "goalsDefined": false,
+  "shellSnapshots": {},
+  "codeModified": false,
+  "visualModified": false,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "photodiffFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": false,
+  "photodiffRanAfterEdit": false,
+  "photosReadAfterEdit": [],
+  "lastEditTime": 0,
+  "lastTestTime": 0,
+  "goals": [],
+  "editedFiles": []
+}

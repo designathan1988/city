@@ -1,0 +1,258 @@
+{
+  "docTimestamps": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193168563.1443
+  },
+  "readFiles": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193168563.1443,
+    "C:\\Users\\Jonathan\\Documents\\Projects\\lab\\roadcraft\\src\\sim\\agents\\walk.ts": 1792924172032.551,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aa34be1b538c68dbe\\native\\src\\sim\\catalog\\traffic_params.h": 1794193633981.7048,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aa34be1b538c68dbe\\project\\tests\\visual\\capture_pedtraffic.gd": 1794193931020.1938,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aa34be1b538c68dbe\\project\\tests\\visual\\capture_pedtraffic.tscn": 1794193934281.904,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\a030f034ab8116e4\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\tasks\\bgyjre4f4.output": 1794194197821.3306,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\run_capture.py": 1794194643205.5056
+  },
+  "readCover": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aa34be1b538c68dbe\\project\\tests\\visual\\capture_pedtraffic.gd": {
+      "mtime": 1794195665030.0562,
+      "total": 178,
+      "ranges": [
+        [
+          130,
+          178
+        ]
+      ]
+    }
+  },
+  "goalsDefined": false,
+  "shellSnapshots": {
+    "toolu_01PxZms9fPQ3AtkNP623nBwC": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01X3v7L5vpVkCnFEmxxMzHkL": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01DeTA1FN8rDWpiDbudm5eve": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01EFdUYHn4ekZhQizHKmNyAw": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01PnSve2txNAf47SfC87Zk1a": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_013MZaagaeWuCrgHLFR63iPs": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01XGniggpKfhZbGAwCqWz67H": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01CiCR82NUC7CiXJNXJE7CQ7": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01TWxZVKYVMkTTJZxi8fgDiY": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_012xtpuS9SxJ56eNzEPPPZgy": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_015VCaFA7bYizio4QTiBWcaC": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01GQ3HHms2CxwEn9BtschEPV": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01V9bAEbbpmi9iXvCqEzgU1V": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01LTPp2k2nee7D9vDZKN9Uha": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01CsduQvwPPKxzvkohLmu6zx": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01KTCTv3TkE3ansvj5h9ekME": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01GBVwKPaCVHQqzHZGMVrQNp": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01W9aT1YVM64RSKu1Jf7CWhx": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01Q31yp9oMLxbddfDWkj2qSb": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_011YZ8Cbo1EYxadKxsY2PY13": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01SoXHZQRH25ydgK1gSHaFMr": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01At9zp5USfTj7PazpvwcMPP": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01PhJZsZ3rbUwvsKDqQWUqzo": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_017Gk4Hkuku7BGgNwCYhZvuL": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_018XB5WG9kB8mBeSFzFtGRbQ": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01M14f2CnqbFB1hpJs7wnYjm": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01JYe4WTePVtTxWox9dCDzZu": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01ThS9aC8FRZK21sbsLdhVTh": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01PwSg5PCKfyMyabYf4uYzUH": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01PrRKjroQsKDdVeDRd9PM6u": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01Jjai5cLWCwyc1yQZ2MZtCP": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451
+    }
+  },
+  "codeModified": false,
+  "visualModified": false,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "photodiffFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": false,
+  "photodiffRanAfterEdit": false,
+  "photosReadAfterEdit": [],
+  "lastEditTime": 0,
+  "lastTestTime": 0,
+  "goals": [],
+  "editedFiles": []
+}

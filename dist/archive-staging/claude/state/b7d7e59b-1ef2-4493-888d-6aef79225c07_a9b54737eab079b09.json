@@ -1,0 +1,77 @@
+{
+  "docTimestamps": {},
+  "readFiles": {
+    "C:\\Users\\Jonathan\\.claude\\projects\\C--Users-Jonathan-Desktop-city\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\tool-results\\bonkmb19j.txt": 1794193157758.022,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\transit\\units.py": 1794193348445.989,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a9b54737eab079b09\\native\\src\\sim\\state\\pose_buffer.h": 1794193758195.2695,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a9b54737eab079b09\\native\\src\\sim\\traffic\\traffic_state.h": 1794193761202.2793,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a9b54737eab079b09\\native\\src\\sim\\traffic\\traffic_system.cpp": 1794193784178.7466,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a9b54737eab079b09\\native\\src\\sim\\traffic\\kerb_stops.cpp": 1794193141733.072,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a9b54737eab079b09\\native\\src\\sim\\traffic\\bus_call.h": 1794193829398.9077,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a9b54737eab079b09\\native\\src\\sim\\traffic\\bus_calls.cpp": 1794193902277.6973,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a9b54737eab079b09\\native\\src\\sim\\traffic\\kerb_stops.h": 1794193141733.072,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a9b54737eab079b09\\native\\src\\render\\agents\\agent_renderer.cpp": 1794193141885.2097,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a9b54737eab079b09\\native\\src\\render\\agents\\people_renderer.cpp": 1794193141920.8845,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\transit\\edit_index.py": 1794194140583.928,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\transit\\edit_preview.py": 1794194305150.1946,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\transit\\edit_probe.py": 1794194393666.273,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a9b54737eab079b09\\project\\tests\\core\\bus_riders_test.gd": 1794194450788.5686,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a9b54737eab079b09\\project\\tests\\core\\bus_riders_test.tscn": 1794194456320.8293,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a9b54737eab079b09\\project\\tests\\visual\\bus_stop_look.gd": 1794194770122.5044,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a9b54737eab079b09\\project\\tests\\visual\\bus_stop_look.tscn": 1794194776785.8972,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\transit\\make_suites.py": 1794194851679.7683,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\a030f034ab8116e4\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\tasks\\bbqj0dzhj.output": 1794194902765.7776,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\transit\\edit_riders.py": 1794195195017.3118,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\transit\\syntax.py": 1794197839785.076,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\transit\\edit_close.py": 1794200374263.7253
+  },
+  "readCover": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a9b54737eab079b09\\native\\src\\sim\\transit\\transit_data.cpp": {
+      "mtime": 1794193141832.7273,
+      "total": 249,
+      "ranges": [
+        [
+          1,
+          48
+        ],
+        [
+          148,
+          222
+        ]
+      ]
+    },
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a9b54737eab079b09\\project\\tests\\visual\\bus_stop_look.gd": {
+      "mtime": 1794199947618.296,
+      "total": 134,
+      "ranges": [
+        [
+          20,
+          31
+        ],
+        [
+          118,
+          134
+        ]
+      ]
+    }
+  },
+  "goalsDefined": false,
+  "shellSnapshots": {
+    "toolu_01VvQtSu5TtB2QpAs4kXyBHf": {}
+  },
+  "codeModified": false,
+  "visualModified": false,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "photodiffFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": false,
+  "photodiffRanAfterEdit": false,
+  "photosReadAfterEdit": [],
+  "lastEditTime": 0,
+  "lastTestTime": 0,
+  "goals": [],
+  "editedFiles": []
+}

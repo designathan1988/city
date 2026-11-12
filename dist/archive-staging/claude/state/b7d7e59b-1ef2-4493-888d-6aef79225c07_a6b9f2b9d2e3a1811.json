@@ -1,0 +1,126 @@
+{
+  "docTimestamps": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193168563.1443
+  },
+  "readFiles": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193168563.1443,
+    "C:\\Users\\Jonathan\\.claude\\projects\\C--Users-Jonathan-Desktop-city\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\tool-results\\bx50bxfx3.txt": 1794193228385.2878,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\effect_shapes.h": 1794200256040.9666,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\effect_shapes_blow.h": 1794200354926.5686,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\project\\data\\render\\effects.json": 1794193609524.6082,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\schema_add.py": 1794193636997.0056,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\effect_params.h": 1794199423201.9446,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\effect_params.cpp": 1794193662340.437,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\debris.h": 1794193683961.6367,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\debris.cpp": 1794195572847.9275,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\effect_world.h": 1794200762717.8293,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\effect_blast.cpp": 1794200828235.0334,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\effect_world.cpp": 1794200707159.3638,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\dist\\agent-weapons\\tool_tab_plan.json": 1794193915766.993,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\changed.txt": 1794191025586.598,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\weapons_changed.txt": 1794194173247.9204,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\dist\\agent-weapons\\captures.jsonl": 1794194404458.0613,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\dist\\agent-weapons\\road_crater_plan.json": 1794196798014.681,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\dist\\agent-weapons\\captures2.jsonl": 1794196818773.1123,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\dist\\agent-weapons\\road_probe_plan.json": 1794197004418.469,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\sim\\commands\\strike_commands.cpp": 1794197252312.2107,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\sim\\commands\\shoot_people.cpp": 1794197756711.636,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\dist\\agent-weapons\\captures4.jsonl": 1794198752309.691,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\sim\\demolition\\blast_model.h": 1794199358966.604,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\sim\\demolition\\blast_model.cpp": 1794199299249.411,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\sim\\catalog\\blast_params.h": 1794199311303.4612,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\api\\blast_loader.cpp": 1794199327077.1294,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\sim\\commands\\strike_internal.h": 1794193209849.1753,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\sim\\commands\\strike_buildings.cpp": 1794199378643.9165,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\sim\\commands\\strike_ground.cpp": 1794204479246.6658,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\api\\city_core_strike.cpp": 1794199439595.386,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\marks.h": 1794199490164.7866,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\project\\data\\catalog\\blast.json": 1794199537763.1985,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\weapons_blast_schema.py": 1794199549572.8647,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\agents\\agent_shapes_parts.h": 1794199884922.3328,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\weapons_writhe_data.py": 1794199895110.2915,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\agents\\ragdoll.cpp": 1794199954896.1406,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\agents\\ragdoll.h": 1794199978335.6526,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\agents\\body_renderer.h": 1794200014472.692,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\agents\\body_renderer.cpp": 1794200028865.143,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\effect_bodies.cpp": 1794200756791.6804,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\gore.h": 1794200229680.0027,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\gore.cpp": 1794200476036.4812,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\weapons_effects_data2.py": 1794200391186.899,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\wires.h": 1794200413482.6626,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\wires.cpp": 1794200466820.081,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\mm_layer.h": 1794200456357.525,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\sim\\demolition\\damage_event.h": 1794204484531.419,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\sim\\commands\\nature_commands.h": 1794193209805.72,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\weapons_nature_edit.py": 1794200578631.3423,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\weapons_planted_edit.py": 1794200597480.8254,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\weapons_trees_edit.py": 1794200637701.3455,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\render\\effects\\effect_things.cpp": 1794204500602.303,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\weapons_tuning.py": 1794200929546.2827,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\project\\tests\\visual\\capture_weapons.gd": 1794204587586.2666,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\project\\tests\\visual\\capture_weapons.tscn": 1794201237650.16,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\dist\\agent-weapons\\captures5.jsonl": 1794204147940.3496,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\weapons_bits.py": 1794204465811.8362,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\dist\\agent-weapons\\woods_plan.json": 1794204539975.2317
+  },
+  "readCover": {
+    "C:\\Users\\Jonathan\\.claude\\projects\\C--Users-Jonathan-Desktop-city\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\tool-results\\bacj5kv0s.txt": {
+      "mtime": 1794193247399.3318,
+      "total": 577,
+      "ranges": [
+        [
+          40,
+          577
+        ]
+      ]
+    },
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a6b9f2b9d2e3a1811\\native\\src\\sim\\commands\\nature_commands.cpp": {
+      "mtime": 1794193209805.72,
+      "total": 314,
+      "ranges": [
+        [
+          1,
+          109
+        ]
+      ]
+    }
+  },
+  "goalsDefined": false,
+  "shellSnapshots": {
+    "toolu_01EdsvoVRFKZtZLa2HdaD5vZ": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_013QpKTAxSaDSMfkEJH8dcrS": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01H4QGRJZyqSaHWobhSaYpZf": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451
+    },
+    "toolu_01WzvrHU2j5p57JevaCTdJJ3": {},
+    "toolu_014p2qfi2RmZ8BeuMzntXgRo": {}
+  },
+  "codeModified": false,
+  "visualModified": false,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "photodiffFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": false,
+  "photodiffRanAfterEdit": false,
+  "photosReadAfterEdit": [],
+  "lastEditTime": 0,
+  "lastTestTime": 0,
+  "goals": [],
+  "editedFiles": []
+}

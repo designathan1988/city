@@ -1,0 +1,109 @@
+{
+  "docTimestamps": {},
+  "readFiles": {
+    "C:\\Users\\Jonathan\\.claude\\projects\\C--Users-Jonathan-Desktop-city\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\tool-results\\btdz2ybxz.txt": 1794193117699.9827,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\add_cast.py": 1794193642581.7356,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\native\\src\\render\\agents\\people_casting.h": 1794198987862.215,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\cast_child.py": 1794193707669.3484,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\native\\src\\render\\agents\\people_casting.cpp": 1794199065712.9668,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\project\\tests\\core\\people_cast_test.gd": 1794200774215.5195,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\project\\tests\\core\\people_cast_test.tscn": 1794194005917.5588,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\dist\\agent-people\\people_plan.json": 1794194204413.8086,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\account.py": 1794201370051.2957,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\a030f034ab8116e4\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\tasks\\b1agm1jub.output": 1794195447209.8423,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\dist\\agent-people\\serve_in.jsonl": 1794197948542.5664,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\dist\\agent-people\\crowd_plan.json": 1794198267606.4856,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\dist\\agent-people\\serve_in2.jsonl": 1794198140221.0857,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_record.py": 1794198842252.8625,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_party_data.py": 1794198908028.7349,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_probe.py": 1794199149428.4795,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\tools\\assets\\lab_rig.py": 1794199490138.0063,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_verify.py": 1794199510626.7468,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\tools\\assets\\lab_riders.py": 1794199595083.5085,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_fits.py": 1794199640604.1006,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\tools\\assets\\cook_people_lab.py": 1794199729112.218,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_asset_edit.py": 1794199830338.6494,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\project\\render\\shaders\\people_pose.gdshaderinc": 1794200018979.6467,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\native\\src\\render\\agents\\people_gait.h": 1794200430177.4055,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_suites.py": 1794200258313.7917,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\native\\src\\render\\agents\\people_gait.cpp": 1794200347871.945,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_gait_data.py": 1794200426210.867,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\native\\src\\render\\agents\\people_renderer.h": 1794200521957.838,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\native\\src\\render\\agents\\people_plays.h": 1794200486593.9177,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\native\\src\\render\\agents\\people_plays.cpp": 1794200494399.604,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\native\\src\\render\\agents\\people_renderer.cpp": 1794200571709.368,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_boot_edit.py": 1794200629703.598,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_moods.py": 1794200674697.9907,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_mapa.py": 1794200802416.6067,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\dist\\agent-people\\gait_plan.json": 1794200861805.3704,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\dist\\agent-people\\serve_in4.jsonl": 1794200866099.3523,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_split.py": 1794201792059.9255,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\native\\src\\render\\agents\\people_gait_clips.h": 1794201848980.4634,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\native\\src\\render\\agents\\people_gait_clips.cpp": 1794201858779.4224,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_gait_split.py": 1794201894809.7368,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_fix2.py": 1794201930138.6,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_fix3.py": 1794201967349.905,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent_people_fix4.py": 1794202003596.8174,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\dist\\agent-people\\commit_msg.txt": 1794203291132.9194
+  },
+  "readCover": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-aeee98d580e5f3dd4\\native\\src\\render\\agents\\people_boot.cpp": {
+      "mtime": 1794194638688.6401,
+      "total": 187,
+      "ranges": [
+        [
+          20,
+          187
+        ]
+      ]
+    }
+  },
+  "goalsDefined": false,
+  "shellSnapshots": {
+    "toolu_01C8hG4aC1TpjaGeJ6uJuzxL": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01W1cDXUf2RjSy9xed98nf8H": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_016HS7p38pCpPQBFchz4YjDf": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01AQ3vFVD7JKMWDk12CQW4n5": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451
+    },
+    "toolu_01FWS2HQTGh8wfwuhs4HWtBq": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451
+    },
+    "toolu_015VfQm214otenPfKySLBxSr": {}
+  },
+  "codeModified": false,
+  "visualModified": false,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "photodiffFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": false,
+  "photodiffRanAfterEdit": false,
+  "photosReadAfterEdit": [],
+  "lastEditTime": 0,
+  "lastTestTime": 0,
+  "goals": [],
+  "editedFiles": []
+}

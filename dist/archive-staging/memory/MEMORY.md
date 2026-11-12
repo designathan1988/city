@@ -1,0 +1,33 @@
+- [Work in blocks, nothing run inside](no-city-tests-mid-work.md) — BINDING, owner 2026-11-12: fix in the code in big blocks; NO test of any kind, build-to-check, measurement, photo, commit or export until the block's end; then everything once
+- [MANDATORY PAUSE 2026-11-11](mandatory-pause-2026-11-11.md) — BINDING, wins over all: no new game code until survey → proven research → fixes; image protocol; 14 orders; state in log/specification.md, pendencias.md, research.md
+- [The binding way is log/how-we-work.md](binding-way.md) — owner 2026-11-11: the way step by step and the contradictions settled live in the repo's log/how-we-work.md + CLAUDE.md; they win over any memory
+- [The feature tracer is GENERIC](feature-tracer-generic.md) — BINDING: no rule/table/list/case for any program, library, API or pattern; specs + official declarations only
+- [Fix the cause, the costliest way](fix-cause-effort-neutral.md) — owner 2026-11-11: no cheap fix, never copy roadcraft code; own earlier fixes from the tag were authorised (not ports); always the costliest solution at the cause
+- [The lab is a reference, never code to copy](no-reference-game.md) — lab/roadcraft shows WHAT the game does; design the code for this architecture; a rename is still a copy; 4.0-main is old
+- [Read before delegating](read-before-delegating.md) — read docs and code in full personally, no sampling or agents; log findings in log/review.md
+- [Study before coding](study-before-coding.md) — research deps' known bugs and the oracle design first; build once, no trial-and-error loops
+- [Promo video pipeline](promo-video-pipeline.md) — how the 2026-11-08 promo was recorded: clean HEAD copy, fixed fps, tick per frame, ffmpeg
+- [Parallel sessions stopped](coordinate-parallel-sessions.md) — user cancelled them; this session integrates their branches and owns all continuation; no agents unless ordered
+- [Agents: no destructive commands](agents-no-destructive-commands.md) — briefs forbid rm -rf and relative-path deletes; an agent once wiped AppData (restored from shadow copy)
+- [Diagnosis 2026-11-08](diagnosis-2026-11-08.md) — HISTORY: why sessions were slow then (prompt-only enforcement, whole-tree test keys, uniform road step); hooks exist now
+- [No machine translation, no agents](delegate-port-with-trace.md) — SUPERSEDED order: never start from the converter's translation of the roadcraft; kept as history
+- [Review street edges](review-street-edges.md) — every photo: footway vs lot fronts, kerb, terrain seams; a grass strip there is a defect
+- [No agents](never-wake-stopped-agents.md) — owner 2026-11-11 "NÃO USE AGENTES": do the work myself; never resume a stopped agent
+- [No session transcripts](no-session-transcripts.md) — never read other sessions' .jsonl/list_events/episodic archive (safeguard block); check work by branch, diff, logs
+- [Commit and push regularly](commit-push-regularly.md) — cadence superseded 2026-11-12: commits and one push at the block's close
+- [Fast, direct checks](fast-direct-checks.md) — a check takes seconds: newest folders first, no wide scans; an empty fragile search is not a "no"
+- [A request is one node](request-is-one-node.md) — cover the goal, bring the neighbouring nodes, enforce rules with mechanisms, resolve limits; docs via context7, never guess
+- [No unwatched processes](no-unwatched-processes.md) — never background a process unwatched; foreground, short deadline, progress printed; the live instance is watched by its supervisor
+- [Stage skill changes](stage-skill-changes.md) — never patch a live skill/hook piece by piece; copy, test whole, deploy only on the user's word
+- [Tree back to 7 November](tree-back-to-nov7.md) — main = a1a771c4 since 2026-11-10 (owner's order); tag antes-da-volta-2026-11-10 is read for WHAT only; redo features and perf one at a time, measured
+- [Label and wait for photos](label-and-wait-photos.md) — commit and date written on each image, builds side by side, shot only when render_pending is 0; look at the city before measuring it
+- [Code first, both measured at the end](code-first-measure-at-end.md) — investigate by reading; at the end measure the previous build and this one in km24 (no up-front pass)
+- [Judge photos by quality](judge-photos-by-quality.md) — each photo on its own: no anomalies, misshapen models, broken features, overlaps; never pixel equality, never old commits' photos as reference
+- [One Godot at a time](one-godot-at-a-time.md) — never the whole suite mid-work (six Godot at once, 85% RAM); one named scene per command; the live instance counts as the one
+- [Watch the session's clangd](watch-session-clangd.md) — it grows by GBs in a long C++ session; stop it by PID past ~3 GB before the user has to point at it
+- [Never delete records](never-delete-records.md) — research, plans, ledgers, progress are appended to, never pruned; skip skill steps that delete them; keep ignored ledgers copied in log/
+- [Deliver the exe at the block's close](deliver-exe-after-each-fix.md) — cadence superseded 2026-11-12: tools/build/deliver.sh export once, at the block's end; Desktop Roadcraft shortcut opens the newest build
+- [Hook hands off](hook-hands-off.md) — never change the trace-fix skill or hooks; b2d441f8's version holds (restored in 58bbba6f); follow SKILL.md as on disk, flow+record right after each read, open every photo and crop before close
+- [Photos follow the change](photos-follow-the-change.md) — poles fix → poles near/far/angles; people fix → people with the clock running; plus general shots; every crop piece by piece
+- [Bytes, not write_text](bytes-not-write-text.md) — Python write_text on Windows turns LF repo files CRLF; Edit tool or read/write bytes, count CRs before commit
+- [New generic tracer](new-generic-tracer.md) — tools/tracer (2026-11-12), standalone; old tracer untouched (stash kept), lab not to be run; record log/tracer.md

@@ -1,0 +1,79 @@
+{
+  "docTimestamps": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193168563.1443,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-abef5e70ea3588599\\log\\mapa.md": 1794193248897.7693
+  },
+  "readFiles": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193168563.1443,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\bld\\units.py": 1794193371703.2498,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\bld\\methods.py": 1794193381831.7842,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-abef5e70ea3588599\\native\\src\\render\\buildings\\wear.h": 1794193903360.6025,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-abef5e70ea3588599\\native\\src\\render\\buildings\\wear.cpp": 1794193907937.6917,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\bld\\mat.py": 1794194172397.042,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\bld\\cpp2.py": 1794194296951.0532,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\bld\\cpp3.py": 1794194472869.9758,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\bld\\cpp4.py": 1794194520892.7454,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-abef5e70ea3588599\\log\\mapa.md": 1794195825560.095,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\bld\\cpp5.py": 1794195355200.8708,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-abef5e70ea3588599\\native\\src\\render\\buildings\\building_renderer_wear.cpp": 1794195402295.865,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-abef5e70ea3588599\\native\\src\\render\\buildings\\look_shapes.h": 1794196815636.0417,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-abef5e70ea3588599\\native\\src\\render\\buildings\\look_shapes_levels.h": 1794196829056.8376,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\bld\\ledger_tsv.py": 1794199833300.1135
+  },
+  "readCover": {},
+  "goalsDefined": false,
+  "shellSnapshots": {
+    "toolu_01AacrbxWYWdWYKtybVKdxcQ": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01LjJeCsLtk1fdx1PgedZQKy": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_0172aaQ88DVmjhDjwjc2pk3v": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01UwcyEpkT31256NCurbiPZQ": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_019ycqfR19ZppfgVc195bFbL": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451
+    },
+    "toolu_01JvGaPuFd15tXMquwiGASjE": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451
+    },
+    "toolu_01TQR8mcaqadwXiYkEqeThbo": {}
+  },
+  "codeModified": false,
+  "visualModified": false,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "photodiffFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": false,
+  "photodiffRanAfterEdit": false,
+  "photosReadAfterEdit": [],
+  "lastEditTime": 0,
+  "lastTestTime": 0,
+  "goals": [],
+  "editedFiles": []
+}

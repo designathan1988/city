@@ -1,0 +1,45 @@
+{
+  "docTimestamps": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\CLAUDE.md": 1794157258883.7456
+  },
+  "readFiles": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\eed9d3322c3771c1\\a023155c-adc5-4709-ac16-3b2b2e8f638c\\scratchpad\\work\\.claude\\compact.test.js": 1794172959006.7136,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\eed9d3322c3771c1\\a023155c-adc5-4709-ac16-3b2b2e8f638c\\scratchpad\\tools\\patch_compact.js": 1794172510569.3438,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\eed9d3322c3771c1\\a023155c-adc5-4709-ac16-3b2b2e8f638c\\scratchpad\\work\\.claude\\transcript.test.js": 1794173158923.0286,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\eed9d3322c3771c1\\a023155c-adc5-4709-ac16-3b2b2e8f638c\\scratchpad\\tools\\patch_transcript.js": 1794172863976.2969,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\eed9d3322c3771c1\\a023155c-adc5-4709-ac16-3b2b2e8f638c\\scratchpad\\tools\\patch_vars.js": 1794172956052.69,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\eed9d3322c3771c1\\a023155c-adc5-4709-ac16-3b2b2e8f638c\\scratchpad\\tools\\compact_e2e.js": 1794173096083.427,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\eed9d3322c3771c1\\a023155c-adc5-4709-ac16-3b2b2e8f638c\\scratchpad\\tools\\patch_e2e_fixes.js": 1794173044667.1228,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\eed9d3322c3771c1\\a023155c-adc5-4709-ac16-3b2b2e8f638c\\scratchpad\\work\\.claude\\gatekeeper.fixes.test.js": 1794173075682.4734,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\eed9d3322c3771c1\\a023155c-adc5-4709-ac16-3b2b2e8f638c\\scratchpad\\tools\\patch_budget.js": 1794173156602.8958
+  },
+  "readCover": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\eed9d3322c3771c1\\a023155c-adc5-4709-ac16-3b2b2e8f638c\\scratchpad\\work\\.claude\\gatekeeper.js": {
+      "mtime": 1794172865043.5437,
+      "total": 740,
+      "ranges": [
+        [
+          308,
+          339
+        ]
+      ]
+    }
+  },
+  "goalsDefined": true,
+  "shellSnapshots": {},
+  "codeModified": false,
+  "visualModified": false,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "photodiffFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": false,
+  "photodiffRanAfterEdit": false,
+  "photosReadAfterEdit": [],
+  "lastEditTime": 1794173170526,
+  "lastTestTime": 0,
+  "goals": [],
+  "editedFiles": []
+}

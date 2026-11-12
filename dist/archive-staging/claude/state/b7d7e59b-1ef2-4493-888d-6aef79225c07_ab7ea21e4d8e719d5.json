@@ -1,0 +1,93 @@
+{
+  "docTimestamps": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193168563.1443
+  },
+  "readFiles": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193168563.1443,
+    "C:\\Users\\Jonathan\\.claude\\projects\\C--Users-Jonathan-Desktop-city\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\tool-results\\bpoaol8oc.txt": 1794193243806.6484,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\plan_keys.py": 1794193554102.399,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\edit_lots_tool.py": 1794193780074.5464,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\edit_split.py": 1794194059841.5017,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\edit_split2.py": 1794194086942.732,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab7ea21e4d8e719d5\\project\\game\\tools\\lot_outlines.gd": 1794194152047.8767,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab7ea21e4d8e719d5\\dist\\agent-zones\\plan_zones.json": 1794194299752.4294,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab7ea21e4d8e719d5\\project\\tests\\core\\growth_pick_test.gd": 1794194489398.6199,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab7ea21e4d8e719d5\\project\\tests\\core\\growth_pick_test.tscn": 1794194494587.1968,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\edit_mapa.py": 1794194536828.521,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\group_units.py": 1794194611318.6877,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\groups.txt": 1794194618065.4006,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab7ea21e4d8e719d5\\dist\\agent-zones\\plan_lots.json": 1794194762546.2644,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\run_look.py": 1794196886636.401,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\apply.py": 1794197509699.227,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\e1.json": 1794197515731.4702,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\e5.json": 1794197920932.9292,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\e5b.json": 1794197980330.1714,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\e4.json": 1794198144761.6152,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab7ea21e4d8e719d5\\dist\\agent-zones\\plan_front.json": 1794198437210.8477,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab7ea21e4d8e719d5\\dist\\agent-zones\\plan_front_close.json": 1794198516974.62,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\efront.json": 1794198705343.3345,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\e4b.json": 1794198771545.4922,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\e7.json": 1794198835792.8328,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\e7b.json": 1794198874870.8413,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\e7c.json": 1794198917002.3745,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\e1c.json": 1794199250787.239,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\e1d.json": 1794199283433.738,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\e1e.json": 1794199487387.795,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\e1f.json": 1794199562632.7207,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab7ea21e4d8e719d5\\dist\\agent-zones\\plan_growth.json": 1794199632978.2483,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\crop.py": 1794200719249.629,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\e1g.json": 1794201595800.4077,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\e1h.json": 1794201622522.749
+  },
+  "readCover": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab7ea21e4d8e719d5\\project\\game\\tools\\lots_tool.gd": {
+      "mtime": 1794194224653.8428,
+      "total": 225,
+      "ranges": [
+        [
+          20,
+          189
+        ]
+      ]
+    },
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-ab7ea21e4d8e719d5\\log\\mapa.md": {
+      "mtime": 1794193222148.181,
+      "total": 586,
+      "ranges": [
+        [
+          460,
+          475
+        ]
+      ]
+    }
+  },
+  "goalsDefined": false,
+  "shellSnapshots": {
+    "toolu_01J44o3e2ZvybbRJSx8suzGE": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01FCFWqj4qmuka2WFk6FLBX3": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451
+    }
+  },
+  "codeModified": false,
+  "visualModified": false,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "photodiffFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": false,
+  "photodiffRanAfterEdit": false,
+  "photosReadAfterEdit": [],
+  "lastEditTime": 0,
+  "lastTestTime": 0,
+  "goals": [],
+  "editedFiles": []
+}

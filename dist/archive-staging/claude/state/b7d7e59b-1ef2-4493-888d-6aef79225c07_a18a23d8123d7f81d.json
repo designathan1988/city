@@ -1,0 +1,65 @@
+{
+  "docTimestamps": {},
+  "readFiles": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a18a23d8123d7f81d\\dist\\agent-poles\\make_plan.py": 1794194418985.2615,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a18a23d8123d7f81d\\dist\\agent-poles\\look.py": 1794193437724.7432,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a18a23d8123d7f81d\\native\\src\\sim\\roads\\street_furniture.h": 1794193861700.9622,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a18a23d8123d7f81d\\native\\src\\sim\\roads\\road_network.h": 1794193796892.1165,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a18a23d8123d7f81d\\native\\src\\sim\\roads\\street_furniture.cpp": 1794193895000.1597,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\schema_power.py": 1794194084078.1614,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a18a23d8123d7f81d\\project\\tests\\core\\street_power_test.gd": 1794194332958.1216,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\poles_report_draft.md": 1794195412493.3398,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\pole_height.py": 1794198452807.379
+  },
+  "readCover": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-a18a23d8123d7f81d\\native\\src\\sim\\roads\\street_furniture_posts.cpp": {
+      "mtime": 1794197969370.305,
+      "total": 167,
+      "ranges": [
+        [
+          66,
+          145
+        ]
+      ]
+    }
+  },
+  "goalsDefined": false,
+  "shellSnapshots": {
+    "toolu_01TyedK5Cf7HcaQrR2ViYZix": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01DXh6ZEM42QpXoQaZvuBttV": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_016zDjdp3ZEJ6sYUhcQAvZeY": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    }
+  },
+  "codeModified": false,
+  "visualModified": false,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "photodiffFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": false,
+  "photodiffRanAfterEdit": false,
+  "photosReadAfterEdit": [],
+  "lastEditTime": 0,
+  "lastTestTime": 0,
+  "goals": [],
+  "editedFiles": []
+}

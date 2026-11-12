@@ -1,0 +1,82 @@
+{
+  "docTimestamps": {},
+  "readFiles": {
+    "C:\\Users\\Jonathan\\Documents\\Projects\\lab\\roadcraft\\src\\world\\ecology.ts": 1792324565000,
+    "C:\\Users\\Jonathan\\Documents\\Projects\\lab\\roadcraft\\src\\render\\environment.ts": 1793152610634.878,
+    "C:\\Users\\Jonathan\\Documents\\Projects\\lab\\roadcraft\\src\\render\\farGround.ts": 1792978822968.818,
+    "C:\\Users\\Jonathan\\Documents\\Projects\\lab\\roadcraft\\src\\editor\\terrainBrush.ts": 1793220390720.1172,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af71121bd6c198f60\\native\\src\\render\\cover\\ecology_raster.h": 1794193634959.7173,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af71121bd6c198f60\\native\\src\\render\\cover\\ecology_raster.cpp": 1794194897624.7336,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af71121bd6c198f60\\project\\render\\shaders\\ecology.gdshaderinc": 1794193790361.4626,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af71121bd6c198f60\\project\\render\\shaders\\rock_strata.gdshaderinc": 1794193856128.8845,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\edit_palette.py": 1794194038664.5525,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\edit_panels.py": 1794194190237.5725,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af71121bd6c198f60\\project\\game\\tools\\brush_prefs.gd": 1794195163315.666,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af71121bd6c198f60\\dist\\agent-landscape\\plan.py": 1794194409834.738,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\a030f034ab8116e4\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\tasks\\bq5lim9qt.output": 1794194844984.6438,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af71121bd6c198f60\\project\\tests\\core\\brush_prefs_test.gd": 1794195076693.7822,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af71121bd6c198f60\\project\\tests\\core\\brush_prefs_test.tscn": 1794195080549.8699,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-landscape\\rewrite_work.py": 1794195309229.6667,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-landscape\\talus_data.py": 1794195434230.0974,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-landscape\\paint_strata.py": 1794198023293.8943
+  },
+  "readCover": {
+    "C:\\Users\\Jonathan\\Documents\\Projects\\lab\\roadcraft\\src\\render\\terrain.ts": {
+      "mtime": 1793239421845.2798,
+      "total": 3002,
+      "ranges": [
+        [
+          1,
+          1338
+        ]
+      ]
+    },
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af71121bd6c198f60\\project\\render\\shaders\\terrain_ground.gdshaderinc": {
+      "mtime": 1794193894057.29,
+      "total": 62,
+      "ranges": [
+        [
+          30,
+          62
+        ]
+      ]
+    }
+  },
+  "goalsDefined": false,
+  "shellSnapshots": {
+    "toolu_01DkiN2pnBufXXdxn5VqtTc7": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_01PFtKN2TYV3J4mVWfw384LQ": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_matrix4.h": 1794192939227.5862,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_rotation.h": 1794192800503.816,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\cpp\\three\\three_vector.h": 1794192800503.816
+    },
+    "toolu_015Enzxv7JJaA6BvXFL7aNBf": {
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\src\\convert\\ledger.ts": 1794192262236.1333,
+      "C:\\Users\\Jonathan\\Desktop\\city\\tools\\converter\\test\\convert.test.ts": 1794192246194.451
+    },
+    "toolu_01KcjXiQYJhZweNPRJGzDdTB": {}
+  },
+  "codeModified": true,
+  "visualModified": true,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "photodiffFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": false,
+  "photodiffRanAfterEdit": false,
+  "photosReadAfterEdit": [],
+  "lastEditTime": 1794201194175,
+  "lastTestTime": 0,
+  "goals": [],
+  "editedFiles": []
+}

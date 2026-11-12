@@ -1,0 +1,45 @@
+{
+  "docTimestamps": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193542525.6726
+  },
+  "readFiles": {
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\27fcd66c079720e1\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\scratchpad\\agent-rules.md": 1794193542525.6726,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af17d7637797f4c35\\dist\\agent-polefix\\make_plan.py": 1794203092299.6165,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af17d7637797f4c35\\native\\src\\sim\\roads\\street_furniture_posts.cpp": 1794204142130.8813,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af17d7637797f4c35\\native\\src\\sim\\traffic\\ped_crowd.cpp": 1794203418827.0117,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af17d7637797f4c35\\dist\\agent-polefix\\stop_views.json": 1794203087676.538,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af17d7637797f4c35\\native\\src\\sim\\traffic\\ped_system.h": 1794203452322.0652,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af17d7637797f4c35\\native\\src\\sim\\traffic\\ped_furniture.cpp": 1794204144783.6775,
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af17d7637797f4c35\\dist\\agent-polefix\\run_scene.py": 1794203762013.3408,
+    "C:\\Users\\Jonathan\\AppData\\Local\\Temp\\claude\\a030f034ab8116e4\\b7d7e59b-1ef2-4493-888d-6aef79225c07\\tasks\\bb5wexxwk.output": 1794204446102.1465
+  },
+  "readCover": {
+    "C:\\Users\\Jonathan\\Desktop\\city\\.claude\\worktrees\\agent-af17d7637797f4c35\\native\\src\\sim\\traffic\\ped_crowd.cpp": {
+      "mtime": 1794202571390.0662,
+      "total": 360,
+      "ranges": [
+        [
+          136,
+          170
+        ]
+      ]
+    }
+  },
+  "goalsDefined": false,
+  "shellSnapshots": {},
+  "codeModified": true,
+  "visualModified": true,
+  "crashErrorActive": false,
+  "gateFailed": false,
+  "photodiffFailed": false,
+  "testFailed": false,
+  "buildFailed": false,
+  "quickFailed": false,
+  "testedAfterEdit": false,
+  "photodiffRanAfterEdit": false,
+  "photosReadAfterEdit": [],
+  "lastEditTime": 1794203797641,
+  "lastTestTime": 0,
+  "goals": [],
+  "editedFiles": []
+}
