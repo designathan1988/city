@@ -53,6 +53,10 @@ public:
 	float back_door_x = 0;
 	std::vector<float> loading_x; // loading doors on the back faces, and the wall they stand in
 	float loading_y = 0;
+	// An uphill house's garage dug into the slope at the front of its drive, its door at the street's level and the house above it
+	// (empty when none): lay_cars lays it (EL_DUG_GARAGE, the render draws it from the ground at its door up to the lot's floor), and
+	// its walls close its stretch of the side boundary.
+	Rect dug;
 
 	bool full() const { return int(b.elements.size()) >= rules.max_elements; }
 	int paint(const char *name);

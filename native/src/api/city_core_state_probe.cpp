@@ -77,7 +77,7 @@ Dictionary derived_of(const CityState &s) {
 	uint64_t lots = FNV_BASIS;
 	for (int64_t k : cells)
 		for (const Lot &l : s.lots.by_cell.at(k)) {
-			const double f[] = { l.x, l.z, l.w, l.d, l.rot, double(l.zone), double(l.profile), double(l.seed) };
+			const double f[] = { l.x, l.z, l.w, l.d, l.rot, double(l.zone), double(l.profile), double(l.seed), double(l.site) };
 			lots = fold(lots, f, sizeof(f));
 		}
 	d["lots"] = String::num_uint64(lots, HEX);

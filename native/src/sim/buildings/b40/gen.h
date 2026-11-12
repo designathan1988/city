@@ -19,7 +19,7 @@ struct Envelope {
 	bool low = false; // a low-density commercial lot
 };
 
-LotPlan plan_lot(const Data &data, Kind kind, float W, float D, Xoshiro128 &r);
+LotPlan plan_lot(const Data &data, Kind kind, float W, float D, Xoshiro128 &r, uint8_t site);
 // The building for the envelope of `b.plan` (volumes in the envelope frame, x from its left edge).
 void made_to_measure(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r);
 // Facade grammar (facade_compose.cpp).
@@ -33,7 +33,7 @@ void dress_building(const Data &data, Body &b, Xoshiro128 &r, float entrance, in
 // The lot round the building (lot_layout.h): grounds, drives and garages, yards, bays and docks, boundary, gates; lot frame.
 void lay_out_lot(const Data &data, Body &b, Xoshiro128 &r);
 // The whole body of a record: kind from the zone, all steps, shifted to the lot frame (x from the lot's middle). It chooses its own
-// storeys; `floors` only caps a middling block, so the storeys it answers with give the same body back.
-void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed);
+// storeys; `floors` only caps a middling block, so the storeys it answers with give the same body back. `site`: the lot's LotSite bits.
+void make_body(const Data &data, Body &b, int zone, int floors, float W, float D, uint32_t seed, uint8_t site);
 
 } // namespace city::b40

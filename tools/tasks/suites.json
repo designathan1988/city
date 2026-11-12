@@ -313,6 +313,7 @@
     {"name": "interior_test", "scene": "tests/core/interior_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "model_test", "scene": "tests/core/model_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "city_mass_test", "scene": "tests/core/city_mass_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "lot_site_test", "scene": "tests/core/lot_site_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "scenic_city_test", "scene": "tests/core/scenic_city_test", "renderer": "gl_compatibility", "timeout_s": 900},
     {"name": "job_pool_test", "scene": "tests/core/job_pool_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {
@@ -361,7 +362,9 @@
    "doc": "the look plans the capture suite photographs",
    "template": "look",
    "items": [{"name": "frozen", "plan": "res://tests/visual/frozen_plan.json", "resolution": "1280x720", "timeout_s": 90},
-    {"name": "sao_paulo", "plan": "res://tests/visual/sao_paulo_plan.json", "resolution": "1600x900", "timeout_s": 900}]
+    {"name": "sao_paulo", "plan": "res://tests/visual/sao_paulo_plan.json", "resolution": "1600x900", "timeout_s": 900},
+    {"name": "lot_corners", "plan": "res://tests/visual/lot_corners_plan.json", "resolution": "1600x900", "timeout_s": 600},
+    {"name": "lot_garage", "plan": "res://tests/visual/lot_garage_plan.json", "resolution": "1600x900", "timeout_s": 900}]
   },
   "capture_scenes": {
    "doc": "the reference views (capture.tscn: street from above, neighbourhood, whole town)",

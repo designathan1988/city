@@ -32,6 +32,7 @@ struct Building {
 	uint16_t style = 0; // 0..127 automatic, 128 + arch = chosen
 	uint16_t profile = 0; // profile of the street it faces
 	int16_t landmark = -1; // catalogue project (data/catalog/landmarks) or -1
+	uint8_t site = 0; // b40::LotSite bits of the lot it grew on (a corner's second street, ground rising to the back)
 	bool alive = false;
 	b40::BodyRef body; // the version the player edited, held by the record (b40::BodyTable); none = made from the seed
 	double built = 0; // city minute it was built (decay and renovation)

@@ -1,6 +1,6 @@
 // The facade grammar: style by kind/era/street character, wall
 // and trim paints, bay counts on the style module, storey fills with the symmetric rhythm, and the dress (stone base,
-// entrance canopy or recess, projecting reliefs, corner piers).
+// entrance canopy or recess, projecting reliefs, corner piers). A corner lot's side on its second street takes the front's rhythm.
 #include "sim/buildings/b40/gen.h"
 #include "sim/buildings/b40/paint.h"
 
@@ -28,7 +28,15 @@ void canopy(Body &b, float x, float y, float w, float d, float z, float h) {
 	b.elements.push_back(e);
 }
 
-void compose_storeys(const FacadeShape &K, const StyleDef &s, const std::vector<uint8_t> &rhythm, Volume &v, Ground ground, int tallest, const int *counts) {
+// The sides of a box a corner lot's second street sees (the right is side 1, the left side 3: sides run round from the front): they
+// take the front's rhythm, a facade of their own rather than a side wall's plain row.
+constexpr int RIGHT_SIDE = 1, LEFT_SIDE = 3;
+bool street_side(uint8_t site, int side) {
+	return (side == RIGHT_SIDE && (site & SITE_CORNER_RIGHT)) || (side == LEFT_SIDE && (site & SITE_CORNER_LEFT));
+}
+
+void compose_storeys(const FacadeShape &K, const StyleDef &s, const std::vector<uint8_t> &rhythm, Volume &v, Ground ground, int tallest, const int *counts,
+		uint8_t site) {
 	int top = v.top() - 1;
 	for (int k = 0; k < v.storeys; k++) {
 		int level = v.base + k;
@@ -39,7 +47,7 @@ void compose_storeys(const FacadeShape &K, const StyleDef &s, const std::vector<
 		else if (crown_floor) fill = s.top;
 		else { fill = s.side_fill; rhythm_bays = true; }
 		for (int side = 0; rhythm_bays && side < v.sides(); side++) {
-			if (!v.outline.empty() ? counts[side] < 3 : side == 1 || side == 3) continue;
+			if (!v.outline.empty() ? counts[side] < 3 : (side == RIGHT_SIDE || side == LEFT_SIDE) && !street_side(site, side)) continue;
 			for (int i = 0; i < counts[side]; i++) {
 				uint8_t c = rhythm[size_t(std::min(i, counts[side] - 1 - i)) % rhythm.size()];
 				if (c != fill) v.bays[bay_key(k, side, i)] = c;
@@ -123,7 +131,7 @@ void compose_facades(const Data &data, Body &b, Xoshiro128 &r) {
 			g = FaceGeometry{ counts[side], ww, wh, s.sill, 0, 0, -1 };
 			if (s.piers && !low) { g.pier_w = s.pier_w; g.pier_d = s.pier_d; g.pier_every = s.pier_every; }
 		}
-		compose_storeys(K, s, rhythm, v, b.ground, tallest, counts);
+		compose_storeys(K, s, rhythm, v, b.ground, tallest, counts, b.plan.site);
 	}
 }
 

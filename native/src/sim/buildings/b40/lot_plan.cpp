@@ -1,6 +1,9 @@
-// The plan of a grown lot: front, sides and back uses and the building envelope, by the lot's kind and size.
+// The plan of a grown lot: front, sides and back uses and the building envelope, by the lot's kind, size and site (a corner's second street).
 #include "sim/buildings/b40/gen.h"
 #include "sim/buildings/b40/paint.h"
+
+#include <algorithm>
+#include <utility>
 
 namespace city::b40 {
 
@@ -108,13 +111,28 @@ void settle(const LotPlanShape &K, LotPlan &p) {
 	p.left = p.right = SidePlan{};
 	if (p.back == BACK_PARKING) { p.back = BACK_SERVICE; p.back_depth = std::min(K.service_max, p.back_depth); }
 }
+
+// A corner lot fronts its second street too: its drive keeps to the inner side, and the side on the street opens to it - a side
+// garden at least corner_side wide before a home, the building out to the edge for a shop or an office. A works only moves its
+// lorries' lane inward (a lorry waiting at a gate by the corner would stand in the junction) and keeps its yard; a lot with a
+// street on both sides keeps its plan (no inner side to put the drive on).
+void corner(const LotPlanShape &K, LotPlan &p) {
+	const bool left = (p.site & SITE_CORNER_LEFT) != 0, right = (p.site & SITE_CORNER_RIGHT) != 0;
+	if (left == right) return;
+	SidePlan &street = left ? p.left : p.right, &inner = left ? p.right : p.left;
+	if (drives(street)) std::swap(street, inner);
+	if (p.kind == KIND_WORKS) return;
+	const bool homes = p.kind == KIND_HOUSE || p.kind == KIND_FLATS || p.kind == KIND_TOWER;
+	const SidePlan open = homes ? SidePlan{ SIDE_GARDEN, std::max(street.width, K.corner_side) } : SidePlan{};
+	if (p.W - inner.width - open.width >= K.narrow_lot) street = open;
+}
 } // namespace
 
-LotPlan plan_lot(const Data &data, Kind kind, float W, float D, Xoshiro128 &r) {
+LotPlan plan_lot(const Data &data, Kind kind, float W, float D, Xoshiro128 &r, uint8_t site) {
 	const LotRules &l = data.lots;
 	const LotPlanShape &K = data.shapes.plan;
 	LotPlan p;
-	p.kind = kind; p.W = W; p.D = D;
+	p.kind = kind; p.W = W; p.D = D; p.site = site;
 	bool flip = r.f() < HALF;
 	switch (kind) {
 		case KIND_HOUSE: plan_house(K, p, r, flip); break;
@@ -125,6 +143,7 @@ LotPlan plan_lot(const Data &data, Kind kind, float W, float D, Xoshiro128 &r) {
 		default: plan_industry(K, l, p, flip); break;
 	}
 	settle(K, p);
+	corner(K, p);
 	p.x0 = p.left.width; p.y0 = p.front_depth; p.x1 = W - p.right.width; p.y1 = D - p.back_depth;
 	return p;
 }

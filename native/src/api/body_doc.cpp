@@ -45,7 +45,7 @@ constexpr Named DOC_ELEMENTS[] = { { "pavement", EL_PAVEMENT }, { "slab", EL_SLA
 	{ "stall", EL_STALL }, { "dock", EL_DOCK }, { "drain", EL_DRAIN }, { "tree", EL_TREE }, { "shrub", EL_SHRUB }, { "flowers", EL_FLOWERS },
 	{ "pool", EL_POOL }, { "lounger", EL_LOUNGER }, { "table", EL_TABLE }, { "swing", EL_SWING }, { "shed", EL_SHED }, { "line", EL_LINE },
 	{ "pallet", EL_PALLET }, { "cage", EL_CAGE }, { "stair", EL_STAIR }, { "ramp", EL_RAMP }, { "rocks", EL_ROCKS }, { "parking", EL_PARKING },
-	{ "clock", EL_CLOCK } };
+	{ "clock", EL_CLOCK }, { "dugGarage", EL_DUG_GARAGE } };
 constexpr Named DOC_PATTERNS[] = { { "residential", PATTERN_RESIDENTIAL }, { "storefront", PATTERN_STOREFRONT }, { "office", PATTERN_OFFICE },
 	{ "industrial", PATTERN_INDUSTRIAL }, { "arcade", PATTERN_ARCADE }, { "gallery", PATTERN_GALLERY }, { "artDeco", PATTERN_ART_DECO },
 	{ "artDecoCrown", PATTERN_ART_DECO_CROWN }, { "observation", PATTERN_OBSERVATION } };

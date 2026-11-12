@@ -1,0 +1,21 @@
+{
+ "_doc": "Corner lots in the generated town (map 0, seed 1; the lots tests/core/lot_site_test.gd lists): two houses facing the same street either side of a side street, each with its side garden, front boundary and composed side facade on the side street; and flats on the corners of a side street nearer the middle. setView: [x, y, zoom, azimuth, elevation], y the map's north (our -z); the azimuth puts the camera at +x at 0 and +z at 90.",
+ "city": {
+  "map": 0,
+  "seed": 1,
+  "generate": true
+ },
+ "steps": [
+  {"hour": 16},
+  {"setView": [60, -408, 18, 270, 40]},
+  {"shot": "corner_houses_front"},
+  {"setView": [60, -410, 22, 310, 40]},
+  {"shot": "corner_houses_east"},
+  {"setView": [60, -410, 22, 230, 40]},
+  {"shot": "corner_houses_west"},
+  {"setView": [60, -414, 9, 270, 62]},
+  {"shot": "corner_houses_above"},
+  {"setView": [-180, -88, 9, 90, 62]},
+  {"shot": "corner_flats_above"}
+ ]
+}
