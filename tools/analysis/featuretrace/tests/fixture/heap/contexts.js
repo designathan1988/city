@@ -80,3 +80,9 @@ function boxOf(v) {
 export function localApple() { boxOf(new Pear()); return boxOf(new Apple()).get(); }
 function kindOf(v) { return class { get() { return v; } }; }
 export function classValueApple() { kindOf(new Pear()); const K = kindOf(new Apple()); return new K().get(); }
+
+function area(w, h) { return w * h; }
+function same(x) { return x; }
+function keep(into, value) { into.value = value; }
+export function sized() { return area(new Apple(), 2) + area(new Pear(), 3); }
+export function both() { same(new Pear()); keep({}, new Pear()); keep({}, new Apple()); return same(new Apple()); }

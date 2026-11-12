@@ -191,6 +191,13 @@ std::string result_pickle(Analysis& an, Semantics& semantics, bool names) {
     }
     }
     w.close_dict();
+    w.text("runs");
+    w.open_dict();
+    for (const auto& [gid, ctxs] : an.active_order) {
+        w.integer(static_cast<int64_t>(gid));
+        w.integer(static_cast<int64_t>(ctxs.size()));
+    }
+    w.close_dict();
     w.text("missing");
     w.integer(static_cast<int64_t>(an.in.missing));
     w.close_dict();

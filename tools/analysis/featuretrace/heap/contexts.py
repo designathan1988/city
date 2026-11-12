@@ -10,6 +10,7 @@ receiver's site. Module code runs in ROOT.
 from __future__ import annotations
 
 ROOT = ()
+ONCE = -1                  # the call part of a run every caller shares (`flows.contextual` is false)
 
 
 def of_call(env, site: int) -> tuple:

@@ -42,7 +42,7 @@ namespace ftengine {
     X(ENGINE, "solver.ENGINE") X(LANG, "solver.LANG") X(NUMBER, "solver.NUMBER") X(OBJECT, "solver.OBJECT")          \
     X(SYMBOL, "solver.SYMBOL") X(TEXT, "solver.TEXT") X(STRING_KIND, "heap.trees.STRING_KIND")                       \
     X(NO_ENV, "heap.values.NO_ENV") X(MADE, "heap.objects.MADE") X(PROGRAM_MADE, "heap.declared.PROGRAM_MADE")       \
-    X(TREE, "heap.analysis.TREE") X(LOCAL, "heap.analysis.LOCAL") X(PARAM, "heap.analysis.PARAM")                   \
+    X(ONCE, "heap.contexts.ONCE") X(TREE, "heap.analysis.TREE") X(LOCAL, "heap.analysis.LOCAL") X(PARAM, "heap.analysis.PARAM")                   \
     X(THIS, "heap.analysis.THIS") X(RET, "heap.analysis.RET") X(HOLD, "heap.analysis.HOLD")                         \
     X(FIELD, "heap.analysis.FIELD") X(INITIAL, "heap.analysis.INITIAL") X(INSTANCES, "heap.analysis.INSTANCES")      \
     X(MADE_BY_CALL, "heap.analysis.MADE_BY_CALL") X(CONSTRUCTED, "heap.trees.CONSTRUCTED")                           \

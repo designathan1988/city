@@ -18,15 +18,15 @@ import pickle
 from pathlib import Path
 
 from . import truth
-from .heap import jsx, names, trees, typesys
+from .heap import flows, jsx, names, trees, typesys
 from .js_transfer import chain
 from .languages import INTRINSICS, JSX_CLASSIC, JSX_FACTORY_DEFAULT, JSX_FACTORY_OPTION, canonical_numeric
-from .model import ClassFact, Ref, Unit
+from .model import FUNCTION_KINDS, ClassFact, Ref, Unit
 from .solver import LANG
 from .vocab import IMPORT, JSX, LITERAL, NAME, OP, T_NAMED, T_QUERY, UNARY
 
 ROOT_PARTS = ("units", "classes", "members", "names", "types", "class_tables", "intrinsics", "modules", "exports",
-              "jsx", "queries", "operators", "literals", "numeric_names", "vocabulary")
+              "jsx", "queries", "operators", "literals", "numeric_names", "contextual", "vocabulary")
 NUMERIC_START = "-0123456789NI"              # what a canonical numeric string can begin with (Number::toString)
 PROTOCOL = 5                                 # the pickle protocol the engine reads (PEP 574)
 HEAP = Path(__file__).resolve().parent / "heap"
@@ -141,7 +141,8 @@ def tables(ix) -> list:
     numeric = sorted(found.numeric | {n for _, n, _ in members if canonical_numeric(n)} |
                      {r.name for u in ix.units for r in u.refs if r.name and canonical_numeric(r.name)})
     return [list(ix.units), sorted(ix.classes.values(), key=lambda c: c.key), members, name_rows, type_rows,
-            class_rows, intrinsics, modules, exports, jsx_rows, queries, operators, literals, numeric, vocabulary()]
+            class_rows, intrinsics, modules, exports, jsx_rows, queries, operators, literals, numeric,
+            [u.gid for u in ix.units if u.kind in FUNCTION_KINDS and flows.contextual(light, u.gid)], vocabulary()]
 
 
 class Scope:

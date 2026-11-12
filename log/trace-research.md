@@ -388,3 +388,17 @@ official declarations only, converging (finite, fast enough to run in seconds to
 - Test: test_a_number_key_names_an_index_never_a_named_property (red on both cores before, green after); 439 tests.
 - The lab with contexts: 60.8 M items in 142 s, 8.7 M nodes, 838 k objects, 355.5 k links, the queue 120-210 k: not
   converged in 150 s. The dictionary part is not the main cost any more; contexts for every function are (F24, item 2).
+
+### F26. Contexts where they change the result: correct, and most functions need them (P1) — 2026-11-12 05:10
+- Built (log/trace-engine-plan.md, Task E7; heap/flows.py, both cores): a function's runs share one context when no
+  output (return, yield, store into an input's object, call handing an input together with another object) carries an
+  input's objects or objects it makes; inputs are parameters not typed as primitives, and `this`. Test:
+  test_a_run_carrying_no_object_to_its_outputs_runs_once (red on both cores before; every earlier contexts test green;
+  441 tests; fixture links identical across the cores).
+- The lab: runs 127 k -> ~120 k, nodes 8.7 M -> 8.0 M, 75.8 M items in 150 s, 356 k links, not converged. Most of the
+  lab's functions carry objects to their outputs, so the criterion keeps their contexts.
+- What the evidence leaves (F21-F26): the analysis with a call-site context for nearly every function is the size of
+  the whole lab's object flow per call site; the engine runs it at ~0.5 M items/s and it is still growing at 150 s.
+  The two ways the literature bounds it are a cheaper context (call-site contexts only where the precision of call
+  targets depends on them, judged by a pre-analysis that converges: the context-insensitive run does on every part of
+  the lab but `src/world`) and a faster solver (collapsing the cycles the bidirectional places and copy loops make).

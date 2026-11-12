@@ -31,12 +31,17 @@ class EngineResult:
         self.returned_by = data["returned"]
         self.names = data["names"]
         self.missing = data["missing"]
+        self.runs_of = data["runs"]
 
     def label(self, obj: int) -> str:
         """A readable name, as `heap.objects.Objects.label` makes it: its kind, then what identifies its site."""
         key = self.objects[obj]
         parts = key[1:-1] if key[0] in MADE else key[1:]
         return "{}:{}".format(key[0], ":".join(str(part) for part in parts))
+
+    def runs(self, gid: int) -> int:
+        """How many runs (contexts) a function had."""
+        return self.runs_of.get(gid, 0)
 
     def returned(self, gid: int) -> set[str]:
         return {self.label(o) for o in self.returned_by.get(gid, ())}

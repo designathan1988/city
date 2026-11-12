@@ -43,6 +43,14 @@ class HeapContexts(HeapCase):
         self.assertEqual({"Apple"}, self.classes("classValueApple"))
 
 
+    def test_a_run_carrying_no_object_to_its_outputs_runs_once(self):
+        # each is also run once as an entry point (entries are chosen before `sized` and `both` run)
+        self.assertEqual(2, self.runs("area"))                 # a number made from its arguments: one run for both
+        self.assertEqual(3, self.runs("same"))                 # an identity: each call its own run
+        self.assertEqual(3, self.runs("keep"))                 # a store into a parameter's object: likewise
+        self.assertEqual({"Apple"}, self.classes("both"))
+
+
 class HeapContextsEngine(HeapContexts):
     CORE = ENGINE
 

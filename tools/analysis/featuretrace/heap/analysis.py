@@ -20,7 +20,7 @@ from ..resolve import EXACT, Edge
 from ..model import STATE_KINDS as STATE
 from ..vocab import (ANY_FIELD, CALL, ELEMENTS_FIELD, HANDED, NEW, RESULT_FIELD, SITE_FUNCTION, SITE_GENERATOR,
                      SITE_PROMISE, SITE_UNKNOWN, T_OPEN)
-from . import contexts, declared, members, protocols, refs, trees, typesys, values
+from . import contexts, declared, flows, members, protocols, refs, trees, typesys, values
 from .objects import Objects
 from .solver import Solver
 
@@ -134,7 +134,9 @@ class Analysis:
                 declared.apply(self, node, gid, receiver, args, where)
             return
         env = objects.env(fn)
-        if receiver is not None:
+        if not flows.contextual(self, gid):     # nothing that differs between callers reaches out
+            ctx = contexts.of_call(env, contexts.ONCE)
+        elif receiver is not None:
             ctx = contexts.of_method(env, objects.site(receiver), objects.heap(receiver))
         else:
             ctx = contexts.of_call(env, where[0])
@@ -274,6 +276,10 @@ class Result:
         nodes = [an.node(tree, an.ix.units[gid], ctx) for ctx in an.active.get(gid) or {ROOT}]
         an.solver.run()
         return {an.objects.label(o) for node in nodes for o in an.solver.held(node)}
+
+    def runs(self, gid: int) -> int:
+        """How many runs (contexts) a function had."""
+        return len(self.analysis.active.get(gid, ()))
 
     def returned(self, gid: int) -> set[str]:
         an = self.analysis

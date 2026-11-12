@@ -99,6 +99,10 @@ class HeapCase(unittest.TestCase):
     def returned(self, spec: str) -> set:
         return self.result.returned(self.gid(spec))
 
+    def runs(self, spec: str) -> int:
+        """How many runs (contexts) a function had."""
+        return self.result.runs(self.gid(spec))
+
     def classes(self, spec: str) -> set:
         """The classes of the objects `new` made that a function returns."""
         return {v.split(":")[1].rsplit("#", 1)[-1] for v in self.returned(spec) if v.startswith("new:")}

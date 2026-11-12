@@ -120,7 +120,9 @@ void Analysis::call(Value node, Obj fn, int64_t receiver, std::span<const Value>
     }
     Value env = last(*this, key);
     Value ctx;
-    if (receiver >= 0) {
+    if (!in.contextual.count(gid)) {               // nothing that differs between callers reaches out
+        ctx = contexts::of_call(*this, env, V.ONCE);
+    } else if (receiver >= 0) {
         auto r = static_cast<Obj>(receiver);
         ctx = contexts::of_method(*this, env, I(object_site(r)), object_heap(r));
     } else {
