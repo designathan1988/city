@@ -38,6 +38,17 @@ struct ConeSpec {
 	int cards = 0;
 };
 
+// A clipped block of leaves (a hedge's piece): a box `size` long (x), tall (y) and deep (z) standing on the ground, its long top
+// edges cut by `bevel` of its depth, its faces in `segments` along its length and moved by `rough` of their place; its cards spread
+// over its faces by their area, so its sides, its top and its ends are coated alike.
+struct ClippedBlock {
+	godot::Vector3 size;
+	float bevel = 0, rough = 0;
+	uint32_t seed = 0;
+	int segments = 1, cards = 0;
+	float card = 0;
+};
+
 struct BloomSpec {
 	bool on = false;
 	Tones tones;
@@ -57,7 +68,7 @@ struct FrondSpec {
 // The shading every face and card of a species shares.
 struct Shade {
 	Tones leaf;
-	float jitter = 0, shade_bottom = 1, heart_shade = 1, heart_shrink = 1;
+	float jitter = 0, shade_bottom = 1, heart_shade = 1, heart_share = 1; // heart_share: of its full size, a heart under cards
 	BloomSpec bloom;
 };
 
@@ -66,6 +77,8 @@ void tree_tube(MeshBuilder &mb, const godot::Vector3 &a, const godot::Vector3 &b
 // One crown heart (flat faces, darker low in the crown and, under cards, shrunk and shaded) and its cards on the full
 // surface; returns the crown's mean tone for the far card.
 godot::Color tree_crown(MeshBuilder &body, MeshBuilder &cards, const CrownSpec &c, const Shade &sh, Rng &r);
+// A clipped block and its coat of cards; returns its mean tone for the far card.
+godot::Color tree_block(MeshBuilder &body, MeshBuilder &cards, const ClippedBlock &b, const Shade &sh, Rng &r);
 // A conifer's crown; returns its mean tone for the far card.
 godot::Color tree_cone(MeshBuilder &body, MeshBuilder &cards, const ConeSpec &c, const Shade &sh, Rng &r);
 // The fronds of a palm whose crown sits at `top`.

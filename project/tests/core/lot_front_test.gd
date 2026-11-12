@@ -9,7 +9,8 @@
 ## corners' footway backs, the bulbs), in the town and in the metropolis, whose wide footways give the corners with a round back.
 ## And a lot's covers lie in their order (probe lot_covers): wherever a later cover lies over an earlier one (a forecourt's asphalt over
 ## its pavers, a court's lines over the court) it stands over it everywhere, never crossing it, never at its depth; and no band of lawn
-## or bare ground too thin to plant stands beside a hard cover (a walk, a yard, a forecourt) of a lot.
+## or bare ground too thin to plant stands beside a hard cover (a walk, a yard, a forecourt) of a lot. And every plant of a lot is drawn
+## inside the room its element is (probe garden_rooms): no crown over the fence or the footway, no hedge thicker than its band.
 ## Run: godot --path project res://tests/core/lot_front_test.tscn -- --no-flow
 extends TestCase
 
@@ -49,10 +50,22 @@ func _ready() -> void:
 	check(int(b.parts_meet) == 0, "no part of a lot stands in another's footprint (a pool's with its deck): %d pairs, the first (building, kinds, x, z, metres in) %s, by kinds, lot kind and front use %s"
 			% [b.parts_meet, b.meet_first, b.meet_by])
 	# The metropolis: its avenues' wide footways give the corners whose back follows the kerb's return (junction_corner.h OFFSET, RUN).
+	_check_plants("the town", CityStore.query(&"garden_rooms"))
 	new_map(METROPOLIS_MAP, SEED, true)
 	_check_paving("the metropolis", CityStore.query(&"lot_paving"))
 	_check_covers("the metropolis", CityStore.query(&"lot_covers"))
+	_check_plants("the metropolis", CityStore.query(&"garden_rooms"))
 	finish()
+
+
+## Every plant of every lot (a tree, a shrub, a run of hedge, a flower bed) is drawn inside the room its element is, and a tree, a shrub
+## and a hedge no taller than it: the room the layout kept off the boundary, the walls and the other parts (probe garden_rooms).
+func _check_plants(city: String, d: Dictionary) -> void:
+	print("%s: the lots' plants: %d in %d lots, %d drawn past their room, %d taller than their element" % [city, d.plants, d.lots, d.out, d.over])
+	check(int(d.plants) > 0, "%s has lots with plants: %d" % [city, d.plants])
+	check(int(d.out) == 0, "%s: every plant of a lot is drawn inside its room: %d of %d past it, %.2f m at the most, the first (building, kind, x, z, metres) %s, by kind %s"
+			% [city, d.out, d.plants, d.worst_m, d.first, d.by_kind])
+	check(int(d.over) == 0, "%s: no tree, shrub or hedge of a lot is drawn taller than its element: %d, %.2f m at the most" % [city, d.over, d.over_m])
 
 
 ## Every later cover of a lot over the earlier ones it lies on, by half a step at least, everywhere.

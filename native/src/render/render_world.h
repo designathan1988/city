@@ -147,6 +147,11 @@ public:
 	godot::Dictionary building_cost() const { return buildings_.building_cost(); }
 	godot::Dictionary bay_census() { return buildings_.bay_census(); }
 	godot::Dictionary far_form() const { return buildings_.far_form(); }
+	// Tests: the gardens' plants against their rooms (render/trees/garden_census.h); the caller holds the map shared.
+	godot::Dictionary garden_rooms(const CityState &s) const { return trees_.garden_rooms(s); }
+	godot::Dictionary garden_fit(const CityState &s, int kind, float w, float d, float h, float turn, int seed) const {
+		return trees_.garden_fit(s, kind, w, d, h, turn, seed);
+	}
 	void set_upload_every(int frames) { upload_every_ = std::max(1, frames); }
 	void set_lots_drawn(bool on) { buildings_.set_lots_drawn(on); }
 	// A body drawn apart from the city (body_stage.h).

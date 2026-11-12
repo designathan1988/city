@@ -103,6 +103,12 @@ public:
 	godot::Dictionary state_hash(); // tests: the city as a number, whole and by part (city_core_state_probe.cpp)
 	godot::Dictionary bay_census(); // how many bays the city has and how many different ones (building_renderer_probe.cpp)
 	godot::Dictionary far_form() const; // tests: the buildings' far level built on the spot, and what of it its nearest distance cannot show
+	// Tests: every lot's plants as they are drawn (each instance's model measured point by point) against the room its element is:
+	// how many, how many past it in plan or over its height, the first (render/trees/garden_census.h).
+	godot::Dictionary garden_rooms() const;
+	// Tests: one plant element of a kind ("tree", "shrub", "hedge", "flowers") `w` by `d` and `h` tall, laid `turn` radians to its
+	// lot, stood alone with the draws of `seed`: the box its instances draw, their top and how far past the room they stand.
+	godot::Dictionary garden_fit(const godot::String &kind, float w, float d, float h, float turn, int seed) const;
 	godot::Dictionary ground_drawn(const godot::Vector3 &at) const; // tests: the ground's height as the terrain's shader reads it there (render/terrain_bridge.h drawn)
 	// Tests: the street lamps' pools within `radius` of (x, z): drawn on the GPU, wanted by each lit lamp, and the lamps' lenses (RenderWorld::lamp_pools).
 	godot::Dictionary lamp_pools(float x, float z, float radius) const;

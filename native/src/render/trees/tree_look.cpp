@@ -105,7 +105,6 @@ bool TreeLook::load(const Dictionary &t, const TreeKit &kit, PackedStringArray &
 	bed_species = { kit.find("flower_bed"), kit.find("flower_bed_cream"), kit.find("flower_bed_red") };
 	if (shrub_species < 0 || hedge_species < 0 || *std::min_element(flowering_species.begin(), flowering_species.end()) < 0 || *std::min_element(bed_species.begin(), bed_species.end()) < 0)
 		errors.push_back("streets.json trees: faltam espécies do jardim (shrub, shrub_flowering*, hedge, flower_bed*)");
-	else if ((shrub_wide = kit.species(shrub_species).crown_wide) <= 0) errors.push_back("streets.json trees: the shrub species has no crown to size it by");
 	park.load(p["park_mix"], kit, "park_mix", errors);
 	street.load(p["street_mix"], kit, "street_mix", errors);
 	for (int b = 0; b < WOOD_BANDS; b++) {

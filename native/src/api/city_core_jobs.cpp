@@ -1,5 +1,5 @@
 // The job pool and the core's allocator for the tests: the pool's rule, seen on a pool of its own, and what the allocator holds
-// of the system while a thread takes memory, frees it and ends.
+// of the system while a thread takes memory, frees it and ends. And the probes a renderer answers, handed on, with every probe's name.
 #include "api/city_probes.h"
 
 #include "render/render_world.h"
@@ -18,6 +18,7 @@
 #include <cstring>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <thread>
 #include <vector>
 
@@ -40,6 +41,15 @@ Dictionary CityProbes::far_form() const { return render_->far_form(); }
 Dictionary CityProbes::ground_drawn(const Vector3 &at) const { return render_->ground_drawn(*state_, at.x, at.z); }
 Dictionary CityProbes::lamp_pools(float x, float z, float radius) const { return render_->lamp_pools(*state_, x, z, radius); }
 Array CityProbes::wire_draws() const { return render_->wire_draws(); }
+Dictionary CityProbes::garden_rooms() const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	return render_->garden_rooms(*state_);
+}
+Dictionary CityProbes::garden_fit(const String &kind, float w, float d, float h, float turn, int seed) const {
+	const b40::Element k = kind == "tree" ? b40::EL_TREE : kind == "shrub" ? b40::EL_SHRUB : kind == "hedge" ? b40::EL_HEDGE : b40::EL_FLOWERS;
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	return render_->garden_fit(*state_, int(k), w, d, h, turn, seed);
+}
 // The surface render/surface_data.h makes of `arrays`: a test lays it beside the engine's own (mesh_get_surface) byte for byte.
 Dictionary CityProbes::surface_probe(const Array &arrays, const Dictionary &lods, int64_t format) const { return surface_data(arrays, lods, uint64_t(format), RID()); }
 
@@ -222,6 +232,8 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("state_hash"), &CityProbes::state_hash);
 	ClassDB::bind_method(D_METHOD("bay_census"), &CityProbes::bay_census);
 	ClassDB::bind_method(D_METHOD("far_form"), &CityProbes::far_form);
+	ClassDB::bind_method(D_METHOD("garden_rooms"), &CityProbes::garden_rooms);
+	ClassDB::bind_method(D_METHOD("garden_fit", "kind", "w", "d", "h", "turn", "seed"), &CityProbes::garden_fit);
 	ClassDB::bind_method(D_METHOD("ground_drawn", "at"), &CityProbes::ground_drawn);
 	ClassDB::bind_method(D_METHOD("lamp_pools", "x", "z", "radius"), &CityProbes::lamp_pools);
 	ClassDB::bind_method(D_METHOD("wire_draws"), &CityProbes::wire_draws);

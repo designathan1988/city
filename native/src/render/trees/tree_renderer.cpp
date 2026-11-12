@@ -146,9 +146,8 @@ std::shared_ptr<TreeRenderer::Built> TreeRenderer::build_near(const CityView &s,
 	place_trees(s, *look_, trees_, kit_, key, trees);
 	out->bufs.resize(size_t(kit_.count()));
 	for (const TreeInstance &t : trees) {
-		const float c = std::cos(t.yaw), sn = std::sin(t.yaw), deep = t.depth > 0 ? t.depth : t.width;
-		mm_push(out->bufs[size_t(t.species)], Vector3(c, 0, -sn) * t.width, Vector3(t.lean_x, 1, t.lean_z) * t.height, Vector3(sn, 0, c) * deep, t.p, Color(1, 1, 1, 1),
-				t.tint.r, t.tint.g, t.tint.b, float(t.species));
+		const TreeBasis b = tree_basis(t);
+		mm_push(out->bufs[size_t(t.species)], b.x, b.y, b.z, t.p, Color(1, 1, 1, 1), t.tint.r, t.tint.g, t.tint.b, float(t.species));
 	}
 	for (int i = 0; i < kit_.count(); i++) { // commit_near sends a species' buffer to its body, its caster and its cards
 		const bool casts = std::find(trees_.bed_species.begin(), trees_.bed_species.end(), i) == trees_.bed_species.end();
@@ -202,7 +201,7 @@ void TreeRenderer::commit_near(Built &b) {
 			ch.cast[size_t(i)].range(end);
 		}
 		if (!sp.cards.valid()) continue;
-		ch.cards[size_t(i)].set(scenario_, sp.cards.rid, b.bufs[size_t(i)], box, sp.cards_cast, LAYER_VEGETATION);
+		ch.cards[size_t(i)].set(scenario_, sp.cards.rid, b.bufs[size_t(i)], box, sp.cards_shadow, LAYER_VEGETATION);
 		ch.cards[size_t(i)].range(end);
 	}
 }

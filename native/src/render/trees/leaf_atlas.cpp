@@ -119,6 +119,9 @@ bool LeafAtlas::build(const Dictionary &atlas, PackedStringArray &errors) {
 	cv.px.resize(int64_t(cv.w) * cv.h * RGBA);
 	cv.px.fill(0);
 	Rng r(L.seed);
+	// cluster(): a leaf's middle stands within `spread` of the region's side from its centre, and the leaf half its length past that
+	// (the wide tuft's leaves are the longest: the close one's are 1 / sqrt(near_leaves) of them)
+	tuft_reach_ = L.spread + L.len1 * HALF_F / float(L.px);
 	cluster(cv, L, r, TUFT_WIDE, L.leaves, 1.f);
 	cluster(cv, L, r, TUFT_CLOSE, int(std::lround(L.leaves * L.near_leaves)), 1.f / std::sqrt(L.near_leaves));
 	frond(cv, L, r);

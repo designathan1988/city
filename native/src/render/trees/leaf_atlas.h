@@ -18,6 +18,9 @@ class LeafAtlas {
 public:
 	bool build(const godot::Dictionary &atlas, godot::PackedStringArray &errors);
 	godot::RID texture() const { return texture_.is_valid() ? texture_->get_rid() : godot::RID(); }
+	// How far a tuft's leaves stand from the middle of its region, as a share of the region's side (a leaf card's side): what a
+	// card draws round its centre (render/trees/drawn_body.h).
+	float tuft_reach() const { return tuft_reach_; }
 	// The picture the texture was made from, handed over once (the tree pictures paint from it): the CPU copy that already
 	// exists, never read back from the GPU.
 	godot::Ref<godot::Image> take_image() {
@@ -29,6 +32,7 @@ public:
 private:
 	godot::Ref<godot::ImageTexture> texture_;
 	godot::Ref<godot::Image> image_;
+	float tuft_reach_ = 0;
 };
 
 } // namespace city

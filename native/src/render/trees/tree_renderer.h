@@ -12,6 +12,7 @@
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "render/trees/far_cards.h"
+#include "render/trees/garden_census.h"
 #include "render/trees/garden_place.h"
 #include "render/trees/tree_place.h"
 #include "sim/state/city_cut.h"
@@ -32,6 +33,12 @@ public:
 	void set_share(float share); // the graphics tier: every drawn chunk is placed again
 	int near_trees() const; // trees of the near level now
 	int near_plants() const; // of them, the gardens' bushes and hedges
+	// Tests: the gardens' plants as they are drawn against the rooms their lots gave them, over the whole city (the caller holds the
+	// map shared), and one plant element alone (render/trees/garden_census.h).
+	godot::Dictionary garden_rooms(const CityState &s) const { return city::garden_rooms(CityView(s), trees_, kit_); }
+	godot::Dictionary garden_fit(const CityState &s, int kind, float w, float d, float h, float turn, int seed) const {
+		return city::garden_fit(CityView(s), trees_, kit_, kind, w, d, h, turn, seed);
+	}
 	// The frame's build units of both levels (frame_admission.h): the marked chunks drawn again, the missing ones round the
 	// camera; the far ones let go.
 	void offer(const CityState &s, const godot::Vector3 &cam, std::vector<FrameAdmission::Unit> &out);

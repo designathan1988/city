@@ -1,6 +1,6 @@
 // Tree emitters (see tree_parts.h). Cards stand on a golden-angle spiral of directions over the crown (an even cover
 // without clumps, each nudged by the crown's own noise), every card's four corners at its centre: the vertex shader
-// spreads them across the view.
+// spreads them across the view. A clipped block's cards are spread over its faces by their area.
 #include "render/trees/tree_parts.h"
 
 #include "core/math.h"
@@ -36,7 +36,7 @@ constexpr float CARD_LOW_TONE = 0.45f, CARD_TONE_VARY = 0.12f;
 // A card's normal is lifted towards the sky by this share, so the canopy's top takes the sky light.
 constexpr float CARD_SKY_LIFT = 0.2f;
 // A frond row's tone: its share of the lit tone at a level row, plus this much per unit of its up axis.
-constexpr float FROND_ROW_BASE = 0.5f, FROND_TONE_UP = 0.3f;
+constexpr float FROND_ROW_BASE = 0.5f, FROND_SKY_GAIN = 0.3f;
 // How far a row's tone wanders, and the crown's shade over a frond: FROND_SHADE_LOW of the light from FROND_SHADE_BELOW under the crown, whole FROND_SHADE_SPAN higher.
 constexpr float FROND_ROW_WANDER = 0.1f, FROND_SHADE_LOW = 0.7f, FROND_SHADE_BELOW = 0.25f, FROND_SHADE_SPAN = 0.35f;
 constexpr float FROND_ROUND = 0.45f; // a strip's edges face this far out from its rib
@@ -45,6 +45,7 @@ constexpr int FROND_COLS = 3; // left edge, rachis, right edge
 // tip's reach as a share of the core; how far in a card may stand; how much a card's normal looks up.
 constexpr int CONE_SIDES = 6;
 constexpr float CONE_TIP_POWER = 1.3f, CONE_FILL = 0.92f, CONE_TIP_SHARE = 0.45f, CONE_IN = 0.55f, CONE_LIFT = 0.35f;
+constexpr int BLOCK_RING = 6; // the corners of a clipped block's section: two feet, two shoulders, the two ends of its flat top
 const Vector3 UP(0, 1, 0);
 
 using Tri = std::array<Vector3, 3>;
@@ -130,7 +131,7 @@ Color tree_crown(MeshBuilder &body, MeshBuilder &cards, const CrownSpec &c, cons
 	auto tones_at = [&](float y) { return sh.bloom.on && y > sh.bloom.above && (sh.bloom.scatter >= 1.f || r.f() < sh.bloom.scatter) ? sh.bloom.tones : sh.leaf; };
 	auto height01 = [&](float y) { return clampf((y + c.radius.y) / (2.f * c.radius.y), 0.f, 1.f); };
 	bool covered = c.cards > 0;
-	float shrink = covered ? sh.heart_shrink : 1.f, dim = covered ? sh.heart_shade : 1.f;
+	float shrink = covered ? sh.heart_share : 1.f, dim = covered ? sh.heart_shade : 1.f;
 	// The far card takes the mean of what is seen of the crown from afar: its cards, or its faces when it has none.
 	Color faces, leaves;
 	int nf = 0, nl = 0;
@@ -160,6 +161,71 @@ Color tree_crown(MeshBuilder &body, MeshBuilder &cards, const CrownSpec &c, cons
 		leaves += col;
 		nl++;
 	}
+	if (nl > 0) return with_alpha(leaves / float(nl), 1);
+	return nf > 0 ? with_alpha(faces / float(nf), 1) : sh.leaf.lit;
+}
+
+Color tree_block(MeshBuilder &body, MeshBuilder &cards, const ClippedBlock &b, const Shade &sh, Rng &r) {
+	const float hx = b.size.x * HALF_F, hz = b.size.z * HALF_F, tall = b.size.y, cut = b.bevel * b.size.z, mid_y = tall * HALF_F;
+	// The block's section across its length, as (z, y): up one side, over the two cut edges, down the other.
+	const Vector2 ring[BLOCK_RING] = { Vector2(-hz, 0), Vector2(-hz, tall - cut), Vector2(cut - hz, tall), Vector2(hz - cut, tall), Vector2(hz, tall - cut), Vector2(hz, 0) };
+	const bool covered = b.cards > 0;
+	const float shrink = covered ? sh.heart_share : 1.f, dim = covered ? sh.heart_shade : 1.f;
+	// A face's corner: its place on station i's ring, moved from the block's axis by its own noise; the foot stays on the ground.
+	const auto corner = [&](int i, int j) {
+		const float k = (1.f + vnoise_lattice(i, j, b.seed) * b.rough) * shrink;
+		const bool foot = j == 0 || j == BLOCK_RING - 1;
+		return Vector3(b.size.x * float(i) / float(b.segments) - hx, foot ? 0.f : mid_y + (ring[j].y - mid_y) * k, ring[j].x * k);
+	};
+	// Which way a stretch of the ring faces: across it, away from the block's axis.
+	const auto facing = [&](int j) {
+		const Vector2 run = ring[j + 1] - ring[j], mid = (ring[j] + ring[j + 1]) * HALF_F - Vector2(0, mid_y);
+		const Vector2 n = Vector2(run.y, -run.x).normalized();
+		return n.dot(mid) < 0 ? Vector3(0, -n.y, -n.x) : Vector3(0, n.y, n.x);
+	};
+	Color faces, leaves;
+	int nf = 0, nl = 0;
+	const auto face = [&](const Vector3 &p0, const Vector3 &p1, const Vector3 &p2, const Vector3 &out) {
+		const Vector3 p[3] = { p0, p1, p2 };
+		Vector3 nn = (p1 - p0).cross(p2 - p0).normalized();
+		if (nn.dot(out) < 0) nn = -nn;
+		const float k = clampf(face_light(nn) + (r.f() - HALF_F) * sh.jitter, 0.f, 1.f);
+		const float low = sh.shade_bottom + (1.f - sh.shade_bottom) * clampf((p0.y + p1.y + p2.y) / (3.f * tall), 0.f, 1.f);
+		const Color col = dimmed(sh.leaf.tone(k), low * dim);
+		flat_tri(body, p, nn, with_alpha(col, 1));
+		faces += col;
+		nf++;
+	};
+	for (int i = 0; i < b.segments; i++)
+		for (int j = 0; j + 1 < BLOCK_RING; j++) {
+			face(corner(i, j), corner(i + 1, j), corner(i + 1, j + 1), facing(j));
+			face(corner(i, j), corner(i + 1, j + 1), corner(i, j + 1), facing(j));
+		}
+	for (int i : { 0, b.segments })
+		for (int j = 1; j + 1 < BLOCK_RING; j++) face(corner(i, 0), corner(i, j), corner(i, j + 1), Vector3(i == 0 ? -1.f : 1.f, 0, 0));
+	// The coat: each face's share of the cards by its area, along it in equal steps and across it by the golden ratio's sequence.
+	const auto coat = [&](int count, const Vector3 &out, const auto &place) {
+		const float start = r.f();
+		for (int q = 0; q < count; q++) {
+			const Vector3 p = place((float(q) + r.f()) / float(count), std::fmod(start + float(q) * (GOLDEN - 1.f), 1.f));
+			const float size = b.card * (1.f + (r.f() * 2.f - 1.f) * CARD_VARY), h = clampf(p.y / tall, 0.f, 1.f);
+			const float k = clampf((CARD_LOW_TONE + (1.f - CARD_LOW_TONE) * h) * (1.f + (r.f() * 2.f - 1.f) * CARD_TONE_VARY), 0.f, 1.f);
+			const Color col = sh.leaf.tone(k);
+			card(cards, p + out * size * (CARD_OUT_MIN + CARD_OUT_SPAN * r.f()), out, col, size * HALF_F, r.f());
+			leaves += col;
+			nl++;
+		}
+	};
+	float area = 2.f * b.size.z * tall; // the two ends
+	for (int j = 0; j + 1 < BLOCK_RING; j++) area += (ring[j + 1] - ring[j]).length() * b.size.x;
+	const auto share = [&](float of) { return int(std::lround(float(b.cards) * of / area)); };
+	for (int j = 0; j + 1 < BLOCK_RING; j++)
+		coat(share((ring[j + 1] - ring[j]).length() * b.size.x), facing(j), [&](float u, float v) {
+			const Vector2 at = ring[j].lerp(ring[j + 1], v);
+			return Vector3(b.size.x * u - hx, at.y, at.x);
+		});
+	for (float end : { -1.f, 1.f })
+		coat(share(b.size.z * tall), Vector3(end, 0, 0), [&](float u, float v) { return Vector3(end * hx, tall * v, b.size.z * u - hz); });
 	if (nl > 0) return with_alpha(leaves / float(nl), 1);
 	return nf > 0 ? with_alpha(faces / float(nf), 1) : sh.leaf.lit;
 }
@@ -202,7 +268,7 @@ void tree_fronds(MeshBuilder &cards, const Vector3 &top, const FrondSpec &f, con
 			Vector3 up = side.cross(along).normalized();
 			if (up.y < 0) up = -up;
 			float shade = FROND_SHADE_LOW + (1.f - FROND_SHADE_LOW) * clampf((p.y - top.y + FROND_SHADE_BELOW) / FROND_SHADE_SPAN, 0.f, 1.f);
-			Color col = with_alpha(tones.tone(clampf(FROND_ROW_BASE + FROND_TONE_UP * up.y + (r.f() - HALF_F) * FROND_ROW_WANDER, 0.f, 1.f) * shade), 1);
+			Color col = with_alpha(tones.tone(clampf(FROND_ROW_BASE + FROND_SKY_GAIN * up.y + (r.f() - HALF_F) * FROND_ROW_WANDER, 0.f, 1.f) * shade), 1);
 			Vector3 drop = UP * (-half * fold);
 			const Vector3 row[FROND_COLS] = { p - side * half + drop, p, p + side * half + drop };
 			const Vector3 faces[FROND_COLS] = { (up - side * FROND_ROUND).normalized(), up, (up + side * FROND_ROUND).normalized() };

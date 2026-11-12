@@ -1,6 +1,6 @@
 // Builds the tree species (see tree_kit.h) from streets.json "trees": the leaf atlas once, then for every species its
-// body (trunk tube in rings that follow its lean, limbs, crown hearts), its cards (leaf cards or palm fronds) and the
-// mean crown tone its far card is tinted with.
+// body (trunk tube in rings that follow its lean, limbs, crown hearts, a hedge's clipped block), its cards (leaf cards or palm
+// fronds), the mean crown tone its far card is tinted with and the measure of what it draws.
 #include "render/trees/tree_kit.h"
 
 #include "render/agents/agent_lod.h"
@@ -56,6 +56,13 @@ FrondSpec fronds_of(const Dictionary &f) {
 	return s;
 }
 
+ClippedBlock block_of(const Dictionary &b) {
+	ClippedBlock s;
+	s.size = vec3(b["size"]); s.bevel = b["bevel"]; s.rough = b["rough"]; s.seed = uint32_t(int(b["seed"]));
+	s.segments = std::max(1, int(b["segments"])); s.cards = b["cards"]; s.card = b["card"];
+	return s;
+}
+
 constexpr float RING_LAP = 0.02f; // a ring runs this far into the next, of a ring, so no seam opens at a bend
 
 Tones bark_of(const Dictionary &t) { return Tones{ hexc(t["dark"]), hexc(t["lit"]) }; }
@@ -88,16 +95,17 @@ void limbs(MeshBuilder &mb, const Dictionary &l, const Vector3 &from, const Tone
 	}
 }
 
-TreeSpecies make_species(const Dictionary &d, int row, float caster_error_m, TreePictures &pictures, const RID &body_material, const RID &card_material,
-		PackedStringArray &errors) {
+// `tuft`: how far a card's leaves stand from its centre, of its side (the atlas'): what the species' measure takes a card for.
+TreeSpecies make_species(const Dictionary &d, int row, float caster_error_m, float tuft, TreePictures &pictures, const RID &body_material,
+		const RID &card_material, PackedStringArray &errors) {
 	TreeSpecies sp;
 	static const char *const KEYS[] = { "name", "seed", "trunk", "limbs", "crowns", "dark", "lit", "jitter", "shade_bottom", "heart_shade",
-		"heart_shrink", "crown_reach", "cards_cast" };
+		"heart_share", "crown_reach", "cards_shadow" };
 	if (!need(d, KEYS, int(sizeof(KEYS) / sizeof(KEYS[0])), String(d.get("name", "?")), errors)) return sp;
 	sp.name = d["name"];
 	Rng r{ uint32_t(int(d["seed"])) };
 	Shade sh{ Tones{ hexc(d["dark"]), hexc(d["lit"]) }, float(d["jitter"]), float(d["shade_bottom"]), float(d["heart_shade"]),
-		float(d["heart_shrink"]), BloomSpec{} };
+		float(d["heart_share"]), BloomSpec{} };
 	if (d.has("bloom")) {
 		Dictionary b = d["bloom"];
 		const bool bush = float(Dictionary(d["trunk"])["top"]) < BUSH_TRUNK_TOP;
@@ -116,18 +124,20 @@ TreeSpecies make_species(const Dictionary &d, int row, float caster_error_m, Tre
 		Shade own = sh; // a palm's crownshaft and nuts are not leaves: their own tones
 		if (c.has("dark")) own.leaf = Tones{ hexc(c["dark"]), hexc(c["lit"]) };
 		sum += tree_crown(body, cards, cs, own, r);
-		sp.crown_wide = std::max(sp.crown_wide, 2 * (std::abs(cs.centre.x) + cs.radius.x));
 	}
 	if (d.has("fronds")) tree_fronds(cards, top, fronds_of(d["fronds"]), sh.leaf, r);
 	sp.far_tone = crowns.is_empty() || d.has("fronds") ? sh.leaf.tone(HALF_F) : sum / float(crowns.size());
 	if (d.has("cone")) sp.far_tone = tree_cone(body, cards, cone_of(d["cone"]), sh, r);
+	if (d.has("block")) sp.far_tone = tree_block(body, cards, block_of(d["block"]), sh, r);
 	sp.far_tone.a = 1;
+	sp.drawn.measure(body, cards, tuft); // the very points the meshes below are baked from
+	if (sp.drawn.empty()) errors.push_back("streets.json trees " + sp.name + ": the species draws nothing");
 	pictures.draw(row, body, cards, sp.far_tone);
 	sp.body = body.bake(body_material, false).shared(); // a unit model: its attributes as they are; shared by every chunk's draw
 	sp.caster = simplify_whole(body, caster_error_m).bake(body_material, false).shared();
 	if (!cards.empty()) sp.cards = cards.bake(card_material, false).shared();
 	sp.crown_reach = d["crown_reach"];
-	sp.cards_cast = d["cards_cast"];
+	sp.cards_shadow = d["cards_shadow"];
 	return sp;
 }
 } // namespace
@@ -141,7 +151,8 @@ bool TreeKit::build(const Dictionary &trees, const RID &body_material, const RID
 	Array list = trees.get("species", Array());
 	if (list.is_empty()) errors.push_back("streets.json trees: sem espécies");
 	if (!pictures_.begin(trees.get("pictures", Dictionary()), int(list.size()), atlas_.take_image(), errors)) return false;
-	for (int i = 0; i < list.size(); i++) species_.push_back(make_species(list[i], i, trees["caster_error_m"], pictures_, body_material, card_material, errors));
+	for (int i = 0; i < list.size(); i++)
+		species_.push_back(make_species(list[i], i, trees["caster_error_m"], atlas_.tuft_reach(), pictures_, body_material, card_material, errors));
 	pictures_.finish();
 	return errors.is_empty();
 }

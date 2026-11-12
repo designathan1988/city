@@ -1,7 +1,8 @@
 // Low-poly trees, one unit tall (an instance's scale is its height in metres), built once per species from
 // data/render/streets.json "trees": a faceted body (tapered trunk, limbs and a shaded crown heart, each face one tone
 // between a dark and a lit one by how much it faces the sky) under leaf cards that face the camera, palm fronds as
-// strips, and one far card for every species. The vertex layout below is the contract with
+// strips, a clipped block of leaves for a hedge's piece, and one far card for every species. Each species is measured as it
+// is built (drawn_body.h). The vertex layout below is the contract with
 // render/shaders/vegetation.gdshaderinc:
 //   UV2.x  part (TreePart): body, leaf card or frond strip (far cards are render/trees/far_cards.h's own mesh);
 //   UV2.y  a card's half size, in model units (0 for the rest);
@@ -11,6 +12,7 @@
 
 #include "render/mesh_builder.h"
 #include "render/trees/leaf_atlas.h"
+#include "render/trees/drawn_body.h"
 #include "render/trees/tree_part.h"
 #include "render/trees/tree_pictures.h"
 
@@ -30,8 +32,8 @@ struct TreeSpecies {
 	OwnedMesh body, cards; // no cards mesh when the species has none
 	OwnedMesh caster; // the body simplified: what it throws on the ground, swaying as it does
 	float crown_reach = 0; // crown radius as a share of the height (keeps trees off the roads)
-	float crown_wide = 0; // the model's crowns across its x, for a height of one: what a plant sized by its width is laid out by
-	bool cards_cast = false; // a palm's fronds are its crown and throw its shadow; other cards do not
+	DrawnBody drawn; // how big the model draws, measured from the meshes above: what a plant stood in a room is sized by
+	bool cards_shadow = false; // a palm's fronds are its crown and throw its shadow; other cards do not
 	godot::Color far_tone; // the crown's mean tone (sRGB), for its far card
 };
 
