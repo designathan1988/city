@@ -85,8 +85,8 @@ void written(Analysis& an, const UnitRec& unit, const RefRec& ref, Value ctx) {
 void named_children(Analysis& an, Obj obj, Value name) {
     Value key = an.class_of(obj);
     if (key.kind() == Kind::None) return;
-    for (int64_t gid : an.in.member(key, an.V.JSX_CHILDREN)) {
-        an.follow(an.initial(gid), members::field(an, obj, name));
+    if (!an.in.member(key, an.V.JSX_CHILDREN).empty()) {     // the props' children, as the literal defined them
+        an.follow(members::field(an, obj, an.V.JSX_CHILDREN), members::field(an, obj, name));
     }
 }
 

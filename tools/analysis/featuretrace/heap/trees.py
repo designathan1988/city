@@ -15,6 +15,7 @@ from ..rules import CONSTRUCTOR
 from ..vocab import (AWAIT, CALL, CALLABLE, CAST, COLLECTION, CONSTRUCT, EACH, ELEMENTS, ELEMENTS_FIELD, INDEX,
                      JSX, KEYS, LITERAL, MEMBER, NAME, NARROW, NEW, OP, SELF, SITE_CLASS, SITE_PRIMITIVE, SITE_TEXT,
                      SITE_KEY, STRNAME, SUPER, UNARY, UNION)
+from ..model import STATE_KINDS
 from . import contexts, declared, jsx, members, names, protocols, texts, typesys
 
 CONSTRUCTED = 10           # a node: what a constructor's call returns (the `new` itself is the object made)
@@ -139,6 +140,7 @@ def wire_cast(an, node, text: str, unit, ctx) -> None:
         an.solver.add(node, [obj])
         an.instance_made(obj)
         literal_methods(an, obj, key, unit, ctx)
+        members.initialize_literal(an, obj, key, ctx)
     elif made == CLASS_MADE:                       # evaluated in this run: its methods are closures of it
         an.solver.add(node, [an.objects.class_value(key, ctx, unit.gid)])
 
@@ -161,11 +163,18 @@ def this_of(an, unit, ctx):
 
 
 def lexical(an, unit, ctx=contexts.ROOT):
-    """The function whose `this` and `super` a function reads, and its context: itself, or for an arrow its
-    enclosing function's, read in the arrow's environment."""
-    while unit.this_of == ARROW_THIS and unit.outer >= 0:
+    """The function whose `this` and `super` a function reads, and its context: itself, or for an arrow or an
+    object literal's property (whose value is evaluated around it) its enclosing function's, read in its
+    environment."""
+    while (unit.this_of == ARROW_THIS or literal_property(an, unit)) and unit.outer >= 0:
         unit, ctx = an.ix.units[an.ix.offset[unit.file] + unit.outer], contexts.environment(ctx)
     return unit, ctx
+
+
+def literal_property(an, unit) -> bool:
+    """Whether a unit is an object literal's property (its value is evaluated where the literal is)."""
+    cls = an.ix.classes.get(unit.owner)
+    return unit.kind in STATE_KINDS and cls is not None and cls.made == LITERAL_MADE
 
 
 def base_keys(an, unit) -> list[str]:
@@ -232,6 +241,7 @@ def made(an, obj: int, file: str, site: int, ctx) -> int:
     maker = obj if objects.function(obj) is not None or objects.class_env(obj) is not None else -1
     made = objects.instance(an.made_by(obj), file, site, maker, ctx)
     an.instance_made(made)
+    members.initialize(an, made)
     return made
 
 

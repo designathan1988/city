@@ -140,8 +140,8 @@ bool declared_read(Analysis& an, Value target, Obj obj, Value key, Value name) {
             } else if (typesys::declared(an, gid) && an.truthy(unit.result_type)) {
                 Value site = an.tuple({an.tuple({an.V.PROPERTY, I(gid)}), an.object_heap(obj)});
                 an.follow(values::produce(an, unit.result_type, environment(an, obj, unit.owner), site), target);
-            } else {
-                an.follow(an.initial(gid), target);
+            } else if (an.okind(obj) != an.V.SITE_NEW && an.okind(obj) != an.V.SITE_LITERAL) {
+                an.follow(an.initial(gid), target);    // an instance's or a literal's: written where it is made
             }
         }
     }
@@ -191,6 +191,33 @@ void write(Analysis& an, Value source, Obj obj, Value name) {
     an.follow(source, field(an, obj, an.in.numeric_names.count(name.bits()) ? an.V.ELEMENTS_FIELD : name));
 }
 
+void initialize(Analysis& an, Obj obj) {
+    Value key = an.class_of(obj);
+    if (key.kind() == Kind::None || !an.in.cls(key)) return;
+    for (Value k : typesys::chain(an, key)) {
+        for (const auto& [name, gids] : an.in.members_of(k)) {
+            for (int64_t gid : gids) {
+                const UnitRec& unit = an.unit(gid);
+                if (!an.is_state(gid) || unit.is_static || unit.values.empty()) continue;
+                Value ctx = contexts::of_method(an, method_env(an, obj, gid), I(an.object_site(obj)), an.object_heap(obj));
+                an.add(an.this_(gid, ctx), obj);
+                for (Value tree : unit.values) an.follow(an.node(tree, unit, ctx), field(an, obj, name));
+            }
+        }
+    }
+}
+
+void initialize_literal(Analysis& an, Obj obj, Value key, Value ctx) {
+    Value run = contexts::of_call(an, ctx, an.V.ONCE);       // its environment: the run evaluating the literal
+    for (const auto& [name, gids] : an.in.members_of(key)) {
+        for (int64_t gid : gids) {
+            const UnitRec& prop = an.unit(gid);
+            if (!an.is_state(gid) || prop.is_static) continue;
+            for (Value tree : prop.values) an.follow(an.node(tree, prop, run), field(an, obj, name));
+        }
+    }
+}
+
 bool is_index(Analysis& an, Obj key) {
     return an.okind(key) == an.V.SITE_PRIMITIVE && an.member_of(an.item(an.okey(key), 1), an.V.INDEX_KINDS);
 }
@@ -235,7 +262,8 @@ Value every(Analysis& an, Obj obj) {
     if (!an.wire_once(node)) return node;
     Value key = an.class_of(obj);
     bool own = key.kind() != Kind::None && an.in.cls(key) && !an.truthy(an.declared_env(obj)) &&
-               an.okind(obj) != an.V.SITE_DECLARED;
+               an.okind(obj) != an.V.SITE_DECLARED && an.okind(obj) != an.V.SITE_NEW &&
+               an.okind(obj) != an.V.SITE_LITERAL;
     if (!own) return node;
     for (Value k : typesys::chain(an, key)) {
         for (const auto& [n, gids] : an.in.members_of(k)) {

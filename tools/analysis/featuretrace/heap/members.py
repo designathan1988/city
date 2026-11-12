@@ -15,7 +15,7 @@ from ..solver import BIGINT, NUMBER
 from ..truth import KINDS
 from ..model import STATE_KINDS
 from ..vocab import (CALL, ELEMENTS_FIELD, READ, SITE_CLASS, SITE_DECLARED, SITE_KEY, SITE_LITERAL, SITE_MODULE,
-                     SITE_PRIMITIVE, SITE_PROTOTYPE, SITE_UNKNOWN, WRITE)
+                     SITE_NEW, SITE_PRIMITIVE, SITE_PROTOTYPE, SITE_UNKNOWN, WRITE)
 
 from . import contexts, names, typesys, values  # noqa: E402  (they read members: imported once it is defined)
 
@@ -23,6 +23,7 @@ ALL, ACCESSOR, PROTOTYPES, PROPERTY = 9, 11, 12, 13    # nodes: every property o
                                                      # prototype; a site: a declared property's
 KEEP_NOTHING = (SITE_PRIMITIVE, SITE_UNKNOWN)          # the kinds of value no property written to is kept on
 INDEX_KINDS = (KINDS[NUMBER], KINDS[BIGINT])          # a key of these kinds names an index (ToPropertyKey)
+OWN_FIELDS = (SITE_NEW, SITE_LITERAL)                 # objects whose fields are initialized where they are made
 
 
 def read(an, target, obj: int, name: str) -> None:
@@ -80,7 +81,7 @@ def declared_read(an, target, obj: int, key: str, name: str) -> bool:
             elif typesys.declared(an, gid) and unit.result_type:
                 site = ((PROPERTY, gid), an.objects.heap(obj))
                 an.solver.follow(values.produce(an, unit.result_type, environment(an, obj, unit.owner), site), target)
-            else:
+            elif an.objects.kind(obj) not in OWN_FIELDS:   # an instance's or a literal's: written where it is made
                 an.solver.follow(an.initial(gid), target)
     return bool(found)
 
@@ -173,6 +174,36 @@ def write(an, source, obj: int, name: str) -> None:
     an.solver.follow(source, field(an, obj, ELEMENTS_FIELD if canonical_numeric(name) else name))
 
 
+def initialize(an, obj: int) -> None:
+    """A class instance's fields as `new` initializes them (ECMA-262 InitializeInstanceElements): each instance field
+    of its class chain evaluated for this object, `this` the object, in the run its class was made in, into the
+    object's own field."""
+    ix, objects = an.ix, an.objects
+    key = objects.class_of(obj)
+    for k in chain(ix, key) if key is not None and key in ix.classes else []:
+        for name, gids in ix.members[k].items():
+            for gid in gids:
+                unit = ix.units[gid]
+                if unit.kind not in STATE_KINDS or unit.static or not unit.values:
+                    continue
+                ctx = contexts.of_method(method_env(an, obj, gid), objects.site(obj), objects.heap(obj))
+                an.solver.add(an.this(gid, ctx), [obj])
+                for tree in unit.values:
+                    an.solver.follow(an.node(tree, unit, ctx), field(an, obj, name))
+
+
+def initialize_literal(an, obj: int, key: str, ctx) -> None:
+    """An object literal's properties as its evaluation defines them (ECMA-262 PropertyDefinitionEvaluation): each
+    value evaluated in the run that evaluates the literal, into the object's own field."""
+    run = contexts.of_call(ctx, contexts.ONCE)        # its environment: that run
+    for name, gids in an.ix.members[key].items():
+        for gid in gids:
+            prop = an.ix.units[gid]
+            if prop.kind in STATE_KINDS and not prop.static:
+                for tree in prop.values:
+                    an.solver.follow(an.node(tree, prop, run), field(an, obj, name))
+
+
 def is_index(an, key: int) -> bool:
     """Whether a key value names an index: a number or a BigInt (ECMA-262 ToPropertyKey: Number::toString gives a
     canonical numeric string, never a name a property is read by)."""
@@ -243,7 +274,7 @@ def every(an, obj: int):
     if node not in an.wired:
         an.wired.add(node)
         key, ix = an.objects.class_of(obj), an.ix
-        for k in chain(ix, key) if key is not None and key in ix.classes and not an.objects.environment(obj)                 and an.objects.kind(obj) != SITE_DECLARED else []:
+        for k in chain(ix, key) if key is not None and key in ix.classes and not an.objects.environment(obj)                 and an.objects.kind(obj) not in (SITE_DECLARED,) + OWN_FIELDS else []:
             for gids in ix.members[k].values():
                 for gid in gids:
                     if ix.units[gid].kind in STATE_KINDS and not ix.units[gid].static:

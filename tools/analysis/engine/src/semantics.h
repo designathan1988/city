@@ -68,6 +68,8 @@ Value every(Analysis& an, Obj obj);
 const std::vector<int64_t>& lookup(Analysis& an, Value key, Value name);   // Index.lookup: members, exports, bases
 Value runs(Analysis& an, const UnitRec& prop, Value which, const UnitRec* reader);   // Unit.runs
 bool is_index(Analysis& an, Obj key);
+void initialize(Analysis& an, Obj obj);           // a class instance's fields, as `new` initializes them
+void initialize_literal(Analysis& an, Obj obj, Value key, Value ctx);   // an object literal's properties
 void store_by_key(Analysis& an, Value source, Obj obj, Obj key);
 void load_by_key(Analysis& an, Value target, Obj obj, Obj key);
 }  // namespace members

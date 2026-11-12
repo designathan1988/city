@@ -61,6 +61,7 @@ void wire_cast(Analysis& an, Value node, Value text, const UnitRec& unit, Value 
         an.add(node, obj);
         an.instance_made(obj);
         literal_methods(an, obj, key, unit, ctx);
+        members::initialize_literal(an, obj, key, ctx);
     } else if (made == an.V.MADE_CLASS.data()) {
         an.add(node, an.make({an.V.SITE_CLASS, key, ctx, I(unit.gid)}));
     }
@@ -72,9 +73,14 @@ bool is_made(Analysis& an, Value text) {
     return c && c->made > 0;
 }
 
+bool literal_property(Analysis& an, const UnitRec& unit) {   // its value is evaluated where the literal is
+    const ClassRec* c = an.in.cls(unit.owner);
+    return an.in_set(unit.kind, an.V.STATE_KINDS) && c && c->made == an.V.MADE_LITERAL.data();
+}
+
 std::pair<const UnitRec*, Value> lexical(Analysis& an, const UnitRec& start, Value ctx) {
     const UnitRec* unit = &start;
-    while (unit->this_of == an.V.ARROW && unit->outer >= 0) {
+    while ((unit->this_of == an.V.ARROW || literal_property(an, *unit)) && unit->outer >= 0) {
         unit = &an.unit(an.offset(*unit) + unit->outer);
         ctx = contexts::environment(an, ctx);
     }
@@ -207,6 +213,7 @@ Obj made(Analysis& an, Obj obj, Value file, Value site, Value ctx) {
     int64_t maker = an.okind(obj) == an.V.SITE_FUNCTION || class_run ? static_cast<int64_t>(obj) : -1;
     Obj m = an.make({an.V.SITE_NEW, an.made_by(obj), file, site, I(maker), contexts::heap(an, ctx)});
     an.instance_made(m);
+    members::initialize(an, m);
     return m;
 }
 

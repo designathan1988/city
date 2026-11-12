@@ -95,5 +95,5 @@ def children_name(an, file: str, config: dict, mode) -> str | None:
 
 def named_children(an, obj: int, name: str) -> None:
     key = an.objects.class_of(obj)
-    for gid in an.ix.members[key].get(JSX_CHILDREN, []) if key else []:
-        an.solver.follow(an.initial(gid), members.field(an, obj, name))
+    if key and an.ix.members[key].get(JSX_CHILDREN):     # the props' children, as the literal defined them
+        an.solver.follow(members.field(an, obj, JSX_CHILDREN), members.field(an, obj, name))

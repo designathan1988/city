@@ -43,6 +43,15 @@ class HeapCore(HeapCase):
         self.assertEqual({"Tile"}, self.classes("indexReadBack"))         # "0" is a canonical numeric index
         self.assertEqual({"Box", "Tile"}, self.classes("textKeyMayNameAny"))  # a text may name any property
 
+    def test_each_instance_initializes_its_own_fields(self):
+        self.assertEqual({"Box"}, self.classes("bagBoxes"))      # ECMA-262 InitializeInstanceElements
+        self.assertEqual({"Tile"}, self.classes("bagTiles"))
+        self.assertEqual({"Owned"}, self.classes("ownerOf"))     # `this` in an initializer: the instance
+        self.assertEqual({"Owned"}, self.classes("holderOf"))    # a literal's property: the `this` around it
+
+    def test_a_literal_property_is_evaluated_where_the_literal_is(self):
+        self.assertEqual({"Box"}, self.classes("wrapped"))       # PropertyDefinitionEvaluation
+
     def test_an_object_literal_property(self):
         found = self.returned("literalRead")
         self.assertTrue(any(v.startswith("new:") and "Box" in v for v in found), found)

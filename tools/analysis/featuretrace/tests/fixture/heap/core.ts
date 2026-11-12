@@ -46,6 +46,14 @@ export function computedAlias(k: string) {
 }
 
 export function literalRead() { const o = { k: new Box() }; return o.k; }
+class Bag { items: unknown[] = []; }
+class Owned { owner = this; tag = { holder: this }; }
+function wrap(v: unknown) { return { value: v }; }
+export function bagBoxes() { const a = new Bag(); a.items[0] = new Box(); return a.items[0]; }
+export function bagTiles() { const b = new Bag(); b.items[0] = new Tile(); return b.items[0]; }
+export function ownerOf() { return new Owned().owner; }
+export function holderOf() { return new Owned().tag.holder; }
+export function wrapped() { return wrap(new Box()).value; }
 export function indexKeepsNamesApart() {
   const o: any = { name: new Box() };
   for (let i = 0; i < 2; i++) o[i] = new Tile();

@@ -418,3 +418,18 @@ official declarations only, converging (finite, fast enough to run in seconds to
   objects made at one site and reached by many callers); (2) declared types read as what a place admits (TypeScript's
   annotations as filters: an `items: Lot[]` holds no iterator) — a choice to weigh against the Task 6 ruling that an
   annotation is no value; (3) the solver's cycles.
+
+### F28. Fields are initialized where their object is made (P1, soundness) — 2026-11-12 06:30
+- Found by following F27's large sets back (`pushAll(into, items)` in doc.ts receives arrays whose elements merge):
+  an instance field's initializer was evaluated once, in ROOT, for every instance of its class (all RoadDocs shared
+  one `elements` array), `this` in an initializer was empty, and an object literal's property value was evaluated in
+  ROOT, where the locals and parameters it reads are empty (`wrap(v) { return { value: v }; }` gave nothing: a loss of
+  flow). Checked with a bounded probe (fields_probe) before any change.
+- ECMA-262: InitializeInstanceElements runs each field initializer at every [[Construct]], `this` the new object;
+  PropertyDefinitionEvaluation evaluates a literal's property values in the running context. Both cores now initialize
+  a class instance's fields when `new` makes it (in its class's run, `this` the instance, one per allocation site and
+  heap context) and a literal's properties where it is evaluated; a literal's property has the `this` around it.
+- Tests (red on both cores before): test_each_instance_initializes_its_own_fields,
+  test_a_literal_property_is_evaluated_where_the_literal_is; 445 tests; fixture links identical across the cores.
+- The lab with contexts: 93 M items in 150 s, 371.7 k links (more: the flows the literals lost now arrive), not
+  converged.
