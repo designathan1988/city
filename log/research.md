@@ -80,6 +80,132 @@ output. Anything less is `open`, with what failed written down. The questions co
 - **Steps to repeat:** `cd dist/research/q2 && python run.py 1 16,17,18,19 igpu_4e` (log beside it, `igpu_4e.log`).
 - **Status: `proven`** for GPU and processor selection; `open` for the memory cap and the pool's count.
 
+### Q16. Why are a line's wires drawn from one view and not from another? (pending item V1; 2026-11-12, session 2)
+
+- **Problem (before, an image):** `dist/trace/port-from-nov7/photos/00-tjoint_near_a_day.png` (four line poles, no conductor)
+  against `01-tjoint_near_b_day.png` (the same poles' wires drawn), one run, the camera turned 180 degrees round one target
+  (`plan_tjoint.json`: `setView [540, 468, 25, 30, 35]` and `[540, 468, 25, 210, 35]`).
+- **Read in the code (not yet a trace):** a span is one instance of a per-chunk MultiMesh (`render/props/street_props.cpp`
+  `push_span`); the chunk's wires are drawn twice, `wires_near` and `wires_far`, each with the chunk's box as custom AABB and a
+  visibility range: `range(NEVER_END, near_end)` and `range(near_end, far_end)` (`prop_renderer.cpp:96-102`; `streets.json`
+  `tube_end_m` 220, `far_end_m` 700), the margins 3 % of each bound (`rs_util.h` `RANGE_LINGER_SHARE`), fade disabled.
+- **Searches:** context7 `/godotengine/godot-docs`, `tutorials/3d/visibility_ranges.rst` and `class_geometryinstance3d.rst`:
+  the range's distance is measured "from the camera to the center of the instance's AABB"; with fade disabled the margins are
+  a hysteresis ("will only change its visibility state when it goes over or under the threshold by this amount").
+- **Hypothesis 1 (failed):** inside the hysteresis band round 220 m of a chunk's centre, a camera that arrives by a jump sees
+  neither level. **Test:** `dist/research/q16/` (`proj/probe.gd`: two RenderingServer instances of one mesh, a 256 m box as
+  custom AABB, ranges 0..220 and 220..700 with 3 % margins, a fresh process per first-sight distance; `python run.py ranges
+  150 200 212 214 216 218 220 222 224 226 228 240 400`). **Real output:** `objects_drawn=1` at every one of the thirteen
+  distances. The engine draws exactly one level at first sight anywhere in the band. The hypothesis is wrong; the swap by a
+  chunk centre's distance is not what hides the wires.
+- **What stands from the reading:** the level a wire is drawn at is chosen by the distance to the centre of a 256 m box, so a
+  wire 26 m from the eye may be drawn by the coarse level and one 340 m away by the fine one: a defect of detail (the one
+  owner of detail is `render/detail.h`, which the wires do not ask), but not the cause of V1.
+- **Status: `open`.** The cause is to be found by reading the flow whole (the `trace-fix` trace of V1: `street_lines`
+  `node_line_spans`, `street_props` `push_span`, `prop_kit` `wire_mesh`, `props.gdshader`'s wire vertex, `prop_renderer`'s
+  chunk draw and box), with the two photos' camera poses as the case: which spans' instances exist in the buffer of each chunk
+  for that junction, and what the shader does with each from each side.
+
+### Q6. How is input injected so that the game cannot tell it from a player's? (pending items T3, F1; 2026-11-12, session 2)
+
+- **Searches:** context7 `/godotengine/godot-docs`: `classes/class_input.rst` (`parse_input_event`: "Feeds an InputEvent to the
+  game ... has no influence on the operating system ... will not move the OS mouse cursor"), `classes/class_viewport.rst`
+  (`push_input`: "does not remap the specified event based on project settings"; the order `_input`, `_gui_input`,
+  `_shortcut_input`, `_unhandled_key_input`, `_unhandled_input`), `tutorials/inputs/inputevent.rst` (the DisplayServer reads the
+  operating system's events and feeds them to the root window: `parse_input_event` enters at that point). The game's driver:
+  `project/tests/visual/ui_driver.gd` (`move`, `button`, `key` set a position, `pressed` and a keycode, nothing else).
+- **Problem reproduced (before):** `dist/research/q6/` (`proj/probe.gd`: a Button, a LineEdit, a pad that drags only while the
+  motion event says the left button is held, as a game tool does; the events sent by `Input.parse_input_event`, flushed, a
+  process and a physics frame awaited after each; run hidden). `python run.py bare` (events as `ui_driver.gd` makes them):
+
+  ```
+  mode=bare window_focused=true
+  click: button_presses=1 polled_down_while_held=true
+  drag: dragged=(0.0, 0.0) motions_with_mask=0 motions_without_mask=21 max_velocity=0 last_polled_velocity=(0.0, 0.0)
+  type: line_has_focus=true text=""
+  ground: wheel_factor_sum=1.0 double_clicks=0 shift_clicks=0 unhandled_keys=["R", "U", "A", "Space", "7", "X", "X", "PageUp"]
+  ```
+  A drag moves nothing; typing into a focused text field writes nothing and every letter falls through to the game as a
+  shortcut; the wheel's factor, a double click and a Shift-click are not seen. So a capture "driven as the player" by the
+  present driver cannot drag a handle, type a name or zoom by a notch as a player does: features pass or fail for reasons a
+  player never meets.
+- **Solution applied in the test (after):** `python run.py full`: every field the DisplayServer fills: `button_mask` held
+  through the drag, `relative`, `screen_relative`, `velocity`, `screen_velocity`; `double_click`, modifiers and the wheel's
+  `factor` on buttons; `physical_keycode`, `key_label`, `unicode` and `echo` on keys:
+
+  ```
+  mode=full window_focused=true
+  click: button_presses=1 polled_down_while_held=true
+  drag: dragged=(200.0, 0.0) motions_with_mask=20 motions_without_mask=1 max_velocity=625 last_polled_velocity=(428.6952, 0.0)
+  type: line_has_focus=true text="Rua 7xx"
+  ground: wheel_factor_sum=2.5 double_clicks=1 shift_clicks=1 unhandled_keys=["PageUp"] key_polled_while_held=true
+  ```
+  The drag is the 200 px sent, the text is what was typed (the held key's echo included), the wheel, the double click and the
+  Shift-click arrive, only the key nobody handles reaches `_unhandled_input`, and the polled state (`is_mouse_button_pressed`,
+  `is_key_pressed`, `get_last_mouse_velocity`) agrees.
+- **Focus and the owner's desk:** the probe ran on the private desktop with no window on the owner's screen; nothing moved the
+  operating system's cursor (the documentation's own guarantee). Still to prove on a window shown without focus on the
+  owner's desktop (with Q4).
+- **A limit found by the test:** `get_viewport().get_mouse_position()` answered `(192928352, -206)`: the viewport asks the
+  operating system's cursor, which synthetic events do not move. Code that polls it instead of reading the event's position
+  would see the owner's real cursor. The game polls a mouse position in one place (`grep`: `project/ui/hud_tip.gd` or
+  `project/ui/junction_marks.gd`; to read in the tool's trace): that reader must take the position from the events.
+- **Conclusion:** one owner of synthetic input that builds events with every field (the design of
+  `log/live-instance-design.md` Part E stands, proven on the engine); `ui_driver.gd` moves onto it. **Status: `proven`** for
+  the input path; `open` for the unfocused visible window and for recording and replaying a play.
+
+### Q4. Can a C++ change reach a running game of the official engine, with no engine build of our own? (pending items T1, L5; 2026-11-12, session 2)
+
+- **Problem (before):** every C++ change costs a new process, the city generated again and every chunk streamed again.
+  `log/live-instance-design.md` Part A.1 answers with a development build of the engine patched to let a game process reload
+  extensions. Is the patch needed?
+- **Searches:** context7 `/godotengine/godot-docs` `classes/class_gdextensionmanager.rst`: `reload_extension` ("You can only
+  reload extensions in the editor; in release builds, this method always fails"), `load_extension`, `unload_extension`
+  (no such restriction written), `is_extension_loaded`.
+- **Test:** `dist/research/q4/`: `src/probe_ext.cpp` (a GDExtension class `ProbeCounter` that owns a thread, joined in its
+  destructor, as the core owns its simulation thread), compiled twice against the game's own built godot-cpp
+  (`native/build-win-debug/bin/libgodot-cpp.windows.template_debug.x86_64.a`) with `-DPROBE_VERSION=1` and `=2`; `proj/`
+  runs on the installed Godot 4.7.2 (`editor_hint=false`), hidden. `python run.py` (first part, the extension loaded at run
+  time), real output:
+
+  ```
+  load: OK (5.3 ms)
+  first: version=1 ticks_after_100ms=42
+  copy over a loaded library -> copy v2 -> bin/probe.dll: Can't open file
+  ERROR: GDExtension reloading is disabled.   at: reload_extension (core/extension/gdextension_manager.cpp:162)
+  engine reload_extension: FAILED (2.0 ms)
+  unload: OK (0.3 ms); copy v2 -> bin/probe.dll: OK (2.0 ms); load: OK (4.1 ms)
+  after unload, replace, load: version=2 ticks_after_100ms=57
+  20 more cycles done; static memory 44.8 MiB
+  ```
+- **Second part, as the game is** (the extension loaded at the engine's start through `.godot/extension_list.cfg`, a GDScript
+  typed against its class, `typed_user.gd`: `var counter: ProbeCounter`), `python run.py typed`:
+  - Without more, the typed script **crashes** after the swap (signal 11 in `make`, `typed_user.gd:6`): the compiled script
+    keeps what it resolved in the old library.
+  - With `script.reload(true)` after the load (`python run.py typed_dropped`, and `typed_alive --alive` with an instance of the
+    script kept alive across it):
+
+    ```
+    unload: OK; replace: OK; load: OK (2.2 ms in all)
+    script.reload(keep_state) with its instance alive: OK
+    typed script after its own reload: version=2
+    new instance of the cached script, after: version=2
+    a script compiled after the reload: reload=OK   its version=2
+    unload with an object of the class alive: OK; object still valid: true
+    ```
+  - The last line is a trap, not a success: the engine unloads a library while an object of its class lives and says OK; the
+    process then dies with an access violation when that object is destroyed (exit 3221225477 in both runs). A script typed
+    against an extension's class and compiled before a run-time `load_extension` of an extension that was **not** loaded at
+    start does not compile at all ("Native class not found"): the swap works only for an extension loaded at start.
+- **Conclusion:** on the official 4.7.2, with no patch: (1) the engine's own reload is refused in a game; (2) `unload_extension`,
+  a new library, `load_extension` works in about 2 to 6 ms; (3) it is sound only if **no object of the extension's classes is
+  alive at the unload** (the core torn down whole: its threads joined, its RIDs freed, the city carried as the save's bytes)
+  and **every GDScript that names an extension class is reloaded after the load** (`reload(true)` keeps its instances); (4) a
+  loaded library is locked on disk, so the build writes beside it and the swap copies it between unload and load. The
+  engine build with the reload patch is not needed for the reload; whether it is needed for the engine's own Tracy zones is
+  Q5. **Status: `proven`** for the mechanism in isolation; `open` for the game itself (a teardown that leaves nothing, the
+  time to carry and rebuild the town and km24, Terrain3D across it, and the scripts, shaders and data reloaded in place).
+
 ## Open questions (each becomes an entry above when researched; the pending item it serves in the last column)
 
 | Q | Question | Serves |
