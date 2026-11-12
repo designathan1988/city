@@ -3,14 +3,14 @@
  "expect": [],
  "overrides": {
   "states": {
-   "_doc": "The case's own machines: GameFlow's shape, a walker's mode set by one setter from another file, an atomic clock, a tool any tool may follow, and a kind.",
+   "_doc": "The case's own machines: GameFlow's shape, a walker's mode set by one setter from another file, an atomic clock, a tool any tool may follow, and a kind; another type's member of the same name written from a value is no machine's.",
    "paths": ["native/src", "project/game"],
    "suffixes": ["State", "Mode", "Phase", "Speed", "Tool"],
    "machines": [
-    {"enum": "State", "declared": "project/game/flow/flow.gd", "file": "project/game/flow/flow.gd", "member": "state", "setter": "_to", "table": "TRANSITIONS"},
-    {"enum": "WalkMode", "declared": "native/src/sim/walker_mode.cpp", "file": "native/src/sim/walker_mode.cpp", "member": "mode", "setter": "enter", "table": "WALK_MOVES"},
-    {"enum": "Pace", "declared": "native/src/sim/pace.cpp", "file": "native/src/sim/pace.cpp", "member": "pace_", "setter": "enter", "table": "PACE_MOVES"},
-    {"enum": "Tool", "declared": "project/game/tools/hand.gd", "file": "project/game/tools/hand.gd", "member": "tool", "setter": "set_tool", "why": "any tool may follow any"}
+    {"enum": "State", "declared": "project/game/flow/flow.gd", "file": "project/game/flow/flow.gd", "holder": "Flow", "member": "state", "setter": "_to", "table": "TRANSITIONS"},
+    {"enum": "WalkMode", "declared": "native/src/sim/walker_mode.cpp", "file": "native/src/sim/walker_mode.cpp", "holder": "Walker", "member": "mode", "setter": "enter", "table": "WALK_MOVES"},
+    {"enum": "Pace", "declared": "native/src/sim/pace.cpp", "file": "native/src/sim/pace.cpp", "holder": "Clock", "member": "pace_", "setter": "enter", "table": "PACE_MOVES"},
+    {"enum": "Tool", "declared": "project/game/tools/hand.gd", "file": "project/game/tools/hand.gd", "holder": "Hand", "member": "tool", "setter": "set_tool", "why": "any tool may follow any"}
    ],
    "kinds": [
     {"enum": "LineMode", "declared": "native/src/sim/lines.h", "why": "the kind of a line, chosen when it is laid, never stepped"}

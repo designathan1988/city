@@ -2,19 +2,25 @@
  "rule": "states",
  "expect": [
   "STATE_CONTROLLER native/src/sim/clock.h:2",
+  "STATE_CONTROLLER native/src/sim/door.h:2",
   "STATE_CONTROLLER native/src/sim/walker.cpp:3",
+  "STATE_CONTROLLER native/src/sim/walker.cpp:8",
+  "STATE_CONTROLLER native/src/sim/walker.cpp:12",
   "STATE_CONTROLLER project/game/flow/flow.gd:17",
+  "STATE_CONTROLLER project/game/tools/grip_user.gd:6",
+  "STATE_CONTROLLER project/game/tools/grip_user.gd:10",
   "STATE_CONTROLLER project/game/tools/hand.gd:9"
  ],
  "overrides": {
   "states": {
-   "_doc": "The case's own machines: a flow written beside its setter, a setter that reads no table, an enum named like a state and declared nowhere, a member written in another file.",
+   "_doc": "The case's own machines: a flow written beside its setter, a setter that reads no table, an enum named like a state and declared nowhere, a member written in another file (naming the enum, or through its holder by reference, by pointer, by a typed parameter and by the holder's own name), a machine whose controller file is not there.",
    "paths": ["native/src", "project/game"],
    "suffixes": ["State", "Mode", "Phase", "Speed", "Tool"],
    "machines": [
-    {"enum": "State", "declared": "project/game/flow/flow.gd", "file": "project/game/flow/flow.gd", "member": "state", "setter": "_to", "table": "TRANSITIONS"},
-    {"enum": "Grip", "declared": "project/game/tools/hand.gd", "file": "project/game/tools/hand.gd", "member": "grip", "setter": "set_grip", "table": "GRIPS"},
-    {"enum": "WalkMode", "declared": "native/src/sim/walker_mode.cpp", "file": "native/src/sim/walker_mode.cpp", "member": "mode", "setter": "enter", "table": "WALK_MOVES"}
+    {"enum": "State", "declared": "project/game/flow/flow.gd", "file": "project/game/flow/flow.gd", "holder": "Flow", "member": "state", "setter": "_to", "table": "TRANSITIONS"},
+    {"enum": "Grip", "declared": "project/game/tools/hand.gd", "file": "project/game/tools/hand.gd", "holder": "Hand", "member": "grip", "setter": "set_grip", "table": "GRIPS"},
+    {"enum": "WalkMode", "declared": "native/src/sim/walker_mode.cpp", "file": "native/src/sim/walker_mode.cpp", "holder": "Walker", "member": "mode", "setter": "enter", "table": "WALK_MOVES"},
+    {"enum": "DoorPhase", "declared": "native/src/sim/door.h", "file": "native/src/sim/door_phase.cpp", "holder": "Door", "member": "phase", "setter": "enter_door", "table": "DOOR_MOVES"}
    ],
    "kinds": []
   }

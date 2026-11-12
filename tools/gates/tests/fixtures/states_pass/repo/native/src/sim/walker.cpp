@@ -4,3 +4,8 @@ void step(Walker &w) {
 	const WalkMode mode = WalkMode::WAIT;
 	if (w.mode == mode) return;
 }
+
+// Another body's member of the same name, written from a value: not the walker's.
+void paint(Brush &b, int m) {
+	b.mode = m;
+}

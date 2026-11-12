@@ -104,12 +104,13 @@
               "enum": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$"},
               "declared": {"type": "string", "minLength": 1},
               "file": {"type": "string", "minLength": 1},
+              "holder": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9_]*$"},
               "member": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
               "setter": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
               "table": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"},
               "why": {"$ref": "#/$defs/doc"}
             },
-            "required": ["enum", "declared", "file", "member", "setter"]
+            "required": ["enum", "declared", "file", "holder", "member", "setter"]
           }
         },
         "kinds": {

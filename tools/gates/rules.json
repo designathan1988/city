@@ -447,19 +447,19 @@
     "min_numbers": 5
   },
   "states": {
-    "_doc": "STATE_CONTROLLER (gate_states.py): every state with its controller. An enum named like a state (suffixes) is a machine, with the file of its controller, the member that holds it, the one setter that writes it and the transition table the setter reads (or why any state may follow any), or a kind, a value chosen and never stepped, with why. The traffic's agents and the signature bodies are machines whose controllers are still to be built (the trace's problems): every write of their members outside a setter is refused until then.",
+    "_doc": "STATE_CONTROLLER (gate_states.py): every state with its controller. An enum named like a state (suffixes) is a machine, with the file of its controller (which must exist), the type that holds it (holder), the member that holds it, the one setter that writes it and the transition table the setter reads (or why any state may follow any), or a kind, a value chosen and never stepped, with why. A write of the member outside the setter is the machine's when its statement names the enum or when the object written is the holder's, by its declaration in the same file (or the holder's own name: an autoload).",
     "paths": ["native/src", "project/game", "project/ui", "project/render"],
     "suffixes": ["State", "Mode", "Phase", "Speed", "Tool"],
     "machines": [
-      {"enum": "State", "declared": "project/game/flow/game_flow.gd", "file": "project/game/flow/game_flow.gd", "member": "state", "setter": "_to", "table": "TRANSITIONS"},
-      {"enum": "Tool", "declared": "project/game/tools/tool_controller.gd", "file": "project/game/tools/tool_controller.gd", "member": "tool", "setter": "set_tool", "why": "any tool may follow any (the bar, a key, the camera's NONE); a stroke held when the tool changes is ended first, by the Phase machine"},
-      {"enum": "Phase", "declared": "project/game/tools/tool_controller.gd", "file": "project/game/tools/tool_controller.gd", "member": "phase", "setter": "_enter", "table": "PHASES"},
-      {"enum": "SimSpeed", "declared": "native/src/sim/simulation/simulation.h", "file": "native/src/sim/simulation/simulation.cpp", "member": "speed_", "setter": "enter", "table": "SPEED_MOVES"},
-      {"enum": "PedMode", "declared": "native/src/sim/traffic/ped_state.h", "file": "native/src/sim/traffic/ped_mode.cpp", "member": "mode", "setter": "enter_mode", "table": "PED_MODES"},
-      {"enum": "CarPhase", "declared": "native/src/sim/traffic/parking_state.h", "file": "native/src/sim/traffic/car_phase.cpp", "member": "phase", "setter": "enter_car_phase", "table": "CAR_PHASES"},
-      {"enum": "LorryPhase", "declared": "native/src/sim/traffic/parking_state.h", "file": "native/src/sim/traffic/lorry_phase.cpp", "member": "phase", "setter": "enter_lorry_phase", "table": "LORRY_PHASES"},
-      {"enum": "KerbPhase", "declared": "native/src/sim/traffic/kerb_state.h", "file": "native/src/sim/traffic/kerb_phase.cpp", "member": "phase", "setter": "enter_kerb_phase", "table": "KERB_PHASES"},
-      {"enum": "State", "declared": "native/src/render/buildings/signature_bodies.h", "file": "native/src/render/buildings/signature_bodies.cpp", "member": "state_", "setter": "enter", "table": "DESIGN_MOVES"}
+      {"enum": "State", "declared": "project/game/flow/game_flow.gd", "file": "project/game/flow/game_flow.gd", "holder": "GameFlow", "member": "state", "setter": "_to", "table": "TRANSITIONS"},
+      {"enum": "Tool", "declared": "project/game/tools/tool_controller.gd", "file": "project/game/tools/tool_controller.gd", "holder": "ToolController", "member": "tool", "setter": "set_tool", "why": "any tool may follow any (the bar, a key, the camera's NONE); a stroke held when the tool changes is ended first, by the Phase machine"},
+      {"enum": "Phase", "declared": "project/game/tools/tool_controller.gd", "file": "project/game/tools/tool_controller.gd", "holder": "ToolController", "member": "phase", "setter": "_enter", "table": "PHASES"},
+      {"enum": "SimSpeed", "declared": "native/src/sim/simulation/simulation.h", "file": "native/src/sim/simulation/simulation.cpp", "holder": "Simulation", "member": "speed_", "setter": "enter", "table": "SPEED_MOVES"},
+      {"enum": "PedMode", "declared": "native/src/sim/traffic/ped_state.h", "file": "native/src/sim/traffic/ped_mode.cpp", "holder": "Pedestrian", "member": "mode", "setter": "enter_mode", "table": "PED_MODES"},
+      {"enum": "CarPhase", "declared": "native/src/sim/traffic/parking_state.h", "file": "native/src/sim/traffic/car_phase.cpp", "holder": "LotCar", "member": "phase", "setter": "enter_car_phase", "table": "CAR_PHASES"},
+      {"enum": "LorryPhase", "declared": "native/src/sim/traffic/parking_state.h", "file": "native/src/sim/traffic/lorry_phase.cpp", "holder": "Lorry", "member": "phase", "setter": "enter_lorry_phase", "table": "LORRY_PHASES"},
+      {"enum": "KerbPhase", "declared": "native/src/sim/traffic/kerb_state.h", "file": "native/src/sim/traffic/kerb_phase.cpp", "holder": "KerbStop", "member": "phase", "setter": "enter_kerb_phase", "table": "KERB_PHASES"},
+      {"enum": "State", "declared": "native/src/render/buildings/signature_bodies.h", "file": "native/src/render/buildings/signature_bodies.cpp", "holder": "SignatureBodies", "member": "state_", "setter": "enter", "table": "DESIGN_MOVES"}
     ],
     "kinds": [
       {"enum": "TransitMode", "declared": "native/src/sim/transit/transit_data.h", "why": "the kind of a line (bus, train, metro), chosen when it is laid and never stepped"},
