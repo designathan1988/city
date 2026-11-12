@@ -18,13 +18,13 @@ measured (memory, CPU, GPU, frame) and photographed in the 24 km city (map `km24
 3. **Understand:** tie problem, cause and solution through the code and, when there was one, through the research. [c:understand]
 4. **Plan** the fix of the cause, with one owner, always choosing the most expensive and laborious solution that solves the
    cause (owner, 2026-11-11): a cheap solution that does not solve the cause is forbidden, and so is offering cheap options. [c:plan-costliest]
-5. **Code** without trial and error: if it did not work, go back to reading until you understand. [c:no-trial]
-6. **Verify what the change reaches**, once (the table of what each kind of change asks for, below). A photo is judged on its own (nothing broken,
+5. **Code the whole block, with nothing run inside it** (owner, 2026-11-12, binding over every skill, memory and record: the work is in the code; his words in `log/how-we-work.md`). A block is every open problem the owner named, or with none named every open problem of the area in hand: each is fixed at its cause, one after the other, without trial and error. Until the block's code is whole: no test written or run, no build to check, no measurement, no photo, no run of the game, no commit. [c:no-trial]
+6. **Verify once, at the block's end** (the table below): both DLLs, the fast check, the gates, the photos, then the commits, the push and the executable. A photo is judged on its own (nothing broken,
    out of shape, overlapping or missing), never made equal pixel for pixel to another run, an older commit or a kept reference. [c:verify-reach]
 7. **Stop and check:** did it pass or fail? If it failed, go back to step 1 with what the failure showed. [c:stop-check]
 
 At a theme's close, the line's record gets the problems, the sources, the reasoning, the plan and the files created, changed and deleted. [c:theme-record]
-A reported problem is solved with the `trace-fix` skill (`python .claude/skills/trace-fix/ledger.py resume` first): the flow traced end to end, read whole with the Read tool, recorded on disk, fixed at the cause, tested and photographed; its hooks refuse an edit of a file not read whole. [c:trace-fix]
+A reported problem is solved with the `trace-fix` skill (`python .claude/skills/trace-fix/ledger.py resume` first): the flow traced end to end, read whole with the Read tool, recorded on disk, fixed at the cause; it is tested and photographed with its block, at the block's end (step 5 wins over the skill's "one problem at a time, test it, photograph it" and over any skill that asks for a failing test before the code); its hooks refuse an edit of a file not read whole. [c:trace-fix]
 
 ## Fixing the cause
 - The fix changes the design decision that produces the symptom. If the right fix asks for a rewrite, rewrite. [c:fix-decision]
@@ -45,9 +45,9 @@ A reported problem is solved with the `trace-fix` skill (`python .claude/skills/
 - Never wait blind on a launched process (a deadline and following it). Stop only your own processes, by PID. [c:no-blind-wait]
 - Never close the game open on the user's screen: `tools/build/free_dll.sh` frees the DLL. [c:user-game]
 - Tests and captures never open a window on the user's screen (`tools/tasks` runs them `hidden`, on a private desktop). [c:hidden-runs]
-- Every change to the game is delivered, at the theme's close, with a new executable: the user opens `dist/windows/Roadcraft.exe`. [c:deliver-exe]
+- Every block of changes to the game is delivered, at the block's close, with a new executable: the user opens `dist/windows/Roadcraft.exe`. [c:deliver-exe]
 - Direct work on `main`, in `C:\Users\Jonathan\Desktop\city`, without a worktree.
-  A commit per theme and a push to `origin/main` (`https://github.com/designathan1988/city`). [c:main-direct]
+  A commit per theme, made at the block's close, and one push to `origin/main` (`https://github.com/designathan1988/city`). [c:main-direct]
 - **The lab is a reference, never code to copy.** `C:\Users\Jonathan\Documents\Projects\lab\roadcraft` is the game with everything working. Read it only to write down WHAT the game must do: the behaviour, the rules, the cases, the values, what the player sees.
   Never copy its code, translate it line by line or reproduce its structure (it is a browser's, on one thread): the code is designed for this game's architecture and checked against that behaviour in tests and photos. `roadcraft-4.0-main` is old and no reference. [c:lab-reference]
 - A launched process runs in the foreground or under a monitor, with a short deadline and its lines shown as they come: never in the background unwatched. [c:watched-process]
@@ -55,14 +55,14 @@ A reported problem is solved with the `trace-fix` skill (`python .claude/skills/
 
 ## Running and checking
 - Investigating is reading code: no measurements, profiles or long, heavy tests to investigate. A measurement only checks the effect of a change its cause already explains; every feature and performance fix is measured in the 24 km city at its end, the previous build and this one. [c:investigate-reading]
-- Check only what the change reaches: [c:check-reach]
+- Check once, at the block's end, only what the block's changes reach; nothing below is run while the block is open: [c:check-reach]
 
 | Changed | Check |
 |---|---|
 | Tool under `tools/` | its own tests and `run_gates.py --file` on the changed files |
 | GDScript, scene or data | `quick.sh <linked scenes>` and the gates of the changed files |
 | C++ | both DLLs and `quick.sh <linked scenes>` |
-| Theme's close, before the push | `quick.sh --ready`, the whole `run_gates.py` and the executable |
+| Block's close, before the push | `quick.sh --ready` once, the whole `run_gates.py`, the photos and the executable |
 
 - Visual proof, only for a visual change: of the element, from near and from several angles. [c:visual-proof]
 
@@ -112,7 +112,7 @@ A reported problem is solved with the `trace-fix` skill (`python .claude/skills/
 |---|---|
 | Run the game | `godot --path project` (without Vulkan: `--rendering-method gl_compatibility`) |
 | Build both DLLs | `MINGW=... tools/build/build.sh core-windows` (Linux: `core`) |
-| Check a change | `tools/build/quick.sh [task,task]` (= `python tools/tasks/cli.py run quick`: only the tasks whose inputs changed; `--ready` at a theme's close, `--all` nothing from the cache, `--bless` the city's digest written again, only for a change meant to move it; its frozen photos are for looking, compared with nothing) |
+| Check a change | `tools/build/quick.sh [task,task]` (= `python tools/tasks/cli.py run quick`: only the tasks whose inputs changed; `--ready` at a block's close, `--all` nothing from the cache, `--bless` the city's digest written again, only for a change meant to move it; its frozen photos are for looking, compared with nothing) |
 | Run one test | `python tools/tasks/cli.py run fast <scene>` |
 | Suite in parallel | `python tools/tasks/cli.py run tests` (logs in `dist/tasks/<run>`, `cli.py status`; every task has its own deadline and is killed by PID) |
 | Gates | `python tools/gates/run_gates.py` (`--file X`, `--files-from F`, `--summary`, `--selftest`); changed files only: `python tools/tasks/cli.py run gates_changed` |

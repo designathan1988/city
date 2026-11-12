@@ -24,21 +24,26 @@ says otherwise, this page and CLAUDE.md win; a new contradiction found is settle
 5. **The cause, the costliest way, no patch.** The decision that produces the symptom changes, rewritten when that is what it
    takes. Never: a threshold, timeout, tolerance or thread count moved; a special case; an error swallowed; a check loosened; a
    reference re-blessed to pass; the cost moved elsewhere. Never offer cheap options.
-6. **Test first.** The check that fails because of the cause is written (or named) before the code, then the code is written once.
-   A failure sends you back to reading, never to another attempt.
-7. **Verify what the change reaches.** Its tests (one Godot at a time while working); its photos planned by what it touches — poles
-   from near, far and several angles, people with the clock running, vehicles at the junctions touched — plus a few general views;
-   every photo and every crop opened and judged piece by piece, on its own, never against older photos; both builds (previous and
-   this) measured at the end in km24 (memory, CPU, GPU, frame) with the noise stated.
+6. **Code the whole block; nothing is run inside it** (the owner's order of 2026-11-12, twice: "PARE JÁ DE FAZER TESTES, O SEU
+   TRABALHO É NO CODIGO, NO FINAL TIRE FOTOS E FAÇA TESTES RAPIDOS"; "resolvesse pelo código, sem testes, medições, e mais nada.
+   Tudo deveria ser feito no final de um grande bloco"). A block is every open problem the owner named, or with none named every
+   open problem of the area in hand. Each is read and fixed at its cause, one after the other. Until the block's code is whole: no
+   test written, no test run (of a generated city or of any other kind), no red-and-green cycle, no build to check, no measurement,
+   no photo, no run of the game, no commit, no export. A doubt is settled by reading, never by running.
+7. **Verify once, at the block's end.** Both DLLs built once; the fast check once; the gates; the photos planned by what the block
+   touches — poles from near, far and several angles, people with the clock running, vehicles at the junctions touched — plus a few
+   general views, every photo and every crop opened and judged piece by piece, on its own, never against older photos; both builds
+   measured in km24 when the block changes performance. A failure there is read, fixed in the code, and the check run once more.
 8. **Every contract has a mechanism.** A rule that matters is a gate, a test or a run-time check that fails on its own, not a
    sentence; a new rule enters CLAUDE.md with its guard.
-9. **Close the theme whole.** Both DLLs, `quick.sh --ready`, every gate, the executable (`tools/build/deliver.sh export`), the
-   line's record with time and commit, commit and push to `origin/main`; tell the owner in Portuguese.
+9. **Close the block whole, once.** After step 7 passes: the line's record with time and commit, a commit per theme of the block,
+   one push to `origin/main`, the executable (`tools/build/deliver.sh export`) once; tell the owner in Portuguese.
 10. **Work alone and watched.** No agents, subagents or new sessions unless the owner orders them in so many words; no process
-    in the background unwatched; never close the game the owner has open; one Godot at a time while working.
-11. **Use the skills that fit.** `trace-fix` for every reported problem; `superpowers:brainstorming` before a new feature or tool,
-    then `superpowers:writing-plans`; `superpowers:systematic-debugging`, `superpowers:test-driven-development` and
-    `superpowers:verification-before-completion` in their steps; context7 always (step 2).
+    in the background unwatched; never close the game the owner has open; one Godot at a time at the block's end.
+11. **Use the skills that fit, inside step 6.** `trace-fix` for every reported problem, for its reading, its record and its fix: its
+    test and its photos are the block's, at the end. `superpowers:systematic-debugging` for the cause, by reading. No skill's order to
+    write or watch a failing test before the code is followed (`superpowers:test-driven-development`), nor a check after each fix
+    (`superpowers:verification-before-completion` is the block's close). context7 always (step 2).
 
 ## Contradictions found on 2026-11-11 and how they were settled
 
@@ -55,3 +60,20 @@ says otherwise, this page and CLAUDE.md win; a new contradiction found is settle
 | Memory `judge-photos-by-quality` | if photos are sound, bless the goldens and go on | Frozen photos are compared with nothing; `--bless` only for the digest of a change meant to move it, its cause written |
 | Memory `diagnosis-2026-11-08` | ".claude has no hooks" | History of that date: hooks exist now |
 | Skills `roadcraft-port`, `roadcraft-reading` (account skills, not in the repository) | their names speak of porting | Not used: porting the roadcraft is forbidden; reading it for behaviour is step 3; the owner may remove or rewrite them in the account |
+
+## Contradictions found on 2026-11-12 and how they were settled
+
+The owner ordered the work done in the code, with nothing run until the end of a big block, and the session went on in test-first
+cycles closed a theme at a time. These said so, and this page and CLAUDE.md, which win over them, did not carry the order.
+
+| Where | What it said | Settled |
+|---|---|---|
+| This page, step 6 | "Test first: the check that fails because of the cause is written before the code" | No test is written or run inside a block; the block's code first (step 6) |
+| This page, step 7 | "Its tests (one Godot at a time while working)" | Nothing is run while working; one verification at the block's end (step 7) |
+| This page, step 9 | "Close the theme whole": DLLs, `quick.sh --ready`, gates, executable, commit, push, a theme at a time | The block is closed once: one check, the commits, one push, one executable (step 9) |
+| CLAUDE.md, Method 5 to 7 and the check table | a change verified by its kind (C++: both DLLs and `quick.sh`), a theme closed by `quick.sh --ready` | Coded as a block with nothing run; checked once at the block's end |
+| CLAUDE.md, Principles | "delivered, at the theme's close, with a new executable"; "a commit per theme and a push" | At the block's close |
+| Memory `no-city-tests-mid-work` | "no tests in generated cities mid-work"; "the theme's close check runs once before the push" | The owner said no tests at all, and the end of the block: the memory is rewritten to his words |
+| Memories `commit-push-regularly`, `deliver-exe-after-each-fix` | commit, push and export after each closed fix | At the block's close |
+| Skill `trace-fix` (`SKILL.md`: "One problem at a time: trace it, read and record its flow, fix it whole, test it, photograph it"; step 4: "If none fails, write it first and see it fail", "Build the debug DLL and run that check") | a test and photos per problem | The skill's file stays as it is (the owner's order: hands off the skill and its hooks); its reading, record and fix are followed, its test and photos are the block's, at the end |
+| Skill `superpowers:test-driven-development` ("no production code without a failing test first") | red and green for every change | Not followed in this project (step 11) |
