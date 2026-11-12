@@ -6,7 +6,9 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 
-from .vocab import AS_KEPT, AS_NAME, BY_NAME, EXACT, FN, KEPT
+from .vocab import AS_BUILT, AS_KEPT, AS_NAME, BY_NAME, EXACT, FN, KEPT, TOLD, TXT
+
+KEEPS = {FN: KEPT, KEPT: KEPT, TXT: TOLD, TOLD: TOLD}
 
 
 def marked(how: str) -> str | None:
@@ -34,8 +36,8 @@ class Solver:
             self.add(dst, value)
         elif how != EXACT:
             return
-        elif mark == AS_KEPT and kind == FN:
-            self.add(dst, (KEPT, d, EXACT))
+        elif (mark == AS_BUILT and kind in KEEPS) or (mark == AS_KEPT and kind in (FN, KEPT)):
+            self.add(dst, (KEEPS[kind], d, EXACT))                # what an object is handed: kept by it
         elif mark == AS_NAME and kind in (FN, KEPT):
             self.add(dst, (kind, d, BY_NAME))
 

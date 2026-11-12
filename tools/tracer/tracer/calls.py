@@ -9,7 +9,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 
 from .solver import marked
-from .vocab import AS_KEPT, BY_NAME, CALL, CLS, EXACT, FN, FUNCTION, HANDED, INST, KEPT, NEW, PART, RET, VALUE, VAR
+from .vocab import (AS_BUILT, AS_KEPT, BY_NAME, BY_TEXT, CALL, CLS, EXACT, FN, FUNCTION, HANDED, INST, KEPT, NEW, PART,
+                    RET, STRENGTH, TOLD, TXT, VALUE, VAR)
 
 SHOWN = 80                           # how much of a callee's text a report shows
 
@@ -22,6 +23,8 @@ class Link:
     how: str
     file: int
     line: int
+    texts: frozenset = frozenset()   # the functions' names given in texts where the link is written
+    fns: frozenset = frozenset()     # the functions given there
 
 
 @dataclass
@@ -43,6 +46,13 @@ class Site:
     name: str = ""                   # the member called, where the callee is one
     gave: bool = False               # a function is among its arguments
     kept: list | None = None         # the functions the object called on holds
+    around: int | None = None        # the class whose member a callee written as a plain name may be
+    fns: list | None = None          # the functions among its arguments, known exactly
+    texts: set | None = None         # the functions' names written in the texts it is given
+    targets: list | None = None      # what it links to: (definition, kind)
+    given: set | None = None         # the functions among its arguments, however they were found
+    told: set | None = None          # the ones the object it is called on was handed, and keeps
+    objects: set | None = None       # the classes of the objects it is given or called on
 
 
 @dataclass
@@ -60,7 +70,7 @@ class Calls:
         self.sites, self.links, self.outside = [], {}, defaultdict(set)
 
     def site(self, f, node, kind: str, callee, given: list, key, shown: str, receiver=None, places=None, props=None,
-             sup: bool = False, direct: bool = False, name: str = "") -> None:
+             sup: bool = False, direct: bool = False, name: str = "", around=None) -> None:
         """One place of the code that calls (or makes): its arguments wired, its callee watched."""
         fl = self.fl
         args = [fl.ev(f, one) for one in given]
@@ -71,7 +81,15 @@ class Calls:
                     fl.s.follow(fl.ev(f, f.pairs[child.id][VALUE]), one)
             args = [one]
         site = Site(f, node, kind, args, key, fl.sc.unit(f, node), receiver, places, " ".join(shown.split())[:SHOWN])
-        site.direct, site.name = direct, name
+        site.direct, site.name, site.around, site.texts, site.targets, site.given = direct, name, around, set(), [], set()
+
+        def noted(v: tuple) -> None:
+            if v[0] in (TXT, TOLD):
+                site.texts.add(v[1])
+            elif v[0] == FN:
+                site.given.add(v[1])
+        for arg in args:
+            fl.s.watch(arg, noted)
         self.sites.append(site)
         if sup and f.lang.super_names_method:
             self.same_name(site)
@@ -90,6 +108,7 @@ class Calls:
     def run(self, site: Site, d: int, how: str) -> None:
         """A function runs: linked, given the arguments, its result the call's value."""
         self.link(site.unit, d, NEW if site.kind == NEW else CALL, how, site.f, site.node)
+        site.targets.append((d, NEW if site.kind == NEW else CALL))
         self.bind(site, d, how)
         self.fl.s.follow((RET, d), site.key, marked(how))
         site.found, site.exact = True, site.exact or how == EXACT
@@ -128,21 +147,54 @@ class Calls:
         name, may be the one running what that object holds (`result`)."""
         if site.handed:
             return
-        site.handed, site.kept = True, []
+        site.handed, site.kept, site.fns, site.told = True, [], [], set()
+        site.objects = set() if site.around is None else {site.around}
         fl = self.fl
         if not site.found:
             self.outside[site.unit].add(site.shown)
 
         def given(v: tuple) -> None:
-            if v[0] == FN:
+            if v[0] in (INST, CLS):
+                site.objects.add(v[1])
+            elif v[0] == FN:
                 site.gave = True
+                site.fns += [v[1]] if v[2] == EXACT else []
                 self.link(site.unit, v[1], HANDED, v[2], site.f, site.node)
+
+        def called_on(v: tuple) -> None:
+            if v[0] == TOLD:
+                site.told.add(v[1])
+            elif v[0] in (INST, CLS):
+                site.objects.add(v[1])
+            elif v[0] in (FN, KEPT):
+                site.kept.append(v)
         for arg in site.args:
             fl.s.watch(arg, given)
+            if not site.answered:                        # what code not read is handed, what it gives back may keep
+                fl.s.follow(arg, site.key, AS_BUILT)
             if site.places:
                 fl.st.store(site.places, arg, site.f, site.node, AS_KEPT)
         if site.receiver is not None:
-            fl.s.watch(site.receiver, lambda v: site.kept.append(v) if v[0] in (FN, KEPT) else None)
+            fl.s.watch(site.receiver, called_on)
+
+    def by_text(self) -> None:
+        """A function handed over together with the text of its name is known by that text to the code not read: a
+        call no definition answers, on an object that was handed that text and keeps it, may run it. A text given to
+        such a call says nothing alone: with an object whose class has a method of that name, it names the method."""
+        p, sc = self.fl.p, self.fl.sc
+        known = defaultdict(set)
+        for site in self.sites:
+            for d in site.fns or ():
+                if p.defs[d].name in site.texts:
+                    known[p.defs[d].name].add(d)
+        for site in self.sites:
+            if not site.handed or site.answered:
+                continue
+            found = {m for name in site.texts for c in site.objects for m in sc.members(c, name)
+                     if p.defs[m].kind == FUNCTION}
+            for d in sorted(found.union(*(known.get(name, ()) for name in site.told))):
+                if (site.unit, d, HANDED) not in self.links:         # where it is handed, the text says no more
+                    self.link(site.unit, d, CALL, BY_TEXT, site.f, site.node)
 
     @staticmethod
     def runs(site: Site, v: tuple, keeping: set) -> bool:
@@ -159,8 +211,8 @@ class Calls:
         old = self.links.get((src, dst, kind))
         if old is None:
             self.links[(src, dst, kind)] = Link(src, dst, kind, how, f.index, node.start_point[0] + 1)
-        elif how == EXACT:
-            old.how = EXACT
+        elif STRENGTH.index(how) > STRENGTH.index(old.how):
+            old.how = how
 
     def result(self) -> Result:
         """The links by where they start and where they end; a call given no function hands over what the object it
@@ -171,6 +223,11 @@ class Calls:
             for v in site.kept or () if not site.gave and not site.answered else ():
                 if self.runs(site, v, keeping):
                     self.link(site.unit, v[1], HANDED, v[2], site.f, site.node)
+        self.by_text()
+        for site in self.sites:
+            for d, kind in site.targets if site.texts or site.given else ():
+                link = self.links[(site.unit, d, kind)]
+                link.texts, link.fns = link.texts | site.texts, link.fns | site.given
         starts = {src for src, _, _ in self.links}
         for link in list(self.links.values()):
             owner = p.defs[link.dst].owner

@@ -5,7 +5,17 @@
 class Core : public Object {
  public:
   int fire(int n) { return n; }
+  int sweep(int n) { return n; }
 };
+
+struct Binder {
+  static void bind(const char* name, int (Core::*method)(int));
+};
+
+inline void bind_all() {
+  Binder::bind(NAMED("fire", "n"), &Core::fire);
+  Binder::bind(NAMED("sweep", "n"), &Core::sweep);
+}
 
 class Plain {
  public:

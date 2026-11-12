@@ -68,17 +68,21 @@ RUNNING = (FUNCTION, CLASS, MODULE)          # the definitions code is written i
 # A function an object was handed is kept by the object and is not its value: it runs where the object, or what was
 # taken from it, is called.
 FN, CLS, INST, OUT, KEPT = "fn", "cls", "inst", "out", "kept"
+TXT = "txt"                      # a text written in the code that names a function: (TXT, the name, EXACT)
+TOLD = "told"                    # such a name an object was handed in a text, and keeps
 
 # Kinds of link (CALL and NEW as above) and how one was found: by the language's scopes and declared types, or by a
 # name alone (a property written somewhere, a member of some class of that name).
 HANDED = "handed"                # a function given to code the program does not define, which may run it
-EXACT, BY_NAME = "exact", "by name"
+EXACT, BY_NAME, BY_TEXT = "exact", "by name", "by text"
+STRENGTH = (BY_TEXT, BY_NAME, EXACT)         # of two ways one link was found, the later here is the one said
 RUNS = (CALL, NEW, HANDED)
 OUTSIDE = (OUT, -1, EXACT)
 
 # What an edge of the flow carries: every value as it is; found by name (the functions known exactly, marked so);
-# handed to an object (those functions, as kept by it).
-AS_NAME, AS_KEPT = "as name", "as kept"
+# handed to an object (those functions, as kept by it); what the result of a call no definition answers is built
+# with (those functions and the functions' names it was given in texts, as kept by it).
+AS_NAME, AS_KEPT, AS_BUILT = "as name", "as kept", "as built"
 
 # Node keys of the flow: a variable's values, a function's result, what is written under a property name, an
 # expression's values, a step's.

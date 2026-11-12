@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import unittest
 
-from support import BY_NAME, CALL, EXACT, HANDED, NEW, reached, traced
+from support import BY_NAME, BY_TEXT, CALL, EXACT, HANDED, NEW, reached, traced
 
 
 class GDScript(unittest.TestCase):
@@ -98,6 +98,38 @@ class Outside(unittest.TestCase):
     def test_a_compiled_language_does_not_reach_a_script_by_name(self):
         r = traced("mix")
         self.assertEqual({"Core.fire", "Plain.fire"}, reached(r, "hoist", (CALL,), BY_NAME))
+
+
+class Text(unittest.TestCase):
+    """A function handed over together with the text of its name is known by that text to the code not read: a
+    call no definition answers, given that text or holding it, may run it. So may one given the text of a method's
+    name together with an object of the method's class."""
+
+    def setUp(self):
+        self.r = traced("mix")
+
+    def test_a_script_reaches_the_function_another_language_handed_under_its_name(self):
+        self.assertEqual({"Core.fire", "Core.sweep"}, reached(self.r, "panel.send", (CALL,), BY_TEXT))
+
+    def test_a_text_given_to_a_call_says_nothing_alone(self):
+        self.assertEqual(set(), reached(self.r, "panel.setup", (CALL,), BY_TEXT))
+        self.assertEqual(set(), reached(self.r, "panel.has", (CALL,), BY_TEXT))
+
+    def test_where_it_is_handed_it_is_handed_and_no_more(self):
+        self.assertEqual({"Core.fire", "Core.sweep"}, reached(self.r, "bind_all", (HANDED,)))
+        self.assertEqual(set(), reached(self.r, "bind_all", (CALL,), BY_TEXT))
+
+    def test_a_text_kept_among_data_runs_nothing(self):
+        self.assertEqual(set(), reached(self.r, "panel.count", (CALL,), BY_TEXT))
+
+    def test_what_an_answered_call_gives_back_keeps_no_text(self):
+        self.assertEqual({"panel.send"}, reached(self.r, "panel.ask", (CALL,)))
+
+    def test_a_text_given_with_an_object_names_the_object_s_method(self):
+        self.assertEqual({"panel.lift"}, reached(self.r, "panel.later", (CALL,), BY_TEXT))
+
+    def test_a_sentence_names_no_function(self):
+        self.assertEqual(set(), reached(self.r, "panel.say", (CALL,), BY_TEXT))
 
 
 class Visible(unittest.TestCase):

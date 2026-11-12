@@ -45,7 +45,7 @@ class TypeScript(unittest.TestCase):
         self.assertLessEqual({"Shop.constructor", "Crate", "Shop.open", "run", "sharpen"}, found)
 
     def test_a_callback_runs_where_the_function_it_was_given_to_calls_it(self):
-        self.assertEqual({"later"}, reached(self.r, "run", (CALL,)))
+        self.assertEqual({"later", "byFirst"}, reached(self.r, "run", (CALL,)))
         self.assertEqual({"sharpen"}, reached(self.r, "later", (CALL,)))
 
     def test_an_object_literal_s_method_and_property(self):

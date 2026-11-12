@@ -67,6 +67,9 @@ compares a node's text only with words of its language.
 - **Links by text.** A function handed over together with a text and run by a call given that text
   (`bind_method("x", &C::x)`, `Callable(obj, "x")`, `connect("sig", f)`/`emit_signal("sig")`). In the game this is
   where a trace from GDScript stops before the C++ core: `city_store.dispatch` ends at `_routes[command].callv`.
+  *Done in the second step, below; what is left of it:* a signal's name given as a text (`connect("sig", f)`,
+  `emit_signal("sig")`), a class named by a text (`ClassDB.instantiate("CityCore")`), a name cut out of a text by
+  the code itself (`spec.substr(cut + 1)`: only the name a text ends with is read).
 - TypeScript path aliases (`tsconfig` `paths`, `baseUrl`) are not read: an import written with an alias resolves only
   where the file's path ends as written. CommonJS `require` and `module.exports` are not read.
 - C++: macros are not expanded; the overloads of one name are not told apart; operators are not calls; what a
@@ -75,6 +78,39 @@ compares a node's text only with words of its language.
   name.
 - A member read and not called on an object nothing is known of is not looked up by name (it is most often data).
 - It was run on this repository's game code only; not on the lab (the owner's order).
+
+## Second step (2026-11-12): links by text, and a trace that follows what each call gave
+
+The first trace of a tool's click stopped at the store: the scripts reach the C++ core through names written as
+texts (`CityStore.dispatch(&"build_road_path", ...)` on one side, `ClassDB::bind_method(D_METHOD("build_road_path",
+...), &CityCore::build_road_path)` on the other, a `Callable(core, name)` kept in a table between them).
+
+- **A text that names a function is a value** (`TXT`): the text itself where it is one name, the name it ends with
+  where it is names joined by marks (the way a name is written under its scopes); only names of the code's functions.
+- **What the result of a call no definition answers is built with, it keeps** (`AS_BUILT`): the functions and the
+  names it was given. A container keeps the functions it is handed, never the texts.
+- **By text** (`calls.by_text`, a third way a link is found, said in the link): a function handed over together
+  with the text of its own name is known by that text; a call no definition answers, on an object that keeps that
+  name, may run it. A text given to such a call says nothing alone; with an object whose class has a method of that
+  name, it names the method (`call_deferred("lift")`, `Callable(self, "lift")`).
+- **The trace follows what each call gave** (`walk.py`; the links stay as the flow found them, no object or call is
+  told from another there): a function entered by a call that gave a function's name is followed by text to the
+  function of that name, where there is one; one entered with functions given, not to the functions only its other
+  callers give it; and back the same way. The click's trace went from 5,800 lines to 472 at depth 7.
+
+Each with a test that failed first (`test_shapes.Text`, `test_command`). What the game's code showed on the way:
+a file path split into names linked `DataTables._read` to `CityCore.overlays` (now only the name a text ends with);
+a text kept in a vector linked `items_.size()` to `CityCore.strike` (a container keeps functions, not texts); a call
+answered by name kept its arguments in its result (only where no definition answers).
+
+Whole run: 9.5 s; 21,751 links: 14,861 `call` exact, 4,001 `call` by name, 691 `call` by text, 888 `new`, 1,117
+`handed` exact, 192 `handed` by name. Read in the game: `road_tool._lay` -> `city_store.dispatch` (by name) ->
+`city.CityCore.build_road_path` (by text) -> `city.run_edit` -> that command's own lambda -> `road_ends`,
+`find_anchor`, `build_path`, `place_road`. 71 tests, about 4 s.
+
+Not covered, beyond the list above: a function reached through a function it is given keeps no more than one call
+of context (the walk looks one call back); `std::move(f)` and the like give back what they are handed only as kept
+(run where called, said by name).
 
 ## Files
 

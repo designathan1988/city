@@ -209,6 +209,7 @@ class Program:
         """Where a name is found beyond its scope: a file its own words name, by that name anywhere; a member, by its
         name among every class's."""
         self.top, self.member = defaultdict(list), defaultdict(list)
+        self.callable = {d.name for d in self.defs if d.kind == FUNCTION and d.name}      # the functions' names
         self.by_label = defaultdict(list)
         for d in self.defs:
             if d.kind == FUNCTION:

@@ -1,10 +1,13 @@
 """What the program is made of once read: a definition, a file, and the text a node writes."""
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 
 QUOTES = "\"'`"                                        # the marks a text is written between
+PREFIX = 3                                              # how far into a text its opening mark may be (`u8"..."`)
+WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 BRACKETS = {"<": ">"}                                   # and the pairs a source's path may be written between
 LAMBDA = "<lambda:{}>"
 
@@ -66,6 +69,17 @@ def unquoted(node) -> str | None:
     """The text a node writes between marks (a string), None for any other node."""
     raw = text(node)
     return raw[1:-1] if len(raw) >= 2 and raw[0] in QUOTES and raw[-1] == raw[0] else None
+
+
+def named(node) -> str | None:
+    """The name a text names: the text itself where it is one name, the name it ends with where it is names joined
+    by marks (`a/b`, the way a name is written under its scopes); of any other node, none."""
+    raw = text(node)
+    at = next((i for i, mark in enumerate(raw[:PREFIX + 1]) if mark in QUOTES), -1)
+    if at < 0 or len(raw) < at + 2 or raw[-1] != raw[at] or any(mark.isspace() for mark in raw):
+        return None
+    last = WORD.search(raw[at + 1:-1][::-1])
+    return last.group()[::-1] if last and last.start() == 0 else None
 
 
 def spelled(node) -> str:

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .vocab import BY_NAME, FN, INST, KEPT, OUT
+from .vocab import BY_NAME, FN, INST, KEPT, OUT, TOLD, TXT
 
 
 @dataclass
@@ -38,7 +38,7 @@ class Reads:
 
         def seen(v: tuple) -> None:
             kind, c, how = v
-            if kind in (FN, KEPT) or (kind == OUT and f.lang.duck_typed):
+            if kind in (FN, KEPT, TXT, TOLD) or (kind == OUT and f.lang.duck_typed):
                 return
             r.typed = True
             found = [] if kind == OUT else fl.sc.members(c, name, kind == INST)

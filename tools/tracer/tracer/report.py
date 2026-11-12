@@ -4,7 +4,7 @@ answers.
 """
 from __future__ import annotations
 
-from .vocab import BY_NAME
+from .vocab import EXACT
 
 INDENT = "  "
 AGAIN = "(above)"
@@ -21,8 +21,8 @@ def row(result, step, at_end: bool) -> str:
     words = [INDENT * step.depth + (f"{step.link.kind:<6} " if step.link else "") + p.label(step.at), p.where(step.at)]
     if step.link:
         words.append("@ " + where(result, step.link))
-        if step.link.how == BY_NAME:
-            words.append(f"[{BY_NAME}]")
+        if step.link.how != EXACT:
+            words.append(f"[{step.link.how}]")
     if step.again and at_end:
         words.append(AGAIN)
     return "  ".join(words)

@@ -37,6 +37,30 @@ class Command(unittest.TestCase):
         self.assertIn("[by name]", trace("Shop.unknown")[1])
         self.assertNotIn("Crate.lift", trace("Shop.unknown", "--exact")[1])
 
+    def test_what_was_found_by_text_is_said_and_can_be_left_out(self):
+        mix = FIXTURE.parent / "mix"
+        self.assertIn("call   Core.fire  core.h:7  @ panel.gd:19  [by text]", trace("panel.send", root=mix)[1])
+        self.assertNotIn("Core.fire", trace("panel.send", "--exact", root=mix)[1])
+
+    def test_a_function_entered_with_a_name_given_runs_by_text_the_one_of_that_name(self):
+        mix = FIXTURE.parent / "mix"
+        named, any_name = trace("panel.ask", root=mix)[1], trace("panel.ask_any", root=mix)[1]
+        self.assertIn("Core.fire", named)
+        self.assertNotIn("Core.sweep", named)
+        self.assertIn("Core.sweep", any_name)
+        reaching = trace("Core.sweep", root=mix)[1].split("What reaches it:")[1]
+        self.assertIn("panel.ask_any", reaching)
+        self.assertNotIn("panel.ask ", reaching)
+
+    def test_a_function_entered_with_a_function_given_runs_the_one_this_caller_gave(self):
+        ts = FIXTURE.parent / "ts"
+        given = trace("again", root=ts)[1].split("What reaches it:")[0]
+        self.assertIn("call   byFirst", given)
+        self.assertNotIn("later", given)
+        reaching = trace("later", root=ts)[1].split("What reaches it:")[1]
+        self.assertIn("main", reaching)
+        self.assertNotIn("again", reaching)
+
     def test_a_trace_as_data(self):
         code, out, _ = trace("Shop.open", "--json")
         data = json.loads(out)

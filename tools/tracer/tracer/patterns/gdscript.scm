@@ -50,4 +50,4 @@
 (call (identifier) @_load arguments: (arguments (string) @source) (#eq? @_load "preload")) @import
 
 (pair left: (_) @key value: (_) @value) @pair
-[(string) (integer) (float) (array) (dictionary) (true) (false) (null)] @literal
+[(string) (string_name) (node_path) (integer) (float) (array) (dictionary) (true) (false) (null)] @literal

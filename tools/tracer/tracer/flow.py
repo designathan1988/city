@@ -7,14 +7,14 @@ link, and carries functions only: a member of an object nothing is known of is a
 from __future__ import annotations
 
 from .calls import Calls
-from .model import spelled, text, unquoted
+from .model import named, spelled, text, unquoted
 from .reads import Reads
 from .solver import Solver, marked
 from .stores import Stores
 from .vocab import (ARGS, AS_NAME, ASSIGN, CALL, CALLEE, CAST, CHAIN, CLASS, CLS, CONSTRUCT, EXACT, EXPR, FN,
                     FUNCTION, IDENT, IMPORT, INDEX, INST, KEY, LEFT, LITERAL, MEMBER, NAME, NEW, OBJECT, OUT,
                     OUTSIDE, PART, PROP, PROPERTY, PROPS, RET, RETURN, RIGHT, SCOPES, SELF, SOURCE, STEP, STORED,
-                    SUPER, TYPE, VALUE, VAR)
+                    SUPER, TXT, TYPE, VALUE, VAR)
 
 
 class Flow:
@@ -100,8 +100,11 @@ class Flow:
             self.closed.add(key)
 
     def literal(self, f, node, parts, key) -> None:
-        """A value written in place: an object of a type the language defines, holding its elements."""
+        """A value written in place: an object of a type the language defines, holding its elements; a text, the
+        functions' names written in it."""
         self.s.add(key, OUTSIDE)
+        if named(node) in self.p.callable:
+            self.s.add(key, (TXT, named(node), EXACT))
         for child in node.named_children:
             self.s.follow(self.ev(f, child), key)
 
@@ -167,12 +170,13 @@ class Flow:
         self.callees.add((EXPR, f.index, callee.id))
         receiver = places = None
         direct, name = False, ""
+        around = self.sc.class_around(f, node) if role[0] == IDENT and f.lang.implicit_members else None
         if role[0] == MEMBER:
             receiver, places = self.ev(f, role[1][OBJECT]), self.st.place(f, role[1][OBJECT])
             direct = f.is_a(role[1][OBJECT], MEMBER) or f.is_a(role[1][OBJECT], INDEX)
             name = self.p.word(f, role[1][PROPERTY])
         self.calls.site(f, node, CALL, self.ev(f, callee), self.given(parts), key, text(callee), receiver, places,
-                        parts.get(PROPS), role[0] == SUPER, direct, name)
+                        parts.get(PROPS), role[0] == SUPER, direct, name, around)
 
     def new(self, f, node, parts, key) -> None:
         self.calls.site(f, node, NEW, self.ev(f, parts[CALLEE]), self.given(parts), key, text(parts[CALLEE]))

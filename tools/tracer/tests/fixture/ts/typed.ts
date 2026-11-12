@@ -1,6 +1,7 @@
 // A class below a base the code read does not define; functions given an object of a type it does not define, of a
 // type's parameter and of an alias.
 import Crate from "./lib/crate";
+import { run } from "./lib/shop";
 
 type Box = Crate;
 
@@ -31,6 +32,7 @@ export function sorted(): void { table.sort(byFirst); }
 export function listed(): void {
   for (const row of table) register(row);
 }
+export function again(): number { return run(byFirst as never); }
 export function glance(thing): void {
   register(thing.lift);
 }
