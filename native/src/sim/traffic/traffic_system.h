@@ -61,6 +61,13 @@ void lot_car_gone(CityState &s, int id); // its bay went: off the road it goes t
 void lot_car_forget(CityState &s, int id); // the vehicle left the scene: its bay is free
 void settle_parked(CityState &s); // the cars that parked become rows of their bays, their Vehicles let go
 void set_off_pose(CityState &s, Vehicle &v, const OffPose &q); // where a vehicle off the lanes stands
+// The car moves to phase `next` (enter_car_phase); on a move the lots' counts of cars coming and moving follow it and the phase's clocks
+// start again. False, nothing changed, for a move its visit never makes.
+bool lot_car_moves(ParkingState &p, LotCar &car, CarPhase next);
+
+// car_phase.cpp: a lot car's one setter (CAR_PHASES) and its one maker (CAR_BIRTHS: called, or out of the row it stood in as).
+bool enter_car_phase(LotCar &car, CarPhase next);
+LotCar new_lot_car(int id, int bay, CarPhase born);
 
 // lot_demand.cpp
 void lot_depart(CityState &s, double target); // cars sent out of the bays while fewer drive than the demand asks

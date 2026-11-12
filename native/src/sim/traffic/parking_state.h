@@ -73,6 +73,8 @@ enum class CarPhase : uint8_t { COMING, PARKING, PARKED, LEAVING };
 // row at the next look, its Vehicle let go: a standing car costs nothing a tick, like a scenery one. Several cars of a lot drive at
 // once, kept apart by their swaths (swaths.h).
 struct LotCar {
+	// Made in the phase its visit starts in, by its one maker (car_phase.cpp new_lot_car); its phase moves only by enter_car_phase.
+	LotCar(int id_, int bay_, CarPhase born) : id(id_), bay(bay_), phase(born) {}
 	int id = -1, bay = -1;
 	CarPhase phase = CarPhase::COMING;
 	Manoeuvre path;

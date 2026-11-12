@@ -55,16 +55,13 @@ void take_row(CityState &s, int b) {
 	v.off = true;
 	t.vehicle_count--; // off the lanes it is not of the fleet until it joins one
 	set_off_pose(s, v, { bay.at.x, bay.at.y, std::atan2(-bay.open.y, -bay.open.x) });
-	LotCar car;
-	car.id = id;
-	car.bay = b;
-	car.phase = CarPhase::LEAVING;
+	LotCar car = new_lot_car(id, b, CarPhase::PARKED); // the car that stood in the bay, a lot car again, sent out at once
 	car.path = bay_departure(bay.at, bay.open, bay.via, bay.lane.p, bay.lane.t, p.man_lead_m, p.man_across_m, p.man_least_m, p.man_tangent);
 	lay_way(s, p.classes[int(v.type)], car.path, car.way); // its swath ahead, laid once (swaths.h)
 	car.wait_at = wait_along(p, car.path, bay);
+	lot_car_moves(t.park, car, CarPhase::LEAVING);
 	v.car = int(t.park.cars.size());
 	t.park.cars.push_back(std::move(car));
-	t.park.moving++;
 	remove_row(t.park, b);
 	bay.vacated = true;
 	bay.holder = id;
@@ -150,11 +147,8 @@ bool lot_call(CityState &s) {
 	v.goal_s = BIG;
 	bay.holder = id;
 	refile_bay(s, b, false);
-	LotCar car;
-	car.id = id;
-	car.bay = b;
 	v.car = int(pk.cars.size());
-	pk.cars.push_back(std::move(car));
+	pk.cars.push_back(new_lot_car(id, b, CarPhase::COMING));
 	pk.coming++;
 	pk.called++;
 	return true;

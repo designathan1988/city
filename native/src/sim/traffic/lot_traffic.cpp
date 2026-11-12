@@ -20,6 +20,9 @@ namespace {
 
 ManoeuvreSpeeds speeds(const TrafficParams &p) { return { p.man_forward_ms, p.man_backward_ms, p.man_ramp_m, p.man_creep_ms }; }
 
+// Driving into its bay or out of it: what ParkingState::moving counts.
+bool driving(CarPhase phase) { return phase == CarPhase::PARKING || phase == CarPhase::LEAVING; }
+
 void remove_car(ParkingState &p, TrafficState &t, int index) {
 	const int last = int(p.cars.size()) - 1;
 	if (index != last) {
@@ -35,7 +38,7 @@ void untrack(CityState &s, LotCar &car) {
 	ParkingState &p = t.park;
 	if (car.closing) open_lanes(t, car.id);
 	if (car.phase == CarPhase::COMING) p.coming--;
-	if (car.phase == CarPhase::PARKING || car.phase == CarPhase::LEAVING) p.moving--;
+	if (driving(car.phase)) p.moving--;
 	Bay &bay = p.bays[size_t(car.bay)];
 	bay.holder = -1;
 	refile_bay(s, car.bay, false);
@@ -97,15 +100,6 @@ bool street_open(CityState &s, LotCar &car, const VehicleClass &c, float dt) {
 	return true;
 }
 
-void enter_phase(ParkingState &p, LotCar &car, CarPhase phase) {
-	if (car.phase == CarPhase::COMING) p.coming--;
-	if (car.phase == CarPhase::PARKING || car.phase == CarPhase::LEAVING) p.moving--;
-	if (phase == CarPhase::PARKING || phase == CarPhase::LEAVING) p.moving++;
-	car.phase = phase;
-	car.t = car.waited = 0;
-	car.start_order = 0;
-}
-
 // A car's body along its way from `from` to `to`, a pose every man_disc_step_m and both ends.
 std::vector<OffPose> way_between(const TrafficParams &p, const Manoeuvre &path, float from, float to) {
 	std::vector<OffPose> out;
@@ -151,7 +145,7 @@ Turn leave_road(CityState &s, LotCar &car) {
 	v.off = true;
 	v.v = 0;
 	t.vehicle_count--;
-	enter_phase(t.park, car, CarPhase::PARKING);
+	lot_car_moves(t.park, car, CarPhase::PARKING);
 	set_off_pose(s, v, car.path.pose());
 	return Turn::IN;
 }
@@ -197,7 +191,7 @@ void parking(CityState &s, LotCar &car, float dt) {
 	if (!car.path.done()) return;
 	ParkingState &pk = s.traffic.park;
 	pk.parked_in++;
-	enter_phase(pk, car, CarPhase::PARKED);
+	lot_car_moves(pk, car, CarPhase::PARKED);
 }
 
 // On the lane past its gate: the same car is a vehicle of the traffic again, bound somewhere else.
@@ -252,6 +246,17 @@ void set_off_pose(CityState &s, Vehicle &v, const OffPose &q) {
 	if (v.cur.y == 0 || s.traffic.tick % uint64_t(s.catalog.traffic.parker_look_ticks) == 0) v.cur.y = s.terrain.height_at(q.x, q.z) + s.catalog.traffic.body_lift_m;
 	v.cur.fx = std::cos(q.angle);
 	v.cur.fz = std::sin(q.angle);
+}
+
+bool lot_car_moves(ParkingState &p, LotCar &car, CarPhase next) {
+	const CarPhase was = car.phase;
+	if (!enter_car_phase(car, next)) return false;
+	if (next == was) return true;
+	p.coming += int(next == CarPhase::COMING) - int(was == CarPhase::COMING);
+	p.moving += int(driving(next)) - int(driving(was));
+	car.t = car.waited = 0;
+	car.start_order = 0;
+	return true;
 }
 
 

@@ -70,7 +70,16 @@ func _ready() -> void:
 	if not _pairs.is_empty():
 		print("pairs met (each tick's deepest): %d, the first %s" % [_pairs.size(), _pairs.values().slice(0, PAIRS_SHOWN)])
 	check(_over.is_empty(), "no body on the lanes climbs a footway: %d bodies, %s" % [_over.size(), _footway_case])
+	_lots_lived()
 	finish()
+
+
+## The lots' cars made every move of their life while the fleet drove (car_phase.cpp CAR_PHASES; the checking DLL stops on any
+## other): called to a bay and driving in, parked there, and out to the lane again.
+func _lots_lived() -> void:
+	var p: Dictionary = CityStore.query(&"traffic_probe", [0])
+	check(p.lot_called > 0 and p.lot_parked_in > 0 and p.lot_left_by > 0,
+			"the lots' cars lived their whole life: %d called, %d parked in, %d driven out" % [p.lot_called, p.lot_parked_in, p.lot_left_by])
 
 
 ## The footway rule the probe judges by can say both: the street furniture of the streets the cars drive stands on a footway,
