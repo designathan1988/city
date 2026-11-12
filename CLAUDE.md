@@ -77,12 +77,12 @@ list, the archive tags) lives in `log/map.md`; nothing here is status.
   that can fail; a limit found is a cause to resolve, never a list at the end. [c:do-it-whole]
 - A check takes seconds: the most likely place first (the newest folders, one targeted search); an empty result of a fragile
   search is a failed search, not a "no". Slowness of the work is a defect, recorded and fixed at its cause. [c:fast-checks]
-- Agents only read, and few (the owner, 2026-11-12), and are used to go faster: the project's `reader` (`.claude/agents/reader.md`;
-  Claude Code's read-only `Explore` in a session that has not loaded it), up to five at once,
-  each sent a prompt that names the goal, the files, what is known and the answer's form; editing, writing code, removing,
-  building, running and deciding stay with the main session, which answers for the whole project; what a reader returns is
-  checked against the files before it is used, never trusted blind. No fork, worktree agent or new session unless the owner
-  orders it in so many words; never resume a stopped one (`.claude/hooks/agent_guard.py`). [c:agents-read-only]
+- Agents are used to go faster, up to five at once (the owner, 2026-11-12): any kind, reading, researching and writing code as
+  the task needs, but **an agent executes nothing** (no Bash or PowerShell: no build, test, game run or script; an agent's run
+  froze the owner's machine): what must run is run by the main session, one at a time, watched. Each agent is sent a prompt that
+  names the goal, the files, what is known, what it may change and the answer's form; the main session checks what it returns
+  against the files before it is used, never trusted blind (`.claude/hooks/agent_guard.py` keeps the count and refuses an
+  agent's Bash and PowerShell). [c:agents-read-only]
 - Skills: `speckit-*` for a specification; `trace-fix` for a reported problem of the game; `superpowers:systematic-debugging`
   for a failure's cause; `superpowers:verification-before-completion` at each close; `update-config` for settings; the LSP tool
   for C++; context7 always. Never: brainstorming, writing-plans, executing-plans, test-driven-development,

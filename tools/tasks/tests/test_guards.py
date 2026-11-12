@@ -1,7 +1,7 @@
 # The project's hooks (.claude/hooks): on the shell, the standing authorisation's limits (deletions by a relative path, through
-# "..", by a variable or outside the allowed places; force pushes; rewritten history) and the block rule; on the Agent tool,
-# agents that only read and few at once (the reader alone, no worktree, at most AT_ONCE, the places given back when one stops or
-# fails to start); each hook as Claude Code runs it (the event on stdin; exit 2 refuses, 0 lets the call through).
+# "..", by a variable or outside the allowed places; force pushes; rewritten history) and the block rule; on agents, at most
+# AT_ONCE at once (the places given back when one stops or fails to start) and no Bash or PowerShell inside one; each hook as
+# Claude Code runs it (the event on stdin; exit 2 refuses, 0 lets the call through).
 import importlib.util
 import json
 import os
@@ -82,14 +82,23 @@ class AgentHook(unittest.TestCase):
         return run_event("agent_guard", {"hook_event_name": "PreToolUse", "tool_name": "Agent", "session_id": self.session,
                                          "tool_use_id": f"use-{n}", "tool_input": {"prompt": "read", **given}})
 
-    def test_only_the_reader_and_never_in_a_worktree(self):
-        for given in [{}, {"subagent_type": "general-purpose"}, {"subagent_type": "Plan"}, {"subagent_type": "fork"},
-                      {"subagent_type": "reader", "isolation": "worktree"}]:
+    def test_any_kind_while_places_are_free(self):
+        for given in [{}, {"subagent_type": "general-purpose"}, {"subagent_type": "reader"}, {"subagent_type": "Explore"}]:
             with self.subTest(given=given):
-                self.assertIsNotNone(agents.refusal(given, 0))
-        self.assertIsNone(agents.refusal({"subagent_type": "reader"}, agents.AT_ONCE - 1))
-        self.assertIsNone(agents.refusal({"subagent_type": "Explore"}, 0), "the built-in agent that only reads")
-        self.assertIsNotNone(agents.refusal({"subagent_type": "reader"}, agents.AT_ONCE))
+                self.assertIsNone(agents.refusal(given, agents.AT_ONCE - 1))
+                self.assertIsNotNone(agents.refusal(given, agents.AT_ONCE))
+
+    def test_an_agent_executes_nothing(self):
+        for tool in ("Bash", "PowerShell"):
+            with self.subTest(tool=tool):
+                inside = {"hook_event_name": "PreToolUse", "tool_name": tool, "session_id": self.session, "agent_id": "a1",
+                          "agent_type": "general-purpose", "tool_input": {"command": "ls"}}
+                code, said = run_event("agent_guard", inside)
+                self.assertEqual(code, REFUSED)
+                self.assertIn("execute nothing", said)
+                main = dict(inside)
+                del main["agent_id"], main["agent_type"]
+                self.assertEqual(run_event("agent_guard", main)[0], 0, "the main session runs commands")
 
     def test_the_count_held_and_given_back(self):
         for n in range(agents.AT_ONCE):
@@ -103,8 +112,7 @@ class AgentHook(unittest.TestCase):
         failed = {"hook_event_name": "PostToolUseFailure", "tool_name": "Agent", "session_id": self.session,
                   "tool_use_id": f"use-{agents.AT_ONCE + 1}"}
         self.assertEqual(run_event("agent_guard", failed)[0], 0)
-        self.assertEqual(self.call(agents.AT_ONCE + 2, subagent_type="reader")[0], 0, "a reader that never started holds none")
-        self.assertEqual(self.call(agents.AT_ONCE + 3, subagent_type="general-purpose")[0], REFUSED)
+        self.assertEqual(self.call(agents.AT_ONCE + 2, subagent_type="general-purpose")[0], 0, "an agent that never started holds none")
 
 
 if __name__ == "__main__":

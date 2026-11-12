@@ -29,6 +29,12 @@
             "command": "python",
             "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/destructive_guard.py"],
             "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "python",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/agent_guard.py"],
+            "timeout": 20
           }
         ]
       },

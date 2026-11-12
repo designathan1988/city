@@ -1,8 +1,9 @@
-"""The project's hook on agents (PreToolUse and PostToolUseFailure on the Agent tool, SubagentStop): CLAUDE.md's rule that agents
-only read, and few at once (the owner, 2026-11-12). A call to the Agent tool is refused (exit 2, the reason on stderr; Claude
-Code's hooks reference: exit 2 blocks a PreToolUse call) unless it starts the project's reader (READER, .claude/agents/reader.md,
-whose tools read and nothing else), in no worktree of its own, while fewer than AT_ONCE readers of the session run. A call let
-through holds a place in the session's count; a reader that stops (SubagentStop) or a call that failed to start one
+"""The project's hook on agents (PreToolUse on the Agent, Bash and PowerShell tools, PostToolUseFailure on Agent, SubagentStop):
+CLAUDE.md's rule that at most AT_ONCE agents run at once and that an agent executes nothing (the owner, 2026-11-12): a Bash or
+PowerShell call made inside an agent (the event carries agent_id) is refused. A call to the Agent
+tool is refused (exit 2, the reason on stderr; Claude Code's hooks reference: exit 2 blocks a PreToolUse call) only while AT_ONCE
+agents of the session run. A call let
+through holds a place in the session's count; an agent that stops (SubagentStop) or a call that failed to start one
 (PostToolUseFailure) gives its place back. The count is one file per session in the system's temporary folder, written under an
 OS file lock (tools/tasks/locks.py), so two calls of one message never both take the last place. Standard library only."""
 import json
@@ -50,20 +51,22 @@ def _write(path: str, places: list) -> None:
 
 def refusal(tool_input: dict, running: int) -> str | None:
     """Why this call to the Agent tool may not start, or None."""
-    kind = str(tool_input.get("subagent_type") or DEFAULT_TYPE)
-    if kind not in READERS:
-        return (f"agents only read (CLAUDE.md, the rule on agents): start one of {', '.join(READERS)} "
-                f"(.claude/agents/reader.md), not '{kind}'; editing, removing, building and running stay with the main session")
-    if tool_input.get("isolation"):
-        return f"a reader works in no worktree of its own ('isolation': {tool_input.get('isolation')!r})"
+    # The owner, 2026-11-12: an agent of any kind may read, write code and test; only how many run at once is bounded.
     if running >= AT_ONCE:
-        return f"{running} readers already run (at most {AT_ONCE} at once): wait for one to finish"
+        return f"{running} agents already run (at most {AT_ONCE} at once): wait for one to finish"
     return None
+
+
+RUNS = ("Bash", "PowerShell")  # the tools that execute: an agent never calls them (the owner, 2026-11-12)
 
 
 def handle(event: dict) -> tuple[int, str]:
     """The answer to one hook event: (exit code, reason)."""
     name = event.get("hook_event_name")
+    # Claude Code's hooks reference: inside a subagent the event carries agent_id and agent_type
+    if name == "PreToolUse" and event.get("tool_name") in RUNS and event.get("agent_id"):
+        return REFUSED, ("agents execute nothing (CLAUDE.md, the rule on agents: the owner, 2026-11-12, after an agent's run froze "
+                         "the machine): no build, test, game run or script; return what must be run to the main session")
     path = _count_file(str(event.get("session_id") or ""))
     lock = FileLock(path + ".lock")
     deadline = time.monotonic() + LOCK_WAIT_S
@@ -81,7 +84,7 @@ def handle(event: dict) -> tuple[int, str]:
         elif name == "PostToolUseFailure" and event.get("tool_name") == "Agent":
             gone = str(event.get("tool_use_id") or "")
             _write(path, [p for p in places if p != gone] if gone in places else places[1:])
-        elif name == "SubagentStop" and event.get("agent_type") in READERS:
+        elif name == "SubagentStop":
             _write(path, places[1:])
         return 0, ""
     finally:
