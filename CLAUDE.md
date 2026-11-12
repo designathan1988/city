@@ -174,7 +174,7 @@ building. Meshoptimizer and Clipper2 come through CMake on the first build. Apar
 - `assets/`: the kitchen of people, landmarks, noise, furniture, poles and road profiles.
 - `converter/`: the old porting tool, with its own git; it produces and regenerates no game code (translating the roadcraft is forbidden). What it translated and still stands (`flow_control`) is a debt, redesigned at its cause.
 - `converter-slice/`: the converter's older slice, with its own git.
-- `process/`: process tools and records. `ports/`: each port's plans, coverage and reports.
+- `process/`: process tools and records. `ports/`: each port's plans, coverage and reports. `tracer/`: the generic feature tracer, tied to no other project (`python tools/tracer/trace.py <start> --root <folder>`; record `log/tracer.md`).
 
 **Others:** `dist/` (builds, captures and logs, out of git) and `log/` (records).
 

@@ -13,6 +13,7 @@ LANGUAGES = {
     ".js": "js", ".mjs": "js", ".cjs": "js", ".ts": "js", ".mts": "js", ".cts": "js", ".tsx": "js", ".jsx": "js",
     ".gd": "gd", ".py": "py", ".sh": "sh", ".ps1": "ps1",
     ".tscn": "godot_res", ".tres": "godot_res", ".import": "godot_res", ".cfg": "godot_res", ".godot": "godot_res",
+    ".scm": "query",
     ".svg": "xml", ".xml": "xml",
     ".md": "prose", ".txt": "prose",
     ".json": "data", ".csv": "data", ".uid": "data", ".gltf": "data",
@@ -26,6 +27,7 @@ _LEXERS = {
     "sh": lex_other.lex_shell,
     "ps1": lambda t: lex_other.lex_shell(t, powershell=True),
     "godot_res": lex_other.lex_godot_resource,
+    "query": lex_other.lex_godot_resource,  # a tree-sitter query: the same shape (`;` comments, quoted texts, words)
     "xml": lex_other.lex_xml,
     "prose": lex_other.lex_prose,
     "data": lex_other.lex_data,
