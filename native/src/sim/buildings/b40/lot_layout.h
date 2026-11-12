@@ -9,11 +9,18 @@
 #include "sim/buildings/b40/cover_layers.h"
 #include "sim/buildings/b40/gen.h"
 
+#include <algorithm>
 #include <vector>
 
 namespace city::b40 {
 
 constexpr float BOUNDARY_WALL_T = 0.2f, FENCE_THICK = 0.12f, HEDGE_THICK = 0.7f; // thickness of a wall, a fence or railing, a hedge
+constexpr float PART_GAP = 0.05f; // two solid parts never touch
+
+// How near a lot's edge a ground block's face closes it (the block's wall is the boundary along it): the rules' reach, and never less
+// than the room the thickest run needs to stand before the block, so no run is ever laid into a wall. The one owner: the boundary
+// (lot_boundary.cpp), a garage's place behind the front run (lot_cars.cpp) and the probe lot_bounds ask it.
+inline float block_reach(const LotRules &l) { return std::max(l.block_closes, HEDGE_THICK + PART_GAP); }
 
 struct Rect {
 	float x0 = 0, y0 = 0, x1 = 0, y1 = 0;
@@ -84,6 +91,12 @@ public:
 	int paint(const Paint &p) { return b.add_paint(p); }
 	// Ground cover over `r`, drawn under the parts, on its layer of the one cover scale (cover_layers.h).
 	void cover(const Rect &r, const char *name, CoverLayer layer = COVER_GROUND);
+	// The lot's own ground, from edge to edge: laid first, every other cover over it.
+	void cover_lot(const char *name);
+	// Every band too thin to plant between a hard cover and what faces it (the lot's edge, a ground volume, another hard cover) laid
+	// with a piece of that cover, stretch by stretch of the side they share, so no such band shows between two surfaces that meet.
+	// Run once every zone has laid its covers.
+	void close_slivers();
 	// A part standing on the lot: refused (false) when it meets the building, a way, a solid part or the lot's edge.
 	bool put(Element k, const Rect &r, float h, int paint, int facing = FACE_STREET, float z = 0);
 	// A part flat on the ground (a bay, a dock, a drain): it may lie in a way, never on the building; a bay or a dock
@@ -110,6 +123,12 @@ public:
 private:
 	std::vector<Rect> ways_, solid_;
 	std::vector<std::pair<const char *, int>> paints_;
+	// A cover laid: its element, whether it is hard (anything but lawn) and whether it is the lot's own ground.
+	struct Laid {
+		size_t element = 0;
+		bool hard = false, whole = false;
+	};
+	std::vector<Laid> covers_;
 	void add(Element k, const Rect &r, float h, int paint, int facing, float z, float base);
 	float people_gate_x() const; // gate_x
 };

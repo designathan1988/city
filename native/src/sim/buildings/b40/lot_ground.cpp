@@ -1,4 +1,4 @@
-// The ground of every zone (lawn, paving, drive surfaces) and the ways kept clear before anything stands on the lot:
+// The lot's ground, whole, then the ground of every zone over it (lawn, paving, drive surfaces), and the ways kept clear before anything stands on the lot:
 // each drive from its gate to the back of its strip, a car park's aisle across the yard, a works' visitors' aisle and a
 // loading yard's turning ground, and the people's way from the front gate to the door (LotSpace::people_way: straight, or bent along the
 // front zone where the gate stands off the door's line).
@@ -39,6 +39,9 @@ void lay_ground(LotSpace &s) {
 	const bool house = s.b.kind == KIND_HOUSE;
 	const char *drive = house || s.b.kind == KIND_WORKS ? "concrete" : "asphalt";
 	const char *walk = house ? "path" : "stone_path";
+	// The lot's ground, whole, before any zone lays its own over it: lawn round a house, flats and a tower, paving round the others. No
+	// part of a lot is left to whatever lies under it.
+	s.cover_lot(house || s.b.kind == KIND_FLATS || s.b.kind == KIND_TOWER ? "lawn" : "paving");
 	if (const char *c = front_cover(s.plan.front); c && s.F > 0) s.cover(s.front(), c);
 	for (const Strip &st : s.strips) {
 		if (!st.drive.empty()) {
@@ -49,9 +52,6 @@ void lay_ground(LotSpace &s) {
 		if (st.use == SIDE_GARDEN) s.cover(st.r, "lawn");
 	}
 	if (const char *c = back_cover(s.plan.back); c && s.B < s.D) s.cover(s.yard(), c);
-	// The building's envelope under and beside the building: lawn round a house, paving round the others.
-	Rect env{ s.plan.x0 + s.L, s.plan.y0, s.plan.x1 + s.L, s.plan.y1 };
-	s.cover(env, house || s.b.kind == KIND_FLATS || s.b.kind == KIND_TOWER ? "lawn" : "paving");
 	if (s.F > 0) {
 		float g = s.rules.person_gate[house ? 0 : 1] * HALF + DOOR_WAY_PAD;
 		for (const Rect &r : s.people_way(g, std::max(s.F, DOOR_WAY_MIN))) s.keep_clear(r);

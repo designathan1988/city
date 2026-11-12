@@ -1,6 +1,8 @@
 // Every lot's covers against one another (CityProbes::lot_covers): the covers render/buildings/lot_covers.h lays for the render, each
 // placed as the building chunks place it (its floor on the ground under its blocks), and wherever a cover lies over one before it in
-// their order, it stands over it by at least half the cover step: two covers never cross, never share one depth.
+// their order, it stands over it by at least half the cover step: two covers never cross, never share one depth. And each lot's ground
+// read in its own frame along scan lines (GroundCensus): what of it lies under no cover, and the planted or bare bands too thin to
+// plant that stand beside a hard cover.
 #include "api/city_probes.h"
 
 #include "render/buildings/lot_covers.h"
@@ -56,6 +58,112 @@ bool height_on(const b40::CoverPiece &c, float x, float z, float &y) {
 	y = c.p[0].y - (n.x * (x - c.p[0].x) + n.z * (z - c.p[0].z)) / n.y;
 	return true;
 }
+
+constexpr float SCAN_STEP_M = 0.25f; // the lot's ground is read along lines this far apart, across it and along it
+constexpr float THIN_M = 0.6f; // a planted or bare band narrower than this beside a hard cover is a sliver (lot_space.cpp LAWN_LEAST)
+constexpr float JOINT_M = 0.01f; // a band thinner than this is two edges meeting
+enum Ground : uint8_t { BARE, SOFT, HARD, WALL };
+
+// A lot's ground as its body lays it, in the lot's frame: every cover's rectangle (the later over the earlier) and every ground volume.
+struct GroundBoxes {
+	struct Box {
+		float x0, y0, x1, y1;
+		Ground is;
+	};
+	std::vector<Box> boxes; // covers in their order, then the ground volumes
+	float x0 = 0, x1 = 0, depth = 0;
+
+	GroundBoxes(const b40::Body &b, const b40::Paint &lawn) : x0(-b.plan.W * HALF), x1(b.plan.W * HALF), depth(b.plan.D) {
+		std::vector<const b40::LotElement *> covers;
+		for (const b40::LotElement &e : b.elements)
+			if (e.kind == b40::EL_SURFACE && e.angle == 0) covers.push_back(&e);
+		std::stable_sort(covers.begin(), covers.end(), [](const b40::LotElement *p, const b40::LotElement *q) { return p->h < q->h; });
+		for (const b40::LotElement *e : covers) {
+			const b40::Paint &p = b.paints[size_t(e->paint)];
+			boxes.push_back({ e->x - e->w * HALF, e->y - e->d * HALF, e->x + e->w * HALF, e->y + e->d * HALF, p.finish == lawn.finish && p.rgb == lawn.rgb ? SOFT : HARD });
+		}
+		for (const b40::Volume &v : b.volumes)
+			if (v.base == 0) boxes.push_back({ v.x, v.y, v.x + v.w, v.y + v.d, WALL });
+	}
+	Ground at(float x, float y) const {
+		Ground g = BARE;
+		for (const Box &c : boxes)
+			if (x > c.x0 && x < c.x1 && y > c.y0 && y < c.y1) g = c.is;
+		return g;
+	}
+	// Along one line (across the lot at depth `line`, or along it at `line` across): the bare length, and the thin planted or bare bands
+	// that stand between a hard cover and whatever ends them (a hard cover, a wall, the lot's edge); the first such band's middle.
+	// `first`: the first band's middle, its width, what stands before it and after it (Ground).
+	void scan(bool across, float line, float &bare, int &thin, float (&first)[4]) const {
+		std::vector<float> cuts{ across ? x0 : 0.f, across ? x1 : depth };
+		const float lo = cuts[0], hi = cuts[1];
+		for (const Box &c : boxes) {
+			cuts.push_back(std::clamp(across ? c.x0 : c.y0, lo, hi));
+			cuts.push_back(std::clamp(across ? c.x1 : c.y1, lo, hi));
+		}
+		std::sort(cuts.begin(), cuts.end());
+		float run = 0, from = lo;
+		Ground before = WALL; // the lot's edge ends a band as a wall does
+		const auto close = [&](Ground after, float end) {
+			if (run > JOINT_M && run < THIN_M && (before == HARD || after == HARD) && thin++ == 0) {
+				first[0] = (from + end) * HALF;
+				first[1] = run;
+				first[2] = float(before);
+				first[3] = float(after);
+			}
+			run = 0;
+		};
+		for (size_t k = 1; k < cuts.size(); k++) {
+			const float piece = cuts[k] - cuts[k - 1];
+			if (piece <= 0) continue;
+			const float mid = (cuts[k] + cuts[k - 1]) * HALF;
+			const Ground g = across ? at(mid, line) : at(line, mid);
+			if (g == BARE) bare += piece;
+			if (g == BARE || g == SOFT) {
+				if (run == 0) from = cuts[k - 1];
+				run += piece;
+				continue;
+			}
+			close(g, cuts[k - 1]);
+			before = g;
+		}
+		close(WALL, hi);
+	}
+};
+
+// The census of the lots' ground: lots read, the bare ground in them, the lots with a sliver and the first.
+struct GroundCensus {
+	int lots = 0, sliver_lots = 0, slivers = 0;
+	double bare_m2 = 0;
+	Array first, first_boxes; // the first sliver, and its lot's boxes (x0, y0, x1, y1, what it is) in their order
+	void count(int id, const b40::Body &b, const b40::Paint &lawn) {
+		if (b.plan.W <= 0 || b.plan.D <= 0) return;
+		const GroundBoxes g(b, lawn);
+		if (g.boxes.empty()) return;
+		lots++;
+		int thin = 0;
+		float bare = 0, band[4] = { 0, 0, 0, 0 };
+		const auto tell = [&](float x, float y, const char *way) {
+			Array uses = Array::make(int(b.plan.kind), int(b.plan.front), int(b.plan.back), int(b.plan.left.use), int(b.plan.right.use));
+			first = Array::make(id, x, y, way, band[1], int(band[2]), int(band[3]), uses);
+			for (const GroundBoxes::Box &c : g.boxes) first_boxes.push_back(Array::make(c.x0, c.y0, c.x1, c.y1, int(c.is)));
+		};
+		for (float y = SCAN_STEP_M * HALF; y < g.depth; y += SCAN_STEP_M) {
+			const int had = thin;
+			g.scan(true, y, bare, thin, band);
+			if (had == 0 && thin > 0 && first.is_empty()) tell(band[0], y, "across");
+		}
+		bare_m2 += double(bare) * SCAN_STEP_M;
+		float unused = 0;
+		for (float x = g.x0 + SCAN_STEP_M * HALF; x < g.x1; x += SCAN_STEP_M) {
+			const int had = thin;
+			g.scan(false, x, unused, thin, band);
+			if (had == 0 && thin > 0 && first.is_empty()) tell(x, band[0], "along");
+		}
+		slivers += thin;
+		sliver_lots += thin > 0;
+	}
+};
 } // namespace
 
 Dictionary CityProbes::lot_covers() {
@@ -70,6 +178,8 @@ Dictionary CityProbes::lot_covers() {
 	float worst = 0;
 	Array first;
 	std::vector<Laid> pieces;
+	GroundCensus ground;
+	const b40::Paint lawn = s.buildings.designs.color("lawn");
 	for (int id = 0; id < int(s.buildings.items.size()); id++) {
 		const Building &rec = s.buildings.items[size_t(id)];
 		if (!rec.alive) continue;
@@ -82,6 +192,7 @@ Dictionary CityProbes::lot_covers() {
 		pl.b = pl.whole = body.get();
 		pl.lot = b40::Basis{ Vector3(f.o.x, floor, f.o.y), Vector3(f.e0.x, 0, f.e0.y), Vector3(f.e1.x, 0, f.e1.y), Vector3(0, 1, 0) };
 		pl.ground = [&s](const Vector3 &p) { return s.terrain.height_at(p.x, p.z); };
+		ground.count(id, *body, lawn);
 		pieces.clear();
 		b40::lot_covers(pl, [&pieces](const b40::CoverPiece &c) { pieces.push_back(laid(c)); });
 		if (pieces.empty()) continue;
@@ -113,6 +224,12 @@ Dictionary CityProbes::lot_covers() {
 	d["samples"] = samples; // points of a cover over an earlier cover of its lot
 	d["under"] = under; // of them, where the later does not stand over the earlier by half a step (crossed, or at one depth)
 	d["worst"] = first; // building, x, z, the later less the earlier (m), the two elements
+	d["ground_lots"] = ground.lots; // lots whose ground was read, in their own frame
+	d["bare_m2"] = ground.bare_m2; // their ground under no cover and no building
+	d["sliver_lots"] = ground.sliver_lots; // lots with a planted or bare band under a lawn's least width beside a hard cover
+	d["slivers"] = ground.slivers; // such bands, a scan line each
+	d["sliver_first"] = ground.first; // the first: building, x and y in the lot's frame, the line's way, the band's width, what stands before and after it (0 bare, 1 planted, 2 hard, 3 a wall or the lot's edge), the lot's kind and its front, back, left and right uses
+	d["sliver_boxes"] = ground.first_boxes; // that lot's covers in their order, then its ground volumes: x0, y0, x1, y1, what it is
 	return d;
 }
 

@@ -9,11 +9,15 @@ namespace city::b40 {
 
 namespace {
 constexpr float LOT_CLEAR_IN = 0.15f; // a part keeps this far inside the lot's edge (the boundary stands on it)
-constexpr float PART_GAP = 0.05f; // two solid parts never touch
 constexpr uint32_t BYTE = 0xff;
 constexpr int STOREY_SHIFT = KEY_STOREY_SHIFT, SIDE_SHIFT = KEY_SIDE_SHIFT, BACK_SIDE = 2;
 constexpr float HALF = 0.5f;
 constexpr float GATE_STEP = 0.1f; // a people's gate moved off the door's line is looked for along the front this often
+const char *const SOFT_COVER = "lawn"; // the one cover that is planted: every other is hard
+constexpr float LAWN_LEAST = 0.6f; // a band of ground narrower than this is too thin to plant: the hard cover beside it takes it
+constexpr float EDGE_BOX = 1.f; // a lot's edge stands as a box this thick just outside it, among what ends a band
+constexpr size_t NO_COVER = size_t(-1);
+constexpr int SLIVER_ROUNDS = 4; // a piece laid may face another across a corner: looked at again this often at the most
 
 Rect footprint(const Volume &v) { return { v.x, v.y, v.x + v.w, v.y + v.d }; }
 } // namespace
@@ -108,6 +112,61 @@ void LotSpace::cover(const Rect &rc, const char *name, CoverLayer layer) {
 	Rect c{ std::max(rc.x0, L), std::max(rc.y0, 0.f), std::min(rc.x1, R), std::min(rc.y1, D) };
 	if (c.empty() || full()) return;
 	add(EL_SURFACE, c, cover_h(layer), paint(name), FACE_STREET, 0, 0);
+	covers_.push_back({ b.elements.size() - 1, std::strcmp(name, SOFT_COVER) != 0, false });
+}
+
+void LotSpace::cover_lot(const char *name) {
+	cover({ L, 0, R, D }, name);
+	if (!covers_.empty()) covers_.back().whole = true;
+}
+
+void LotSpace::close_slivers() {
+	const auto rect_of = [&](const Laid &c) {
+		const LotElement &e = b.elements[c.element];
+		return Rect::around(e.x, e.y, e.w, e.d);
+	};
+	// What ends a band beside a hard cover: the lot's four edges (a box just outside each), every ground volume, every other hard cover.
+	struct Stop {
+		Rect r;
+		size_t cover; // its place among the covers, NO_COVER for an edge or a volume
+	};
+	const auto thin = [](float gap) { return gap > EPS && gap < LAWN_LEAST; };
+	// A band some hard cover already lies over is closed.
+	const auto closed = [&](const Rect &band) {
+		for (const Laid &c : covers_) {
+			const Rect r = rect_of(c);
+			if (c.hard && !c.whole && r.x0 <= band.x0 + EPS && r.x1 >= band.x1 - EPS && r.y0 <= band.y0 + EPS && r.y1 >= band.y1 - EPS) return true;
+		}
+		return false;
+	};
+	// A piece laid is a hard cover too: where two bands meet at a corner the next round closes the square between their pieces.
+	for (int round = 0; round < SLIVER_ROUNDS; round++) {
+		const size_t laid = covers_.size();
+		std::vector<Stop> stops{ { { L - EDGE_BOX, 0, L, D }, NO_COVER }, { { R, 0, R + EDGE_BOX, D }, NO_COVER }, { { L, -EDGE_BOX, R, 0 }, NO_COVER },
+			{ { L, D, R, D + EDGE_BOX }, NO_COVER } };
+		for (const Rect &f : built) stops.push_back({ f, NO_COVER });
+		for (size_t i = 0; i < laid; i++)
+			if (covers_[i].hard && !covers_[i].whole) stops.push_back({ rect_of(covers_[i]), i });
+		for (size_t i = 0; i < laid; i++) {
+			if (!covers_[i].hard || covers_[i].whole) continue;
+			const Rect r = rect_of(covers_[i]);
+			const LotElement like = b.elements[covers_[i].element]; // a copy: the pieces laid below grow the list
+			for (const Stop &o : stops) {
+				if (o.cover != NO_COVER && o.cover <= i) continue; // two covers' band is closed once, by the earlier of them
+				// The band between the two where they face one another: across (a side of one against a side of the other), else along.
+				const float ya = std::max(o.r.y0, r.y0), yb = std::min(o.r.y1, r.y1), xa = std::max(o.r.x0, r.x0), xb = std::min(o.r.x1, r.x1);
+				Rect band;
+				if (yb - ya > EPS && thin(r.x0 - o.r.x1)) band = { o.r.x1, ya, r.x0, yb };
+				else if (yb - ya > EPS && thin(o.r.x0 - r.x1)) band = { r.x1, ya, o.r.x0, yb };
+				else if (xb - xa > EPS && thin(r.y0 - o.r.y1)) band = { xa, o.r.y1, xb, r.y0 };
+				else if (xb - xa > EPS && thin(o.r.y0 - r.y1)) band = { xa, r.y1, xb, o.r.y0 };
+				if (band.empty() || full() || closed(band)) continue;
+				add(EL_SURFACE, band, like.h, like.paint, FACE_STREET, 0, 0);
+				covers_.push_back({ b.elements.size() - 1, true, false });
+			}
+		}
+		if (covers_.size() == laid) break;
+	}
 }
 
 bool LotSpace::on_building(const Rect &rc) const {
@@ -163,6 +222,7 @@ void lay_out_lot(const Data &data, Body &b, Xoshiro128 &r) {
 	lay_front(s);
 	lay_back(s);
 	lay_yard(s);
+	s.close_slivers(); // every zone's covers are laid
 	lay_boundary(s); // last: every block that stands on an edge (a garage) is known
 }
 

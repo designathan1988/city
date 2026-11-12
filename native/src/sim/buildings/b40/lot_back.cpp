@@ -23,6 +23,7 @@ constexpr float BENCH_X = 1.5f, PLAY = 4.f, PLAY_IN = 0.5f, PLAY_MIN_D = 8.f, PL
 constexpr float SWING_H = 2.2f, COURT_TREE = 3.f, COURT_TREE_IN = 2.6f, COURT_TREE_BACK = 2.8f, COURT_BIN_IN = 1.2f;
 constexpr float DOCK_EDGE = 0.3f, DOCK_ON_DOOR = 0.6f, DOCK_APART = 0.5f, BOLLARD = 0.25f, BOLLARD_H = 1.f, BOLLARD_OUT = 0.5f;
 constexpr float YARD_LAMP_H = 6.f, YARD_LAMP_IN = 0.3f, YARD_BACK = 0.5f, HALF = 0.5f;
+constexpr float TREE_TALL = CROWN_TOP / COURT_TREE; // a lot's tree stands this many times its crown's width tall (the court's: 5 m on a 3 m room)
 // Car park lights: lamps on the building's back wall over the bays and the aisle, out of the cars' way.
 constexpr float WALL_LAMP_EVERY = 8.f, WALL_LAMP_Z = 3.f, WALL_LAMP_OUT = 0.4f, WALL_LAMP_W = 0.3f, WALL_LAMP_H = 0.15f;
 
@@ -42,9 +43,11 @@ void row(LotSpace &s, float y0, float y1, int facing, std::vector<std::pair<floa
 		for (int k = 0; k < n; k++) s.flat(EL_STALL, { x0 + float(k) * l.stall_w, y0, x0 + float(k + 1) * l.stall_w, y1 }, 0, line, facing);
 		float spare = (b - a - used) * HALF;
 		if (spare < PLANTER_MIN * HALF) continue;
+		// the planter's width is its tree's room: the crown as wide, the tree as tall as a lot's tree of that crown
+		const float wide = std::min(spare, PLANTER_D);
 		for (float x : { a + spare * HALF, b - spare * HALF })
-			if (s.put(EL_PLANTER, Rect::around(x, (y0 + y1) * HALF, std::min(spare, PLANTER_D), PLANTER_D), PLANTER_H, planter))
-				s.edge(EL_TREE, Rect::around(x, (y0 + y1) * HALF, PLANTER_D, PLANTER_D), CROWN_TOP, tree);
+			if (s.put(EL_PLANTER, Rect::around(x, (y0 + y1) * HALF, wide, PLANTER_D), PLANTER_H, planter))
+				s.edge(EL_TREE, Rect::around(x, (y0 + y1) * HALF, wide, wide), wide * TREE_TALL, tree);
 	}
 }
 

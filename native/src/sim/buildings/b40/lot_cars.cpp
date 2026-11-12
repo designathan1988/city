@@ -55,7 +55,7 @@ void house_car(LotSpace &s) {
 	const float len = l.stall_d + GARAGE_WALL, yard = s.D - s.B;
 	// In front, a garage stands behind the front zone and behind the boundary's reach of the street line: its door never closes
 	// the edge the drive's gate opens.
-	const float front = std::max(s.F, s.rules.block_closes);
+	const float front = std::max(s.F, block_reach(s.rules));
 	const bool back_fits = yard >= len + 2 * GARAGE_SET, front_fits = s.B - front >= len + GARAGE_SET;
 	const bool back = back_fits && (!front_fits || s.r.f() < l.garage_back_share);
 	if (!back && !front_fits) return;

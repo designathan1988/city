@@ -90,13 +90,14 @@ std::vector<Gate> planned_gates(LotSpace &s) {
 	return g;
 }
 
-// The stretches of edge `e` the lot's ground blocks close: every block whose face stands within the lot rules' block_closes of the
-// edge, its span along it (x along the front and the back, y along the sides).
+// The stretches of edge `e` the lot's ground blocks close: every block whose face stands within a block's reach of the edge
+// (lot_layout.h block_reach: the rules' block_closes, never less than the thickest run's room), its span along it (x along the front
+// and the back, y along the sides).
 std::vector<Span> closed_by_blocks(const LotSpace &s, LotEdge e) {
 	std::vector<Span> out;
 	for (const Rect &f : s.built) {
 		const float in = e == EDGE_FRONT ? f.y0 : e == EDGE_BACK ? s.D - f.y1 : e == EDGE_LEFT ? f.x0 - s.L : s.R - f.x1;
-		if (in < s.rules.block_closes) out.push_back(e == EDGE_FRONT || e == EDGE_BACK ? Span{ f.x0, f.x1 } : Span{ f.y0, f.y1 });
+		if (in < block_reach(s.rules)) out.push_back(e == EDGE_FRONT || e == EDGE_BACK ? Span{ f.x0, f.x1 } : Span{ f.y0, f.y1 });
 	}
 	return out;
 }

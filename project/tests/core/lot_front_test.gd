@@ -8,7 +8,8 @@
 ## deck). And nothing of a lot stands on the paving as it is drawn (probe lot_paving: the bands, the junctions' plates out to their
 ## corners' footway backs, the bulbs), in the town and in the metropolis, whose wide footways give the corners with a round back.
 ## And a lot's covers lie in their order (probe lot_covers): wherever a later cover lies over an earlier one (a forecourt's asphalt over
-## its pavers, a court's lines over the court) it stands over it everywhere, never crossing it, never at its depth.
+## its pavers, a court's lines over the court) it stands over it everywhere, never crossing it, never at its depth; and no band of lawn
+## or bare ground too thin to plant stands beside a hard cover (a walk, a yard, a forecourt) of a lot.
 ## Run: godot --path project res://tests/core/lot_front_test.tscn -- --no-flow
 extends TestCase
 
@@ -42,6 +43,7 @@ func _ready() -> void:
 			% [b.doubled, b.pieces, b.doubled_first, b.doubled_by])
 	check(int(b.open) == 0, "every edge of a lot is closed by its boundary or a block standing on it: %.1f m open, the first (building, edge, x, z, kind, front depth) %s, by edge, lot kind and front use %s"
 			% [float(b.open) * float(b.step_m), b.open_first, b.open_by])
+	check(int(b.runs_in) == 0, "no run of a lot's boundary (a wall, a fence, a hedge) stands in a building's footprint: %d, the first (building, kind, x, z, metres in) %s" % [b.runs_in, b.runs_first])
 	check(int(b.parts_in) == 0, "no part of a lot stands in its boundary: %d, the first (building, part kind, piece kind, x, z, metres in) %s, by part, lot kind and front use %s"
 			% [b.parts_in, b.parts_first, b.parts_by])
 	check(int(b.parts_meet) == 0, "no part of a lot stands in another's footprint (a pool's with its deck): %d pairs, the first (building, kinds, x, z, metres in) %s, by kinds, lot kind and front use %s"
@@ -59,6 +61,13 @@ func _check_covers(city: String, d: Dictionary) -> void:
 	check(int(d.samples) > 0, "%s has covers lying over covers: %d" % [city, d.samples])
 	check(int(d.under) == 0, "%s: every later cover stands over the earlier one it lies on: %d of %d not, the worst (building, x, z, later less earlier, elements) %s"
 			% [city, d.under, d.samples, d.worst])
+	print("%s: the lots' ground: %d lots read, %.1f m2 under no cover, %d bands too thin to plant in %d lots" % [city, d.ground_lots, d.bare_m2, d.slivers, d.sliver_lots])
+	check(int(d.ground_lots) > 0, "%s has lots whose ground was read: %d" % [city, d.ground_lots])
+	check(float(d.bare_m2) <= 0.0, "%s: every lot's ground is covered from line to line: %.1f m2 under no cover" % [city, d.bare_m2])
+	check(int(d.sliver_lots) == 0, "%s: no planted or bare band too thin to plant stands beside a hard cover of a lot: %d lots, %d bands by scan line, the first (building, x, y in the lot's frame, the line's way) %s"
+			% [city, d.sliver_lots, d.slivers, d.sliver_first])
+	if int(d.sliver_lots) > 0:
+		print("%s: the first such lot's ground (x0, y0, x1, y1, what: 1 planted, 2 hard, 3 a ground volume): %s" % [city, d.sliver_boxes])
 
 
 ## Nothing of a lot stands on the paving as it is drawn: its bands, its junctions' plates out to their corners' footway backs, its bulbs.

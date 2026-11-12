@@ -31,6 +31,9 @@ struct Lay {
 	float W, D;
 	int paint(const char *n) { return b.add_paint(data.color(n)); }
 	void surface(float x0, float y0, float x1, float y1, int p, CoverLayer layer = COVER_GROUND) { put(b, EL_SURFACE, x0, y0, x1, y1, cover_h(layer), p); }
+	// The lot's own ground, from line to line: no part of an open lot is left to whatever lies under it (the hedges, the lawn
+	// borders and the furniture stand LAWN_CLEAR in from the lines; the ground does not).
+	void ground(const char *n) { surface(-W / 2, 0, W / 2, D, paint(n)); }
 	void fountain(float cx, float cy, bool plaza);
 	void benches_along_x(float y, float x0, float x1, int bench, int lamp, int bin);
 	void benches_along_y(float x, float y0, float y1, int bench, int lamp, int bin);
@@ -108,10 +111,11 @@ float play_y(float W, float D) { return (D / 2 + PATH_W / 2 + D - ring_of(W, D))
 
 void park(Lay &L) {
 	const float W = L.W, D = L.D, rg = ring_of(W, D);
-	L.surface(-W / 2 + LAWN_CLEAR, LAWN_CLEAR, W / 2 - LAWN_CLEAR, D - LAWN_CLEAR, L.paint("square_lawn"));
+	L.ground("square_lawn");
 	int path = L.paint("path");
-	L.surface(-W / 2 + LAWN_CLEAR, D / 2 - PATH_W / 2, W / 2 - LAWN_CLEAR, D / 2 + PATH_W / 2, path, COVER_WAY);
-	L.surface(-PATH_W / 2, LAWN_CLEAR, PATH_W / 2, D - LAWN_CLEAR, path, COVER_WAY);
+	// the cross of paths from line to line: each end opens on the footway, through the hedge's gap
+	L.surface(-W / 2, D / 2 - PATH_W / 2, W / 2, D / 2 + PATH_W / 2, path, COVER_WAY);
+	L.surface(-PATH_W / 2, 0, PATH_W / 2, D, path, COVER_WAY);
 	float rx0 = -W / 2 + rg, rx1 = W / 2 - rg, ry0 = rg, ry1 = D - rg;
 	if (has_ring(W, D)) {
 		for (float y : { ry0, ry1 }) L.surface(rx0, y - RING_W / 2, rx1, y + RING_W / 2, path, COVER_WAY);
@@ -129,7 +133,7 @@ void park(Lay &L) {
 
 void square(Lay &L) {
 	const float W = L.W, D = L.D;
-	L.surface(-W / 2 + LAWN_CLEAR, LAWN_CLEAR, W / 2 - LAWN_CLEAR, D - LAWN_CLEAR, L.paint("square_paving"));
+	L.ground("square_paving");
 	int lawn = L.paint("square_lawn");
 	for (float s : { -1.f, 1.f }) L.surface(s > 0 ? W / 2 - LAWN_CLEAR - LOT_EDGE : -W / 2 + LAWN_CLEAR, LAWN_CLEAR, s > 0 ? W / 2 - LAWN_CLEAR : -W / 2 + LAWN_CLEAR + LOT_EDGE, D - LAWN_CLEAR, lawn, COVER_WAY);
 	if (fountain_fits(W, D)) L.fountain(0, D / 2, false);
@@ -154,7 +158,7 @@ void square(Lay &L) {
 
 void court(Lay &L) {
 	const float W = L.W, D = L.D;
-	L.surface(-W / 2 + LAWN_CLEAR, LAWN_CLEAR, W / 2 - LAWN_CLEAR, D - LAWN_CLEAR, L.paint("square_lawn"));
+	L.ground("square_lawn");
 	float cw = std::min(COURT_W, W - 2 * COURT_RUN), cd = std::min(COURT_D, D - 2 * COURT_RUN), cy = D / 2;
 	if (cw <= 0 || cd <= 0) return;
 	L.surface(-cw / 2 - COURT_RUN / 2, cy - cd / 2 - COURT_RUN / 2, cw / 2 + COURT_RUN / 2, cy + cd / 2 + COURT_RUN / 2, L.paint("court_run"), COVER_OWN);
