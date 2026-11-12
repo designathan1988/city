@@ -106,6 +106,8 @@ public:
 	// Tests: every lot's plants as they are drawn (each instance's model measured point by point) against the room its element is:
 	// how many, how many past it in plan or over its height, the first (render/trees/garden_census.h).
 	godot::Dictionary garden_rooms() const;
+	// Tests and captures: what stands on a record's lot, a row an element (kind, x, z, width, depth, height, base, angle).
+	godot::Array lot_elements(int id) const;
 	// Tests: one plant element of a kind ("tree", "shrub", "hedge", "flowers") `w` by `d` and `h` tall, laid `turn` radians to its
 	// lot, stood alone with the draws of `seed`: the box its instances draw, their top and how far past the room they stand.
 	godot::Dictionary garden_fit(const godot::String &kind, float w, float d, float h, float turn, int seed) const;

@@ -45,6 +45,21 @@ Dictionary CityProbes::garden_rooms() const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	return render_->garden_rooms(*state_);
 }
+// What stands on a record's lot, one row an element: its kind (b40::Element), its middle in the world, its width, depth, height,
+// base and angle: where a capture looks, and what a photo is read against.
+Array CityProbes::lot_elements(int id) const {
+	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	Array rows;
+	if (id < 0 || id >= int(state_->buildings.items.size()) || !state_->buildings.items[size_t(id)].alive) return rows;
+	const Building &rec = state_->buildings.items[size_t(id)];
+	const b40::LotFrame f = b40::lot_frame(rec);
+	for (const b40::LotElement &e : *b40::record_elements(state_->buildings.designs, rec)) {
+		const V2 at = f.at(e.x, e.y);
+		rows.push_back(Array::make(int(e.kind), at.x, at.y, e.w, e.d, e.h, e.base, e.angle));
+	}
+	return rows;
+}
+
 Dictionary CityProbes::garden_fit(const String &kind, float w, float d, float h, float turn, int seed) const {
 	const b40::Element k = kind == "tree" ? b40::EL_TREE : kind == "shrub" ? b40::EL_SHRUB : kind == "hedge" ? b40::EL_HEDGE : b40::EL_FLOWERS;
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
@@ -233,6 +248,7 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("bay_census"), &CityProbes::bay_census);
 	ClassDB::bind_method(D_METHOD("far_form"), &CityProbes::far_form);
 	ClassDB::bind_method(D_METHOD("garden_rooms"), &CityProbes::garden_rooms);
+	ClassDB::bind_method(D_METHOD("lot_elements", "id"), &CityProbes::lot_elements);
 	ClassDB::bind_method(D_METHOD("garden_fit", "kind", "w", "d", "h", "turn", "seed"), &CityProbes::garden_fit);
 	ClassDB::bind_method(D_METHOD("ground_drawn", "at"), &CityProbes::ground_drawn);
 	ClassDB::bind_method(D_METHOD("lamp_pools", "x", "z", "radius"), &CityProbes::lamp_pools);

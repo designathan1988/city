@@ -91,6 +91,16 @@ int TreeRenderer::near_plants() const {
 	return n;
 }
 
+Dictionary TreeRenderer::near_by_species() const {
+	Dictionary d;
+	for (const auto &[key, ch] : near_)
+		for (size_t i = 0; i < ch.count.size(); i++) {
+			const String name = kit_.species(int(i)).name;
+			d[name] = int(d.get(name, 0)) + ch.count[i];
+		}
+	return d;
+}
+
 void TreeRenderer::set_share(float tier) {
 	const float share = trees_.tier_share(tier);
 	if (trees_.share.load() == share) return;
@@ -183,7 +193,11 @@ void TreeRenderer::commit_near(Built &b) {
 	ch.cast.resize(size_t(n));
 	ch.cards.resize(size_t(n));
 	ch.trees = 0;
-	for (const PackedFloat32Array &buf : b.bufs) ch.trees += int(buf.size() / MM_STRIDE);
+	ch.count.assign(size_t(n), 0);
+	for (size_t i = 0; i < b.bufs.size(); i++) {
+		ch.count[i] = int(b.bufs[i].size() / MM_STRIDE);
+		ch.trees += ch.count[i];
+	}
 	ch.plants = int(b.bufs[size_t(trees_.shrub_species)].size() + b.bufs[size_t(trees_.hedge_species)].size()) / MM_STRIDE;
 	for (int species : trees_.flowering_species) ch.plants += int(b.bufs[size_t(species)].size() / MM_STRIDE);
 	for (int species : trees_.bed_species) ch.plants += int(b.bufs[size_t(species)].size() / MM_STRIDE);

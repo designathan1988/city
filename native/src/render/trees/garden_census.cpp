@@ -43,6 +43,26 @@ struct Drawn {
 const char *kind_name(b40::Element k) {
 	return k == b40::EL_TREE ? "tree" : k == b40::EL_SHRUB ? "shrub" : k == b40::EL_HEDGE ? "hedge" : "flowers";
 }
+
+// Where a capture looks: of each kind, the plant whose room has the longest side and the one whose room has the shortest (a long
+// hedge, a tree in a planter), as (building, x, z, the room's width, depth and height).
+struct Sights {
+	Dictionary where;
+	void take(int id, const b40::LotFrame &f, const b40::LotElement &p, const std::vector<TreeInstance> &made) {
+		const float side = std::max(p.w, p.d);
+		const V2 at = f.at(p.x, p.y);
+		Array here = Array::make(id, at.x, at.y, p.w, p.d, p.h, int(made.size()));
+		if (!made.empty()) here.append_array(Array::make(made[0].p, made[0].width, made[0].height, made[0].depth, made[0].yaw));
+		const String longest = String(kind_name(p.kind)) + "_longest", least = String(kind_name(p.kind)) + "_least";
+		if (!where.has(longest) || side > room_side(where[longest])) where[longest] = here;
+		if (!where.has(least) || side < room_side(where[least])) where[least] = here;
+	}
+	static float room_side(const Variant &seen) {
+		const Array a = seen;
+		return std::max(float(a[ROOM_W]), float(a[ROOM_D]));
+	}
+	enum : int { ROOM_W = 3, ROOM_D = 4 }; // their places in a sight
+};
 } // namespace
 
 Dictionary garden_rooms(const CityView &s, const TreeLook &T, const TreeKit &kit) {
@@ -50,6 +70,7 @@ Dictionary garden_rooms(const CityView &s, const TreeLook &T, const TreeKit &kit
 	float worst = 0, tallest = 0;
 	Array first;
 	Dictionary by_kind;
+	Sights sights;
 	std::vector<TreeInstance> made;
 	for (int id = 0; id < int(s.buildings.items.size()); id++) {
 		const Building &rec = s.buildings.items[size_t(id)];
@@ -63,6 +84,7 @@ Dictionary garden_rooms(const CityView &s, const TreeLook &T, const TreeKit &kit
 			Drawn d;
 			for (const TreeInstance &t : made) d.take(kit, t, room.f);
 			plants++;
+			sights.take(id, f, p, made);
 			const float past = d.past(room.p), high = p.kind == b40::EL_FLOWERS ? 0.f : d.over(room.p);
 			if (high > ROOM_SLACK_M) over++;
 			tallest = std::max(tallest, high);
@@ -80,6 +102,7 @@ Dictionary garden_rooms(const CityView &s, const TreeLook &T, const TreeKit &kit
 	Dictionary r;
 	r["lots"] = lots; r["plants"] = plants; r["out"] = out; r["worst_m"] = worst; r["first"] = first; r["by_kind"] = by_kind;
 	r["over"] = over; r["over_m"] = tallest;
+	r["sights"] = sights.where;
 	return r;
 }
 

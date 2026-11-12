@@ -142,6 +142,7 @@ public:
 		godot::Dictionary d = agents_.cost();
 		d["trees_near"] = trees_.near_trees();
 		d["plants_near"] = trees_.near_plants();
+		d["trees_by_species"] = trees_.near_by_species();
 		return d;
 	}
 	godot::Dictionary building_cost() const { return buildings_.building_cost(); }

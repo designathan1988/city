@@ -33,6 +33,7 @@ public:
 	void set_share(float share); // the graphics tier: every drawn chunk is placed again
 	int near_trees() const; // trees of the near level now
 	int near_plants() const; // of them, the gardens' bushes and hedges
+	godot::Dictionary near_by_species() const; // tests: the near level's instances by species name
 	// Tests: the gardens' plants as they are drawn against the rooms their lots gave them, over the whole city (the caller holds the
 	// map shared), and one plant element alone (render/trees/garden_census.h).
 	godot::Dictionary garden_rooms(const CityState &s) const { return city::garden_rooms(CityView(s), trees_, kit_); }
@@ -52,6 +53,7 @@ private:
 	struct Near {
 		std::vector<MultiMeshDraw> body, cast, cards;
 		int trees = 0, plants = 0; // every instance, and those of the gardens' bushes and hedges
+		std::vector<int> count; // the instances of each species
 	};
 	// A job's result. Near: a buffer per species, sent by the main thread when handed over (`upload` bytes). Far: the superchunk's
 	// cards, baked into one mesh by a job the upload ledger admits.
