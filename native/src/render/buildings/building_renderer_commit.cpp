@@ -19,6 +19,8 @@ namespace city {
 
 namespace {
 constexpr float AABB_PAD = 1.f, BYTE = 255.f;
+constexpr uint32_t BYTE_MASK = 0xff;
+constexpr float BAND_CODE_STEP = 16.f; // building_parts.gdshader BAND_STEP: over every finish layer + 1
 constexpr int RGBA_R_SHIFT = 24, RGBA_G_SHIFT = 16, RGBA_B_SHIFT = 8, BASIS = 3;
 const char *const FAR_MASK_PARAM = "chunk_mask"; // building_far.gdshader's instance uniform
 
@@ -34,7 +36,8 @@ void grow(AABB &box, const AABB &more) {
 }
 
 Color unpack(uint32_t c) {
-	return Color(float((c >> RGBA_R_SHIFT) & 0xff) / BYTE, float((c >> RGBA_G_SHIFT) & 0xff) / BYTE, float((c >> RGBA_B_SHIFT) & 0xff) / BYTE, float(c & 0xff) / BYTE);
+	return Color(float((c >> RGBA_R_SHIFT) & BYTE_MASK) / BYTE, float((c >> RGBA_G_SHIFT) & BYTE_MASK) / BYTE, float((c >> RGBA_B_SHIFT) & BYTE_MASK) / BYTE,
+			float(c & BYTE_MASK) / BYTE);
 }
 } // namespace
 
@@ -75,11 +78,13 @@ BuildingRenderer::Surface BuildingRenderer::bake(const b40::Shell &shell, bool w
 	return sf;
 }
 
-PackedFloat32Array BuildingRenderer::bake_band(const std::vector<b40::BoxInstance> &boxes) {
+// A box's row: its tone and, in one number, its finish and the band it leaves by (building_parts.gdshader: the finish + BAND_CODE_STEP
+// x (band + 1); NO_BAND: the finish alone, a box drawn as far as its instance is).
+PackedFloat32Array BuildingRenderer::bake_band(const std::vector<b40::BoxInstance> &boxes, int band) {
 	PackedFloat32Array buf;
 	for (const b40::BoxInstance &inst : boxes) {
 		const Color c = unpack(inst.color);
-		push_row(buf, inst.basis, inst.origin, c.r, c.g, c.b, float(inst.fin));
+		push_row(buf, inst.basis, inst.origin, c.r, c.g, c.b, float(inst.fin) + BAND_CODE_STEP * float(band + 1));
 	}
 	return buf;
 }

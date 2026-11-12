@@ -181,11 +181,11 @@
     "reach_m": 100
    },
    "crossing": {
-    "_doc": "As the Roadcraft 4.0 draws it (src/world/approach.ts): the zebra 1.2 m past the mouth and 3 m deep, the stop line 0.64 m behind it and 0.4 m wide. Not a norm: the look of this style.",
+    "_doc": "The zebra 1.2 m past the mouth and 3 m deep and the stop line 0.4 m wide are this style's look (no norm). The stop line lies 1.60 m before the crosswalk: CONTRAN MBST vol. IV (Res. 973/2022) 5.1, the least distance of a stop line (LRE) from the crosswalk it holds the traffic before.",
     "zebra_from_m": 1.2,
     "zebra_to_m": 4.2,
-    "stop_from_m": 4.84,
-    "stop_to_m": 5.24
+    "stop_from_m": 5.8,
+    "stop_to_m": 6.2
    },
    "furniture": {"bin_every_m": 60, "bin_first_m": 9, "bench_every_m": 60, "bench_first_m": 24, "row_end_m": 4},
    "trees": {"in_generated_city": 0},

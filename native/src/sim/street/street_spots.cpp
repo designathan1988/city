@@ -2,6 +2,7 @@
 #include "sim/street/street_spots.h"
 
 #include "sim/roads/junction.h"
+#include "sim/roads/standing_body.h"
 #include "sim/roads/street_furniture_internal.h"
 
 #include <algorithm>
@@ -22,8 +23,10 @@ FurnitureSpot piece_on(const RoadNetwork &net, FurnitureKind k, const FootwayHit
 	return spot(net, k, h.seg, p, h.v, h.u, toward_road(h.side), 0.f);
 }
 
-bool touches(const FurnitureSpot &a, const FurnitureSpot &b) {
-	return a.side == b.side && std::fabs(a.v - b.v) < a.half_v + b.half_v && std::fabs(a.u - b.u) < a.half_u + b.half_u;
+// A piece the placement put up is in the way of one the player put up when the two, as bodies standing in the world, are in one
+// another or nearer than the hand's gap two pieces of the street keep: whichever side and segment each stands on.
+bool in_the_way(const StandingBody &placed, const std::vector<StandingBody> &players, float gap) {
+	return std::any_of(players.begin(), players.end(), [&](const StandingBody &b) { return bodies_apart(placed, b) < gap - BODY_ROUNDING_M; });
 }
 } // namespace
 
@@ -79,22 +82,30 @@ void merge_street(const StreetWorks &w, const RoadNetwork &net, int sid, uint32_
 	const float stand = defs(net).items.stand_reach_m, cut = defs(net).items.cut_reach_m;
 	const float pad = float(footway_reach(net, stand)); // an item further off stands on no footway of this segment
 	const float x0 = g.minx - pad, z0 = g.minz - pad, x1 = g.maxx + pad, z1 = g.maxz + pad;
+	// the player's pieces on this segment's footways are its pieces (mine); every one of the player's standing within its reach, on
+	// whichever segment's footway, is a body the placed pieces keep off
 	std::vector<FurnitureSpot> mine;
+	std::vector<StandingBody> players;
+	const auto stands = [&](const FurnitureSpot &s) {
+		players.push_back(body_of(net, s));
+		if (s.seg == sid) mine.push_back(s);
+	};
 	w.items_in(x0, z0, x1, z1, [&](int id) {
 		const StreetItem &it = w.items.items[size_t(id)];
 		const FurnitureKind k = item_piece(it.kind);
 		if (k == FurnitureKind::COUNT) return;
 		const FootwayHit h = footway_at(net, it.x, it.z, stand);
-		if (!h.ok || h.seg != sid) return;
+		if (!h.ok) return;
 		FurnitureSpot s = piece_on(net, k, h);
 		s.item = id;
-		mine.push_back(s);
+		stands(s);
 	});
 	w.poles_in(x0, z0, x1, z1, [&](int id) {
 		const UtilityPole &pole = w.poles.items[size_t(id)];
 		const FootwayHit h = footway_at(net, pole.x, pole.z, stand);
-		if (h.ok && h.seg == sid) mine.push_back(piece_on(net, FurnitureKind::POLE, h));
+		if (h.ok) stands(piece_on(net, FurnitureKind::POLE, h));
 	});
+	const float gap = defs(net).items.gap_m;
 	std::vector<FurnitureSpot> kept(out.begin(), out.begin() + long(first)); // what other segments put there stays
 	for (size_t i = first; i < out.size(); i++) {
 		const FurnitureSpot &s = out[i];
@@ -105,8 +116,7 @@ void merge_street(const StreetWorks &w, const RoadNetwork &net, int sid, uint32_
 			const StreetCut &c = w.cuts.items[size_t(id)];
 			gone = gone || std::hypot(c.x - x, c.z - z) <= cut;
 		});
-		if (s.kind != FurnitureKind::SIGNAL)
-			gone = gone || std::any_of(mine.begin(), mine.end(), [&](const FurnitureSpot &m) { return touches(s, m); });
+		if (s.kind != FurnitureKind::SIGNAL) gone = gone || in_the_way(body_of(net, s), players, gap);
 		if (!gone) kept.push_back(s);
 	}
 	out.swap(kept);

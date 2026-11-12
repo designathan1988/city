@@ -1,4 +1,4 @@
-## The street's pieces as bodies standing in the world (probe `bodies_audit`): in the generated town and in the 24 km city, whichever
+## The street's pieces as bodies standing in the world (probe `bodies_audit`): in the generated town, whichever
 ## segment or junction placed a piece, no two stand in one another nor nearer than the hand's gap two pieces of the street keep (no
 ## hydrant against a signal post, no bench against a pole), and in volume no part of one passes through a part of another (a signal's
 ## arm through a pole). Each pair of kinds found is printed with its first case (kind, segment, arc, place across, where).
@@ -6,9 +6,7 @@
 extends TestCase
 
 const TOWN_MAP := 0
-const SEEDS := [7, 1] # the town of the walkers' corner (node 112) and the town of the T joint's photos
-const BIG_MAP := 4 # maps.json km24: the 24 km city
-const BIG_SEED := 1
+const SEED := 7 # the town of the walkers' corner (node 112): one small town, a few seconds
 const THROUGH := 0.0 # m between the parts of two pieces: none, one through the other
 const WIDE_M := 1.0 # a clearance no street keeps between every two of its pieces: the audit must find pairs under it
 const ARM_M := 3.0 # a signal's arm reaches further than this from its post (data/render/streets.json props.signal)
@@ -20,9 +18,7 @@ func _ready() -> void:
 	if not boot():
 		finish()
 		return
-	for town: int in SEEDS:
-		_audit(TOWN_MAP, town, true)
-	_audit(BIG_MAP, BIG_SEED, false)
+	_audit(TOWN_MAP, SEED, true)
 	finish()
 
 

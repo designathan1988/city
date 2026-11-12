@@ -1,6 +1,8 @@
 // The walls given to the engine as occluders, and the occluder of one chunk (occluders.h).
 #include "render/buildings/occluders.h"
 
+#include "sim/buildings/b40/blocks.h"
+
 #include <godot_cpp/classes/rendering_server.hpp>
 
 using namespace godot;
@@ -14,6 +16,9 @@ constexpr int WALL_INDICES[] = { 0, 1, 2, 0, 2, 3 };
 
 void OccluderWalls::add(const b40::Placed &pl, int min_storeys) {
 	const b40::Body &b = *pl.b;
+	// Only walls that surely stand: a body drawn by a design of its own is its model, not these blocks (an open canopy, an arch, a tower
+	// thinner than its box), and where a block is a void, an intersection or an exclusion the blocks are cut by one another.
+	if (b.signature != 0 || b40::has_modes(b)) return;
 	for (const b40::Volume &v : b.volumes) {
 		if (v.base != 0 || v.storeys < min_storeys || !v.outline.empty()) continue;
 		const float top = b.block_z(v, v.storeys);

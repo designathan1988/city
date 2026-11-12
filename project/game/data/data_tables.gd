@@ -149,6 +149,7 @@ static func catalog() -> Dictionary:
 	# meshes are made of; the catalogue takes the same list for the pieces' sizes, in a copy of its table
 	var furniture: Dictionary = out.street_furniture.duplicate()
 	furniture["parts"] = _read(RENDER_TABLES.streets).props
+	furniture["plates"] = _read(RENDER_TABLES.streets).signs # the plates' posts and sizes, the same way
 	out.street_furniture = furniture
 	return out
 

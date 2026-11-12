@@ -23,7 +23,8 @@
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "sim/state/city_state.h"
-#include "render/buildings/interior_emit.h"
+#include "render/buildings/building_inputs.h"
+#include "render/buildings/building_stream.h"
 
 #include <array>
 #include <atomic>
@@ -174,20 +175,8 @@ private:
 		int64_t bytes() const { return far_shell.bytes(false) + casts.bytes(); }
 		void bake();
 	};
-	// What a job reads from the map, copied while it holds the map lock shared for a moment (gather): the records
-	// of its chunks, in query order, and the final ground under their lots. The build itself runs without the lock.
-	struct Inputs {
-		std::vector<Building> records;
-		std::shared_ptr<const std::unordered_set<uint32_t>> broken; // standing in pieces (RuinPieces): only their lots are drawn here
-		std::vector<int> ids; // the id of each record
-		InteriorView view; // the Interior layer as the job started
-		HeightPatch ground;
-	};
-	struct Want {
-		float d;
-		int64_t key;
-		uint8_t mask;
-	};
+	using Inputs = BuildingInputs; // what a job reads from the map (gather)
+	using Want = building_stream::Want;
 	using SuperChunks = std::array<int64_t, size_t(SUPERCHUNK / CHUNK) * size_t(SUPERCHUNK / CHUNK)>;
 	static SuperChunks chunks_of(int64_t super_key); // the chunks of a superchunk, row by row
 	// The one rule of how far a part is drawn (lod.part_bands): until its bar width spans its band's px_min on the screen the levels are
@@ -207,7 +196,9 @@ private:
 	// A level's mesh, whole with its materials: a surface for each shell that holds triangles, in this order, each with its own of `with`.
 	static Surface bake(const b40::Shell &shell, bool with_uv2, const LevelMaterials &with, const b40::Shell *glass = nullptr, const b40::Shell *sheer = nullptr, const b40::Shell *cards = nullptr, const b40::Shell *lawns = nullptr, const b40::Shell *washes = nullptr);
 	static void put(MeshDraw &d, Surface &sf, const godot::RID &scenario, bool shadows, bool shown, RenderLayer layer);
-	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes);	static godot::PackedFloat32Array bake_props(const std::vector<b40::PropInstance> &props);
+	static constexpr int NO_BAND = -1; // a box that leaves with its instance (the mid level's)
+	static godot::PackedFloat32Array bake_band(const std::vector<b40::BoxInstance> &boxes, int band = NO_BAND);
+	static godot::PackedFloat32Array bake_props(const std::vector<b40::PropInstance> &props);
 	static godot::PackedFloat32Array bake_bays(const std::vector<b40::BayInstance> &bays);
 	void commit_one(Built &b);
 	void fit_reach(Chunk &ch, const Built &b);

@@ -111,7 +111,7 @@ void BuildingRenderer::file_parts(Built &out, std::array<b40::Shell, SUB_COUNT> 
 		for (const b40::PropInstance &inst : p.props) props[inst.kind].push_back(inst);
 		p.boxes = {}; // in the bands now
 		p.props = {};
-		for (int b = 0; b < BAND_COUNT; b++) out.bands[i][size_t(b)] = bake_band(boxes[size_t(b)]);
+		for (int b = 0; b < BAND_COUNT; b++) out.bands[i][size_t(b)] = bake_band(boxes[size_t(b)], b);
 		for (int k = 0; k < b40::BAY_PROPS; k++) out.bands[i][size_t(BAND_COUNT + k)] = bake_props(props[size_t(k)]);
 	}
 	for (int b = 0; b < BAND_COUNT; b++) out.band_mesh[size_t(b)] = unit_box_.rid;
@@ -174,7 +174,8 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 			}
 			if (cut) b40::emit_interior(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			if (lots_drawn_.load()) b40::emit_lot(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
-			if (!broken) out.walls.add(pl, int(state_->catalog.tune.render_occluder_min_storeys));
+			// a building cut open shows its inside through where its walls were: it hides nothing
+			if (!broken && !cut) out.walls.add(pl, int(state_->catalog.tune.render_occluder_min_storeys));
 			out.cut = out.cut || cut;
 			if (!mid && !bays) continue; // both asked (first build close to the camera): the coarse mid level follows
 			if (cut) bodies.place(designs(), look_, in.ground, rec, pl);

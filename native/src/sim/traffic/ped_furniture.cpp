@@ -140,8 +140,13 @@ void place_street_furniture(const CityState &s, int sid, uint32_t kinds, std::ve
 	const TrafficParams &tp = s.catalog.traffic;
 	std::vector<ArcSpan> gates[2];
 	street_gates(s.roads, s.buildings, sid, tp.kerb_gate_margin_m + tp.ped_body_m, gates, tp.ped_body_m);
+	// the plates the junctions' rules stand on it: their posts are pieces of its placement
+	std::vector<RulePlate> rules;
+	segment_plates(s, sid, rules);
+	std::vector<PlateWanted> plates;
+	for (const RulePlate &r : rules) plates.push_back(PlateWanted{ r.v, r.side, r.node });
 	const size_t first = out.size();
-	segment_furniture(s.roads, sid, signalled, gates, kinds, out);
+	segment_furniture(s.roads, sid, signalled, gates, &plates, kinds, out);
 	merge_street(s.street, s.roads, sid, kinds, out, first); // what the player put up and cut
 	if (s.damage.gone.empty()) return;
 	// what a blow knocked out is not placed again (sim/demolition/damage_state.h)

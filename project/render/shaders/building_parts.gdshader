@@ -23,6 +23,11 @@ uniform float finish_normal_k[13];
 uniform float finish_metal[13];
 uniform float wall_gain = 1.0;
 uniform float cloth_roughness = 0.85; // the Roadcraft's flag material (flagLayer.ts MeshStandardMaterial)
+// How far from the eye a box of each thickness band is drawn, metres (building_renderer_reach.cpp send_band_reach): a box is judged
+// where it stands, not where its sub-chunk's middle is. Its band comes beside its finish in INSTANCE_CUSTOM.a, finish + BAND_STEP x
+// (band + 1) (building_renderer_commit.cpp bake_band); a box with no band is drawn as far as its instance is.
+uniform float band_reach_m[5];
+const float BAND_STEP = 16.0;
 
 // The Roadcraft's wave (flagLayer.ts): its clock runs WIND_PACE times real time (wind.ts), the two sines travel from the
 // hoist, their swing grows with the width, the fly droops by the square of its reach.
@@ -94,10 +99,14 @@ void vertex() {
 		VERTEX = (VIEW_MATRIX * vec4(v_world, 1.0)).xyz;
 		NORMAL = normalize((VIEW_MATRIX * vec4(v_wn, 0.0)).xyz);
 	} else {
+		float band = floor((INSTANCE_CUSTOM.a + 1.5) / BAND_STEP); // 0: no band
+		v_custom.a = INSTANCE_CUSTOM.a - band * BAND_STEP; // the finish alone
 		v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 		v_wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 		VERTEX = (MODELVIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 		NORMAL = normalize((MODELVIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+		// past its band's reach from the eye the box is folded onto one point behind it: nothing of it is drawn
+		if (band > 0.5 && distance(MODEL_MATRIX[3].xyz, MAIN_CAM_INV_VIEW_MATRIX[3].xyz) > band_reach_m[int(band) - 1]) VERTEX = vec3(0.0, 0.0, 1.0);
 	}
 }
 

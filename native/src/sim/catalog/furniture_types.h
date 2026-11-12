@@ -66,12 +66,14 @@ struct TreeDef {
 	CITY_TREE_FIELDS(CITY_FURNITURE_DECLARE)
 };
 
-// A crosswalk at a junction mouth, metres from the mouth: the zebra and the stop line, and what follows from them.
+// A crosswalk at a junction mouth, metres from the mouth: the zebra and the stop line, and what follows from them. Where an arm's
+// stop line lies is the road network's answer (RoadNetwork::stop_line_back: stop_to_m, the edge the vehicles stop at, and less on
+// a short stretch); stop_to_m - stop_from_m is its painted width.
 struct CrossingDef {
 	CITY_CROSSING_FIELDS(CITY_FURNITURE_DECLARE)
 	float middle() const { return (zebra_from_m + zebra_to_m) * 0.5f; } // the line the walkers cross along
 	float half() const { return (zebra_to_m - zebra_from_m) * 0.5f; } // half the zebra's width along the kerb
-	float stop_back() const { return stop_to_m; } // the vehicles stop with their front at the stop line's near edge
+	float stop_width() const { return stop_to_m - stop_from_m; } // the stop line's painted width along the road
 	float cleared() const { return zebra_to_m; } // a leaving vehicle's rear past the zebra's edge is off it
 };
 
@@ -102,8 +104,18 @@ struct BarrierDef {
 	CITY_BARRIER_FIELDS(CITY_FURNITURE_DECLARE)
 	float height_m[BARRIER_KINDS] = {}, thickness_m[BARRIER_KINDS] = {};
 };
+// A plate's size and the height of its middle over its post's foot (data/render/streets.json signs.plates.<type>).
+struct PlateMeasure {
+	float w_m = 0, h_m = 0, z_m = 0;
+};
+// The plates' names in the data, in SignType order.
+constexpr const char *SIGN_TYPE_KEYS[SIGN_TYPES] = { "stop", "yield", "speed", "noParking", "noEntry", "pedestrian", "school", "direction", "street", "info" };
 struct SignDef {
 	CITY_SIGN_FIELDS(CITY_FURNITURE_DECLARE)
+	// A plate standing, from the one list of the plates (streets.json signs, which the render draws them by): its post's radius, how
+	// far in front of the post's middle its face stands, half the thickness of a plate, and each type's plate.
+	float post_radius_m = 0, face_out_m = 0, blade_half_m = 0;
+	PlateMeasure plate[SIGN_TYPES];
 };
 struct ItemDef {
 	CITY_ITEM_FIELDS(CITY_FURNITURE_DECLARE)

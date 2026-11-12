@@ -16,8 +16,6 @@ constexpr int RANK_MAIN = 3, RANK_YIELD = 1; // free arms keep DirSeg::rank's de
 constexpr int RING_PRIORITY = 100; // over every class of road: whoever circulates has the way, whatever comes in
 constexpr uint32_t OFFSET_HASH = 2654435761u, OFFSET_STEPS = 1000; // where in its first green each junction starts
 
-constexpr float STOP_SETBACK_SHARE = 0.5f; // a short lane keeps at least half of itself in front of its stop line
-
 struct Arm {
 	int seg = -1, in = -1, priority = 0;
 	int lanes = 0; // its road's travel lanes, both ways
@@ -210,9 +208,8 @@ void build_junction(CityState &s, int n) {
 	for (const Arm &a : arms)
 		if (a.in >= 0) { g.ds[a.in].stage = -1; g.ds[a.in].rank = 2; g.ds[a.in].must_stop = false; g.ds[a.in].stop_back = 0; g.ds[a.in].detector = g.ds[a.in].extension = 0; }
 	j.degree = int(arms.size());
-	if (s.roads.has_crosswalks(n))
-		for (const Arm &a : arms)
-			if (a.in >= 0) g.ds[a.in].stop_back = std::min(s.catalog.furniture.crossing.stop_back(), g.ds[a.in].len * STOP_SETBACK_SHARE);
+	for (const Arm &a : arms)
+		if (a.in >= 0) g.ds[a.in].stop_back = float(s.roads.stop_line_back(n, a.seg));
 	j.ctl = control_of(s, n);
 	if (j.ctl == Control::SIGNAL) make_stages(s, n, arms, j);
 	file_signal(g, n);

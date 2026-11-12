@@ -5,6 +5,10 @@
 
 namespace city {
 
+namespace {
+constexpr double STOP_SETBACK_SHARE = 0.5; // a short stretch keeps at least half of itself in front of its stop line
+} // namespace
+
 bool RoadNetwork::mid_block(int node) const {
 	const RoadNode &n = nodes[size_t(node)];
 	return n.crossing != CROSSING_NONE && n.segs.size() == 2;
@@ -29,6 +33,14 @@ bool RoadNetwork::movement_banned(int node, int from, int to) const {
 
 bool RoadNetwork::crosswalk_on(int node, int seg) const {
 	return has_crosswalks(node) && (!mid_block(node) || seg == crossing_arm(node));
+}
+
+double RoadNetwork::stop_line_back(int node, int seg) const {
+	if (!has_crosswalks(node)) return 0;
+	const RoadSegment &g = segs[size_t(seg)];
+	// behind the crosswalk as the style lays it; a stretch too short for that keeps its share in front of the line
+	const double between = std::max(0.0, g.len - g.retreat_a - g.retreat_b);
+	return std::min(double(cat->furniture.crossing.stop_to_m), between * STOP_SETBACK_SHARE);
 }
 
 bool RoadNetwork::has_crosswalks(int node) const {

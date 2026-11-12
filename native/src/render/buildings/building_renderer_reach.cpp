@@ -16,7 +16,9 @@ namespace city {
 namespace {
 constexpr float NEVER_M = 1e9f;
 constexpr float PROJECTION_HEIGHT = 1080.f;
-constexpr float VIEW_ANGLE_FALLBACK = 90.f, MIN_SCREEN_PX = 1e-3f;
+constexpr float VIEW_ANGLE_FALLBACK = 90.f, MIN_SCREEN_PX = 1e-3f, HALF = 0.5f;
+const char *const BAND_REACH_PARAM = "band_reach_m"; // building_parts.gdshader
+const char *const VEIL_FROM_PARAM = "veil_from_m"; // building_card_body.gdshaderinc
 
 // The draws of one sub-chunk hand over to one another at a distance measured to its one box, with no margin on either side: with a margin and
 // the fade disabled the engine keeps a state for each instance (docs: a hysteresis), and of two that hand over both could stand drawn, or neither.
@@ -24,6 +26,17 @@ void range(const RID &inst, float begin, float end) {
 	if (inst.is_valid()) RenderingServer::get_singleton()->instance_geometry_set_visibility_range(inst, begin, end, 0, 0, RenderingServer::VISIBILITY_RANGE_FADE_DISABLED);
 }
 void range(const MeshDraw &d, float begin, float end) { range(d.inst, begin, end); }
+
+// The parts' material told how far from the eye a box of each band is drawn (building_parts.gdshader folds a box past it away): a part
+// is judged where it stands, while the engine measures its band's instance to the middle of the sub-chunk's box (ranges).
+void send_band_reach(const RID &parts, const RID &card, const float *band_end, int bands, float scale) {
+	if (!parts.is_valid()) return;
+	PackedFloat32Array reach;
+	for (int b = 0; b < bands; b++) reach.push_back(band_end[b] * scale);
+	RenderingServer::get_singleton()->material_set_param(parts, BAND_REACH_PARAM, reach);
+	// a brise's blades are boxes of the first band: their card takes over where they are folded away, at the same distance from the eye
+	if (card.is_valid()) RenderingServer::get_singleton()->material_set_param(card, VEIL_FROM_PARAM, reach[0]);
+}
 } // namespace
 
 void BuildingRenderer::set_ranges(const CityState &s) {
@@ -39,6 +52,7 @@ void BuildingRenderer::set_ranges(const CityState &s) {
 		band_end_[size_t(i)] = std::min(pb.thick_max * px_per_m() / std::max(pb.px_min, MIN_SCREEN_PX), far_end_);
 	}
 	for (int i = BAND_COUNT; i < BAND_DRAWS; i++) band_end_[size_t(i)] = band_end_[BAND_COUNT - 1];
+	send_band_reach(material_parts_, material_card_, band_end_.data(), BAND_COUNT, detail_scale_);
 }
 
 float BuildingRenderer::px_per_m() const {
@@ -78,16 +92,20 @@ float BuildingRenderer::far_error_m() const {
 // chunk_mask hides the detailed chunks).
 void BuildingRenderer::ranges(Chunk &ch) const {
 	// A chunk with a building cut open draws its near level at any distance and hides its mid level (the far mesh stands aside).
-	for (int i = 0; i < SUB_COUNT; i++) {
-		range(ch.near[size_t(i)], 0, ch.cut ? 0 : near_end_ * detail_scale_);
-		range(ch.parts[size_t(i)], 0, parts_end_ * detail_scale_);
-		range(ch.mid[size_t(i)], ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ : 0, 0);
-	}
+	const float near_end = near_end_ * detail_scale_;
 	for (size_t i = 0; i < SUB_COUNT; i++) {
+		// What ends before the near shell does is drawn by its own distance from the eye, and the engine measures an instance's to the
+		// middle of the sub-chunk's box: the instance is held while anything of it may be within its reach (the reach and half the box's
+		// diagonal), never past the near shell it stands on (past it the mid level draws its own, or the parts would hang in the air).
+		const float around = ch.reach_box[i].size.length() * HALF;
+		const auto held = [&](float reach) { return ch.cut ? reach + around : std::min(reach + around, near_end); };
+		range(ch.near[i], 0, ch.cut ? 0 : near_end);
+		range(ch.parts[i], 0, held(parts_end_ * detail_scale_));
+		range(ch.mid[i], ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end : 0, 0);
 		// a box throws its shadow as long as it stands; the balcony pieces, fine as they are, to lod.cast_props_m
-		for (int k = 0; k < BAND_CASTS; k++) ch.prop_casts[i][size_t(k)].range(k < BAND_COUNT - 1 ? near_end_ * detail_scale_ : look_.cast_props_m);
-		// the parts stand on the near shell: past it the mid level draws its own, or they would hang in the air
-		for (size_t b = 0; b < BAND_DRAWS; b++) range(ch.bands[i][b].inst, 0, (ch.cut ? band_end_[b] : std::min(band_end_[b], near_end_)) * detail_scale_);
+		for (int k = 0; k < BAND_CASTS; k++) ch.prop_casts[i][size_t(k)].range(k < BAND_COUNT - 1 ? near_end : std::min(look_.cast_props_m + around, near_end));
+		// each box of a band is folded away past the band's reach by the parts' shader (send_band_reach)
+		for (size_t b = 0; b < BAND_DRAWS; b++) range(ch.bands[i][b].inst, 0, held(band_end_[b] * detail_scale_));
 	}
 	const float mid_from = ch.cut ? NEVER_M : ch.built[LEVEL_NEAR] ? near_end_ * detail_scale_ : 0; // where the near level ends
 	for (auto &sub : ch.mid_draws) {
@@ -112,6 +130,7 @@ float BuildingRenderer::near_reach() const { return near_end_ * detail_scale_ + 
 // follows at the next sync (near_reach).
 void BuildingRenderer::set_detail_scale(float scale) {
 	detail_scale_ = scale;
+	send_band_reach(material_parts_, material_card_, band_end_.data(), BAND_COUNT, detail_scale_);
 	for (auto &[key, ch] : chunks_) ranges(ch);
 }
 

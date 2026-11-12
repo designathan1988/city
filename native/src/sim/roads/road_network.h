@@ -167,6 +167,8 @@ public:
 	bool mid_block(int node) const; // a crossing between junctions
 	int crossing_arm(int node) const; // which of its two arms carries the crosswalk: a rule, no id to outlive an edit
 	bool crosswalk_on(int node, int seg) const; // a crosswalk painted over `seg` at that node
+	// Where the stop line of `seg` at `node` lies, metres before its mouth to the edge the vehicles stop at (0: no crosswalks, the mouth).
+	double stop_line_back(int node, int seg) const; // the one answer for the traffic, the paint and the rule's plate
 	int uturn_arm(int node) const; // the arm whose traffic may turn back at a node of two arms, -1 none
 	bool movement_banned(int node, int from, int to) const; // nobody goes from this arm to that one (a link with no lanes: LaneLink)
 	// A dead end ends in a straight cut (true) or may take a bulb: its shape is settled again.

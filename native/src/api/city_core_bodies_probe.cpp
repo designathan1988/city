@@ -1,11 +1,13 @@
 // `probes` area (`bodies_audit`): every piece of the street of the whole map as a body standing in the world
-// (sim/roads/standing_body.h), whichever segment placed it, and every two of them standing nearer than the hand's gap two pieces of
-// the street keep (items.gap_m): how many, by the two kinds, and the first of each pair of kinds with where they stand. What a
-// player sees as a hydrant against a post or a bench against a pole (log/pendencias.md V2, V3).
+// (sim/roads/standing_body.h), whichever segment placed it, and every plate (the rules', the player's, the streets' names), and
+// every two of them standing nearer than the hand's gap two pieces of the street keep (items.gap_m), or with a part of one through
+// a part of the other: how many, by the two kinds, and the first of each pair of kinds with where they stand. What a player sees
+// as a hydrant against a post, a bench against a pole or a plate's post in a bin (log/pendencias.md V2, V3).
 #include "api/city_probes.h"
 
 #include "sim/roads/standing_body.h"
 #include "sim/state/city_state.h"
+#include "sim/street/street_spots.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <godot_cpp/variant/array.hpp>
@@ -36,8 +38,28 @@ struct Piece {
 // The cell a body's middle is filed in: cells wider than the longest body and the gap, so two that meet are in neighbouring cells.
 std::pair<int, int> cell_of(const V2 &at, float cell) { return { int(std::floor(at.x / cell)), int(std::floor(at.y / cell)) }; }
 
-Array told(const Piece &p) { // a piece of a case: its kind, its segment, its arc and place across, where it stands
-	return Array::make(int(p.spot.kind), p.spot.seg, p.spot.v, p.spot.u, Vector2(p.body.at.x, p.body.at.y));
+// A piece of a case: its kind, its segment, its arc and place across, where it stands, and its station (a plate: its SignType).
+Array told(const Piece &p) {
+	return Array::make(int(p.spot.kind), p.spot.seg, p.spot.v, p.spot.u, Vector2(p.body.at.x, p.body.at.y), p.spot.station);
+}
+
+// Every plate standing in the city: the rules' at every node, those the player placed, the streets' names (in the order of their items).
+std::vector<SignStand> plates_standing(const CityState &s) {
+	std::vector<SignStand> stands;
+	for (int n = 0; n < int(s.roads.nodes.size()); n++)
+		if (s.roads.nodes[size_t(n)].alive) traffic::junction_signs(s, n, stands);
+	for (size_t i = 0; i < s.street.items.items.size(); i++) {
+		const StreetItem &it = s.street.items.items[i];
+		if (it.alive && it.kind == ItemKind::SIGN) placed_sign(s.roads, it, stands);
+	}
+	std::vector<int> named;
+	for (const auto &entry : s.street.names.by_item) named.push_back(entry.first);
+	std::sort(named.begin(), named.end());
+	for (int id : named) {
+		const std::vector<SignStand> &plates = s.street.names.by_item.at(id).plates;
+		stands.insert(stands.end(), plates.begin(), plates.end());
+	}
+	return stands;
 }
 
 } // namespace
@@ -55,6 +77,7 @@ Dictionary CityProbes::bodies_audit(float clearance_m) {
 		spots.clear();
 		traffic::street_furniture_of(s, sid, FURNITURE_ALL, spots);
 		for (const FurnitureSpot &p : spots) {
+			if (p.kind == FurnitureKind::SIGN) continue; // a plate's post: its plate stands below, with the post
 			Piece piece{ body_of(s.roads, p), p, {} };
 			body_boxes(s.roads, s.catalog.furniture, p, piece.boxes);
 			reach = std::max(reach, boxes_reach(piece.boxes, piece.body.at));
@@ -62,6 +85,18 @@ Dictionary CityProbes::bodies_audit(float clearance_m) {
 			longest = std::max({ longest, 2 * std::hypot(p.half_v, p.half_u), 2 * reach });
 			pieces.push_back(std::move(piece));
 		}
+	}
+	const float post = s.catalog.furniture.signs.post_radius_m;
+	for (const SignStand &st : plates_standing(s)) {
+		Piece piece;
+		piece.spot.kind = FurnitureKind::SIGN;
+		piece.spot.station = int(st.type); // which plate, for a case's line
+		piece.body = StandingBody{ V2(st.x, st.z), V2(1, 0), post, post };
+		sign_boxes(s.catalog.furniture, st.type, piece.body.at, V2(st.face_x, st.face_z), piece.boxes);
+		reach = std::max(reach, boxes_reach(piece.boxes, piece.body.at));
+		boxes += int(piece.boxes.size());
+		longest = std::max(longest, 2 * reach);
+		pieces.push_back(std::move(piece));
 	}
 	const float cell = longest + std::max(gap, clearance_m);
 	std::map<std::pair<int, int>, std::vector<int>> grid;

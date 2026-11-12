@@ -10,7 +10,7 @@ render_mode blend_mix, cull_disabled, depth_draw_never;
 render_mode cull_disabled;
 #endif
 
-uniform float veil_from_m = 100.0; // the blades of a brise, as boxes, end here (buildings.json lod.part_bands, the first band)
+uniform float veil_from_m = 100.0; // the blades of a brise, as boxes, end here: the first part band's reach from the eye, set by building_renderer_reach.cpp send_band_reach
 uniform float roughness = 0.45;
 uniform float metalness = 0.55;
 

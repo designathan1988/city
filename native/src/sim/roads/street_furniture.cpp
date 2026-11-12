@@ -169,6 +169,20 @@ void lamps(Placer &c) {
 		c.station(column(c, row, v, k++), row.first_v, row.last_v);
 }
 
+// The plates the rules stand on the segment: each one's post at its rule's arc, or at the first place on from it, away from its
+// node, that keeps the hand's gap to the signal posts and the poles standing there. The pieces placed after keep off it.
+void stand_plates(Placer &c, const std::vector<PlateWanted> &wanted) {
+	const float from_kerb = plate_kerb(c.net, c.sid);
+	for (size_t i = 0; i < wanted.size(); i++) {
+		const PlateWanted &w = wanted[i];
+		if (!walk_on(c.p, w.side)) continue;
+		FurnitureSpot s = spot(c.net, FurnitureKind::SIGN, c.sid, c.p, w.v, kerb_in(c.p, w.side, from_kerb), toward_road(w.side), 0.f);
+		s.node = w.node;
+		s.station = int(i);
+		if (c.slot(s, w.node == c.g.a ? 1 : -1)) c.all.push_back(s);
+	}
+}
+
 // The arm of node `n` a hydrant may stand on: the lowest-numbered one with room at the corner it faces, or -1.
 int hydrant_arm(const RoadNetwork &net, int n) {
 	const float depth = defs(net).sidewalk.kerb_clear_m + defs(net).footprint[int(FurnitureKind::HYDRANT)].z_m;
@@ -289,8 +303,8 @@ void trees(Placer &c) {
 
 } // namespace
 
-void segment_furniture(const RoadNetwork &net, int sid, const bool signalled[2], const std::vector<ArcSpan> *gates, uint32_t kinds,
-		std::vector<FurnitureSpot> &out) {
+void segment_furniture(const RoadNetwork &net, int sid, const bool signalled[2], const std::vector<ArcSpan> *gates,
+		const std::vector<PlateWanted> *plates, uint32_t kinds, std::vector<FurnitureSpot> &out) {
 	thread_local std::vector<FurnitureSpot> all;
 	all.clear();
 	const RoadSegment &g = net.segs[size_t(sid)];
@@ -306,14 +320,17 @@ void segment_furniture(const RoadNetwork &net, int sid, const bool signalled[2],
 				if (signal_post(net, n, approach, post) && post.seg == sid) all.push_back(post);
 		}
 	const int level = furniture_level(g);
+	const bool later = (kinds & AFTER_LAMPS) != 0; // each keeps off the ones before it: asked one, all of them are placed
 	if (level != FURNITURE_LEVEL_NONE) {
 		list_corner_poles(net, sid, all); // on the corner, before the mouth: never stationed between the mouths
 		lamps(c);
-		if (kinds & AFTER_LAMPS) { // each keeps off the ones before it: asked one, all of them are placed
-			hydrants(c);
-			if (level == FURNITURE_LEVEL_FULL) bins_and_benches(c);
-			trees(c);
-		}
+	}
+	// the rules' plates stand whatever the street's kit, after the posts and poles that must be where they are
+	if (plates && (later || (kinds & furniture_bit(FurnitureKind::SIGN)))) stand_plates(c, *plates);
+	if (level != FURNITURE_LEVEL_NONE && later) {
+		hydrants(c);
+		if (level == FURNITURE_LEVEL_FULL) bins_and_benches(c);
+		trees(c);
 	}
 	float open0 = 0, open1 = 1;
 	const bool open = open_stretch(net, g, open0, open1);

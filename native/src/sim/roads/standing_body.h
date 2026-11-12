@@ -37,6 +37,9 @@ struct BodyBox {
 int spot_parts(const FurnitureSpot &s);
 // The boxes of the piece at `s`, appended to `out`; nothing for a kind with no list of parts.
 void body_boxes(const RoadNetwork &net, const StreetFurnitureDef &def, const FurnitureSpot &s, std::vector<BodyBox> &out);
+// The boxes of a plate standing at `at`, its face looking along `face`: its post from the foot up to the plate, and the plate
+// in front of it (a street's name: the two blades on top of the post), from the catalogue's signs.
+void sign_boxes(const StreetFurnitureDef &def, SignType type, const V2 &at, const V2 &face, std::vector<BodyBox> &out);
 // How far apart two pieces stand in volume: the least bodies_apart over their boxes that share some height; BIG when none do.
 float volumes_apart(const std::vector<BodyBox> &a, const std::vector<BodyBox> &b);
 // How far a piece's boxes reach from `at` in plan, at the most.

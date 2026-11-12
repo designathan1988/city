@@ -117,7 +117,20 @@ std::vector<int> main_legs(const CityState &s, int n); // the two legs a junctio
 int plate_rule(const RoadNetwork &net, int seg, int n);
 int leg_rule(const RoadNode &node);
 int approach_rule(const CityState &s, int n, int seg);
-// The plates the rules put up at node `n` (street_signs.cpp).
+// A plate a rule stands on an arm (street_signs.cpp): the arc and the sidewalk its rule wants it at, the node whose plate it is,
+// what it is and says, and which way along the segment its face looks (+1: as a runs to b).
+struct RulePlate {
+	double v = 0;
+	int side = 0, node = -1;
+	SignType type = SignType::STOP;
+	std::string text;
+	float dir = 1;
+};
+// The plates the rules stand on arm `seg` of node `n`, and on a segment at both its nodes (a's, then b's): which, and where each
+// rule wants its plate. Where each stands is the segment's placement (street_furniture.h PlateWanted).
+void arm_plates(const CityState &s, int n, int seg, std::vector<RulePlate> &out);
+void segment_plates(const CityState &s, int seg, std::vector<RulePlate> &out);
+// The plates the rules put up at node `n`, each where its post stands in its arm's placement.
 void junction_signs(const CityState &s, int n, std::vector<SignStand> &out);
 void update_lights(CityState &s); // fills TrafficState::light_now once per step
 Light light_for(const CityState &s, int ds); // the light the approach `ds` shows now

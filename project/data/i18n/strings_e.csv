@@ -376,10 +376,9 @@ inspector.toStreet,Rua inteira,Whole street
 profile.cityLocal,Rua de bairro,Neighbourhood street
 profile.cityUrban,Rua larga,Wide street
 profile.cityAvenue,Avenida com canteiro,Avenue with a median
-cmd.place.crossing,faixa de pedestres,pedestrian crossing
 cmd.place.uturn,retorno,U-turn
-hint.uturn.noMedian,SÃ³ uma via de mÃ£o dupla com canteiro tem retorno.,Only a two-way road with a median takes a U-turn.
-hint.uturn.narrow,O canteiro Ã© estreito demais para um carro fazer a volta.,The median is too narrow for a car to turn back.
+hint.uturn.noMedian,Só uma via de mão dupla com canteiro tem retorno.,Only a two-way road with a median takes a U-turn.
+hint.uturn.narrow,O canteiro é estreito demais para um carro fazer a volta.,The median is too narrow for a car to turn back.
 hint.uturn.tooShort,O retorno precisa de mais via dos dois lados.,A U-turn needs more road on both sides.
 inspector.addUturnToEnd,Retorno para quem vai ao fim,U-turn for traffic going to the end
 inspector.addUturnToStart,Retorno para quem vai ao início,U-turn for traffic going to the start
@@ -437,3 +436,12 @@ hint.reference.failed,Este arquivo não abriu como modelo 3D,This file did not o
 hint.reference.none,Carregue um modelo primeiro,Load a model first
 hint.reference.empty,O modelo não tem bloco grande o bastante para ser um prédio,The model has no block big enough to be a building
 hint.reference.built,Prédio feito a partir do modelo,Building made from the model
+menu.size.km10,Cidade de 10 km,10 km city
+menu.size.km16,Cidade de 16 km,16 km city
+menu.size.km20,Cidade de 20 km,20 km city
+menu.size.km24,Cidade de 24 km,24 km city
+zone.none,Sem zona,No zone
+zone.resLow,Residencial de baixa densidade,Low-density residential
+zone.resHigh,Residencial de alta densidade,High-density residential
+zone.comLow,Comercial de baixa densidade,Low-density commercial
+zone.comHigh,Comercial de alta densidade,High-density commercial

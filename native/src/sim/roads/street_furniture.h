@@ -86,15 +86,24 @@ constexpr uint32_t furniture_bit(FurnitureKind k) { return 1u << uint32_t(k); }
 constexpr uint32_t FURNITURE_ALL = (1u << FURNITURE_KINDS) - 1u;
 constexpr uint32_t LIT_FURNITURE = furniture_bit(FurnitureKind::LAMP) | furniture_bit(FurnitureKind::COLUMN); // what lights a street at night
 
+// A plate a rule stands on a segment (a junction's Stop or Yield, a speed plate: sim/traffic/street_signs.cpp says which): the arc
+// and the sidewalk its rule wants it at, and the node whose plate it is. Its post is a piece of the segment like any other: it
+// stands there or, with a piece in the way, at the first free place on from it, away from that node.
+struct PlateWanted {
+	double v = 0;
+	int side = 0, node = -1;
+};
+
 // The pieces standing on segment `sid` whose kind is in `kinds`: the signal posts of its signalled ends (signalled[0]
 // at a, [1] at b; the junction control is sim/traffic's) that stand on it, then by its furniture level the lamps,
 // hydrants, bins, benches and trees, in that order; what comes after the lamps keeps off them and they read none of it, so it is
 // placed only when one of its kinds is asked (a reader of the lamps alone pays for them alone). A hydrant, bin, bench or tree that would leave a walker no way past
 // the pieces beside it is not placed (traffic.json ped_body_m and ped_margin_m: the walkers' own sizes). `gates`: the
 // lots' gates on each side as arc spans (sim/buildings/lot_access.h street_gates), or null; every piece but a signal post
-// stands clear of them.
-void segment_furniture(const RoadNetwork &net, int sid, const bool signalled[2], const std::vector<ArcSpan> *gates, uint32_t kinds,
-		std::vector<FurnitureSpot> &out);
+// stands clear of them. `plates`: the plates the rules stand on the segment, or null; each stands after the lamps, as a
+// FurnitureKind::SIGN whose `station` is its place in that list and whose `node` is its junction, and what comes after keeps off it.
+void segment_furniture(const RoadNetwork &net, int sid, const bool signalled[2], const std::vector<ArcSpan> *gates,
+		const std::vector<PlateWanted> *plates, uint32_t kinds, std::vector<FurnitureSpot> &out);
 // The signal post for the traffic arriving at signalled node `n` on arm `approach`: across the junction, on the arm it
 // goes straight on into, at the right of that traffic; on its own corner when it has no straight continuation. False
 // when the arm has no lanes into `n`.

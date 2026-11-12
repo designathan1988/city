@@ -89,6 +89,21 @@ bool number(const Dictionary &d, const char *where, const char *key, float &out,
 	return true;
 }
 
+// The plates standing, from the one list of the plates (data/render/streets.json signs, handed over by DataTables.catalog): the
+// post, where the face stands before it, a blade's half thickness, and each type's plate.
+void load_plates(const Dictionary &plates, SignDef &signs, PackedStringArray &errors) {
+	const Dictionary sizes = plates.get("plates", Dictionary());
+	number(plates, "plates", "post_radius_m", signs.post_radius_m, errors);
+	number(plates, "plates", "face_out_m", signs.face_out_m, errors);
+	number(plates, "plates", "blade_half_m", signs.blade_half_m, errors);
+	for (int k = 0; k < SIGN_TYPES; k++) {
+		const Dictionary p = sizes.get(SIGN_TYPE_KEYS[k], Dictionary());
+		number(p, SIGN_TYPE_KEYS[k], "w_m", signs.plate[k].w_m, errors);
+		number(p, SIGN_TYPE_KEYS[k], "h_m", signs.plate[k].h_m, errors);
+		number(p, SIGN_TYPE_KEYS[k], "z_m", signs.plate[k].z_m, errors);
+	}
+}
+
 } // namespace
 
 bool load_street_furniture(const Dictionary &t, StreetFurnitureDef &d, PackedStringArray &errors) {
@@ -153,6 +168,7 @@ bool load_street_furniture(const Dictionary &t, StreetFurnitureDef &d, PackedStr
 		}
 		d.footprint[k] = { float(double(a[0])), float(double(a[1])) };
 	}
+	load_plates(block(t, "plates", errors), d.signs, errors);
 	const Dictionary parts = block(t, "parts", errors);
 	for (int k = 0; k < FURNITURE_KINDS; k++) {
 		d.parts[k].clear();

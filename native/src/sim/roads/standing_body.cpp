@@ -94,6 +94,24 @@ void body_boxes(const RoadNetwork &net, const StreetFurnitureDef &def, const Fur
 	}
 }
 
+void sign_boxes(const StreetFurnitureDef &def, SignType type, const V2 &at, const V2 &face, std::vector<BodyBox> &out) {
+	const SignDef &d = def.signs;
+	const PlateMeasure &p = d.plate[int(type)];
+	const bool blades = type == SignType::STREET; // a street's name: a blade either side of the post's top
+	const V2 ahead = face.len() > 0 ? face.norm() : V2(0, 1), side = V2(ahead.y, -ahead.x);
+	BodyBox post;
+	post.plan = StandingBody{ at, side, d.post_radius_m, d.post_radius_m };
+	post.y1 = blades ? p.z_m - p.h_m * HALF : p.z_m + p.h_m * HALF;
+	out.push_back(post);
+	// the plate's face stands face_out_m before the post's middle and its back a blade behind that; the blades a blade either side
+	BodyBox plate;
+	plate.plan = StandingBody{ at + ahead * (blades ? 0.f : d.face_out_m - d.blade_half_m * HALF), side, p.w_m * HALF,
+		blades ? d.blade_half_m : d.blade_half_m * HALF };
+	plate.y0 = p.z_m - p.h_m * HALF;
+	plate.y1 = p.z_m + p.h_m * HALF;
+	out.push_back(plate);
+}
+
 float volumes_apart(const std::vector<BodyBox> &a, const std::vector<BodyBox> &b) {
 	float least = BIG;
 	for (const BodyBox &p : a)

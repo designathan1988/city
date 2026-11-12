@@ -6,9 +6,12 @@
 #include "render/roads/road_section.h"
 
 #include "sim/buildings/lot_access.h"
+#include "sim/roads/profiles.h"
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
+#include <vector>
 
 using namespace godot;
 
@@ -65,10 +68,36 @@ void lines(const Painter &pt, const Profile &p, double l0, double l1) {
 	}
 }
 
+// The stretches across the road the traffic of one direction drives on (towards node a, or towards b): each run of its lanes with
+// the asphalt beside it that is no lane (a cycle lane, a parking band, a shoulder), read from the profile's own strips, wherever its
+// two directions meet. None for a direction the road has no lanes of.
+std::vector<std::pair<float, float>> arriving_spans(const Profile &p, bool towards_a) {
+	std::vector<std::pair<float, float>> out;
+	const int n = int(p.edges.size());
+	const auto lane = [&](int i) {
+		return i >= 0 && i < n && p.edges[size_t(i)].strip.kind == StripKind::LANE && (p.edges[size_t(i)].strip.dir == -1) == towards_a;
+	};
+	const auto beside = [&](int i) {
+		return i >= 0 && i < n && p.edges[size_t(i)].strip.kind != StripKind::LANE && is_asphalt(p.edges[size_t(i)].strip.kind);
+	};
+	for (int i = 0; i < n; i++) {
+		if (!lane(i)) continue;
+		int from = i, to = i;
+		while (lane(to + 1)) to++;
+		const int last_lane = to;
+		while (beside(from - 1)) from--;
+		while (beside(to + 1)) to++;
+		out.emplace_back(p.edges[size_t(from)].u0, p.edges[size_t(to)].u1);
+		i = last_lane;
+	}
+	return out;
+}
+
 void crossings(const Painter &pt, const Profile &p, double v0, double v1, bool ca, bool cb, bool za, bool zb_end) {
 	const StreetLook &L = pt.e.L;
 	const StreetLook::PaintStyle &st = L.styles[size_t(pt.e.s.marking_style.load())];
 	const CrossingDef &x = pt.e.s.catalog.furniture.crossing;
+	const RoadSegment &g = pt.e.s.roads.segs[pt.sid];
 	float ar = -p.asph_right, al = p.asph_left, isle0 = 0, isle1 = 0;
 	const bool island = island_span(p, isle0, isle1); // without one both are the centre line
 	for (int end = 0; end < 2; end++) {
@@ -95,11 +124,11 @@ void crossings(const Painter &pt, const Profile &p, double v0, double v1, bool c
 			across(ar + st.zebra_edge, isle0 - st.zebra_edge);
 			across(isle1 + st.zebra_edge, al - st.zebra_edge);
 		} else if (zebra) across(ar + st.zebra_edge, al - st.zebra_edge);
-		// stop line on the approach half (end a: traffic arrives on the +u side; one-way roads arrive only at b)
-		if (pt.e.far || (end == 0 && p.one_way)) continue;
-		float su0 = p.one_way ? ar : (end == 0 ? isle1 : ar), su1 = p.one_way ? al : (end == 0 ? al : isle0);
-		double sa = from(x.stop_from_m), sb = from(x.stop_to_m);
-		pt.rect(su0, su1, std::min(sa, sb), std::max(sa, sb), L.white);
+		// the stop line, where the road network says this arm's lies (the place the traffic stops at), across the lanes that arrive here
+		if (pt.e.far) continue;
+		const double back = pt.e.s.roads.stop_line_back(end == 0 ? g.a : g.b, pt.sid);
+		const double sa = from(std::max(0.0, back - double(x.stop_width()))), sb = from(back);
+		for (const auto &[u0, u1] : arriving_spans(p, end == 0)) pt.rect(u0, u1, std::min(sa, sb), std::max(sa, sb), L.white);
 	}
 }
 // A line across the parking band at arc `v`.
@@ -138,10 +167,9 @@ void emit_markings(const RoadEmit &e, int sid) {
 	double v0 = g.retreat_a, v1 = g.len - g.retreat_b;
 	bool ca = !p.ring && crossing_node(e.s, g.a), cb = !p.ring && crossing_node(e.s, g.b);
 	Painter pt{ e, sid };
-	const double clear = e.s.catalog.furniture.crossing.stop_to_m; // the lines end at the stop line
 	crossings(pt, p, v0, v1, ca, cb, crosswalk_at(e.s, g.a, sid), crosswalk_at(e.s, g.b, sid));
 	if (e.far) return; // the lane lines are filtered by the road's shader there
-	lines(pt, p, v0 + (ca ? clear : 0), v1 - (cb ? clear : 0));
+	lines(pt, p, v0 + e.s.roads.stop_line_back(g.a, sid), v1 - e.s.roads.stop_line_back(g.b, sid)); // the lines end at the stop lines
 	parking_paint(pt);
 }
 

@@ -15,7 +15,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-const char *const PLATE_KEYS[SIGN_TYPES] = { "stop", "yield", "speed", "noParking", "noEntry", "pedestrian", "school", "direction", "street", "info" };
 const Vector3 UP(0, 1, 0);
 const Vector2 TAG_FIXED(float(int(PropTag::FIXED)), 0), TAG_PLATE(float(int(PropTag::PLATE)), 0), TAG_POST(float(int(PropTag::SIGN_POST)), 0);
 
@@ -79,11 +78,11 @@ bool SignLook::load(const Dictionary &t, PackedStringArray &errors) {
 	post = rgba8_to_color(parse_hex_color(String(d["post_color"]).utf8().get_data()));
 	back = rgba8_to_color(parse_hex_color(String(d["back_color"]).utf8().get_data()));
 	for (int k = 0; k < SIGN_TYPES; k++) {
-		if (!plates.has(PLATE_KEYS[k])) {
-			errors.push_back(String("streets.json signs.plates: falta ") + PLATE_KEYS[k]);
+		if (!plates.has(SIGN_TYPE_KEYS[k])) {
+			errors.push_back(String("streets.json signs.plates: falta ") + SIGN_TYPE_KEYS[k]);
 			continue;
 		}
-		const Dictionary p = plates[PLATE_KEYS[k]];
+		const Dictionary p = plates[SIGN_TYPE_KEYS[k]];
 		plate[k] = { float(p["w_m"]), float(p["h_m"]), float(p["z_m"]), float(p["rotation"]), int(p["outline_points"]) };
 	}
 	return errors.is_empty();
