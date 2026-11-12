@@ -19,6 +19,10 @@ const OPEN_OFF_M := 300.0 # past a lot of the lot lab, the church 125 m deep: it
 const OPEN_ROAD_M := 200.0
 const OPEN_REACH_M := 40.0
 const OPEN_PX := 0.25
+const CHURCH_VIEW_M := 150.0 # the camera over the church, near enough for its chunk to be built
+const CHURCH_YAW := 30.0
+const CHURCH_PITCH := 35.0
+const DRAWN_LIMIT_S := 50.0 # real time the view may take to be built (StateWait)
 
 
 func _ready() -> void:
@@ -35,7 +39,7 @@ func _ready() -> void:
 	_catalogue()
 	var road: Vector3 = _a_road()
 	_snap_and_refuse(road)
-	_lots(road)
+	await _lots(road, rig)
 	_place_undo_redo(tools.active, road)
 	_weld(road)
 	_library()
@@ -61,8 +65,9 @@ func _catalogue() -> void:
 		check(not problem in ["building.problem.size", "building.problem.footprint", "building.problem.support"], "%s: a valid body: %s" % [m.id, problem])
 
 
-## The lots of the lot lab: all made into bodies, and one set down.
-func _lots(at: Vector3) -> void:
+## The lots of the lot lab: all made into bodies, and one set down: the church, which stands in its own design once its chunk is drawn
+## (signature_bodies.cpp: the design asked of a job, made ready and placed).
+func _lots(at: Vector3, rig: CityCamera) -> void:
 	var lots := LotProjects.entries()
 	var files := DataTables.lot_projects().size()
 	check(files > 0 and lots.size() == files, "every lot project becomes a body: %d of %d files" % [lots.size(), files])
@@ -82,6 +87,10 @@ func _lots(at: Vector3) -> void:
 	print("church: ", r.get("error", "ok"), " size ", size)
 	check(r.get("ok", false) and CityStore.query(&"list_buildings").size() > before, "the church is placed on the street: %s" % [r])
 	check(CityStore.query(&"body_info", [r.get("placed", -1)]).get("signature", 0) > 0, "the church keeps its own design")
+	rig.jump(Vector3(fit.x, 0, fit.z), CHURCH_YAW, CHURCH_PITCH, CHURCH_VIEW_M)
+	var drawn: bool = await StateWait.drawn(get_tree(), DRAWN_LIMIT_S)
+	var standing: int = CityStore.query(&"building_cost").signatures
+	check(drawn and standing > 0, "the church stands in its own design: %d instances of a design (the view drawn: %s)" % [standing, drawn])
 	CityStore.dispatch(&"undo")
 
 

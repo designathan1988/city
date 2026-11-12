@@ -14,6 +14,10 @@ static func until(tree: SceneTree, done: Callable, limit_s: float) -> bool:
 	return true
 
 
-## The renderer has nothing left to draw (render_pending), at most `limit_s` seconds of real time.
+## The renderer has nothing left to draw of the view as the caller left it (render_pending), at most `limit_s` seconds of real time.
+## The renderer learns the camera only in the frame's processing (CityCore._process), and process_frame comes before it: the first
+## await reaches the frame that sees the camera as left, the second resumes after that frame's sync; only then is the answer this view's.
 static func drawn(tree: SceneTree, limit_s: float) -> bool:
+	await tree.process_frame
+	await tree.process_frame
 	return await until(tree, func() -> bool: return int(CityStore.query(&"render_pending")) == 0, limit_s)

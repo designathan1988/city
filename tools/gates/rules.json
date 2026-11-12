@@ -459,7 +459,7 @@
       {"enum": "CarPhase", "declared": "native/src/sim/traffic/parking_state.h", "file": "native/src/sim/traffic/car_phase.cpp", "holder": "LotCar", "member": "phase", "setter": "enter_car_phase", "table": "CAR_PHASES"},
       {"enum": "LorryPhase", "declared": "native/src/sim/traffic/parking_state.h", "file": "native/src/sim/traffic/lorry_phase.cpp", "holder": "Lorry", "member": "phase", "setter": "enter_lorry_phase", "table": "LORRY_PHASES"},
       {"enum": "KerbPhase", "declared": "native/src/sim/traffic/kerb_state.h", "file": "native/src/sim/traffic/kerb_phase.cpp", "holder": "KerbStop", "member": "phase", "setter": "enter_kerb_phase", "table": "KERB_PHASES"},
-      {"enum": "State", "declared": "native/src/render/buildings/signature_bodies.h", "file": "native/src/render/buildings/signature_bodies.cpp", "holder": "SignatureBodies", "member": "state_", "setter": "enter", "table": "DESIGN_MOVES"}
+      {"enum": "State", "declared": "native/src/render/buildings/signature_bodies.h", "file": "native/src/render/buildings/signature_load.cpp", "holder": "SignatureBodies", "member": "state_", "setter": "enter", "table": "DESIGN_MOVES"}
     ],
     "kinds": [
       {"enum": "TransitMode", "declared": "native/src/sim/transit/transit_data.h", "why": "the kind of a line (bus, train, metro), chosen when it is laid and never stepped"},

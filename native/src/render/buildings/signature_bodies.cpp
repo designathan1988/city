@@ -192,7 +192,7 @@ bool SignatureBodies::finish(Prepared &p) {
 	if (solid_.is_null()) solid_ = ResourceLoader::get_singleton()->load(SOLID_SHADER);
 	if (blended_.is_null()) blended_ = ResourceLoader::get_singleton()->load(BLENDED_SHADER);
 	if (!p.ok || solid_.is_null() || blended_.is_null()) {
-		state_[size_t(p.kind)] = State::FAILED;
+		enter(p.kind, State::FAILED);
 		UtilityFunctions::push_error(String("signature design unreadable: ") + String(p.file.c_str()));
 		return false;
 	}
@@ -202,12 +202,12 @@ bool SignatureBodies::finish(Prepared &p) {
 		if (!made.is_empty()) surfaces.push_back(made); // a surface with no vertex is none
 	}
 	if (surfaces.is_empty()) {
-		state_[size_t(p.kind)] = State::FAILED;
+		enter(p.kind, State::FAILED);
 		UtilityFunctions::push_error(String("signature design with no surface: ") + String(p.file.c_str()));
 		return false;
 	}
 	meshes_[size_t(p.kind)] = OwnedMesh::of(create_mesh(surfaces)).shared(); // kept while its chunks' instances come and go
-	state_[size_t(p.kind)] = State::READY;
+	enter(p.kind, State::READY);
 	return true;
 }
 
@@ -233,7 +233,7 @@ void SignatureBodies::set_chunk(int64_t key, const std::vector<SignaturePlace> &
 	if (places.empty()) return;
 	for (const SignaturePlace &p : places) {
 		if (p.kind <= 0 || p.kind > b40::SIGNATURE_COUNT) continue;
-		State &st = state_[size_t(p.kind)];
+		const State st = state_[size_t(p.kind)];
 		if (st == State::FAILED) continue; // said when it failed
 		if (st == State::READY) {
 			place(key, p, true);
@@ -241,7 +241,7 @@ void SignatureBodies::set_chunk(int64_t key, const std::vector<SignaturePlace> &
 		}
 		waiting_[key].push_back(p);
 		if (st == State::NONE && pool_) {
-			st = State::ASKED;
+			enter(p.kind, State::ASKED);
 			const int kind = p.kind;
 			pool_->submit(JobKey{ JobLane::SIGNATURES, kind }, 0.f, [this, kind]() { inbox_.push(prepare(kind)); });
 		}
@@ -282,6 +282,11 @@ void SignatureBodies::sync(FrameAdmission &f) {
 	size_t kept = 0;
 	for (size_t i = 0; i < ready_.size(); i++) {
 		Prepared &p = *ready_[i];
+		// made meanwhile on the main thread while this waited for the ledger (mesh): only an asked kind is finished, once
+		if (state_[size_t(p.kind)] != State::ASKED) {
+			release(p.kind);
+			continue;
+		}
 		if (!f.due() || !f.upload.take(p.bytes())) {
 			ready_[kept++] = std::move(ready_[i]);
 			continue;
@@ -311,6 +316,12 @@ void SignatureBodies::visible(int64_t key, bool on) {
 int SignatureBodies::drawn() const {
 	int n = 0;
 	for (const auto &e : chunks_) n += int(e.second.size());
+	return n;
+}
+
+int SignatureBodies::pending() const {
+	int n = int(ready_.size());
+	for (const auto &e : waiting_) n += int(e.second.size());
 	return n;
 }
 

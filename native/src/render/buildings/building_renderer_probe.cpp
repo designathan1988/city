@@ -64,7 +64,7 @@ struct PaneAgreement {
 
 int BuildingRenderer::pending() const {
 	std::lock_guard<std::mutex> lk(queue_mutex_);
-	return need_.unmet + int(requested_.size() + done_.size() + super_requested_.size() + super_done_.size());
+	return need_.unmet + int(requested_.size() + done_.size() + super_requested_.size() + super_done_.size()) + signatures_.pending();
 }
 
 BuildingViewNeed BuildingRenderer::view_need() const {
@@ -261,6 +261,7 @@ Dictionary BuildingRenderer::building_cost() const {
 	d["mid_rows"] = mid_rows; // and of what stands out of its walls
 	d["instances"] = instances;
 	d["props"] = props;
+	d["signatures"] = signatures_.drawn(); // the instances of the buildings with a design of their own standing
 	return d;
 }
 

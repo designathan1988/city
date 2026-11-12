@@ -34,6 +34,10 @@ struct SignaturePlace {
 
 class SignatureBodies {
 public:
+	// A kind's design: not asked yet, asked of a job, made (its mesh kept), or its file unreadable (said once, never read again). Its
+	// one writer is enter, by DESIGN_MOVES (signature_load.cpp).
+	enum class State : uint8_t { NONE, ASKED, READY, FAILED };
+
 	void init(const godot::RID &scenario, uint32_t layer);
 	void set_pool(JobPool *pool) { pool_ = pool; }
 	void reset();
@@ -41,6 +45,9 @@ public:
 	void drop(int64_t key);
 	void visible(int64_t key, bool on);
 	int drawn() const; // instances standing (tests)
+	// What is still to stand: the places waiting for their kind's design (asked of a job, or made and waiting for the frame's ledger) and
+	// the made designs waiting for it. Counted in render_pending, so a view called drawn has its landmarks.
+	int pending() const;
 	// The kinds a job made ready, uploaded as the frame's ledger admits; the instances that waited for them placed.
 	void sync(FrameAdmission &f);
 	// The kind's mesh now (a body drawn apart: body_stage.h), made on the calling thread if no job made it yet; none when its
@@ -71,7 +78,7 @@ private:
 		std::unordered_map<uint32_t, godot::Ref<godot::Image>> pictures;
 		int64_t bytes() const;
 	};
-	enum class State : uint8_t { NONE, ASKED, READY, FAILED };
+	bool enter(int kind, State next); // main thread: the kind's state moves by DESIGN_MOVES; false, kept, for a move a load never makes
 	bool read_table(); // any thread, once
 	std::shared_ptr<Prepared> prepare(int kind); // any thread
 	bool finish(Prepared &p); // main thread: the uploads
