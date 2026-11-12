@@ -11,6 +11,7 @@ namespace {
 constexpr size_t kGrowthShown = 6;
 constexpr size_t kComposed = 6;          // the largest nodes whose objects are listed
 constexpr size_t kFedShown = 2;          // the costliest properties whose sources are listed
+constexpr size_t kOriginSteps = 40;      // how far back the origin of the costliest node is followed
 constexpr size_t kFedSources = 12;       // how many sources of each
 constexpr size_t kComposedKinds = 12;
 constexpr size_t kLabel = 60;
@@ -223,6 +224,37 @@ std::string Analysis::context_spread(const std::vector<Value>& ctxs) {
     return out;
 }
 
+// Where a node's objects come from: from it, back along identity edges, each step to the source holding the most
+// objects, until a node no identity edge feeds (a tree's own wiring, a transfer) or one already on the way.
+std::string Analysis::origin(Node n) {
+    std::string out = "\n         origin:";
+    std::unordered_set<Node> seen{solver.find(n)};
+    for (size_t step = 0; step < kOriginSteps; ++step) {
+        auto from = solver.sources(n);
+        Node best = n;
+        size_t most = 0;
+        for (Node f : from) {
+            size_t held = solver.held(f).size();
+            if (held > most && !seen.count(solver.find(f))) best = f, most = held;
+        }
+        if (best == n) {
+            out += "\n            (fed by no identity edge, or only by nodes on the way: " +
+                   std::to_string(from.size()) + " sources)";
+            break;
+        }
+        seen.insert(solver.find(best));
+        Value key = node_keys_[best];
+        out += "\n            held " + std::to_string(most) + " of " + std::to_string(from.size()) + " sources: " +
+               describe(key, -2);
+        if (item(key, 0) == V.FIELD) out += " obj=" + describe(okey(static_cast<Obj>(item(key, 1).data())));
+        if (item(key, 0) == V.TREE && item(key, 1).kind() == Kind::Int) {
+            out += " in " + std::string(text(unit(item(key, 1).data()).qual));
+        }
+        n = best;
+    }
+    return out;
+}
+
 std::string Analysis::costliest(size_t count) {
     std::string out;
     size_t shown = 0;
@@ -232,6 +264,7 @@ std::string Analysis::costliest(size_t count) {
         if (item(key, 0) == V.FIELD || item(key, 0) == V.MEMBER || item(key, 0) == V.GD_MEMBER) {
             out += " obj=" + describe(okey(static_cast<Obj>(item(key, 1).data())));
         }
+        if (shown == 0) out += origin(n);                          // where the costliest node's objects come from
         if (shown < kFedShown && item(key, 0) == V.FIELD) {      // what feeds a costly property: its identity edges
             auto from = solver.sources(n);
             out += "\n         fed by " + std::to_string(from.size()) + " nodes:";

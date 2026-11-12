@@ -119,7 +119,7 @@ void store_by_object(Analysis& an, Value, const Captured& c, Objs objs) {
             ++probe.first;
             probe.second = an.held(c[0]).size();
             an.subscribe(c[5], an.tuple({an.V.STORE, c[2], c[3], c[4], I(o)}), an.tuple({an.V.STORE, I(o)}),
-                         pack(an, kStoreByKey, {c[0], I(o)}));
+                         pack(an, kStoreByKey, {c[6].kind() != Kind::None ? c[6] : c[0], I(o)}));
         }
     }
 }
@@ -216,7 +216,7 @@ void predicate_admits(Analysis& an, Value t, const Captured& c, Objs objs) {
     guards::predicate_admits(an, t, c[0], an.truthy(c[1]), objs);
 }
 void put_dictionary(Analysis& an, Value, const Captured& c, Objs) {
-    members::put_dictionary(an, c[0], obj_of(c[1]));
+    members::put_dictionary(an, correlation::source(an, c[0], NONE), obj_of(c[1]));
 }
 void spread(Analysis& an, Value, const Captured& c, Objs objs) {
     std::vector<Obj> list(objs.begin(), objs.end());

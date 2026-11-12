@@ -14,7 +14,7 @@ from __future__ import annotations
 from ..languages import TYPEOF_STRING
 from ..model import STATE_KINDS
 from ..vocab import ELEMENTS_FIELD, SITE_DECLARED, SITE_UNKNOWN
-from . import members, typesys, verdicts
+from . import correlation, members, typesys, verdicts
 
 SIGNATURES = verdicts.SIGNATURES
 KEYPUT = 67                # a node: the subscription a write by an enumerated key reads the dictionary part through
@@ -46,18 +46,24 @@ def copy(an, source: int, target: int) -> None:
 def put(an, source, enumerated: int, target: int) -> None:
     """`target[k] = value` for k a key enumerating `enumerated`: the value in the target's property of each name
     that object has (a declared object's: its declared properties); where its names are not known (the unknown
-    object, a primitive's indices, a dictionary part written through unknown keys), in the target as a dictionary."""
+    object, a primitive's indices, a dictionary part written through unknown keys), in the target as a dictionary.
+    A value read with the key is, under each name, the one read with that name (`correlation`)."""
     kind = an.objects.kind(enumerated)
     if kind == SITE_UNKNOWN or kind in members.PRIMITIVES:
-        members.put_dictionary(an, source, target)
+        members.put_dictionary(an, correlation.source(an, source), target)
         return
     if (source, target) in an.key_puts[enumerated]:
         return
     an.key_puts[enumerated][(source, target)] = True
     for name in sorted(an.names_of[enumerated]) + (declared_names(an, enumerated) if kind == SITE_DECLARED else []):
-        members.write(an, source, target, name)
+        put_name(an, source, target, name)
     an.solver.subscribe(an.any_field(enumerated), (KEYPUT, source, target), (KEYPUT,), lambda _, objs: [
-        members.put_dictionary(an, source, target)])
+        members.put_dictionary(an, correlation.source(an, source), target)])
+
+
+def put_name(an, source, target: int, name: str) -> None:
+    """One name of a write by an enumerating key: the value for that name in the target's property of it."""
+    members.write(an, correlation.source(an, source, name), target, name)
 
 
 def declared_names(an, obj: int) -> list[str]:

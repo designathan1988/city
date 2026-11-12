@@ -7,13 +7,14 @@ namespace ftengine::members {
 
 void store_by_key(Analysis& an, Value source, Obj obj, Obj key) {
     if (an.okind(key) == an.V.SITE_TEXT) {           // a known text: the property it names (ToPropertyKey)
-        write(an, source, obj, an.item(an.okey(key), 1));
+        Value text = an.item(an.okey(key), 1);
+        write(an, correlation::source(an, source, text), obj, text);
     } else if (an.okind(key) == an.V.SITE_KEY) {     // a key enumerating an object: a property that object has
         copies::put(an, source, static_cast<Obj>(an.item(an.okey(key), 1).data()), obj);
     } else if (is_index(an, key)) {
-        if (!keeps_nothing(an, obj)) an.follow(source, field(an, obj, an.V.ELEMENTS_FIELD));
+        if (!keeps_nothing(an, obj)) an.follow(correlation::source(an, source, NONE), field(an, obj, an.V.ELEMENTS_FIELD));
     } else {
-        put_dictionary(an, source, obj);
+        put_dictionary(an, correlation::source(an, source, NONE), obj);
     }
 }
 

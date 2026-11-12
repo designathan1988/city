@@ -279,7 +279,7 @@ Value field(Analysis& an, Obj obj, Value name) {
     an.names_of[obj].push_back(name);
     if (auto puts = an.key_puts.find(obj); puts != an.key_puts.end()) {   // each write by a key enumerating it
         auto entries = puts->second;
-        for (const auto& [source, target] : entries) write(an, source, target, name);
+        for (const auto& [source, target] : entries) copies::put_name(an, source, target, name);
     }
     auto found = an.copies.find(obj);              // each object its properties are copied into (copies.cpp)
     if (found == an.copies.end()) return node;

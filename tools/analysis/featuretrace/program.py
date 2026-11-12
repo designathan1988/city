@@ -16,7 +16,7 @@ from .gd_read import read_gd
 from .js_config import read_package, read_tsconfig
 from .js_read import read_js
 from .index import Index
-from .source import PROJECT_FILE, cached_facts, discover, reader_version
+from .source import CONFIG_FILES, PROJECT_FILE, cached_facts, discover, reader_version
 
 READERS = (read_gd, read_cpp, read_js, read_tsconfig, read_package, engine_read.read_scene, engine_read.read_project,
            engine_read.read_data)            # what turns a file into facts: the facts cache's version covers them
@@ -89,10 +89,30 @@ def read(roots: list[Path], base: Path, cache_dir: Path | None, progress=None, d
         return _read(roots, base, cache_dir, progress, declarations)
 
 
+def configs_above(roots: list[Path]) -> list[Path]:
+    """The TypeScript or JavaScript configuration that governs each root and lies above it: the nearest
+    `tsconfig.json` (else `jsconfig.json`) in the root's folder or one of its parents, as tsc and tsserver look for it."""
+    found = []
+    for root in roots:
+        folder = root if root.is_dir() else root.parent
+        for name in CONFIG_FILES:
+            config = js_libs.nearest(folder, name)
+            if config is not None:
+                if config.resolve() not in found:
+                    found.append(config.resolve())
+                break
+    return found
+
+
 def _read(roots: list[Path], base: Path, cache_dir: Path | None, progress, declarations: bool):
     files = discover(roots)
+    known = {p for p, _ in files}
+    for config in configs_above(roots):          # its paths and baseUrl decide where the roots' imports lead (J3)
+        if config not in known:
+            files.append((config, "tsconfig"))
+            known.add(config)
+            base = Path(os.path.commonpath([base, config.parent]))
     if declarations:
-        known = {p for p, _ in files}
         for root in roots:
             files += [(f, "js") for f in js_libs.declaration_files(root) if f not in known and not known.add(f)]
     for root in roots:

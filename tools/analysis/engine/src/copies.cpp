@@ -61,7 +61,7 @@ void put(Analysis& an, Value source, Obj enumerated, Obj target) {
     const Vocab& V = an.V;
     Value kind = an.okind(enumerated);
     if (kind == V.SITE_UNKNOWN || kind == V.SITE_PRIMITIVE || kind == V.SITE_TEXT || kind == V.SITE_KEY) {
-        members::put_dictionary(an, source, target);       // names not known: the target as a dictionary
+        members::put_dictionary(an, correlation::source(an, source, NONE), target);   // names not known: a dictionary
         return;
     }
     Value node = an.tuple({V.KEYPUT, source, I(target)});
@@ -71,8 +71,12 @@ void put(Analysis& an, Value source, Obj enumerated, Obj target) {
     if (kind == V.SITE_DECLARED) {
         for (Value name : declared_names(an, enumerated)) names.push_back(name);
     }
-    for (Value name : names) members::write(an, source, target, name);
+    for (Value name : names) put_name(an, source, target, name);
     an.subscribe(an.any_field(enumerated), node, an.tuple({V.KEYPUT}), pack(an, kPutDictionary, {source, I(target)}));
+}
+
+void put_name(Analysis& an, Value source, Obj target, Value name) {   // the value for that name (correlation.cpp)
+    members::write(an, correlation::source(an, source, name), target, name);
 }
 
 }  // namespace ftengine::copies

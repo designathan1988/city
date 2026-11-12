@@ -37,6 +37,7 @@ void wire_local(Analysis& an, Value node, const UnitRec& unit, Value name, Value
 Value this_of(Analysis& an, const UnitRec& unit, Value ctx);
 std::vector<Value> base_keys(Analysis& an, const UnitRec& unit);
 Value constructed(Analysis& an, Value node, Value made);
+bool is_made(Analysis& an, Value text);           // a cast of a class the code makes where it is written
 Obj made(Analysis& an, Obj obj, Value file, Value site, Value ctx);
 std::vector<Value> literal_kinds(Analysis& an, Value kind);
 void construct_by_value(Analysis& an, Value target, Value node, Value args, std::span<const Obj> objs);
@@ -164,9 +165,15 @@ void written(Analysis& an, const UnitRec& unit, const RefRec& ref, Value ctx);
 void named_children(Analysis& an, Obj obj, Value name);
 }  // namespace jsx
 
+namespace correlation {                // a write whose value is read with its own key (heap/correlation.py)
+Value describe(Analysis& an, const UnitRec& unit, Value tree, Value key_tree, Value ctx);   // NONE: reads no key
+Value source(Analysis& an, Value given, Value name);   // the value for that name (NONE: every name's)
+}  // namespace correlation
+
 namespace copies {                     // copies of an object's properties by name (heap/copies.py)
 void copy(Analysis& an, Obj source, Obj target);
 void put(Analysis& an, Value source, Obj enumerated, Obj target);   // `target[k] = v`, k a key of `enumerated`
+void put_name(Analysis& an, Value source, Obj target, Value name);  // one name of it
 }  // namespace copies
 
 namespace verdicts {                   // what the language's tests can give of one value (heap/verdicts.py)

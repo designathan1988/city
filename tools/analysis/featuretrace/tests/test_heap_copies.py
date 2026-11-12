@@ -35,6 +35,10 @@ class HeapCopies(HeapCase):
         self.assertEqual(set(), self.classes("enumeratedOther"))
         self.assertEqual({"Pear"}, self.classes("enumeratedLater"))
 
+    def test_a_value_read_with_the_write_s_key_is_that_name_s_value(self):
+        self.assertEqual({"Apple"}, self.classes("cloneByKey"))
+        self.assertEqual({"Pear"}, self.classes("cloneThroughLocal"))       # through a local the key's read sets
+
     def test_a_write_by_an_unknown_key_is_read_by_a_key_not_by_a_name(self):
         self.assertEqual(set(), self.classes("byUnknownKey"))
         self.assertEqual({"Apple"}, self.classes("byUnknownKeyRead"))

@@ -272,8 +272,10 @@ def field(an, obj: int, name: str):
         an.names_of[obj].add(name)
         for target in sorted(an.copies.get(obj, ())):
             an.solver.follow(node, field(an, target, name))
-        for source, target in list(an.key_puts.get(obj, ())):
-            write(an, source, target, name)
+        if an.key_puts.get(obj):
+            from .copies import put_name
+            for source, target in list(an.key_puts[obj]):
+                put_name(an, source, target, name)
     return node
 
 

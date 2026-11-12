@@ -85,3 +85,19 @@ export function byUnknownKeyRead(k: string) {
 declare const table: { [name: string]: Pear };
 
 export function indexedByName() { return table.row; }
+
+// A write whose value is read with the write's own key (Sridharan et al., ECOOP 2012, correlated accesses): the
+// value for each name is the one read with that name, never every value under every name.
+export function cloneByKey() {
+  const src = { a: new Apple(), b: new Pear() };
+  const dst: any = {};
+  for (const k in src) dst[k] = src[k];
+  return dst.a;
+}
+
+export function cloneThroughLocal() {
+  const src = { a: new Apple(), b: new Pear() };
+  const dst: any = {};
+  for (const k in src) { const v = src[k]; dst[k] = v; }
+  return dst.b;
+}

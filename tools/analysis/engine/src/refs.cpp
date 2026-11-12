@@ -44,9 +44,10 @@ void store(Analysis& an, const UnitRec& unit, const RefRec& ref, Value ctx) {
     Value value = an.node(an.item(ref.args, 0), unit, ctx);
     an.node(ref.key, unit, ctx);
     Value known = texts::of(an, ref.key, unit);
+    Value given = correlation::describe(an, unit, an.item(ref.args, 0), ref.key, ctx);   // read with the key
     an.subscribe(an.node(ref.base, unit, ctx), an.tuple({an.V.STORE, I(unit.gid), I(ref.line), ctx}),
                  an.tuple({an.V.STORE}), pack(an, kStoreByObject, {value, known, I(unit.gid), I(ref.line), ctx,
-                                                                an.node(ref.key, unit, ctx)}));
+                                                                an.node(ref.key, unit, ctx), given}));
 }
 
 void read(Analysis& an, const UnitRec& unit, const RefRec& ref, Value ctx) {

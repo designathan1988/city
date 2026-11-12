@@ -746,3 +746,32 @@ official declarations only, converging (finite, fast enough to run in seconds to
 - Measured (engine, contexts on): the whole lab solved in 17.4 s — 351,826 links, 769,789 objects, 5,909,180 nodes,
   12 entry rounds, 0 resolutions missing; src/world in 6.8 s with its reading. Suite 527 OK on both cores.
 - The engine's diagnostics also name the object of a guard's property node.
+
+### F42. The tsconfig above the sources; a write read with its own key — 2026-11-12
+- The acceptance on the whole lab (`src`: the current core 165,603 links in 48 s, the new 351,826 in 33 s; links that
+  run: 32,312 in both, 3,598 only in the current core, 1,019 only in the new) showed the new core's imports through the
+  lab's path aliases (`@core/...`, `@sim/...`) resolving to nothing: the lab's `tsconfig.json` is in the folder above
+  `src`, and only the files under the roots were read. TypeScript (tsc, tsserver) looks for `tsconfig.json` in the
+  folder of the sources and each parent. `program.configs_above`: the nearest `tsconfig.json` (else `jsconfig.json`)
+  above each root is read with them, and the displayed paths start where it is. Test: `test_upconfig` (red on both
+  cores first).
+- With every import resolved the whole lab is again not solved in 200 s. Read by the engine's diagnostics (no change
+  tried to see): the costliest fields were properties of object literals fed by the same property of hundreds of other
+  objects. One cause read in the code: `copies.put` (F40) wrote, for `for (k in src) dst[k] = src[k]`, the value read
+  `src[k]` — every property of `src` — under every name of `dst`. Sridharan, Dolby, Chandra, Schafer, Tip,
+  "Correlation Tracking for Points-To Analysis of JavaScript" (ECOOP 2012, https://doi.org/10.1007/978-3-642-31057-7_20):
+  a write whose value is read with the same key is analysed per key, by extracting the code between the correlated read
+  and write into a function with targeted context sensitivity. Here (`heap/correlation.py`, `engine/src/correlation.cpp`):
+  the written value's tree, with the locals of its function whose values read the key put in place (through `const v =
+  src[k]`), is evaluated once per name with the key read as that name's text; a value that reads no key is the same for
+  every name. Test: `test_heap_copies.test_a_value_read_with_the_write_s_key_is_that_name_s_value` (red first, both
+  cores).
+- Still not solved after it. The engine now prints, for the costliest node, the chain of the sources its objects came
+  along (`Analysis::origin`): it ends in `rescaleBuilding` (`world/rescale.ts`), at `items` of
+  `for (const [level, items] of Object.entries(b.furnishing))`, already holding 1,257 objects, where `b` is a copy of
+  the parameter `raw` and both are typed `Loose = Record<string, unknown>`; the largest store through an unknown key
+  writes 1,352 values into 4,014 objects (`world/elevation.ts:517`, `h[i] = was[i]` with `h` = `profileOf(id).h`).
+  Pending, read next in the code: what fills a parameter typed by a type with a string index signature, and the
+  declared objects of such types (each a dictionary whose every name reads `[[any]]`, F40) — the place where unrelated
+  records meet.
+- Suite 531 OK on both cores.

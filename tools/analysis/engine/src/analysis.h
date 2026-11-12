@@ -121,6 +121,7 @@ public:
     std::string runs(size_t count);              // the functions run in the most contexts, and their nodes
     std::string context_spread(const std::vector<Value>& ctxs);   // how many values each level of contexts takes
     std::string callers(const std::vector<Value>& ctxs);          // the units whose calls the runs come from
+    std::string origin(Node n);                                  // the chain of sources a node's objects come along
     std::string costliest(size_t count);         // the nodes whose deliveries cost the most, named
     std::string stores(size_t count);            // the stores by unknown keys writing the most
     std::string describe(Value v, int depth = 0);  // a key as text, objects by their keys

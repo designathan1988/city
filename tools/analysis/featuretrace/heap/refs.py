@@ -11,7 +11,7 @@ from ..js_read import MODULE_UNIT
 from ..model import STATE_KINDS
 from ..vocab import (CALL, CONSTRUCT, IMPORT, INVOKE, JSX, LAMBDA, MEMBER, NAME, NEW,
                      READ, SITE_PRIMITIVE, SITE_UNKNOWN, STORE, WRITE)
-from . import by_key, declared, jsx, members, names, summaries, texts, trees
+from . import by_key, correlation, declared, jsx, members, names, summaries, texts, trees
 
 WRITTEN = 11               # a node: the subscription a `new` reference writes its line through
 ESCAPE = 14                # a node: the open call a write into the unknown object is
@@ -97,6 +97,7 @@ def store(an, unit, ref, ctx) -> None:
     value = an.node(ref.args[0], unit, ctx)
     key = an.node(ref.key, unit, ctx)
     known = texts.of(an, ref.key, unit)
+    given = correlation.describe(an, unit, ref.args[0], ref.key, ctx) or value    # read with the key: per name
 
     def by_object(_, objs):
         for obj in objs:
@@ -111,7 +112,7 @@ def store(an, unit, ref, ctx) -> None:
                     members.write(an, value, obj, text)
             else:                                       # by what each value of the key is
                 an.solver.subscribe(key, (STORE, unit.gid, ref.line, ctx, obj), (STORE, obj),
-                                    lambda _, keys, obj=obj: [by_key.store_by_key(an, value, obj, k) for k in keys])
+                                    lambda _, keys, obj=obj: [by_key.store_by_key(an, given, obj, k) for k in keys])
     an.solver.subscribe(an.node(ref.base, unit, ctx), (STORE, unit.gid, ref.line, ctx), (STORE,), by_object)
 
 

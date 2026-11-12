@@ -71,11 +71,15 @@ void wire_cast(Analysis& an, Value node, Value text, const UnitRec& unit, Value 
     }
 }
 
+}  // namespace
+
 bool is_made(Analysis& an, Value text) {
     if (!an.starts(text, an.V.CLASS_VALUE)) return false;
     const ClassRec* c = an.in.cls(an.rest(text, an.V.CLASS_VALUE));
     return c && c->made > 0;
 }
+
+namespace {
 
 bool literal_property(Analysis& an, const UnitRec& unit) {   // its value is evaluated where the literal is
     const ClassRec* c = an.in.cls(unit.owner);
