@@ -80,6 +80,20 @@ struct Footprint {
 	float x_m = 0, z_m = 0;
 };
 
+// A part of a piece as the box that holds it, in the piece's own frame (x along the sidewalk, y up from its foot, z toward the
+// road or the arriving traffic), from the one list of each piece's parts (data/render/streets.json props, which the meshes are
+// made of too); `part`: the set of the piece's parts it belongs to (a pole's mast, arm, can, lamp...: the list's "part" bits),
+// 0 when it is always there.
+// The sets of parts of the pole's list (props.pole "part"): a piece shows those of its mask. ARM and CAN are an urban pole's (the
+// arm over the street with its rack, the transformer away from it); ARM_RURAL and CAN_RURAL a rural pole's (the arm across the
+// crown, the transformer toward the street): tools/assets/make_pole_parts.py.
+enum class PoleSet : int { MAST = 1, ARM = MAST << 1, CAN = ARM << 1, LAMP = CAN << 1, COLUMN = LAMP << 1, ARM_RURAL = COLUMN << 1, CAN_RURAL = ARM_RURAL << 1 };
+
+struct PartBox {
+	float lo[3] = {}, hi[3] = {};
+	int part = 0;
+};
+
 // The utility poles the player strings and the run planner's distances.
 struct PoleDef {
 	CITY_POLE_FIELDS(CITY_FURNITURE_DECLARE)
@@ -117,6 +131,7 @@ struct StreetFurnitureDef {
 	TreeDef trees;
 	CrossingDef crossing;
 	Footprint footprint[FURNITURE_KINDS];
+	std::vector<PartBox> parts[FURNITURE_KINDS]; // what a piece of each kind is made of, as boxes (none: a kind with no parts' list)
 };
 
 } // namespace city

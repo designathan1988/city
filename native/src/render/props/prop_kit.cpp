@@ -58,7 +58,7 @@ void beam(MeshBuilder &b, const Vector3 &from, const Vector3 &to, float w, float
 	b.quad(to + c[0], to + c[1], to + c[2], to + c[3], col, along, nullptr, t2);
 }
 
-// One part in `col`, its UV2 `t2` (its PropTag; a lens's Lens or a pole's PolePart in y).
+// One part in `col`, its UV2 `t2` (its PropTag; a lens's Lens or a pole's PoleSet in y).
 void shape(MeshBuilder &b, const Dictionary &p, const Color &col, const Vector2 &t2, PackedStringArray &errors) {
 	String shape = p.get("shape", "");
 	if (shape == "box") b.box(vec3(p["min"]), vec3(p["max"]), col, t2, true);

@@ -5,6 +5,8 @@
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
+#include <algorithm>
+
 using namespace godot;
 
 namespace city {
@@ -21,6 +23,56 @@ const char *const BARRIER_KEYS[BARRIER_KINDS] = { "fence", "wall", "hedge", "gua
 Dictionary block(const Dictionary &t, const char *key, PackedStringArray &errors) {
 	if (!t.has(key)) errors.push_back(String("street_furniture: falta '") + key + "'");
 	return t.get(key, Dictionary());
+}
+
+constexpr int AXES = 3;
+constexpr float HALF = 0.5f;
+// The list of a kind's parts in "parts" (data/render/streets.json props, handed over by DataTables.catalog), in FurnitureKind
+// order; null: a kind with no list of parts (a shrub, a plate's post).
+const char *const PART_KEYS[FURNITURE_KINDS] = { "signal", "pole", "hydrant", "bin", "bench", "tree_pit", "pole", "postbox", "phone", "drain", nullptr,
+	"pole", nullptr };
+
+bool triple(const Variant &v, float out[AXES]) {
+	const Array a = v;
+	if (a.size() != AXES) return false;
+	for (int i = 0; i < AXES; i++) out[i] = float(double(a[i]));
+	return true;
+}
+
+float scalar(const Dictionary &p, const char *key) { return float(double(p.get(key, 0.0))); }
+
+// The box that holds one part, by its shape (the shapes render/props/prop_kit.cpp draws); false for a shape it does not know.
+bool part_box(const Dictionary &p, PartBox &b) {
+	const String shape = p.get("shape", "");
+	float a[AXES], c[AXES];
+	if (shape == "box") return triple(p.get("min", Variant()), b.lo) && triple(p.get("max", Variant()), b.hi);
+	if (shape == "cylinder" || shape == "frustum") {
+		if (!triple(p.get("base", Variant()), a)) return false;
+		const float r = std::max(scalar(p, "radius"), scalar(p, "top_radius"));
+		for (int i = 0; i < AXES; i++) {
+			b.lo[i] = a[i] - (i == 1 ? 0.f : r);
+			b.hi[i] = a[i] + (i == 1 ? scalar(p, "height") : r);
+		}
+		return true;
+	}
+	if (shape == "blob") {
+		if (!triple(p.get("center", Variant()), a) || !triple(p.get("radius", Variant()), c)) return false;
+		for (int i = 0; i < AXES; i++) {
+			b.lo[i] = a[i] - c[i];
+			b.hi[i] = a[i] + c[i];
+		}
+		return true;
+	}
+	if (shape == "beam") {
+		if (!triple(p.get("from", Variant()), a) || !triple(p.get("to", Variant()), c)) return false;
+		const float half = std::max(scalar(p, "width"), scalar(p, "thick")) * HALF;
+		for (int i = 0; i < AXES; i++) {
+			b.lo[i] = std::min(a[i], c[i]) - half;
+			b.hi[i] = std::max(a[i], c[i]) + half;
+		}
+		return true;
+	}
+	return false;
 }
 
 bool number(const Dictionary &d, const char *where, const char *key, float &out, PackedStringArray &errors) {
@@ -100,6 +152,23 @@ bool load_street_furniture(const Dictionary &t, StreetFurnitureDef &d, PackedStr
 			continue;
 		}
 		d.footprint[k] = { float(double(a[0])), float(double(a[1])) };
+	}
+	const Dictionary parts = block(t, "parts", errors);
+	for (int k = 0; k < FURNITURE_KINDS; k++) {
+		d.parts[k].clear();
+		if (!PART_KEYS[k]) continue;
+		const Array list = parts.get(PART_KEYS[k], Array());
+		if (list.is_empty()) errors.push_back(String("street_furniture.parts: no parts of '") + PART_KEYS[k] + "'");
+		for (int i = 0; i < list.size(); i++) {
+			const Dictionary p = list[i];
+			PartBox b;
+			if (!part_box(p, b)) {
+				errors.push_back(String("street_furniture.parts.") + PART_KEYS[k] + ": a part of a shape or sizes not known");
+				continue;
+			}
+			b.part = int(p.get("part", 0));
+			d.parts[k].push_back(b);
+		}
 	}
 	return errors.is_empty();
 }

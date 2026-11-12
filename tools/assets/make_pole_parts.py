@@ -13,7 +13,7 @@ import sys
 STREETS = "project/data/render/streets.json"
 HEIGHTS = {"roadcraft": 8.5, "brasil": 10.2}  # the mast, crown above the foot: the 4.0's POLE_HEIGHT; brasil's from its _doc
 
-# The parts a pole instance may show (render/props/prop_kit.h PolePart).
+# The sets of parts a pole may show (sim/catalog/furniture_types.h PoleSet).
 MAST, ARM, CAN, LAMP, COLUMN, ARM_RURAL, CAN_RURAL = 1, 2, 4, 8, 16, 32, 64
 
 TOP_R, BASE_R = 0.11, 0.18  # POLE_TOP_RADIUS, POLE_BASE_RADIUS

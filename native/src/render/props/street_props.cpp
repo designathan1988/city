@@ -1,6 +1,6 @@
 // The street furniture as it is drawn, from the simulation's places (sim/roads/street_furniture.h, sim/street), see
 // street_props.h. A pole is one instance of the pole mesh with the parts it shows in INSTANCE_CUSTOM.a (prop_kit.h
-// PolePart); a wire is one instance whose transform carries its chord and INSTANCE_CUSTOM its sag and phase (props.gdshader).
+// PoleSet); a wire is one instance whose transform carries its chord and INSTANCE_CUSTOM its sag and phase (props.gdshader).
 #include "render/props/street_props.h"
 
 #include "render/owned_segments.h"
@@ -8,6 +8,7 @@
 #include "core/color.h"
 #include "core/random.h"
 #include "render/roads/road_mesh.h"
+#include "sim/roads/standing_body.h"
 #include "sim/roads/street_lines.h"
 #include "sim/state/city_cut.h"
 #include "sim/street/footway.h"
@@ -100,11 +101,11 @@ void place_pole(const CityView &s,const StreetLook &L, const FurnitureLook &F, i
 	const PoleFrame f = frame_of(s, L, id);
 	const bool rural = p.kind == PoleKind::RURAL;
 	const ArmDir toward{ f.kerb.x, f.kerb.z };
-	int mask = int(PolePart::MAST);
-	if (p.lamp) mask |= int(PolePart::LAMP);
-	if (id % CAN_PERIOD == CAN_PHASE) mask |= int(rural ? PolePart::CAN_RURAL : PolePart::CAN);
+	int mask = int(PoleSet::MAST);
+	if (p.lamp) mask |= int(PoleSet::LAMP);
+	if (id % CAN_PERIOD == CAN_PHASE) mask |= int(rural ? PoleSet::CAN_RURAL : PoleSet::CAN);
 	push_part(inst.poles, PropKit::facing(f.kerb), f.foot, mask);
-	for (const ArmDir &a : f.arms.arms) push_part(inst.poles, PropKit::facing(flat(street_arm(a, toward))), f.foot, int(rural ? PolePart::ARM_RURAL : PolePart::ARM));
+	for (const ArmDir &a : f.arms.arms) push_part(inst.poles, PropKit::facing(flat(street_arm(a, toward))), f.foot, int(rural ? PoleSet::ARM_RURAL : PoleSet::ARM));
 	if (p.lamp) push_light(inst, F, f.foot, f.kerb, arm_reach(F, false));
 	for (size_t i = 0; i < p.spans.size(); i++) {
 		const UtilitySpan &sp = s.street.spans.items[size_t(p.spans[i])];
@@ -156,11 +157,9 @@ void place_node_lines(const CityView &s, const StreetLook &L, const FurnitureLoo
 }
 
 // A row pole: one instance, its arm across the street; a pole of the row on the other side is a lighting column.
-void place_row_pole(const FurnitureLook &F, const FurnitureSpot &p, int sid, const PropPlace &at, StreetInstances &inst) {
-	const uint32_t h = hash_combine(uint32_t(sid), uint32_t(p.station));
-	const bool column = p.row != 0 || p.kind == FurnitureKind::COLUMN;
-	int mask = column ? int(PolePart::COLUMN) : int(PolePart::MAST) | int(PolePart::ARM) | (p.lit ? int(PolePart::LAMP) : 0);
-	if (!column && h % uint32_t(CAN_PERIOD) == uint32_t(CAN_PHASE)) mask |= int(PolePart::CAN);
+void place_row_pole(const FurnitureLook &F, const FurnitureSpot &p, const PropPlace &at, StreetInstances &inst) {
+	const int mask = spot_parts(p); // the parts it shows are the placer's choice: its body is made of the same ones
+	const bool column = (mask & int(PoleSet::COLUMN)) != 0;
 	push_part(inst.poles, at.basis, at.origin, mask);
 	if (p.lit) push_light(inst, F, at.origin, at.basis.get_column(2), arm_reach(F, column));
 }
@@ -188,7 +187,7 @@ void place_segment(const CityView &s,const StreetLook &L, const FurnitureLook &F
 		PropPlace place;
 		place.origin = spot_world(s, L, p, &place.basis);
 		if (p.kind == FurnitureKind::LAMP || p.kind == FurnitureKind::COLUMN) {
-			place_row_pole(F, p, sid, place, inst);
+			place_row_pole(F, p, place, inst);
 			if (p.kind != FurnitureKind::LAMP || p.row != 0 || p.corner >= 0) continue; // a corner pole's spans are its node's
 			row.emplace_back(p.station, place);
 			if (p.strung >= 0) strung.emplace_back(p.strung, place);
@@ -283,8 +282,8 @@ void place_pole_preview(const CityView &s,const StreetLook &L, const FurnitureLo
 		arm[i] = flat(street_arm(square, toward));
 		if (poles[i].standing) continue;
 		const bool rural = poles[i].kind == PoleKind::RURAL;
-		push_part(inst.poles, PropKit::facing(flat(toward)), foot[i], int(PolePart::MAST) | (poles[i].lamp ? int(PolePart::LAMP) : 0));
-		push_part(inst.poles, PropKit::facing(arm[i]), foot[i], int(rural ? PolePart::ARM_RURAL : PolePart::ARM));
+		push_part(inst.poles, PropKit::facing(flat(toward)), foot[i], int(PoleSet::MAST) | (poles[i].lamp ? int(PoleSet::LAMP) : 0));
+		push_part(inst.poles, PropKit::facing(arm[i]), foot[i], int(rural ? PoleSet::ARM_RURAL : PoleSet::ARM));
 	}
 	for (size_t i = 0; i + 1 < poles.size(); i++) push_span(inst, F.wire, foot[i], arm[i], foot[i + 1], arm[i + 1], 0, poles[i].kind, poles[i + 1].kind);
 }

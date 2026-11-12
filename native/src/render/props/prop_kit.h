@@ -6,6 +6,7 @@
 #pragma once
 
 #include "render/mesh_builder.h"
+#include "sim/catalog/furniture_types.h"
 
 #include <godot_cpp/variant/basis.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -17,10 +18,8 @@ enum class PropTag : int { FIXED = 0, TINT = 1, NIGHT_GLOW = 2, LENS, WIRE, WOOD
 enum class PropKind : int { SIGNAL = 0, HYDRANT, BIN, BENCH, POSTBOX, PHONE, DRAIN, TREE_PIT, MEADOW, COUNT };
 // The signal's lenses (streets.json props.signal "lens"): the cars' red, amber and green, the walkers' stop and walk.
 enum class Lens : int { RED = 0, AMBER, GREEN, STOP, WALK, COUNT };
-// The parts of the pole mesh (streets.json props.pole "part"): an instance shows those of INSTANCE_CUSTOM.a, its UV2.y bits.
-// ARM and CAN are an urban pole's (the arm over the street with its rack, the transformer away from it); ARM_RURAL and CAN_RURAL
-// a rural pole's (the arm across the crown, the transformer toward the street): streets.json, tools/assets/make_pole_parts.py.
-enum class PolePart : int { MAST = 1, ARM = MAST << 1, CAN = ARM << 1, LAMP = CAN << 1, COLUMN = LAMP << 1, ARM_RURAL = COLUMN << 1, CAN_RURAL = ARM_RURAL << 1 };
+// The parts of the pole mesh (streets.json props.pole "part"): an instance shows those of INSTANCE_CUSTOM.a, its UV2.y bits, named
+// by the catalogue's PoleSet (sim/catalog/furniture_types.h), which the pieces' bodies are made of too.
 // A secondary wire's mark where a primary wire keeps its seat on a rural pole (UV2.y): props.gdshader draws it only between two
 // urban poles.
 constexpr float WIRE_SECONDARY_MARK = 10000.f;

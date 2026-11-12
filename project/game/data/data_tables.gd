@@ -145,6 +145,11 @@ static func catalog() -> Dictionary:
 			list.append_array(_read(path).get("profiles", []))
 		joined["profiles"] = list
 		out[key] = joined
+	# a street piece's parts are one list (data/render/streets.json props: each part's shape and look together), which the
+	# meshes are made of; the catalogue takes the same list for the pieces' sizes, in a copy of its table
+	var furniture: Dictionary = out.street_furniture.duplicate()
+	furniture["parts"] = _read(RENDER_TABLES.streets).props
+	out.street_furniture = furniture
 	return out
 
 

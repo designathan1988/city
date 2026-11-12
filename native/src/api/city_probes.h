@@ -41,7 +41,9 @@ public:
 	godot::Dictionary walkers_apart(const godot::PackedVector2Array &at, const godot::PackedVector2Array &steps, const godot::PackedFloat32Array &aside) const;
 	// Tests: every piece of the street of the whole map as a body standing in the world, and every two of them nearer than the hand's
 	// gap two pieces keep, by the two kinds, with the first case of each (city_core_bodies_probe.cpp).
-	godot::Dictionary bodies_audit();
+	// In volume too: each piece the boxes of its parts (sim/roads/standing_body.h); a pair counts when a part of one passes through a
+	// part of the other, or stands nearer it than `clearance_m`.
+	godot::Dictionary bodies_audit(float clearance_m);
 	// Every way round a corner with no crosswalk (the whole map), walked from each place across its sidewalk: how many, how many
 	// touch a carriageway, and the first of them with the run and the node's arms and corners (city_core_people.cpp corner_case).
 	godot::Dictionary corner_ways();
