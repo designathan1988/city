@@ -13,6 +13,8 @@ void step_kerb_stops(CityState &s, float dt);
 float kerb_stop_gap(const TrafficState &t, const Vehicle &v); // metres to where its front stops
 uint32_t kerb_door_level(const CityState &s, const Vehicle &v); // how far its kerb door stands open, in LOOK_DOOR_MASK steps
 void kerb_forget(CityState &s, int id); // it left the scene
+// The one setter of KerbStop::phase (kerb_phase.cpp KERB_PHASES, the errand's order): false, the phase kept, for a move it never makes.
+bool enter_kerb_phase(KerbStop &k, KerbPhase next);
 
 // What a stop does with a person, shared with the bus's calls (bus_calls.cpp).
 struct KerbDoors {

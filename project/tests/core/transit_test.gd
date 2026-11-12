@@ -25,7 +25,9 @@ const HELD_LONGEST_S := 40.0 # past traffic.json kerb_give_up_s + kerb_delivery_
 const HELD_SPOT_M := 0.01
 const HOUR := 8.0 # the morning's walkers: the buses call where people are out on foot
 const WARM_TICKS := 1200 # the town fills before the busiest crossing is read (walker_motion_test's warm-up)
-const KERB_PICKED := 2 # traffic_probe kerb: [planned, set down, picked up, delivered, given up]
+const KERB_SET_DOWN := 1 # traffic_probe kerb: [planned, set down, picked up, delivered, given up]
+const KERB_PICKED := 2
+const KERB_DELIVERED := 3
 
 
 func _ready() -> void:
@@ -66,6 +68,10 @@ func _buses() -> void:
 	check(int(run.boarded) > 0, "people get on the bus: %s (on the footway in reach %s, called %s, came to the door's arc %s)" % [run.boarded, run.in_reach, run.called, run.came])
 	var kerb: Array = CityStore.query(&"traffic_probe", [0]).kerb # planned, set down, picked up, delivered, given up
 	check(int(kerb[KERB_PICKED]) > 0, "a car stops for somebody on the footway, who walks up and gets in: %d (stops planned, set down, picked up, delivered, given up: %s)" % [kerb[KERB_PICKED], kerb])
+	# every errand's whole visit (kerb_phase.cpp KERB_PHASES; the checking DLL stops on any other move): pulled up, door open, the move
+	# between seat and footway, door shut; the one picked up fetched first, the truck's mate away with the load and back
+	check(int(kerb[KERB_SET_DOWN]) > 0 and int(kerb[KERB_DELIVERED]) > 0,
+			"cars set somebody down and trucks deliver at the kerb: %d set down, %d delivered" % [kerb[KERB_SET_DOWN], kerb[KERB_DELIVERED]])
 	_nobody_left_held(ground)
 	var far := Vector3(ground.x, 0, ground.z)
 	CityStore.dispatch(&"transit_stop", [far + Vector3(0, 0, STEP_M)]) # an edit of the plan leaves the buses where they are

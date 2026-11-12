@@ -147,9 +147,9 @@ void end_stop(CityState &s, int id) {
 	v.kerb = -1;
 }
 
+// The stop moves to `phase` by its one setter (kerb_phase.cpp), the phase's clock from nought.
 void enter(KerbStop &k, KerbPhase phase) {
-	k.phase = phase;
-	k.t = 0;
+	if (enter_kerb_phase(k, phase)) k.t = 0;
 }
 
 // The person moving between the door and its foot on the footway, by the share of the way: out from where its walk started (k.from:
