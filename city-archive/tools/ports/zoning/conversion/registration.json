@@ -1,0 +1,11 @@
+[
+ {
+  "subsystem": "native/src/core",
+  "includes": [
+   "core/",
+   "core/"
+  ],
+  "mapLine": "- `native/src/core/**` — polyline.ts",
+  "state": null
+ }
+]

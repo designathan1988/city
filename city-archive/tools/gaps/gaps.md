@@ -1,0 +1,350 @@
+# Behaviours of the source not found in the target (measured by gaps.py)
+
+missing: none of the unit's distinctive words is anywhere in the target; partial: they never stand together in one target
+file. Read the source unit for what it does; write it here in this game's architecture.
+
+| area | units | missing | partial |
+|---|---|---|---|
+| people | 11 | 0 | 2 |
+| render | 4148 | 72 | 381 |
+| sim | 1405 | 34 | 152 |
+| ui | 428 | 9 | 40 |
+| view | 53 | 0 | 2 |
+| world | 2535 | 28 | 155 |
+
+## people
+
+- `people/spec.ts`: 0 missing, 2 partial: AGE_KNOTS:30 (knot), FORMER_BODY_IDS:22 (former)
+
+## render
+
+- `render/buildings/facadeKit.ts`: 6 missing, 2 partial: fbox:35 (fbox), fpoint:45 (fpoint), punched:91 (punched), finial:341 (finial), cartouche:410 (cartouche), balustrade:389 (balustrade), bellMansard:352 (mansard), archedDormer:369 (dormer)
+- `render/buildings/signature.ts`: 6 missing, 3 partial: podium2:927 (podium2), helipad:1182 (helipad), badge:1207 (badge), banner:1236 (banner), colonnade:1244 (colonnade), balustrade:1254 (balustrade), brazilFlag:1187, stripedFlag:1192, ironGate:1231 (iron)
+- `render/roads/pieceGeom.ts`: 3 missing, 0 partial: COARSEST:35 (coarsest), levelled:178 (levelled), Geom:41 (geom)
+- `render/agents.ts`: 2 missing, 3 partial: BRAKELAMP:241 (brakelamp), TAILLAMP:236 (taillamp), CRANK_RATIO:316, SUSPENSION_TAU:191, TAILLAMP_OFF:239 (taillamp)
+- `render/densityCars.ts`: 2 missing, 1 partial: RECENTRE:47 (recentre), RESEND_MS:49 (resend), VERTEX_PARS:72
+- `render/optimizationsApply.ts`: 2 missing, 0 partial: REWALK_FRAMES:39 (rewalk), OptimizerDeps:41 (dep)
+- `render/riderPoses.ts`: 2 missing, 6 partial: isAncestor:604 (ancestor), SOLE:447 (sole), REACH_TWIST_MOST:561, WRIST_ON_GRIP:127 (wrist), STEER_FULL:124, soleLifts:448 (sole), soleLift:449 (sole), HELMET_SEGMENTS:328
+- `render/roadMarks.ts`: 2 missing, 0 partial: parallelogram:97 (parallelogram), unite:115 (unite)
+- `render/vehicleModels.ts`: 2 missing, 6 partial: handlebar:581 (handlebar), CARPET:187 (carpet), REAR_SEATED_EXTENTS:87, CHAIR_EXTENTS:93, RUBBER_TRIM:185, SeatedExtents:75, SEATED_EXTENTS:84, CAB_EXTENTS:90
+- `render/buildings/buildingMesh.ts`: 2 missing, 14 partial: STREAKED:1784 (streaked), HANDRAIL:3122 (handrail), assembleBuildingMeshes:4449 (assemble), AssemblySelection:142, ALUMINIUM_COPING:1645, BIN_LID:3392, DRAIN_GRATE:3397 (grate), PORCH_WASH:1149, letGoEmitted:4083, emitRecessedFlight:2235 (recessed), emitTurnedStair:3228, bothCovered:3551 ...
+- `render/roads/junctionPiece.ts`: 2 missing, 2 partial: HAIRPIN:46 (hairpin), uncrowded:286 (uncrowded), reflexArc:206 (reflex), MOUTH_MATCH:37
+- `render/effectSwitches.ts`: 2 missing, 0 partial: FrameHider:44 (hider), createFrameHider:49 (hider)
+- `render/citizenBake.ts`: 1 missing, 4 partial: breathe:87 (breathe), ShuffleFacts:353 (fact), deferredClips:367, CitizenClipKey:51, gaitClips:452
+- `render/depthFirst.ts`: 1 missing, 0 partial: occludes:23 (occlude)
+- `render/farLadders.ts`: 1 missing, 3 partial: Banded:54 (banded), showLadder:145, FarRung:12, FarLadder:22
+- `render/lightLevels.ts`: 1 missing, 1 partial: fromCandela:7 (candela), BLOOM_THRESHOLD:4
+- `render/pagePorts.ts`: 1 missing, 0 partial: provideLanes:9 (provide)
+- `render/ragdoll.ts`: 1 missing, 5 partial: Survivor:199 (survivor), CAPSULE_BONES:127, warmPhysics:163, WRITHE_LEGS:337 (writhe), CAPSULE_SAMPLES:131, RagdollCitizens:14
+- `render/riggedCitizens.ts`: 1 missing, 11 partial: UNBURNT:165 (unburnt), personProgramStandIns:329, citizenLevelOfFigure:142, setFacialExpression:172 (facial), seatedChat:157 (chat), createRiggedCitizens:361 (rigged), ClipIdentity:147, NEUTRAL_FACE:169, CitizenBatch:57, citizenBandAt:132, citizenLevelOf:123, citizenLevelFor:137
+- `render/structures.ts`: 1 missing, 3 partial: Extrusion:265 (extrusion), PIER_MAX_WIDTH_FACTOR:159, StructureSheet:431, structureMeshes:675
+- `render/terrain.ts`: 1 missing, 7 partial: TOPSOIL:1106 (topsoil), pushWetTriangle:2955, stampAppended:2998, rasterBiome:287, unifiedWaterGeometry:2728 (unified), unionDab:339, unionTexels:352, WATER_KEY_STRIDE:2643
+- `render/terrainLevels.ts`: 1 missing, 0 partial: parting:177 (parting)
+- `render/bake/terrainRecipes.ts`: 1 missing, 2 partial: cellular:29 (cellular), ROCK_RECIPES:65, terrainRecipes:237
+- `render/buildings/fracture.ts`: 1 missing, 1 partial: subdivide:61 (subdivide), prepareFracture:118
+- `render/buildings/furnitureKit.ts`: 1 missing, 0 partial: rbox:56 (rbox)
+- `render/buildings/layerApi.ts`: 1 missing, 0 partial: CutawaySpec:108 (cutaway)
+- `render/buildings/partPictures.ts`: 1 missing, 4 partial: patched:54 (patched), PART_FRAGMENT_PARS:163, CASCADE_GRAZING:104, DIRECTIONAL_COORD:107, CASCADE_COORD:105
+- `render/mesh/farBlockBatches.ts`: 1 missing, 1 partial: uncounted:36 (uncounted), FarBlockBatches:51 (batche)
+- `render/carBody.ts`: 1 missing, 1 partial: CARPET:29 (carpet), CAR_PACKAGE:42 (package)
+- `render/citizenCasting.ts`: 1 missing, 2 partial: compatible:44 (compatible), CastingRegistry:139 (registry), CitizenModel:11
+- `render/citizenGait.ts`: 1 missing, 14 partial: ACTIVITY:387 (activity), STEPPED_TURN_RATE:271, GaitClipName:21, REST_AMPLITUDE:99, ELDER_AMPLITUDE:95, STRIDE_EXPONENT:294, SHUFFLE_AMPLITUDE:97, DRUNK_WALKS:204 (drunk), TURN_WINDUP:281 (windup), gaitHeading:316, GaitPlay:88, gaitPlays:576 ...
+- `render/elements.ts`: 1 missing, 1 partial: url:48 (url), GltfPrimitive:85
+- `render/groundCover.ts`: 1 missing, 2 partial: noise3:70 (noise3), leanedMatrixInto:272 (leaned), COVER_STANCE:246 (stance)
+- `render/lowPolyTrees.ts`: 1 missing, 1 partial: noise3:74 (noise3), billboardCards:561
+- `render/propGeometry.ts`: 1 missing, 0 partial: IRON:302 (iron)
+- `render/roadSurfacePass.ts`: 1 missing, 2 partial: geomsOf:106 (geom), passDesc:89 (desc), tileBundle:114 (bundle)
+- `render/buildings/cellWork.ts`: 1 missing, 2 partial: replyBuffers:111 (reply), WorkReply:104 (reply), ChunkSummary:80
+- `render/people/faceExpression.ts`: 1 missing, 0 partial: ACTIVITY:28 (activity)
+- `render/people/personMaterial.ts`: 1 missing, 3 partial: SKINNING:12 (skinning), PERSON_FRAGMENT_PARS:37, PERSON_VERTEX_PARS:30, patchSkinning:101 (skinning)
+- `render/propLevels.ts`: 1 missing, 1 partial: TIGHTEN:92 (tighten), simplifierLoading:107
+- `render/roadSurfaceEntries.ts`: 1 missing, 2 partial: unite:196 (unite), WAKE_PAD:168, CELL_DIGITS:34
+- `render/shadowLevels.ts`: 1 missing, 3 partial: TIGHTEN:38 (tighten), lighterShapes:68, ShadowLadder:24, shadowLadderOf:49
+- `render/signals.ts`: 1 missing, 0 partial: COARSEN:38 (coarsen)
+- `render/signLayer.ts`: 1 missing, 0 partial: unite:60 (unite)
+- `render/buildings/partCells.ts`: 1 missing, 0 partial: COARSEN:22 (coarsen)
+- `render/buildings/partFiling.ts`: 1 missing, 3 partial: morton:38 (morton), mortonCode:23 (morton), MORTON_RANK:30 (morton), partBandings:50 (banding)
+- `render/buildings/partSimplify.ts`: 1 missing, 2 partial: TIGHTEN:27 (tighten), SimplerLevel:11, simplerLevels:33
+- `render/citizenStride.ts`: 1 missing, 1 partial: Soles:71 (sole), directionalWalkFor:5
+- `render/coverRaster.ts`: 1 missing, 2 partial: geologyOf:46 (geology), rasterGeology:10 (geology), rasterCover:55
+- `render/inventory.ts`: 1 missing, 4 partial: Inventory:34 (inventory), sceneInventory:66 (inventory), formatInventory:166 (inventory), InventoryFlag:29 (inventory), InventoryRow:6 (inventory)
+- `render/plantImpostors.ts`: 1 missing, 10 partial: createImpostors:467 (impostor), SceneryPictures:660, sceneryPictures:677, impostorPick:103 (impostor), PlantImpostors:423 (impostor), createPlantImpostors:459 (impostor), FRAGMENT_PARS:234, STILL_READ_GLSL:274, vertexPars:153, PICK_GLSL:122, ImpostorModel:48 (impostor)
+- `render/buildings/landmarks.ts`: 0 missing, 2 partial: hotelBeauxArts:27, LandmarkSink:8
+- `render/impostorShaders.ts`: 0 missing, 8 partial: hemiOctaDirection:11 (octa), IMPOSTOR_FRAGMENT_PARS:159 (impostor), IMPOSTOR_VERTEX_PARS:76 (impostor), IMPOSTOR_FRAGMENT_NORMAL:200 (impostor), IMPOSTOR_FRAGMENT_MAP:178 (impostor), IMPOSTOR_VERTEX:100 (impostor), IMPOSTOR_FRAMES_GLSL:24 (impostor), IMPOSTOR_READ_GLSL:52 (impostor)
+- `render/buildings/kit.ts`: 0 missing, 2 partial: scheduleOutsideLight:93, PORCH_LIGHT:71
+- `render/environment.ts`: 0 missing, 1 partial: slopeScaledShadowOffset:349
+- `render/wind.ts`: 0 missing, 2 partial: installStructureSway:179, applyStructureSway:161
+- `render/buildings/frameBudget.ts`: 0 missing, 3 partial: letBackFitting:23, TYPICAL_LEVEL_TRIANGLES:67 (typical), LandedMeasure:70
+- `render/buildings/massing.ts`: 0 missing, 2 partial: SAW_GLASS_RGB:49, MassingChunk:14
+- `render/sunCascades.ts`: 0 missing, 5 partial: cascadedSunChunks:1040 (cascaded), cascadedSunVertexChunk:1071 (cascaded), NEAR_DEFER_REACH:46 (defer), SCROLL_MOST:44, CASCADE_PARS:1085
+- `render/shaderCatalogue.ts`: 0 missing, 5 partial: FamilyStandIns:13, litStandIns:52, WORLD_STAND_INS:9, PROGRAM_FAMILIES:7, ProgramFamily:10
+- `render/utilities.ts`: 0 missing, 4 partial: WIRE_CREASE_PIXELS:87, SPOOL_WIDE:286 (spool), BRACE_THICK:62, WIRE_ABSENT:302
+- `render/groundShear.ts`: 0 missing, 1 partial: MAX_SHEAR_GRADIENT:10
+- `render/buildings/louvreSlats.ts`: 0 missing, 1 partial: LOUVRE_SLATS_GLSL:18
+- `render/citizenPalette.ts`: 0 missing, 1 partial: packBoneMatrices:6
+- `render/terrainLod.ts`: 0 missing, 4 partial: landCommonGlsl:73, lodFragmentGlsl:203, lodVertexGlsl:93, seamVertexGlsl:154
+- `render/buildings/thinParts.ts`: 0 missing, 3 partial: prefilterThinParts:60 (prefilter), THIN_TONE_GLSL:98, CARD_GLSL:39
+- `render/buildings/roofPlan.ts`: 0 missing, 1 partial: MACHINE_ROOM_INSET:38
+- `render/buildings/glassRoom.ts`: 0 missing, 2 partial: PANE_RECESS_GLSL:75, PANE_FRAME_GLSL:16
+- `render/people/cookedLoad.ts`: 0 missing, 2 partial: CookedPersonLoaded:18, fileUrl:11 (url)
+- `render/renderer.ts`: 0 missing, 5 partial: OPENING_SOLVE_MARGIN:411, OCCLUSION_RETRY_FRAMES:232, DISTRICT_ZOOM:158, GOVERN_SLICE:422, GOVERN_SLICE_MS:423
+- `render/roadProgramStandIns.ts`: 0 missing, 1 partial: roadProgramStandIns:22
+- `render/water.ts`: 0 missing, 4 partial: WATER_CLOCK_WRAP:35, WATER_FLOW_ATTRIBUTE:43, sharedWaterNormals:142, WATER_DEPTH_ATTRIBUTE:41
+- `render/people/crowdAnimation.ts`: 0 missing, 3 partial: atlasBoneGlsl:76, ClassAnimation:36, buildClassAnimation:49
+- `render/uploads.ts`: 0 missing, 20 partial: warmLooseAhead:434, compilePassAhead:246, shadowStandIns:114, warmReservedBytes:424, devRenderer:159 (dev), devScene:160 (dev), cancelWarm:444, drainCompiles:252, ReadyProgram:150, programsReady:504, WARM_CEILING:401, drainWarm:482 ...
+- `render/poleStores.ts`: 0 missing, 2 partial: noteWireScreen:68, WireBucket:483
+- `render/mesh/hiddenFaces.ts`: 0 missing, 2 partial: dropHiddenFaces:22, dropBuried:144
+- `render/people/cookedPerson.ts`: 0 missing, 8 partial: packCookedPerson:120, CookedMorph:46, CookedHeader:85, readCookedHeader:170, DecodedPerson:159, assemblePerson:230 (assemble), CookedImpostor:49 (impostor), CookedNode:76
+- `render/surfaceTextures.ts`: 0 missing, 1 partial: refillSurfaceTexels:57
+- `render/coverSweep.ts`: 0 missing, 4 partial: SHORE_SWEEP_PAD:46, COVER_SWEEP_PAD:48, scrubClump:61, ShoreCandidate:23
+- `render/buildings/massingMaterial.ts`: 0 missing, 2 partial: ROOM_SEEN_GLSL:14, PULSE_GLSL:29
+- `render/farForest.ts`: 0 missing, 1 partial: FarForestStats:35
+- `render/vehicleLevels.ts`: 0 missing, 1 partial: PartLevelMaker:50
+- `render/buildings/facadeLevel.ts`: 0 missing, 1 partial: facadeFragmentPars:35
+- `render/optimizations.ts`: 0 missing, 2 partial: globMatch:355 (glob), qualityOptionsDiffer:317
+- `render/networkFarRoads.ts`: 0 missing, 1 partial: resolveFarPieces:102
+- `render/cloudShadowStamp.ts`: 0 missing, 1 partial: CloudShadowStamp:14
+- `render/buildings/shellParts.ts`: 0 missing, 3 partial: SHELL_NOISE_GLSL:124, GROUND_ATTRIBUTE:24, SHELL_UV_GLSL:76
+- `render/plateTexels.ts`: 0 missing, 1 partial: ecologyCornersInto:57
+- `render/groundShape.ts`: 0 missing, 1 partial: PlateShapeAnswer:38
+- `render/mesh/detailLayer.ts`: 0 missing, 1 partial: DETAIL_ARRAY_GLSL:38
+- `render/poleLayer.ts`: 0 missing, 1 partial: ViewedRoot:41 (viewed)
+- `render/buildings/roomLamps.ts`: 0 missing, 2 partial: KELVIN_SRGB:4 (kelvin), ROOM_LAMP_GLSL:46
+- `render/cellKeeps.ts`: 0 missing, 1 partial: UNREADY_PROBES:40 (unready)
+- `render/gpuTimer.ts`: 0 missing, 1 partial: TimerExtension:27
+- `render/citizenWalk.ts`: 0 missing, 5 partial: transferOnto:150, NeutralWalk:97, neutralWalkFor:107, WalkAmplitude:84, clipTransferFor:113
+- `render/roadSurfaceReads.ts`: 0 missing, 3 partial: FOOTWAY_PANEL_TILES:38, MEDIAN_PLANTING:36, PassDesc:46 (desc)
+- `render/buildings/finishes.ts`: 0 missing, 3 partial: SHELL_NORMAL_GLSL:130, WEATHERED_MEAN:369 (weathered), WEATHER_PARS:65
+- `render/contextRestored.ts`: 0 missing, 1 partial: onContextRestored:7 (restored)
+- `render/scenery.ts`: 0 missing, 3 partial: BEAM_INTENSITY:68, STREET_LED:75 (led), BUSH_WIND:57
+- `render/buildings/cellArrays.ts`: 0 missing, 7 partial: octDecode:126, offsetIndices:527, octNormal:114, mergedMass:324, PartBanding:19 (banding), PartBandings:24 (banding), CellSelection:27
+- `render/buildings/chunk.ts`: 0 missing, 2 partial: LotGroundRecipe:134, PartBatch:75
+- `render/ragdollJolt.ts`: 0 missing, 5 partial: JoltApi:7, JoltStatic:58, JoltRagdoll:293, joltWorld:30, JoltWorld:62
+- `render/wear.ts`: 0 missing, 1 partial: WEAR_CUBIC:144
+- `render/screenSize.ts`: 0 missing, 1 partial: screenSizer:17 (sizer)
+- `render/signs.ts`: 0 missing, 1 partial: SheetCopier:231 (copier)
+- `render/buildings/partyWalls.ts`: 0 missing, 2 partial: PARTY_NUDGE:25, PARTY_INSET:28
+- `render/mesh/roadEdges.ts`: 0 missing, 2 partial: carriagewayDirt:79, ROAD_TBN:239 (tbn)
+- `render/torusWindow.ts`: 0 missing, 1 partial: TorusWindow:6 (toru)
+- `render/vehiclePanels.ts`: 0 missing, 2 partial: createPanelJoiner:61 (joiner), joinAttribute:27
+- `render/roadSurfaceBlocks.ts`: 0 missing, 2 partial: concatSeams:112, TileBundle:12 (bundle)
+- `render/buildings/photo.ts`: 0 missing, 2 partial: PhotoStudio:24, createPhotoStudio:34
+- `render/lotLattice.ts`: 0 missing, 1 partial: FLAG_BUTT:23 (butt)
+- `render/roadPaint.ts`: 0 missing, 1 partial: SlotResolver:59
+- `render/bake/roadRecipes.ts`: 0 missing, 6 partial: vergeRecipe:169, asphaltRecipe:35, deckRecipe:193, footwayRecipe:87, kerbRecipe:137, roadRecipes:219
+- `render/bake/catalogue.ts`: 0 missing, 1 partial: tiledTexels:27
+- `render/lampMeasures.ts`: 0 missing, 1 partial: LAMP_OUTREACH:7 (outreach)
+- `render/isoViewport.ts`: 0 missing, 1 partial: wrapAzimuth:44
+- `render/mesh/tileMesh.ts`: 0 missing, 2 partial: TINT_TOL:9, surfaceSampler:84
+- `render/buildings/farParts.ts`: 0 missing, 2 partial: FarPartBatch:81, KindBatch:45
+- `render/ecologyKept.ts`: 0 missing, 3 partial: ECOLOGY_PREFIX:13, derivedEcologyCache:28, ecologyDigest:57
+- `render/partLevelsWork.ts`: 0 missing, 1 partial: ladderIndices:43
+- `render/buildings/program.ts`: 0 missing, 7 partial: MassRecorder:139, ProgramStage:104, ProgramSummary:110, MassProgram:71, programBytes:219, BuildingProgram:118, LotsProgram:92
+- `render/mesh/roadLodPure.ts`: 0 missing, 2 partial: lockSeams:45, SEAM_BUCKET:42
+- `render/roadTileMesh.ts`: 0 missing, 2 partial: TileMesher:75, TileMeshes:42
+- `render/buildings/rowRefs.ts`: 0 missing, 1 partial: rowCopier:41 (copier)
+- `render/barriers.ts`: 0 missing, 1 partial: BarrierProduct:43
+- `render/transit.ts`: 0 missing, 1 partial: TransitProduct:238
+- `render/cellInstances.ts`: 0 missing, 2 partial: watchScreen:346, releaseBatchMesh:372
+- `render/buildings/partPose.ts`: 0 missing, 3 partial: letGoPosed:44, posedCopy:29, POSE_MATRIX_GLSL:51
+- `render/terrainShaping.ts`: 0 missing, 1 partial: TerrainShaper:10 (shaper)
+- `render/roads/pieceMesh.ts`: 0 missing, 1 partial: pieceBundle:45 (bundle)
+- `render/citizenPlays.ts`: 0 missing, 2 partial: CitizenAtlas:15, citizenAtlas:44
+- `render/flatAtlas.ts`: 0 missing, 3 partial: FAR_RESELECT:69 (reselect), TILE_UNLOADED:62, REGION_STRIDE:48
+- `render/playEffects.ts`: 0 missing, 1 partial: TRACER_SLOTS:96
+- `render/terrainLightCompute.ts`: 0 missing, 1 partial: slopeRequest:45
+- `render/buildings/roomBehind.ts`: 0 missing, 1 partial: PaneMemo:68
+- `render/buildings/layerCells.ts`: 0 missing, 3 partial: ResidentBytes:377, watchedCells:56 (watched), unpackCover:216
+- `render/furniturePlace.ts`: 0 missing, 1 partial: bushStore:51
+- `render/buildings/gpuBatchedMesh.ts`: 0 missing, 1 partial: gpuBatchContext:39
+- `render/buildingSwitches.ts`: 0 missing, 2 partial: BuildingSwitcher:33 (switcher), createBuildingSwitcher:43 (switcher)
+- `render/signalShapes.ts`: 0 missing, 1 partial: VISOR_DEPTH:20
+- `render/casualties.ts`: 0 missing, 1 partial: CasualtyLayer:97
+- `render/sharedGround.ts`: 0 missing, 2 partial: unpackSeams:55, packSeams:38
+- `render/people/personImpostor.ts`: 0 missing, 5 partial: IMPOSTOR_PIXELS:14 (impostor), FRAGMENT_PARS:53, PersonImpostor:78 (impostor), createPersonImpostor:89 (impostor), VERTEX_PARS:16
+- `render/roadSurfaces.ts`: 0 missing, 3 partial: SurfaceReuse:52, disposeSurfaceReuse:108, StoredTiles:100
+- `render/streetFurnitureLayer.ts`: 0 missing, 3 partial: furnitureProduct:215, PropLadder:48, propLadder:58
+- `render/mesh/surfaceTiles.ts`: 0 missing, 1 partial: cloneBlock:119
+- `render/farGround.ts`: 0 missing, 1 partial: FAR_COARSEN:83 (coarsen)
+- `render/buildings/facadePropModels.ts`: 0 missing, 1 partial: AC_FRONT_GLSL:278
+- `render/mesh/stripShape.ts`: 0 missing, 1 partial: ladderTriangles:197
+- `render/buildings/flagLayer.ts`: 0 missing, 1 partial: GLSL_PATTERN:35
+- `render/groundChanges.ts`: 0 missing, 1 partial: unionRect:77
+- `render/landStroke.ts`: 0 missing, 1 partial: unionRect:153
+- `render/buildings/townIndex.ts`: 0 missing, 1 partial: CellBatches:113 (batche)
+- `render/gardens.ts`: 0 missing, 2 partial: gardenPictures:56, gardenJobAsk:103
+- `render/mesh/textureBaker.ts`: 0 missing, 1 partial: SurfaceRecipe:81
+- `render/buildings/shellBatch.ts`: 0 missing, 1 partial: ShellBatch:36
+- `render/lotOverlay.ts`: 0 missing, 1 partial: LOT_PARS:95
+- `render/buildings/cellRequests.ts`: 0 missing, 1 partial: BatchKind:27
+
+## sim
+
+- `sim/agents/reedsShepp.ts`: 6 missing, 0 partial: mod2pi:23 (mod2pi), CSC:160 (csc), CCC:171 (ccc), CCCC:184 (cccc), CCSC:195 (ccsc), CCSCC:217 (ccscc)
+- `sim/agents/walk.ts`: 4 missing, 13 partial: SIDESTEP:30 (sidestep), IMPATIENT:854 (impatient), seer:1459 (seer), seerFrame:1460 (seer), WOUNDED_RUSH:425 (rush), SHUFFLE_COS:68, JAM_NO_PROGRESS:55, ALIGHT_TRIES:915 (alight), GRANT_LIFE:87 (grant), ALIGHT_SNAP:913 (alight), CRAWL_PACE:434, rushName:410 (rush) ...
+- `sim/routing/router.ts`: 4 missing, 4 partial: peel:77 (peel), TrapIndex:17 (trap), trapLanes:100 (trap), LOOKAHEAD:14 (lookahead), trapIndexes:99 (trap), isLegalTransition:391 (legal), repairRoute:330 (repair), fittingExits:63
+- `sim/drive/operational.ts`: 3 missing, 0 partial: COOLNESS:11 (coolness), iidm:19 (iidm), cah:33 (cah)
+- `sim/crossings/permission.ts`: 3 missing, 3 partial: Reservation:45 (reservation), RESERVATIONS:46 (reservation), indexReservations:54 (reservation), pedGapAccepted:114, crossingReservedByVehicle:77, alreadyReserved:49
+- `sim/invariants.ts`: 2 missing, 3 partial: onsetsOf:305 (onset), runAudit:35 (audit), AuditMemory:14 (audit), auditedSignals:287 (audited), CYCLE_CEILING:31
+- `sim/vehicles/leaderIndex.ts`: 1 missing, 3 partial: upcomingLanelets:194 (upcoming lanelet), shadowLeaderObstacle:171, LOOKAHEAD_HOPS:11 (lookahead), divergeObstacle:118
+- `sim/pipeline.ts`: 1 missing, 10 partial: runWatchdog:251 (watchdog), reconcileReservedChain:337 (reconcile), pinReservedRoute:412, reservedChainValid:352, ensureVehicleRoutes:274, collectGhosts:181, rebindAgents:131 (rebind), updateStallCounters:208, stallCounters:220, rebindPeds:173 (rebind), rebindVehicles:137 (rebind)
+- `sim/world.ts`: 1 missing, 4 partial: VersionedMap:1530 (versioned), WorldSignalDeps:50 (dep), DEMAND_PASSAGE:77, forkStreams:116, LaneletRuntime:82 (lanelet)
+- `sim/agents/hybridAStar.ts`: 1 missing, 1 partial: transform1d:77 (transform1d), searchStats:230
+- `sim/ambient/lotPlaces.ts`: 1 missing, 1 partial: Fenwick:9 (fenwick), PlaceDeps:83 (dep)
+- `sim/intersections/admission.ts`: 1 missing, 19 partial: granted:87 (granted), revokeStaleGrants:217 (revoke grant), exitSwingBlocked:465, bankerSafeAfterGrant:674 (grant banker), compactReservationChain:411 (reservation), sharedConvoyResource:784 (convoy), stopShortOfIntrusion:500 (intrusion), bankerSafeInGroup:685 (banker), movementReservedByOther:446, actualAllocation:590 (actual), BankerProcess:560 (banker), convoyCanEnter:525 (convoy) ...
+- `sim/people/view.ts`: 1 missing, 5 partial: Severable:51 (severable), PersonGender:7 (gender), GesturePhase:31, PartyArchetype:8, PartyView:11, gaitSpeed:113
+- `sim/routing/searchScratch.ts`: 1 missing, 1 partial: scratches:225 (scratche), noteCapped:221
+- `sim/signals/plan.ts`: 1 missing, 8 partial: annotate:78 (annotate), pairOpposingGroups:283 (opposing), EXCLUSIVE_MAX_FACTOR:128, roundRobinPlan:416 (robin), PlanValidationError:33, OPPOSED_TOLERANCE:281, AMBER_DECELERATION:51 (deceleration), normaliseAngle:318 (normalise), crossingsCompatibleWith:347 (compatible)
+- `sim/vehicles/kerbStops.ts`: 1 missing, 2 partial: abandon:282 (abandon), completeTransfer:529, TaskKind:15
+- `sim/vehicles/state.ts`: 1 missing, 1 partial: Kinematics:11 (kinematic), strandVehicle:246
+- `sim/agents/trafficBuildings.ts`: 1 missing, 5 partial: factsOf:135 (fact), BATCH_GONE:224, TRAIT_YARD:87, TRAIT_PARKING:85, TrafficFacts:90 (fact), BATCH_DETAIL:223
+- `sim/vehicles/integrate.ts`: 0 missing, 3 partial: discardUntravelledFromNewClearances:198 (untravelled), advanceClearanceTokens:212, integrateAll:18
+- `sim/signals/permission.ts`: 0 missing, 1 partial: RIGHT_ON_RED_ALLOWED:8
+- `sim/vehicles/laneChange.ts`: 0 missing, 7 partial: SIGNAL_LEAD_CRAWLING:39, positioningSpeedCap:152 (positioning), restingRearAhead:396, OVERTAKE_MIN_ROOM:23, standingIntent:215 (intent), COMMUTE_HOLD:12 (commute), RestingRears:418
+- `sim/routing/lowerBound.ts`: 0 missing, 1 partial: tripLowerBound:14
+- `sim/params.ts`: 0 missing, 4 partial: LANE_CHANGE_HEADING_SLOW:13, CONVOY_ROLLING:58 (convoy), IMPATIENCE_RATE:69 (impatience), IMPATIENCE_MAX:70 (impatience)
+- `sim/populationGovernor.ts`: 0 missing, 2 partial: cpuPopulationShare:18, PopulationGovernor:22
+- `sim/intersections/crossingSpans.ts`: 0 missing, 2 partial: pedestrianAffectsSpan:222, reservationCoversCrossing:203 (reservation)
+- `sim/meso/memory.ts`: 0 missing, 5 partial: MesoDeltaBuilder:56, MESO_PRESENT:10, deltaTransfer:51, MesoDelta:34, MesoMemory:117
+- `sim/intersections/cycles.ts`: 0 missing, 1 partial: MAX_CYCLE_STORAGE:19
+- `sim/topologyCatchUp.ts`: 0 missing, 1 partial: TopologyCatchUp:7
+- `sim/vehicleSignals.ts`: 0 missing, 1 partial: BLINK_DUTY:21
+- `sim/agents/lotBays.ts`: 0 missing, 1 partial: gatedProperty:248
+- `sim/signals/query.ts`: 0 missing, 1 partial: remainingProtectedTime:24 (remaining)
+- `sim/vehicles/spawn.ts`: 0 missing, 1 partial: DestinationPicker:229
+- `sim/people/casualties.ts`: 0 missing, 2 partial: impactCasualties:69 (impact), recordCasualty:62
+- `sim/vehicles/obstacles.ts`: 0 missing, 1 partial: longitudinalConstraints:109
+- `sim/intersections/spillback.ts`: 0 missing, 2 partial: hasDownstreamStorage:9, restingRear:65
+- `sim/intersections/claims.ts`: 0 missing, 2 partial: LocateHolder:19 (locate), zoneShareable:22 (shareable)
+- `sim/meso/meso.ts`: 0 missing, 1 partial: HANDOFF_TRIES:39 (handoff)
+- `sim/signals/fsm.ts`: 0 missing, 6 partial: seekFixed:415, timedController:109, stageScore:336, seekPhase:114, SubPhase:15, SignalDeps:41 (dep)
+- `sim/vehicles/curvature.ts`: 0 missing, 2 partial: AGGRESSION_SPREAD:18 (aggression), slowestBend:73
+- `sim/vehicles/driver.ts`: 0 missing, 3 partial: EMERGENCY_SPREAD:45, HEADWAY_SPREAD:42, ACCEL_SPREAD:40
+- `sim/vehicles/idm.ts`: 0 missing, 2 partial: MutableObstacle:30, emptyConstraints:46
+- `sim/host/simClient.ts`: 0 missing, 1 partial: SimClient:60 (client)
+- `sim/meso/mesoPublish.ts`: 0 missing, 1 partial: MesoPublisher:24 (publisher)
+- `sim/audit.ts`: 0 missing, 2 partial: AuditIssue:29 (audit), AuditCode:2 (audit)
+- `sim/meso/slots.ts`: 0 missing, 1 partial: BlockArena:20
+- `sim/ambient/ambientIndex.ts`: 0 missing, 1 partial: ambientIndexWork:14
+- `sim/routing/laneReach.ts`: 0 missing, 1 partial: boundaryExit:333
+- `sim/vehicles/archetypes.ts`: 0 missing, 1 partial: archetypeWeights:228
+- `sim/host/simHost.ts`: 0 missing, 4 partial: SimHost:36, PED_RICH:499, pedRichKey:501, pedRich:512
+- `sim/host/protocol.ts`: 0 missing, 2 partial: PedRich:68, VehicleRich:56
+- `sim/crossings/state.ts`: 0 missing, 1 partial: CrossingOccupant:4
+- `sim/ambient/ambient.ts`: 0 missing, 2 partial: MOVER_CELL:1110, moverCell:1111
+
+## ui
+
+- `ui/roads/crossSection.ts`: 2 missing, 1 partial: decoration:193 (decoration), cyclist:280 (cyclist), bicycleGlyph:300
+- `ui/v2/start.ts`: 2 missing, 0 partial: StartDeps:5 (dep), mountStart:15 (mount)
+- `ui/chrome.ts`: 1 missing, 2 partial: tabbing:3 (tabbing), focusCameFromKeyboard:6, trackFocusModality:11 (modality)
+- `ui/i18n/index.ts`: 1 missing, 1 partial: detect:30 (detect), parseDecimal:90
+- `ui/roads/junctionPanel.ts`: 1 missing, 2 partial: segmented:275 (segmented), JunctionPanelHost:10, mountJunctionPanel:49 (mount)
+- `ui/roads/profileEditor.ts`: 1 missing, 0 partial: segmented:707 (segmented)
+- `ui/roads/keys.ts`: 1 missing, 0 partial: normaliseKey:31 (normalise)
+- `ui/graphicsPanel.ts`: 0 missing, 1 partial: GraphicsPanelDeps:21 (dep)
+- `ui/healthPanel.ts`: 0 missing, 1 partial: mountHealthPanel:57 (mount)
+- `ui/roadSectionEditor.ts`: 0 missing, 1 partial: mountRoadSectionEditor:15 (mount)
+- `ui/roads/connectorPanel.ts`: 0 missing, 2 partial: ConnectorPanelHost:7, mountConnectorPanel:25 (mount)
+- `ui/effectsPanel.ts`: 0 missing, 1 partial: EffectsPanelDeps:20 (dep)
+- `ui/roads/profilePanel.ts`: 0 missing, 1 partial: mountProfilePanel:10 (mount)
+- `ui/roads/money.ts`: 0 missing, 1 partial: balanceTip:16
+- `ui/overlay/buildingOverlay.ts`: 0 missing, 1 partial: SELECTION_FAINT:239
+- `ui/profilerHud.ts`: 0 missing, 1 partial: mountProfilerHud:4 (mount)
+- `ui/v2/shell.ts`: 0 missing, 4 partial: BIOME_SWATCHES:33, ShellReadouts:339, ShellDeps:365 (dep), mountShell:450 (mount)
+- `ui/overlay/surface.ts`: 0 missing, 2 partial: watchDpr:70 (dpr), MAX_DPR:2 (dpr)
+- `ui/photos.ts`: 0 missing, 2 partial: requiredPhoto:20, PhotoShelf:9
+- `ui/toolChoices.ts`: 0 missing, 2 partial: gullyErasing:106, gridListeners:236
+- `ui/roads/templates.ts`: 0 missing, 3 partial: photographTemplate:45, TemplatePhoto:32, templatePhoto:54
+- `ui/healthWatch.ts`: 0 missing, 2 partial: HealthWatch:13, watchHealth:61
+- `ui/v2/compass.ts`: 0 missing, 1 partial: mountCompass:53 (mount)
+- `ui/builder/workspace.ts`: 0 missing, 3 partial: BuilderWorkspace:88 (workspace), initBuilderWorkspace:117 (workspace), ChromeMode:15
+- `ui/about.ts`: 0 missing, 1 partial: mountAbout:5 (mount)
+- `ui/inspector.ts`: 0 missing, 2 partial: InspectorContext:72, junctionHost:447
+- `ui/roads/catalogPanel.ts`: 0 missing, 1 partial: CatalogHost:16
+- `ui/labels.ts`: 0 missing, 1 partial: roadTypeDescription:9
+
+## view
+
+- `view/cameraGestures.ts`: 0 missing, 1 partial: CameraGesturesHost:6
+- `view/cameraMotion.ts`: 0 missing, 1 partial: MotionHost:36
+
+## world
+
+- `world/poleLines.ts`: 4 missing, 5 partial: kerbward:505 (kerbward), OnContour:65 (contour), ContourScratch:73 (contour), contoursOf:159 (contour), kerbwardOfUnion:543 (kerbward), LINES_HALO:180 (halo), nearestOnContour:90 (contour), ContourEdges:40 (contour), contourEdges:45 (contour)
+- `world/lanelets.ts`: 3 missing, 2 partial: LaneletId:27 (lanelet), Lanelet:31 (lanelet), laneletId:119 (lanelet), LaneletGraph:137 (lanelet), laneletWork:127 (lanelet)
+- `world/doc.ts`: 2 missing, 7 partial: Restoration:3404 (restoration), normaliseLaneCount:3498 (normalise), dropStaleCrossing:3778, EditRecorder:3797, movementMentions:85 (mention), MemberDiff:3808, memberDiffs:3840, stampDifferences:3657, SerializedDoc:3415 (serialized)
+- `world/turnPaths.ts`: 2 missing, 1 partial: SQUARER:22 (squarer), unflat:73 (unflat), bezierTurn:144
+- `world/buildings/foundation.ts`: 2 missing, 2 partial: Foundation:66 (foundation), foundationOf:182 (foundation), adjacentEntrance:280 (adjacent), mergeEntrances:267
+- `world/walkways.ts`: 2 missing, 1 partial: Walkway:32 (walkway), Walkways:303 (walkway), WalkwayKind:24 (walkway)
+- `world/conflictPoints.ts`: 1 missing, 1 partial: unuse:493 (unuse), PreparedJunction:576
+- `world/junctionBuild.ts`: 1 missing, 5 partial: laneIsPlausible:394 (plausible), GROUPING_LOOKAHEAD_FRACTION:309 (grouping lookahead), smoothedDirectionFromNode:387, GROUPING_LOOKAHEAD_MAX:310 (grouping lookahead), fallbackTurnRank:409, shouldSignalise:322 (signalise)
+- `world/streetFurniture.ts`: 1 missing, 0 partial: hash01:63 (hash01)
+- `world/sweptBodies.ts`: 1 missing, 0 partial: separatedOn:20 (separated)
+- `world/walkingLines.ts`: 1 missing, 1 partial: resample:237 (resample), CornerMeasurer:381 (measurer)
+- `world/buildings/cameraSolids.ts`: 1 missing, 5 partial: S_WALL0:26 (wall0), CameraSolidsKeeper:134, cameraSolidsKeeper:158, PREFETCH_BLOCK:20 (prefetch), PAGE_BITS:31, SolidFiling:373
+- `world/buildings/reference.ts`: 1 missing, 1 partial: Point3:4 (point3), ReferenceSampler:9
+- `world/cityGen/streets.ts`: 1 missing, 2 partial: planarize:294 (planarize), AnchoredGraph:289 (anchored), ForcedSeed:24 (forced)
+- `world/junction/corners.ts`: 1 missing, 0 partial: collinear:183 (collinear)
+- `world/junction/derive.ts`: 1 missing, 2 partial: derivable:41 (derivable), deriveTransitionFromLegs:190, deriveFromLegs:57
+- `world/buildings/intern.ts`: 1 missing, 3 partial: intern:72 (intern), internMembers:236 (intern), letGoInterned:13 (interned), internedEntries:25 (interned)
+- `world/buildings/pads.ts`: 1 missing, 1 partial: Grading:525 (grading), padShaper:511 (shaper)
+- `world/markings.ts`: 1 missing, 7 partial: LEGEND_FIRST:167 (legend), miniRoundaboutIsland:537, LEGEND_EVERY:168 (legend), transitionMarkings:472, busLegends:171 (legend), approachLegends:214 (legend), approachLegendsAt:223 (legend), LEGEND_GAP:211 (legend)
+- `world/junction/polygon.ts`: 0 missing, 2 partial: findSlabViolations:214, legTongue:63 (tongue)
+- `world/roadSection.ts`: 0 missing, 3 partial: sameRoadSectionIgnoringArrows:221, normalizeRoadSection:73, laneLineCrossable:267 (crossable)
+- `world/buildings/geometry.ts`: 0 missing, 5 partial: inheritStoredBounds:272, partlyCoveredSpans:338, reliefPushes:719, occupiesLevel:111 (occupy), exposedParts:417 (exposed)
+- `world/rescale.ts`: 0 missing, 3 partial: rescaleSerializedDoc:78 (rescale serialized), LEGACY_METERS_PER_UNIT:7 (legacy), rescaleBuilding:38 (rescale)
+- `world/terrain.ts`: 0 missing, 3 partial: naturalReliefTuned:120, baseReliefTuned:150, RELIEF_LEGACY:88 (legacy)
+- `world/approach.ts`: 0 missing, 1 partial: MIN_DRIVABLE_RESERVE:29 (drivable)
+- `world/junction/build.ts`: 0 missing, 3 partial: CHAIN_BEND_COS:31, SLAB_BUMP_CAP:37, REFRAME_EPS:34 (reframe)
+- `world/landscape.ts`: 0 missing, 5 partial: crossingAccessTester:301 (tester), accessMemo:237, crossingAccesses:238 (accesse), crossingAccessesNow:246 (accesse), crossingAccessesAt:256 (accesse)
+- `world/roads/rules.ts`: 0 missing, 2 partial: normalizeApproachRules:31, normalizeSignalSettings:45
+- `world/approachGroups.ts`: 0 missing, 1 partial: computeApproachGroups:17
+- `world/buildings/validate.ts`: 0 missing, 3 partial: ROAD_CONTACT_EPS:121, structuralProblem:128, SiteContext:63
+- `world/utilities.ts`: 0 missing, 2 partial: POLE_BRACE_DROP:36, POLE_BRACE_REACH:37
+- `world/growth/lotPlan.ts`: 0 missing, 3 partial: ALLEY_COBBLES:210, PAVERS_WARM:207, BOUNDARY_RESERVE:197
+- `world/junction/trim.ts`: 0 missing, 2 partial: clampSegmentTrims:40, computeTrims:7
+- `world/buildings/summary.ts`: 0 missing, 3 partial: buildingSummaryColumns:81, memberDigest:39, buildingSummary:73
+- `world/lotSummary.ts`: 0 missing, 3 partial: lotSummaryColumns:20, LOT_SUMMARY_WIDTH:14, lotSummary:17
+- `world/roads/markingStyle.ts`: 0 missing, 1 partial: YIELD_SYMBOL:71 (symbol)
+- `world/derived.ts`: 0 missing, 1 partial: JournalCursor:6
+- `world/buildings/types.ts`: 0 missing, 2 partial: DECAY_GRACE:454 (grace), BUILDING_SCHEMA:13 (schema)
+- `world/zoneGrid.ts`: 0 missing, 1 partial: pavedTester:87 (tester)
+- `world/geometry.ts`: 0 missing, 1 partial: orientedPolyline:40
+- `world/ribbons.ts`: 0 missing, 1 partial: overlapUntrimmedEnds:163 (untrimmed)
+- `world/groundPatch.ts`: 0 missing, 1 partial: PatchMiss:51
+- `world/buildings/cityBuildings.ts`: 0 missing, 2 partial: RETAINING_STONE:171, isRetainingStone:173
+- `world/conflictTable.ts`: 0 missing, 6 partial: pushDiverge:619, PairMeasurer:503 (measurer), SampledSweep:80, PairFacts:573 (fact), pairFacts:583 (fact), JunctionMeasurer:498 (measurer)
+- `world/junction/transition.ts`: 0 missing, 3 partial: taperEase:54, TransitionAxis:60, transitionRing:109
+- `world/tileIndex.ts`: 0 missing, 1 partial: IndexedDoc:10
+- `world/buildings/spilledItems.ts`: 0 missing, 1 partial: SpilledItems:16 (spilled)
+- `world/cityGen/field.ts`: 0 missing, 1 partial: TensorField:17 (tensor)
+- `world/elevation.ts`: 0 missing, 2 partial: SolveScope:173, roadShaper:914 (shaper)
+- `world/clouds.ts`: 0 missing, 1 partial: undriftedCloud:96 (undrifted)
+- `world/buildings/decayWatch.ts`: 0 missing, 1 partial: createDecayWatch:9
+- `world/curbRamps.ts`: 0 missing, 3 partial: UNMARKED_WIDTH:19 (unmarked), ensureRegion:53, ensureRect:67
+- `world/buildings/siteGrading.ts`: 0 missing, 2 partial: SiteGrading:17 (grading), siteGrading:46 (grading)
+- `world/docBinary.ts`: 0 missing, 2 partial: isDocBinary:92, packImage:99
+- `world/buildings/spaces.ts`: 0 missing, 1 partial: deriveSpaces:27
+- `world/roadField.ts`: 0 missing, 3 partial: BLEND_TAU:12, OVERSIZED_CELLS:145 (oversized), unpackField:714
+- `world/roads/furnitureSets.ts`: 0 missing, 1 partial: NBR9050_CLEAR_WALK:18 (nbr9050)
+- `world/junction/bulb.ts`: 0 missing, 1 partial: bulbClearing:94
+- `world/buildings/elements.ts`: 0 missing, 2 partial: unsupportedElements:184, GROUND_DRESSING:68 (dressing)
+- `world/walkable.ts`: 0 missing, 1 partial: WalkableSurface:15
+- `world/buildings/architecture.ts`: 0 missing, 1 partial: GroundRole:15
+- `world/structures.ts`: 0 missing, 1 partial: LEGACY_STRUCTURES:8 (legacy)
+- `world/buildings/flags.ts`: 0 missing, 1 partial: legacyFlag:25 (legacy)
+- `world/roads/footwayRise.ts`: 0 missing, 1 partial: packFlush:44
+- `world/changes.ts`: 0 missing, 1 partial: TILE_UNLOADED:32
+- `world/roads/streetChain.ts`: 0 missing, 1 partial: flipProfile:63
+- `world/roads/connectors.ts`: 0 missing, 1 partial: normalizeLaneLinks:17
+- `world/junction/legs.ts`: 0 missing, 3 partial: unpackLegs:74, LEG_PACK:55, packLegs:62
+- `world/networkBuild.ts`: 0 missing, 1 partial: RibbonMemo:47
+- `world/junction/trimSummary.ts`: 0 missing, 1 partial: trimSummary:14
+- `world/buildings/serialize.ts`: 0 missing, 2 partial: SerializedBuilding:59 (serialized), isSerializedBuildings:398 (serialized)
+- `world/networkBake.ts`: 0 missing, 2 partial: MemoEntry:19, memoEntry:27
+- `world/buildings/recordTable.ts`: 0 missing, 1 partial: HEAD_SUMMARY:23
+- `world/buildings/roofPlant.ts`: 0 missing, 1 partial: RoofSite:22
+- `world/terrainPaint.ts`: 0 missing, 3 partial: GEOLOGY_KINDS:14 (geology), GeologyKind:15 (geology), isGeologyKind:16 (geology)
+- `world/openLots.ts`: 0 missing, 1 partial: LotsHost:12
+- `world/viewCells.ts`: 0 missing, 1 partial: CellProduct:30
