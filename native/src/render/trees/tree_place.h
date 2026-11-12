@@ -83,6 +83,9 @@ struct TreeLook {
 	std::atomic<float> share{ 1.f }; // the graphics tier's share of the woods and lone trees; jobs read it
 	float scale = 1, most = 1; // worked out by load(): the chances' scale and the highest chance
 	float over_planned = 1; // the land's budget of trees over what its plan would grow
+	// The tallest a tree stands against its width in this land: a tree deep in a wood, held on every side by its neighbours. A tree
+	// held by something else (a grove's by its lot's lines) is no more slender than that.
+	float slender_most() const { return (open_tall + crowd_tall) / (open_wide - crowd_narrow); }
 	float tier_share(float tier) const; // what is left of the plan on a tier of that share of the budget
 	float density_of(double x, double y) const; // the patches' share of the density, on the map's own axes
 	WoodBand band_at(float density) const;
@@ -122,6 +125,11 @@ struct FarCard {
 void place_trees(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key, std::vector<TreeInstance> &out);
 // The far cards of chunk `key`: the same trees, one card each.
 void place_far(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key, std::vector<FarCard> &out);
+// The grove of an open lot (a park, a square, a sports court) nobody edited: its trees where the lot's draws stand them (off its
+// paths, courts and fountains: b40::open_lot_tree_ok), each sized by the room it has there: its crown, leaves and all (the kit's
+// measure, drawn_body.h), reaches no farther than the lot's nearest line, and a tree narrowed by that stands no taller against its
+// width than TreeLook::slender_most. Nothing for a lot that is no open lot or whose body the player edited.
+void place_grove(const CityView &s, const TreeLook &T, const TreeKit &kit, const Building &lot, std::vector<TreeInstance> &out);
 // How far past its chunk the trees of a chunk read the land: the woods' neighbours and jitter, the grade's probes.
 float tree_reach(const TreeLook &T);
 

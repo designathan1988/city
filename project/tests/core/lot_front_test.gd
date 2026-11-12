@@ -10,7 +10,8 @@
 ## And a lot's covers lie in their order (probe lot_covers): wherever a later cover lies over an earlier one (a forecourt's asphalt over
 ## its pavers, a court's lines over the court) it stands over it everywhere, never crossing it, never at its depth; and no band of lawn
 ## or bare ground too thin to plant stands beside a hard cover (a walk, a yard, a forecourt) of a lot. And every plant of a lot is drawn
-## inside the room its element is (probe garden_rooms): no crown over the fence or the footway, no hedge thicker than its band.
+## inside the room its element is (probe garden_rooms): no crown over the fence or the footway, no hedge thicker than its band; and
+## every tree of a park's or a square's grove inside its lot's lines (probe grove_rooms).
 ## Run: godot --path project res://tests/core/lot_front_test.tscn -- --no-flow
 extends TestCase
 
@@ -51,11 +52,20 @@ func _ready() -> void:
 			% [b.parts_meet, b.meet_first, b.meet_by])
 	# The metropolis: its avenues' wide footways give the corners whose back follows the kerb's return (junction_corner.h OFFSET, RUN).
 	_check_plants("the town", CityStore.query(&"garden_rooms"))
+	_check_groves("the town", CityStore.query(&"grove_rooms"))
 	new_map(METROPOLIS_MAP, SEED, true)
 	_check_paving("the metropolis", CityStore.query(&"lot_paving"))
 	_check_covers("the metropolis", CityStore.query(&"lot_covers"))
 	_check_plants("the metropolis", CityStore.query(&"garden_rooms"))
+	_check_groves("the metropolis", CityStore.query(&"grove_rooms"))
 	finish()
+
+
+## Every tree of an open lot's grove (a park, a square) is drawn inside its lot's lines, leaves and all (probe grove_rooms).
+func _check_groves(city: String, d: Dictionary) -> void:
+	print("%s: the open lots' groves: %d trees in %d lots, %d lots with a crown past their lines" % [city, d.trees, d.lots, d.out])
+	check(int(d.trees) > 0, "%s has groves: %d trees in %d open lots" % [city, d.trees, d.lots])
+	check(int(d.out) == 0, "%s: every grove's crowns stand inside their lot's lines: %d of %d lots not, %.2f m past them at the most" % [city, d.out, d.lots, d.worst_m])
 
 
 ## Every plant of every lot (a tree, a shrub, a run of hedge, a flower bed) is drawn inside the room its element is, and a tree, a shrub

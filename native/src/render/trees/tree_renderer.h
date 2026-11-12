@@ -40,6 +40,9 @@ public:
 	godot::Dictionary garden_fit(const CityState &s, int kind, float w, float d, float h, float turn, int seed) const {
 		return city::garden_fit(CityView(s), trees_, kit_, kind, w, d, h, turn, seed);
 	}
+	// Tests: an open lot's grove alone, and every grove of the city, against their lots' lines (garden_census.h).
+	godot::Dictionary grove_fit(const CityState &s, int fn, float w, float d, int seed) const { return city::grove_fit(CityView(s), trees_, kit_, fn, w, d, seed); }
+	godot::Dictionary grove_rooms(const CityState &s) const { return city::grove_rooms(CityView(s), trees_, kit_); }
 	// The frame's build units of both levels (frame_admission.h): the marked chunks drawn again, the missing ones round the
 	// camera; the far ones let go.
 	void offer(const CityState &s, const godot::Vector3 &cam, std::vector<FrameAdmission::Unit> &out);

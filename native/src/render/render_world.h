@@ -153,6 +153,8 @@ public:
 	godot::Dictionary garden_fit(const CityState &s, int kind, float w, float d, float h, float turn, int seed) const {
 		return trees_.garden_fit(s, kind, w, d, h, turn, seed);
 	}
+	godot::Dictionary grove_fit(const CityState &s, int fn, float w, float d, int seed) const { return trees_.grove_fit(s, fn, w, d, seed); }
+	godot::Dictionary grove_rooms(const CityState &s) const { return trees_.grove_rooms(s); }
 	void set_upload_every(int frames) { upload_every_ = std::max(1, frames); }
 	void set_lots_drawn(bool on) { buildings_.set_lots_drawn(on); }
 	// A body drawn apart from the city (body_stage.h).

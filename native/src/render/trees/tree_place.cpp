@@ -246,20 +246,7 @@ void parks(const CityView &s, const TreeLook &T, const TreeKit &kit, const Chunk
 		const Building &b = s.buildings.items[size_t(id)];
 		if (chunk_of(b.x, b.z) != key) continue;
 		place_garden(s, T, kit, b, view, out);
-		if (b.body != 0 || !b40::is_open_lot(b.fn)) continue;
-		int n = std::min(T.park_max, int(b.w * b.d / T.park_m2_per_tree));
-		Vector3 ax(std::cos(b.rot), 0, -std::sin(b.rot)), az(std::sin(b.rot), 0, std::cos(b.rot));
-		for (int k = 0, placed = 0; k < n * PARK_TRIES && placed < n; k++) {
-			uint32_t h = hash_combine(b.seed, uint32_t(k) + PARK_SALT);
-			float lx = (h01(h, POS_X) - 0.5f) * std::max(0.f, b.w - 2 * T.park_edge), lz = (h01(h, POS_Z) - 0.5f) * std::max(0.f, b.d - 2 * T.park_edge);
-			if (!b40::open_lot_tree_ok(b.fn, b.w, b.d, lx, b.d / 2 - lz)) continue; // lot frame y runs from the street (+z side)
-			Vector3 p = Vector3(b.x, 0, b.z) + ax * lx + az * lz;
-			p.y = s.terrain.height_at(p.x, p.z);
-			float height = T.park_h0 + (T.park_h1 - T.park_h0) * h01(h, HEIGHT);
-			out.push_back({ p, height, height * (1.f + (h01(h, WIDTH) * 2.f - 1.f) * T.width_vary), TAU_F * h01(h, YAW), 0, 0,
-					T.park.pick(h01(h, SPECIES)), tint_of(T, h01(h, TINT)) });
-			placed++;
-		}
+		place_grove(s, T, kit, b, out);
 	}
 }
 
@@ -288,6 +275,27 @@ void planted(const CityView &s, const TreeLook &T, int64_t key, std::vector<Tree
 	});
 }
 } // namespace
+
+void place_grove(const CityView &s, const TreeLook &T, const TreeKit &kit, const Building &b, std::vector<TreeInstance> &out) {
+	if (b.body != 0 || !b40::is_open_lot(b.fn)) return;
+	int n = std::min(T.park_max, int(b.w * b.d / T.park_m2_per_tree));
+	Vector3 ax(std::cos(b.rot), 0, -std::sin(b.rot)), az(std::sin(b.rot), 0, std::cos(b.rot));
+	for (int k = 0, placed = 0; k < n * PARK_TRIES && placed < n; k++) {
+		uint32_t h = hash_combine(b.seed, uint32_t(k) + PARK_SALT);
+		float lx = (h01(h, POS_X) - 0.5f) * std::max(0.f, b.w - 2 * T.park_edge), lz = (h01(h, POS_Z) - 0.5f) * std::max(0.f, b.d - 2 * T.park_edge);
+		if (!b40::open_lot_tree_ok(b.fn, b.w, b.d, lx, b.d / 2 - lz)) continue; // lot frame y runs from the street (+z side)
+		Vector3 p = Vector3(b.x, 0, b.z) + ax * lx + az * lz;
+		p.y = s.terrain.height_at(p.x, p.z);
+		// The tree as its draws would grow it in the open, then held by its room: its crown, leaves and all, reaches no farther than the
+		// lot's nearest line, and a tree narrowed by that stands no taller against its width than the most slender tree of this land.
+		const int species = T.park.pick(h01(h, SPECIES));
+		const float tall = T.park_h0 + (T.park_h1 - T.park_h0) * h01(h, HEIGHT), open = tall * (1.f + (h01(h, WIDTH) * 2.f - 1.f) * T.width_vary);
+		const float room = std::min(b.w / 2 - std::fabs(lx), b.d / 2 - std::fabs(lz));
+		const float width = std::min(open, room / kit.species(species).drawn.around(1.f, 1.f));
+		out.push_back({ p, std::min(tall, width * T.slender_most()), width, TAU_F * h01(h, YAW), 0, 0, species, tint_of(T, h01(h, TINT)) });
+		placed++;
+	}
+}
 
 void place_trees(const CityView &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, int64_t key, std::vector<TreeInstance> &out) {
 	ChunkGround l = chunk_ground(s, key);
