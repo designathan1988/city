@@ -220,6 +220,13 @@ Expected by the change: line poles past the crosswalks, wires strung pole to pol
   movers (76551040, 527a5a4a, 8a358b3a, 0008178d, e8610ea1, a23ac3c3, 2896366f, 865f1321, 2cdf6a76, ee1d5aa8, 7ccee67b); every
   later photo's HUD reads "0 veículos · 0 pessoas" (the clock is paused and the town empty when the shot is made).
 
+### `dist/research/q12/shots/00-low_neighbourhood_day.png` (2026-11-12, the town's centre drawn by the Intel UHD 770 at the look plan's tier; a by-product of Q12, taken with no expectation written first: a breach of the protocol's step 1, said here)
+- What it can prove: whether the integrated GPU draws the game whole. Whole photo opened: towers, facades with their windows
+  and the rooms behind the near panes, roofs and roof gear, the sun's shadows across the facades, street trees, crosswalks at
+  the left edge ((0-150,480-600)), the HUD (clock 16:00, "0 veículos · 0 pessoas", the dock) all drawn; no missing texture,
+  no black or magenta surface, no torn geometry, no driver artefact at this scale. The frame cost 209 ms of GPU time.
+- Not done: its regions at real size, and the other two shots (`01-low_street_day.png`, `02-low_city_day.png`): owed.
+
 **Verdict of the re-analysis so far:** the proof photos of commit 149e5767 show two defects that the commit's own analysis
 denies (wires absent from one view; signal posts against line poles). The theme was closed, pushed and delivered with them.
 Both are pending items (P495 and the posts), with the photos above as their "before" image.

@@ -258,6 +258,22 @@ output. Anything less is `open`, with what failed written down. The questions co
   for GPU time by pass and lock waits (inside the game: `RenderingServer` measured times, the core's own stamps), and for
   Tracy (whether the engine's zones are worth an engine build, now that Q4 shows the reload does not need one).
 
+### Q12. What does the `low` tier pay per pixel on an integrated GPU? (pending item M5; 2026-11-12, session 2) — first attempt, not answered
+
+- **Tried:** a look plan outside the game tree (`dist/research/q12/plan.json`: the town at three views, `{"passes": true}`,
+  `{"info": true}`, a shot each) run on the floor profile with `--preset=low`
+  (`python dist/research/measure/run_game.py floor q12_low_floor 560 res://tests/visual/look.tscn --preset=low --plan=... --capture-dir=...`).
+- **Real output:** GPU 208.9, 198.4 and 134.5 ms at the three views, with 452 to 553 shadow draws and up to 6.0 M shadow
+  primitives, though `low` has `shadows: false`; `passes` gave one entry (`vp_begin`); the log opens with an engine error
+  (pending item V9).
+- **What it showed instead of the answer:** `look.tscn` does not read `--preset=`: it applies `PairCamera.quality`
+  (`look.gd:50`), a tier with shadows and casting lamps. The run measured that tier, not `low`; and the plan's pass step does
+  not split the frame. Both are defects of the diagnostic tool (pending item T8), found because the numbers did not fit
+  `tier_gpu`'s (35 to 63 ms at `low`).
+- **Status: `failed: the tool measured another tier`.** To answer Q12 the plan must name its tier and the stamps by pass must
+  be on (T8 first), or `tier_gpu` must print the passes; then: `low` with the render scale at 1, 0.75 and 0.5, each pass's
+  time, and the photos of each by the image protocol.
+
 ## Open questions (each becomes an entry above when researched; the pending item it serves in the last column)
 
 | Q | Question | Serves |
