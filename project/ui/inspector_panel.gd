@@ -15,6 +15,13 @@ const LAMP_DOTS := [&"DotGo", &"DotSlow", &"DotBroken"]
 @onready var _info := {}
 @onready var _stats: Control
 @onready var _since := 0.0
+var _stat_grid: GridContainer
+var _stat_names: Array[Label] = []
+var _stat_values: Array[Label] = []
+var _lamp_chips: HFlowContainer
+var _lamp_names: Array[Label] = []
+var _lamp_dots: Array[Panel] = []
+var _info_key: Array = []
 
 
 func _ready() -> void:
@@ -73,7 +80,7 @@ func _building(col: Control, info: Dictionary) -> void:
 func _road(col: Control, info: Dictionary) -> void:
 	_head(col, "%s · %s" % [tr("inspector.road"), tr(info.profile)])
 	_stats = HudWidgets.vbox(col)
-	_rows(_stats, InspectorRows.segment_rows(info))
+	_set_stats(InspectorRows.segment_rows(info), [])
 	for e in info.get("ends", []):
 		RoadPanel.end_row(col, e, _redraw)
 	var picks := []
@@ -136,7 +143,7 @@ func _set_class(profile: int) -> void:
 func _node(col: Control) -> void:
 	_head(col, tr("inspector.junction"))
 	_stats = HudWidgets.vbox(col)
-	_fill_node(_stats)
+	_fill_node()
 	RoadPanel.point(col, _info, _redraw, close)
 	_impossible(col)
 	ApproachPanel.fill(col, _info.id, _redraw)
@@ -158,18 +165,59 @@ func _impossible(col: Control) -> void:
 		col.add_child(off)
 
 
-func _fill_node(col: Control) -> void:
-	_rows(col, InspectorRows.node_rows(_info.id))
-	var chips := HFlowContainer.new()
-	col.add_child(chips)
-	for lamp: Array in InspectorRows.lamps(_info.id):
-		var row := HudWidgets.hbox(HudWidgets.panel(chips, &"LampChip"))
-		var dot := Panel.new()
-		dot.theme_type_variation = LAMP_DOTS[lamp[1]]
-		dot.custom_minimum_size = Vector2.ONE * HudWidgets.px("dot")
-		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		row.add_child(dot)
-		HudWidgets.label(row, &"MetaLabel", lamp[0])
+func _fill_node() -> void:
+	var traffic: Dictionary = CityStore.query(&"node_traffic", [_info.id])
+	_set_stats(InspectorRows.node_rows(traffic), InspectorRows.lamps(traffic))
+
+
+## Layout changes create controls; numeric/lamp changes update the existing controls only when their shown value changes.
+func _set_stats(rows: Array, lamps: Array) -> void:
+	if _stat_grid == null or _stat_values.size() != rows.size():
+		if _stat_grid != null:
+			_stats.remove_child(_stat_grid)
+			_stat_grid.queue_free()
+		_stat_names.clear()
+		_stat_values.clear()
+		_stat_grid = GridContainer.new()
+		_stat_grid.columns = 2
+		_stat_grid.theme_type_variation = &"StatGrid"
+		_stats.add_child(_stat_grid)
+		_stats.move_child(_stat_grid, 0)
+		for _row_data: Array in rows:
+			var card := HudWidgets.panel(_stat_grid, &"StatCard")
+			card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var values := HudWidgets.vbox(card)
+			_stat_names.push_back(HudWidgets.label(values, &"StatName"))
+			_stat_values.push_back(HudWidgets.label(values, &"StatValue"))
+	for i in rows.size():
+		var name := tr(rows[i][0])
+		if _stat_names[i].text != name:
+			_stat_names[i].text = name
+		if _stat_values[i].text != rows[i][1]:
+			_stat_values[i].text = rows[i][1]
+	if _info.kind != "node":
+		return
+	if _lamp_chips == null:
+		_lamp_chips = HFlowContainer.new()
+		_stats.add_child(_lamp_chips)
+	if _lamp_names.size() != lamps.size():
+		HudWidgets.clear(_lamp_chips)
+		_lamp_names.clear()
+		_lamp_dots.clear()
+		for _lamp_data: Array in lamps:
+			var row := HudWidgets.hbox(HudWidgets.panel(_lamp_chips, &"LampChip"))
+			var dot := Panel.new()
+			dot.custom_minimum_size = Vector2.ONE * HudWidgets.px("dot")
+			dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			row.add_child(dot)
+			_lamp_dots.push_back(dot)
+			_lamp_names.push_back(HudWidgets.label(row, &"MetaLabel"))
+	for i in lamps.size():
+		var variation: StringName = LAMP_DOTS[lamps[i][1]]
+		if _lamp_dots[i].theme_type_variation != variation:
+			_lamp_dots[i].theme_type_variation = variation
+		if _lamp_names[i].text != lamps[i][0]:
+			_lamp_names[i].text = lamps[i][0]
 
 
 func _demolish_button(row: Control) -> void:
@@ -190,7 +238,14 @@ func demolish_shown() -> bool:
 func show_info(info: Dictionary, at: Vector3) -> void:
 	_at = at
 	_info = info
+	_info_key = _descriptor_key()
 	_stats = null
+	_stat_grid = null
+	_stat_names.clear()
+	_stat_values.clear()
+	_lamp_chips = null
+	_lamp_names.clear()
+	_lamp_dots.clear()
 	HudWidgets.clear(self)
 	if info.is_empty() or not info.has("kind"):
 		close()
@@ -204,18 +259,27 @@ func show_info(info: Dictionary, at: Vector3) -> void:
 
 
 ## The numbers again, or everything when what was shown changed under the panel.
+func _descriptor_key() -> Array:
+	var snapshot := CityStore.snapshot
+	return [snapshot.get("city_generation", -1), snapshot.get("edit_revision", -1),
+		snapshot.get("traffic_graph_revision", -1) if _info.get("kind", "") == "node" else snapshot.get("buildings_revision", -1)]
+
+
 func refresh() -> void:
 	if not visible:
 		return
-	var now: Dictionary = CityStore.query(&"inspect", [_at])
-	if now.get("kind", "") != _info.get("kind", "") or now.get("id", -1) != _info.get("id", -1) or now.get("profile_id", -1) != _info.get("profile_id", -1):
+	var now: Dictionary = _info
+	var key := _descriptor_key()
+	if key != _info_key:
+		now = CityStore.query(&"inspect", [_at])
+		_info_key = key
+	if now != _info:
 		show_info(now, _at)
 	elif _stats != null:
-		HudWidgets.clear(_stats)
 		if _info.kind == "node":
-			_fill_node(_stats)
+			_fill_node()
 		else:
-			_rows(_stats, InspectorRows.segment_rows(_info))
+			_set_stats(InspectorRows.segment_rows(_info), [])
 
 
 func close() -> void:

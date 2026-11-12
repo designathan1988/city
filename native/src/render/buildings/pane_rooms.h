@@ -5,14 +5,23 @@
 #include "render/buildings/shell.h"
 #include "sim/buildings/interior/interior.h"
 
-#include <unordered_map>
+#include <array>
+#include <functional>
+#include <map>
+#include <utility>
 
 namespace city::b40 {
 
+// Exact inputs to room_at: seed, level, volume, position, both basis axes, sill and storey height.
+using PaneRoomKey = std::array<uint32_t, 11>;
+using PaneMemo = std::function<PaneRoom(const std::string &, const PaneRoomKey &, const std::function<PaneRoom()> &)>;
 struct PaneRooms {
-	PaneRooms(const Data &data, const Body &body, Purpose purpose) : inside(data, body, purpose) {}
+	PaneRooms(const Data &data, const Body &body, Purpose purpose, FloorMemo floor = {}, PaneMemo pane = {})
+		: inside(data, body, purpose, std::move(floor)), memo(std::move(pane)) {}
+	BodyRef source_lease; // configured shared-cache workspaces pin the source separately from retained pure values
 	Interior inside;
-	std::unordered_map<uint64_t, PaneRoom> known;
+	PaneMemo memo;
+	std::map<PaneRoomKey, PaneRoom> known;
 };
 
 } // namespace city::b40

@@ -79,7 +79,7 @@ void lay_pieces(CityState &s, const RoadPlan &plan, const std::vector<double> &t
 
 // A new street is given a name, its plates at the corners (Roadcraft roadTool.ts, V8): a road moved keeps its own.
 void name_streets(CityState &s, const std::vector<int> &laid) {
-	for (const StreetName &n : names_for(s.roads, s.street, laid)) {
+	for (const StreetName &n : names_for(s.roads, s.street, s.named_plates, laid)) {
 		StreetItem it;
 		it.kind = ItemKind::STREETNAME;
 		it.x = n.x;
@@ -227,7 +227,7 @@ EditResult demolish_at(CityState &s, double x, double z) {
 	}
 	const int ruin = s.damage.ruin_at(float(x), float(z), 0.f); // the rubble a blow left: clearing it frees the lot
 	if (ruin >= 0) {
-		const Ruin gone = s.damage.ruins[size_t(ruin)];
+		const Ruin gone = s.damage.ruins()[size_t(ruin)];
 		j_remove_ruin(s, ruin);
 		finish_edit(s, gone.x, gone.z, gone.x, gone.z);
 		r.ok = true;

@@ -24,7 +24,7 @@ const float HAIR_SHADE = 0.25; // the side away from the light still glows throu
 const float STRAND_ROOM = 1e-12;
 
 #ifdef BODY
-uniform sampler2D bodies : filter_nearest, repeat_disable; // a row a body, three texels a bone: bind -> world (body_renderer.cpp)
+uniform sampler2DArray bodies : filter_nearest, repeat_disable; // a one-row layer per body, three texels a bone: bind -> world
 varying flat float v_charred;
 const vec3 CHARRED = vec3(0.03, 0.028, 0.026);
 #endif
@@ -62,8 +62,9 @@ void vertex() {
 	ivec4 bones = skin_bones(BONE_INDICES);
 	int slot = int(INSTANCE_CUSTOM.g + 0.5);
 	for (int i = 0; i < 4; i++) {
+		if (BONE_WEIGHTS[i] == 0.0) continue;
 		int at = bones[i] * 3;
-		BonePose p = BonePose(texelFetch(bodies, ivec2(at, slot), 0), texelFetch(bodies, ivec2(at + 1, slot), 0), texelFetch(bodies, ivec2(at + 2, slot), 0));
+		BonePose p = BonePose(texelFetch(bodies, ivec3(at, 0, slot), 0), texelFetch(bodies, ivec3(at + 1, 0, slot), 0), texelFetch(bodies, ivec3(at + 2, 0, slot), 0));
 		skin_add(pos, nor, BONE_WEIGHTS[i], p, p, 0.0, VERTEX, NORMAL);
 	}
 	v_charred = INSTANCE_CUSTOM.a;

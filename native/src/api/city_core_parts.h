@@ -5,9 +5,15 @@
 #include "sim/buildings/b40/record.h"
 #include "sim/roads/junction.h"
 #include "sim/state/pose_buffer.h"
+#include "core/bounds_index.h"
+
+#include <godot_cpp/variant/vector3.hpp>
 
 #include <atomic>
 #include <cstdint>
+#include <list>
+#include <map>
+#include <memory>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -31,16 +37,28 @@ struct SaveJob {
 
 // What the Inspect tool and the camera ask for each frame, kept until the network or the city changes (city_core_inspect.cpp).
 struct InspectCache {
-	std::unordered_map<int, std::vector<Solid>> solids; // clear_reach: each building asked
-	uint64_t solids_revision = 0;
+	struct SolidsEntry {
+		Building source;
+		uint64_t generation = 0;
+		std::shared_ptr<const std::vector<Solid>> rows;
+		std::list<int>::iterator recent;
+		size_t bytes = 0;
+	};
+	std::map<int, SolidsEntry> solids;
+	std::list<int> solids_recent;
+	size_t solids_bytes = 0;
 	std::vector<SharpNode> sharp; // impossible_nodes, for this version of the network
 	int sharp_version = -1;
 };
 
-// The snapshot's expensive counts follow the player's edits, not the simulation tick.
-struct SnapCounts {
-	uint64_t edit_revision = ~uint64_t(0);
-	int nodes = 0, zoned = 0; // the network's counts, following the edits (residents and jobs: BuildingStore totals)
+// Immutable junction-mark inputs for one network publication. The rectangle tree is over the actual float positions
+// projected by Camera3D; the global height interval conservatively extrudes each queried subtree into 3D.
+struct JunctionMarkCache {
+	struct Mark { int node = -1, control = 0; godot::Vector3 at; };
+	uint64_t generation = 0, revision = ~uint64_t(0);
+	std::vector<Mark> marks;
+	BoundsIndex bounds;
+	float low = 0, high = 0;
 };
 
 // What pose_stats reports since its last call (city_core_probe_render.cpp).

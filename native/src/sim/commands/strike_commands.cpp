@@ -43,7 +43,7 @@ EditResult strike_at(CityState &s, double x, double z, double strength, double h
 	Blow b{ s, p, float(x), float(z), ground, float(std::max(height, double(ground))), st, blast::charge_kg(p, st),
 		street >= 0 && !on_building ? blast::Surface::HARD : blast::Surface::EARTH, on_building, STRIKE_SALT ^ s.damage.strikes, r };
 	const uint32_t struck = s.damage.strikes++; // undone with the blow: the next one draws what this one drew
-	j_nature(s, sizeof(struck), [struck](CityState &st, bool fwd) { st.damage.strikes = fwd ? struck + 1 : struck; });
+	j_nature(s, StrikeCountEdit{ struck, struck + 1 });
 	DamageEvent e;
 	e.kind = DamageEvent::BLAST;
 	e.x = b.x; e.y = b.height; e.z = b.z;

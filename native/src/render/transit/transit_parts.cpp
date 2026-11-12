@@ -68,9 +68,8 @@ void place(TransitMeshes &m, const TransitLook &look, const TransitBoxes &list, 
 }
 
 Color line_colour(const CityState &s, const TransitLook &look, int stop) {
-	for (const TransitLine &l : s.transit.lines)
-		if (std::find(l.stops.begin(), l.stops.end(), stop) != l.stops.end()) return rgb8_to_color(l.colour);
-	return look.default_line;
+	const auto colour = s.transit.first_line_colour(stop);
+	return colour ? rgb8_to_color(*colour) : look.default_line;
 }
 
 // Where a metro station with no footway near has its way down: at the station, or the nearest ground off the carriageway round it.
@@ -222,23 +221,32 @@ void transit_box(TransitMeshes &m, const TransitLook &look, int part, const Vect
 	mb.quad(on(q[0], y1), on(q[1], y1), on(q[2], y1), on(q[3], y1), c, Vector3(0, 1, 0), uvs);
 }
 
-void transit_track_parts(const CityState &s, const TransitLook &look, const RailTrack &track, std::vector<TransitMeshes> &out) {
-	const bool metro = track.mode == TransitMode::METRO;
-	float walked = 0;
-	for (size_t i = 1; i < track.points.size(); i++) {
-		const V2 &a = track.points[i - 1], &b = track.points[i];
-		const float len = (b - a).len();
-		if (len < MIN_RUN_M) continue;
-		const V2 d = (b - a).norm();
-		const int pieces = std::max(1, int(std::ceil(len / look.piece)));
-		const float piece = len / float(pieces);
-		for (int k = 0; k < pieces; k++, walked += piece) {
-			const size_t stretch = size_t(walked / look.run);
-			if (out.size() <= stretch) out.resize(stretch + 1);
-			if (metro) track_piece(s, look, true, a, d, float(k) * piece, piece, out[stretch]);
-			else track_cut(s, look, a, d, float(k) * piece, piece, out[stretch]);
-		}
+TransitTrackStep transit_track_step(const CityState &s, const TransitLook &look, const RailTrack &track,
+		TransitTrackCursor &c, TransitMeshes &out, size_t &stretch) {
+	if (c.point >= track.points.size()) {
+		if (c.has_stretch) { c.has_stretch = false; stretch = c.stretch; return TransitTrackStep::READY; }
+		return TransitTrackStep::FINISHED;
 	}
+	if (c.pieces == 0) {
+		c.a = track.points[c.point - 1];
+		const V2 &b = track.points[c.point];
+		const float len = (b - c.a).len();
+		if (len < MIN_RUN_M) { c.point++; return TransitTrackStep::MORE; }
+		c.direction = (b - c.a).norm();
+		c.pieces = std::max(1, int(std::ceil(len / look.piece)));
+		c.piece = len / float(c.pieces); c.index = 0;
+		return TransitTrackStep::MORE;
+	}
+	const size_t next = size_t(c.walked / look.run);
+	if (c.has_stretch && next != c.stretch) {
+		stretch = c.stretch; c.has_stretch = false; return TransitTrackStep::READY;
+	}
+	c.stretch = next; c.has_stretch = true;
+	if (track.mode == TransitMode::METRO) track_piece(s, look, true, c.a, c.direction, float(c.index) * c.piece, c.piece, out);
+	else track_cut(s, look, c.a, c.direction, float(c.index) * c.piece, c.piece, out);
+	c.index++; c.walked += c.piece;
+	if (c.index == c.pieces) { c.point++; c.pieces = 0; }
+	return TransitTrackStep::MORE;
 }
 
 void transit_stop_parts(const CityState &s, const TransitLook &look, const TransitStop &q, TransitMeshes &out) {

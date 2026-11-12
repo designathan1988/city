@@ -30,6 +30,13 @@ var _ground := CameraDamp.new() # the height the view rests on
 var _rise := CameraDamp.new() # how far the eye stands over its orbit, clear of the ground
 var _eye_ground := -INF # the ground under the eye, as last read
 var ahead: CameraAhead
+var _physical_inputs: Array = []
+var _physical_queries: Dictionary = {} # one current value for each fixed camera role, never a trail of visited positions
+
+
+## A screen projection's actual inputs, including camera offsets and viewport shape; UI caches compare values, not a hash.
+static func projection_key(view: Camera3D, rect: Rect2) -> Array:
+	return [view.get_instance_id(), view.get_camera_transform(), view.get_camera_projection(), rect]
 
 
 func _ready() -> void:
@@ -42,7 +49,7 @@ func _ready() -> void:
 	add_child(CameraShake.new(camera))
 	gestures = CameraGestures.new(self)
 	motion = CameraMotion.new(self)
-	pull = CameraPull.new(cfg)
+	pull = CameraPull.new(self)
 	ahead = CameraAhead.new(self)
 	yaw = deg_to_rad(cfg.start_yaw)
 	far_tilt = deg_to_rad(cfg.start_pitch)
@@ -204,9 +211,24 @@ func _ask_tilt(next: float) -> void:
 
 ## What the player sees at (x, z), the plane the eye stays above and the focus rests on: a road deck where one is, the
 ## ground elsewhere (the pointer's rule, the 4.0's sceneHeightAt); the terrain where the ray finds nothing (off the map).
-func seen_height(x: float, z: float) -> float:
-	var hit: Dictionary = CityStore.query(&"raycast", [Vector3(x, cfg.ray_top, z), Vector3.DOWN])
-	return hit.position.y if hit.get("hit", false) else CityStore.query(&"height_at", [x, z])
+func seen_height(x: float, z: float, role: StringName = &"focus_height") -> float:
+	var hit: Dictionary = physical_query(role, &"raycast", [Vector3(x, cfg.ray_top, z), Vector3.DOWN])
+	return hit.position.y if hit.get("hit", false) else physical_query(StringName(str(role) + "_fallback"), &"height_at", [x, z])
+
+
+## Keep springs/occlusion timers advancing; reuse only identical physical questions. Read identity directly, including simulation growth,
+## so neither the HUD timer nor an unrelated sky/paint revision decides whether the camera sees changed geometry.
+func physical_query(role: StringName, method: StringName, args: Array) -> Variant:
+	var inputs: Array = CityStore.query(&"camera_inputs")
+	if inputs != _physical_inputs:
+		_physical_inputs = inputs
+		_physical_queries.clear()
+	var kept: Array = _physical_queries.get(role, [])
+	if not kept.is_empty() and kept[0] == method and kept[1] == args:
+		return kept[2]
+	var result: Variant = CityStore.query(method, args)
+	_physical_queries[role] = [method, args, result]
+	return result
 
 
 ## The view from what the player asks and what the settled heights say: arithmetic alone, so a gesture may place it many times a frame.
@@ -240,7 +262,7 @@ func _settle(dt: float) -> void:
 	else:
 		pull.snap()
 	var eye := far_eye.lerp(base, pull.shown())
-	_eye_ground = seen_height(eye.x, eye.z)
+	_eye_ground = seen_height(eye.x, eye.z, &"eye_height")
 	var rise := maxf(0.0, _eye_ground + cfg.ground_clearance - eye.y)
 	ahead.settle(dt, base, eye + Vector3.UP * rise, far_eye.distance_to(base))
 	if dt > 0.0:

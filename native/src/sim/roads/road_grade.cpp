@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <deque>
+#include <unordered_set>
 
 namespace city {
 
@@ -142,26 +143,25 @@ void grade_chains(RoadGrade &grade, const RoadNetwork &net, const std::vector<in
 		int seg;
 		bool forward; // it runs the way the road is walked
 	};
-	std::vector<char> seen(net.segs.size(), 0);
+	std::unordered_set<int> seen;
 	const auto beyond = [&](int at, int n) {
 		if (!carries_on(net, n)) return -1;
 		const RoadNode &nd = net.nodes[size_t(n)];
 		const int next = nd.segs[0] == at ? nd.segs[1] : nd.segs[0];
-		return seen[size_t(next)] || !grade.has(next) ? -1 : next;
+		return seen.count(next) || !grade.has(next) ? -1 : next;
 	};
 	for (int s : read) {
-		if (seen[size_t(s)]) continue;
-		seen[size_t(s)] = 1;
+		if (!seen.insert(s).second) continue;
 		std::deque<Piece> run{ { s, true } };
 		for (int at = s, n = net.segs[size_t(s)].b, next = beyond(at, n); next >= 0; next = beyond(at, n)) {
-			seen[size_t(next)] = 1;
+			seen.insert(next);
 			const bool forward = net.segs[size_t(next)].a == n;
 			run.push_back({ next, forward });
 			n = forward ? net.segs[size_t(next)].b : net.segs[size_t(next)].a;
 			at = next;
 		}
 		for (int at = s, n = net.segs[size_t(s)].a, next = beyond(at, n); next >= 0; next = beyond(at, n)) {
-			seen[size_t(next)] = 1;
+			seen.insert(next);
 			const bool forward = net.segs[size_t(next)].b == n;
 			run.push_front({ next, forward });
 			n = forward ? net.segs[size_t(next)].a : net.segs[size_t(next)].b;

@@ -62,43 +62,52 @@ void file_door(CityState &s, int id) {
 	PedDoor d;
 	int seg = -1, side = 0;
 	if (!sidewalk_under(s, way.foot, frame.e0, d, seg, side)) return;
-	d.building = id;
-	d.seed = rec.seed;
+	d.building = id; d.segment = seg; d.segment_generation = s.roads.segment_generation(seg);
+	d.source_version = s.buildings.item_version(id);
 	d.kind = uint8_t(kind_of(rec, body));
 	d.x = way.door.x;
 	d.z = way.door.y;
 	d.y = s.terrain.height_at(way.door.x, way.door.y);
 	auto &list = t.doors[size_t(seg * 2 + side)];
-	if (list.empty()) t.door_sides.push_back(seg * 2 + side);
+	const size_t key = size_t(seg * 2 + side);
+	if (t.door_side_pos[key] < 0) { t.door_side_pos[key] = int(t.door_sides.size()); t.door_sides.push_back(int(key)); }
 	list.push_back(d);
 }
 
-bool door_stands(const CityState &s, const PedDoor &d) {
-	const Building &b = s.buildings.items[size_t(d.building)];
-	return b.alive && b.seed == d.seed;
+void forget_seen(TrafficState &t, const PedDoor &d) {
+	if (size_t(d.building) < t.door_seen.size() && t.door_seen[size_t(d.building)] == d.source_version)
+		t.door_seen[size_t(d.building)] = 0; // an old door must not dirty a newer prepared revision
 }
 
 } // namespace
+
+bool door_current(const CityState &s, const PedDoor &d) {
+	const uint64_t version = s.buildings.item_version(d.building);
+	return version != 0 && version == d.source_version && d.segment_generation != 0 && s.roads.segment_generation(d.segment) == d.segment_generation;
+}
 
 void list_doors(CityState &s, float cx, float cz, float reach) {
 	TrafficState &t = s.traffic;
 	t.door_seen.resize(s.buildings.items.size(), 0);
 	t.door_todo.clear();
 	s.buildings.query(cx - reach, cz - reach, cx + reach, cz + reach, [&](int id) {
-		if (t.door_seen[size_t(id)] != s.buildings.items[size_t(id)].seed + 1) t.door_todo.push_back(id);
+		const uint64_t version = s.buildings.item_version(id);
+		if (version != 0 && t.door_seen[size_t(id)] != version) t.door_todo.push_back({id, version});
 	});
 }
 
 void read_doors(CityState &s) {
 	TrafficState &t = s.traffic;
 	t.doors.resize(s.roads.segs.size() * 2);
+	t.door_side_pos.resize(t.doors.size(), -1);
 	t.door_seen.resize(s.buildings.items.size(), 0);
 	for (int k = 0; k < int(s.catalog.traffic.ped_door_budget) && !t.door_todo.empty(); k++) {
-		const int id = t.door_todo.back();
+		const PedDoorRead read = t.door_todo.back();
 		t.door_todo.pop_back();
-		if (size_t(id) >= t.door_seen.size()) continue;
-		t.door_seen[size_t(id)] = s.buildings.items[size_t(id)].seed + 1;
-		file_door(s, id);
+		if (size_t(read.building) >= t.door_seen.size() || read.version == 0 ||
+			s.buildings.item_version(read.building) != read.version || t.door_seen[size_t(read.building)] == read.version) continue;
+		t.door_seen[size_t(read.building)] = read.version;
+		file_door(s, read.building);
 	}
 }
 
@@ -107,7 +116,7 @@ void forget_doors(CityState &s, int seg) {
 	for (int key : { seg * 2, seg * 2 + 1 }) {
 		if (size_t(key) >= t.doors.size()) continue;
 		for (const PedDoor &d : t.doors[size_t(key)])
-			if (size_t(d.building) < t.door_seen.size()) t.door_seen[size_t(d.building)] = 0;
+			forget_seen(t, d);
 		t.doors[size_t(key)].clear();
 	}
 }
@@ -117,9 +126,17 @@ int door_sidewalk(CityState &s) {
 	while (!t.door_sides.empty()) {
 		const size_t k = size_t(t.rng.next() % uint32_t(t.door_sides.size()));
 		const int key = t.door_sides[k];
-		if (size_t(key) < t.doors.size() && !t.doors[size_t(key)].empty()) return key;
+		if (size_t(key) < t.doors.size()) {
+			auto &list = t.doors[size_t(key)];
+			while (!list.empty() && !door_current(s, list.back())) {
+				forget_seen(t, list.back()); list.pop_back();
+			}
+			if (!list.empty()) return key;
+		}
+		if (size_t(key) < t.door_side_pos.size()) t.door_side_pos[size_t(key)] = -1;
 		t.door_sides[k] = t.door_sides.back();
 		t.door_sides.pop_back();
+		if (k < t.door_sides.size() && size_t(t.door_sides[k]) < t.door_side_pos.size()) t.door_side_pos[size_t(t.door_sides[k])] = int(k);
 	}
 	return -1;
 }
@@ -133,8 +150,8 @@ bool pick_door(CityState &s, const PeopleNow &now, int seg, int side, bool out, 
 	bool found = false;
 	for (size_t k = 0; k < list.size();) {
 		const PedDoor &d = list[k];
-		if (!door_stands(s, d)) { // it went: its lot is read again when the window next looks
-			t.door_seen[size_t(d.building)] = 0;
+		if (!door_current(s, d)) { // it went: its lot is read again when the window next looks
+			forget_seen(t, d);
 			list[k] = list.back();
 			list.pop_back();
 			continue;
@@ -148,6 +165,7 @@ bool pick_door(CityState &s, const PeopleNow &now, int seg, int side, bool out, 
 			found = true;
 		}
 	}
+	if (found) door.y = s.terrain.height_at(door.x, door.z); // height is not building identity
 	return found;
 }
 

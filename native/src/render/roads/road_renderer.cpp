@@ -45,11 +45,10 @@ void RoadRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) c
 }
 
 void RoadChunks::commit_one(BuiltMesh &b) {
-	float x0 = key_x(b.key) * CHUNK, z0 = key_y(b.key) * CHUNK;
 	Chunk &c = chunks_[b.key];
 	const bool any = b.mesh.valid();
 	c.surface.adopt(scenario_, material_, casts_, b.mesh.release(), LAYER_ROADS);
-	if (any) RenderingServer::get_singleton()->instance_set_custom_aabb(c.surface.inst, AABB(Vector3(x0, AABB_MIN_Y, z0), Vector3(CHUNK, AABB_H, CHUNK)));
+	// Ownership is by midpoint, not a clipping boundary. The mesh's generated bounds include the whole road/verge/structure.
 	c.surface.visible(any && drawn_);
 	c.made = b.count;
 	revision_++;

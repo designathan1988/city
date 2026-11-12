@@ -17,16 +17,20 @@ namespace city {
 
 void CityCore::make_areas() {
 	builder_ = memnew(CityBuilder);
-	builder_->attach(state_.get(), &render_);
 	landscape_ = memnew(CityLandscape);
-	landscape_->attach(state_.get(), &render_);
 	transit_ = memnew(CityTransit);
-	transit_->attach(state_.get(), &render_);
 	probes_ = memnew(CityProbes);
-	probes_->attach(state_.get(), &render_);
 	street_ = memnew(CityStreet);
-	street_->attach(state_.get(), &render_);
 	lab_ = memnew(CityLab);
+	attach_areas();
+}
+
+void CityCore::attach_areas() {
+	builder_->attach(state_.get(), &render_);
+	landscape_->attach(state_.get(), &render_);
+	transit_->attach(state_.get(), &render_);
+	probes_->attach(state_.get(), &render_);
+	street_->attach(state_.get(), &render_);
 }
 
 // memdelete of an extension object destroys it through the engine (godot-cpp core/memory.hpp: object_destroy of its owner).

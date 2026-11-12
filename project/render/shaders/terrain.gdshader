@@ -224,10 +224,20 @@ void fragment() {
 		float speck = dot(land(dirt_layer, fract(v_vertex.xz * 1.325), wdx.xz * 1.325, wdy.xz * 1.325), vec3(0.33));
 		vec3 sum = vec3(0.0);
 		float weights = 0.0;
-		if (p00.surface > 0 && cw.x * p00.amount > 0.0) { sum += surface_colour(p00.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck) * cw.x * p00.amount; weights += cw.x * p00.amount; }
-		if (p10.surface > 0 && cw.y * p10.amount > 0.0) { sum += surface_colour(p10.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck) * cw.y * p10.amount; weights += cw.y * p10.amount; }
-		if (p01.surface > 0 && cw.z * p01.amount > 0.0) { sum += surface_colour(p01.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck) * cw.z * p01.amount; weights += cw.z * p01.amount; }
-		if (p11.surface > 0 && cw.w * p11.amount > 0.0) { sum += surface_colour(p11.surface, g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck) * cw.w * p11.amount; weights += cw.w * p11.amount; }
+		int ids[4] = {p00.surface, p10.surface, p01.surface, p11.surface};
+		vec4 amounts = vec4(p00.amount, p10.amount, p01.amount, p11.amount);
+		vec3 colours[4];
+		for (int k = 0; k < 4; k++) {
+			if (ids[k] <= 0 || cw[k] * amounts[k] <= 0.0) continue;
+			int previous = -1;
+			for (int j = 0; j < k; j++) {
+				if (ids[j] == ids[k] && cw[j] * amounts[j] > 0.0) { previous = j; break; }
+			}
+			if (previous >= 0) colours[k] = colours[previous];
+			else colours[k] = surface_colour(ids[k], g, dirt_c, v_vertex, wdx, wdy, w_normal, grain, speck);
+			sum += colours[k] * cw[k] * amounts[k];
+			weights += cw[k] * amounts[k];
+		}
 		if (weights > 0.0) c = mix(c, sum / weights, clamp(weights, 0.0, 1.0));
 	}
 	c *= gully_shade;

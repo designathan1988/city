@@ -21,6 +21,11 @@ func exit() -> void:
 	pass
 
 
+## Close only an authored brush stroke before a history/persistence boundary; previews of other tools stay in hand.
+func seal_input() -> bool:
+	return false
+
+
 func click(_p: Vector3) -> void:
 	pass
 

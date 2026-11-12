@@ -2,6 +2,7 @@
 // camera moves and dropped behind it, with the scenery cars that stand in them (seeded by where the bay is, so a bay
 // holds the same car whenever it comes back into view). The way out of a lot is asked only of a bay a car is sent to.
 #include "sim/traffic/traffic_system.h"
+#include "core/generation.h"
 
 #include "sim/buildings/b40/record.h"
 #include "sim/buildings/lot_access.h"
@@ -31,6 +32,7 @@ int take_bay(ParkingState &p) {
 	}
 	p.bays[size_t(b)] = Bay();
 	p.bays[size_t(b)].alive = true;
+	p.bays[size_t(b)].generation = next_generation();
 	return b;
 }
 
@@ -143,10 +145,17 @@ V2 lot_mid(const CityState &s, int id) {
 	return V2(b.x, b.z);
 }
 
-template <typename W>
-void drop_far(CityState &s, std::unordered_map<int, ParkSource> &sources, const V2 &eye, float out, W &&where) {
+void retire_yard(ParkingState &p, int id) {
+	p.yards.erase(id);
+	if (p.planner_building == id) { p.planner.reset(); p.planner_building = -1; }
+}
+
+template <typename W, typename Retire>
+void drop_far(CityState &s, std::unordered_map<int, ParkSource> &sources, const V2 &eye, float out, W &&where, Retire &&retire) {
 	for (auto it = sources.begin(); it != sources.end();) {
-		if ((where(it->first) - eye).len2() > out * out && drop_source(s, it->second, false)) it = sources.erase(it);
+		if ((where(it->first) - eye).len2() > out * out && drop_source(s, it->second, false)) {
+			retire(it->first); it = sources.erase(it);
+		}
 		else ++it;
 	}
 }
@@ -157,8 +166,8 @@ void look_round(CityState &s, float cx, float cz) {
 	ParkingState &p = s.traffic.park;
 	const float r = tp.park_window_m;
 	const V2 eye(cx, cz);
-	drop_far(s, p.lots, eye, tp.park_window_out_m, [&](int id) { return lot_mid(s, id); });
-	drop_far(s, p.kerbs, eye, tp.park_window_out_m, [&](int seg) { return seg_mid(s, seg); });
+	drop_far(s, p.lots, eye, tp.park_window_out_m, [&](int id) { return lot_mid(s, id); }, [&](int id) { retire_yard(p, id); });
+	drop_far(s, p.kerbs, eye, tp.park_window_out_m, [&](int seg) { return seg_mid(s, seg); }, [](int) {});
 	p.lots_wanted.clear();
 	p.kerbs_wanted.clear();
 	s.buildings.query(cx - r, cz - r, cx + r, cz + r, [&](int id) {
@@ -217,7 +226,11 @@ void remove_row(ParkingState &p, int b) {
 void refile_bay(CityState &s, int b, bool away) {
 	ParkingState &p = s.traffic.park;
 	Bay &bay = p.bays[size_t(b)];
-	if (bay.kerb || bay.dock) return;
+	if (bay.dock) {
+		p.free_docks.set(b, !away && bay.alive && bay.holder < 0 && p.lorries_by_source.find(bay.source) == p.lorries_by_source.end());
+		return;
+	}
+	if (bay.kerb) return;
 	const int k = int(bay.kind);
 	if (bay.filed != FILED_NONE) {
 		std::vector<int> &list = bay.filed == FILED_ROW ? p.row_of[k] : p.free_of[k];
@@ -272,8 +285,7 @@ void forget_parking_seg(CityState &s, int seg) {
 
 void forget_parking_lot(CityState &s, int id) {
 	ParkingState &p = s.traffic.park;
-	p.yards.erase(id);
-	if (p.planner_building == id) p.planner.reset();
+	retire_yard(p, id);
 	auto it = p.lots.find(id);
 	if (it != p.lots.end()) {
 		drop_source(s, it->second, true);

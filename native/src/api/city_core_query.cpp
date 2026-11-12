@@ -128,25 +128,23 @@ Dictionary CityCore::snapshot() {
 	d["segments"] = s.roads.alive_segments();
 	d["marking_style"] = s.marking_style.load();
 	d["edit_revision"] = int64_t(s.edit_revision);
+	d["city_generation"] = int64_t(s.generation);
+	d["buildings_revision"] = int64_t(s.buildings.revision);
+	d["history_revision"] = int64_t(s.history.revision);
+	d["sim_tick_load"] = sim_.tick_load();
 	d["player_zones"] = s.roads.player_sides;
 	d["style"] = String(s.style.c_str());
-	if (s.edit_revision != snap_.edit_revision) {
-		int nodes = 0;
-		for (const RoadNode &n : s.roads.nodes) nodes += n.alive ? 1 : 0;
-		int zoned = 0;
-		for (const RoadSegment &g : s.roads.segs) zoned += g.alive ? (g.zl != 0) + (g.zr != 0) : 0;
-		snap_.edit_revision = s.edit_revision;
-		snap_.nodes = nodes;
-		snap_.zoned = zoned;
-	}
-	d["nodes"] = snap_.nodes;
-	d["zoned_sides"] = snap_.zoned;
+	d["nodes"] = s.roads.alive_nodes();
+	d["zoned_sides"] = s.roads.zoned_sides();
+	d["road_revision"] = int64_t(s.roads.version);
+
 	d["grown"] = s.growth.grown;
 	d["growth_cells"] = int(s.growth.cells.size());
 	d["residents"] = s.buildings.residents;
 	d["jobs"] = s.buildings.jobs;
 	d["transit_revision"] = int64_t(s.transit_revision); // views that list the transport plan read it again only when it moves
 	const TrafficView &fleet = state_->traffic_views.acquire();
+	d["traffic_graph_revision"] = int64_t(fleet.graph_serial);
 	d["vehicles"] = fleet.vehicles;
 	d["people"] = fleet.people;
 	d["trips_arrived"] = fleet.arrived;

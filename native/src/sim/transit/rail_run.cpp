@@ -107,6 +107,17 @@ bool make_loop(const TransitData &t, const TransitLine &l, const RailGraph &g, R
 	for (size_t i = 0; i < order.size(); i++) r.stations.push_back({ order[i]->id, r.at[marks[i] % r.points.size()], i == 0 || i + 1 == out });
 	return true;
 }
+void populate_trains(CityState &s, RailLine &r, int vehicles) {
+	r.trains.clear();
+	for (int k = 0; k < vehicles; k++) {
+		Train t;
+		t.s = r.length * float(k) / float(vehicles);
+		const auto next = std::find_if(r.stations.begin(), r.stations.end(), [&](const LoopStation &st) { return st.s >= t.s; });
+		t.next = next == r.stations.end() ? 0 : int(next - r.stations.begin());
+		t.cars.resize(size_t(cars_of(s, r)));
+		r.trains.push_back(std::move(t));
+	}
+}
 } // namespace
 
 int cars_of(const CityState &s, const RailLine &r) {
@@ -114,34 +125,75 @@ int cars_of(const CityState &s, const RailLine &r) {
 	return int(r.metro ? p.metro_cars : p.train_cars);
 }
 
-void place_rails(CityState &s) {
+void place_rails(CityState &s, bool rebuild_loops) {
 	TransitRun &run = s.transit_run;
-	const float join = s.catalog.traffic.transit_join_m;
-	std::vector<RailLine> before = std::move(run.rails);
-	run.rails.clear();
-	run.crossings_by_lane.clear();
-	const RailGraph graphs[2] = { rail_graph(s.transit, TransitMode::TRAIN, join), rail_graph(s.transit, TransitMode::METRO, join) };
-	for (const TransitLine &l : s.transit.lines) {
-		if (l.mode == TransitMode::BUS) continue;
-		RailLine r;
-		r.line = l.id;
-		r.metro = l.mode == TransitMode::METRO;
-		r.colour = l.colour;
-		if (!make_loop(s.transit, l, graphs[r.metro ? 1 : 0], r)) continue;
-		const auto was = std::find_if(before.begin(), before.end(), [&](const RailLine &o) { return o.line == l.id && o.points.size() == r.points.size() && o.length == r.length && int(o.trains.size()) == l.vehicles; });
-		if (was != before.end()) r.trains = std::move(was->trains); // an edit elsewhere leaves them where they are
-		for (int k = 0; was == before.end() && k < l.vehicles; k++) {
-			Train t;
-			t.s = r.length * float(k) / float(l.vehicles);
-			const auto next = std::find_if(r.stations.begin(), r.stations.end(), [&](const LoopStation &st) { return st.s >= t.s; });
-			t.next = next == r.stations.end() ? 0 : int(next - r.stations.begin());
-			t.cars.resize(size_t(cars_of(s, r)));
-			r.trains.push_back(std::move(t));
+	bool order_changed = !run.built;
+	if (rebuild_loops) {
+		const float join = s.catalog.traffic.transit_join_m;
+		const bool join_changed = run.graph_join != join;
+		std::array<bool, 2> needed{}, topology_changed{};
+		for (const TransitLine &l : s.transit.lines()) if (l.mode != TransitMode::BUS) needed[l.mode == TransitMode::METRO ? 1 : 0] = true;
+		for (size_t mode = 0; mode < needed.size(); ++mode) {
+			const TransitMode kind = mode ? TransitMode::METRO : TransitMode::TRAIN;
+			const uint64_t version = s.transit.track_graph_version(kind);
+			topology_changed[mode] = join_changed || run.tracks_seen[mode] != version;
+			if (!needed[mode]) {
+				if (run.tracks_seen[mode]) { run.rail_graphs[mode] = RailGraph(); run.tracks_seen[mode] = 0; }
+			} else if (topology_changed[mode]) {
+				constexpr size_t MIB = 1024 * 1024;
+				const size_t retained = size_t(std::max(0.f, s.catalog.tune.sim_rail_path_cache_mb) * MIB);
+				run.rail_graphs[mode] = rail_graph(s.transit, kind, join, retained);
+				run.tracks_seen[mode] = version;
+			}
 		}
-		if (!r.metro) crossings_of(s, r); // the metro runs under them all
-		const int index = int(run.rails.size());
-		for (size_t c = 0; c < r.crossings.size(); c++) run.crossings_by_lane[r.crossings[c].key].push_back({ index, int(c) });
-		run.rails.push_back(std::move(r));
+		run.graph_join = join;
+		std::vector<RailLine> before = std::move(run.rails);
+		run.rails.clear();
+		std::unordered_map<int, size_t> before_by_line;
+		for (size_t i = 0; i < before.size(); ++i) before_by_line.emplace(before[i].line, i);
+		for (const TransitLine &l : s.transit.lines()) {
+			if (l.mode == TransitMode::BUS) continue;
+			const size_t mode = l.mode == TransitMode::METRO ? 1 : 0;
+			const uint64_t version = s.transit.rail_line_version(l.id);
+			const auto was = before_by_line.find(l.id);
+			const bool reuse = was != before_by_line.end() && !topology_changed[mode] && before[was->second].plan_version == version;
+			if (reuse) {
+				order_changed = order_changed || was->second != run.rails.size();
+				RailLine r = std::move(before[was->second]);
+				r.colour = l.colour;
+				// Preserve the original policy: changing fleet size lays the full fleet out on the same loop again.
+				if (int(r.trains.size()) != l.vehicles) populate_trains(s, r, l.vehicles);
+				run.rails.push_back(std::move(r));
+				continue;
+			}
+			RailLine r;
+			r.line = l.id;
+			r.plan_version = version;
+			r.metro = l.mode == TransitMode::METRO;
+			r.colour = l.colour;
+			if (!make_loop(s.transit, l, run.rail_graphs[mode], r)) continue;
+			order_changed = order_changed || was == before_by_line.end() || was->second != run.rails.size();
+			const bool keep = was != before_by_line.end() && before[was->second].points.size() == r.points.size()
+				&& before[was->second].length == r.length && int(before[was->second].trains.size()) == l.vehicles;
+			if (keep) r.trains = std::move(before[was->second].trains);
+			else populate_trains(s, r, l.vehicles);
+			run.rails.push_back(std::move(r));
+		}
+		order_changed = order_changed || before.size() != run.rails.size();
+	}
+	// Only new loop geometry or a new road graph changes these intersections. Paint/fleet changes keep them.
+	bool crossings_changed = false;
+	const uint64_t roads = uint64_t(s.roads.version);
+	for (RailLine &r : run.rails) {
+		if (r.crossings_built && r.crossing_roads == roads) continue;
+		r.crossings.clear();
+		if (!r.metro) crossings_of(s, r);
+		r.crossing_roads = roads; r.crossings_built = true; crossings_changed = true;
+	}
+	if (crossings_changed || order_changed) {
+		run.crossings_by_lane.clear();
+		for (size_t index = 0; index < run.rails.size(); ++index)
+			for (size_t c = 0; c < run.rails[index].crossings.size(); c++) run.crossings_by_lane[run.rails[index].crossings[c].key].push_back({int(index), int(c)});
 	}
 }
 
@@ -266,10 +318,9 @@ bool walker_held(const CityState &s, const V2 &at, const V2 &ahead) {
 void publish(CityState &s, PoseFrame &f, int64_t stamp, int64_t before, float cx, float cz, float radius) {
 	f.trains.clear();
 	const TrafficParams &p = s.catalog.traffic;
-	uint32_t id = 0;
 	for (RailLine &r : s.transit_run.rails)
 		for (Train &t : r.trains)
-			for (size_t k = 0; k < t.cars.size(); k++, id++) {
+			for (size_t k = 0; k < t.cars.size(); k++) {
 				const LoopPoint q = point_at(r, t.s - p.train_car_m * (float(k) + 0.5f));
 				Pose pose;
 				pose.x = q.at.x;
@@ -279,7 +330,8 @@ void publish(CityState &s, PoseFrame &f, int64_t stamp, int64_t before, float cx
 				pose.fz = q.dir.y;
 				t.cars[k].push(pose, stamp, before);
 				if ((q.at - V2(cx, cz)).len() > radius) continue;
-				AgentRecord rec;
+				TrainRecord rec;
+				rec.row_id = t.cars[k].row_id;
 				for (int i = 0; i < POSE_TRAIL; i++) rec.at[i] = t.cars[k].at[i];
 				rec.id = r.metro ? 1u : 0u;
 				rec.look = r.colour;

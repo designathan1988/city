@@ -90,7 +90,7 @@ bool gate(CityState &s, int id, int &ci, float dist, bool head, bool held, bool 
 	if (head && line < p.at_line_m && ci >= 0) {
 		if (v.wait > p.detour_after_s && v.lc_cool <= 0 && t.g.conns[ci].from_lane == v.lane && !has_exit(s, t.g.conns[ci], id)) {
 			v.lc_cool = p.lc_cooldown_s;
-			if (detour(s, id, ci, true)) ci = pick_connector(s, v);
+			detour(s, id, ci, true); // admitted result may replace the route at a later safe point
 		}
 		if (ci >= 0 && v.wait > p.claim_after_s && light_for(s, v.ds) != Light::RED) t.conn_claim_t[ci] = t.time; // claims the turn
 		if (ci >= 0 && v.wait > p.starve_seconds) claim_exit(s, t.g.conns[ci], id);
@@ -137,6 +137,8 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 	for (int k = int(list.size()) - 1; k >= 0; k--) {
 		const int id = list[k];
 		Vehicle &v = t.vehicles[id];
+		const bool goal_current = vehicle_route_goal_current(s, v);
+		if (!goal_current && !destination_pending(v)) continue; // retired after this traversal, without reading old future route IDs
 		Lead l;
 		float v0 = desired_speed(s, v, ds);
 		int ahead = k + 1; // the first of those ahead it follows: a bicycle in its band is beside it
@@ -151,49 +153,56 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 			if (shut >= 0) l.take(shut, 0.f);
 		}
 		if (v.kerb >= 0) l.take(kerb_stop_gap(t, v) + p.classes[int(v.type)].min_gap, 0.f); // the IDM stops s0 short
-		const bool through = v.ri + 1 < v.route.len; // it crosses this lane's junction
+		const bool through = goal_current && v.ri + 1 < v.route.len; // it crosses this lane's junction
 		if (const float hold = transit::hold_ahead(s, v, ds, through, head); hold >= 0) l.take(hold, 0.f);
 		const float line_was = L - v.s - t.g.ds[ds].stop_back;
 		if (!through) {
-			if (v.s >= v.goal_s) { leaving.push_back(-1 - id); continue; }
+			if (destination_pending(v)) {
+				const float hold = std::max(0.f, L - t.g.ds[size_t(ds)].stop_back - p.stop_margin_m - v.s);
+				l.take(hold + p.classes[int(v.type)].min_gap, 0.f); // wait at this lane end, never arrive on an unfinished desired trip
+			} else if (v.s >= v.goal_s) { leaving.push_back(-1 - id); continue; }
 			if (v.stop_at >= 0) l.take(std::max(0.f, v.stop_at - v.s + p.classes[int(v.type)].min_gap), 0.f); // the IDM stops s0 short
 		} else {
 			int ci = pick_connector(s, v);
 			if (ci < 0) {
 				// the route's turn is not reachable from this lane (a connector went, the lanes were rearranged):
 				// another lane of the segment, else a new route; without a way on it leaves the scene
-				if (!retry_route(s, id)) { leaving.push_back(-1 - id); continue; }
-				return; // retry may have changed the lane: the rest of this one waits for the next tick
-			}
-			float dist = L - v.s;
-			// stopped long in the queue of a full lane: reconsider the route, avoiding what is full
-			if (!head && v.held >= p.reconsider_after_s) {
-				v.held = 0;
-				if (float(list.size()) >= p.reconsider_full_share * L / p.slot_m && reconsider(s, id)) ci = pick_connector(s, v);
-				if (ci < 0) continue;
-			}
-			if (t.g.conns[ci].from_lane != v.lane && v.wait > p.claim_after_s && dist < p.look_ahead_m) {
-				v.wait = 0;
-				if (detour(s, id, -1, false)) ci = pick_connector(s, v);
-				if (ci < 0) continue;
-			}
-			v0 = std::min(v0, turn_limit(s, v, t.g.conns[ci], dist));
-			const LightStop lights = lights_ahead(s, v, v.ri, v.lane, -v.s);
-			v.amber_hold = lights.amber_hold;
-			l.take(lights.gap, 0.f);
-			// Only the lane head arbitrates at the junction; followers keep the IDM distance to their leader.
-			if (head) {
-				lead_beyond(s, ci, dist, l);
-				bool released = false;
-				const bool open = gate(s, id, ci, dist, head, lights.here, released);
-				const float line = dist - t.g.ds[ds].stop_back; // the stop line is behind the crosswalk
-				if (!open && dist < p.look_ahead_m) l.take(line > -p.stop_margin_m ? std::max(0.f, line - p.stop_margin_m) : dist - p.stop_margin_m, 0.f);
-				else if (open && v.s >= L) {
-					admit(s, t.g.conns[ci].node, released);
-					leaving.push_back(id);
-					continue;
+				const RouteRepair repair = retry_route(s, id);
+				if (repair == RouteRepair::FAILED) { leaving.push_back(-1 - id); continue; }
+				if (repair == RouteRepair::CHANGED) return; // lane membership changed: the borrowed list is visited next tick
+				const float hold = std::max(0.f, L - t.g.ds[size_t(ds)].stop_back - p.stop_margin_m - v.s);
+				l.take(hold + p.classes[int(v.type)].min_gap, 0.f); // Pending repair stops this actor, while followers keep being stepped
+			} else {
+				float dist = L - v.s;
+				// stopped long in the queue of a full lane: reconsider the route, avoiding what is full
+				if (!head && v.held >= p.reconsider_after_s) {
+					v.held = 0;
+					if (float(list.size()) >= p.reconsider_full_share * L / p.slot_m) reconsider(s, id); // queued choice keeps the current connector until whole-result delivery
+					if (ci < 0) continue;
 				}
-				if (v.v < WAIT_SPEED && line >= 0 && line < p.at_line_m) v.stood = true;
+				if (t.g.conns[ci].from_lane != v.lane && v.wait > p.claim_after_s && dist < p.look_ahead_m) {
+					v.wait = 0;
+					detour(s, id, -1, false); // keep this usable connector while the optional choice waits
+					if (ci < 0) continue;
+				}
+				v0 = std::min(v0, turn_limit(s, v, t.g.conns[ci], dist));
+				const LightStop lights = lights_ahead(s, v, v.ri, v.lane, -v.s);
+				v.amber_hold = lights.amber_hold;
+				l.take(lights.gap, 0.f);
+				// Only the lane head arbitrates at the junction; followers keep the IDM distance to their leader.
+				if (head) {
+					lead_beyond(s, ci, dist, l);
+					bool released = false;
+					const bool open = gate(s, id, ci, dist, head, lights.here, released);
+					const float line = dist - t.g.ds[ds].stop_back; // the stop line is behind the crosswalk
+					if (!open && dist < p.look_ahead_m) l.take(line > -p.stop_margin_m ? std::max(0.f, line - p.stop_margin_m) : dist - p.stop_margin_m, 0.f);
+					else if (open && v.s >= L) {
+						admit(s, t.g.conns[ci].node, released);
+						leaving.push_back(id);
+						continue;
+					}
+					if (v.v < WAIT_SPEED && line >= 0 && line < p.at_line_m) v.stood = true;
+				}
 			}
 		}
 		float acc = finish_accel(s, v, idm_accel(p.classes[int(v.type)], v.v, v0, l.gap, l.v), l, dt);
@@ -234,7 +243,7 @@ void leave_lane(CityState &s, int ds, int lane, std::vector<int> &leaving) {
 		v.conn = ci;
 		v.stood_at = -1;
 		count_entry(s, ci);
-		v.pass = -1;
+		set_pass(t, id, -1);
 		v.stood = false;
 		v.ds = -1;
 		conn_push(s, ci, id);
@@ -270,11 +279,13 @@ void step_connector(CityState &s, int ci, float dt) {
 	const float vt = conn_speed(s, c);
 	for (size_t k = 0; k < list.size(); k++) {
 		Vehicle &v = t.vehicles[list[k]];
+		const bool goal_current = vehicle_route_goal_current(s, v);
+		if (!goal_current && !destination_pending(v)) continue;
 		Lead l, walkers;
 		const float top = top_speed(s, v, vt);
 		connector_leads(s, ci, k, top, l, walkers);
 		l.take(walkers.gap, walkers.v);
-		const LightStop lights = lights_ahead(s, v, v.ri + 1, c.to_lane, c.len - v.cs);
+		const LightStop lights = goal_current ? lights_ahead(s, v, v.ri + 1, c.to_lane, c.len - v.cs) : LightStop{};
 		v.amber_hold = lights.amber_hold;
 		l.take(lights.gap, 0.f);
 		float acc = finish_accel(s, v, idm_accel(p.classes[int(v.type)], v.v, top, l.gap, l.v), l, dt);
@@ -329,6 +340,8 @@ void step_vehicles(CityState &s, float dt) {
 		if (ci >= 0 && ci < int(t.conn_vehicles.size()) && !t.conn_vehicles[size_t(ci)].empty()) step_connector(s, ci, dt);
 	for (int i = int(t.micro_list.size()) - 1; i >= 0; i--) {
 		const int id = t.micro_list[size_t(i)];
+		const Vehicle &v = t.vehicles[size_t(id)];
+		if (v.alive && !vehicle_route_goal_current(s, v) && !destination_pending(v)) { despawn_vehicle(s, id, false); continue; }
 		if (t.vehicles[size_t(id)].alive && t.vehicles[size_t(id)].stuck > s.catalog.traffic.stuck_despawn_s) {
 			despawn_vehicle(s, id, false);
 			t.stuck_lost++;

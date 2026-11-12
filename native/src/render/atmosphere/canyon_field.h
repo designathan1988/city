@@ -4,6 +4,7 @@
 #pragma once
 
 #include "render/buildings/building_bodies.h"
+#include "core/async_result.h"
 #include "sim/state/city_state.h"
 
 #include <godot_cpp/classes/image.hpp>
@@ -22,6 +23,7 @@ public:
 	// { any, texture, window } for render/sky_view.gd.
 	godot::Dictionary view() const;
 	uint64_t view_revision() const { return view_revision_; } // moves whenever view() would say something else (RenderWorld::sync drives sync)
+	void set_body_cache(std::shared_ptr<BodyCache> cache) { prepared_ = std::move(cache); }
 	void touch() { revision_++; } // the buildings changed
 	void reset();
 
@@ -30,19 +32,17 @@ private:
 		godot::PackedByteArray texels;
 		float ox = 0, oz = 0;
 		bool any = false;
+		uint64_t revision = 0;
 	};
-	void work(const CityState &s, float ox, float oz, uint64_t revision);
+	static Raster work(const CityState &s, float ox, float oz, uint64_t revision, std::shared_ptr<BodyCache> prepared);
 	godot::Ref<godot::ImageTexture> texture_;
-	mutable std::mutex mutex_;
-	Raster done_;
-	bool has_done_ = false;
-	std::atomic<bool> busy_{ false };
+	AsyncResult<Raster> result_;
+	std::shared_ptr<BodyCache> prepared_;
 	std::atomic<uint64_t> revision_{ 0 };
 	uint64_t seen_ = ~uint64_t(0);
 	uint64_t view_revision_ = 0; // main thread only
 	float ox_ = 0, oz_ = 0;
 	bool any_ = false;
-	BuildingBodies bodies_; // the job's alone
 };
 
 } // namespace city

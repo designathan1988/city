@@ -33,8 +33,7 @@ static func segment_rows(info: Dictionary) -> Array:
 
 
 ## Control, legs and movements, the traffic; with a signal, its cycle and stage.
-static func node_rows(id: int) -> Array:
-	var t: Dictionary = CityStore.query(&"node_traffic", [id])
+static func node_rows(t: Dictionary) -> Array:
 	if t.is_empty():
 		return []
 	var control := tr_key("control.disconnected") if not t.known else tr_key(CONTROL_KEYS[t.control])
@@ -50,8 +49,7 @@ static func node_rows(id: int) -> Array:
 
 
 ## Each signal stage as a lamp: [text, light].
-static func lamps(id: int) -> Array:
-	var t: Dictionary = CityStore.query(&"node_traffic", [id])
+static func lamps(t: Dictionary) -> Array:
 	var out := []
 	var lights: Array = t.get("lamps", [])
 	for i in lights.size():

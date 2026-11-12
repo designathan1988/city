@@ -67,20 +67,6 @@ bool inner(const std::vector<LotPoint> &p, const std::vector<LotPoint> &q) {
 }
 } // namespace
 
-PlayerLot *LotBook::find(int id) {
-	for (PlayerLot &l : lots)
-		if (l.id == id) return &l;
-	return nullptr;
-}
-
-const PlayerLot *LotBook::find(int id) const { return const_cast<LotBook *>(this)->find(id); }
-
-int LotBook::at(double x, double z) const {
-	for (const PlayerLot &l : lots)
-		if (inside_lot({ x, z }, l.corners)) return l.id;
-	return 0;
-}
-
 std::vector<LotPoint> piece_with_front(const std::vector<LotPoint> &piece, const LotPoint &fa, const LotPoint &fb) { return with_front(piece, fa, fb); }
 
 double lot_area(const std::vector<LotPoint> &q) {

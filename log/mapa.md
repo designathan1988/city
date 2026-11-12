@@ -14,7 +14,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/api/blast_loader.cpp` · `native/src/api/traffic_loader.cpp` — blast.json → BlastParams estrito (curvas K-B, limiares, pessoas, cratera); Dictionary → TrafficParams estrito
 - `native/src/api/city_core_strike.cpp` — a bomba como API de script (`strike`, um passo de desfazer) e as sondas `damage_probe` (o que os golpes deixaram no mapa) e `blast_probe` (números do modelo)
 - `native/src/api/catalog_loader.cpp` · `native/src/api/catalog_loader.h` · `native/src/api/furniture_loader.cpp` — Dictionary → Catalog estrito; as X-macros ditam as chaves (tuning, mobiliário da rua)
-- `native/src/api/city_core.cpp` · `native/src/api/city_core.h` · `native/src/api/city_core_parts.h` · `native/src/api/city_core_bind.cpp` — ciclo de vida: catálogo, render, mapa novo, velocidade, sincronização por quadro; o que o núcleo guarda para cada área (o save em thread, o cache do inspetor, as contagens do snapshot, as estatísticas das poses); os bindings de script do CityCore
+- `native/src/api/city_core.cpp` · `native/src/api/city_core.h` · `native/src/api/city_core_parts.h` · `native/src/api/city_core_bind.cpp` — ciclo de vida: catálogo, render, mapa novo, velocidade, sincronização por quadro; o que o núcleo guarda para cada área (o save em thread, o cache do inspetor, as estatísticas das poses); os bindings de script do CityCore
 - `native/src/api/city_core_areas.cpp` — as áreas da API, cada uma um objeto próprio sobre o estado e o render do núcleo, feitas com ele e soltas antes dele; o store chama cada nome do `StoreApi` na área dele (o método `area` do núcleo): `builder`, `landscape`, `transit`, `probes`
 - `native/src/api/city_core_commands.cpp` — comandos do jogador e prévias (sim/commands) como API de script
 - `native/src/api/city_builder.h` · `native/src/api/body_api.h` · `native/src/api/city_core_body.cpp` · `native/src/api/city_core_furnish.cpp` — área `builder` (CityBuilder): o corpo de um prédio para o Construir, o que ele tem e as edições como comandos de script; a aba Interior
@@ -65,7 +65,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `native/src/sim/buildings/b40/lot_cars.cpp` · `native/src/sim/buildings/b40/lot_front.cpp` · `native/src/sim/buildings/b40/lot_back.cpp` · `native/src/sim/buildings/b40/lot_yard.cpp` — vaga de toda casa (garagem,
   cobertura, vaga de frente), acessos e becos; frente; estacionamento, serviço, pátio e docas; quintal e pátios livres
 - `native/src/sim/buildings/b40/blocks.cpp` · `native/src/sim/buildings/b40/blocks.h` — os blocos de um corpo resolvidos em sólidos (vazio, interseção e exclusão), sem mudar os blocos: é o que se desenha e o que se contorna (`record_mass`)
-- `native/src/sim/buildings/b40/body_table.h` · `native/src/sim/buildings/b40/plan_area.cpp` · `native/src/sim/buildings/b40/plan_area.h` · `native/src/sim/buildings/b40/roof_shape.h` — as versões do corpo que o jogador editou, cada uma inteira e imutável; áreas exatas de plantas (orelhas e corte convexo); forma do telhado (dono único)
+- `native/src/sim/buildings/b40/body_table.h` · `native/src/sim/buildings/b40/plan_area.cpp` · `native/src/sim/buildings/b40/plan_area.h` · `native/src/sim/buildings/b40/roof_shape.h` — versões imutáveis com consulta fraca por geração e raízes em registros/histórico/dano/jobs; áreas exatas de plantas (orelhas e corte convexo); forma do telhado (dono único)
 - `native/src/sim/buildings/b40/civic.cpp` · `native/src/sim/buildings/b40/civic.h` · `native/src/sim/buildings/b40/civic_services.cpp` · `native/src/sim/buildings/b40/open_lots.cpp` — corpos cívicos (escola, igreja, hospital; posto, mercado, prefeitura, polícia, bombeiros) e lotes abertos (praça, parque, quadra, vazio)
 - `native/src/sim/buildings/growth.h` — regras do que cresce num lote (pisos por zona/rua, altura orgânica)
 - `native/src/sim/buildings/likeness.cpp` · `native/src/sim/buildings/likeness.h` — como um corpo se parece de relance (forma, cor, telhado, andares) e o candidato de um lote menos parecido com os vizinhos em 100 m (bodySignature e unlikeness do 4.0)
@@ -322,7 +322,7 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `project/game/settings/road_prefs.gd` — o que a ferramenta de via guarda entre sessões: encaixes, teclas e muros do corte
 - `project/game/settings/settings.gd` — opções gráficas persistidas em user://settings.cfg (predefinição, escolhas, limite de quadros, vsync, tela cheia, idioma, chaves), aplicadas ao vivo
 - `project/game/settings/quality.gd` · `project/game/settings/frame_governor.gd` · `project/game/settings/render_switches.gd` — um nível gráfico no renderizador; governador do nível automático e resolução dinâmica; chaves do painel de efeitos
-- `project/game/store/city_store.gd` — único dono do CityCore no lado de script (`snapshot`)
+- `project/game/store/city_store.gd` — único dono do CityCore no lado de script (`snapshot`), assinaturas por campos e publicação sem fanout de no-op
 - `project/game/store/store_api.gd` — os nomes de comando e de consulta que o script pode mandar ao CityCore, cada um com a área dele (tabelas lidas pelo store)
 - `project/game/store/city_saves.gd` — a cidade no disco: salvar, abrir, autosave, ao perder o foco e ao fechar, arquivo de fora
 - `project/game/store/formatters.gd` — formatação de números/dinheiro (dono de `format_money`)
@@ -484,3 +484,150 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `tools/gates/owners.json` · `tools/gates/rules.json` · `tools/gates/run_gates.py` — donos únicos, configuração, executa todos
 <!-- MAPA:FIM -->
 
+
+**Correção integral de causas — preparação isolada (2026-11-07)**
+- `docs/superpowers/specs/2026-11-07-performance-causes-design.md` — desenho aprovado dos contratos e das 14 frentes que cobrem as 92 ocorrências; implementação em andamento.
+- `log/performance-causes-audit.md` — cópia da auditoria estática detalhada da base f3bdc3594fec93e46fada88d8983f237c2708a32, com fontes e contraevidências.
+- `log/performance-causes.json` — matriz C01–C92 com dono, estado e evidência por ocorrência; implementação e revisão estática separadas de validação funcional não executada.
+
+- `native/src/core/generation.h` — process-wide source identities without table-ID reuse.
+- `native/src/core/async_result.h` — replaceable, retireable async result inbox; owner pending separated from worker completion.
+- `docs/superpowers/plans/2026-11-07-performance-causes.md` — execution interfaces/steps for all approved streams and patch packaging.
+- `log/performance-causes-progress.md` — execution evidence, interleavings and rulings; no runtime verification inferred.
+- `native/src/sim/commands/edit_scope.h` — outer-command lifetime for consolidated derived-state finalization.
+- `native/src/core/free_slots.h` — indexed free-id list preserving LIFO order during constant-time restoration.
+- `native/src/core/table_delta.h` — ordered record deltas with reverse undo, preserving table position and record ids.
+- `native/src/sim/commands/lot_draft.h` — selected-record lot draft; prepares replacements/removals/appends without copying the book.
+- `native/src/sim/commands/nature_edit.h` · `native/src/sim/commands/nature_edit.cpp` — typed reversible landscape payloads and replay; visible ownership for history accounting/pagination.
+- `native/src/core/retained_memory.h` — logical allocation ledger for capacities, container metadata and deduplicated shared roots.
+- `native/src/sim/buildings/b40/body_memory.h` — deep footprint of immutable authored bodies, captured by version ownership.
+- `native/src/sim/commands/edit_memory.h` · `native/src/sim/commands/edit_memory.cpp` — explicit deep accounting of typed journal data across open/undo/redo.
+- `native/src/api/city_core_publication.cpp` — one candidate publication boundary for load/new city, API rebinding and drained old-city source retirement.
+- `native/src/core/bounds_index.h` · `native/src/core/bounds_index.cpp` — balanced rectangle index with aggregate subtree bounds and one recyclable node per record.
+- `native/src/sim/lots/lot_book_index.cpp` — player-lot mutation/index owner; cached stand/triangles and stable-order spatial queries for load, commands, undo and redo.
+- `native/src/sim/street/street_placement.h` · `native/src/sim/street/street_placement.cpp` — shared complete street placement, nonblocking cold preparation, bounded LRU retention and explicit mutation retirement.
+- `native/src/api/city_core_junction_view.cpp` — versioned junction-mark inputs, spatial side-plane rejection and screen projection, shared with the full junction query.
+
+- `project/game/settings/frame_pressure.gd` - active SceneTree process wall interval for automatic quality; explicit partial coverage, separate from rendering and simulation.
+- `native/src/api/probe_neighbors.h` - shared transient point index for opt-in pedestrian census probes; exact local predicates and early existential stop.
+
+- `native/src/sim/transit/rail_path.cpp` - immutable-graph rail path queries, goal-cost Dijkstra termination, stamped reusable scratch leases and bounded endpoint-answer retention.
+
+- `native/src/sim/transit/transit_index.cpp` - transport ID and stop/track-piece geometry indices maintained by outer mutation, load, undo and redo; stable-order local tool picks.
+
+- `native/src/sim/street/named_plates.h` / `native/src/sim/street/named_plates.cpp` - named-street seed chains/coverage plus independently prepared physical plate geometry, chunk-indexed without repeated name text.
+- `native/src/sim/roads/road_metrics.h` / `native/src/sim/roads/road_metrics.cpp` - shared oriented-joint station offsets and separate mutual-RUNS_ON run lengths, prepared in linear passes per physical revision.
+
+- `native/src/sim/simulation/growth_candidates.cpp` - queued-cell free-lot ownership, occupancy dependencies and nearest candidate tree; original queue compaction/tie semantics.
+
+- `tools/performance/apply_fixes.py` / `tools/performance/README.md` - source-bundle exporter/applicator with audit-closure guard, full hash preflight, protected-checkout refusal, worktree identity and idempotent recovery.
+
+- `native/src/render/buildings/body_cache.h` / `native/src/render/buildings/body_cache.cpp` - shared immutable building masses with exact generation/record/source identity, byte LRU retention and independent active leases.
+
+- `native/src/sim/nature/fog_paint.h` / `native/src/sim/nature/fog_paint.cpp` - ordered fog-dab ownership and persistent edit-maintained region index; chronological local snapshots for raster jobs.
+
+- `native/src/sim/traffic/actor_index.h` / `native/src/sim/traffic/actor_index.cpp` - live actor bounds for ordered local occupancy/blast/ray candidates, synchronized at birth/removal/movement/publication boundaries.
+
+- `native/src/sim/street/street_chains.h` / `native/src/sim/street/street_chains.cpp` - bounded shared greedy continuation/seed-chain preparation with local node revisions, exact original order/ties and independent cold readers.
+
+- `native/src/render/detail_hold.h` - shared complementary detail hysteresis for people and retained bodies, without changing their distance bands.
+- `native/src/render/static_instance_draw.h` - exact active-row publication for instance groups that change independently of render interpolation; bounds-only metadata updates retain GPU buffers.
+
+- `native/src/render/spatial_instance_draw.h` - populated-sector ownership, stable local row identities, conservative transformed bounds and camera/caster presentation units.
+
+- `native/src/render/projected_error.h` - conservative vertical geometry error in actual camera clip coordinates and viewport pixels, including perspective/cancellation rounding and invalid-view fallback.
+
+- `native/src/api/prepared_body.h` / `native/src/api/prepared_body.cpp` - opaque immutable native body handoff for modelling/placement/previews; precomputed extent and lazily retained deterministic digest, without city/GPU ownership.
+
+- BodyCache/body_table/interior/pane_rooms: immutable floor/pane reuse shares the mass byte LRU, final-source weak retirement, explicit workspace leases and exact room keys. No new file in this refinement.
+
+- `native/src/core/region_versions.h` - sparse persistent regional dependency stamps with reset epochs and conservative invalid-footprint fallback.
+- `native/src/sim/nature/plant_ground.h` / `native/src/sim/nature/plant_ground.cpp` - one byte LRU for immutable regional plant ecology and prepared road/lot exclusion indices, shared by near/far trees and cover.
+
+- ShoreField/shore_view/shore.gdshaderinc: regional halo preparation and coherent two-bank array page publication; no new source file in this refinement.
+
+- `native/src/core/ranked_ids.h` - ascending live-id rank selection over BoundsIndex's shared AVL/count owner; idempotent membership changes preserve all other relative ranks.
+
+- `native/src/sim/traffic/route_arena.h` - explicit route slice handle and stable size-class page owner; shared vehicle/walker interface, immediate empty-page retirement and no fleet compaction.
+
+- TransitParts/TransitRenderer/TransitData: persistent leg/piece/run preparation under shared work credits, source-record versions and first-line colour preparation; no new source file in this refinement.
+
+- OverlayRenderer/OverlayBuild: congestion geometry retained independently from per-refresh colour spans; changed RGBA8 attribute ranges preserve vertex/instance order. No new source file in this refinement.
+
+- `native/src/core/ordinal_bounds_index.h` - ordered size_t ordinals sharded over the shared BoundsIndex AVL, preserving global id order without a total-input cap.
+
+- `native/src/render/chunk_results.h` - ordered CPU/baked and completion-only heaps; cached waiting bytes, stable publication order and next-cycle deferral.
+
+- `native/src/core/byte_pages.h` - stable 64 KiB serialization pages, seekable framing/rollback and one-pass page retirement.
+- `native/src/api/save_file.h` / `native/src/api/save_file.cpp` - single atomic GCMP/ZSTD file writer; bounded compression blocks without engine whole-file buffering.
+
+- WaterRenderer/RenderWorld: retained versioned water-cell continuation under shared producer credits; no new source file.
+
+- ModelInputs/ModelBody/Massing/BodySurvey: pure model preparation projects module/colour values and leaves the live edit lock; no new source file in this refinement.
+
+- `native/src/sim/commands/survey_input.h` - immutable triangle range and pixel lease; independent per-pass indexed part cursor, no expanded soup requirement.
+- `native/src/api/prepared_reference.h` / `native/src/api/prepared_reference.cpp` - abstract native reference root retaining validated packed vertices/indices across asynchronous pictures, plus legacy packed input adapter.
+
+- `native/src/core/paged_array.h` - immutable radix-root scalar versions, shared-path/page copying, private parallel block construction and restricted page leases.
+- `native/src/core/paged_grid.h` - spatial 64x64 scalar tiles over PagedArray; row-major sampling/copies and region-only page retention.
+
+- `native/src/render/job_request.h` - shared desired-request retirement: remove identity before canceling CPU/bake captures outside the result mutex. RenderWorld, mesh/far-road, building, zones, tree and cover dirty/eviction paths use it.
+
+- `native/src/sim/buildings/b40/body_content.h` - single persisted-field schema for exact body identity and current-version wire writing; no digest used as equality.
+
+- `native/src/sim/citygen/lot_raster.h` / `native/src/sim/citygen/lot_raster.cpp` - CityState-owned byte LRU of exact immutable circle row spans shared by adjacent block/strip lot windows; lattice/size-ineligible input keeps the original uncached output. Existing lot_gen.h owns the common disc_rows predicate.
+
+- TransitData/transit_index, TransitRun/transit_sim and rail_run: semantic bus/stop-lane/rail and per-line route dependency generations, old/new reverse stop users, per-mode rail graphs, indexed fleet reconciliation and retained loop/crossing preparation. No new source file in this refinement.
+
+- LaneGraph/lane_graph.cpp/lane_graph_edit.cpp/routing.cpp: physical-source prepared routing connector projection, invalidated before connector-pool reuse; no new source file.
+
+- `native/src/sim/traffic/route_counts.h` - immutable micro-lane-count input roots, maintained with actual lane-list membership for BPR route costs. PagedArray gains sparse grow preserving old snapshot layouts.
+
+- `native/src/core/stable_chunks.h` - scalar/non-owning stable raw blocks with logical reset, random-access heap iterators and bounded radix directory growth; shared by A* open sets and the yard node/heap alias. Existing generation.h now saturates before identity wrap.
+
+- Existing astar.h now owns resumable start/pop/one-edge/one-parent phases and explicit Pending/Found/NoPath/Limit statuses. LaneGraphTypes owns the bounded physical cursor; vehicle/pedestrian entry points use the same engine through an explicit synchronous compatibility boundary.
+
+- `native/src/core/work_budget.h` - single strict integer work-credit primitive; existing render BuildBudget is an alias with unchanged semantics.
+- `native/src/sim/traffic/route_search.h` - owned vehicle route input/epoch contract, bounded advance or explicit synchronous compatibility; routing.cpp owns its implementation, without retained city pointers/locks.
+
+- `native/src/sim/traffic/route_admission.h` / `route_admission.cpp` - shared FIFO route intents, one reusable guarded search, cooperative unpublished path assembly and safe-point whole-result delivery; bus consumer joins first.
+- `native/src/sim/traffic/birth_reservations.h` - pending lane-birth proposal reservations with reverse actor retirement, separate from physical lane membership.
+- RoutePool now separates unpublished writable RouteDraft from whole RouteRef publication/version; transit retains captured bus attempts/identities while Pending, and refresh_vehicle_pose owns canonical body/index preparation without adding trail samples.
+
+- Existing meso.cpp now owns persistent-turn arbitration of due events and shared road-query quanta; meso replan retains captured popped-event debt and publishes whole paths. TrafficState event arrays use stable raw scalar chunks and exact schedule identities without changing time-only heap comparisons.
+
+- Existing demand.cpp owns the Pending new-trip recipient and captured destination/failure policy; lot/lorry departures and give-ups consume explicit request status. Vehicle motion and meso lane-end arrival retain the actor while waiting; off-lane slot recycle now receives CityState to cancel every route purpose before reuse.
+
+- Existing lot_demand.cpp owns the Pending lot-arrival recipient, captured bay/car selection and delivery-owned debt/holder publication. ParkingState keeps only a weak request ticket; parking_sources.cpp assigns slot generations. step_lots resumes success chains without redrawing Pending; car/truck selectors exclude an already desired trip/assignment.
+
+- Existing yard.h/yard.cpp publish completed DockWays as independent immutable shared records; pending lorry calls pin only their selected dock. lorry_traffic.cpp owns captured dock/truck/gate delivery and validates source identity after planner promotion/rebuild. city_core_park_probe.cpp reads the same pinned dock records.
+
+- Existing routing.cpp owns captured mandatory route repair and explicit RouteRepair status; vehicle_motion.cpp brakes only the pending actor and continues follower integration, retaining immediate alternate-lane behavior and safe-point terminal loss classification.
+
+- `native/src/sim/traffic/route_join.h` - shared cooperative unpublished query/prefix/old-tail assembly, one segment per credit with explicit whole adoption/retirement. RouteAdmission adds owned result preparation/retirement hooks; optional reconsideration uses them for exact subpath comparison and complete path publication.
+
+- Existing routing.cpp owns captured SELECT/LOCAL/FULL optional detours; LaneGraphTypes shares bounded physical adjacency reads between detour selection and unprepared A* fallback. RouteAdmission owns request preparation Pending/Ready/Skipped; RouteJoin preserves whole-route no-op identity during emitted segments. Separate reroute count state/catalogue value were removed. Meso/mandatory old-path repairs yield to a newer desired destination while preserving event debt.
+
+- Existing route_search.h, routing.cpp and ped_routes.cpp share one guarded query scratch for driving/walking adjacency; existing route_admission.h/.cpp keep an immutable request domain, allocate pedestrian results in ped_pool and separate vehicle/pedestrian/demand key namespaces. Walking consumers still use compatibility until migration.
+
+- Existing ped_spawn.cpp owns actual walker installation/generation via commit_walker; ordinary, kerb and company births use it. Pedestrian despawn now takes CityState and retires only pedestrian route requests before slot reuse; reset retires pedestrian jobs and its birth batch before clearing ped_pool.
+
+- Existing RoadNetwork records now carry derived cold birth generations; add/put own their live-slot lifetime and public endpoint getters expose no dead identity. RouteAdmission binds submitted endpoints across graph restarts and distinguishes source/target retirement; destination consumers do not rebind a retired target ID to a new road/node. Explicit save format remains authored-field-only.
+
+- Existing ped_fright.cpp owns captured walking escape delivery with retained final-goal birth, source/prefix/edge witnesses and cooperative fallback/prefix assembly. Pedestrians wait at a pending corner with standing animation; newer fright input supersedes old choice without redrawing the destination. TrafficSystem pumps again only after pedestrian references are released, using remaining shared credits.
+
+- Existing birth_reservations.h now owns versioned lane claim snapshots and metadata-only leases, with sparse actor reverse retirement. Bus/demand readers use snapshot positions/types and live road birth keys; pending claims also occupy demand capacity. No reservation lease stores or calls a CityState pointer.
+
+- Existing demand.cpp owns a resumable VehicleBirthIntent recipe and batch-held scalar attempt debt; weak admission tickets allow cancelled queue work to resume without redrawing. Type/pick/zone/destination/room precede shared route search, and a whole route plus physical capacity precedes actual Vehicle/RNG publication. The last driving route-count quota was removed from data/macro.
+
+- Existing RouteRef/RouteDraft/RoutePool retain final destination birth, included in whole set/join no-op identity. Query/fallback/pedestrian birth writers stamp their real final target. Canonical vehicle/walker goal-current and pending-destination owners prevent published-tail ID reuse, stale optional publication and premature old-lane arrival while a new destination waits.
+
+- Existing junction_control.cpp, lane_change.cpp, light_rule.cpp, meso.cpp and transit_sim.cpp validate published final-target lifetime before future route IDs affect connector/lane choice or lights/crossing/timing look-ahead. Physical current-source safety remains separate from the obsolete future path.
+
+- `native/src/sim/traffic/ped_birth.h` - explicit Pending/Ready/Failed/Cancelled walker birth ticket, generation-checked claim and explicit cancellation/cleanup contract.
+- `native/src/sim/traffic/walker_birth_reservations.h` - spatial metadata leases for pending walker proposals, independent of physical walker membership and CityState lifetime.
+- Existing ped_spawn.cpp now owns saved ambient/kerb birth recipes and cooperative destination selection, admitted walking searches and credited whole output assembly. Ordinary batches and bus/kerb parents share RouteAdmission; legacy find_route/find_walk_route/run_sync entry points were removed after their last production caller migrated. BusCall/KerbStop now retain birth tickets and generational held-person references. Door caches use canonical building revisions and live segment births, with exact reverse sidewalk membership and revision-checked deferred reads.
+
+- `project/game/store/input_sequence.gd` - in-progress ordered input owner: paged immutable command/path/timing/zone recipes, shared work-credit cursor, weak result recipient and explicit barrier ticket. CityStore owns the queue/executor; history/persistence barriers are migrating. Brush producers and the remaining result-dependent consumers are not connected yet; C20 stays open.
+
+- `project/data/game/editing.json` - shared uncalibrated input iterator/sample work allowance, read only through DataTables GAME; InputSequence advances from CityStore._process. Persistence/history roots use the new barriers; brush/gesture producer migration is still in progress, so their synchronous sample loops remain.

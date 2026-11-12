@@ -72,10 +72,11 @@ void BuildingRenderer::set_broken(const std::unordered_set<uint32_t> &seeds) {
 
 BuildingRenderer::Inputs BuildingRenderer::gather(const CityState &s, const int64_t *chunk_keys, int count) const {
 	Inputs in;
-	{
-		std::lock_guard<std::mutex> lk(broken_mutex_);
-		in.broken = broken_;
-	}
+	in.prepared = body_cache_;
+	in.data = &s.buildings.designs;
+	in.occluder_min_storeys = int(s.catalog.tune.render_occluder_min_storeys);
+	in.draw_lots = lots_drawn_.load();
+	const b40::BodyInput procedural{ s.buildings.designs.edited->generation(), {} };
 	float minx = FLT_MAX, minz = FLT_MAX, maxx = -FLT_MAX, maxz = -FLT_MAX;
 	for (int k = 0; k < count; k++) {
 		const float x0 = float(key_x(chunk_keys[k])) * CHUNK, z0 = float(key_y(chunk_keys[k])) * CHUNK;
@@ -83,6 +84,7 @@ BuildingRenderer::Inputs BuildingRenderer::gather(const CityState &s, const int6
 			const Building &b = s.buildings.items[size_t(id)];
 			if (b.floors == 0 && b.body == 0 && !b40::is_open_lot(b.fn)) return;
 			in.records.push_back(b);
+			in.bodies.push_back(b.body ? s.buildings.designs.edited->input(b.body) : procedural);
 			in.ids.push_back(id);
 			const float r = 0.5f * std::hypot(b.w, b.d) + LOT_GROUND_PAD_M; // the lot, whatever its turn
 			minx = std::min(minx, b.x - r);
@@ -90,6 +92,11 @@ BuildingRenderer::Inputs BuildingRenderer::gather(const CityState &s, const int6
 			maxx = std::max(maxx, b.x + r);
 			maxz = std::max(maxz, b.z + r);
 		});
+	}
+	{
+		std::lock_guard<std::mutex> lk(broken_mutex_);
+		for (const Building &b : in.records)
+			if (broken_.count(b.seed)) in.broken.insert(b.seed);
 	}
 	if (!in.records.empty()) in.ground = s.terrain.patch(minx, minz, maxx, maxz);
 	in.view = s.interior;
@@ -146,7 +153,7 @@ void BuildingRenderer::link_shells(Built &out, std::array<b40::Shell, SUB_COUNT>
 }
 
 BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t key, bool near, bool mid) const {
-	thread_local BuildingBodies bodies;
+	BuildingBodies bodies(in.prepared);
 	Built out;
 	out.key = key;
 	if (!near && !mid) return out;
@@ -154,11 +161,12 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 	std::array<b40::Shell, SUB_COUNT> mid_parts;
 	link_shells(out, mid_parts);
 	for (size_t r = 0; r < in.records.size(); r++) {
+		if (JobPool::cancelled()) return out;
 		const Building &rec = in.records[r];
 		// The near level draws a building the Interior layer opens cut; the coarse levels draw it whole (the camera is close).
 		const bool cut = near && in.view.cuts(in.ids[r]);
 		b40::Placed pl;
-		bodies.place(designs(), look_, in.ground, rec, pl, cut ? &in.view.cut : nullptr);
+		bodies.place(*in.data, look_, in.ground, rec, pl, cut ? &in.view.cut : nullptr, &in.bodies[r]);
 		int sub = sub_index(rec, key);
 		const bool own_design = pl.b->signature != 0 && !cut; // cut open it is the shell that shows its floors
 		const bool broken = in.broken.count(rec.seed) > 0; // what stands of it is in pieces: its lot is still drawn here
@@ -172,11 +180,11 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 				b40::emit_roofs(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
 			}
 			if (cut) b40::emit_interior(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
-			if (lots_drawn_.load()) b40::emit_lot(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
-			if (!broken) out.walls.add(pl, int(state_->catalog.tune.render_occluder_min_storeys));
+			if (in.draw_lots) b40::emit_lot(near_shells[size_t(sub)], parts_shells[size_t(sub)], pl);
+			if (!broken) out.walls.add(pl, in.occluder_min_storeys);
 			out.cut = out.cut || cut;
 			if (!mid) continue; // both asked (first build close to the camera): the coarse mid level follows
-			if (cut) bodies.place(designs(), look_, in.ground, rec, pl);
+			if (cut) bodies.place(*in.data, look_, in.ground, rec, pl, nullptr, &in.bodies[r]);
 		}
 		pl.coarse = true;
 		mid_shells[size_t(sub)].flat = &out.flat_shell[size_t(sub)];
@@ -185,7 +193,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 			b40::emit_relief(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
 			b40::emit_roofs(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
 		}
-		if (lots_drawn_.load()) b40::emit_lot(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
+		if (in.draw_lots) b40::emit_lot(mid_shells[size_t(sub)], mid_parts[size_t(sub)], pl);
 	}
 	for (size_t i = 0; i < SUB_COUNT; i++) { // `out` is about to move
 		near_shells[i].glass = mid_shells[i].glass = out.flat_shell[i].glass = nullptr;
@@ -249,7 +257,7 @@ BuildingInteriorCost BuildingRenderer::interior_cost(const CityState &s, int id,
 }
 
 BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in, int64_t super_key) const {
-	thread_local BuildingBodies bodies;
+	BuildingBodies bodies(in.prepared);
 	SuperBuilt out;
 	out.key = super_key;
 	b40::Shell &far = out.far_shell;
@@ -258,9 +266,11 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	far.coarse = true;
 	far.custom_used = 1;
 	const int sx = key_x(super_key) * CHUNKS_PER_SUPER_AXIS, sz = key_y(super_key) * CHUNKS_PER_SUPER_AXIS;
-	for (const Building &rec : in.records) {
+	for (size_t r = 0; r < in.records.size(); r++) {
+		if (JobPool::cancelled()) return out;
+		const Building &rec = in.records[r];
 		b40::Placed pl;
-		bodies.place(designs(), look_, in.ground, rec, pl);
+		bodies.place(*in.data, look_, in.ground, rec, pl, nullptr, &in.bodies[r]);
 		pl.lean = true;
 		const size_t first = far.col.size();
 		b40::emit_far(far, pl, true);

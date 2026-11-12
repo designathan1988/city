@@ -46,7 +46,7 @@ void TerrainBridge::write_region(const Heightfield &hf, Object *data, int bx, in
 	bytes.resize(int64_t(R) * R * BYTES_PER_SAMPLE);
 	float *dst = reinterpret_cast<float *>(bytes.ptrw());
 	for (int pz = 0; pz < R; pz++)
-		std::memcpy(dst + size_t(pz) * R, &hf.final_h[size_t(bz * R + pz) * hf.N + size_t(bx) * R], size_t(R) * BYTES_PER_SAMPLE);
+		hf.final_h.copy_to(dst + size_t(pz) * R, size_t(bz * R + pz) * hf.N + size_t(bx) * R, size_t(R));
 	region->call("set_height_map", Image::create_from_data(R, R, false, Image::FORMAT_RF, bytes));
 	if (create) {
 		PackedByteArray cb;

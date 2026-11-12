@@ -6,6 +6,7 @@
 #include "sim/traffic/lane_closures.h"
 
 #include "core/laps.h"
+#include "core/generation.h"
 #include "sim/traffic/yard.h"
 
 #include <algorithm>
@@ -40,7 +41,7 @@ bool close_if_clear(CityState &s, Lorry &l, const std::vector<LaneClosure> &stre
 	if (l.closed) return true;
 	for (const LaneClosure &c : stretches)
 		if (!lane_clear(s, c)) return false;
-	s.traffic.closures.insert(s.traffic.closures.end(), stretches.begin(), stretches.end());
+	s.traffic.closures.add(stretches);
 	l.closed = !stretches.empty();
 	return true;
 }
@@ -61,15 +62,25 @@ bool may_go(CityState &s, Lorry &l, float dt) {
 	return true;
 }
 
+void refresh_docks(CityState &s, int source) {
+	const auto found = s.traffic.park.lots.find(source);
+	if (found == s.traffic.park.lots.end()) return;
+	for (int bay : found->second.bays) if (s.traffic.park.bays[size_t(bay)].dock) refile_bay(s, bay, false);
+}
+
 void forget(CityState &s, int index) {
 	ParkingState &pk = s.traffic.park;
+	const int retired_source = pk.lorries[size_t(index)].building;
 	open_lanes(s.traffic, pk.lorries[size_t(index)].id);
 	s.traffic.vehicles[size_t(pk.lorries[size_t(index)].id)].lorry = -1;
 	if (index + 1 != int(pk.lorries.size())) {
 		pk.lorries[size_t(index)] = std::move(pk.lorries.back());
 		s.traffic.vehicles[size_t(pk.lorries[size_t(index)].id)].lorry = index;
 	}
+	const int source = retired_source;
 	pk.lorries.pop_back();
+	auto count = pk.lorries_by_source.find(source);
+	if (--count->second == 0) { pk.lorries_by_source.erase(count); refresh_docks(s, source); }
 }
 
 // On the lane past the gate: a truck of the traffic again.
@@ -90,7 +101,7 @@ void join(CityState &s, int index) {
 	v.v = s.catalog.traffic.lorry_join_ms;
 	micro_add(t, id);
 	lane_add(s, ds * MAX_LANES + lane, id);
-	if (!new_trip(s, id, ds)) despawn_vehicle(s, id, true);
+	if (new_trip(s, id, ds, TripFailure::ARRIVED) == TripRequest::NO_DESTINATION) despawn_vehicle(s, id, true);
 }
 
 void give_up(CityState &s, int index) {
@@ -100,7 +111,7 @@ void give_up(CityState &s, int index) {
 	v.stop_at = -1;
 	forget(s, index);
 	if (v.pass >= 0) release(s, id, v.pass);
-	if (v.ds < 0 || !new_trip(s, id, v.ds)) v.goal_s = 0;
+	if (v.ds < 0 || new_trip(s, id, v.ds) == TripRequest::NO_DESTINATION) v.goal_s = 0;
 }
 
 // Stopped before the gate, it leaves the lanes where it stands: the way in starts from there.
@@ -207,9 +218,14 @@ const YardPlan *yard_of(CityState &s, int building) {
 // feeds the probes.
 void plan_yard(CityState &s) {
 	ParkingState &pk = s.traffic.park;
-	if (!pk.planner) return;
+	int work = std::max(0, int(s.catalog.traffic.lorry_plan_work));
+	const int64_t paid = std::min(pk.planner_work_debt, int64_t(work));
+	pk.planner_work_debt -= paid;
+	work -= int(paid);
+	if (!pk.planner || work <= 0) return;
 	Laps took;
-	const bool done = pk.planner->advance(int(s.catalog.traffic.lorry_plan_work));
+	const bool done = pk.planner->advance_shared(work);
+	if (work < 0) pk.planner_work_debt += -int64_t(work);
 	const double ms = took.lap();
 	pk.plan_ms += ms;
 	pk.plan_tick_ms = std::max(pk.plan_tick_ms, ms);
@@ -225,64 +241,106 @@ int passing_truck(const CityState &s, const YardGate &g) {
 	const TrafficParams &p = s.catalog.traffic;
 	int best = -1;
 	float best_d = p.lorry_call_reach_m;
-	for (int id : t.micro_list) {
+	for (int id : t.vehicle_index.near(g.outer.x, g.outer.y, p.lorry_call_reach_m)) {
 		const Vehicle &v = t.vehicles[size_t(id)];
-		if (v.type != VehicleType::TRUCK || v.car >= 0 || v.lorry >= 0 || v.ds < 0 || v.conn >= 0 || v.pass >= 0) continue;
+		if (v.micro_idx < 0) continue;
+		if (v.type != VehicleType::TRUCK || v.car >= 0 || v.lorry >= 0 || v.assignment_route_request || v.trip_route_request || v.ds < 0 || v.conn >= 0 || v.pass >= 0) continue;
 		if (v.ds == g.ds && v.s > g.stop_at) continue;
 		const float d = (V2(v.cur.x, v.cur.z) - g.outer).len();
-		if (d < best_d) { best_d = d; best = id; }
+		if (d < best_d || (best >= 0 && d == best_d && v.micro_idx < t.vehicles[size_t(best)].micro_idx)) { best_d = d; best = id; }
 	}
 	return best;
 }
 
+void submit_lorry_route(CityState &s, int id, int bay, uint64_t generation, YardGate gate, std::shared_ptr<const DockWays> ways, std::shared_ptr<const ParkingRouteTicket> ticket);
+class LorryRouteRecipient final : public RouteRecipient {
+public:
+	LorryRouteRecipient(const Vehicle &v, int id, int bay, uint64_t generation, int building, YardGate gate, std::shared_ptr<const DockWays> ways, std::shared_ptr<const ParkingRouteTicket> ticket) :
+		id_(id), bay_(bay), building_(building), from_(v.ds), ri_(v.ri), generation_(v.generation), bay_generation_(generation), route_(v.route.version), gate_(gate), ways_(std::move(ways)), ticket_(std::move(ticket)) {}
+	RecipientState state(const CityState &s) const override {
+		const Vehicle *v = actor(s); if (!v || !way_current(s) || v->off || !v->micro || v->car >= 0 || v->lorry >= 0) return RecipientState::OBSOLETE;
+		if (!s.traffic_levels.vehicles_on || v->conn >= 0) return RecipientState::WAIT_SOURCE;
+		return eligible(s, *v) && v->ds == from_ && v->ri == ri_ && v->route.version == route_ ? RecipientState::READY : RecipientState::OBSOLETE;
+	}
+	bool complete(CityState &s, SearchStatus status, RouteDraft &prepared) override {
+		if (!actor(s)) { finish(s); return true; }
+		Vehicle &v = s.traffic.vehicles[size_t(id_)];
+		const bool current = state(s) == RecipientState::READY;
+		if (status != SearchStatus::TARGET_RETIRED && (!current || status == SearchStatus::INVALIDATED) && way_current(s) && eligible(s, v)) {
+			submit_lorry_route(s, id_, bay_, bay_generation_, gate_, ways_, ticket_); return true;
+		}
+		if (!current || status != SearchStatus::FOUND || prepared.empty()) {
+			if (current && (status == SearchStatus::NO_PATH || status == SearchStatus::LIMIT)) ++s.traffic.park.lorry_calls[CALL_NO_ROUTE];
+			finish(s); return true; // Pending/obsolete source is not a no-route statistic
+		}
+		TrafficState &t = s.traffic; ParkingState &pk = t.park;
+		t.route_pool.adopt(v.route, prepared); v.ri = 0;
+		v.stop_at = gate_.stop_at + s.catalog.traffic.classes[int(v.type)].length * 0.5f;
+		v.stop_lane = gate_.lane; v.goal_s = BIG; v.lorry = int(pk.lorries.size());
+		Lorry l; l.id = id_; l.building = building_; l.bay = bay_; l.gate = gate_;
+		l.into = ways_->into; l.away = ways_->away; l.into_street = ways_->into_street; l.away_street = ways_->away_street;
+		const int seg = gate_.ds / 2;
+		sweep_lanes(s, l.into, 0, ways_->into_street, seg, id_, l.close_in);
+		sweep_lanes(s, l.away, ways_->away_street, int(l.away.size()) - 1, seg, id_, l.close_out);
+		pk.lorries.push_back(std::move(l));
+		if (++pk.lorries_by_source[building_] == 1) refresh_docks(s, building_);
+		++pk.lorries_sent; ++pk.lorry_calls[CALL_SENT]; finish(s);
+		return true;
+	}
+private:
+	const Vehicle *actor(const CityState &s) const {
+		if (id_ < 0 || size_t(id_) >= s.traffic.vehicles.size()) return nullptr;
+		const Vehicle &v = s.traffic.vehicles[size_t(id_)];
+		return v.alive && v.generation == generation_ && v.assignment_route_request == ticket_->identity ? &v : nullptr;
+	}
+	bool way_current(const CityState &s) const {
+		const ParkingState &pk = s.traffic.park;
+		if (bay_ < 0 || size_t(bay_) >= pk.bays.size()) return false;
+		const Bay &b = pk.bays[size_t(bay_)];
+		if (!b.alive || b.generation != bay_generation_ || !b.dock || b.source != building_ || b.holder >= 0 || pk.lorries_by_source.find(building_) != pk.lorries_by_source.end()) return false;
+		if (gate_.ds < 0 || size_t(gate_.ds) >= s.traffic.g.ds.size() || !s.traffic.g.ds[size_t(gate_.ds)].ok) return false;
+		const YardPlan *plan = nullptr; const auto hit = pk.yards.find(building_);
+		if (hit != pk.yards.end()) plan = hit->second.get();
+		else if (pk.planner && pk.planner_building == building_) plan = &pk.planner->plan;
+		if (!plan) return false;
+		const auto dock = plan->dock_of.find(bay_);
+		return dock != plan->dock_of.end() && plan->docks[dock->second] == ways_; // promotion preserves the exact immutable dock record
+	}
+	bool eligible(const CityState &s, const Vehicle &v) const {
+		return v.type == VehicleType::TRUCK && !v.off && v.micro && v.car < 0 && v.lorry < 0 && !v.trip_route_request && v.conn < 0 && v.pass < 0 && v.ds >= 0 && size_t(v.ds) < s.traffic.g.ds.size() && s.traffic.g.ds[size_t(v.ds)].ok && (v.ds != gate_.ds || v.s <= gate_.stop_at);
+	}
+	void finish(CityState &s) const {
+		if (actor(s)) s.traffic.vehicles[size_t(id_)].assignment_route_request = 0;
+		auto &pending = s.traffic.park.pending_lorry_route; if (pending.lock() == ticket_) pending.reset();
+	}
+	int id_, bay_, building_, from_, ri_; uint64_t generation_, bay_generation_, route_; YardGate gate_;
+	std::shared_ptr<const DockWays> ways_; std::shared_ptr<const ParkingRouteTicket> ticket_;
+};
+void submit_lorry_route(CityState &s, int id, int bay, uint64_t generation, YardGate gate, std::shared_ptr<const DockWays> ways, std::shared_ptr<const ParkingRouteTicket> ticket) {
+	Vehicle &v = s.traffic.vehicles[size_t(id)]; v.assignment_route_request = ticket->identity;
+	s.traffic.route_admission.submit(s, {RoutePurpose::LORRY, id}, {v.ds, gate.ds}, std::make_unique<LorryRouteRecipient>(v, id, bay, generation, s.traffic.park.bays[size_t(bay)].source, gate, std::move(ways), std::move(ticket)));
+}
+
 void call(CityState &s) {
+	if (!s.traffic.park.pending_lorry_route.expired()) return;
 	TrafficState &t = s.traffic;
 	ParkingState &pk = t.park;
-	const TrafficParams &p = s.catalog.traffic;
-	std::vector<int> docks;
-	for (int b = 0; b < int(pk.bays.size()); b++) {
-		const Bay &bay = pk.bays[size_t(b)];
-		if (!bay.alive || !bay.dock || bay.holder >= 0) continue;
-		bool busy = false;
-		for (const Lorry &l : pk.lorries) busy = busy || l.building == bay.source;
-		if (!busy) docks.push_back(b);
-	}
-	if (docks.empty()) { pk.lorry_calls[CALL_NO_DOCK]++; return; }
-	const int b = docks[size_t(t.rng.next() % uint32_t(docks.size()))];
+	if (pk.free_docks.empty()) { pk.lorry_calls[CALL_NO_DOCK]++; return; }
+	const int b = pk.free_docks.select(size_t(t.rng.next() % uint32_t(pk.free_docks.size())));
 	Bay &bay = pk.bays[size_t(b)];
 	const YardPlan *plan = yard_of(s, bay.source);
 	if (!plan) { pk.lorry_calls[CALL_PLANNING]++; return; }
-	const DockWays *ways = nullptr;
-	for (const DockWays &w : plan->docks) ways = w.bay == b ? &w : ways;
+	std::shared_ptr<const DockWays> ways;
+	const auto found = plan->dock_of.find(b);
+	if (found != plan->dock_of.end()) ways = plan->docks[found->second];
 	if (!ways && pk.planner && pk.planner_building == bay.source) { pk.lorry_calls[CALL_PLANNING]++; return; }
 	if (!ways || ways->gate < 0) { pk.lorry_calls[CALL_NO_WAY]++; return; }
 	const YardGate &gate = plan->gates[size_t(ways->gate)];
 	const int id = passing_truck(s, gate);
 	if (id < 0) { pk.lorry_calls[CALL_NO_TRUCK]++; return; }
-	Vehicle &v = t.vehicles[size_t(id)];
-	std::vector<int> route;
-	if (!find_route(s, v.ds, gate.ds, route) || route.empty()) { pk.lorry_calls[CALL_NO_ROUTE]++; return; }
-	route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
-	v.ri = 0;
-	v.stop_at = gate.stop_at + p.classes[int(v.type)].length * 0.5f;
-	v.stop_lane = gate.lane;
-	v.goal_s = BIG;
-	v.lorry = int(pk.lorries.size());
-	Lorry l;
-	l.id = id;
-	l.building = bay.source;
-	l.bay = b;
-	l.gate = gate;
-	l.into = ways->into;
-	l.away = ways->away;
-	l.into_street = ways->into_street;
-	l.away_street = ways->away_street;
-	const int seg = gate.ds / 2;
-	sweep_lanes(s, l.into, 0, ways->into_street, seg, id, l.close_in);
-	sweep_lanes(s, l.away, ways->away_street, int(l.away.size()) - 1, seg, id, l.close_out);
-	pk.lorries.push_back(std::move(l));
-	pk.lorries_sent++;
-	pk.lorry_calls[CALL_SENT]++;
+	auto ticket = std::make_shared<const ParkingRouteTicket>(ParkingRouteTicket{next_generation()});
+	pk.pending_lorry_route = ticket;
+	submit_lorry_route(s, id, b, bay.generation, gate, std::move(ways), std::move(ticket));
 }
 } // namespace
 

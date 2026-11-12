@@ -7,6 +7,9 @@
 #include "render/agents/people_renderer.h"
 #include "render/mesh_builder.h"
 #include "render/rs_util.h"
+#include "render/static_instance_draw.h"
+
+#include <memory>
 
 #include <cstdint>
 #include <unordered_map>
@@ -14,14 +17,14 @@
 
 namespace city {
 
-godot::AABB mesh_outline(const MeshBuilder &b);
-
 class FleetShadow {
 public:
 	void init(const godot::RID &scenario, const godot::RID &material, const MeshBuilder &hull, float sector_m, float inset, int models);
+	void share_geometry(const FleetShadow &source); // independent instances, same immutable model resource
 	void set_model(int model, const MeshBuilder &body); // the hull fitted to this model's outline
 	void add(int model, const Pose &p);
 	void draw(); // this frame's sectors, and those left empty go
+	void reset(); // discard city instances; keep the model hull and its fits
 	void free();
 
 private:
@@ -31,10 +34,11 @@ private:
 	};
 	struct Sector {
 		InstanceRows buf{ MM_PLAIN_STRIDE };
-		MultiMeshDraw draw;
+		StaticInstanceDraw draw;
+		godot::AABB bounds;
 	};
 	godot::RID scenario_, material_;
-	OwnedMesh hull_;
+	std::shared_ptr<OwnedMesh> hull_;
 	godot::AABB hull_box_;
 	float sector_m_ = 0, inset_ = 1;
 	std::vector<Fit> fit_;

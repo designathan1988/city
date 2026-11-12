@@ -39,13 +39,13 @@ void dress_block(Volume &v, const ModelDress &d) {
 	}
 }
 
-void add_model_block(const ModelTable &t, const ModelBlock &m, Body &b) {
+void add_model_block(float module_m, const ModelBlock &m, Body &b) {
 	BlockSpec spec{ m.x, m.y, m.w, m.d, m.base, m.storeys, m.roof, m.fill, m.base == 0 ? m.ground : uint8_t(BAY_NONE), m.outline.empty() ? nullptr : &m.outline };
 	int at = add_block(b, spec);
 	Volume &v = b.volumes[size_t(at)];
 	v.pitch = m.pitch;
 	v.keep = true;
-	for (int side = 0; side < v.sides() && side < MAX_FACES; side++) v.faces[side].bays = std::max(1, int(std::lround(side_length(v, side) / t.module_m)));
+	for (int side = 0; side < v.sides() && side < MAX_FACES; side++) v.faces[side].bays = std::max(1, int(std::lround(side_length(v, side) / module_m)));
 	if (m.pattern != NO_PATTERN) {
 		op_set_pattern(b, at, -1, -1, m.pattern);
 		if (m.base == 0 && m.ground != BAY_NONE)
@@ -99,7 +99,11 @@ V2 fit_plan(Body &b) {
 	return V2(mid, y0);
 }
 
-void model_body(const Data &data, const ModelSpec &m, Body &b) {
+ModelInputs model_inputs(const Data &data) { return ModelInputs{data.models.module_m, data.color("membrane")}; }
+
+void model_body(const Data &data, const ModelSpec &m, Body &b) { model_body(model_inputs(data), m, b); }
+
+void model_body(const ModelInputs &inputs, const ModelSpec &m, Body &b) {
 	b = Body{};
 	uint32_t seed = 0;
 	for (char c : m.id) seed = hash_combine(seed, uint32_t(uint8_t(c)));
@@ -112,9 +116,9 @@ void model_body(const Data &data, const ModelSpec &m, Body &b) {
 	b.storey_h = m.storey_h;
 	b.entrance_volume = -1;
 	look(b, m.wall, m.roof, m.trim);
-	for (const ModelBlock &block : m.blocks) add_model_block(data.models, block, b);
+	for (const ModelBlock &block : m.blocks) add_model_block(inputs.module_m, block, b);
 	if (b.entrance_volume < 0) b.entrance_volume = 0;
-	membranes(data, b, r);
+	membranes(inputs.membrane, b, r);
 	const int first = int(b.paints.size());
 	for (const Paint &p : m.paints) b.add_paint(p);
 	b.elements = m.elements;

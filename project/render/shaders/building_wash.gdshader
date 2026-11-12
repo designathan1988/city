@@ -23,7 +23,13 @@ float pool(float r) {
 	return mix(0.15, 0.0, clamp((r - 0.7) / 0.3, 0.0, 1.0));
 }
 
+void vertex() {
+	// Inactive additive geometry has no screen area; retain the mesh for the next night.
+	if (night == 0.0 || opacity == 0.0) VERTEX = vec3(0.0);
+}
+
 void fragment() {
 	float lit = step(h01(uint(floor(UV2.x * 0.1) * 31.0 + floor(UV2.y * 0.1) * 977.0 + 65536.0)), outside_on);
+	if (lit == 0.0 || night == 0.0 || opacity == 0.0) discard;
 	ALBEDO = linear_out(display_to_radiance(display_colour * pool(length(UV * 2.0 - 1.0)) * opacity * night * lit));
 }

@@ -46,7 +46,7 @@ std::vector<LotPoint> clipped(const std::vector<LotPoint> &q, bool on_x, double 
 void OverlayRenderer::lot_cover(Ribbon &out, const CityState &s, const PlayerLot &lot, int64_t key) const {
 	const double cx = double(key_x(key)) * CHUNK, cz = double(key_y(key)) * CHUNK;
 	const Color col = zone_color(s, lot.zone, zone_alpha_);
-	const std::vector<int> tris = lot_triangles(lot.corners);
+	const std::vector<int> &tris = s.lot_book.geometry(lot.id)->triangles;
 	for (size_t t = 0; t + 2 < tris.size(); t += 3) {
 		const std::vector<LotPoint> tri = { lot.corners[size_t(tris[t])], lot.corners[size_t(tris[t + 1])], lot.corners[size_t(tris[t + 2])] };
 		double x0 = cx + CHUNK, z0 = cz + CHUNK, x1 = cx, z1 = cz;
@@ -115,9 +115,18 @@ OverlayRenderer::Ribbon OverlayRenderer::build_zone_cpu(const CityState &s, int6
 			else strip(r, s, sg, -p.right - zone_depth_, -p.right, col, false);
 		}
 	});
-	for (const PlayerLot &lot : s.lot_book.lots)
+	const double x = double(key_x(key)) * CHUNK, z = double(key_y(key)) * CHUNK;
+	for (int id : s.lot_book.overlapping({ x, z, x + CHUNK, z + CHUNK })) {
+		const PlayerLot &lot = *s.lot_book.find(id);
 		if (lot.zone != 0) lot_cover(r, s, lot, key);
+	}
 	return r;
+}
+
+Color OverlayRenderer::congestion_colour(float share) const {
+	const float k = std::clamp((share - jam_share_) / std::max(COLOUR_RANGE_MIN, free_share_ - jam_share_), 0.f, 1.f);
+	Color colour = k > HALF_JAM ? jam_colors_[1].lerp(jam_colors_[0], (k - HALF_JAM) * 2) : jam_colors_[2].lerp(jam_colors_[1], k * 2);
+	colour.a = congestion_alpha_; return colour;
 }
 
 OverlayRenderer::Ribbon OverlayRenderer::build_congestion_cpu(const CityState &s, const PoseFrame &f, int64_t key) const {
@@ -127,11 +136,11 @@ OverlayRenderer::Ribbon OverlayRenderer::build_congestion_cpu(const CityState &s
 		if (!g.alive) return;
 		const Profile &p = s.roads.profile_of(sg);
 		if (p.rail) return;
-		float share = size_t(sg) < f.seg_speed_share.size() ? f.seg_speed_share[size_t(sg)] : 1.f;
-		float k = std::clamp((share - jam_share_) / std::max(COLOUR_RANGE_MIN, free_share_ - jam_share_), 0.f, 1.f);
-		Color col = k > HALF_JAM ? jam_colors_[1].lerp(jam_colors_[0], (k - HALF_JAM) * 2) : jam_colors_[2].lerp(jam_colors_[1], k * 2);
-		col.a = congestion_alpha_;
+		const float share = size_t(sg) < f.seg_speed_share.size() ? f.seg_speed_share[size_t(sg)] : 1.f;
+		const Color col = congestion_colour(share);
+		const int64_t first = r.v.size();
 		strip(r, s, sg, -p.asph_right, p.asph_left, col, true);
+		r.colours.push_back({sg, first, r.v.size() - first, rgba8(col)});
 	});
 	return r;
 }

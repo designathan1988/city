@@ -31,19 +31,11 @@ EditResult refused(const char *key) {
 
 using Items = std::vector<ElementItem>;
 
-// Puts `items` on the map or takes them off (`lay`), marking the chunks the render reads them from.
-void apply(CityState &st, const Items &items, bool lay) {
-	for (const ElementItem &e : items) {
-		if (lay) st.nature.elements.add(e);
-		else st.nature.elements.remove(e);
-		mark_nature(st, e.x, e.z, e.x, e.z);
-	}
-}
-
 void journal(CityState &s, const Items &items, bool lay) {
-	auto kept = std::make_shared<const Items>(items);
-	apply(s, *kept, lay);
-	j_nature(s, kept->size() * sizeof(ElementItem), [kept, lay](CityState &st, bool fwd) { apply(st, *kept, lay == fwd); });
+	if (items.empty()) return;
+	ElementsEdit edit{ items, lay };
+	apply_elements_edit(s, edit, true);
+	j_nature(s, std::move(edit));
 	s.touch();
 }
 

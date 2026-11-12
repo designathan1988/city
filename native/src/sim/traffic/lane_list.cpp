@@ -4,23 +4,27 @@
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
+#include <cassert>
 
 namespace city {
 namespace traffic {
 
 namespace {
 
-void activate(std::vector<int> &list, std::vector<uint8_t> &flag, int key) {
+void activate(std::vector<int> &list, std::vector<uint8_t> &flag, std::vector<int> &positions, int key) {
 	if (key < 0 || key >= int(flag.size()) || flag[size_t(key)]) return;
 	flag[size_t(key)] = 1;
+	if (positions.size() < flag.size()) positions.resize(flag.size(), -1);
+	positions[size_t(key)] = int(list.size());
 	list.push_back(key);
 }
 
-void deactivate(std::vector<int> &list, std::vector<uint8_t> &flag, int key) {
+void deactivate(std::vector<int> &list, std::vector<uint8_t> &flag, std::vector<int> &positions, int key) {
 	if (key < 0 || key >= int(flag.size()) || !flag[size_t(key)]) return;
-	flag[size_t(key)] = 0;
-	auto at = std::find(list.begin(), list.end(), key);
-	if (at != list.end()) *at = list.back(), list.pop_back();
+	const int at = positions[size_t(key)];
+	assert(at >= 0 && size_t(at) < list.size() && list[size_t(at)] == key);
+	const int moved = list.back(); list[size_t(at)] = moved; positions[size_t(moved)] = at;
+	list.pop_back(); positions[size_t(key)] = -1; flag[size_t(key)] = 0;
 }
 
 } // namespace
@@ -32,7 +36,9 @@ void lane_add(CityState &s, int key, int id) {
 	const float at = t.vehicles[size_t(id)].s;
 	auto pos = std::lower_bound(list.begin(), list.end(), at, [&](int o, float x) { return t.vehicles[size_t(o)].s < x; });
 	list.insert(pos, id);
-	activate(t.active_lanes, t.lane_active, key);
+	t.birth_reservations.erase(id); // a whole actor is now physical, no longer an input reservation
+	t.route_counts.changed(size_t(key), list.size());
+	activate(t.active_lanes, t.lane_active, t.lane_active_pos, key);
 }
 
 void lane_del(CityState &s, int key, int id) {
@@ -40,14 +46,15 @@ void lane_del(CityState &s, int key, int id) {
 	if (key < 0 || key >= int(t.lane_vehicles.size())) return;
 	auto &list = t.lane_vehicles[size_t(key)];
 	list.erase(std::remove(list.begin(), list.end(), id), list.end());
-	if (list.empty()) deactivate(t.active_lanes, t.lane_active, key);
+	t.route_counts.changed(size_t(key), list.size());
+	if (list.empty()) deactivate(t.active_lanes, t.lane_active, t.lane_active_pos, key);
 }
 
 void conn_push(CityState &s, int ci, int id) {
 	TrafficState &t = s.traffic;
 	if (ci < 0 || ci >= int(t.conn_vehicles.size())) return;
 	t.conn_vehicles[size_t(ci)].push_back(id);
-	activate(t.active_conns, t.conn_active, ci);
+	activate(t.active_conns, t.conn_active, t.conn_active_pos, ci);
 }
 
 void conn_pop_front(CityState &s, int ci) {
@@ -56,7 +63,7 @@ void conn_pop_front(CityState &s, int ci) {
 	auto &list = t.conn_vehicles[size_t(ci)];
 	if (list.empty()) return;
 	list.erase(list.begin());
-	if (list.empty()) deactivate(t.active_conns, t.conn_active, ci);
+	if (list.empty()) deactivate(t.active_conns, t.conn_active, t.conn_active_pos, ci);
 }
 
 void conn_del(CityState &s, int ci, int id) {
@@ -64,14 +71,30 @@ void conn_del(CityState &s, int ci, int id) {
 	if (ci < 0 || ci >= int(t.conn_vehicles.size())) return;
 	auto &list = t.conn_vehicles[size_t(ci)];
 	list.erase(std::remove(list.begin(), list.end(), id), list.end());
-	if (list.empty()) deactivate(t.active_conns, t.conn_active, ci);
+	if (list.empty()) deactivate(t.active_conns, t.conn_active, t.conn_active_pos, ci);
 }
 
 void conn_clear(CityState &s, int ci) {
 	TrafficState &t = s.traffic;
 	if (ci < 0 || ci >= int(t.conn_vehicles.size())) return;
 	t.conn_vehicles[size_t(ci)].clear();
-	deactivate(t.active_conns, t.conn_active, ci);
+	deactivate(t.active_conns, t.conn_active, t.conn_active_pos, ci);
+}
+
+void set_pass(TrafficState &t, int id, int conn) {
+	Vehicle &v = t.vehicles[size_t(id)];
+	if (v.pass == conn) return;
+	if (v.pass >= 0 && size_t(v.pass) < t.conn_pass_first.size()) {
+		if (v.pass_prev >= 0) t.vehicles[size_t(v.pass_prev)].pass_next = v.pass_next;
+		else if (t.conn_pass_first[size_t(v.pass)] == id) t.conn_pass_first[size_t(v.pass)] = v.pass_next;
+		if (v.pass_next >= 0) t.vehicles[size_t(v.pass_next)].pass_prev = v.pass_prev;
+	}
+	v.pass = conn; v.pass_prev = v.pass_next = -1;
+	if (conn < 0) return;
+	if (size_t(conn) >= t.conn_pass_first.size()) t.conn_pass_first.resize(size_t(conn) + 1, -1);
+	v.pass_next = t.conn_pass_first[size_t(conn)];
+	if (v.pass_next >= 0) t.vehicles[size_t(v.pass_next)].pass_prev = id;
+	t.conn_pass_first[size_t(conn)] = id;
 }
 
 void micro_add(TrafficState &t, int id) {

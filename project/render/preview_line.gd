@@ -17,6 +17,7 @@ var _edge_ok: StandardMaterial3D
 var _edge_bad: StandardMaterial3D
 var _ring_ok: StandardMaterial3D
 var _ring_bad: StandardMaterial3D
+var _ribbon_layers: Dictionary = {} # independent persistent geometry; all layers share this preview's materials
 
 
 func _ready() -> void:
@@ -47,6 +48,10 @@ func _material(token: String, order: int = 0) -> StandardMaterial3D:
 
 func clear() -> void:
 	_mesh.clear_surfaces()
+	for layer: MeshInstance3D in _ribbon_layers.values():
+		remove_child(layer)
+		layer.queue_free()
+	_ribbon_layers.clear()
 
 
 ## Points along the road on the ground (lifted by preview_lift here) and its half width.
@@ -83,20 +88,36 @@ func show_ribbons(roads: Array) -> void:
 		_band(r.points, r.half_width, _ok_mat)
 
 
+## Geometry that survives marker/gesture updates. Rebuild only the named layer; clear() retires every owned layer.
+func show_ribbon_layer(key: StringName, roads: Array) -> void:
+	var layer: MeshInstance3D = _ribbon_layers.get(key)
+	if layer == null:
+		layer = MeshInstance3D.new()
+		layer.mesh = ImmediateMesh.new()
+		layer.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(layer)
+		_ribbon_layers[key] = layer
+	var target: ImmediateMesh = layer.mesh
+	target.clear_surfaces()
+	for road: Dictionary in roads:
+		_band(road.points, road.half_width, _ok_mat, target)
+
+
 ## A node a press would take.
 func show_mark(centre: Vector3, px: float) -> void:
 	_mesh.clear_surfaces()
 	_ring(centre, px, _ring_ok)
 
 
-func _band(points: PackedVector3Array, half: float, material: StandardMaterial3D) -> void:
-	_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP, material)
+func _band(points: PackedVector3Array, half: float, material: StandardMaterial3D, target: ImmediateMesh = null) -> void:
+	var into := target if target != null else _mesh
+	into.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP, material)
 	var lift := Vector3.UP * ThemeBuilder.size("preview_lift")
 	for i in points.size():
 		var left := _left(points, i) * half
-		_mesh.surface_add_vertex(points[i] + left + lift)
-		_mesh.surface_add_vertex(points[i] - left + lift)
-	_mesh.surface_end()
+		into.surface_add_vertex(points[i] + left + lift)
+		into.surface_add_vertex(points[i] - left + lift)
+	into.surface_end()
 
 
 ## The unit vector to the road's left at point `i`, from its two neighbours.

@@ -14,6 +14,10 @@ constexpr float NO_LEADER = BIG; // gap meaning a free road
 
 namespace traffic {
 
+inline bool destination_pending(const Vehicle &v) { return v.trip_route_request || v.assignment_route_request || v.bus_route_request; }
+bool vehicle_route_goal_current(const CityState &s, const Vehicle &v);
+bool walker_route_goal_current(const CityState &s, const Pedestrian &w);
+
 // The directed segment of `seg` arriving at / leaving `node` (even: a to b).
 inline int in_ds(const RoadNetwork &net, int seg, int node) { return seg * 2 + (net.segs[seg].b == node ? 0 : 1); }
 inline int out_ds(const RoadNetwork &net, int seg, int node) { return seg * 2 + (net.segs[seg].a == node ? 0 : 1); }
@@ -21,6 +25,7 @@ inline int out_ds(const RoadNetwork &net, int seg, int node) { return seg * 2 + 
 // traffic_system.cpp
 void step(CityState &s, float dt); // applies the network changes, then advances everything near and far
 // After each tick: poses near the camera into CityState::poses, stamped with the tick's scheduled time.
+void refresh_vehicle_pose(CityState &s, int id); // canonical body centre/heading and spatial index, without a trail publication
 void publish_poses(CityState &s, int64_t stamp_ns);
 float day_factor(const TrafficParams &p, float hour);
 void despawn_vehicle(CityState &s, int id, bool arrived);
@@ -61,7 +66,8 @@ void set_off_pose(CityState &s, Vehicle &v, const OffPose &q); // where a vehicl
 
 // lot_demand.cpp
 void lot_depart(CityState &s, double target); // cars sent out of the bays while fewer drive than the demand asks
-bool lot_call(CityState &s); // a trip ending in a lot: a free bay drawn, the nearest passing car sent to it
+enum class LotRequest : uint8_t { PENDING, FAILED };
+LotRequest lot_call(CityState &s); // captures a free bay and its passing car; arrival debt is consumed only by whole route delivery
 
 // lane_list.cpp: the per-lane/connector lists with a near vehicle, and the lane queries.
 void lane_add(CityState &s, int key, int id);
@@ -72,6 +78,7 @@ void conn_del(CityState &s, int ci, int id);
 void conn_clear(CityState &s, int ci);
 void micro_add(TrafficState &t, int id);
 void micro_remove(TrafficState &t, int id);
+void set_pass(TrafficState &t, int vehicle, int conn); // the one writer of Vehicle::pass and its reverse connector membership
 int lane_load(const TrafficState &t, int key); // near + far vehicles on the lane
 bool lane_reaches(const CityState &s, int ds, int lane, int next);
 int conn_toward(const CityState &s, int ds, int lane, int to_ds);
@@ -154,23 +161,25 @@ void admit(CityState &s, int node, bool released);
 void reset_admission(CityState &s);
 void step_governor(CityState &s, float dt);
 
-// routing.cpp: directed segments from `from_ds` to `goal_ds` (inclusive), edge times raised by the load (BPR);
-// false when unreachable. `max_expanded` < 0 uses route_max_expanded; `banned_ds` is never entered.
-bool find_route(const CityState &s, int from_ds, int goal_ds, std::vector<int> &out, int max_expanded = -1, int banned_ds = -1, bool by_bike = false);
+// routing.cpp: connector costs for the shared admitted road search.
 float junction_cost(const CityState &s, const Conn &c); // turn + signal time the router adds for a connector
-// The route's next turn is not reachable from this lane: another lane of the segment, else a new route, else false.
-bool retry_route(CityState &s, int id);
+// The route's next turn is not reachable: move to another lane now or retain a captured repair request.
+enum class RouteRepair : uint8_t { PENDING, CHANGED, FAILED };
+enum class RouteChoice : uint8_t { PENDING, UNCHANGED };
+RouteRepair retry_route(CityState &s, int id);
 // Another connector of the vehicle's lane (not `blocked`; with room at its exit when `need_room`), the route
-// re-planned from it, rejoining the old route a few segments on. False when there is none.
-bool detour(CityState &s, int vehicle, int blocked, bool need_room);
+// re-planned from it, rejoining the old route a few segments on. Keeps the current usable path while Pending.
+RouteChoice detour(CityState &s, int vehicle, int blocked, bool need_room);
 // Stopped long in a full queue: a local route avoiding the full lane ahead, rejoining the old one (reconsiderRoute).
-bool reconsider(CityState &s, int vehicle);
+RouteChoice reconsider(CityState &s, int vehicle);
 
 // demand.cpp
 void spawn_vehicles(CityState &s, float dt);
 double fleet_target(const CityState &s); // how many vehicles the demand asks for now
-void free_vehicle(TrafficState &t, int id); // the slot of a vehicle off the lanes, out of the fleet count
-bool new_trip(CityState &s, int id, int from_ds); // a route from `from_ds` to a destination the demand draws
+void free_vehicle(CityState &s, int id); // retires every pending route before recycling an off-lane slot, without changing the fleet count
+enum class TripFailure : uint8_t { END_ON_LANE, ARRIVED };
+enum class TripRequest : uint8_t { PENDING, NO_DESTINATION };
+TripRequest new_trip(CityState &s, int id, int from_ds, TripFailure failure = TripFailure::END_ON_LANE); // captures one destination; never searches synchronously
 
 // vehicle_motion.cpp
 float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl);

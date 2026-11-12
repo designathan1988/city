@@ -6,6 +6,7 @@
     "tiers",
     "frame_cap",
     "governor",
+    "detail_hysteresis_share",
     "dynamic_resolution",
     "gpu_rules",
     "gpu_default",
@@ -15,6 +16,7 @@
     "tests_preset"
   ],
   "properties": {
+    "detail_hysteresis_share": {"type": "number", "minimum": 0, "maximum": 0.5},
     "_doc": {
       "type": "string"
     },

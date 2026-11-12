@@ -38,6 +38,7 @@ void SignalLamps::reset() {
 	for (auto &kv : chunks_) kv.second.draw.free();
 	chunks_.clear();
 	signals_.clear();
+	has_publication_ = false;
 	lit_ = 0;
 }
 
@@ -95,6 +96,9 @@ void SignalLamps::drop_chunk(int64_t key) {
 }
 
 void SignalLamps::update(const PoseFrame &f) {
+	if (has_publication_ && publication_ == f.publication) return;
+	publication_ = f.publication;
+	has_publication_ = true;
 	signals_.assign(f.signals.begin(), f.signals.end());
 	for (auto &kv : chunks_) {
 		Chunk &c = kv.second;

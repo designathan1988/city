@@ -11,6 +11,7 @@ const RING_POINTS := 32
 @onready var _hover := {} # the same, of the road under the pointer
 @onready var _hover_id := -1
 @onready var _node := Vector3.INF
+var _projection: Array = []
 
 
 func _init(hud: RoadcraftHud) -> void:
@@ -65,7 +66,11 @@ func _on_hover(info: Dictionary) -> void:
 
 func _process(_delta: float) -> void:
 	if not _picked.is_empty() or not _hover.is_empty() or _node != Vector3.INF:
-		queue_redraw()
+		var camera := get_viewport().get_camera_3d()
+		var key := CityCamera.projection_key(camera, get_viewport_rect()) if camera != null else []
+		if key != _projection:
+			_projection = key
+			queue_redraw()
 
 
 func _draw() -> void:

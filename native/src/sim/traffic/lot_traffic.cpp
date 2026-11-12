@@ -114,7 +114,7 @@ void give_up(CityState &s, LotCar &car) {
 	v.stop_at = -1;
 	untrack(s, car);
 	if (v.pass >= 0) release(s, id, v.pass);
-	if (v.ds < 0 || !new_trip(s, id, v.ds)) v.goal_s = 0; // on a connector, or nowhere to go: its trip ends on the lane it reaches
+	if (v.ds < 0 || new_trip(s, id, v.ds) == TripRequest::NO_DESTINATION) v.goal_s = 0; // on a connector, or nowhere to go: its trip ends on the lane it reaches
 }
 
 void coming(CityState &s, LotCar &car) {
@@ -163,7 +163,7 @@ void join_lane(CityState &s, LotCar &car) {
 	v.v = p.parker_join_ms;
 	micro_add(t, id);
 	lane_add(s, lane.ds * MAX_LANES + lane.lane, id);
-	if (!new_trip(s, id, lane.ds)) despawn_vehicle(s, id, true);
+	if (new_trip(s, id, lane.ds, TripFailure::ARRIVED) == TripRequest::NO_DESTINATION) despawn_vehicle(s, id, true);
 }
 
 void leaving(CityState &s, LotCar &car, float dt) {
@@ -188,6 +188,7 @@ void set_off_pose(CityState &s, Vehicle &v, const OffPose &q) {
 	if (v.cur.y == 0 || s.traffic.tick % uint64_t(s.catalog.traffic.parker_look_ticks) == 0) v.cur.y = s.terrain.height_at(q.x, q.z) + s.catalog.traffic.body_lift_m;
 	v.cur.fx = std::cos(q.angle);
 	v.cur.fz = std::sin(q.angle);
+	index_vehicle(s, int(&v - s.traffic.vehicles.data()));
 }
 
 
@@ -205,7 +206,7 @@ void lot_car_gone(CityState &s, int id) {
 		return;
 	}
 	untrack(s, t.park.cars[size_t(v.car)]);
-	free_vehicle(t, id);
+	free_vehicle(s, id);
 }
 
 void lot_car_forget(CityState &s, int id) {
@@ -229,7 +230,7 @@ void settle_parked(CityState &s) {
 		bay.stay_until = t.time + double(t.rng.range(p.parker_stay_min_s, p.parker_stay_max_s));
 		add_row(pk, b);
 		untrack(s, pk.cars[size_t(i)]);
-		free_vehicle(t, id);
+		free_vehicle(s, id);
 	}
 }
 
@@ -259,7 +260,8 @@ void step_lots(CityState &s, float dt) {
 	// trips ending in a lot at the rate a trip ends; as many on their way as that brings in while a called car drives there
 	const float most = std::max(p.parker_coming_min, std::ceil(float(target) * p.parker_coming_s / p.parker_trip_s));
 	pk.owed = std::min(most, pk.owed + float(target) / p.parker_trip_s * p.parker_look_s);
-	while (pk.owed >= 1 && float(pk.coming) < most && lot_call(s)) pk.owed -= 1;
+	pk.lot_call_limit = most;
+	if (pk.owed >= 1 && float(pk.coming) < most) lot_call(s); // success delivery consumes owed debt and continues; Pending never redraws
 	t.step_ms[STAGE_LOT_IN] += lap.lap();
 }
 

@@ -52,13 +52,15 @@ void kerb_let_go(CityState &s, int ped, bool on_foot) {
 	else ped_gone(s, ped);
 }
 
+float kerb_footway_arc(const RoadSegment &g, const V2 &foot) {
+	double at, dist; closest_t(g.q,foot.x,foot.y,at,dist); return float(arc_of_t(g,at));
+}
+
 // A walker on the footway beside `foot`, on the kerb's sidewalk of `ds`.
-int kerb_walker_out(CityState &s, int ds, const V2 &foot) {
+std::shared_ptr<PedBirthTicket> kerb_walker_out(CityState &s, int vehicle, int ds, const V2 &foot) {
 	const DirSeg &d = s.traffic.g.ds[size_t(ds)];
 	const RoadSegment &g = s.roads.segs[size_t(d.seg)];
-	double at, dist;
-	closest_t(g.q, foot.x, foot.y, at, dist);
-	return ped_on_footway(s, d.seg, d.sign > 0 ? 0 : 1, float(arc_of_t(g, at)));
+	return request_footway_birth(s, vehicle, d.seg, d.sign > 0 ? 0 : 1, kerb_footway_arc(g,foot));
 }
 
 // The arc along its street of metre `at` of a directed segment, and which sidewalk is on its kerb side.
@@ -167,18 +169,19 @@ void plan(CityState &s, int id) {
 	k.ds = v.ds;
 	k.lane = v.lane;
 	k.at = at;
-	k.ped = ped;
+	k.ped = ped; k.ped_generation = ped >= 0 ? t.peds[size_t(ped)].generation : 0;
 	v.errand = Errand::NONE;
 }
 
 void release_walker(CityState &s, KerbStop &k, bool on_foot) {
-	if (k.ped >= 0) kerb_let_go(s, k.ped, on_foot);
+	if (kerb_holds(s.traffic,k.ped,k.ped_generation)) kerb_let_go(s, k.ped, on_foot);
 	k.ped = -1;
 }
 
 void end_stop(CityState &s, int id) {
 	TrafficState &t = s.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
+	discard_walker_birth(s,t.kerb_stops[size_t(v.kerb)].birth);
 	release_walker(s, t.kerb_stops[size_t(v.kerb)], true);
 	t.free_kerb_stops.push_back(v.kerb);
 	t.kerb_stops[size_t(v.kerb)].vehicle = -1;
@@ -245,9 +248,8 @@ void step_stop(CityState &s, int id, KerbStop &k, float dt) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
-	k.t += dt;
-	k.elapsed += dt;
-	if (k.ped >= 0 && k.phase > KerbPhase::HALT && !kerb_holds(t, k.ped)) { // a walker of a street that went
+	if (!k.birth) { k.t += dt; k.elapsed += dt; } // query wait is not physical door/give-up time
+	if (k.ped >= 0 && (!kerb_current(t,k.ped,k.ped_generation) || (k.phase > KerbPhase::HALT && !kerb_holds(t,k.ped,k.ped_generation)))) { // a walker of a street that went
 		k.ped = -1;
 		end_stop(s, id);
 		return;
@@ -284,8 +286,10 @@ void step_stop(CityState &s, int id, KerbStop &k, float dt) {
 			k.transfer = transfer_time(s, k, door_places(s, v));
 			if (k.ped < 0 && k.errand != Errand::PICK) {
 				const KerbDoors at = door_places(s, v);
-				k.ped = kerb_walker_out(s, v.ds, at.foot);
-				if (k.ped < 0) {
+				if (!k.birth) k.birth = kerb_walker_out(s,id,v.ds,at.foot);
+				const auto result = take_walker_birth(s,k.birth,k.ped,k.ped_generation);
+				if (result == PedBirthState::PENDING) return;
+				if (result != PedBirthState::READY) {
 					end_stop(s, id); // no room on the footway: they stay aboard
 					return;
 				}

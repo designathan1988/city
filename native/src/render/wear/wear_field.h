@@ -11,6 +11,7 @@
 #include <godot_cpp/variant/packed_byte_array.hpp>
 
 #include <array>
+#include <bitset>
 #include <cstdint>
 #include <vector>
 
@@ -35,11 +36,15 @@ private:
 	void add(int channel, float x, float z, float amount);
 	void clear_cell_range(int gx0, int gx1, int gy0, int gy1);
 	void touch(int tile);
+	void queue(int tile);
+	void realize_clear(int tile);
 	void send_origin() const;
 	float random();
 	std::array<godot::PackedByteArray, LAYERS_AXIS * LAYERS_AXIS> tiles_;
 	std::array<float, LAYERS_AXIS * LAYERS_AXIS> since_{}; // seconds since the tile was last sent
-	std::array<bool, LAYERS_AXIS * LAYERS_AXIS> dirty_{};
+	std::array<bool, LAYERS_AXIS * LAYERS_AXIS> dirty_{}, queued_{};
+	struct ClearMask { std::bitset<LAYER_CELLS> rows, columns; };
+	std::array<ClearMask, LAYERS_AXIS * LAYERS_AXIS> clears_; // bounded union of entering strips, no cell traversal in follow
 	std::vector<int> pending_;
 	godot::RID texture_, material_;
 	int ox_ = 0, oy_ = 0; // the window's low corner, cells

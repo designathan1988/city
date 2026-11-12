@@ -30,23 +30,35 @@ constexpr int CHANNELS = 2;
 struct StandingLot {
 	Building rec;
 	float ground = 0;
+	b40::BodyInput body;
 };
 
 // Each cell's height into `out`, the highest of the cells within `reach` along the row, and then along the column.
 void reach_max(const std::vector<float> &in, std::vector<float> &out) {
 	std::vector<float> rows(in.size());
-	for (int y = 0; y < RES; y++)
-		for (int x = 0; x < RES; x++) {
-			float m = NOTHING_Y;
-			for (int k = std::max(0, x - REACH_CELLS); k <= std::min(RES - 1, x + REACH_CELLS); k++) m = std::max(m, in[size_t(y) * RES + k]);
-			rows[size_t(y) * RES + x] = m;
+	const auto line = [](auto get, auto put) {
+		int deque[RES], head = 0, tail = 0, next = 0;
+		for (int at = 0; at < RES; at++) {
+			const int right = std::min(RES - 1, at + REACH_CELLS);
+			for (; next <= right; next++) {
+				const float value = get(next);
+				if (std::isnan(value)) continue; // original std::max ignores a NaN second argument
+				// Strict comparison keeps the original earliest winner for equal values, including signed zero.
+				while (tail > head && value > get(deque[tail - 1])) tail--;
+				deque[tail++] = next;
+			}
+			while (head < tail && deque[head] < at - REACH_CELLS) head++;
+			put(at, head < tail ? std::max(NOTHING_Y, get(deque[head])) : NOTHING_Y);
 		}
-	for (int y = 0; y < RES; y++)
-		for (int x = 0; x < RES; x++) {
-			float m = NOTHING_Y;
-			for (int k = std::max(0, y - REACH_CELLS); k <= std::min(RES - 1, y + REACH_CELLS); k++) m = std::max(m, rows[size_t(k) * RES + x]);
-			out[size_t(y) * RES + x] = m;
-		}
+	};
+	for (int y = 0; y < RES; y++) {
+		if (JobPool::cancelled()) return;
+		line([&](int x) { return in[size_t(y) * RES + x]; }, [&](int x, float v) { rows[size_t(y) * RES + x] = v; });
+	}
+	for (int x = 0; x < RES; x++) {
+		if (JobPool::cancelled()) return;
+		line([&](int y) { return rows[size_t(y) * RES + x]; }, [&](int y, float v) { out[size_t(y) * RES + x] = v; });
+	}
 }
 
 // One volume laid into the cells whose centre it holds, the highest kept.
@@ -73,25 +85,28 @@ void lay(std::vector<float> &cells, const b40::LotFrame &f, const b40::Volume &v
 } // namespace
 
 void CanyonField::reset() {
-	std::lock_guard<std::mutex> lk(mutex_);
-	has_done_ = false;
+	result_.reset();
 	seen_ = ~uint64_t(0);
 	any_ = false;
+	texture_.unref();
 	view_revision_++;
 }
 
-void CanyonField::work(const CityState &s, float ox, float oz, uint64_t revision) {
+CanyonField::Raster CanyonField::work(const CityState &s, float ox, float oz, uint64_t revision, std::shared_ptr<BodyCache> prepared) {
+	BuildingBodies bodies(std::move(prepared));
 	std::vector<StandingLot> lots;
 	{
 		std::shared_lock<std::shared_mutex> map(s.map_mutex);
+		if (JobPool::cancelled()) return Raster{};
 		s.buildings.query(ox - EDGE_REACH_M, oz - EDGE_REACH_M, ox + FIELD_SPAN + EDGE_REACH_M, oz + FIELD_SPAN + EDGE_REACH_M, [&](int id) {
 			const Building &b = s.buildings.items[size_t(id)];
-			if (b.alive && b.floors > 0) lots.push_back({ b, s.terrain.height_at(b.x, b.z) });
+			if (b.alive && b.floors > 0) lots.push_back({ b, s.terrain.height_at(b.x, b.z), s.buildings.designs.edited->input(b.body) });
 		});
 	}
 	std::vector<float> cells(size_t(RES) * RES, NOTHING_Y), near(cells.size());
 	for (const StandingLot &l : lots) {
-		const b40::Body &b = bodies_.body(s.buildings.designs, l.rec);
+		if (JobPool::cancelled()) return Raster{};
+		const b40::Body &b = bodies.body(s.buildings.designs, l.rec, &l.body);
 		const b40::LotFrame f = b40::lot_frame(l.rec);
 		for (const b40::Volume &v : b.volumes) {
 			float top = l.ground;
@@ -100,7 +115,9 @@ void CanyonField::work(const CityState &s, float ox, float oz, uint64_t revision
 		}
 	}
 	reach_max(cells, near);
+	if (JobPool::cancelled()) return Raster{};
 	Raster r;
+	r.revision = revision;
 	r.ox = ox;
 	r.oz = oz;
 	r.any = !lots.empty();
@@ -110,37 +127,40 @@ void CanyonField::work(const CityState &s, float ox, float oz, uint64_t revision
 		out[k * CHANNELS] = Math::make_half_float(cells[k]);
 		out[k * CHANNELS + 1] = Math::make_half_float(near[k]);
 	}
-	std::lock_guard<std::mutex> lk(mutex_);
-	done_ = std::move(r);
-	has_done_ = true;
-	seen_ = revision;
+	return r;
 }
 
 void CanyonField::sync(const CityState &s, float cam_x, float cam_z) {
-	{
-		std::lock_guard<std::mutex> lk(mutex_);
-		if (has_done_) {
-			has_done_ = false;
-			busy_ = false;
+	const uint64_t rev = revision_.load();
+	Raster done;
+	if (result_.take(done)) {
+		const float hold = FIELD_SPAN / LINGER_SHARE;
+		const bool relevant = std::fabs(cam_x - (done.ox + FIELD_SPAN * 0.5f)) <= hold && std::fabs(cam_z - (done.oz + FIELD_SPAN * 0.5f)) <= hold;
+		if (done.revision == rev && relevant) {
+			seen_ = done.revision;
 			view_revision_++;
-			any_ = done_.any;
-			ox_ = done_.ox;
-			oz_ = done_.oz;
+			any_ = done.any;
+			ox_ = done.ox;
+			oz_ = done.oz;
 			if (any_) {
-				Ref<Image> img = Image::create_from_data(RES, RES, false, Image::FORMAT_RGH, done_.texels);
+				Ref<Image> img = Image::create_from_data(RES, RES, false, Image::FORMAT_RGH, done.texels);
 				if (texture_.is_valid()) texture_->update(img);
 				else texture_ = ImageTexture::create_from_image(img);
 			}
 		}
 	}
-	if (busy_ || !s.jobs) return;
+	if (result_.pending() || !s.jobs) return;
 	float hold = FIELD_SPAN / LINGER_SHARE;
 	bool moved = std::fabs(cam_x - (ox_ + FIELD_SPAN * 0.5f)) > hold || std::fabs(cam_z - (oz_ + FIELD_SPAN * 0.5f)) > hold;
-	uint64_t rev = revision_;
 	if (rev == seen_ && !moved) return;
-	busy_ = true;
+	const auto ticket = result_.begin();
 	float ox = std::floor((cam_x - FIELD_SPAN * 0.5f) / CANYON_SQUARE_M) * CANYON_SQUARE_M, oz = std::floor((cam_z - FIELD_SPAN * 0.5f) / CANYON_SQUARE_M) * CANYON_SQUARE_M;
-	s.jobs->submit(JobKey{ JobLane::CANYON, 0 }, 0.f, [this, &s, ox, oz, rev]() { work(s, ox, oz, rev); });
+	s.jobs->submit(JobKey{ JobLane::CANYON, 0 }, 0.f, [ticket, &s, ox, oz, rev, prepared = prepared_, completion = AsyncResult<Raster>::completion(ticket)]() {
+		(void)completion; // the capture acknowledges terminal cancellation even when work is skipped
+		if (AsyncResult<Raster>::retired(ticket) || JobPool::cancelled()) return;
+		auto raster = work(s, ox, oz, rev, prepared);
+		if (!JobPool::cancelled()) AsyncResult<Raster>::publish(ticket, std::move(raster));
+	});
 }
 
 Dictionary CanyonField::view() const {

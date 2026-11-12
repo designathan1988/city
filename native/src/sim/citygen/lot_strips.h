@@ -26,11 +26,12 @@ private:
 	double cx0_, cz0_, ax_, az_;
 	int W_;
 	std::vector<uint8_t> grid_;
-	std::vector<std::vector<double>> tables_;
+	std::vector<std::vector<double>> generated_tables_; // only standalone LotGraphs without prepared source stations
+	std::vector<const std::vector<double> *> tables_;
 	std::vector<double> half_;
 	std::vector<Lot> out_;
 
-	double len(int s) const { return tables_[s].back(); }
+	double len(int s) const { return tables_[s]->back(); }
 	void mark(double x, double z, double r, uint8_t v);
 	void mark_roads();
 	V2 way_out(int s, int n) const;

@@ -45,6 +45,14 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	shadow_ = ctx.material("shadow_caster", errors);
 	Dictionary t = ctx.table("agents", errors);
 	if (!errors.is_empty() || !build_meshes(t, errors)) return false;
+	for (int model = 0; model < AGENT_MODELS; model++)
+		for (int level = 0; level < DRAWS; level++) {
+			const int shadow_level = level == BODY_LEVEL ? FAR_LEVEL : BODY_LEVEL;
+			shadow_draws_[model][level].configure(scenario_, meshes_[model][shadow_level].rid, shadow_, true, LAYER_VEHICLES,
+					float(ctx.catalog->tune.render_instance_sector_m), true);
+			parked_shadow_draws_[model][level].configure(scenario_, meshes_[model][shadow_level].rid, shadow_, true, LAYER_VEHICLES,
+					float(ctx.catalog->tune.render_instance_sector_m), true);
+		}
 	if (!push_palettes(t, ctx.catalog->traffic.line_colours, errors) || !read_loads(Dictionary(t["occupants"])["load"], errors)) return false;
 	vehicle_r_ = float(t["vehicle_radius_m"]);
 	cabin_r_ = float(t["cabin_radius_m"]);
@@ -108,6 +116,7 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 				commit_mesh(i, level, level == BODY_LEVEL ? simplify_parts(mb, body_error) : simplify_whole(mb, far_error)); // far, a shell of few pixels: the parts need not keep their borders
 			}
 		}
+	parked_shadow_.share_geometry(fleet_shadow_);
 	return errors.is_empty();
 }
 
@@ -118,6 +127,7 @@ void AgentRenderer::commit_mesh(int model, int draw, const MeshBuilder &mb) {
 	MeshBuilder shell, glass;
 	if (cabin) split_tag(mb, AgentTag::GLASS, shell, glass);
 	const MeshBuilder &body = cabin ? shell : mb;
+	mesh_bounds_[model][draw] = mesh_outline(mb);
 	body_tris_[model][draw] = int(body.idx.size() / 3);
 	glass_tris_[model][draw] = int(glass.idx.size() / 3);
 	OwnedMesh &m = meshes_[model][draw];
@@ -161,7 +171,8 @@ Dictionary AgentRenderer::cost() const {
 			d["glass_tris"] = glass_tris_[i][level];
 			d["instances"] = shown_[i][level];
 			out[String(NAMES[i]) + "_" + LEVEL_NAMES[level]] = d;
-			if (shown_[i][level] > 0) draws += glass_tris_[i][level] > 0 ? 2 : 1;
+			const int groups = int(draws_[i][level].count > 0) + int(parked_draws_[i][level].draw.count > 0);
+			draws += groups * (glass_tris_[i][level] > 0 ? 2 : 1);
 			tris += shown_[i][level] * (body_tris_[i][level] + glass_tris_[i][level]);
 		}
 	out["draws"] = draws;
@@ -171,9 +182,25 @@ Dictionary AgentRenderer::cost() const {
 
 void AgentRenderer::reset() {
 	heads_.reset();
-	fleet_shadow_.free();
+	fleet_shadow_.reset();
+	parked_shadow_.reset();
+	parked_source_.reset();
+	std::vector<ParkedRow>().swap(parked_prepared_);
+	parked_near_d2_.clear();
+	parked_selection_ = false;
+	parked_placed_ = parked_drawn_ = 0;
+	parked_keeper_.clear();
+	parked_keeper_.draws(size_t(AGENT_MODELS) * DRAWS);
+	for (int model = 0; model < AGENT_MODELS; model++)
+		for (int level = 0; level < DRAWS; level++) {
+			parked_draws_[model][level].free();
+			parked_shadow_draws_[model][level].reset();
+			parked_seen_[model][level].restart();
+			parked_casts_[model][level].restart();
+			shown_[model][level] = 0;
+		}
 	for (auto &levels : shadow_draws_)
-		for (MultiMeshDraw &m : levels) m.free();
+		for (SpatialInstanceDraw &m : levels) m.reset();
 	for (auto &levels : draws_)
 		for (MultiMeshDraw &m : levels) m.free();
 	people_.reset();
@@ -197,7 +224,7 @@ float AgentRenderer::roll(int id, const Pose &p, float wheel_r) {
 	return o.angle;
 }
 
-void AgentRenderer::seat_people(uint32_t id, int type, int model, const Pose &p, float dist, float passengers, float order, float spin) {
+void AgentRenderer::seat_people(uint32_t id, int type, int model, const Pose &p, float dist, float passengers, float order, float spin, bool visible) {
 	const int seats = load_[type].seats;
 	const int stride = seats > 0 ? int(order) / seats : 0, first = seats > 0 ? int(order) - stride * seats : 0;
 	const Odometer &o = odo_[size_t(id)];
@@ -206,7 +233,7 @@ void AgentRenderer::seat_people(uint32_t id, int type, int model, const Pose &p,
 		// passenger seat j is taken when (stride * j + first) mod seats < passengers, so exactly that many are
 		if (s.order != DRIVER_SEAT && (seats == 0 || (stride * s.order + first) % seats >= int(passengers))) continue;
 		const uint64_t seat = uint64_t(s.order - DRIVER_SEAT);
-		people_.seat(uint64_t(id) * SEAT_KEYS + seat, p, s, hash_u32(id * SEAT_SALT + uint32_t(seat)), dist, turn - std::floor(turn), o.still >= STILL_FRAMES);
+		people_.seat(uint64_t(id) * SEAT_KEYS + seat, p, s, hash_u32(id * SEAT_SALT + uint32_t(seat)), dist, turn - std::floor(turn), o.still >= STILL_FRAMES, visible);
 	}
 }
 
@@ -231,8 +258,8 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	// A vehicle keeps its level until it is past the edge by the hold (agents.ts VEHICLE_HYSTERESIS), or it flickers there.
 	const float hold2 = (1 + level_hold_) * (1 + level_hold_);
 	auto rank = [](int level) { return level == CABIN_LEVEL ? 0 : level == MID_DRAW ? 1 : level == BODY_LEVEL ? 2 : 3; };
-	auto level_of = [&](uint64_t key, float d2) {
-		const int now = plain_level(d2), place = keeper_.draw_of(key), was = place < 0 ? now : place % DRAWS;
+	auto level_of = [&](const RowKeeper &owner, uint64_t key, float d2) {
+		const int now = plain_level(d2), place = owner.draw_of(key), was = place < 0 ? now : place % DRAWS;
 		if (was == now) return now;
 		return rank(now) > rank(was) ? (rank(plain_level(d2 / hold2)) > rank(was) ? now : was) : (rank(plain_level(d2 * hold2)) < rank(was) ? now : was);
 	};
@@ -267,38 +294,80 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		heads_.add(rec.id, p, reach_m_[model], cam, view);
 		const bool shown = seen(model, p, d2);
 		const uint64_t key = rec.id * ROW_KINDS;
-		const int level = level_of(key, d2);
+		const int level = level_of(keeper_, key, d2);
 		if (shown) count_for_cap(level, d2);
 		if (level == FAR_LEVEL) fleet_shadow_.add(model, p);
 		if (!shown && level == FAR_LEVEL) continue;
 		placed += shown ? 1 : 0;
 		agent_row(shown ? keeper_.place(key, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f) + door, passengers, 0.f, hash_float(rec.id * SEED_SALT));
-		if (shown && d2 <= people_r2 && (astride_[model] || level == CABIN_LEVEL || level == MID_DRAW)) seat_people(rec.id, type, model, p, std::sqrt(d2), passengers, order, spin);
+		if (d2 <= people_r2 && (astride_[model] || level == CABIN_LEVEL || level == MID_DRAW)) seat_people(rec.id, type, model, p, std::sqrt(d2), passengers, order, spin, shown);
 		drawn_vehicles_++;
 	}
-	if (f.parked) for (const ParkedRecord &rec : *f.parked) {
-		const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
-		const float dx = rec.at.x - cam.x, dy = rec.at.y - cam.y, dz = rec.at.z - cam.z, flat2 = dx * dx + dz * dz;
-		if (flat2 > r2 || type < 0 || type >= VEHICLE_TYPES) continue;
-		const float d2 = flat2 + dy * dy;
-		const int model = model_of(type, paint);
-		const bool shown = seen(model, rec.at, d2);
-		const uint64_t key = uint64_t(rec.id) * ROW_KINDS + PARKED_ROW;
-		const int level = level_of(key, d2);
-		if (shown) count_for_cap(level, d2);
-		if (level == FAR_LEVEL) fleet_shadow_.add(model, rec.at);
-		if (!shown && level == FAR_LEVEL) continue;
-		placed += shown ? 1 : 0;
-		agent_row(shown ? keeper_.place(key, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), rec.at, 1.f, float(paint % paints_), 0.f, NOBODY_ABOARD, 0.f, hash_float(rec.id * SEED_SALT));
-		drawn_vehicles_++;
+	const bool source_changed = parked_source_ != f.parked;
+	if (source_changed) {
+		parked_source_ = f.parked; // pin identity until the next publication, including empty results
+		parked_prepared_.clear();
+		if (f.parked) {
+			parked_prepared_.reserve(f.parked->size());
+			for (const ParkedRecord &rec : *f.parked) {
+				const int type = int(rec.look & LOOK_TYPE_MASK), paint = int((rec.look >> LOOK_PAINT_SHIFT) & LOOK_TYPE_MASK);
+				if (type < 0 || type >= VEHICLE_TYPES) continue;
+				ParkedRow row;
+				row.record = rec;
+				row.model = model_of(type, paint);
+				agent_row(row.row.data(), rec.at, 1.f, float(paint % paints_), 0.f, NOBODY_ABOARD, 0.f, hash_float(rec.id * SEED_SALT));
+				parked_prepared_.push_back(row);
+			}
+		}
 	}
+	const bool parked_changed = !parked_selection_ || source_changed || cam != parked_cam_ || !view.same_as(parked_view_) ||
+			near2 != parked_near2_ || close2 != parked_close2_ || cabin_cap_ != parked_cap_;
+	if (parked_changed) {
+		parked_keeper_.begin();
+		for (int i = 0; i < AGENT_MODELS; i++)
+			for (int level = 0; level < DRAWS; level++) {
+				parked_seen_[i][level].reopen();
+				parked_casts_[i][level].restart();
+			}
+		parked_placed_ = parked_drawn_ = 0;
+		const size_t near_begin = near_d2_.size();
+		for (const ParkedRow &prepared : parked_prepared_) {
+			const ParkedRecord &rec = prepared.record;
+			const float dx = rec.at.x - cam.x, dy = rec.at.y - cam.y, dz = rec.at.z - cam.z, flat2 = dx * dx + dz * dz;
+			if (flat2 > r2) continue;
+			const float d2 = flat2 + dy * dy;
+			const int model = prepared.model;
+			const bool shown = seen(model, rec.at, d2);
+			const uint64_t key = uint64_t(rec.id) * ROW_KINDS + PARKED_ROW;
+			const int level = level_of(parked_keeper_, key, d2);
+			if (shown) count_for_cap(level, d2);
+			if (level == FAR_LEVEL) parked_shadow_.add(model, rec.at);
+			if (!shown && level == FAR_LEVEL) continue;
+			parked_placed_ += shown ? 1 : 0;
+			float *row = shown ? parked_keeper_.place(key, model * DRAWS + level, parked_seen_[model][level]) : parked_casts_[model][level].add();
+			std::memcpy(row, prepared.row.data(), sizeof(float) * MM_STRIDE);
+			parked_drawn_++;
+		}
+		parked_keeper_.sweep([&](int d) -> InstanceRows & { return parked_seen_[d / DRAWS][d % DRAWS]; });
+		parked_near_d2_.assign(near_d2_.begin() + near_begin, near_d2_.end());
+		parked_selection_ = true;
+		parked_cam_ = cam;
+		parked_view_ = view;
+		parked_near2_ = near2;
+		parked_close2_ = close2;
+		parked_cap_ = cabin_cap_;
+	} else {
+		near_d2_.insert(near_d2_.end(), parked_near_d2_.begin(), parked_near_d2_.end());
+	}
+	placed += parked_placed_;
+	drawn_vehicles_ += parked_drawn_;
 	keeper_.sweep([&](int d) -> InstanceRows & { return bufs[d / DRAWS][d % DRAWS]; });
 	rows_lost_ = placed;
 	for (int i = 0; i < AGENT_MODELS; i++)
-		for (int level = 0; level < DRAWS; level++) rows_lost_ -= bufs[i][level].count();
+		for (int level = 0; level < DRAWS; level++) rows_lost_ -= bufs[i][level].count() + parked_seen_[i][level].count();
 	limit_cabins();
 	drawn_people_ = people_.update(f, cam, view, at, people_r_);
-	draw_rows(cam);
+	draw_rows(cam, parked_changed);
 }
 
 void AgentRenderer::limit_cabins() {
@@ -310,7 +379,7 @@ void AgentRenderer::limit_cabins() {
 	}
 }
 
-void AgentRenderer::draw_rows(const Vector3 &cam) {
+void AgentRenderer::draw_rows(const Vector3 &cam, bool parked_changed) {
 	auto &bufs = seen_rows_;
 	auto &casts = cast_rows_;
 	AABB box(Vector3(cam.x - vehicle_r_, cam.y - AABB_HALF_H, cam.z - vehicle_r_), Vector3(vehicle_r_ * 2, AABB_HALF_H * 2, vehicle_r_ * 2));
@@ -319,13 +388,27 @@ void AgentRenderer::draw_rows(const Vector3 &cam) {
 		for (int level = 0; level < DRAWS; level++) {
 			MultiMeshDraw &d = draws_[i][level];
 			d.set(scenario_, meshes_[i][level].rid, RID(), bufs[i][level], box, false, LAYER_VEHICLES);
-			shown_[i][level] = d.count;
+			if (parked_changed || parked_draws_[i][level].needs_settle()) parked_draws_[i][level].set(scenario_, meshes_[i][level].rid, RID(), parked_seen_[i][level], box, false, LAYER_VEHICLES);
+			shown_[i][level] = d.count + parked_draws_[i][level].draw.count;
 			if (level == FAR_LEVEL) continue;
 			casts[i][level].append(bufs[i][level]);
-			shadow_draws_[i][level].shadow_only = true;
-			shadow_draws_[i][level].set(scenario_, meshes_[i][level == BODY_LEVEL ? FAR_LEVEL : BODY_LEVEL].rid, shadow_, casts[i][level], box, true, LAYER_VEHICLES);
+			const AABB &local = mesh_bounds_[i][level == BODY_LEVEL ? FAR_LEVEL : BODY_LEVEL];
+			auto casters = [&](SpatialInstanceDraw &draw, const InstanceRows &rows) {
+				draw.begin();
+				for (int row = 0; row < rows.count(); row++) {
+					const float *data = rows.data() + int64_t(row) * MM_STRIDE;
+					draw.put(uint64_t(row), data, instance_bounds(data, local));
+				}
+				draw.finish();
+			};
+			if (parked_changed) {
+				parked_casts_[i][level].append(parked_seen_[i][level]);
+				casters(parked_shadow_draws_[i][level], parked_casts_[i][level]);
+			}
+			casters(shadow_draws_[i][level], casts[i][level]);
 		}
 	fleet_shadow_.draw();
+	if (parked_changed) parked_shadow_.draw();
 }
 
 int AgentRenderer::cabins_drawn() const {

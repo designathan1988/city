@@ -24,6 +24,11 @@ var drift := Vector2.ZERO
 var weather := {}
 var clouds: Array = []
 var clouds_drawn := true # what the graphics tier pays for: the pass of the clouds, their bodies and their shadows
+var _shape_revision := 0
+var _lay_key: Array = []
+var _count_shown := -1
+var _looks_dirty := false
+var _light_key: Array = []
 
 var _d: Dictionary
 var _world: CityWorld
@@ -130,7 +135,9 @@ func _process(dt: float) -> void:
 func _read() -> void:
 	var land: Dictionary = CityStore.query(&"landscape")
 	weather = land.weather
-	clouds = land.clouds
+	if clouds != land.clouds or _shape_revision == 0:
+		clouds = land.clouds
+		_prepare_clouds()
 	_world.set_map_biome(land.biome)
 	_world.set_water_look(weather)
 	# Rain thickens the air: what the player set, or the rain's own mist if that is more.
@@ -146,6 +153,11 @@ func _overcast() -> float:
 
 
 func _light(way: Vector2) -> void:
+	var key := [way, weather.get("wind", 0.0), weather.get("rain", 0.0), _world.daylight.revision,
+		_world.sun.global_basis, _world.sun.light_color, _world.sun.light_energy]
+	if key == _light_key:
+		return
+	_light_key = key
 	RenderingServer.global_shader_parameter_set(&"wind_x", way.x)
 	RenderingServer.global_shader_parameter_set(&"wind_z", way.y)
 	RenderingServer.global_shader_parameter_set(&"wind_ms", float(weather.get("wind", 0.0)))
@@ -179,35 +191,60 @@ func _lay() -> void:
 		about = Vector2(cam.global_position.x + ahead.x * t, cam.global_position.z + ahead.z * t)
 	var span: float = _d.cloud_span_m
 	var n := mini(clouds.size(), SLOTS) if clouds_drawn else 0
+	_quad.visible = n > 0 or _air > 0.0 or bool(_fog_field.get("any", false)) or bool(_canyon_field.get("any", false))
+	var key := [about, drift, clouds_drawn, _shape_revision]
+	if key == _lay_key:
+		return
+	_lay_key = key
 	for i in n:
 		var c: Dictionary = clouds[i]
 		var dx := wrapf(c.x + drift.x - about.x, -span * 0.5, span * 0.5)
 		var dz := wrapf(c.z + drift.y - about.y, -span * 0.5, span * 0.5)
 		var out: float = (maxf(absf(dx), absf(dz)) - span * _d.show_from) / (span * _d.show_span)
 		var show := 1.0 - smoothstep(0.0, 1.0, out)
-		_lay_one(i, c, about.x + dx, about.y + dz, show)
-	_mat.set_shader_parameter("cloud_count", n)
-	_mat.set_shader_parameter("cloud", _bounds)
+		var bound := _bounds[i]
+		bound.x = about.x + dx
+		bound.z = about.y + dz
+		_bounds[i] = bound
+		if _looks[i].z != show:
+			var look := _looks[i]
+			look.z = show
+			_looks[i] = look
+			_looks_dirty = true
+	if n != _count_shown:
+		_count_shown = n
+		_mat.set_shader_parameter("cloud_count", n)
+	if n > 0:
+		_mat.set_shader_parameter("cloud", _bounds)
+	if _looks_dirty:
+		_mat.set_shader_parameter("cloud_look", _looks)
+		_looks_dirty = false
+
+
+func _prepare_clouds() -> void:
+	_shape_revision += 1
+	for i in mini(clouds.size(), SLOTS):
+		_prepare_one(i, clouds[i])
+	_looks_dirty = true
 	_mat.set_shader_parameter("puff", _puffs)
-	_mat.set_shader_parameter("cloud_look", _looks)
-	_quad.visible = n > 0 or _air > 0.0 or bool(_fog_field.get("any", false)) or bool(_canyon_field.get("any", false))
 
 
-func _lay_one(i: int, c: Dictionary, x: float, z: float, show: float) -> void:
+## Local XZ offsets and world Y/radius depend on the authored shape, never on wind or the view's wrapping origin.
+func _prepare_one(i: int, c: Dictionary) -> void:
 	var yaw: float = c.yaw
 	var size: float = c.size
 	var cs := cos(yaw)
 	var sn := sin(yaw)
 	var id := ID_BASE + int(c.id) * ID_STEP
-	_bounds[i] = Vector4(x, c.height + size * 0.5, z, size * BOUND_REACH)
-	_looks[i] = Vector4(c.height, c.density, show, 0.0)
+	_bounds[i] = Vector4(0.0, c.height + size * 0.5, 0.0, size * BOUND_REACH)
+	_looks[i] = Vector4(c.height, c.density, 0.0, 0.0)
 	var shape: Array = _d.puffs
 	for k in LOBES:
 		var p: Array = shape[k]
 		var ja: float = p[0] + (_hash(id * PUFF_SEED + k, SALT_X) - 0.5) * _d.puff_jitter
 		var jb: float = p[2] + (_hash(id * PUFF_SEED + k, SALT_Z) - 0.5) * _d.puff_jitter
 		var jr: float = p[3] * (_d.puff_least + _d.puff_vary * _hash(id * PUFF_SEED + k, SALT_R))
-		_puffs[i * LOBES + k] = Vector4(x + (ja * cs - jb * sn) * size, c.height + p[1] * size, z + (ja * sn + jb * cs) * size, jr * size)
+		_puffs[i * LOBES + k] = Vector4((ja * cs - jb * sn) * size, c.height + p[1] * size, (ja * sn + jb * cs) * size, jr * size)
 
 
 ## The sky's share of the light is what the streets lose (render/shaders/canyon_light.gdshaderinc).

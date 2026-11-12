@@ -53,7 +53,7 @@ void write_records(ByteWriter &w, const StreetWorks &k) {
 
 bool read_records(ByteReader &r, StreetWorks &k) {
 	uint32_t count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
+	if (!r.require_items(count, sizeof(uint8_t), MAX_RECORDS)) return false;
 	for (uint32_t i = 0; i < count && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		StreetItem it;
@@ -68,7 +68,7 @@ bool read_records(ByteReader &r, StreetWorks &k) {
 		if (r.ok) k.put_item(int(i), it);
 	}
 	count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
+	if (!r.require_items(count, sizeof(uint8_t), MAX_RECORDS)) return false;
 	for (uint32_t i = 0; i < count && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		UtilityPole p;
@@ -81,7 +81,7 @@ bool read_records(ByteReader &r, StreetWorks &k) {
 		if (r.ok) k.put_pole(int(i), p);
 	}
 	count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
+	if (!r.require_items(count, sizeof(uint8_t), MAX_RECORDS)) return false;
 	for (uint32_t i = 0; i < count && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		UtilitySpan s;
@@ -92,7 +92,7 @@ bool read_records(ByteReader &r, StreetWorks &k) {
 		if (r.ok) k.put_span(int(i), s);
 	}
 	count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
+	if (!r.require_items(count, sizeof(uint8_t), MAX_RECORDS)) return false;
 	for (uint32_t i = 0; i < count && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		Barrier b;
@@ -102,7 +102,7 @@ bool read_records(ByteReader &r, StreetWorks &k) {
 		if (r.ok) k.put_barrier(int(i), b);
 	}
 	count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
+	if (!r.require_items(count, sizeof(uint8_t), MAX_RECORDS)) return false;
 	for (uint32_t i = 0; i < count && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		StreetCut c;

@@ -8,14 +8,16 @@ extends RefCounted
 const SETTLED := 1e-4 # a share of the line of sight this small is no move
 
 var cfg: Dictionary
+var _rig: CityCamera
 var wanted := 0.0 # the share of the line taken off to see clear
 var _share := CameraDamp.new()
 var _blocked := 0.0
 var _hold := 0.0
 
 
-func _init(config: Dictionary) -> void:
-	cfg = config
+func _init(rig: CityCamera) -> void:
+	_rig = rig
+	cfg = rig.cfg
 
 
 ## The share of the line taken off now.
@@ -26,7 +28,7 @@ func shown() -> float:
 ## What the buildings ask for this view, at this zoom's weight.
 func ask(focus: Vector3, eye_at: Vector3, half: float) -> void:
 	var weight := 1.0 - CameraProfile.blend(half, cfg.pull_full_half, cfg.pull_none_half)
-	wanted = float(CityStore.query(&"sight_pull", [focus, eye_at, int(cfg.pull_samples), cfg.pull_soft_m])) * weight if weight > 0.0 else 0.0
+	wanted = float(_rig.physical_query(&"pull", &"sight_pull", [focus, eye_at, int(cfg.pull_samples), cfg.pull_soft_m])) * weight if weight > 0.0 else 0.0
 
 
 func snap() -> void:

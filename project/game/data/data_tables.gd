@@ -48,6 +48,7 @@ const UI := {
 	"builder": "res://data/ui/builder.json",
 }
 const GAME := {
+	"editing": "res://data/game/editing.json",
 	"camera": "res://data/game/camera.json",
 	"settings": "res://data/game/settings.json",
 	"daylight": "res://data/game/daylight.json",

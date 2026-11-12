@@ -82,9 +82,10 @@ void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vecto
 	if (!g.alive) return;
 	const bool signalled[2] = { control_of(s, g.a) == Control::SIGNAL, control_of(s, g.b) == Control::SIGNAL };
 	const size_t first = out.size();
-	segment_furniture(s.roads, sid, signalled, kinds, out);
-	merge_street(s.street, s.roads, sid, kinds, out, first); // what the player put up and cut
-	if (s.damage.gone.empty()) return;
+	const auto placed = s.street_placement.get(s, sid, signalled);
+	for (const FurnitureSpot &spot : *placed)
+		if (kinds & furniture_bit(spot.kind)) out.push_back(spot);
+	if (s.damage.gone().empty()) return;
 	// what a blow knocked out is not placed again (sim/demolition/damage_state.h)
 	size_t keep = first;
 	for (size_t i = first; i < out.size(); i++) {

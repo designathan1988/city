@@ -20,7 +20,10 @@ public:
 	explicit RowKeeper(uint64_t dense = 0) : dense_limit_(dense) {}
 	void begin() { frame_++; }
 	void draws(size_t n) { owners_.resize(n); }
-	int draw_of(uint64_t key) { return slot(key).draw; } // where it stood on the last frame, -1 nowhere
+	int draw_of(uint64_t key) const {
+		const Slot *found = find_slot(key);
+		return found ? found->draw : -1;
+	} // a query never allocates ownership of a row
 	// The row of `key` in draw `draw`, its rows `rows`: its own if it was there on the last frame, else a new one at the end.
 	float *place(uint64_t key, int draw, InstanceRows &rows) {
 		Slot &s = slot(key);
@@ -41,9 +44,9 @@ public:
 			if (owners.empty()) continue;
 			InstanceRows &rows = rows_of(draw);
 			for (int i = 0; i < int(owners.size());) {
-				const Slot &s = slot(owners[size_t(i)]);
-				const bool mine = s.draw == draw && s.row == i;
-				if (mine && s.frame == frame_) {
+				const Slot *s = find_slot(owners[size_t(i)]);
+				const bool mine = s && s->draw == draw && s->row == i;
+				if (mine && s->frame == frame_) {
 					i++;
 					continue;
 				}
@@ -52,14 +55,15 @@ public:
 				if (i != last) { // the last row takes the place
 					std::memcpy(rows.row(i), rows.row(last), sizeof(float) * size_t(rows.stride()));
 					owners[size_t(i)] = owners[size_t(last)];
-					Slot &moved = slot(owners[size_t(i)]);
-					if (moved.draw == draw && moved.row == last) moved.row = i;
+					Slot *moved = find_slot(owners[size_t(i)]);
+					if (moved && moved->draw == draw && moved->row == last) moved->row = i;
 				}
 				owners.pop_back();
 				rows.drop_last();
 			}
 		}
 	}
+	const std::vector<uint64_t> &owners(size_t draw) const { return owners_[draw]; }
 	void clear() {
 		dense_.clear();
 		sparse_.clear();
@@ -71,6 +75,14 @@ private:
 		uint32_t frame = 0;
 		int draw = -1, row = -1;
 	};
+	const Slot *find_slot(uint64_t key) const {
+		if (key < dense_limit_) return key < dense_.size() ? &dense_[size_t(key)] : nullptr;
+		auto it = sparse_.find(key);
+		return it == sparse_.end() ? nullptr : &it->second;
+	}
+	Slot *find_slot(uint64_t key) {
+		return const_cast<Slot *>(static_cast<const RowKeeper *>(this)->find_slot(key));
+	}
 	Slot &slot(uint64_t key) {
 		if (key >= dense_limit_) return sparse_[key];
 		if (key >= dense_.size()) dense_.resize(size_t(key) + 1 + size_t(key) / 2);

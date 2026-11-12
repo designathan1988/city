@@ -4,16 +4,12 @@
 #pragma once
 
 #include "sim/state/pose_buffer.h"
+#include "sim/traffic/route_arena.h"
 
 #include <cstdint>
 #include <vector>
 
 namespace city {
-
-// A route is a slice of the traffic/people pool: no heap allocation per vehicle or walker.
-struct RouteRef {
-	int off = -1, len = 0, cap = 0;
-};
 
 // A point on a walker's way round a corner: `cross` is the arm segment crossed on the way to it (-1: along the kerb);
 // a kerb end of a crosswalk also names the sidewalk of the arm it stands on (`side`, -1 elsewhere).
@@ -30,11 +26,14 @@ enum class PedMode : uint8_t { SIDEWALK, WAY, WAIT, KERB, LOT, FOLLOW };
 
 // A front door as the walkers use it: the sidewalk's arc and place across at the foot of its way, and the door itself.
 struct PedDoor {
-	int building = -1; // -1: no door
-	uint32_t seed = 0; // of the record it was read from: a building that went takes its door with it
+	int building = -1, segment = -1; // -1: no door
+	uint64_t source_version = 0, segment_generation = 0; // canonical building record revision, independent of its visual seed
 	float s = 0, u = 0, x = 0, y = 0, z = 0;
 	uint8_t kind = 0; // PlaceKind
 };
+
+// A deferred source read cannot bind a recycled or subsequently edited building id.
+struct PedDoorRead { int building = -1; uint64_t version = 0; };
 
 // A piece of street furniture as a body standing on a sidewalk: its footprint along the segment's arc (s0..s1) and
 // across from the sidewalk's middle (u0..u1), and in the world (centre, the arc's direction there, half sizes).
@@ -96,6 +95,8 @@ struct Pedestrian {
 	float u = 0, u_goal = 0, stripe_held = 0, pace = 0, jam = 0;
 	int way_node = -1; // the node it goes round (waypoints below)
 	Pose cur;
+	int escape_goal = -1; uint64_t escape_goal_generation = 0; // original desired goal survives newer bangs while its query waits
+	uint64_t generation = 0, escape_route_request = 0; // actual birth/request identities, outside the crowd hot fields
 	RouteRef route; // nodes; route[ri] is the node it walks toward, in TrafficState::ped_pool
 	int ri = 0;
 	Waypoint ways[MAX_WAYS];

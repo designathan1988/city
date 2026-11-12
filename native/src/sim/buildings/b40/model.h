@@ -40,6 +40,12 @@ struct ModelSpec {
 	std::vector<Core> cores;
 };
 
+// The complete read-only catalogue dependency of model construction; no city, mutable body table or asset collection.
+struct ModelInputs {
+	float module_m = 0;
+	Paint membrane;
+};
+
 struct ModelTable {
 	float module_m = 0;
 	std::vector<ModelSpec> items;

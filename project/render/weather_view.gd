@@ -23,6 +23,8 @@ var _bolts: Array = [] # { age, node }
 var _thunder: Thunder
 var _rng := RandomNumberGenerator.new()
 var _thunder_volume := 0.0
+var _ground_key: Array = []
+var _ground := Vector3.ZERO
 
 
 func _init(d: Dictionary) -> void:
@@ -70,15 +72,18 @@ func step(dt: float, weather: Dictionary, way: Vector2) -> void:
 	var cam := get_viewport().get_camera_3d()
 	if cam == null or weather.is_empty():
 		return
-	var ground := _ground_under(cam)
-	var span := 2.0 * cam.global_position.distance_to(ground) * tan(deg_to_rad(cam.fov) * 0.5) * float(get_viewport().get_visible_rect().size.aspect())
 	var rain: float = weather.rain
+	var rate: float = weather.lightning
 	_rain.visible = rain > _d.rain_min
+	var ground := Vector3.ZERO
+	var span := 0.0
+	if _rain.visible or rate > 0.0:
+		ground = _ground_under(cam)
+		span = 2.0 * cam.global_position.distance_to(ground) * tan(deg_to_rad(cam.fov) * 0.5) * float(get_viewport().get_visible_rect().size.aspect())
 	if _rain.visible:
 		_advance(ground, span, way * float(weather.wind), dt)
 		_rain_mat.set_shader_parameter("drops", roundi(_d.rain_max_drops * minf(1.0, rain)))
 		_rain_mat.set_shader_parameter("opacity", _d.rain_opacity + _d.rain_opacity_full * rain)
-	var rate: float = weather.lightning
 	if rate > 0.0 and _rng.randf() < dt * rate / 60.0:
 		var a := _rng.randf() * TAU
 		var r: float = _rng.randf() * span * _d.strike_reach
@@ -90,10 +95,16 @@ func step(dt: float, weather: Dictionary, way: Vector2) -> void:
 
 
 func _ground_under(cam: Camera3D) -> Vector3:
+	var inputs: Array = CityStore.query(&"camera_inputs")
+	var key := [cam.global_transform, inputs[0], inputs[1]]
+	if key == _ground_key:
+		return _ground
+	_ground_key = key
 	var ahead := -cam.global_basis.z
 	var y: float = CityStore.query(&"height_at", [cam.global_position.x, cam.global_position.z])
 	var t := (y - cam.global_position.y) / ahead.y if ahead.y < -LEVEL_VIEW else float(_d.rain_look_m)
-	return cam.global_position + ahead * minf(t, _d.rain_look_m)
+	_ground = cam.global_position + ahead * minf(t, _d.rain_look_m)
+	return _ground
 
 
 ## The rain one frame on: the box over the ground as wide as the view, the lattice's origin carried into it so nothing

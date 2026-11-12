@@ -13,6 +13,8 @@
 #include "sim/state/city_state.h"
 
 #include <cmath>
+#include <array>
+#include <limits>
 #include <memory>
 
 namespace city {
@@ -39,9 +41,10 @@ bool read_terrain(ByteReader &r, Heightfield &t) {
 		int x0 = (k % regions) * rs, z0 = (k / regions) * rs;
 		for (int z = z0; z < z0 + rs; z++) r.get_bytes(&t.base_q[size_t(z) * n + x0], size_t(rs) * sizeof(uint16_t));
 	}
+	t.base_changed({ 0, 0, n - 1, n - 1 });
 	t.recompose(0, 0, n - 1, n - 1);
 	uint32_t mods = r.get<uint32_t>();
-	if (!r.ok || mods > MAX_RECORDS) return false;
+	if (!r.require_items(mods, sizeof(uint8_t), MAX_RECORDS)) return false;
 	for (uint32_t i = 0; i < mods && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		TerrainModifier m;
@@ -55,7 +58,7 @@ bool read_terrain(ByteReader &r, Heightfield &t) {
 
 bool read_roads(ByteReader &r, RoadNetwork &net, uint32_t version) {
 	uint32_t nodes = r.get<uint32_t>();
-	if (!r.ok || nodes > MAX_RECORDS) return false;
+	if (!r.require_items(nodes, sizeof(uint8_t), MAX_RECORDS)) return false;
 	for (uint32_t i = 0; i < nodes && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		RoadNode n;
@@ -72,7 +75,7 @@ bool read_roads(ByteReader &r, RoadNetwork &net, uint32_t version) {
 		if (r.ok) net.put_node(int(i), n);
 	}
 	uint32_t segs = r.get<uint32_t>();
-	if (!r.ok || segs > MAX_RECORDS) return false;
+	if (!r.require_items(segs, sizeof(uint8_t), MAX_RECORDS)) return false;
 	for (uint32_t i = 0; i < segs && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		RoadSegment g;
@@ -92,7 +95,7 @@ bool read_roads(ByteReader &r, RoadNetwork &net, uint32_t version) {
 
 bool read_buildings(ByteReader &r, BuildingStore &bs) {
 	uint32_t count = r.get<uint32_t>();
-	if (!r.ok || count > MAX_RECORDS) return false;
+	if (!r.require_items(count, sizeof(uint8_t), MAX_RECORDS)) return false;
 	for (uint32_t i = 0; i < count && r.ok; i++) {
 		if (!r.get<uint8_t>()) continue;
 		Building b;
@@ -103,8 +106,13 @@ bool read_buildings(ByteReader &r, BuildingStore &bs) {
 
 bool read_transit(ByteReader &r, TransitData &t) {
 	t = TransitData();
-	t.next_id = r.get<int32_t>();
+	const int next = r.get<int32_t>();
+	std::vector<TransitStop> saved_stops;
+	std::vector<RailTrack> saved_tracks;
+	std::vector<TransitLine> saved_lines;
 	const uint32_t stops = r.get<uint32_t>();
+	constexpr size_t STOP_BYTES = 3 * sizeof(int32_t) + 4 * sizeof(float) + 2 * sizeof(uint8_t);
+	if (!r.require_items(stops, STOP_BYTES, MAX_RECORDS)) return false;
 	for (uint32_t i = 0; i < stops && r.ok; i++) {
 		TransitStop q;
 		q.id = r.get<int32_t>();
@@ -118,17 +126,20 @@ bool read_transit(ByteReader &r, TransitData &t) {
 		q.has_entrance = (flags & 2) != 0;
 		q.entrance.x = r.get<float>();
 		q.entrance.y = r.get<float>();
-		t.stops.push_back(q);
+		saved_stops.push_back(q);
 	}
 	const uint32_t tracks = r.get<uint32_t>();
+	if (!r.require_items(tracks, sizeof(int32_t) + sizeof(uint8_t) + sizeof(uint32_t), MAX_RECORDS)) return false;
 	for (uint32_t i = 0; i < tracks && r.ok; i++) {
 		RailTrack k;
 		k.id = r.get<int32_t>();
 		k.mode = TransitMode(r.get<uint8_t>());
 		r.get_vec(k.points);
-		t.tracks.push_back(std::move(k));
+		saved_tracks.push_back(std::move(k));
 	}
 	const uint32_t lines = r.get<uint32_t>();
+	constexpr size_t LINE_HEADER_BYTES = 2 * sizeof(int32_t) + sizeof(uint8_t) + 3 * sizeof(uint32_t);
+	if (!r.require_items(lines, LINE_HEADER_BYTES, MAX_RECORDS)) return false;
 	for (uint32_t i = 0; i < lines && r.ok; i++) {
 		TransitLine l;
 		l.id = r.get<int32_t>();
@@ -136,11 +147,10 @@ bool read_transit(ByteReader &r, TransitData &t) {
 		r.get_vec(l.stops);
 		l.colour = r.get<uint32_t>();
 		l.vehicles = r.get<int32_t>();
-		l.name.resize(r.get<uint32_t>());
-		r.get_bytes(l.name.data(), l.name.size());
-		t.lines.push_back(std::move(l));
+		r.get_string(l.name);
+		saved_lines.push_back(std::move(l));
 	}
-	return r.ok;
+	return r.ok && t.restore(std::move(saved_stops), std::move(saved_tracks), std::move(saved_lines), next);
 }
 } // namespace
 
@@ -150,6 +160,8 @@ constexpr uint32_t NATURE_VERSION = 2, VARIANTS_VERSION = 3;
 // Made again in the saved order, so each keeps the index the roads hold.
 void read_spec(ByteReader &r, RoadSpec &spec) {
 	const uint32_t n = r.get<uint32_t>();
+	constexpr size_t SPEC_ELEMENT_BYTES = 3 * sizeof(uint8_t) + sizeof(float) + sizeof(int32_t);
+	if (!r.require_items(n, SPEC_ELEMENT_BYTES, MAX_RECORDS)) return;
 	for (uint32_t i = 0; i < n && r.ok; i++) {
 		SpecElement e;
 		e.kind = SpecKind(r.get<uint8_t>());
@@ -171,6 +183,8 @@ void read_spec(ByteReader &r, RoadSpec &spec) {
 
 bool read_variants(ByteReader &r, Catalog &c, uint32_t version) {
 	const uint32_t n = r.get<uint32_t>();
+	const size_t variant_header = 3 * sizeof(int32_t) + sizeof(float) + (version >= SPEC_SAVE_VERSION ? sizeof(uint32_t) : 0);
+	if (!r.require_items(n, variant_header, MAX_RECORDS)) return false;
 	for (uint32_t i = 0; i < n && r.ok; i++) {
 		RoadVariant v;
 		v.base = r.get<int32_t>();
@@ -218,6 +232,29 @@ void drop_baked_road_ground(CityState &s) {
 // The planned cities stood on this much land before the file said so: the land comes from the seed and the side, and another side moves its water.
 constexpr int PLANNED_TILES_BEFORE = 10;
 
+// Inspect dimensions and backed sculpted tiles before found_land allocates the generated height grids. This reads
+// only the fixed header and at most TERRAIN_MAX_REGIONS squared mask bytes; it does not decode the city a second time.
+bool valid_land_header(ByteReader header, const Tuning &tune, int tiles) {
+	header.get<double>(); header.get<uint8_t>(); header.get<double>(); header.get<double>(); // money, unlimited, clock
+	const int n = header.get<int32_t>(), regions = header.get<int32_t>(), rs = header.get<int32_t>();
+	const float station_count = std::round(tune.world_tile_m / tune.world_height_spacing_m); // same float ratio as Heightfield::init
+	const int expected_regions = clampi(tiles, 2, TERRAIN_MAX_REGIONS);
+	if (!header.ok || !std::isfinite(station_count) || station_count < 1 || double(station_count) > double(std::numeric_limits<int>::max() / expected_regions)) return false;
+	if (regions != expected_regions || rs != int(station_count) || n != expected_regions * int(station_count)) return false;
+	const uint32_t count = header.get<uint32_t>();
+	if (count != uint32_t(regions * regions) || !header.require_items(count, sizeof(uint8_t))) return false;
+	std::array<uint8_t, TERRAIN_MAX_REGIONS * TERRAIN_MAX_REGIONS> dirty{};
+	header.get_bytes(dirty.data(), count);
+	const size_t side = size_t(rs);
+	if (side > std::numeric_limits<size_t>::max() / side / sizeof(uint16_t)) return false;
+	size_t sculpted = 0;
+	for (uint32_t i = 0; i < count; i++) {
+		if (dirty[i] > 1) return false;
+		sculpted += dirty[i];
+	}
+	return header.require_items(sculpted, side * side * sizeof(uint16_t));
+}
+
 // Everything the file holds, read into `s` (the land founded again from its seed first, or only sized when `checking`):
 // false at the first thing that is not a city, with `s` left half replaced.
 bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &error, bool checking) {
@@ -234,7 +271,7 @@ bool read_city(CityState &s, const uint8_t *data, size_t size, std::string &erro
 	if (!r.ok || map < 0 || size_t(map) >= s.catalog.maps.size()) return false;
 	const MapDef &def = s.catalog.maps[size_t(map)];
 	const int tiles = version >= LAND_SAVE_VERSION ? r.get<int32_t>() : def.medium ? PLANNED_TILES_BEFORE : def.tiles;
-	if (!r.ok || tiles <= 0) return false;
+	if (!r.ok || tiles <= 0 || tiles > TERRAIN_MAX_REGIONS || !valid_land_header(r, s.catalog.tune, tiles)) return false;
 	found_land(s, map, seed, !checking, tiles);
 	s.money = r.get<double>();
 	if (!std::isfinite(s.money)) return false;

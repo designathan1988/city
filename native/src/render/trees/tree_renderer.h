@@ -6,6 +6,8 @@
 // Chunks are built by jobs and rebuilt when their roads or lots change.
 #pragma once
 
+#include "render/chunk_results.h"
+
 #include "core/job_pool.h"
 #include "render/chunk_queue.h"
 #include "render/render_context.h"
@@ -26,7 +28,7 @@ class TreeRenderer {
 public:
 	bool init(const RenderContext &ctx, const StreetLook &look, godot::PackedStringArray &errors);
 	void reset();
-	void mark_dirty(int64_t key);
+	void mark_dirty(int64_t key, JobPool *pool = nullptr);
 	void set_share(float share); // the graphics tier: every drawn chunk is placed again
 	int near_trees() const; // trees of the near level now
 	int near_plants() const; // of them, the gardens' bushes and hedges
@@ -52,7 +54,7 @@ private:
 	};
 	struct Tier {
 		std::unordered_set<int64_t> dirty;
-		std::vector<Built> done;
+		CompletedResults<Built> done;
 		std::unordered_map<int64_t, uint64_t> requested;
 	};
 	Built build_near(const CityState &s, int64_t key) const;

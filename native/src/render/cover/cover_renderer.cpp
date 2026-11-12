@@ -4,6 +4,7 @@
 #include "core/math.h"
 #include "core/random.h"
 #include "render/chunk_jobs.h"
+#include "render/job_request.h"
 #include "render/trees/tree_place.h"
 #include "sim/terrain/terrain_gen.h"
 
@@ -84,20 +85,20 @@ void CoverRenderer::reset() {
 	pending_ = 0;
 }
 
-void CoverRenderer::place(const CityState &s, int64_t key, Built &out) const {
-	ChunkGround l = chunk_ground(s, key);
-	if (l.eco.side == 0) return;
-	const bool painted = s.nature.ground.any_cover(), cactus = any_cactus(l.eco);
+void CoverRenderer::place(const CityState &s, int64_t key, const PlantGround &l, Built &out) const {
+	if (l.eco->side == 0) return;
+	const bool painted = s.nature.ground.any_cover(), cactus = any_cactus(*l.eco);
 	for (int p = 0; p < COVER_PIECES; p++) {
 		if (CoverPiece(p) == CoverPiece::CACTUS ? !cactus : !painted) continue;
 		const CoverLook &k = kit_.look(CoverPiece(p));
 		int n = int(CHUNK / k.spacing_m), cx = key_x(key), cz = key_y(key);
 		for (int j = 0; j < n; j++)
 			for (int i = 0; i < n; i++) {
+				if (i == 0 && JobPool::cancelled()) return;
 				int ix = cx * n + i, iz = cz * n + j;
 				uint32_t h = hash_combine(hash_combine(hash_combine(uint32_t(ix), uint32_t(iz)), COVER_SALT ^ s.seed), uint32_t(p));
 				float x = (float(ix) + HALF + (h01(h, POS_X) - HALF)) * k.spacing_m, z = (float(iz) + HALF + (h01(h, POS_Z) - HALF)) * k.spacing_m;
-				float d = density(s, kit_, CoverPiece(p), l.eco, x, z);
+				float d = density(s, kit_, CoverPiece(p), *l.eco, x, z);
 				if (d < k.least || h01(h, KEEP) > std::sqrt(d)) continue;
 				if (!s.terrain.in_bounds(x, z, k.spacing_m) || s.terrain.is_water(x, z, 0.f)) continue;
 				if (near_road(s, l, x, z, k.road_margin_m) || in_lot(s, l, k.road_margin_m, x, z)) continue;
@@ -114,6 +115,7 @@ void CoverRenderer::place_elements(const CityState &s, int64_t key, Built &out) 
 	const std::vector<ElementItem> *items = s.nature.elements.in_chunk(key);
 	if (!items) return;
 	for (const ElementItem &e : *items) {
+		if (JobPool::cancelled()) return;
 		if (e.kind >= models_.kinds()) continue; // an effect: render/element_effects.gd
 		int n = models_.variants(e.kind), at = models_.first(e.kind) + std::min(n - 1, int(e.seed * float(n)));
 		const ElementModel &m = models_.all()[size_t(at)];
@@ -124,14 +126,13 @@ void CoverRenderer::place_elements(const CityState &s, int64_t key, Built &out) 
 }
 
 // A river's stones, on the same lattice rule as the cover and with its rocks' models, drawn apart: they reach further.
-void CoverRenderer::place_shore(const CityState &s, int64_t key, Built &out) const {
-	if (!shore_near(s.terrain, key_x(key) * CHUNK, key_y(key) * CHUNK, CHUNK, shore_.search_m)) return;
-	ChunkGround l = chunk_ground(s, key);
+void CoverRenderer::place_shore(const CityState &s, int64_t key, const PlantGround &l, Built &out) const {
 	const CoverLook &k = kit_.look(CoverPiece::ROCKS);
 	const int n = int(CHUNK / shore_.spacing_m), cx = key_x(key), cz = key_y(key), first = draws_ + int(models_.all().size());
 	const float step = CHUNK / float(n);
 	for (int j = 0; j < n; j++)
 		for (int i = 0; i < n; i++) {
+			if (i == 0 && JobPool::cancelled()) return;
 			int ix = cx * n + i, iz = cz * n + j;
 			uint32_t h = hash_combine(hash_combine(hash_combine(uint32_t(ix), uint32_t(iz)), COVER_SALT ^ s.seed), uint32_t(COVER_PIECES));
 			float x = (float(ix) + h01(h, POS_X)) * step, z = (float(iz) + h01(h, POS_Z)) * step;
@@ -152,10 +153,22 @@ CoverRenderer::Built CoverRenderer::build(const CityState &s, int64_t key) const
 	Built out;
 	out.key = key;
 	out.bufs.resize(size_t(draws_) + models_.all().size() + kit_.look(CoverPiece::ROCKS).variants.size());
-	if (s.nature.nature.region >= 0 || s.nature.ground.any_cover()) place(s, key, out);
+	std::shared_ptr<const PlantGround> ground;
+	if (s.nature.nature.region >= 0 || s.nature.ground.any_cover()) {
+		ground = chunk_ground(s, key); place(s, key, *ground, out);
+	}
 	place_elements(s, key, out);
-	place_shore(s, key, out);
+	if (shore_near(s.terrain, key_x(key) * CHUNK, key_y(key) * CHUNK, CHUNK, shore_.search_m)) {
+		if (!ground) ground = chunk_ground(s, key);
+		place_shore(s, key, *ground, out);
+	}
 	return out;
+}
+
+void CoverRenderer::mark_dirty(int64_t key, JobPool *pool) {
+	cancel_request(pool, JobKey{ JobLane::COVER, key }, queue_mutex_, requested_);
+	dirty_.insert(key);
+	wet_.erase(key);
 }
 
 void CoverRenderer::commit_one(Built &b) {
@@ -194,7 +207,9 @@ void CoverRenderer::submit(const CityState &s, int64_t key, float priority) {
 	}
 	s.jobs->submit(JobKey{ JobLane::COVER, key }, priority, [this, &s, key, seq, priority]() {
 		std::shared_lock<std::shared_mutex> map(s.map_mutex);
+		if (JobPool::cancelled()) return;
 		Built b = build(s, key);
+		if (JobPool::cancelled()) return;
 		b.seq = seq;
 		b.priority = priority;
 		std::lock_guard<std::mutex> lk(queue_mutex_);
@@ -225,18 +240,16 @@ void CoverRenderer::sync(const CityState &s, const Vector3 &cam, BuildBudget &bu
 		std::lock_guard<std::mutex> lk(queue_mutex_);
 		return requested_.count(k) > 0;
 	};
+	for (int64_t key : dirty_) cancel_request(s.jobs.get(), JobKey{ JobLane::COVER, key }, queue_mutex_, requested_);
 	for (auto it = dirty_.begin(); it != dirty_.end();) {
-		if (chunks_.count(*it) == 0 || busy(*it)) { it = dirty_.erase(it); continue; }
+		if (chunks_.count(*it) == 0) { it = dirty_.erase(it); continue; }
 		if (!budget.take()) break;
 		submit(s, *it, distance_to(*it, cam));
 		it = dirty_.erase(it);
 	}
 	for (auto it = chunks_.begin(); it != chunks_.end();) {
 		if (distance_to(it->first, cam) <= reach_of(s, it->first) + DROP_CHUNKS * CHUNK) { ++it; continue; }
-		{
-			std::lock_guard<std::mutex> lk(queue_mutex_);
-			requested_.erase(it->first);
-		}
+		cancel_request(s.jobs.get(), JobKey{ JobLane::COVER, it->first }, queue_mutex_, requested_);
 		for (MultiMeshDraw &d : it->second) d.free();
 		it = chunks_.erase(it);
 	}

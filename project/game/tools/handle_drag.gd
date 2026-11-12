@@ -86,7 +86,7 @@ func press() -> bool:
 	_px_storey = maxf(absf(cam.unproject_position(_held.at).y - cam.unproject_position(_held.at - Vector3.UP * info.storey_h).y), ROOF_REACH)
 	_width = info.volumes[_vol].w
 	_storey_h = info.storey_h
-	_base = CityStore.query(&"body_draft", [_id, {}])
+	_base = CityStore.query(&"body_draft", [_id, {}, false])
 	return true
 
 
@@ -106,7 +106,7 @@ func move(shift: bool) -> void:
 		return
 	_shown = key
 	_free_ghost()
-	var d: Dictionary = CityStore.query(&"body_draft", [_id, _spec])
+	var d: Dictionary = CityStore.query(&"body_draft", [_id, _spec, false])
 	_show_draft(d)
 	if not d.is_empty():
 		_ctl.tagged.emit(_measure(), _held.at, d.problem == "")
@@ -133,7 +133,7 @@ func preview(id: int, spec: Dictionary) -> void:
 	_free_ghost()
 	if spec.is_empty():
 		return
-	_show_draft(CityStore.query(&"body_draft", [id, spec]))
+	_show_draft(CityStore.query(&"body_draft", [id, spec, false]))
 
 
 ## What a click would add: the part on the wall under the pointer, the basic shape on the roof or the wall.
@@ -153,7 +153,7 @@ func ghost_in_hand(card: Dictionary) -> void:
 func _show_draft(d: Dictionary) -> void:
 	if d.is_empty():
 		return
-	_ghost = CityStore.query(&"stage_show", [d.bytes, _ctl.get_viewport().find_world_3d().scenario, true])
+	_ghost = CityStore.query(&"stage_show", [d.prepared, _ctl.get_viewport().find_world_3d().scenario, true])
 	CityStore.query(&"stage_move", [_ghost, Transform3D(Basis(Vector3.UP, d.rot), Vector3(d.x, d.y, d.z))])
 	if d.problem != "":
 		_ctl.hint.emit(_ctl.tr(d.problem), false)
@@ -162,6 +162,7 @@ func _show_draft(d: Dictionary) -> void:
 func cancel() -> void:
 	_free_ghost()
 	_held = {}
+	_base = {}
 	_spec = {}
 	_shown = ""
 	_place = {}
@@ -205,7 +206,7 @@ func _measure() -> String:
 func _show_place(place: Dictionary) -> void:
 	_place = place
 	if _ghost == 0:
-		_ghost = CityStore.query(&"stage_show", [_base.bytes, _ctl.get_viewport().find_world_3d().scenario, true])
+		_ghost = CityStore.query(&"stage_show", [_base.prepared, _ctl.get_viewport().find_world_3d().scenario, true])
 	CityStore.query(&"stage_move", [_ghost, Transform3D(Basis(Vector3.UP, place.rot), Vector3(place.x, _base.y, place.z))])
 
 

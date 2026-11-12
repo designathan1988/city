@@ -15,6 +15,12 @@ struct Weather {
 #define CITY_WEATHER_MEMBER(name) float name = 0;
 	CITY_WEATHER_FIELDS(CITY_WEATHER_MEMBER)
 #undef CITY_WEATHER_MEMBER
+	bool operator==(const Weather &o) const {
+#define CITY_WEATHER_EQUAL(name) if (name != o.name) return false;
+		CITY_WEATHER_FIELDS(CITY_WEATHER_EQUAL)
+#undef CITY_WEATHER_EQUAL
+		return true;
+	}
 };
 
 Weather default_weather(const WeatherDef &d);
@@ -27,6 +33,9 @@ struct PlacedCloud {
 	float height = 0, size = 0; // its flat base over the sea, and its width (metres)
 	float density = 0; // 0..1: thin and wispy .. a dense white heap
 	float yaw = 0; // which way its puffs lie
+	bool operator==(const PlacedCloud &o) const {
+		return id == o.id && x == o.x && z == o.z && height == o.height && size == o.size && density == o.density && yaw == o.yaw;
+	}
 };
 
 PlacedCloud clamped_cloud(const PlacedCloud &c, const CloudDef &d);

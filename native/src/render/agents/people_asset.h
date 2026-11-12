@@ -10,10 +10,13 @@
 
 #include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
+#include <godot_cpp/classes/image.hpp>
+#include <godot_cpp/variant/aabb.hpp>
 #include <godot_cpp/classes/texture2d_array.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 
+#include <array>
 #include <string>
 #include <vector>
 
@@ -33,7 +36,15 @@ struct PersonFit {
 };
 
 constexpr int PALM_FLOATS = 12;
+constexpr int PERSON_LAST_SHADER_BONE = 52; // people_skin.gdshaderinc LAST_BONE, cooked Rocketbox skeleton
 constexpr int JOINT_COUNT = 18, JOINT_FLOATS = JOINT_COUNT * 3; // ragdoll.h RAGDOLL_JOINTS
+
+struct PersonBoneBounds {
+	godot::Vector3 low, high;
+	bool used = false;
+};
+
+struct PersonBoneMotion { std::array<float, PALM_FLOATS> low{}, high{}; bool used = false; };
 
 struct PersonVariation {
 	int walk_frames = 1;
@@ -43,6 +54,11 @@ struct PersonVariation {
 	float palm[PALM_FLOATS] = {}; // three rows, the palm at rest: X along the fingers, Y to the thumb, Z out of the back of the hand
 	float joints[JOINT_FLOATS] = {}; // where the ragdoll's joints stand at rest
 	std::vector<godot::Ref<godot::ArrayMesh>> lods; // 0 = near
+	std::vector<PersonBoneBounds> bone_bounds; // union of weighted bind vertices across every cooked LOD
+	PersonBoneMotion hand_motion, head_motion;
+	godot::AABB animated_bounds; // all palette rows, interpolated clips and face-channel displacement
+	bool animated_bounds_ready = false;
+	double weight_sum_low = 1, weight_sum_high = 1; // includes normalized and packed-UNORM16 weight sums
 	std::vector<PersonFit> fits; // one a clip, in PeopleAsset::clips' order
 };
 
@@ -61,6 +77,9 @@ struct PeopleAsset {
 	godot::PackedByteArray palette_bytes; // the palette as the file has it
 	// A body's bones in a frame of a clip, bind -> pose rows, twelve floats a bone.
 	void clip_rows(int variation, int clip_index, int frame, float *rows) const;
+	void palette_rows(int variation, int row, float *rows) const;
+	void prepare_animation_bounds(const godot::Ref<godot::Image> &face_image);
+	godot::AABB attachment_bounds(size_t variation, bool head, const godot::AABB &rest) const;
 	void read_card(ByteReader &r);
 	void read_ragdoll(ByteReader &r, uint32_t bones);
 	// The clip of that name, as its index in `clips`; -1 when the file has none.

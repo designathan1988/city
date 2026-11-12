@@ -18,4 +18,5 @@ func _process(_delta: float) -> void:
 		return
 	_seen = field.revision
 	_world.terrain.material.set_shader_param("shore_map", field.texture)
+	_world.terrain.material.set_shader_param("shore_pages", field.pages)
 	_world.terrain.material.set_shader_param("shore_grid", field.grid)

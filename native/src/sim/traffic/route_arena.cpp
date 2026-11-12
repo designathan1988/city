@@ -1,55 +1,102 @@
-// Route slices for vehicles and pedestrians (see RouteRef in traffic_state.h): one pool, reused capacity, no
-// per-entity vector allocation; compacted when the waste passes half the pool.
-#include "sim/traffic/traffic_state.h"
-
+// Route page allocation/reclamation: local size-class work and stable handles replace append-only pool compaction.
+#include "sim/traffic/route_arena.h"
+#include "core/generation.h"
+#include <algorithm>
+#include <cassert>
+#include <cstdlib>
 #include <cstring>
+#include <limits>
+#include <utility>
 
 namespace city {
-
-void route_set(std::vector<int> &pool, RouteRef &r, size_t &waste, const int *src, int n) {
-	if (n <= 0) {
-		if (r.off >= 0) waste += size_t(r.cap);
-		r = RouteRef();
-		return;
-	}
-	if (r.off >= 0 && n <= r.cap) {
-		std::memcpy(pool.data() + r.off, src, size_t(n) * sizeof(int));
-		r.len = n;
-		return;
-	}
-	if (r.off >= 0) waste += size_t(r.cap);
-	r.off = int(pool.size());
-	r.cap = r.len = n;
-	pool.insert(pool.end(), src, src + n);
+RoutePool::RoutePool(RoutePool &&other) : RoutePool() { *this = std::move(other); }
+RoutePool &RoutePool::operator=(RoutePool &&other) {
+	if (this == &other) return *this;
+	pages_ = std::move(other.pages_); free_pages_ = std::move(other.free_pages_); partial_ = other.partial_;
+	other.clear(); return *this;
 }
-
-void route_compact(TrafficState &t) {
-	if (t.route_waste > t.route_pool.size() / 2) {
-		std::vector<int> packed;
-		packed.reserve(t.route_pool.size() - t.route_waste);
-		for (Vehicle &v : t.vehicles) {
-			if (!v.alive || v.route.len <= 0) continue;
-			const int off = int(packed.size());
-			packed.insert(packed.end(), t.route_pool.begin() + v.route.off, t.route_pool.begin() + v.route.off + v.route.len);
-			v.route.off = off;
-			v.route.cap = v.route.len;
-		}
-		t.route_pool.swap(packed);
-		t.route_waste = 0;
-	}
-	if (t.ped_waste > t.ped_pool.size() / 2) {
-		std::vector<int> packed;
-		packed.reserve(t.ped_pool.size() - t.ped_waste);
-		for (Pedestrian &w : t.peds) {
-			if (!w.alive || w.route.len <= 0) continue;
-			const int off = int(packed.size());
-			packed.insert(packed.end(), t.ped_pool.begin() + w.route.off, t.ped_pool.begin() + w.route.off + w.route.len);
-			w.route.off = off;
-			w.route.cap = w.route.len;
-		}
-		t.ped_pool.swap(packed);
-		t.ped_waste = 0;
-	}
+void RoutePool::link(int index) {
+	Page &page = pages_[size_t(index)];
+	page.previous = -1; page.next = partial_[size_t(page.kind)];
+	if (page.next >= 0) pages_[size_t(page.next)].previous = index;
+	partial_[size_t(page.kind)] = index;
 }
-
+void RoutePool::unlink(int index) {
+	Page &page = pages_[size_t(index)];
+	if (page.previous >= 0) pages_[size_t(page.previous)].next = page.next;
+	else partial_[size_t(page.kind)] = page.next;
+	if (page.next >= 0) pages_[size_t(page.next)].previous = page.previous;
+	page.previous = page.next = -1;
+}
+RouteRef RoutePool::allocate(int count) {
+	int kind = 0, capacity = 1;
+	while (capacity < count && capacity <= std::numeric_limits<int>::max() / 2) { capacity *= 2; kind++; }
+	if (capacity < count) { capacity = count; kind++; } // one large slice, no rounded signed overflow
+	int index = partial_[size_t(kind)];
+	if (index < 0) {
+		if (free_pages_.empty()) {
+			if (pages_.size() >= size_t(std::numeric_limits<int>::max())) std::abort();
+			index = int(pages_.size()); pages_.emplace_back();
+		} else { index = free_pages_.back(); free_pages_.pop_back(); }
+		Page &page = pages_[size_t(index)];
+		page.capacity = capacity; page.kind = kind;
+		const int elements = std::max(PAGE_INTS, capacity);
+		page.slots = elements / capacity;
+		page.data.reset(new int[size_t(elements)]); // reserve raw ints; only a written route or free link is read
+		link(index);
+	}
+	Page &page = pages_[size_t(index)];
+	assert(page.capacity == capacity && page.used < page.slots);
+	int offset;
+	if (page.free >= 0) { offset = page.free; page.free = page.data[size_t(offset)]; }
+	else { offset = page.bump; page.bump += page.capacity; }
+	if (++page.used == page.slots) unlink(index);
+	const int64_t handle = int64_t((uint64_t(index) << PAGE_SHIFT) | uint32_t(offset));
+	return {handle, count, capacity, next_generation()};
+}
+int *RoutePool::data(const RouteRef &route) {
+	const size_t page = size_t(uint64_t(route.off) >> PAGE_SHIFT), offset = size_t(uint64_t(route.off) & OFFSET_MASK);
+	assert(route.off >= 0 && page < pages_.size() && pages_[page].data && pages_[page].capacity == route.cap);
+	return pages_[page].data.get() + offset;
+}
+int RoutePool::at(const RouteRef &route, int k) const {
+	if (k < 0 || k >= route.len) return -1;
+	const size_t page = size_t(uint64_t(route.off) >> PAGE_SHIFT), offset = size_t(uint64_t(route.off) & OFFSET_MASK);
+	assert(route.off >= 0 && page < pages_.size() && pages_[page].data && pages_[page].capacity == route.cap);
+	return pages_[page].data[offset + size_t(k)];
+}
+void RoutePool::set(RouteRef &route, const int *source, int count, uint64_t goal_generation) {
+	if (count <= 0) { release(route); return; }
+	if (route.off >= 0 && route.len == count && route.goal_generation == goal_generation && std::memcmp(data(route), source, size_t(count) * sizeof(int)) == 0) return;
+	if (route.off >= 0 && count <= route.cap) {
+		std::memmove(data(route), source, size_t(count) * sizeof(int)); route.len = count; route.goal_generation = goal_generation; route.version = next_generation(); return;
+	}
+	RouteRef next = allocate(count); next.goal_generation = goal_generation;
+	std::memmove(data(next), source, size_t(count) * sizeof(int));
+	release(route); route = next;
+}
+void RoutePool::prepare(RouteDraft &draft, int count) {
+	assert(draft.empty()); if (count > 0) draft.value_ = allocate(count);
+}
+void RoutePool::write(RouteDraft &draft, int at, int value) {
+	assert(at >= 0 && at < draft.value_.len); data(draft.value_)[size_t(at)] = value;
+}
+void RoutePool::adopt(RouteRef &into, RouteDraft &prepared) {
+	release(into); into = std::exchange(prepared.value_, RouteRef{});
+}
+void RoutePool::release(RouteRef &route) {
+	if (route.off < 0) { route = {}; return; }
+	const int index = int(uint64_t(route.off) >> PAGE_SHIFT), offset = int(uint64_t(route.off) & OFFSET_MASK);
+	Page &page = pages_[size_t(index)];
+	assert(page.data && page.used > 0 && page.capacity == route.cap);
+	if (page.used == page.slots) link(index);
+	page.data[size_t(offset)] = page.free; page.free = offset;
+	if (--page.used == 0) {
+		unlink(index); page = Page(); free_pages_.push_back(index);
+	}
+	route = {};
+}
+void RoutePool::clear() {
+	pages_.clear(); free_pages_ = FreeSlots(); partial_.fill(-1);
+}
 } // namespace city

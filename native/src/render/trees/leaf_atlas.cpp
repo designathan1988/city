@@ -122,7 +122,8 @@ bool LeafAtlas::build(const Dictionary &atlas, PackedStringArray &errors) {
 	cluster(cv, L, r, TUFT_WIDE, L.leaves, 1.f);
 	cluster(cv, L, r, TUFT_CLOSE, int(std::lround(L.leaves * L.near_leaves)), 1.f / std::sqrt(L.near_leaves));
 	frond(cv, L, r);
-	texture_ = ImageTexture::create_from_image(image_with_linear_mips(cv.w, cv.h, cv.px));
+	image_ = image_with_linear_mips(cv.w, cv.h, cv.px);
+	texture_ = ImageTexture::create_from_image(image_);
 	return texture_.is_valid();
 }
 

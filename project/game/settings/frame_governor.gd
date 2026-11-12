@@ -1,4 +1,5 @@
-## The two loops that watch the GPU's frame against its budget. QualityGovernor moves the automatic tier: the p90 of a
+## Two pressure loops: quality receives the largest GPU/CPU/tick cost normalized to a frame budget; resolution receives GPU cost alone.
+## QualityGovernor moves the automatic tier: the p90 of a
 ## window of frames, down after a few missed windows, up after more roomy ones, never above the tier the hardware was
 ## given, and a tier the machine could not hold is not tried again for a while. DynamicResolution steps the 3D scale so the
 ## frame fits. All numbers: data/game/settings.json "governor" and "dynamic_resolution".

@@ -14,41 +14,82 @@ const LINE_ALPHA := 0.85
 
 var tool: ToolBase
 var _font: Font
+var _plan_layer: Control
+var _revision := -1
+var _generation := -1
+var _projection: Array = []
+var _by_id: Dictionary = {}
+var _stops: Array = []
+var _lines: Array[Dictionary] = []
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_font = ThemeDB.fallback_font
+	_plan_layer = Control.new()
+	_plan_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_plan_layer.show_behind_parent = true # the authored plan draws before the transient points/line, as in the original draw
+	add_child(_plan_layer)
+	_plan_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_plan_layer.draw.connect(_draw_plan)
 
 
 func _process(_delta: float) -> void:
+	var changed := false
+	var revision: int = CityStore.snapshot.get("transit_revision", -1)
+	var generation: int = CityStore.snapshot.get("city_generation", -1)
+	if revision != _revision or generation != _generation:
+		var plan: Dictionary = CityStore.cached(&"transit_plan")
+		_by_id.clear()
+		_stops = plan.stops
+		for stop: Dictionary in _stops:
+			_by_id[stop.id] = stop
+		_lines.clear()
+		for line: Dictionary in plan.lines:
+			var colour := Color.hex((int(line.colour) << RGB_BITS) | 0xff)
+			colour.a = LINE_ALPHA
+			_lines.push_back({"points": _places(line.stops, _by_id), "colour": colour})
+		_revision = revision
+		_generation = generation
+		changed = true
+	var camera := get_viewport().get_camera_3d()
+	var key := CityCamera.projection_key(camera, get_viewport_rect()) if camera != null else []
+	if key != _projection:
+		_projection = key
+		changed = true
+	if changed:
+		_plan_layer.queue_redraw()
+		queue_redraw()
+
+
+func draft_changed() -> void:
 	queue_redraw()
+
+
+func _draw_plan() -> void:
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	for line: Dictionary in _lines:
+		_stroke(cam, line.points, line.colour, ThemeBuilder.size("transit_line_w"), _plan_layer)
+	for stop: Dictionary in _stops:
+		if not cam.is_position_behind(stop.at):
+			_mark(cam.unproject_position(stop.at), stop, _plan_layer)
 
 
 func _draw() -> void:
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:
 		return
-	var plan: Dictionary = CityStore.cached(&"transit_plan") # read again only when the plan changes
-	var by_id := {}
-	for s: Dictionary in plan.stops:
-		by_id[s.id] = s
-	for line: Dictionary in plan.lines:
-		var colour := Color.hex((int(line.colour) << RGB_BITS) | 0xff)
-		colour.a = LINE_ALPHA
-		_stroke(cam, _places(line.stops, by_id), colour, ThemeBuilder.size("transit_line_w"))
-	for s: Dictionary in plan.stops:
-		if not cam.is_position_behind(s.at):
-			_mark(cam.unproject_position(s.at), s)
 	for p: Vector3 in tool.points:
 		if not cam.is_position_behind(p):
 			draw_circle(cam.unproject_position(p), ThemeBuilder.size("transit_point_r"), ThemeBuilder.color("white"))
 	if not tool.stops.is_empty():
-		var draft := _places(tool.stops, by_id)
+		var draft := _places(tool.stops, _by_id)
 		if tool.cursor != Vector3.INF:
 			draft.append(tool.cursor)
-		_stroke(cam, draft, ThemeBuilder.color("transit_draft"), ThemeBuilder.size("transit_draft_w"))
+		_stroke(cam, draft, ThemeBuilder.color("transit_draft"), ThemeBuilder.size("transit_draft_w"), self)
 
 
 func _places(ids: PackedInt32Array, by_id: Dictionary) -> PackedVector3Array:
@@ -59,16 +100,16 @@ func _places(ids: PackedInt32Array, by_id: Dictionary) -> PackedVector3Array:
 	return out
 
 
-func _stroke(cam: Camera3D, places: PackedVector3Array, colour: Color, width: float) -> void:
+func _stroke(cam: Camera3D, places: PackedVector3Array, colour: Color, width: float, canvas: CanvasItem) -> void:
 	var run := PackedVector2Array()
 	for p in places:
 		if not cam.is_position_behind(p):
 			run.append(cam.unproject_position(p))
 	if run.size() >= 2:
-		draw_polyline(run, colour, width, true)
+		canvas.draw_polyline(run, colour, width, true)
 
 
-func _mark(at: Vector2, s: Dictionary) -> void:
+func _mark(at: Vector2, s: Dictionary, canvas: CanvasItem) -> void:
 	var mode := int(s.mode)
 	var fill := ThemeBuilder.color(FILL_TOKENS[mode])
 	var ring := ThemeBuilder.color("white")
@@ -76,13 +117,19 @@ func _mark(at: Vector2, s: Dictionary) -> void:
 	if s.terminal:
 		var r := ThemeBuilder.size("transit_terminal_r")
 		var box := Rect2(at - Vector2(r, r), Vector2(r, r) * 2)
-		draw_rect(box, fill)
-		draw_rect(box, ring, false, width)
+		canvas.draw_rect(box, fill)
+		canvas.draw_rect(box, ring, false, width)
 	else:
 		var r := ThemeBuilder.size("transit_stop_r" if mode == MODE_BUS else "transit_station_r")
-		draw_circle(at, r, fill)
-		draw_arc(at, r, 0, TAU, RING_POINTS, ring, width, true)
+		canvas.draw_circle(at, r, fill)
+		canvas.draw_arc(at, r, 0, TAU, RING_POINTS, ring, width, true)
 	var size := int(ThemeBuilder.size("transit_font"))
 	var text := tr(MARK_KEYS[mode])
 	var ink := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, size)
-	draw_string(_font, at + Vector2(-ink.x, ink.y) / 2, text, HORIZONTAL_ALIGNMENT_CENTER, -1, size, ring)
+	canvas.draw_string(_font, at + Vector2(-ink.x, ink.y) / 2, text, HORIZONTAL_ALIGNMENT_CENTER, -1, size, ring)
+
+
+func _notification(what: int) -> void:
+	if what in [NOTIFICATION_THEME_CHANGED, NOTIFICATION_TRANSLATION_CHANGED] and is_node_ready():
+		_plan_layer.queue_redraw()
+		queue_redraw()

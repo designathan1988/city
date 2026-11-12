@@ -71,6 +71,14 @@ Quad sub_quad(const Quad &q, double t0, double t1) {
 }
 
 void closest_t(const Quad &q, double x, double z, double &t_out, double &dist) {
+	// Only the canonical linear parameterization takes this path; a collinear quadratic with another control
+	// point still needs its nonlinear parameter search. No tolerance turns a shallow bend into a line.
+	if (q.cx == (q.x0 + q.x1) / 2 && q.cz == (q.z0 + q.z1) / 2) {
+		const double dx = q.x1 - q.x0, dz = q.z1 - q.z0, length2 = dx * dx + dz * dz;
+		t_out = length2 > 0 ? std::clamp(((x - q.x0) * dx + (z - q.z0) * dz) / length2, 0.0, 1.0) : 0;
+		dist = std::hypot(q.x0 + dx * t_out - x, q.z0 + dz * t_out - z);
+		return;
+	}
 	double best = 0, bd = std::numeric_limits<double>::infinity();
 	auto probe = [&](double t) {
 		double px, pz;

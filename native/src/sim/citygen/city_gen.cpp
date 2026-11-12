@@ -72,12 +72,13 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed, bool generate,
 	s.map_tiles = tiles > 0 ? tiles : map.tiles;
 	s.map_half = float(s.map_tiles * c.tune.world_tile_m / 2);
 	s.seed = exact_seed;
-	s.roads.init(&s.catalog, &s.log);
+	s.roads.init(&s.catalog, &s.log, &s.street_placement);
 	s.street.clear();
 	s.lot_book.clear();
 	s.buildings.init(&s.log, &s.catalog.occupancy);
 	s.lots.clear();
 	s.growth.clear();
+	s.buildings.on_occupancy([&s](float x, float z) { s.growth.occupancy_changed(x, z); });
 	s.damage.clear(); // what blows left on the last map is not on this one
 	s.history.reset(c.tune);
 	s.touch(); // another map: what is cached by the revision (the camera's building volumes) goes with the old one
@@ -90,8 +91,9 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed, bool generate,
 	s.terrain.init(s.map_tiles, c.tune.world_tile_m, c.tune.world_height_spacing_m, s.seed, &s.log, &s.catalog.tune, s.jobs.get());
 	s.nature.ground.init(s.terrain.N, s.terrain.spacing, &c.nature.paint);
 	s.nature.reset(default_weather(c.nature.weather), c.nature.ecology.default_biome, s.seed & ~TerrainGen::FLAT_BIT);
+	TerrainGen gen(s.seed, s.map_half, c.tune.world_water_spacing_m, s.natural_river);
+	s.natural_river = gen.river_plan();
 	if (!generate) return;
-	TerrainGen gen(s.seed, s.map_half, c.tune.world_water_spacing_m);
 	s.terrain.fill(gen, c.tune.world_water_spacing_m);
 }
 
@@ -99,7 +101,7 @@ void found_land(CityState &s, int map_index, uint32_t exact_seed, bool generate,
 void name_streets(CityState &s) {
 	std::vector<int> segs;
 	for (size_t i = 0; i < s.roads.segs.size(); i++) segs.push_back(int(i));
-	for (const StreetName &n : names_for(s.roads, s.street, std::move(segs))) {
+	for (const StreetName &n : names_for(s.roads, s.street, s.named_plates, std::move(segs))) {
 		StreetItem it;
 		it.kind = ItemKind::STREETNAME;
 		it.x = n.x;
@@ -115,7 +117,7 @@ CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with
 	const MapDef &map = c.maps[size_t(map_index) < c.maps.size() ? size_t(map_index) : 0];
 	bool medium = map.medium && with_city;
 	found_land(s, map_index, medium ? (seed | TerrainGen::FLAT_BIT) : (seed & ~TerrainGen::FLAT_BIT));
-	TerrainGen gen(s.seed, s.map_half, c.tune.world_water_spacing_m);
+	TerrainGen gen(s.seed, s.map_half, c.tune.world_water_spacing_m, s.natural_river);
 	CityGenReport rep;
 	if (with_city) {
 		GeneratedRoads r = generate_roads(s.seed, s.map_half, map.city_radius_m, gen, gen_profiles(c), c.growth.plan);

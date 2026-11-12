@@ -19,9 +19,14 @@ void BuildingStore::init(ChangeLog *l, const OccupancyDef *occupancy) {
 }
 
 void BuildingStore::clear() {
+	ground_regions.reset();
+	if (occupancy_changed_) for (const Building &b : items) if (b.alive) occupancy_changed_(b.x, b.z);
+	revision = next_generation();
 	designs.edited->clear();
+	body_roots_.clear();
 	looks.clear();
 	items.clear();
+	record_versions_.clear();
 	free_ids.clear();
 	hash.clear();
 	hash.cell = BUILDING_HASH_CELL;
@@ -40,12 +45,16 @@ int BuildingStore::add(const Building &b) {
 void BuildingStore::remove(int id) {
 	Building &b = items[id];
 	if (!b.alive) return;
+	ground_regions.touch(b.x, b.z, b.x, b.z);
 	mark(id);
 	hash.remove_aabb(id, b.x, b.z, b.x, b.z);
 	tally(b, -1);
 	b.alive = false;
+	revision = next_generation();
+	body_roots_.erase(id);
 	free_ids.push_back(id);
 	count--;
+	if (occupancy_changed_) occupancy_changed_(b.x, b.z);
 }
 
 bool BuildingStore::covers(const Building &b, float x, float z, float pad) {
@@ -56,6 +65,7 @@ bool BuildingStore::covers(const Building &b, float x, float z, float pad) {
 void BuildingStore::put(int id, const Building &b, bool evict) {
 	if (id < int(items.size()) && items[id].alive) {
 		Building moved = items[id];
+		const b40::BodyRef displaced = designs.edited->get(moved.body);
 		remove(id);
 		free_ids.pop_back();
 		items.emplace_back();
@@ -65,7 +75,7 @@ void BuildingStore::put(int id, const Building &b, bool evict) {
 		for (int k = int(items.size()); k < id; k++) free_ids.push_back(k);
 		items.resize(size_t(id) + 1);
 	}
-	free_ids.erase(std::remove(free_ids.begin(), free_ids.end(), id), free_ids.end());
+	free_ids.erase(id);
 	if (evict) {
 		std::vector<int> doomed;
 		float r = std::max(b.w, b.d);
@@ -79,12 +89,24 @@ void BuildingStore::put(int id, const Building &b, bool evict) {
 }
 
 void BuildingStore::place(int id, const Building &b) {
+	ground_regions.touch(b.x, b.z, b.x, b.z);
+	revision = next_generation();
 	items[id] = b;
 	items[id].alive = true;
+	set_body(id, b.body);
 	hash.insert_aabb(id, b.x, b.z, b.x, b.z);
 	count++;
 	tally(b, 1);
 	mark(id);
+	if (occupancy_changed_) occupancy_changed_(b.x, b.z);
+}
+
+void BuildingStore::set_body(int id, uint32_t body) {
+	if (record_versions_.size() < items.size()) record_versions_.resize(items.size(), 0);
+	record_versions_[size_t(id)] = next_generation();
+	items[size_t(id)].body = body;
+	if (body != 0) body_roots_[id] = designs.edited->get(body);
+	else body_roots_.erase(id);
 }
 
 void BuildingStore::tally(const Building &b, int sign) {

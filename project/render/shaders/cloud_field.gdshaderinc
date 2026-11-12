@@ -24,6 +24,7 @@ float heap(int c, vec3 p) {
 	float d = 1e5;
 	for (int k = 0; k < PUFFS; k++) {
 		vec4 s = puff[c * PUFFS + k];
+		s.xz += cloud[c].xz; // shape offsets are immutable; only the 24 cloud centres move with wind/view wrapping
 		vec3 o = p - s.xyz;
 		o.y *= 1.3; // each puff a little flattened
 		d = smooth_min(d, length(o) - s.w, size * 0.2);

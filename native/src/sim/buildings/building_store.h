@@ -2,12 +2,17 @@
 // A record with floors == 0 is an empty lot. Ids come from a free list; queries go through a spatial hash.
 #pragma once
 
+#include "core/free_slots.h"
+#include "core/generation.h"
+#include "core/region_versions.h"
+
 #include "core/grid.h"
 #include "sim/buildings/b40/data.h"
 #include "sim/buildings/likeness.h"
 #include "sim/state/change_log.h"
 
 #include <cstdint>
+#include <functional>
 #include <unordered_map>
 #include <vector>
 
@@ -34,15 +39,21 @@ struct Building {
 	bool alive = false; // here, not first: with `body` the record stays at 48 bytes
 	uint32_t body = 0; // the version the player edited (b40::BodyTable), 0 = made from the seed
 	double built = 0; // city minute it was built (decay and renovation)
+	bool operator==(const Building &o) const {
+		return x == o.x && z == o.z && w == o.w && d == o.d && rot == o.rot && zone == o.zone && fn == o.fn && floors == o.floors
+				&& seed == o.seed && style == o.style && profile == o.profile && landmark == o.landmark && alive == o.alive && body == o.body && built == o.built;
+	}
 };
 
 class BuildingStore {
 public:
 	std::vector<Building> items;
-	std::vector<int> free_ids;
+	FreeSlots free_ids;
 	SpatialHash hash; // by lot centre
 	ChangeLog *log = nullptr;
 	int count = 0;
+	RegionVersions ground_regions; // original lot-centre selection is retained by nature preparation
+	uint64_t revision = next_generation(); // record/query inputs changed; independent of sky, clock and traffic
 	// Residents and jobs of the alive records (occupancy), kept by place/remove, the one way a record comes or goes: never
 	// counted again over every record, and right after growth, edits and loads alike (the snapshot reads them).
 	int residents = 0, jobs = 0;
@@ -51,12 +62,17 @@ public:
 	std::unordered_map<uint64_t, BodyLook> looks;
 
 	void init(ChangeLog *l, const OccupancyDef *occupancy);
+	void on_occupancy(std::function<void(float, float)> listener) { occupancy_changed_ = std::move(listener); }
 	void clear();
+	uint64_t item_version(int id) const {
+		return id >= 0 && size_t(id) < items.size() && items[size_t(id)].alive && size_t(id) < record_versions_.size() ? record_versions_[size_t(id)] : 0;
+	}
 	int add(const Building &b);
 	void remove(int id);
 	// Undo / redo / load: the record goes back under the same id. A building that
 	// grew there meanwhile (outside the history) moves to a new id; `evict` also knocks down what grew on the lot.
 	void put(int id, const Building &b, bool evict);
+	void set_body(int id, uint32_t body); // load: bind the decoded version to the live record's root
 	// Does the point stand on the building's lot (its rectangle grown by pad)?
 	static bool covers(const Building &b, float x, float z, float pad);
 	void mark(int id) const;
@@ -72,6 +88,9 @@ public:
 	static void occupancy(const Building &b, float floor_share, const float per_m2[4], int &residents, int &jobs);
 
 private:
+	std::vector<uint64_t> record_versions_; // process-unique witnesses of every live-record publication
+	std::function<void(float, float)> occupancy_changed_; // changed source centres, independent of render-log consumption
+	std::unordered_map<int, b40::BodyRef> body_roots_; // only authored live records allocate a root
 	const OccupancyDef *occupancy_ = nullptr; // the catalogue's, set by init
 	void place(int id, const Building &b);
 	void tally(const Building &b, int sign); // the record's residents and jobs into (+1) or out of (-1) the totals

@@ -4,6 +4,9 @@
 // both as one list. Records keep their ids through undo (sim/commands/edit_journal.h) and the save file.
 #pragma once
 
+#include "core/free_slots.h"
+#include "core/generation.h"
+
 #include "core/grid.h"
 #include "sim/catalog/furniture_types.h"
 
@@ -64,7 +67,7 @@ struct StreetCut {
 template <typename T>
 struct StreetTable {
 	std::vector<T> items;
-	std::vector<int> free_ids;
+	FreeSlots free_ids;
 	int alive = 0;
 
 	void clear() {
@@ -80,12 +83,14 @@ struct StreetTable {
 	void put(int id, const T &rec) {
 		for (int k = int(items.size()); k < id; k++) free_ids.push_back(k);
 		if (id >= int(items.size())) items.resize(size_t(id) + 1);
-		free_ids.erase(std::remove(free_ids.begin(), free_ids.end(), id), free_ids.end());
+		free_ids.erase(id);
+		const bool was_alive = items[size_t(id)].alive;
 		items[size_t(id)] = rec;
 		items[size_t(id)].alive = true;
-		alive++;
+		if (!was_alive) alive++;
 	}
 	void drop(int id) {
+		if (!items[size_t(id)].alive) return;
 		items[size_t(id)] = T();
 		free_ids.push_back(id);
 		alive--;
@@ -94,6 +99,7 @@ struct StreetTable {
 
 class StreetWorks {
 public:
+	uint64_t names_revision = next_generation(); // name text/anchor identity, independent of other furniture
 	StreetTable<StreetItem> items;
 	StreetTable<UtilityPole> poles;
 	StreetTable<UtilitySpan> spans;
@@ -140,12 +146,7 @@ private:
 
 	template <typename F>
 	static void unique(const SpatialHash &h, float x0, float z0, float x1, float z1, F &&fn) {
-		std::vector<int> seen;
-		h.query(x0, z0, x1, z1, [&](int id) {
-			if (std::find(seen.begin(), seen.end(), id) != seen.end()) return;
-			seen.push_back(id);
-			fn(id);
-		});
+		h.query_unique(x0, z0, x1, z1, fn);
 	}
 	void file_barrier(int id, const Barrier &b, bool in);
 };

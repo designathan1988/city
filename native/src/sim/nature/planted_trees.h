@@ -4,6 +4,8 @@
 #pragma once
 
 #include "core/grid.h"
+#include "core/free_slots.h"
+#include "core/retained_memory.h"
 #include "sim/catalog/nature_types.h"
 
 #include <cstdint>
@@ -37,6 +39,16 @@ public:
 	void clear();
 	int live_trees() const { return live_trees_; }
 	int live_clearings() const { return live_clearings_; }
+	size_t retained_bytes() const {
+		RetainedMemory memory;
+		memory.storage(sizeof(*this));
+		memory.vector(trees); memory.vector(clearings);
+		memory.hash(hash_.cells); memory.hash(clear_hash_.cells);
+		for (const auto &cell : hash_.cells) memory.vector(cell.second);
+		for (const auto &cell : clear_hash_.cells) memory.vector(cell.second);
+		memory.storage(free_trees_.retained_bytes() + free_clearings_.retained_bytes());
+		return memory.bytes();
+	}
 	int add(const PlantedTree &t); // the slot it took
 	void put(int id, const PlantedTree &t); // undo, load: the same slot again
 	void remove(int id);
@@ -58,7 +70,7 @@ public:
 
 private:
 	SpatialHash hash_, clear_hash_;
-	std::vector<int> free_trees_, free_clearings_;
+	FreeSlots free_trees_, free_clearings_;
 	int live_trees_ = 0, live_clearings_ = 0;
 };
 

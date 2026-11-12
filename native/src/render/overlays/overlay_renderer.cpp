@@ -1,6 +1,7 @@
 // Zone-colour chunk jobs and the congestion layer's refresh cycle (see overlay_renderer.h).
 #include "render/overlays/overlay_renderer.h"
 #include "render/chunk_jobs.h"
+#include "render/job_request.h"
 
 #include "core/color.h"
 
@@ -9,6 +10,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <limits>
 
 using namespace godot;
 
@@ -50,9 +53,10 @@ bool OverlayRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 
 void OverlayRenderer::reset() {
 	for (auto &kv : zones_) kv.second.free();
-	for (auto &kv : congestion_) kv.second.free();
+	for (auto &kv : congestion_) kv.second.draw.free();
 	zones_.clear();
 	congestion_.clear();
+	congestion_dirty_.clear();
 	zones_dirty_.clear();
 	roads_known_.clear();
 	zones_all_ = true;
@@ -76,12 +80,14 @@ void OverlayRenderer::set(Overlay o, bool on) {
 		for (auto &kv : zones_) kv.second.visible(on);
 	} else {
 		if (on) since_ = refresh_;
-		for (auto &kv : congestion_) kv.second.visible(on);
+		for (auto &kv : congestion_) kv.second.draw.visible(on);
 	}
 }
 
-void OverlayRenderer::mark_dirty(int64_t key) {
+void OverlayRenderer::mark_dirty(int64_t key, JobPool *pool) {
+	cancel_request(pool, JobKey{ JobLane::ZONES, key }, queue_mutex_, requested_);
 	roads_known_.insert(key);
+	congestion_dirty_.insert(key);
 	if (on_[int(Overlay::ZONES)]) zones_dirty_.insert(key);
 }
 
@@ -98,11 +104,13 @@ void OverlayRenderer::submit_zone(const CityState &s, int64_t key) {
 	}
 	s.jobs->submit(JobKey{ JobLane::ZONES, key }, priority, [this, &s, key, seq, priority]() {
 		std::shared_lock<std::shared_mutex> map(s.map_mutex);
+		if (JobPool::cancelled()) return;
 		Built b;
 		b.key = key;
 		b.seq = seq;
 		b.priority = priority;
 		b.r = build_zone_cpu(s, key);
+		if (JobPool::cancelled()) return;
 		std::lock_guard<std::mutex> lk(queue_mutex_);
 		done_.push_back(std::move(b));
 	});
@@ -124,14 +132,47 @@ void OverlayRenderer::commit(const std::chrono::steady_clock::time_point &until)
 	commit_done(queue_mutex_, done_, requested_, until, [this](Built &b) { upload(zones_[b.key], b.r, on_[int(Overlay::ZONES)]); });
 }
 
+std::array<uint8_t, 4> OverlayRenderer::rgba8(const Color &colour) {
+	// RenderingServer's ARRAY_COLOR packing truncates clamped double products, rather than rounding Color::to_rgba32.
+	constexpr double BYTE_MAX = 255.0;
+	return {uint8_t(std::clamp(double(colour.r) * BYTE_MAX, 0.0, BYTE_MAX)),
+		uint8_t(std::clamp(double(colour.g) * BYTE_MAX, 0.0, BYTE_MAX)),
+		uint8_t(std::clamp(double(colour.b) * BYTE_MAX, 0.0, BYTE_MAX)),
+		uint8_t(std::clamp(double(colour.a) * BYTE_MAX, 0.0, BYTE_MAX))};
+}
+
+bool OverlayRenderer::update_colours(CongestionDraw &draw, const PoseFrame &frame) {
+	constexpr int CHANNELS = 4;
+	// The extension's region offset is signed 32-bit. Preserve the full old upload path when it cannot address a range.
+	for (const ColourSpan &span : draw.colours)
+		if (span.first > std::numeric_limits<int32_t>::max() / CHANNELS || span.count > std::numeric_limits<int32_t>::max() / CHANNELS
+			|| span.first + span.count > std::numeric_limits<int32_t>::max() / CHANNELS) return false;
+	RenderingServer *rs = RenderingServer::get_singleton();
+	for (ColourSpan &span : draw.colours) {
+		const float share = size_t(span.segment) < frame.seg_speed_share.size() ? frame.seg_speed_share[size_t(span.segment)] : 1.f;
+		const auto next = rgba8(congestion_colour(share));
+		if (next == span.rgba || span.count == 0) continue;
+		PackedByteArray bytes; bytes.resize(span.count * CHANNELS);
+		uint8_t *out = bytes.ptrw();
+		for (int64_t i = 0; i < span.count; i++) std::memcpy(out + i * CHANNELS, next.data(), CHANNELS);
+		rs->mesh_surface_update_attribute_region(draw.draw.mesh, 0, int(span.first * CHANNELS), bytes);
+		span.rgba = next;
+	}
+	return true;
+}
+
 void OverlayRenderer::update_congestion(const CityState &s, const PoseFrame &f) {
 	float reach = s.catalog.tune.render_road_end_m;
 	float cx = s.camera_x.load(), cz = s.camera_z.load();
 	for (int64_t key : roads_known_) {
 		float dx = (float(key_x(key)) + HALF) * CHUNK - cx, dz = (float(key_y(key)) + HALF) * CHUNK - cz;
 		if (std::sqrt(dx * dx + dz * dz) > reach) continue;
+		const auto existing = congestion_.find(key);
+		if (existing != congestion_.end() && congestion_dirty_.count(key) == 0 && update_colours(existing->second, f)) continue;
 		Ribbon r = build_congestion_cpu(s, f, key);
-		upload(congestion_[key], r, on_[int(Overlay::CONGESTION)]);
+		CongestionDraw &draw = congestion_[key];
+		upload(draw.draw, r, on_[int(Overlay::CONGESTION)]);
+		draw.colours = std::move(r.colours); congestion_dirty_.erase(key);
 	}
 	for (auto it = congestion_.begin(); it != congestion_.end();) {
 		float dx = (float(key_x(it->first)) + HALF) * CHUNK - cx, dz = (float(key_y(it->first)) + HALF) * CHUNK - cz;
@@ -139,7 +180,8 @@ void OverlayRenderer::update_congestion(const CityState &s, const PoseFrame &f) 
 			++it;
 			continue;
 		}
-		it->second.free();
+		it->second.draw.free();
+		congestion_dirty_.erase(it->first);
 		it = congestion_.erase(it);
 	}
 }

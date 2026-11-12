@@ -25,11 +25,14 @@ func menu(action: String) -> void:
 		"new_empty", "new_city", "new_large":
 			_hud().open_dialog(HudDialog.Confirm.new(tr(CONFIRM[action]), new_city.bind(action)))
 		"save":
-			_refused(CityStore.saves.save_city())
+			_seal_input()
+			_refused(await CityStore.saves.ordered_save_city())
 		"save_map":
-			_refused(CityStore.saves.export_map())
+			_seal_input()
+			_refused(await CityStore.saves.ordered_export_map())
 		"load_last":
-			_loaded(CityStore.saves.load_last())
+			_seal_input()
+			_loaded(await CityStore.saves.ordered_load_last())
 		"open":
 			_hud().open_popover("files")
 		"open_file":
@@ -45,20 +48,25 @@ func menu(action: String) -> void:
 ## The confirmed new map: what the player had is written first, as the question says.
 func new_city(action: String) -> void:
 	var map := _large_map() if action == "new_large" else TOWN_MAP
-	_open_new(map, randi_range(1, int(DataTables.game("start").seed_max)), action != "new_empty")
+	await _open_new(map, randi_range(1, int(DataTables.game("start").seed_max)), action != "new_empty")
 	if action == "new_empty":
 		_hud().flash(tr("hint.newMap"), true)
 
 
 ## The city the title screen's form asks for.
 func new_city_at(map: int, seed: int) -> void:
-	_open_new(map, seed, true)
+	await _open_new(map, seed, true)
+
+
+func _seal_input() -> void:
+	if _hud().tools != null:
+		_hud().tools.seal_input()
 
 
 func _open_new(map: int, seed: int, with_city: bool) -> void:
-	CityStore.saves.save_on_close()
+	_seal_input()
 	_hud().drawer.close()
-	CityStore.new_map(map, seed, with_city)
+	await CityStore.ordered_barrier(&"replace_city", [map, seed, with_city, false])
 
 
 ## Where a map of that id stands in the catalogue; -1: the table does not have it.
@@ -94,7 +102,8 @@ func _pick_file() -> void:
 
 ## A city file: opened, or nothing changed and the player told so.
 func open_file(file: String) -> void:
-	var r := CityStore.saves.open_file(file)
+	_seal_input()
+	var r: Dictionary = await CityStore.saves.ordered_open_file(file)
 	_hud().drawer.close()
 	_hud().flash(tr("hint.opened") if r.get("ok", false) else tr("hint.openFailed"), r.get("ok", false))
 
@@ -112,7 +121,8 @@ func show_impossible() -> void:
 
 
 func load_slot(slot: String) -> void:
-	_loaded(CityStore.saves.load_game(slot))
+	_seal_input()
+	_loaded(await CityStore.saves.ordered_load_game(slot))
 
 
 func _loaded(r: Dictionary) -> void:
@@ -140,6 +150,7 @@ func _on_saved(_slot: String, r: Dictionary) -> void:
 
 ## Undo / redo (top bar buttons, Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y): the core's history; the hint names the step.
 func history(action: String) -> void:
-	var label: String = CityStore.snapshot.get("undo_label" if action == "undo" else "redo_label", "")
-	if CityStore.dispatch(StringName(action)):
-		_hud().flash(tr("v2.do." + action) + " · " + tr(label), true)
+	_seal_input()
+	var result: Dictionary = await CityStore.ordered_barrier(&"history", [StringName(action)])
+	if result.ok:
+		_hud().flash(tr("v2.do." + action) + " · " + tr(result.label), true)

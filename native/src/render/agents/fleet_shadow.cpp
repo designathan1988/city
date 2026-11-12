@@ -8,24 +8,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 using namespace godot;
 
 namespace city {
-
-namespace {
-constexpr float SECTOR_PAD_M = 12.f; // the longest vehicle past its sector's edge, by its origin
-} // namespace
-
-AABB mesh_outline(const MeshBuilder &b) {
-	Vector3 lo, hi;
-	for (int64_t i = 0; i < b.v.size(); i++) {
-		const Vector3 &p = b.v[i];
-		lo = i == 0 ? p : lo.min(p);
-		hi = i == 0 ? p : hi.max(p);
-	}
-	return AABB(lo, hi - lo);
-}
 
 void FleetShadow::init(const RID &scenario, const RID &material, const MeshBuilder &hull, float sector_m, float inset, int models) {
 	free();
@@ -35,8 +22,20 @@ void FleetShadow::init(const RID &scenario, const RID &material, const MeshBuild
 	inset_ = inset;
 	hull_box_ = mesh_outline(hull);
 	fit_.assign(size_t(models), Fit());
-	hull_.rid = RenderingServer::get_singleton()->mesh_create();
-	hull.commit_to(hull_.rid);
+	hull_ = std::make_shared<OwnedMesh>();
+	hull_->rid = RenderingServer::get_singleton()->mesh_create();
+	hull.commit_to(hull_->rid);
+}
+
+void FleetShadow::share_geometry(const FleetShadow &source) {
+	free();
+	scenario_ = source.scenario_;
+	material_ = source.material_;
+	hull_ = source.hull_;
+	hull_box_ = source.hull_box_;
+	sector_m_ = source.sector_m_;
+	inset_ = source.inset_;
+	fit_ = source.fit_;
 }
 
 void FleetShadow::set_model(int model, const MeshBuilder &body) {
@@ -54,7 +53,18 @@ void FleetShadow::add(int model, const Pose &p) {
 	const Vector3 &k = f.scale;
 	const Vector3 side(p.fz, 0, -p.fx), along(p.fx, 0, p.fz);
 	const int i = int(std::floor(p.x / sector_m_)), j = int(std::floor(p.z / sector_m_));
-	mm_row_plain(sectors_[cell_key(i, j)].buf.add(), side * k.x, Vector3(0, k.y, 0), along * k.z, Vector3(p.x, p.y, p.z) + side * f.side + along * f.along, 0, 0, 0, 0);
+	Sector &s = sectors_[cell_key(i, j)];
+	const Vector3 x = side * k.x, y(0, k.y, 0), z = along * k.z;
+	const Vector3 origin = Vector3(p.x, p.y, p.z) + side * f.side + along * f.along;
+	const Vector3 middle = hull_box_.get_center(), half = hull_box_.size * .5f;
+	const Vector3 center = origin + x * middle.x + y * middle.y + z * middle.z;
+	// The actual hulls in this sector, including their heights and headings. No map-wide Y box or guessed vehicle length.
+	const Vector3 extent = x.abs() * half.x + y.abs() * half.y + z.abs() * half.z;
+	const Vector3 roundoff = (origin.abs() + x.abs() * (std::fabs(middle.x) + half.x) +
+			y.abs() * (std::fabs(middle.y) + half.y) + z.abs() * (std::fabs(middle.z) + half.z) + Vector3(1, 1, 1)) * (32 * std::numeric_limits<float>::epsilon());
+	const AABB box(center - extent - roundoff, (extent + roundoff) * 2);
+	s.bounds = s.buf.count() == 0 ? box : s.bounds.merge(box);
+	mm_row_plain(s.buf.add(), x, y, z, origin, 0, 0, 0, 0);
 }
 
 void FleetShadow::draw() {
@@ -65,19 +75,22 @@ void FleetShadow::draw() {
 			it = sectors_.erase(it);
 			continue;
 		}
-		const float x0 = float(key_x(it->first)) * sector_m_ - SECTOR_PAD_M, z0 = float(key_y(it->first)) * sector_m_ - SECTOR_PAD_M;
-		const float side = sector_m_ + SECTOR_PAD_M * 2;
-		s.draw.shadow_only = true;
-		s.draw.set(scenario_, hull_.rid, material_, s.buf, AABB(Vector3(x0, AABB_MIN_Y, z0), Vector3(side, AABB_H, side)), true, LAYER_VEHICLES);
+		s.draw.draw.shadow_only = true;
+		s.draw.set(scenario_, hull_->rid, material_, s.buf, s.bounds, true, LAYER_VEHICLES);
 		s.buf.restart();
 		++it;
 	}
 }
 
-void FleetShadow::free() {
+void FleetShadow::reset() {
 	for (auto &kv : sectors_) kv.second.draw.free();
 	sectors_.clear();
+}
+
+void FleetShadow::free() {
+	reset();
 	hull_.reset();
+	fit_.clear();
 }
 
 } // namespace city

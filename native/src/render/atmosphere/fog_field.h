@@ -4,6 +4,7 @@
 #pragma once
 
 #include "sim/state/city_state.h"
+#include "core/async_result.h"
 
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
@@ -30,17 +31,17 @@ private:
 		godot::PackedByteArray texels;
 		float low = 0, high = 0, ox = 0, oz = 0, side = 1;
 		bool any = false;
+		bool spatial = false; // dabs exist somewhere, even if this window is empty
+		uint64_t revision = 0;
 	};
-	void work(const CityState &s, float ox, float oz, uint64_t revision);
+	static Raster work(const CityState &s, float ox, float oz, uint64_t revision);
 	godot::Ref<godot::ImageTexture> texture_;
-	mutable std::mutex mutex_;
-	Raster done_;
-	bool has_done_ = false;
-	std::atomic<bool> busy_{ false };
+	AsyncResult<Raster> result_;
 	uint64_t seen_ = ~uint64_t(0);
 	uint64_t view_revision_ = 0; // main thread only
 	float ox_ = 0, oz_ = 0, side_ = 1, low_ = 0, high_ = 0;
 	bool any_ = false;
+	bool spatial_ = false;
 };
 
 } // namespace city

@@ -56,4 +56,6 @@ struct MeshBuilder {
 godot::Color rgba8_to_color(uint32_t rgba);
 godot::Color rgb8_to_color(uint32_t rgb); // a line's colour (no alpha)
 
+godot::AABB mesh_outline(const MeshBuilder &b);
+
 } // namespace city

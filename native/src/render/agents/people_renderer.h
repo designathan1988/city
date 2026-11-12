@@ -15,9 +15,11 @@
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "render/view_cull.h"
+#include "render/spatial_instance_draw.h"
 #include "sim/state/city_state.h"
 
 #include <cmath>
+#include <memory>
 #include <vector>
 
 namespace city {
@@ -60,7 +62,7 @@ public:
 	void begin();
 	// Somebody in `spot` of a vehicle at `vehicle`, `dist` from the camera: their looks from `look`, the bicycle's cranks at `phase` (0..1),
 	// a two-wheeler's rider with a foot down when `stopped`.
-	void seat(uint64_t key, const Pose &vehicle, const SeatSpot &spot, uint32_t look, float dist, float phase, bool stopped);
+	void seat(uint64_t key, const Pose &vehicle, const SeatSpot &spot, uint32_t look, float dist, float phase, bool stopped, bool visible = true);
 	// Returns how many walkers were drawn.
 	int update(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius);
 	void set_floor(int level) { floor_ = level; } // the nearest level the graphics tier allows
@@ -75,7 +77,7 @@ private:
 	PeopleAsset asset_;
 	BodyRenderer bodies_;
 	godot::RID scenario_, material_, far_material_;
-	std::vector<MultiMeshDraw> draws_; // body * (lods + 1) + level; the last, the far card casting no shadow
+	std::vector<std::unique_ptr<SpatialInstanceDraw>> draws_, caster_draws_; // body * (lods + 1) + level; the last, the far card casting no shadow
 	std::vector<InstanceRows> bufs_;
 	// The slot of a variation's level in draws_ and bufs_: its lods, then the far mesh casting no shadow.
 	int held_level(uint64_t key, float dist);
@@ -84,7 +86,8 @@ private:
 	std::vector<float> lod_m_; // camera distance where each level ends
 	std::vector<int> by_age_[PED_AGES]; // the variations of each age
 	OwnedMesh blob_mesh_;
-	MultiMeshDraw blob_;
+	SpatialInstanceDraw blob_;
+	std::vector<uint64_t> blob_keys_;
 	InstanceRows blob_buf_;
 	godot::RID blob_material_;
 	float blob_from_m_ = 0, blob_radius_m_ = 0, blob_lift_m_ = 0;
@@ -104,7 +107,7 @@ private:
 	// A body's level by the distance; `blob`: past blob_from_m_, where the far mesh casts no shadow.
 	int level_at(float dist) const;
 	// The instance of a body at `p`.
-	void place(uint64_t key, int variation, int slot_level, const Pose &p, uint32_t look, float doing, float phase, float pose_code, bool frightened = false);
+	void place(uint64_t key, int variation, int slot_level, const Pose &p, uint32_t look, float doing, float phase, float pose_code, bool frightened = false, bool visible = true);
 	RowKeeper keeper_{ PEOPLE_DENSE_KEYS };
 	int floor_ = 0;
 };

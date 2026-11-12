@@ -1,7 +1,8 @@
 // The shore: a band set by height over the water beside it (render/water/shore_field.h), sand on a gentle bank and damp
 // earth on a steep one, darker where it is wet. Needs land() and dirt_layer, dirt_m.
 
-uniform highp sampler2D shore_map : repeat_disable, filter_nearest;
+uniform highp sampler2DArray shore_map : repeat_disable, filter_nearest;
+uniform highp sampler2D shore_pages : repeat_disable, filter_nearest;
 uniform vec3 shore_grid = vec3(0.0, 1.0, 2.0); // half the map, metres between samples, samples a side; no half: no levels yet
 uniform vec3 sand : source_color;
 uniform vec3 bank_tint : source_color;
@@ -24,13 +25,23 @@ const float SHORE_DRY = -500.0; // under this a sample has no water by it (Terra
 const float SHORE_FADE_FROM = 0.15, SHORE_FADE_TO = 0.85, SHORE_FADE_WANDER = 0.3;
 const float SHORE_WET_FROM = 0.03, SHORE_WET_TO = 0.35;
 
+// Four-corner sampling crosses pages explicitly. The bank table switches only after every changed page is ready.
+float shore_texel(ivec2 p) {
+	int side = textureSize(shore_map, 0).x;
+	ivec2 page = p / side;
+	int across = textureSize(shore_pages, 0).x;
+	int bank = int(texelFetch(shore_pages, page, 0).r + 0.5);
+	int layer = (page.y * across + page.x) * 2 + bank;
+	return texelFetch(shore_map, ivec3(p - page * side, layer), 0).r;
+}
+
 // The level of the water beside `xz` from the samples round it that have one; `cover` is how much of the point they cover.
 float shore_level(vec2 xz, out float cover) {
 	vec2 g = clamp((xz + shore_grid.x) / shore_grid.y, vec2(0.0), vec2(shore_grid.z - 1.001));
 	vec2 i = floor(g), f = g - i;
 	ivec2 p = ivec2(i);
-	vec4 level = vec4(texelFetch(shore_map, p, 0).r, texelFetch(shore_map, p + ivec2(1, 0), 0).r,
-		texelFetch(shore_map, p + ivec2(0, 1), 0).r, texelFetch(shore_map, p + ivec2(1, 1), 0).r);
+	vec4 level = vec4(shore_texel(p), shore_texel(p + ivec2(1, 0)),
+		shore_texel(p + ivec2(0, 1)), shore_texel(p + ivec2(1, 1)));
 	vec4 w = vec4((1.0 - f.x) * (1.0 - f.y), f.x * (1.0 - f.y), (1.0 - f.x) * f.y, f.x * f.y) * step(vec4(SHORE_DRY), level);
 	cover = w.x + w.y + w.z + w.w;
 	return cover > 0.00001 ? dot(level, w) / cover : SHORE_DRY;

@@ -19,6 +19,7 @@ uint8_t towards(uint8_t v, float target, float w) {
 	return uint8_t(clampf(std::ceil(n), 0.f, BYTE_MAX));
 }
 uint8_t faded(uint8_t v, float w) { return uint8_t(clampf(std::floor(v * (1.f - w)), 0.f, BYTE_MAX)); }
+bool covered(const PaintCell &c) { return std::any_of(c.cover.begin(), c.cover.end(), [](uint8_t v) { return v != 0; }); }
 } // namespace
 
 void GroundPaint::init(int samples_per_side, float spacing_m, const PaintDef *def) {
@@ -26,7 +27,7 @@ void GroundPaint::init(int samples_per_side, float spacing_m, const PaintDef *de
 	spacing_ = spacing_m;
 	def_ = def;
 	across_ = (n_ + PAINT_TILE - 1) / PAINT_TILE;
-	tiles_.clear();
+	clear();
 }
 
 const PaintCell &GroundPaint::cell(int ix, int iz) const {
@@ -96,11 +97,13 @@ void GroundPaint::paint_cell(PaintCell &c, const PaintDab &d, float w) const {
 }
 
 bool GroundPaint::dab(const PaintDab &d, int rect[4]) {
-	if (d.radius <= 0 || !def_) return false;
+	if (d.radius <= 0 || d.strength <= 0 || !def_) return false;
 	int x0 = clampi(int(std::floor((d.x - d.radius) / spacing_ + n_ * 0.5f)), 0, n_ - 1), x1 = clampi(int(std::ceil((d.x + d.radius) / spacing_ + n_ * 0.5f)), 0, n_ - 1);
 	int z0 = clampi(int(std::floor((d.z - d.radius) / spacing_ + n_ * 0.5f)), 0, n_ - 1), z1 = clampi(int(std::ceil((d.z + d.radius) / spacing_ + n_ * 0.5f)), 0, n_ - 1);
 	float rim = std::max(def_->land_rim, 1.f - d.hardness);
 	bool changed = false;
+	int minx = n_, minz = n_, maxx = -1, maxz = -1;
+	int bx0 = n_, bz0 = n_, bx1 = -1, bz1 = -1;
 	for (int iz = z0; iz <= z1; iz++)
 		for (int ix = x0; ix <= x1; ix++) {
 			float wx = (ix - n_ * 0.5f) * spacing_ - d.x, wz = (iz - n_ * 0.5f) * spacing_ - d.z;
@@ -108,11 +111,31 @@ bool GroundPaint::dab(const PaintDab &d, int rect[4]) {
 			if (r >= 1.f) continue;
 			float s = std::min(1.f, (1.f - r) / rim);
 			float w = s * s * (3.f - 2.f * s) * d.strength;
-			PaintCell &c = touch(ix, iz);
-			paint_cell(c, d, w);
+			const PaintCell before = cell(ix, iz);
+			PaintCell after = before;
+			paint_cell(after, d, w);
+			if (after == before) continue;
+			if (after.biome != before.biome || after.biome_amount != before.biome_amount) {
+				bx0 = std::min(bx0, ix); bz0 = std::min(bz0, iz);
+				bx1 = std::max(bx1, ix); bz1 = std::max(bz1, iz);
+			}
+			const bool was_cover = covered(before), now_cover = covered(after);
+			if (was_cover != now_cover) {
+				const int key = (iz / PAINT_TILE) * across_ + ix / PAINT_TILE;
+				if (now_cover) { tile_cover_[key]++; covered_++; }
+				else {
+					auto found = tile_cover_.find(key);
+					if (--found->second == 0) tile_cover_.erase(found);
+					covered_--;
+				}
+			}
+			touch(ix, iz) = after;
 			changed = true;
+			minx = std::min(minx, ix); minz = std::min(minz, iz);
+			maxx = std::max(maxx, ix); maxz = std::max(maxz, iz);
 		}
-	rect[0] = x0; rect[1] = z0; rect[2] = x1; rect[3] = z1;
+	if (bx1 >= bx0) this->changed(bx0, bz0, bx1, bz1);
+	rect[0] = minx; rect[1] = minz; rect[2] = maxx; rect[3] = maxz;
 	return changed;
 }
 
@@ -121,7 +144,22 @@ const PaintTile *GroundPaint::tile(int key) const {
 	return it == tiles_.end() ? nullptr : it->second.get();
 }
 
+void GroundPaint::changed(int x0, int z0, int x1, int z1) {
+	const auto world = [&](int sample) { return (float(sample) - float(n_) * .5f) * spacing_; };
+	regions_.touch(world(x0) - spacing_, world(z0) - spacing_, world(x1) + spacing_, world(z1) + spacing_);
+}
+
 void GroundPaint::put_tile(int key, const PaintTile *from) {
+	const PaintTile *before = tile(key);
+	if ((!before && !from) || (before && from && *before == *from)) return;
+	bool biome_changed = false;
+	for (size_t i = 0; i < PAINT_TILE_CELLS && !biome_changed; i++) {
+		const PaintCell &a = before ? (*before)[i] : EMPTY_CELL, &b = from ? (*from)[i] : EMPTY_CELL;
+		biome_changed = a.biome != b.biome || a.biome_amount != b.biome_amount;
+	}
+	if (biome_changed) { int rect[4]; tile_rect(key, rect); changed(rect[0], rect[1], rect[2], rect[3]); }
+	const auto old = tile_cover_.find(key);
+	if (old != tile_cover_.end()) { covered_ -= old->second; tile_cover_.erase(old); }
 	if (!from) {
 		tiles_.erase(key);
 		return;
@@ -129,6 +167,8 @@ void GroundPaint::put_tile(int key, const PaintTile *from) {
 	std::unique_ptr<PaintTile> &t = tiles_[key];
 	if (!t) t = std::make_unique<PaintTile>();
 	*t = *from;
+	const size_t count = size_t(std::count_if(t->begin(), t->end(), covered));
+	if (count != 0) { tile_cover_[key] = count; covered_ += count; }
 }
 
 void GroundPaint::tile_rect(int key, int rect[4]) const {

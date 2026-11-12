@@ -6,7 +6,11 @@
   "speed_fastest": 4,
   "day_start_min": 390,
   "growth_per_s": 25,
-  "growth_tries": 8
+  "growth_tries": 8,
+  "rail_path_cache_mb": 8,
+  "street_chain_cache_mb": 8,
+  "plant_ground_cache_mb": 32,
+  "lot_raster_cache_mb": 32
  },
  "economy": {
   "start_money": 20000000,
@@ -48,6 +52,13 @@
   "max_chunk_rebuilds_per_frame": 6,
   "commit_budget_ms": 4,
   "upload_budget_mb": 64,
+  "placement_cache_mb": 32,
+  "camera_solids_cache_mb": 8,
+  "instance_sector_m": 64,
+  "shore_page_samples": 128,
+  "geometry_error_px": 1,
+  "geometry_fade_s": 0.2,
+  "body_cache_mb": 64,
   "pose_delay_ticks": 2
  },
  "terrain": {

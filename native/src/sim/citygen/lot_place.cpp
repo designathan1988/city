@@ -68,7 +68,7 @@ void LotStrips::place_strips() {
 // One place of a street's side: the point, the way along it and the way off the street.
 LotStrips::Along LotStrips::along(int s, double at, double sign) const {
 	double px, pz, dx, dz;
-	const double t = t_at_length(tables_[s], at);
+	const double t = t_at_length(*tables_[s], at);
 	g_.quad[s].at(t, px, pz);
 	g_.quad[s].deriv(t, dx, dz);
 	const double l = std::hypot(dx, dz);

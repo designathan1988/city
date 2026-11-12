@@ -5,7 +5,7 @@
 // zebra past the junction setback (catalog street_furniture.json "crossing"), from kerb to kerb.
 #include "sim/traffic/traffic_system.h"
 
-#include "sim/traffic/astar.h"
+#include "sim/traffic/route_search.h"
 
 #include <algorithm>
 #include <cmath>
@@ -74,29 +74,40 @@ int seg_between(const CityState &s, int a, int b) {
 }
 
 bool walkable(const CityState &s, int seg) {
-	const RoadSegment &g = s.roads.segs[seg];
+	if (seg < 0 || size_t(seg) >= s.roads.segs.size() || !s.roads.segs[size_t(seg)].alive) return false;
+	const RoadSegment &g = s.roads.segs[size_t(seg)];
 	const Profile &p = s.roads.profile_of(seg);
 	return g.alive && !p.rail && p.walk() && g.len - g.retreat_b > g.retreat_a;
 }
 
-bool find_walk_route(const CityState &s, int from, int goal, std::vector<int> &out) {
-	static thread_local AStarScratch sc;
-	const TrafficParams &tp = s.catalog.traffic;
+void RoadRouteSearch::begin_walk(const CityState &s, int from, int goal, int max_expanded) {
+	counts_ = {}; walking_ = true; micro_ = false; search_.begin(0, -1, -1, 0); result_ = SearchStatus::INVALIDATED;
+	city_ = s.generation; graph_ = s.traffic.g.routing_revision; roads_ = uint64_t(s.roads.version);
 	const RoadNetwork &net = s.roads;
-	const float pace = tp.walk_speed_min;
-	const V2 goal_p = node_xz(s, goal);
-	auto h = [&](int k) { return (node_xz(s, k) - goal_p).len() / pace; };
-	auto expand = [&](int k, auto relax) {
-		for (int seg : net.nodes[k].segs) {
-			if (!walkable(s, seg)) continue;
-			const RoadSegment &g = net.segs[seg];
-			// the fixed extra is a junction's: a road cut in pieces, or with a crossing on it, is no longer than the parallel one
-			relax(g.a == k ? g.b : g.a, float(g.len) / pace + (net.nodes[k].segs.size() > JUNCTION_ARMS ? tp.walk_cost_extra_s : 0.f));
-		}
-	};
-	return astar(sc, net.nodes.size(), from, goal, int(tp.ped_route_max_expanded), h, expand, out);
+	if (from < 0 || goal < 0 || size_t(from) >= net.nodes.size() || size_t(goal) >= net.nodes.size()) return;
+	goal_ = goal;
+	search_.begin(net.nodes.size(), from, goal, max_expanded < 0 ? int(s.catalog.traffic.ped_route_max_expanded) : max_expanded);
+	result_ = SearchStatus::PENDING;
 }
-
+SearchStatus RoadRouteSearch::step_walk(const CityState &s, WorkBudget &work) {
+	if (!source_current(s)) { result_ = SearchStatus::INVALIDATED; return result_; }
+	if (result_ != SearchStatus::PENDING) return result_;
+	const TrafficParams &tp = s.catalog.traffic; const RoadNetwork &net = s.roads;
+	const float pace = tp.walk_speed_min; const V2 goal_p = node_xz(s, goal_);
+	auto h = [&](int k) { return (node_xz(s, k) - goal_p).len() / pace; };
+	auto next = [&](int k, RouteConnCursor &cursor, int &to, float &cost) {
+		const auto &edges = net.nodes[k].segs;
+		if (cursor.at >= edges.size()) return EdgeStep::END;
+		const int seg = edges[cursor.at++];
+		if (!walkable(s, seg)) return EdgeStep::SKIP;
+		const RoadSegment &g = net.segs[seg];
+		to = g.a == k ? g.b : g.a;
+		// the fixed extra is a junction's: cutting a road into pieces does not add a cost to its through joints
+		cost = float(g.len) / pace + (edges.size() > JUNCTION_ARMS ? tp.walk_cost_extra_s : 0.f);
+		return EdgeStep::EDGE;
+	};
+	result_ = search_.advance([&work] { return work.take(); }, h, next); return result_;
+}
 int plan_corner(const CityState &s, int n, int seg_in, int side_in, int seg_out, int want_side, Waypoint *ways, int &side_out) {
 	std::vector<Arm> arms = arms_by_angle(s, n);
 	const int deg = int(arms.size());

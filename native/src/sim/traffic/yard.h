@@ -69,7 +69,8 @@ struct YardCost {
 
 struct YardPlan {
 	std::vector<YardGate> gates;
-	std::vector<DockWays> docks;
+	std::vector<std::shared_ptr<const DockWays>> docks; // a completed dock is immutable and independently pinned by delayed consumers
+	std::unordered_map<int, size_t> dock_of; // bay -> last completed way, matching the original last-match lookup
 	YardCost cost;
 };
 
@@ -77,11 +78,13 @@ class YardPlanner {
 public:
 	explicit YardPlanner(YardInput in);
 	~YardPlanner();
-	bool advance(int work); // spends `work`; true once `plan` is whole
+	bool advance(int work); // standalone allowance with local debt; true once plan is whole
+	bool advance_shared(int &work); // aggregate owner retains negative work across planners and ticks
 	YardPlan plan;
 
 private:
 	enum class Stage { LAY, OPEN, STREET, SHUT, CLEARANCE, DOCK, GATE, WAY_IN, WAY_OUT, WAY_GRADUATED, WAY_FINE, DONE };
+	int64_t work_debt_ = 0; // standalone caller compatibility; the traffic owner uses advance_shared
 	YardInput in_;
 	Field field_, lot_;
 	Stage stage_ = Stage::LAY;

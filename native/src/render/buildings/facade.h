@@ -14,6 +14,7 @@
 namespace city::b40 {
 
 struct PaneRooms;
+class Interior;
 
 struct Placed {
 	const Data *data = nullptr;
@@ -21,6 +22,7 @@ struct Placed {
 	const Body *b = nullptr;
 	const Body *whole = nullptr; // the body of the record: `b` is the cut one while a building is opened (Interior layer)
 	uint8_t fn = 0; // the record's function (BuildingFn): what its floors are for
+	Interior *interior = nullptr; // whole-body immutable floor leases, including when a cut hides pane rooms
 	PaneRooms *rooms = nullptr; // the rooms behind its panes (none for a cut body: its panes are clear glass)
 	Basis lot; // o: middle of the lot front at floor height; e0 lot x, e1 lot y (away from the street), e2 up
 	uint32_t id = 0; // the record seed (bay hashes, roof plant, flat roof pick)

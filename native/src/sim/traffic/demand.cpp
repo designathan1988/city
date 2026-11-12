@@ -4,11 +4,26 @@
 #include "sim/traffic/kerb_stops.h"
 
 #include "core/units.h"
+#include "core/generation.h"
 
 #include <cmath>
+#include <cstdlib>
+#include <limits>
 
 namespace city {
 namespace traffic {
+
+struct VehicleBirthIntent {
+	enum class Phase { TYPE, ORIGIN, DESTINATION, ROOM, QUERY, FAILED };
+	struct Pick { enum class Phase { DRAW, CONNECTION, WEIGHT }; Phase phase = Phase::DRAW; int tried = 0, last = -1, candidate = -1, choice = -1; RouteConnCursor cursor; };
+	struct Ticket {};
+	uint64_t city = 0, batch = 0, graph = 0, from_generation = 0, goal_generation = 0;
+	int domain = 0, from = -1, goal = -1, lane = 0, destination_tries = 0;
+	float hour = 0, at = 0; V2 origin; VehicleType type = VehicleType::SEDAN; bool bike = false, truck = false;
+	Phase phase = Phase::TYPE; Pick pick;
+	std::weak_ptr<const Ticket> admission;
+	std::shared_ptr<const BirthReservations::Lease> reservation;
+};
 
 namespace {
 
@@ -67,69 +82,170 @@ VehicleType draw_type(CityState &s) {
 }
 
 // True when a vehicle of length `len` fits on the lane at `at` without touching anyone.
-bool lane_free(const CityState &s, int key, float at, float len) {
+bool lane_free(const CityState &s, int key, float at, float len, bool reservations = true) {
 	const TrafficState &t = s.traffic;
-	for (int id : t.lane_vehicles[key]) {
-		const Vehicle &o = t.vehicles[id];
-		const VehicleClass &oc = s.catalog.traffic.classes[int(o.type)];
-		if (at > o.s - oc.length - oc.min_gap && at - len - oc.min_gap < o.s) return false;
-	}
-	return true;
+	auto overlaps = [&](float position, int type) {
+		const VehicleClass &oc = s.catalog.traffic.classes[type];
+		return at > position - oc.length - oc.min_gap && at - len - oc.min_gap < position;
+	};
+	for (int id : t.lane_vehicles[size_t(key)]) { const Vehicle &o = t.vehicles[size_t(id)]; if (overlaps(o.s, int(o.type))) return false; }
+	return !reservations || !t.birth_reservations.any(key, s.roads.segment_generation((key / MAX_LANES) / 2), [&](const BirthReservations::Claim &claim) { return overlaps(claim.at, claim.type); });
 }
 
-// One trip attempt; returns false on failure (no destination, no route or no room).
-bool spawn_one(CityState &s, int &routes) {
-	TrafficState &t = s.traffic;
-	const TrafficParams &p = s.catalog.traffic;
-	VehicleType type = draw_type(s);
-	bool truck = type == VehicleType::TRUCK;
-	const bool bike = type == VehicleType::BICYCLE;
-	float hour = float(s.clock.hour());
-	int from = pick_ds(s, truck ? p.zone_truck : weights_now(p, hour, true));
-	if (from < 0 || (bike && !t.g.ds[size_t(from)].bikes)) return false;
-	V2 a = mid_of(s, from);
-	int to = -1;
-	for (int k = 0; k < DEST_TRIES && to < 0; k++) {
-		int c = pick_ds(s, truck ? p.zone_truck : weights_now(p, hour, false));
-		if (c < 0) continue;
-		float d = (mid_of(s, c) - a).len();
-		if (d > p.trip_min_m && d < p.trip_max_m && t.rng.f() < std::exp(-d / p.trip_decay_m)) to = c;
+// One draw/adjacency/weight transition per shared credit; a cancelled queue entry resumes this same scalar recipe.
+bool advance_birth_pick(CityState &s, VehicleBirthIntent &intent, const float *weights, WorkBudget &work) {
+	auto &pick = intent.pick; auto &t = s.traffic; const auto &g = t.g;
+	using Phase = VehicleBirthIntent::Pick::Phase;
+	while (work.take()) {
+		if (pick.phase == Phase::DRAW) {
+			if (pick.tried >= PICK_TRIES || intent.domain <= 0) { pick.choice = pick.last; return true; }
+			++pick.tried; int ds = int(t.rng.next() % uint32_t(intent.domain));
+			if (!g.ds[size_t(ds)].ok) ds ^= 1;
+			if (size_t(ds) >= g.ds.size() || !g.ds[size_t(ds)].ok) continue;
+			pick.candidate = ds; pick.cursor = {}; pick.phase = Phase::CONNECTION;
+		} else if (pick.phase == Phase::CONNECTION) {
+			bool leaves = false;
+			if (size_t(pick.candidate) < g.route_ready.size() && size_t(pick.candidate) < g.route_conns.size() && g.route_ready[size_t(pick.candidate)]) leaves = !g.route_conns[size_t(pick.candidate)].empty();
+			else {
+				int ci = -1; const ConnRead read = next_physical_connection(g, pick.candidate, pick.cursor, ci);
+				if (read == ConnRead::SKIP) continue;
+				leaves = read == ConnRead::ENTRY;
+			}
+			if (!leaves) { pick.phase = Phase::DRAW; continue; }
+			pick.last = pick.candidate; pick.phase = Phase::WEIGHT;
+		} else {
+			if (t.rng.f() < seg_weight(s, pick.candidate >> 1, weights)) { pick.choice = pick.candidate; return true; }
+			pick.phase = Phase::DRAW;
+		}
 	}
-	if (to < 0 || to == from) return false;
-	// Room first: a spawn that cannot fit must not pay for a route search.
-	const VehicleClass &vc = p.classes[int(type)];
-	const DirSeg &d = t.g.ds[from];
-	int lane = bike ? 0 : int(t.rng.next() % uint32_t(d.lanes)); // a bicycle keeps to the edge of the carriageway
-	float at = t.rng.range(PLACE_LO, PLACE_HI) * d.len;
-	const int key = from * MAX_LANES + lane;
-	const float stop = d.len - d.stop_back - p.stop_margin_m; // it starts short of its stop line, able to stop there
-	if (at < vc.length + p.mouth_clear_m || at > stop || !lane_free(s, key, at, vc.length)) return false; // keep the lane mouth clear
-	if (float(lane_load(t, key) + 1) > d.len / p.slot_m) return false; // the lane is full, far vehicles included
-	routes++;
-	std::vector<int> route;
-	if (!find_route(s, from, to, route, -1, -1, bike) || route.size() < 2) return false;
-	const int id = new_vehicle(s, type, uint8_t(t.rng.next() % PAINTS));
-	Vehicle &v = t.vehicles[size_t(id)];
-	assign_errand(s, v, id);
-	v.ds = from;
-	v.lane = lane;
-	v.s = at;
-	v.v = std::min(d.speed * v.vf * START_SPEED_SHARE, std::sqrt(2 * vc.b * (stop - at)));
-	route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
-	v.goal_s = t.rng.range(GOAL_LO, GOAL_HI) * t.g.ds[to].len;
-	// micro only close to the camera; farther out the trip starts in the far model (and is drawn if its lane is in
-	// the window, which cannot happen for a segment beyond micro_spawn_m < meso_window_m, but the rule stays explicit)
-	const V2 mid = mid_of(s, from);
-	const float dx = mid.x - s.camera_x.load(), dz = mid.y - s.camera_z.load();
-	if (dx * dx + dz * dz < p.micro_spawn_m * p.micro_spawn_m) {
-		v.micro = false; // micro_add registers it in micro_list
-		micro_add(t, id);
-		lane_add(s, key, id);
+	return false;
+}
+void queue_vehicle_birth(CityState &s);
+class VehicleBirthRecipient final : public RouteRecipient {
+public:
+	VehicleBirthRecipient(std::shared_ptr<VehicleBirthIntent> intent, std::shared_ptr<const VehicleBirthIntent::Ticket> ticket) : intent_(std::move(intent)), ticket_(std::move(ticket)) {}
+	RecipientState state(const CityState &s) const override {
+		const auto &b = s.traffic.vehicle_birth; const auto &i = *intent_;
+		if (!b.active || b.generation != i.batch || b.current != intent_ || s.generation != i.city) return RecipientState::OBSOLETE;
+		if (!s.traffic_levels.vehicles_on) return RecipientState::WAIT_SOURCE;
+		if (i.phase != VehicleBirthIntent::Phase::QUERY) return s.traffic.g.routing_revision == i.graph ? RecipientState::READY : RecipientState::OBSOLETE;
+		if (i.from < 0 || i.goal < 0 || size_t(i.from) >= s.traffic.g.ds.size() || size_t(i.goal) >= s.traffic.g.ds.size() || s.roads.segment_generation(i.from / 2) != i.from_generation || s.roads.segment_generation(i.goal / 2) != i.goal_generation) return RecipientState::OBSOLETE;
+		const auto &d = s.traffic.g.ds[size_t(i.from)]; const auto &p = s.catalog.traffic; const auto &body = p.classes[int(i.type)];
+		return d.ok && i.lane >= 0 && i.lane < d.lanes && (!i.bike || d.bikes) && i.at >= body.length + p.mouth_clear_m && i.at <= d.len - d.stop_back - p.stop_margin_m ? RecipientState::READY : RecipientState::OBSOLETE;
+	}
+	RequestPreparation prepare_request(CityState &s, RoadRequest &request, WorkBudget &work) override {
+		auto &i = *intent_; const auto &p = s.catalog.traffic; auto &t = s.traffic;
+		using Phase = VehicleBirthIntent::Phase;
+		while (work.left > 0) {
+			if (i.phase == Phase::TYPE) {
+				work.take(); i.type = draw_type(s); i.bike = i.type == VehicleType::BICYCLE; i.truck = i.type == VehicleType::TRUCK; i.phase = Phase::ORIGIN;
+			} else if (i.phase == Phase::ORIGIN) {
+				if (!advance_birth_pick(s, i, i.truck ? p.zone_truck : weights_now(p, i.hour, true), work)) return RequestPreparation::PENDING;
+				i.from = i.pick.choice;
+				if (i.from < 0 || (i.bike && !t.g.ds[size_t(i.from)].bikes)) return fail(i);
+				i.from_generation = s.roads.segment_generation(i.from / 2); i.origin = mid_of(s, i.from); i.pick = {}; i.phase = Phase::DESTINATION;
+			} else if (i.phase == Phase::DESTINATION) {
+				if (i.destination_tries >= DEST_TRIES) return fail(i);
+				if (!advance_birth_pick(s, i, i.truck ? p.zone_truck : weights_now(p, i.hour, false), work)) return RequestPreparation::PENDING;
+				const int candidate = i.pick.choice; ++i.destination_tries; i.pick = {};
+				if (candidate < 0) continue;
+				const float distance = (mid_of(s, candidate) - i.origin).len();
+				if (distance > p.trip_min_m && distance < p.trip_max_m && t.rng.f() < std::exp(-distance / p.trip_decay_m)) {
+					i.goal = candidate; if (i.goal == i.from) return fail(i);
+					i.goal_generation = s.roads.segment_generation(i.goal / 2); i.phase = Phase::ROOM;
+				}
+			} else if (i.phase == Phase::ROOM) {
+				work.take(); const DirSeg &d = t.g.ds[size_t(i.from)]; const VehicleClass &body = p.classes[int(i.type)];
+				if (d.lanes <= 0) return fail(i);
+				i.lane = i.bike ? 0 : int(t.rng.next() % uint32_t(d.lanes)); i.at = t.rng.range(PLACE_LO, PLACE_HI) * d.len;
+				const int key = i.from * MAX_LANES + i.lane;
+				if (i.at < body.length + p.mouth_clear_m || i.at > d.len - d.stop_back - p.stop_margin_m || !lane_free(s, key, i.at, body.length)) return fail(i);
+				if (float(uint64_t(lane_load(t, key)) + t.birth_reservations.count(key, i.from_generation) + 1) > d.len / p.slot_m) return fail(i);
+				i.reservation = t.birth_reservations.reserve(key, i.from_generation, i.at, int(i.type)); i.phase = Phase::QUERY;
+			} else if (i.phase == Phase::QUERY) {
+				request = {i.from, i.goal, -1, -1, i.bike}; return RequestPreparation::READY;
+			} else return RequestPreparation::SKIPPED;
+		}
+		return RequestPreparation::PENDING;
+	}
+	bool complete(CityState &s, SearchStatus status, RouteDraft &prepared) override {
+		auto &b = s.traffic.vehicle_birth; auto &i = *intent_;
+		if (!b.active || b.generation != i.batch || b.current != intent_) return true;
+		const bool found = state(s) == RecipientState::READY && i.phase == VehicleBirthIntent::Phase::QUERY && status == SearchStatus::FOUND && prepared.size() >= 2;
+		if (found) {
+			auto &t = s.traffic; const auto &p = s.catalog.traffic; const DirSeg &d = t.g.ds[size_t(i.from)]; const auto &body = p.classes[int(i.type)];
+			const int key = i.from * MAX_LANES + i.lane;
+			if (!lane_free(s, key, i.at, body.length, false) || float(uint64_t(lane_load(t, key)) + t.birth_reservations.count(key, i.from_generation)) > d.len / p.slot_m) return false;
+			const int id = new_vehicle(s, i.type, uint8_t(t.rng.next() % PAINTS)); Vehicle &v = t.vehicles[size_t(id)];
+			assign_errand(s, v, id); v.ds = i.from; v.lane = i.lane; v.s = i.at;
+			v.v = std::min(d.speed * v.vf * START_SPEED_SHARE, std::sqrt(2 * body.b * (d.len - d.stop_back - p.stop_margin_m - i.at)));
+			t.route_pool.adopt(v.route, prepared); v.goal_s = t.rng.range(GOAL_LO, GOAL_HI) * t.g.ds[size_t(i.goal)].len;
+			const V2 mid = mid_of(s, i.from); const float dx = mid.x - s.camera_x.load(), dz = mid.y - s.camera_z.load();
+			if (dx * dx + dz * dz < p.micro_spawn_m * p.micro_spawn_m) { micro_add(t, id); lane_add(s, key, id); }
+			else { meso_enter(s, id, key, true); if (in_window(s, i.from)) materialize(s, key); }
+			if (v.micro) refresh_vehicle_pose(s, id);
+		} else ++b.failures;
+		i.reservation.reset(); b.current.reset();
+		if (b.remaining <= 0 || b.failures >= MAX_FAILURES) b.active = false; else queue_vehicle_birth(s);
 		return true;
 	}
-	meso_enter(s, id, key, true);
-	if (in_window(s, from)) materialize(s, key);
-	return true;
+private:
+	static RequestPreparation fail(VehicleBirthIntent &i) { i.phase = VehicleBirthIntent::Phase::FAILED; return RequestPreparation::SKIPPED; }
+	std::shared_ptr<VehicleBirthIntent> intent_; std::shared_ptr<const VehicleBirthIntent::Ticket> ticket_;
+};
+void queue_vehicle_birth(CityState &s) {
+	auto &b = s.traffic.vehicle_birth; if (!b.active) return;
+	if (!b.current) {
+		if (b.remaining <= 0 || b.failures >= MAX_FAILURES) { b.active = false; return; }
+		if (s.traffic.g.ds.size() > size_t(std::numeric_limits<int>::max())) std::abort();
+		--b.remaining; b.current = std::make_shared<VehicleBirthIntent>();
+		auto &i = *b.current; i.city = s.generation; i.batch = b.generation; i.graph = s.traffic.g.routing_revision;
+		i.domain = int(s.traffic.g.ds.size()); i.hour = float(s.clock.hour());
+	}
+	if (!b.current->admission.expired()) return;
+	auto ticket = std::make_shared<const VehicleBirthIntent::Ticket>(); b.current->admission = ticket;
+	s.traffic.route_admission.submit(s, RouteKey::demand(RoutePurpose::VEHICLE_BIRTH), {}, std::make_unique<VehicleBirthRecipient>(b.current, std::move(ticket)));
+}
+
+void queue_trip(CityState &s, int id, int goal, TripFailure failure);
+class TripRouteRecipient final : public RouteRecipient {
+public:
+	TripRouteRecipient(const Vehicle &v, int id, int goal, TripFailure failure) : id_(id), from_(v.ds), ri_(v.ri), goal_(goal),
+		generation_(v.generation), request_(v.trip_route_request), route_(v.route.version), failure_(failure) {}
+	RecipientState state(const CityState &s) const override {
+		const Vehicle *v = actor(s); if (!v || v->off || v->car >= 0 || v->lorry >= 0) return RecipientState::OBSOLETE;
+		if (!s.traffic_levels.vehicles_on || v->conn >= 0) return RecipientState::WAIT_SOURCE; // finish the physical handover before capturing its current source
+		return v->ds == from_ && v->ri == ri_ && v->route.version == route_ ? RecipientState::READY : RecipientState::OBSOLETE;
+	}
+	bool complete(CityState &s, SearchStatus status, RouteDraft &prepared) override {
+		if (!actor(s)) return true;
+		Vehicle &v = s.traffic.vehicles[size_t(id_)];
+		const bool current = state(s) == RecipientState::READY;
+		v.trip_route_request = 0;
+		if (v.off || v.car >= 0 || v.lorry >= 0) return true; // a new physical owner superseded this desired trip
+		const auto &ds = s.traffic.g.ds;
+		const bool endpoints = v.ds >= 0 && goal_ >= 0 && size_t(v.ds) < ds.size() && size_t(goal_) < ds.size() && ds[size_t(v.ds)].ok && ds[size_t(goal_)].ok;
+		if (current && status == SearchStatus::SOURCE_RETIRED) { despawn_vehicle(s, id_, false); return true; }
+		if (status != SearchStatus::TARGET_RETIRED && (!current || status == SearchStatus::INVALIDATED) && endpoints) { queue_trip(s, id_, goal_, failure_); return true; }
+		if (current && status == SearchStatus::FOUND && prepared.size() >= 2) {
+			s.traffic.route_pool.adopt(v.route, prepared); v.ri = 0;
+			v.goal_s = s.traffic.rng.range(GOAL_LO, GOAL_HI) * ds[size_t(goal_)].len;
+			return true;
+		}
+		if (failure_ == TripFailure::ARRIVED) despawn_vehicle(s, id_, true); else v.goal_s = 0;
+		return true;
+	}
+private:
+	const Vehicle *actor(const CityState &s) const {
+		if (id_ < 0 || size_t(id_) >= s.traffic.vehicles.size()) return nullptr;
+		const Vehicle &v = s.traffic.vehicles[size_t(id_)];
+		return v.alive && v.generation == generation_ && v.trip_route_request == request_ ? &v : nullptr;
+	}
+	int id_, from_, ri_, goal_; uint64_t generation_, request_, route_; TripFailure failure_;
+};
+void queue_trip(CityState &s, int id, int goal, TripFailure failure) {
+	Vehicle &v = s.traffic.vehicles[size_t(id)]; v.trip_route_request = next_generation();
+	s.traffic.route_admission.submit(s, {RoutePurpose::TRIP, id}, {v.ds, goal, -1, -1, v.type == VehicleType::BICYCLE}, std::make_unique<TripRouteRecipient>(v, id, goal, failure));
 }
 
 } // namespace
@@ -146,25 +262,34 @@ int new_vehicle(CityState &s, VehicleType type, uint8_t paint) {
 	}
 	Vehicle &v = t.vehicles[size_t(id)];
 	v = Vehicle();
+	v.generation = next_generation();
 	v.alive = true;
+	t.live_vehicles.insert(id);
 	v.micro = false; // micro_add registers it in micro_list
 	v.type = type;
 	v.paint = paint;
 	v.vf = s.catalog.traffic.classes[int(type)].speed_share * (VF_BASE + VF_SPAN * t.rng.f());
 	v.drift = t.rng.range(0.f, TAU_F);
+	index_vehicle(s, id);
 	t.vehicle_count++;
 	return id;
 }
 
-void free_vehicle(TrafficState &t, int id) {
+void free_vehicle(CityState &s, int id) {
+	TrafficState &t = s.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
-	t.route_waste += size_t(v.route.cap);
+	t.route_admission.cancel_actor(s, id); t.birth_reservations.erase(id);
+	t.route_pool.release(v.route);
+	t.vehicle_index.erase(id);
+	t.live_vehicles.erase(id);
 	v = Vehicle();
 	t.free_vehicles.push_back(id);
 }
 
-bool new_trip(CityState &s, int id, int from_ds) {
+TripRequest new_trip(CityState &s, int id, int from_ds, TripFailure failure) {
 	TrafficState &t = s.traffic;
+	if (t.vehicles[size_t(id)].trip_route_request) return TripRequest::PENDING;
+	if (from_ds < 0 || size_t(from_ds) >= t.g.ds.size() || !t.g.ds[size_t(from_ds)].ok) return TripRequest::NO_DESTINATION;
 	const TrafficParams &p = s.catalog.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
 	const float *w = v.type == VehicleType::TRUCK ? p.zone_truck : weights_now(p, float(s.clock.hour()), false);
@@ -174,14 +299,10 @@ bool new_trip(CityState &s, int id, int from_ds) {
 		if (c < 0 || c == from_ds) continue;
 		const float d = (mid_of(s, c) - a).len();
 		if (d <= p.trip_min_m || d >= p.trip_max_m || t.rng.f() >= std::exp(-d / p.trip_decay_m)) continue;
-		std::vector<int> route;
-		if (!find_route(s, from_ds, c, route, -1, -1, v.type == VehicleType::BICYCLE) || route.size() < 2) return false;
-		route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
-		v.ri = 0;
-		v.goal_s = t.rng.range(GOAL_LO, GOAL_HI) * t.g.ds[size_t(c)].len;
-		return true;
+		queue_trip(s, id, c, failure);
+		return TripRequest::PENDING;
 	}
-	return false;
+	return TripRequest::NO_DESTINATION;
 }
 
 double fleet_target(const CityState &s) {
@@ -199,22 +320,18 @@ float day_factor(const TrafficParams &p, float h) {
 }
 
 void spawn_vehicles(CityState &s, float dt) {
-	TrafficState &t = s.traffic;
-	const TrafficParams &p = s.catalog.traffic;
+	TrafficState &t = s.traffic; const auto &p = s.catalog.traffic; auto &birth = t.vehicle_birth;
 	const double target = fleet_target(s);
-	int attempts = 0;
-	// a car driving in or out of a bay is a car driving: the demand counts it (it just is not on a lane)
-	const double driving = double(t.vehicle_count) + double(t.park.moving);
-	if (driving < p.fill_share * target) {
-		attempts = int(p.spawn_fill_attempts);
-	} else {
-		t.spawn_credit += float(std::max(0.0, target - driving)) * dt / p.fleet_tau_s;
-		attempts = std::min(int(t.spawn_credit), int(p.spawn_attempts_per_step));
-		t.spawn_credit -= float(attempts);
-	}
-	int failures = 0, routes = 0;
-	for (int k = 0; k < attempts && failures < MAX_FAILURES && routes < int(p.route_budget_per_step); k++)
-		if (!spawn_one(s, routes)) failures++;
+	// A captured uncreated birth already claims one desired fleet slot; on-lane/off-bay counts retain their original policy.
+	const double driving = double(t.vehicle_count) + double(t.park.moving) + (birth.current ? 1.0 : 0.0);
+	const bool filling = driving < p.fill_share * target;
+	if (!filling) t.spawn_credit += float(std::max(0.0, target - driving)) * dt / p.fleet_tau_s;
+	if (birth.active) { queue_vehicle_birth(s); return; } // credits accrue while its scalar attempt debt/choices survive
+	const int attempts = filling ? WorkBudget::from_count(p.spawn_fill_attempts).left : std::min(WorkBudget::from_count(t.spawn_credit).left, WorkBudget::from_count(p.spawn_attempts_per_step).left);
+	if (!filling) t.spawn_credit -= float(attempts);
+	if (attempts <= 0) return;
+	birth.generation = next_generation(); birth.remaining = attempts; birth.failures = 0; birth.active = true;
+	queue_vehicle_birth(s);
 }
 
 } // namespace traffic

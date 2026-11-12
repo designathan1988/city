@@ -39,9 +39,10 @@ public:
 	godot::Vector2 lamps_hand_over() const { return lights_.handed_over(); }
 	// The run under the pointer, drawn as it will stand; empty lists take it away. Main thread, map held.
 	void set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles);
-	godot::Array take_sign_cells() { return atlas_.take_pending(); }
+	godot::Array take_sign_cells() { return atlas_->take_pending(); }
+	int64_t sign_epoch() const { return int64_t(atlas_->generation()); }
 	int instances() const { return instances_; } // poles, wires, boxes and lights drawn (render_cost probe)
-	int sign_cells() const { return atlas_.cells_used(); }
+	int sign_cells() const { return atlas_->cells_used(); }
 
 private:
 	// What a chunk draws as instances.
@@ -52,7 +53,8 @@ private:
 		int count = 0;
 		void free();
 	};
-	void build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const;
+	struct Placed final : MeshPayload { StreetInstances instances; };
+	void build_cpu(const CityState &s, SignAtlas &atlas, int64_t key, MeshBuilder &mb, StreetInstances &inst) const;
 	void commit_one(BuiltMesh &b) override;
 	void show(Draws &d, StreetInstances &inst, const godot::AABB &box);
 	void cast_chunk(Draws &d, const godot::RID &mesh, const godot::AABB &box);
@@ -63,7 +65,7 @@ private:
 	BarrierLook barriers_;
 	SignLook signs_;
 	PropKit kit_;
-	mutable SignAtlas atlas_;
+	std::shared_ptr<SignAtlas> atlas_ = std::make_shared<SignAtlas>(); // submitted jobs pin the atlas epoch they address
 	OwnedMesh pole_mesh_, pole_cast_mesh_, wire_near_mesh_, wire_far_mesh_, box_mesh_, beam_mesh_, light_mesh_;
 	std::unordered_map<int64_t, MeshDraw> chunks_;
 	std::unordered_map<int64_t, Draws> draws_;
@@ -71,9 +73,6 @@ private:
 	SignalLamps lamps_;
 	LampLights lights_;
 	int instances_ = 0;
-	// what each chunk's newest job placed, handed over with its mesh (a stale result never commits)
-	mutable std::mutex placed_mutex_;
-	mutable std::unordered_map<int64_t, StreetInstances> placed_;
 };
 
 } // namespace city

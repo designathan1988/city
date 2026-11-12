@@ -4,13 +4,17 @@
 // city is filled at once), so the work never grows with the map.
 #pragma once
 
+#include "core/bounds_index.h"
 #include <cstdint>
+#include <set>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 namespace city {
 
 struct CityState;
+struct GrowthPick { int64_t key = 0; int lot = -1; double d2 = 0; };
 
 struct GrowthQueue {
 	std::vector<int64_t> cells; // CHUNK keys with lots that may be free
@@ -23,6 +27,26 @@ struct GrowthQueue {
 	void clear() { *this = GrowthQueue(); }
 	void push(int64_t key);
 	void assign(std::vector<int64_t> keys); // the queue as saved: cells and their members (each key once)
+	void invalidate_cell(int64_t key);
+	void occupancy_changed(float x, float z);
+	GrowthPick nearest(CityState &s);
+private:
+	struct Candidate { int64_t key = 0; int lot = -1; double x = 0, z = 0; Bounds2 point, dependency; bool free = false; };
+	struct Cell { std::vector<int> handles; std::set<int> free_lots; };
+	std::unordered_map<int64_t, size_t> positions_;
+	std::unordered_map<int64_t, Cell> candidates_;
+	std::vector<Candidate> lots_;
+	FreeSlots free_lots_;
+	BoundsIndex free_points_, dependencies_;
+	std::set<size_t> empty_;
+	std::unordered_set<int64_t> dirty_cells_;
+	std::unordered_set<int> dirty_lots_;
+	void reset_candidates();
+	void refresh_cell(CityState &s, int64_t key);
+	void refresh_lot(CityState &s, int handle);
+	void retire_lot(int handle);
+	void sync_empty(int64_t key);
+	void discard_cell(int64_t key);
 };
 
 // One simulation step of growth (caller holds map_mutex exclusively).

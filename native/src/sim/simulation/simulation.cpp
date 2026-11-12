@@ -26,6 +26,7 @@ void CityClock::set_hour(double h) { day_shift.store(h * MINUTES_PER_HOUR - minu
 void Simulation::start(CityState &s, bool paused) {
 	stop();
 	s_ = &s;
+	tick_load_ = 0;
 	period_ns_ = int64_t(NS_PER_S / double(s.catalog.tune.sim_tick_hz));
 	speed_ = paused ? SimSpeed::PAUSED : SimSpeed::NORMAL;
 	running_ = true;
@@ -120,7 +121,11 @@ void Simulation::run() {
 			deadline = now_ns(); // too far behind: drop, never spiral
 		}
 		const int steps = steps_per_tick(speed_.load());
-		if (steps > 0 && s_->ready) tick(*s_, steps, deadline); // stamped when due, not when done: an even timeline
+		if (steps > 0 && s_->ready) {
+			const int64_t begin = now_ns();
+			tick(*s_, steps, deadline); // stamped when due, not when done: an even timeline
+			tick_load_ = double(now_ns() - begin) / double(period_ns_.load());
+		}
 	}
 }
 

@@ -124,7 +124,8 @@ func record() -> void:
 ## The window since `record`, frame by frame.
 func frames() -> Dictionary:
 	_recording = false
-	return {"interval": _gaps, "cpu": _cpu, "gpu": _gpu, "draws": _draws, "primitives": _primitives, "stages": _stages}
+	return {"interval": _gaps, "cpu": _cpu, "cpu_complete": false, "cpu_scope": "native_render_subtotal",
+		"gpu": _gpu, "draws": _draws, "primitives": _primitives, "stages": _stages}
 
 
 ## The frames since `record`, summed up: intervals (p50, p95, p99, max), hitches, vsyncs missed, and the render times.
@@ -139,7 +140,8 @@ func record_end() -> Dictionary:
 		dropped += maxi(0, roundi(g / vsync) - 1)
 		if g > HITCH_MS:
 			hitches += 1
-	var out := {"frames": _gaps.size(), "hitches": hitches, "dropped": dropped, "vsync_ms": snappedf(vsync, SHOWN_MS)}
+	var out := {"frames": _gaps.size(), "hitches": hitches, "dropped": dropped, "vsync_ms": snappedf(vsync, SHOWN_MS),
+		"cpu_complete": false, "cpu_scope": "native_render_subtotal"}
 	out.merge(_spread("interval", gaps))
 	out.merge(_spread("cpu", _sorted(_cpu)))
 	out.merge(_spread("gpu", _sorted(_gpu)))
@@ -161,6 +163,7 @@ func passes() -> Array[Dictionary]:
 
 ## The CPU's last frame: the core's work and the renderer's. Performance.TIME_PROCESS will not do: it is the worst frame
 ## of the second (main/main.cpp process_max), so a single slow frame reads as the cost of all of them.
+## This compatibility reading is a native/render subtotal, never total CPU work. Diagnosis carries that scope explicitly.
 static func cpu_ms(viewport: RID) -> float:
 	return float(CityStore.query(&"render_cost").get("process", 0.0)) + RenderingServer.viewport_get_measured_render_time_cpu(viewport) \
 			+ RenderingServer.get_frame_setup_time_cpu()

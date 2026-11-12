@@ -37,10 +37,9 @@ func _system_locale() -> String:
 ## The city goes with the window (Roadcraft saveOnClose): the store writes what is unsaved first.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		if state == State.PLAYING and not tests_drive:
-			CityStore.saves.save_on_close()
 		quit()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT and state == State.PLAYING and not tests_drive:
+		_seal_inputs()
 		CityStore.saves.save_on_hide()
 
 
@@ -64,9 +63,23 @@ func playing() -> void:
 	_to(State.PLAYING)
 
 
+func _seal_inputs() -> void:
+	var tools: Node = get_tree().get_first_node_in_group(&"tools")
+	if tools != null:
+		tools.seal_input()
+
+
 func quit() -> void:
-	if state == State.QUITTING or _to(State.QUITTING):
-		get_tree().quit()
+	if state == State.QUITTING:
+		return
+	var save := state == State.PLAYING and not tests_drive
+	if save:
+		_seal_inputs()
+	if not _to(State.QUITTING):
+		return
+	if save:
+		await CityStore.saves.save_on_close()
+	get_tree().quit()
 
 
 ## Ends the process from a scene that runs without the menu flow (captures, tests).

@@ -16,7 +16,6 @@ constexpr double STILL_THERE_M = 0.5; // execute.ts stillThere: the point is sti
 constexpr double CLEAR_STEP_M = 2; // clearAndConform samples the centreline every 2 m
 constexpr double CLEAR_SLACK_M = 0.3; // the lot rectangle grown by the half width minus this
 constexpr double STREET_MARK_PAD_M = 40; // what the player places stands on a segment within this (the widest street's footway)
-constexpr float NODE_REFRESH_PAD_M = 60; // nodes this far past the edit may change shape (bulbs see their neighbours)
 
 bool still_there(const CityState &s, int seg, double x, double z) {
 	const RoadNetwork &net = s.roads;
@@ -112,6 +111,7 @@ void mark_paint(CityState &s, const int rect[4]) {
 }
 
 void mark_furniture(CityState &s, int seg) {
+	s.roads.invalidate_furniture(seg);
 	const RoadSegment &g = s.roads.segs[size_t(seg)];
 	s.log.furniture_segs.push_back(seg);
 	for (int j = int(std::floor(g.minz / CHUNK)); j <= int(std::floor(g.maxz / CHUNK)); j++)
@@ -121,13 +121,33 @@ void mark_furniture(CityState &s, int seg) {
 void mark_street(CityState &s, double x, double z) {
 	s.log.prop_chunks.push_back(chunk_of(float(x), float(z)));
 	const double r = STREET_MARK_PAD_M;
-	s.roads.for_segments_near(x - r, z - r, x + r, z + r, [&](int seg) { s.log.furniture_segs.push_back(seg); });
+	s.roads.for_segments_near(x - r, z - r, x + r, z + r, [&](int seg) {
+		s.roads.invalidate_furniture(seg);
+		s.log.furniture_segs.push_back(seg);
+	});
 }
 
 void finish_edit(CityState &s, double minx, double minz, double maxx, double maxz) {
+	(void)minx; (void)minz; (void)maxx; (void)maxz; // retained for callers; dependencies come from actual mutations
 	RoadNetwork &net = s.roads;
+	std::vector<int> shapes, street;
+	shapes.swap(s.log.shape_nodes);
+	street.swap(s.log.street_nodes);
+	ChangeLog::dedup(shapes);
+	for (int n : shapes)
+		if (n >= 0 && size_t(n) < net.nodes.size()) net.refresh_node(n);
+	street.insert(street.end(), shapes.begin(), shapes.end());
+	// Road validation/anchoring later in a compound command may read these heights and mouths.
+	sync_grade(s);
+	if (s.edit_depth > 0) {
+		s.log.street_nodes.insert(s.log.street_nodes.end(), street.begin(), street.end());
+		s.edit_pending = true;
+		return;
+	}
+	ChangeLog::dedup(street);
 	std::vector<std::pair<double, double>> squares; // a hydrant may move to another corner of the changed nodes' squares
-	for (int n : s.log.net_nodes) {
+	for (int n : street) {
+		if (n < 0 || size_t(n) >= net.nodes.size()) continue;
 		double x0, z0, x1, z1;
 		hydrant_square(net, net.nodes[size_t(n)].x, net.nodes[size_t(n)].z, x0, z0, x1, z1);
 		squares.push_back({ x0, z0 });
@@ -144,13 +164,6 @@ void finish_edit(CityState &s, double minx, double minz, double maxx, double max
 	}
 	ChangeLog::dedup(segs);
 	for (int seg : segs) mark_furniture(s, seg);
-	float p = NODE_REFRESH_PAD_M;
-	std::vector<int> nodes;
-	net.node_hash.query(float(minx) - p, float(minz) - p, float(maxx) + p, float(maxz) + p, [&](int n) {
-		if (net.nodes[n].alive && std::find(nodes.begin(), nodes.end(), n) == nodes.end()) nodes.push_back(n);
-	});
-	for (int n : nodes) net.refresh_node(n);
-	sync_grade(s); // the heights of what the edit changed (its plates included), and the ground under them
 	std::vector<int64_t> cells = s.log.lot_cells;
 	ChangeLog::dedup(cells);
 	s.lots.process_dirty(s);

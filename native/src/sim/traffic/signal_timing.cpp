@@ -138,14 +138,23 @@ bool walk_signal(const CityState &s, int node, int arm_seg, int arm_stage) {
 void update_lights(CityState &s) {
 	TrafficState &t = s.traffic;
 	if (t.green_wanted.size() != t.g.ds.size()) t.green_wanted.resize(t.g.ds.size(), 0.0);
-	for (Junction &j : t.g.junctions)
-		if (j.ctl == Control::SIGNAL && !j.green.empty()) {
-			if (j.fixed) run_fixed(t, j);
-			else advance(t, j);
-		}
-	t.light_now.assign(t.g.ds.size(), uint8_t(Light::GREEN));
-	for (int ds = 0; ds < int(t.g.ds.size()); ds++)
-		if (t.g.ds[ds].ok) t.light_now[size_t(ds)] = uint8_t(compute_light(s, ds));
+	t.light_now.resize(t.g.ds.size(), uint8_t(Light::GREEN));
+	for (int ds : t.light_touched)
+		if (size_t(ds) < t.light_now.size()) t.light_now[size_t(ds)] = uint8_t(Light::GREEN);
+	t.light_touched.clear();
+	for (int n : t.signal_nodes) {
+		Junction &j = t.g.junctions[size_t(n)];
+		if (j.green.empty()) continue;
+		if (j.fixed) run_fixed(t, j);
+		else advance(t, j);
+		// make_stages owns every nonnegative stage; all other approaches are GREEN by compute_light.
+		for (const auto &stage : j.approaches)
+			for (int ds : stage)
+				if (t.g.ds[size_t(ds)].ok) {
+					t.light_now[size_t(ds)] = uint8_t(compute_light(s, ds));
+					t.light_touched.push_back(ds);
+				}
+	}
 }
 
 Light light_for(const CityState &s, int ds) {

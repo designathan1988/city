@@ -18,6 +18,9 @@
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
+#include <limits>
+#include <cmath>
+
 using namespace godot;
 
 namespace city {
@@ -42,6 +45,10 @@ PackedByteArray unpacked(const String &path, uint32_t magic) {
 } // namespace
 
 void SignatureBodies::init(const RID &scenario, uint32_t layer) {
+	reset();
+	table_attempted_ = table_ready_ = false;
+	table_.resize(0); looks_.clear(); solid_.unref(); blended_.unref();
+	mesh_attempted_.assign(size_t(b40::SIGNATURE_COUNT) + 1, false);
 	scenario_ = scenario;
 	layer_ = layer;
 	meshes_.assign(size_t(b40::SIGNATURE_COUNT) + 1, Ref<ArrayMesh>());
@@ -54,23 +61,33 @@ void SignatureBodies::reset() {
 }
 
 bool SignatureBodies::read_table() {
-	if (!looks_.empty()) return true;
-	table_ = unpacked(String(FOLDER) + "materials.sig", MAGIC_LOOKS);
-	ByteReader r{ table_.ptr(), size_t(table_.size()) };
+	if (table_attempted_) return table_ready_;
+	table_attempted_ = true;
+	const PackedByteArray table = unpacked(String(FOLDER) + "materials.sig", MAGIC_LOOKS);
+	ByteReader r{ table.ptr(), size_t(table.size()) };
 	const uint32_t count = r.get<uint32_t>();
-	if (!r.ok || count == 0 || count > MOST_LOOKS) return false;
-	looks_.resize(count);
-	for (Look &l : looks_) { // the pictures stay packed in the table: a look is made when a building asks for it
+	constexpr size_t RECORD_BYTES = NAME_BYTES + (RECORD_FLOATS + 3) * sizeof(uint32_t);
+	if (!count || !r.require_items(count, RECORD_BYTES, MOST_LOOKS)) return false;
+	std::vector<Look> parsed(count);
+	for (Look &l : parsed) {
+		if (!r.require(RECORD_BYTES)) return false;
 		l.at = r.o;
 		r.o += NAME_BYTES;
 		for (int i = 0; i < RECORD_FLOATS; i++) r.get<float>();
 		r.get<uint32_t>();
 		const uint32_t w = r.get<uint32_t>(), h = r.get<uint32_t>();
+		if ((w == 0) != (h == 0) || w > uint32_t(std::numeric_limits<int>::max()) || h > uint32_t(std::numeric_limits<int>::max()) ||
+				uint64_t(w) * h > r.remaining() / RGBA) return false;
 		r.o += size_t(w) * h * RGBA;
 	}
-	solid_ = ResourceLoader::get_singleton()->load(SOLID_SHADER);
-	blended_ = ResourceLoader::get_singleton()->load(BLENDED_SHADER);
-	return r.ok && solid_.is_valid() && blended_.is_valid();
+	if (!r.ok || r.o != r.n) return false;
+	const Ref<Shader> solid = ResourceLoader::get_singleton()->load(SOLID_SHADER), blended = ResourceLoader::get_singleton()->load(BLENDED_SHADER);
+	if (solid.is_null() || blended.is_null()) return false;
+	table_ = table;
+	looks_ = std::move(parsed);
+	solid_ = solid; blended_ = blended;
+	table_ready_ = true;
+	return true;
 }
 
 Ref<ShaderMaterial> SignatureBodies::look(uint32_t index) {
@@ -101,8 +118,9 @@ Ref<ShaderMaterial> SignatureBodies::look(uint32_t index) {
 }
 
 Ref<ArrayMesh> SignatureBodies::mesh(int kind) {
-	if (kind <= 0 || kind > b40::SIGNATURE_COUNT || !read_table()) return Ref<ArrayMesh>();
-	if (meshes_[size_t(kind)].is_valid()) return meshes_[size_t(kind)];
+	if (kind <= 0 || kind > b40::SIGNATURE_COUNT || size_t(kind) >= meshes_.size() || !read_table()) return Ref<ArrayMesh>();
+	if (mesh_attempted_[size_t(kind)]) return meshes_[size_t(kind)];
+	mesh_attempted_[size_t(kind)] = true;
 	const PackedByteArray data = unpacked(String(FOLDER) + b40::SIGNATURE_KINDS[kind - 1] + ".sig", MAGIC_BODY);
 	ByteReader r{ data.ptr(), size_t(data.size()) };
 	const uint32_t surfaces = r.get<uint32_t>();
@@ -111,7 +129,9 @@ Ref<ArrayMesh> SignatureBodies::mesh(int kind) {
 	m.instantiate();
 	for (uint32_t s = 0; s < surfaces && r.ok; s++) {
 		const uint32_t material = r.get<uint32_t>(), vertices = r.get<uint32_t>(), indices = r.get<uint32_t>();
-		if (material >= looks_.size()) return Ref<ArrayMesh>();
+		constexpr size_t VERTEX_BYTES = 5 * sizeof(float) + NORMAL_BYTES;
+		if (material >= looks_.size() || indices % 3 || vertices > uint32_t(std::numeric_limits<int32_t>::max()) ||
+				!r.require_items(vertices, VERTEX_BYTES) || size_t(indices) > (r.remaining() - size_t(vertices) * VERTEX_BYTES) / sizeof(uint32_t)) return Ref<ArrayMesh>();
 		PackedVector3Array pos, nor;
 		PackedVector2Array uv;
 		PackedInt32Array idx;
@@ -124,11 +144,16 @@ Ref<ArrayMesh> SignatureBodies::mesh(int kind) {
 			int8_t n[NORMAL_BYTES];
 			r.get_bytes(reinterpret_cast<uint8_t *>(n), NORMAL_BYTES);
 			const float u = r.get<float>(), v = r.get<float>();
+			if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z) || !std::isfinite(u) || !std::isfinite(v)) return Ref<ArrayMesh>();
 			pos.set(i, Vector3(x, y, z));
 			nor.set(i, Vector3(float(n[0]), float(n[1]), float(n[2])) / NORMAL_SCALE);
 			uv.set(i, Vector2(u, v));
 		}
-		for (uint32_t i = 0; i < indices; i++) idx.set(i, int32_t(r.get<uint32_t>()));
+		for (uint32_t i = 0; i < indices; i++) {
+			const uint32_t at = r.get<uint32_t>();
+			if (at >= vertices) return Ref<ArrayMesh>();
+			idx.set(i, int32_t(at));
+		}
 		const Dictionary lods = mesh_levels(pos, idx, DESIGN_LEVELS_M);
 		Array arr;
 		arr.resize(Mesh::ARRAY_MAX);
@@ -139,7 +164,7 @@ Ref<ArrayMesh> SignatureBodies::mesh(int kind) {
 		m->add_surface_from_arrays(Mesh::PRIMITIVE_TRIANGLES, arr, Array(), lods);
 		m->surface_set_material(int(s), look(material));
 	}
-	if (!r.ok) return Ref<ArrayMesh>();
+	if (!r.ok || r.o != r.n) return Ref<ArrayMesh>();
 	meshes_[size_t(kind)] = m;
 	return m;
 }

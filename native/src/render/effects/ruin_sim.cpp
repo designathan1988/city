@@ -1,5 +1,6 @@
 // The fall of a building's pieces (ruin_sim.h).
 #include "render/effects/ruin_sim.h"
+#include "core/job_pool.h"
 
 #include "render/effects/mounds.h"
 
@@ -242,7 +243,10 @@ void RuinSim::step(std::vector<Note> *notes) {
 }
 
 void RuinSim::settle() {
-	for (int i = 0; i < SETTLE_MOST_STEPS && left_ > 0; i++) step(nullptr);
+	for (int i = 0; i < SETTLE_MOST_STEPS && left_ > 0; i++) {
+		if (JobPool::cancelled()) return;
+		step(nullptr);
+	}
 }
 
 int RuinSim::flying() const {

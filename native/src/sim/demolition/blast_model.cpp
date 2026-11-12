@@ -53,9 +53,15 @@ float normal_quantile(float p) {
 }
 
 // Log-normal probit through (low, p_low) and (half, 0.5): probability at `pressure`.
-float lognormal(float pressure, float low, float half, float p_low) {
+LognormalFit fit_lognormal(float low, float half, float probability) {
+	const float sigma = half > low && low > 0 ? std::log(half / low) / -normal_quantile(probability) : 0.f;
+	return LognormalFit{low, half, probability, sigma, true};
+}
+float lognormal(float pressure, float low, float half, float p_low, const LognormalFit &prepared) {
 	if (pressure <= 0 || half <= low || low <= 0) return 0.f;
-	const float sigma = std::log(half / low) / -normal_quantile(p_low);
+	// Pure clients may construct/modify standalone parameters. The loaded game's immutable catalog always matches.
+	const float sigma = prepared.ready && prepared.low == low && prepared.half == half && prepared.probability == p_low ?
+		prepared.sigma : fit_lognormal(low, half, p_low).sigma;
 	return normal_cdf(std::log(pressure / half) / sigma);
 }
 } // namespace
@@ -90,12 +96,17 @@ float range_at_pressure(const BlastParams &p, float kg, float kpa) {
 	return lo;
 }
 
+void prepare_responses(BlastParams &p) {
+	p.lethal_fit = fit_lognormal(p.lethal_threshold_kpa, p.lethal_half_kpa, p.lethal_threshold_prob);
+	p.ear_fit = fit_lognormal(p.ear_threshold_kpa, p.ear_half_kpa, p.ear_threshold_prob);
+}
+
 float lethality(const BlastParams &p, float pressure_kpa) {
-	return lognormal(pressure_kpa, p.lethal_threshold_kpa, p.lethal_half_kpa, p.lethal_threshold_prob);
+	return lognormal(pressure_kpa, p.lethal_threshold_kpa, p.lethal_half_kpa, p.lethal_threshold_prob, p.lethal_fit);
 }
 
 float eardrum(const BlastParams &p, float pressure_kpa) {
-	return lognormal(pressure_kpa, p.ear_threshold_kpa, p.ear_half_kpa, p.ear_threshold_prob);
+	return lognormal(pressure_kpa, p.ear_threshold_kpa, p.ear_half_kpa, p.ear_threshold_prob, p.ear_fit);
 }
 
 float startle_range(const BlastParams &p, float kg) {

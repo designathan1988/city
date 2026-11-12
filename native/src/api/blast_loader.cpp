@@ -1,6 +1,7 @@
 // Strict Dictionary -> BlastParams conversion for project/data/catalog/blast.json: a missing or mistyped key is
 // reported and loading fails, so no default value can silently replace the data.
 #include "api/catalog_loader.h"
+#include "sim/demolition/blast_model.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/variant.hpp>
@@ -126,7 +127,9 @@ bool load_blast_params(const Dictionary &t, BlastParams &p, PackedStringArray &e
 	p.crater_ratio = number(crater, "crater", "diameter_to_depth", errors);
 	p.pass_width_m = number(crater, "crater", "pass_width_m", errors);
 	p.crater_min_m = number(crater, "crater", "min_radius_m", errors);
-	return int(errors.size()) == before;
+	if (int(errors.size()) != before) return false;
+	blast::prepare_responses(p);
+	return true;
 }
 
 } // namespace city

@@ -8,6 +8,8 @@ const SHOWN_M := 0.1
 
 var _rings: Array = []
 var _cell := UNREAD
+var _flat: Array[PackedVector2Array] = []
+var _revision := -1
 
 
 ## What stands changed: read them again.
@@ -18,15 +20,20 @@ func forget() -> void:
 ## The proposal under `p`, or an empty ring.
 func at(p: Vector3) -> PackedVector3Array:
 	var cell := Vector2i(floori(p.x / CORE_CELL_M), floori(p.z / CORE_CELL_M))
-	if cell != _cell:
+	var revision: int = CityStore.snapshot.get("edit_revision", -1)
+	if cell != _cell or revision != _revision:
 		_cell = cell
+		_revision = revision
 		_rings = CityStore.query(&"lot_proposals", [p])
-	for ring: PackedVector3Array in _rings:
-		var flat := PackedVector2Array()
-		for q in ring:
-			flat.push_back(Vector2(q.x, q.z))
-		if Geometry2D.is_point_in_polygon(Vector2(p.x, p.z), flat):
-			return ring
+		_flat.clear()
+		for ring: PackedVector3Array in _rings:
+			var flat := PackedVector2Array()
+			for q in ring:
+				flat.push_back(Vector2(q.x, q.z))
+			_flat.push_back(flat)
+	for i in _rings.size():
+		if Geometry2D.is_point_in_polygon(Vector2(p.x, p.z), _flat[i]):
+			return _rings[i]
 	return PackedVector3Array()
 
 

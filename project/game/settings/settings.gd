@@ -31,9 +31,15 @@ var _viewport: Viewport
 var _quality_governor: FrameGovernor.Quality
 var _resolution: FrameGovernor.Resolution
 var _focus := true
+var _resolved_tier := ""
+var _resolved_kept: Dictionary = {}
+var _resolved_options: Dictionary = {}
+var _resolved_quality: Dictionary = {}
+var pressure := FramePressure.new()
 
 
 func _ready() -> void:
+	add_child(pressure)
 	var t: Dictionary = DataTables.game("settings")
 	var cfg := ConfigFile.new()
 	if not GameFlow.tests_drive: # tests and captures run on the tables' defaults, whatever the player or another clone left in the file
@@ -106,7 +112,16 @@ func known_preset(name: Variant) -> String:
 
 ## The tier in force, with the choices kept over it and the Effects panel's options.
 func current() -> Dictionary:
-	return QualityTier.resolved(level, kept, optimizations)
+	return _resolved().duplicate() # callers retain the original independent, mutable result contract
+
+
+func _resolved() -> Dictionary:
+	if _resolved_quality.is_empty() or level != _resolved_tier or kept != _resolved_kept or optimizations != _resolved_options:
+		_resolved_tier = level
+		_resolved_kept = kept.duplicate()
+		_resolved_options = optimizations.duplicate()
+		_resolved_quality = QualityTier.resolved(level, kept, optimizations)
+	return _resolved_quality
 
 
 func layer_on(name: String) -> bool:
@@ -151,8 +166,9 @@ func attach(world: CityWorld, viewport: Viewport) -> void:
 func apply_now() -> void:
 	if _world == null:
 		return
-	QualityTier.apply(current(), _world, _viewport, _resolution.scale * switches.resolution)
-	switches.apply(_world, _viewport, current())
+	var q := _resolved()
+	QualityTier.apply(q, _world, _viewport, _resolution.scale * switches.resolution)
+	switches.apply(_world, _viewport, q)
 	changed.emit()
 
 
@@ -226,13 +242,17 @@ func _process(delta: float) -> void:
 	_follow_zones()
 	if _world == null:
 		return
-	switches.follow_zoom(_world, _viewport, current())
+	switches.follow_zoom(_world, _viewport, _resolved())
 	if GameFlow.tests_drive:
 		return
 	var gpu := RenderingServer.viewport_get_measured_render_time_gpu(_viewport.get_viewport_rid())
 	var budget := QualityTier.budget_ms(fps_limit)
 	if preset == "auto":
-		var next := _quality_governor.sample(delta, gpu, budget)
+		var render_cpu := RenderingServer.viewport_get_measured_render_time_cpu(_viewport.get_viewport_rid()) + RenderingServer.get_frame_setup_time_cpu()
+		var tick_load: float = CityStore.snapshot.get("sim_tick_load", 0.0)
+		var slack: float = DataTables.game("settings").governor.cpu_budget_slack
+		var cost := maxf(gpu, maxf(maxf(render_cpu, pressure.scene_ms), tick_load * budget) / slack)
+		var next := _quality_governor.sample(delta, cost, budget)
 		if next != "" and next != level:
 			level = next
 			_quality_governor.set_level(next)

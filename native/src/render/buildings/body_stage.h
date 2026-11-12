@@ -10,6 +10,7 @@
 #include <godot_cpp/variant/transform3d.hpp>
 
 #include <unordered_map>
+#include <optional>
 
 namespace city {
 
@@ -22,7 +23,7 @@ public:
 		sheer_ = sheer;
 		ghost_ = ghost;
 	}
-	int show(const b40::Data &data, const b40::BuildingLook &look, const b40::Body &body, const godot::RID &scenario, bool ghost);
+	int show(const b40::Data &data, const b40::BuildingLook &look, const b40::Body &body, const godot::RID &scenario, bool ghost, std::optional<uint32_t> digest = std::nullopt);
 	void move(int handle, const godot::Transform3D &at);
 	void remove(int handle);
 	int triangles(int handle) const; // what a handle draws (the tests read it)

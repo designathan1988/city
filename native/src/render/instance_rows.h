@@ -66,6 +66,7 @@ public:
 		std::memcpy(base_ + int64_t(count_) * stride_, more.base_, sizeof(float) * size_t(more.count_) * size_t(stride_));
 		count_ += more.count_;
 	}
+	const float *data() const { return rows_.is_empty() ? nullptr : rows_.ptr(); }
 	int count() const { return count_; }
 	int stride() const { return stride_; }
 	// RowKeeper's: the rows stay from the last frame, each one written or dropped.

@@ -78,6 +78,7 @@ void CityCore::bind_edits() {
 	ClassDB::bind_method(D_METHOD("move_node", "node", "position"), &CityCore::move_node);
 	ClassDB::bind_method(D_METHOD("set_node_control", "node", "control"), &CityCore::set_node_control);
 	ClassDB::bind_method(D_METHOD("junctions"), &CityCore::junctions);
+	ClassDB::bind_method(D_METHOD("junction_marks", "camera", "view"), &CityCore::junction_marks);
 	ClassDB::bind_method(D_METHOD("node_at", "position", "px"), &CityCore::node_at);
 	ClassDB::bind_method(D_METHOD("moved_roads", "node", "position"), &CityCore::moved_roads);
 	ClassDB::bind_method(D_METHOD("terrain_brush", "position", "radius", "strength", "dt", "mode", "hardness"), &CityCore::terrain_brush);
@@ -101,6 +102,7 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("impossible_nodes"), &CityCore::impossible_nodes);
 	ClassDB::bind_method(D_METHOD("clear_reach", "from", "to", "samples"), &CityCore::clear_reach);
 	ClassDB::bind_method(D_METHOD("sight_pull", "focus", "eye", "samples", "soft"), &CityCore::sight_pull);
+	ClassDB::bind_method(D_METHOD("camera_inputs"), &CityCore::camera_inputs);
 	ClassDB::bind_method(D_METHOD("eye_free", "focus", "eye", "lift"), &CityCore::eye_free);
 	ClassDB::bind_method(D_METHOD("recent_edits", "count"), &CityCore::recent_edits);
 	ClassDB::bind_method(D_METHOD("reverse_road", "segment"), &CityCore::reverse_road);

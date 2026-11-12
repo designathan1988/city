@@ -43,6 +43,7 @@ double median(std::vector<double> values) {
 
 Bound bound_of(const Times &t, const Rules &r) {
 	if (!std::isfinite(t.cpu_ms) && !t.gpu_ms) return Bound::None;
+	if (!t.cpu_complete) return Bound::Incomplete; // a render subtotal cannot prove CPU/GPU dominance or total headroom
 	const double limit = r.budget_ms * r.bound_share;
 	if (t.gpu_ms && *t.gpu_ms >= t.cpu_ms && *t.gpu_ms > limit) return Bound::Gpu;
 	if (t.cpu_ms > t.gpu_ms.value_or(0) && t.cpu_ms > limit) return Bound::Cpu;

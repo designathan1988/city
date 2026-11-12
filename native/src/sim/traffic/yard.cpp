@@ -198,7 +198,8 @@ void YardPlanner::next_dock(int &work) {
 }
 
 void YardPlanner::close_dock() {
-	plan.docks.push_back(std::move(ways_));
+	plan.dock_of[ways_.bay] = plan.docks.size();
+	plan.docks.push_back(std::make_shared<const DockWays>(std::move(ways_)));
 	dock_++;
 	stage_ = Stage::DOCK;
 }
@@ -295,6 +296,16 @@ bool YardPlanner::join_ways(const YardGate &g) {
 
 // Stops at the step that spends the last of the work: the next tick goes on from there.
 bool YardPlanner::advance(int work) {
+	work = std::max(0, work);
+	const int64_t paid = std::min(work_debt_, int64_t(work));
+	work_debt_ -= paid;
+	work -= int(paid);
+	const bool done = advance_shared(work);
+	if (work < 0) work_debt_ += -int64_t(work);
+	return done;
+}
+
+bool YardPlanner::advance_shared(int &work) {
 	Laps took, slice;
 	const Stage began = stage_;
 	while (work > 0 && stage_ != Stage::DONE) {

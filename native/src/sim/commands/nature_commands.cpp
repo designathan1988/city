@@ -29,15 +29,6 @@ EditResult refused(const char *key) {
 	return r;
 }
 
-void changed_sky(CityState &s) {
-	s.nature.sky_revision++;
-	s.touch();
-}
-void changed_fog(CityState &s) {
-	s.nature.fog_revision++;
-	changed_sky(s);
-}
-
 // Runs `change` on the cloud list and records the list before and after (a map holds a few dozen at most).
 template <typename F>
 EditResult edit_clouds(CityState &s, F change) {
@@ -46,12 +37,9 @@ EditResult edit_clouds(CityState &s, F change) {
 	change(s.nature.clouds);
 	std::vector<PlacedCloud> after = s.nature.clouds;
 	int32_t next_after = s.nature.next_cloud;
-	j_nature(s, (before.size() + after.size()) * sizeof(PlacedCloud), [before, after, next_before, next_after](CityState &st, bool fwd) {
-		st.nature.clouds = fwd ? after : before;
-		st.nature.next_cloud = fwd ? next_after : next_before;
-		changed_sky(st);
-	});
-	changed_sky(s);
+	if (before == after && next_before == next_after) return done();
+	j_nature(s, CloudsEdit{ std::move(before), std::move(after), next_before, next_after });
+	nature_sky_changed(s);
 	return done();
 }
 
@@ -61,17 +49,9 @@ void add_trees(CityState &s, const std::vector<PlantedTree> &list, std::vector<i
 	for (const PlantedTree &t : list) ids.push_back(s.nature.planted.add(t));
 }
 
-void mark_trees(CityState &s, float x, float z, float r) { mark_nature(s, x - r, z - r, x + r, z + r); }
-
 // Trees and clearings of a dab: put back or taken away together.
-void record_trees(CityState &s, const std::vector<int> &ids, const std::vector<PlantedTree> &added, float x, float z, float r) {
-	j_nature(s, added.size() * sizeof(PlantedTree), [ids, added, x, z, r](CityState &st, bool fwd) {
-		for (size_t i = 0; i < ids.size(); i++) {
-			if (fwd) st.nature.planted.put(ids[i], added[i]);
-			else st.nature.planted.remove(ids[i]);
-		}
-		mark_trees(st, x, z, r);
-	});
+void record_trees(CityState &s, std::vector<int> ids, std::vector<PlantedTree> added, float x, float z, float r) {
+	j_nature(s, TreesEdit{ std::move(ids), std::move(added), true, {}, x, z, r });
 }
 } // namespace
 
@@ -91,27 +71,18 @@ bool cut_trees_at(CityState &s, float x, float z, float radius) {
 	TreeClearing c;
 	c.x = x; c.z = z; c.radius = radius;
 	int cid = p.add_clearing(c);
-	j_nature(s, kept.size() * sizeof(PlantedTree) + sizeof(TreeClearing), [gone, kept, c, cid, x, z, radius](CityState &st, bool fwd) {
-		for (size_t i = 0; i < gone.size(); i++) {
-			if (fwd) st.nature.planted.remove(gone[i]);
-			else st.nature.planted.put(gone[i], kept[i]);
-		}
-		if (fwd) st.nature.planted.put_clearing(cid, c);
-		else st.nature.planted.remove_clearing(cid);
-		mark_trees(st, x, z, radius);
-	});
-	mark_trees(s, x, z, radius);
+	j_nature(s, TreesEdit{ std::move(gone), std::move(kept), false, ClearingEdit{ cid, c }, x, z, radius });
+	nature_trees_changed(s, x, z, radius);
+	s.touch(); // a clearing changes procedural woods even when no authored tree was present
 	return true;
 }
 
 EditResult set_weather(CityState &s, const Weather &next) {
 	Weather before = s.nature.weather, after = clamped_weather(next, s.catalog.nature.weather);
+	if (before == after) return done();
 	s.nature.weather = after;
-	j_nature(s, sizeof(Weather) * 2, [before, after](CityState &st, bool fwd) {
-		st.nature.weather = fwd ? after : before;
-		changed_sky(st);
-	});
-	changed_sky(s);
+	j_nature(s, WeatherEdit{ before, after });
+	nature_sky_changed(s);
 	return done();
 }
 
@@ -168,24 +139,16 @@ EditResult fog_dab(CityState &s, const FogDab &in) {
 	dab.height = d.height_m.clamp(dab.height);
 	dab.speed = d.speed_ms.clamp(dab.speed);
 	s.nature.fog.push_back(dab);
-	j_nature(s, sizeof(FogDab), [dab](CityState &st, bool fwd) {
-		if (fwd) st.nature.fog.push_back(dab);
-		else st.nature.fog.pop_back();
-		changed_fog(st);
-	});
-	changed_fog(s);
+	j_nature(s, FogAdded{ dab });
+	nature_fog_changed(s);
 	return done();
 }
 
 EditResult clear_fog(CityState &s) {
-	std::vector<FogDab> before;
-	before.swap(s.nature.fog);
-	size_t bytes = before.size() * sizeof(FogDab);
-	j_nature(s, bytes, [before](CityState &st, bool fwd) {
-		st.nature.fog = fwd ? std::vector<FogDab>() : before;
-		changed_fog(st);
-	});
-	changed_fog(s);
+	std::vector<FogDab> before = s.nature.fog.take();
+	if (before.empty()) return done();
+	j_nature(s, FogCleared{ std::move(before) });
+	nature_fog_changed(s);
 	return done();
 }
 
@@ -193,6 +156,7 @@ EditResult paint_dab(CityState &s, const PaintDab &d) {
 	GroundPaint &g = s.nature.ground;
 	const PaintDef &def = s.catalog.nature.paint;
 	if (d.kind >= int(def.kinds.size()) || d.kind < GULLY_WIPE) return refused("tool.failed");
+	if (d.radius <= 0 || d.strength <= 0) return done();
 	std::vector<int> tiles;
 	g.tiles_under(d.x, d.z, d.radius, tiles);
 	int fresh = 0;
@@ -210,7 +174,9 @@ EditResult paint_dab(CityState &s, const PaintDab &d) {
 EditResult clear_gullies(CityState &s) {
 	GroundPaint &g = s.nature.ground;
 	std::vector<int> keys;
-	for (const auto &kv : g.all()) keys.push_back(kv.first);
+	for (const auto &kv : g.all())
+		if (std::any_of(kv.second->begin(), kv.second->end(), [](const PaintCell &c) { return c.gully != 0 || c.gully_wipe != 0; })) keys.push_back(kv.first);
+	if (keys.empty()) return done();
 	j_paint_touch(s, keys);
 	for (int key : keys) {
 		PaintTile t = *g.tile(key);
@@ -242,31 +208,24 @@ EditResult tree_dab(CityState &s, double x, double z, double radius, int mode, i
 		stand = plant_stand(TreeKind(kind), b, fx, fz, r, seed, nearby, d);
 	}
 	if (p.live_trees() + int(stand.size()) > d.max_planted) return refused(FULL);
+	if (stand.empty()) return done();
 	std::vector<int> ids;
 	add_trees(s, stand, ids);
-	record_trees(s, ids, stand, fx, fz, reach);
-	mark_trees(s, fx, fz, reach);
+	record_trees(s, std::move(ids), std::move(stand), fx, fz, reach);
+	nature_trees_changed(s, fx, fz, reach);
 	s.touch();
 	return done();
 }
 
 EditResult clear_trees(CityState &s) {
 	PlantedTrees &p = s.nature.planted;
+	if (p.trees.empty() && p.clearings.empty()) return done();
 	PlantedTrees before = std::move(p);
-	size_t bytes = before.trees.size() * sizeof(PlantedTree) + before.clearings.size() * sizeof(TreeClearing);
 	p = PlantedTrees();
 	p.clear();
 	auto kept = std::make_shared<const PlantedTrees>(std::move(before));
 	float h = s.map_half;
-	j_nature(s, bytes, [kept, h](CityState &st, bool fwd) {
-		if (fwd) {
-			st.nature.planted = PlantedTrees();
-			st.nature.planted.clear();
-		} else {
-			st.nature.planted = *kept;
-		}
-		mark_nature(st, -h, -h, h, h);
-	});
+	j_nature(s, TreesCleared{ std::move(kept), h });
 	mark_nature(s, -h, -h, h, h);
 	s.touch();
 	return done();
@@ -275,22 +234,19 @@ EditResult clear_trees(CityState &s) {
 EditResult set_biome(CityState &s, int region) {
 	if (region < int(Biome::NONE) || region >= BIOMES) return refused("tool.failed");
 	int before = s.nature.nature.region;
+	if (before == region) return done();
 	s.nature.nature.region = region;
 	float h = s.map_half;
-	j_nature(s, sizeof(int) * 2, [before, region, h](CityState &st, bool fwd) {
-		st.nature.nature.region = fwd ? region : before;
-		mark_nature(st, -h, -h, h, h);
-		changed_sky(st);
-	});
+	j_nature(s, BiomeEdit{ before, region, h });
 	mark_nature(s, -h, -h, h, h);
-	changed_sky(s);
+	nature_sky_changed(s);
 	return done();
 }
 
 EditResult clear_relief(CityState &s) {
 	Heightfield &t = s.terrain;
 	const Tuning &tn = s.catalog.tune;
-	TerrainGen gen(s.seed, s.map_half, tn.world_water_spacing_m);
+	TerrainGen gen(s.seed, s.map_half, tn.world_water_spacing_m, s.natural_river);
 	for (int r = 0; r < int(t.tile_dirty.size()); r++) {
 		if (!t.tile_dirty[size_t(r)]) continue;
 		int x0 = (r % t.regions) * t.region_size, z0 = (r / t.regions) * t.region_size;
@@ -298,6 +254,7 @@ EditResult clear_relief(CityState &s) {
 		j_terrain_touch(s, rect);
 		for (int z = rect.z0; z <= rect.z1; z++)
 			for (int x = rect.x0; x <= rect.x1; x++) t.base_q[size_t(z) * t.N + x] = Heightfield::quant(float(gen.base_height(t.x_of(x), t.x_of(z))));
+		t.base_changed(rect);
 		t.recompose(rect.x0, rect.z0, rect.x1, rect.z1);
 		double ax = t.x_of(rect.x0), az = t.x_of(rect.z0), bx = t.x_of(rect.x1), bz = t.x_of(rect.z1);
 		mark_ground(s, ax, az, bx, bz);

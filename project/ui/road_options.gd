@@ -16,6 +16,10 @@ signal road_picked(id: String)
 
 func _ready() -> void:
 	theme_type_variation = &"VPad"
+	_keys_panel.visible = false
+	_keys_panel.theme = ThemeBuilder.theme()
+	add_child(_keys_panel, false, Node.INTERNAL_MODE_BACK) # owned by this panel, outside generic option-row rebuilds
+	_keys_panel.keys_changed.connect(refresh)
 	if tools:
 		tools.tool_changed.connect(func(_tool: int, _params: Dictionary) -> void:
 			if is_inside_tree():
@@ -172,10 +176,6 @@ func _keys_row() -> void:
 
 
 func _open_keys(anchor: Control) -> void:
-	if _keys_panel.get_parent() == null:
-		_keys_panel.theme = ThemeBuilder.theme()
-		add_child(_keys_panel)
-		_keys_panel.keys_changed.connect(refresh)
 	var box := anchor.get_global_rect()
 	_keys_panel.popup(Rect2i(Vector2i(box.end.x, box.position.y), Vector2i.ZERO))
 

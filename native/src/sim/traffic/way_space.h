@@ -3,8 +3,14 @@
 #pragma once
 
 #include "sim/traffic/way_search.h"
+#include "core/generation.h"
+#include "core/stable_chunks.h"
 
 #include <algorithm>
+#include <array>
+#include <cstdint>
+#include <new>
+#include <type_traits>
 #include <cstddef>
 #include <iterator>
 #include <memory>
@@ -29,13 +35,28 @@ struct WayNode {
 class PoseTable {
 public:
 	// A search's start: every place empty again, the blocks of the last search kept for this one's pages (WaySpace).
-	void begin(size_t places, int headings) {
-		page_of_.assign(places, -1);
+	void begin(size_t /*places*/, int headings) {
+		epoch_ = next_generation();
 		headings_ = headings;
 		pages_ = 0;
 	}
 	int &at(size_t place, int heading) {
-		int &page = page_of_[place];
+		if (!root_) { root_ = std::make_unique<IndexNode>(); indexed += NODE_CELLS; }
+		IndexNode *node = root_.get();
+		// Fixed-depth radix links: no grid-wide initialization, vector relocation or hash rehash in a tick.
+		for (int shift = int((sizeof(size_t) - 1) * BYTE_BITS); shift >= 2 * BYTE_BITS; shift -= BYTE_BITS) {
+			auto &next = node->next[(place >> shift) & BYTE_MASK];
+			if (!next) { next = std::make_unique<IndexNode>(); indexed += NODE_CELLS; }
+			node = next.get();
+		}
+		auto &leaf = node->leaf[(place >> BYTE_BITS) & BYTE_MASK];
+		if (!leaf) leaf = std::make_unique<IndexPage>();
+		if (leaf->epoch != epoch_) {
+			leaf->page.fill(-1);
+			leaf->epoch = epoch_;
+			indexed += INDEX_CELLS;
+		}
+		int &page = leaf->page[place & BYTE_MASK];
 		if (page < 0) {
 			page = pages_++;
 			taken++;
@@ -51,9 +72,24 @@ private:
 
 public:
 	int64_t taken = 0; // the pages taken, ever: a search reads what it took
+	int64_t indexed = 0; // actual index initialization in int-sized write units, ever
 
 private:
-	std::vector<int> page_of_;
+	static constexpr int BYTE_BITS = 8, INDEX_CELLS = 1 << BYTE_BITS;
+	static constexpr size_t BYTE_MASK = INDEX_CELLS - 1;
+	struct IndexPage {
+		IndexPage() : epoch(0) {} // the entries initialize only when reached
+		uint64_t epoch;
+		std::array<int, INDEX_CELLS> page;
+	};
+	struct IndexNode {
+		IndexNode() {} // construct null links once, without a preliminary value-initialization pass
+		std::array<std::unique_ptr<IndexNode>, INDEX_CELLS> next;
+		std::array<std::unique_ptr<IndexPage>, INDEX_CELLS> leaf;
+	};
+	static constexpr int NODE_CELLS = int((2 * INDEX_CELLS * sizeof(void *) + sizeof(int) - 1) / sizeof(int));
+	std::unique_ptr<IndexNode> root_;
+	uint64_t epoch_ = 0;
 	std::vector<std::unique_ptr<int[]>> blocks_;
 	int headings_ = 0, pages_ = 0;
 };
@@ -64,61 +100,8 @@ using WayItem = std::pair<double, int>;
 // and cleared without freeing (as a deque does, a block of 4 KB at a time: a fine search's 2.6 million poses were tens of thousands
 // of frees in one tick, 4.4 ms, the planner's bench). What it holds goes with it, a few dozen chunks. Its iterator is random access,
 // so std::push_heap and std::pop_heap order it exactly as they would a vector.
-template <typename T> class WayChunks {
-public:
-	static constexpr size_t CHUNK = size_t(1) << 16;
-	size_t size() const { return size_; }
-	bool empty() const { return size_ == 0; }
-	void clear() { size_ = 0; }
-	T &operator[](size_t i) { return chunks_[i / CHUNK][i % CHUNK]; }
-	const T &operator[](size_t i) const { return chunks_[i / CHUNK][i % CHUNK]; }
-	T &front() { return (*this)[0]; }
-	void push_back(const T &v) {
-		if (size_ == chunks_.size() * CHUNK) chunks_.push_back(std::unique_ptr<T[]>(new T[CHUNK]));
-		(*this)[size_++] = v;
-	}
-	void pop_back() { size_--; }
+template<typename T> using WayChunks = ::city::StableChunks<T, size_t(1) << 16>;
 
-	class iterator {
-	public:
-		using iterator_category = std::random_access_iterator_tag;
-		using value_type = T;
-		using difference_type = std::ptrdiff_t;
-		using pointer = T *;
-		using reference = T &;
-		iterator() = default;
-		iterator(WayChunks *c, difference_type i) : c_(c), i_(i) {}
-		reference operator*() const { return (*c_)[size_t(i_)]; }
-		pointer operator->() const { return &(*c_)[size_t(i_)]; }
-		reference operator[](difference_type n) const { return (*c_)[size_t(i_ + n)]; }
-		iterator &operator++() { ++i_; return *this; }
-		iterator operator++(int) { iterator r = *this; ++i_; return r; }
-		iterator &operator--() { --i_; return *this; }
-		iterator operator--(int) { iterator r = *this; --i_; return r; }
-		iterator &operator+=(difference_type n) { i_ += n; return *this; }
-		iterator &operator-=(difference_type n) { i_ -= n; return *this; }
-		iterator operator+(difference_type n) const { return iterator(c_, i_ + n); }
-		friend iterator operator+(difference_type n, const iterator &it) { return it + n; }
-		iterator operator-(difference_type n) const { return iterator(c_, i_ - n); }
-		difference_type operator-(const iterator &o) const { return i_ - o.i_; }
-		bool operator==(const iterator &o) const { return i_ == o.i_; }
-		bool operator!=(const iterator &o) const { return i_ != o.i_; }
-		bool operator<(const iterator &o) const { return i_ < o.i_; }
-		bool operator>(const iterator &o) const { return i_ > o.i_; }
-		bool operator<=(const iterator &o) const { return i_ <= o.i_; }
-		bool operator>=(const iterator &o) const { return i_ >= o.i_; }
-
-	private:
-		WayChunks *c_ = nullptr;
-		difference_type i_ = 0;
-	};
-	iterator begin() { return iterator(this, 0); }
-	iterator end() { return iterator(this, std::ptrdiff_t(size_)); }
-
-private:
-	std::vector<std::unique_ptr<T[]>> chunks_;
-	size_t size_ = 0;
-};
 struct WaySpace::Room {
 	PoseTable tables[WAY_GRAINS]; // a grain's table keeps that grain's headings from one search to the next
 	WayChunks<WayNode> nodes;

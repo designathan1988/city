@@ -17,7 +17,6 @@ namespace city {
 
 namespace {
 constexpr int SEG_PREVIEW_STEPS = 24;
-constexpr size_t JUNCTION_MARK_ARMS = 3;
 } // namespace
 
 bool CityCore::undo() {
@@ -35,9 +34,9 @@ void CityCore::begin_stroke(const String &label) {
 	state_->history.begin_group(label.utf8().get_data());
 }
 
-void CityCore::end_stroke() {
+bool CityCore::end_stroke() {
 	std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
-	state_->history.end_group(*state_);
+	return state_->history.end_group(*state_);
 }
 
 Dictionary CityCore::set_signal(int node, bool fixed, const PackedFloat32Array &greens, float offset) {
@@ -127,23 +126,6 @@ Dictionary CityCore::set_road_end(int node, bool bulb) {
 
 Dictionary CityCore::set_node_control(int node, int ctl) {
 	return run_edit(*state_, "cmd.place.control", [&](CityState &s) { return city::set_node_control(s, node, ctl); });
-}
-
-// Every junction: [{node, at, ctl}], for the marks of the Controle tab.
-Array CityCore::junctions() {
-	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	Array out;
-	const RoadNetwork &net = state_->roads;
-	for (int n = 0; n < int(net.nodes.size()); n++) {
-		const RoadNode &nd = net.nodes[size_t(n)];
-		if (!nd.alive || nd.segs.size() < JUNCTION_MARK_ARMS) continue;
-		Dictionary d;
-		d["node"] = n;
-		d["at"] = Vector3(float(nd.x), float(nd.y), float(nd.z));
-		d["ctl"] = int(nd.ctl);
-		out.push_back(d);
-	}
-	return out;
 }
 
 Dictionary CityCore::move_node(int node, const Vector3 &p) {

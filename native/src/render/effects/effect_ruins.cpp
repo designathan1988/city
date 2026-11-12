@@ -44,7 +44,10 @@ void EffectWorld::pile(const Ruin &r, bool falling, bool mound, bool loose) {
 	const float height = storeys / STOREYS_PER_M, heap = heap_of(r);
 	const float c = std::cos(r.rot), sn = std::sin(r.rot);
 	const Color wall = PALETTE_TINTS[hash_u32(r.seed) % 4]; // each building its own wall; the roof and glass are common to all
-	if (mound) mounds_.add(Vector3(r.x, ground_here_, r.z), r.rot, r.w * MOUND_SPREAD, r.d * MOUND_SPREAD, heap, wall, float(hash_u32(r.seed) & 0xFFFu) / SEED_SPAN, falling ? now_ : MOUND_LONG_AGO_S);
+	if (mound) {
+		mounds_.add(r.seed, Vector3(r.x, ground_here_, r.z), r.rot, r.w * MOUND_SPREAD, r.d * MOUND_SPREAD, heap, wall, float(hash_u32(r.seed) & 0xFFFu) / SEED_SPAN, falling ? now_ : MOUND_LONG_AGO_S);
+		placed_ruins_[r.seed] = r;
+	}
 	for (int i = 0; loose && i < n; i++) {
 		const float u = (rng.f() - 0.5f) * r.w, v = (rng.f() - 0.5f) * r.d;
 		const float x = r.x + u * c + v * sn, z = r.z - u * sn + v * c;
@@ -53,6 +56,7 @@ void EffectWorld::pile(const Ruin &r, bool falling, bool mound, bool loose) {
 		const uint32_t pick = rng.next() % (PALETTE + 2);
 		const Color tint = pick < 3 ? wall : PALETTE_TINTS[std::min(pick - 2, PALETTE - 1)];
 		PieceSpec s;
+		s.source = uint64_t(r.seed) + 1;
 		s.dusty = true;
 		s.size = Vector3(sz, sz * (PIECE_FLAT_MIN + rng.f() * PIECE_FLAT_SPAN), sz * (PIECE_FLAT_MIN + rng.f()));
 		s.turn = Quaternion(Vector3(0, 1, 0), rng.f() * TAU_F);
@@ -79,8 +83,7 @@ Ruin standing_ruin(const Building &b) {
 
 std::vector<Scar> scars_of(const CityState &s, const Building &b) {
 	std::vector<Scar> out;
-	for (const Scar &c : s.damage.scars)
-		if (c.seed == b.seed && c.bx == b.x && c.bz == b.z) out.push_back(c);
+	for (int id : s.damage.scar_ids(b.seed, b.x, b.z)) out.push_back(s.damage.scars()[size_t(id)]);
 	return out;
 }
 } // namespace
@@ -91,23 +94,32 @@ void EffectWorld::building_scar(const DamageEvent &e, const CityState &s) {
 }
 
 void EffectWorld::rebuild_ruins(const CityState &s) {
-	debris_.reset();
-	mounds_.reset();
+	std::unordered_map<uint32_t, const Ruin *> current;
+	for (const Ruin &r : s.damage.ruins()) current[r.seed] = &r;
+	for (auto it = placed_ruins_.begin(); it != placed_ruins_.end();) {
+		const auto now = current.find(it->first);
+		if (now != current.end() && *now->second == it->second) { ++it; continue; }
+		mounds_.remove(it->first);
+		debris_.remove_source(uint64_t(it->first) + 1);
+		it = placed_ruins_.erase(it);
+	}
 	std::map<uint32_t, std::vector<Scar>> standing;
 	std::map<uint32_t, Ruin> whole;
-	for (const Scar &c : s.damage.scars) // those of a building that fell later name nothing now
+	for (const Scar &c : s.damage.scars()) // those of a building that fell later name nothing now
 		s.buildings.query(c.bx, c.bz, c.bx, c.bz, [&](int id) {
 			const Building &b = s.buildings.items[size_t(id)];
 			if (!b.alive || b.seed != c.seed || b.x != c.bx || b.z != c.bz) return;
 			standing[b.seed].push_back(c);
 			whole.emplace(b.seed, standing_ruin(b));
 		});
-	std::map<uint32_t, size_t> counts;
-	for (const auto &[seed, scars] : standing) counts[seed] = scars.size();
-	ruins_.keep_only(s.damage.ruins, counts);
+	ruins_.keep_only(s.damage.ruins(), standing);
 	for (const auto &[seed, scars] : standing) ruins_.scar(s, whole[seed], scars, false);
-	for (const Ruin &r : s.damage.ruins) {
+	for (const Ruin &r : s.damage.ruins()) {
 		ground_here_ = s.terrain.height_at(r.x, r.z);
+		if (placed_ruins_.count(r.seed)) {
+			if (!mounds_.holds(r.seed)) pile(r, false, true, false); // a slot became available
+			continue;
+		}
 		pile(r, false, true, !ruins_.holds(r.seed) && !ruins_.add(s, r, heap_of(r), false));
 	}
 }

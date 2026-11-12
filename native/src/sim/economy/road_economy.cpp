@@ -80,9 +80,9 @@ double edit_value_change(const CityState &s) {
 	double change = 0;
 	for (size_t i = s.history.command_start(); i < ops.size(); i++) {
 		const EditOp &op = ops[i];
-		if (op.kind == OpKind::ADD_SEG) change += recorded_value(s, op.seg, op.seg.profile);
-		else if (op.kind == OpKind::REM_SEG) change -= recorded_value(s, op.seg, op.seg.profile);
-		else if (op.kind == OpKind::PROFILE) change += recorded_value(s, op.seg, op.to) - recorded_value(s, op.seg, op.from);
+		if (op.kind == OpKind::ADD_SEG) change += recorded_value(s, op.get<RoadSegment>(), op.get<RoadSegment>().profile);
+		else if (op.kind == OpKind::REM_SEG) change -= recorded_value(s, op.get<RoadSegment>(), op.get<RoadSegment>().profile);
+		else if (op.kind == OpKind::PROFILE) change += recorded_value(s, op.get<RoadSegment>(), op.to) - recorded_value(s, op.get<RoadSegment>(), op.from);
 	}
 	return change;
 }

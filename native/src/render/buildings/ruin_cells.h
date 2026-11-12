@@ -2,6 +2,7 @@
 #pragma once
 
 #include "core/random.h"
+#include "core/job_pool.h"
 
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/vector2.hpp>
@@ -10,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
+#include <unordered_map>
 
 namespace city::ruin {
 
@@ -34,26 +36,29 @@ struct Tri {
 	bool sheet = false;
 };
 
-// The Voronoi cells over the triangles: a seed jittered in each cell of a grid, laid once; the nearest of the 27 round a point.
+// The same jittered grid and nearest-of-27 order, with seeds materialized only when a surface query reaches them.
 struct Cells {
 	Vector3 lo;
 	int nx = 0, ny = 0, nz = 0; // with a cell of margin on every side
-	std::vector<Vector3> seeds;
+	uint32_t seed_ = 0;
+	mutable std::unordered_map<int, Vector3> reached_; // only cells consulted by surface cuts, never the empty volume
 
-	Cells(const Vector3 &low, const Vector3 &high, uint32_t seed) : lo(low) {
+	Cells(const Vector3 &low, const Vector3 &high, uint32_t seed) : lo(low), seed_(seed) {
 		const Vector3 span = (high - low) / VORONOI_EDGE_M;
 		nx = int(span.x) + GRID_MARGIN;
 		ny = int(span.y) + GRID_MARGIN;
 		nz = int(span.z) + GRID_MARGIN;
-		seeds.resize(size_t(nx) * size_t(ny) * size_t(nz));
-		for (int i = 0; i < nx; i++)
-			for (int j = 0; j < ny; j++)
-				for (int k = 0; k < nz; k++) {
-					const uint32_t h = hash_combine(seed, uint32_t(i) * PRIME_X ^ uint32_t(j) * PRIME_Y ^ uint32_t(k) * PRIME_Z);
-					const Vector3 in(SEED_INSET + hash_float(h) * SEED_SPAN, SEED_INSET + hash_float(h + 1) * SEED_SPAN, SEED_INSET + hash_float(h + 2) * SEED_SPAN);
-					seeds[size_t(index(i, j, k))] = lo + (Vector3(float(i - 1), float(j - 1), float(k - 1)) + in) * VORONOI_EDGE_M;
-				}
 	}
+	const Vector3 &seed_at(int i, int j, int k) const {
+		const int at = index(i, j, k);
+		const auto found = reached_.find(at);
+		if (found != reached_.end()) return found->second;
+		const uint32_t h = hash_combine(seed_, uint32_t(i) * PRIME_X ^ uint32_t(j) * PRIME_Y ^ uint32_t(k) * PRIME_Z);
+		const Vector3 in(SEED_INSET + hash_float(h) * SEED_SPAN, SEED_INSET + hash_float(h + 1) * SEED_SPAN, SEED_INSET + hash_float(h + 2) * SEED_SPAN);
+		return reached_.emplace(at, lo + (Vector3(float(i - 1), float(j - 1), float(k - 1)) + in) * VORONOI_EDGE_M).first->second;
+	}
+	const Vector3 &seed_at(int at) const { return seed_at(at / (ny * nz), at / nz % ny, at % nz); }
+	void release_seeds() const { std::unordered_map<int, Vector3>().swap(reached_); }
 	int index(int i, int j, int k) const { return (i * ny + j) * nz + k; }
 	int of(const Vector3 &p) const {
 		const Vector3 g = (p - lo) / VORONOI_EDGE_M;
@@ -64,7 +69,7 @@ struct Cells {
 			for (int j = j0 - 1; j <= j0 + 1; j++)
 				for (int k = k0 - 1; k <= k0 + 1; k++) {
 					const int at = index(i, j, k);
-					const float d = seeds[size_t(at)].distance_squared_to(p);
+					const float d = seed_at(i, j, k).distance_squared_to(p);
 					if (d < nearest) {
 						nearest = d;
 						best = at;
@@ -83,6 +88,7 @@ inline void fan(const Corner *ring, int count, bool sheet, const Cells &cells, s
 // Cut along the plane between the two cells it lies in, so a piece ends on a straight break and not in the teeth of whole triangles, until
 // every part lies in one cell.
 inline void cut(const Tri &t, const Cells &cells, std::vector<Tri> &out, int depth) {
+	if (JobPool::cancelled()) return;
 	const Vector3 middle = (t.v[0].p + t.v[1].p + t.v[2].p) / 3.f;
 	int in[3];
 	for (int q = 0; q < 3; q++) in[q] = cells.of(t.v[q].p.lerp(middle, INSIDE_CORNER)); // a corner on a cut belongs to the side it was cut to
@@ -90,7 +96,7 @@ inline void cut(const Tri &t, const Cells &cells, std::vector<Tri> &out, int dep
 		out.push_back(t);
 		return;
 	}
-	const Vector3 &a = cells.seeds[size_t(in[0])], &b = cells.seeds[size_t(in[0] != in[1] ? in[1] : in[2])];
+	const Vector3 a = cells.seed_at(in[0]), b = cells.seed_at(in[0] != in[1] ? in[1] : in[2]);
 	const Vector3 across = b - a, on = (a + b) * 0.5f;
 	Corner near[4], far[4];
 	int nears = 0, fars = 0;

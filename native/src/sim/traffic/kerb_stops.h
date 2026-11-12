@@ -19,21 +19,23 @@ struct KerbDoors {
 	V2 door, foot; // at the vehicle's side, and on the footway across from it
 };
 KerbDoors kerb_door_at(const CityState &s, const Vehicle &v, float back_m); // this far behind its front
+float kerb_footway_arc(const RoadSegment &g, const V2 &foot); // canonical foot projection, reused after query wait
 float kerb_arc_of(const DirSeg &d, float at); // the arc along its street of metre `at` of a directed segment
 int kerb_hailable(const CityState &s, const DirSeg &d, float a0, float a1); // the first walker alone on the kerb's footway there, or -1
 bool kerb_hail(CityState &s, int ped, const V2 &door, float reach);
 void kerb_place(CityState &s, int ped, const V2 &at, const V2 &facing);
 void kerb_let_go(CityState &s, int ped, bool on_foot);
-int kerb_walker_out(CityState &s, int ds, const V2 &foot); // somebody out on the footway beside `foot`, -1 with no room
-inline bool kerb_holds(const TrafficState &t, int ped) { return t.peds[size_t(ped)].alive && t.peds[size_t(ped)].mode == PedMode::KERB; }
+std::shared_ptr<PedBirthTicket> kerb_walker_out(CityState &s, int vehicle, int ds, const V2 &foot); // explicit pending outcome, no placeholder actor
+inline bool kerb_current(const TrafficState &t, int ped, uint64_t generation) {
+	return ped >= 0 && size_t(ped) < t.peds.size() && t.peds[size_t(ped)].alive && t.peds[size_t(ped)].generation == generation;
+}
+inline bool kerb_holds(const TrafficState &t, int ped, uint64_t generation) { return kerb_current(t,ped,generation) && t.peds[size_t(ped)].mode == PedMode::KERB; }
 
 // bus_calls.cpp: who gets off and on at a stop. True when that is over; `over` lets go of whoever is left when the bus goes.
 bool bus_call(CityState &s, int id, BusCall &c, float dt);
 void bus_call_over(CityState &s, BusCall &c);
 
-// pedestrians.cpp: a walker on the footway at `arc` of the sidewalk, with a trip, held by the kerb stop (PedMode::KERB), -1 with
-// no room there; a walker gone from the scene (aboard).
-int ped_on_footway(CityState &s, int seg, int side, float arc);
+// pedestrians.cpp: a walker gone from the scene (aboard).
 void ped_gone(CityState &s, int id);
 
 } // namespace traffic

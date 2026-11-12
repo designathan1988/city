@@ -5,6 +5,7 @@
 
 #include "render/buildings/facade.h"
 #include "render/buildings/pane_rooms.h"
+#include "render/buildings/body_cache.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/buildings/interior/cut.h"
 #include "sim/buildings/building_store.h"
@@ -17,22 +18,26 @@ namespace city {
 
 class BuildingBodies {
 public:
-	const b40::Body &body(const b40::Data &data, const Building &rec);
-	// Fills `pl` for the record (pl.b points into the cache: valid until the next body() call that evicts). `ground`
+	explicit BuildingBodies(std::shared_ptr<BodyCache> cache = {}) : cache_(cache ? std::move(cache) : std::make_shared<BodyCache>(0)) {}
+	const b40::Body &body(const b40::Data &data, const Building &rec, const b40::BodyInput *input = nullptr);
+	// Fills `pl` for the record (this workspace pins pl.b until a different body() call or clear). `ground`
 	// is the job's copy of the terrain under its lots (pl.ground samples it: it must outlive pl). `cut`: the building
 	// cut open at a floor (the Interior layer): its body is the cut one and its panes show no room behind them.
 	void place(const b40::Data &data, const b40::BuildingLook &look, const HeightPatch &ground, const Building &rec, b40::Placed &pl,
-			const b40::CutView *cut = nullptr);
+			const b40::CutView *cut = nullptr, const b40::BodyInput *input = nullptr);
 	void clear() {
-		rooms_.clear();
-		cache_.clear();
-		cuts_.clear();
+		rooms_.reset(); cut_.reset(); current_.reset(); source_ = {};
 	}
 
 private:
-	std::unordered_map<uint64_t, std::unique_ptr<b40::Body>> cache_;
-	std::unordered_map<uint64_t, std::unique_ptr<b40::PaneRooms>> rooms_; // of the bodies above, by the same key
-	std::unordered_map<uint64_t, std::unique_ptr<b40::Body>> cuts_; // the bodies cut open: by body, floor, step and turn of the lot
+	std::shared_ptr<BodyCache> cache_;
+	BodyIdentity identity_{};
+	b40::BodyInput source_; // this job's active authored-version lease
+	std::shared_ptr<const b40::Body> current_;
+	std::unique_ptr<b40::PaneRooms> rooms_;
+	std::unique_ptr<b40::Body> cut_;
+	int cut_level_ = 0, cut_dir_ = 0;
+	uint32_t cut_turn_ = 0;
 	const b40::Body &cut_body(const b40::Body &whole, const Building &rec, const b40::LotFrame &f, const b40::CutView &cut);
 };
 

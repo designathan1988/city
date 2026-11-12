@@ -25,9 +25,25 @@ void file_walkers(CityState &s) {
 	TrafficState &t = s.traffic;
 	if (t.walkers_filed == t.tick) return;
 	t.walkers_filed = t.tick;
-	for (auto &kv : t.walker_cells) kv.second.clear();
-	for (int id = 0; id < int(t.peds.size()); id++)
-		if (t.peds[size_t(id)].alive) t.walker_cells[cell_of(t.peds[size_t(id)].cur.x, t.peds[size_t(id)].cur.z)].push_back(id);
+	auto &old = t.walker_spare_cells;
+	old.swap(t.walker_active_cells);
+	t.walker_active_cells.clear();
+	for (int64_t key : old) {
+		auto it = t.walker_cells.find(key);
+		if (it != t.walker_cells.end()) it->second.clear();
+	}
+	for (int id : t.live_peds)
+		if (t.peds[size_t(id)].alive) {
+			const int64_t key = cell_of(t.peds[size_t(id)].cur.x, t.peds[size_t(id)].cur.z);
+			auto &list = t.walker_cells[key];
+			if (list.empty()) t.walker_active_cells.push_back(key);
+			list.push_back(id);
+		}
+	for (int64_t key : old) {
+		auto it = t.walker_cells.find(key);
+		if (it != t.walker_cells.end() && it->second.empty()) t.walker_cells.erase(it);
+	}
+	old.clear();
 }
 } // namespace
 

@@ -22,14 +22,6 @@ void SignAtlas::configure(int width, int height, int cell, int blade_w, int blad
 	blade_h_ = blade_h;
 }
 
-void SignAtlas::reset() {
-	std::lock_guard<std::mutex> lk(mutex_);
-	cells_.clear();
-	pending_.clear();
-	shelf_[0] = shelf_[1] = Shelf();
-	layer_ = top_ = used_ = 0;
-}
-
 // The next place of its height: on the shelf open for it, a new shelf under the others, or the first of the next layer.
 Rect2i SignAtlas::place(bool is_wide) {
 	const int w = is_wide ? blade_w_ : cell_, h = is_wide ? blade_h_ : cell_;

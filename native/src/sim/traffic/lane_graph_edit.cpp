@@ -47,12 +47,12 @@ void on_conn_removed(CityState &s, int ci) {
 		v.lane = c.to_lane;
 		v.s = 0;
 		v.cs = 0;
-		v.pass = -1;
+		set_pass(t, id, -1);
 		lane_add(s, c.to_ds * MAX_LANES + c.to_lane, id);
 	}
 	conn_clear(s, ci);
-	for (int id : t.micro_list)
-		if (t.vehicles[size_t(id)].alive && t.vehicles[size_t(id)].pass == ci) t.vehicles[size_t(id)].pass = -1;
+	while (size_t(ci) < t.conn_pass_first.size() && t.conn_pass_first[size_t(ci)] >= 0)
+		set_pass(t, t.conn_pass_first[size_t(ci)], -1);
 	unlink_from_lane(g, ci);
 	c.conflicts.clear();
 	c.conflict_at.clear();
@@ -64,6 +64,7 @@ void on_conn_removed(CityState &s, int ci) {
 void drop_segment(CityState &s, int seg) {
 	LaneGraph &g = s.traffic.g;
 	if (seg < 0 || seg * 2 + 1 >= int(g.ds.size())) return;
+	g.routing_revision = next_generation();
 	for (int dir = 0; dir < 2; dir++) {
 		DirSeg &d = g.ds[size_t(seg) * 2 + dir];
 		if (d.ok) g.lane_metres -= double(d.len) * d.lanes;
@@ -90,6 +91,7 @@ int alloc_conn(CityState &s) {
 	c = Conn();
 	c.alive = true;
 	s.traffic.conn_pass[size_t(ci)] = -1;
+	s.traffic.conn_pass_first[size_t(ci)] = -1;
 	s.traffic.conn_pass_t[size_t(ci)] = 0;
 	s.traffic.conn_claim_t[size_t(ci)] = -double(BIG);
 	s.traffic.conn_vehicles[size_t(ci)].clear();
@@ -100,9 +102,11 @@ void ensure_conn_state(TrafficState &t) {
 	const size_t n = t.g.conns.size();
 	if (t.conn_vehicles.size() < n) t.conn_vehicles.resize(n);
 	if (t.conn_pass.size() < n) t.conn_pass.resize(n, -1);
+	if (t.conn_pass_first.size() < n) t.conn_pass_first.resize(n, -1);
 	if (t.conn_pass_t.size() < n) t.conn_pass_t.resize(n, 0.0);
 	if (t.conn_claim_t.size() < n) t.conn_claim_t.resize(n, -double(BIG));
 	if (t.conn_active.size() < n) t.conn_active.resize(n, 0);
+	if (t.conn_active_pos.size() < n) t.conn_active_pos.resize(n, -1);
 }
 
 void graph_grow(CityState &s, int segs, int nodes) {
@@ -110,11 +114,15 @@ void graph_grow(CityState &s, int segs, int nodes) {
 	LaneGraph &g = t.g;
 	const size_t ds = size_t(std::max(segs, 0)) * 2, lanes = ds * MAX_LANES, nn = size_t(std::max(nodes, 0));
 	if (g.ds.size() < ds) g.ds.resize(ds);
+	if (g.route_conns.size() < ds) g.route_conns.resize(ds);
+	if (g.route_ready.size() < ds) g.route_ready.resize(ds, 0);
 	if (g.lane_conn.size() < lanes) g.lane_conn.resize(lanes, -1);
 	if (g.node_conn.size() < nn) g.node_conn.resize(nn, -1);
 	if (g.junctions.size() < nn) g.junctions.resize(nn);
 	if (t.lane_vehicles.size() < lanes) t.lane_vehicles.resize(lanes);
+	t.route_counts.grow(t.lane_vehicles.size());
 	if (t.lane_active.size() < lanes) t.lane_active.resize(lanes, 0);
+	if (t.lane_active_pos.size() < lanes) t.lane_active_pos.resize(lanes, -1);
 	if (t.meso_head.size() < lanes) t.meso_head.resize(lanes, -1);
 	if (t.meso_tail.size() < lanes) t.meso_tail.resize(lanes, -1);
 	if (t.meso_count.size() < lanes) t.meso_count.resize(lanes, 0);
@@ -135,11 +143,15 @@ void graph_grow(CityState &s, int segs, int nodes) {
 }
 
 void clear_node(CityState &s, int n) {
+	s.traffic.signal_nodes.erase(n);
 	LaneGraph &g = s.traffic.g;
 	if (n < 0 || n >= int(g.node_conn.size())) return;
+	g.routing_revision = next_generation();
 	int ci = g.node_conn[size_t(n)];
 	while (ci >= 0) {
 		const int next = g.conns[size_t(ci)].next_at_node;
+		const int from = g.conns[size_t(ci)].from_ds;
+		if (from >= 0 && size_t(from) < g.route_ready.size()) { g.route_ready[size_t(from)] = 0; g.route_conns[size_t(from)].clear(); }
 		on_conn_removed(s, ci);
 		g.free_conns.push_back(ci);
 		g.conns[size_t(ci)] = Conn();
@@ -182,7 +194,7 @@ void apply_network_changes(CityState &s) {
 	ChangeLog::dedup(nodes);
 	for (int seg : removed) drop_segment(s, seg);
 	for (int seg : removed)
-		if (size_t(seg) < t.seg_volume.size()) t.seg_volume[size_t(seg)] = 0;
+		if (size_t(seg) < t.seg_volume.size()) { t.seg_volume[size_t(seg)] = 0; volume_changed(t, size_t(seg)); }
 	for (int seg : removed) {
 		forget_furniture(s, seg);
 		forget_parking_seg(s, seg);
@@ -205,6 +217,7 @@ void apply_network_changes(CityState &s) {
 			build_node(s, n);
 			build_junction(s, n);
 		} else if (n < int(t.g.junctions.size())) {
+			t.signal_nodes.erase(n);
 			t.g.junctions[size_t(n)] = Junction();
 		}
 	}

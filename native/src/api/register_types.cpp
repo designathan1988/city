@@ -1,5 +1,7 @@
 // GDExtension entry point: registers CityCore and its areas (api/city_core_areas.cpp), which only the core makes.
 #include "api/city_builder.h"
+#include "api/prepared_body.h"
+#include "api/prepared_reference.h"
 #include "api/city_core.h"
 #include "api/city_landscape.h"
 #include "api/city_probes.h"
@@ -17,6 +19,8 @@ using namespace godot;
 static void initialize_citycore(ModuleInitializationLevel level) {
 	if (level != MODULE_INITIALIZATION_LEVEL_SCENE) return;
 	// abstract: a script cannot make an area apart from the core it works on (godot-cpp class_db.hpp register_abstract_class)
+	GDREGISTER_ABSTRACT_CLASS(city::PreparedBody);
+	GDREGISTER_ABSTRACT_CLASS(city::PreparedReference);
 	GDREGISTER_ABSTRACT_CLASS(city::CityBuilder);
 	GDREGISTER_ABSTRACT_CLASS(city::CityLandscape);
 	GDREGISTER_ABSTRACT_CLASS(city::CityTransit);

@@ -96,6 +96,7 @@ bool Plan::free(float x, float y, float w, float d, float angle) const {
 }
 
 bool Plan::put(FurnitureKind kind, float x, float y, float angle, float scale) {
+	if (!emit_furniture) return false;
 	const float *size = data.interior.size[kind];
 	const float fw = size[0] * scale, fd = size[1] * scale;
 	if (!free(x, y, fw, fd, angle)) return false;
@@ -108,17 +109,20 @@ bool Plan::put(FurnitureKind kind, float x, float y, float angle, float scale) {
 }
 
 void Plan::grid(FurnitureKind kind, float ax, float ay, float bx, float by, float gx, float gy, float angle) {
+	if (!emit_furniture) return;
 	for (float y = ay + gy / 2; y <= by - gy / 2 + GRID_EPS; y += gy)
 		for (float x = ax + gx / 2; x <= bx - gx / 2 + GRID_EPS; x += gx) put(kind, x, y, angle);
 }
 
 void Plan::along_back(FurnitureKind kind, float from, float to, float gap) {
+	if (!emit_furniture) return;
 	constexpr float OFF_WALL = 0.05f;
 	const float y = y1 - data.interior.size[kind][1] / 2 - OFF_WALL;
 	for (float x = from; x <= to + GRID_EPS; x += gap) put(kind, x, y, PI_F);
 }
 
 void Plan::along_side(FurnitureKind kind, bool left, float from, float to, float gap) {
+	if (!emit_furniture) return;
 	constexpr float OFF_WALL = 0.05f;
 	const float d = data.interior.size[kind][1];
 	const float x = left ? x0 + d / 2 + OFF_WALL : x1 - d / 2 - OFF_WALL;

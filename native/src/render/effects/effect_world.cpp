@@ -31,12 +31,14 @@ bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	if (!params_.load(ctx.table("effects", errors), errors) || !load_looks(ctx, errors)) return false;
 	const RID puffs = ctx.material("puffs", errors), debris = ctx.material("debris", errors), marks = ctx.material("marks", errors), rubble = ctx.material("rubble", errors);
 	if (!errors.is_empty()) return false;
-	puffs_.init(scenario_, puffs, params_.pool);
+	params_.instance_sector_m = float(ctx.catalog->tune.render_instance_sector_m);
+	puffs_.init(scenario_, puffs, params_.pool, params_.instance_sector_m);
 	puffs_.set_wind(params_.wind_x, params_.wind_z);
-	marks_.init(scenario_, marks, int(MARK_SLOTS), params_.soot_kept, params_.blood_max);
+	marks_.init(scenario_, marks, int(MARK_SLOTS), params_.soot_kept, params_.blood_max, params_.instance_sector_m);
 	debris_.init(scenario_, debris, params_);
 	debris_material_ = debris;
-	mounds_.init(scenario_, rubble, MOUND_SLOTS);
+	mounds_.init(scenario_, rubble, MOUND_SLOTS, params_.instance_sector_m,
+			float(ctx.catalog->tune.render_geometry_error_px), float(ctx.catalog->tune.render_geometry_fade_s));
 	const Ref<ShaderMaterial> ruin = ctx.material_objects.get("building_ruin", Variant());
 	if (ruin.is_null()) errors.push_back("material ausente: building_ruin");
 	ruins_.init(scenario_, ruin, params_);
@@ -62,6 +64,7 @@ void EffectWorld::reset() {
 	marks_.reset();
 	debris_.reset();
 	mounds_.reset();
+	placed_ruins_.clear();
 	geysers_.clear();
 	sources_.clear();
 	fire_carry_.clear();
@@ -69,7 +72,7 @@ void EffectWorld::reset() {
 	shake_ = 0;
 	blast_at_ = -1;
 	flash_left_ = 0;
-	craters_seen_ = ~size_t(0);
+	craters_seen_ = crater_ground_seen_ = ruins_seen_ = scars_seen_ = 0;
 }
 
 void EffectWorld::release() {
@@ -143,21 +146,22 @@ void EffectWorld::sync(CityState &s) {
 		std::lock_guard<std::mutex> lk(s.log.mutex);
 		events_.swap(s.log.damage_events);
 	}
-	puffs_.update(now_); // the clock the puffs about to be born are stamped with
+	puffs_.begin_frame(now_); // no upload before event/debris/ruin producers
 	for (const DamageEvent &e : events_) apply(e, s);
 	played_ += events_.size();
 	events_played_.swap(events_);
 	events_.clear();
-	if (craters_seen_ != s.damage.craters.size()) {
-		craters_seen_ = s.damage.craters.size();
-		marks_.set_craters(s.damage.craters, [&](float x, float z) { return s.terrain.base_height_at(x, z); });
+	if (craters_seen_ != s.damage.craters_revision || crater_ground_seen_ != s.terrain.base_revision) {
+		craters_seen_ = s.damage.craters_revision;
+		crater_ground_seen_ = s.terrain.base_revision;
+		marks_.set_craters(s.damage.craters, [&](float x, float z) { return s.terrain.base_height_at(x, z); },
+				[&](float x, float z, float half) { return s.terrain.base_stamp(x, z, half); });
 	}
-	if (ruins_seen_ != s.damage.ruins.size() || scars_seen_ != s.damage.scars.size()) {
-		// a building brought down in this frame already fell into its heap (its event); any other change (open, undo, redo) lays them all again
-		const bool fell = std::any_of(events_played_.begin(), events_played_.end(), [](const DamageEvent &e) { return e.kind == DamageEvent::BUILDING_DOWN || e.kind == DamageEvent::BUILDING_SCAR; });
-		if (!fell) rebuild_ruins(s);
-		ruins_seen_ = s.damage.ruins.size();
-		scars_seen_ = s.damage.scars.size();
+	if (ruins_seen_ != s.damage.ruins_revision || scars_seen_ != s.damage.scars_revision) {
+		// Reconcile content even when an undo and a new blow share a frame. Existing falls/mounds keep their animation.
+		rebuild_ruins(s);
+		ruins_seen_ = s.damage.ruins_revision;
+		scars_seen_ = s.damage.scars_revision;
 	}
 	burn_fires(s, dt);
 	step_geysers(dt);
@@ -174,7 +178,7 @@ void EffectWorld::sync(CityState &s) {
 	light_update(dt);
 	marks_.update(now_);
 	mounds_.update(now_);
-	puffs_.update(now_);
+	puffs_.flush();
 }
 
 } // namespace city

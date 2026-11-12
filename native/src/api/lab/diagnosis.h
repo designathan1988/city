@@ -20,7 +20,7 @@ struct Rules {
 	double many_hitches = 0; // more than this many in a measure weigh more
 };
 
-enum class Bound { None, Gpu, Cpu, Headroom };
+enum class Bound { None, Gpu, Cpu, Headroom, Incomplete };
 enum class Severity { Info, Low, Medium, High };
 
 // The frame's medians; the CPU is NaN with no frame drawn, the GPU absent with no timer.
@@ -28,6 +28,7 @@ struct Times {
 	double frame_ms = 0;
 	double cpu_ms = 0;
 	std::optional<double> gpu_ms;
+	bool cpu_complete = true; // API captures explicitly declare their partial coverage; legacy arithmetic callers supply full values
 };
 
 struct Stage {

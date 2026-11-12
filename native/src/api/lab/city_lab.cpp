@@ -57,6 +57,7 @@ String bound_name(lab::Bound b) {
 		case lab::Bound::Gpu: return "gpu";
 		case lab::Bound::Cpu: return "cpu";
 		case lab::Bound::Headroom: return "headroom";
+		case lab::Bound::Incomplete: return "incomplete";
 		case lab::Bound::None: break;
 	}
 	return "none";
@@ -114,6 +115,7 @@ Dictionary CityLab::diagnose(const Dictionary &frames, const Dictionary &rules) 
 	lab::Times t;
 	t.frame_ms = lab::median(intervals);
 	t.cpu_ms = lab::median(samples_of(frames["cpu"]));
+	t.cpu_complete = bool(frames.get("cpu_complete", false));
 	t.gpu_ms = median_of_gpu(frames);
 	const std::size_t hitches = lab::hitches_in(intervals, r);
 	Dictionary out;
@@ -121,6 +123,8 @@ Dictionary CityLab::diagnose(const Dictionary &frames, const Dictionary &rules) 
 	out["frame_ms"] = t.frame_ms;
 	out["fps"] = MS_PER_S / t.frame_ms;
 	out["cpu_ms"] = t.cpu_ms;
+	out["cpu_complete"] = t.cpu_complete;
+	out["cpu_scope"] = frames.get("cpu_scope", String("unspecified_partial"));
 	out["gpu_ms"] = maybe(t.gpu_ms);
 	out["budget_ms"] = r.budget_ms;
 	out["frames"] = static_cast<int64_t>(intervals.size());

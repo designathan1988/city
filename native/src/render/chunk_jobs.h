@@ -9,6 +9,7 @@
 
 #include "core/job_pool.h"
 #include "render/mesh_builder.h"
+#include "render/chunk_results.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -27,21 +28,34 @@ struct Baking {
 	uint64_t seq = 0;
 	int64_t bytes = 0;
 };
-using BakingSet = std::unordered_map<int64_t, Baking>;
-
-inline int64_t baking_bytes(const BakingSet &set) {
-	int64_t n = 0;
-	for (const auto &kv : set) n += kv.second.bytes;
-	return n;
-}
+class BakingSet {
+public:
+	bool contains(int64_t key) const { return entries_.find(key) != entries_.end(); }
+	void set(int64_t key, Baking value) {
+		const auto found = entries_.find(key);
+		if (found != entries_.end()) bytes_ -= found->second.bytes;
+		entries_[key] = value; bytes_ += value.bytes;
+	}
+	void erase(int64_t key, uint64_t seq) {
+		const auto found = entries_.find(key);
+		if (found != entries_.end() && found->second.seq == seq) { bytes_ -= found->second.bytes; entries_.erase(found); }
+	}
+	int64_t bytes() const { return bytes_; }
+	void clear() { entries_.clear(); bytes_ = 0; }
+private:
+	std::unordered_map<int64_t, Baking> entries_;
+	int64_t bytes_ = 0;
+};
+inline int64_t baking_bytes(const BakingSet &set) { return set.bytes(); }
 
 // This frame's room in the upload window: render.upload_budget_mb less the bytes still baking (each queue's BakingSet,
-// recounted every frame). A result larger than the whole window goes alone, when nothing else is baking.
+// maintained by its owner). A result larger than the whole window goes alone, when nothing else is baking.
 struct UploadBudget {
 	int64_t left = 0, used = 0;
-	bool idle = false;
-	UploadBudget(int64_t window, int64_t baking) : left(window - baking), idle(baking == 0) {}
+	bool idle = false, enabled = false;
+	UploadBudget(int64_t window, int64_t baking) : left(window - baking), idle(baking == 0), enabled(window > 0) {}
 	bool take(int64_t bytes) {
+		if (!enabled || bytes < 0) return false; // zero/cadence-skipped frames admit no bake
 		if (bytes > left && !(idle && used == 0)) return false;
 		left -= bytes;
 		used += bytes;
@@ -57,39 +71,52 @@ inline bool fresh(std::mutex &mutex, const std::unordered_map<int64_t, uint64_t>
 }
 
 template <typename Built, typename Commit>
-void commit_done(std::mutex &mutex, std::vector<Built> &done, std::unordered_map<int64_t, uint64_t> &requested,
+void commit_done(std::mutex &mutex, CompletedResults<Built> &done, std::unordered_map<int64_t, uint64_t> &requested,
 		const std::chrono::steady_clock::time_point &until, Commit &&commit_one) {
-	std::vector<Built> local;
-	{
-		std::lock_guard<std::mutex> lk(mutex);
-		local.swap(done);
-	}
-	std::sort(local.begin(), local.end(), [](const Built &a, const Built &b) { return a.priority < b.priority; });
-	for (Built &b : local) {
-		if (std::chrono::steady_clock::now() >= until) {
-			std::lock_guard<std::mutex> lk(mutex);
-			done.push_back(std::move(b));
-			continue;
-		}
-		if (!fresh(mutex, requested, b.key, b.seq)) continue;
+	using clock = std::chrono::steady_clock;
+	while (clock::now() < until) {
+		typename CompletedResults<Built>::Entry entry;
 		{
 			std::lock_guard<std::mutex> lk(mutex);
-			requested.erase(b.key);
+			if (!done.take(entry)) break;
 		}
-		commit_one(b);
+		if (clock::now() >= until) {
+			std::lock_guard<std::mutex> lk(mutex); done.restore(std::move(entry)); break;
+		}
+		bool current;
+		{
+			std::lock_guard<std::mutex> lk(mutex);
+			const auto found = requested.find(entry.value.key);
+			current = found != requested.end() && found->second == entry.value.seq;
+			if (current) requested.erase(found);
+		}
+		if (current) commit_one(entry.value);
+		// Stale/committed values retire individually, outside the queue lock.
 	}
 }
 
 // Built: key, job, priority, seq, baked, bytes() and bake() (BuiltMesh, BuildingRenderer::Built / SuperBuilt). The
-// queue holds pointers: a building result is heavy (its shells, then its meshes) and a backlog of thousands is sorted
-// every frame after a camera jump. `waiting` gets the bytes of the built results left waiting for the window
-// (RenderWorld holds new builds back while they pile up: their shells are CPU memory).
-template <typename Built>
-using Results = std::vector<std::shared_ptr<Built>>;
+// queue stores ordered completion pointers and cached CPU byte totals; a frame processes one result per deadline check.
+// `waiting` reads queued CPU bytes without a scan. Bakes still call RenderingServer on workers until the S04 GPU migration.
+// Commit-only time buckets. scan inspects individual queued results, freed releases a stale result outside its lock,
+// admit/hand perform one stage; sort stays zero because ordering happens at publication, and tail reads cached totals.
+// The pool releases queued/skipped/executed closures outside its lock. This receipt publishes one terminal
+// bake acknowledgement even when work never runs. Only never-started inputs can safely return to the CPU queue.
+// Current bake methods run to completion once entered; future sliced bakes must carry an explicit continuation.
+template<class Built> struct BakeReceipt {
+	std::mutex &mutex;
+	Results<Built> &done;
+	std::shared_ptr<Built> job;
+	bool started = false;
+	BakeReceipt(std::mutex &lock, Results<Built> &output, std::shared_ptr<Built> value) : mutex(lock), done(output), job(std::move(value)) {}
+	BakeReceipt(const BakeReceipt &) = delete;
+	BakeReceipt &operator=(const BakeReceipt &) = delete;
+	~BakeReceipt() {
+		std::lock_guard<std::mutex> lock(mutex);
+		done.push_bake_result(std::move(job), !started);
+	}
+};
 
-// Where a commit_baked call spends its time, ms, summed (render_cost probe): the locked scan, freeing the stale, the
-// sort, the admissions, the hand-over of baked results to their instances and the tail (the handed results freed, the
-// rest put back under the lock).
 struct CommitTimes {
 	double scan = 0, freed = 0, sort = 0, admit = 0, hand = 0, tail = 0;
 };
@@ -98,8 +125,6 @@ template <typename Built, typename Commit>
 void commit_baked(JobPool &pool, std::mutex &mutex, Results<Built> &done, std::unordered_map<int64_t, uint64_t> &requested,
 		BakingSet &baking, UploadBudget &upload, const std::chrono::steady_clock::time_point &until, int64_t &waiting,
 		Commit &&commit_one, CommitTimes *times = nullptr) {
-	Results<Built> local, later, stale;
-	waiting = 0;
 	using clock = std::chrono::steady_clock;
 	auto mark = clock::now();
 	auto lap = [&](double CommitTimes::*part) {
@@ -107,57 +132,55 @@ void commit_baked(JobPool &pool, std::mutex &mutex, Results<Built> &done, std::u
 		if (times) times->*part += std::chrono::duration<double, std::milli>(now - mark).count();
 		mark = now;
 	};
-	{
-		std::lock_guard<std::mutex> lk(mutex);
-		local.swap(done);
-		for (std::shared_ptr<Built> &b : local) {
-			if (b->baked) { // back from its bake: its upload is queued for the next call into the RenderingServer
-				auto it = baking.find(b->key);
-				if (it != baking.end() && it->second.seq == b->seq) baking.erase(it);
-			}
-			auto it = requested.find(b->key);
-			if (it == requested.end() || it->second != b->seq) stale.push_back(std::move(b)); // newer on its way, or gone
+	{ std::lock_guard<std::mutex> lk(mutex); done.begin_cycle(); }
+	while (clock::now() < until) {
+		typename Results<Built>::Entry entry;
+		bool fresh_result = false;
+		{
+			std::lock_guard<std::mutex> lk(mutex);
+			if (!done.take(entry)) break;
+			const auto found = requested.find(entry.value->key);
+			fresh_result = found != requested.end() && found->second == entry.value->seq;
 		}
-	}
-	lap(&CommitTimes::scan);
-	stale.clear(); // freed outside the lock
-	lap(&CommitTimes::freed);
-	local.erase(std::remove(local.begin(), local.end(), nullptr), local.end());
-	std::sort(local.begin(), local.end(), [](const std::shared_ptr<Built> &a, const std::shared_ptr<Built> &b) {
-		return a->priority < b->priority;
-	});
-	lap(&CommitTimes::sort);
-	for (std::shared_ptr<Built> &b : local) {
-		if (!b->baked) {
-			const int64_t bytes = b->bytes();
-			if (baking.count(b->key) || !upload.take(bytes)) {
-				waiting += bytes;
-				later.push_back(std::move(b));
-				continue;
+		if (clock::now() >= until) {
+			std::lock_guard<std::mutex> lk(mutex); done.defer(std::move(entry)); break;
+		}
+		std::shared_ptr<Built> &b = entry.value;
+		if (entry.baked) baking.erase(b->key, b->seq); // acknowledge even a stale completed bake
+		lap(&CommitTimes::scan);
+		if (!fresh_result) {
+			b.reset(); // resource destruction remains outside metadata locks, one result at a time
+			lap(&CommitTimes::freed); continue;
+		}
+		if (entry.retryable) {
+			entry.baked = entry.retryable = false;
+			entry.bytes = b->bytes(); // the bake never touched these CPU inputs
+			{ std::lock_guard<std::mutex> lk(mutex); done.defer(std::move(entry)); }
+			lap(&CommitTimes::admit); continue;
+		}
+		if (!entry.baked) {
+			if (baking.contains(b->key) || !upload.take(entry.bytes)) {
+				std::lock_guard<std::mutex> lk(mutex); done.defer(std::move(entry));
+			} else {
+				baking.set(b->key, Baking{b->seq, entry.bytes});
+				const JobKey job_key = b->job.bake(); const float priority = entry.priority;
+				auto receipt = std::make_shared<BakeReceipt<Built>>(mutex, done, std::move(b));
+				pool.submit(job_key, priority, [receipt]() {
+					if (JobPool::cancelled()) return;
+					receipt->started = true;
+					receipt->job->bake();
+				});
 			}
-			baking[b->key] = Baking{ b->seq, bytes };
-			pool.submit(b->job.bake(), b->priority, [job = std::move(b), &mutex, &done]() {
-				job->bake();
-				std::lock_guard<std::mutex> lk(mutex);
-				done.push_back(job);
-			});
 			lap(&CommitTimes::admit);
-		} else if (std::chrono::steady_clock::now() < until) {
-			{
-				std::lock_guard<std::mutex> lk(mutex);
-				requested.erase(b->key);
-			}
-			commit_one(*b);
-			lap(&CommitTimes::hand);
 		} else {
-			later.push_back(std::move(b));
+			{
+				std::lock_guard<std::mutex> lk(mutex); requested.erase(b->key);
+			}
+			commit_one(*b); b.reset();
+			lap(&CommitTimes::hand);
 		}
 	}
-	local.clear(); // the handed results (their meshes went to the instances)
-	{
-		std::lock_guard<std::mutex> lk(mutex);
-		for (std::shared_ptr<Built> &b : later) done.push_back(std::move(b));
-	}
+	{ std::lock_guard<std::mutex> lk(mutex); waiting = done.waiting(); }
 	lap(&CommitTimes::tail);
 }
 

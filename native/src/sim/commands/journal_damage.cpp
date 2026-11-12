@@ -26,88 +26,80 @@ void mark_ruin(CityState &s, const Ruin &r) {
 
 void j_add_crater(CityState &s, const Crater &c) {
 	s.damage.craters.push_back(c);
-	if (s.history.recording) record(s, OpKind::DMG_CRATER).crater = c;
+	s.damage.craters_revision = next_generation();
+	if (s.history.recording) record(s, OpKind::DMG_CRATER).get<Crater>() = c;
 }
 
 void j_add_ruin(CityState &s, const Ruin &r) {
-	s.damage.ruins.push_back(r);
+	const b40::BodyRef body = s.buildings.designs.edited->get(r.record.body);
+	s.damage.insert_ruin(s.damage.ruins().size(), r, body);
 	if (s.history.recording) {
 		EditOp &op = record(s, OpKind::DMG_RUIN);
-		op.ruin = r;
+		op.get<RuinChange>().record = r;
+		op.get<RuinChange>().body = body;
 		op.side = 0;
-		op.id = int(s.damage.ruins.size()) - 1;
+		op.id = int(s.damage.ruins().size()) - 1;
 	}
 	mark_ruin(s, r);
 }
 
 void j_remove_ruin(CityState &s, int index) {
-	if (index < 0 || index >= int(s.damage.ruins.size())) return;
-	const Ruin r = s.damage.ruins[size_t(index)];
+	if (index < 0 || index >= int(s.damage.ruins().size())) return;
+	const Ruin r = s.damage.ruins()[size_t(index)];
 	if (s.history.recording) {
 		EditOp &op = record(s, OpKind::DMG_RUIN);
-		op.ruin = r;
+		op.get<RuinChange>().record = r;
+		op.get<RuinChange>().body = s.damage.ruin_bodies()[size_t(index)];
 		op.side = 1;
 		op.id = index;
 	}
-	s.damage.ruins.erase(s.damage.ruins.begin() + index);
+	s.damage.remove_ruin(size_t(index));
 	mark_ruin(s, r);
 }
 
 void j_add_gone(CityState &s, const Gone &g) {
-	s.damage.gone.push_back(g);
-	if (s.history.recording) record(s, OpKind::DMG_GONE).gone = g;
+	s.damage.add_gone(g);
+	if (s.history.recording) record(s, OpKind::DMG_GONE).get<Gone>() = g;
 }
-
-namespace {
-void put_hurt(DamageState &d, const Hurt &h, float amount) {
-	const int i = d.hurt_of(h.seed, h.x, h.z);
-	if (amount <= 0) {
-		if (i >= 0) d.hurt.erase(d.hurt.begin() + i);
-		return;
-	}
-	Hurt next = h;
-	next.amount = amount;
-	if (i >= 0) d.hurt[size_t(i)] = next;
-	else d.hurt.push_back(next);
-}
-} // namespace
 
 void j_set_hurt(CityState &s, uint32_t seed, float x, float z, float amount) {
 	const int i = s.damage.hurt_of(seed, x, z);
-	const float before = i >= 0 ? s.damage.hurt[size_t(i)].amount : 0.f;
+	const float before = i >= 0 ? s.damage.hurt()[size_t(i)].amount : 0.f;
 	if (s.history.recording) {
 		EditOp &op = record(s, OpKind::DMG_HURT);
-		op.hurt = { seed, x, z, amount };
-		op.hurt_before = before;
+		op.get<HurtChange>().after = { seed, x, z, amount };
+		op.get<HurtChange>().before = before;
 	}
-	put_hurt(s.damage, { seed, x, z, amount }, amount);
+	s.damage.set_hurt({ seed, x, z, amount }, amount);
 }
 
 void j_add_scar(CityState &s, const Scar &c) {
-	s.damage.scars.push_back(c);
-	j_nature(s, sizeof(c), [c](CityState &st, bool fwd) {
-		if (fwd) st.damage.scars.push_back(c);
-		else if (!st.damage.scars.empty()) st.damage.scars.pop_back();
-	});
+	s.damage.add_scar(c);
+	j_nature(s, ScarAdded{ c });
 }
 
 void apply_damage_op(CityState &s, const EditOp &op, bool fwd) {
 	DamageState &d = s.damage;
 	switch (op.kind) {
 		case OpKind::DMG_CRATER:
-			if (fwd) d.craters.push_back(op.crater);
+			if (fwd) d.craters.push_back(op.get<Crater>());
 			else if (!d.craters.empty()) d.craters.pop_back();
+			d.craters_revision = next_generation();
 			break;
 		case OpKind::DMG_GONE:
-			if (fwd) d.gone.push_back(op.gone);
-			else if (!d.gone.empty()) d.gone.pop_back();
+			if (fwd) d.add_gone(op.get<Gone>());
+			else d.pop_gone();
 			break;
-		case OpKind::DMG_HURT: put_hurt(d, op.hurt, fwd ? op.hurt.amount : op.hurt_before); break;
+		case OpKind::DMG_HURT: d.set_hurt(op.get<HurtChange>().after, fwd ? op.get<HurtChange>().after.amount : op.get<HurtChange>().before); break;
 		case OpKind::DMG_RUIN: {
 			const bool add = (op.side == 0) == fwd;
-			if (add) d.ruins.insert(d.ruins.begin() + std::min<size_t>(size_t(op.id), d.ruins.size()), op.ruin);
-			else if (op.id >= 0 && op.id < int(d.ruins.size())) d.ruins.erase(d.ruins.begin() + op.id);
-			mark_ruin(s, op.ruin);
+			if (add) {
+				const size_t at = std::min<size_t>(size_t(op.id), d.ruins().size());
+				d.insert_ruin(at, op.get<RuinChange>().record, op.get<RuinChange>().body);
+			} else if (op.id >= 0 && op.id < int(d.ruins().size())) {
+				d.remove_ruin(size_t(op.id));
+			}
+			mark_ruin(s, op.get<RuinChange>().record);
 			break;
 		}
 		default: break;

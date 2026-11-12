@@ -2,6 +2,7 @@
 // (body, walk frames, a seed, walk phase); on the far card (body, its height, the seed, 0). The instance colour's alpha: the share of the
 // walk in the pose, or from CLIP_CODE_BASE a clip held (somebody in a vehicle).
 #include "render/agents/people_renderer.h"
+#include "render/detail_hold.h"
 
 #include "core/color.h"
 #include "render/mesh_builder.h"
@@ -152,7 +153,7 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, co
 		stop_clips_[i] = STOP_CLIPS[i] ? asset_.clip(STOP_CLIPS[i]) : -1;
 		if (seat_clips_[i] < 0) errors.push_back(String("pessoas: falta o clipe ") + SEAT_CLIPS[i]);
 	}
-	if (!errors.is_empty() || !held_.init(ctx, held, ACT_CLIPS, errors) || !helmets_.init(ctx, held["helmet"], errors)) return false;
+	if (!errors.is_empty() || !held_.init(ctx, held, ACT_CLIPS, asset_, errors) || !helmets_.init(ctx, held["helmet"], asset_, errors)) return false;
 	RenderingServer *rs = RenderingServer::get_singleton();
 	set_tables(material_);
 	set_faces(material_);
@@ -179,7 +180,19 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, co
 	disc_mesh(disc);
 	blob_mesh_ = disc.bake();
 	size_t n = asset_.variations.size() * size_t(asset_.lods + 1);
-	draws_.assign(n, MultiMeshDraw());
+	draws_.clear(); caster_draws_.clear();
+	draws_.resize(n); caster_draws_.resize(n);
+	for (size_t v = 0; v < asset_.variations.size(); v++)
+		for (int level = 0; level <= asset_.lods; level++) {
+			const size_t k = slot(v, level);
+			const RID mesh = level < asset_.lods ? asset_.variations[v].lods[size_t(level)]->get_rid() : asset_.card->get_rid();
+			const RID material = level < asset_.lods ? material_ : far_material_;
+			draws_[k] = std::make_unique<SpatialInstanceDraw>();
+			draws_[k]->configure(scenario_, mesh, material, false, LAYER_PEOPLE, float(ctx.catalog->tune.render_instance_sector_m));
+			caster_draws_[k] = std::make_unique<SpatialInstanceDraw>();
+			caster_draws_[k]->configure(scenario_, mesh, material, level < asset_.lods, LAYER_PEOPLE, float(ctx.catalog->tune.render_instance_sector_m), true);
+		}
+	blob_.configure(scenario_, blob_mesh_.rid, blob_material_, false, LAYER_PEOPLE, float(ctx.catalog->tune.render_instance_sector_m));
 	bufs_.assign(n, InstanceRows());
 	keeper_.clear();
 	keeper_.draws(n);
@@ -190,8 +203,14 @@ void PeopleRenderer::reset() {
 	bodies_.release();
 	held_.reset();
 	helmets_.reset();
-	for (MultiMeshDraw &d : draws_) d.free();
-	blob_.free();
+	for (auto &d : draws_) d->reset();
+	for (auto &d : caster_draws_) d->reset();
+	blob_.reset();
+	keeper_.clear();
+	keeper_.draws(bufs_.size());
+	for (InstanceRows &rows : bufs_) rows.restart();
+	blob_buf_.restart();
+	blob_keys_.clear();
 }
 
 Array PeopleRenderer::clips() const {
@@ -227,6 +246,8 @@ bool PeopleRenderer::show_clip(const String &name) {
 void PeopleRenderer::begin() {
 	for (InstanceRows &b : bufs_) b.reopen();
 	blob_buf_.restart();
+	blob_keys_.clear();
+	for (auto &draw : caster_draws_) draw->begin();
 	keeper_.begin();
 	held_.begin();
 	helmets_.begin();
@@ -241,9 +262,8 @@ int PeopleRenderer::level_at(float dist) const {
 // A walker keeps its level until it is past the edge by the hold, or it flickers there.
 int PeopleRenderer::held_level(uint64_t key, float dist) {
 	const auto at = [&](float d) { return d > blob_from_m_ ? asset_.lods : level_at(d); };
-	const int now = at(dist), place = keeper_.draw_of(key), was = place < 0 ? now : place % (asset_.lods + 1);
-	if (was == now) return now;
-	return now > was ? (at(dist / (1 + level_hold_)) > was ? now : was) : (at(dist * (1 + level_hold_)) < was ? now : was);
+	const int place = keeper_.draw_of(key), was = place < 0 ? -1 : place % (asset_.lods + 1);
+	return held_detail_level(dist, was, level_hold_, at);
 }
 
 int PeopleRenderer::variation_of(uint32_t look, int age) const {
@@ -251,13 +271,20 @@ int PeopleRenderer::variation_of(uint32_t look, int age) const {
 	return bodies.empty() ? 0 : bodies[size_t((look >> VARIATION_SHIFT) % uint32_t(bodies.size()))];
 }
 
-void PeopleRenderer::place(uint64_t key, int v, int level, const Pose &p, uint32_t h, float doing, float phase, float pose_code, bool frightened) {
+void PeopleRenderer::place(uint64_t key, int v, int level, const Pose &p, uint32_t h, float doing, float phase, float pose_code, bool frightened, bool visible) {
 	const PersonVariation &pv = asset_.variations[size_t(v)];
 	const size_t k = slot(size_t(v), level);
-	agent_row(keeper_.place(key, int(k), bufs_[k]), p, 1.f, float(v), level == asset_.lods ? pv.height : doing, frightened ? -(float(h & SEED_MASK) + FRIGHT_MARK) : float(h & SEED_MASK), phase, pose_code);
+	float row[MM_STRIDE];
+	agent_row(row, p, 1.f, float(v), level == asset_.lods ? pv.height : doing, frightened ? -(float(h & SEED_MASK) + FRIGHT_MARK) : float(h & SEED_MASK), phase, pose_code);
+	if (visible) std::memcpy(keeper_.place(key, int(k), bufs_[k]), row, sizeof(row));
+	if (level < asset_.lods) {
+		const AABB world = pv.animated_bounds_ready ? instance_bounds(row, pv.animated_bounds) :
+				AABB(Vector3(-200000, -20000, -200000), Vector3(400000, 40000, 400000));
+		caster_draws_[k]->put(key, row, world);
+	}
 }
 
-void PeopleRenderer::seat(uint64_t key, const Pose &vehicle, const SeatSpot &spot, uint32_t look, float dist, float phase, bool stopped) {
+void PeopleRenderer::seat(uint64_t key, const Pose &vehicle, const SeatSpot &spot, uint32_t look, float dist, float phase, bool stopped, bool visible) {
 	if (draws_.empty()) return;
 	const int pose = int(spot.pose), clip = stopped && stop_clips_[pose] >= 0 ? stop_clips_[pose] : seat_clips_[pose];
 	if (clip < 0) return;
@@ -271,12 +298,13 @@ void PeopleRenderer::seat(uint64_t key, const Pose &vehicle, const SeatSpot &spo
 	at.y += flat * off.y + up * off.z;
 	at.z += -vehicle.fx * off.x - vehicle.fz * up * off.y + vehicle.fz * flat * off.z;
 	const int level = dist > blob_from_m_ ? asset_.lods : level_at(dist);
-	place(PEOPLE_DENSE_KEYS + key, v, level, at, look, 0.f, phase, CLIP_CODE_BASE + float(clip));
+	place(PEOPLE_DENSE_KEYS + key, v, level, at, look, 0.f, phase, CLIP_CODE_BASE + float(clip), false, visible);
 	if (spot.pose == SeatPose::MOTO && level < asset_.lods) agent_row(helmets_.row(key), at, 1.f, float(v), 0.f, float(look & SEED_MASK), phase, CLIP_CODE_BASE + float(clip));
 }
 
 int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCull &view, const PoseSample &at, float radius) {
 	if (draws_.empty()) return 0;
+	bodies_.present(cam, level_hold_, [this](float distance) { return level_at(distance); });
 	const float r2 = radius * radius;
 	const int nv = int(asset_.variations.size()), lods = asset_.lods, levels = lods + 1;
 	const float clock = float(std::fmod(double(f.stamp_ns[POSE_TRAIL - 1]) / NS_PER_S, CLOCK_WRAP_S));
@@ -288,17 +316,18 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		float dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z, d2 = dx * dx + dz * dz;
 		if (d2 > r2) continue;
 		float dist = std::sqrt(d2 + dy * dy);
-		if (!view.sees(Vector3(p.x, p.y, p.z), view_reach_m_)) continue; // their shadow included: this far out of the view it reaches nothing seen
+		const bool visible = view.sees(Vector3(p.x, p.y, p.z), view_reach_m_); // caster admission is independent of this main-view decision
 		const std::vector<int> &bodies = by_age_[rec.age < PED_AGES ? rec.age : int(PedAge::ADULT)];
 		int v = bodies[size_t((rec.look >> VARIATION_SHIFT) % uint32_t(bodies.size()))];
 		const PersonVariation &pv = asset_.variations[size_t(v)];
 		float phase = rec.walked / pv.walk_advance;
 		const int level = held_level(rec.id, dist);
 		const bool blob = level == lods;
-		if (blob) {
+		if (blob && visible) {
 			Pose under = p;
 			under.y += blob_lift_m_;
 			agent_row(blob_buf_.add(), under, blob_radius_m_, 0, 0, 0, 0);
+			blob_keys_.push_back(rec.id);
 		}
 		const int act = rec.act < int(PedAct::COUNT) ? rec.act : 0;
 		float doing = rec.act_share > 0 ? float(act_clips_[act]) + rec.act_share * ACT_SPAN : 0.f;
@@ -308,23 +337,38 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 			doing = -(float(at_it.clip) + rec.act_share * ACT_SPAN);
 			walk = at_it.phase;
 		}
-		place(rec.id, v, level, p, rec.look, doing, walk, 1.f - rec.rest, rec.frightened);
+		place(rec.id, v, level, p, rec.look, doing, walk, 1.f - rec.rest, rec.frightened, visible);
 		if (level == 0 && doing > 0) {
 			if (float *row = held_.row(rec.id, act)) agent_row(row, p, 1.f, float(v), doing, float(rec.look & SEED_MASK), walk, 1.f - rec.rest);
 		}
-		drawn++;
+		drawn += visible ? 1 : 0;
 	}
 	keeper_.sweep([&](int k) -> InstanceRows & { return bufs_[size_t(k)]; });
 	AABB box(Vector3(cam.x - radius, cam.y - AABB_HALF_H, cam.z - radius), Vector3(radius * 2, AABB_HALF_H * 2, radius * 2));
 	for (int v = 0; v < nv; v++)
 		for (int l = 0; l < levels; l++) {
 			size_t k = slot(size_t(v), l);
-			draws_[k].set(scenario_, l < lods ? asset_.variations[size_t(v)].lods[size_t(l)]->get_rid() : asset_.card->get_rid(), l < lods ? material_ : far_material_,
-					bufs_[k], box, l < lods, LAYER_PEOPLE);
+			const PersonVariation &pv = asset_.variations[size_t(v)];
+			const float height = std::fabs(pv.height), radius = height * .25f; // people_far.gdshader CARD_ASPECT=.5
+			const AABB local = l < lods ? pv.animated_bounds : AABB(Vector3(-radius, std::min(0.f, pv.height), -radius), Vector3(2 * radius, height, 2 * radius));
+			draws_[k]->begin();
+			const auto &keys = keeper_.owners(k);
+			for (int i = 0; i < bufs_[k].count(); i++) {
+				const float *row = bufs_[k].data() + int64_t(i) * MM_STRIDE;
+				const AABB world = l < lods && !pv.animated_bounds_ready ? box : instance_bounds(row, local);
+				draws_[k]->put(keys[size_t(i)], row, world);
+			}
+			draws_[k]->finish();
+			caster_draws_[k]->finish();
 		}
-	blob_.set(scenario_, blob_mesh_.rid, blob_material_, blob_buf_, box, false, LAYER_PEOPLE);
-	held_.draw(scenario_, box, LAYER_PEOPLE);
-	helmets_.draw(scenario_, box, LAYER_PEOPLE);
+	blob_.begin();
+	for (int i = 0; i < blob_buf_.count(); i++) {
+		const float *row = blob_buf_.data() + int64_t(i) * MM_STRIDE;
+		blob_.put(blob_keys_[size_t(i)], row, instance_bounds(row, AABB(Vector3(-1, 0, -1), Vector3(2, 0, 2))));
+	}
+	blob_.finish();
+	held_.draw();
+	helmets_.draw();
 	return drawn;
 }
 

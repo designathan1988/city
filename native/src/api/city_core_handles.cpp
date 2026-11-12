@@ -135,7 +135,7 @@ Array CityBuilder::body_handles(int id, int vol, bool points, const Vector3 &eye
 }
 
 // The body as a drag has it, for the ghost; the record's frame goes with it, and why it could not stand.
-Dictionary CityBuilder::body_draft(int id, const Dictionary &spec) const {
+Dictionary CityBuilder::body_draft(int id, const Dictionary &spec, bool encode) const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Dictionary d;
 	const CityState &s = *state_;
@@ -144,11 +144,13 @@ Dictionary CityBuilder::body_draft(int id, const Dictionary &spec) const {
 	const Building &rec = s.buildings.items[id];
 	const std::string done = op_handle(body, s.catalog.tune, edit_of(s, id, spec));
 	const std::string problem = !done.empty() ? done : body_problem(s.catalog.tune, body);
-	ByteWriter w;
-	write_body(w, body);
 	PackedByteArray bytes;
-	bytes.resize(int64_t(w.buf.size()));
-	std::memcpy(bytes.ptrw(), w.buf.data(), w.buf.size());
+	if (encode) {
+		ByteWriter w;
+		write_body(w, body);
+		bytes.resize(int64_t(w.buf.size()));
+		std::memcpy(bytes.ptrw(), w.buf.data(), w.buf.size());
+	}
 	const b40::LotFrame f = b40::lot_frame(rec);
 	d["bytes"] = bytes;
 	d["problem"] = String(problem.c_str());
@@ -158,6 +160,7 @@ Dictionary CityBuilder::body_draft(int id, const Dictionary &spec) const {
 	d["rot"] = rec.rot;
 	d["cx"] = rec.x;
 	d["cz"] = rec.z;
+	d["prepared"] = PreparedBody::make(std::move(body));
 	return d;
 }
 

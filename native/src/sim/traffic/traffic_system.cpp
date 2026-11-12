@@ -6,6 +6,7 @@
 #include "sim/traffic/lane_closures.h"
 
 #include "core/laps.h"
+#include "core/generation.h"
 #include "core/units.h"
 #include "sim/traffic/lane_graph_internal.h"
 
@@ -43,6 +44,8 @@ void despawn_vehicle(CityState &s, int id, bool arrived) {
 	TrafficState &t = s.traffic;
 	Vehicle &v = t.vehicles[size_t(id)];
 	if (!v.alive) return;
+	t.route_admission.cancel_actor(s, id);
+	t.birth_reservations.erase(id);
 	transit::bus_gone(s, id);
 	lot_car_forget(s, id);
 	lorry_gone(s, id);
@@ -51,7 +54,10 @@ void despawn_vehicle(CityState &s, int id, bool arrived) {
 	else if (v.micro && v.ds >= 0) lane_del(s, v.ds * MAX_LANES + v.lane, id);
 	meso_unlink(s, id);
 	micro_remove(t, id);
-	t.route_waste += size_t(v.route.cap);
+	set_pass(t, id, -1);
+	t.route_pool.release(v.route);
+	t.vehicle_index.erase(id);
+	t.live_vehicles.erase(id);
 	v = Vehicle();
 	t.free_vehicles.push_back(id);
 	t.vehicle_count--;
@@ -66,9 +72,12 @@ void reset_traffic(CityState &s) {
 	build_lane_graph(s);
 	reset_pedestrians(s);
 	t.lane_vehicles.assign(t.g.ds.size() * MAX_LANES, {});
+	t.route_counts.reset(t.lane_vehicles.size());
 	t.lane_active.assign(t.g.ds.size() * MAX_LANES, 0);
+	t.lane_active_pos.assign(t.g.ds.size() * MAX_LANES, -1);
 	t.conn_vehicles.assign(t.g.conns.size(), {});
 	t.conn_active.assign(t.g.conns.size(), 0);
+	t.conn_active_pos.assign(t.g.conns.size(), -1);
 	meso_clear(t);
 	t.light_now.assign(t.g.ds.size(), uint8_t(Light::GREEN));
 	reset_admission(s);
@@ -100,6 +109,25 @@ void publish_signals(CityState &s, float cx, float cz, float radius, std::vector
 }
 } // namespace
 
+void refresh_vehicle_pose(CityState &s, int id) {
+	Vehicle &v = s.traffic.vehicles[size_t(id)];
+	const TrafficParams &p = s.catalog.traffic;
+	if (!v.off) {
+		float len = p.classes[int(v.type)].length;
+		Pose front, rear;
+		ends(s, v, v.conn >= 0 ? v.cs : v.s, len, front, rear);
+		V2 axis(front.x - rear.x, front.z - rear.z);
+		v.cur.x = (front.x + rear.x) * 0.5f;
+		v.cur.z = (front.z + rear.z) * 0.5f;
+		v.cur.y = (front.y + rear.y) * 0.5f + p.body_lift_m;
+		V2 h = axis.len() > MIN_AXIS_M ? axis.norm() : V2(front.fx, front.fz);
+		v.cur.rise = axis.len() > MIN_AXIS_M ? (front.y - rear.y) / axis.len() : 0.f;
+		v.cur.fx = h.x;
+		v.cur.fz = h.y;
+	}
+	index_vehicle(s, id);
+}
+
 void publish_poses(CityState &s, int64_t stamp_ns) {
 	const TrafficParams &p = s.catalog.traffic;
 	TrafficState &t = s.traffic;
@@ -110,33 +138,30 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	const float cx = s.camera_x.load(), cz = s.camera_z.load();
 	const float r2 = p.publish_radius_m * p.publish_radius_m;
 	PoseFrame &f = s.poses.back();
+	f.publication = next_generation();
 	f.vehicles.clear();
 	f.people.clear();
-	f.seg_speed_share.assign(s.roads.segs.size(), 1.f);
+	f.seg_speed_share.resize(s.roads.segs.size(), 1.f);
+	for (int seg : f.speed_touched)
+		if (size_t(seg) < f.seg_speed_share.size()) f.seg_speed_share[size_t(seg)] = 1.f;
+	f.speed_touched.clear();
 	std::vector<float> &sum = t.pub_sum, &lim = t.pub_lim;
 	std::vector<int> &count = t.pub_count;
-	sum.assign(s.roads.segs.size(), 0.f);
-	lim.assign(s.roads.segs.size(), 0.f);
-	count.assign(s.roads.segs.size(), 0);
-	for (Vehicle &v : s.traffic.vehicles) {
+	sum.resize(s.roads.segs.size(), 0.f);
+	lim.resize(s.roads.segs.size(), 0.f);
+	count.resize(s.roads.segs.size(), 0);
+	for (int seg : t.pub_touched)
+		if (size_t(seg) < count.size()) { sum[size_t(seg)] = lim[size_t(seg)] = 0.f; count[size_t(seg)] = 0; }
+	t.pub_touched.clear();
+	for (int id : t.live_vehicles) {
+		Vehicle &v = t.vehicles[size_t(id)];
 		if (!v.alive || (!v.micro && !v.off)) continue; // far vehicles are queues and events, not poses
-		if (!v.off) {
-			float len = p.classes[int(v.type)].length;
-			Pose front, rear;
-			ends(s, v, v.conn >= 0 ? v.cs : v.s, len, front, rear);
-			V2 axis(front.x - rear.x, front.z - rear.z);
-			v.cur.x = (front.x + rear.x) * 0.5f;
-			v.cur.z = (front.z + rear.z) * 0.5f;
-			v.cur.y = (front.y + rear.y) * 0.5f + p.body_lift_m;
-			V2 h = axis.len() > MIN_AXIS_M ? axis.norm() : V2(front.fx, front.fz);
-			v.cur.rise = axis.len() > MIN_AXIS_M ? (front.y - rear.y) / axis.len() : 0.f;
-			v.cur.fx = h.x;
-			v.cur.fz = h.y;
-		}
+		refresh_vehicle_pose(s, id);
 		v.trail.push(v.cur, stamp_ns, before);
 		if (v.ds >= 0 && v.ds < int(t.g.ds.size())) {
 			const int seg = t.g.ds[v.ds].seg;
 			if (seg >= 0 && seg < int(sum.size())) {
+				if (count[seg] == 0) t.pub_touched.push_back(seg);
 				sum[seg] += v.v;
 				lim[seg] += t.g.ds[v.ds].speed;
 				count[seg]++;
@@ -151,7 +176,8 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << LOOK_PAINT_SHIFT) | (v.brake ? 1u << LOOK_BRAKE_SHIFT : 0u) | (empty ? 1u << LOOK_EMPTY_SHIFT : 0u) | (uint32_t(v.aboard) << LOOK_ABOARD_SHIFT) | (kerb_door_level(s, v) << LOOK_DOOR_SHIFT);
 		f.vehicles.push_back(rec);
 	}
-	for (Pedestrian &w : s.traffic.peds) {
+	for (int id : t.live_peds) {
+		Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive) continue;
 		w.trail.push(w.cur, stamp_ns, before);
 		if (s.traffic.time < w.down_until) continue; // on the ground: the effects draw the body, not the walker
@@ -171,8 +197,11 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 		rec.age = uint8_t(w.age);
 		f.people.push_back(rec);
 	}
-	for (size_t seg = 0; seg < f.seg_speed_share.size(); seg++)
-		if (count[seg] > 0 && lim[seg] > 0) f.seg_speed_share[seg] = sum[seg] / lim[seg];
+	for (int seg : t.pub_touched)
+		if (lim[size_t(seg)] > 0) {
+			f.seg_speed_share[size_t(seg)] = sum[size_t(seg)] / lim[size_t(seg)];
+			f.speed_touched.push_back(seg);
+		}
 	publish_signals(s, cx, cz, p.publish_radius_m, f.signals);
 	transit::publish(s, f, stamp_ns, before, cx, cz, p.publish_radius_m);
 	publish_parked(s, f);
@@ -186,7 +215,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 void step(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
 	apply_network_changes(s);
-	route_compact(t);
+	t.route_work = WorkBudget::from_count(s.catalog.traffic.route_work_per_step);
 	t.time += dt;
 	t.tick++;
 	update_lights(s);
@@ -194,7 +223,6 @@ void step(CityState &s, float dt) {
 	Laps lap;
 	step_parking_sources(s);
 	t.step_ms[STAGE_BAYS] += lap.lap();
-	t.route_budget = int(s.catalog.traffic.reroute_budget_per_step);
 	step_governor(s, dt);
 	if (s.traffic_levels.vehicles_on) {
 		spawn_vehicles(s, dt);
@@ -208,7 +236,9 @@ void step(CityState &s, float dt) {
 	if (s.traffic_levels.vehicles_on) step_lots(s, dt);
 	t.step_ms[STAGE_LOTS] += lap.lap();
 	transit::step(s, dt);
+	t.route_admission.advance(s, t.route_work); // safe point: transit released its actor/fleet references
 	if (s.traffic_levels.people_on) step_pedestrians(s, dt);
+	t.route_admission.advance(s, t.route_work); // pedestrian references released; the same remaining tick allowance
 	t.step_ms[STAGE_WALKERS] += lap.lap();
 }
 

@@ -46,6 +46,7 @@ func click(p: Vector3) -> void:
 			_say(CityStore.dispatch(&"transit_station", [p, mode]))
 		"track":
 			points.append(CityStore.query(&"transit_snap", [p, mode]))
+			_overlay.draft_changed()
 			if ctl.double_press:
 				finish()
 			else:
@@ -62,6 +63,7 @@ func _pick(p: Vector3) -> void:
 		ctl.hint.emit(tr("hint.transit.lineShort" if ctl.double_press else "hint.transit.noStop"), false)
 	elif stops.is_empty() or stops[stops.size() - 1] != stop:
 		stops.append(stop)
+		_overlay.draft_changed()
 	if ctl.double_press:
 		finish()
 
@@ -76,7 +78,9 @@ func _first_mode() -> int:
 
 
 func hover(p: Vector3) -> void:
-	cursor = p
+	if cursor != p:
+		cursor = p
+		_overlay.draft_changed()
 	if kind == "track" and not points.is_empty():
 		_show_run(p)
 
@@ -92,8 +96,11 @@ func in_progress() -> bool:
 
 
 func cancel() -> void:
+	var changed := not points.is_empty() or not stops.is_empty()
 	points.clear()
 	stops.clear()
+	if changed:
+		_overlay.draft_changed()
 	CityStore.query(&"transit_preview", [PackedVector3Array(), mode])
 
 
@@ -107,6 +114,7 @@ func key(code: int) -> void:
 			points.resize(points.size() - 1)
 		if not stops.is_empty():
 			stops.resize(stops.size() - 1)
+		_overlay.draft_changed()
 
 
 ## Lays the run or makes the line collected so far.

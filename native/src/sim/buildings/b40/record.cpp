@@ -22,6 +22,10 @@ LotFrame lot_frame(const Building &rec) {
 }
 
 void record_mass(const Data &data, const Building &rec, Body &b) {
+	if (rec.body) {
+		const BodyInput source = data.edited->input(rec.body);
+		if (source.mass) { b = *source.mass; return; }
+	}
 	record_body(data, rec, b);
 	resolve_blocks(b);
 }

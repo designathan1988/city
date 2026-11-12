@@ -3,12 +3,18 @@
 #pragma once
 
 #include "render/chunk_jobs.h"
+#include "render/job_request.h"
 
 namespace city {
 
 // What a chunk's mesh holds, kept once the builder is gone (the probes count it).
 struct MeshCount {
 	int64_t triangles = 0, vertices = 0, bytes = 0;
+};
+
+// Optional producer-owned CPU data with exactly the same lifetime and sequence as the mesh result.
+struct MeshPayload {
+	virtual ~MeshPayload() = default;
 };
 
 // A road or furniture chunk's result: the builder its job filled, then the mesh baked from it.
@@ -20,6 +26,7 @@ struct BuiltMesh {
 	MeshBuilder mb;
 	OwnedMesh mesh;
 	MeshCount count;
+	std::unique_ptr<MeshPayload> payload;
 	bool baked = false;
 	int64_t bytes() const { return mb.bytes(); }
 	void bake() {
@@ -33,7 +40,7 @@ struct BuiltMesh {
 // `build(mb)` fills the chunk's builder from the map.
 template <typename Build>
 void submit_mesh_job(const CityState &s, JobPool &pool, JobKey job, int64_t key, float priority, std::mutex &mutex,
-		std::vector<std::shared_ptr<BuiltMesh>> &done, std::unordered_map<int64_t, uint64_t> &requested, uint64_t &seq_counter,
+		Results<BuiltMesh> &done, std::unordered_map<int64_t, uint64_t> &requested, uint64_t &seq_counter,
 		Build &&build) {
 	uint64_t seq;
 	{
@@ -49,8 +56,10 @@ void submit_mesh_job(const CityState &s, JobPool &pool, JobKey job, int64_t key,
 		b->priority = priority;
 		{
 			std::shared_lock<std::shared_mutex> map(s.map_mutex);
-			build(b->mb);
+			if (JobPool::cancelled()) return;
+			build(*b);
 		}
+		if (JobPool::cancelled()) return;
 		std::lock_guard<std::mutex> lk(mutex);
 		done.push_back(std::move(b));
 	});
@@ -61,6 +70,7 @@ void submit_mesh_job(const CityState &s, JobPool &pool, JobKey job, int64_t key,
 // (commit_one).
 class MeshQueue {
 public:
+	void invalidate(JobPool *pool, JobKey job) { cancel_request(pool, job, mutex_, requested_); }
 	int pending() const {
 		std::lock_guard<std::mutex> lk(mutex_);
 		return int(requested_.size() + done_.size());
@@ -76,6 +86,10 @@ protected:
 	virtual void commit_one(BuiltMesh &b) = 0;
 	template <typename Build>
 	void submit_job(const CityState &s, JobPool &pool, JobKey job, int64_t key, float priority, Build &&build) {
+		submit_result(s, pool, job, key, priority, [build = std::forward<Build>(build)](BuiltMesh &result) { build(result.mb); });
+	}
+	template <typename Build>
+	void submit_result(const CityState &s, JobPool &pool, JobKey job, int64_t key, float priority, Build &&build) {
 		submit_mesh_job(s, pool, job, key, priority, mutex_, done_, requested_, seq_, std::forward<Build>(build));
 	}
 	void forget(int64_t key) { // the chunk left: a result still on its way is dropped

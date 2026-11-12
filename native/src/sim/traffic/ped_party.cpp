@@ -104,14 +104,16 @@ void add_company(CityState &s, int leader) {
 	w.cur.fx = l.cur.fx;
 	w.cur.fz = l.cur.fz;
 	l.mate = id;
-	t.peds[size_t(id)] = std::move(w);
+	commit_walker(t, id, std::move(w));
+	index_walker(s, id);
 	t.ped_count++;
 }
 
 void follow_leaders(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
-	for (Pedestrian &w : t.peds) {
+	for (int id : t.live_peds) {
+		Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive || w.with < 0) continue;
 		const Pedestrian &l = t.peds[size_t(w.with)];
 		const bool held = held_by_fright(t, w);
@@ -134,6 +136,7 @@ void follow_leaders(CityState &s, float dt) {
 		w.rest = clampf(w.rest + (standing ? dt : -dt) / p.ped_rest_fade_s, 0.f, 1.f);
 		step_act(s.traffic, p, w, dt);
 		ease_facing(s.traffic, p, w, dt);
+		index_walker(s, id);
 	}
 }
 

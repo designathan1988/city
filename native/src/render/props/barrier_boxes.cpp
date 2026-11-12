@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 using namespace godot;
 
@@ -19,6 +20,30 @@ const Vector3 UP(0, 1, 0);
 struct Piece {
 	float x = 0, z = 0, dx = 1, dz = 0, length = 0;
 };
+
+// Invert the actual monotone float station positions, rather than re-spacing a clipped run. Binary boundaries keep
+// the original global station numbers and their exact endpoint/centre arithmetic, including chunk-edge ownership.
+template <typename Point>
+std::pair<int, int> owned_stations(int64_t key, int begin, int end, Point &&point) {
+	auto first = [](int lo, int hi, const auto &after) {
+		while (lo < hi) {
+			const int mid = lo + (hi - lo) / 2;
+			if (after(mid)) hi = mid; else lo = mid + 1;
+		}
+		return lo;
+	};
+	for (int axis = 0; axis < 2 && begin < end; axis++) {
+		const float low = (axis == 0 ? key_x(key) : key_y(key)) * CHUNK, high = low + CHUNK;
+		if (point(begin, axis) <= point(end - 1, axis)) {
+			begin = first(begin, end, [&](int k) { return point(k, axis) >= low; });
+			end = first(begin, end, [&](int k) { return point(k, axis) >= high; });
+		} else {
+			begin = first(begin, end, [&](int k) { return point(k, axis) < high; });
+			end = first(begin, end, [&](int k) { return point(k, axis) < low; });
+		}
+	}
+	return { begin, end };
+}
 
 // A box along (dx, dz), its foot at height y.
 void box(PackedFloat32Array &buf, int64_t key, const Piece &p, float y, float length, float width, float height, const BarrierFinish &f) {
@@ -70,14 +95,25 @@ void posts(const Run &r, BarrierKind kind, float ax, float az, float bx, float b
 	const float size = guard ? B.guard_post_m : fence ? B.fence_post_m : B.rail_post_m;
 	const BarrierFinish &col = guard ? B.guard_post : fence ? B.fence : B.railing;
 	const int n = std::max(1, int(std::lround(len / step)));
-	for (int k = first ? 0 : 1; k <= n; k++) {
+	auto station = [=](int k, int axis) {
+		const float t = float(k) / n;
+		return axis == 0 ? ax + (bx - ax) * t : az + (bz - az) * t;
+	};
+	const auto own = owned_stations(r.key, first ? 0 : 1, n + 1, station);
+	for (int k = own.first; k < own.second; k++) {
+		if (JobPool::cancelled()) return;
 		const float t = float(k) / n;
 		const Piece p{ ax + (bx - ax) * t, az + (bz - az) * t, dx, dz, 0 };
 		box(r.buf, r.key, p, r.ground(p.x, p.z) - B.sink, size, size, height + B.sink, col);
 	}
 	if (kind != BarrierKind::RAILING) return;
 	const int bars = std::max(1, int(std::lround(len / B.bar_step_m)));
-	for (int k = 1; k < bars; k++) {
+	const auto own_bars = owned_stations(r.key, 1, bars, [=](int k, int axis) {
+		const float t = float(k) / bars;
+		return axis == 0 ? ax + (bx - ax) * t : az + (bz - az) * t;
+	});
+	for (int k = own_bars.first; k < own_bars.second; k++) {
+		if (JobPool::cancelled()) return;
 		const float t = float(k) / bars;
 		const Piece p{ ax + (bx - ax) * t, az + (bz - az) * t, dx, dz, 0 };
 		box(r.buf, r.key, p, r.ground(p.x, p.z) + B.bar_foot_m, B.bar_thin_m, B.bar_thin_m, B.bar_top_m - B.bar_foot_m, B.railing);
@@ -87,10 +123,17 @@ void posts(const Run &r, BarrierKind kind, float ax, float az, float bx, float b
 void place_run(const Run &r, const Barrier &b) {
 	const bool kerb = b.kind == BarrierKind::GUARDRAIL || b.kind == BarrierKind::RAILING;
 	for (size_t i = 0; i + 3 < b.pts.size(); i += 2) {
+		if (JobPool::cancelled()) return;
 		const float ax = b.pts[i], az = b.pts[i + 1], bx = b.pts[i + 2], bz = b.pts[i + 3], len = std::hypot(bx - ax, bz - az);
 		if (len < r.B.piece_min_m) continue;
 		const int pieces = std::max(1, int(std::ceil(len / r.B.piece_m)));
-		for (int k = 0; k < pieces; k++) {
+		const auto own = owned_stations(r.key, 0, pieces, [=](int k, int axis) {
+			const float t0 = float(k) / pieces, t1 = float(k + 1) / pieces;
+			const float from = axis == 0 ? ax : az, to = axis == 0 ? bx : bz;
+			return ((from + (to - from) * t0) + (from + (to - from) * t1)) * 0.5f;
+		});
+		for (int k = own.first; k < own.second; k++) {
+			if (JobPool::cancelled()) return;
 			const float t0 = float(k) / pieces, t1 = float(k + 1) / pieces;
 			const float x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0, x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
 			const Piece p{ (x0 + x1) * 0.5f, (z0 + z1) * 0.5f, (bx - ax) / len, (bz - az) / len, len / pieces };

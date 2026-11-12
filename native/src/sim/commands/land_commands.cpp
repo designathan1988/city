@@ -44,12 +44,9 @@ void lay_river(CityState &s, const BrushDab &d) {
 	cut_trees_at(s, d.x, d.z, d.radius);
 	if (index.empty()) return;
 	double x0 = d.x - d.radius, z0 = d.z - d.radius, x1 = d.x + d.radius, z1 = d.z + d.radius;
-	auto mark = [x0, z0, x1, z1](CityState &st) { for_chunks(x0, z0, x1, z1, [&](int64_t k) { st.log.water_chunks.push_back(k); }); };
-	mark(s);
-	j_nature(s, index.size() * (sizeof(uint32_t) + sizeof(float)), [index, before, level, mark](CityState &st, bool fwd) {
-		for (size_t i = 0; i < index.size(); i++) st.terrain.water[index[i]] = fwd ? level : before[i];
-		mark(st);
-	});
+	WaterEdit edit{ std::move(index), std::move(before), {}, level, { x0, z0, x1, z1 } };
+	nature_water_changed(s, edit);
+	j_nature(s, std::move(edit));
 }
 
 EditResult terrain_dab(CityState &s, double x, double z, double radius, double strength, double dt, int mode, double hardness) {
@@ -94,16 +91,13 @@ void unflood(CityState &s) {
 		index.push_back(i);
 		before.push_back(t.water[i]);
 		after.push_back(was);
-		t.water[i] = was;
+		t.write_water(i, was);
 	}
 	if (index.empty()) return;
 	float h = s.map_half;
-	auto mark = [h](CityState &st) { for_chunks(-h, -h, h, h, [&](int64_t k) { st.log.water_chunks.push_back(k); }); };
-	mark(s);
-	j_nature(s, index.size() * (sizeof(uint32_t) + 2 * sizeof(float)), [index, before, after, mark](CityState &st, bool fwd) {
-		for (size_t i = 0; i < index.size(); i++) st.terrain.water[index[i]] = fwd ? after[i] : before[i];
-		mark(st);
-	});
+	WaterEdit edit{ std::move(index), std::move(before), std::move(after), {}, { -h, -h, h, h } };
+	nature_water_changed(s, edit);
+	j_nature(s, std::move(edit));
 }
 
 std::string lot_frame(const CityState &s, double ax, double az, double bx, double bz, Building &b) {

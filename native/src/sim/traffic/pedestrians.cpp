@@ -40,16 +40,20 @@ void onto_sidewalk(CityState &s, Pedestrian &w) {
 	w.u = clampf((w.cur.x - mid.x) * mid.fz - (w.cur.z - mid.z) * mid.fx, -half, half);
 }
 
-void despawn(TrafficState &t, int id, bool arrived) {
+void despawn(CityState &s, int id, bool arrived) {
+	TrafficState &t = s.traffic;
+	t.route_admission.cancel_actor(s, id, RouteActorKind::PEDESTRIAN);
 	off_crosswalk(t, id);
 	free_kerb_place(t, id);
 	const int mate = t.peds[id].mate, with = t.peds[id].with;
-	t.ped_waste += size_t(t.peds[id].route.cap);
+	t.ped_pool.release(t.peds[id].route);
+	t.walker_index.erase(id);
+	t.live_peds.erase(id);
 	t.peds[id] = Pedestrian();
 	if (with >= 0) t.peds[size_t(with)].mate = -1;
 	if (mate >= 0) {
 		t.peds[size_t(mate)].with = -1;
-		despawn(t, mate, arrived);
+		despawn(s, mate, arrived);
 	}
 	t.free_peds.push_back(id);
 	t.ped_count--;
@@ -114,8 +118,15 @@ void at_node(CityState &s, int id) {
 	TrafficState &t = s.traffic;
 	Pedestrian &w = t.peds[id];
 	const int n = toward(s, w);
-	if (w.ri + 1 >= w.route.len) { despawn(t, id, true); return; }
+	if (w.escape_route_request) return; // retain this node until its captured replacement is whole
+	if (!walker_route_goal_current(s, w)) {
+		if (t.time < w.panic_until) flee_on(s, w, n);
+		if (!w.escape_route_request) despawn(s, id, false);
+		return;
+	}
+	if (w.ri + 1 >= w.route.len) { despawn(s, id, true); return; }
 	if (t.time < w.panic_until) flee_on(s, w, n);
+	if (w.escape_route_request) return;
 	int next = seg_between(s, n, route_at(t.ped_pool, w.route, w.ri + 1)), side_out = 0;
 	const bool last = w.ri + 2 >= w.route.len;
 	int want = last ? w.goal_side : -1;
@@ -124,7 +135,7 @@ void at_node(CityState &s, int id) {
 		if (plan_corner(s, n, w.seg, w.side, next, -1, w.ways, stays) >= 0) want = 1 - stays;
 	}
 	int k = next < 0 ? -1 : plan_corner(s, n, w.seg, w.side, next, want, w.ways, side_out);
-	if (k < 0) { despawn(t, id, false); return; }
+	if (k < 0) { despawn(s, id, false); return; }
 	const RoadSegment &ng = s.roads.segs[next];
 	w.ri++;
 	w.seg = next;
@@ -146,10 +157,14 @@ void walk(CityState &s, int id, float dt) {
 	TrafficState &t = s.traffic;
 	Pedestrian &w = t.peds[id];
 	if (w.mode == PedMode::KERB) return; // a kerb stop moves it
-	if (!walkable(s, w.seg)) { despawn(t, id, false); return; }
+	if (!walkable(s, w.seg)) { despawn(s, id, false); return; }
 	if (t.time < w.down_until || t.time < w.flinch_until) return; // knocked down by a blow (the render shows the body) or bent over a wound
 	if (held_by_fright(t, w)) return;
 	turn_from_bang(s, w);
+	if (w.escape_route_request && w.mode == PedMode::SIDEWALK) {
+		const auto &segment = s.roads.segs[size_t(w.seg)];
+		if (w.dir == 0 ? w.s >= arc_hi(segment) : w.s <= arc_lo(segment)) { w.pace = 0; return; } // no in-place walked animation while the corner waits
+	}
 	if (w.mode == PedMode::LOT) {
 		walk_lot(s, id, dt);
 		return;
@@ -184,6 +199,7 @@ void walk(CityState &s, int id, float dt) {
 	}
 	const RoadSegment &g = s.roads.segs[w.seg];
 	w.s += w.dir == 0 ? step : -step;
+	if (w.door.building >= 0 && !door_current(s,w.door)) w.door = {};
 	if (w.door.building >= 0 && (w.dir == 0 ? w.s >= w.door.s : w.s <= w.door.s)) {
 		go_in(s, id);
 		return;
@@ -210,10 +226,10 @@ void pose(const CityState &s, Pedestrian &w) {
 
 } // namespace
 
-void ped_gone(CityState &s, int id) { despawn(s.traffic, id, false); }
+void ped_gone(CityState &s, int id) { despawn(s, id, false); }
 
 void remove_pedestrian(CityState &s, int id) {
-	if (id >= 0 && id < int(s.traffic.peds.size()) && s.traffic.peds[size_t(id)].alive) despawn(s.traffic, id, false);
+	if (id >= 0 && id < int(s.traffic.peds.size()) && s.traffic.peds[size_t(id)].alive) despawn(s, id, false);
 }
 
 void down_pedestrian(CityState &s, int id, float seconds) {
@@ -223,10 +239,14 @@ void down_pedestrian(CityState &s, int id, float seconds) {
 
 void reset_pedestrians(CityState &s) {
 	TrafficState &t = s.traffic;
+	t.route_admission.cancel_walk(s);
+	t.pedestrian_birth.reset(); t.pedestrian_birth_remaining = 0;
+	t.walker_birth_reservations = WalkerBirthReservations();
 	t.peds.clear();
+	t.live_peds.clear();
+	t.walker_index.clear();
 	t.free_peds.clear();
 	t.ped_pool.clear();
-	t.ped_waste = 0;
 	t.ped_count = 0;
 	t.node_crossers.assign(s.roads.nodes.size(), {});
 	t.shocks.clear();
@@ -236,11 +256,12 @@ void reset_pedestrians(CityState &s) {
 	t.crowd_keys.clear();
 	t.node_walkers.clear();
 	t.node_keys.clear();
+	t.crowd_scratch.reset();
 	t.furniture.clear();
 	t.doors.clear();
 	t.door_seen.clear();
 	t.door_todo.clear();
-	t.door_sides.clear();
+	t.door_sides.clear(); t.door_side_pos.clear();
 	t.doors_in = t.doors_out = 0;
 }
 
@@ -249,7 +270,7 @@ void drop_pedestrians_on_seg(CityState &s, int seg) {
 	for (int id = 0; id < int(t.peds.size()); id++) {
 		const Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive || (w.seg != seg && w.cross_seg != seg)) continue;
-		despawn(t, id, false);
+		despawn(s, id, false);
 	}
 }
 
@@ -261,7 +282,6 @@ void step_pedestrians(CityState &s, float dt) {
 	const double target = people_wanted(s, now) * s.traffic_levels.people * s.traffic_levels.population;
 	const bool filling = t.ped_count < p.fill_share * target; // a street just opened: the crowd is on it already
 	int spawns = filling ? int(p.ped_fill_per_step) : (t.ped_count < target ? int(p.ped_spawn_per_step) : 0);
-	spawns = std::min(spawns, int(p.ped_routes_per_step));
 	read_doors(s);
 	look_at_shocks(s);
 	const float cx = s.camera_x.load(), cz = s.camera_z.load();
@@ -273,7 +293,7 @@ void step_pedestrians(CityState &s, float dt) {
 		if (!w.alive) continue;
 		const float dx = w.cur.x - cx, dz = w.cur.z - cz;
 		if (dx * dx + dz * dz > out2 && w.mode != PedMode::KERB) { // out of the walking window: gone, not lost
-			despawn(t, id, false);
+			despawn(s, id, false);
 			continue;
 		}
 		if (w.with >= 0) continue; // its leader's step moves it
@@ -285,9 +305,10 @@ void step_pedestrians(CityState &s, float dt) {
 		step_act(t, p, after, dt);
 		pose(s, after);
 		ease_facing(t, p, after, dt);
+		index_walker(s, id);
 	}
 	follow_leaders(s, dt);
-	for (int k = 0; k < spawns; k++) spawn_walker(s, now, !filling);
+	spawn_walkers(s, now, !filling, spawns);
 }
 
 } // namespace traffic

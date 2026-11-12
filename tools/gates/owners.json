@@ -2,71 +2,972 @@
   "_doc": "Registry of single owners. Each concept has exactly one owner (file + symbol). The gate fails if the owner symbol is missing, or if a pattern that re-implements the concept appears in any other file. Values that designers tune live in data tables (project/data); see CLAUDE.md > Definicoes.",
   "concepts": [
     {
+      "id": "rail_path_search",
+      "owner": "native/src/sim/transit/rail_path.cpp",
+      "symbol": "rail_path",
+      "forbidden_elsewhere": [
+        "\\bstd::vector<V2>\\s+rail_path\\s*\\([^;]*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "transport_spatial_inputs",
+      "owner": "native/src/sim/transit/transit_index.cpp",
+      "symbol": "TransitData::changed",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+TransitData::changed\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "junction_mark_inputs",
+      "owner": "native/src/api/city_core_junction_view.cpp",
+      "symbol": "CityCore::prepare_junction_marks",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+CityCore::prepare_junction_marks\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "ui_projection_identity",
+      "owner": "project/game/camera/city_camera.gd",
+      "symbol": "projection_key",
+      "forbidden_elsewhere": [
+        "\\bfunc\\s+projection_key\\s*\\("
+      ],
+      "scope": [
+        "project/"
+      ]
+    },
+    {
+      "id": "shared_street_placement",
+      "owner": "native/src/sim/street/street_placement.cpp",
+      "symbol": "StreetPlacement::get",
+      "forbidden_elsewhere": [
+        "\\bsegment_furniture\\s*\\([^;{}]*FURNITURE_ALL"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "player_lot_geometry",
+      "owner": "native/src/sim/lots/lot_book_index.cpp",
+      "symbol": "LotBook::prepare",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+LotBook::prepare\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "history_retained_allocations",
+      "owner": "native/src/sim/commands/edit_memory.cpp",
+      "symbol": "account_entry",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+account_entry\\s*\\([^;{}]*\\)\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
       "id": "building_height",
       "owner": "native/src/sim/simulation/growth.cpp",
       "symbol": "body_floors",
-      "forbidden_elsewhere": ["floors\\s*\\*", "\\*\\s*\\w*floors\\b", "floor_h\\s*\\*", "\\*\\s*floor_h\\b"],
-      "scope": ["native/src/", "project/game/", "project/ui/", "project/render/"]
+      "forbidden_elsewhere": [
+        "floors\\s*\\*",
+        "\\*\\s*\\w*floors\\b",
+        "floor_h\\s*\\*",
+        "\\*\\s*floor_h\\b"
+      ],
+      "scope": [
+        "native/src/",
+        "project/game/",
+        "project/ui/",
+        "project/render/"
+      ]
     },
     {
       "id": "floor_height",
       "owner": "native/src/sim/buildings/b40/types.h",
       "symbol": "level_h",
-      "forbidden_elsewhere": ["\\.floor_h\\b"],
-      "allow": ["native/src/sim/catalog/", "native/src/api/catalog_loader.cpp"],
-      "scope": ["native/src/"]
+      "forbidden_elsewhere": [
+        "\\.floor_h\\b"
+      ],
+      "allow": [
+        "native/src/sim/catalog/",
+        "native/src/api/catalog_loader.cpp"
+      ],
+      "scope": [
+        "native/src/"
+      ]
     },
     {
       "id": "lot_rule",
       "owner": "native/src/sim/citygen/lot_gen.cpp",
       "symbol": "LotStrips::lot_free",
-      "forbidden_elsewhere": ["\\.building\\s*<\\s*0", "building\\s*==\\s*-1"],
+      "forbidden_elsewhere": [
+        "\\.building\\s*<\\s*0",
+        "building\\s*==\\s*-1"
+      ],
       "allow": [],
-      "scope": ["native/src/"]
+      "scope": [
+        "native/src/"
+      ]
     },
     {
       "id": "unsaved_changes",
       "owner": "native/src/sim/state/city_state.h",
       "symbol": "revision",
-      "forbidden_elsewhere": ["\\b(unsaved|is_dirty|has_changes|dirty_flag)\\b"],
-      "scope": ["native/src/", "project/game/", "project/ui/"]
+      "forbidden_elsewhere": [
+        "\\b(unsaved|is_dirty|has_changes|dirty_flag)\\b"
+      ],
+      "scope": [
+        "native/src/",
+        "project/game/",
+        "project/ui/"
+      ]
     },
     {
       "id": "facade_rules",
       "owner": "native/src/sim/buildings/b40/facade_compose.cpp",
       "symbol": "compose_facades",
-      "forbidden_elsewhere": ["\\bbay_count\\b|round\\(\\s*\\w*len\\w*\\s*/\\s*\\w*bay"],
-      "allow": ["project/render/shaders/building.gdshader"],
-      "scope": ["native/src/", "project/render/"]
+      "forbidden_elsewhere": [
+        "\\bbay_count\\b|round\\(\\s*\\w*len\\w*\\s*/\\s*\\w*bay"
+      ],
+      "allow": [
+        "project/render/shaders/building.gdshader"
+      ],
+      "scope": [
+        "native/src/",
+        "project/render/"
+      ]
     },
     {
       "id": "street_furniture",
       "owner": "native/src/sim/roads/street_furniture.cpp",
       "symbol": "segment_furniture",
-      "forbidden_elsewhere": ["\\b(free_width|kerb_clear|corner_clear|crossing_clear|pole_clear|hydrant_clear|furniture_clear|pit|mount_height|bin_spacing)_m\\b", "\\bunilateral_ratio\\b"],
-      "allow": ["native/src/sim/catalog/furniture_types.h", "native/src/api/furniture_loader.cpp", "native/src/sim/roads/street_furniture_posts.cpp", "native/src/sim/street/street_spots.cpp"],
-      "scope": ["native/src/"]
+      "forbidden_elsewhere": [
+        "\\b(free_width|kerb_clear|corner_clear|crossing_clear|pole_clear|hydrant_clear|furniture_clear|pit|mount_height|bin_spacing)_m\\b",
+        "\\bunilateral_ratio\\b"
+      ],
+      "allow": [
+        "native/src/sim/catalog/furniture_types.h",
+        "native/src/api/furniture_loader.cpp",
+        "native/src/sim/roads/street_furniture_posts.cpp",
+        "native/src/sim/street/street_spots.cpp"
+      ],
+      "scope": [
+        "native/src/"
+      ]
     },
     {
       "id": "road_charge",
       "owner": "native/src/sim/economy/road_economy.cpp",
       "symbol": "charge_for",
-      "forbidden_elsewhere": ["MIN_CHARGE", "economy_refund_share"],
-      "scope": ["native/src/"]
+      "forbidden_elsewhere": [
+        "MIN_CHARGE",
+        "economy_refund_share"
+      ],
+      "scope": [
+        "native/src/"
+      ]
     },
     {
       "id": "money_format",
       "owner": "project/game/store/formatters.gd",
       "symbol": "format_money",
-      "forbidden_elsewhere": ["\"\\$\"\\s*\\+", "%\\.2f", "R\\$"],
-      "scope": ["project/ui/", "project/game/"]
+      "forbidden_elsewhere": [
+        "\"\\$\"\\s*\\+",
+        "%\\.2f",
+        "R\\$"
+      ],
+      "scope": [
+        "project/ui/",
+        "project/game/"
+      ]
     },
     {
       "id": "game_state",
       "owner": "project/game/store/city_store.gd",
       "symbol": "snapshot",
-      "forbidden_elsewhere": ["\\bvar\\s+(money|population|residents|happiness|demand|game_time|speed)\\b"],
-      "scope": ["project/"]
+      "forbidden_elsewhere": [
+        "\\bvar\\s+(money|population|residents|happiness|demand|game_time|speed)\\b"
+      ],
+      "scope": [
+        "project/"
+      ]
+    },
+    {
+      "id": "growth_candidate_selection",
+      "owner": "native/src/sim/simulation/growth_candidates.cpp",
+      "symbol": "GrowthQueue::nearest",
+      "forbidden_elsewhere": [
+        "\\bGrowthPick\\s+GrowthQueue::nearest\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "road_chain_metrics",
+      "owner": "native/src/sim/roads/road_metrics.cpp",
+      "symbol": "RoadMetrics::get",
+      "forbidden_elsewhere": [
+        "\\bRoadMetric\\s+RoadMetrics::get\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "named_plate_preparation",
+      "owner": "native/src/sim/street/named_plates.cpp",
+      "symbol": "NamedPlates::append",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+NamedPlates::append\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "prepared_body_mass_cache",
+      "owner": "native/src/render/buildings/body_cache.cpp",
+      "symbol": "BodyCache::get",
+      "forbidden_elsewhere": [
+        "\\bBodyCache::get\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "connector_commitment_membership",
+      "owner": "native/src/sim/traffic/lane_list.cpp",
+      "symbol": "set_pass",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+set_pass\\s*\\([^;]*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "signal_tick_selection",
+      "owner": "native/src/sim/traffic/signal_timing.cpp",
+      "symbol": "update_lights",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+update_lights\\s*\\([^;]*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "puff_frame_flush",
+      "owner": "native/src/render/effects/puffs.cpp",
+      "symbol": "Puffs::flush",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+Puffs::flush\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "crowd_junction_selection",
+      "owner": "native/src/sim/traffic/ped_crowd.cpp",
+      "symbol": "see_junction",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+see_junction\\s*\\([^;]*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "fog_paint_index",
+      "owner": "native/src/sim/nature/fog_paint.cpp",
+      "symbol": "FogPaint::window",
+      "forbidden_elsewhere": [
+        "\\bFogPaint::window\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "mobile_actor_bounds",
+      "owner": "native/src/sim/traffic/actor_index.cpp",
+      "symbol": "ActorIndex::put",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+ActorIndex::put\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "damage_record_indices",
+      "owner": "native/src/sim/demolition/damage_state.cpp",
+      "symbol": "DamageState::restore",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+DamageState::restore\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "blast_response_preparation",
+      "owner": "native/src/sim/demolition/blast_model.cpp",
+      "symbol": "prepare_responses",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+prepare_responses\\s*\\([^;]*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "seeded_street_chains",
+      "owner": "native/src/sim/street/street_chains.cpp",
+      "symbol": "StreetChains::get",
+      "forbidden_elsewhere": [
+        "\\bStreetChains::get\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "retained_body_presentation",
+      "owner": "native/src/render/agents/body_renderer.cpp",
+      "symbol": "BodyRenderer::present",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+BodyRenderer::present\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "ordered_detail_hysteresis",
+      "owner": "native/src/render/detail_hold.h",
+      "symbol": "held_detail_level",
+      "forbidden_elsewhere": [
+        "\\bint\\s+held_detail_level\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "static_instance_publication",
+      "owner": "native/src/render/static_instance_draw.h",
+      "symbol": "StaticInstanceDraw",
+      "forbidden_elsewhere": [
+        "\\bstruct\\s+StaticInstanceDraw\\b"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "spatial_instance_publication",
+      "owner": "native/src/render/spatial_instance_draw.h",
+      "symbol": "SpatialInstanceDraw",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+SpatialInstanceDraw\\b"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "projected_vertical_geometry_error",
+      "owner": "native/src/render/projected_error.h",
+      "symbol": "ProjectedErrorView",
+      "forbidden_elsewhere": [
+        "\\bstruct\\s+ProjectedErrorView\\b"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "prepared_ui_body",
+      "owner": "native/src/api/prepared_body.h",
+      "symbol": "PreparedBody",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+PreparedBody\\s*:\\s*public"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "yard_pose_index",
+      "owner": "native/src/sim/traffic/way_space.h",
+      "symbol": "PoseTable",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+PoseTable\\b"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "immutable_floor_preparation",
+      "owner": "native/src/sim/buildings/interior/interior.cpp",
+      "symbol": "Interior::prepare",
+      "forbidden_elsewhere": [
+        "\\bInterior::prepare\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "immutable_body_derivative_cache",
+      "owner": "native/src/render/buildings/body_cache.cpp",
+      "symbol": "BodyCache::rooms",
+      "forbidden_elsewhere": [
+        "\\bBodyCache::rooms\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "regional_plant_ground",
+      "owner": "native/src/sim/nature/plant_ground.cpp",
+      "symbol": "PlantGroundCache::get",
+      "forbidden_elsewhere": [
+        "\\bPlantGroundCache::get\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "regional_shore_publication",
+      "owner": "native/src/render/water/shore_field.cpp",
+      "symbol": "ShoreField::publish",
+      "forbidden_elsewhere": [
+        "\\bShoreField::publish\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "lane_closure_indices",
+      "owner": "native/src/sim/traffic/lane_closures.cpp",
+      "symbol": "LaneClosures::add",
+      "forbidden_elsewhere": [
+        "\\bLaneClosures::(?:add|remove|ahead)\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "ranked_live_ids",
+      "owner": "native/src/core/ranked_ids.h",
+      "symbol": "RankedIds",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+RankedIds\\b"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "route_page_ownership",
+      "owner": "native/src/sim/traffic/route_arena.cpp",
+      "symbol": "RoutePool::set",
+      "forbidden_elsewhere": [
+        "\\bRoutePool::(?:allocate|release|set|clear)\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "transit_track_continuation",
+      "owner": "native/src/render/transit/transit_parts.cpp",
+      "symbol": "transit_track_step",
+      "forbidden_elsewhere": [
+        "\\bTransitTrackStep\\s+transit_track_step\\s*\\([^;]*\\)\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "transit_first_line_colour",
+      "owner": "native/src/sim/transit/transit_index.cpp",
+      "symbol": "TransitData::rebuild_colours",
+      "forbidden_elsewhere": [
+        "\\bTransitData::rebuild_colours\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "overlay_colour_ranges",
+      "owner": "native/src/render/overlays/overlay_renderer.cpp",
+      "symbol": "OverlayRenderer::update_colours",
+      "forbidden_elsewhere": [
+        "\\bOverlayRenderer::(?:update_colours|rgba8)\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "ordinal_rectangle_index",
+      "owner": "native/src/core/ordinal_bounds_index.h",
+      "symbol": "OrdinalBoundsIndex",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+OrdinalBoundsIndex\\b"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "reference_top_merge_order",
+      "owner": "native/src/sim/commands/body_survey.cpp",
+      "symbol": "TopIndex",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+TopIndex\\b"
+      ],
+      "scope": [
+        "native/src/sim/commands/"
+      ]
+    },
+    {
+      "id": "reference_target_witness",
+      "owner": "native/src/api/city_core_survey.cpp",
+      "symbol": "current_reference_target",
+      "forbidden_elsewhere": [
+        "\\bbool\\s+current_reference_target\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "chunk_completion_order",
+      "owner": "native/src/render/chunk_results.h",
+      "symbol": "ChunkResults / CompletedResults",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+ChunkResults\\b",
+        "\\bclass\\s+CompletedResults\\b"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "serialization_byte_pages",
+      "owner": "native/src/core/byte_pages.h",
+      "symbol": "BytePages",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+BytePages\\b"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "compressed_save_publication",
+      "owner": "native/src/api/save_file.cpp",
+      "symbol": "write_save_file",
+      "forbidden_elsewhere": [
+        "\\bbool\\s+write_save_file\\s*\\([^;]*\\)\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "chunk_bake_terminal_receipt",
+      "owner": "native/src/render/chunk_jobs.h",
+      "symbol": "BakeReceipt",
+      "forbidden_elsewhere": [
+        "\\bstruct\\s+BakeReceipt\\b"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "immutable_model_construction_inputs",
+      "owner": "native/src/sim/buildings/b40/model.h",
+      "symbol": "ModelInputs",
+      "forbidden_elsewhere": [
+        "\\bstruct\\s+ModelInputs\\b"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "reference_immutable_input_views",
+      "owner": "native/src/sim/commands/survey_input.h",
+      "symbol": "SurveyTriangles / SurveyPixels",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+SurveyTriangles\\b",
+        "\\bstruct\\s+SurveyPixels\\b"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "prepared_reference_identity",
+      "owner": "native/src/api/prepared_reference.h",
+      "symbol": "PreparedReference",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+PreparedReference\\b"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "persistent_scalar_page_versions",
+      "owner": "native/src/core/paged_array.h",
+      "symbol": "PagedArray",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+PagedArray\\b"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "spatial_scalar_grid_pages",
+      "owner": "native/src/core/paged_grid.h",
+      "symbol": "PagedGrid",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+PagedGrid\\b"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "render_request_retirement",
+      "owner": "native/src/render/job_request.h",
+      "symbol": "cancel_request",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+cancel_request\\s*\\([^;]*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "body_authored_fields",
+      "owner": "native/src/sim/buildings/b40/body_content.h",
+      "symbol": "namespace city::b40::body_content",
+      "forbidden_elsewhere": [
+        "\\bnamespace\\s+city::b40::body_content\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "lot_disc_rows",
+      "owner": "native/src/sim/citygen/lot_gen.h",
+      "symbol": "void disc_rows",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+disc_rows\\s*\\([^;]*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "lot_raster_base",
+      "owner": "native/src/sim/citygen/lot_raster.h",
+      "symbol": "class LotRasterCache",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+LotRasterCache\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "route_connector_projection",
+      "owner": "native/src/sim/traffic/lane_graph.cpp",
+      "symbol": "prepare_route_connections",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+prepare_route_connections\\s*\\([^;]*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "route_count_input",
+      "owner": "native/src/sim/traffic/route_counts.h",
+      "symbol": "class RouteCounts",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+RouteCounts\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "stable_scalar_chunks",
+      "owner": "native/src/core/stable_chunks.h",
+      "symbol": "class StableChunks",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+StableChunks\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "process_generation",
+      "owner": "native/src/core/generation.h",
+      "symbol": "next_generation",
+      "forbidden_elsewhere": [
+        "\\buint64_t\\s+next_generation\\s*\\([^;]*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "traffic_astar_engine",
+      "owner": "native/src/sim/traffic/astar.h",
+      "symbol": "struct AStarScratch",
+      "forbidden_elsewhere": [
+        "\\bstruct\\s+AStarScratch\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "routing_adjacency_cursor",
+      "owner": "native/src/sim/traffic/lane_graph_types.h",
+      "symbol": "next_route_connection",
+      "forbidden_elsewhere": [
+        "\\bConnRead\\s+next_route_connection\\s*\\([^;]*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "work_credit_counter",
+      "owner": "native/src/core/work_budget.h",
+      "symbol": "struct WorkBudget",
+      "forbidden_elsewhere": [
+        "\\bstruct\\s+WorkBudget\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "vehicle_route_input_search",
+      "owner": "native/src/sim/traffic/route_search.h",
+      "symbol": "class RoadRouteSearch",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+RoadRouteSearch\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "route_request_admission",
+      "owner": "native/src/sim/traffic/route_admission.h",
+      "symbol": "class RouteAdmission",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+RouteAdmission\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "lane_birth_reservations",
+      "owner": "native/src/sim/traffic/birth_reservations.h",
+      "symbol": "class BirthReservations",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+BirthReservations\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "route_event_arbitration",
+      "owner": "native/src/sim/traffic/meso.cpp",
+      "symbol": "void meso_process",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+meso_process\\s*\\([^;]*\\)\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "completed_dock_paths",
+      "owner": "native/src/sim/traffic/yard.h",
+      "symbol": "struct DockWays",
+      "forbidden_elsewhere": [
+        "\\bstruct\\s+DockWays\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "unpublished_route_join",
+      "owner": "native/src/sim/traffic/route_join.h",
+      "symbol": "class RouteJoin",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+RouteJoin\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "walker_birth_identity",
+      "owner": "native/src/sim/traffic/ped_spawn.cpp",
+      "symbol": "void commit_walker",
+      "forbidden_elsewhere": [
+        "\\bvoid\\s+commit_walker\\s*\\([^;]*\\)\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "road_endpoint_birth",
+      "owner": "native/src/sim/roads/road_network.h",
+      "symbol": "node_generation / segment_generation",
+      "forbidden_elsewhere": [
+        "\\buint64_t\\s+node_generation\\s*\\(",
+        "\\buint64_t\\s+segment_generation\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "pedestrian_escape_route",
+      "owner": "native/src/sim/traffic/ped_fright.cpp",
+      "symbol": "class EscapeRouteRecipient",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+EscapeRouteRecipient\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "vehicle_birth_recipe",
+      "owner": "native/src/sim/traffic/demand.cpp",
+      "symbol": "struct VehicleBirthIntent",
+      "forbidden_elsewhere": [
+        "\\bstruct\\s+VehicleBirthIntent\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "published_route_goal",
+      "owner": "native/src/sim/traffic/routing.cpp",
+      "symbol": "vehicle_route_goal_current / walker_route_goal_current",
+      "forbidden_elsewhere": [
+        "\\bbool\\s+vehicle_route_goal_current\\s*\\([^;]*\\)\\s*\\{",
+        "\\bbool\\s+walker_route_goal_current\\s*\\([^;]*\\)\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "pending_actor_destination",
+      "owner": "native/src/sim/traffic/traffic_system.h",
+      "symbol": "destination_pending",
+      "forbidden_elsewhere": [
+        "\\bbool\\s+destination_pending\\s*\\("
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "walker_birth_outcome",
+      "owner": "native/src/sim/traffic/ped_birth.h",
+      "symbol": "struct PedBirthTicket",
+      "forbidden_elsewhere": [
+        "\\bstruct\\s+PedBirthTicket\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "walker_birth_reservations",
+      "owner": "native/src/sim/traffic/walker_birth_reservations.h",
+      "symbol": "class WalkerBirthReservations",
+      "forbidden_elsewhere": [
+        "\\bclass\\s+WalkerBirthReservations\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "walker_door_source",
+      "owner": "native/src/sim/traffic/ped_doors.cpp",
+      "symbol": "bool door_current",
+      "forbidden_elsewhere": [
+        "\\bbool\\s+door_current\\s*\\([^;]*\\)\\s*\\{"
+      ],
+      "scope": [
+        "native/src/"
+      ]
+    },
+    {
+      "id": "ordered_edit_input",
+      "owner": "project/game/store/input_sequence.gd",
+      "symbol": "class_name InputSequence",
+      "forbidden_elsewhere": [
+        "class_name\\s+InputSequence\\b"
+      ],
+      "scope": [
+        "project/"
+      ]
     }
   ]
 }

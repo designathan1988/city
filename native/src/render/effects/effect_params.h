@@ -23,6 +23,7 @@ struct BurstDef {
 };
 
 struct EffectParams {
+	float instance_sector_m = 0; // common rendering partition, supplied by the catalog owner
 	int pool = 0;
 	float wind_x = 0, wind_z = 0, fireball_base = 0, fireball_per_force = 0;
 	std::vector<BurstDef> bursts;

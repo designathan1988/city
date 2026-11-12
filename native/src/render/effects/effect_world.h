@@ -31,6 +31,7 @@ public:
 	void release();
 	// One frame, the caller holding the map shared: plays what happened since the last, then steps the effects.
 	void sync(CityState &s);
+	void set_view(const ProjectedErrorView &view) { mounds_.set_view(view); }
 	float shake() const { return shake_; } // metres the camera moves now
 	float since_blast() const { return blast_at_ < 0 ? -1.f : float(now_ - blast_at_); } // effect seconds since the last blast (-1 none)
 	bool busy() const { return puffs_.active(now_) || !sources_.empty() || debris_.moving() || ruins_.moving() || flash_left_ > 0; }
@@ -83,6 +84,7 @@ private:
 	Mounds mounds_;
 	Debris debris_;
 	RuinPieces ruins_;
+	std::unordered_map<uint32_t, Ruin> placed_ruins_; // the actual content already presented, not just its count
 	PeopleRenderer *people_ = nullptr; // whose bodies fall (render_world.cpp)
 	BodyWalls walls_;
 	Rng rng_{ 0xb1a57ULL };
@@ -101,7 +103,8 @@ private:
 	double now_ = 0, blast_at_ = -1;
 	float shake_ = 0, flash_left_ = 0, flash_energy_ = 0, flash_range_ = 0;
 	godot::Vector3 flash_at_;
-	size_t craters_seen_ = ~size_t(0), ruins_seen_ = ~size_t(0), scars_seen_ = 0, played_ = 0;
+	uint64_t craters_seen_ = 0, crater_ground_seen_ = 0, ruins_seen_ = 0, scars_seen_ = 0;
+	size_t played_ = 0;
 	float ground_here_ = 0; // the ground under the heap being laid
 };
 

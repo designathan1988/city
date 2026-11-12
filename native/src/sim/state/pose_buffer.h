@@ -59,6 +59,8 @@ struct AgentRecord {
 
 // A car standing in a bay (no trail: it does not move). look as AgentRecord's; ids are their own, counted from 0 as the fleet's: the same number names
 // a car on the road and another in a bay.
+struct TrainRecord : AgentRecord { uint64_t row_id = 0; };
+
 struct ParkedRecord {
 	Pose at;
 	uint32_t id = 0, look = 0;
@@ -86,10 +88,12 @@ struct PoseSample {
 };
 
 struct PoseFrame {
+	uint64_t publication = 0; // unique publication identity; independent of scheduled interpolation timestamps
 	std::vector<AgentRecord> vehicles, people;
-	std::vector<AgentRecord> trains; // each car near the camera: look its RGB, id 1 when it is the metro's
+	std::vector<TrainRecord> trains; // each car near the camera: look its RGB, id 1 when it is the metro's
 	std::shared_ptr<const std::vector<ParkedRecord>> parked; // the cars standing in bays near the camera, made again only when one changes
 	std::vector<float> seg_speed_share; // per segment: mean speed / limit (congestion layer), 1 when empty
+	std::vector<int> speed_touched; // written entries of this physical frame
 	std::vector<SignalRecord> signals; // the signalled approaches near the camera, by ds
 	const SignalRecord *signal(uint32_t ds) const { return find_signal(signals, ds); }
 	int64_t stamp_ns[POSE_TRAIL] = {}; // scheduled times of the last publications (oldest first; 0: none yet)

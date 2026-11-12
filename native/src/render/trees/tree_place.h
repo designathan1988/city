@@ -9,6 +9,7 @@
 
 #include "render/props/street_props.h"
 #include "render/trees/tree_kit.h"
+#include "sim/nature/plant_ground.h"
 
 #include <array>
 #include <atomic>
@@ -21,11 +22,8 @@ constexpr int WOOD_BANDS = int(WoodBand::COUNT);
 
 // What a chunk's plants keep clear of and read, gathered once: its roads and lots, with a margin, and its ecosystem (none
 // on a map with neither a biome nor paint).
-struct ChunkGround {
-	std::vector<int> segs, lots;
-	EcologyField eco;
-};
-ChunkGround chunk_ground(const CityState &s, int64_t key);
+using ChunkGround = PlantGround;
+std::shared_ptr<const ChunkGround> chunk_ground(const CityState &s, int64_t key);
 bool near_road(const CityState &s, const ChunkGround &l, float x, float z, float r);
 bool in_lot(const CityState &s, const ChunkGround &l, float margin, float x, float z);
 

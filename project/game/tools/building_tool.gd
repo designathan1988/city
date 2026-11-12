@@ -47,16 +47,17 @@ func exit() -> void:
 	hands.disarm()
 	handles.cancel()
 	handles.marks.get_parent().queue_free()
-	hands.reference.model.queue_free()
+	hands.reference.close()
 	_box.queue_free()
 
 
 ## A body in hand from the shelf: its ghost shows from the next pointer move.
 func take(entry: Dictionary) -> void:
 	_put_down()
-	hand = entry
-	_extent = CityStore.query(&"body_size", [entry.bytes])
-	_ghost = CityStore.query(&"stage_show", [entry.bytes, ctl.get_viewport().find_world_3d().scenario, true])
+	hand = entry.duplicate()
+	hand.prepared = CityStore.query(&"body_prepare", [entry.bytes])
+	_extent = CityStore.query(&"body_size", [hand.prepared])
+	_ghost = CityStore.query(&"stage_show", [hand.prepared, ctl.get_viewport().find_world_3d().scenario, true])
 	ctl.hint.emit(tr("hint.builder.place"), true)
 
 
@@ -78,7 +79,7 @@ func hover(p: Vector3) -> void:
 	_fit = CityStore.query(&"place_fit", [p, Vector2(_extent.x, _extent.y), turn])
 	var y: float = CityStore.query(&"height_at", [_fit.x, _fit.z])
 	CityStore.query(&"stage_move", [_ghost, Transform3D(Basis(Vector3.UP, _fit.rot), Vector3(_fit.x, y, _fit.z))])
-	var problem: String = CityStore.query(&"place_check", [hand.bytes, _fit.x, _fit.z, _fit.rot])
+	var problem: String = CityStore.query(&"place_check", [hand.prepared, _fit.x, _fit.z, _fit.rot])
 	ctl.hint.emit(tr(problem) if problem != "" else tr("hint.builder.place"), problem == "")
 
 
@@ -93,7 +94,7 @@ func key(code: Key) -> void:
 
 func _set_down(p: Vector3) -> void:
 	hover(p)
-	var r: Dictionary = CityStore.dispatch(&"place_model", [hand.bytes, _fit.x, _fit.z, _fit.rot, hand.function, hand.zone])
+	var r: Dictionary = CityStore.dispatch(&"place_model", [hand.prepared, _fit.x, _fit.z, _fit.rot, hand.function, hand.zone])
 	if not r.get("ok", false):
 		_report(r)
 		return

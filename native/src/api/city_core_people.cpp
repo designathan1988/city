@@ -1,6 +1,7 @@
 // The census of who is on foot, for the tests and the captures: how old they are, who walks with whom, where they are, the
 // doors the walkers use, and the nearest of each to a point, for a camera to look at.
 #include "api/city_probes.h"
+#include "api/probe_neighbors.h"
 #include "core/units.h"
 #include "sim/traffic/traffic_system.h"
 #include "render/render_world.h"
@@ -62,21 +63,23 @@ const char *mode_name(PedMode m) {
 
 // Strangers closer than `touch`, by what the nearer of each pair is doing: alone, leading, following, in a lot.
 Dictionary who_touches(const TrafficState &t, float touch) {
+	const ProbeNeighbors near(t);
 	int alone = 0, leading = 0, following = 0, lot = 0;
 	for (size_t i = 0; i < t.peds.size(); i++) {
 		const Pedestrian &a = t.peds[i];
 		if (!a.alive) continue;
-		for (size_t j = i + 1; j < t.peds.size(); j++) {
-			const Pedestrian &b = t.peds[j];
-			if (!b.alive || a.with == int(j) || b.with == int(i)) continue;
+		near.each(int(i), touch, [&](int j) {
+			const Pedestrian &b = t.peds[size_t(j)];
+			if (j <= int(i) || a.with == j || b.with == int(i)) return true;
 			const float dx = a.cur.x - b.cur.x, dz = a.cur.z - b.cur.z;
-			if (dx * dx + dz * dz >= touch * touch) continue;
+			if (dx * dx + dz * dz >= touch * touch) return true;
 			const auto is = [&](auto f) { return f(a) || f(b); };
 			if (is([](const Pedestrian &w) { return w.mode == PedMode::LOT; })) lot++;
 			else if (is([](const Pedestrian &w) { return w.with >= 0; })) following++;
 			else if (is([](const Pedestrian &w) { return w.mate >= 0; })) leading++;
 			else alone++;
-		}
+			return true;
+		});
 	}
 	Dictionary d;
 	d["alone"] = alone;

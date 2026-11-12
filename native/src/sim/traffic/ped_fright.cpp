@@ -2,6 +2,8 @@
 // crouch where they are, far off some hold a phone up at it, and then they run, away from it by whatever street leads there, back on their way when
 // the fright is over. A blast is a stampede: some trip and go down, some break down crouched, some film it from far enough off.
 #include "core/random.h"
+#include "core/generation.h"
+#include "sim/traffic/route_join.h"
 #include "sim/traffic/ped_system.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -82,18 +84,67 @@ void in_a_stampede(const TrafficParams &p, Pedestrian &w, float now, float after
 
 float off_the_bang(const CityState &s, const Pedestrian &w, int node) { return (node_at(s, node) - V2(w.bang_x, w.bang_z)).len(); }
 
-// Its route from `first` on (`start` before it when there is one), to where it was going all along.
-void route_from(CityState &s, Pedestrian &w, int start, int first) {
-	static thread_local std::vector<int> way;
-	TrafficState &t = s.traffic;
-	const int goal = route_at(t.ped_pool, w.route, w.route.len - 1);
-	way.clear();
-	if (!find_walk_route(s, first, goal, way) || way.empty()) way.assign(1, first);
-	if (start >= 0) way.insert(way.begin(), start);
-	route_set(t.ped_pool, w.route, t.ped_waste, way.data(), int(way.size()));
-	w.ri = 0;
-	w.door = PedDoor();
-	w.goal_side = -1;
+int towards_node(const CityState &s, const Pedestrian &w) { const auto &g = s.roads.segs[size_t(w.seg)]; return w.dir == 0 ? g.b : g.a; }
+void queue_escape(CityState &s, Pedestrian &w, int start, int first, int edge = -1);
+class EscapeRouteRecipient final : public RouteRecipient {
+public:
+	EscapeRouteRecipient(const CityState &s, const Pedestrian &w, int id, int start, int first, int edge) :
+		id_(id), seg_(w.seg), dir_(w.dir), side_(w.side), ri_(w.ri), start_(start), first_(first), edge_(edge), generation_(w.generation), request_(w.escape_route_request), route_(w.route.version),
+		segment_(s.roads.segment_generation(w.seg)), node_(s.roads.node_generation(start >= 0 ? start : first)), edge_generation_(s.roads.segment_generation(edge)) {}
+	RecipientState state(const CityState &s) const override {
+		const Pedestrian *w = actor(s);
+		if (!w || w->mode != PedMode::SIDEWALK || w->seg != seg_ || w->dir != dir_ || w->side != side_ || w->ri != ri_ || w->route.version != route_ || seg_ < 0 || size_t(seg_) >= s.roads.segs.size() || s.roads.segment_generation(seg_) != segment_ || !walkable(s, seg_)) return RecipientState::OBSOLETE;
+		if (s.roads.node_generation(start_ >= 0 ? start_ : first_) != node_ || towards_node(s, *w) != (start_ >= 0 ? start_ : first_) || (edge_ >= 0 && (size_t(edge_) >= s.roads.segs.size() || s.roads.segment_generation(edge_) != edge_generation_))) return RecipientState::OBSOLETE;
+		if (edge_ >= 0) {
+			const auto &edge = s.roads.segs[size_t(edge_)];
+			if (!walkable(s, edge_) || !((edge.a == start_ && edge.b == first_) || (edge.b == start_ && edge.a == first_))) return RecipientState::OBSOLETE;
+		}
+		if (!s.traffic_levels.people_on || w->flee_due) return RecipientState::WAIT_SOURCE; // newest bang is interpreted by physical motion before publishing an older choice
+		return RecipientState::READY;
+	}
+	bool prepare_result(CityState &s, SearchStatus status, const RouteDraft &path, WorkBudget &work) override {
+		if (state(s) != RecipientState::READY || status == SearchStatus::SOURCE_RETIRED) return true;
+		RoutePool &pool = s.traffic.ped_pool; const Pedestrian &w = s.traffic.peds[size_t(id_)];
+		const RouteDraft *source = &path;
+		if (status != SearchStatus::FOUND || path.empty()) {
+			if (!fallback_allocated_) { if (!work.take()) return false; pool.prepare(fallback_, 1); fallback_allocated_ = true; }
+			if (!fallback_written_) { if (!work.take()) return false; pool.write(fallback_, 0, first_); pool.set_goal(fallback_, s.roads.node_generation(first_)); fallback_written_ = true; }
+			source = &fallback_; // original failed walking route ends at first, with the same optional start prefix
+		}
+		return output_.prepare(pool, w.route, start_, *source, 0, start_ >= 0, w.route.len, work);
+	}
+	void retire_result(CityState &s) override { output_.retire(s.traffic.ped_pool); s.traffic.ped_pool.release(fallback_); fallback_allocated_ = fallback_written_ = false; }
+	bool complete(CityState &s, SearchStatus status, RouteDraft &) override {
+		if (!actor(s)) return true;
+		Pedestrian &w = s.traffic.peds[size_t(id_)];
+		if (w.seg == seg_ && (seg_ < 0 || size_t(seg_) >= s.roads.segs.size() || s.roads.segment_generation(seg_) != segment_ || !walkable(s, seg_))) { ped_gone(s, id_); return true; }
+		const bool current = state(s) == RecipientState::READY;
+		if (!current || status == SearchStatus::SOURCE_RETIRED) {
+			if (w.mode == PedMode::SIDEWALK && w.seg == seg_ && w.dir == dir_ && w.ri == ri_ && w.route.version == route_) {
+				queue_escape(s, w, -1, towards_node(s, w)); return true; // new valid source, same original goal/birth, never a fresh ID-only target
+			}
+			clear(w); return true; // another physical path owner superseded this intent
+		}
+		output_.adopt(s.traffic.ped_pool, w.route); w.ri = 0; w.door = PedDoor(); w.goal_side = -1; clear(w);
+		return true;
+	}
+private:
+	const Pedestrian *actor(const CityState &s) const {
+		if (id_ < 0 || size_t(id_) >= s.traffic.peds.size()) return nullptr;
+		const Pedestrian &w = s.traffic.peds[size_t(id_)];
+		return w.alive && w.generation == generation_ && w.escape_route_request == request_ ? &w : nullptr;
+	}
+	static void clear(Pedestrian &w) { w.escape_route_request = 0; w.escape_goal = -1; w.escape_goal_generation = 0; }
+	int id_, seg_, dir_, side_, ri_, start_, first_, edge_; uint64_t generation_, request_, route_, segment_, node_, edge_generation_;
+	RouteJoin output_; RouteDraft fallback_; bool fallback_allocated_ = false, fallback_written_ = false;
+};
+// Its captured route from first on (start before it when present) to its existing destination; only the source can be renewed.
+void queue_escape(CityState &s, Pedestrian &w, int start, int first, int edge) {
+	TrafficState &t = s.traffic; const int id = int(&w - t.peds.data());
+	if (!w.escape_route_request) { w.escape_goal = route_at(t.ped_pool, w.route, w.route.len - 1); w.escape_goal_generation = w.route.goal_generation; }
+	const int goal = s.roads.node_generation(w.escape_goal) == w.escape_goal_generation ? w.escape_goal : -1;
+	w.escape_route_request = next_generation(); w.door = PedDoor(); w.goal_side = -1;
+	t.route_admission.submit_walk(s, RouteKey::pedestrian(RoutePurpose::PED_ESCAPE, id), {first, goal}, std::make_unique<EscapeRouteRecipient>(s, w, id, start, first, edge));
 }
 
 } // namespace
@@ -178,17 +229,21 @@ void turn_from_bang(CityState &s, Pedestrian &w) {
 	const RoadSegment &g = s.roads.segs[size_t(w.seg)];
 	const int ahead = w.dir == 0 ? g.b : g.a, behind = w.dir == 0 ? g.a : g.b;
 	const V2 way = node_at(s, ahead) - V2(w.cur.x, w.cur.z), away(w.cur.x - w.bang_x, w.cur.z - w.bang_z);
-	if (way.x * away.x + way.y * away.y >= 0) return; // already going away from it
-	route_from(s, w, -1, behind);
+	if (way.x * away.x + way.y * away.y >= 0) {
+		if (w.escape_route_request || !walker_route_goal_current(s, w)) queue_escape(s, w, -1, ahead); // newest input supersedes the previous corner choice, retaining its goal
+		return;
+	}
 	w.dir = 1 - w.dir;
 	w.u_goal = w.dir == 0 ? -w.track : w.track; // its own side of the way, the other way
+	queue_escape(s, w, -1, behind);
 }
 
 void flee_on(CityState &s, Pedestrian &w, int n) {
+	if (w.escape_route_request) return;
 	TrafficState &t = s.traffic;
 	const int next = w.ri + 1 < w.route.len ? route_at(t.ped_pool, w.route, w.ri + 1) : -1;
-	int best = -1;
-	float furthest = next >= 0 ? off_the_bang(s, w, next) : 0.f;
+	int best = -1, best_seg = -1;
+	float furthest = next >= 0 && walker_route_goal_current(s, w) ? off_the_bang(s, w, next) : 0.f;
 	for (int seg : s.roads.nodes[size_t(n)].segs) {
 		if (seg == w.seg || !walkable(s, seg)) continue;
 		const RoadSegment &g = s.roads.segs[size_t(seg)];
@@ -196,10 +251,10 @@ void flee_on(CityState &s, Pedestrian &w, int n) {
 		const float off = off_the_bang(s, w, other);
 		if (off > furthest) {
 			furthest = off;
-			best = other;
+			best = other; best_seg = seg;
 		}
 	}
-	if (best >= 0) route_from(s, w, n, best);
+	if (best >= 0) queue_escape(s, w, n, best, best_seg);
 }
 
 void ease_facing(const TrafficState &t, const TrafficParams &p, Pedestrian &w, float dt) {

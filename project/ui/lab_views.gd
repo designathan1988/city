@@ -6,7 +6,7 @@ extends RefCounted
 const MIB := 1048576.0
 const BAR_FULL_MS := 0.01 # the bars' full length, when nothing took longer
 const SECTIONS := ["near_walls", "near_panes", "near_guards", "near_cards", "near_pieces", "mid_walls", "mid_panes", "mid_cards", "far"]
-const CORE_SECTIONS := ["agents", "stream", "levels", "flush", "roads", "props", "buildings"]
+const CORE_SECTIONS := ["agents", "stream", "levels", "fields", "roads", "props", "buildings"]
 
 
 static func _row(body: Control, name_text: String, value: String, share: float) -> void:

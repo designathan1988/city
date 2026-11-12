@@ -42,6 +42,7 @@ public:
 	void set_detail_scale(float scale); // the graphics tier's share of the near level's reach
 	void set_lots_drawn(bool on) { lots_drawn_.store(on); } // the Effects panel; the caller redraws everything
 	const b40::BuildingLook &look() const { return look_; }
+	std::shared_ptr<BodyCache> body_cache() const { return body_cache_; }
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset();
 	void set_broken(const std::unordered_set<uint32_t> &seeds); // the buildings drawn in pieces, by the effects
@@ -172,7 +173,12 @@ private:
 	// What a job reads from the map, copied while it holds the map lock shared for a moment (gather): the records
 	// of its chunks, in query order, and the final ground under their lots. The build itself runs without the lock.
 	struct Inputs {
+		std::shared_ptr<BodyCache> prepared;
+		const b40::Data *data = nullptr; // catalog tables remain stable for the lifetime of the current CityState
+		int occluder_min_storeys = 0;
+		bool draw_lots = false;
 		std::vector<Building> records;
+		std::vector<b40::BodyInput> bodies; // pins each record's authored version before releasing the map
 		std::unordered_set<uint32_t> broken; // standing in pieces (RuinPieces): only their lots are drawn here
 		std::vector<int> ids; // the id of each record
 		InteriorView view; // the Interior layer as the job started
@@ -203,6 +209,7 @@ private:
 	void submit_super(const CityState &s, int64_t super_key, float priority);
 	void visit_super(int64_t super_key, Super &sp, const godot::Vector3 &cam, float eye, std::vector<Want> &want);
 	void show(Chunk &ch, bool on); // the chunk drawn in detail or left to the far mesh
+	void invalidate_chunk(JobPool *pool, int64_t key);
 	void drop_far(int64_t super_key, Super &sp);
 	void drop(Chunk &ch, Level level);
 	void drop_bands(Chunk &ch);
@@ -212,7 +219,8 @@ private:
 	// The generator's tables are the simulation's (read-only after boot); the drawing sizes and level shares are ours.
 	const b40::Data &designs() const { return state_->buildings.designs; }
 	b40::BuildingLook look_;
-	BuildingBodies bodies_;
+	size_t body_cache_bytes_ = 0;
+	std::shared_ptr<BodyCache> body_cache_ = std::make_shared<BodyCache>(0);
 	godot::RID material_cast_; // shadow_caster: no vertex() of its own
 	void fade_levels(Chunk &ch, const godot::Vector3 &cam); // the sub-chunks in the band of a hand-over (building_renderer_reach.cpp)
 	void fade_near(Chunk &ch, size_t sub, bool on, float keep);

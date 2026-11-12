@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <unordered_map>
 
 namespace city {
 
@@ -19,7 +20,6 @@ namespace {
 constexpr int MAX_SOLVE_PASSES = 64; // MAX_SOLVE_PASSES
 constexpr size_t POOLED_SEGMENTS = 64; // below this an edit's few segments cost less than the pool's hand-off
 constexpr float RISE_EPS = 1e-6f; // a node rose: past rounding
-constexpr float MOVED_EPS = 1e-4f; // a profile moved: past what a station's rounding is
 constexpr float DISC_MIN_M = 2.4f; // balancedAtNode: the least radius of a node's disc of ground
 constexpr float PROFILE_FADE_M = 44.f; // roadField.ts PROFILE_FADE: how far out a road's influence fades
 constexpr float DISC_INSIDE_FADE_M = 8.f; // balancedAtNode: the disc stops this far inside the fade
@@ -28,15 +28,53 @@ constexpr float DISC_TWIST = 0.4f; // radians a ring turns from the one inside i
 constexpr float TAU_F = 6.28318531f;
 const float NONE = INFINITY;
 
+// Per-solve values exist only for reached ids. Const reads of an unreached boundary node do not allocate a slot.
+template <typename T>
+struct Scratch {
+	std::unordered_map<size_t, T> entries;
+	T empty;
+	Scratch(T value = T{}) : empty(value) {}
+	T &operator[](size_t id) { return entries.try_emplace(id, empty).first->second; }
+	const T &operator[](size_t id) const {
+		auto it = entries.find(id);
+		return it == entries.end() ? empty : it->second;
+	}
+};
+
+// Capture the published output before grade_inputs can resize/replace it. Input-only caches are not duplicated.
+struct ProfileOutput {
+	bool valid, manual, walls;
+	Structure structure;
+	int a, b;
+	float len, step, half, plate_a, plate_b;
+	std::array<double, CURVE_NUMBERS> curve;
+	std::vector<float> heights;
+	explicit ProfileOutput(const GradeProfile &p) : valid(p.valid), manual(p.manual), walls(p.walls), structure(p.structure),
+		a(p.a), b(p.b), len(p.len), step(p.step), half(p.half), plate_a(p.plate_a), plate_b(p.plate_b), heights(p.h) {
+		std::copy(p.q, p.q + CURVE_NUMBERS, curve.begin());
+	}
+	bool same(const GradeProfile &p) const {
+		if (valid != p.valid || manual != p.manual || walls != p.walls || structure != p.structure || a != p.a || b != p.b ||
+			len != p.len || step != p.step || half != p.half || plate_a != p.plate_a || plate_b != p.plate_b ||
+			!std::equal(curve.begin(), curve.end(), p.q) || heights.size() != p.h.size()) return false;
+		for (size_t i = 0; i < heights.size(); i++)
+			if (heights[i] != p.h[i]) return false;
+		return true;
+	}
+};
+
 struct Solve {
 	RoadGrade &g;
 	RoadNetwork &net;
 	const GradeTune t;
 	const GroundAt &ground;
-	std::vector<char> seg_solved, node_solved;
-	std::vector<float> height, start, grade, cap; // by node, this solve's (NONE: not reached)
-	std::vector<char> aloft;
+	Scratch<char> seg_solved, node_solved;
+	Scratch<float> height{ NONE }, start, grade, cap{ NONE }; // by reached node (NONE: not reached)
+	Scratch<char> aloft;
 	std::vector<int> solved_nodes, solved_segs;
+	std::unordered_map<int, ProfileOutput> before;
+
+	void remember(int s) { before.try_emplace(s, g.prof[size_t(s)]); }
 
 	bool alive_profile(int s) const { return net.segs[size_t(s)].alive && g.has(s); }
 	const GradeNode &memo(int n) const { return g.node[size_t(n)]; }
@@ -135,6 +173,7 @@ struct Solve {
 	}
 
 	void solve_profile(int s) {
+		remember(s); // rounds may reach a profile outside the initial solve frontier
 		GradeProfile &p = g.prof[size_t(s)];
 		const float ha = node_height(p.a), hb = node_height(p.b);
 		if (is_raised(p.structure)) {
@@ -184,7 +223,13 @@ struct Solve {
 			dirty = settle(dirty);
 		}
 		for (int s : dirty) solve_profile(s);
-		for (int s : solved_segs) pin_plates(g.prof[size_t(s)], node_height(g.prof[size_t(s)].a), node_height(g.prof[size_t(s)].b));
+		for (int s : solved_segs) {
+			GradeProfile &p = g.prof[size_t(s)];
+			pin_plates(p, node_height(p.a), node_height(p.b));
+			const auto extremes = std::minmax_element(p.h.begin(), p.h.end());
+			p.low = *extremes.first;
+			p.high = *extremes.second;
+		}
 	}
 };
 
@@ -212,14 +257,14 @@ void reach_nodes(Solve &sv, const std::vector<int> &changed_ends, bool all) {
 } // namespace
 
 void RoadGrade::solve(RoadNetwork &net, const GroundAt &ground, std::vector<int> &moved, std::vector<int> &gone, JobPool *jobs) {
+	if (!pending()) return;
 	const size_t ns = net.segs.size(), nn = net.nodes.size();
 	prof.resize(ns);
 	node.resize(nn);
-	std::vector<char> touched(ns, 0), regrounded(ns, 0);
+	std::unordered_map<int, bool> touched; // id -> whether its ground must be sampled again
 	auto touch = [&](int s, bool reground) {
 		if (s < 0 || size_t(s) >= ns) return;
-		touched[size_t(s)] = 1;
-		if (reground) regrounded[size_t(s)] = 1;
+		touched[s] = touched[s] || reground;
 	};
 	for (size_t s = 0; all_ && s < ns; s++) touch(int(s), true);
 	for (int s : segs_) touch(s, false);
@@ -229,21 +274,23 @@ void RoadGrade::solve(RoadNetwork &net, const GroundAt &ground, std::vector<int>
 	const bool all = all_;
 	segs_.clear(); nodes_.clear(); reground_.clear();
 	all_ = false;
-	Solve sv{ *this, net, grade_tune(net.cat->tune), ground, std::vector<char>(ns, 0), std::vector<char>(nn, 0),
-		std::vector<float>(nn, NONE), std::vector<float>(nn, 0), std::vector<float>(nn, 0), std::vector<float>(nn, NONE),
-		std::vector<char>(nn, 0), {}, {} };
-	std::vector<int> ends, read;
-	for (size_t s = 0; s < ns; s++) {
-		if (!touched[s]) continue;
-		if (!net.segs[s].alive) {
-			if (prof[s].valid) gone.push_back(int(s));
-			prof[s] = GradeProfile();
+	Solve sv{ *this, net, grade_tune(net.cat->tune), ground };
+	std::vector<int> ends, read, changed;
+	changed.reserve(touched.size());
+	for (const auto &entry : touched) changed.push_back(entry.first);
+	std::sort(changed.begin(), changed.end());
+	for (int s : changed) {
+		if (!net.segs[size_t(s)].alive) {
+			if (prof[size_t(s)].valid) gone.push_back(s);
+			prof[size_t(s)] = GradeProfile();
 			continue;
 		}
-		read.push_back(int(s));
+		sv.remember(s);
+		read.push_back(s);
 	}
 	// each segment reads the ground into its own profile and nothing else: over the pool when there are many (a whole city)
-	auto inputs = [&](size_t k) { grade_inputs(*this, net, read[k], ground, regrounded[size_t(read[k])] != 0, sv.t); };
+	const auto &ground_changes = touched; // parallel readers must not use a mutating map accessor
+	auto inputs = [&](size_t k) { grade_inputs(*this, net, read[k], ground, ground_changes.at(read[k]), sv.t); };
 	if (jobs && read.size() >= POOLED_SEGMENTS) jobs->parallel_for(read.size(), inputs);
 	else for (size_t k = 0; k < read.size(); k++) inputs(k);
 	for (int s : read) {
@@ -259,29 +306,28 @@ void RoadGrade::solve(RoadNetwork &net, const GroundAt &ground, std::vector<int>
 		for (int s : net.nodes[size_t(n)].segs)
 			if (sv.alive_profile(s) && !sv.seg_solved[size_t(s)]) { sv.seg_solved[size_t(s)] = 1; sv.solved_segs.push_back(s); }
 	std::sort(sv.solved_segs.begin(), sv.solved_segs.end());
-	std::vector<std::vector<float>> before(sv.solved_segs.size());
 	for (size_t k = 0; k < sv.solved_segs.size(); k++) {
+		sv.remember(sv.solved_segs[k]);
 		GradeProfile &p = prof[size_t(sv.solved_segs[k])];
-		before[k] = touched[size_t(sv.solved_segs[k])] ? std::vector<float>() : p.h;
 		p.h = p.base; // solved again from its grade line
 	}
 	for (int n : sv.solved_nodes) sv.grade_node(n);
 	for (int n : sv.solved_nodes) sv.start_node(n);
 	sv.rounds();
-	for (size_t n = 0; n < nn; n++) {
-		if (sv.height[n] == NONE) continue;
+	std::vector<size_t> height_nodes;
+	height_nodes.reserve(sv.height.entries.size());
+	for (const auto &entry : sv.height.entries) height_nodes.push_back(entry.first);
+	std::sort(height_nodes.begin(), height_nodes.end());
+	for (size_t n : height_nodes) {
 		GradeNode &m = node[n];
 		const bool here = sv.node_solved[n] != 0;
 		m = GradeNode{ sv.height[n], here ? sv.start[n] : m.start, sv.grade_of(int(n)), sv.cap_of(int(n)) == NONE ? 0.f : sv.cap_of(int(n)),
 			sv.aloft_at(int(n)), sv.cap_of(int(n)) != NONE, true };
 		net.nodes[n].y = m.height;
 	}
-	for (size_t k = 0; k < sv.solved_segs.size(); k++) {
-		const std::vector<float> &was = before[k], &now = prof[size_t(sv.solved_segs[k])].h;
-		bool differs = was.size() != now.size();
-		for (size_t i = 0; !differs && i < now.size(); i++) differs = std::fabs(was[i] - now[i]) > MOVED_EPS;
-		if (differs) moved.push_back(sv.solved_segs[k]);
-	}
+	std::sort(sv.solved_segs.begin(), sv.solved_segs.end());
+	for (int s : sv.solved_segs)
+		if (!sv.before.at(s).same(prof[size_t(s)])) moved.push_back(s);
 }
 
 } // namespace city

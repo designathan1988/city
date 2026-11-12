@@ -87,12 +87,12 @@ Dictionary CityTransit::transit_plan() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	Array stops, lines;
-	for (const TransitStop &q : s.transit.stops) stops.push_back(stop_dict(s, q));
-	for (const TransitLine &l : s.transit.lines) lines.push_back(line_dict(l));
+	for (const TransitStop &q : s.transit.stops()) stops.push_back(stop_dict(s, q));
+	for (const TransitLine &l : s.transit.lines()) lines.push_back(line_dict(l));
 	Dictionary d;
 	d["stops"] = stops;
 	d["lines"] = lines;
-	d["tracks"] = int(s.transit.tracks.size());
+	d["tracks"] = int(s.transit.tracks().size());
 	return d;
 }
 
@@ -169,10 +169,10 @@ Dictionary CityTransit::transit_footway(const Vector3 &p, float reach) {
 void CityTransit::transit_xray(bool on) { render_->transit_xray(on); }
 
 void CityTransit::transit_preview(const PackedVector3Array &points, int mode) {
-	std::vector<V2> run;
+	std::vector<V2> run; run.reserve(size_t(points.size()));
 	for (const Vector3 &q : points) run.push_back(V2(q.x, q.z));
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	render_->transit_preview(*state_, run, mode_of(mode));
+	render_->transit_preview(*state_, std::move(run), mode_of(mode));
 }
 
 Vector3 CityTransit::transit_snap(const Vector3 &p, int mode) {

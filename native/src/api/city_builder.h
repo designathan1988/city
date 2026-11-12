@@ -1,9 +1,14 @@
 // CityBuilder: the Build drawer's script API, an area of the core (api/city_core.h). The body a player edits (city_core_body.cpp)
-// and the models: a body in hand travels as bytes, placed, drawn apart in the stage (city_core_models.cpp). Made and freed by CityCore;
+// and models: immutable prepared bodies in hand, bytes at file/API boundaries, placed or drawn in the stage (city_core_models.cpp). Made and freed by CityCore;
 // game/store/city_store.gd reaches it through CityCore.area("builder").
 #pragma once
 
 #include <godot_cpp/classes/object.hpp>
+#include "api/prepared_body.h"
+#include "api/prepared_reference.h"
+
+#include <memory>
+#include <mutex>
 
 namespace city {
 
@@ -25,11 +30,12 @@ public:
 	godot::PackedByteArray model_bytes(const godot::String &id) const;
 	godot::Dictionary doc_body(const godot::Dictionary &doc) const;
 	godot::Dictionary building_bytes(int id) const;
-	godot::Vector3 body_size(const godot::PackedByteArray &bytes) const; // width, depth, height
+	godot::Ref<PreparedBody> body_prepare(const godot::Variant &source) const;
+	godot::Vector3 body_size(const godot::Variant &bytes) const; // width, depth, height
 	godot::Dictionary place_fit(const godot::Vector3 &at, const godot::Vector2 &size, double rot) const;
-	godot::String place_check(const godot::PackedByteArray &bytes, double x, double z, double rot) const;
-	godot::Dictionary place_model(const godot::PackedByteArray &bytes, double x, double z, double rot, int fn, int zone);
-	int stage_show(const godot::PackedByteArray &bytes, const godot::RID &scenario, bool ghost);
+	godot::String place_check(const godot::Variant &bytes, double x, double z, double rot) const;
+	godot::Dictionary place_model(const godot::Variant &bytes, double x, double z, double rot, int fn, int zone);
+	int stage_show(const godot::Variant &bytes, const godot::RID &scenario, bool ghost);
 	void stage_move(int handle, const godot::Transform3D &at);
 	void stage_free(int handle);
 	int stage_triangles(int handle) const;
@@ -42,9 +48,11 @@ public:
 	godot::Dictionary body_set_plan(int id, int vol, int shape);
 	godot::Dictionary body_add_mass(int id, int vol, const godot::Vector3 &from, const godot::Vector3 &to, int action);
 	godot::Dictionary body_set_block_mode(int id, int vol, int mode);
-	godot::Dictionary build_reference(const godot::PackedVector3Array &triangles, const godot::Array &views, double x, double z, double rot, int replaced);
+	godot::Dictionary reference_target(int replaced) const;
+	godot::Ref<PreparedReference> prepare_reference(const godot::Array &parts) const;
+	godot::Dictionary build_reference(const godot::Variant &geometry, const godot::Array &views, double x, double z, double rot, int replaced, const godot::Dictionary &expected);
 	godot::Array body_handles(int id, int vol, bool points, const godot::Vector3 &eye, const godot::Dictionary &pick) const;
-	godot::Dictionary body_draft(int id, const godot::Dictionary &spec) const;
+	godot::Dictionary body_draft(int id, const godot::Dictionary &spec, bool encode = true) const;
 	godot::Dictionary body_apply(int id, const godot::Dictionary &spec);
 	godot::Dictionary building_place(int id, double x, double z, double rot);
 	godot::Dictionary body_extrude_face(int id, int vol, int side, double distance);
@@ -98,6 +106,9 @@ protected:
 	static void _bind_methods();
 
 private:
+	struct InfoCache;
+	mutable std::mutex info_mutex_;
+	mutable std::shared_ptr<const InfoCache> info_;
 	CityState *state_ = nullptr; // the core's: it outlives this area (CityCore frees its areas first)
 	RenderWorld *render_ = nullptr;
 };

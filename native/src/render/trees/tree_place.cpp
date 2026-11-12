@@ -22,7 +22,7 @@ constexpr uint32_t WILD_SALT = 0x51ed27u, PARK_SALT = 0x9a2cu, STREET_SALT = 0x5
 constexpr uint32_t WOOD_KEEP = 41, WOOD_X = 43, WOOD_Z = 44, WOOD_SIZE = 45, WOOD_YAW = 47, WOOD_MODEL = 48, WOOD_KIND = 49;
 constexpr float NEIGHBOUR_LEAST_M = 1e-3f; // nearer than this two trees give no direction
 constexpr int PARK_TRIES = 4; // draws per wanted tree: spots on paths, courts and fountains are skipped
-constexpr float GRADE_PROBE = 2.f, LIST_MARGIN = 80.f;
+constexpr float GRADE_PROBE = 2.f;
 // Hash streams of one candidate: keep, position x and z, height, width, species, yaw, tint.
 enum Stream : uint32_t { KEEP = 0, POS_X, POS_Z, HEIGHT, WIDTH, SPECIES, YAW, TINT, STREAMS };
 
@@ -31,32 +31,16 @@ float h01(uint32_t h, Stream s) { return hash_float(h + s); }
 
 } // namespace
 
-ChunkGround chunk_ground(const CityState &s, int64_t key) {
-	ChunkGround l;
-	float x0 = key_x(key) * CHUNK, z0 = key_y(key) * CHUNK;
-	s.roads.for_segments_near(x0 - LIST_MARGIN, z0 - LIST_MARGIN, x0 + CHUNK + LIST_MARGIN, z0 + CHUNK + LIST_MARGIN, [&](int sid) { l.segs.push_back(sid); });
-	s.buildings.query(x0 - LIST_MARGIN, z0 - LIST_MARGIN, x0 + CHUNK + LIST_MARGIN, z0 + CHUNK + LIST_MARGIN, [&](int id) { l.lots.push_back(id); });
-	if (s.nature.nature.region >= 0 || s.nature.ground.any_cover()) l.eco = compute_ecology(s.terrain, s.nature.ground, s.nature.nature, s.catalog.nature.ecology, x0, z0, CHUNK);
-	return l;
+std::shared_ptr<const ChunkGround> chunk_ground(const CityState &s, int64_t key) {
+	return s.plant_ground.get(s, key);
 }
 
-bool near_road(const CityState &s, const ChunkGround &l, float x, float z, float r) {
-	for (int sid : l.segs) {
-		double t, d;
-		closest_t(s.roads.segs[sid].q, x, z, t, d);
-		if (d < s.catalog.profile(s.roads.segs[sid].profile).half() + r) return true;
-	}
-	return false;
+bool near_road(const CityState &, const ChunkGround &l, float x, float z, float r) {
+	return l.occupancy->near_road(x, z, r);
 }
 
-bool in_lot(const CityState &s, const ChunkGround &l, float margin, float x, float z) {
-	for (int id : l.lots) {
-		const Building &b = s.buildings.items[id];
-		float dx = x - b.x, dz = z - b.z;
-		float lx = dx * std::cos(b.rot) - dz * std::sin(b.rot), lz = dx * std::sin(b.rot) + dz * std::cos(b.rot);
-		if (std::fabs(lx) < b.w * 0.5f + margin && std::fabs(lz) < b.d * 0.5f + margin) return true;
-	}
-	return false;
+bool in_lot(const CityState &, const ChunkGround &l, float margin, float x, float z) {
+	return l.occupancy->in_lot(x, z, margin);
 }
 
 namespace {
@@ -68,7 +52,7 @@ float grade_at(const Heightfield &hf, float x, float z, float probe) {
 float density(const CityState &s, const TreeLook &T, const ChunkGround &l, float x, float z) {
 	float d = T.density_of(x, -z);
 	d += T.slope_gain * clampf((grade_at(s.terrain, x, z, T.slope_probe_m) - T.slope_from) / (T.slope_to - T.slope_from), 0.f, 1.f);
-	if (l.eco.side > 0) d += T.eco_gain * wood_share(l.eco.near(x, z), s.catalog.nature.ecology);
+	if (l.eco->side > 0) d += T.eco_gain * wood_share(l.eco->near(x, z), s.catalog.nature.ecology);
 	return d + T.forest_gain * s.nature.ground.cover_at(CoverKind::FOREST, x, z);
 }
 
@@ -123,7 +107,7 @@ bool wild_tree(const CityState &s, const TreeLook &T, const ChunkGround &l, cons
 	const BandLook &B = T.band[size_t(b)];
 	w.species = B.mix.pick(float(woods_hash(gi, gj, WOOD_KIND)));
 	float r = h01(cell_hash(gi, gj, WILD_SALT), TINT);
-	if (l.eco.side > 0 && r < l.eco.near(w.x, w.z).palm) w.species = T.planted_species.back();
+	if (l.eco->side > 0 && r < l.eco->near(w.x, w.z).palm) w.species = T.planted_species.back();
 	w.size = B.h0 + (B.h1 - B.h0) * float(woods_hash(gi, gj, WOOD_SIZE));
 	w.stretch = 1.f + (float(woods_hash(gi, gj, WOOD_MODEL)) * 2.f - 1.f) * T.width_vary;
 	w.yaw = TAU_F * float(woods_hash(gi, gj, WOOD_YAW));
@@ -141,6 +125,7 @@ void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, const Chunk
 	std::vector<WildTree> trees;
 	for (int j = std::max(0, py.first - margin); j <= std::min(cells - 1, py.last + margin); j++)
 		for (int i = std::max(0, px.first - margin); i <= std::min(cells - 1, px.last + margin); i++) {
+			if (JobPool::cancelled()) return;
 			WildTree w;
 			if (!wild_tree(s, T, l, px, py, i, j, w)) continue;
 			w.own = i >= px.first && i <= px.last && j >= py.first && j <= py.last;
@@ -149,6 +134,7 @@ void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, const Chunk
 	std::sort(trees.begin(), trees.end(), [](const WildTree &a, const WildTree &b) { return a.x < b.x; });
 	size_t from = 0;
 	for (size_t k = 0; k < trees.size(); k++) {
+		if (JobPool::cancelled()) return;
 		const WildTree &w = trees[k];
 		while (trees[from].x < w.x - T.crowd_reach_m) from++;
 		if (!w.own) continue;
@@ -173,14 +159,16 @@ void wild(const CityState &s, const TreeLook &T, const TreeKit &kit, const Chunk
 
 // The lots' plants: each lot's garden, and the grove of a park or a square that has not been edited.
 void parks(const CityState &s, const TreeLook &T, GardenBook &book, const ChunkGround &l, int64_t key, GardenView view, std::vector<TreeInstance> &out) {
-	for (int id : l.lots) {
+	for (int id : l.occupancy->lots) {
 		const Building &b = s.buildings.items[size_t(id)];
+		if (JobPool::cancelled()) return;
 		if (chunk_of(b.x, b.z) != key) continue;
 		place_garden(s, T, book, b, view, out);
 		if (b.body != 0 || !b40::is_open_lot(b.fn)) continue;
 		int n = std::min(T.park_max, int(b.w * b.d / T.park_m2_per_tree));
 		Vector3 ax(std::cos(b.rot), 0, -std::sin(b.rot)), az(std::sin(b.rot), 0, std::cos(b.rot));
 		for (int k = 0, placed = 0; k < n * PARK_TRIES && placed < n; k++) {
+			if (JobPool::cancelled()) return;
 			uint32_t h = hash_combine(b.seed, uint32_t(k) + PARK_SALT);
 			float lx = (h01(h, POS_X) - 0.5f) * std::max(0.f, b.w - 2 * T.park_edge), lz = (h01(h, POS_Z) - 0.5f) * std::max(0.f, b.d - 2 * T.park_edge);
 			if (!b40::open_lot_tree_ok(b.fn, b.w, b.d, lx, b.d / 2 - lz)) continue; // lot frame y runs from the street (+z side)
@@ -222,7 +210,8 @@ void planted(const CityState &s, const TreeLook &T, int64_t key, std::vector<Tre
 
 void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
 		std::vector<TreeInstance> &out) {
-	ChunkGround l = chunk_ground(s, key);
+	const auto ground = chunk_ground(s, key);
+	const ChunkGround &l = *ground;
 	street(s, L, T, key, out);
 	parks(s, T, book, l, key, GardenView::NEAR, out);
 	planted(s, T, key, out);
@@ -231,7 +220,8 @@ void place_trees(const CityState &s, const StreetLook &L, const TreeLook &T, con
 
 void place_far(const CityState &s, const StreetLook &L, const TreeLook &T, const TreeKit &kit, GardenBook &book, int64_t key,
 		std::vector<FarCard> &out) {
-	ChunkGround l = chunk_ground(s, key);
+	const auto ground = chunk_ground(s, key);
+	const ChunkGround &l = *ground;
 	std::vector<TreeInstance> trees;
 	street(s, L, T, key, trees);
 	parks(s, T, book, l, key, GardenView::FAR, trees);

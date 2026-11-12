@@ -2,6 +2,8 @@
 #include "sim/lots/lot_cache.h"
 
 #include "sim/citygen/road_gen.h"
+#include "core/units.h"
+#include <limits>
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -23,10 +25,10 @@ constexpr uint32_t PLAYER_LOT_SALT = 0x10755eedu;
 std::vector<Lot> with_player_lots(const CityState &s, std::vector<Lot> lots, int64_t key) {
 	if (s.lot_book.empty()) return lots;
 	lots.erase(std::remove_if(lots.begin(), lots.end(), [&](const Lot &l) { return s.lot_book.at(l.x, l.z) != 0; }), lots.end());
-	for (const PlayerLot &p : s.lot_book.lots) {
+	for (int id : s.lot_book.stands_in(key)) {
+		const PlayerLot &p = *s.lot_book.find(id);
 		if (p.zone == 0) continue;
-		const LotStand st = lot_stand(p.corners);
-		if (chunk_of(float(st.x), float(st.z)) != key) continue;
+		const LotStand &st = s.lot_book.geometry(id)->stand;
 		Lot l;
 		l.x = st.x;
 		l.z = st.z;
@@ -45,6 +47,9 @@ std::vector<Lot> with_player_lots(const CityState &s, std::vector<Lot> lots, int
 static std::vector<Lot> lots_of_cell(const CityState &s, int64_t key, int every_side) {
 	double x0 = key_x(key) * double(CHUNK), z0 = key_y(key) * double(CHUNK);
 	LotGraph g;
+	g.raster = &s.lot_raster;
+	const double bytes = std::max(0.0, double(s.catalog.tune.sim_lot_raster_cache_mb)) * BYTES_PER_MIB;
+	if (std::isfinite(bytes)) g.raster_bytes = bytes >= double(std::numeric_limits<size_t>::max()) ? std::numeric_limits<size_t>::max() : size_t(bytes);
 	std::unordered_map<int, int> map;
 	auto node = [&](int n) {
 		auto it = map.find(n);
@@ -61,6 +66,7 @@ static std::vector<Lot> lots_of_cell(const CityState &s, int64_t key, int every_
 	s.roads.for_segments_near(x0 - LOT_LOOK, z0 - LOT_LOOK, x0 + CHUNK + LOT_LOOK, z0 + CHUNK + LOT_LOOK, [&](int sid) {
 		const RoadSegment &seg = s.roads.segs[sid];
 		g.quad.push_back(seg.q);
+		g.prepared_arcs.push_back(&seg.lot_table);
 		g.sa.push_back(node(seg.a));
 		g.sb.push_back(node(seg.b));
 		g.profile.push_back(seg.profile);
@@ -94,6 +100,7 @@ void LotCache::process_dirty(CityState &s) {
 	for (size_t i = 0; i < cells.size(); i++) {
 		if (results[i].empty()) by_cell.erase(cells[i]);
 		else by_cell[cells[i]] = std::move(results[i]);
+		s.growth.invalidate_cell(cells[i]); // includes cells whose last lot disappeared
 	}
 }
 

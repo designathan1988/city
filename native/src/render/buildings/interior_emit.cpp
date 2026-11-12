@@ -103,7 +103,8 @@ void emit_interior(Shell &shell, Shell &parts, const Placed &pl) {
 	const Body &b = *pl.b;
 	const int cut = b.cut_level;
 	if (cut < 0 || !pl.whole) return;
-	Interior inside(*pl.data, *pl.whole, purpose_of(*pl.whole, pl.fn, pl.id));
+	Interior local(*pl.data, *pl.whole, purpose_of(*pl.whole, pl.fn, pl.id));
+	Interior &inside = pl.interior ? *pl.interior : local;
 	const InteriorLook &look = pl.look->interior;
 	const FloorInterior &floor = inside.at(cut);
 	floors(shell, pl, look, cut, floor_finish(inside.purpose(), cut, pl.id));

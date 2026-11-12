@@ -10,6 +10,7 @@
 #include <godot_cpp/classes/shader_material.hpp>
 #include <godot_cpp/variant/packed_byte_array.hpp>
 
+#include <atomic>
 #include <functional>
 #include <map>
 #include <memory>
@@ -21,7 +22,7 @@ namespace city {
 class RuinPieces {
 public:
 	// What cuts a building: run on a job's thread.
-	using Maker = std::function<std::shared_ptr<RuinMesh>(const b40::Data &, const Building &, const HeightPatch &)>;
+	using Maker = std::function<std::shared_ptr<RuinMesh>(const b40::Data &, const Building &, const HeightPatch &, const b40::BodyInput &)>;
 	struct Uncut { // what had no walls to cut (a design of its own): a plain heap after all
 		Ruin ruin;
 		bool falling = false;
@@ -35,7 +36,7 @@ public:
 	bool add(const CityState &s, const Ruin &r, float heap, bool falling);
 	// The building of `r`, standing, its `scars` taken out of it: `falling` before the player, else lying as they came to rest.
 	void scar(const CityState &s, const Ruin &r, const std::vector<Scar> &scars, bool falling);
-	void keep_only(const std::vector<Ruin> &ruins, const std::map<uint32_t, size_t> &scarred); // an undo took some back: by seed, how many scars
+	void keep_only(const std::vector<Ruin> &ruins, const std::map<uint32_t, std::vector<Scar>> &scarred); // content, not just the count
 	const std::unordered_set<uint32_t> &broken() const { return broken_; } // standing, drawn here and no longer by the buildings
 	std::vector<int64_t> take_repaint(); // the chunks whose buildings changed hands
 	bool holds(uint32_t seed) const { return falls_.count(seed) > 0; }
@@ -48,6 +49,7 @@ public:
 
 private:
 	struct Fall {
+		uint64_t sequence = 0;
 		std::shared_ptr<RuinSim> sim;
 		std::shared_ptr<RuinMesh> cut;
 		Ruin ruin;
@@ -61,6 +63,7 @@ private:
 		float heap_after = -1; // it came down while its pieces were being cut: this high
 	};
 	struct Done {
+		uint64_t sequence = 0;
 		uint32_t seed = 0;
 		std::shared_ptr<RuinMesh> cut;
 		std::shared_ptr<RuinSim> sim;
@@ -68,6 +71,7 @@ private:
 	};
 	struct Inbox {
 		std::mutex mutex;
+		std::atomic<bool> retired{false};
 		std::vector<Done> done;
 	};
 	void start(const CityState &s, Fall &f, float heap); // its pieces cut in a job

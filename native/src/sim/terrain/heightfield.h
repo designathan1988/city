@@ -4,6 +4,8 @@
 
 #include "core/bytes.h"
 #include "core/grid.h"
+#include "core/generation.h"
+#include "core/region_versions.h"
 #include "sim/catalog/catalog.h"
 #include "sim/state/change_log.h"
 #include "sim/terrain/height_patch.h"
@@ -55,6 +57,10 @@ class TerrainGen;
 
 class Heightfield {
 public:
+	uint64_t revision = next_generation(); // final-height publication, independent of sky/paint/clock
+	uint64_t base_revision = next_generation(); // natural quantized ground, before modifiers/road composition
+	void base_changed(const SampleRect &rect);
+	uint64_t base_stamp(float x, float z, float half) const; // bilinear samples under a world footprint
 	int N = 0; // samples per side; world x = (ix - N/2) * spacing
 	float spacing = 0;
 	int region_size = TERRAIN_REGION_SIZE;
@@ -63,7 +69,7 @@ public:
 	uint32_t seed = 0;
 	const Tuning *tune = nullptr;
 	std::vector<uint16_t> base_q; // quantized 1 cm, -100..555 m
-	std::vector<float> final_h; // base + modifiers (rendered)
+	PagedGrid<float> final_h; // immutable snapshot pages of base + modifiers (rendered)
 	std::vector<TerrainModifier> mods;
 	std::vector<int> free_mods;
 	SpatialHash mod_hash;
@@ -78,9 +84,17 @@ public:
 	// The generated level of every water sample an edit or a file changed, kept at its first change: what a save
 	// writes and what Relief's "back to the original" restores, with no land generated again.
 	std::unordered_map<uint32_t, float> water_original;
+	uint64_t water_stamp(float x0, float z0, float x1, float z1) const { return water_regions_.stamp(x0, z0, x1, z1); }
+	void write_water(uint32_t i, float level) {
+		if (water[i] == level) return;
+		water[i] = level;
+		const float x = float(i % water_n) * water_spacing_m - half_size();
+		const float z = float(i / water_n) * water_spacing_m - half_size();
+		water_regions_.touch(x - water_spacing_m, z - water_spacing_m, x + water_spacing_m, z + water_spacing_m);
+	}
 	void set_water(uint32_t i, float level) {
 		water_original.emplace(i, water[i]);
-		water[i] = level;
+		write_water(i, level);
 	}
 	JobPool *jobs = nullptr; // the city's pool: filling and composing split over it
 	int water_n = 0;
@@ -101,7 +115,7 @@ public:
 		return x > -h && x < h && z > -h && z < h;
 	}
 	float height_at(float x, float z) const; // final heights (with road corridors and pads)
-	// A copy of the final heights covering the box (plus the nodes its edges sample), for work done off the map lock.
+	// Immutable height version/window metadata (no sample copy); regional page leases can be prepared off the map lock.
 	HeightPatch patch(float minx, float minz, float maxx, float maxz) const;
 	float base_height_at(float x, float z) const; // natural ground, before modifiers
 	// Water stands here: a water sample over the ground, or the ground under the sea.
@@ -139,6 +153,8 @@ public:
 	void finish_load(); // rebuild final heights after base_q was loaded
 
 private:
+	std::vector<uint64_t> base_regions_;
+	RegionVersions water_regions_;
 	float dab_value(const BrushDab &d, size_t i, float dist, int x, int z) const;
 	float natural_reach(const BrushDab &d, float x, float z, float lobe_share, float salt_x, float salt_z) const;
 	int held = 0;

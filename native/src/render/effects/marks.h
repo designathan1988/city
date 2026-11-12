@@ -8,6 +8,9 @@
 
 #include <algorithm>
 #include <deque>
+#include <cmath>
+#include <map>
+#include <tuple>
 #include <vector>
 
 namespace city {
@@ -23,19 +26,32 @@ struct Mark {
 
 class Marks {
 public:
-	void init(const godot::RID &scenario, const godot::RID &material, int capacity, int soot_kept, int blood_kept);
+	void init(const godot::RID &scenario, const godot::RID &material, int capacity, int soot_kept, int blood_kept, float sector_m = 0);
 	void reset();
 	void release();
 	int blood() const { return int(blood_.size()); }
 	// The craters as the state has them (`ground_of`: the terrain's height at a point, before any digging for earth).
-	template <typename F>
-	void set_craters(const std::vector<Crater> &list, F &&ground_of) {
+	template <typename F, typename G>
+	void set_craters(const std::vector<Crater> &list, F &&ground_of, G &&ground_stamp) {
+		auto previous = std::move(crater_cache_);
+		crater_cache_.clear();
 		craters_.clear();
-		for (const Crater &c : list) {
+		total_craters_ = list.size();
+		const size_t count = std::min(list.size(), size_t(std::max(0, capacity_)));
+		craters_.reserve(count);
+		// Craters already precede soot/blood/rings in the capacity policy. Invisible tail records need no render preparation.
+		for (size_t i = 0; i < count; i++) {
+			const Crater &c = list[i];
 			Mark m;
 			m.kind = c.hard ? MARK_CRATER_HARD : MARK_CRATER_EARTH;
 			m.x = c.x; m.z = c.z; m.size = c.radius * 2.f * CRATER_SCALE; m.seed = float(c.seed & SEED_MASK) / float(SEED_MASK);
-			m.y = top_ground(c.x, c.z, m.size * 0.5f, ground_of) + SURFACE_LIFT_M; // the pit the dig leaves lies below it
+			const uint64_t stamp = ground_stamp(c.x, c.z, m.size * .5f);
+			const CraterKey key(c.x, c.z, c.radius, c.hard, c.seed);
+			const bool cacheable = std::isfinite(c.x) && std::isfinite(c.z) && std::isfinite(c.radius);
+			const auto found = cacheable ? previous.find(key) : previous.end();
+			if (found != previous.end() && found->second.stamp == stamp) m = found->second.mark;
+			else m.y = top_ground(c.x, c.z, m.size * .5f, ground_of) + SURFACE_LIFT_M;
+			if (cacheable) crater_cache_[key] = { m, stamp };
 			craters_.push_back(m);
 		}
 		dirty_ = true;
@@ -52,7 +68,7 @@ public:
 	void add_soot(const Mark &m);
 	void add_blood(const Mark &m);
 	void ring(const Mark &m);
-	size_t craters() const { return craters_.size(); }
+	size_t craters() const { return total_craters_; }
 	// Writes what changed (and the rings' ends) at the effects clock `now`.
 	void update(double now);
 	static constexpr float SURFACE_LIFT_M = 0.06f;
@@ -63,6 +79,10 @@ private:
 	static constexpr uint32_t SEED_MASK = 0xffffu;
 	MmLayer layer_;
 	godot::RID material_;
+	using CraterKey = std::tuple<float, float, float, uint8_t, uint32_t>;
+	struct PreparedCrater { Mark mark; uint64_t stamp = 0; };
+	std::map<CraterKey, PreparedCrater> crater_cache_; // only the admitted prefix; no hash collisions in identity
+	size_t total_craters_ = 0;
 	std::vector<Mark> craters_;
 	std::deque<Mark> soot_, blood_;
 	std::vector<Mark> rings_;

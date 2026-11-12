@@ -2,6 +2,8 @@
 // control and the graph that holds them. Pure C++ (no Godot types); written only by sim/traffic, read by render/agents.
 #pragma once
 
+#include "core/generation.h"
+
 #include <cstdint>
 #include <vector>
 
@@ -67,12 +69,15 @@ struct Junction {
 };
 
 struct LaneGraph {
+	uint64_t routing_revision = next_generation(); // structural edges/endpoints and route-relevant junction control
 	int version = -1; // RoadNetwork::version it was built from
 	std::vector<DirSeg> ds;
 	std::vector<Conn> conns; // pool: dead entries are on free_conns
 	std::vector<int> free_conns;
 	std::vector<int> node_conn; // per node: first connection of its list (-1)
 	std::vector<int> lane_conn; // per ds * MAX_LANES + lane: first connection leaving it (-1)
+	std::vector<std::vector<int>> route_conns; // first equivalent connector in original lane/list order, prepared with its node
+	std::vector<uint8_t> route_ready; // absent/unprepared low-level graphs keep the linked-list path
 	std::vector<Junction> junctions; // per node
 	double lane_metres = 0;
 };
@@ -84,6 +89,30 @@ void each_conn_from(const LaneGraph &g, int ds, F &&fn) {
 		for (int c = g.lane_conn[size_t(ds) * MAX_LANES + lane]; c >= 0; c = g.conns[c].next_from)
 			if (g.conns[c].alive) fn(c);
 	}
+}
+
+// One bounded physical adjacency read for a route continuation. Dead links consume a step of their own.
+struct RouteConnCursor { size_t at = 0; int lane = 0, link = -2; };
+enum class ConnRead : uint8_t { ENTRY, SKIP, END };
+inline ConnRead next_physical_connection(const LaneGraph &g, int ds, RouteConnCursor &cursor, int &ci) {
+	if (ds < 0 || size_t(ds) >= g.ds.size() || (size_t(ds) + 1) * MAX_LANES > g.lane_conn.size()) return ConnRead::END;
+	// At most MAX_LANES heads; preserves the original physical lane/list order.
+	while (cursor.lane < MAX_LANES) {
+		if (cursor.link == -2) cursor.link = g.lane_conn[size_t(ds) * MAX_LANES + cursor.lane];
+		if (cursor.link >= 0) break;
+		++cursor.lane; cursor.link = -2;
+	}
+	if (cursor.lane >= MAX_LANES) return ConnRead::END;
+	ci = cursor.link; cursor.link = g.conns[size_t(ci)].next_from;
+	return g.conns[size_t(ci)].alive ? ConnRead::ENTRY : ConnRead::SKIP;
+}
+inline ConnRead next_route_connection(const LaneGraph &g, int ds, RouteConnCursor &cursor, int &ci) {
+	if (ds >= 0 && size_t(ds) < g.route_conns.size() && size_t(ds) < g.route_ready.size() && g.route_ready[size_t(ds)]) {
+		const auto &edges = g.route_conns[size_t(ds)];
+		if (cursor.at >= edges.size()) return ConnRead::END;
+		ci = edges[cursor.at++]; return ConnRead::ENTRY;
+	}
+	return next_physical_connection(g, ds, cursor, ci);
 }
 
 } // namespace city

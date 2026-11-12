@@ -5,6 +5,7 @@
 #pragma once
 
 #include "sim/catalog/furniture_types.h"
+#include "core/generation.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/rect2.hpp>
@@ -25,11 +26,11 @@ struct SignCell {
 class SignAtlas {
 public:
 	void configure(int width, int height, int cell, int blade_w, int blade_h); // a layer and its cells, in pixels
-	void reset();
+	uint64_t generation() const { return generation_; }
 	SignCell cell(SignType type, const std::string &text); // any thread
 	// The cells to paint since the last call, each [type, text, rectangle in pixels, layer]. Main thread.
 	godot::Array take_pending();
-	int cells_used() const { return used_; }
+	int cells_used() const { std::lock_guard<std::mutex> lk(mutex_); return used_; }
 
 private:
 	struct Pending {
@@ -43,7 +44,8 @@ private:
 		bool open = false;
 	};
 	godot::Rect2i place(bool wide);
-	std::mutex mutex_;
+	const uint64_t generation_ = next_generation();
+	mutable std::mutex mutex_;
 	std::unordered_map<std::string, SignCell> cells_;
 	std::vector<Pending> pending_;
 	Shelf shelf_[2]; // square, wide

@@ -3,6 +3,7 @@
 // wind response by.
 #include "render/trees/tree_renderer.h"
 #include "render/chunk_jobs.h"
+#include "render/job_request.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
@@ -97,11 +98,20 @@ void TreeRenderer::set_share(float tier) {
 	trees_.share.store(share);
 	for (const auto &[key, ch] : near_) tier_[TIER_NEAR].dirty.insert(key);
 	for (const auto &[key, sp] : far_) tier_[TIER_FAR].dirty.insert(key);
+	// Missing chunks may still have an old-share request. Retire those identities too; sync cancels their captures.
+	std::lock_guard<std::mutex> lock(queue_mutex_);
+	for (Tier &tier : tier_) {
+		for (const auto &[key, seq] : tier.requested) tier.dirty.insert(key);
+		tier.requested.clear();
+	}
 }
 
-void TreeRenderer::mark_dirty(int64_t key) {
+void TreeRenderer::mark_dirty(int64_t key, JobPool *pool) {
+	const int64_t far = cell_key(int(std::floor(float(key_x(key)) / CHUNKS_PER_SUPER)), int(std::floor(float(key_y(key)) / CHUNKS_PER_SUPER)));
+	cancel_request(pool, JobKey{ JobLane::TREES_NEAR, key }, queue_mutex_, tier_[TIER_NEAR].requested);
+	cancel_request(pool, JobKey{ JobLane::TREES_FAR, far }, queue_mutex_, tier_[TIER_FAR].requested);
 	tier_[TIER_NEAR].dirty.insert(key);
-	tier_[TIER_FAR].dirty.insert(cell_key(int(std::floor(float(key_x(key)) / CHUNKS_PER_SUPER)), int(std::floor(float(key_y(key)) / CHUNKS_PER_SUPER))));
+	tier_[TIER_FAR].dirty.insert(far);
 }
 
 TreeRenderer::Built TreeRenderer::build_near(const CityState &s, int64_t key) const {
@@ -123,8 +133,10 @@ TreeRenderer::Built TreeRenderer::build_far(const CityState &s, int64_t key) con
 	out.key = key;
 	std::vector<FarCard> cards;
 	for (int j = 0; j < CHUNKS_PER_SUPER; j++)
-		for (int i = 0; i < CHUNKS_PER_SUPER; i++)
+		for (int i = 0; i < CHUNKS_PER_SUPER; i++) {
+			if (JobPool::cancelled()) return out;
 			place_far(s, *look_, trees_, kit_, gardens_, cell_key(key_x(key) * CHUNKS_PER_SUPER + i, key_y(key) * CHUNKS_PER_SUPER + j), cards);
+		}
 	out.far = bake_far_cards(cards, FAR_CARD_CENTRE, kit_.pictures().frame_share() * HALF);
 	return out;
 }
@@ -186,7 +198,9 @@ void TreeRenderer::submit(const CityState &s, int64_t key, float priority, bool 
 	}
 	s.jobs->submit(JobKey{ far ? JobLane::TREES_FAR : JobLane::TREES_NEAR, key }, priority, [this, &s, &t, key, seq, priority, far]() {
 		std::shared_lock<std::shared_mutex> map(s.map_mutex);
+		if (JobPool::cancelled()) return;
 		Built b = far ? build_far(s, key) : build_near(s, key);
+		if (JobPool::cancelled()) return;
 		b.seq = seq;
 		b.priority = priority;
 		std::lock_guard<std::mutex> lk(queue_mutex_);
@@ -219,8 +233,10 @@ void TreeRenderer::stream(const CityState &s, const Vector3 &cam, BuildBudget &b
 		return t.requested.count(k) > 0;
 	};
 	auto built = [&](int64_t k) { return far ? far_.count(k) > 0 : near_.count(k) > 0; };
+	// Retire all dirty keys before admission: a zero-credit frame must not leave the tail publishable.
+	for (int64_t key : t.dirty) cancel_request(s.jobs.get(), JobKey{ far ? JobLane::TREES_FAR : JobLane::TREES_NEAR, key }, queue_mutex_, t.requested);
 	for (auto it = t.dirty.begin(); it != t.dirty.end();) {
-		if (!built(*it) || busy(*it)) { it = t.dirty.erase(it); continue; } // a chunk not drawn is built fresh when it comes
+		if (!built(*it)) { it = t.dirty.erase(it); continue; } // the missing chunk is requested below from the current map
 		if (!budget.take()) break;
 		submit(s, *it, distance_to(*it, size, cam), far);
 		it = t.dirty.erase(it);
@@ -235,6 +251,7 @@ void TreeRenderer::stream(const CityState &s, const Vector3 &cam, BuildBudget &b
 			if (!built(k) && !busy(k)) want.push_back({ d, k });
 		}
 	auto evict = [&](int64_t k) {
+		if (s.jobs) s.jobs->cancel(JobKey{ far ? JobLane::TREES_FAR : JobLane::TREES_NEAR, k });
 		std::lock_guard<std::mutex> lk(queue_mutex_);
 		t.requested.erase(k);
 	};

@@ -9,12 +9,15 @@
 #include "sim/commands/commands.h"
 
 #include <string>
+#include <optional>
 
 namespace city {
 
 struct CityState;
 
 // The model as a body in the lot frame, the same bytes each time.
+b40::ModelInputs model_inputs(const b40::Data &data);
+void model_body(const b40::ModelInputs &inputs, const b40::ModelSpec &m, b40::Body &b);
 void model_body(const b40::Data &data, const b40::ModelSpec &m, b40::Body &b);
 // The lot made to fit what stands on the ground: moved to the lot frame, `plan.W` and `plan.D` set. Answers where the new front's
 // middle lay in the old frame.
@@ -31,7 +34,7 @@ PlaceSnap snap_place(const CityState &s, float w, float d, double x, double z, d
 // Why the body cannot stand with the middle of its front at (ax, az): a strings.csv key, or "".
 std::string place_problem(const CityState &s, const b40::Body &body, double ax, double az, double rot);
 // `same`: the record it was, for a building that only moved: it keeps its seed, its style and its age, so it looks as it looked.
-EditResult place_body(CityState &s, const b40::Body &body, double ax, double az, double rot, int fn, int zone, const Building *same = nullptr);
+EditResult place_body(CityState &s, const b40::Body &body, double ax, double az, double rot, int fn, int zone, const Building *same = nullptr, std::optional<double> built_at = std::nullopt);
 
 // `other` (its lot framed by `of`) joins `into` (framed by `at`): its blocks keep their walls and roofs and its parts stay where they
 // stand; nothing is cut.

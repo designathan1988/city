@@ -19,6 +19,7 @@ const SPEEDS := [["", 0], ["1×", 1], ["2×", 2], ["4×", 3]]
 @onready var _sky_buttons: Array[Button] = []
 @onready var _history_buttons: Dictionary = {}
 @onready var _tipped: Array = [] # [button, tip key]: drawn again when the language changes
+var _graph_key: Array = []
 @onready var _warn: Button
 
 
@@ -73,7 +74,8 @@ func _ready() -> void:
 			_history_buttons[a.action] = b
 		else:
 			HudWidgets.soon(b, a.tip_key)
-	CityStore.changed.connect(_on_changed)
+	CityStore.watch(self, ["ready", "city_generation", "road_revision", "hour", "money", "vehicles", "people",
+		"residents", "jobs", "buildings", "speed", "can_undo", "can_redo", "undo_label", "redo_label"], _on_changed)
 	relabel()
 
 
@@ -82,6 +84,7 @@ func relabel() -> void:
 	for t: Array in _tipped:
 		HudWidgets.tip_for(t[0], tr(t[1]))
 	_money.tooltip_text = tr("ui.money.tip").format({"refund": int(round(DataTables.tuning("economy_refund_share") * Formatters.PERCENT))})
+	_graph_key.clear() # labels are translated again even when the network is unchanged
 	_on_changed(CityStore.snapshot)
 
 
@@ -110,7 +113,10 @@ func _on_changed(s: Dictionary) -> void:
 	_stats.text = "%s · %s" % [Formatters.count_label("status.vehicles", s.vehicles), Formatters.count_label("status.people", s.people)]
 	_stats.tooltip_text = tr("ui.stats.tip").format({"residents": Formatters.format_int(s.residents),
 		"jobs": Formatters.format_int(s.jobs), "buildings": Formatters.format_int(s.buildings), "speed": "—"})
-	_sync_impossible()
+	var graph_key := [s.get("city_generation", -1), s.get("road_revision", -1)]
+	if graph_key != _graph_key:
+		_graph_key = graph_key
+		_sync_impossible()
 	for i in SPEEDS.size():
 		_speed_buttons[i].set_pressed_no_signal(SPEEDS[i][1] == int(s.speed))
 	for action in _history_buttons:

@@ -35,6 +35,7 @@ public:
 	const Body &b;
 	const Volume &v;
 	int level;
+	bool emit_furniture = true; // authored floors still compute their partitions/spaces, but no disposable furniture
 	float x0 = 0, y0 = 0, x1 = 0, y1 = 0;
 	std::vector<Furniture> items;
 	std::vector<Partition> walls;

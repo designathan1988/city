@@ -34,8 +34,11 @@ double influence(double u) { return u * u * (3 - 2 * u); }
 double bed_profile(double d, double reach) { return influence(std::min(1.0, (1 - d / reach) / RIVER_BED_FLOOR)); }
 } // namespace
 
-TerrainGen::TerrainGen(uint32_t seed, double map_half, double water_spacing) : seed_(seed), half_(map_half), water_spacing_(water_spacing) {
-	if (!flat()) plan_river();
+TerrainGen::TerrainGen(uint32_t seed, double map_half, double water_spacing, std::shared_ptr<const TerrainRiverPlan> prepared) : seed_(seed), half_(map_half), water_spacing_(water_spacing) {
+	if (!flat()) {
+		if (prepared && prepared->seed == seed_ && prepared->half == half_ && prepared->water_spacing == water_spacing_) river_ = std::move(prepared);
+		else river_ = plan_river();
+	}
 }
 
 double TerrainGen::course_z() const { return half_ - CANAL_FROM_EDGE; }
@@ -74,7 +77,10 @@ double TerrainGen::land(double x, double z) const {
 	return h;
 }
 
-void TerrainGen::plan_river() {
+std::shared_ptr<const TerrainRiverPlan> TerrainGen::plan_river() {
+	auto plan = std::make_shared<TerrainRiverPlan>();
+	plan->seed = seed_; plan->half = half_; plan->water_spacing = water_spacing_;
+	auto &course_z_ = plan->course_z, &level_ = plan->level, &depth_ = plan->depth;
 	int n = int(std::ceil(half_ * 2 / water_spacing_)) + 1;
 	course_z_.assign(n, 0);
 	level_.assign(n, 0);
@@ -102,9 +108,11 @@ void TerrainGen::plan_river() {
 		for (int i = 1; i < n; i++) fall(i, level_[i - 1]);
 	else
 		for (int i = n - 2; i >= 0; i--) fall(i, level_[i + 1]);
+	return plan;
 }
 
 TerrainGen::River TerrainGen::river_at(double x, double z) const {
+	const auto &course_z_ = river_->course_z, &level_ = river_->level, &depth_ = river_->depth;
 	int n = int(level_.size());
 	double f = std::min(n - RIVER_END_EPS, std::max(0.0, (x + half_) / water_spacing_));
 	int i = int(std::floor(f));

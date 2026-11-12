@@ -17,6 +17,8 @@ void aim_at_door(CityState &s, Pedestrian &w) {
 // At its door's place on the sidewalk: across to the foot of the way in, then to the door.
 void go_in(CityState &s, int id) {
 	Pedestrian &w = s.traffic.peds[size_t(id)];
+	if (!door_current(s,w.door)) { w.door = {}; return; }
+	w.door.y = s.terrain.height_at(w.door.x,w.door.z);
 	Pose foot;
 	sidewalk_pose(s, w.seg, w.side, w.door.s, w.door.u, foot);
 	w.ways[0] = Waypoint{ foot.x, foot.y, foot.z, -1 };
@@ -38,7 +40,7 @@ static void through_door(CityState &s, int id) {
 		m.with = -1;
 		m.on_way = false;
 		m.mode = PedMode::LOT;
-		m.entering = true;
+		m.entering = true; m.door = w.door;
 		m.way_node = -1;
 		m.ways[0] = w.ways[w.wn - 1];
 		m.wn = 1;
@@ -47,13 +49,16 @@ static void through_door(CityState &s, int id) {
 		w.mate = -1;
 	}
 	t.doors_in++;
-	despawn(t, id, true);
+	despawn(s, id, true);
 }
 
 // On the way between a door and the sidewalk: no crowd here, its own pace and nothing in the way (lot_doors.h).
 void walk_lot(CityState &s, int id, float dt) {
 	TrafficState &t = s.traffic;
 	Pedestrian &w = t.peds[size_t(id)];
+	if (w.entering && !door_current(s,w.door)) {
+		w.entering = false; w.door = {}; on_sidewalk(w); onto_sidewalk(s,w); return;
+	}
 	const float step = w.speed * dt;
 	w.walked += step;
 	w.ls += step;

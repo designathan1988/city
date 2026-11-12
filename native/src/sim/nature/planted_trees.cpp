@@ -14,7 +14,7 @@ constexpr float HASH_CELL_M = 32.f; // about the widest dab the spacing test loo
 constexpr int STREAMS = 8;
 
 template <typename T>
-int take_slot(std::vector<T> &list, std::vector<int> &free) {
+int take_slot(std::vector<T> &list, FreeSlots &free) {
 	if (!free.empty()) {
 		int id = free.back();
 		free.pop_back();
@@ -43,10 +43,10 @@ int PlantedTrees::add(const PlantedTree &t) {
 }
 
 void PlantedTrees::put(int id, const PlantedTree &t) {
+	for (int k = int(trees.size()); k < id; k++) free_trees_.push_back(k);
 	if (id >= int(trees.size())) trees.resize(size_t(id) + 1);
-	free_trees_.erase(std::remove(free_trees_.begin(), free_trees_.end(), id), free_trees_.end());
 	if (trees[size_t(id)].alive) remove(id);
-	free_trees_.erase(std::remove(free_trees_.begin(), free_trees_.end(), id), free_trees_.end());
+	free_trees_.erase(id);
 	trees[size_t(id)] = t;
 	trees[size_t(id)].alive = true;
 	hash_.insert_aabb(id, t.x, t.z, t.x, t.z);
@@ -69,8 +69,10 @@ int PlantedTrees::add_clearing(const TreeClearing &c) {
 }
 
 void PlantedTrees::put_clearing(int id, const TreeClearing &c) {
+	for (int k = int(clearings.size()); k < id; k++) free_clearings_.push_back(k);
 	if (id >= int(clearings.size())) clearings.resize(size_t(id) + 1);
-	free_clearings_.erase(std::remove(free_clearings_.begin(), free_clearings_.end(), id), free_clearings_.end());
+	if (clearings[size_t(id)].alive) remove_clearing(id);
+	free_clearings_.erase(id);
 	clearings[size_t(id)] = c;
 	clearings[size_t(id)].alive = true;
 	clear_hash_.insert_aabb(id, c.x - c.radius, c.z - c.radius, c.x + c.radius, c.z + c.radius);

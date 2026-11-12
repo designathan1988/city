@@ -30,8 +30,8 @@ EditResult demolish_box(CityState &s, double ax, double az, double bx, double bz
 		if (inside((g.minx + g.maxx) * 0.5f, (g.minz + g.maxz) * 0.5f, x0, z0, x1, z1)) segments.push_back(seg);
 	});
 	int rubble = 0;
-	for (int i = int(s.damage.ruins.size()) - 1; i >= 0; i--) {
-		const Ruin &u = s.damage.ruins[size_t(i)];
+	for (int i = int(s.damage.ruins().size()) - 1; i >= 0; i--) {
+		const Ruin &u = s.damage.ruins()[size_t(i)];
 		if (!inside(u.x, u.z, x0, z0, x1, z1)) continue;
 		j_remove_ruin(s, i);
 		rubble++;

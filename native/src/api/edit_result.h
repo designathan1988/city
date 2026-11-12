@@ -3,6 +3,7 @@
 #pragma once
 
 #include "sim/commands/commands.h"
+#include "sim/commands/edit_scope.h"
 #include "sim/state/city_state.h"
 
 #include <godot_cpp/variant/dictionary.hpp>
@@ -30,10 +31,19 @@ template <typename F>
 godot::Dictionary run_edit(CityState &s, const char *label, F &&fn) {
 	std::unique_lock<std::shared_mutex> lk(s.map_mutex);
 	if (!s.ready) return godot::Dictionary();
+	const uint64_t before = s.revision;
+	EditScope scope(s);
 	s.history.begin(label);
 	EditResult r = fn(s);
-	s.history.end(s, r.ok);
-	return result_dict(r);
+	s.history.end(s, r.ok); // road-driven lot cuts remain part of this transaction and the same undo entry
+	scope.close(); // finalize the complete successful/rolled-back truth, including history's nested lot cuts
+	if (!r.ok) {
+		s.revision = before;
+	}
+	s.buildings.designs.edited->release_pending(); // live records/history/damage/jobs now own every retained authored version
+	godot::Dictionary result = result_dict(r);
+	result["changed"] = r.ok && s.revision != before;
+	return result;
 }
 
 } // namespace city

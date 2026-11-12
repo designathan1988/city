@@ -12,11 +12,8 @@ namespace city {
 namespace {
 EditOp &record(CityState &s, OpKind k, int id) {
 	EditEntry &e = s.history.open;
-	e.ops.emplace_back();
+	e.ops.emplace_back(k, id);
 	EditOp &op = e.ops.back();
-	op.kind = k;
-	op.id = id;
-	e.bytes += sizeof(EditOp); // the op carries full records; the old fixed 64 B undercounted it several times
 	return op;
 }
 
@@ -42,7 +39,7 @@ int j_add_node(CityState &s, double x, double z, double y, float lift) {
 	s.roads.nodes[id].plain = true; // a road the player lays ends in a straight cut: the bulb is chosen (set_road_end)
 	s.log.net_node(id);
 	if (s.history.recording) {
-		record(s, OpKind::ADD_NODE, id).node = s.roads.nodes[id];
+		record(s, OpKind::ADD_NODE, id).get<RoadNode>() = s.roads.nodes[id];
 		grow_point(s, x, z, 0);
 	}
 	return id;
@@ -52,7 +49,7 @@ void j_remove_node_if_orphan(CityState &s, int n) {
 	const RoadNode &nd = s.roads.nodes[n];
 	if (!nd.alive || !nd.segs.empty()) return;
 	if (s.history.recording) {
-		record(s, OpKind::REM_NODE, n).node = nd;
+		record(s, OpKind::REM_NODE, n).get<RoadNode>() = nd;
 		grow_point(s, nd.x, nd.z, 0);
 	}
 	s.roads.remove_node_if_orphan(n);
@@ -70,10 +67,12 @@ void j_set_control(CityState &s, int n, uint8_t ctl) {
 	}
 	nd.ctl = ctl;
 	s.log.net_node(n);
+	s.log.street_nodes.push_back(n);
 }
 
 void j_set_lift(CityState &s, int n, float lift) {
 	RoadNode &nd = s.roads.nodes[n];
+	if (nd.lift == lift) return;
 	if (s.history.recording) {
 		EditOp &op = record(s, OpKind::NODE_LIFT, n);
 		op.lift_from = nd.lift;
@@ -99,6 +98,7 @@ void j_set_crossing(CityState &s, int n, uint8_t kind) {
 
 void j_set_uturn(CityState &s, int n, uint8_t kind) {
 	RoadNode &nd = s.roads.nodes[n];
+	if (nd.uturn == kind) return;
 	if (s.history.recording) {
 		EditOp &op = record(s, OpKind::NODE_UTURN, n);
 		op.from = nd.uturn;
@@ -120,6 +120,7 @@ void j_set_plain(CityState &s, int n, bool plain) {
 	}
 	nd.plain = plain;
 	s.log.net_node(n);
+	s.log.shape_nodes.push_back(n);
 }
 
 void j_set_signal(CityState &s, int n, const SignalSettings &to) {
@@ -127,8 +128,8 @@ void j_set_signal(CityState &s, int n, const SignalSettings &to) {
 	if (nd.signal == to) return;
 	if (s.history.recording) {
 		EditOp &op = record(s, OpKind::NODE_SIGNAL, n);
-		op.signal_from = nd.signal;
-		op.signal_to = to;
+		op.get<SignalChange>().before = nd.signal;
+		op.get<SignalChange>().after = to;
 	}
 	nd.signal = to;
 	s.log.signal_nodes.push_back(n);
@@ -140,7 +141,7 @@ int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl
 	s.log.net_node(a);
 	s.log.net_node(b);
 	if (s.history.recording) {
-		record(s, OpKind::ADD_SEG, id).seg = s.roads.segs[id];
+		record(s, OpKind::ADD_SEG, id).get<RoadSegment>() = s.roads.segs[id];
 		grow_seg(s, s.roads.segs[id]);
 	}
 	return id;
@@ -150,7 +151,7 @@ void j_remove_segment(CityState &s, int seg) {
 	const RoadSegment &g = s.roads.segs[seg];
 	if (!g.alive) return;
 	if (s.history.recording) {
-		record(s, OpKind::REM_SEG, seg).seg = g;
+		record(s, OpKind::REM_SEG, seg).get<RoadSegment>() = g;
 		grow_seg(s, g);
 	}
 	s.log.net_seg_removed(seg);
@@ -175,7 +176,7 @@ void j_set_profile(CityState &s, int seg, int profile) {
 		EditOp &op = record(s, OpKind::PROFILE, seg);
 		op.from = g.profile;
 		op.to = profile;
-		op.seg = g; // what the change is worth: its length, its structure and the heights at its ends
+		op.get<RoadSegment>() = g; // what the change is worth: its length, its structure and the heights at its ends
 		grow_seg(s, g);
 	}
 	s.roads.set_profile(seg, profile);
@@ -205,7 +206,9 @@ void j_set_zone(CityState &s, int seg, int side, int zone) {
 int j_add_building(CityState &s, const Building &b) {
 	int id = s.buildings.add(b);
 	if (s.history.recording) {
-		record(s, OpKind::ADD_BLD, id).bld = s.buildings.items[id];
+		EditOp &op = record(s, OpKind::ADD_BLD, id);
+		op.get<BuildingChange>().before = s.buildings.items[id];
+		op.get<BuildingChange>().body_after = s.buildings.designs.edited->get(op.get<BuildingChange>().before.body);
 		grow_point(s, b.x, b.z, std::max(b.w, b.d));
 	}
 	return id;
@@ -215,7 +218,9 @@ void j_remove_building(CityState &s, int id) {
 	const Building &b = s.buildings.items[id];
 	if (!b.alive) return;
 	if (s.history.recording) {
-		record(s, OpKind::REM_BLD, id).bld = b;
+		EditOp &op = record(s, OpKind::REM_BLD, id);
+		op.get<BuildingChange>().before = b;
+		op.get<BuildingChange>().body_before = s.buildings.designs.edited->get(b.body);
 		grow_point(s, b.x, b.z, std::max(b.w, b.d));
 	}
 	s.buildings.remove(id);
@@ -223,10 +228,14 @@ void j_remove_building(CityState &s, int id) {
 
 void j_edit_building(CityState &s, int id, const Building &after) {
 	Building before = s.buildings.items[id];
+	if (before == after) return;
+	const b40::BodyRef next_body = s.buildings.designs.edited->get(after.body);
 	if (s.history.recording) {
 		EditOp &op = record(s, OpKind::EDIT_BLD, id);
-		op.bld = before;
-		op.bld_after = after;
+		op.get<BuildingChange>().before = before;
+		op.get<BuildingChange>().after = after;
+		op.get<BuildingChange>().body_before = s.buildings.designs.edited->get(before.body);
+		op.get<BuildingChange>().body_after = next_body;
 		grow_point(s, before.x, before.z, std::max(before.w, before.d));
 	}
 	s.buildings.remove(id);
@@ -237,27 +246,27 @@ int j_add_modifier(CityState &s, const std::vector<float> &pts, float flat, floa
 	int id = s.terrain.add_modifier(pts, flat, max_run);
 	if (s.history.recording) {
 		EditOp &op = record(s, OpKind::ADD_MOD, id);
-		op.mod = s.terrain.mods[id];
-		s.history.open.bytes += pts.size() * sizeof(float);
+		op.get<TerrainModifier>() = s.terrain.mods[id];
 	}
 	return id;
 }
 
-void j_lots(CityState &s, LotBook next) {
+void j_lots(CityState &s, LotsChange change) {
+	if (change.empty()) return;
 	if (s.history.recording) {
 		EditOp &op = record(s, OpKind::LOTS, -1);
-		op.lots_before = std::make_shared<const LotBook>(s.lot_book);
-		op.lots_after = std::make_shared<const LotBook>(next);
-	}
-	s.lot_book = std::move(next);
+		op.get<LotsChange>() = std::move(change);
+		op.get<LotsChange>().apply(s.lot_book, true);
+	} else change.apply(s.lot_book, true);
 	s.touch();
 }
 
 void j_links(CityState &s, int node, std::vector<LaneLink> next) {
+	if (s.roads.nodes[size_t(node)].links == next) return;
 	if (s.history.recording) {
 		EditOp &op = record(s, OpKind::NODE_LINKS, node);
-		op.links_before = s.roads.nodes[size_t(node)].links;
-		op.links_after = next;
+		op.get<LinksChange>().before = s.roads.nodes[size_t(node)].links;
+		op.get<LinksChange>().after = next;
 		const RoadNode &n = s.roads.nodes[size_t(node)];
 		s.history.open.grow(float(n.x), float(n.z), float(n.x), float(n.z));
 	}
@@ -266,13 +275,13 @@ void j_links(CityState &s, int node, std::vector<LaneLink> next) {
 	s.touch();
 }
 
-void j_transit(CityState &s, TransitData next) {
+void j_transit(CityState &s, TransitChange change) {
+	change.next_after = s.transit.next_id;
+	if (change.empty()) return;
 	if (s.history.recording) {
 		EditOp &op = record(s, OpKind::TRANSIT, -1);
-		op.transit_before = std::make_shared<const TransitData>(s.transit);
-		op.transit_after = std::make_shared<const TransitData>(next);
+		op.get<TransitChange>() = std::move(change);
 	}
-	s.transit = std::move(next);
 	s.transit_revision++;
 	s.touch();
 }
@@ -298,10 +307,9 @@ void j_terrain_touch(CityState &s, const SampleRect &r) {
 	e.grow(t.x_of(r.x0), t.x_of(r.z0), t.x_of(r.x1), t.x_of(r.z1));
 }
 
-void j_nature(CityState &s, size_t bytes, NatureEdit edit) {
+void j_nature(CityState &s, NatureEdit edit) {
 	if (!s.history.recording) return;
-	record(s, OpKind::NATURE, -1).nature = std::make_shared<const NatureEdit>(std::move(edit));
-	s.history.open.bytes += bytes;
+	record(s, OpKind::NATURE, -1).get<NatureChange>().edit = std::move(edit);
 }
 
 void j_paint_touch(CityState &s, const std::vector<int> &tiles) {

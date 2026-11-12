@@ -13,10 +13,9 @@ namespace city {
 
 namespace {
 constexpr uint32_t SHOT_SALT = 0x70697374U;
-constexpr float LYING_R = 0.3f, LYING_HEIGHT_M = 0.2f; // a body on the ground: a capsule this thick, this high
+constexpr float LYING_HEIGHT_M = 0.2f; // a body on the ground: a capsule this thick, this high
 constexpr float LYING_HEAD_SHARE = 0.35f, LYING_LEGS_SHARE = -0.1f; // along its length from its middle: the head end, where the legs begin
-constexpr float EPS = 1e-6f;
-constexpr float RIDER_HALF_M = 0.35f; // a two-wheeler's box is at least this wide (the rider's shoulders)
+constexpr float EPS = SHOT_PARALLEL_EPS;
 
 struct Found {
 	float t = BIG;
@@ -54,7 +53,7 @@ void aim_at_walkers(const Round &r, float limit, Found &best) {
 	const TrafficState &t = r.s.traffic;
 	const BlastParams &p = r.p;
 	const float o[3] = { r.ox, r.oy, r.oz }, d[3] = { r.dx, r.dy, r.dz };
-	for (int id = 0; id < int(t.peds.size()); id++) {
+	for (int id : t.walker_index.ray(r.ox, r.oz, r.dx, r.dz, limit)) {
 		const Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive) continue;
 		const float height = p.body_height_m * w.scale;
@@ -64,7 +63,7 @@ void aim_at_walkers(const Round &r, float limit, Found &best) {
 			const float b[3] = { w.cur.x + w.cur.fx * half, w.cur.y + LYING_HEIGHT_M, w.cur.z + w.cur.fz * half };
 			float tt, u, dist;
 			ray_segment(o, d, a, b, tt, u, dist);
-			if (dist > LYING_R || tt >= std::min(best.t, limit)) continue;
+			if (dist > LYING_BODY_RADIUS_M || tt >= std::min(best.t, limit)) continue;
 			const float along = u - 0.5f, px = o[0] + d[0] * tt, pz = o[2] + d[2] * tt;
 			const float side = (px - w.cur.x) * -w.cur.fz + (pz - w.cur.z) * w.cur.fx;
 			best = Found{ tt, id, false, true, BodyPart::TORSO, 0.f };
@@ -86,11 +85,11 @@ void aim_at_walkers(const Round &r, float limit, Found &best) {
 void aim_at_vehicles(const Round &r, float limit, Found &best) {
 	const TrafficState &t = r.s.traffic;
 	const TrafficParams &tp = r.s.catalog.traffic;
-	for (int id = 0; id < int(t.vehicles.size()); id++) {
+	for (int id : t.vehicle_index.ray(r.ox, r.oz, r.dx, r.dz, limit)) {
 		const Vehicle &v = t.vehicles[size_t(id)];
 		if (!v.alive) continue;
 		const bool two = two_wheeler(v.type);
-		const float half_l = tp.classes[int(v.type)].length * 0.5f, half_w = std::max(tp.classes[int(v.type)].half_width, two ? RIDER_HALF_M : 0.f);
+		const float half_l = tp.classes[int(v.type)].length * 0.5f, half_w = std::max(tp.classes[int(v.type)].half_width, two ? RIDER_HALF_WIDTH_M : 0.f);
 		const float height = r.p.vehicle_box_m[int(v.type)];
 		// the ray in the vehicle's frame: along its heading, up, across; clipped by each pair of faces (slabs)
 		const float rx = r.ox - v.cur.x, rz = r.oz - v.cur.z;

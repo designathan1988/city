@@ -17,10 +17,11 @@ class LeafAtlas {
 public:
 	bool build(const godot::Dictionary &atlas, godot::PackedStringArray &errors);
 	godot::RID texture() const { return texture_.is_valid() ? texture_->get_rid() : godot::RID(); }
-	godot::Ref<godot::Image> image() const { return texture_->get_image(); } // for the tree pictures, once
+	godot::Ref<godot::Image> take_image() { godot::Ref<godot::Image> out = image_; image_.unref(); return out; }
 
 private:
 	godot::Ref<godot::ImageTexture> texture_;
+	godot::Ref<godot::Image> image_; // transfer the just-generated CPU image to tree pictures, without a GPU readback
 };
 
 } // namespace city

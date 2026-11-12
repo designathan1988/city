@@ -8,6 +8,7 @@
 #include "sim/terrain/terrain_gen.h"
 
 #include <algorithm>
+#include <unordered_set>
 
 namespace city {
 
@@ -30,11 +31,13 @@ void put_slots(ByteWriter &w, const std::vector<T> &list) {
 template <typename T, typename F>
 bool get_slots(ByteReader &r, F put) {
 	uint32_t size = r.get<uint32_t>(), n = r.get<uint32_t>();
-	if (!r.ok || size > MAX_LIST || n > size) return false;
+	if (size > MAX_LIST || n > size || !r.require_items(n, sizeof(uint32_t) + sizeof(T))) return false;
+	std::unordered_set<uint32_t> ids;
 	for (uint32_t k = 0; k < n && r.ok; k++) {
 		uint32_t id = r.get<uint32_t>();
 		T v = r.get<T>();
-		if (r.ok && id < size) put(int(id), v);
+		if (!r.ok || id >= size || !v.alive || !ids.insert(id).second) return false;
+		put(int(id), v);
 	}
 	return r.ok;
 }
@@ -47,7 +50,7 @@ void write_nature(ByteWriter &w, const CityState &s) {
 #undef CITY_WEATHER_PUT
 	w.put<int32_t>(n.next_cloud);
 	w.put_vec(n.clouds);
-	w.put_vec(n.fog);
+	w.put_vec(n.fog.records());
 	w.put<int32_t>(n.nature.region);
 	w.put<uint32_t>(n.nature.seed);
 	w.put<uint32_t>(uint32_t(n.ground.all().size()));
@@ -59,13 +62,12 @@ void write_nature(ByteWriter &w, const CityState &s) {
 	put_slots(w, n.planted.clearings);
 	const Heightfield &t = s.terrain;
 	std::vector<uint32_t> index;
-	std::vector<float> level;
 	for (const auto &kv : t.water_original) // only what changed can differ from the generated land
 		if (t.water[kv.first] != TerrainGen::NO_WATER && t.water[kv.first] != kv.second) index.push_back(kv.first);
 	std::sort(index.begin(), index.end()); // in sample order, as the file always had them
-	for (uint32_t i : index) level.push_back(t.water[i]);
 	w.put_vec(index);
-	w.put_vec(level);
+	w.put<uint32_t>(uint32_t(index.size()));
+	for (uint32_t i : index) w.put<float>(t.water[i]);
 	w.put_vec(n.elements.all());
 }
 
@@ -77,14 +79,20 @@ bool read_nature(ByteReader &r, CityState &s) {
 	n.weather = clamped_weather(n.weather, s.catalog.nature.weather);
 	n.next_cloud = r.get<int32_t>();
 	r.get_vec(n.clouds, size_t(s.catalog.nature.clouds.max_clouds));
-	r.get_vec(n.fog, size_t(s.catalog.nature.fog.max_dabs));
+	std::vector<FogDab> fog;
+	r.get_vec(fog, size_t(s.catalog.nature.fog.max_dabs));
+	if (!r.ok) return false;
+	n.fog.restore(std::move(fog));
 	n.nature.region = r.get<int32_t>();
 	n.nature.seed = r.get<uint32_t>();
 	uint32_t tiles = r.get<uint32_t>();
-	if (!r.ok || tiles > uint32_t(s.catalog.nature.paint.max_tiles)) return false;
+	if (!r.require_items(tiles, sizeof(int32_t) + sizeof(PaintTile), size_t(s.catalog.nature.paint.max_tiles))) return false;
+	std::unordered_set<int> keys;
 	auto tile = std::make_unique<PaintTile>();
 	for (uint32_t i = 0; i < tiles && r.ok; i++) {
 		int key = r.get<int32_t>();
+		const int across = n.ground.tiles_across();
+		if (!r.ok || key < 0 || int64_t(key) >= int64_t(across) * across || !keys.insert(key).second) return false;
 		r.get_bytes(tile->data(), sizeof(PaintTile));
 		if (r.ok) n.ground.put_tile(key, tile.get());
 	}

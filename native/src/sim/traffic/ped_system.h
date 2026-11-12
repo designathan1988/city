@@ -14,7 +14,7 @@ inline float arc_lo(const RoadSegment &g) { return float(g.retreat_a); } // the 
 inline float arc_hi(const RoadSegment &g) { return float(g.len - g.retreat_b); }
 void aim_line(Pedestrian &w); // a straight line toward ways[wi] from where the walker stands
 void onto_sidewalk(CityState &s, Pedestrian &w); // onto the sidewalk at the same place across as where it stands
-void despawn(TrafficState &t, int id, bool arrived);
+void despawn(CityState &s, int id, bool arrived); // retires only this pedestrian namespace before recycling
 
 // ped_door_walk.cpp: the first and last steps at a lot's door
 void aim_at_door(CityState &s, Pedestrian &w); // on the last street of its route: a door ahead to go in at
@@ -53,6 +53,7 @@ double people_wanted(const CityState &s, const PeopleNow &now); // how many the 
 float zone_people(const TrafficParams &p, const PeopleNow &now, int zone); // people per metre beside a base zone
 
 // ped_doors.cpp: the front doors of the walking window
+bool door_current(const CityState &s, const PedDoor &door); // bounded canonical source witness
 void list_doors(CityState &s, float cx, float cz, float reach); // the lots not read yet round the camera
 void read_doors(CityState &s); // a few of them a step
 void forget_doors(CityState &s, int seg); // an edit touched the segment: its lots are read again
@@ -65,7 +66,8 @@ PedAge roll_age(TrafficState &t, const TrafficParams &p);
 PedAge roll_age_alone(TrafficState &t, const TrafficParams &p);
 void dress_walker(TrafficState &t, const TrafficParams &p, Pedestrian &w, PedAge age, float hp); // a body of that age and its own pace
 int alloc_walker(TrafficState &t);
-bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door);
+void commit_walker(TrafficState &t, int id, Pedestrian &&walker); // identity at actual slot installation, not a rejected birth proposal
+void spawn_walkers(CityState &s, const PeopleNow &now, bool from_door, int attempts); // captures one batch; all attempts join common route admission
 
 // ped_party.cpp
 void add_company(CityState &s, int leader); // somebody at the leader's side
@@ -101,7 +103,6 @@ int walkers_in_furniture(const CityState &s); // walkers whose body stands in a 
 // ped_routes.cpp
 bool walkable(const CityState &s, int seg);
 int seg_between(const CityState &s, int a, int b); // a walkable segment joining two nodes, or -1
-bool find_walk_route(const CityState &s, int from, int goal, std::vector<int> &out); // nodes from..goal
 // Waypoints round node `n` from the end of `seg_in` (sidewalk `side_in`) to the start of `seg_out`: kerb points of
 // each crosswalk crossed (the far one carries the arm). Returns how many (-1: no way); `side_out` = exit sidewalk, the one
 // with fewest crossings or `want_side` when it has that side (-1: either).

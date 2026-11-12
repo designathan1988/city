@@ -4,8 +4,14 @@
 #pragma once
 
 #include "sim/buildings/building_store.h"
+#include "core/generation.h"
+#include "core/bounds_index.h"
 
 #include <cstdint>
+#include <cstddef>
+#include <array>
+#include <map>
+#include <tuple>
 #include <vector>
 
 namespace city {
@@ -24,6 +30,10 @@ struct Ruin {
 	uint32_t seed = 0;
 	Building record;
 	float blow_x = 0, blow_y = 0, blow_z = 0, blow_force = 0; // the blow that brought it down: how it fell, so how it lies
+	bool operator==(const Ruin &o) const {
+		return x == o.x && z == o.z && w == o.w && d == o.d && rot == o.rot && seed == o.seed && record == o.record
+				&& blow_x == o.blow_x && blow_y == o.blow_y && blow_z == o.blow_z && blow_force == o.blow_force;
+	}
 };
 
 // A pole, signal post, hydrant, bench, bin or tree a blow took out: placed by kind and place, so the street furniture
@@ -45,6 +55,9 @@ struct Hurt {
 struct Scar {
 	uint32_t seed = 0;
 	float bx = 0, bz = 0, x = 0, y = 0, z = 0, force = 0;
+	bool operator==(const Scar &o) const {
+		return seed == o.seed && bx == o.bx && bz == o.bz && x == o.x && y == o.y && z == o.z && force == o.force;
+	}
 };
 constexpr float SCAR_REACH_M = 1.4f, SCAR_REACH_PER_FORCE_M = 0.55f; // the 4.0's: how far from where it struck a blow breaks a building
 inline float scar_reach_m(float force) { return SCAR_REACH_M + force * SCAR_REACH_PER_FORCE_M; }
@@ -56,12 +69,33 @@ struct Fire {
 	double until = 0;
 };
 
-struct DamageState {
-	std::vector<Crater> craters;
+// Decode-only value boundary: restore publishes records and their derived indices together.
+struct DamageRecords {
 	std::vector<Ruin> ruins;
+	std::vector<b40::BodyRef> ruin_bodies;
 	std::vector<Gone> gone;
-	std::vector<Hurt> hurt; // buildings that took a blow without falling
-	std::vector<Scar> scars; // the parts of them broken off, in the order of the blows
+	std::vector<Hurt> hurt;
+	std::vector<Scar> scars;
+};
+
+struct DamageState {
+	uint64_t craters_revision = next_generation(), ruins_revision = next_generation(), scars_revision = next_generation(); // derived-state identity, never serialized
+	std::vector<Crater> craters;
+	const std::vector<Ruin> &ruins() const { return records_.ruins; }
+	const std::vector<b40::BodyRef> &ruin_bodies() const { return records_.ruin_bodies; }
+	const std::vector<Gone> &gone() const { return records_.gone; }
+	const std::vector<Hurt> &hurt() const { return records_.hurt; }
+	const std::vector<Scar> &scars() const { return records_.scars; }
+	void restore(DamageRecords records);
+	void insert_ruin(size_t at, const Ruin &ruin, b40::BodyRef body);
+	void remove_ruin(size_t at);
+	void add_gone(const Gone &record);
+	void pop_gone();
+	void set_hurt(const Hurt &record, float amount);
+	void add_scar(const Scar &record);
+	void pop_scar();
+	const std::vector<int> &scar_ids(uint32_t seed, float x, float z) const;
+	std::vector<int> ruins_near(float x, float z, float reach) const;
 	std::vector<Fire> fires; // not saved: a fire does not outlast the session
 	double now = 0; // seconds of simulation since the map began (the clock of fires and of the growth hold)
 	double growth_hold_until = 0; // nothing grows on the lots while rubble lies (seconds of `now`)
@@ -75,6 +109,14 @@ struct DamageState {
 	int ruin_at(float x, float z, float pad) const;
 	// Was furniture of this kind knocked out within `reach` of the point?
 	bool is_gone(GoneKind kind, float x, float z, float reach) const;
+private:
+	using Identity = std::tuple<uint32_t, float, float>;
+	DamageRecords records_;
+	std::map<Identity, std::vector<int>> scar_rows_, hurt_rows_;
+	BoundsIndex ruin_index_;
+	std::array<BoundsIndex, size_t(GoneKind::COUNT)> gone_index_;
+	void rebuild_ruins();
+	void rebuild_hurt();
 };
 
 // One step of the damage clock (caller holds the map exclusively): time passes, fires burn out.

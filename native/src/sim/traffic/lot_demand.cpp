@@ -2,6 +2,7 @@
 // people_purchasing), the people going in and coming out of it; a bay is drawn by those shares, then the nearest passing car.
 #include "sim/traffic/traffic_system.h"
 #include "sim/traffic/day_table.h"
+#include "core/generation.h"
 
 #include <algorithm>
 #include <cmath>
@@ -58,16 +59,76 @@ int passing_car(const CityState &s, const Bay &bay) {
 	const TrafficParams &p = s.catalog.traffic;
 	int best = -1;
 	float best_d = p.parker_call_reach_m;
-	for (int id : t.micro_list) {
+	for (int id : t.vehicle_index.near(bay.lane.p.x, bay.lane.p.y, p.parker_call_reach_m)) {
 		const Vehicle &v = t.vehicles[size_t(id)];
+		if (v.micro_idx < 0) continue;
 		// a commitment to a connector holds the junction for it: a new route would leave that holder behind for good
-		if (v.type >= VehicleType::MOTO || v.car >= 0 || v.ds < 0 || v.conn >= 0 || v.pass >= 0) continue;
+		if (v.type >= VehicleType::MOTO || v.car >= 0 || v.assignment_route_request || v.trip_route_request || v.ds < 0 || v.conn >= 0 || v.pass >= 0) continue;
 		if (p.classes[int(v.type)].length * 0.5f > bay.room) continue;
 		if (v.ds == bay.lane.ds && v.s > bay.lane.entry - p.parker_past_gate_m) continue; // past the gate: round the block
 		const float d = (V2(v.cur.x, v.cur.z) - bay.lane.p).len();
-		if (d < best_d) { best_d = d; best = id; }
+		if (d < best_d || (best >= 0 && d == best_d && v.micro_idx < t.vehicles[size_t(best)].micro_idx)) { best_d = d; best = id; }
 	}
 	return best;
+}
+
+void submit_lot_route(CityState &s, int id, int bay, uint64_t generation, std::shared_ptr<const ParkingRouteTicket> ticket);
+class LotRouteRecipient final : public RouteRecipient {
+public:
+	LotRouteRecipient(const Vehicle &v, int id, int bay, uint64_t generation, std::shared_ptr<const ParkingRouteTicket> ticket) :
+		id_(id), bay_(bay), from_(v.ds), ri_(v.ri), generation_(v.generation), bay_generation_(generation), route_(v.route.version), ticket_(std::move(ticket)) {}
+	RecipientState state(const CityState &s) const override {
+		const Vehicle *v = actor(s); if (!v || !bay_current(s) || v->off || !v->micro || v->car >= 0 || v->lorry >= 0) return RecipientState::OBSOLETE;
+		if (!s.traffic_levels.vehicles_on || v->conn >= 0) return RecipientState::WAIT_SOURCE;
+		return eligible(s, *v) && v->ds == from_ && v->ri == ri_ && v->route.version == route_ ? RecipientState::READY : RecipientState::OBSOLETE;
+	}
+	bool complete(CityState &s, SearchStatus status, RouteDraft &prepared) override {
+		const Vehicle *pv = actor(s);
+		if (!pv) { finish(s); return true; }
+		Vehicle &v = s.traffic.vehicles[size_t(id_)];
+		const bool current = state(s) == RecipientState::READY;
+		if (status != SearchStatus::TARGET_RETIRED && (!current || status == SearchStatus::INVALIDATED) && bay_current(s) && eligible(s, v)) {
+			submit_lot_route(s, id_, bay_, bay_generation_, ticket_); return true; // same selected bay/car; no demand/RNG redraw on wait
+		}
+		if (!current || status != SearchStatus::FOUND || prepared.empty()) { finish(s); return true; } // failed call keeps its owed arrival
+		TrafficState &t = s.traffic; ParkingState &pk = t.park; Bay &bay = pk.bays[size_t(bay_)];
+		t.route_pool.adopt(v.route, prepared); v.ri = 0;
+		v.stop_at = bay.lane.entry + s.catalog.traffic.classes[int(v.type)].length * 0.5f;
+		v.stop_lane = bay.lane.lane; v.goal_s = BIG;
+		bay.holder = id_; refile_bay(s, bay_, false);
+		LotCar car; car.id = id_; car.bay = bay_; v.car = int(pk.cars.size()); pk.cars.push_back(std::move(car));
+		++pk.coming; ++pk.called; pk.owed = std::max(0.f, pk.owed - 1.f);
+		finish(s);
+		if (pk.owed >= 1 && float(pk.coming) < pk.lot_call_limit) lot_call(s); // resume the original successful-call chain under later queue credits
+		return true;
+	}
+private:
+	const Vehicle *actor(const CityState &s) const {
+		if (id_ < 0 || size_t(id_) >= s.traffic.vehicles.size()) return nullptr;
+		const Vehicle &v = s.traffic.vehicles[size_t(id_)];
+		return v.alive && v.generation == generation_ && v.assignment_route_request == ticket_->identity ? &v : nullptr;
+	}
+	bool bay_current(const CityState &s) const {
+		const auto &bays = s.traffic.park.bays;
+		if (bay_ < 0 || size_t(bay_) >= bays.size()) return false;
+		const Bay &b = bays[size_t(bay_)];
+		return b.alive && b.generation == bay_generation_ && !b.has_row && b.holder < 0 && b.way_read && b.reached && b.lane.ds >= 0 && size_t(b.lane.ds) < s.traffic.g.ds.size() && s.traffic.g.ds[size_t(b.lane.ds)].ok;
+	}
+	bool eligible(const CityState &s, const Vehicle &v) const {
+		if (v.off || !v.micro || v.car >= 0 || v.lorry >= 0 || v.conn >= 0 || v.pass >= 0 || v.ds < 0 || size_t(v.ds) >= s.traffic.g.ds.size() || !s.traffic.g.ds[size_t(v.ds)].ok) return false;
+		const Bay &b = s.traffic.park.bays[size_t(bay_)];
+		return v.ds != b.lane.ds || v.s <= b.lane.entry - s.catalog.traffic.parker_past_gate_m;
+	}
+	void finish(CityState &s) const {
+		if (actor(s)) s.traffic.vehicles[size_t(id_)].assignment_route_request = 0;
+		auto &pending = s.traffic.park.pending_lot_route; if (pending.lock() == ticket_) pending.reset();
+	}
+	int id_, bay_, from_, ri_; uint64_t generation_, bay_generation_, route_;
+	std::shared_ptr<const ParkingRouteTicket> ticket_;
+};
+void submit_lot_route(CityState &s, int id, int bay, uint64_t generation, std::shared_ptr<const ParkingRouteTicket> ticket) {
+	Vehicle &v = s.traffic.vehicles[size_t(id)]; v.assignment_route_request = ticket->identity;
+	s.traffic.route_admission.submit(s, {RoutePurpose::LOT, id}, {v.ds, s.traffic.park.bays[size_t(bay)].lane.ds}, std::make_unique<LotRouteRecipient>(v, id, bay, generation, std::move(ticket)));
 }
 
 } // namespace
@@ -99,7 +160,8 @@ void lot_depart(CityState &s, double target) {
 }
 
 // A trip ending in a lot: a free bay drawn by how many go in at each kind of place, the nearest passing car sent to it.
-bool lot_call(CityState &s) {
+LotRequest lot_call(CityState &s) {
+	if (!s.traffic.park.pending_lot_route.expired()) return LotRequest::PENDING;
 	TrafficState &t = s.traffic;
 	ParkingState &pk = t.park;
 	const TrafficParams &p = s.catalog.traffic;
@@ -111,34 +173,19 @@ bool lot_call(CityState &s) {
 		w[k] *= float(pk.free_of[k].size());
 		total += w[k];
 	}
-	if (total <= 0) return false;
+	if (total <= 0) return LotRequest::FAILED;
 	float roll = t.rng.f() * total;
 	int kind = 0;
 	while (kind + 1 < PLACE_KINDS && roll >= w[kind]) roll -= w[kind++];
-	if (pk.free_of[kind].empty()) return false;
+	if (pk.free_of[kind].empty()) return LotRequest::FAILED;
 	const int b = pk.free_of[kind][size_t(t.rng.next() % uint32_t(pk.free_of[kind].size()))];
-	if (!read_bay_way(s, b)) return false;
+	if (!read_bay_way(s, b)) return LotRequest::FAILED;
 	const int id = passing_car(s, pk.bays[size_t(b)]);
-	if (id < 0) return false;
-	Bay &bay = pk.bays[size_t(b)];
-	Vehicle &v = t.vehicles[size_t(id)];
-	std::vector<int> route;
-	if (!find_route(s, v.ds, bay.lane.ds, route) || route.empty()) return false;
-	route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
-	v.ri = 0;
-	v.stop_at = bay.lane.entry + p.classes[int(v.type)].length * 0.5f;
-	v.stop_lane = bay.lane.lane;
-	v.goal_s = BIG;
-	bay.holder = id;
-	refile_bay(s, b, false);
-	LotCar car;
-	car.id = id;
-	car.bay = b;
-	v.car = int(pk.cars.size());
-	pk.cars.push_back(std::move(car));
-	pk.coming++;
-	pk.called++;
-	return true;
+	if (id < 0) return LotRequest::FAILED;
+	auto ticket = std::make_shared<const ParkingRouteTicket>(ParkingRouteTicket{next_generation()});
+	pk.pending_lot_route = ticket;
+	submit_lot_route(s, id, b, pk.bays[size_t(b)].generation, std::move(ticket));
+	return LotRequest::PENDING;
 }
 
 } // namespace traffic

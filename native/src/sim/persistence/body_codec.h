@@ -1,5 +1,5 @@
 // A building body as bytes, the same for equal bodies: the save's section of edited bodies, and the digest that tells two
-// bodies apart. The maps are written by key order, so a copy of a body gives the same bytes.
+// supplies a stable visual seed. Authored equality uses body_content.h, never a 32-bit digest. Maps use key order.
 #pragma once
 
 #include "core/bytes.h"

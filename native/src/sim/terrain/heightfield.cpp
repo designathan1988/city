@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 
 namespace city {
@@ -16,6 +17,7 @@ constexpr int RAY_REFINE = 18;
 } // namespace
 
 void Heightfield::init(int tiles, float tile_m, float spacing_m, uint32_t p_seed, ChangeLog *p_log, const Tuning *p_tune, JobPool *p_jobs) {
+	revision = next_generation();
 	log = p_log;
 	jobs = p_jobs;
 	tune = p_tune;
@@ -25,7 +27,9 @@ void Heightfield::init(int tiles, float tile_m, float spacing_m, uint32_t p_seed
 	regions = clampi(tiles, 2, TERRAIN_MAX_REGIONS);
 	N = regions * region_size;
 	base_q.assign(size_t(N) * N, quant(0.f));
-	final_h.assign(size_t(N) * N, 0.f);
+	base_revision = next_generation();
+	base_regions_.assign(size_t(regions) * regions, base_revision);
+	final_h.assign(N, 0.f);
 	mods.clear();
 	free_mods.clear();
 	mod_hash.clear();
@@ -35,6 +39,7 @@ void Heightfield::init(int tiles, float tile_m, float spacing_m, uint32_t p_seed
 	shape_hash.cell = SUBCHUNK;
 	ground_moved.clear();
 	waiting.clear(); // rectangles of the land before: a hold open around the founding stays open
+	water_regions_.reset();
 	water.clear();
 	water_original.clear();
 	water_n = 0;
@@ -50,12 +55,16 @@ void Heightfield::fill(TerrainGen &gen, float water_spacing) {
 		for (int ix = 0; ix < N; ix++) {
 			size_t i = iz * N + ix;
 			base_q[i] = quant(float(gen.base_height(x_of(ix), x_of(int(iz)))));
-			final_h[i] = dequant(base_q[i]);
 		}
 	});
+	if (gen.flat()) final_h.assign(N, base_q.empty() ? 0.f : dequant(base_q.front()));
+	else final_h.assign_generated_parallel(N, [&](size_t i) { return dequant(base_q[i]); }, rows);
+	revision = next_generation();
+	base_changed({ 0, 0, N - 1, N - 1 });
 	// water: one sample per water_spacing, the river and lakes of the generator (the lakes made first: then it only reads)
 	water_spacing_m = water_spacing;
 	water_n = int(std::lround(N * spacing / water_spacing));
+	water_regions_.reset();
 	water.assign(size_t(water_n) * water_n, TerrainGen::NO_WATER);
 	if (gen.flat()) return;
 	gen.plan_lakes(water_n, jobs);
@@ -72,7 +81,33 @@ float Heightfield::water_at(float x, float z) const {
 }
 
 float Heightfield::height_at(float x, float z) const {
-	return grid_sample(x, z, N, spacing, [&](size_t i) { return final_h[i]; });
+	auto values = final_h.reader();
+	return grid_sample_nodes(x, z, N, spacing, [&](int ix, int iz) { return values.at(ix, iz); });
+}
+
+void Heightfield::base_changed(const SampleRect &rect) {
+	if (rect.empty() || N <= 0 || region_size <= 0) return;
+	base_revision = next_generation();
+	if (base_regions_.size() != size_t(regions) * regions) base_regions_.assign(size_t(regions) * regions, base_revision);
+	const int x0 = clampi(rect.x0, 0, N - 1) / region_size, x1 = clampi(rect.x1, 0, N - 1) / region_size;
+	const int z0 = clampi(rect.z0, 0, N - 1) / region_size, z1 = clampi(rect.z1, 0, N - 1) / region_size;
+	for (int z = z0; z <= z1; z++)
+		for (int x = x0; x <= x1; x++) base_regions_[size_t(z) * regions + x] = base_revision;
+}
+
+uint64_t Heightfield::base_stamp(float x, float z, float half) const {
+	if (N <= 0 || region_size <= 0 || base_regions_.empty() || !std::isfinite(x) || !std::isfinite(z) || !std::isfinite(half)) return base_revision;
+	// The interpolation's four corners, conservatively extended one sample for float rounding at a boundary.
+	auto region_of = [&](double world, int pad) {
+		const double sample = std::floor(world / double(spacing) + double(N) * .5) + pad;
+		return int(std::max(0.0, std::min(double(N - 1), sample))) / region_size;
+	};
+	const int x0 = region_of(double(x) - std::fabs(double(half)), -1), x1 = region_of(double(x) + std::fabs(double(half)), 2);
+	const int z0 = region_of(double(z) - std::fabs(double(half)), -1), z1 = region_of(double(z) + std::fabs(double(half)), 2);
+	uint64_t stamp = 0;
+	for (int iz = z0; iz <= z1; iz++)
+		for (int ix = x0; ix <= x1; ix++) stamp = std::max(stamp, base_regions_[size_t(iz) * regions + ix]);
+	return stamp;
 }
 
 float Heightfield::base_height_at(float x, float z) const {
@@ -83,16 +118,22 @@ HeightPatch Heightfield::patch(float minx, float minz, float maxx, float maxz) c
 	HeightPatch p;
 	p.N = N;
 	p.spacing = spacing;
-	if (N < 2 || final_h.empty()) return p;
+	if (N < 2 || final_h.empty() || !(spacing > 0) || !std::isfinite(spacing)) return p;
+	const auto all = [&]() { p.x0 = p.z0 = 0; p.w = p.h = N; p.final_h = final_h.snapshot(); return p; };
+	if (minx > maxx || minz > maxz) return all();
+	for (float bound : {minx, minz, maxx, maxz}) {
+		const float index = bound / spacing + N * 0.5f;
+		if (!std::isfinite(index) || double(index) < double(std::numeric_limits<int>::min()) + 2 ||
+				double(index) > double(std::numeric_limits<int>::max()) - 2) return all();
+	}
 	// grid_sample reads nodes floor(f) and floor(f) + 1: one node of margin below, two above
 	p.x0 = clampi(ix_of(minx) - 1, 0, N - 1);
 	p.z0 = clampi(ix_of(minz) - 1, 0, N - 1);
 	const int x1 = clampi(ix_of(maxx) + 2, 0, N - 1), z1 = clampi(ix_of(maxz) + 2, 0, N - 1);
 	p.w = x1 - p.x0 + 1;
 	p.h = z1 - p.z0 + 1;
-	p.final_h.resize(size_t(p.w) * size_t(p.h));
-	for (int z = 0; z < p.h; z++)
-		std::copy_n(final_h.begin() + long(size_t(p.z0 + z) * size_t(N) + size_t(p.x0)), p.w, p.final_h.begin() + long(size_t(z) * size_t(p.w)));
+	if (p.w <= 0 || p.h <= 0) return all();
+	p.final_h = final_h.snapshot();
 	return p;
 }
 
@@ -156,7 +197,7 @@ void Heightfield::write_samples(const std::vector<uint32_t> &idx, const std::vec
 	SampleRect r{ N, N, -1, -1 };
 	for (size_t k = 0; k < idx.size() && k < values.size(); k++) {
 		uint32_t i = idx[k];
-		if (i >= base_q.size()) continue;
+		if (i >= base_q.size() || base_q[i] == values[k]) continue;
 		base_q[i] = values[k];
 		mark_tile(i);
 		int x = int(i % N), z = int(i / N);
@@ -164,6 +205,7 @@ void Heightfield::write_samples(const std::vector<uint32_t> &idx, const std::vec
 		r.z0 = std::min(r.z0, z); r.z1 = std::max(r.z1, z);
 	}
 	if (r.empty()) return;
+	base_changed(r);
 	ground_moved.insert(ground_moved.end(), { x_of(r.x0), x_of(r.z0), x_of(r.x1), x_of(r.z1) }); // the roads there read it again
 	recompose(r.x0 - 1, r.z0 - 1, r.x1 + 1, r.z1 + 1);
 }
@@ -209,8 +251,8 @@ void Heightfield::remove_modifier(int id) {
 }
 
 void Heightfield::finish_load() {
-	final_h.resize(base_q.size());
-	for (size_t i = 0; i < base_q.size(); i++) final_h[i] = dequant(base_q[i]);
+	revision = next_generation();
+	final_h.assign_generated(N, [&](size_t i) { return dequant(base_q[i]); });
 	mods.clear();
 	free_mods.clear();
 	mod_hash.clear();

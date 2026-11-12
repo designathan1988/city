@@ -12,6 +12,7 @@ const ALL_LAYERS := 0xFFFFF # the 20 render layers of a Camera3D's cull mask
 var off: Dictionary = {} # the keys switched off
 var resolution := 1.0
 var far := false # the camera is past the tier's detail cut-off
+var _zoom_cutoff := -1.0
 var _lots := true
 var globals := {} # the shader globals in force (the engine reads them back only in the editor)
 
@@ -115,7 +116,14 @@ func follow_zoom(world: CityWorld, viewport: Viewport, q: Dictionary) -> void:
 	var rig := camera.get_parent() as CityCamera if camera != null else null
 	if rig == null:
 		return
-	var beyond: bool = rig.px_per_m() < q.detail_cutoff_zoom
+	var cutoff: float = q.detail_cutoff_zoom
+	var threshold := cutoff
+	if cutoff == _zoom_cutoff:
+		var band: float = DataTables.game("settings").detail_hysteresis_share
+		threshold *= 1.0 + band if far else 1.0 - band
+	else:
+		_zoom_cutoff = cutoff # a new tier takes its original cutoff immediately
+	var beyond := rig.px_per_m() < threshold
 	if beyond != far:
 		far = beyond
 		apply(world, viewport, q)

@@ -40,7 +40,11 @@ void FarRoadRenderer::reset() {
 	fresh_ = false;
 }
 
-void FarRoadRenderer::mark(int64_t chunk) { dirty_.insert(super_of(chunk)); }
+void FarRoadRenderer::mark(int64_t chunk, JobPool *pool) {
+	const int64_t key = super_of(chunk);
+	invalidate(pool, JobKey{ JobLane::ROADS_FAR, key });
+	dirty_.insert(key);
+}
 
 void FarRoadRenderer::build_cpu(const CityState &s, int64_t key, MeshBuilder &mb) const {
 	const RoadEmit e{ s, *look_, mb, true };

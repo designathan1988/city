@@ -3,6 +3,7 @@
 #pragma once
 
 #include "sim/buildings/b40/data.h"
+#include "sim/commands/survey_input.h"
 
 #include <array>
 #include <cstdint>
@@ -12,14 +13,9 @@ namespace city {
 
 struct Tuning;
 
-struct SurveyPoint {
-	float x = 0, y = 0, z = 0;
-};
-using SurveyTriangle = std::array<SurveyPoint, 3>;
-
 // One picture: looked at along -`out`, `right` and `up` the picture's axes, `half_w` and `half_h` how far it reaches from `centre`. RGBA8, the top row first.
 struct SurveyView {
-	std::vector<uint8_t> rgba;
+	SurveyPixels rgba;
 	int w = 0, h = 0;
 	SurveyPoint centre, right, up, out;
 	float half_w = 0, half_h = 0;
@@ -28,11 +24,13 @@ struct SurveyView {
 
 using SurveyColour = std::array<float, 3>;
 // How near the model comes at each pixel of a picture, the model laid over it triangle by triangle: what stands in front of a face hides it.
-void survey_depth(SurveyView &v, const std::vector<SurveyTriangle> &tris);
+bool survey_depth(SurveyView &v, const SurveyTriangles &tris);
 // What the model shows at a point of its surface, seen along the normal; false for nothing there.
 bool survey_sample(const std::vector<SurveyView> &views, const SurveyPoint &p, float nx, float ny, SurveyColour &out);
 
 // Fills `b`; false when the model has no block big enough to be a room.
+// Pure preparation over a small immutable catalogue projection, independent of the live city/edit lock.
+bool survey_body(const b40::ModelInputs &inputs, const SurveyTriangles &tris, std::vector<SurveyView> &views, b40::Body &b);
 bool survey_body(const b40::Data &data, const Tuning &t, const std::vector<SurveyTriangle> &tris, std::vector<SurveyView> &views, b40::Body &b);
 
 } // namespace city

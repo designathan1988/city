@@ -45,6 +45,8 @@ private:
 	std::vector<Look> looks_;
 	godot::Ref<godot::Shader> solid_, blended_;
 	std::vector<godot::Ref<godot::ArrayMesh>> meshes_;
+	std::vector<bool> mesh_attempted_;
+	bool table_attempted_ = false, table_ready_ = false; // asset epoch; reset(city) retains both positive and negative cache
 	std::unordered_map<int64_t, std::vector<godot::RID>> chunks_;
 };
 

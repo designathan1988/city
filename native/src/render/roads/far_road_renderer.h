@@ -21,7 +21,7 @@ class FarRoadRenderer : public MeshQueue {
 public:
 	bool init(const RenderContext &ctx, const StreetLook &look, godot::PackedStringArray &errors);
 	void reset();
-	void mark(int64_t chunk); // the roads of this chunk changed
+	void mark(int64_t chunk, JobPool *pool = nullptr); // the roads of this chunk changed
 	void update(const CityState &s, JobPool &pool, BuildBudget &budget, const godot::Vector3 &cam); // nearest first, under the budget
 	void fold(const RoadChunks &detail); // the detailed chunks standing now: theirs fold away
 	int waiting_supers() const { return int(dirty_.size()); }

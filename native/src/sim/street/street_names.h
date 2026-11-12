@@ -10,6 +10,7 @@
 namespace city {
 
 class RoadNetwork;
+class NamedPlates;
 
 // Where a street's name goes and what it says, as a STREETNAME item.
 struct StreetName {
@@ -20,6 +21,6 @@ struct StreetName {
 // The segment a name item names, or -1: the nearest within the reach of a name (street_names.reach_m).
 int name_segment(const RoadNetwork &net, const StreetItem &item);
 // Names for the streets of `segs` that have none, each once, in the order of their lowest segment.
-std::vector<StreetName> names_for(const RoadNetwork &net, const StreetWorks &works, std::vector<int> segs);
+std::vector<StreetName> names_for(const RoadNetwork &net, const StreetWorks &works, const NamedPlates &base, std::vector<int> segs);
 
 } // namespace city

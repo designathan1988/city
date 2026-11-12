@@ -2,13 +2,14 @@
 #pragma once
 
 #include "core/math.h"
+#include "sim/traffic/ped_birth.h"
 
 namespace city {
 namespace traffic {
 
 struct BusCall {
 	struct Boarder {
-		int ped = -1;
+		int ped = -1; uint64_t generation = 0;
 		V2 from;
 		float walked = 0, takes = 0;
 	};
@@ -16,6 +17,7 @@ struct BusCall {
 	int leaving = 0;
 	float t = 0, next_off = 0;
 	Boarder boarders[2];
+	std::shared_ptr<PedBirthTicket> birth;
 };
 
 } // namespace traffic

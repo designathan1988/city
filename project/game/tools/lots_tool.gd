@@ -25,6 +25,13 @@ var _points := PackedVector3Array() # the polygon so far
 var _first_lot := 0 # join: the lot picked first
 var _land := LotProposals.new()
 var _erasing: Dictionary = {} # the delete stroke: the lots it passed over, by id
+var _by_id: Dictionary = {}
+var _outlines: Dictionary = {}
+var _read_revision := -1
+var _base_dirty := true
+var _base_position := Vector3.INF
+var _base_fov := -INF
+var _base_height := -INF
 
 
 func enter() -> void:
@@ -53,7 +60,19 @@ func cancel() -> void:
 
 func _read() -> void:
 	_lots = CityStore.query(&"lots")
+	_read_revision = CityStore.snapshot.get("edit_revision", -1)
+	_by_id.clear()
+	_outlines.clear()
+	for lot: Dictionary in _lots:
+		_by_id[lot.id] = lot
+		_outlines[lot.id] = _closed(lot.points)
+	_base_dirty = true
 	_land.forget()
+
+
+func _ensure_read() -> void:
+	if CityStore.snapshot.get("edit_revision", -1) != _read_revision:
+		_read()
 
 
 func _done(r: Dictionary) -> void:
@@ -75,13 +94,29 @@ func _closed(points: PackedVector3Array) -> PackedVector3Array:
 
 ## The lots on the ground, and `extra` over them.
 func _show(extra: Array = []) -> void:
+	_ensure_read()
+	_show_base()
 	var roads := extra.duplicate()
 	var at: Vector3 = _from if _from != Vector3.INF else Vector3.ZERO
-	for l: Dictionary in _lots:
-		roads.push_back({"points": _closed(l.points), "half_width": _width(l.points[0])})
 	if _points.size() >= 2:
 		roads.push_back({"points": _points, "half_width": _width(at) * 2.0})
 	ctl.preview.show_ribbons(roads)
+
+
+## Lot outlines depend on their revision and the pixel-width projection, never on the hover marker.
+func _show_base() -> void:
+	var camera := ctl.rig.camera
+	var height := ctl.get_viewport().get_visible_rect().size.y
+	if not _base_dirty and camera.global_position == _base_position and camera.fov == _base_fov and height == _base_height:
+		return
+	var roads := []
+	for lot: Dictionary in _lots:
+		roads.push_back({"points": _outlines[lot.id], "half_width": _width(lot.points[0])})
+	ctl.preview.show_ribbon_layer(&"lots", roads)
+	_base_dirty = false
+	_base_position = camera.global_position
+	_base_fov = camera.fov
+	_base_height = height
 
 
 ## A point of a lot by the footways, the blocks' corners and the other lots' corners; `apart` is the corner being dragged.
@@ -121,13 +156,11 @@ func _side_at(lot: Dictionary, p: Vector3, reach: float) -> int:
 
 
 func _lot_of(id: int) -> Dictionary:
-	for l: Dictionary in _lots:
-		if l.id == id:
-			return l
-	return {}
+	return _by_id.get(id, {})
 
 
 func click(p: Vector3) -> void:
+	_ensure_read()
 	var id: int = CityStore.query(&"lot_at", [p])
 	match mode:
 		"add":
@@ -174,11 +207,12 @@ func _erase_under(p: Vector3) -> void:
 	var marked := []
 	for l: Dictionary in _lots:
 		if _erasing.has(l.id):
-			marked.push_back({"points": _closed(l.points), "half_width": _width(p) * 3.0})
+			marked.push_back({"points": _outlines[l.id], "half_width": _width(p) * 3.0})
 	_show(marked)
 
 
 func drag(p: Vector3) -> void:
+	_ensure_read()
 	if _from == Vector3.INF:
 		return
 	if mode == "delete":
@@ -227,7 +261,9 @@ func release(p: Vector3) -> void:
 
 
 func hover(p: Vector3) -> void:
+	_ensure_read()
 	var extra := []
+	var proposal := _land.at(p) if mode == "add" else PackedVector3Array()
 	if mode == "split" and cut_kind != CUT_DRAWN:
 		var id: int = CityStore.query(&"lot_at", [p])
 		var lines: PackedVector3Array = CityStore.query(&"lot_cut_lines", [id, cut_kind, parts, p, p]) if id != 0 else PackedVector3Array()
@@ -236,11 +272,11 @@ func hover(p: Vector3) -> void:
 	elif mode == "add" or mode == "polygon":
 		var at := _snap(p)
 		extra.push_back(_mark(at))
-		var ring := _land.at(p) if mode == "add" else PackedVector3Array()
+		var ring := proposal
 		if not ring.is_empty():
 			extra.push_back({"points": _closed(ring), "half_width": _width(p) * 2.0})
 		if _points.size() >= 1:
 			extra.push_back({"points": PackedVector3Array([_points[-1], at]), "half_width": _width(p) * 2.0})
-	var over: PackedVector3Array = _lot_of(CityStore.query(&"lot_at", [p])).get("points", _land.at(p) if mode == "add" else PackedVector3Array())
+	var over: PackedVector3Array = _lot_of(CityStore.query(&"lot_at", [p])).get("points", proposal)
 	ctl.tagged.emit(LotProposals.size_of(over) if over.size() >= 3 else "", LotProposals.middle(over) if over.size() >= 3 else p, true)
 	_show(extra)

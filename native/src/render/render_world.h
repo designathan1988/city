@@ -40,7 +40,7 @@ public:
 	// renderer's commit (flush: the RenderingServer running what the jobs queued, before the commits; the slowest
 	// building chunk and superchunk commit); and the MiB of mesh arrays it admitted for upload (UploadBudget).
 	struct Cost {
-		double lock = 0, stream = 0, levels = 0, flush = 0, roads = 0, props = 0, buildings = 0, trees = 0, uploads = 0;
+		double lock = 0, stream = 0, levels = 0, flush = 0, fields = 0, roads = 0, props = 0, buildings = 0, trees = 0, uploads = 0;
 		double chunk_max = 0, super_max = 0;
 		bool backlog = false; // no chunk was asked for this frame: the baked results wait for the upload budget
 		int budget_left = 0;
@@ -58,12 +58,13 @@ public:
 	void sync(CityState &s, godot::Object *terrain3d, const godot::Vector3 &cam);
 	// Vehicles and people near the camera, at the moment `at` of the published poses.
 	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at) {
+		effects_.set_view(view.error_view);
 		agents_.update(f, cam, view, at);
 		transit_.update(f, cam, at);
 	}
 	int drawn_cars() const { return transit_.drawn_cars(); }
 	void transit_xray(bool on) { transit_.set_xray(on); }
-	void transit_preview(const CityState &s, const std::vector<V2> &points, TransitMode mode) { transit_.set_preview(s, points, mode); }
+	void transit_preview(const CityState &s, std::vector<V2> points, TransitMode mode) { transit_.set_preview(s, std::move(points), mode); }
 	// What the agents of a fresh publication wear (`ticks_s` simulated seconds since the last one), and the window round the view.
 	void update_wear(const PoseFrame &f, bool fresh, float ticks_s, const godot::Vector3 &cam, float frame_s) {
 		if (fresh) wear_.wear(f, ticks_s);
@@ -102,6 +103,7 @@ public:
 	int street_instances() const { return props_.instances(); }
 	int sign_cells() const { return props_.sign_cells(); }
 	godot::Array take_sign_cells() { return props_.take_sign_cells(); }
+	int64_t sign_epoch() const { return props_.sign_epoch(); }
 	void set_pole_preview(const CityState &s, const std::vector<PreviewPole> &poles) {
 		props_.set_pole_preview(s, poles);
 	}
@@ -126,7 +128,7 @@ public:
 	void set_upload_every(int frames) { upload_every_ = std::max(1, frames); }
 	void set_lots_drawn(bool on) { buildings_.set_lots_drawn(on); }
 	// A body drawn apart from the city (body_stage.h).
-	int stage_show(const b40::Data &data, const b40::Body &body, const godot::RID &scenario, bool ghost) { return stage_.show(data, buildings_.look(), body, scenario, ghost); }
+	int stage_show(const b40::Data &data, const b40::Body &body, const godot::RID &scenario, bool ghost, std::optional<uint32_t> digest = std::nullopt) { return stage_.show(data, buildings_.look(), body, scenario, ghost, digest); }
 	BodyStage &stage() { return stage_; }
 	const BodyStage &stage() const { return stage_; }
 	void set_overlay(Overlay o, bool on) { overlays_.set(o, on); }
@@ -147,11 +149,12 @@ public:
 	int64_t wear_bytes() const { return wear_.bytes(); }
 	void wear_paint(float x0, float z0, float x1, float z1, float value) { wear_.paint(x0, z0, x1, z1, value); }
 	int pending() const {
-		return road_stream_.pending + raised_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + far_roads_.pending() + far_roads_.waiting_supers() + verges_.pending() + props_.pending() +
+		return road_stream_.pending + verge_stream_.pending + structure_stream_.pending + props_stream_.pending + building_stream_.pending + roads_.pending() + far_roads_.pending() + far_roads_.waiting_supers() + verges_.pending() + props_.pending() +
 				buildings_.pending() + trees_.pending() + cover_.pending();
 	}
 
 private:
+	void bind_ruin_maker(); // submitted ruin closures pin the same mass-cache epoch as building jobs
 	TerrainBridge terrain_;
 	RoadRenderer roads_;
 	FarRoadRenderer far_roads_;
@@ -171,9 +174,10 @@ private:
 	OverlayRenderer overlays_;
 	EffectWorld effects_;
 	WearField wear_;
-	ChunkStream road_stream_, props_stream_, building_stream_;
-	ChunkStream raised_stream_; // the chunks with a bridge, a viaduct or a tunnel: those stand out from afar, as far as the buildings
+	ChunkStream road_stream_, verge_stream_, props_stream_, building_stream_;
+	ChunkStream structure_stream_; // near road structures; flagged bridge/viaduct/tunnel chunks retain the wider building reach
 	int budget_ = 1;
+	int first_producer_ = 0; // every participating producer owns the first admission turn once per cycle
 	// The ChangeLog's render lists are swapped into these each frame (capacity kept on both sides).
 	std::vector<int64_t> road_keys_, building_keys_, view_keys_, prop_keys_;
 	std::vector<int> terrain_rects_, paint_rects_;

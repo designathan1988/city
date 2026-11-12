@@ -240,9 +240,14 @@ void WaySearch::Run::close_on(int id, int &work) {
 	struct Pages {
 		SearchCost &c;
 		WaySpace::Room &room;
-		const int64_t before;
-		~Pages() { c.pages += room.tables[COARSE].taken + room.tables[FINE].taken - before; }
-	} pages{ cost, room_, room_.tables[COARSE].taken + room_.tables[FINE].taken };
+		int &work;
+		const int64_t before, indexed;
+		~Pages() {
+			c.pages += room.tables[COARSE].taken + room.tables[FINE].taken - before;
+			const int64_t cells = room.tables[COARSE].indexed + room.tables[FINE].indexed - indexed;
+			work -= int((cells + CELLS_PER_WORK - 1) / CELLS_PER_WORK) * TABLE_WORK_SHARE;
+		}
+	} pages{ cost, room_, work, room_.tables[COARSE].taken + room_.tables[FINE].taken, room_.tables[COARSE].indexed + room_.tables[FINE].indexed };
 	nodes_[size_t(id)].closed = true;
 	expanded_++;
 	const AxlePose p = nodes_[size_t(id)].pose;
@@ -268,14 +273,10 @@ bool WaySearch::Run::advance(int &work) {
 	Laps took;
 	if (!over_ && !prepared_) {
 		prepared_ = true;
-		size_t places = 0;
-		for (int k = 0; k < GRAIN_COUNT; k++) {
-			room_.tables[k].begin(size_t(nx_[k]) * nz_[k], GRAINS[k].headings);
-			places += size_t(nx_[k]) * nz_[k];
-		}
+		for (int k = 0; k < GRAIN_COUNT; k++) room_.tables[k].begin(size_t(nx_[k]) * nz_[k], GRAINS[k].headings);
 		nodes_.clear();
 		room_.heap.clear();
-		work -= 1 + int(places / CELLS_PER_WORK) * TABLE_WORK_SHARE;
+		work--; // an epoch reset, no grid initialization; actual lazy index/page writes are charged where reached
 		if (work <= 0) return false;
 	}
 	if (!over_ && !begun_) {
@@ -283,9 +284,17 @@ bool WaySearch::Run::advance(int &work) {
 		h_->advance(f_, work); // nothing left when another search to the goal's cell worked it out
 		cost.holonomic += had - work;
 		cost.holonomic_ms += took.lap();
-		if (!h_->done()) return false;
+		if (!h_->done() || work <= 0) return false;
 		begun_ = true;
+		const int64_t before_pages = room_.tables[COARSE].taken + room_.tables[FINE].taken;
+		const int64_t before_index = room_.tables[COARSE].indexed + room_.tables[FINE].indexed;
+		const int64_t before_rs = cost.rs, before_looks = cost.looks;
 		push({ start_, 0, 0, -1, false, grain_ == WayGrain::COARSE ? COARSE : FINE }); // at a finer grain the start is fine: it is an end
+		const int64_t pages = room_.tables[COARSE].taken + room_.tables[FINE].taken - before_pages;
+		const int64_t cells = room_.tables[COARSE].indexed + room_.tables[FINE].indexed - before_index;
+		cost.pages += pages;
+		work -= int(pages) * PAGE_WORK + int((cells + CELLS_PER_WORK - 1) / CELLS_PER_WORK) * TABLE_WORK_SHARE +
+				int(cost.rs - before_rs) * RS_WORK + int((cost.looks - before_looks) / LOOKS_PER_WORK);
 	}
 	while (!over_ && work > 0) {
 		if (room_.heap.empty() || expanded_ >= most_) { over_ = true; break; }

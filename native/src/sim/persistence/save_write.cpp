@@ -90,8 +90,8 @@ void write_buildings(ByteWriter &w, const BuildingStore &bs) {
 }
 void write_transit(ByteWriter &w, const TransitData &t) {
 	w.put<int32_t>(t.next_id);
-	w.put<uint32_t>(uint32_t(t.stops.size()));
-	for (const TransitStop &q : t.stops) {
+	w.put<uint32_t>(uint32_t(t.stops().size()));
+	for (const TransitStop &q : t.stops()) {
 		w.put<int32_t>(q.id);
 		w.put<uint8_t>(uint8_t(q.mode));
 		w.put<float>(q.at.x);
@@ -102,14 +102,14 @@ void write_transit(ByteWriter &w, const TransitData &t) {
 		w.put<float>(q.entrance.x);
 		w.put<float>(q.entrance.y);
 	}
-	w.put<uint32_t>(uint32_t(t.tracks.size()));
-	for (const RailTrack &k : t.tracks) {
+	w.put<uint32_t>(uint32_t(t.tracks().size()));
+	for (const RailTrack &k : t.tracks()) {
 		w.put<int32_t>(k.id);
 		w.put<uint8_t>(uint8_t(k.mode));
 		w.put_vec(k.points);
 	}
-	w.put<uint32_t>(uint32_t(t.lines.size()));
-	for (const TransitLine &l : t.lines) {
+	w.put<uint32_t>(uint32_t(t.lines().size()));
+	for (const TransitLine &l : t.lines()) {
 		w.put<int32_t>(l.id);
 		w.put<uint8_t>(uint8_t(l.mode));
 		w.put_vec(l.stops);
@@ -133,11 +133,10 @@ void put_building(ByteWriter &w, const Building &b) {
 	w.put<double>(b.built);
 }
 
-std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *parts) {
-	ByteWriter w;
+void write_city(ByteWriter &w, const CityState &s, std::vector<SavePart> *parts) {
 	w.canonical = parts != nullptr;
 	const auto mark = [&](const char *name) {
-		if (parts) parts->push_back({ name, w.buf.size() });
+		if (parts) parts->push_back({ name, w.size() });
 	};
 	w.put<uint32_t>(SAVE_MAGIC);
 	w.put<uint32_t>(SAVE_VERSION);
@@ -172,6 +171,11 @@ std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *part
 	write_extra_blocks(w, s, mark);
 	w.put<uint32_t>(SAVE_END);
 	mark("end");
+}
+
+std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *parts) {
+	ByteWriter w;
+	write_city(w, s, parts);
 	return std::move(w.buf);
 }
 

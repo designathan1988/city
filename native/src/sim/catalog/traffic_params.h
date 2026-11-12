@@ -10,7 +10,7 @@ namespace city {
 // Scalar keys of traffic.json "params" (X-macro: declared here, required by the loader).
 #define CITY_TRAFFIC_FIELDS(X) \
 	X(density_per_lane_m) X(traffic_share) X(people_share) X(fill_share) X(fleet_tau_s) \
-	X(spawn_attempts_per_step) X(spawn_fill_attempts) X(route_budget_per_step) X(route_max_expanded) \
+	X(spawn_attempts_per_step) X(spawn_fill_attempts) X(route_work_per_step) X(route_quantum_work) X(route_max_expanded) \
 	X(trip_min_m) X(trip_max_m) X(trip_decay_m) X(slot_m) X(car_share) X(bus_share) \
 	X(turn_cost_right_s) X(turn_cost_left_s) X(turn_cost_uturn_s) X(signal_cost_s) X(edge_extra_s) X(guess_speed_kmh) \
 	X(straight_dot) X(control_max_m) X(uturn_push_m) X(conflict_samples) X(conflict_clear_m) \
@@ -40,9 +40,9 @@ namespace city {
 	X(jam_seconds) X(release_every_s) X(starve_seconds) X(detour_after_s) X(reconsider_after_s) X(reconsider_full_share) \
 	X(rejoin_ds) X(detour_max_expanded) X(bpr_gain) X(tail_credit_s) X(tail_credit_cap_ms) X(short_exit_m) \
 	X(tail_moving_ms) X(commit_min_m) X(at_line_m) X(gov_every_s) X(gov_min_fleet) X(gov_jammed) X(gov_lo) X(gov_hi) \
-	X(gov_floor) X(gov_rate) X(reroute_budget_per_step) \
+	X(gov_floor) X(gov_rate) \
 	X(ped_route_max_expanded) X(kerb_stand_m) X(ped_courtesy_s) \
-	X(ped_critical_gap_s) X(ped_span_reach_m) X(walk_cost_extra_s) X(ped_routes_per_step) \
+	X(ped_critical_gap_s) X(ped_span_reach_m) X(walk_cost_extra_s) \
 	X(ped_stripe_m) X(ped_body_m) X(ped_margin_m) X(ped_look_m) X(ped_gap_m) X(ped_headway_s) X(ped_lateral_share) \
 	X(ped_lateral_cost) X(ped_keep_right_cost) X(ped_stripe_gain_m) X(ped_stripe_hold_s) X(ped_accel) \
 	X(kerb_wait_half_m) X(kerb_wait_gap_m) X(kerb_wait_rows) \

@@ -10,10 +10,35 @@
 #include <map>
 
 namespace city {
-namespace traffic {
 
-namespace {
-} // namespace
+void LaneClosures::add(const std::vector<LaneClosure> &stretches) {
+	for (const LaneClosure &c : stretches) {
+		const uint64_t sequence = next_generation();
+		lanes_[c.key].emplace(sequence, c);
+		owners_[c.owner].emplace_back(c.key, sequence);
+	}
+}
+void LaneClosures::remove(int owner) {
+	const auto found = owners_.find(owner);
+	if (found == owners_.end()) return;
+	for (const auto &entry : found->second) {
+		const auto lane = lanes_.find(entry.first);
+		lane->second.erase(entry.second);
+		if (lane->second.empty()) lanes_.erase(lane);
+	}
+	owners_.erase(found);
+}
+float LaneClosures::ahead(int key, float at) const {
+	const auto lane = lanes_.find(key);
+	if (lane == lanes_.end()) return -1;
+	float best = -1;
+	for (const auto &entry : lane->second) {
+		const LaneClosure &c = entry.second;
+		if (c.to > at && (best < 0 || c.from - at < best)) best = std::max(0.f, c.from - at);
+	}
+	return best;
+}
+namespace traffic {
 
 // The stretches of lane a street part sweeps: the lanes of the gate's segment under the body, with a margin each way.
 void sweep_lanes(const CityState &s, const std::vector<AxlePose> &poses, int from, int to, int seg, int owner, std::vector<LaneClosure> &out) {
@@ -55,31 +80,36 @@ bool lane_clear(const CityState &s, const LaneClosure &c) {
 	const TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	const int ds = c.key / MAX_LANES, lane = c.key % MAX_LANES;
-	for (int id : t.micro_list) {
-		const Vehicle &v = t.vehicles[size_t(id)];
-		const float stopping = v.v * v.v / (2 * p.classes[int(v.type)].b) + p.lorry_clear_margin_m;
-		if (v.conn >= 0) {
-			const Conn &k = t.g.conns[size_t(v.conn)];
-			if (k.to_ds == ds && k.to_lane == lane && k.len - v.cs + c.from < stopping) return false;
-			continue;
+	if (c.key >= 0 && size_t(c.key) < t.lane_vehicles.size())
+		for (int id : t.lane_vehicles[size_t(c.key)]) {
+			const Vehicle &v = t.vehicles[size_t(id)];
+			if (v.micro_idx < 0 || v.conn >= 0 || v.ds != ds || v.lane != lane) continue;
+			const float stopping = v.v * v.v / (2 * p.classes[int(v.type)].b) + p.lorry_clear_margin_m;
+			const float rear = v.s - p.classes[int(v.type)].length;
+			if (rear < c.to + p.lorry_clear_margin_m && v.s > c.from - stopping) return false;
 		}
-		if (v.ds != ds || v.lane != lane) continue;
-		const float rear = v.s - p.classes[int(v.type)].length;
-		if (rear < c.to + p.lorry_clear_margin_m && v.s > c.from - stopping) return false;
+	if (ds < 0 || size_t(ds) >= t.g.ds.size()) return true;
+	const int node = t.g.ds[size_t(ds)].from;
+	if (node < 0 || size_t(node) >= t.g.node_conn.size()) return true;
+	for (int ci = t.g.node_conn[size_t(node)]; ci >= 0; ci = t.g.conns[size_t(ci)].next_at_node) {
+		const Conn &k = t.g.conns[size_t(ci)];
+		if (k.to_ds != ds || k.to_lane != lane || size_t(ci) >= t.conn_vehicles.size()) continue;
+		for (int id : t.conn_vehicles[size_t(ci)]) {
+			const Vehicle &v = t.vehicles[size_t(id)];
+			if (v.micro_idx < 0 || v.conn != ci) continue;
+			const float stopping = v.v * v.v / (2 * p.classes[int(v.type)].b) + p.lorry_clear_margin_m;
+			if (k.len - v.cs + c.from < stopping) return false;
+		}
 	}
 	return true;
 }
 
 void open_lanes(TrafficState &t, int owner) {
-	auto &all = t.closures;
-	all.erase(std::remove_if(all.begin(), all.end(), [&](const LaneClosure &c) { return c.owner == owner; }), all.end());
+	t.closures.remove(owner);
 }
 
 float closure_ahead(const TrafficState &t, int key, float s) {
-	float best = -1;
-	for (const LaneClosure &c : t.closures)
-		if (c.key == key && c.to > s && (best < 0 || c.from - s < best)) best = std::max(0.f, c.from - s);
-	return best;
+	return t.closures.ahead(key, s);
 }
 
 } // namespace traffic

@@ -12,29 +12,43 @@ const WAY_MARK_PX := 7.0
 const HALF := 0.5
 
 @export var state := RoadSectionState.new()
+var width_limits: Dictionary = {}
+var width_step := 0.0
+var _pixels_per_metre := 0.0
+var _edges := PackedFloat64Array()
 
 
 func _ready() -> void:
 	custom_minimum_size.y = HudWidgets.px("rp_stage_h")
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	resized.connect(_layout)
 
 
 func show_spec(next: Dictionary, pick: int, issues: Array) -> void:
 	state.spec = next
 	state.selected = pick
 	state.flagged = issues
+	_layout()
+
+
+## Shared by drawing and picking; prefixes keep the original left-to-right sum of scaled element widths.
+func _layout() -> void:
+	_edges = PackedFloat64Array([0.0])
+	_pixels_per_metre = size.x / maxf(RoadSpecOps.total(state.spec), 1.0) if not state.spec.is_empty() else 0.0
+	if not state.spec.is_empty():
+		var x := 0.0
+		for element: Dictionary in state.spec.elements:
+			x += element.width * _pixels_per_metre
+			_edges.push_back(x)
 	queue_redraw()
 
 
 func _scale() -> float:
-	return size.x / maxf(RoadSpecOps.total(state.spec), 1.0)
+	return _pixels_per_metre
 
 
 func _left_of(index: int) -> float:
-	var x := 0.0
-	for i in index:
-		x += state.spec.elements[i].width * _scale()
-	return x
+	return _edges[index]
 
 
 func _colour(e: Dictionary) -> Color:
@@ -99,5 +113,10 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 	var m := event as InputEventMouseMotion
 	if m != null and state.drag_edge >= 0:
-		widened.emit(state.drag_edge, (m.position.x - _left_of(state.drag_edge)) / _scale())
+		var metres := (m.position.x - _left_of(state.drag_edge)) / _scale()
+		var kind: String = state.spec.elements[state.drag_edge].kind
+		if width_step > 0 and width_limits.has(kind):
+			metres = RoadSpecOps.canonical_width(metres, width_step, width_limits[kind])
+		if RoadSpecOps.width_changes(state.spec, state.drag_edge, metres):
+			widened.emit(state.drag_edge, metres)
 		accept_event()

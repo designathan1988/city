@@ -3,6 +3,7 @@
 #pragma once
 
 #include "core/job_pool.h"
+#include "core/generation.h"
 #include "sim/buildings/building_store.h"
 #include "sim/buildings/interior/view.h"
 #include "sim/catalog/catalog.h"
@@ -10,13 +11,17 @@
 #include "sim/demolition/damage_state.h"
 #include "sim/lots/lot_book.h"
 #include "sim/lots/lot_cache.h"
+#include "sim/citygen/lot_raster.h"
 #include "sim/nature/nature_state.h"
+#include "sim/nature/plant_ground.h"
 #include "sim/roads/road_network.h"
 #include "sim/state/pose_buffer.h"
 #include "sim/simulation/city_growth.h"
 #include "sim/state/change_log.h"
 #include "sim/street/pole_routes.h"
 #include "sim/street/street_works.h"
+#include "sim/street/street_placement.h"
+#include "sim/street/named_plates.h"
 #include "sim/terrain/heightfield.h"
 #include "sim/traffic/traffic_state.h"
 #include "sim/transit/transit_data.h"
@@ -29,6 +34,8 @@
 
 namespace city {
 
+struct TerrainRiverPlan;
+
 struct CityClock {
 	std::atomic<double> minutes{ 0 }; // city minutes since the map began (never wraps; drives decay)
 	std::atomic<double> day_shift{ 0 }; // added to minutes for the time of day (starts at the day start)
@@ -37,13 +44,19 @@ struct CityClock {
 };
 
 struct CityState {
+	const uint64_t generation = next_generation(); // presentation/source epoch, never serialized or reused by new/load
 	Catalog catalog;
 	ChangeLog log;
 	Heightfield terrain;
+	PlantGroundCache plant_ground; // immutable region bases shared by all nature presentation levels
 	NatureState nature; // weather, clouds, fog, painted ground, planted trees, the ecosystem (sim/nature)
 	RoadNetwork roads;
 	StreetWorks street; // what the player built along the streets (sim/street)
+	StreetPlacement street_placement; // shared complete placement; consumers project kinds/damage without replanning
+	NamedPlates named_plates; // all named-street corners indexed once per physical/name revision
+	std::shared_ptr<const TerrainRiverPlan> natural_river; // immutable map source; transient lake flood maps are not retained
 	LotCache lots;
+	LotRasterCache lot_raster; // exact lattice circle spans, shared by adjacent strip/block windows
 	LotBook lot_book; // the lots the player drew (sim/lots/lot_book.h); those of `lots` give way to them
 	BuildingStore buildings;
 	InteriorView interior; // the Interior layer: which buildings are drawn cut open (a view, not saved)
@@ -51,7 +64,7 @@ struct CityState {
 	TrafficLevels traffic_levels; // the panels' choices: written by the main thread, read by the traffic (traffic_view.h)
 	uint64_t lane_graph_serial = 0; // moves when the lane graph changes; outlives TrafficState, as the views do
 	TripleBuffer<TrafficView> traffic_views; // what the traffic published for the main thread (traffic_view.h)
-	TransitData transit; // stops, tracks and lines as the player laid them; replaced whole by each edit
+	TransitData transit; // stops, tracks and lines as the player laid them; commands journal ordered record deltas
 	uint64_t transit_revision = 0; // follows every change of the plan: the simulation and the render read it
 	TransitRun transit_run; // what runs on it (sim/transit/transit_sim.h)
 	PoseBuffer poses; // published by the simulation, read by the render without a lock
@@ -60,6 +73,8 @@ struct CityState {
 	GrowthQueue growth; // cells whose lots changed after founding: buildings grow there over time
 	CityClock clock;
 	EditHistory history; // undo / redo of the player's commands (sim/commands/edit_history.cpp)
+	unsigned edit_depth = 0; // external command scopes, main thread under map exclusive
+	bool edit_pending = false; // deferred derived-state finalization, not a render dirty flag
 	float new_road_lift = 0; // the height over the grade line the road tool draws at, metres (Roadcraft 4.0 roadHeightOffset)
 	uint16_t new_road_flags = 0; // what the road tool lays new roads with: the furniture set (SEG_FURNITURE_MASK) and SEG_CUT_WALLS
 	double money = 0;

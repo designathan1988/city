@@ -67,7 +67,8 @@ void WearField::reset() {
 	pending_.clear();
 	for (size_t i = 0; i < tiles_.size(); i++) {
 		tiles_[i].fill(0);
-		dirty_[i] = false;
+		dirty_[i] = queued_[i] = false;
+		clears_[i] = ClearMask();
 		touch(int(i));
 	}
 	send_origin();
@@ -85,10 +86,15 @@ float WearField::random() {
 	return float(state_) / U32_SCALE;
 }
 
-void WearField::touch(int tile) {
-	if (dirty_[size_t(tile)]) return;
-	dirty_[size_t(tile)] = true;
+void WearField::queue(int tile) {
+	if (queued_[size_t(tile)]) return;
+	queued_[size_t(tile)] = true;
 	pending_.push_back(tile);
+}
+
+void WearField::touch(int tile) {
+	dirty_[size_t(tile)] = true;
+	queue(tile);
 }
 
 // A tick's wear is a fraction of a byte's step: one step more with that fraction's chance, the sum keeping its mean
@@ -100,19 +106,25 @@ void WearField::add(int channel, float x, float z, float amount) {
 	const int step = int(whole) + (random() < q - whole ? 1 : 0);
 	if (step <= 0) return;
 	const int wx = wrap(gx, RES), wy = wrap(gy, RES), tile = (wy / LAYER_CELLS) * LAYERS_AXIS + wx / LAYER_CELLS;
-	uint8_t *bytes = tiles_[size_t(tile)].ptrw();
-	uint8_t &b = bytes[(size_t(wy % LAYER_CELLS) * LAYER_CELLS + size_t(wx % LAYER_CELLS)) * CHANNELS + size_t(channel)];
-	b = uint8_t(std::min(BYTE_TOP, int(b) + step));
+	realize_clear(tile);
+	const size_t at = (size_t(wy % LAYER_CELLS) * LAYER_CELLS + size_t(wx % LAYER_CELLS)) * CHANNELS + size_t(channel);
+	const uint8_t before = tiles_[size_t(tile)].ptr()[at];
+	if (before == BYTE_TOP) return; // preserve stochastic-rounding RNG above, but do not dirty unchanged bytes
+	tiles_[size_t(tile)].ptrw()[at] = uint8_t(std::min(BYTE_TOP, int(before) + step));
 	touch(tile);
 }
 
 void WearField::paint(float x0, float z0, float x1, float z1, float value) {
 	const uint8_t b = uint8_t(std::lround(std::clamp(value, 0.f, 1.f) * BYTE_MAX));
-	for (int gy = int(std::floor(z0 / cell_)); gy <= int(std::floor(z1 / cell_)); gy++) {
-		for (int gx = int(std::floor(x0 / cell_)); gx <= int(std::floor(x1 / cell_)); gx++) {
+	for (int gy = std::max(oy_, int(std::floor(z0 / cell_))); gy <= std::min(oy_ + RES - 1, int(std::floor(z1 / cell_))); gy++) {
+		for (int gx = std::max(ox_, int(std::floor(x0 / cell_))); gx <= std::min(ox_ + RES - 1, int(std::floor(x1 / cell_))); gx++) {
 			if (gx < ox_ || gy < oy_ || gx >= ox_ + RES || gy >= oy_ + RES) continue;
 			const int wx = wrap(gx, RES), wy = wrap(gy, RES), tile = (wy / LAYER_CELLS) * LAYERS_AXIS + wx / LAYER_CELLS;
-			uint8_t *bytes = tiles_[size_t(tile)].ptrw() + (size_t(wy % LAYER_CELLS) * LAYER_CELLS + size_t(wx % LAYER_CELLS)) * CHANNELS;
+			realize_clear(tile);
+			const size_t at = (size_t(wy % LAYER_CELLS) * LAYER_CELLS + size_t(wx % LAYER_CELLS)) * CHANNELS;
+			const uint8_t *before = tiles_[size_t(tile)].ptr() + at;
+			if (before[0] == b && before[1] == b) continue;
+			uint8_t *bytes = tiles_[size_t(tile)].ptrw() + at;
 			bytes[0] = bytes[1] = b;
 			touch(tile);
 		}
@@ -135,21 +147,70 @@ void WearField::wear(const PoseFrame &f, float elapsed) {
 
 int64_t WearField::worn_cells() const {
 	int64_t n = 0;
-	for (const PackedByteArray &tile : tiles_) {
-		const uint8_t *b = tile.ptr();
-		const int64_t size = tile.size(); // once: each size() is a call into the engine
-		for (int64_t i = 0; i < size; i += CHANNELS) n += (b[i] | b[i + 1]) != 0 ? 1 : 0;
+	for (size_t tile = 0; tile < tiles_.size(); tile++) {
+		const uint8_t *b = tiles_[tile].ptr();
+		const ClearMask &mask = clears_[tile];
+		for (int row = 0; row < LAYER_CELLS; row++)
+			if (!mask.rows[size_t(row)]) for (int column = 0; column < LAYER_CELLS; column++) {
+				if (mask.columns[size_t(column)]) continue;
+				const size_t at = (size_t(row) * LAYER_CELLS + size_t(column)) * CHANNELS;
+				n += (b[at] | b[at + 1]) != 0 ? 1 : 0;
+			}
 	}
 	return n;
 }
 
 void WearField::clear_cell_range(int gx0, int gx1, int gy0, int gy1) {
-	for (int gy = gy0; gy <= gy1; gy++)
-		for (int gx = gx0; gx <= gx1; gx++) {
-			const int wx = wrap(gx, RES), wy = wrap(gy, RES), tile = (wy / LAYER_CELLS) * LAYERS_AXIS + wx / LAYER_CELLS;
-			std::memset(tiles_[size_t(tile)].ptrw() + (size_t(wy % LAYER_CELLS) * LAYER_CELLS + size_t(wx % LAYER_CELLS)) * CHANNELS, 0, CHANNELS);
-			touch(tile);
+	if (gx0 > gx1 || gy0 > gy1) return;
+	// follow only supplies strips spanning the entire toroid in at least one axis.
+	const bool rows = gx1 - gx0 + 1 >= RES;
+	struct Span { int tile = 0, local = 0, count = 0; };
+	std::array<Span, LAYERS_AXIS + 1> xs, ys; // a full wrapped axis can split its first physical tile in two
+	const auto split = [](int begin, int end, auto &out) {
+		int size = 0;
+		for (int at = begin; at <= end;) {
+			const int physical = wrap(at, RES), local = physical % LAYER_CELLS;
+			const int count = std::min(end - at + 1, LAYER_CELLS - local);
+			out[size++] = Span{physical / LAYER_CELLS, local, count};
+			at += count;
 		}
+		return size;
+	};
+	const int nx = split(gx0, gx1, xs), ny = split(gy0, gy1, ys);
+	// Keep the old row-major first-touch queue order, without visiting individual cells.
+	for (int y = 0; y < ny; y++) for (int x = 0; x < nx; x++) {
+		const int tile = ys[y].tile * LAYERS_AXIS + xs[x].tile;
+		const Span &range = rows ? ys[y] : xs[x];
+		auto &mask = rows ? clears_[size_t(tile)].rows : clears_[size_t(tile)].columns;
+		for (int i = range.local; i < range.local + range.count; i++) mask.set(size_t(i));
+		queue(tile); // preparation may find all bytes already zero: no upload in that case
+	}
+}
+
+void WearField::realize_clear(int tile) {
+	ClearMask &mask = clears_[size_t(tile)];
+	if (mask.rows.none() && mask.columns.none()) return;
+	const uint8_t *bytes = tiles_[size_t(tile)].ptr();
+	uint8_t *write = nullptr;
+	bool changed = false;
+	const auto clear = [&](size_t from, size_t count) {
+		if (std::none_of(bytes + from, bytes + from + count, [](uint8_t b) { return b != 0; })) return;
+		if (!write) { write = tiles_[size_t(tile)].ptrw(); bytes = write; }
+		std::memset(write + from, 0, count);
+		changed = true;
+	};
+	for (int row = 0; row < LAYER_CELLS; row++) {
+		const size_t base = size_t(row) * LAYER_CELLS * CHANNELS;
+		if (mask.rows[size_t(row)]) { clear(base, LAYER_CELLS * CHANNELS); continue; }
+		for (int column = 0; column < LAYER_CELLS;) {
+			if (!mask.columns[size_t(column)]) { column++; continue; }
+			const int from = column++;
+			while (column < LAYER_CELLS && mask.columns[size_t(column)]) column++;
+			clear(base + size_t(from) * CHANNELS, size_t(column - from) * CHANNELS);
+		}
+	}
+	mask = ClearMask();
+	if (changed) touch(tile);
 }
 
 void WearField::follow(float x, float z) {
@@ -169,20 +230,24 @@ void WearField::follow(float x, float z) {
 
 void WearField::upload(float dt) {
 	for (float &s : since_) s += dt;
-	int sent = 0;
+	int prepared = 0;
 	RenderingServer *rs = RenderingServer::get_singleton();
-	for (size_t i = 0; i < pending_.size() && sent < per_frame_;) {
+	for (size_t i = 0; i < pending_.size() && prepared < per_frame_;) {
 		const int tile = pending_[i];
 		if (since_[size_t(tile)] < upload_every_) {
 			i++;
 			continue;
 		}
-		rs->texture_2d_update(texture_, tile_image(tiles_[size_t(tile)], LAYER_CELLS), tile);
-		since_[size_t(tile)] = 0;
-		dirty_[size_t(tile)] = false;
+		realize_clear(tile);
+		prepared++; // bound CPU clearing as well as uploads, including tiles found already clean
+		if (dirty_[size_t(tile)]) {
+			rs->texture_2d_update(texture_, tile_image(tiles_[size_t(tile)], LAYER_CELLS), tile);
+			since_[size_t(tile)] = 0;
+		}
+		dirty_[size_t(tile)] = queued_[size_t(tile)] = false;
 		pending_[i] = pending_.back();
 		pending_.pop_back();
-		sent++;
+
 	}
 }
 

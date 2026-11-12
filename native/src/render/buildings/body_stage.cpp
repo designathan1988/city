@@ -30,7 +30,7 @@ void append_prop(b40::Shell &s, const MeshBuilder &model, const b40::PropInstanc
 }
 } // namespace
 
-int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const b40::Body &body, const RID &scenario, bool ghost) {
+int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const b40::Body &body, const RID &scenario, bool ghost, std::optional<uint32_t> digest) {
 	b40::PaneRooms rooms(data, body, b40::purpose_of(body, 0, 0));
 	b40::Placed pl;
 	pl.data = &data;
@@ -38,7 +38,7 @@ int BodyStage::show(const b40::Data &data, const b40::BuildingLook &look, const 
 	pl.b = &body;
 	pl.rooms = &rooms;
 	pl.lot = b40::Basis{ Vector3(), Vector3(1, 0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0) };
-	pl.id = body_digest(body);
+	pl.id = digest ? *digest : body_digest(body);
 	pl.ground = [](const Vector3 &) { return 0.f; };
 	b40::Shell shell, glass, sheer, cards;
 	glass.rooms = true;

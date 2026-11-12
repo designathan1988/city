@@ -44,8 +44,12 @@ func _ready() -> void:
 	_street.hide()
 	_action(head, "profileEditor.close", func() -> void: closed.emit())
 	_view = RoadSectionView.new()
+	_view.width_limits = edit.limits
+	_view.width_step = WIDEN_BY_M
 	col.add_child(_view)
 	_view.picked.connect(func(i: int) -> void:
+		if edit.selected == i:
+			return
 		edit.selected = i
 		_refresh())
 	_view.widened.connect(_set_width)
@@ -89,7 +93,8 @@ func _set_width(index: int, metres: float) -> void:
 	if not edit.limits.has(e.kind):
 		return
 	var lo: Vector2 = edit.limits[e.kind]
-	RoadSpecOps.with_width(edit.spec, index, clampf(snappedf(metres, WIDEN_BY_M), lo.x, lo.y))
+	if not RoadSpecOps.with_width(edit.spec, index, RoadSpecOps.canonical_width(metres, WIDEN_BY_M, lo)):
+		return
 	_refresh()
 
 
@@ -109,7 +114,9 @@ func _refresh() -> void:
 
 func _button(row: Control, key: String, act: Callable) -> void:
 	_action(row, key, func() -> void:
-		act.call()
+		var outcome: Variant = act.call()
+		if outcome is bool and not outcome:
+			return
 		_refresh())
 
 
@@ -119,8 +126,8 @@ func _fill_props() -> void:
 	if edit.selected >= 0 and edit.selected < edit.spec.elements.size():
 		var e: Dictionary = edit.spec.elements[edit.selected]
 		if edit.limits.has(e.kind):
-			_button(_props, "profileEditor.narrower", _set_width.bind(edit.selected, e.width - WIDEN_BY_M))
-			_button(_props, "profileEditor.wider", _set_width.bind(edit.selected, e.width + WIDEN_BY_M))
+			_action(_props, "profileEditor.narrower", _set_width.bind(edit.selected, e.width - WIDEN_BY_M))
+			_action(_props, "profileEditor.wider", _set_width.bind(edit.selected, e.width + WIDEN_BY_M))
 		if e.kind == "lane":
 			_button(_props, "profileEditor.dirForward" if e.dir < 0 else "profileEditor.dirBackward", func() -> void: e.dir = -e.dir)
 			_button(_props, "profileEditor.useBus" if not e.get("bus", false) else "profileEditor.useAll", func() -> void: e.bus = not e.get("bus", false))
@@ -130,9 +137,16 @@ func _fill_props() -> void:
 		_button(_props, "profileEditor.remove", func() -> void:
 			edit.spec.elements.remove_at(edit.selected)
 			edit.selected = mini(edit.selected, edit.spec.elements.size() - 1))
-	_button(_props, "profileEditor.slower", func() -> void: edit.spec.speed = maxf(edit.spec.speed - PACE_BY, SPEED_LEAST))
+	_button(_props, "profileEditor.slower", _set_speed.bind(maxf(edit.spec.speed - PACE_BY, SPEED_LEAST)))
 	HudWidgets.label(_props, &"MetaLabel", tr("profileEditor.speedValue").format({"speed": int(edit.spec.speed)}))
-	_button(_props, "profileEditor.faster", func() -> void: edit.spec.speed = minf(edit.spec.speed + PACE_BY, SPEED_MOST))
+	_button(_props, "profileEditor.faster", _set_speed.bind(minf(edit.spec.speed + PACE_BY, SPEED_MOST)))
+
+
+func _set_speed(value: float) -> bool:
+	if edit.spec.speed == value:
+		return false
+	edit.spec.speed = value
+	return true
 
 
 ## Opened from a road of the city: applied to it or to its whole street, instead of the road tool's.

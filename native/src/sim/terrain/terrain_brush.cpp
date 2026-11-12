@@ -101,6 +101,7 @@ bool Heightfield::brush(const BrushDab &d) {
 			changed = true;
 		}
 	if (!changed) return false;
+	base_changed(r);
 	ground_moved.insert(ground_moved.end(), { x_of(r.x0), x_of(r.z0), x_of(r.x1), x_of(r.z1) }); // the roads there are read again
 	recompose(r.x0 - 1, r.z0 - 1, r.x1 + 1, r.z1 + 1);
 	return true;

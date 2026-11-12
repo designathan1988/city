@@ -9,11 +9,13 @@
 #include "render/agents/head_lights.h"
 #include "render/agents/fleet_shadow.h"
 #include "render/view_cull.h"
+#include "render/spatial_instance_draw.h"
 #include "render/agents/people_renderer.h"
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "sim/state/city_state.h"
 
+#include <array>
 #include <vector>
 
 namespace city {
@@ -74,10 +76,10 @@ private:
 	// A vehicle's passengers and the order its seats fill in (stride * seats + first), from its id.
 	void riders(int type, uint32_t id, float &passengers, float &order) const;
 	void limit_cabins(); // the next frame's limit of who has a cabin
-	void draw_rows(const godot::Vector3 &cam); // the rows of this frame to the server
+	void draw_rows(const godot::Vector3 &cam, bool parked_changed); // the rows of this frame to the server
 	void commit_mesh(int model, int draw, const MeshBuilder &mb);
 	// Whoever is aboard, to PeopleRenderer: the driver, and the passengers the order seats.
-	void seat_people(uint32_t id, int type, int model, const Pose &p, float dist, float passengers, float order, float spin);
+	void seat_people(uint32_t id, int type, int model, const Pose &p, float dist, float passengers, float order, float spin, bool visible);
 	godot::RID scenario_, material_, glass_, shadow_;
 	OwnedMesh meshes_[AGENT_MODELS][DRAWS]; // the body surface, and the cabin's glass surface
 	MultiMeshDraw draws_[AGENT_MODELS][DRAWS];
@@ -86,8 +88,26 @@ private:
 	InstanceRows seen_rows_[AGENT_MODELS][DRAWS], cast_rows_[AGENT_MODELS][DRAWS]; // the rows of the frame, kept at their size
 	RowKeeper keeper_{ VEHICLE_DENSE_KEYS }; // each vehicle's row among what the camera sees
 	int rows_lost_ = 0; // seen on the last frame and with no row: never, or a vehicle goes undrawn with its driver at the wheel
-	MultiMeshDraw shadow_draws_[AGENT_MODELS][DRAWS]; // a level's instances with a lighter mesh; none for the far level, FleetShadow's
-	FleetShadow fleet_shadow_; // what the far level casts
+	SpatialInstanceDraw shadow_draws_[AGENT_MODELS][DRAWS]; // a level's instances with a lighter mesh; none for the far level, FleetShadow's
+	FleetShadow fleet_shadow_, parked_shadow_; // separate moving and standing producers, shared immutable hull
+	struct ParkedRow {
+		ParkedRecord record;
+		int model = 0;
+		std::array<float, MM_STRIDE> row;
+	};
+	std::shared_ptr<const std::vector<ParkedRecord>> parked_source_;
+	std::vector<ParkedRow> parked_prepared_;
+	RowKeeper parked_keeper_{ VEHICLE_DENSE_KEYS };
+	InstanceRows parked_seen_[AGENT_MODELS][DRAWS], parked_casts_[AGENT_MODELS][DRAWS];
+	StaticInstanceDraw parked_draws_[AGENT_MODELS][DRAWS];
+	SpatialInstanceDraw parked_shadow_draws_[AGENT_MODELS][DRAWS];
+	godot::AABB mesh_bounds_[AGENT_MODELS][DRAWS];
+	std::vector<float> parked_near_d2_;
+	ViewCull parked_view_;
+	godot::Vector3 parked_cam_;
+	float parked_near2_ = 0, parked_close2_ = 0;
+	int parked_cap_ = 0, parked_placed_ = 0, parked_drawn_ = 0;
+	bool parked_selection_ = false;
 	float reach_m_[AGENT_MODELS] = {}; // from a model's origin to its farthest corner
 	float view_slack_ = 0; // agents.json view_slack
 	float cabin_close_m_ = 0; // agents.json lod.cabin_close_m

@@ -32,6 +32,9 @@ var _hour := 0.0
 var _overcast := 0.0
 var _dark := 0.0
 var _flash := 0.0
+var revision := 0 # prepared light/sky appearance, including weather and flashes
+var _fog_key: Array = []
+var _cascade_key: Array = []
 ## The Effects panel's switches: bloom and the ambient light drawn or not.
 var glow_on := true
 var ambient_on := true
@@ -83,6 +86,7 @@ func follow_clock(hour: float) -> void:
 
 
 func set_hour(hour: float) -> void:
+	revision += 1
 	_hour = hour
 	var k: float = (hour - _d.sunrise_h) / _d.day_span_h
 	var height := sin(PI * k)
@@ -148,11 +152,22 @@ func _awake_share(hour: float) -> float:
 func follow_view(camera: Camera3D) -> void:
 	if camera == null:
 		return
-	var low := 1.0 - smoothstep(_d.low_from_m, _d.low_to_m, camera.global_position.y)
-	_env.fog_light_color = _c("air_high").lerp(_c("low_horizon"), low) * (1.0 - _d.air_night_cut * _dark)
-	var y: float = maxf(camera.global_position.y, 1.0)
-	_env.fog_density = _d.fog_density * _d.air_height_m / y * (1.0 - exp(-y / _d.air_height_m)) # the air thins with height
-	_fit_cascades(camera)
+	var fog_key := [camera.global_position.y, _dark]
+	if fog_key != _fog_key:
+		_fog_key = fog_key
+		var low := 1.0 - smoothstep(_d.low_from_m, _d.low_to_m, camera.global_position.y)
+		_env.fog_light_color = _c("air_high").lerp(_c("low_horizon"), low) * (1.0 - _d.air_night_cut * _dark)
+		var y: float = maxf(camera.global_position.y, 1.0)
+		_env.fog_density = _d.fog_density * _d.air_height_m / y * (1.0 - exp(-y / _d.air_height_m))
+	if not _sun.shadow_enabled:
+		_cascade_key.clear() # enabling again must fit even if the view did not move
+		return
+	var inputs: Array = CityStore.query(&"camera_inputs")
+	var cascade_key := [CityCamera.projection_key(camera, camera.get_viewport().get_visible_rect()), inputs[0], inputs[1],
+		shadow_least_m, shadow_side_px, shadow_filter_radius, _sun.shadow_blur]
+	if cascade_key != _cascade_key:
+		_cascade_key = cascade_key
+		_fit_cascades(camera)
 
 
 ## The filter in use: its radius is the engine's, and the blur follows it so a soft edge keeps its width whatever the filter

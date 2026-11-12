@@ -101,7 +101,7 @@ void strike_people(Blow &b) {
 	const float reach = blast::startle_range(b.p, b.kg);
 	const float reach2 = reach * reach;
 	TrafficState &t = b.s.traffic;
-	for (int id = 0; id < int(t.peds.size()); id++) {
+	for (int id : t.walker_index.near(b.x, b.z, reach)) {
 		const Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive) continue;
 		const float dx = w.cur.x - b.x, dz = w.cur.z - b.z;
@@ -113,7 +113,7 @@ void strike_people(Blow &b) {
 void strike_traffic(Blow &b) {
 	const float reach = blast::range_at_pressure(b.p, b.kg, b.p.vehicle_kpa) * DEATH_REACH_SHARE;
 	TrafficState &t = b.s.traffic;
-	for (int id = 0; id < int(t.vehicles.size()); id++) {
+	for (int id : t.vehicle_index.near(b.x, b.z, reach)) {
 		const Vehicle &v = t.vehicles[size_t(id)];
 		if (!v.alive) continue;
 		const float d = std::hypot(v.cur.x - b.x, v.cur.z - b.z);

@@ -167,9 +167,11 @@ void smooth_profile(std::vector<float> &v, float step, float reach) {
 	const int radius = radius_of(reach, step), last = int(v.size()) - 1;
 	std::vector<float> &src = scratch();
 	src = v;
+	const Means means(src);
 	for (int i = 0; i <= last; i++) {
-		double sum = 0;
-		for (int k = -radius; k <= radius; k++) sum += src[size_t(std::max(0, std::min(last, i + k)))];
+		const int lo = std::max(0, i - radius), hi = std::min(last, i + radius);
+		const double sum = means.sum[size_t(hi + 1)] - means.sum[size_t(lo)] +
+			double(std::max(0, radius - i)) * src.front() + double(std::max(0, i + radius - last)) * src.back();
 		v[size_t(i)] = float(sum / double(2 * radius + 1));
 	}
 }

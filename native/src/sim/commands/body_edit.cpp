@@ -6,7 +6,7 @@
 #include "sim/commands/body_ops.h"
 #include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
-#include "sim/persistence/body_codec.h"
+#include "sim/buildings/b40/body_content.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -68,14 +68,17 @@ EditResult edit_body(CityState &s, int id, const BodyOp &op) {
 		return r;
 	}
 	Building rec = s.buildings.items[id];
-	Body body;
-	record_body(s.buildings.designs, rec, body);
-	const uint32_t before = body_digest(body);
+	// Borrow an authored source root. Procedural input is generated once and kept locally for exact comparison.
+	const BodyRef source = rec.body ? s.buildings.designs.edited->get(rec.body) : BodyRef{};
+	Body generated;
+	if (!source) record_body(s.buildings.designs, rec, generated);
+	const Body &before = source ? *source : generated;
+	Body body = before;
 	r.error = op(body);
 	if (r.error.empty()) r.error = body_problem(s.catalog.tune, body);
 	if (!r.error.empty()) return r;
 	r.ok = true;
-	if (body_digest(body) == before) return r;
+	if (body_content::same(body, before)) return r;
 	int top = 0;
 	for (const Volume &v : body.volumes) top = std::max(top, v.top());
 	rec.floors = uint16_t(top);

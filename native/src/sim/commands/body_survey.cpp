@@ -5,10 +5,14 @@
 #include "sim/buildings/b40/plan_area.h"
 #include "sim/catalog/catalog.h"
 #include "sim/commands/model_ops.h"
+#include "core/ordinal_bounds_index.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <map>
+#include <limits>
+#include <set>
 
 namespace city {
 
@@ -51,6 +55,176 @@ void absorb(Top &a, const Top &b) {
 	a.pts.insert(a.pts.end(), b.pts.begin(), b.pts.end());
 }
 
+// The first-pass first match and the later lexicographically first merging pair use stable ordinals.
+// Only a growing top and partners pointing at a retired top can change the next eligible pair.
+class TopIndex {
+	static constexpr size_t NONE = std::numeric_limits<size_t>::max();
+	struct Entry {
+		Top top;
+		Bounds2 box;
+		size_t partner = NONE, followers = NONE, previous = NONE, next = NONE;
+		bool alive = true, touched = false;
+	};
+	std::vector<Entry> entries_;
+	OrdinalBoundsIndex index_;
+	struct HeightLayer { OrdinalBoundsIndex index; size_t count = 0; };
+	std::map<int64_t, HeightLayer> heights_;
+	bool indexed_ = false;
+	static constexpr size_t LINEAR_TOPS = 16;
+	static constexpr int HEIGHT_NEIGHBOURS = 2;
+	static constexpr int64_t EXACT_HEIGHT_BASE = int64_t(1) << 62;
+	std::set<size_t> eligible_;
+	std::vector<BoundsIndex::OrderedVisit> scratch_;
+	std::vector<size_t> affected_;
+	static Bounds2 box_of(const Top &t) { return {t.x0, t.y0, t.x1, t.y1}; }
+	static Bounds2 neighborhood(const Top &t) {
+		// Inverse rounded comparisons are not algebraically exact near zero: include arithmetic error as well as TOUCH_M.
+		constexpr double ROUND_ULPS = 8;
+		const double scale = std::max({std::abs(double(t.x0)), std::abs(double(t.x1)), std::abs(double(t.y0)), std::abs(double(t.y1)), double(TOUCH_M)});
+		const double pad = double(TOUCH_M) + (scale + double(TOUCH_M)) * std::numeric_limits<float>::epsilon() * ROUND_ULPS
+			+ std::numeric_limits<float>::denorm_min() * ROUND_ULPS;
+		return {double(t.x0) - pad, double(t.y0) - pad, double(t.x1) + pad, double(t.y1) + pad};
+	}
+	static int64_t height_key(float z) {
+		const float inf = std::numeric_limits<float>::infinity();
+		const double lo = double(z) - double(std::nextafter(z, -inf)), hi = double(std::nextafter(z, inf)) - double(z);
+		if (std::min(lo, hi) >= double(TOUCH_M)) {
+			uint32_t bits; std::memcpy(&bits, &z, sizeof bits); return EXACT_HEIGHT_BASE + bits;
+		}
+		// Here the float spacing is below TOUCH_M, so this quotient is bounded by float precision, not input magnitude.
+		return int64_t(std::floor(double(z) / double(TOUCH_M)));
+	}
+	template<class F> void height_layers(const Top &top, F fn) {
+		if (!std::isfinite(top.z)) return; // abs(inf-inf)/NaN never passes the original strict height predicate
+		const int64_t key = height_key(top.z);
+		const int reach = key >= EXACT_HEIGHT_BASE ? 0 : HEIGHT_NEIGHBOURS;
+		for (int k = -reach; k <= reach; k++) {
+			const auto found = heights_.find(key + k);
+			if (found != heights_.end()) fn(found->second.index);
+		}
+	}
+	void insert_index(size_t id) {
+		const Entry &entry = entries_[id]; index_.insert(id, entry.box);
+		if (std::isfinite(entry.top.z)) {
+			auto &layer = heights_[height_key(entry.top.z)]; layer.index.insert(id, entry.box); layer.count++;
+		}
+	}
+	void retire_index(size_t id) {
+		if (!indexed_) return;
+		const Entry &entry = entries_[id]; index_.erase(id, entry.box);
+		if (std::isfinite(entry.top.z)) {
+			const auto found = heights_.find(height_key(entry.top.z)); found->second.index.erase(id, entry.box);
+			if (--found->second.count == 0) heights_.erase(found);
+		}
+	}
+	void update_index(size_t id, const Bounds2 &before) {
+		if (!indexed_) return;
+		const Entry &entry = entries_[id]; index_.erase(id, before); index_.insert(id, entry.box);
+		if (std::isfinite(entry.top.z)) {
+			auto &layer = heights_.at(height_key(entry.top.z)); layer.index.erase(id, before); layer.index.insert(id, entry.box);
+		}
+	}
+	void set_partner(size_t id, size_t partner) {
+		Entry &entry = entries_[id];
+		if (entry.partner != NONE) {
+			if (entry.previous != NONE) entries_[entry.previous].next = entry.next;
+			else entries_[entry.partner].followers = entry.next;
+			if (entry.next != NONE) entries_[entry.next].previous = entry.previous;
+		}
+		entry.partner = partner; entry.previous = entry.next = NONE;
+		if (partner != NONE) {
+			entry.next = entries_[partner].followers;
+			if (entry.next != NONE) entries_[entry.next].previous = id;
+			entries_[partner].followers = id; eligible_.insert(id);
+		} else eligible_.erase(id);
+	}
+	size_t first_partner(size_t id) {
+		const Top &top = entries_[id].top;
+		const Bounds2 query = neighborhood(top);
+		size_t found = NONE;
+		if (!indexed_) {
+			for (size_t other = id + 1; other < entries_.size(); other++)
+				if (entries_[other].alive && meets(top, entries_[other].top)) return other;
+			return NONE;
+		}
+		height_layers(top, [&](OrdinalBoundsIndex &layer) {
+			layer.query_ordered([&](const Bounds2 &b) { return b.overlaps(query); }, [&](size_t other) {
+				if (found != NONE && other >= found) return false;
+				if (other > id && meets(top, entries_[other].top)) { found = other; return false; }
+				return true;
+			}, scratch_);
+		});
+		return found;
+	}
+	void affect(size_t id) {
+		if (entries_[id].touched) return;
+		entries_[id].touched = true; affected_.push_back(id);
+	}
+public:
+	void append(Top top) {
+		const Bounds2 query = neighborhood(top);
+		size_t found = NONE;
+		if (!indexed_) {
+			for (size_t id = 0; id < entries_.size(); id++) if (meets(entries_[id].top, top)) { found = id; break; }
+		} else height_layers(top, [&](OrdinalBoundsIndex &layer) {
+			layer.query_ordered([&](const Bounds2 &b) { return b.overlaps(query); }, [&](size_t id) {
+				if (found != NONE && id >= found) return false;
+				if (meets(entries_[id].top, top)) { found = id; return false; }
+				return true;
+			}, scratch_);
+		});
+		if (found != NONE) {
+			Entry &entry = entries_[found]; const Bounds2 before = entry.box;
+			absorb(entry.top, top); entry.box = box_of(entry.top); update_index(found, before);
+		} else {
+			const size_t id = entries_.size(); const Bounds2 box = box_of(top);
+			entries_.push_back({std::move(top), box});
+			if (indexed_) insert_index(id);
+			else if (entries_.size() > LINEAR_TOPS) {
+				indexed_ = true; for (size_t k = 0; k < entries_.size(); k++) insert_index(k);
+			}
+		}
+	}
+	void merge() {
+		for (size_t i = 0; i < entries_.size(); i++) set_partner(i, first_partner(i));
+		while (!eligible_.empty()) {
+			const size_t i = *eligible_.begin(), k = entries_[i].partner;
+			affected_.clear(); affect(i);
+			for (size_t id = entries_[k].followers; id != NONE; id = entries_[id].next) affect(id);
+			set_partner(k, NONE); entries_[k].alive = false;
+			retire_index(k); const Bounds2 before = entries_[i].box;
+			absorb(entries_[i].top, entries_[k].top);
+			Hull().swap(entries_[k].top.pts); // copied points now belong only to the surviving top
+			entries_[i].box = box_of(entries_[i].top); update_index(i, before);
+			const Bounds2 query = neighborhood(entries_[i].top);
+			const auto candidate = [&](size_t j) {
+				if (j < i && entries_[j].alive && (entries_[j].partner == NONE || entries_[j].partner > i)
+					&& meets(entries_[j].top, entries_[i].top)) affect(j);
+			};
+			if (!indexed_) { for (size_t j = 0; j < i; j++) candidate(j); }
+			else height_layers(entries_[i].top, [&](OrdinalBoundsIndex &layer) {
+				layer.query_if([&](const Bounds2 &b) { return b.overlaps(query); }, candidate);
+			});
+			for (size_t id : affected_) {
+				set_partner(id, first_partner(id)); entries_[id].touched = false;
+			}
+		}
+	}
+	float foot_of(const Top &top) {
+		const float cx = (top.x0 + top.x1) / 2, cy = (top.y0 + top.y1) / 2;
+		const Bounds2 query{cx, cy, cx, cy}; float foot = 0;
+		const auto candidate = [&](size_t id) {
+			const Top &q = entries_[id].top;
+			if (entries_[id].alive && q.z < top.z - TOUCH_M && cx >= q.x0 && cx <= q.x1 && cy >= q.y0 && cy <= q.y1) foot = std::max(foot, q.z);
+			return true;
+		};
+		if (!indexed_) { for (size_t id = 0; id < entries_.size(); id++) candidate(id); }
+		else index_.query_ordered([&](const Bounds2 &b) { return b.overlaps(query); }, candidate, scratch_);
+		return foot;
+	}
+	template<class F> void each(F fn) { for (Entry &entry : entries_) if (entry.alive) fn(entry.top); }
+};
+
 Hull convex_hull(Hull p) {
 	for (auto &q : p) q = { std::round(q[0] * HULL_STEP) / HULL_STEP, std::round(q[1] * HULL_STEP) / HULL_STEP };
 	std::sort(p.begin(), p.end());
@@ -74,35 +248,21 @@ Hull convex_hull(Hull p) {
 }
 
 // The model's blocks, from the faces that look up.
-std::vector<Block> blocks_of(const std::vector<SurveyTriangle> &tris) {
-	std::vector<Top> tops;
+std::vector<Block> blocks_of(const SurveyTriangles &tris) {
+	TopIndex tops;
 	for (const SurveyTriangle &t : tris) {
 		const SurveyPoint &a = t[0], &b = t[1], &c = t[2];
 		const float ux = b.x - a.x, uy = b.y - a.y, uz = b.z - a.z, vx = c.x - a.x, vy = c.y - a.y, vz = c.z - a.z;
 		const float nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, length = std::sqrt(nx * nx + ny * ny + nz * nz);
 		if (length < LEAST_AREA || std::fabs(nz) / length < FLAT_NORMAL) continue; // either winding: models are not always consistent
 		Top top{ std::min({ a.x, b.x, c.x }), std::max({ a.x, b.x, c.x }), std::min({ a.y, b.y, c.y }), std::max({ a.y, b.y, c.y }), (a.z + b.z + c.z) / 3, { { a.x, a.y }, { b.x, b.y }, { c.x, c.y } } };
-		auto near = std::find_if(tops.begin(), tops.end(), [&](const Top &q) { return meets(q, top); });
-		if (near != tops.end()) absorb(*near, top);
-		else tops.push_back(std::move(top));
+		tops.append(std::move(top));
 	}
-	for (bool changed = true; changed;) { // a top grown by later triangles can now touch another
-		changed = false;
-		for (size_t i = 0; i < tops.size() && !changed; i++)
-			for (size_t k = i + 1; k < tops.size() && !changed; k++)
-				if (meets(tops[i], tops[k])) {
-					absorb(tops[i], tops[k]);
-					tops.erase(tops.begin() + std::ptrdiff_t(k));
-					changed = true;
-				}
-	}
+	tops.merge();
 	std::vector<Block> out;
-	for (const Top &t : tops) {
-		if (t.z <= LEAST_TOP_Z || t.x1 - t.x0 <= LEAST_TOP_SIDE || t.y1 - t.y0 <= LEAST_TOP_SIDE) continue;
-		const float cx = (t.x0 + t.x1) / 2, cy = (t.y0 + t.y1) / 2;
-		float foot = 0;
-		for (const Top &q : tops)
-			if (q.z < t.z - TOUCH_M && cx >= q.x0 && cx <= q.x1 && cy >= q.y0 && cy <= q.y1) foot = std::max(foot, q.z);
+	tops.each([&](Top &t) {
+		if (t.z <= LEAST_TOP_Z || t.x1 - t.x0 <= LEAST_TOP_SIDE || t.y1 - t.y0 <= LEAST_TOP_SIDE) return;
+		const float foot = tops.foot_of(t);
 		Block b;
 		b.x0 = t.x0;
 		b.x1 = t.x1;
@@ -110,9 +270,9 @@ std::vector<Block> blocks_of(const std::vector<SurveyTriangle> &tris) {
 		b.y1 = t.y1;
 		b.z0 = foot;
 		b.z1 = t.z;
-		b.hull = convex_hull(t.pts);
+		b.hull = convex_hull(std::move(t.pts));
 		out.push_back(std::move(b));
-	}
+	});
 	std::sort(out.begin(), out.end(), [](const Block &a, const Block &b) { return a.z1 < b.z1; });
 	return out;
 }
@@ -194,7 +354,7 @@ void read_bays(const std::vector<SurveyView> &views, Volume &v, float dx, float 
 }
 
 // What rises above the highest block goes on its roof as a lantern.
-void read_crown(const std::vector<SurveyTriangle> &tris, Body &body, float dx, float dy) {
+void read_crown(const SurveyTriangles &tris, Body &body, float dx, float dy) {
 	Volume *core = &body.volumes.front();
 	for (Volume &v : body.volumes)
 		if (v.top() > core->top()) core = &v;
@@ -220,11 +380,15 @@ void read_crown(const std::vector<SurveyTriangle> &tris, Body &body, float dx, f
 } // namespace
 
 bool survey_body(const Data &data, const Tuning &, const std::vector<SurveyTriangle> &tris, std::vector<SurveyView> &views, Body &b) {
+	return survey_body(model_inputs(data), SurveyTriangles::borrow(tris), views, b);
+}
+
+bool survey_body(const ModelInputs &inputs, const SurveyTriangles &tris, std::vector<SurveyView> &views, Body &b) {
 	std::vector<Block> kept;
 	for (Block &block : blocks_of(tris))
 		if (block.x1 - block.x0 >= LEAST_BLOCK && block.y1 - block.y0 >= LEAST_BLOCK && block.z1 - block.z0 >= LEAST_BLOCK_H) kept.push_back(std::move(block));
 	if (kept.empty() || views.empty()) return false;
-	for (SurveyView &v : views) survey_depth(v, tris);
+	for (SurveyView &v : views) if (!survey_depth(v, tris)) return false;
 	for (Block &block : kept) {
 		const float cx = (block.x0 + block.x1) / 2, cy = (block.y0 + block.y1) / 2;
 		float under = -1;
@@ -291,7 +455,7 @@ bool survey_body(const Data &data, const Tuning &, const std::vector<SurveyTrian
 			add(block, plinth, block.top - plinth, own);
 		} else add(block, block.base, block.top - block.base, has_plinth && block.top <= plinth ? &plinth_shade : own);
 	}
-	model_body(data, m, b);
+	model_body(inputs, m, b);
 	const float dx = m.blocks.front().x - b.volumes.front().x, dy = m.blocks.front().y - b.volumes.front().y; // the body stands in its lot's frame now
 	for (size_t i = 0; i < b.volumes.size() && i < walls.size(); i++) {
 		Volume &v = b.volumes[i];

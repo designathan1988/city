@@ -62,6 +62,7 @@ bool light_stops(const CityState &s, const Vehicle &v, int ds, float stop_m, int
 }
 
 LightStop lights_ahead(const CityState &s, const Vehicle &v, int ri, int lane, float start) {
+	if (!vehicle_route_goal_current(s, v)) return {};
 	const TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
 	const VehicleClass &vc = p.classes[int(v.type)];

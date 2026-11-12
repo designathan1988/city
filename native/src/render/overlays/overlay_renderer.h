@@ -4,10 +4,13 @@
 // PoseFrame's per-segment speed share, only for chunks within the road reach). Only reads the state.
 #pragma once
 
+#include "render/chunk_results.h"
+
 #include "render/render_context.h"
 #include "render/rs_util.h"
 #include "sim/state/city_state.h"
 
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <godot_cpp/variant/packed_color_array.hpp>
@@ -28,13 +31,23 @@ public:
 	void set(Overlay o, bool on);
 	void show_every_zone(bool on); // the brush in hand: every zoned side, not only the player's
 	bool is_on(Overlay o) const { return on_[int(o)]; }
-	void mark_dirty(int64_t key); // a road chunk changed: its zone mesh is stale
+	void mark_dirty(int64_t key, JobPool *pool = nullptr); // a road chunk changed: its zone mesh is stale
 	void update(const CityState &s, const PoseFrame &f, double dt);
 
 private:
+	struct ColourSpan {
+		int segment = -1;
+		int64_t first = 0, count = 0;
+		std::array<uint8_t, 4> rgba{};
+	};
+	struct CongestionDraw {
+		MeshDraw draw;
+		std::vector<ColourSpan> colours;
+	};
 	struct Ribbon {
 		godot::PackedVector3Array v;
 		godot::PackedColorArray c;
+		std::vector<ColourSpan> colours;
 	};
 	struct Built {
 		int64_t key = 0;
@@ -50,16 +63,21 @@ private:
 	void commit(const std::chrono::steady_clock::time_point &until);
 	void upload(MeshDraw &d, Ribbon &r, bool on);
 	void update_congestion(const CityState &s, const PoseFrame &f);
+	godot::Color congestion_colour(float share) const;
+	static std::array<uint8_t, 4> rgba8(const godot::Color &colour);
+	bool update_colours(CongestionDraw &draw, const PoseFrame &frame);
 
 	godot::RID scenario_, material_;
-	std::unordered_map<int64_t, MeshDraw> zones_, congestion_;
+	std::unordered_map<int64_t, MeshDraw> zones_;
+	std::unordered_map<int64_t, CongestionDraw> congestion_;
+	std::unordered_set<int64_t> congestion_dirty_;
 	std::unordered_set<int64_t> zones_dirty_, roads_known_;
 	bool zones_all_ = false;
 	std::atomic<bool> every_zone_{ false };
 	float zone_alpha_ = 0, zone_alpha_tool_ = 0, congestion_alpha_ = 0;
 	bool on_[int(Overlay::COUNT)] = {};
 	std::mutex queue_mutex_;
-	std::vector<Built> done_;
+	CompletedResults<Built> done_;
 	std::unordered_map<int64_t, uint64_t> requested_;
 	uint64_t seq_ = 0;
 	double since_ = 0;

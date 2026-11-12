@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -29,10 +30,13 @@ struct SavePart { // where a part of the save ends in its bytes (api/city_core_s
 	const char *name;
 	size_t end;
 };
+// The same format into a caller-owned vector or paged sink; caller still supplies a stable city.
+void write_city(ByteWriter &w, const CityState &s, std::vector<SavePart> *parts = nullptr);
 std::vector<uint8_t> encode_city(const CityState &s, std::vector<SavePart> *parts = nullptr);
 // Whether the bytes are a whole city the catalogue can open, read into a scratch city with this copy of it: nothing of the
 // open city is touched (Roadcraft persistence.ts reads the file before it replaces the document). `error`: a strings.csv key.
 constexpr uint32_t MAX_RECORDS = 50000000; // sanity bound on any saved table: a corrupt count stops here, before any allocation
+constexpr size_t SAVED_BUILDING_BYTES = 5 * sizeof(float) + 2 * sizeof(uint8_t) + 4 * sizeof(uint16_t) + sizeof(uint32_t) + sizeof(double);
 
 // Where the opening of a city went, in milliseconds.
 struct OpenTimes {
@@ -40,7 +44,7 @@ struct OpenTimes {
 };
 
 bool check_city(Catalog catalog, const uint8_t *data, size_t size, std::string &error);
-// Replaces the city with the saved one. Give it bytes check_city took: a file that fails halfway leaves `s` mixed.
+// Decodes once into a private candidate. Failure discards that candidate; publication must never decode into the live city.
 bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &error, OpenTimes *times = nullptr);
 
 // The landscape part of the file (save_nature.cpp).

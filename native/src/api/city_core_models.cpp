@@ -97,12 +97,21 @@ Dictionary CityBuilder::building_bytes(int id) const {
 	return d;
 }
 
-Vector3 CityBuilder::body_size(const PackedByteArray &bytes) const {
-	b40::Body b;
-	if (!body_of(bytes, b)) return Vector3();
-	float top = 0;
-	for (const b40::Volume &v : b.volumes) top = std::max(top, b.level_z(v.top()) + b40::roof_rise(v));
-	return Vector3(b.plan.W, b.plan.D, top);
+Ref<PreparedBody> CityBuilder::body_prepare(const Variant &source) const {
+	if (source.get_type() == Variant::OBJECT) {
+		Object *object = source;
+		PreparedBody *prepared = Object::cast_to<PreparedBody>(object);
+		return prepared ? Ref<PreparedBody>(prepared) : Ref<PreparedBody>();
+	}
+	if (source.get_type() != Variant::PACKED_BYTE_ARRAY) return Ref<PreparedBody>();
+	b40::Body body;
+	if (!body_of(PackedByteArray(source), body)) return Ref<PreparedBody>();
+	return PreparedBody::make(std::move(body));
+}
+
+Vector3 CityBuilder::body_size(const Variant &bytes) const {
+	const Ref<PreparedBody> body = body_prepare(bytes);
+	return body.is_valid() ? body->extent() : Vector3();
 }
 
 Dictionary CityBuilder::place_fit(const Vector3 &at, const Vector2 &size, double rot) const {
@@ -116,22 +125,22 @@ Dictionary CityBuilder::place_fit(const Vector3 &at, const Vector2 &size, double
 	return d;
 }
 
-String CityBuilder::place_check(const PackedByteArray &bytes, double x, double z, double rot) const {
-	b40::Body b;
-	if (!body_of(bytes, b)) return "tool.failed";
+String CityBuilder::place_check(const Variant &bytes, double x, double z, double rot) const {
+	const Ref<PreparedBody> body = body_prepare(bytes);
+	if (body.is_null()) return "tool.failed";
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-	return String(place_problem(*state_, b, x, z, rot).c_str());
+	return String(place_problem(*state_, body->body(), x, z, rot).c_str());
 }
 
-Dictionary CityBuilder::place_model(const PackedByteArray &bytes, double x, double z, double rot, int fn, int zone) {
-	b40::Body b;
-	if (!body_of(bytes, b)) return Dictionary();
-	return run_edit(*state_, PLACE_LABEL, [&](CityState &s) { return place_body(s, b, x, z, rot, fn, zone); });
+Dictionary CityBuilder::place_model(const Variant &bytes, double x, double z, double rot, int fn, int zone) {
+	const Ref<PreparedBody> body = body_prepare(bytes);
+	if (body.is_null()) return Dictionary();
+	return run_edit(*state_, PLACE_LABEL, [&](CityState &s) { return place_body(s, body->body(), x, z, rot, fn, zone); });
 }
 
-int CityBuilder::stage_show(const PackedByteArray &bytes, const RID &scenario, bool ghost) {
-	b40::Body b;
-	return body_of(bytes, b) ? render_->stage_show(state_->buildings.designs, b, scenario, ghost) : 0;
+int CityBuilder::stage_show(const Variant &bytes, const RID &scenario, bool ghost) {
+	const Ref<PreparedBody> body = body_prepare(bytes);
+	return body.is_valid() ? render_->stage_show(state_->buildings.designs, body->body(), scenario, ghost, body->digest()) : 0;
 }
 
 void CityBuilder::stage_move(int handle, const Transform3D &at) { render_->stage().move(handle, at); }
@@ -143,6 +152,7 @@ void CityBuilder::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("model_list"), &CityBuilder::model_list);
 	ClassDB::bind_method(D_METHOD("model_bytes", "id"), &CityBuilder::model_bytes);
 	ClassDB::bind_method(D_METHOD("building_bytes", "id"), &CityBuilder::building_bytes);
+	ClassDB::bind_method(D_METHOD("body_prepare", "source"), &CityBuilder::body_prepare);
 	ClassDB::bind_method(D_METHOD("body_size", "bytes"), &CityBuilder::body_size);
 	ClassDB::bind_method(D_METHOD("place_fit", "at", "size", "rot"), &CityBuilder::place_fit);
 	ClassDB::bind_method(D_METHOD("doc_body", "doc"), &CityBuilder::doc_body);
@@ -178,10 +188,12 @@ void CityBuilder::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("body_add_primitive", "id", "vol", "side", "storey", "at", "spec"), &CityBuilder::body_add_primitive);
 	ClassDB::bind_method(D_METHOD("drop_primitive", "at", "spec"), &CityBuilder::drop_primitive);
 	ClassDB::bind_method(D_METHOD("body_handles", "id", "vol", "points", "eye", "pick"), &CityBuilder::body_handles);
-	ClassDB::bind_method(D_METHOD("body_draft", "id", "spec"), &CityBuilder::body_draft);
+	ClassDB::bind_method(D_METHOD("body_draft", "id", "spec", "encode"), &CityBuilder::body_draft, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("body_apply", "id", "spec"), &CityBuilder::body_apply);
 	ClassDB::bind_method(D_METHOD("building_place", "id", "x", "z", "rot"), &CityBuilder::building_place);
-	ClassDB::bind_method(D_METHOD("build_reference", "triangles", "views", "x", "z", "rot", "replaced"), &CityBuilder::build_reference);
+	ClassDB::bind_method(D_METHOD("reference_target", "replaced"), &CityBuilder::reference_target);
+	ClassDB::bind_method(D_METHOD("prepare_reference", "parts"), &CityBuilder::prepare_reference);
+	ClassDB::bind_method(D_METHOD("build_reference", "triangles", "views", "x", "z", "rot", "replaced", "expected"), &CityBuilder::build_reference, DEFVAL(Dictionary()));
 	ClassDB::bind_method(D_METHOD("body_add_core", "id", "at", "kind"), &CityBuilder::body_add_core);
 	ClassDB::bind_method(D_METHOD("body_add_run", "id", "vol", "storey", "points", "spec"), &CityBuilder::body_add_run);
 	ClassDB::bind_method(D_METHOD("body_paint_at", "id", "vol", "side", "storey"), &CityBuilder::body_paint_at);

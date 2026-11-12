@@ -5,12 +5,12 @@
 class_name CitySaves
 extends RefCounted
 
-const SAVE_WAIT_MS := 10
-
 var _store: Node
 var _core: Node3D
 var _since_autosave := 0.0
 var _save_pending := false
+var _queued_saves := 0
+var _save_result: Dictionary = {}
 var _save_slot := ""
 var _city_slot := ""
 var _export_to := "" # a map copy to make once the save in flight is written
@@ -41,7 +41,7 @@ func city_slot() -> String:
 
 ## A save is being written (its result comes with `saved`).
 func save_busy() -> bool:
-	return _save_pending
+	return _save_pending or _queued_saves > 0
 
 
 ## Save (Menu, Ctrl+S): the city on screen to its own slot. The result is `saved`'s; this returns only a refusal.
@@ -76,6 +76,72 @@ func save_game(slot: String) -> Dictionary:
 	return r
 
 
+## Production operations join the ordered input boundary; direct save/load APIs remain synchronous native interfaces.
+func ordered_save_city(auto := false) -> Dictionary:
+	return await _ordered_save(&"save_city", [auto, _store.snapshot.get("city_generation", -1)])
+
+
+func ordered_export_map() -> Dictionary:
+	return await _ordered_save(&"export_map", [false])
+
+
+func _ordered_save(name: StringName, args: Array) -> Dictionary:
+	if name in [&"save_city", &"export_map", &"save_game"] and (_save_pending or _queued_saves > 0):
+		return {"ok": false, "error": "save.busy"}
+	_queued_saves += 1
+	var result: Dictionary = await _store.ordered_barrier(name, args)
+	_queued_saves -= 1
+	return result
+
+
+## Borrowed only by the queue head. Start once, then poll the existing writer through tick; no blocking sleep/drain.
+func input_save_barrier(name: StringName, args: Array, started: bool) -> Dictionary:
+	if not started:
+		var closing := name in [&"save_on_close", &"save_on_hide"]
+		if closing:
+			if _save_pending:
+				return {"pending": true}
+			if not _autosave_due(true):
+				return {"result": {"ok": true}}
+		elif _save_pending:
+			return {"result": {"ok": false, "error": "save.busy"}}
+		_save_auto = name == &"save_on_hide"
+		if not closing:
+			var auto_index := 1 if name == &"save_game" else 0
+			_save_auto = args.size() > auto_index and bool(args[auto_index])
+		var generation_index := 2 if name == &"save_game" else 1
+		if _save_auto and args.size() > generation_index and int(args[generation_index]) != int(_store.snapshot.get("city_generation", -1)):
+			_save_auto = false
+			return {"result": {"ok": true, "cancelled": true}} # automatic intent belongs to the city which requested it
+		if _save_auto and not _autosave_due(true):
+			_save_auto = false
+			return {"result": {"ok": true}}
+		var result: Dictionary
+		if name == &"save_game":
+			result = save_game(args[0])
+		elif name == &"export_map":
+			result = export_map()
+		else:
+			result = save_city()
+		if not result.get("pending", false):
+			return {"result": result}
+	if _save_pending:
+		return {"pending": true}
+	return {"result": _save_result.duplicate(true)}
+
+
+func ordered_load_game(slot: String, paused := false) -> Dictionary:
+	return await _store.ordered_barrier(&"load_game", [slot, paused])
+
+
+func ordered_load_last() -> Dictionary:
+	return await _store.ordered_barrier(&"load_last") # resolve the last written slot at this position in the input order
+
+
+func ordered_open_file(file: String) -> Dictionary:
+	return await _store.ordered_barrier(&"open_file", [file])
+
+
 ## Replaces the city with the saved one (the core stops the simulation, reads it and redraws everything). The city
 ## keeps that slot, unless it is a map copy (then its first save gives it one of its own).
 func load_game(slot: String, paused := false) -> Dictionary:
@@ -107,20 +173,16 @@ func save_path(slot: String) -> String:
 ## The window closes, or a new city takes this one's place: what is unsaved is written, and the thread waited for (a city never lost
 ## to the close button).
 func save_on_close() -> void:
-	if not _autosave_due():
+	if not _save_pending and _queued_saves == 0 and not _store.input_pending() and not _autosave_due():
 		return
-	save_city()
-	while _save_pending and _core.save_status().get("busy", true):
-		OS.delay_msec(SAVE_WAIT_MS)
-	_settle_save()
+	await _ordered_save(&"save_on_close", [])
 
 
 ## The window went behind another or was minimised: what is unsaved starts writing, the frame does not wait (Roadcraft saves when
 ## the page is hidden, with no promise it finishes; here the thread does).
 func save_on_hide() -> void:
-	if _autosave_due():
-		_save_auto = true
-		save_city()
+	if _autosave_due() or _store.input_pending():
+		await _ordered_save(&"save_on_hide", [true, _store.snapshot.get("city_generation", -1)])
 
 
 ## A city file from anywhere on the disk: opened as a new city, its first save takes a slot of its own. The core keeps the city on
@@ -155,8 +217,7 @@ func tick(delta: float) -> void:
 	if _since_autosave >= DataTables.game("saves").autosave_s:
 		_since_autosave = 0.0 # checked every autosave_s, saved only when due
 		if _autosave_due():
-			_save_auto = true
-			save_city()
+			ordered_save_city(true)
 
 
 ## An edit is written once the player pauses (autosave_quiet_s), or autosave_most_s after it in a run of edits: the file costs a thread
@@ -175,15 +236,14 @@ func _tick_edits(delta: float) -> void:
 	if _quiet >= cfg.autosave_quiet_s or _waited >= cfg.autosave_most_s:
 		_waited = -1.0
 		if _autosave_due():
-			_save_auto = true
-			save_city()
+			ordered_save_city(true)
 
 
 ## Unsaved work of the player's: a city never saved nor edited is not written.
-func _autosave_due() -> bool:
+func _autosave_due(ignore_queued := false) -> bool:
 	var s: Dictionary = _store.snapshot
 	var players: bool = not _city_slot.is_empty() or s.get("edited", false)
-	return s.get("ready", false) and s.get("unsaved", false) and not _save_pending and players
+	return s.get("ready", false) and s.get("unsaved", false) and not _save_pending and (ignore_queued or _queued_saves == 0) and players
 
 
 ## The save thread finished (or the core waited for it before a new map or a load): its outcome goes out.
@@ -207,4 +267,5 @@ func _finish_save(slot: String, result: Dictionary) -> void:
 	result["auto"] = _save_auto
 	_export_to = ""
 	_save_auto = false
+	_save_result = result.duplicate(true)
 	_store.saved.emit(slot, result)

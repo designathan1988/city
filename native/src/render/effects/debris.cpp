@@ -35,8 +35,8 @@ void Debris::init(const RID &scenario, const RID &material, const EffectParams &
 	cyl->set_top_radius(1.f);
 	cyl->set_bottom_radius(1.f);
 	cyl->set_radial_segments(int(CYL_SIDES));
-	boxes_.init(scenario, box, material, params.debris_max, true, world);
-	cylinders_.init(scenario, cyl, material, params.debris_max, true, world);
+	boxes_.init(scenario, box, material, params.debris_max, true, world, std::max(1.f, params.instance_sector_m));
+	cylinders_.init(scenario, cyl, material, params.debris_max, true, world, std::max(1.f, params.instance_sector_m));
 	boxes_.count(0);
 	cylinders_.count(0);
 }
@@ -45,7 +45,7 @@ void Debris::set_wrecks(const RID &scenario, const RID &material, const std::vec
 	const AABB world(Vector3(-WORLD_HALF_M, -WORLD_UP_M, -WORLD_HALF_M), Vector3(2 * WORLD_HALF_M, 2 * WORLD_UP_M, 2 * WORLD_HALF_M));
 	wrecks_.resize(bodies.size());
 	for (size_t i = 0; i < bodies.size(); i++) {
-		wrecks_[i].init(scenario, bodies[i], material, WRECKS_KEPT, true, world);
+		wrecks_[i].init(scenario, bodies[i], material, WRECKS_KEPT, true, world, std::max(1.f, params_.instance_sector_m));
 		wrecks_[i].count(0);
 	}
 }
@@ -64,6 +64,7 @@ void Debris::release() {
 
 void Debris::add(const PieceSpec &s) {
 	Piece b;
+	b.source = s.source;
 	b.p = s.at;
 	b.v = s.velocity;
 	b.w = s.random_spin ? Vector3((rng_.f() - 0.5f) * RANDOM_SPIN_RANGE, (rng_.f() - 0.5f) * RANDOM_SPIN_RANGE, (rng_.f() - 0.5f) * RANDOM_SPIN_RANGE) : s.spin;
@@ -89,6 +90,12 @@ void Debris::add(const PieceSpec &s) {
 		pieces_.erase(it == pieces_.end() ? pieces_.begin() : it);
 	}
 	dirty_ = true;
+}
+
+void Debris::remove_source(uint64_t source) {
+	const size_t before = pieces_.size();
+	pieces_.erase(std::remove_if(pieces_.begin(), pieces_.end(), [source](const Piece &p) { return p.source == source; }), pieces_.end());
+	if (pieces_.size() != before) dirty_ = true;
 }
 
 bool Debris::moving() const {
@@ -122,7 +129,11 @@ void Debris::reap(float dt) {
 
 void Debris::flush() {
 	const bool burning = std::any_of(pieces_.begin(), pieces_.end(), [](const Piece &p) { return p.burn_until > 0; });
-	if (!dirty_ && !moving() && !burning && drawn_ == int(pieces_.size())) return;
+	if (!dirty_ && !moving() && !burning && drawn_ == int(pieces_.size())) {
+		boxes_.settle(); cylinders_.settle();
+		for (MmLayer &layer : wrecks_) layer.settle();
+		return;
+	}
 	int nb = 0, nc = 0;
 	std::vector<int> nw(wrecks_.size(), 0);
 	for (const Piece &p : pieces_) {

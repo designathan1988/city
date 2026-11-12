@@ -12,12 +12,14 @@ uniform float grain_gap = 0.72; // how dark the gaps between the pieces are
 varying vec3 v_world;
 varying vec3 v_wall;
 varying flat float v_seed;
+varying flat float v_detail_fade; // 0 stable; +(1+t) outgoing, -(1+t) incoming
 
 #include "res://render/shaders/lattice_noise.gdshaderinc"
 #include "res://render/shaders/color_space.gdshaderinc"
 
 void vertex() {
 	float age = now - INSTANCE_CUSTOM.x;
+	v_detail_fade = INSTANCE_CUSTOM.w;
 	vec3 world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	// No two alike, whatever the mesh: its height goes by the place, in slumps as wide as a room and chunks a stride wide.
 	vec2 at = world.xz + INSTANCE_CUSTOM.y * 91.0;
@@ -30,6 +32,12 @@ void vertex() {
 }
 
 void fragment() {
+	if (abs(v_detail_fade) >= 1.0) {
+		// One sample and complementary predicates in both levels: no blending/doubled opacity during the handover.
+		float share = abs(v_detail_fade) - 1.0;
+		bool incoming = hash2(floor(FRAGCOORD.xy)) < share;
+		if ((v_detail_fade < 0.0) != incoming) discard;
+	}
 	vec2 p = v_world.xz + v_seed * 53.0;
 	float big = vnoise(p * 0.21), mid = vnoise(p * 0.9), fine = vnoise(p * 3.7);
 	vec3 c = mix(source_linear(concrete), source_linear(dust), big * 0.6 + mid * 0.4);

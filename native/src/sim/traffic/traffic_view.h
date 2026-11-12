@@ -38,6 +38,7 @@ struct TrafficView {
 	int near = 0, queued = 0; // driven by the near model, and of those standing
 	double mean_speed_ms = 0;
 	std::vector<TrafficTally> seg, node; // per segment and per node
+	std::vector<int> touched_seg, touched_node; // only fleet fields written in this physical buffer
 	std::vector<uint32_t> volume; // per segment: vehicles that entered it since the city opened
 	std::vector<JunctionView> junction; // per node
 	std::vector<int> lamps; // each signalled stage's light, by its first approach
@@ -47,6 +48,8 @@ struct TrafficView {
 template <typename T>
 class TripleBuffer {
 public:
+	static constexpr int BUFFER_COUNT = 3;
+	int back_index() const { return back_; } // producer only; identifies the physical buffer
 	T &back() { return frames_[back_]; }
 	void publish() { back_ = state_.exchange(back_ | NEW) & IDX; }
 	const T &acquire() {
@@ -56,7 +59,7 @@ public:
 
 private:
 	static constexpr int NEW = 4, IDX = 3;
-	T frames_[3];
+	T frames_[BUFFER_COUNT];
 	std::atomic<int> state_{ 1 }; // middle = 1
 	int back_ = 0, front_ = 2;
 };

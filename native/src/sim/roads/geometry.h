@@ -36,7 +36,7 @@ Quad sub_quad(const Quad &q, double t0, double t1);
 double quad_min_radius(const Quad &q);
 // The same curve flattened just enough to be nowhere tighter than min_radius, its control sliding towards the chord.
 Quad fit_quad_to_radius(const Quad &q, double min_radius);
-// Closest point on the curve: t and distance (32 samples refined 12 times).
+// Closest point: exact projection for canonical straight segments; 32 samples refined 12 times for other curves.
 void closest_t(const Quad &q, double x, double z, double &t, double &dist);
 // Intersection of two line segments ab and cd: parameters s, t in [0, 1].
 bool seg_seg(double ax, double az, double bx, double bz, double cx, double cz, double dx, double dz, double &s, double &t);

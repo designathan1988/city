@@ -44,6 +44,8 @@ private:
 	std::unordered_map<int64_t, Chunk> chunks_;
 	std::vector<SignalRecord> signals_; // the last published lights, by ds
 	int lit_ = 0;
+	uint64_t publication_ = 0;
+	bool has_publication_ = false;
 };
 
 } // namespace city

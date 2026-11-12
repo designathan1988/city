@@ -11,6 +11,7 @@
 #include "render/buildings/facade.h"
 #include "render/buildings/flag_cloth.h"
 #include "render/mesh_builder.h"
+#include "render/job_request.h"
 
 #include <algorithm>
 #include <cmath>
@@ -50,6 +51,9 @@ void each_chunk_of(Map &chunks, int64_t super_key, F &&fn) {
 } // namespace
 
 bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
+	constexpr size_t MIB = 1024 * 1024;
+	body_cache_bytes_ = size_t(std::max(0.f, ctx.catalog->tune.render_body_cache_mb) * MIB);
+	body_cache_ = std::make_shared<BodyCache>(body_cache_bytes_);
 	scenario_ = ctx.scenario;
 	signatures_.init(ctx.scenario, LAYER_BUILDING_SHELLS);
 	material_ = ctx.material("building", errors);
@@ -78,6 +82,7 @@ bool BuildingRenderer::init(const RenderContext &ctx, PackedStringArray &errors)
 }
 
 void BuildingRenderer::reset() {
+	state_ = nullptr;
 	signatures_.reset();
 	{
 		std::lock_guard<std::mutex> lk(queue_mutex_);
@@ -102,20 +107,26 @@ void BuildingRenderer::reset() {
 	chunks_.clear();
 	for (auto &kv : supers_) kv.second.far.free();
 	supers_.clear();
-	bodies_.clear();
+	body_cache_ = std::make_shared<BodyCache>(body_cache_bytes_); // old jobs retain their submitted cache, never the next city's cache
 }
 
-// A dirty chunk keeps its meshes on screen until the new ones land: its built levels turn stale and its version moves
-// on, so update_view remeshes it and a job already in flight (it may have read the map before the change) still lands
-// but leaves the chunk stale (commit_one).
+// The displayed version remains until its replacement is ready. A new desired version retires old work immediately,
+// independently of the CPU credits or far rebuild delay used to request its replacement.
+void BuildingRenderer::invalidate_chunk(JobPool *pool, int64_t key) {
+	cancel_request(pool, JobKey{ JobLane::BUILDING, key }, queue_mutex_, requested_);
+	std::lock_guard<std::mutex> lock(queue_mutex_);
+	requested_mask_.erase(key);
+}
 void BuildingRenderer::rebuild_chunk(const CityState &s, int64_t key) {
-	(void)s;
+	invalidate_chunk(s.jobs.get(), key);
 	auto [found, fresh] = chunks_.try_emplace(key);
 	Chunk &ch = found->second;
 	ch.centre = Vector3((float(key_x(key)) + HALF) * CHUNK, 0, (float(key_y(key)) + HALF) * CHUNK);
 	ch.version++;
 	for (int l = 0; l < LEVELS; l++) ch.stale[l] = ch.built[l];
-	Super &sp = supers_[super_of(ch.centre)];
+	const int64_t super_key = super_of(ch.centre);
+	cancel_request(s.jobs.get(), JobKey{ JobLane::BUILDING_SUPER, super_key }, queue_mutex_, super_requested_);
+	Super &sp = supers_[super_key];
 	if (fresh) sp.chunks++;
 	if (!sp.dirty) sp.due = now_s() + look_.far_rebuild_delay_s; // later changes ride on the same request
 	sp.dirty = true;
@@ -123,10 +134,7 @@ void BuildingRenderer::rebuild_chunk(const CityState &s, int64_t key) {
 
 // The far mesh of a superchunk the camera left; it is meshed again (dirty) once the camera comes back within reach.
 void BuildingRenderer::drop_far(int64_t key, Super &sp) {
-	{
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		super_requested_.erase(key);
-	}
+	cancel_request(state_ ? state_->jobs.get() : nullptr, JobKey{ JobLane::BUILDING_SUPER, key }, queue_mutex_, super_requested_);
 	sp.far.free();
 	sp.built = sp.has_content = false;
 	sp.dirty = true;
@@ -134,11 +142,7 @@ void BuildingRenderer::drop_far(int64_t key, Super &sp) {
 }
 
 void BuildingRenderer::drop_chunk(int64_t key) {
-	{
-		std::lock_guard<std::mutex> lk(queue_mutex_);
-		requested_.erase(key);
-		requested_mask_.erase(key);
-	}
+	invalidate_chunk(state_ ? state_->jobs.get() : nullptr, key);
 	signatures_.drop(key);
 	auto it = chunks_.find(key);
 	if (it == chunks_.end()) return;
@@ -199,9 +203,12 @@ void BuildingRenderer::submit(const CityState &s, int64_t key, bool far, bool ne
 		Inputs in;
 		{
 			std::shared_lock<std::shared_mutex> map(s.map_mutex); // only while copying: the build reads the copy
+			if (JobPool::cancelled()) return;
 			in = gather(s, &key, 1);
 		}
+		in.ground = in.ground.regional(); // metadata-only regional lease, after releasing map_mutex
 		Built b = build_cpu(in, key, near, mid);
+		if (JobPool::cancelled()) return;
 		b.job = job;
 		b.seq = seq;
 		b.version = version;
@@ -232,14 +239,26 @@ void BuildingRenderer::submit_super(const CityState &s, int64_t key, float prior
 		Inputs in;
 		{
 			std::shared_lock<std::shared_mutex> map(s.map_mutex); // only while copying: the build reads the copy
+			if (JobPool::cancelled()) return;
 			in = gather(s, chunks.data(), int(chunks.size()));
 		}
-		for (size_t r = in.records.size(); r-- > 0;) // the far level has no lots: a building in pieces is not in it at all
-			if (in.broken.count(in.records[r].seed)) {
-				in.records.erase(in.records.begin() + std::ptrdiff_t(r));
-				in.ids.erase(in.ids.begin() + std::ptrdiff_t(r));
+		in.ground = in.ground.regional(); // no unrelated height pages retained during the long build
+		// Compact all aligned inputs together, preserving query order and their pinned versions.
+		size_t keep = 0;
+		for (size_t r = 0; r < in.records.size(); r++) {
+			if (in.broken.count(in.records[r].seed)) continue;
+			if (keep != r) {
+				in.records[keep] = in.records[r];
+				in.ids[keep] = in.ids[r];
+				in.bodies[keep] = std::move(in.bodies[r]);
 			}
+			keep++;
+		}
+		in.records.resize(keep);
+		in.ids.resize(keep);
+		in.bodies.resize(keep);
 		SuperBuilt b = build_super_cpu(in, key);
+		if (JobPool::cancelled()) return;
 		for (int64_t seen = super_bytes_max_.load(); b.bytes() > seen && !super_bytes_max_.compare_exchange_weak(seen, b.bytes());) {
 		}
 		b.job = JobKey{ JobLane::BUILDING_SUPER, key };

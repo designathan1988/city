@@ -21,6 +21,7 @@ public:
 	void set_speed(SimSpeed sp);
 	SimSpeed speed() const { return speed_.load(); }
 	uint64_t wakeups() const { return wakeups_.load(); } // turns of the tick thread's loop (probes: a pause turns none)
+	double tick_load() const { return speed() == SimSpeed::PAUSED || speed() == SimSpeed::STOPPED ? 0.0 : tick_load_.load(); }
 	int steps_per_tick(SimSpeed sp) const;
 	// One step without the thread (tests). Takes its own locks: the caller must not hold map_mutex.
 	void step(CityState &s);
@@ -35,6 +36,7 @@ private:
 	std::atomic<bool> running_{ false };
 	std::atomic<int64_t> period_ns_{ 0 };
 	std::atomic<uint64_t> wakeups_{ 0 };
+	std::atomic<double> tick_load_{ 0 }; // active tick wall cost / requested period; sleep is excluded, lock contention included
 	// Paused, the thread sleeps on wake_ until set_speed() or stop(): they change the state under wake_mutex_ first, so no
 	// change is missed and a stopped clock wakes nothing.
 	std::mutex wake_mutex_;

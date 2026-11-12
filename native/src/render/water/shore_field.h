@@ -1,44 +1,50 @@
-// The water each piece of land stands by, as the terrain shader reads it: a texel per water sample holding the level of
-// the water over it, or of the water a bank within reach looks at (the sea, a lake, a river alike). The beach follows that
-// level and not the sea's. A job works it out from the map; the main thread only uploads it.
+// Shore levels are prepared from local water/terrain snapshots with a propagation halo. Two physical layers per
+// page and one small bank map publish a coherent revision without uploading unchanged field pages.
 #pragma once
-
 #include "sim/state/city_state.h"
-
+#include "core/async_result.h"
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
+#include <godot_cpp/classes/texture2d_array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
-
 #include <atomic>
-#include <mutex>
+#include <memory>
+#include <optional>
+#include <set>
 
 namespace city {
-
 class ShoreField {
 public:
-	// Called each frame: starts a job when the land or the water changed, takes a finished one in.
 	void sync(const CityState &s);
-	// { revision, texture, grid } for render/shore_view.gd; revision 0 until the first levels are in.
 	godot::Dictionary view() const;
-	void touch() { revision_++; } // the land or the water changed
+	void touch(const CityState &s, const std::vector<int64_t> &water_keys, const std::vector<int> &terrain_rects);
 	void reset();
-
 private:
+	struct Page { int index = 0; godot::PackedByteArray texels; };
 	struct Raster {
-		godot::PackedByteArray texels;
-		int side = 0;
-		float half = 0, step = 1;
+		std::vector<int> requested;
+		std::vector<Page> pages;
+		uint64_t revision = 0;
+		bool complete = false;
 	};
-	void work(const CityState &s, uint64_t revision);
-	godot::Ref<godot::ImageTexture> texture_;
-	mutable std::mutex mutex_;
-	Raster done_;
-	bool has_done_ = false;
-	std::atomic<bool> busy_{ false };
-	std::atomic<uint64_t> revision_{ 0 };
-	uint64_t seen_ = ~uint64_t(0);
-	int side_ = 0, uploads_ = 0;
-	float half_ = 0, step_ = 1;
+	struct Layout { int side = 0, page = 0, across = 0, passes = 0; float half = 0, step = 1; };
+	using Wanted = std::shared_ptr<std::atomic<uint64_t>>;
+	using Ticket = AsyncResult<Raster>::Ticket;
+	static Raster work(const CityState &s, Layout layout, std::vector<int> requested, uint64_t revision, const Wanted &wanted, const Ticket &ticket);
+	bool mark_world(float x0, float z0, float x1, float z1);
+	void configure(const CityState &s);
+	bool publish(const Raster &raster);
+	godot::Ref<godot::Texture2DArray> texture_;
+	godot::Ref<godot::ImageTexture> bank_map_;
+	godot::PackedByteArray bank_bytes_;
+	std::vector<godot::PackedByteArray> published_;
+	std::vector<uint8_t> banks_;
+	std::set<int> dirty_;
+	AsyncResult<Raster> result_;
+	std::optional<Raster> ready_;
+	Wanted wanted_ = std::make_shared<std::atomic<uint64_t>>(next_generation());
+	Layout layout_;
+	int uploads_ = 0;
+	bool visible_ = false;
 };
-
 } // namespace city

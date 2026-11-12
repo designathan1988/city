@@ -223,7 +223,8 @@ double street_distance(const RoadNetwork &net, double x, double z) {
 bool lot_corner_near(const LotBook &book, const LotPoint &p, double reach, int skip, const LotPoint *apart, LotPoint &out) {
 	double best = reach;
 	bool found = false;
-	for (const PlayerLot &l : book.lots) {
+	for (int id : book.overlapping({ p.x - reach, p.z - reach, p.x + reach, p.z + reach })) {
+		const PlayerLot &l = *book.find(id);
 		if (l.id == skip) continue;
 		for (const LotPoint &q : l.corners) {
 			if (apart && side_length(q, *apart) <= APART_M) continue;

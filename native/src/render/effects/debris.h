@@ -27,6 +27,7 @@ struct PieceSpec {
 	bool still = false; // laid where it is, never moved
 	bool random_spin = true;
 	float life_s = 0; // seconds until it is gone (a body that gets up, a tracer), 0 forever
+	uint64_t source = 0; // zero: transient effect; otherwise the owning ruin's seed + 1
 };
 
 class Debris {
@@ -37,6 +38,7 @@ public:
 	// The bodies a wreck may be: drawn with the pieces' material, a layer each.
 	void set_wrecks(const godot::RID &scenario, const godot::RID &material, const std::vector<godot::Ref<godot::Mesh>> &bodies);
 	void add(const PieceSpec &spec);
+	void remove_source(uint64_t source);
 	// One frame: `ground_of(x, z)` the ground's height, puffs for what burns. Writes only when something moved or came.
 	template <typename F>
 	void update(double now, float dt, F &&ground_of, Puffs &puffs) {
@@ -56,6 +58,7 @@ public:
 
 private:
 	struct Piece : RigidPiece {
+		uint64_t source = 0;
 		godot::Vector3 size;
 		godot::Color tint;
 		float burn_until = 0, carry = 0;

@@ -23,6 +23,9 @@ void graph_part(const CityState &s, TrafficView &view) {
 	const LaneGraph &g = s.traffic.g;
 	view.seg.assign(s.roads.segs.size(), TrafficTally());
 	view.node.assign(s.roads.nodes.size(), TrafficTally());
+	view.touched_seg.clear();
+	view.touched_node.clear();
+	view.volume.assign(s.traffic.seg_volume.begin(), s.traffic.seg_volume.end());
 	for (size_t ds = 0; ds < g.ds.size(); ds++) {
 		const DirSeg &d = g.ds[ds];
 		if (!d.ok) continue;
@@ -68,7 +71,7 @@ void signals(const CityState &s, TrafficView &view) {
 } // namespace
 
 void publish_view(CityState &s) {
-	const TrafficState &t = s.traffic;
+	TrafficState &t = s.traffic;
 	const LaneGraph &g = t.g;
 	TrafficView &view = s.traffic_views.back();
 	view.vehicles = t.vehicle_count + t.park.moving;
@@ -78,13 +81,16 @@ void publish_view(CityState &s) {
 	if (view.graph_serial != s.lane_graph_serial) {
 		graph_part(s, view);
 	} else {
-		for (TrafficTally &tally : view.seg) tally.clear_fleet();
-		for (TrafficTally &tally : view.node) tally.clear_fleet();
+		for (int seg : view.touched_seg) view.seg[size_t(seg)].clear_fleet();
+		for (int node : view.touched_node) view.node[size_t(node)].clear_fleet();
+		view.touched_seg.clear();
+		view.touched_node.clear();
 	}
 	const float standing = s.catalog.traffic.tail_moving_ms;
 	double sum = 0;
 	view.near = view.queued = 0;
-	for (const Vehicle &v : t.vehicles) {
+	for (int id : t.live_vehicles) {
+		const Vehicle &v = t.vehicles[size_t(id)];
 		if (!v.alive) continue;
 		if (v.micro) {
 			view.near++;
@@ -93,11 +99,25 @@ void publish_view(CityState &s) {
 		}
 		if (v.ds < 0) continue;
 		const size_t ds = size_t(v.ds);
-		if (ds / 2 < view.seg.size()) add(view.seg[ds / 2], v, standing);
-		if (ds < g.ds.size() && g.ds[ds].ok && size_t(g.ds[ds].to) < view.node.size()) add(view.node[size_t(g.ds[ds].to)], v, standing);
+		if (ds / 2 < view.seg.size()) {
+			if (view.seg[ds / 2].vehicles == 0) view.touched_seg.push_back(int(ds / 2));
+			add(view.seg[ds / 2], v, standing);
+		}
+		if (ds < g.ds.size() && g.ds[ds].ok && size_t(g.ds[ds].to) < view.node.size()) {
+			const size_t node = size_t(g.ds[ds].to);
+			if (view.node[node].vehicles == 0) view.touched_node.push_back(int(node));
+			add(view.node[node], v, standing);
+		}
 	}
 	view.mean_speed_ms = view.near > 0 ? sum / view.near : 0.0;
-	view.volume.assign(t.seg_volume.begin(), t.seg_volume.end());
+	view.volume.resize(t.seg_volume.size(), 0);
+	const size_t frame = size_t(s.traffic_views.back_index());
+	const uint8_t bit = uint8_t(1u << frame);
+	for (int seg : t.volume_dirty[frame]) {
+		if (size_t(seg) < view.volume.size()) view.volume[size_t(seg)] = t.seg_volume[size_t(seg)];
+		t.volume_pending[size_t(seg)] &= uint8_t(~bit);
+	}
+	t.volume_dirty[frame].clear();
 	signals(s, view);
 	s.traffic_views.publish();
 }

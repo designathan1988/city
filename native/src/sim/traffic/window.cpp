@@ -90,7 +90,7 @@ void materialize(CityState &s, int key) {
 		meso_unlink(s, id);
 		v.s = at;
 		v.conn = -1;
-		v.pass = -1;
+		set_pass(t, id, -1);
 		v.amber_hold = -1;
 		v.stood = false;
 		v.held = 0;

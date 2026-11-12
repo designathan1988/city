@@ -14,6 +14,18 @@ using namespace godot;
 
 namespace city {
 
+AABB mesh_outline(const MeshBuilder &b) {
+	Vector3 lo, hi;
+	for (int64_t i = 0; i < b.v.size(); i++) {
+		const Vector3 &p = b.v[i];
+		lo = i == 0 ? p : lo.min(p);
+		hi = i == 0 ? p : hi.max(p);
+	}
+	return AABB(lo, hi - lo);
+}
+
+
+
 namespace {
 constexpr int BLOB_RINGS = 6, BLOB_SEGMENTS = 12; // a signal's lens reads round at the closest the camera comes
 // Unit directions of the two edges of ring segment i (XZ plane).

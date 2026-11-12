@@ -10,8 +10,15 @@ const ARC_POINTS := 16
 
 var handles: Array = []:
 	set(value):
+		if handles == value:
+			return
 		handles = value
+		_revision += 1
 		queue_redraw()
+var _revision := 0
+var _projected_revision := -1
+var _projection: Array = []
+var _projected: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -20,37 +27,53 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	if not handles.is_empty():
+	if not handles.is_empty() and _prepare_projection():
 		queue_redraw()
+
+
+## Drawing and hit testing share exactly the same projected handles for the current body/view.
+func _prepare_projection() -> bool:
+	var camera := get_viewport().get_camera_3d()
+	var key := CityCamera.projection_key(camera, get_viewport_rect()) if camera != null else []
+	if key == _projection and _projected_revision == _revision:
+		return false
+	_projection = key
+	_projected_revision = _revision
+	_projected.clear()
+	if camera != null:
+		for handle: Dictionary in handles:
+			if camera.is_position_behind(handle.at):
+				continue
+			var at := camera.unproject_position(handle.at)
+			var way := Vector2.ZERO
+			if handle.kind in ["side", "relief", "scale"]:
+				way = camera.unproject_position(handle.at + handle.dir) - at
+			_projected.push_back({"handle": handle, "at": at, "way": way})
+	return true
 
 
 ## The handle under a point of the screen, the nearest in reach.
 func at(screen: Vector2) -> Dictionary:
-	var camera := get_viewport().get_camera_3d()
+	_prepare_projection()
 	var best := {}
 	var nearest := HudWidgets.px("handle_reach")
-	for h: Dictionary in handles:
-		if camera.is_position_behind(h.at):
-			continue
-		var d := camera.unproject_position(h.at).distance_to(screen)
+	for projected: Dictionary in _projected:
+		var d: float = projected.at.distance_to(screen)
 		if d < nearest:
 			nearest = d
-			best = h
+			best = projected.handle
 	return best
 
 
 func _draw() -> void:
-	var camera := get_viewport().get_camera_3d()
-	if camera == null:
-		return
+	_prepare_projection()
 	var r := HudWidgets.px("handle_r")
 	var line := HudWidgets.px("handle_line")
 	var ink := ThemeBuilder.color("accent")
 	var dark := ThemeBuilder.color("bg_solid")
-	for h: Dictionary in handles:
-		if camera.is_position_behind(h.at):
-			continue
-		var p := camera.unproject_position(h.at)
+	for projected: Dictionary in _projected:
+		var h: Dictionary = projected.handle
+		var p: Vector2 = projected.at
 		if h.kind == "vertex":
 			draw_circle(p, r * ARROW_BACK, dark)
 			draw_circle(p, r * ARROW_BACK - line, ink)
@@ -59,10 +82,10 @@ func _draw() -> void:
 		draw_arc(p, r, 0.0, TAU, ARC_POINTS * 2, ink, line, true)
 		match String(h.kind):
 			"side", "relief":
-				_arrow(p, camera.unproject_position(h.at + h.dir) - p, r, ink, line)
+				_arrow(p, projected.way, r, ink, line)
 			"scale":
-				_arrow(p, camera.unproject_position(h.at + h.dir) - p, r, ink, line)
-				_arrow(p, p - camera.unproject_position(h.at + h.dir), r, ink, line)
+				_arrow(p, projected.way, r, ink, line)
+				_arrow(p, -projected.way, r, ink, line)
 			"storeys", "lift":
 				_arrow(p, Vector2.UP, r, ink, line)
 				_arrow(p, Vector2.DOWN, r, ink, line)

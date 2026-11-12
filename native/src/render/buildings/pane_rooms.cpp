@@ -15,8 +15,7 @@ namespace {
 constexpr float MOST_DEEP = 12.f, MOST_WIDE = 10.f, INSIDE = 0.5f, OFF_GLASS = 0.02f, LEAST_DEEP = 0.8f, LEAST_WIDE = 0.3f;
 constexpr float NEAREST_PIECE = 0.2f, OFF_CENTRE_K = 0.3f, HIT_EPS = 1e-3f, PARALLEL = 1e-9f, ENDS = 1e-6f;
 constexpr uint32_t FNV_BASIS = 0x811c9dc5u, FNV_PRIME = 0x01000193u, BAY_BYTE = 0xff, SLOT_MASK = 0xffff, CORNER_Q = 10;
-constexpr uint64_t MIX = 0x9e3779b97f4a7c15ull;
-constexpr int BAY_BYTE_SHIFT = 8, MIX_SHIFT = 29, CORNERS = 4;
+constexpr int BAY_BYTE_SHIFT = 8, CORNERS = 4;
 
 // Where a ray (origin, unit direction) first crosses one of the segments, or `far`.
 float first_hit(const std::vector<Partition> &walls, float ox, float oy, float dx, float dy, float far) {
@@ -39,12 +38,10 @@ uint32_t fnv(uint32_t h, int32_t v) {
 	return h;
 }
 
-uint64_t mix(uint64_t h, float v) {
+uint32_t bits_of(float v) {
 	uint32_t bits;
-	v += 0.f; // -0 as 0
 	std::memcpy(&bits, &v, sizeof bits);
-	h = (h ^ bits) * MIX;
-	return h ^ (h >> MIX_SHIFT);
+	return bits;
 }
 
 void closed_walls(const Volume &v, std::vector<Partition> &walls) {
@@ -117,10 +114,15 @@ PaneLook pane_look(const Placed &pl, const BayCtx &c, float a0, float a1, float 
 	const float px = c.plan_at.x + c.plan_along.x * am, py = c.plan_at.y + c.plan_along.y * am;
 	const FloorInterior &floor = pl.rooms->inside.at(c.level);
 	look.slot = slot_of(pl, c, floor, px - c.plan_out.x * INSIDE, py - c.plan_out.y * INSIDE);
-	uint64_t key = uint64_t(reinterpret_cast<uintptr_t>(&floor));
-	for (float v : { px, py, c.plan_out.x, c.plan_out.y, hm, c.H }) key = mix(key, v);
+	const PaneRoomKey key{pl.id, uint32_t(c.level), uint32_t(c.vol), bits_of(px), bits_of(py),
+		bits_of(c.plan_along.x), bits_of(c.plan_along.y), bits_of(c.plan_out.x), bits_of(c.plan_out.y), bits_of(hm), bits_of(c.H)};
 	auto known = pl.rooms->known.find(key);
-	look.room = known != pl.rooms->known.end() ? known->second : (pl.rooms->known[key] = room_at(pl, c, floor, px, py, hm));
+	if (known == pl.rooms->known.end()) {
+		const auto make = [&] { return room_at(pl, c, floor, px, py, hm); };
+		const PaneRoom room = pl.rooms->memo ? pl.rooms->memo(pl.rooms->inside.floor_type(c.level), key, make) : make();
+		known = pl.rooms->known.emplace(key, room).first;
+	}
+	look.room = known->second;
 	return look;
 }
 

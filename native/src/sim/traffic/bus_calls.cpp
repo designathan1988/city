@@ -24,7 +24,7 @@ void begin(CityState &s, int id, BusCall &c) {
 		const int ped = kerb_hailable(s, d, mid - reach, mid + reach);
 		if (ped < 0 || !kerb_hail(s, ped, door, p.bus_fetch_m)) break;
 		const Pedestrian &w = t.peds[size_t(ped)];
-		b.ped = ped;
+		b.ped = ped; b.generation = w.generation;
 		b.from = V2(w.cur.x, w.cur.z);
 		b.takes = (b.from - door).len() / p.kerb_pace_ms + p.bus_step_aboard_s;
 		b.walked = 0;
@@ -38,17 +38,22 @@ bool bus_call(CityState &s, int id, BusCall &c, float dt) {
 	if (!c.begun) begin(s, id, c);
 	const Vehicle &v = t.vehicles[size_t(id)];
 	c.t += dt;
+	if (c.birth && c.birth->state == PedBirthState::PENDING) c.next_off += dt; // query wait does not consume the next passenger interval
 	if (c.leaving > 0 && c.t >= c.next_off) {
 		const KerbDoors at = kerb_door_at(s, v, p.classes[int(v.type)].length * p.kerb_door_along);
-		if (kerb_walker_out(s, v.ds, at.foot) >= 0) t.bus_alighted++;
-		c.leaving--;
-		c.next_off += p.bus_passenger_s;
+		if (!c.birth) c.birth = kerb_walker_out(s,id,v.ds,at.foot);
+		int ped = -1; uint64_t generation = 0;
+		const auto result = take_walker_birth(s,c.birth,ped,generation);
+		if (result != PedBirthState::PENDING) {
+			if (result == PedBirthState::READY) { kerb_let_go(s,ped,true); t.bus_alighted++; }
+			c.leaving--; c.next_off += p.bus_passenger_s;
+		}
 	}
 	const V2 door = kerb_door_at(s, v, p.bus_front_door_m).door;
 	bool walking = false;
 	for (BusCall::Boarder &b : c.boarders) {
 		if (b.ped < 0) continue;
-		if (!kerb_holds(t, b.ped)) { // of a street that went
+		if (!kerb_holds(t,b.ped,b.generation)) { // of a street that went
 			b.ped = -1;
 			continue;
 		}
@@ -67,8 +72,9 @@ bool bus_call(CityState &s, int id, BusCall &c, float dt) {
 }
 
 void bus_call_over(CityState &s, BusCall &c) {
+	discard_walker_birth(s,c.birth);
 	for (BusCall::Boarder &b : c.boarders) {
-		if (b.ped >= 0) kerb_let_go(s, b.ped, true);
+		if (kerb_holds(s.traffic,b.ped,b.generation)) kerb_let_go(s, b.ped, true);
 		b.ped = -1;
 	}
 	c = BusCall();

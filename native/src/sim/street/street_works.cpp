@@ -21,6 +21,7 @@ void bounds(const T &b, float &x0, float &z0, float &x1, float &z1) {
 } // namespace
 
 void StreetWorks::clear() {
+	names_revision = next_generation();
 	items.clear();
 	poles.clear();
 	spans.clear();
@@ -33,18 +34,28 @@ void StreetWorks::clear() {
 }
 
 int StreetWorks::add_item(const StreetItem &r) {
+	if (r.kind == ItemKind::STREETNAME) names_revision = next_generation();
 	int id = items.add(r);
 	item_hash_.insert_aabb(id, r.x, r.z, r.x, r.z);
 	return id;
 }
 
 void StreetWorks::put_item(int id, const StreetItem &r) {
+	bool named = r.kind == ItemKind::STREETNAME;
+	if (id >= 0 && size_t(id) < items.items.size() && items.items[size_t(id)].alive) {
+		const StreetItem &old = items.items[size_t(id)];
+		named = named || old.kind == ItemKind::STREETNAME;
+		item_hash_.remove_aabb(id, old.x, old.z, old.x, old.z);
+	}
+	if (named) names_revision = next_generation();
 	items.put(id, r);
 	item_hash_.insert_aabb(id, r.x, r.z, r.x, r.z);
 }
 
 void StreetWorks::remove_item(int id) {
 	const StreetItem &r = items.items[size_t(id)];
+	if (!r.alive) return;
+	if (r.kind == ItemKind::STREETNAME) names_revision = next_generation();
 	item_hash_.remove_aabb(id, r.x, r.z, r.x, r.z);
 	items.drop(id);
 }

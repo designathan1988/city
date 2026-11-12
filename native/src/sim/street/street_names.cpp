@@ -1,5 +1,6 @@
 // The names streets are given, see street_names.h.
 #include "sim/street/street_names.h"
+#include "sim/street/named_plates.h"
 
 #include "sim/catalog/catalog.h"
 #include "sim/roads/road_network.h"
@@ -39,19 +40,13 @@ int name_segment(const RoadNetwork &net, const StreetItem &item) {
 	return net.find_segment_near(item.x, item.z, net.cat->furniture.street_names.reach_m, t, d);
 }
 
-std::vector<StreetName> names_for(const RoadNetwork &net, const StreetWorks &works, std::vector<int> segs) {
+std::vector<StreetName> names_for(const RoadNetwork &net, const StreetWorks &works, const NamedPlates &base, std::vector<int> segs) {
 	std::vector<StreetName> out;
 	const StreetNamesDef &d = net.cat->furniture.street_names;
 	if (d.names.empty()) return out; // a style without its names
 	std::unordered_set<std::string> used;
 	std::unordered_set<int> named; // segments whose street holds a name, one given before or one given here
-	for (const StreetItem &it : works.items.items) {
-		if (!it.alive || it.kind != ItemKind::STREETNAME) continue;
-		used.insert(it.text);
-		const int seg = name_segment(net, it);
-		if (seg < 0) continue;
-		for (int s : street_chain(net, seg)) named.insert(s);
-	}
+	base.coverage(net, works, used, named);
 	std::sort(segs.begin(), segs.end());
 	for (int id : segs) {
 		const RoadSegment &g = net.segs[size_t(id)];

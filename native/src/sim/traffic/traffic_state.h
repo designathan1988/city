@@ -4,7 +4,9 @@
 #pragma once
 
 #include "core/math.h"
+#include "sim/traffic/actor_index.h"
 #include "core/random.h"
+#include "core/stable_chunks.h"
 #include "sim/traffic/flow_control.h"
 #include "sim/catalog/traffic_params.h"
 #include "sim/state/pose_buffer.h"
@@ -12,13 +14,28 @@
 #include "sim/traffic/parking_state.h"
 #include "sim/traffic/ped_state.h"
 #include "sim/traffic/traffic_view.h"
+#include "sim/traffic/route_counts.h"
+#include "sim/traffic/route_admission.h"
+#include "sim/traffic/birth_reservations.h"
+#include "sim/traffic/ped_birth.h"
+#include "sim/traffic/walker_birth_reservations.h"
 
 #include <cstdint>
+#include <memory>
+#include <array>
+#include <set>
 #include <unordered_map>
 #include <string>
 #include <vector>
 
 namespace city {
+
+struct CrowdScratch;
+namespace traffic { struct VehicleBirthIntent; }
+struct VehicleBirthBatch {
+	uint64_t generation = 0; int remaining = 0, failures = 0; bool active = false;
+	std::shared_ptr<traffic::VehicleBirthIntent> current; // desired scalar recipe survives queue cancellation without redrawing choices
+};
 
 constexpr int NODE_ARMS_MAX = 8; // arms a node may have in the crosswalk answer cache
 constexpr int CROSS_CACHE_KINDS = 2; // walk_ok and cars_on_crossing are cached apart
@@ -39,11 +56,15 @@ struct KerbStop {
 	KerbPhase phase = KerbPhase::APPROACH;
 	bool back = false; // the mate is on the way back
 	float at = 0, t = 0, elapsed = 0, fetch = 0, walked = 0, transfer = 0; // where its front stops; seconds in the phase and in all; the moves
+	uint64_t ped_generation = 0;
+	std::shared_ptr<traffic::PedBirthTicket> birth;
 	V2 from; // where the person to pick up set off from
 };
 
 
 struct Vehicle {
+	uint64_t generation = 0, bus_route_request = 0, meso_route_request = 0, meso_event = 0, trip_route_request = 0, assignment_route_request = 0, repair_route_request = 0, reconsider_route_request = 0, detour_route_request = 0; // identities assigned only at live birth, request capture or event schedule
+	bool bus_birth_pending = false; // reserved identity/RNG; on no lane, queue or pose publication until its route is ready
 	bool alive = false, brake = false;
 	bool micro = true; // drawn and driven by the near model; far vehicles are in their lane's meso queue
 	int micro_idx = -1; // index in TrafficState::micro_list
@@ -59,6 +80,7 @@ struct Vehicle {
 	float wait = 0, stuck = 0;
 	float held = 0; // stopped since it last reconsidered the route (Roadcraft micro.ts c.held)
 	int pass = -1; // connector it committed to at its line with the way open (Roadcraft c.pass + exitC)
+	int pass_prev = -1, pass_next = -1; // reverse membership: every commitment, including one superseded in conn_pass
 	int amber_hold = -1; // approach whose amber it chose to stop for, held until green
 	int stood_at = -1; // approach whose Stop it has come to a stand at: it may go on from there
 	int bus = -1; // its place in TransitRun::buses
@@ -86,10 +108,18 @@ struct TrafficState {
 	LaneGraph g;
 	FlowControl flow_control;
 	std::vector<Vehicle> vehicles;
+	ActorIndex vehicle_index, walker_index;
+	std::set<int> live_vehicles, live_peds; // ascending IDs: the former high-water traversal order
 	std::vector<int> free_vehicles;
-	std::vector<int> route_pool; // vehicle routes, kept in one block
-	std::vector<int> ped_pool; // pedestrian routes
-	size_t route_waste = 0, ped_waste = 0;
+	RoutePool route_pool; // vehicle routes, stable size-class pages
+	traffic::RouteAdmission route_admission;
+	WorkBudget route_work{0}; // one allocation for all participating route producers this tick
+	bool route_turn = false; // route/event arbitration persists even across one-credit ticks
+	BirthReservations birth_reservations;
+	WalkerBirthReservations walker_birth_reservations;
+	std::shared_ptr<traffic::PedBirthTicket> pedestrian_birth;
+	int pedestrian_birth_remaining = 0; bool pedestrian_birth_from_door = false;
+	RoutePool ped_pool; // pedestrian route pages
 	std::vector<PedShock> shocks; // what walkers run from (ped_fright.cpp)
 	float shock_look = 0; // t.time they are looked at next
 	std::string graph_fault; // the debug DLL: the first broken rule of the lane graph (lane_graph_check.cpp)
@@ -97,9 +127,14 @@ struct TrafficState {
 	std::vector<int> free_peds;
 	// The light each approach shows, refreshed once per step: light_for() is asked many times per vehicle and conflict.
 	std::vector<uint8_t> light_now;
+	std::set<int> signal_nodes; // maintained by junction construction/removal; original ascending-node timing order
+	std::vector<int> light_touched; // previous non-default light slots, reset even after graph edits
 	std::vector<uint32_t> seg_volume; // per segment: vehicles that entered it since the city opened (the Inspect tool)
+	std::array<std::vector<int>, TripleBuffer<TrafficView>::BUFFER_COUNT> volume_dirty;
+	std::vector<uint8_t> volume_pending; // one bit per view that still needs this segment
 	std::vector<double> green_wanted; // per approach: until when the vehicles over its detector want green
 	std::vector<std::vector<int>> lane_vehicles; // ds * MAX_LANES + lane, sorted by s (back first)
+	RouteCounts route_counts; // captured per request; same membership/size source as lane_vehicles
 	std::vector<std::vector<int>> conn_vehicles; // in entry order
 	std::vector<std::vector<int>> node_crossers; // per node: walkers on one of its crosswalks
 	std::unordered_map<int64_t, uint32_t> kerb_slots; // per kerb end of a crosswalk: the places to wait taken (bits)
@@ -111,6 +146,7 @@ struct TrafficState {
 	std::vector<size_t> crowd_first; // per crowd key: where its walkers' choices start in the step's list
 	std::vector<std::vector<CrowdEntry>> node_walkers;
 	std::vector<int> node_keys;
+	std::shared_ptr<CrowdScratch> crowd_scratch; // frame-local choices/spatial inputs, retained capacities only
 	// The street furniture of the segments the walkers met, as bodies standing on its sidewalks (ped_furniture.cpp);
 	// dropped when an edit touches the segment or a node of it, and far from the camera.
 	std::unordered_map<int, SidewalkFurniture> furniture;
@@ -119,12 +155,14 @@ struct TrafficState {
 	std::vector<int> meso_head, meso_tail;
 	std::vector<uint16_t> meso_count;
 	std::vector<double> lane_last_exit;
-	std::vector<double> ev_t; // heap of events (time, vehicle)
-	std::vector<int> ev_v;
+	StableChunks<double, 256> ev_t; // time-only heap, stable scalar blocks keep growth local
+	StableChunks<int, 256> ev_v;
+	StableChunks<uint64_t, 256> ev_e; // exact scheduled-event identity, including same-time reschedule/slot reuse
 	size_t ev_n = 0;
 	std::vector<int> micro_list;
 	// Lanes and connectors that hold a near vehicle (step_vehicles walks these, never the whole map).
 	std::vector<int> active_lanes, active_conns;
+	std::vector<int> lane_active_pos, conn_active_pos; // exact positions in the swap-removed active arrays
 	std::vector<uint8_t> lane_active, conn_active;
 	std::vector<int> step_lanes, step_conns; // per-step snapshot of the active lists
 	// Micro window (Roadcraft traffic.ts checkWindow/materialize): last camera position and time, sidewalk metres and
@@ -133,12 +171,13 @@ struct TrafficState {
 	double win_t = -double(BIG);
 	double ped_kind_m[PLACE_KINDS] = {}; // metres of street of each kind of place inside the window
 	std::vector<int> ped_segs;
-	// The doors the walkers use (ped_doors.cpp): by sidewalk (seg * 2 + side), the lots read (seed + 1 by building id) and
+	// The doors the walkers use (ped_doors.cpp): by sidewalk (seg * 2 + side), the canonical building revisions read and
 	// those to read, a few a step.
 	std::vector<std::vector<PedDoor>> doors;
+	std::vector<int> door_side_pos; // exact membership; clearing and refiling a sidewalk never duplicates its draw weight
 	std::vector<int> door_sides; // the sidewalks with doors (a sidewalk that lost them is dropped when drawn)
-	std::vector<uint32_t> door_seen;
-	std::vector<int> door_todo;
+	std::vector<uint64_t> door_seen;
+	std::vector<PedDoorRead> door_todo;
 	int doors_out = 0, doors_in = 0; // walkers who came out of a door and went in at one
 	// Crosswalk answers per (node, arm) for the current step (ped_crossing.cpp).
 	std::vector<uint32_t> cross_stamp;
@@ -147,6 +186,7 @@ struct TrafficState {
 	// who holds the next free spot of a full lane (and when it last asked), when each node last let someone in and
 	// when it may release the next vehicle of a jam.
 	std::vector<int> conn_pass;
+	std::vector<int> conn_pass_first; // reverse list of every Vehicle::pass, distinct from the latest admission holder
 	std::vector<double> conn_pass_t;
 	std::vector<double> conn_claim_t; // last time a vehicle that waited its share at its line claimed the connector
 	std::vector<int> exit_claim; // per lane key
@@ -154,7 +194,6 @@ struct TrafficState {
 	std::vector<double> last_admit, release_at; // per node
 	std::vector<int> pass_count; // per node: vehicles let in (pedestrian courtesy, tests)
 	int stop_entries = 0, stop_skipped = 0; // vehicles let in past a Stop, and those that had not stood at it (tests)
-	int route_budget = 0; // route searches left this step (spawns, detours, reconsiderations)
 	float gov = 1, gov_clock = 0; // fleet governor (traffic/regions.ts)
 	int reroutes = 0, released = 0, jams = 0;
 	float red_last[TIMED_STAGES] = {}; // the last red entry: type, speed, ds, time (traffic_probe)
@@ -163,6 +202,7 @@ struct TrafficState {
 	double time = 0; // simulated seconds
 	uint64_t tick = 0;
 	float spawn_credit = 0;
+	VehicleBirthBatch vehicle_birth;
 	// Where a step goes (traffic_probe step_ms, summed since the start): the bays read, the fleet (demand, far model, lane
 	// changes, motion), the lots, the walkers; then, of the lots, the bays' ways and the routes of a look, and the publication.
 	double step_ms[TIMED_STAGES] = {};
@@ -170,26 +210,34 @@ struct TrafficState {
 	std::vector<int> free_kerb_stops;
 	int kerb_planned = 0, kerb_drops = 0, kerb_picks = 0, kerb_deliveries = 0, kerb_abandoned = 0;
 	int bus_boarded = 0, bus_alighted = 0; // who has got on and off the buses
-	std::vector<LaneClosure> closures; // few, and only while a lorry swings across a street
+	LaneClosures closures; // lane/owner indexed; only while a lorry swings across a street
 	std::vector<float> pub_sum, pub_lim; // publish_poses: per segment, kept between ticks
-	std::vector<int> pub_count;
+	std::vector<int> pub_count, pub_touched;
 	ParkingState park;
 	std::unordered_map<int64_t, std::vector<int>> walker_cells; // who stands where, filed when something off the lanes asks
+	std::vector<int64_t> walker_active_cells, walker_spare_cells; // only current cells; two reusable key buffers, never visited history
 	uint64_t walkers_filed = ~0ull; // the tick they were filed in
 	Rng rng{ TRAFFIC_SEED };
 };
 
-inline int route_at(const std::vector<int> &pool, const RouteRef &r, int k) {
-	return k >= 0 && k < r.len ? pool[size_t(r.off + k)] : -1;
+// Publish each changed segment once to every physical back-buffer, even when the consumer skips publications.
+inline void volume_changed(TrafficState &t, size_t seg) {
+	if (seg >= t.volume_pending.size()) t.volume_pending.resize(seg + 1, 0);
+	for (size_t frame = 0; frame < t.volume_dirty.size(); frame++) {
+		const uint8_t bit = uint8_t(1u << frame);
+		if (!(t.volume_pending[seg] & bit)) {
+			t.volume_pending[seg] |= bit;
+			t.volume_dirty[frame].push_back(int(seg));
+		}
+	}
 }
-void route_set(std::vector<int> &pool, RouteRef &r, size_t &waste, const int *src, int n);
-void route_compact(TrafficState &t);
 
 // A vehicle enters the directed segment: it counts on that road's volume.
 inline void count_entry(TrafficState &t, int ds) {
 	const size_t seg = size_t(ds) / 2;
 	if (seg >= t.seg_volume.size()) t.seg_volume.resize(seg + 1, 0);
 	t.seg_volume[seg]++;
+	volume_changed(t, seg);
 }
 
 } // namespace city

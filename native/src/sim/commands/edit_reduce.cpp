@@ -24,23 +24,27 @@ bool inverse(const EditOp &a, const EditOp &b) {
 	if (a.id != b.id) return false;
 	if (a.kind == OpKind::PROFILE && b.kind == OpKind::PROFILE) return a.from == b.to && a.to == b.from;
 	if (a.kind == OpKind::ZONE && b.kind == OpKind::ZONE) return a.side == b.side && a.from == b.to && a.to == b.from && a.player == b.player;
-	if (either(a.kind, b.kind, OpKind::ADD_ITEM, OpKind::REM_ITEM)) return same(a.item, b.item);
-	if (either(a.kind, b.kind, OpKind::ADD_POLE, OpKind::REM_POLE)) return same(a.pole, b.pole);
-	if (either(a.kind, b.kind, OpKind::ADD_SPAN, OpKind::REM_SPAN)) return same(a.span, b.span);
-	if (either(a.kind, b.kind, OpKind::ADD_BARRIER, OpKind::REM_BARRIER)) return same(a.barrier, b.barrier);
-	if (either(a.kind, b.kind, OpKind::ADD_CUT, OpKind::REM_CUT)) return same(a.cut, b.cut);
+	if (either(a.kind, b.kind, OpKind::ADD_ITEM, OpKind::REM_ITEM)) return same(a.get<StreetItem>(), b.get<StreetItem>());
+	if (either(a.kind, b.kind, OpKind::ADD_POLE, OpKind::REM_POLE)) return same(a.get<UtilityPole>(), b.get<UtilityPole>());
+	if (either(a.kind, b.kind, OpKind::ADD_SPAN, OpKind::REM_SPAN)) return same(a.get<UtilitySpan>(), b.get<UtilitySpan>());
+	if (either(a.kind, b.kind, OpKind::ADD_BARRIER, OpKind::REM_BARRIER)) return same(a.get<Barrier>(), b.get<Barrier>());
+	if (either(a.kind, b.kind, OpKind::ADD_CUT, OpKind::REM_CUT)) return same(a.get<StreetCut>(), b.get<StreetCut>());
 	return false;
 }
 } // namespace
 
 void EditEntry::reduce() {
-	std::vector<EditOp> kept;
-	kept.reserve(ops.size());
-	for (EditOp &op : ops) {
-		if (!kept.empty() && inverse(kept.back(), op)) kept.pop_back();
-		else kept.push_back(std::move(op));
+	size_t kept = 0;
+	for (size_t i = 0; i < ops.size(); i++) {
+		if (kept != 0 && inverse(ops[kept - 1], ops[i])) {
+			ops[--kept] = EditOp();
+			ops[i] = EditOp();
+		} else {
+			if (kept != i) ops[kept] = std::move(ops[i]);
+			kept++;
+		}
 	}
-	ops = std::move(kept);
+	ops.resize(kept);
 }
 
 } // namespace city

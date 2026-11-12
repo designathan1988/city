@@ -3,6 +3,7 @@
 #include "sim/roads/junction.h"
 #include <algorithm>
 #include <cmath>
+#include <unordered_set>
 
 namespace city {
 
@@ -11,7 +12,9 @@ bool RoadNetwork::ray_deck(double ox, double oy, double oz, double dx, double dy
 	const double ex = ox + dx * max_t, ez = oz + dz * max_t, run = std::hypot(dx, dz);
 	bool found = false;
 	t_hit = max_t;
-	for_segments_near(std::min(ox, ex), std::min(oz, ez), std::max(ox, ex), std::max(oz, ez), [&](int s) {
+	std::unordered_set<int> seen;
+	seg_hash.query_segment(ox, oz, ex, ez, [&](int s) {
+		if (!segs[size_t(s)].alive || !seen.insert(s).second) return;
 		const RoadSegment &g = segs[size_t(s)];
 		if (is_sunken(structure_of(g.flags))) return;
 		const double half = profile_of(s).half();
@@ -26,8 +29,10 @@ bool RoadNetwork::ray_deck(double ox, double oy, double oz, double dx, double dy
 			return t0 <= t1;
 		};
 		double ylo = std::min(nodes[size_t(g.a)].y, nodes[size_t(g.b)].y), yhi = std::max(nodes[size_t(g.a)].y, nodes[size_t(g.b)].y);
-		if (grade.has(s))
-			for (float h : grade.prof[size_t(s)].h) { ylo = std::min(ylo, double(h)); yhi = std::max(yhi, double(h)); }
+		if (grade.has(s)) {
+			ylo = std::min(ylo, double(grade.prof[size_t(s)].low));
+			yhi = std::max(yhi, double(grade.prof[size_t(s)].high));
+		}
 		if (!slab(ox, dx, g.minx - half, g.maxx + half) || !slab(oz, dz, g.minz - half, g.maxz + half) || !slab(oy, dy, ylo, yhi)) return;
 		// Above the deck at t, where the section holds the ray's point (outside it: no deck there).
 		auto above = [&](double t, bool &on) {

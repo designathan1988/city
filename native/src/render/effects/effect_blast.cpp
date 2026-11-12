@@ -113,7 +113,8 @@ void EffectWorld::building_down(const DamageEvent &e, const CityState &s) {
 	// The collapse: a cloud of concrete dust that billows out, and the papers of the offices and homes over the street.
 	puffs_.burst(e.x, e.y, e.z, params_.down_dust_count, PUFF_DUST, params_.down_dust_spread, params_.down_dust_size * DOWN_SMOKE_SIZE_SCALE, params_.down_dust_life);
 	puffs_.burst(e.x, e.y + COLLAPSE_DUST_HIGH_M, e.z, params_.down_dust_count, PUFF_CONCRETE, params_.down_dust_spread, params_.down_dust_size, params_.down_dust_life);
-	for (const Ruin &r : s.damage.ruins) { // the heap it left: the building falls into it
+	for (int id : s.damage.ruins_near(e.x, e.z, 1.f)) { // the heap it left: the building falls into it
+		const Ruin &r = s.damage.ruins()[size_t(id)];
 		if (std::fabs(r.x - e.x) < 1.f && std::fabs(r.z - e.z) < 1.f) {
 			ground_here_ = s.terrain.height_at(r.x, r.z);
 			pile(r, true, true, !ruins_.add(s, r, heap_of(r), true));

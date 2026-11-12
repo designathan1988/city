@@ -86,6 +86,10 @@
     "additionalProperties": false
    }
   },
+  "model_picture_cache_mb": {
+   "type": "number",
+   "minimum": 0
+  },
   "model_groups": {
    "type": "array",
    "items": {

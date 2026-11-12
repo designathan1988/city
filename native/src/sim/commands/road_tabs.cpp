@@ -133,6 +133,7 @@ EditResult set_node_control(CityState &s, int node, int ctl) {
 		r.error = "hint.control.notJunction";
 		return r;
 	}
+	if (net.nodes[node].ctl == ctl) { r.ok = true; return r; }
 	j_set_control(s, node, uint8_t(ctl));
 	double x = net.nodes[node].x, z = net.nodes[node].z;
 	finish_edit(s, x, z, x, z);

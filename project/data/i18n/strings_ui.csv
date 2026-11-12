@@ -42,7 +42,7 @@ fx.shadows,Sombras do sol (cascatas),Sun shadows (cascades)
 fx.signals,Semáforos,Traffic signals
 fx.smaa,Antisserrilhado (SMAA),Anti-aliasing (SMAA)
 fx.stat.calls,Chamadas de desenho,Draw calls
-fx.stat.cpu,CPU por quadro,CPU per frame
+fx.stat.cpu,CPU nativo/render (parcial),Native/render CPU (partial)
 fx.stat.fps,Quadros por segundo,Frames per second
 fx.stat.geometries,Geometrias,Geometries
 fx.stat.gpu,GPU por quadro,GPU per frame
@@ -139,6 +139,7 @@ lab.verdict.cpu,"Preso na CPU: GPU %s ms, CPU %s ms, orçamento %s ms. Cortar o 
 lab.verdict.gpu,"Preso na GPU: GPU %s ms, CPU %s ms, orçamento %s ms. Cortar o trabalho da GPU sobe os quadros; mexer na CPU não.","GPU-bound: GPU %s ms, CPU %s ms, budget %s ms. Cutting the GPU's work raises the frame rate; touching the CPU does not."
 lab.verdict.headroom,"Com folga: GPU %s ms, CPU %s ms, dentro do orçamento de %s ms.","Headroom: GPU %s ms, CPU %s ms, within the %s ms budget."
 lab.verdict.none,Nenhum quadro desenhado na medida: mexa a câmera e meça de novo.,No frame drawn during the measure: move the camera and measure again.
+lab.verdict.incomplete,"Cobertura parcial: GPU %s ms; subtotal CPU %s ms; orcamento %s ms. Estes dados nao determinam o gargalo.","Partial coverage: GPU %s ms; CPU subtotal %s ms; budget %s ms. These data do not determine the bottleneck."
 hint.lot.small,Pequeno demais para um lote,Too small for a lot
 hint.lot.road,Uma via passa por aqui: desenhe o lote ao lado dela,A road runs here: draw the lot beside it
 hint.lot.overlap,Já há um lote aqui,There is a lot here already
@@ -171,6 +172,7 @@ lab.core.agents,Agentes,Agents
 lab.core.stream,Fluxo de chunks,Chunk stream
 lab.core.levels,Níveis,Levels
 lab.core.flush,Envio,Flush
+lab.core.fields,Campos,Fields
 lab.core.roads,Vias,Roads
 lab.core.props,Mobiliário,Street furniture
 lab.core.buildings,Prédios,Buildings
@@ -222,7 +224,7 @@ lab.sweep,Medir todas as chaves,Measure every switch
 fx.tab.cpu,CPU,CPU
 lab.cpu.title,Últimos %d quadros,Last %d frames
 lab.cpu.row,"%.2f ms, p95 %.2f, pior %.2f, %d%%","%.2f ms, p95 %.2f, worst %.2f, %d%%"
-lab.cpu.note,Por zona do quadro. Por função: tools/analysis/sampler.py.,By zone of the frame. By function: tools/analysis/sampler.py.
+lab.cpu.note,Subtotal nativo/render. Nao inclui todo o GDScript nem o tick paralelo. Por funcao: tools/analysis/sampler.py.,Native/render subtotal. Excludes full GDScript and the parallel tick. By function: tools/analysis/sampler.py.
 lab.core.draw,Desenho do motor,The engine's drawing
 lab.core.setup,Preparo do quadro,Frame setup
 lab.capture.title,Quadro por camada,The frame by layer

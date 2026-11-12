@@ -31,7 +31,7 @@ Dictionary CityCore::shoot(const Vector3 &origin, const Vector3 &direction) {
 PackedInt64Array CityCore::ruin_seeds() const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	PackedInt64Array out;
-	for (const Ruin &r : state_->damage.ruins) out.push_back(int64_t(r.seed));
+	for (const Ruin &r : state_->damage.ruins()) out.push_back(int64_t(r.seed));
 	return out;
 }
 
@@ -41,10 +41,10 @@ Dictionary CityCore::damage_probe() const {
 	Dictionary d;
 	if (!s.ready) return d;
 	d["craters"] = int(s.damage.craters.size());
-	d["ruins"] = int(s.damage.ruins.size());
-	d["gone"] = int(s.damage.gone.size());
-	d["hurt"] = int(s.damage.hurt.size());
-	d["scars"] = int(s.damage.scars.size());
+	d["ruins"] = int(s.damage.ruins().size());
+	d["gone"] = int(s.damage.gone().size());
+	d["hurt"] = int(s.damage.hurt().size());
+	d["scars"] = int(s.damage.scars().size());
 	d["broken"] = render_.broken_buildings();
 	d["fires"] = int(s.damage.fires.size());
 	d["strikes"] = int(s.damage.strikes);

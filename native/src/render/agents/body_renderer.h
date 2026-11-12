@@ -1,5 +1,5 @@
-// The people a blow or a bullet took off their feet, drawn as themselves: the cooked body of the walker, near level, its bones carried by a ragdoll
-// (ragdoll.h). A row of a float texture per body holds its bones as bind -> world rows (people_look.gdshaderinc BODY), written only while it moves.
+// The people a blow or a bullet took off their feet: the same cooked LOD policy as walkers, bones carried by a ragdoll
+// (ragdoll.h). One float-texture-array page per body holds bind -> world rows (people_look.gdshaderinc BODY), uploaded only when it moves.
 #pragma once
 
 #include "render/agents/people_asset.h"
@@ -10,6 +10,9 @@
 #include <godot_cpp/classes/shader_material.hpp>
 
 #include <deque>
+#include <array>
+#include <bitset>
+#include <functional>
 #include <vector>
 
 namespace city {
@@ -31,10 +34,12 @@ public:
 	void release();
 	void add(const BodySpec &spec);
 	void update(float dt, const Ragdoll::Ground &ground);
+	void present(const godot::Vector3 &camera, float hold, const std::function<int(float)> &level_at);
 	int count() const { return int(bodies_.size()); }
 	int moving() const;
 
 private:
+	static constexpr int MOST_BODIES = 64;
 	struct Body {
 		Ragdoll doll;
 		std::vector<godot::Transform3D> base; // each bone, bind to the world as it stood
@@ -46,23 +51,28 @@ private:
 		int variation = 0, slot = 0;
 		uint32_t lost = 0;
 		bool charred = false;
+		bool bounds_prepared = false;
+		godot::AABB bounds; // conservative union of posed weighted-vertex bounds across all cooked LODs
 	};
 	void make_ready();
 	void pose(Body &b);
 	void rise(Body &b);
-	void write_bones(const Body &b, const godot::Transform3D *bones);
-	void lay_out();
+	void write_bones(Body &b, const godot::Transform3D *bones);
+	void drop_draw(int slot);
 	const PeopleAsset *asset_ = nullptr;
 	godot::RID scenario_, texture_;
 	godot::Ref<godot::ShaderMaterial> material_;
-	std::vector<MmLayer> layers_; // a variation's
+	struct Draw { MmLayer layer; godot::AABB bounds; int level = -1; bool ready = false; };
+	std::array<Draw, MOST_BODIES> draws_; // one spatial unit per retained body, engine culls camera and cascades independently
+	std::vector<float> palette_rows_; // sequential add/get-up scratch, reused for every body
+	std::vector<godot::Transform3D> rise_bones_;
 	std::deque<Body> bodies_;
 	std::vector<int> free_slots_;
 	godot::PackedByteArray rows_;
 	Rng rng_{ 0xb0d1e5ULL };
 	float clock_ = 0;
 	int bones_ = 0, idle_clip_ = 0, crouch_clip_ = 0, up_clip_ = 0;
-	bool rows_dirty_ = false, layers_dirty_ = false;
+	std::bitset<MOST_BODIES> rows_dirty_;
 };
 
 } // namespace city

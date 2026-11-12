@@ -1,5 +1,6 @@
 // What people hold: the meshes, one a thing, and the instances that follow the bodies (held_things.h).
 #include "render/agents/held_things.h"
+#include "render/agents/people_asset.h"
 
 #include "core/color.h"
 #include "render/mesh_builder.h"
@@ -20,7 +21,7 @@ Vector3 triple(const Variant &v) {
 
 } // namespace
 
-bool HeldThings::init(const RenderContext &ctx, const Dictionary &held, const char *const *act_names, PackedStringArray &errors) {
+bool HeldThings::init(const RenderContext &ctx, const Dictionary &held, const char *const *act_names, const PeopleAsset &asset, PackedStringArray &errors) {
 	reset();
 	material_ = ctx.material("people_held", errors);
 	if (!errors.is_empty()) return false;
@@ -38,7 +39,16 @@ bool HeldThings::init(const RenderContext &ctx, const Dictionary &held, const ch
 			const Vector3 at = triple(d["at"]), half = triple(d["size"]) * .5f;
 			b.box(at - half, at + half, rgba8_to_color(parse_hex_color(String(d["colour"]).utf8().get_data())), upright, true);
 		}
-		things_[size_t(n)].mesh = b.bake();
+		Thing &thing = things_[size_t(n)];
+		thing.mesh = b.bake();
+		thing.draw = std::make_unique<SpatialInstanceDraw>();
+		thing.draw->configure(ctx.scenario, thing.mesh.rid, material_, true, LAYER_PEOPLE, float(ctx.catalog->tune.render_instance_sector_m));
+		const Vector3 fist = triple(held["fist"]);
+		const AABB rest = mesh_outline(b).merge(AABB(fist, Vector3()));
+		const float extra = rest.position.abs().max(rest.get_end().abs()).length();
+		// Both branches of people_held: palm-space growth around the fist, or an upright mesh added after posing it.
+		for (size_t v = 0; v < asset.variations.size(); v++)
+			thing.envelopes.push_back(asset.attachment_bounds(v, false, instance_bounds(asset.variations[v].palm, rest)).grow(extra));
 		thing_of_[act] = n++;
 	}
 	if (n != kinds.size()) {
@@ -51,7 +61,12 @@ bool HeldThings::init(const RenderContext &ctx, const Dictionary &held, const ch
 }
 
 void HeldThings::reset() {
-	for (Thing &t : things_) t.draw.free();
+	for (Thing &t : things_) {
+		if (t.draw) t.draw->reset();
+		t.rows.restart();
+	}
+	keeper_.clear();
+	keeper_.draws(things_.size());
 }
 
 void HeldThings::begin() {
@@ -64,9 +79,20 @@ float *HeldThings::row(uint64_t key, int act) {
 	return k < 0 ? nullptr : keeper_.place(key, k, things_[size_t(k)].rows);
 }
 
-void HeldThings::draw(const RID &scenario, const AABB &box, RenderLayer layer) {
+void HeldThings::draw() {
 	keeper_.sweep([&](int k) -> InstanceRows & { return things_[size_t(k)].rows; });
-	for (Thing &t : things_) t.draw.set(scenario, t.mesh.rid, material_, t.rows, box, true, layer);
+	for (size_t k = 0; k < things_.size(); k++) {
+		Thing &t = things_[k];
+		if (!t.draw) continue;
+		t.draw->begin();
+		const auto &keys = keeper_.owners(k);
+		for (int i = 0; i < t.rows.count(); i++) {
+			const float *row = t.rows.data() + int64_t(i) * MM_STRIDE;
+			const int variation = int(row[16] + .5f);
+			t.draw->put(keys[size_t(i)], row, instance_bounds(row, t.envelopes[size_t(variation)]));
+		}
+		t.draw->finish();
+	}
 }
 
 } // namespace city

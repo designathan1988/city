@@ -39,7 +39,7 @@ bool transit_paved(const CityState &s, const V2 &p, float kerb, float &y, bool &
 
 void transit_stop_frame(const CityState &s, const TransitStop &q, V2 &along, V2 &out) {
 	along = V2(1, 0);
-	for (const RailTrack &t : s.transit.tracks) {
+	for (const RailTrack &t : s.transit.tracks()) {
 		if (t.id != q.track) continue;
 		float dist = NO_DISTANCE;
 		for (size_t i = 1; i < t.points.size(); i++) {

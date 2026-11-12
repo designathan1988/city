@@ -76,7 +76,7 @@ bool box_clear(const CityState &s, int ci) {
 
 void commit(CityState &s, int vid, int ci) {
 	TrafficState &t = s.traffic;
-	t.vehicles[vid].pass = ci;
+	set_pass(t, vid, ci);
 	t.conn_pass[ci] = vid;
 	t.conn_pass_t[ci] = t.time;
 }
@@ -84,7 +84,7 @@ void commit(CityState &s, int vid, int ci) {
 void release(CityState &s, int vid, int ci) {
 	TrafficState &t = s.traffic;
 	if (t.conn_pass[ci] == vid) t.conn_pass[ci] = -1;
-	t.vehicles[vid].pass = -1;
+	set_pass(t, vid, -1);
 }
 
 void claim_exit(CityState &s, const Conn &c, int vid) {
@@ -127,6 +127,7 @@ void reset_admission(CityState &s) {
 	TrafficState &t = s.traffic;
 	const size_t lanes = t.g.ds.size() * MAX_LANES, nodes = t.g.junctions.size(), conns = t.g.conns.size();
 	t.conn_pass.assign(conns, -1);
+	t.conn_pass_first.assign(conns, -1);
 	t.conn_pass_t.assign(conns, 0.0);
 	t.conn_claim_t.assign(conns, -double(BIG));
 	t.exit_claim.assign(lanes, -1);

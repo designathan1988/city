@@ -24,12 +24,25 @@ constexpr int RGB_BASE = 16;
 constexpr uint32_t RGB_LEAD = 1u << 24;
 } // namespace
 
+struct CityBuilder::InfoCache {
+	uint64_t generation = 0;
+	Building record;
+	Dictionary view;
+};
+
 Dictionary CityBuilder::body_info(int id) const {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Dictionary d;
 	const CityState &s = *state_;
 	if (id < 0 || id >= int(s.buildings.items.size()) || !s.buildings.items[id].alive) return d;
 	const Building &rec = s.buildings.items[id];
+	const uint64_t generation = s.buildings.designs.edited->generation();
+	std::shared_ptr<const InfoCache> cached;
+	{
+		std::lock_guard<std::mutex> metadata(info_mutex_);
+		cached = info_;
+	}
+	if (cached && cached->generation == generation && cached->record == rec) return cached->view.duplicate(true);
 	b40::Body body;
 	b40::record_body(s.buildings.designs, rec, body);
 	d["edited"] = rec.body != 0;
@@ -64,6 +77,16 @@ Dictionary CityBuilder::body_info(int id) const {
 	d["volumes"] = volumes;
 	b40::resolve_blocks(body);
 	d["solids"] = int(body.volumes.size());
+	auto prepared = std::make_shared<InfoCache>();
+	prepared->generation = generation;
+	prepared->record = rec;
+	prepared->view = d.duplicate(true); // callers own nested arrays/dictionaries, independent of the cached projection
+	std::shared_ptr<const InfoCache> retired;
+	{
+		std::lock_guard<std::mutex> metadata(info_mutex_);
+		retired = std::move(info_);
+		info_ = std::move(prepared);
+	}
 	return d;
 }
 

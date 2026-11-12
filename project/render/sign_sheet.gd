@@ -1,13 +1,14 @@
 ## The sheets of plate pictures: the core asks for a cell the moment a chunk needs a plate (render/props/sign_atlas.h); here the
 ## cells waiting are painted, the words with the canvas's font, into a viewport, and the viewport's picture goes into its layer
-## of the array the "prop" material reads (sign_atlas). The array grows by a layer when the core opens one, so a city has as many
-## names as it has streets. A picture read back stalls the frame a moment: at most one a round (sheet_round_s). Between rounds
+## of the array the "prop" material reads (sign_atlas). CPU pages keep their pictures; array capacity grows geometrically, within an atlas epoch.
+## A picture read back stalls the frame a moment: at most one a round (sheet_round_s). Between rounds
 ## the viewport shrinks to nothing, and a round on a layer begun lays what the layer holds under the new cells.
 class_name SignSheet
 extends SubViewport
 
 const LAYER_FORMAT := Image.FORMAT_RGBA8
 const IDLE_SIZE := Vector2i.ONE
+const CAPACITY_GROWTH := 2
 
 var drawn: Array = [] ## Every cell painted so far: [type, words, rectangle in its layer, layer].
 var layers := Texture2DArray.new()
@@ -16,7 +17,10 @@ var _paper := _Paper.new()
 var _look: Dictionary
 var _material: ShaderMaterial
 var _waiting: Array = []
-var _begun := -1 ## The last layer painted: the only one with cells to keep.
+var _pages: Array[Image] = []
+var _painted: Dictionary = {}
+var _epoch := -1
+var _ticket := 0
 var _busy := false
 var _since := 0.0
 
@@ -36,6 +40,7 @@ func _init(look: Dictionary, material: ShaderMaterial) -> void:
 
 
 func _process(delta: float) -> void:
+	_sync_epoch()
 	_since += delta
 	if _busy or _since < _look.sheet_round_s:
 		return
@@ -50,22 +55,26 @@ func _process(delta: float) -> void:
 	var batch := _waiting.slice(0, cut)
 	_waiting = _waiting.slice(cut)
 	drawn.append_array(batch)
-	var kept := layers.get_layer_data(layer) if layer == _begun and layer < layers.get_layers() else null
+	var kept: Image = _pages[layer] if _painted.has(layer) else null
 	_paper.begin(batch, ImageTexture.create_from_image(kept) if kept else null)
-	_begun = layer
 	size = _layer_size()
 	_busy = true
 	render_target_update_mode = SubViewport.UPDATE_ONCE
-	RenderingServer.frame_post_draw.connect(_upload.bind(layer), CONNECT_ONE_SHOT)
+	_ticket += 1
+	RenderingServer.frame_post_draw.connect(_upload.bind(layer, _epoch, _ticket), CONNECT_ONE_SHOT)
 
 
 ## The viewport has drawn: its picture goes to its layer, and the fonts and the drawing go.
-func _upload(layer: int) -> void:
+func _upload(layer: int, epoch: int, ticket: int) -> void:
+	_sync_epoch()
+	if epoch != _epoch or ticket != _ticket:
+		return
 	var image := get_texture().get_image()
 	image.convert(LAYER_FORMAT)
-	if layer >= layers.get_layers():
-		_grow(layer + 1)
-	layers.update_layer(image, layer)
+	var grew := _grow(layer + 1, image, layer)
+	_painted[layer] = true
+	if not grew:
+		layers.update_layer(image, layer)
 	_paper.end()
 	size = IDLE_SIZE
 	_busy = false
@@ -76,16 +85,42 @@ func _layer_size() -> Vector2i:
 	return Vector2i(int(_look.sheet_w_px), int(_look.sheet_h_px))
 
 
-## The array with `count` layers: a texture's layers are fixed when made, so the ones painted are carried over.
-func _grow(count: int) -> void:
-	var images: Array[Image] = []
-	for i in layers.get_layers():
-		images.append(layers.get_layer_data(i))
-	for i in count - images.size():
-		images.append(Image.create_empty(_layer_size().x, _layer_size().y, false, LAYER_FORMAT))
+## Texture arrays have fixed layer counts. Carry CPU pages only when capacity doubles, keeping every logical layer/UV stable.
+func _grow(count: int, completed: Image = null, layer: int = -1) -> bool:
+	if count <= _pages.size():
+		if completed != null:
+			_pages[layer] = completed
+		return false
+	var capacity := maxi(1, _pages.size())
+	while capacity < count:
+		capacity *= CAPACITY_GROWTH
+	while _pages.size() < capacity:
+		_pages.append(Image.create_empty(_layer_size().x, _layer_size().y, false, LAYER_FORMAT))
+	if completed != null:
+		_pages[layer] = completed
 	layers = Texture2DArray.new()
-	layers.create_from_images(images)
+	layers.create_from_images(_pages)
 	_material.set_shader_parameter("sign_atlas", layers)
+	return true
+
+
+## C++ resets by replacing its atlas; old workers keep the retired one. A delayed readback cannot publish across this boundary.
+func _sync_epoch() -> void:
+	var epoch: int = CityStore.query(&"sign_epoch")
+	if epoch == _epoch:
+		return
+	_epoch = epoch
+	_ticket += 1
+	_busy = false
+	_since = 0.0
+	_waiting.clear()
+	drawn.clear()
+	_painted.clear()
+	_pages.clear()
+	_paper.end()
+	render_target_update_mode = SubViewport.UPDATE_DISABLED
+	size = IDLE_SIZE
+	_grow(1)
 
 
 ## Draws each plate as a real one reads, in the proportions of the plate (a cell is stretched over it by the mesh's uv): the

@@ -7,6 +7,7 @@ const GROUND_LIFT_M := 3.0
 
 var _lines := ImmediateMesh.new()
 var _shown := -1
+var _revision: Array = []
 
 
 func _ready() -> void:
@@ -19,12 +20,13 @@ func _ready() -> void:
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	layers = int(CityStore.constants.render_layers.base)
 	visible = false
-	CityStore.changed.connect(_on_changed)
+	CityStore.watch(self, ["city_generation", "history_revision"], _on_changed)
 
 
 func toggle() -> void:
 	visible = not visible
 	_shown = -1
+	_revision.clear()
 	_on_changed(CityStore.snapshot)
 
 
@@ -33,12 +35,14 @@ func count() -> int:
 	return maxi(_shown, 0)
 
 
-func _on_changed(_s: Dictionary) -> void:
+func _on_changed(snapshot: Dictionary) -> void:
 	if not visible:
 		return
-	var edits: Array = CityStore.query(&"recent_edits", [int(DataTables.game("health").changes_shown)])
-	if edits.size() == _shown and _shown > 0:
+	var revision := [snapshot.get("city_generation", -1), snapshot.get("history_revision", -1)]
+	if revision == _revision:
 		return
+	_revision = revision
+	var edits: Array = CityStore.query(&"recent_edits", [int(DataTables.game("health").changes_shown)])
 	_shown = edits.size()
 	_lines.clear_surfaces()
 	for e: Dictionary in edits:

@@ -9,6 +9,7 @@ namespace city {
 
 namespace {
 thread_local bool in_pool = false;
+thread_local std::shared_ptr<std::atomic<bool>> current_cancellation;
 }
 
 JobPool::JobPool(unsigned threads) {
@@ -19,6 +20,7 @@ JobPool::JobPool(unsigned threads) {
 }
 
 JobPool::~JobPool() {
+	cancel_all();
 	{
 		std::lock_guard<std::mutex> lk(m_);
 		stop_ = true;
@@ -29,12 +31,96 @@ JobPool::~JobPool() {
 }
 
 void JobPool::submit(JobKey key, float priority, std::function<void()> work) {
+	Item retired;
 	{
 		std::lock_guard<std::mutex> lk(m_);
-		latest_[key] = ++seq_;
-		q_.push(Item{ priority, seq_, key, std::move(work) });
+		auto previous = current_.find(key);
+		if (previous != current_.end()) previous->second->store(true, std::memory_order_relaxed);
+		auto queued = queued_.find(key);
+		if (queued != queued_.end()) {
+			retired = remove_at(queued->second);
+			replaced_++;
+		}
+		auto cancellation = std::make_shared<std::atomic<bool>>(false);
+		current_[key] = cancellation;
+		queued_[key] = q_.size();
+		q_.push_back(Item{ priority, ++seq_, key, std::move(work), std::move(cancellation) });
+		sift_up(q_.size() - 1);
 	}
 	cv_.notify_one();
+}
+
+bool JobPool::cancelled() {
+	return current_cancellation && current_cancellation->load(std::memory_order_relaxed);
+}
+
+void JobPool::swap_items(size_t a, size_t b) {
+	std::swap(q_[a], q_[b]);
+	queued_[q_[a].key] = a;
+	queued_[q_[b].key] = b;
+}
+
+void JobPool::sift_up(size_t at) {
+	while (at != 0) {
+		const size_t parent = (at - 1) / 2;
+		if (!Later{}(q_[parent], q_[at])) break;
+		swap_items(parent, at);
+		at = parent;
+	}
+}
+
+void JobPool::sift_down(size_t at) {
+	for (;;) {
+		size_t first = at * 2 + 1;
+		if (first >= q_.size()) return;
+		const size_t second = first + 1;
+		if (second < q_.size() && Later{}(q_[first], q_[second])) first = second;
+		if (!Later{}(q_[at], q_[first])) return;
+		swap_items(at, first);
+		at = first;
+	}
+}
+
+JobPool::Item JobPool::remove_at(size_t at) {
+	Item removed = std::move(q_[at]);
+	queued_.erase(removed.key);
+	if (at == q_.size() - 1) {
+		q_.pop_back();
+		return removed;
+	}
+	q_[at] = std::move(q_.back());
+	q_.pop_back();
+	queued_[q_[at].key] = at;
+	if (at != 0 && Later{}(q_[(at - 1) / 2], q_[at])) sift_up(at);
+	else sift_down(at);
+	return removed;
+}
+
+void JobPool::cancel(JobKey key) {
+	Item retired;
+	{
+		std::lock_guard<std::mutex> lk(m_);
+		auto current = current_.find(key);
+		if (current != current_.end()) {
+			current->second->store(true, std::memory_order_relaxed);
+			current_.erase(current);
+		}
+		auto queued = queued_.find(key);
+		if (queued != queued_.end()) retired = remove_at(queued->second);
+		if (idle()) idle_cv_.notify_all();
+	}
+}
+
+void JobPool::cancel_all() {
+	std::vector<Item> retired;
+	{
+		std::lock_guard<std::mutex> lk(m_);
+		for (const auto &entry : current_) entry.second->store(true, std::memory_order_relaxed);
+		current_.clear();
+		queued_.clear();
+		retired.swap(q_);
+		if (idle()) idle_cv_.notify_all();
+	}
 }
 
 void JobPool::parallel_for(size_t n, const std::function<void(size_t)> &fn) {
@@ -80,7 +166,12 @@ void JobPool::parallel_for(size_t n, const std::function<void(size_t)> &fn) {
 
 size_t JobPool::tracked() {
 	std::lock_guard<std::mutex> lk(m_);
-	return latest_.size();
+	return queued_.size();
+}
+
+bool JobPool::drained() {
+	std::lock_guard<std::mutex> lk(m_);
+	return idle();
 }
 
 void JobPool::wait_idle() {
@@ -92,6 +183,8 @@ void JobPool::loop() {
 	in_pool = true;
 	for (;;) {
 		std::function<void()> work;
+		JobKey key;
+		std::shared_ptr<std::atomic<bool>> cancellation;
 		{
 			std::unique_lock<std::mutex> lk(m_);
 			cv_.wait(lk, [&]() { return stop_ || !q_.empty() || !helpers_.empty(); });
@@ -100,23 +193,23 @@ void JobPool::loop() {
 				work = std::move(helpers_.front());
 				helpers_.pop_front();
 			} else {
-				// Moved out, not copied (the job's captures); the heap's order reads only priority and seq, which stay.
-				Item item = std::move(const_cast<Item &>(q_.top()));
-				q_.pop();
-				auto it = latest_.find(item.key);
-				if (it == latest_.end() || it->second != item.seq) { // superseded while queued
-					replaced_++;
-					if (idle()) idle_cv_.notify_all();
-					continue;
-				}
-				latest_.erase(it); // its newest job runs: an older one still queued finds no entry and is dropped
+				Item item = remove_at(0);
+				key = item.key;
+				cancellation = std::move(item.cancelled);
 				work = std::move(item.work);
 			}
 			++busy_;
 		}
-		work();
+		current_cancellation = cancellation;
+		if (!cancelled()) work();
+		current_cancellation.reset();
+		work = {}; // release captures outside m_ and before notifying wait_idle
 		{
 			std::lock_guard<std::mutex> lk(m_);
+			if (cancellation) {
+				auto current = current_.find(key);
+				if (current != current_.end() && current->second == cancellation) current_.erase(current);
+			}
 			--busy_;
 			if (idle()) idle_cv_.notify_all();
 		}

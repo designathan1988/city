@@ -19,11 +19,15 @@ struct Around {
 
 Around around(const TrafficState &t, const std::vector<int> &list, float at, int self) {
 	Around a;
-	for (int id : list) {
-		if (id == self) continue;
-		float o = t.vehicles[id].s;
-		if (o >= at && (a.lead < 0 || o < t.vehicles[a.lead].s)) a.lead = id;
-		if (o < at && (a.follow < 0 || o > t.vehicles[a.follow].s)) a.follow = id;
+	// lane_add and lane motion maintain ascending s. Keep the old first-in-list tie winner.
+	const auto less = [&](int id, float x) { return t.vehicles[size_t(id)].s < x; };
+	const auto split = std::lower_bound(list.begin(), list.end(), at, less);
+	auto lead = split;
+	if (lead != list.end() && *lead == self) ++lead;
+	if (lead != list.end()) a.lead = *lead;
+	if (split != list.begin()) {
+		const float behind = t.vehicles[size_t(*(split - 1))].s;
+		a.follow = *std::lower_bound(list.begin(), split, behind, less);
 	}
 	return a;
 }
@@ -58,7 +62,7 @@ float evaluate(const View &w, int id, const std::vector<int> &cur, const std::ve
 }
 
 bool reaches_next(const CityState &s, const Vehicle &v, int lane) {
-	if (v.ri + 1 >= v.route.len) return true;
+	if (v.ri + 1 >= v.route.len || !vehicle_route_goal_current(s, v)) return true; // no obsolete future-turn constraint
 	const int next = route_at(s.traffic.route_pool, v.route, v.ri + 1);
 	return lane_reaches(s, v.ds, lane, next);
 }

@@ -5,6 +5,8 @@
 #include "core/math.h"
 
 #include <cstdint>
+#include <limits>
+#include <unordered_set>
 #include <unordered_map>
 #include <vector>
 
@@ -29,6 +31,25 @@ template <typename F>
 void for_chunks(double minx, double minz, double maxx, double maxz, F &&fn) {
 	for (int j = int(std::floor(minz / CHUNK)); j <= int(std::floor(maxz / CHUNK)); j++)
 		for (int i = int(std::floor(minx / CHUNK)); i <= int(std::floor(maxx / CHUNK)); i++) fn(cell_key(i, j));
+}
+
+// Cells conservatively covering a line, including float-rounded boundary samples. Duplicate boundary cells are
+// allowed; consumers choose their own deduplication/publication order. Work grows with length, not rectangle area.
+template <typename F>
+void for_segment_cells(double ax, double ay, double bx, double by, float cell, F &&fn) {
+	const int steps = std::max(1, int(std::ceil(std::max(std::fabs(bx - ax), std::fabs(by - ay)) / cell)));
+	const float infinity = std::numeric_limits<float>::infinity();
+	for (int i = 0; i < steps; i++) {
+		const double a = double(i) / steps, b = double(i + 1) / steps;
+		const double x0 = i == 0 ? ax : ax + (bx - ax) * a, x1 = i + 1 == steps ? bx : ax + (bx - ax) * b;
+		const double y0 = i == 0 ? ay : ay + (by - ay) * a, y1 = i + 1 == steps ? by : ay + (by - ay) * b;
+		const int minx = int(std::floor(std::nextafter(float(std::min(x0, x1)), -infinity) / cell));
+		const int maxx = int(std::floor(std::nextafter(float(std::max(x0, x1)), infinity) / cell));
+		const int miny = int(std::floor(std::nextafter(float(std::min(y0, y1)), -infinity) / cell));
+		const int maxy = int(std::floor(std::nextafter(float(std::max(y0, y1)), infinity) / cell));
+		for (int y = miny; y <= maxy; y++)
+			for (int x = minx; x <= maxx; x++) fn(cell_key(x, y));
+	}
 }
 
 struct SpatialHash {
@@ -56,6 +77,25 @@ struct SpatialHash {
 			if (it == cells.end()) return;
 			for (int id : it->second) fn(id);
 		});
+	}
+	// First encounter order is preserved; membership checks do not rescan the previously reported ids.
+	template <typename F>
+	void query_unique(float minx, float miny, float maxx, float maxy, F &&fn) const {
+		std::unordered_set<int> seen;
+		query(minx, miny, maxx, maxy, [&](int id) { if (seen.insert(id).second) fn(id); });
+	}
+	// A narrow corridor of cells covering a segment. Sub-boxes are at most one cell wide before conservative float
+	// rounding; shared boundary cells are visited once. Cell order is deterministic (the same row-major order as query).
+	template <typename F>
+	void query_segment(double ax, double ay, double bx, double by, F &&fn) const {
+		std::unordered_set<int64_t> seen;
+		std::vector<int64_t> keys;
+		for_segment_cells(ax, ay, bx, by, cell, [&](int64_t k) { if (seen.insert(k).second) keys.push_back(k); });
+		std::sort(keys.begin(), keys.end(), [](int64_t a, int64_t b) { return key_y(a) != key_y(b) ? key_y(a) < key_y(b) : key_x(a) < key_x(b); });
+		for (int64_t k : keys) {
+			auto it = cells.find(k);
+			if (it != cells.end()) for (int id : it->second) fn(id);
+		}
 	}
 
 private:

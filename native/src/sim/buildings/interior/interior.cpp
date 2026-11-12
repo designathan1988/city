@@ -229,43 +229,49 @@ std::string Interior::type_of(int level) const {
 
 const FloorInterior &Interior::at(int level) {
 	auto known = levels_.find(level);
-	if (known != levels_.end()) return *known->second;
-	const std::string type = type_of(level);
-	std::unique_ptr<FloorInterior> &floor = types_[type];
+	if (known != levels_.end()) return *known->second.floor;
+	auto slot = types_.try_emplace(type_of(level)).first;
+	FloorRef &floor = slot->second;
 	if (!floor) {
-		floor = std::make_unique<FloorInterior>();
-		const float module = module_of(data_, body_);
-		const bool residential = purpose_ == PU_HOUSE || purpose_ == PU_FLATS;
-		for (size_t i = 0; i < body_.volumes.size(); i++) {
-			const Volume &v = body_.volumes[i];
-			if (level < v.base || level >= v.top()) continue;
-			std::vector<Space> spaces;
-			spaces_of(body_, v, int(i), level, module, residential, spaces);
-			Plan plan(data_, body_, v, level, module);
-			furnish(plan, purpose_, spaces);
-			floor->furniture.insert(floor->furniture.end(), plan.items.begin(), plan.items.end());
-			floor->partitions.insert(floor->partitions.end(), plan.walls.begin(), plan.walls.end());
-			floor->spaces.insert(floor->spaces.end(), spaces.begin(), spaces.end());
-		}
-		// Nothing made for the floor stands on the flight between its levels.
-		for (const LevelFlight &f : level_flights(body_, level)) {
-			const float x0 = std::min(f.foot.x, f.top.x) - f.width / 2 - FLIGHT_CLEAR_M, x1 = std::max(f.foot.x, f.top.x) + f.width / 2 + FLIGHT_CLEAR_M;
-			const float y0 = std::min(f.foot.y, f.top.y) - f.width / 2 - FLIGHT_CLEAR_M, y1 = std::max(f.foot.y, f.top.y) + f.width / 2 + FLIGHT_CLEAR_M;
-			auto on_it = [&](const Furniture &p) { return p.x + p.w / 2 > x0 && p.x - p.w / 2 < x1 && p.y + p.d / 2 > y0 && p.y - p.d / 2 < y1; };
-			floor->furniture.erase(std::remove_if(floor->furniture.begin(), floor->furniture.end(), on_it), floor->furniture.end());
-		}
-		auto stored = body_.furnishing.find(level);
-		if (stored == body_.furnishing.end()) room_lights(data_, floor->furniture);
-		else {
-			floor->furniture.clear();
-			for (const PlacedPiece &p : stored->second) {
-				const float *size = data_.interior.size[p.kind];
-				floor->furniture.push_back({ FurnitureKind(p.kind), p.x, p.y, size[0], size[1], size[2], p.angle });
-			}
+		const auto make = [this, level] { return prepare(level); };
+		floor = memo_ ? memo_(slot->first, make) : make();
+	}
+	levels_[level] = {floor.get(), &slot->first};
+	return *floor;
+}
+
+FloorRef Interior::prepare(int level) const {
+	auto floor = std::make_shared<FloorInterior>();
+	const float module = module_of(data_, body_);
+	const bool residential = purpose_ == PU_HOUSE || purpose_ == PU_FLATS;
+	const auto stored = body_.furnishing.find(level);
+	for (size_t i = 0; i < body_.volumes.size(); i++) {
+		const Volume &v = body_.volumes[i];
+		if (level < v.base || level >= v.top()) continue;
+		std::vector<Space> spaces;
+		spaces_of(body_, v, int(i), level, module, residential, spaces);
+		Plan plan(data_, body_, v, level, module);
+		plan.emit_furniture = stored == body_.furnishing.end();
+		furnish(plan, purpose_, spaces);
+		floor->furniture.insert(floor->furniture.end(), plan.items.begin(), plan.items.end());
+		floor->partitions.insert(floor->partitions.end(), plan.walls.begin(), plan.walls.end());
+		floor->spaces.insert(floor->spaces.end(), spaces.begin(), spaces.end());
+	}
+	// Nothing made for the floor stands on the flight between its levels.
+	for (const LevelFlight &f : level_flights(body_, level)) {
+		const float x0 = std::min(f.foot.x, f.top.x) - f.width / 2 - FLIGHT_CLEAR_M, x1 = std::max(f.foot.x, f.top.x) + f.width / 2 + FLIGHT_CLEAR_M;
+		const float y0 = std::min(f.foot.y, f.top.y) - f.width / 2 - FLIGHT_CLEAR_M, y1 = std::max(f.foot.y, f.top.y) + f.width / 2 + FLIGHT_CLEAR_M;
+		auto on_it = [&](const Furniture &p) { return p.x + p.w / 2 > x0 && p.x - p.w / 2 < x1 && p.y + p.d / 2 > y0 && p.y - p.d / 2 < y1; };
+		floor->furniture.erase(std::remove_if(floor->furniture.begin(), floor->furniture.end(), on_it), floor->furniture.end());
+	}
+	if (stored == body_.furnishing.end()) room_lights(data_, floor->furniture);
+	else {
+		for (const PlacedPiece &p : stored->second) {
+			const float *size = data_.interior.size[p.kind];
+			floor->furniture.push_back({ FurnitureKind(p.kind), p.x, p.y, size[0], size[1], size[2], p.angle });
 		}
 	}
-	levels_[level] = floor.get();
-	return *floor;
+	return floor;
 }
 
 } // namespace city::b40

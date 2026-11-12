@@ -15,12 +15,15 @@ namespace {
 // The payload `fill` writes, framed with its tag and size; nothing when it writes none.
 template <typename F>
 void put_framed(ByteWriter &w, uint32_t tag, F &&fill) {
-	ByteWriter block;
-	block.canonical = w.canonical;
-	if (!fill(block)) return;
+	const size_t start = w.size();
 	w.put<uint32_t>(tag);
-	w.put<uint32_t>(uint32_t(block.buf.size()));
-	w.put_bytes(block.buf.data(), block.buf.size());
+	const size_t length_at = w.size();
+	w.put<uint32_t>(0);
+	const size_t payload = w.size();
+	if (!fill(w)) { w.truncate(start); return; }
+	const size_t length = w.size() - payload;
+	if (!w.good() || length > std::numeric_limits<uint32_t>::max()) { w.invalidate(); return; }
+	w.patch<uint32_t>(length_at, uint32_t(length));
 }
 } // namespace
 
@@ -43,9 +46,9 @@ bool read_extra_blocks(ByteReader &r, CityState &s) {
 		if (!r.ok) return false;
 		if (tag == SAVE_END) return true;
 		const uint32_t size = r.get<uint32_t>();
-		if (!r.ok || r.o + size > r.n) return false;
+		if (!r.require(size)) return false;
 		ByteReader block{ r.p + r.o, size };
-		if (tag == SAVE_TAG_DEMOLITION && !read_damage_block(block, s.damage)) return false;
+		if (tag == SAVE_TAG_DEMOLITION && !read_damage_block(block, s.damage, *s.buildings.designs.edited)) return false;
 		if (tag == SAVE_TAG_STREET && !read_street_block(block, s.street)) return false;
 		if (tag == SAVE_TAG_LOTS && !read_lots_block(block, s.lot_book)) return false;
 		if (tag == SAVE_TAG_LINKS && !read_links_block(block, s.roads)) return false;

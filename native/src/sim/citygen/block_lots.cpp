@@ -2,6 +2,7 @@
 // raster, each closed piece a block; its least-area rectangle cut into one or two rows (two when >= 44 m deep, back to
 // back) and each row into equal columns of about LOT_FRONTAGE. Every lot reaches the footway.
 #include "sim/citygen/lot_gen.h"
+#include "sim/citygen/lot_raster.h"
 
 #include <algorithm>
 #include <array>
@@ -67,8 +68,8 @@ bool min_area_box(const std::vector<P2> &h, Box &best) {
 
 class Blocks {
 public:
-	Blocks(double x0, double z0, const lot_gen::Facing &f) :
-			ax_(x0 - CELL_MARGIN), az_(z0 - CELL_MARGIN), W_(int(std::ceil((LOT_CELL + CELL_MARGIN * 2) / RES))), facing_(f) {
+	Blocks(const LotGraph &graph, double x0, double z0, const lot_gen::Facing &f) :
+			ax_(x0 - CELL_MARGIN), az_(z0 - CELL_MARGIN), W_(int(std::ceil((LOT_CELL + CELL_MARGIN * 2) / RES))), facing_(f), graph_(graph) {
 		paved_.assign(size_t(W_) * W_, 0);
 		label_.assign(size_t(W_) * W_, -1);
 	}
@@ -76,6 +77,7 @@ public:
 	void disc(double x, double z, double r) {
 		const int box[4] = { std::max(0, int(std::floor((x - r - ax_) / RES))), std::min(W_ - 1, int(std::floor((x + r - ax_) / RES))),
 			std::max(0, int(std::floor((z - r - az_) / RES))), std::min(W_ - 1, int(std::floor((z + r - az_) / RES))) };
+		if (graph_.raster && graph_.raster->fill(paved_.data(), W_, ax_, az_, RES, x, z, r, box, 1, graph_.raster_bytes)) return;
 		fill_disc(paved_.data(), W_, ax_, az_, RES, x, z, r, box, 1);
 	}
 
@@ -120,6 +122,7 @@ private:
 	double ax_, az_;
 	int W_;
 	const lot_gen::Facing &facing_;
+	const LotGraph &graph_;
 	std::vector<uint8_t> paved_;
 	std::vector<int> label_;
 	std::vector<lot_gen::BlockLot> out_;
@@ -234,8 +237,8 @@ private:
 } // namespace
 
 std::vector<lot_gen::BlockLot> lot_gen::block_lots(const LotGraph &g, const std::vector<Profile> &profiles,
-		const std::vector<std::vector<double>> &tables, double x0, double z0, const Facing &facing) {
-	Blocks b(x0, z0, facing);
+		const std::vector<const std::vector<double> *> &tables, double x0, double z0, const Facing &facing) {
+	Blocks b(g, x0, z0, facing);
 	std::vector<double> node_half(g.nodes(), 0.0);
 	std::vector<int> deg(g.nodes(), 0);
 	for (int s = 0; s < g.segs(); s++) {
@@ -245,7 +248,7 @@ std::vector<lot_gen::BlockLot> lot_gen::block_lots(const LotGraph &g, const std:
 		node_half[g.sb[s]] = std::max(node_half[g.sb[s]], half);
 		deg[g.sa[s]]++;
 		deg[g.sb[s]]++;
-		double len = tables[s].back();
+		double len = tables[s]->back();
 		int n = std::max(2, int(std::ceil(len / RES)) + 1);
 		for (int k = 0; k < n; k++) {
 			double x, z;

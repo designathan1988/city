@@ -16,6 +16,11 @@ struct BlastCurve {
 	float c[BLAST_COEFFS] = {};
 };
 
+struct LognormalFit {
+	float low = 0, half = 0, probability = 0, sigma = 0;
+	bool ready = false;
+};
+
 struct BlastParams {
 	float charge_kg_per_s2 = 0; // TNT mass of the player's force S: charge_kg_per_s2 * S^2
 	int strength_min = 0, strength_max = 0;
@@ -25,6 +30,7 @@ struct BlastParams {
 	float light_kpa = 0, structural_kpa = 0, collapse_kpa = 0, vehicle_kpa = 0, pole_kpa = 0;
 	float lethal_threshold_kpa = 0, lethal_half_kpa = 0, lethal_threshold_prob = 0;
 	float ear_threshold_kpa = 0, ear_half_kpa = 0, ear_threshold_prob = 0;
+	LognormalFit lethal_fit, ear_fit; // derived once before catalog publication, never serialized as source data
 	float startle_pa = 0, reference_pa = 0, startle_cap_m = 0;
 	float knock_min_s = 0, knock_span_s = 0, panic_s = 0, panic_gain = 0, torn_kpa = 0, sever_chance = 0, maim_chance = 0;
 	float hold_growth_s = 0, fire_min_s = 0, fire_span_s = 0, wear_gain = 0;

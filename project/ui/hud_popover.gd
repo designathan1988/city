@@ -24,7 +24,8 @@ const PERCENT := 100.0
 func _ready() -> void:
 	theme_type_variation = &"Popover"
 	hide()
-	CityStore.changed.connect(_on_changed)
+	CityStore.watch(self, ["ready", "city_generation", "minutes", "trips_arrived", "trips_lost",
+		"segments", "nodes", "vehicles", "people", "traffic_level", "people_level", "demand"], _on_changed)
 
 
 ## Opens `which` under the button rect (screen coordinates); the same one again closes it.

@@ -47,7 +47,14 @@ CityCore::~CityCore() {
 	free_areas(); // first: they point at the state and the render
 	join_save();
 	sim_.stop();
-	if (state_ && state_->jobs) state_->jobs->wait_idle();
+	if (state_ && state_->jobs) {
+		state_->jobs->cancel_all();
+		state_->jobs->wait_idle();
+	}
+	for (const auto &retired : retired_states_) {
+		retired->jobs->cancel_all();
+		retired->jobs->wait_idle();
+	}
 	render_.reset();
 	render_.shutdown();
 }
@@ -99,17 +106,11 @@ Dictionary CityCore::new_map(int map, int seed, bool with_city, bool paused) {
 	d["ok"] = false;
 	if (!catalog_ok_) return d;
 	join_save();
-	sim_.stop();
-	CityGenReport r;
-	{
-		std::unique_lock<std::shared_mutex> lk(state_->map_mutex);
-		state_->growth.clear();
-		state_->interior = InteriorView(); // the layer closes with the city it showed
-		r = generate_map(*state_, map, uint32_t(seed), with_city);
-		traffic::reset_traffic(*state_); // a new map: full lane graph and an empty fleet
-	}
-	need_full_rebuild_ = true;
-	sim_.start(*state_, paused);
+	auto candidate = make_candidate();
+	const CityGenReport r = generate_map(*candidate, map, uint32_t(seed), with_city);
+	candidate->buildings.designs.edited->release_pending();
+	traffic::reset_traffic(*candidate);
+	publish_city(std::move(candidate), false, paused);
 	d["ok"] = true;
 	d["nodes"] = r.nodes;
 	d["segments"] = r.segments;
@@ -125,16 +126,24 @@ void CityCore::mark_saved() {
 	state_->saved_revision = state_->revision;
 }
 
-void CityCore::set_speed(int speed) {
-	sim_.set_speed(SimSpeed(clampi(speed, int(SimSpeed::PAUSED), int(SimSpeed::FASTEST))));
+bool CityCore::set_speed(int speed) {
+	const SimSpeed before = sim_.speed(), next = SimSpeed(clampi(speed, int(SimSpeed::PAUSED), int(SimSpeed::FASTEST)));
+	if (before == next) return false;
+	sim_.set_speed(next);
+	return sim_.speed() != before;
 }
 
 int CityCore::get_speed() const { return int(sim_.speed()); }
 
-void CityCore::set_day_hour(double hour) { state_->clock.set_hour(hour); }
+bool CityCore::set_day_hour(double hour) {
+	const double before = state_->clock.day_shift.load();
+	state_->clock.set_hour(hour);
+	return state_->clock.day_shift.load() != before;
+}
 
 void CityCore::_process(double delta) {
 	if (Engine::get_singleton()->is_editor_hint()) return;
+	collect_retired();
 	if (!render_ok_ || !state_->ready) {
 		// No consumer in this run (tests without a screen): drain the change log so it cannot grow without bound
 		// (shared map lock + the log's own mutex, as every consumer: change_log.h).
@@ -181,11 +190,11 @@ void CityCore::_process(double delta) {
 	process_ms_ = total.lap();
 }
 
-void CityCore::set_levels(float traffic, float people, float demand) { // atomics the traffic reads: no wait for its step
+bool CityCore::set_levels(float traffic, float people, float demand) { // atomics the traffic reads: no wait for its step
 	TrafficLevels &l = state_->traffic_levels;
-	l.traffic = traffic;
-	l.people = people;
-	l.demand = demand;
+	if (l.traffic.load() == traffic && l.people.load() == people && l.demand.load() == demand) return false;
+	l.traffic = traffic; l.people = people; l.demand = demand;
+	return true;
 }
 
 void CityCore::set_sim_switch(const String &name, bool on) {

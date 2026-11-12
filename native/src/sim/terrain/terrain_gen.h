@@ -12,6 +12,13 @@ namespace city {
 
 class JobPool;
 
+// Immutable river stations shared by terrain fill, road planning and relief restoration. Lake flood scratch stays phase-local.
+struct TerrainRiverPlan {
+	uint32_t seed = 0;
+	double half = 0, water_spacing = 0;
+	std::vector<double> course_z, level, depth;
+};
+
 class TerrainGen {
 public:
 	static constexpr uint32_t FLAT_BIT = 0x80000000U;
@@ -21,7 +28,8 @@ public:
 	
 	static constexpr float NO_WATER = -1000.f;
 
-	TerrainGen(uint32_t seed, double map_half, double water_spacing);
+	TerrainGen(uint32_t seed, double map_half, double water_spacing, std::shared_ptr<const TerrainRiverPlan> prepared = {});
+	std::shared_ptr<const TerrainRiverPlan> river_plan() const { return river_; }
 	bool flat() const { return (seed_ & FLAT_BIT) != 0; }
 	// Ground height at (x, z): the land cut by the canal's bed.
 	double base_height(double x, double z) const;
@@ -43,13 +51,13 @@ private:
 	};
 	uint32_t seed_;
 	double half_, water_spacing_;
-	std::vector<double> course_z_, level_, depth_;
+	std::shared_ptr<const TerrainRiverPlan> river_;
 	std::unordered_map<int64_t, std::unique_ptr<Lake>> lakes_; // null entry: the square has no lake; bounded: a generator lives for one fill
 
 	double course_z() const;
 	bool basin_of(int i, int j, double &x, double &z) const;
 	double land(double x, double z) const;
-	void plan_river();
+	std::shared_ptr<const TerrainRiverPlan> plan_river();
 	River river_at(double x, double z) const;
 	const Lake *lake_of(int i, int j);
 	std::unique_ptr<Lake> make_lake(int i, int j) const; // the lake of square (i, j), or null

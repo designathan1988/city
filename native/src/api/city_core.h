@@ -3,6 +3,7 @@
 #pragma once
 
 #include <godot_cpp/variant/packed_vector3_array.hpp>
+#include <godot_cpp/variant/rect2.hpp>
 
 #include "render/render_world.h"
 #include "api/city_core_parts.h"
@@ -10,6 +11,7 @@
 #include "sim/simulation/simulation.h"
 
 #include <godot_cpp/classes/image.hpp>
+#include <godot_cpp/classes/camera3d.hpp>
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/variant/node_path.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
@@ -39,8 +41,8 @@ public:
 	// A new map: map = entry of data/catalog/maps.json; with_city = false makes an empty map. Returns the report.
 	godot::Dictionary new_map(int map, int seed, bool with_city, bool paused = false);
 	void mark_saved();
-	void set_speed(int speed);
-	void set_levels(float traffic, float people, float demand); // the Simulation panel: shares of the city's own density
+	bool set_speed(int speed);
+	bool set_levels(float traffic, float people, float demand); // the Simulation panel: shares of the city's own density
 	void set_sim_switch(const godot::String &name, bool on); // the Effects panel: "traffic", "pedestrians", "growth"
 	void set_detail_scale(float scale); // the graphics tier's reach of the buildings' near level
 	void set_lamp_lights(int count, int casting, int heads); // the graphics tier's street lamps with a light of their own, those with a shadow, and the vehicles' headlamps
@@ -51,7 +53,7 @@ public:
 	void set_upload_every(int frames); // the Optimisations tab: mesh uploads only every N frames
 	void set_lots_drawn(bool on); // the Effects panel: buildings without their lots (a full redraw)
 	godot::Dictionary traffic_metrics(); // the Simulation panel: mean speed, vehicles standing
-	void set_day_hour(double hour);
+	bool set_day_hour(double hour);
 	int get_speed() const;
 	void set_terrain_path(const godot::NodePath &p) { terrain_path_ = p; }
 	godot::NodePath get_terrain_path() const { return terrain_path_; }
@@ -103,7 +105,7 @@ public:
 	// --- undo / redo and the drawer edits (city_core_edit.cpp)
 	bool undo(), redo();
 	void begin_stroke(const godot::String &label); // a held brush: every dab until end_stroke is one undo step
-	void end_stroke();
+	bool end_stroke();
 	godot::Dictionary split_road(const godot::Vector3 &p);
 	godot::Dictionary body_census(int kind);
 	godot::Dictionary road_census();
@@ -119,6 +121,7 @@ public:
 	godot::Dictionary move_node(int node, const godot::Vector3 &p);
 	godot::Dictionary set_node_control(int node, int ctl);
 	godot::Array junctions();
+	godot::Array junction_marks(godot::Camera3D *camera, const godot::Rect2 &view);
 	godot::Dictionary node_at(const godot::Vector3 &p, float px);
 	godot::Array moved_roads(int node, const godot::Vector3 &p);
 	godot::Array recent_edits(int count); // the F9 World tab and the F8 marks: the latest undo steps, newest first
@@ -160,6 +163,7 @@ public:
 	godot::Dictionary segment_traffic(int seg), node_traffic(int node); // the Inspect tool's live numbers (city_core_inspect.cpp)
 	godot::Array impossible_nodes(); // the top bar's warning: nodes whose legs meet too sharply
 	float clear_reach(const godot::Vector3 &from, const godot::Vector3 &to, int samples); // the camera's line of sight (city_core_sight.cpp)
+	godot::Array camera_inputs(); // physical query identity, read directly rather than a timer snapshot
 	float sight_pull(const godot::Vector3 &focus, const godot::Vector3 &eye, int samples, float soft);
 	godot::PackedVector3Array eye_free(const godot::Vector3 &focus, const godot::Vector3 &eye, float lift);
 	godot::Dictionary probe_building(int id);
@@ -198,10 +202,15 @@ protected:
 private:
 	InspectCache inspect_;
 	SaveJob save_;
-	SnapCounts snap_;
+	JunctionMarkCache junction_marks_;
+	void prepare_junction_marks(); // caller holds the current city's map shared
 	godot::Object *terrain3d() const;
 	void join_save(); // waits for a save in flight before the state changes or is destroyed
 	std::unique_ptr<CityState> state_;
+	std::vector<std::unique_ptr<CityState>> retired_states_; // old jobs keep their own city's sources alive until drained
+	std::unique_ptr<CityState> make_candidate() const;
+	void publish_city(std::unique_ptr<CityState> candidate, bool saved, bool paused);
+	void collect_retired();
 	Simulation sim_;
 	// The materials the render draws with (render/city_world.gd makes them): held while its meshes reference them, so
 	// they are freed after render_ (declared first), never under a mesh still drawing.
@@ -221,7 +230,7 @@ private:
 	CityProbes *probes_ = nullptr;
 	CityStreet *street_ = nullptr;
 	CityLab *lab_ = nullptr;
-	void make_areas(), free_areas();
+	void make_areas(), attach_areas(), free_areas();
 };
 
 } // namespace city

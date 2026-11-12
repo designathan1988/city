@@ -56,6 +56,7 @@ struct GradeProfile {
 	bool walls = false; // its cutting is held by retaining walls
 	int a = -1, b = -1;
 	float len = 0, step = 0, half = 0, plate_a = 0, plate_b = 0;
+	float low = 0, high = 0; // solved deck extrema, refreshed with the final pinned stations
 	std::vector<float> h, ceil, base, raw; // raw: the mean ground across the casing, before base is made of it
 	// what the ground was read along: kept while the curve, the casing and the ground under it stand
 	double q[CURVE_NUMBERS] = {};

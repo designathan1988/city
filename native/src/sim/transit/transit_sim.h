@@ -4,10 +4,12 @@
 #pragma once
 
 #include "sim/state/pose_buffer.h"
+#include "core/generation.h"
 #include "sim/traffic/bus_call.h"
 #include "sim/transit/transit_data.h"
 
 #include <unordered_map>
+#include <array>
 #include <vector>
 
 namespace city {
@@ -20,12 +22,17 @@ struct Bus {
 	int next = 0, dir = 1; // the index of the stop it is going to, and the way along the line
 	float dwell = 0, wait = 0; // seconds at the stop; seconds before it is put on the road
 	traffic::BusCall call; // who gets off and on at this stop
+	size_t route_tries = 0;
+	int birth_stop = 0;
+	float birth_stop_at = 0; // original reserved lane proposal, independent of the next stop being tried
 };
+
+struct TrainCar : PoseTrail { uint64_t row_id = next_generation(); };
 
 struct Train {
 	float s = 0, v = 0, dwell = 0; // along the loop
 	int next = 0; // the station it is going to
-	std::vector<PoseTrail> cars;
+	std::vector<TrainCar> cars;
 };
 
 struct LoopStation {
@@ -42,6 +49,7 @@ struct LevelCrossing {
 
 struct RailLine {
 	int line = 0;
+	uint64_t plan_version = 0; // exact per-line route dependency generation, not a geometry digest
 	bool metro = false;
 	uint32_t colour = 0;
 	std::vector<V2> points;
@@ -50,6 +58,8 @@ struct RailLine {
 	std::vector<LoopStation> stations;
 	std::vector<Train> trains;
 	std::vector<LevelCrossing> crossings;
+	uint64_t crossing_roads = 0;
+	bool crossings_built = false;
 };
 
 // Where a bus stands at a stop: the kerb lane beside it, with its front at `at`.
@@ -69,9 +79,13 @@ struct TrainZone {
 };
 
 struct TransitRun {
-	uint64_t plan_seen = 0, roads_seen = 0;
+	uint64_t bus_seen = 0, rail_seen = 0, roads_seen = 0, bus_stops_seen = 0;
 	bool built = false;
+	std::array<uint64_t, 2> tracks_seen{};
+	float graph_join = 0;
+	std::array<RailGraph, 2> rail_graphs; // reused across bus/line/stop edits while track topology stays the same
 	std::vector<Bus> buses;
+	std::unordered_map<int, uint64_t> bus_routes_seen; // current lines only; count/name/paint changes do not reroute retained buses
 	std::vector<RailLine> rails;
 	std::unordered_map<int, StopLane> stop_lanes; // per bus stop
 	std::unordered_map<int, std::vector<std::pair<int, int>>> crossings_by_lane; // key: (rail, crossing)

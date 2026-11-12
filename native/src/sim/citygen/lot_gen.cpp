@@ -3,6 +3,7 @@
 #include "sim/citygen/lot_gen.h"
 
 #include "sim/citygen/lot_strips.h"
+#include "sim/citygen/lot_raster.h"
 #include "sim/terrain/terrain_gen.h"
 #include "sim/roads/junction.h"
 
@@ -14,7 +15,7 @@ namespace city {
 namespace {
 constexpr double RES = 2, ROAD_PAD = 0.4, DRY_MIN = 0.5, WET_CLEAR = 0.5, MAX_RELIEF = 10, WET_STEP = 4;
 constexpr double FACING_PROBE = 4, FACING_PAD = 8;
-constexpr int ARC_STEPS = 24, FACING_SAMPLES = 32;
+constexpr int FACING_SAMPLES = 32;
 constexpr double EPS = 1e-6;
 constexpr uint8_t ROADWAY = 1, TAKEN = 2; // what the grid says of a cell
 constexpr double LOT_END_IN = 3; // a cell and a half: past any rounding of a point to its cell
@@ -36,8 +37,10 @@ LotStrips::LotStrips(const LotGraph &g, const std::vector<Profile> &profiles, co
 		g_(g), prof_(profiles), ground_(ground), cx0_(x0), cz0_(z0), ax_(x0 - CELL_MARGIN), az_(z0 - CELL_MARGIN),
 		W_(int(std::ceil((LOT_CELL + CELL_MARGIN * 2) / RES))) {
 	grid_.assign(size_t(W_) * W_, 0);
+	generated_tables_.reserve(size_t(g.segs())); // addresses of owned fallback vectors remain stable
 	for (int s = 0; s < g.segs(); s++) {
-		tables_.push_back(arc_table(g.quad[s], ARC_STEPS));
+		if (size_t(s) < g.prepared_arcs.size() && g.prepared_arcs[size_t(s)]) tables_.push_back(g.prepared_arcs[size_t(s)]);
+		else { generated_tables_.push_back(arc_table(g.quad[s], LOT_ARC_STEPS)); tables_.push_back(&generated_tables_.back()); }
 		const Profile &p = prof_[g.profile[s]];
 		half_.push_back(std::max(p.left, p.right));
 	}
@@ -53,6 +56,7 @@ std::vector<Lot> LotStrips::run() {
 void LotStrips::mark(double x, double z, double r, uint8_t v) {
 	const int box[4] = { std::max(0, int(std::floor((x - r - ax_) / RES))), std::min(W_ - 1, int(std::ceil((x + r - ax_) / RES))),
 		std::max(0, int(std::floor((z - r - az_) / RES))), std::min(W_ - 1, int(std::ceil((z + r - az_) / RES))) };
+	if (g_.raster && g_.raster->fill(grid_.data(), W_, ax_, az_, RES, x, z, r, box, v, g_.raster_bytes)) return;
 	fill_disc(grid_.data(), W_, ax_, az_, RES, x, z, r, box, v);
 }
 
@@ -90,7 +94,7 @@ void LotStrips::mark_roads() {
 			const double at = len(s) * i / (n - 1);
 			if (at < from || at > to) continue;
 			double x, z;
-			g_.quad[s].at(t_at_length(tables_[s], at), x, z);
+			g_.quad[s].at(t_at_length(*tables_[s], at), x, z);
 			mark(x, z, half_[s] + ROAD_PAD, ROADWAY);
 		}
 	}

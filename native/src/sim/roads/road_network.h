@@ -4,6 +4,13 @@
 // joints) is refreshed here; every change marks its chunks in the ChangeLog.
 #pragma once
 
+#include "core/generation.h"
+#include "core/region_versions.h"
+#include "sim/roads/road_metrics.h"
+#include "sim/street/street_chains.h"
+
+#include "core/free_slots.h"
+
 #include "core/grid.h"
 #include "sim/catalog/catalog.h"
 #include "sim/roads/geometry.h"
@@ -14,6 +21,8 @@
 #include <vector>
 
 namespace city {
+
+class StreetPlacement;
 
 // Segment flags (Roadcraft roads/flags.ts and network.ts).
 enum SegFlag : uint16_t {
@@ -90,6 +99,7 @@ struct RoadNode {
 	uint8_t crossing = CROSSING_NONE; // NodeCrossing
 	uint8_t uturn = UTURN_NONE; // NodeUturn
 	std::vector<LaneLink> links; // an arriving lane named here goes only where these say (save_links.h)
+	uint64_t generation = 0; // derived live-record identity; never saved or restored as an old observer identity
 };
 
 struct RoadSegment {
@@ -100,9 +110,11 @@ struct RoadSegment {
 	uint8_t zl = 0, zr = 0; // zone on the left (+u) and right side
 	uint16_t flags = 0;
 	std::vector<double> table; // arc length at t = i / ARC_STEPS
+	std::vector<double> lot_table; // the lot generator's separate station resolution, shared by overlapping cell views
 	double len = 0;
 	double retreat_a = 0, retreat_b = 0; // the mouths: metres before each node
 	float minx = 0, minz = 0, maxx = 0, maxz = 0;
+	uint64_t generation = 0; // derived live-record identity, outside authored fields
 };
 
 constexpr int ROAD_ARC_STEPS = 48;
@@ -113,15 +125,17 @@ class RoadNetwork {
 public:
 	std::vector<RoadNode> nodes;
 	std::vector<RoadSegment> segs;
-	std::vector<int> free_nodes, free_segs;
+	FreeSlots free_nodes, free_segs;
 	SpatialHash seg_hash, node_hash;
+	RegionVersions ground_regions; // physical/occupancy source footprint, independent of log consumption
+	uint64_t geometry_revision = next_generation(); // camera decks and physical footprint inputs
 	int version = 0; // bumps on every topology change
 	int player_sides = 0; // road sides the player zoned
 	const Catalog *cat = nullptr;
 	ChangeLog *log = nullptr;
 	RoadGrade grade; // the solved heights (sim/commands/road_grade_sync.cpp solves what each edit told it)
 
-	void init(const Catalog *c, ChangeLog *l);
+	void init(const Catalog *c, ChangeLog *l, StreetPlacement *placement = nullptr);
 	void clear();
 	const Profile &profile_of(int s) const { return cat->profile(segs[s].profile); }
 	int add_node(double x, double z, double y);
@@ -141,6 +155,7 @@ public:
 	int find_segment_near(double x, double z, double radius, double &t_out, double &d_out) const;
 	// The pieces of the road `seg` is one of, in order along it: a road is laid in pieces (lay_pieces) and to the player it is one thing.
 	std::vector<int> pieces_of(int seg) const;
+	RoadMetric metric(int seg) const { return metrics_.get(*this, seg); }
 	// Height of segment s at arc length `at` from node a: its solved profile (linear between its nodes until solved).
 	double seg_y(int s, double at) const;
 	// Where a ray (origin o, direction d, up to max_t) first comes down onto a road deck: the surface the player sees there
@@ -161,24 +176,36 @@ public:
 	// Recomputes the node's arm setbacks, bulb and joint flags (and its segments' mouths).
 	void refresh_node(int n);
 	void mark_segment(int s); // its road chunks and lot cells
+	void invalidate_furniture(int s); // placement dependencies changed without changing road/lot geometry
 	int alive_segments() const;
+	int alive_nodes() const { return alive_nodes_; }
+	int zoned_sides() const { return zoned_sides_; }
+	uint64_t node_generation(int node) const { return node >= 0 && size_t(node) < nodes.size() && nodes[size_t(node)].alive ? nodes[size_t(node)].generation : 0; }
+	uint64_t segment_generation(int segment) const { return segment >= 0 && size_t(segment) < segs.size() && segs[size_t(segment)].alive ? segs[size_t(segment)].generation : 0; }
+	uint64_t chain_revision(int node) const { return node >= 0 && size_t(node) < chain_revisions_.size() ? chain_revisions_[size_t(node)] : 0; }
+	std::vector<int> street_chain(int seed) const { return chains_.get(*this, seed); }
 
 	template <typename F>
 	void for_segments_near(double minx, double minz, double maxx, double maxz, F &&fn) const {
-		std::vector<int> seen;
-		seg_hash.query(float(minx), float(minz), float(maxx), float(maxz), [&](int s) {
-			if (!segs[s].alive || std::find(seen.begin(), seen.end(), s) != seen.end()) return;
+		seg_hash.query_unique(float(minx), float(minz), float(maxx), float(maxz), [&](int s) {
+			if (!segs[s].alive) return;
 			const RoadSegment &g = segs[s];
 			if (g.maxx < minx || g.minx > maxx || g.maxz < minz || g.minz > maxz) return;
-			seen.push_back(s);
 			fn(s);
 		});
 	}
 
 private:
+	RoadMetrics metrics_;
+	StreetChains chains_;
+	std::vector<uint64_t> chain_revisions_;
+	void chain_changed(int node);
+	StreetPlacement *placement_ = nullptr;
+	int alive_segments_ = 0, alive_nodes_ = 0, zoned_sides_ = 0;
+	void mark_shapes(double x0, double z0, double x1, double z1);
 	void update_bounds(int s);
 	template <typename T>
-	static void take_id(std::vector<T> &items, std::vector<int> &free_list, int id);
+	static void take_id(std::vector<T> &items, FreeSlots &free_list, int id);
 	bool bulb_clear(int n) const;
 };
 

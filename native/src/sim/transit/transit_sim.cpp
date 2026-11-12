@@ -1,5 +1,6 @@
 // Buses and the plan's rebuild (transit_sim.h). Trains and level crossings: rail_run.cpp.
 #include "sim/transit/transit_sim.h"
+#include "core/generation.h"
 
 #include "sim/traffic/kerb_stops.h"
 
@@ -49,29 +50,97 @@ bool is_end(const CityState &s, const TransitLine &l, const Bus &b) {
 	return (q && q->terminal) || b.next == 0 || b.next + 1 == int(l.stops.size());
 }
 
-// A bus sent on along the streets to its next stop that it can reach; stops with no lane or no way are passed over.
-void send_bus(CityState &s, const TransitLine &l, Bus &b, Vehicle &v) {
-	TransitRun &run = s.transit_run;
-	TrafficState &t = s.traffic;
-	for (size_t tries = 0; tries < 2 * l.stops.size(); tries++) {
-		const auto it = run.stop_lanes.find(l.stops[size_t(b.next)]);
-		if (it != run.stop_lanes.end()) {
-			std::vector<int> route;
-			if (it->second.ds == v.ds) route = { v.ds };
-			if (!route.empty() || (traffic::find_route(s, v.ds, it->second.ds, route) && route.size() >= 2)) {
-				route_set(t.route_pool, v.route, t.route_waste, route.data(), int(route.size()));
-				v.ri = 0;
-				v.goal_s = NO_GOAL_M;
-				const TrafficParams &p = s.catalog.traffic;
-				const DirSeg &d = t.g.ds[size_t(it->second.ds)];
-				v.bus_stop_at = std::min(it->second.at + p.classes[int(VehicleType::BUS)].length * 0.5f, d.len - d.stop_back - p.stop_margin_m); // short of the line
-				return;
-			}
-		}
-		turn_on(b, l);
-	}
-	v.bus_stop_at = -1;
+bool bus_lane_room(const CityState &s, int key, float start, float stop, bool reservations) {
+	const auto &p = s.catalog.traffic;
+	const float length = p.classes[int(VehicleType::BUS)].length;
+	auto overlaps = [&](float at, int type) { return at > start - length * 2 && at - p.classes[type].length < stop + length; };
+	for (int id : s.traffic.lane_vehicles[size_t(key)]) { const Vehicle &o = s.traffic.vehicles[size_t(id)]; if (overlaps(o.s, int(o.type))) return false; }
+	return !reservations || !s.traffic.birth_reservations.any(key, s.roads.segment_generation((key / MAX_LANES) / 2), [&](const BirthReservations::Claim &claim) { return overlaps(claim.at, claim.type); });
 }
+bool birth_lane_valid(const CityState &s, const Bus &b, const Vehicle &v) {
+	if (v.ds < 0 || size_t(v.ds) >= s.traffic.g.ds.size()) return false;
+	const DirSeg &d = s.traffic.g.ds[size_t(v.ds)];
+	if (!d.ok || v.lane < 0 || v.lane >= d.lanes) return false;
+	const auto origin = s.transit_run.stop_lanes.find(b.birth_stop);
+	return origin != s.transit_run.stop_lanes.end() && origin->second.ds == v.ds && origin->second.lane == v.lane && origin->second.at == b.birth_stop_at;
+}
+bool birth_room(const CityState &s, const Bus &b, const Vehicle &v) {
+	return bus_lane_room(s, v.ds * MAX_LANES + v.lane, v.s, b.birth_stop_at, false);
+}
+void materialize_birth(CityState &s, Vehicle &v, int id) {
+	v.bus_birth_pending = false;
+	traffic::micro_add(s.traffic, id); traffic::lane_add(s, v.ds * MAX_LANES + v.lane, id);
+	traffic::refresh_vehicle_pose(s, id);
+}
+void queue_bus_attempt(CityState &s, const TransitLine &l, Bus &b, Vehicle &v);
+
+class BusRouteRecipient final : public traffic::RouteRecipient {
+public:
+	BusRouteRecipient(const CityState &s, int id, const TransitLine &l, const Bus &b, const Vehicle &v, const StopLane *goal) :
+		id_(id), from_(v.ds), conn_(v.conn), ri_(v.ri), line_(l.id), next_(b.next), dir_(b.dir),
+		generation_(v.generation), request_(v.bus_route_request), route_(v.route.version), line_version_(s.transit.bus_route_version(l.id)),
+		missing_(goal == nullptr), goal_ds_(goal ? goal->ds : -1), goal_at_(goal ? goal->at : 0) {}
+	traffic::RecipientState state(const CityState &s) const override {
+		const Vehicle *v = vehicle(s); if (!v) return traffic::RecipientState::OBSOLETE;
+		const TransitRun &run = s.transit_run;
+		if (!run.built || run.roads_seen != uint64_t(s.roads.version) || run.bus_seen != s.transit.bus_revision || run.bus_stops_seen != s.transit.bus_stops_revision)
+			return traffic::RecipientState::WAIT_SOURCE;
+		const Bus &b = run.buses[size_t(v->bus)];
+		if (s.transit.bus_route_version(line_) != line_version_ || b.next != next_ || b.dir != dir_ || v->ds != from_ || v->conn != conn_ || v->ri != ri_ || v->route.version != route_)
+			return traffic::RecipientState::OBSOLETE;
+		if (v->bus_birth_pending && !birth_lane_valid(s, b, *v)) return traffic::RecipientState::OBSOLETE;
+		return traffic::RecipientState::READY;
+	}
+	bool complete(CityState &s, traffic::SearchStatus status, RouteDraft &prepared) override {
+		Vehicle *pv = vehicle(s); if (!pv) return true;
+		Vehicle &v = *pv; Bus &b = s.transit_run.buses[size_t(v.bus)];
+		const TransitLine *l = s.transit.line(b.line); if (!l || l->stops.empty()) { v.bus_route_request = 0; return true; }
+		const bool current = state(s) == traffic::RecipientState::READY;
+		if (status == traffic::SearchStatus::SOURCE_RETIRED || status == traffic::SearchStatus::TARGET_RETIRED || (status == traffic::SearchStatus::INVALIDATED && (!missing_ || !current))) {
+			v.bus_route_request = 0;
+			if (v.bus_birth_pending && (status == traffic::SearchStatus::SOURCE_RETIRED || !birth_lane_valid(s, b, v))) { traffic::despawn_vehicle(s, id_, false); return true; }
+			if (v.ds < 0 || size_t(v.ds) >= s.traffic.g.ds.size() || !s.traffic.g.ds[size_t(v.ds)].ok) { v.bus_stop_at = -1; return true; }
+			queue_bus_attempt(s, *l, b, v); return true; // retain goal/try count; waiting/invalidation is not a failed route
+		}
+		const bool found = status == traffic::SearchStatus::FOUND && prepared.size() >= (goal_ds_ == from_ ? 1 : 2);
+		const bool last = !found && b.route_tries + 1 >= 2 * l->stops.size();
+		if (v.bus_birth_pending && (found || last) && !birth_room(s, b, v)) return false; // no mutation while deferring placement
+		v.bus_route_request = 0;
+		if (found) {
+			s.traffic.route_pool.adopt(v.route, prepared); v.ri = 0; v.goal_s = NO_GOAL_M;
+			const auto &p = s.catalog.traffic; const DirSeg &d = s.traffic.g.ds[size_t(goal_ds_)];
+			v.bus_stop_at = std::min(goal_at_ + p.classes[int(VehicleType::BUS)].length * 0.5f, d.len - d.stop_back - p.stop_margin_m);
+			b.route_tries = 0;
+		} else {
+			++b.route_tries; turn_on(b, *l); // the last failed attempt also advances, as the original loop did
+			if (!last) { queue_bus_attempt(s, *l, b, v); return true; }
+			v.bus_stop_at = -1; b.route_tries = 0;
+		}
+		if (v.bus_birth_pending) materialize_birth(s, v, id_);
+		return true;
+	}
+private:
+	const Vehicle *vehicle(const CityState &s) const {
+		if (id_ < 0 || size_t(id_) >= s.traffic.vehicles.size()) return nullptr;
+		const Vehicle &v = s.traffic.vehicles[size_t(id_)];
+		if (!v.alive || v.generation != generation_ || v.bus_route_request != request_ || v.bus < 0 || size_t(v.bus) >= s.transit_run.buses.size()) return nullptr;
+		const Bus &b = s.transit_run.buses[size_t(v.bus)];
+		return b.vehicle == id_ && b.line == line_ ? &v : nullptr;
+	}
+	Vehicle *vehicle(CityState &s) const { return vehicle(static_cast<const CityState &>(s)) ? &s.traffic.vehicles[size_t(id_)] : nullptr; }
+	int id_, from_, conn_, ri_, line_, next_, dir_;
+	uint64_t generation_, request_, route_, line_version_;
+	bool missing_; int goal_ds_; float goal_at_;
+};
+void queue_bus_attempt(CityState &s, const TransitLine &l, Bus &b, Vehicle &v) {
+	const int id = int(&v - s.traffic.vehicles.data());
+	const auto stop = s.transit_run.stop_lanes.find(l.stops[size_t(b.next)]);
+	const StopLane *goal = stop == s.transit_run.stop_lanes.end() ? nullptr : &stop->second;
+	v.bus_route_request = next_generation();
+	s.traffic.route_admission.submit(s, {traffic::RoutePurpose::BUS, id}, {v.ds, goal ? goal->ds : -1}, std::make_unique<BusRouteRecipient>(s, id, l, b, v, goal));
+}
+// One captured attempt at a time; missing/unreachable stops retain the original 2*stops order across admission slices.
+void send_bus(CityState &s, const TransitLine &l, Bus &b, Vehicle &v) { b.route_tries = 0; queue_bus_attempt(s, l, b, v); }
 
 int spawn_bus(CityState &s, const TransitLine &l, Bus &b) {
 	const auto it = s.transit_run.stop_lanes.find(l.stops[size_t(b.next)]);
@@ -81,10 +150,7 @@ int spawn_bus(CityState &s, const TransitLine &l, Bus &b) {
 	const float len = p.classes[int(VehicleType::BUS)].length, start = std::max(len, lane.at - p.bus_approach_m);
 	TrafficState &t = s.traffic;
 	const int key = lane.ds * MAX_LANES + lane.lane;
-	for (int id : t.lane_vehicles[size_t(key)]) {
-		const Vehicle &o = t.vehicles[size_t(id)];
-		if (o.s > start - len * 2 && o.s - p.classes[int(o.type)].length < lane.at + len) return -1; // not into another vehicle
-	}
+	if (!bus_lane_room(s, key, start, lane.at, true)) return -1; // earlier pending births arbitrate like earlier proposals
 	const std::vector<uint32_t> &colours = p.line_colours;
 	const int colour = int(std::find(colours.begin(), colours.end(), l.colour) - colours.begin());
 	const int id = traffic::new_vehicle(s, VehicleType::BUS, uint8_t(LINE_PAINT + (colour < int(colours.size()) ? colour : 0)));
@@ -93,9 +159,11 @@ int spawn_bus(CityState &s, const TransitLine &l, Bus &b) {
 	v.lane = lane.lane;
 	v.s = start;
 	v.bus = int(&b - s.transit_run.buses.data());
-	v.micro = false; // micro_add registers it
-	traffic::micro_add(t, id);
-	traffic::lane_add(s, key, id);
+	v.micro = false;
+	v.bus_birth_pending = true; // identity/RNG reserved, no partially routed actor enters physics or publication
+	b.birth_stop = l.stops[size_t(b.next)]; b.birth_stop_at = lane.at;
+	t.vehicle_index.erase(id);
+	t.birth_reservations.put(key, s.roads.segment_generation(lane.ds / 2), id, v.s, int(v.type));
 	send_bus(s, l, b, v);
 	return id;
 }
@@ -133,10 +201,12 @@ void step_bus(CityState &s, Bus &b, float dt) {
 		return;
 	}
 	Vehicle &v = t.vehicles[size_t(b.vehicle)];
+	if (v.bus_birth_pending) return;
 	if (!v.micro && b.dwell == 0) { // driven out of the view: on by the timetable
 		traffic::despawn_vehicle(s, b.vehicle, true);
 		return;
 	}
+	if (v.bus_route_request) return; // old usable route stays physical; Pending never advances the destination again
 	const auto it = s.transit_run.stop_lanes.find(l->stops[size_t(b.next)]);
 	if (it == s.transit_run.stop_lanes.end()) {
 		turn_on(b, *l);
@@ -156,7 +226,7 @@ void step_bus(CityState &s, Bus &b, float dt) {
 }
 
 // A line's buses: those it had stay where they are, more wait at its terminal, up to its number.
-void place_buses(CityState &s, const TransitLine &l, std::vector<Bus> &was, std::vector<Bus> &out) {
+void place_buses(CityState &s, const TransitLine &l, std::vector<Bus> &was, const std::vector<size_t> *indices, std::vector<Bus> &out) {
 	const TrafficParams &p = s.catalog.traffic;
 	int served = 0, start = 0;
 	for (size_t i = 0; i < l.stops.size(); i++) {
@@ -166,8 +236,9 @@ void place_buses(CityState &s, const TransitLine &l, std::vector<Bus> &was, std:
 	}
 	if (served < 2) return;
 	int k = 0;
-	for (Bus &b : was) {
-		if (b.line != l.id || k >= l.vehicles) continue;
+	if (indices) for (size_t at : *indices) {
+		if (k >= l.vehicles) break;
+		Bus &b = was[at];
 		if (b.next >= int(l.stops.size())) {
 			b.next = start;
 			b.dir = 1;
@@ -185,18 +256,19 @@ void place_buses(CityState &s, const TransitLine &l, std::vector<Bus> &was, std:
 	}
 }
 
-// An edit of the plan or of the roads: every stop's lane found again, the lines' buses going on from where they are.
-void rebuild(CityState &s) {
+// Only the bus domain: existing fleet order within each line is retained, without a whole-fleet scan per line.
+void rebuild_buses(CityState &s, bool roads_changed) {
 	TransitRun &run = s.transit_run;
 	std::vector<Bus> was = std::move(run.buses);
+	std::unordered_map<int, std::vector<size_t>> by_line;
+	by_line.reserve(s.transit.lines().size());
+	for (size_t i = 0; i < was.size(); ++i) by_line[was[i].line].push_back(i);
 	run.buses.clear();
-	run.stop_lanes.clear();
-	for (const TransitStop &q : s.transit.stops) {
-		StopLane lane;
-		if (q.mode == TransitMode::BUS && lane_beside(s, q, lane)) run.stop_lanes[q.id] = lane;
+	for (const TransitLine &l : s.transit.lines()) {
+		if (l.mode != TransitMode::BUS) continue;
+		const auto found = by_line.find(l.id);
+		place_buses(s, l, was, found == by_line.end() ? nullptr : &found->second, run.buses);
 	}
-	for (const TransitLine &l : s.transit.lines)
-		if (l.mode == TransitMode::BUS) place_buses(s, l, was, run.buses);
 	for (const Bus &b : was)
 		if (b.line >= 0 && b.vehicle >= 0) { // its line went, or has fewer
 			s.traffic.vehicles[size_t(b.vehicle)].bus = -1;
@@ -207,18 +279,36 @@ void rebuild(CityState &s) {
 		if (b.vehicle < 0) continue;
 		Vehicle &v = s.traffic.vehicles[size_t(b.vehicle)];
 		v.bus = int(i);
-		if (const TransitLine *l = s.transit.line(b.line)) send_bus(s, *l, b, v);
+		const auto seen = run.bus_routes_seen.find(b.line);
+		if (roads_changed || seen == run.bus_routes_seen.end() || seen->second != s.transit.bus_route_version(b.line))
+			if (const TransitLine *l = s.transit.line(b.line)) send_bus(s, *l, b, v);
 	}
-	place_rails(s);
-	run.plan_seen = s.transit_revision;
-	run.roads_seen = uint64_t(s.roads.version);
-	run.built = true;
+	run.bus_routes_seen.clear();
+	for (const TransitLine &l : s.transit.lines()) if (l.mode == TransitMode::BUS) run.bus_routes_seen.emplace(l.id, s.transit.bus_route_version(l.id));
+}
+void refresh_stop_lanes(CityState &s) {
+	TransitRun &run = s.transit_run;
+	run.stop_lanes.clear();
+	for (const TransitStop &q : s.transit.stops()) {
+		StopLane lane;
+		if (q.mode == TransitMode::BUS && lane_beside(s, q, lane)) run.stop_lanes[q.id] = lane;
+	}
+	run.bus_stops_seen = s.transit.bus_stops_revision;
 }
 } // namespace
 
 void step(CityState &s, float dt) {
 	TransitRun &run = s.transit_run;
-	if (!run.built || run.plan_seen != s.transit_revision || run.roads_seen != uint64_t(s.roads.version)) rebuild(s);
+	const bool roads = !run.built || run.roads_seen != uint64_t(s.roads.version);
+	const bool buses = !run.built || run.bus_seen != s.transit.bus_revision;
+	const bool rails = !run.built || run.rail_seen != s.transit.rail_revision;
+	if (roads || run.bus_stops_seen != s.transit.bus_stops_revision) refresh_stop_lanes(s);
+	if (roads || buses) rebuild_buses(s, roads);
+	if (roads || rails) place_rails(s, rails);
+	run.bus_seen = s.transit.bus_revision;
+	run.rail_seen = s.transit.rail_revision;
+	run.roads_seen = uint64_t(s.roads.version);
+	run.built = true;
 	for (Bus &b : run.buses) {
 		step_bus(s, b, dt);
 		if (b.vehicle >= 0) s.traffic.vehicles[size_t(b.vehicle)].bus_doors = bus_door_share(s, b);
@@ -236,7 +326,7 @@ float hold_ahead(const CityState &s, const Vehicle &v, int ds, bool through, boo
 		const TrafficState &t = s.traffic;
 		hold = crossing_gap(s, ds * MAX_LANES + v.lane, v.s);
 		float offset = t.g.ds[size_t(ds)].len - v.s;
-		for (int k = v.ri + 1; k < v.route.len && k <= v.ri + CROSSING_LOOK_LANES; k++) {
+		for (int k = v.ri + 1; traffic::vehicle_route_goal_current(s, v) && k < v.route.len && k <= v.ri + CROSSING_LOOK_LANES; k++) {
 			const int next = route_at(t.route_pool, v.route, k);
 			const float gap = crossing_gap(s, next * MAX_LANES, 0); // every lane of a road has its crossing
 			if (gap >= 0) hold = hold < 0 ? offset + gap : std::min(hold, offset + gap);
@@ -265,8 +355,9 @@ void bus_gone(CityState &s, int vehicle) {
 	const TrafficParams &p = s.catalog.traffic;
 	traffic::bus_call_over(s, b.call);
 	b.vehicle = -1;
-	b.wait = p.bus_spacing_s;
+	b.wait = p.bus_spacing_s; b.route_tries = 0;
 	v.bus = -1;
+	if (v.bus_birth_pending) return; // a cancelled unpublished birth has not travelled away from a stop
 	const TransitLine *l = s.transit.line(b.line);
 	if (!l || b.next >= int(l->stops.size())) return;
 	const auto it = s.transit_run.stop_lanes.find(l->stops[size_t(b.next)]);

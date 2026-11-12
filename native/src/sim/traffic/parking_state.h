@@ -6,12 +6,15 @@
 
 #include "core/math.h"
 #include "sim/catalog/traffic_params.h"
+#include "core/ranked_ids.h"
 #include "sim/state/pose_buffer.h"
 #include "sim/traffic/manoeuvre.h"
 #include "sim/traffic/yard.h"
 
 #include <cstdint>
 #include <memory>
+#include <map>
+#include <utility>
 #include <unordered_map>
 #include <vector>
 
@@ -26,6 +29,7 @@ struct LaneSpot {
 };
 
 struct Bay {
+	uint64_t generation = 0; // actual slot birth, guards delayed route destinations against reuse
 	bool alive = false, kerb = false, dock = false;
 	bool way_read = false, reached = false; // its way out asked of the lot (reached: it has one, to a lane)
 	bool has_row = false; // a scenery car stands in it
@@ -68,6 +72,18 @@ struct LaneClosure {
 	int owner = -1;
 };
 
+// One closure record, indexed both by lane and by owner. Sequence order matches the original append order.
+class LaneClosures {
+public:
+	bool empty() const { return lanes_.empty(); }
+	void add(const std::vector<LaneClosure> &stretches);
+	void remove(int owner);
+	float ahead(int key, float at) const;
+private:
+	std::map<int, std::map<uint64_t, LaneClosure>> lanes_;
+	std::unordered_map<int, std::vector<std::pair<int, uint64_t>>> owners_;
+};
+
 enum class LorryPhase : uint8_t { COMING, WAITING, ARRIVING, DOCKED, LEAVING, JOINING };
 // Where a call for a lorry stops, for the probes.
 enum LorryCall { CALL_NO_DOCK, CALL_PLANNING, CALL_NO_WAY, CALL_NO_TRUCK, CALL_NO_ROUTE, CALL_SENT, LORRY_CALLS };
@@ -86,9 +102,13 @@ struct Lorry {
 	float t = 0, stay = 0, waited = 0;
 };
 
+struct ParkingRouteTicket { uint64_t identity = 0; }; // recipient-owned; weak pending markers expire on cancellation
+
 struct ParkingState {
 	std::vector<Bay> bays;
 	std::vector<int> free_bays;
+	RankedIds free_docks; // ascending bay-id rank, identical to the former global scan
+	std::unordered_map<int, int> lorries_by_source;
 	std::unordered_map<int, ParkSource> lots, kerbs; // by building, by segment
 	std::vector<int> lots_wanted, kerbs_wanted; // to read, nearest last
 	std::vector<int> rows; // the bays with a car standing in them
@@ -99,6 +119,8 @@ struct ParkingState {
 	float win_x = 0, win_z = 0;
 	bool looked = false, relook = false;
 	uint32_t next_row = 0;
+	std::weak_ptr<const ParkingRouteTicket> pending_lot_route, pending_lorry_route;
+	float lot_call_limit = 0; // captured maximum of the last lot look, resumed after successful route delivery
 	float clock = 0, owed = 0; // seconds since the last look; trips owed to the lots
 	int coming = 0, moving = 0; // cars on their way, and driving in or out of a bay now
 	int called = 0, parked_in = 0, left_by = 0; // probes: cars sent in, parked, driven out
@@ -106,6 +128,7 @@ struct ParkingState {
 	std::unordered_map<int, std::shared_ptr<const traffic::YardPlan>> yards; // by building, the ones planned
 	std::shared_ptr<traffic::YardPlanner> planner; // the yard being planned, a little each tick
 	int planner_building = -1;
+	int64_t planner_work_debt = 0; // aggregate overrun persists even when a planner completes or is retired
 	double plan_ms = 0, plan_slowest_ms = 0, plan_tick_ms = 0; // probes, never read by the simulation: this plan so far, the worst plan, the worst tick
 	float lorry_clock = 0;
 	int lorries_sent = 0, lorries_docked = 0, lorries_left = 0; // probes

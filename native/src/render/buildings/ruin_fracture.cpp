@@ -1,5 +1,6 @@
 // The cut of a building into pieces (ruin_fracture.h), on a job's thread.
 #include "render/buildings/ruin_fracture.h"
+#include "core/job_pool.h"
 
 #include "render/buildings/ruin_cells.h"
 #include "render/buildings/shell.h"
@@ -9,6 +10,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <deque>
+#include <map>
 #include <unordered_map>
 
 using namespace godot;
@@ -51,9 +54,10 @@ float longest_edge(const Tri &t, int &which) {
 }
 
 // Split along the longest edge until every edge is under `LONGEST_SIDE_M`.
-void divide(const Tri &whole, std::vector<Tri> &out, std::vector<Tri> &stack) {
+void divide(const Tri &whole, std::deque<Tri> &out, std::vector<Tri> &stack) {
 	stack.push_back(whole);
 	while (!stack.empty()) {
+		if (JobPool::cancelled()) return;
 		const Tri t = stack.back();
 		stack.pop_back();
 		int i = 0;
@@ -69,8 +73,9 @@ void divide(const Tri &whole, std::vector<Tri> &out, std::vector<Tri> &stack) {
 	}
 }
 
-void gather(const b40::Shell &s, bool panes, std::vector<Tri> &out, std::vector<Tri> &stack) {
+void gather(const b40::Shell &s, bool panes, std::deque<Tri> &out, std::vector<Tri> &stack) {
 	for (size_t i = 0; i + 2 < s.idx.size(); i += 3) {
+		if (JobPool::cancelled()) return;
 		Tri t;
 		for (int q = 0; q < 3; q++) {
 			const size_t at = size_t(s.idx[i + size_t(q)]);
@@ -83,7 +88,7 @@ void gather(const b40::Shell &s, bool panes, std::vector<Tri> &out, std::vector<
 	}
 }
 
-void gather_slab(const RuinSlab &ring, std::vector<Tri> &out, std::vector<Tri> &stack) {
+void gather_slab(const RuinSlab &ring, std::deque<Tri> &out, std::vector<Tri> &stack) {
 	auto corner = [](const Vector3 &p) { return Corner{ p, Vector3(0, 1, 0), SLAB, Vector2(), CONCRETE }; };
 	for (size_t i = 1; i + 1 < ring.size(); i++) divide(Tri{ { corner(ring[0]), corner(ring[i]), corner(ring[i + 1]) }, true }, out, stack);
 }
@@ -144,17 +149,18 @@ struct Writer {
 };
 
 // One cell's triangles written as a piece.
-RuinPiece write_piece(Writer &w, const std::vector<Tri> &tris, const uint32_t *order, size_t count, std::unordered_map<uint64_t, int> &edges) {
+RuinPiece write_piece(Writer &w, const std::vector<Tri> &tris, std::unordered_map<uint64_t, int> &edges) {
+	const size_t count = tris.size();
 	edges.clear();
 	for (size_t i = 0; i < count; i++) {
-		const Tri &t = tris[order[i]];
+		const Tri &t = tris[i];
 		if (!t.sheet) continue;
 		for (int e = 0; e < 3; e++) edges[edge_key(t.v[e].p, t.v[(e + 1) % 3].p)]++;
 	}
-	w.lo = tris[order[0]].v[0].p;
+	w.lo = tris[0].v[0].p;
 	w.hi = w.lo;
 	for (size_t i = 0; i < count; i++) {
-		const Tri &t = tris[order[i]];
+		const Tri &t = tris[i];
 		for (const Corner &c : t.v) w.put(c);
 		if (t.sheet) w.thicken(t, edges);
 	}
@@ -172,20 +178,26 @@ void copy_to(P &dst, const std::vector<T> &src) {
 	std::memcpy(dst.ptrw(), src.data(), src.size() * sizeof(T));
 }
 
-OwnedMesh bake(const Writer &w) {
+OwnedMesh bake(Writer &w) {
 	PackedVector3Array pv, pn;
 	PackedColorArray pc;
 	PackedVector2Array pu, pu2;
 	PackedByteArray ids;
 	copy_to(pv, w.pos);
+	std::vector<Vector3>().swap(w.pos);
 	copy_to(pn, w.nrm);
+	std::vector<Vector3>().swap(w.nrm);
 	copy_to(pc, w.col);
+	std::vector<Color>().swap(w.col);
 	copy_to(pu, w.uv);
+	std::vector<Vector2>().swap(w.uv);
 	copy_to(pu2, w.uv2);
+	std::vector<Vector2>().swap(w.uv2);
 	ids.resize(int64_t(w.piece.size() * sizeof(uint32_t)));
 	uint8_t *out = ids.ptrw();
 	for (size_t i = 0; i < w.piece.size(); i++)
 		for (uint32_t b = 0; b < sizeof(uint32_t); b++) out[i * sizeof(uint32_t) + b] = uint8_t(w.piece[i] >> (b * BITS_PER_BYTE) & PIECE_BYTE_MASK);
+	std::vector<uint32_t>().swap(w.piece);
 	Array arr;
 	arr.resize(RenderingServer::ARRAY_MAX);
 	arr[RenderingServer::ARRAY_VERTEX] = pv;
@@ -230,9 +242,12 @@ float winding_of(const std::vector<Tri> &tris) {
 } // namespace
 
 std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::Shell &glass, const std::vector<RuinSlab> &slabs, uint32_t seed) {
-	std::vector<Tri> tris, stack;
+	std::deque<Tri> tris;
+	std::vector<Tri> stack;
 	gather(walls, false, tris, stack);
+	if (JobPool::cancelled()) return {};
 	gather(glass, true, tris, stack);
+	if (JobPool::cancelled()) return {};
 	const float turn = winding_of(tris);
 	for (const RuinSlab &ring : slabs) gather_slab(ring, tris, stack);
 	auto out = std::make_shared<RuinMesh>();
@@ -243,34 +258,43 @@ std::shared_ptr<RuinMesh> fracture_shell(const b40::Shell &walls, const b40::She
 			lo = lo.min(c.p);
 			hi = hi.max(c.p);
 		}
+	std::vector<Tri>().swap(stack);
 	const Cells cells(lo, hi, seed);
-	std::vector<Tri> parts;
-	parts.reserve(tris.size() * 2);
-	for (const Tri &t : tris) cut(t, cells, parts, CUTS_MOST);
-	std::vector<int> cell_of(parts.size());
-	std::vector<uint32_t> order(parts.size());
-	for (size_t i = 0; i < parts.size(); i++) {
-		cell_of[i] = cells.of((parts[i].v[0].p + parts[i].v[1].p + parts[i].v[2].p) / 3.f);
-		order[i] = uint32_t(i);
+	std::vector<Tri> parts; // just one source triangle's cut tree
+	std::map<int, std::vector<Tri>> by_cell;
+	while (!tris.empty()) {
+		if (JobPool::cancelled()) return {};
+		const Tri t = tris.front();
+		tris.pop_front();
+		parts.clear();
+		cut(t, cells, parts, CUTS_MOST);
+		for (const Tri &part : parts) {
+			const int cell = cells.of((part.v[0].p + part.v[1].p + part.v[2].p) / 3.f);
+			by_cell[cell].push_back(part);
+		}
 	}
-	std::sort(order.begin(), order.end(), [&](uint32_t a, uint32_t b) { return cell_of[a] != cell_of[b] ? cell_of[a] < cell_of[b] : a < b; });
+	std::deque<Tri>().swap(tris);
+	std::vector<Tri>().swap(parts);
 	Writer w;
 	w.turn = turn;
 	std::unordered_map<int, int> piece_of;
 	std::unordered_map<uint64_t, int> edges;
 	out->lo = lo;
 	out->hi = hi;
-	for (size_t from = 0; from < order.size();) {
-		size_t to = from;
-		while (to < order.size() && cell_of[order[to]] == cell_of[order[from]]) to++;
+	for (auto cell = by_cell.begin(); cell != by_cell.end();) {
+		if (JobPool::cancelled()) return {};
 		w.id = uint32_t(out->pieces.size());
-		piece_of[cell_of[order[from]]] = int(w.id);
-		out->pieces.push_back(write_piece(w, parts, order.data() + from, to - from, edges));
+		piece_of[cell->first] = int(w.id);
+		out->pieces.push_back(write_piece(w, cell->second, edges));
 		out->hi = out->hi.max(w.hi);
-		from = to;
+		cell = by_cell.erase(cell); // completed cell storage does not coexist with the whole growing mesh writer
 	}
 	bond(*out, cells, piece_of);
+	cells.release_seeds();
+	std::unordered_map<int, int>().swap(piece_of);
+	std::unordered_map<uint64_t, int>().swap(edges);
 	out->vertices = int64_t(w.pos.size());
+	if (JobPool::cancelled()) return {};
 	out->mesh = bake(w);
 	return out;
 }

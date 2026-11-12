@@ -36,6 +36,7 @@ public:
 	void set_road_walls(bool on); // the sides of the cuttings of new roads: retaining walls, or a batter
 	bool road_walls();
 	godot::Array sign_cells(); // the plates to paint (project/render/sign_sheet.gd)
+	int64_t sign_epoch(); // shared C++/canvas atlas identity, including reset before an old job completes
 	godot::Dictionary street_counts();
 	godot::PackedVector3Array street_poles(); // where the player's poles stand (tests)
 	godot::Dictionary furniture_census();

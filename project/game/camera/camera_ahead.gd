@@ -21,8 +21,8 @@ func _init(rig: CityCamera) -> void:
 
 
 ## At any distance, never inside a building: how far the view must stand over the roof at its point, and the share of the line of sight to take off.
-func clear_of_buildings(base: Vector3, eye: Vector3, line: float, at_half: float) -> Vector2:
-	var free: PackedVector3Array = CityStore.query(&"eye_free", [base, eye, CameraProfile.eye_lift(_rig.cfg, at_half)])
+func clear_of_buildings(base: Vector3, eye: Vector3, line: float, at_half: float, role: StringName = &"clear_eye") -> Vector2:
+	var free: PackedVector3Array = _rig.physical_query(role, &"eye_free", [base, eye, CameraProfile.eye_lift(_rig.cfg, at_half)])
 	return Vector2(free[0].y - base.y, clampf(1.0 - free[1].distance_to(free[0]) / maxf(line, PARALLEL), 0.0, 1.0))
 
 
@@ -67,8 +67,8 @@ func coming() -> Vector2:
 	var ahead_s: float = cfg.look_ahead_s
 	var at := _rig.focus + _focus_rate * ahead_s
 	var at_half := clampf(_rig.half * exp(_half_rate * ahead_s), cfg.view_half_min, cfg.view_half_max)
-	var base := Vector3(at.x, _rig.seen_height(at.x, at.z) + CameraProfile.eye_lift(cfg, at_half), at.z)
+	var base := Vector3(at.x, _rig.seen_height(at.x, at.z, &"ahead_height") + CameraProfile.eye_lift(cfg, at_half), at.z)
 	var tilt := clampf(CameraProfile.profile_tilt(cfg, at_half) + _rig.far_tilt - deg_to_rad(cfg.far_tilt_deg), CameraProfile.min_tilt(cfg, at_half), deg_to_rad(cfg.max_tilt_deg))
 	var away := CameraProfile.view_distance(cfg, at_half)
 	var eye := base + Basis.from_euler(Vector3(-tilt, _rig.yaw + _yaw_rate * ahead_s, 0.0)).z * away
-	return clear_of_buildings(base, eye, away, at_half)
+	return clear_of_buildings(base, eye, away, at_half, &"clear_ahead")

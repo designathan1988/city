@@ -11,6 +11,8 @@
 #include "core/units.h"
 
 #include <cmath>
+#include <set>
+#include <tuple>
 
 namespace city {
 namespace traffic {
@@ -178,6 +180,7 @@ void build_dir(CityState &s, int seg) {
 	LaneGraph &g = s.traffic.g;
 	const RoadNetwork &net = s.roads;
 	if (seg < 0 || seg >= int(net.segs.size()) || seg * 2 + 1 >= int(g.ds.size())) return;
+	g.routing_revision = next_generation();
 	for (int dir = 0; dir < 2; dir++) {
 		DirSeg &d = g.ds[size_t(seg) * 2 + dir];
 		if (d.ok) g.lane_metres -= double(d.len) * d.lanes;
@@ -253,9 +256,38 @@ static bool link_node(CityState &s, int n, std::vector<int> &made) {
 	return degree >= 2;
 }
 
+// One source-owned projection shared by every vehicle route query, rebuilt only with physical connectors.
+void prepare_route_connections(CityState &s, const std::vector<int> &made) {
+	LaneGraph &g = s.traffic.g;
+	g.routing_revision = next_generation();
+	if (g.route_conns.size() < g.ds.size()) g.route_conns.resize(g.ds.size());
+	if (g.route_ready.size() < g.ds.size()) g.route_ready.resize(g.ds.size(), 0);
+	const TrafficParams &p = s.catalog.traffic;
+	const auto nonnegative = [](float v) { return std::isfinite(v) && v >= 0; };
+	const bool costs = nonnegative(p.bpr_gain) && std::isfinite(p.slot_m) && p.slot_m > 0
+		&& nonnegative(p.edge_extra_s) && nonnegative(p.turn_cost_right_s) && nonnegative(p.turn_cost_left_s)
+		&& nonnegative(p.turn_cost_uturn_s) && nonnegative(p.signal_cost_s);
+	std::set<int> sources;
+	for (int ci : made) sources.insert(g.conns[size_t(ci)].from_ds);
+	for (int from : sources) {
+		auto &out = g.route_conns[size_t(from)]; out.clear();
+		std::set<std::tuple<int, int, Turn>> seen;
+		each_conn_from(g, from, [&](int ci) {
+			const Conn &c = g.conns[size_t(ci)];
+			const DirSeg &d = g.ds[size_t(c.to_ds)];
+			const float base = d.len / std::max(d.speed, 1.f) + p.edge_extra_s;
+			// Nonnegative costs with positive base cannot create NaN as congestion grows. Keep malformed-cost lists intact.
+			if (!costs || !std::isfinite(base) || base <= 0 || seen.emplace(c.to_ds, c.node, c.turn).second) out.push_back(ci);
+		});
+		g.route_ready[size_t(from)] = 1;
+	}
+}
+
 void build_node(CityState &s, int n) {
 	std::vector<int> made;
-	if (link_node(s, n, made)) find_conflicts(s.traffic.g, made, std::max(2, int(s.catalog.traffic.conflict_samples)));
+	const bool linked = link_node(s, n, made);
+	prepare_route_connections(s, made);
+	if (linked) find_conflicts(s.traffic.g, made, std::max(2, int(s.catalog.traffic.conflict_samples)));
 }
 
 void build_lane_graph(CityState &s) {
@@ -263,6 +295,7 @@ void build_lane_graph(CityState &s) {
 	g = LaneGraph();
 	g.version = s.roads.version;
 	g.ds.assign(s.roads.segs.size() * 2, DirSeg());
+	g.route_conns.resize(g.ds.size()); g.route_ready.assign(g.ds.size(), 0);
 	g.node_conn.assign(s.roads.nodes.size(), -1);
 	g.lane_conn.assign(g.ds.size() * MAX_LANES, -1);
 	g.lane_metres = 0;
@@ -271,7 +304,10 @@ void build_lane_graph(CityState &s) {
 	std::vector<std::vector<int>> junctions;
 	for (int n = 0; n < int(s.roads.nodes.size()); n++) {
 		std::vector<int> made;
-		if (s.roads.nodes[n].alive && link_node(s, n, made)) junctions.push_back(std::move(made));
+		if (!s.roads.nodes[n].alive) continue;
+		const bool linked = link_node(s, n, made);
+		prepare_route_connections(s, made);
+		if (linked) junctions.push_back(std::move(made));
 	}
 	const int samples = std::max(2, int(s.catalog.traffic.conflict_samples));
 	auto conflicts = [&](size_t k) { find_conflicts(g, junctions[k], samples); };

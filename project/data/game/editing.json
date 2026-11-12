@@ -1,0 +1,4 @@
+{
+  "_doc": "Shared input iterator/sample credits per frame, not a calibrated time bound. Semantic native edits remain whole; all queued producers and barriers use the same owner.",
+  "input_units_per_frame": 64
+}

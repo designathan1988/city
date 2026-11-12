@@ -31,6 +31,7 @@ func sample(viewport: RID) -> void:
 	cost[SETUP] = RenderingServer.get_frame_setup_time_cpu()
 	for key: String in _zones:
 		var times: PackedFloat32Array = _frames[key]
+		_frames.erase(key) # relinquish the dictionary's COW root before mutating the fixed ring
 		times[_at] = float(cost.get(key, 0.0))
 		_frames[key] = times
 	_at += 1

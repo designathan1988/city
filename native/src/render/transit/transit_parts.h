@@ -60,8 +60,18 @@ struct TransitMeshes {
 // Lays a box: `base` the middle of its bottom, `dir` along its length, `tint` when it takes the line's colour.
 void transit_box(TransitMeshes &m, const TransitLook &look, int part, const godot::Vector3 &base, const V2 &dir, const godot::Vector3 &size, const godot::Color *tint = nullptr);
 
-// A track in stretches of look.run metres (a stretch a mesh of its own, so the view can leave the rest out).
-void transit_track_parts(const CityState &s, const TransitLook &look, const RailTrack &track, std::vector<TransitMeshes> &out);
+// One input segment setup, one short piece, one completed stretch, or completion per admitted call.
+// No Data/City pointer is retained; the caller restarts on changed source revisions.
+struct TransitTrackCursor {
+	size_t point = 1, stretch = 0;
+	int index = 0, pieces = 0;
+	float walked = 0, piece = 0;
+	V2 a, direction;
+	bool has_stretch = false;
+};
+enum class TransitTrackStep { MORE, READY, FINISHED };
+TransitTrackStep transit_track_step(const CityState &s, const TransitLook &look, const RailTrack &track,
+		TransitTrackCursor &cursor, TransitMeshes &out, size_t &stretch);
 void transit_stop_parts(const CityState &s, const TransitLook &look, const TransitStop &stop, TransitMeshes &out);
 
 } // namespace city

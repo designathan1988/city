@@ -61,6 +61,8 @@ var remembered: Dictionary = {}
 var active: ToolBase
 var pointer := Vector2.ZERO # where the mouse event being handled happened: the OS's cursor may already be elsewhere
 var _dragging := false
+var _tool_requests := 0
+var _desired_tool: Tool = Tool.NONE
 
 
 func _init(camera_rig: CityCamera) -> void:
@@ -81,6 +83,32 @@ func _ready() -> void:
 	add_child(preview)
 
 
+## Human tool requests enter the common operation order. Direct set_tool remains the synchronous scripted interface.
+func request_tool(next: Tool, p: Dictionary = {}) -> void:
+	_tool_requests += 1
+	_desired_tool = next
+	CityStore.perform_input(self, &"_select_requested_tool", [next, p])
+
+
+func _select_requested_tool(next: Tool, p: Dictionary) -> void:
+	_tool_requests -= 1
+	set_tool(next, p)
+
+
+func request_action(method: StringName, args: Array = []) -> void:
+	CityStore.perform_input(self, &"_deliver_action", [method, args])
+
+
+func _deliver_action(method: StringName, args: Array) -> void:
+	if active != null and active.has_method(method):
+		active.callv(method, args)
+
+
+func _requested_keeps_key(keycode: Key) -> bool:
+	var requested: Tool = _desired_tool if _tool_requests > 0 else tool
+	return requested == Tool.ROAD and RoadKeys.action_of(keycode) != ""
+
+
 func set_tool(next: Tool, p: Dictionary = {}) -> void:
 	if active:
 		active.exit()
@@ -90,6 +118,18 @@ func set_tool(next: Tool, p: Dictionary = {}) -> void:
 	preview.clear()
 	active = SCRIPTS[next].new(self, p) if SCRIPTS.has(next) else null
 	tool_changed.emit(tool, params)
+
+
+func seal_input() -> void:
+	if CityStore.in_input_operation():
+		_seal_input_now()
+	else:
+		CityStore.perform_input(self, &"_seal_input_now")
+
+
+func _seal_input_now() -> void:
+	if active != null and active.seal_input():
+		_dragging = false
 
 
 func last_param(t: Tool, key: String, fallback: Variant) -> Variant:
@@ -119,7 +159,7 @@ func hover_world(p: Vector3) -> void:
 
 
 func _process(delta: float) -> void:
-	if active and _dragging:
+	if active and _dragging and GameFlow.state != GameFlow.State.QUITTING:
 		active.tick(delta)
 
 
@@ -144,7 +184,7 @@ func step_road_height(metres: int) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouse:
 		pointer = event.position
-	if active == null:
+	if active == null or GameFlow.state == GameFlow.State.QUITTING:
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		_dragging = event.pressed

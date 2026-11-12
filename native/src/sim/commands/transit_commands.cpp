@@ -1,4 +1,4 @@
-// Public transport commands (transit_commands.h). The plan is small: each edit works on a copy and hands it to the journal.
+// Public transport commands: validate first, mutate the plan once, then journal only the changed records in order.
 #include "sim/commands/transit_commands.h"
 
 #include "sim/commands/edit_journal.h"
@@ -83,21 +83,21 @@ EditResult transit_place_stop(CityState &s, float x, float z) {
 	const Footway at = footway_at(s, V2(x, z), p.transit_stop_reach_m, false);
 	if (at.seg < 0) return refused("hint.transit.noStreet");
 	if (stop_near(s.transit, at.at, p.transit_pick_m, TransitMode::BUS, false)) return refused("hint.transit.taken");
-	TransitData next = s.transit;
+	TransitChange change(s.transit.next_id);
 	TransitStop stop;
 	stop.at = at.at;
 	stop.seg = at.seg;
-	transit_add_stop(next, stop);
-	j_transit(s, std::move(next));
+	transit_add_stop(s.transit, stop, &change);
+	j_transit(s, std::move(change));
 	return done();
 }
 
 EditResult transit_toggle_terminal(CityState &s, float x, float z) {
 	const TransitStop *stop = stop_near(s.transit, V2(x, z), s.catalog.traffic.transit_pick_m, TransitMode::BUS, false);
 	if (!stop) return refused("hint.transit.noStop");
-	TransitData next = s.transit;
-	transit_set_terminal(next, stop->id, !stop->terminal);
-	j_transit(s, std::move(next));
+	TransitChange change(s.transit.next_id);
+	transit_set_terminal(s.transit, stop->id, !stop->terminal, &change);
+	j_transit(s, std::move(change));
 	return done();
 }
 
@@ -106,7 +106,7 @@ EditResult transit_place_station(CityState &s, float x, float z, TransitMode mod
 	const TrackHit on = nearest_track(s.transit, V2(x, z), p.transit_pick_m * STATION_PICK, mode);
 	if (on.track < 0) return refused("hint.transit.noTrack");
 	if (stop_near(s.transit, on.at, p.transit_pick_m, mode, false)) return refused("hint.transit.taken");
-	TransitData next = s.transit;
+	TransitChange change(s.transit.next_id);
 	TransitStop stop;
 	stop.mode = mode;
 	stop.at = on.at;
@@ -116,8 +116,8 @@ EditResult transit_place_station(CityState &s, float x, float z, TransitMode mod
 		stop.has_entrance = way.seg >= 0;
 		stop.entrance = way.at;
 	}
-	transit_add_stop(next, stop);
-	j_transit(s, std::move(next));
+	transit_add_stop(s.transit, stop, &change);
+	j_transit(s, std::move(change));
 	return done();
 }
 
@@ -129,9 +129,9 @@ EditResult transit_lay_track(CityState &s, const std::vector<V2> &points, Transi
 	const TrafficParams &p = s.catalog.traffic;
 	// a train track crosses streets, it does not run down one; the metro is under them
 	if (mode == TransitMode::TRAIN && longest_on_road(run, ROAD_STEP_M, [&](const V2 &q) { return transit_on_road(s, q); }) > p.transit_along_road_m) return refused("hint.transit.trackOnRoad");
-	TransitData next = s.transit;
-	transit_add_track(next, mode, run);
-	j_transit(s, std::move(next));
+	TransitChange change(s.transit.next_id);
+	transit_add_track(s.transit, mode, run, &change);
+	j_transit(s, std::move(change));
 	return done();
 }
 
@@ -144,42 +144,42 @@ EditResult transit_make_line(CityState &s, const std::vector<int> &stops) {
 		if (!q || q->mode != first->mode) return refused("hint.transit.noStop");
 	}
 	const TrafficParams &p = s.catalog.traffic;
-	TransitData next = s.transit;
+	TransitChange change(s.transit.next_id);
 	int same = 1;
-	for (const TransitLine &l : next.lines) same += l.mode == first->mode ? 1 : 0;
+	for (const TransitLine &l : s.transit.lines()) same += l.mode == first->mode ? 1 : 0;
 	const char *mark = first->mode == TransitMode::METRO ? "M" : (first->mode == TransitMode::TRAIN ? "T" : "");
-	transit_add_line(next, first->mode, stops, p.line_colours, int(first->mode == TransitMode::BUS ? p.transit_bus_vehicles : p.transit_rail_vehicles), mark + std::to_string(same));
-	j_transit(s, std::move(next));
+	transit_add_line(s.transit, first->mode, stops, p.line_colours, int(first->mode == TransitMode::BUS ? p.transit_bus_vehicles : p.transit_rail_vehicles), mark + std::to_string(same), &change);
+	j_transit(s, std::move(change));
 	return done();
 }
 
 EditResult transit_remove_at(CityState &s, float x, float z) {
 	const float pick = s.catalog.traffic.transit_pick_m;
 	const V2 p(x, z);
-	TransitData next = s.transit;
-	if (const TransitStop *stop = stop_near(s.transit, p, pick, TransitMode::BUS, true)) transit_remove_stop(next, stop->id);
+	TransitChange change(s.transit.next_id);
+	if (const TransitStop *stop = stop_near(s.transit, p, pick, TransitMode::BUS, true)) transit_remove_stop(s.transit, stop->id, &change);
 	else {
 		const TrackHit track = nearest_track(s.transit, p, pick, TransitMode::BUS);
 		if (track.track < 0) return refused("hint.transit.noStop");
-		transit_remove_track(next, track.track);
+		transit_remove_track(s.transit, track.track, &change);
 	}
-	j_transit(s, std::move(next));
+	j_transit(s, std::move(change));
 	return done();
 }
 
 EditResult transit_remove_line(CityState &s, int id) {
 	if (!s.transit.line(id)) return refused("hint.transit.noStop");
-	TransitData next = s.transit;
-	transit_remove_line(next, id);
-	j_transit(s, std::move(next));
+	TransitChange change(s.transit.next_id);
+	transit_remove_line(s.transit, id, &change);
+	j_transit(s, std::move(change));
 	return done();
 }
 
 EditResult transit_set_line_vehicles(CityState &s, int id, int vehicles) {
 	if (!s.transit.line(id)) return refused("hint.transit.noStop");
-	TransitData next = s.transit;
-	transit_set_vehicles(next, id, vehicles, int(s.catalog.traffic.transit_most_vehicles));
-	j_transit(s, std::move(next));
+	TransitChange change(s.transit.next_id);
+	transit_set_vehicles(s.transit, id, vehicles, int(s.catalog.traffic.transit_most_vehicles), &change);
+	j_transit(s, std::move(change));
 	return done();
 }
 
@@ -192,7 +192,7 @@ bool transit_find_footway(const CityState &s, const V2 &p, float reach, V2 &at, 
 
 V2 transit_snap_track(const CityState &s, const V2 &p, TransitMode mode) {
 	const float reach = s.catalog.traffic.transit_join_m * JOIN_TIMES;
-	for (const RailTrack &track : s.transit.tracks) {
+	for (const RailTrack &track : s.transit.tracks()) {
 		if (track.mode != mode) continue;
 		for (const V2 &q : track.points)
 			if ((q - p).len() < reach) return q;

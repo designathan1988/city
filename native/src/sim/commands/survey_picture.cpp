@@ -24,14 +24,20 @@ Pixel on_picture(const SurveyView &v, const SurveyPoint &p) {
 } // namespace
 
 // How near the model comes at each pixel, the model laid over the picture triangle by triangle: what stands in front of a face hides it.
-void survey_depth(SurveyView &v, const std::vector<SurveyTriangle> &tris) {
+bool survey_depth(SurveyView &v, const SurveyTriangles &tris) {
 	v.nearest.assign(size_t(v.w) * size_t(v.h), -std::numeric_limits<float>::max());
 	for (const SurveyTriangle &t : tris) {
 		const Pixel a = on_picture(v, t[0]), b = on_picture(v, t[1]), c = on_picture(v, t[2]);
+		for (const Pixel &p : {a, b, c})
+			if (!std::isfinite(p.col) || !std::isfinite(p.row) || !std::isfinite(p.depth)) return false;
 		const float area = (b.col - a.col) * (c.row - a.row) - (b.row - a.row) * (c.col - a.col);
+		if (!std::isfinite(area)) return false;
 		if (area == 0) continue;
-		const int x0 = std::max(0, int(std::floor(std::min({ a.col, b.col, c.col })))), x1 = std::min(v.w - 1, int(std::ceil(std::max({ a.col, b.col, c.col }))));
-		const int y0 = std::max(0, int(std::floor(std::min({ a.row, b.row, c.row })))), y1 = std::min(v.h - 1, int(std::ceil(std::max({ a.row, b.row, c.row }))));
+		// Clip in floating point before narrowing; off-picture coordinates can exceed the signed integer range.
+		const int x0 = int(std::clamp(std::floor(double(std::min({a.col, b.col, c.col}))), 0.0, double(v.w)));
+		const int x1 = int(std::clamp(std::ceil(double(std::max({a.col, b.col, c.col}))), -1.0, double(v.w - 1)));
+		const int y0 = int(std::clamp(std::floor(double(std::min({a.row, b.row, c.row}))), 0.0, double(v.h)));
+		const int y1 = int(std::clamp(std::ceil(double(std::max({a.row, b.row, c.row}))), -1.0, double(v.h - 1)));
 		for (int y = y0; y <= y1; y++)
 			for (int x = x0; x <= x1; x++) {
 				const float px = float(x) + .5f, py = float(y) + .5f;
@@ -41,6 +47,7 @@ void survey_depth(SurveyView &v, const std::vector<SurveyTriangle> &tris) {
 				n = std::max(n, wa * a.depth + wb * b.depth + wc * c.depth);
 			}
 	}
+	return true;
 }
 
 // What the model shows at a point of its surface, seen along the normal; false for nothing there.

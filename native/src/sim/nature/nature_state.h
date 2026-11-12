@@ -5,6 +5,7 @@
 
 #include "sim/nature/ecology.h"
 #include "sim/nature/elements.h"
+#include "sim/nature/fog_paint.h"
 #include "sim/nature/ground_paint.h"
 #include "sim/nature/planted_trees.h"
 #include "sim/nature/sky.h"
@@ -14,25 +15,11 @@
 
 namespace city {
 
-// One dab of painted fog: how far it takes the fog towards full at its centre, how high the bank stands and how fast
-// the wind carries it through.
-struct FogDab {
-	float x = 0, z = 0, radius = 0, strength = 0, height = 0, speed = 0;
-	uint8_t erase = 0;
-};
-
-struct FogSample {
-	float density = 0, height = 0, speed = 0;
-};
-// The fog the dabs leave at a point: each in turn, a smooth falloff from its centre to its rim, adding towards one (or,
-// erasing, taking away); height and speed follow the dabs by what each laid.
-void fog_at(const std::vector<const FogDab *> &dabs, float x, float z, const FogDef &d, FogSample &out);
-
 struct NatureState {
 	Weather weather;
 	std::vector<PlacedCloud> clouds;
 	int32_t next_cloud = 1;
-	std::vector<FogDab> fog;
+	FogPaint fog;
 	GroundPaint ground;
 	PlantedTrees planted;
 	Elements elements;

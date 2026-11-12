@@ -26,6 +26,9 @@ var _doc: GLTFDocument
 var _quarter := 0
 var _mirrored := false
 var _target := {"x": 0.0, "z": 0.0, "y": 0.0, "rot": 0.0}
+var _materials: Array[StandardMaterial3D] = []
+var _capture_epoch := 0
+var _capture_ticket := 0
 
 
 func _init() -> void:
@@ -35,14 +38,16 @@ func _init() -> void:
 
 ## Its plan centred on the origin and its foot at 0. False when the file is no model.
 func load_file(path: String) -> bool:
-	_doc = GLTFDocument.new()
-	_state = GLTFState.new()
-	if _doc.append_from_file(path, _state) != OK:
+	var document := GLTFDocument.new()
+	var state := GLTFState.new()
+	if document.append_from_file(path, state) != OK:
 		return false
-	var model: Node3D = _doc.generate_scene(_state)
+	var model: Node3D = document.generate_scene(state)
 	if model == null:
 		return false
 	clear()
+	_doc = document
+	_state = state
 	_inner.add_child(model)
 	var box := _bounds(model)
 	if box.size == Vector3.ZERO:
@@ -55,11 +60,16 @@ func load_file(path: String) -> bool:
 	visible = true
 	_quarter = 0
 	_mirrored = false
-	_apply()
+	_prepare_materials()
+	_apply_pose()
 	return true
 
 
 func clear() -> void:
+	_capture_epoch += 1
+	_materials.clear()
+	_state = null
+	_doc = null
 	for child in _inner.get_children():
 		_inner.remove_child(child)
 		child.queue_free()
@@ -68,23 +78,31 @@ func clear() -> void:
 
 
 func place_on(x: float, z: float, y: float, rot: float) -> void:
+	if _target.x == x and _target.z == z and _target.y == y and _target.rot == rot:
+		return
+	_capture_epoch += 1
 	_target = {"x": x, "z": z, "y": y, "rot": rot}
-	_apply()
+	_apply_pose()
 
 
 func turn() -> void:
+	_capture_epoch += 1
 	_quarter = (_quarter + 1) % 4
-	_apply()
+	_apply_pose()
 
 
 func flip() -> void:
+	_capture_epoch += 1
 	_mirrored = not _mirrored
-	_apply()
+	_apply_pose()
 
 
 func fade(by: int) -> void:
-	opacity = clampf(snappedf(opacity + by * OPACITY_GRAIN, OPACITY_GRAIN), LEAST_OPACITY, 1.0)
-	_apply()
+	var next := clampf(snappedf(opacity + by * OPACITY_GRAIN, OPACITY_GRAIN), LEAST_OPACITY, 1.0)
+	if next == opacity:
+		return
+	opacity = next
+	_apply_opacity()
 
 
 func toggle() -> void:
@@ -95,23 +113,39 @@ func frame() -> Dictionary:
 	return _target
 
 
-func _apply() -> void:
+func _apply_pose() -> void:
 	position = Vector3(_target.x, _target.y, _target.z)
 	rotation.y = _target.rot + _quarter * QUARTER
 	_inner.scale = Vector3(1, 1, -1 if _mirrored else 1)
+
+
+## Each imported surface owns one appearance resource; moving and mirroring change transforms only.
+func _prepare_materials() -> void:
 	for mesh: MeshInstance3D in _meshes(_inner):
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		for i in mesh.mesh.get_surface_count():
 			var source: Material = mesh.mesh.surface_get_material(i)
 			var seen: StandardMaterial3D = source.duplicate() if source is StandardMaterial3D else StandardMaterial3D.new()
 			seen.cull_mode = BaseMaterial3D.CULL_DISABLED
-			seen.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if opacity < OPAQUE else BaseMaterial3D.TRANSPARENCY_DISABLED
-			seen.albedo_color.a = opacity
 			mesh.set_surface_override_material(i, seen)
+			_materials.push_back(seen)
+	_apply_opacity()
+
+
+func _apply_opacity() -> void:
+	for material in _materials:
+		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if opacity < OPAQUE else BaseMaterial3D.TRANSPARENCY_DISABLED
+		material.albedo_color.a = opacity
 
 
 ## The model as a surveyor reads it, in plan axes (x, y on the plan, z up): {triangles, views}. Takes a few frames: the pictures are drawn by the renderer.
 func capture() -> Dictionary:
+	if not loaded or _doc == null or _state == null:
+		return {"error": "hint.reference.failed"}
+	_capture_ticket += 1
+	var ticket := _capture_ticket
+	var epoch := _capture_epoch
+	var placement: Dictionary = _target.duplicate(true)
 	var copy := Node3D.new()
 	var model: Node3D = _doc.generate_scene(_state)
 	var turned := Node3D.new()
@@ -132,15 +166,27 @@ func capture() -> Dictionary:
 	var box0 := _bounds(model)
 	model.position = -Vector3(box0.get_center().x, box0.position.y, box0.get_center().z)
 	var box := _bounds(copy)
-	var triangles := _triangles(copy)
+	var triangles: Variant = CityStore.query(&"prepare_reference", [_mesh_input(copy)])
+	if triangles == null:
+		viewport.queue_free()
+		return {"error": "hint.reference.failed"}
 	var views: Array = []
 	for side: Vector3 in SIDES:
-		views.push_back(await _picture(viewport, camera, box, side))
+		var picture: Dictionary = await _picture(viewport, camera, box, side, epoch, ticket)
+		if picture.is_empty() or not _capture_valid(epoch, ticket):
+			if is_instance_valid(viewport):
+				viewport.queue_free()
+			return {"error": "hint.reference.failed"}
+		views.push_back(picture)
 	viewport.queue_free()
-	return {"triangles": triangles, "views": views}
+	return {"triangles": triangles, "views": views, "frame": placement}
 
 
-func _picture(viewport: SubViewport, camera: Camera3D, box: AABB, side: Vector3) -> Dictionary:
+func _capture_valid(epoch: int, ticket: int) -> bool:
+	return loaded and is_inside_tree() and epoch == _capture_epoch and ticket == _capture_ticket
+
+
+func _picture(viewport: SubViewport, camera: Camera3D, box: AABB, side: Vector3, epoch: int, ticket: int) -> Dictionary:
 	var top := side == Vector3.UP
 	var across := box.size.x if top or side.x == 0.0 else box.size.z
 	var tall := box.size.z if top else box.size.y
@@ -156,26 +202,40 @@ func _picture(viewport: SubViewport, camera: Camera3D, box: AABB, side: Vector3)
 	camera.look_at_from_position(camera.position, centre, Vector3.FORWARD if top else Vector3.UP)
 	for i in DRAWN_FRAMES:
 		await RenderingServer.frame_post_draw
+		if not _capture_valid(epoch, ticket) or not is_instance_valid(viewport) or not is_instance_valid(camera):
+			return {}
 	var image := viewport.get_texture().get_image()
+	if image == null:
+		return {}
 	image.convert(Image.FORMAT_RGBA8)
 	return {"rgba": image.get_data(), "w": image.get_width(), "h": image.get_height(), "centre": _plan(centre), "right": _plan(camera.global_basis.x), "up": _plan(camera.global_basis.y),
 		"out": _plan(side), "half_w": across / 2.0, "half_h": tall / 2.0}
 
 
-func _triangles(root: Node3D) -> PackedVector3Array:
-	var out := PackedVector3Array()
+func _mesh_input(root: Node3D) -> Array:
+	var out: Array = []
 	for mesh: MeshInstance3D in _meshes(root):
 		var to_world := mesh.global_transform
 		for i in mesh.mesh.get_surface_count():
 			var arrays: Array = mesh.mesh.surface_get_arrays(i)
 			var points: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 			var index: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
-			if index.is_empty():
-				for p: Vector3 in points:
-					out.push_back(_plan(to_world * p))
+			if points.is_empty() and index.is_empty():
+				continue
+			if not index.is_empty() and index.size() < points.size():
+				# A sparse surface should not allocate/transform all its unused vertices: this representation is smaller.
+				var selected := PackedVector3Array()
+				if selected.resize(index.size()) != OK:
+					return []
+				for at in index.size():
+					var k := index[at]
+					if k < 0 or k >= points.size():
+						return []
+					selected[at] = to_world * points[k]
+				out.push_back({"points": selected, "index": PackedInt32Array()})
 			else:
-				for k: int in index:
-					out.push_back(_plan(to_world * points[k]))
+				# Engine bulk transform once per vertex; the native root pins these packed arrays and validates references.
+				out.push_back({"points": to_world * points, "index": index})
 	return out
 
 

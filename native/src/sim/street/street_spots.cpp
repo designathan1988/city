@@ -14,7 +14,6 @@ using namespace furniture;
 namespace {
 // The pieces are looked for this far round a segment's bounds: the widest street's footway.
 constexpr float SEGMENT_PAD_M = 40.f;
-constexpr int CHAIN_GUARD = 4000; // no street runs through more segments
 constexpr int MIN_CORNER_ARMS = 2; // a street's name stands where another street meets it or it goes on
 
 FurnitureSpot piece_on(const RoadNetwork &net, FurnitureKind k, const FootwayHit &h) {
@@ -27,33 +26,7 @@ bool touches(const FurnitureSpot &a, const FurnitureSpot &b) {
 }
 } // namespace
 
-std::vector<int> street_chain(const RoadNetwork &net, int s0) {
-	int prof = net.segs[s0].profile;
-	const Profile &p = net.cat->profile(prof);
-	std::vector<int> out{ s0 };
-	for (int start_end : { 1, 0 }) {
-		int sg = s0, end = start_end;
-		for (int guard = 0; guard < CHAIN_GUARD; guard++) {
-			int n = end == 1 ? net.segs[sg].b : net.segs[sg].a;
-			Arm here = arm_of(net.segs[sg].q, p, end);
-			double best_dot = net.cat->tune.edit_street_cos;
-			int best = -1, best_end = 0;
-			for (int t : net.nodes[n].segs) {
-				if (std::count(out.begin(), out.end(), t) || net.segs[t].profile != prof || net.cat->profile(prof).ring) continue;
-				int t_end = net.segs[t].a == n ? 0 : 1;
-				if (p.one_way && t_end != (end == 1 ? 0 : 1)) continue;
-				Arm arm = arm_of(net.segs[t].q, p, t_end);
-				double d = -(arm.dx * here.dx + arm.dz * here.dz);
-				if (d > best_dot) { best_dot = d; best = t; best_end = t_end; }
-			}
-			if (best < 0) break;
-			out.push_back(best);
-			sg = best;
-			end = best_end == 0 ? 1 : 0;
-		}
-	}
-	return out;
-}
+std::vector<int> street_chain(const RoadNetwork &net, int s0) { return net.street_chain(s0); }
 
 FurnitureKind item_piece(ItemKind k) {
 	switch (k) {

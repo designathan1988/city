@@ -4,6 +4,7 @@
 // drawn vehicle when it gets there, and otherwise queues on the next lane with a fresh event. The pace is the near
 // model's (meso_alpha) and a full lane slows it (meso_crowd), so the camera does not change how fast the city drives.
 #include "sim/traffic/traffic_system.h"
+#include "core/generation.h"
 
 #include <algorithm>
 #include <cmath>
@@ -19,31 +20,30 @@ constexpr float MESO_INTERVAL_FLOOR_MS = 1.f, MIN_WAIT_S = 0.2f, QUEUE_RETRY_S =
 constexpr float FIT_M = 6.6f; // bumper to bumper: the jammed lane still lets one in every release
 constexpr float MIN_HANDOVER_MS = 2.f, FREE_HANDOVER_MS = 99.f, HANDOVER_SHARE = 0.7f;
 constexpr float HANDOVER_PAD_M = 4.f, HANDOVER_RETRY_S = 0.6f; // a tail still near the lane start blocks the handover
-constexpr size_t EVENT_HEAP_MIN = 64;
 
 void schedule(TrafficState &t, int id, double at) {
-	t.vehicles[size_t(id)].t_exit = at;
-	if (t.ev_n >= t.ev_t.size()) {
-		const size_t cap = std::max<size_t>(t.ev_t.size() * 2, EVENT_HEAP_MIN);
-		t.ev_t.resize(cap);
-		t.ev_v.resize(cap);
-	}
+	Vehicle &v = t.vehicles[size_t(id)];
+	v.t_exit = at; v.meso_event = next_generation();
+	if (t.ev_n == t.ev_t.size()) { t.ev_t.push_back(at); t.ev_v.push_back(id); t.ev_e.push_back(v.meso_event); }
 	size_t i = t.ev_n++;
 	while (i > 0) {
 		const size_t p = (i - 1) / 2;
 		if (t.ev_t[p] <= at) break;
 		t.ev_t[i] = t.ev_t[p];
 		t.ev_v[i] = t.ev_v[p];
+		t.ev_e[i] = t.ev_e[p];
 		i = p;
 	}
 	t.ev_t[i] = at;
 	t.ev_v[i] = id;
+	t.ev_e[i] = v.meso_event;
 }
 
 int pop_event(TrafficState &t) {
 	const int id = t.ev_v[0];
 	const double lt = t.ev_t[--t.ev_n];
 	const int lv = t.ev_v[t.ev_n];
+	const uint64_t le = t.ev_e[t.ev_n];
 	size_t i = 0;
 	for (;;) {
 		size_t c = 2 * i + 1;
@@ -52,23 +52,65 @@ int pop_event(TrafficState &t) {
 		if (t.ev_t[c] >= lt) break;
 		t.ev_t[i] = t.ev_t[c];
 		t.ev_v[i] = t.ev_v[c];
+		t.ev_e[i] = t.ev_e[c];
 		i = c;
 	}
 	t.ev_t[i] = lt;
 	t.ev_v[i] = lv;
+	t.ev_e[i] = le;
 	return id;
 }
 
-// Plans again from the lane the vehicle is on to its destination (the last segment of its route).
-bool replan(CityState &s, Vehicle &v) {
-	TrafficState &t = s.traffic;
-	const int goal = v.route.len > 0 ? route_at(t.route_pool, v.route, v.route.len - 1) : -1;
-	if (goal < 0 || v.ds < 0) return false;
-	std::vector<int> path;
-	if (!find_route(s, v.ds, goal, path) || path.empty()) return false;
-	route_set(t.route_pool, v.route, t.route_waste, path.data(), int(path.size()));
-	v.ri = 0;
-	t.reroutes++;
+void queue_replan(CityState &s, int id, int goal);
+class MesoRouteRecipient final : public RouteRecipient {
+public:
+	MesoRouteRecipient(const Vehicle &v, int id, int goal) : id_(id), from_(v.ds), lane_(v.lane), ri_(v.ri), goal_(goal),
+		generation_(v.generation), request_(v.meso_route_request), route_(v.route.version), event_(v.meso_event), due_(v.t_exit) {}
+	RecipientState state(const CityState &s) const override {
+		const Vehicle *v = actor(s);
+		if (!v || v->micro || v->off || v->ml < 0 || destination_pending(*v) || v->ds != from_ || v->lane != lane_ || v->ri != ri_ || v->route.version != route_ || v->meso_event != event_) return RecipientState::OBSOLETE;
+		return s.traffic_levels.vehicles_on ? RecipientState::READY : RecipientState::WAIT_SOURCE;
+	}
+	bool complete(CityState &s, SearchStatus status, RouteDraft &prepared) override {
+		if (!actor(s)) return true;
+		Vehicle &v = s.traffic.vehicles[size_t(id_)];
+		const bool current = state(s) == RecipientState::READY;
+		v.meso_route_request = 0;
+		if (!current) {
+			// A camera handover/new owner superseded the query. Resume only the exact event we removed, never its replacement.
+			if (!v.micro && !v.off && v.ml >= 0 && v.meso_event == event_) schedule(s.traffic, id_, due_);
+			return true;
+		}
+		if (status == SearchStatus::INVALIDATED) {
+			const auto &ds = s.traffic.g.ds;
+			if (from_ >= 0 && goal_ >= 0 && size_t(from_) < ds.size() && size_t(goal_) < ds.size() && ds[size_t(from_)].ok && ds[size_t(goal_)].ok) {
+				queue_replan(s, id_, goal_); return true; // same captured destination, not a failed trip
+			}
+		}
+		if (status != SearchStatus::FOUND || prepared.empty()) { despawn_vehicle(s, id_, false); return true; }
+		s.traffic.route_pool.adopt(v.route, prepared); v.ri = 0; ++s.traffic.reroutes;
+		if (v.route.len < 2) { despawn_vehicle(s, id_, false); return true; } // original replan succeeded, then lacked a next lane
+		schedule(s.traffic, id_, due_); // keep overdue priority instead of replacing it with current wall/simulation time
+		return true;
+	}
+private:
+	const Vehicle *actor(const CityState &s) const {
+		if (id_ < 0 || size_t(id_) >= s.traffic.vehicles.size()) return nullptr;
+		const Vehicle &v = s.traffic.vehicles[size_t(id_)];
+		return v.alive && v.generation == generation_ && v.meso_route_request == request_ ? &v : nullptr;
+	}
+	int id_, from_, lane_, ri_, goal_; uint64_t generation_, request_, route_, event_; double due_;
+};
+void queue_replan(CityState &s, int id, int goal) {
+	Vehicle &v = s.traffic.vehicles[size_t(id)]; v.meso_route_request = next_generation();
+	s.traffic.route_admission.submit(s, {RoutePurpose::MESO, id}, {v.ds, goal}, std::make_unique<MesoRouteRecipient>(v, id, goal));
+}
+// A removed due event is owned by its captured request until terminal delivery or an explicit handover.
+bool replan(CityState &s, int id) {
+	Vehicle &v = s.traffic.vehicles[size_t(id)];
+	const int goal = v.route.len > 0 ? route_at(s.traffic.route_pool, v.route, v.route.len - 1) : -1;
+	if (goal < 0 || v.ds < 0 || !vehicle_route_goal_current(s, v)) return false;
+	if (!v.meso_route_request) queue_replan(s, id, goal);
 	return true;
 }
 
@@ -111,6 +153,7 @@ void meso_clear(TrafficState &t) {
 	t.lane_last_exit.assign(lanes, 0.0);
 	t.ev_t.clear();
 	t.ev_v.clear();
+	t.ev_e.clear();
 	t.ev_n = 0;
 }
 
@@ -157,7 +200,7 @@ void meso_enter(CityState &s, int id, int key, bool spawned) {
 	micro_remove(t, id);
 	v.micro = false;
 	v.conn = -1;
-	v.pass = -1;
+	set_pass(t, id, -1);
 	v.ds = ds;
 	v.lane = key % MAX_LANES;
 	meso_link(s, id, key);
@@ -167,7 +210,7 @@ void meso_enter(CityState &s, int id, int key, bool spawned) {
 	v.s0 = spawned ? std::max(0.f, std::min(v.s, L)) : 0.f;
 	const float rest = spawned ? std::max(0.f, L - v.s0) : L;
 	float wait = 0;
-	int next = v.ri + 1 < v.route.len ? route_at(t.route_pool, v.route, v.ri + 1) : -1;
+	int next = vehicle_route_goal_current(s, v) && v.ri + 1 < v.route.len ? route_at(t.route_pool, v.route, v.ri + 1) : -1;
 	int ci = next >= 0 ? conn_toward(s, ds, v.lane, next) : -1;
 	if (ci < 0 && next >= 0) {
 		const int alt = lane_toward(s, ds, next, v.lane);
@@ -185,12 +228,29 @@ void meso_enter(CityState &s, int id, int key, bool spawned) {
 
 void meso_process(CityState &s) {
 	TrafficState &t = s.traffic;
-	while (t.ev_n > 0 && t.ev_t[0] <= t.time) {
+	bool routes_ready = true;
+	const int quantum = std::max(1, WorkBudget::from_count(s.catalog.traffic.route_quantum_work).left);
+	while (t.route_work.left > 0) {
+		const bool event_due = t.ev_n > 0 && t.ev_t[0] <= t.time;
+		const bool route_due = routes_ready && t.route_admission.pending();
+		if (!event_due && !route_due) break;
+		if (route_due && (!event_due || t.route_turn)) {
+			// Transfer credits from the one tick allowance; return only credits the route continuation did not consume.
+			const int granted = std::min(t.route_work.left, quantum);
+			t.route_work.left -= granted; WorkBudget slice(granted);
+			t.route_admission.advance(s, slice); t.route_work.left += slice.left;
+			if (slice.left > 0) routes_ready = false; // all remaining requests deferred; retry after their source's safe point
+			t.route_turn = false;
+			continue;
+		}
+		t.route_work.take(); t.route_turn = true;
 		const double at = t.ev_t[0];
+		const uint64_t event = t.ev_e[0];
 		const int id = pop_event(t);
 		if (id < 0 || id >= int(t.vehicles.size())) continue;
 		Vehicle &v = t.vehicles[size_t(id)];
-		if (!v.alive || v.micro || v.t_exit != at) continue;
+		if (!v.alive || v.micro || v.off || v.ml < 0 || v.t_exit != at || v.meso_event != event) continue;
+		if (v.meso_route_request) { t.route_admission.cancel(s, {RoutePurpose::MESO, id}); v.meso_route_request = 0; } // an explicit newer event superseded the popped debt
 		advance(s, id);
 	}
 }
@@ -206,7 +266,14 @@ void advance(CityState &s, int id) {
 	int ds = v.ds;
 	const int key = v.ml >= 0 ? v.ml : ds * MAX_LANES + v.lane;
 	if (ds < 0 || ds >= int(g.ds.size()) || !g.ds[size_t(ds)].ok) { despawn_vehicle(s, id, false); return; }
-	if (v.ri + 1 >= v.route.len) { despawn_vehicle(s, id, true); return; } // the lane's end is past its goal: arrived
+	if (!vehicle_route_goal_current(s, v)) {
+		if (destination_pending(v)) schedule(t, id, t.time + double(MIN_WAIT_S)); else despawn_vehicle(s, id, false);
+		return;
+	}
+	if (v.ri + 1 >= v.route.len) {
+		if (destination_pending(v)) schedule(t, id, t.time + double(MIN_WAIT_S)); else despawn_vehicle(s, id, true);
+		return;
+	} // the lane's end is past its goal: arrived
 	if (in_window(s, ds) && !t.lane_vehicles[size_t(key)].empty()) { // wait behind the drawn queue, never pass it unseen
 		materialize(s, key);
 		if (!v.alive || v.micro) return;
@@ -216,13 +283,11 @@ void advance(CityState &s, int id) {
 	int next = route_at(t.route_pool, v.route, v.ri + 1);
 	if (next < 0) { despawn_vehicle(s, id, false); return; }
 	int ci = take_conn(s, id, next);
+	if (ci < 0 && destination_pending(v)) { schedule(t, id, t.time + double(MIN_WAIT_S)); return; } // retain debt while its newer desired destination is admitted
 	if (ci < 0) {
-		if (!replan(s, v)) { despawn_vehicle(s, id, false); return; }
-		next = v.ri + 1 < v.route.len ? route_at(t.route_pool, v.route, v.ri + 1) : -1;
-		if (next < 0) { despawn_vehicle(s, id, false); return; }
-		ci = take_conn(s, id, next);
+		if (!replan(s, id)) despawn_vehicle(s, id, false);
+		return; // pending search owns the popped event; absence of an immediate path is not a lost vehicle
 	}
-	if (ci < 0) { despawn_vehicle(s, id, false); return; }
 	ds = v.ds;
 	if (light_for(s, ds) != Light::GREEN) { // the far model obeys the lights: wait for its next green
 		schedule(t, id, std::max(t.time + double(MIN_WAIT_S), next_green(s, ds, t.time)));

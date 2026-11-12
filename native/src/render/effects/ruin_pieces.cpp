@@ -46,16 +46,17 @@ void RuinPieces::reset() {
 	for (auto &[seed, f] : falls_) free_fall(f);
 	falls_.clear();
 	repaint_.clear();
+	inbox_->retired.store(true, std::memory_order_release);
 	inbox_ = std::make_shared<Inbox>(); // what a job still has in hand arrives nowhere
 }
 
-void RuinPieces::keep_only(const std::vector<Ruin> &ruins, const std::map<uint32_t, size_t> &scarred) {
+void RuinPieces::keep_only(const std::vector<Ruin> &ruins, const std::map<uint32_t, std::vector<Scar>> &scarred) {
 	for (auto it = falls_.begin(); it != falls_.end();) {
 		const uint32_t seed = it->first;
 		const Fall &f = it->second;
 		const auto mine = scarred.find(seed);
-		const bool stays = f.standing ? mine != scarred.end() && mine->second == f.scars.size()
-				: std::any_of(ruins.begin(), ruins.end(), [seed](const Ruin &r) { return r.seed == seed; });
+		const bool stays = f.standing ? mine != scarred.end() && mine->second == f.scars
+				: std::any_of(ruins.begin(), ruins.end(), [&](const Ruin &r) { return r == f.ruin; });
 		if (stays) {
 			++it;
 			continue;
@@ -66,7 +67,12 @@ void RuinPieces::keep_only(const std::vector<Ruin> &ruins, const std::map<uint32
 }
 
 bool RuinPieces::add(const CityState &s, const Ruin &r, float heap, bool falling) {
-	const auto held = falls_.find(r.seed);
+	auto held = falls_.find(r.seed);
+	if (held != falls_.end() && (held->second.standing ? !(held->second.ruin.record == r.record) : !(held->second.ruin == r))) {
+		free_fall(held->second);
+		falls_.erase(held);
+		held = falls_.end();
+	}
 	if (held != falls_.end() && held->second.standing) { // what was left of it comes down
 		Fall &f = held->second;
 		f.standing = false;
@@ -86,13 +92,24 @@ bool RuinPieces::add(const CityState &s, const Ruin &r, float heap, bool falling
 }
 
 void RuinPieces::scar(const CityState &s, const Ruin &r, const std::vector<Scar> &scars, bool falling) {
-	const auto held = falls_.find(r.seed);
+	auto held = falls_.find(r.seed);
+	if (held != falls_.end()) {
+		const Fall &old = held->second;
+		const bool extends = old.standing && old.ruin.record == r.record && old.scars.size() <= scars.size()
+				&& std::equal(old.scars.begin(), old.scars.end(), scars.begin());
+		if (!extends) {
+			free_fall(held->second);
+			falls_.erase(held);
+			held = falls_.end();
+		}
+	}
 	if (held != falls_.end()) {
 		Fall &f = held->second;
 		f.scars = scars;
 		f.falling = f.falling || falling;
 		if (!f.ready) return; // the job has the first of them: the rest wait for its pieces (adopt)
 		for (; f.scars_done < scars.size(); f.scars_done++) f.sim->scar(scars[f.scars_done]);
+		f.dirty = true;
 		return;
 	}
 	if (!maker_ || !material_.is_valid() || !s.jobs || !room()) return;
@@ -128,23 +145,32 @@ void RuinPieces::start(const CityState &s, Fall &f, float heap) {
 	const bool falling = f.falling, standing = f.standing;
 	const std::vector<Scar> scars = f.scars;
 	const float reach = 0.5f * std::hypot(r.w, r.d) + LOT_PAD_M, ground = s.terrain.height_at(r.x, r.z);
-	auto patch = std::make_shared<HeightPatch>(s.terrain.patch(r.x - reach, r.z - reach, r.x + reach, r.z + reach));
+	auto patch = std::make_shared<HeightPatch>(s.terrain.patch(r.x - reach, r.z - reach, r.x + reach, r.z + reach).regional());
 	const b40::Data *data = &s.buildings.designs;
-	s.jobs->submit(JobKey{ JobLane::RUINS, int64_t(r.seed) }, 0.f, [inbox = inbox_, maker = maker_, law = law_, data, patch, r, scars, standing, ground, heap, falling]() {
+	f.sequence = next_generation();
+	const uint64_t sequence = f.sequence;
+	const b40::BodyInput body = data->edited->input(r.record.body);
+	s.jobs->submit(JobKey{ JobLane::RUINS, int64_t(r.seed) }, 0.f, [inbox = inbox_, maker = maker_, law = law_, data, body, sequence, patch, r, scars, standing, ground, heap, falling]() {
+		if (inbox->retired.load(std::memory_order_acquire) || JobPool::cancelled()) return;
 		Done done;
+		done.sequence = sequence;
 		done.seed = r.seed;
-		done.cut = maker(*data, r.record, *patch);
+		done.cut = maker(*data, r.record, *patch, body);
+		if (JobPool::cancelled()) return;
 		if (done.cut && !done.cut->pieces.empty()) {
 			done.sim = std::make_shared<RuinSim>();
 			done.sim->begin(done.cut, r, ground, heap, law, standing);
 			for (const Scar &c : scars) {
+				if (JobPool::cancelled()) return;
 				done.sim->scar(c);
 				if (!falling) done.sim->settle();
 			}
 			done.scars_done = scars.size();
 			if (!falling) done.sim->settle();
 		}
+		if (JobPool::cancelled()) return;
 		std::lock_guard<std::mutex> lk(inbox->mutex);
+		if (inbox->retired.load(std::memory_order_acquire)) return;
 		inbox->done.push_back(std::move(done));
 	});
 }
@@ -212,20 +238,23 @@ void RuinPieces::upload(Fall &f) {
 }
 
 void RuinPieces::update(float dt, Puffs &puffs) {
+	std::vector<Done> completed;
 	{
 		std::lock_guard<std::mutex> lk(inbox_->mutex);
-		for (const Done &d : inbox_->done) {
-			auto it = falls_.find(d.seed);
-			if (it == falls_.end()) continue;
-			if (d.sim) {
-				adopt(it->second, d);
-				continue;
-			}
-			if (!it->second.standing) uncut_.push_back(Uncut{ it->second.ruin, it->second.falling }); // a design of its own stands whole
-			falls_.erase(it);
-		}
-		inbox_->done.clear();
+		completed.swap(inbox_->done);
 	}
+	// GPU allocation, simulation adoption and result destruction never hold the workers' publication mutex.
+	for (const Done &d : completed) {
+		auto it = falls_.find(d.seed);
+		if (it == falls_.end() || it->second.sequence != d.sequence) continue;
+		if (d.sim) {
+			adopt(it->second, d);
+			continue;
+		}
+		if (!it->second.standing) uncut_.push_back(Uncut{ it->second.ruin, it->second.falling });
+		falls_.erase(it);
+	}
+	completed.clear();
 	dust_left_ = DUST_A_FRAME;
 	clock_ = std::min(clock_ + dt, RIGID_STEP_S * float(STEPS_MOST));
 	while (clock_ >= RIGID_STEP_S) {

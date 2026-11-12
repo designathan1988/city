@@ -145,7 +145,8 @@ Dictionary yard_entry(int id, const traffic::YardPlan &p) {
 	Array reached;
 	reached.resize(traffic::YARD_REACHES);
 	reached.fill(0);
-	for (const traffic::DockWays &w : p.docks) {
+	for (const auto &entry : p.docks) {
+		const traffic::DockWays &w = *entry;
 		ways += w.gate >= 0 ? 1 : 0;
 		reached[w.reached] = int(reached[w.reached]) + 1;
 	}
@@ -224,7 +225,8 @@ Dictionary CityProbes::park_sample() {
 	for (int id : s.traffic.micro_list) trucks += s.traffic.vehicles[size_t(id)].type == VehicleType::TRUCK ? 1 : 0;
 	for (const auto &y : pk.yards) {
 		gates += int(y.second->gates.size());
-		for (const traffic::DockWays &w : y.second->docks) {
+		for (const auto &entry : y.second->docks) {
+			const traffic::DockWays &w = *entry;
 			planned++;
 			ways += w.gate >= 0 ? 1 : 0;
 			reached[w.reached] = int(reached[w.reached]) + 1;

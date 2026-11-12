@@ -36,9 +36,16 @@ Kind kind_of(int zone) {
 
 void membranes(const Data &data, Body &b, Xoshiro128 &r) {
 	if (b.roof < 0) return;
+	const int8_t finish = b.paints[size_t(b.roof)].finish;
+	if (finish != FIN_TILE && finish != FIN_SLATE && finish != FIN_METAL) return;
+	membranes(data.color("membrane"), b, r);
+}
+
+void membranes(const Paint &membrane, Body &b, Xoshiro128 &r) {
+	if (b.roof < 0) return;
 	int8_t f = b.paints[size_t(b.roof)].finish;
 	if (f != FIN_TILE && f != FIN_SLATE && f != FIN_METAL) return;
-	int m = b.add_paint(Paint{ FIN_ROOFING, nudge(data.color("membrane").rgb, r, MEMBRANE_NUDGE) });
+	int m = b.add_paint(Paint{ FIN_ROOFING, nudge(membrane.rgb, r, MEMBRANE_NUDGE) });
 	for (Volume &v : b.volumes)
 		if (closed_roof(v.roof) && v.roof_paint < 0) v.roof_paint = m;
 }

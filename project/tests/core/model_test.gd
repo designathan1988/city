@@ -183,6 +183,7 @@ func _picture(tools: ToolController) -> void:
 	tools.add_child(studio)
 	var got := {}
 	studio.pictured.connect(func(key: String, picture: Texture2D) -> void: got[key] = picture)
+	studio.set_wanted(get_instance_id(), [HOUSE])
 	studio.ask(HOUSE, CityStore.query(&"model_bytes", [HOUSE]))
 	for i in WAIT_FRAMES:
 		if got.has(HOUSE):

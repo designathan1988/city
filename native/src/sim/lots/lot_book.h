@@ -2,18 +2,25 @@
 // the order a building reads them. They are saved and stand beside the lots the streets propose (lot_cache.h), which give way to them.
 #pragma once
 
+#include "core/table_delta.h"
+#include "core/bounds_index.h"
+
+#include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 namespace city {
 
 struct LotPoint {
 	double x = 0, z = 0;
+	bool operator==(const LotPoint &o) const { return x == o.x && z == o.z; }
 };
 
 struct PlayerLot {
 	int id = 0;
 	std::vector<LotPoint> corners; // front start, front end, then round: the back on the left of the front
 	int zone = 0; // 0: not zoned
+	bool operator==(const PlayerLot &o) const { return id == o.id && zone == o.zone && corners == o.corners; }
 };
 
 // Where a building can stand on a lot: the middle of its rectangle, its width along the front, its depth and which way it faces.
@@ -21,18 +28,47 @@ struct LotStand {
 	double x = 0, z = 0, w = 0, d = 0, rot = 0;
 };
 
-struct LotBook {
-	std::vector<PlayerLot> lots;
+struct LotGeometry {
+	Bounds2 bounds;
+	LotStand stand;
+	std::vector<int> triangles;
+};
+
+class LotBook {
+public:
 	int next_id = 1;
-	void clear() {
-		lots.clear();
-		next_id = 1;
-	}
-	bool empty() const { return lots.empty(); }
-	PlayerLot *find(int id);
+	void clear();
+	bool empty() const { return lots_.empty(); }
+	const std::vector<PlayerLot> &records() const { return lots_; }
 	const PlayerLot *find(int id) const;
+	const LotGeometry *geometry(int id) const;
+	void restore(std::vector<PlayerLot> lots, int next);
+	void apply(const TableDelta<PlayerLot> &change, bool forward);
+	std::vector<int> overlapping(const Bounds2 &bounds) const; // record order, same tie precedence as the book
+	std::vector<int> stands_in(int64_t cell) const;
 	// The lot a point is in; 0 on none.
 	int at(double x, double z) const;
+
+private:
+	std::vector<PlayerLot> lots_;
+	std::unordered_map<int, size_t> positions_;
+	std::unordered_map<int, LotGeometry> geometry_;
+	std::unordered_map<int64_t, std::vector<int>> stand_cells_;
+	BoundsIndex bounds_;
+	void prepare(const PlayerLot &lot);
+	void forget(int id);
+	void order(std::vector<int> &ids) const;
+};
+
+struct LotsChange {
+	int next_before = 1, next_after = 1;
+	TableDelta<PlayerLot> lots;
+	explicit LotsChange(int next = 1) : next_before(next), next_after(next) {}
+	bool empty() const { return lots.empty() && next_before == next_after; }
+	void apply(LotBook &book, bool forward) const {
+		book.apply(lots, forward);
+		book.next_id = forward ? next_after : next_before;
+	}
 };
 
 // How a lot is cut: across the front, parallel to it, or along a line of two points.

@@ -188,7 +188,9 @@ void build_junction(CityState &s, int n) {
 	if (n < 0 || n >= int(s.roads.nodes.size())) return;
 	if (n >= int(g.junctions.size())) g.junctions.resize(size_t(n) + 1);
 	Junction &j = g.junctions[size_t(n)];
+	const Control before = j.ctl;
 	j = Junction();
+	s.traffic.signal_nodes.erase(n);
 	if (n >= int(g.node_conn.size())) g.node_conn.resize(size_t(n) + 1, -1);
 	std::vector<Arm> arms = arms_of(s, n);
 	// the approaches start clean: an old stage, rank or stop line must not outlive the rebuild
@@ -199,6 +201,8 @@ void build_junction(CityState &s, int n) {
 		for (const Arm &a : arms)
 			if (a.in >= 0) g.ds[a.in].stop_back = std::min(s.catalog.furniture.crossing.stop_back(), g.ds[a.in].len * STOP_SETBACK_SHARE);
 	j.ctl = control_of(s, n);
+	if (before != j.ctl) g.routing_revision = next_generation();
+	if (j.ctl == Control::SIGNAL) s.traffic.signal_nodes.insert(n);
 	if (j.ctl == Control::SIGNAL) make_stages(s, n, arms, j);
 	if (j.ctl != Control::PRIORITY) return;
 	std::vector<int> order;
@@ -255,6 +259,8 @@ Control control_of(const CityState &s, int n) {
 }
 
 void build_junctions(CityState &s) {
+	s.traffic.g.routing_revision = next_generation();
+	s.traffic.signal_nodes.clear();
 	s.traffic.g.junctions.assign(s.roads.nodes.size(), Junction());
 	for (int n = 0; n < int(s.roads.nodes.size()); n++)
 		if (s.roads.nodes[n].alive) build_junction(s, n);
@@ -337,7 +343,7 @@ int connector_to(const CityState &s, int ds, int lane, int next) {
 }
 
 int pick_connector(const CityState &s, const Vehicle &v) {
-	if (v.ds < 0 || v.ri + 1 >= v.route.len) return -1;
+	if (v.ds < 0 || v.ri + 1 >= v.route.len || !vehicle_route_goal_current(s, v)) return -1;
 	return connector_to(s, v.ds, v.lane, route_at(s.traffic.route_pool, v.route, v.ri + 1));
 }
 

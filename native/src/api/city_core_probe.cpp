@@ -1,5 +1,6 @@
 // Probes for the tests of what the traffic does (traffic_probe) and of the captures' sites. The render's own probes are city_core_probe_render.cpp.
 #include "api/city_core.h"
+#include "api/probe_neighbors.h"
 
 #include "core/math.h"
 #include "core/units.h"
@@ -81,19 +82,18 @@ Array crossing_kerb(const CityState &s, int n) {
 // Two bodies side by side (their centres two radii apart, to the rounding of the sum) touch; they do not overlap.
 constexpr float TOUCH_EPS_M = 1e-3f;
 Array people_overlaps(const TrafficState &t, float touch) {
-	std::vector<int> alive;
-	for (int i = 0; i < int(t.peds.size()); i++)
-		if (t.peds[size_t(i)].alive) alive.push_back(i);
+	const ProbeNeighbors near(t);
 	int walking = 0, waiting = 0;
-	for (int i : alive) {
+	for (int i = 0; i < int(t.peds.size()); i++) {
 		const Pedestrian &a = t.peds[size_t(i)];
-		for (int j : alive) {
+		if (!a.alive) continue;
+		near.each(i, touch, [&](int j) {
 			const Pedestrian &b = t.peds[size_t(j)];
 			const float dx = a.cur.x - b.cur.x, dz = a.cur.z - b.cur.z;
-			if (i == j || dx * dx + dz * dz >= touch * touch) continue;
+			if (dx * dx + dz * dz >= touch * touch) return true;
 			(a.mode == PedMode::WAIT ? waiting : walking)++;
-			break;
-		}
+			return false;
+		});
 	}
 	Array out;
 	out.push_back(walking);

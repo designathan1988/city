@@ -5,9 +5,11 @@
 
 #include "sim/buildings/b40/data.h"
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace city::b40 {
@@ -46,19 +48,26 @@ Purpose purpose_of(const Body &b, int fn, uint32_t seed);
 // A storey's floor: stone where people pass, wood or porcelain at home, one kind for the whole building.
 FloorFinish floor_finish(Purpose p, int level, uint32_t seed);
 
+using FloorRef = std::shared_ptr<const FloorInterior>;
+using FloorMemo = std::function<FloorRef(const std::string &, const std::function<FloorRef()> &)>;
+
 class Interior {
 public:
-	Interior(const Data &data, const Body &body, Purpose purpose) : data_(data), body_(body), purpose_(purpose) {}
+	Interior(const Data &data, const Body &body, Purpose purpose, FloorMemo memo = {}) : data_(data), body_(body), purpose_(purpose), memo_(std::move(memo)) {}
 	const FloorInterior &at(int level);
 	Purpose purpose() const { return purpose_; }
+	const std::string &floor_type(int level) { at(level); return *levels_.at(level).type; }
 
 private:
 	std::string type_of(int level) const; // what the floor reads of its level: levels alike are one type
 	const Data &data_;
 	const Body &body_;
 	Purpose purpose_;
-	std::unordered_map<std::string, std::unique_ptr<FloorInterior>> types_;
-	std::unordered_map<int, const FloorInterior *> levels_;
+	FloorMemo memo_;
+	struct Level { const FloorInterior *floor; const std::string *type; };
+	std::unordered_map<std::string, FloorRef> types_;
+	std::unordered_map<int, Level> levels_;
+	FloorRef prepare(int level) const;
 };
 
 } // namespace city::b40

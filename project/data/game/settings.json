@@ -194,6 +194,7 @@
   "max_fps": 60,
   "background_fps": 30
  },
+ "detail_hysteresis_share": 0.1,
  "governor": {
   "window": 90,
   "settle": 60,

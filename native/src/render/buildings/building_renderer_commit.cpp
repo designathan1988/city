@@ -149,7 +149,8 @@ void BuildingRenderer::commit_one(Built &b) {
 	auto found = chunks_.find(b.key);
 	if (found == chunks_.end()) return; // dropped by the stream meanwhile (drop_chunk also forgets the request)
 	Chunk &ch = found->second;
-	const bool current = b.version == ch.version; // else the chunk changed after the job read it: stays stale
+	const bool current = b.version == ch.version;
+	if (!current) return; // an obsolete input must never replace the displayed representation
 	ch.key = b.key;
 	signatures_.set_chunk(b.key, b.signatures);
 	signatures_.visible(b.key, ch.shown);
@@ -251,6 +252,7 @@ void BuildingRenderer::commit_super(SuperBuilt &b) {
 void BuildingRenderer::restyle_chunk(int64_t key) {
 	auto found = chunks_.find(key);
 	if (found == chunks_.end()) return; // not streamed: nothing drawn to change
+	invalidate_chunk(state_ ? state_->jobs.get() : nullptr, key);
 	Chunk &ch = found->second;
 	ch.version++;
 	ch.stale[LEVEL_NEAR] = ch.built[LEVEL_NEAR];

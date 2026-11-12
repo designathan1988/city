@@ -23,6 +23,7 @@ float felt_pressure(const BlastParams &p, const Airblast &a);
 // The farthest ground distance (m) where the overpressure still reaches `kpa`; 0 when even the nearest curve point is lower.
 float range_at_pressure(const BlastParams &p, float kg, float kpa);
 // Probability (0..1) of death, and of a ruptured eardrum, at an overpressure.
+void prepare_responses(BlastParams &p); // catalog load; immutable log-normal response fits
 float lethality(const BlastParams &p, float pressure_kpa);
 float eardrum(const BlastParams &p, float pressure_kpa);
 // How far the bang still startles (140 dB re 20 uPa), capped by the data's window.
