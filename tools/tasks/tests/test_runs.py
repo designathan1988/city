@@ -1,4 +1,4 @@
-# runs: run folders past KEPT_RUNS are pruned by whichever run holds the prune lock; runs that start together never trip
+# runs: run folders past their bound (kept_runs, suites.json lifecycle) are pruned by whichever run holds the prune lock; runs that start together never trip
 # over each other's pruning; each run writes its tasks' times in its own folder and reads every kept run's, newest winning.
 import json
 import shutil
@@ -34,14 +34,14 @@ class RunsTest(unittest.TestCase):
         return made
 
     def test_prunes_past_kept(self):
-        old = self.old_runs(runs.KEPT_RUNS + 3)
+        old = self.old_runs(runs.kept_runs() + 3)
         runs.RunRecord(self.root, "one").close()
         left = [p for p in self.base.iterdir() if p.is_dir()]
-        self.assertEqual(len(left), runs.KEPT_RUNS)
+        self.assertEqual(len(left), runs.kept_runs())
         self.assertFalse(any(d.exists() for d in old[:4]), "the oldest go, the new run's own folder counted")
 
     def test_runs_started_together_prune_without_error(self):
-        old = self.old_runs(runs.KEPT_RUNS + OLD_EXTRA)
+        old = self.old_runs(runs.kept_runs() + OLD_EXTRA)
         errors: list[BaseException] = []
         gate = threading.Barrier(STARTS)
 

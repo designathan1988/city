@@ -1,5 +1,6 @@
 # The result store, keyed by content: task results with their logs and outputs (dist/cache/tasks/<task>/<key[:2]>/<key>/),
-# in-process sub-results of tools (memo), and shared directories built once under a lock (materialize).
+# in-process sub-results of tools (memo), and shared directories built once under a lock (materialize). Every entry written is
+# handed to the store's ledger (ledger.py), which keeps the store inside its bound; every hit marks its entry used.
 from __future__ import annotations
 
 import hashlib
@@ -12,28 +13,22 @@ import time
 from pathlib import Path
 from typing import Callable
 
+from . import outputs
+from .files import remove, size_of, tmp_path, write_atomic
+from .ledger import COMPLETE, Ledger, used
 from .locks import FileLock
 from .task import ROOT, Result
+
+__all__ = ["STORE", "HELD", "Cache", "memo", "materialize", "store_path", "remove", "write_atomic", "safe", "place", "ledger",
+           "size_of"]
 
 STORE = "dist/cache/tasks"
 HELD = "dist/held"  # a file another process holds (an open game's DLL) is moved aside here, never overwritten
 LOCK_POLL_S = 0.1  # how often a materialize waiting for another builder looks again, inside its deadline
-COMPLETE = ".complete"
 
 
 def safe(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]", "_", name)
-
-
-def _tmp(path: Path) -> Path:
-    return path.with_name(f"{path.name}.tmp-{os.getpid()}-{threading.get_ident()}")
-
-
-def write_atomic(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = _tmp(path)
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
 
 
 def _same_file(a: Path, b: Path) -> bool:
@@ -50,13 +45,6 @@ def _digest(p: Path) -> str:
     return h.hexdigest()
 
 
-def remove(path: Path) -> None:
-    if path.is_dir() and not path.is_symlink():
-        shutil.rmtree(path)
-    elif path.exists() or path.is_symlink():
-        path.unlink()
-
-
 def place(src: Path, dst: Path, root: Path) -> None:
     """Puts a copy of `src` at `dst`. A file already equal stays; a file held by another process is moved aside first."""
     if src.is_dir():
@@ -66,7 +54,7 @@ def place(src: Path, dst: Path, root: Path) -> None:
     if _same_file(src, dst):
         return
     dst.parent.mkdir(parents=True, exist_ok=True)
-    tmp = _tmp(dst)
+    tmp = tmp_path(dst)
     shutil.copy2(src, tmp)
     try:
         os.replace(tmp, dst)
@@ -75,6 +63,17 @@ def place(src: Path, dst: Path, root: Path) -> None:
         aside.parent.mkdir(parents=True, exist_ok=True)
         os.replace(dst, aside)
         os.replace(tmp, dst)
+
+
+_ledgers: dict[Path, Ledger] = {}
+
+
+def ledger(root: Path | str) -> Ledger:
+    """The store's ledger of a repository, its bound (suites.json lifecycle) read once a process."""
+    root = Path(root).resolve()
+    if root not in _ledgers:
+        _ledgers[root] = Ledger(root / STORE, outputs.bound(STORE)["max_mb"] * outputs.MB)
+    return _ledgers[root]
 
 
 class Cache:
@@ -89,6 +88,7 @@ class Cache:
         doc = self.entry(name, key) / "result.json"
         if not doc.is_file():
             return None
+        used(self.entry(name, key))
         return json.loads(doc.read_text(encoding="utf-8"))
 
     def output_path(self, out: str) -> Path:
@@ -99,7 +99,7 @@ class Cache:
         final = self.entry(name, key)
         if (final / "result.json").is_file():
             return
-        tmp = _tmp(final)
+        tmp = tmp_path(final)
         remove(tmp)
         tmp.mkdir(parents=True)
         if result.log and Path(result.log).is_file():
@@ -122,6 +122,8 @@ class Cache:
             if not (final / "result.json").is_file():  # another process stored the same key first: that is the same result
                 raise
             remove(tmp)
+            return
+        ledger(self.root).add(final)
 
     def restore(self, name: str, key: str, doc: dict) -> str:
         """Puts the cached outputs back; returns the cached log's path."""
@@ -142,12 +144,15 @@ def memo(tool: str, key: str, fn: Callable[[], object], root: Path | str | None 
     with _memo_lock:
         if (tool, key) in _memo:
             return _memo[(tool, key)]
-    path = Path(root or ROOT).resolve() / STORE / safe(tool) / "memo" / key[:2] / f"{key}.json"
+    base = Path(root or ROOT).resolve()
+    path = base / STORE / safe(tool) / "memo" / key[:2] / f"{key}.json"
     if path.is_file():
         value = json.loads(path.read_text(encoding="utf-8"))
+        used(path)
     else:
         value = fn()
         write_atomic(path, json.dumps(value, ensure_ascii=False))
+        ledger(base).add(path)
         value = json.loads(json.dumps(value))  # the same shape as a value read back (tuples become lists)
     with _memo_lock:
         _memo[(tool, key)] = value
@@ -175,7 +180,7 @@ def materialize(key: str, build: Callable[[Path], None], timeout_s: float, root:
     try:
         if (final / COMPLETE).is_file():
             return final
-        tmp = _tmp(final)
+        tmp = tmp_path(final)
         remove(tmp)
         tmp.mkdir(parents=True)
         try:
@@ -186,6 +191,7 @@ def materialize(key: str, build: Callable[[Path], None], timeout_s: float, root:
         except BaseException:
             remove(tmp)
             raise
+        ledger(Path(root or ROOT)).add(final)
         return final
     finally:
         lock.release()

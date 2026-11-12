@@ -6,6 +6,7 @@
 # Use: python tools/tasks/cli.py run <suite|task ...> [--all] [--<variant>] [--list] [--json OUT] [--jobs N]
 #      python tools/tasks/cli.py serve [--jobs N]      python tools/tasks/cli.py status [--watch]      python tools/tasks/cli.py --list
 #      python tools/tasks/cli.py var <name>      python tools/tasks/cli.py block open <name>|verify|close|status
+#      python tools/tasks/cli.py worktrees [--all]      python tools/tasks/cli.py clean [--dry-run] [--unowned] [--only DIR]
 from __future__ import annotations
 
 import argparse
@@ -17,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tasks import block, verdicts  # noqa: E402
+from tasks import block, clean, lifecycle, verdicts  # noqa: E402
 from tasks.cache import remove, write_atomic  # noqa: E402
 from tasks.pool import Pool, run  # noqa: E402
 from tasks.runs import RUNS, live_runs, newest_run  # noqa: E402
@@ -263,9 +264,11 @@ def cmd_var(argv: list[str]) -> int:
 def main(argv: list[str]) -> int:
     if argv[:1] == ["--list"]:
         return cmd_run(["--list"] + argv[1:])
-    commands = {"run": cmd_run, "serve": cmd_serve, "status": cmd_status, "var": cmd_var, "block": block.main}
+    commands = {"run": cmd_run, "serve": cmd_serve, "status": cmd_status, "var": cmd_var, "block": block.main,
+                "worktrees": lifecycle.cmd_worktrees, "clean": clean.cmd_clean}
     if not argv or argv[0] not in commands:
-        print(__doc__ if __doc__ else "", "usage: cli.py run|serve|status|var|block ... (or --list)", file=sys.stderr)
+        print(__doc__ if __doc__ else "", "usage: cli.py run|serve|status|var|block|worktrees|clean ... (or --list)",
+              file=sys.stderr)
         return USAGE
     try:
         return commands[argv[0]](argv[1:])

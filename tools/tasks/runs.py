@@ -11,15 +11,20 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from . import proc
+from . import outputs, proc
 from .cache import remove, safe, write_atomic
 from .locks import FileLock
 
 RUNS = "dist/tasks"
 RUN_TIMES = "times.json"  # in a run's folder: the seconds each of its tasks took, by task name
 RUN_MEMORY = "memory.json"  # beside it: the most MiB each task's process tree held at once
-KEPT_RUNS = 30  # run folders (logs, events) kept; results live on in the cache
 PRUNE_LOCK = ".prune.lock"  # held by the one run that prunes the old run folders (RunRecord._prune)
+
+
+def kept_runs() -> int:
+    """How many run folders (logs, events) are kept: the folder's bound (tools/tasks/suites.json lifecycle, keep); the results
+    live on in the cache."""
+    return int(outputs.bound(RUNS)["keep"])
 
 
 class RunRecord:
@@ -71,7 +76,7 @@ class RunRecord:
         self._events.close()
 
     def _prune(self) -> None:
-        """The oldest run folders past KEPT_RUNS go, except those of a run whose process still lives.
+        """The oldest run folders past the bound (kept_runs) go, except those of a run whose process still lives.
 
         Runs start together (a test runner's files in parallel, each with its serve process), and two removing the same
         folder trip over each other (one deletes what the other is deleting; Windows refuses a rename of a folder another
@@ -82,7 +87,7 @@ class RunRecord:
             if not lock.try_acquire(shared=False):
                 return
             runs = sorted(p for p in (self.root / RUNS).iterdir() if p.is_dir() and p.name[:1].isdigit())
-            for old in runs[:-KEPT_RUNS]:
+            for old in runs[:-kept_runs()]:
                 parts = old.name.split("-")
                 if len(parts) > 2 and parts[2].isdigit() and proc.alive(int(parts[2])):
                     continue

@@ -1,10 +1,13 @@
-"""C and C++ compile commands, found by what a build left on disk: every configuration, with the driver's own target and paths."""
+"""C and C++ compile commands, found by what a build left on disk: every configuration, with the driver's own target and paths.
+Only a build's compile_commands.json is read (CMake writes it, native/CMakeLists.txt CMAKE_EXPORT_COMPILE_COMMANDS): by the JSON
+compilation database's definition each entry is a compile, so its first word is a compiler. `ninja -t compdb` asked with no rule
+names lists every edge of the build, the custom commands among them, and the first word of such an entry, run as a compiler with
+`-E -v -x c++ -` in the caller's folder, made those arguments into folders (tools/analysis/-, -E, -v, -x, c++)."""
 import collections
 import json
 import os
 import re
 import shlex
-import shutil
 import subprocess
 
 SOURCE = re.compile(r"\.(c|cc|cpp|cxx)$")
@@ -23,14 +26,6 @@ def _entries(repo):
 
 def _ask_builds(repo):
     out = {}
-    ninja = shutil.which("ninja")
-    for ninja_file in repo.on_disk("*build.ninja"):
-        folder = os.path.join(repo.root, os.path.dirname(ninja_file))
-        if ninja is None:
-            continue
-        run = subprocess.run((ninja, "-t", "compdb"), cwd=folder, capture_output=True, check=False)
-        if run.returncode == 0:
-            out[os.path.dirname(ninja_file)] = json.loads(run.stdout.decode("utf8", "replace") or "[]")
     for db in repo.on_disk("*compile_commands.json"):
         with open(os.path.join(repo.root, db), encoding="utf8") as f:
             out[os.path.dirname(db)] = json.load(f)

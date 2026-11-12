@@ -20,7 +20,7 @@ def plan(only=()):
     from ..repo import Repo
     conf, commit = settings(), gold()["commit"]
     limits = conf["timeouts_s"]
-    builds = Repo(program_root()).on_disk("*build.ninja") + Repo(program_root()).on_disk("*compile_commands.json")
+    builds = Repo(program_root()).on_disk("*compile_commands.json")  # what cpp_build.py reads
     inputs = [*PROGRAM, *builds]
     entry = os.path.join(program_root(), "tools", "analysis", "arch.py")
     cores = os.cpu_count() or 1

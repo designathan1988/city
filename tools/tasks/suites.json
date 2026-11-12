@@ -23,6 +23,28 @@
   "clang_version": {"doc": "the compiler of the Windows DLLs (llvm-mingw)", "argv": ["{mingw}/bin/clang++", "--version"]}
  },
  "loads": {"doc": "{loads}: the C++ folders whose res:// paths the loaded core library opens", "native": ["native/src"]},
+ "lifecycle": {
+  "doc": "Every folder the work writes under dist/ has one owner and a bound, enforced by that owner on every write (tools/tasks/outputs.py reads this; python tools/tasks/cli.py clean applies them all now): max_mb, the least recently used entries past it go; keep, the newest entries past the count go (and those an open problem's evidence names stay); while_open, an entry stays while the problem its name is stays open; migrating, a folder another task of a specification empties and removes, left alone until then; whole_mb, a folder or file its owner writes as one piece (a build tree, a report), removed whole past that size; index, the owner's own index files beside its entries, never counted nor removed. A folder under dist/ declared nowhere has no owner: clean lists it and removes it with --unowned. stale_days: a worktree, branch or stash untouched this long, and every one already in main, is older than its work (cli.py worktrees exits 1).",
+  "stale_days": 7,
+  "outputs": [
+   {"path": "dist/cache/tasks", "owner": "tools/tasks/cache.py", "max_mb": 4096},
+   {"path": "dist/tasks", "owner": "tools/tasks/runs.py", "keep": 30},
+   {"path": "dist/builds", "owner": "tools/build/deliver.sh", "keep": 2, "index": ["latest.txt"]},
+   {"path": "dist/evidence", "owner": "tools/atlas/problems.py", "while_open": true},
+   {"path": "dist/evidence/research", "owner": "log/research.md (the proofs it cites)", "whole_mb": 1024},
+   {"path": "dist/quick", "owner": "tools/tasks/suites.json quick", "max_mb": 1024},
+   {"path": "dist/captures", "owner": "tools/tasks/suites.json capture", "max_mb": 2048},
+   {"path": "dist/held", "owner": "tools/tasks/cache.py place", "keep": 4},
+   {"path": "dist/block", "owner": "tools/tasks/block.py", "max_mb": 1},
+   {"path": "dist/pgo", "owner": "tools/build/pgo.sh", "whole_mb": 1024},
+   {"path": "dist/build-pgo", "owner": "tools/build/pgo.sh", "whole_mb": 2048},
+   {"path": "dist/lab_scan.json", "owner": "tools/gates/lab_scan.py", "whole_mb": 16},
+   {"path": "dist/audit", "owner": "tools/audit/cli.py", "keep": 4},
+   {"path": "dist/promo", "owner": "the promo recording (log/history/process.md)", "keep": 2},
+   {"path": "dist/arch", "owner": "tools/analysis/arch", "migrating": "specification 001 US7 (T095) retires tools/analysis and its output with it"},
+   {"path": "dist/trace", "owner": ".claude/skills/trace-fix", "migrating": "specification 001 US3 (T050) moves what open problems name to dist/evidence and removes the folder"}
+  ]
+ },
  "changed": {
   "doc": "the changed files the gates look at (run_gates.py --files-from: a path outside every gate is reported and skipped there)",
   "include": ["**"],
@@ -75,15 +97,15 @@
    "resources": {"cores": "all", "locks": {"dll": "exclusive"}}
   },
   "gates_changed": {
-   "doc": "the gates on the changed files, handed over as a list file (run_gates.py --files-from: any number of paths fits); a gate may compare a file with any other, so the whole tree keys the result",
-   "argv": ["{python}", "tools/gates/run_gates.py", "{changed_list:--files-from}"],
+   "doc": "the gates on the changed files, handed over as a list file (run_gates.py --files-from: any number of paths fits), joined with the register (a finding no open problem names fails; CLAUDE.md, the block's verification); a gate may compare a file with any other, so the whole tree keys the result",
+   "argv": ["{python}", "tools/gates/run_gates.py", "--register", "log/problems.jsonl", "{changed_list:--files-from}"],
    "timeout_s": 600,
    "inputs": ["**"],
    "resources": {"cores": 2}
   },
   "gates_all": {
-   "doc": "every gate on the whole tree",
-   "argv": ["{python}", "tools/gates/run_gates.py"],
+   "doc": "every gate on the whole tree, joined with the register (a block's close: a finding no open problem names fails)",
+   "argv": ["{python}", "tools/gates/run_gates.py", "--register", "log/problems.jsonl"],
    "timeout_s": 1200,
    "inputs": ["**"],
    "resources": {"cores": 2}

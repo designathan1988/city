@@ -20,6 +20,8 @@ export_game() {
 	[ -s "$dir/Roadcraft.exe" ] && [ -s "$dir/Roadcraft.pck" ] || { echo "export failed: $dir has no Roadcraft.exe and .pck"; return 1; }
 	printf '%s\n' "$name" > "$BUILDS/latest.txt"
 	desktop_shortcut "$dir/Roadcraft.exe"
+	# the builds' bound (tools/tasks/suites.json lifecycle: the last two, and any build an open problem's evidence names)
+	"${PY:-python}" "$ROOT/tools/tasks/cli.py" clean --only dist/builds
 	echo "$dir/Roadcraft.exe"
 }
 
