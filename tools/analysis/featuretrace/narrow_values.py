@@ -11,20 +11,22 @@ from __future__ import annotations
 
 from . import js_library, js_transfer, transfer, truth
 from .solver import CLASS, ELEM, ENGINE, FN, LANG, OBJECT, TEXT, UNDEFINED, fn_of
+from .vocab import (G_ARRAY, G_ASSERTS, G_EQUALS, G_HAS, G_INSTANCE, G_IS, G_MEMBER, G_MEMBER_EQUALS, G_NULLISH,
+                    G_NUMBER, G_PREDICATE, G_TRUTHY, G_TYPEOF, G_VIEW)
 
 
 def wire(t, node, tree, unit) -> None:
     _, name_tree, guard, positive = tree
     source = t.node_of(name_tree, unit)
     key = ("narrow", guard, positive)
-    if guard[0] in ("member", "member-equals"):
+    if guard[0] in (G_MEMBER, G_MEMBER_EQUALS):
         t.subscribe(source, node, key, by_member(t, guard, positive))
-    elif guard[0] in ("instance", "predicate", "asserts"):
+    elif guard[0] in (G_INSTANCE, G_PREDICATE, G_ASSERTS):
         named = t.node_of(guard[1], unit)
         t.subscribe(source, node, key, by_class(t, guard, positive, source, named, True, unit))
         t.subscribe(named, node, key + ("named",), by_class(t, guard, positive, source, named, False, unit))
     else:
-        if guard[0] == "is" and positive:
+        if guard[0] == G_IS and positive:
             wanted = t.type_class(guard[1], unit)       # x is a T there: T declared (EXPR, `is`)
             t.add(node, [(CLASS + wanted, unit)] if wanted else [(guard[1], unit)])
         t.subscribe(source, node, key, by_value(t, guard, positive, unit))
@@ -32,7 +34,7 @@ def wire(t, node, tree, unit) -> None:
 
 def by_value(t, guard, positive: bool, unit):
     def transfer_(target, values):
-        if guard[0] == "is":
+        if guard[0] == G_IS:
             t.add(target, [kept for text, ctx in values for kept in is_of(t, guard[1], positive, text, ctx, unit)])
         else:
             t.add(target, [(text, ctx) for text, ctx in values if passes(t, guard, positive, text, ctx, unit)])
@@ -42,24 +44,24 @@ def by_value(t, guard, positive: bool, unit):
 def passes(t, guard, positive: bool, text: str, ctx, unit) -> bool:
     """Whether the guard can be true (positive) or false (negative) of one value decided by itself."""
     kind = guard[0]
-    if kind == "truthy":
+    if kind == G_TRUTHY:
         return truth.can_be_truthy(text) if positive else truth.can_be_falsy(text)
-    if kind == "typeof":
+    if kind == G_TYPEOF:
         results = truth.typeof_results(text)
         return guard[1] in results if positive else bool(results - {guard[1]})
-    if kind == "equals":
+    if kind == G_EQUALS:
         return truth.can_equal(text, guard[1]) if positive else truth.can_differ(text, guard[1])
-    if kind == "nullish":
+    if kind == G_NULLISH:
         nullish = truth.is_nullish(text)
         return nullish is not False if positive else nullish is not True
-    if kind == "array":
+    if kind == G_ARRAY:
         array = text.startswith(ELEM) or js_library.head_args(text)[0] == "Array"
         return (array or host_object(t, text, ctx)) if positive else not array
-    if kind == "view":                  # `ArrayBuffer.isView`: a typed array or a DataView, the host's (G1'')
+    if kind == G_VIEW:                  # `ArrayBuffer.isView`: a typed array or a DataView, the host's (G1'')
         return host_object(t, text, ctx) if positive else True
-    if kind == "number":                # `Number.isInteger` and its kin: true of numbers alone (G1'')
+    if kind == G_NUMBER:                # `Number.isInteger` and its kin: true of numbers alone (G1'')
         return "number" in truth.typeof_results(text) if positive else True
-    if kind == "has":
+    if kind == G_HAS:
         return has(t, guard[1], positive, text, ctx)
     return True
 
@@ -152,7 +154,7 @@ def settle(t) -> bool:
 
 
 def member_passes(guard, positive: bool, value: str) -> bool:
-    if guard[0] == "member":
+    if guard[0] == G_MEMBER:
         return truth.can_be_truthy(value) if positive else truth.can_be_falsy(value)
     return truth.can_equal(value, guard[2]) if positive else truth.can_differ(value, guard[2])
 
@@ -160,13 +162,13 @@ def member_passes(guard, positive: bool, value: str) -> bool:
 def named_classes(t, guard, held: list) -> tuple[list, bool]:
     """The classes `instanceof C` or a type predicate names, and whether it can name one the tracer cannot tell."""
     keys, unknown = [], False
-    if guard[0] == "instance":
+    if guard[0] == G_INSTANCE:
         for text, ctx in held:
             key = t.type_class(text, ctx) if text.startswith(CLASS) else None
             keys += [key] if key else []
             unknown = unknown or key is None
         return keys, unknown
-    asserts = guard[0] == "asserts"
+    asserts = guard[0] == G_ASSERTS
     for text, _ in held:                  # the callee: a function declared `[asserts] x is T` at this argument
         unit = t.ix.units[fn_of(text)[0]] if text.startswith(FN) else None
         predicate = unit.predicate if unit is not None else ()
@@ -185,7 +187,7 @@ def by_class(t, guard, positive: bool, source, named, from_source: bool, unit):
     def transfer_(target, values):
         keys, unknown = named_classes(t, guard, t.held(named))
         tested = values if from_source else t.held(source)
-        test = guard[0] == "instance"
+        test = guard[0] == G_INSTANCE
         kept = [v for text, ctx in tested for v in instance(t, keys, unknown, positive, text, ctx, test)]
         declared = [(CLASS + k, unit) for k in keys] if positive and not from_source else []
         t.add(target, kept + declared)

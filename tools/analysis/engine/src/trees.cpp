@@ -134,8 +134,8 @@ void wire(Analysis& an, Value node, Value tree, const UnitRec& unit, Value ctx) 
         an.follow(an.node(an.item(tree, 2), unit, ctx), node);
     } else if (kind == V.AWAIT) {
         protocols::settle(an, node, an.node(an.item(tree, 1), unit, ctx));
-    } else if (kind == V.NARROW) {
-        an.follow(an.node(an.item(tree, 1), unit, ctx), node);
+    } else if (kind == V.NARROW) {                 // what a test proves where it holds (guards.cpp)
+        guards::wire(an, node, tree, unit, ctx);
     } else if (kind == V.SELF) {
         an.follow(this_of(an, unit, ctx), node);
     } else if (kind == V.LITERAL) {

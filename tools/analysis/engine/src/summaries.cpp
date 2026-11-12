@@ -181,7 +181,7 @@ void reflected(Analysis& an, Value node, Value call, Obj obj, Obj value) {
 void called(Analysis& an, Value node, Obj fn, Value where) {
     Value back = an.tuple({an.V.CALLED, an.item(where, 0), I(fn)});
     an.relay(node, back);
-    an.call(back, fn, -1, arguments(an, fn), an.V.HANDED, where);
+    an.call(back, fn, -1, arguments(an, fn), an.V.HANDED, where, true);   // the same arguments everywhere: one run
     an.follow(back, pool(an, node));
 }
 

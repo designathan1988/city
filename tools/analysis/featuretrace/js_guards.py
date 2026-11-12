@@ -17,6 +17,8 @@ from __future__ import annotations
 from . import scopes
 from .solver import FALSE, NULL, TEXT, TRUE, UNDEFINED
 from .source import field_of, named_children, string_value
+from .vocab import (G_ARRAY, G_ASSERTS, G_EQUALS, G_HAS, G_INSTANCE, G_MEMBER, G_MEMBER_EQUALS, G_NULLISH, G_NUMBER,
+                    G_PREDICATE, G_TRUTHY, G_TYPEOF, G_VIEW)
 
 CONSTANTS = {"null": NULL, "undefined": UNDEFINED, "true": TRUE, "false": FALSE}
 EQUAL, DIFFERENT = ("===", "=="), ("!==", "!=")
@@ -24,9 +26,9 @@ INNER = ("parenthesized_expression", "non_null_expression", "expression_statemen
 TYPESCRIPT = (".ts", ".tsx", ".mts", ".cts")      # the files that can declare a type predicate or an assertion
 # The predicates ECMAScript defines (G1''): `Array.isArray` (an array), `ArrayBuffer.isView` (a typed array or a
 # DataView), `Number.isInteger` and its kin (true of numbers alone).
-LANGUAGE_PREDICATES = {"Array.isArray": ("array",), "ArrayBuffer.isView": ("view",),
+LANGUAGE_PREDICATES = {"Array.isArray": (G_ARRAY,), "ArrayBuffer.isView": (G_VIEW,),
                        **dict.fromkeys(("Number.isInteger", "Number.isSafeInteger", "Number.isFinite", "Number.isNaN"),
-                                       ("number",))}
+                                       (G_NUMBER,))}
 
 
 def typescript(r) -> bool:
@@ -84,18 +86,18 @@ def _comparison(r, op: str, left, right, unit) -> list:
         if a_in is not None and a_in.type == "unary_expression" and r.src.text(field_of(a_in, "operator")) == "typeof":
             name, kind = name_of(r, field_of(a_in, "argument"), unit), constant(r, b)
             if name is not None and kind is not None and kind.startswith(TEXT):
-                return [(name, ("typeof", kind[len(TEXT):]), True)]
+                return [(name, (G_TYPEOF, kind[len(TEXT):]), True)]
         value = constant(r, b)
         if value is None:
             continue
         name = name_of(r, a, unit)
         if name is not None and op in ("==", "!=") and value in (NULL, UNDEFINED):
-            return [(name, ("nullish",), True)]
+            return [(name, (G_NULLISH,), True)]
         if name is not None and op in ("===", "!=="):
-            return [(name, ("equals", value), True)]
+            return [(name, (G_EQUALS, value), True)]
         holder, prop = _member(r, a, unit)
         if holder is not None and op in ("===", "!=="):
-            return [(holder, ("member-equals", prop, value), True)]
+            return [(holder, (G_MEMBER_EQUALS, prop, value), True)]
     return []
 
 
@@ -120,19 +122,19 @@ def facts(r, node, unit) -> tuple[list, list]:
             return found if op in EQUAL else (found[1], found[0])
         if op == "instanceof":
             name = name_of(r, left, unit)
-            return _both([(name, ("instance", r.ir(right, unit)), True)] if name is not None else [])
+            return _both([(name, (G_INSTANCE, r.ir(right, unit)), True)] if name is not None else [])
         if op == "in":
             name, prop = name_of(r, right, unit), constant(r, left)
             usable = name is not None and prop is not None and prop.startswith(TEXT)
-            return _both([(name, ("has", prop[len(TEXT):]), True)] if usable else [])
+            return _both([(name, (G_HAS, prop[len(TEXT):]), True)] if usable else [])
         return [], []
     if kind == "call_expression":
         return _call(r, node, unit)
     holder, prop = _member(r, node, unit)
     if holder is not None:
-        return _both([(holder, ("member", prop), True)])
+        return _both([(holder, (G_MEMBER, prop), True)])
     name = name_of(r, node, unit)
-    return _both([(name, ("truthy",), True)] if name is not None else [])
+    return _both([(name, (G_TRUTHY,), True)] if name is not None else [])
 
 
 def _call(r, node, unit) -> tuple[list, list]:
@@ -144,7 +146,7 @@ def _call(r, node, unit) -> tuple[list, list]:
     if guard is not None and r.src.text(fn).split(".")[0] not in unit.types and argv:
         name = name_of(r, argv[0], unit)
         return _both([(name, guard, True)] if name is not None else [])
-    return _both(_declared(r, fn, argv, unit, "predicate"))
+    return _both(_declared(r, fn, argv, unit, G_PREDICATE))
 
 
 def _declared(r, fn, argv: list, unit, kind: str) -> list:
@@ -164,7 +166,7 @@ def asserted(r, st, unit) -> list:
         return []
     args = field_of(call, "arguments")
     argv = [a for a in named_children(args) if a.type != "comment"] if args is not None else []
-    return _declared(r, field_of(call, "function"), argv, unit, "asserts")
+    return _declared(r, field_of(call, "function"), argv, unit, G_ASSERTS)
 
 
 def operand_facts(r, op: str, left, unit) -> tuple[tuple, list]:
@@ -173,9 +175,9 @@ def operand_facts(r, op: str, left, unit) -> tuple[tuple, list]:
     `a ?? b` a when it is neither null nor undefined, else b."""
     if op == "??":
         name = name_of(r, left, unit)
-        return (("nullish",), False), [(name, ("nullish",), True)] if name is not None else []
+        return ((G_NULLISH,), False), [(name, (G_NULLISH,), True)] if name is not None else []
     when_true, when_false = facts(r, left, unit)
-    return (("truthy",), op == "||"), when_true if op == "&&" else when_false
+    return ((G_TRUTHY,), op == "||"), when_true if op == "&&" else when_false
 
 
 def case_facts(r, value, test, unit) -> list:

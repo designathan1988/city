@@ -117,7 +117,8 @@ bool Analysis::callable(Obj fn) {
     return runs;
 }
 
-void Analysis::call(Value node, Obj fn, int64_t receiver, std::span<const Value> args, Value kind, Value site) {
+void Analysis::call(Value node, Obj fn, int64_t receiver, std::span<const Value> args, Value kind, Value site,
+                    bool shared) {
     if (!callable(fn)) return;                     // calling what is no function runs nothing (it throws)
     Value where = site.kind() != Kind::None ? site : declared::call_site(*this, node);
     Value key = okey(fn);
@@ -134,7 +135,7 @@ void Analysis::call(Value node, Obj fn, int64_t receiver, std::span<const Value>
     }
     Value env = last(*this, key);
     Value ctx;
-    if (!in.contextual.count(gid)) {               // nothing that differs between callers reaches out
+    if (shared || !in.contextual.count(gid)) {     // nothing that differs between callers reaches out
         ctx = contexts::of_call(*this, env, V.ONCE);
     } else if (receiver >= 0) {
         auto r = static_cast<Obj>(receiver);
@@ -209,13 +210,27 @@ bool Analysis::entries(bool modules) {
             if (l.kind == V.CALL || l.kind == V.NEW || l.kind == V.HANDED) called.insert(l.dst);
         }
     }
+    // The closures made and the functions run before this pass: a function written in one that had not run yet waits
+    // for the next pass, once the solver has run it (heap/analysis.py `entries`).
+    std::unordered_map<uint64_t, std::vector<Value>> known;
+    std::unordered_set<int64_t> ran;
+    if (!modules) {
+        for (const auto& [gid, envs] : closure_order) {
+            if (!envs.empty()) known.emplace(gid, envs);
+        }
+        for (const auto& [gid, ctxs] : active_order) {
+            if (!ctxs.empty()) ran.insert(static_cast<int64_t>(gid));
+        }
+    }
     for (const UnitRec& u : in.units) {
         if (!is_function_unit(u.gid) || u.decl_only || (u.name == V.MODULE_UNIT) != modules) continue;
         if (modules) {
             started |= enter(u.gid, ROOT, -1);
         } else if (!called.count(u.gid)) {
-            auto found = closure_order.find(static_cast<uint64_t>(u.gid));
-            std::vector<Value> envs = found != closure_order.end() ? found->second : std::vector<Value>{ROOT};
+            auto found = known.find(static_cast<uint64_t>(u.gid));
+            int64_t outer = u.outer >= 0 ? offset(u) + u.outer : -1;
+            if (found == known.end() && outer >= 0 && is_function_unit(outer) && !ran.count(outer)) continue;
+            std::vector<Value> envs = found != known.end() ? found->second : std::vector<Value>{ROOT};
             for (Value env : envs) started |= enter(u.gid, contexts::of_call(*this, env, I(unknown)), unknown);
         }
     }

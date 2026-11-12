@@ -32,18 +32,20 @@ struct UnitRec {
     std::unordered_set<uint64_t> captured;
     std::unordered_map<uint64_t, std::vector<int64_t>> written_by;
     std::unordered_map<uint64_t, Value> accessors;
-    Value result_type, this_type;
+    Value result_type, this_type, predicate_type;   // predicate_type: (x's index, T, asserts) or ()
     std::vector<std::pair<Value, Value>> indexes;
     int param_index(Value name) const;           // -1 when not a parameter
 };
 
 struct ClassRec {
     Value key, name, file, outer;
-    bool shape = false;
+    bool shape = false, ambient = false;
     int64_t made = -1;
     std::vector<Value> tparams, heritage;
     // class tables
     std::vector<Value> bases, group, chain;
+    std::vector<Value> proto_chain;              // what its `extends` reaches, itself first (heap/guards.py)
+    bool proto_unresolved = false, proto_ambient = false;
     Value identity;
     std::unordered_map<uint64_t, Value> inner;
 };

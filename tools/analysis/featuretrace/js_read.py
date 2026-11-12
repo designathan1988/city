@@ -110,6 +110,8 @@ class JsReader:
         if jsdoc.is_js(self):
             jsdoc.function(self, node, unit)                    # a JavaScript file's JSDoc types (S2')
         unit.predicate = js_types.predicate(self, ret, unit)                       # `x is T`, `asserts x is T`
+        found = js_types.predicate_parts(self, ret, unit)
+        unit.predicate_type = (found[0], js_sigs.of(self, found[1], unit.owner), found[2]) if found else ()
         body = field_of(node, "body")
         if body is None:
             unit.decl_only = True

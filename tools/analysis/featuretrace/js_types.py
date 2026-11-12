@@ -185,6 +185,13 @@ def predicate(r, annotation, unit) -> tuple:
     """A return type `x is T` or `asserts x is T` (TypeScript handbook, Narrowing: type predicates, assertion
     functions): (x's parameter index, T's value trees, whether it asserts); () for any other (`this is T`, `asserts x`
     included)."""
+    found = predicate_parts(r, annotation, unit)
+    return (found[0], tuple(values(r, found[1], unit)), found[2]) if found else ()
+
+
+def predicate_parts(r, annotation, unit) -> tuple:
+    """A return type `x is T` or `asserts x is T` as written: (x's parameter index, T's node, whether it asserts);
+    () for any other."""
     if annotation is None or annotation.type not in ("type_predicate_annotation", "asserts_annotation"):
         return ()
     asserts = annotation.type == "asserts_annotation"
@@ -193,7 +200,7 @@ def predicate(r, annotation, unit) -> tuple:
     kids = named_children(found) if found is not None else []
     if len(kids) < 2 or kids[0].type != "identifier" or r.src.text(kids[0]) not in unit.params:
         return ()
-    return unit.params.index(r.src.text(kids[0])), tuple(values(r, kids[-1], unit)), asserts
+    return unit.params.index(r.src.text(kids[0])), kids[-1], asserts
 
 
 def parameters(r, node) -> set:

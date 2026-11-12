@@ -127,10 +127,11 @@ def reflected(an, node, call, obj: int, value: int) -> None:
 
 
 def called(an, node, fn: int, where) -> None:
-    """A function in the pool or handed to unknown code: called back with what its declared parameters give."""
+    """A function in the pool or handed to unknown code: called back with what its declared parameters give — the
+    same wherever it is handed, so one run of it serves every such place (log/trace-research.md F32)."""
     back = (CALLED, where[0], fn)
     an.relay(node, back)
-    an.call(back, fn, None, arguments(an, fn), HANDED, site=where)
+    an.call(back, fn, None, arguments(an, fn), HANDED, site=where, shared=True)
     an.solver.follow(back, pool(node))
 
 

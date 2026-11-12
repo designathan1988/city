@@ -12,6 +12,8 @@ enum TransferKind : uint32_t {
     kReadLink, kPrototypes, kTypeIndex, kBothOuter, kBothInner, kConsumed, kStructuralFn, kReceivers,
     kSummaryReceive, kSummaryCalled, kSummaryFields, kSummaryMemberOf, kKept, kIterElements, kIterIterator,
     kIterNext, kIterValue, kMethodCall, kSettle, kJsxFactory, kJsxChildren, kOpenCalled, kStoreByKey,
+    kNarrowValue, kNarrowMember, kMemberPasses, kInstanceObjects, kInstanceTargets, kPredicateFunctions,
+    kPredicateAdmits,
 };
 
 // The dispatcher the solver calls (transfers.cpp).
@@ -148,6 +150,37 @@ Value call_node(Analysis& an, Value node, Value tree, const UnitRec& unit, Value
 void written(Analysis& an, const UnitRec& unit, const RefRec& ref, Value ctx);
 void named_children(Analysis& an, Obj obj, Value name);
 }  // namespace jsx
+
+namespace verdicts {                   // what the language's tests can give of one value (heap/verdicts.py)
+inline constexpr uint8_t kNeither = 0, kNo = 1, kYes = 2, kEither = 3;   // bit 1 false, bit 2 true; none: throws
+inline bool can(uint8_t outcomes, bool which) { return outcomes & (which ? kYes : kNo); }
+Value prim(Analysis& an, Obj o);
+bool primitive(Analysis& an, Obj o);
+bool open_kind(Analysis& an, Obj o);
+std::vector<Value> typeof_of(Analysis& an, Obj o);
+bool has_typeof(Analysis& an, Obj o, Value t);
+std::pair<bool, bool> truthiness(Analysis& an, Obj o);   // (can be truthy, can be falsy)
+bool can_equal(Analysis& an, Obj o, Value constant);
+bool can_differ(Analysis& an, Obj o, Value constant);
+uint8_t nullish(Analysis& an, Obj o);
+uint8_t array(Analysis& an, Obj o);
+uint8_t view(Analysis& an, Obj o);
+uint8_t number(Analysis& an, Obj o);
+uint8_t of_class(Analysis& an, Obj o, Value key);
+uint8_t outcomes(Analysis& an, Obj o, Obj target);       // what `o instanceof target` can give
+bool admits(Analysis& an, Value tree, Obj o);            // whether a value can be of a declared type
+}  // namespace verdicts
+
+namespace guards {                     // what a test proves where it holds (heap/guards.py)
+void wire(Analysis& an, Value node, Value tree, const UnitRec& unit, Value ctx);
+void narrow_value(Analysis& an, Value target, Value guard, bool positive, std::span<const Obj> objs);
+void narrow_member(Analysis& an, Value target, Value guard, bool positive, bool eager, std::span<const Obj> objs);
+void member_passes(Analysis& an, Value target, Obj obj, Value constant, bool positive, std::span<const Obj> values);
+void instance_objects(Analysis& an, Value target, Value targets, bool positive, std::span<const Obj> objs);
+void instance_targets(Analysis& an, Value target, Value source, bool positive, std::span<const Obj> targets);
+void predicate_functions(Analysis& an, Value target, Value source, int64_t index, std::span<const Obj> fns);
+void predicate_admits(Analysis& an, Value target, Value tree, std::span<const Obj> objs);
+}  // namespace guards
 
 namespace texts {
 // The texts an expression can have (a frozenset term), or NONE where not all are known.

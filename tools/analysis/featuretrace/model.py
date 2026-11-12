@@ -97,6 +97,7 @@ class Unit:
     local_types: dict = field(default_factory=dict)    # cpp: a class declared in the function, name -> class key
     objects: list = field(default_factory=list)    # cpp: `T x(a, b);` read as a function: an object if a or b is a value
     predicate: tuple = ()          # js: a return type `[asserts] x is T`: (x's index, T's value trees, asserts) (G1)
+    predicate_type: tuple = ()     # js: the same with T kept whole (`js_sigs`): (x's index, T's type tree, asserts)
     defaults: set = field(default_factory=set)     # js: parameters written with a default (an omitted argument's)
     optional: bool = False         # js: a method declared optional (`m?(): T`): reading it may give undefined (T1')
     bounds: dict = field(default_factory=dict)     # js: parameter or local -> its declared type's bound (S2)
@@ -214,6 +215,8 @@ class ClassFact:
                                    # `("cast", "#key")` of it is a value made there, any other cast a declared type
     tparams: tuple = ()            # js: its type parameters: each one's default type (`js_sigs`)
     heritage: list = field(default_factory=list)   # js: what it extends and implements, as declared types (`js_sigs`)
+    extends: str = ""              # js: what its `extends` clause names, as written (its prototype's [[Prototype]])
+    ambient: bool = False          # js: declared only (a declaration file, `declare`): no code of the program makes it
 
 
 @dataclass

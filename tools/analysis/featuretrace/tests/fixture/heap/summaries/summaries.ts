@@ -10,3 +10,9 @@ export function kept() { return keep(new Apple(), new Pear()); }
 export function joined() { const t = {}; both(t, { a: new Apple() }); return t.a; }
 export function invoked() { const o = { run() { return new Apple(); } }; return invoke(o, "run"); }
 export function noted() { const o = { run() { return new Apple(); } }; note("run", o); return o; }
+export function handedThrice() {
+  function wrapUp(x: unknown) { return [x]; }
+  pass(wrapUp);
+  pass(wrapUp);
+  return pass(wrapUp);
+}

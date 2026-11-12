@@ -32,6 +32,22 @@ MODULE = "module"
 DEREF = "deref"
 ADDR = "addr"
 
+# What a test proves of a name (`js_guards`, `gd_guards`): the guard of a NARROW tree, `(kind, ...)`.
+G_TRUTHY = "truthy"                # (G_TRUTHY,): the value is truthy (ToBoolean)
+G_MEMBER = MEMBER                  # (G_MEMBER, p): its property p is truthy (`x.p`, `x?.p`)
+G_TYPEOF = "typeof"                # (G_TYPEOF, t): `typeof x === t`
+G_INSTANCE = "instance"            # (G_INSTANCE, class tree): `x instanceof C`
+G_ARRAY = "array"                  # (G_ARRAY,): `Array.isArray(x)`
+G_VIEW = "view"                    # (G_VIEW,): `ArrayBuffer.isView(x)`
+G_NUMBER = "number"                # (G_NUMBER,): `Number.isInteger(x)` and its kin: true of numbers alone
+G_HAS = "has"                      # (G_HAS, p): `"p" in x`
+G_EQUALS = "equals"                # (G_EQUALS, constant): `x === c` with a constant of the language or a string
+G_NULLISH = "nullish"              # (G_NULLISH,): `x == null`
+G_MEMBER_EQUALS = "member-equals"  # (G_MEMBER_EQUALS, p, constant): `x.p === c`, a `switch` case
+G_PREDICATE = "predicate"          # (G_PREDICATE, callee tree, index): a call of a function declared `x is T`
+G_ASSERTS = "asserts"              # (G_ASSERTS, callee tree, index): after a call of one declared `asserts x is T`
+G_IS = "is"                        # (G_IS, type text): GDScript `x is T`
+
 # Reference kinds (model.Ref).
 READ = "read"
 WRITE = "write"

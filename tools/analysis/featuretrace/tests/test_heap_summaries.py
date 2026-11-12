@@ -45,6 +45,12 @@ class HeapSummaries(HeapCase):
         self.assertEqual({"Apple"}, self.classes("invoked"))
 
 
+    def test_unknown_code_hands_a_function_the_same_arguments_from_every_place(self):
+        # what a function called back by unknown code takes is its declared parameters' objects, the same at
+        # every call that hands it: one run serves them all (log/trace-research.md F32)
+        self.assertEqual(1, self.runs("wrapUp"))
+
+
 class HeapSummariesEngine(HeapSummaries):
     CORE = ENGINE
 

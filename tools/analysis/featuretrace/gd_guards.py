@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from . import scopes
 from .source import field_of, named_children
+from .vocab import G_IS
 
 NOT, AND, OR = ("not", "!"), ("and", "&&"), ("or", "||")
 
@@ -45,5 +46,5 @@ def facts(r, node, unit) -> tuple[list, list]:
     name = name_of(r, left, unit) if op == "is" else None
     if name is None or right is None:
         return [], []
-    fact = (name, ("is", r.src.text(right)), True)
+    fact = (name, (G_IS, r.src.text(right)), True)
     return [fact], [(name, fact[1], False)]

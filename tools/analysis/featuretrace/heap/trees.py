@@ -16,7 +16,7 @@ from ..vocab import (AWAIT, CALL, CALLABLE, CAST, COLLECTION, CONSTRUCT, EACH, E
                      JSX, KEYS, LITERAL, MEMBER, NAME, NARROW, NEW, OP, SELF, SITE_CLASS, SITE_PRIMITIVE, SITE_TEXT,
                      SITE_KEY, STRNAME, SUPER, UNARY, UNION)
 from ..model import STATE_KINDS
-from . import contexts, declared, jsx, members, names, protocols, texts, typesys
+from . import contexts, declared, guards, jsx, members, names, protocols, texts, typesys
 
 CONSTRUCTED = 10           # a node: what a constructor's call returns (the `new` itself is the object made)
 
@@ -60,8 +60,8 @@ def wire(an, node, tree, unit, ctx) -> None:
         solver.follow(an.node(tree[2], unit, ctx), node)
     elif kind == AWAIT:
         protocols.await_(an, node, an.node(tree[1], unit, ctx))
-    elif kind == NARROW:
-        solver.follow(an.node(tree[1], unit, ctx), node)
+    elif kind == NARROW:                          # what a test proves where it holds (`guards`)
+        guards.wire(an, node, tree, unit, ctx)
     elif kind == SELF:
         solver.follow(this_of(an, unit, ctx), node)
     elif kind == LITERAL:

@@ -61,7 +61,26 @@ namespace ftengine {
     X(ITERATOR_CALL, "heap.protocols.ITERATOR_CALL") X(NEXT_CALL, "heap.protocols.NEXT_CALL")                        \
     X(THEN_CALL, "heap.protocols.THEN_CALL") X(PROBE, "heap.protocols.PROBE") X(RESOLVING, "heap.protocols.RESOLVING") \
     X(SETTLE, "heap.protocols.SETTLE") X(JSX_CALL, "heap.jsx.JSX_CALL") X(FACTORY, "heap.jsx.FACTORY")              \
-    X(CHILDREN, "heap.jsx.CHILDREN") X(ALIAS, "heap.typesys.ALIAS") X(CLASS, "heap.typesys.CLASS")
+    X(CHILDREN, "heap.jsx.CHILDREN") X(ALIAS, "heap.typesys.ALIAS") X(CLASS, "heap.typesys.CLASS")                   \
+    X(G_TRUTHY, "vocab.G_TRUTHY") X(G_MEMBER, "vocab.G_MEMBER") X(G_TYPEOF, "vocab.G_TYPEOF")                        \
+    X(G_INSTANCE, "vocab.G_INSTANCE") X(G_ARRAY, "vocab.G_ARRAY") X(G_VIEW, "vocab.G_VIEW")                          \
+    X(G_NUMBER, "vocab.G_NUMBER") X(G_HAS, "vocab.G_HAS") X(G_EQUALS, "vocab.G_EQUALS")                              \
+    X(G_NULLISH, "vocab.G_NULLISH") X(G_MEMBER_EQUALS, "vocab.G_MEMBER_EQUALS") X(G_PREDICATE, "vocab.G_PREDICATE")  \
+    X(G_ASSERTS, "vocab.G_ASSERTS") X(TYPEOF_UNDEFINED, "languages.TYPEOF_UNDEFINED")                                \
+    X(TYPEOF_OBJECT, "languages.TYPEOF_OBJECT") X(TYPEOF_BOOLEAN, "languages.TYPEOF_BOOLEAN")                        \
+    X(TYPEOF_NUMBER, "languages.TYPEOF_NUMBER") X(TYPEOF_BIGINT, "languages.TYPEOF_BIGINT")                          \
+    X(TYPEOF_STRING, "languages.TYPEOF_STRING") X(TYPEOF_SYMBOL, "languages.TYPEOF_SYMBOL")                          \
+    X(TYPEOF_FUNCTION, "languages.TYPEOF_FUNCTION") X(HAS_INSTANCE, "languages.HAS_INSTANCE")                        \
+    X(PROTO_PROPERTY, "languages.PROTO_PROPERTY") X(S_UNDEFINED, "solver.UNDEFINED") X(S_STRING, "solver.STRING")    \
+    X(S_FUNCTION, "solver.FUNCTION") X(GD_MEMBER, "heap.guards.GUARD_MEMBER")                                        \
+    X(GD_UNDEFINED, "heap.verdicts.UNDEFINED_K") X(GD_NULL, "heap.verdicts.NULL_K")                                  \
+    X(GD_TRUE, "heap.verdicts.TRUE_K") X(GD_FALSE, "heap.verdicts.FALSE_K") X(GD_NUMBER, "heap.verdicts.NUMBER_K")   \
+    X(GD_BIGINT, "heap.verdicts.BIGINT_K") X(GD_STRING, "heap.verdicts.STRING_K")                                    \
+    X(GD_SYMBOL, "heap.verdicts.SYMBOL_K") X(GD_OBJECT, "heap.verdicts.OBJECT_K")                                    \
+    X(GD_FUNCTION, "heap.verdicts.FUNCTION_K") X(GD_EVERY_TYPEOF, "heap.verdicts.EVERY_TYPEOF")                      \
+    X(GD_FALSY_KINDS, "heap.verdicts.FALSY_KINDS") X(GD_EITHER_KINDS, "heap.verdicts.EITHER_KINDS")                  \
+    X(GD_OBJECT_KINDS, "heap.verdicts.OBJECT_KINDS") X(GD_CALLABLE, "heap.verdicts.CALLABLE")                        \
+    X(GD_ORDINARY, "heap.verdicts.ORDINARY") X(GD_NOT_INSTANCES, "heap.verdicts.NOT_INSTANCES")
 
 struct Vocab {
 #define FT_FIELD(name, owner) Value name;

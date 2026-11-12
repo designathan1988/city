@@ -181,14 +181,37 @@ void jsx_factory(Analysis& an, Value t, const Captured& c, Objs objs) {
 void jsx_children(Analysis& an, Value, const Captured& c, Objs objs) {
     for (Obj o : objs) jsx::named_children(an, o, c[0]);
 }
+void narrow_value(Analysis& an, Value t, const Captured& c, Objs objs) {
+    guards::narrow_value(an, t, c[0], an.truthy(c[1]), objs);
+}
+void narrow_member(Analysis& an, Value t, const Captured& c, Objs objs) {
+    guards::narrow_member(an, t, c[0], an.truthy(c[1]), an.truthy(c[2]), objs);
+}
+void member_passes(Analysis& an, Value t, const Captured& c, Objs objs) {
+    guards::member_passes(an, t, obj_of(c[0]), c[1], an.truthy(c[2]), objs);
+}
+void instance_objects(Analysis& an, Value t, const Captured& c, Objs objs) {
+    guards::instance_objects(an, t, c[0], an.truthy(c[1]), objs);
+}
+void instance_targets(Analysis& an, Value t, const Captured& c, Objs objs) {
+    guards::instance_targets(an, t, c[0], an.truthy(c[1]), objs);
+}
+void predicate_functions(Analysis& an, Value t, const Captured& c, Objs objs) {
+    guards::predicate_functions(an, t, c[0], c[1].data(), objs);
+}
+void predicate_admits(Analysis& an, Value t, const Captured& c, Objs objs) {
+    guards::predicate_admits(an, t, c[0], objs);
+}
 
 // The handler of each kind, in the order of TransferKind (from kMemberRead).
-constexpr std::array<Handler, kStoreByKey> kHandlers = {
+constexpr std::array<Handler, kPredicateAdmits> kHandlers = {
     member_read, super_read, index_by_object, index_keys, call_by_receiver, call_functions, super_by_this,
     plain_call, keys, construct_by_value, construct_returned, new_written, write_by_object, store_by_object,
     read_link, prototypes, type_index, both_outer, both_inner, consumed, structural_fn, receivers,
     summary_receive, summary_called, summary_fields, summary_member_of, kept, iter_elements, iter_iterator,
     iter_next, iter_value, method_call, settle, jsx_factory, jsx_children, summary_called, store_by_key,
+    narrow_value, narrow_member, member_passes, instance_objects, instance_targets, predicate_functions,
+    predicate_admits,
 };
 
 }  // namespace

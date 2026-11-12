@@ -12,12 +12,25 @@ constexpr size_t kGrowthShown = 6;
 constexpr size_t kComposed = 6;          // the largest nodes whose objects are listed
 constexpr size_t kComposedKinds = 12;
 constexpr size_t kLabel = 60;
+constexpr size_t kContextsShown = 3;     // the functions with the most runs whose last contexts are shown, and how many
+constexpr int kContextDepth = -6;        // a context described deeper than other keys (its environments nest)
 
 std::string tag_text(const Analysis& an, Value key) {
     Value tag = an.item(key, 0);
     if (tag.kind() == Kind::Str) return std::string(an.text(tag));
     if (tag.kind() == Kind::Int) return std::to_string(tag.data());
     return "?";
+}
+
+// A context as text: its environments nested, each call's site object by its key.
+std::string context_text(Analysis& an, Value ctx, int depth) {
+    if (ctx.kind() == Kind::Int && ctx.data() >= 0 && static_cast<size_t>(ctx.data()) < an.objects()) {
+        return "#" + an.describe(an.okey(static_cast<Obj>(ctx.data())), 1);
+    }
+    if (ctx.kind() != Kind::Term || depth >= 0) return an.describe(ctx);
+    std::string out = "(";
+    for (Value x : an.at(ctx)) out += context_text(an, x, depth + 1) + " ";
+    return out + ")";
 }
 
 std::string top(std::unordered_map<std::string, size_t>& counts) {
@@ -106,6 +119,37 @@ std::string Analysis::runs(size_t count) {
         out += "\n      " + std::to_string(rows[i].first) + " runs, " + std::to_string(nodes_of[rows[i].second]) +
                " nodes: " + std::string(text(u.qual)).substr(0, kLabel) + " params=" + std::to_string(u.params.size()) +
                " result=" + describe(u.result_type);
+        if (i >= kContextsShown) continue;
+        const auto& ctxs = active_order[static_cast<uint64_t>(rows[i].second)];
+        for (size_t j = 0; j < ctxs.size() && j < kContextsShown; ++j) {   // the last ones made: what grows
+            out += "\n         context " + context_text(*this, ctxs[ctxs.size() - 1 - j], kContextDepth);
+        }
+        out += "\n         " + context_spread(ctxs);
+    }
+    return out;
+}
+
+// How many different values each level of a function's contexts takes: its call, its environment's call, and so on.
+std::string Analysis::context_spread(const std::vector<Value>& ctxs) {
+    std::string out = "distinct per level (call, its environment's call, ...):";
+    std::vector<Value> level(ctxs.begin(), ctxs.end());
+    for (int depth = 0; depth < -kContextDepth && !level.empty(); ++depth) {
+        std::unordered_map<uint64_t, size_t> calls;
+        std::vector<Value> envs;
+        std::unordered_set<uint64_t> seen;
+        for (Value c : level) {
+            ++calls[item(c, 1).bits()];
+            Value env = item(c, 0);
+            if (at(env).size() == 2 && seen.insert(env.bits()).second) envs.push_back(env);
+        }
+        uint64_t top_bits = 0;
+        size_t top_n = 0;
+        for (auto& [bits, n] : calls) {
+            if (n > top_n) top_bits = bits, top_n = n;
+        }
+        out += " " + std::to_string(calls.size()) + " calls (the most common " +
+               context_text(*this, Value::from_bits(top_bits), kContextDepth) + " x" + std::to_string(top_n) + ") /";
+        level.swap(envs);
     }
     return out;
 }

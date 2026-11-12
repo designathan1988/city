@@ -98,7 +98,8 @@ public:
     const UnitRec& unit(int64_t gid) const { return in.units[static_cast<size_t>(gid)]; }
     int64_t offset(const UnitRec& u) const { return u.gid - u.local_id; }
     void activate(int64_t gid, Value ctx);
-    void call(Value node, Obj fn, int64_t receiver, std::span<const Value> args, Value kind, Value site = NONE);
+    void call(Value node, Obj fn, int64_t receiver, std::span<const Value> args, Value kind, Value site = NONE,
+              bool shared = false);           // shared: every such call hands the same arguments (unknown code's)
     Value result(int64_t gid, Value ctx, Value where);
     void reached(Value node, int64_t gid, Value kind);
     void relay(Value origin, Value node);
@@ -116,6 +117,7 @@ public:
     std::string largest(size_t count);           // the nodes holding the most objects, named
     std::string composition(Node n);             // the kinds of object a node holds, the most first
     std::string runs(size_t count);              // the functions run in the most contexts, and their nodes
+    std::string context_spread(const std::vector<Value>& ctxs);   // how many values each level of contexts takes
     std::string costliest(size_t count);         // the nodes whose deliveries cost the most, named
     std::string stores(size_t count);            // the stores by unknown keys writing the most
     std::string describe(Value v, int depth = 0);  // a key as text, objects by their keys

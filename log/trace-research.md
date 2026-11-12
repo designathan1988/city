@@ -465,3 +465,57 @@ official declarations only, converging (finite, fast enough to run in seconds to
 - The lab with contexts: 422 k links at 96 s (the best before: ~372 k at 150 s); the analysis reaches more of the lab
   faster (11.4 M nodes, 888 k objects at 108 s) and still does not converge in 150 s; a representative that took tens
   of thousands of subscriptions makes items long enough to hold the progress lines.
+
+### F31. The new core drops what the program's own tests prove (P1, soundness and cost) — 2026-11-12 09:40
+- Measured (src/world alone, the engine's reports): the analysis stops making objects and links at ~5 M items and
+  then turns for 9 M items more: kCallFunctions applications hand ~9.5 M objects per million items; the costliest
+  nodes are `toString`, `valueOf` and `[Symbol.toPrimitive]` of object literals (`{ ...dab }` in doc.ts) holding ~210
+  values each and handing them to ~1,274 places; `RoadDoc.tell.<lambda:2423>` (`(key, was) => this.note(...)`, the
+  `before` of the record maps) has 6,825 runs: every arithmetic, comparison and template on a record's field coerces
+  the merged values and calls every function among them, each place a context of its own.
+- Collapse checked exact on the part that converges (sim, core, render): the same links, the same returns, the same runs
+  never collapsing and collapsing every 200,000 items; the `solved` line counts before the result's own nodes are made.
+- Why functions reach the records: `SharedMembers.shareRecord` and `canon` write `r[key] = this.canon(value)` only
+  `if (typeof value === 'object' && value !== null)`. The old core read that test (N1, `narrow_values`); the new core
+  lowers the same `("narrow", name, guard, positive)` trees and wires them as identity edges (heap/trees.py NARROW,
+  engine trees.cpp): every value of the name passes, functions included.
+- ECMA-262 (context7, /websites/tc39_es_ecma262_multipage): `typeof` (13.5.3.1) gives "undefined", "object" for null,
+  "string", "symbol", "boolean", "number", "bigint", "function" for an object with [[Call]], "object" otherwise, and
+  "undefined" for a host object with [[IsHTMLDDA]] (B.3.6: `document.all` alone); ToBoolean (7.1.2) is false of
+  undefined, null, +0, -0, NaN, 0n, "" and an [[IsHTMLDDA]] object, true otherwise; InstanceofOperator (13.10.2) calls
+  the target's @@hasInstance when it has one, else OrdinaryHasInstance (7.3.21): false of a primitive, else whether the
+  target's `prototype` is on the value's chain; `p in x` (13.10.1) throws on a primitive x, so neither branch sees one;
+  ToPrimitive (7.1.1) reads and calls @@toPrimitive (with the hint), `valueOf` and `toString` only when the input is an
+  Object, and returns a primitive input as it is.
+- Design: each guard filters the values of the name read where it holds, per abstract object and monotone (a value
+  that can pass is kept once and for all): the language's tests decided by the object's kind (truthy, typeof, equals,
+  nullish, Array.isArray, ArrayBuffer.isView, Number.isInteger and its kin, `in`), a property's truthiness or equality
+  by that object's property values as they come, `instanceof` by the classes the right side holds as they come, a
+  type predicate by the type its callee declares; a value the tracer cannot decide (the platform's declared objects,
+  the unknown object) passes. Both cores; tests first.
+- Built (both cores; tests first, red on both): heap/verdicts.py and engine verdicts.cpp say what each test can give
+  of one value; heap/guards.py and guards.cpp wire the NARROW trees by the guard (`vocab.G_*`, one owner for the
+  readers and the cores): the language's tests by the object's kind, a property's truthiness or equality by the
+  object's property as its values arrive (a property that may be missing reads undefined), `instanceof` by the
+  prototype chain (`ClassFact.extends`, the chain computed once in Python and handed to the engine) as both sides
+  grow, a type predicate or assertion by the type its callee declares (`Unit.predicate_type`, the declared tree).
+  tests/test_heap_narrowing.py (fixture heap/narrowing.ts): 15 cases, 30 with the engine twin.
+- src/world after it: the turning phase is gone (objects and links grow until the deadline); the run explosion is not.
+
+### F32. Runs that tell nothing apart (P1) — 2026-11-12 11:40
+- Measured (the engine's runs report, now with each top function's last contexts and how many values each level of
+  its contexts takes): `rescaleBuilding.<lambda:47>.<lambda:52..61>` 49,837 runs each; their contexts' calls are 385
+  different summary sites, their environments' calls 69: the lambdas were in the pools of hundreds of declared calls
+  whose parameters say nothing (`isFinite(x: unknown)` and the like) and unknown code called them back from each
+  place, each place a context of its own; every closure made in such a run is a new object, so it multiplied.
+- What unknown code hands a function it calls back is fixed by the function alone (`summaries.arguments`: an object of
+  each parameter's declared type, else the unknown object; no receiver): every such call runs it on the same inputs, so
+  per-place contexts tell nothing apart. Built: `Analysis.call(..., shared=True)` from `summaries.called` runs it once
+  per environment (contexts.ONCE), both cores. Test: test_unknown_code_hands_a_function_the_same_arguments_from_every_
+  place (a function handed three times: 3 runs before, 1 after; red on both cores).
+- The same test showed a second run: the entry pass entered `wrapUp` (a function written in `handedThrice`) in the same
+  pass that first ran `handedThrice`, before the solver could find that it is handed on: an entry run with unknown
+  arguments for a function the program reaches. Built (heap/entries.py, moved out of analysis.py; engine entries): a
+  function written in one that had not run before the pass waits for the next pass; one whose enclosing function ran
+  and made no closure of it is entered in ROOT as before.
+- src/world after both: 29,403 runs at 34 s (340,309 before); the work left is calls on large merged sets (F33).

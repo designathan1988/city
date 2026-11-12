@@ -32,6 +32,7 @@ def class_declaration(r, node, name: str, owner: str, holder) -> str:
     else:
         js_decl.new_class(r, node, name, owner)
     cls = next(c for c in reversed(r.facts.classes) if c.key == key)
+    cls.ambient = r.declaration_file or r.ambient > 0
     cls.tparams = js_sigs.open_params(r, node, LEVEL_TYPE, key)     # erased (T1), and kept (Task 4)
     outer = holder if local else None
     body = field_of(node, "body")
@@ -58,6 +59,7 @@ def heritage(r, node, cls, key: str) -> None:
             if clause.type == "extends_clause":
                 text = " ".join(r.src.text(field_of(clause, "value")).split())
                 cls.bases.append(text)
+                cls.extends = text
                 args = field_of(clause, "type_arguments")
                 written = tuple(js_sigs.tree(r, js_types.bare(a), key) for a in named_children(args)) if args else ()
                 cls.heritage.append((T_NAMED, text, written, r.key, key))

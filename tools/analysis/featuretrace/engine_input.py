@@ -3,8 +3,9 @@ the facts' own format) of the units and the classes as the readers made them, an
 queries, computed by the readers' and the new core's own logic so the engine needs none of it: for every name read in
 a unit, what it is (definitions, the modules an import binds, a class of the scope, the enclosing function that
 declares it); for every declared type name, what it names (an alias, a class merged); for every class, its bases,
-merged group, prototype chain and inner names; the members by owner, the global types, where every import leads, every
-module's exports, every file's JSX transform, what a `typeof` in a type names, what each operator and literal gives;
+merged group, chain, inner names and prototype chain (what its `extends` reaches); the members by owner, the global
+types, where every import leads, every module's exports, every file's JSX transform, what a `typeof` in a type names,
+what each operator and literal gives;
 and the vocabulary: every constant the new core takes from outside itself, the new core's own tags, and the model's
 field names, each from its one owner, so the engine binds to the definitions Python has.
 `tables(ix)` are those values in the order of ROOT_PARTS; `write(ix, path)` writes the file, a dict of them by part.
@@ -18,7 +19,7 @@ import pickle
 from pathlib import Path
 
 from . import truth
-from .heap import flows, jsx, names, trees, typesys
+from .heap import flows, jsx, names, trees, typesys, verdicts
 from .js_transfer import chain
 from .languages import INTRINSICS, JSX_CLASSIC, JSX_FACTORY_DEFAULT, JSX_FACTORY_OPTION, canonical_numeric
 from .model import FUNCTION_KINDS, ClassFact, Ref, Unit
@@ -80,7 +81,7 @@ class Found:
         """The names a unit reads, and whether a JSX element is written in it."""
         found, self.elements = set(), False
         for field in ("types", "values", "returns", "yields", "param_types", "result_type", "tparams", "this_type",
-                      "indexes"):
+                      "indexes", "predicate_type"):
             self.walk(getattr(unit, field), found)
         for ref in unit.refs:
             self.walk((ref.base, ref.args, ref.key), found)
@@ -128,7 +129,8 @@ def tables(ix) -> list:
     type_rows = [(text, file, owner, typesys.resolve(light, text, file, owner)) for text, file, owner in
                  sorted(found.types)]
     class_rows = [(key, list(ix.base_keys(cls)), list(typesys.group(light, key)), typesys.identity(light, key),
-                   list(chain(ix, key)), sorted(ix.inner.get(key, {}).items()))
+                   list(chain(ix, key)), sorted(ix.inner.get(key, {}).items()),
+                   *(list(part) if isinstance(part, tuple) else part for part in verdicts.prototype_chain(light, key)))
                   for key, cls in sorted(ix.classes.items())]
     intrinsics = [(kind, [typesys.global_type(light, n) for n in kind_names]) for kind, kind_names in
                   sorted(INTRINSICS.items())]

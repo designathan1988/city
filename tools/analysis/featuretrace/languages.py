@@ -57,6 +57,14 @@ JSX_NAMESPACE = "JSX"
 JSX_CHILDREN_ATTRIBUTE = "ElementChildrenAttribute"
 # A position typed by what every object or every function is constrains nothing of where a value goes.
 OPEN_INTRINSICS = (SITE_LITERAL, SITE_FUNCTION)
+# ECMA-262 13.5.3.1: what `typeof` gives — for undefined, null and the other objects, a Boolean, a Number, a BigInt, a
+# String, a Symbol, an object with [[Call]] (and B.3.6: "undefined" for a host object with [[IsHTMLDDA]]).
+TYPEOF_UNDEFINED, TYPEOF_OBJECT, TYPEOF_BOOLEAN, TYPEOF_NUMBER, TYPEOF_BIGINT, TYPEOF_STRING, TYPEOF_SYMBOL, \
+    TYPEOF_FUNCTION = "undefined", "object", "boolean", "number", "bigint", "string", "symbol", "function"
+# ECMA-262 InstanceofOperator (13.10.2): the well-known symbol a target answers `instanceof` with, as the reader names
+# it; B.3.1: a literal's `__proto__: v` property sets the object's [[Prototype]].
+HAS_INSTANCE = "[Symbol.hasInstance]"
+PROTO_PROPERTY = "__proto__"
 
 
 def canonical_numeric(text: str) -> bool:

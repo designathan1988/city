@@ -96,7 +96,7 @@ public:
         for (size_t i = 0; i + 1 < written.size(); i += 2) u.written_by[written[i].bits()] = ints(s_, written[i + 1]);
         auto accessors = seq(s_, get("accessors"));
         for (size_t i = 0; i + 1 < accessors.size(); i += 2) u.accessors[accessors[i].bits()] = accessors[i + 1];
-        u.result_type = get("result_type");
+        u.result_type = get("result_type"); u.predicate_type = get("predicate_type");
         u.this_type = get("this_type");
         for (Value pair : seq(s_, get("indexes"))) {
             auto kv = seq(s_, pair);
@@ -119,7 +119,7 @@ public:
         auto get = [&](const char* n) { return f.get(s_.string(n)); };
         ClassRec c;
         c.key = get("key"); c.name = get("name"); c.file = get("file"); c.outer = get("outer");
-        c.shape = flag(get("shape")); c.made = num(get("made"));
+        c.shape = flag(get("shape")); c.made = num(get("made")); c.ambient = flag(get("ambient"));
         c.tparams = list(s_, get("tparams")); c.heritage = list(s_, get("heritage"));
         c.identity = c.key;
         in_.classes.emplace(c.key.bits(), std::move(c));
@@ -178,6 +178,7 @@ void decode(Value root, Input& in) {
             auto kv = seq(s, pair);
             c.inner[kv[0].bits()] = kv[1];
         }
+        c.proto_chain = list(s, r[6]); c.proto_unresolved = flag(r[7]); c.proto_ambient = flag(r[8]);
     }
     for (Value row : seq(s, part(s, root, "intrinsics"))) {
         auto r = seq(s, row);

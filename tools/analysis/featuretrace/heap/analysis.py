@@ -6,21 +6,19 @@ of the form the walk and the report read (`resolve.Edge`).
 Contexts are finite by construction (`contexts`): a function runs in (its closure's environment, the call's site), a
 method called on a receiver in (its environment, the receiver's allocation site and heap context); an object made in a
 context carries its heap context, a closure the whole context as its environment. A unit's references are lowered
-once per context it runs in. Module code runs first, in ROOT; then a function no call of the program reaches is an
-entry point, called by the unknown caller once for each environment a closure of it was made in, with the unknown
-object in each parameter and `this`.
+once per context it runs in. Module code runs first, in ROOT; then the entry points (`entries`).
 """
 from __future__ import annotations
 
 from collections import defaultdict
 
-from ..js_read import MODULE_UNIT
 from ..model import FUNCTION_KINDS
 from ..resolve import EXACT, Edge
 from ..model import STATE_KINDS as STATE
-from ..vocab import (ANY_FIELD, CALL, ELEMENTS_FIELD, HANDED, NEW, RESULT_FIELD, SITE_FUNCTION, SITE_GENERATOR,
-                     SITE_PROMISE, SITE_UNKNOWN, T_OPEN)
+from ..vocab import (ANY_FIELD, CALL, ELEMENTS_FIELD, NEW, RESULT_FIELD, SITE_FUNCTION, SITE_GENERATOR,
+                     SITE_PROMISE)
 from . import contexts, declared, flows, members, protocols, refs, trees, typesys, values
+from .entries import entries
 from .objects import Objects
 from .solver import Solver
 
@@ -114,11 +112,12 @@ class Analysis:
             self.active[gid].add(ctx)
             refs.lower(self, self.ix.units[gid], ctx)
 
-    def call(self, node, fn: int, receiver: int | None, args: list, kind: str, site=None) -> None:
+    def call(self, node, fn: int, receiver: int | None, args: list, kind: str, site=None, shared=False) -> None:
         """A call whose node is `node` runs the function object `fn` on `receiver` with `args`, in its context: its
         parameters take the arguments, its `this` the receiver, the call its result; a link for each reference.
         A plain call's site is its node without the caller's context, or `site`, (static site, heap context), when the
-        caller gives it (a callback's node carries objects no site may hold). A function only
+        caller gives it (a callback's node carries objects no site may hold); `shared`: every such call hands the
+        function the same arguments (unknown code's), so one run in its environment serves them all. A function only
         declared does what its declaration says (`declared`); an object no function of the program is called as
         its kind says."""
         objects = self.objects
@@ -134,7 +133,7 @@ class Analysis:
                 declared.apply(self, node, gid, receiver, args, where)
             return
         env = objects.env(fn)
-        if not flows.contextual(self, gid):     # nothing that differs between callers reaches out
+        if shared or not flows.contextual(self, gid):     # nothing that differs between callers reaches out
             ctx = contexts.of_call(env, contexts.ONCE)
         elif receiver is not None:
             ctx = contexts.of_method(env, objects.site(receiver), objects.heap(receiver))
@@ -222,44 +221,6 @@ class Analysis:
 
     def is_function_unit(self, gid: int) -> bool:
         return self.ix.units[gid].kind in FUNCTION_KINDS
-
-
-def entries(an, modules: bool) -> bool:
-    """Module code runs first, in ROOT; after it, every function no call reaches is called by the unknown caller, once
-    for each environment a closure of it was made in (ROOT when none was), the unknown object in each parameter and
-    `this`. Returns whether any run started."""
-    unknown, started = an.objects.make(SITE_UNKNOWN), False
-    for unit in an.ix.units:
-        gid = unit.gid
-        if not an.is_function_unit(gid) or unit.decl_only or (unit.name == MODULE_UNIT) != modules:
-            continue                         # a declaration has no body to run
-        if modules:
-            started |= enter(an, gid, ROOT, None)
-        elif not any(e.kind in (CALL, NEW, HANDED) for e in an.inn.get(gid, ())):   # no caller, nor the platform
-            for env in list(an.closures.get(gid) or {ROOT}):
-                started |= enter(an, gid, contexts.of_call(env, unknown), unknown)
-    return started
-
-
-def enter(an, gid: int, ctx, unknown) -> bool:
-    """A unit run in `ctx` by no call of the program (its arguments and `this` the unknown object, if given)."""
-    if (gid, ctx) in an.entered:
-        return False
-    an.entered.add((gid, ctx))
-    an.activate(gid, ctx)
-    if unknown is not None:                  # each parameter: an object of its declared type, else the unknown one
-        unit = an.ix.units[gid]
-        for index in range(len(unit.params)):
-            tree = unit.param_types[index] if index < len(unit.param_types) else ()
-            if tree and tree[0] != T_OPEN:
-                site = ((gid, index), ROOT)
-                an.solver.follow(values.produce(an, tree, (None, None, None), site), an.param(gid, index, ctx))
-            else:
-                an.solver.add(an.param(gid, index, ctx), [unknown])
-        an.solver.add(an.this(gid, ctx), [unknown])
-        if unit.owner in an.ix.classes and not unit.static:      # a method: any object of its class
-            an.solver.follow(an.instances(unit.owner), an.this(gid, ctx))
-    return True
 
 
 class Result:
