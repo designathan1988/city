@@ -107,6 +107,7 @@ def whole_rules(rules):
         Whole("map", ["CLAUDE_MD", "MAPA_DESATUALIZADO"], gate_docs.inputs, gate_docs.check_claude_md,
               lambda ctx: sorted(ctx.listed)),
         Whole("data", ["DADOS", "DADOS_SEM_SCHEMA"], _in_scope(gate_data.inputs), gate_data.check_data),
+        Whole("register", ["PROBLEM_REGISTER"], gate_data.register_inputs, gate_data.check_register, gate_data.register_extra),
         Whole("materials", ["SHADER_PARAM"], _in_scope(gate_materials.inputs), gate_materials.check_materials),
         Whole("owner_symbols", ["DONO_AUSENTE"], gate_defs.owner_inputs, gate_defs.check_owner_symbols,
               lambda ctx: sorted(c["owner"] in ctx.listed_set for c in ctx.owners["concepts"])),

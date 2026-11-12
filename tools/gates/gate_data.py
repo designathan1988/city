@@ -10,6 +10,7 @@ import sys
 TOOLS_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 if TOOLS_DIR not in sys.path:
     sys.path.insert(0, TOOLS_DIR)
+from atlas import problems as register  # noqa: E402  the register's one owner, whose rule this gate holds
 from tasks import schema as json_schema  # noqa: E402
 
 
@@ -78,6 +79,42 @@ def _styled_errors(data, schema):
             continue
         out += [f"styles.{style} laid over the table: {e}" for e in json_schema.errors(_laid(base, over), whole, schema, complete=True)]
     return out
+
+
+def register_inputs(ctx, path):
+    entry = ctx.rules["register"]
+    return path in (entry["file"], entry["schema"])
+
+
+def register_extra(ctx):
+    """What the register's verdict reads besides its inputs: whether each piece of evidence it names is there."""
+    entry = ctx.rules["register"]
+    try:
+        problems = register.read(os.path.join(ctx.root, entry["file"]))
+    except register.RegisterError:
+        return []
+    named = sorted({e for p in problems for e in (p.get("evidence") or []) if isinstance(e, str)})
+    return [[e, e.startswith(register.GIT_REF) or os.path.exists(os.path.join(ctx.root, e))] for e in named]
+
+
+def check_register(ctx, err):
+    """PROBLEM_REGISTER: the one register of known problems holds by its schema and by the rules no keyword states
+    (tools/atlas/problems.py faults); a register missing or unreadable is a finding, never an empty pass."""
+    entry = ctx.rules["register"]
+    path = os.path.join(ctx.root, entry["file"])
+    if not os.path.isfile(path):
+        err("PROBLEM_REGISTER", entry["file"], "the register is missing: every known problem is kept there")
+        return
+    schema = _load(ctx, entry["schema"], err, entry["file"])
+    if schema is None:
+        return
+    try:
+        problems = register.read(path)
+    except register.RegisterError as e:
+        err("PROBLEM_REGISTER", entry["file"], str(e))
+        return
+    for where, reason in register.faults(problems, schema, ctx.root, lambda ref: register.git_ref_exists(ctx.root, ref)):
+        err("PROBLEM_REGISTER", f"{entry['file']}:{where}", reason)
 
 
 def check_data(ctx, err):

@@ -22,12 +22,19 @@ def check_junk(ctx, src, err):
         err("SEM_LIXO", src.path, "temporary file or copy: delete it or fold it into its owner")
 
 
+def in_doc_place(rules, path):
+    """Whether a path lies in one of the declared document places (rules.json doc_places: Spec Kit's folders)."""
+    return any(path == place or path.startswith(place + "/") for place in rules["doc_places"])
+
+
 def check_single_doc(ctx, src, err):
     rules = ctx.rules
     if os.path.basename(src.path) in set(rules.get("doc_exempt_names", [])):
         return
-    if os.path.splitext(src.path)[1].lower() in rules["doc_extensions"] and src.path not in set(rules["allowed_docs"]):
-        err("DOC_UNICO", src.path, "the project's documents are CLAUDE.md and log/: move the content there")
+    if (os.path.splitext(src.path)[1].lower() in rules["doc_extensions"] and src.path not in set(rules["allowed_docs"])
+            and not in_doc_place(rules, src.path)):
+        err("DOC_UNICO", src.path, "the project's documents are CLAUDE.md, log/ and the declared places (rules.json doc_places): "
+                                   "move the content there")
 
 
 def check_sizes(ctx, src, err):

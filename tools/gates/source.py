@@ -16,7 +16,7 @@ LANGUAGES = {
     ".scm": "query",
     ".svg": "xml", ".xml": "xml",
     ".md": "prose", ".txt": "prose",
-    ".json": "data", ".csv": "data", ".uid": "data", ".gltf": "data",
+    ".json": "data", ".jsonl": "data", ".csv": "data", ".uid": "data", ".gltf": "data",
 }
 _LEXERS = {
     "cpp": lambda t: lex_c.lex(t, lex_c.LANG_CPP),

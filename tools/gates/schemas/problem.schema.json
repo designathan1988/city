@@ -1,0 +1,36 @@
+{
+  "description": "One problem of the register (log/problems.jsonl, one problem a line), written only by tools/atlas (problems add, update, close, drop, import, import-gates). What no keyword states is the register gate's (tools/gates/gate_data.py check_register): ids unique and never reused, an unknown cause with the reading that would find it, a fix for every fixed problem, a closing date only on a fixed or dropped one, related ids that exist, evidence that exists.",
+  "$defs": {
+    "text": {"type": "string", "minLength": 1},
+    "when": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2})?$"},
+    "maybe_when": {"oneOf": [{"$ref": "#/$defs/when"}, {"type": "null"}]},
+    "maybe_text": {"oneOf": [{"$ref": "#/$defs/text"}, {"type": "null"}]}
+  },
+  "type": "object",
+  "strict": true,
+  "properties": {
+    "id": {"type": "string", "pattern": "^P[a-z]+-[1-9][0-9]*$", "description": "P<area>-<n>: unique, never reused"},
+    "title": {"$ref": "#/$defs/text"},
+    "symptom": {"$ref": "#/$defs/text", "description": "what the player or the owner sees"},
+    "cause": {"$ref": "#/$defs/text", "description": "the design decision that produces it, or \"unknown\" (then reading is required)"},
+    "reading": {"$ref": "#/$defs/maybe_text", "description": "what must be read to find the cause; required while the cause is unknown"},
+    "owner": {"$ref": "#/$defs/text", "description": "the one owner (file and symbol) of the decision, or the tool"},
+    "area": {"enum": ["simulation", "traffic", "walkers", "transit", "roads", "street", "lots", "buildings", "terrain", "nature", "render",
+                      "interface", "performance", "product", "tools", "docs", "process"]},
+    "kind": {"enum": ["defect", "missing-feature", "performance", "copy", "architecture", "process"]},
+    "status": {"enum": ["open", "traced", "planned", "fixed-pending-check", "fixed", "dropped"]},
+    "criterion": {"$ref": "#/$defs/text", "description": "the check that closes it: a test, a measure, an analysed photo, a gate"},
+    "evidence": {"type": "array", "items": {"$ref": "#/$defs/text"}, "uniqueItems": true,
+                 "description": "paths under dist/evidence/<id>/ or elsewhere on disk, or git references written git:<ref>"},
+    "origin": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/text"}, "uniqueItems": true,
+               "description": "where it came from: pendencias.md:S1, trace:port-from-nov7#P412, performance.md:P-13, gate:<RULE>:<file>, run:<run id>"},
+    "related": {"type": "array", "items": {"type": "string", "pattern": "^P[a-z]+-[1-9][0-9]*$"}, "uniqueItems": true},
+    "spec": {"$ref": "#/$defs/maybe_text", "description": "the specification that will fix it"},
+    "opened": {"$ref": "#/$defs/when"},
+    "traced": {"$ref": "#/$defs/maybe_when", "description": "when the status first left open for traced: a report's time to its located cause"},
+    "closed": {"$ref": "#/$defs/maybe_when", "description": "set only with the status fixed or dropped"},
+    "fix": {"$ref": "#/$defs/maybe_text", "description": "what changed and why it cannot return; required for fixed (for dropped: why it is no problem)"}
+  },
+  "required": ["id", "title", "symptom", "cause", "reading", "owner", "area", "kind", "status", "criterion", "evidence", "origin",
+               "related", "spec", "opened", "traced", "closed", "fix"]
+}

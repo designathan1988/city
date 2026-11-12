@@ -1,0 +1,12 @@
+{
+ "rule": "register",
+ "expect": [
+  "PROBLEM_REGISTER log/problems.jsonl:Ptools-1",
+  "PROBLEM_REGISTER log/problems.jsonl:Ptools-1",
+  "PROBLEM_REGISTER log/problems.jsonl:Ptools-2",
+  "PROBLEM_REGISTER log/problems.jsonl:Ptools-3",
+  "PROBLEM_REGISTER log/problems.jsonl:Ptools-4",
+  "PROBLEM_REGISTER log/problems.jsonl:Ptools-5",
+  "PROBLEM_REGISTER log/problems.jsonl:Ptools-6"
+ ]
+}

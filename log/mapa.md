@@ -714,5 +714,20 @@ Arquivo criado ou apagado entra aqui no mesmo commit: o gate `MAPA_DESATUALIZADO
 - `tools/tasks/locations.py` · `tools/tasks/tests/test_locations.py` — where this machine's tools are (Godot, Git for Windows' bash, llvm-mingw): the environment, the machine's git-ignored tools/tasks/local.json, then the PATH, else a refusal naming what to set; its tests
 - `tools/tasks/tests/test_godot_deps.py` · `tools/tasks/tests/test_runs.py` · `tools/tasks/tests/test_verdicts.py` — the orchestrator's tests of what a Godot run loads, of a run's records and of the verdicts
 - `tools/tasks/tests/support.py` · `tools/tasks/tests/test_cli.py` · `tools/tasks/tests/test_photodiff.py` · `tools/tasks/tests/test_pool.py` · `tools/tasks/tests/test_proc.py` — the orchestrator's tests: a throwaway git repo, the exit codes, photo differences, the pool (hangs, skips, cache), and deadlines that kill a whole tree
+- `tools/atlas/__init__.py` · `tools/atlas/cli.py` — the atlas, the project's one traceability tool: its command line (`problems`; `--json`; exit 0 an answer, 1 a failure or a refused change, 2 a usage error)
+- `tools/atlas/problems.py` · `tools/atlas/problems_cli.py` — the problem register's one owner: read, judged (`faults`, the rule the register gate holds), changed through one setter of the status (`MOVES`) and written as LF bytes; its commands (list with filters, add, update, close, drop, render)
+- `tools/atlas/render.py` — the register's generated view `log/problems.md`, by area then status (`--check` for the generated-files gate)
+- `tools/atlas/tests/**` — the atlas's tests and their fixture register
+- `log/problems.jsonl` · `log/problems.md` — the one register of every known problem of the game and the project (one JSON object a line, schema `tools/gates/schemas/problem.schema.json`) and its generated view
+- `log/history/tools.md` · `log/history/process.md` — one history per area of work: the tools; the process (the method, the triage and cleanup, the progress of a specification, the time each step takes)
+- `.specify/**` — Spec Kit's own files (its scripts, templates and workflow, copied from the user-level template); `.specify/memory/constitution.md` points to CLAUDE.md and holds no rule
+- `specs/001-single-source-traceability/**` — the specification of one source of truth, a clean project and end-to-end traceability: spec, plan, research, data model, contracts, quickstart, checklist and tasks
 <!-- MAPA:FIM -->
+
+## Archive tags
+
+What leaves the working tree stays reachable in the history under these tags (git tag -l "archive/*").
+
+- `archive/2026-11-12/before-cleanup` — `main` at `89be3acd`, before the cleanup of specification 001 (worktrees, copies, branches,
+  stashes, obsolete trees and documents)
 

@@ -1,6 +1,7 @@
 {
  "rule": "single_doc",
  "expect": [
+  "DOC_UNICO specsx/notes.md",
   "DOC_UNICO tools/README.md"
  ]
 }

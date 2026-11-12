@@ -22,6 +22,8 @@
     "CLAUDE.md",
     ".claude",
     ".gitignore",
+    ".specify",
+    "specs",
     "native",
     "project",
     "tools",
@@ -29,9 +31,13 @@
     "log"
   ],
   "allowed_docs": [
-    "CLAUDE.md",
-    ".claude/REGISTRO-GOAL.md"
+    "CLAUDE.md"
   ],
+  "doc_places": [
+    ".specify",
+    "specs"
+  ],
+  "_doc_places_doc": "Folders whose documents are the project's own besides CLAUDE.md and log/ (which the gates leave out whole): Spec Kit's layout, its tool files and one folder per specification. They hold no order: INSTRUCTION_ELSEWHERE and PRECEDENCE_CLAIM judge them like every file.",
   "doc_exempt_names": [
     "CMakeLists.txt"
   ],
@@ -490,8 +496,22 @@
       "outputs": [
         "project/data/render/furniture.json"
       ]
+    },
+    {
+      "generator": "tools/atlas/render.py",
+      "inputs": [
+        "log/problems.jsonl"
+      ],
+      "outputs": [
+        "log/problems.md"
+      ]
     }
   ],
+  "register": {
+    "file": "log/problems.jsonl",
+    "schema": "tools/gates/schemas/problem.schema.json"
+  },
+  "_register_doc": "The one register of known problems (PROBLEM_REGISTER, gate_data.check_register): each line one problem against its schema, and what no schema keyword states: ids unique, an unknown cause with the reading that would find it, a fix for every fixed problem, a closing date only on a fixed or dropped one, related ids that exist, evidence that exists (a path on disk, or a git reference written git:<ref>).",
   "styled_tables": [
     "project/data/catalog/street_furniture.json",
     "project/data/render/streets.json"
