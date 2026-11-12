@@ -433,3 +433,19 @@ official declarations only, converging (finite, fast enough to run in seconds to
   test_a_literal_property_is_evaluated_where_the_literal_is; 445 tests; fixture links identical across the cores.
 - The lab with contexts: 93 M items in 150 s, 371.7 k links (more: the flows the literals lost now arrive), not
   converged.
+
+### F29. What is left is the graph's own size (P1) — 2026-11-12 07:00 — open
+- The stores by keys of unknown text that write the most are now recursive traversals over every record
+  (`SharedMembers.canon`, `shareRecord`, `intern`: `node[key] = this.canon(item)` with `key` from `Object.keys(node)`):
+  ~600 records' dictionary parts get the same ~205 values. The key comes from a declared function returning `string[]`
+  (nothing in the declaration ties it to its argument, and the tracer has no rule for a library's member), and the
+  recursion runs through one call site, so neither the language's rules nor call-site contexts tell those records
+  apart: this merge belongs to the analysis, not to a mistake in it.
+- The engine's profile on the lab (90 s, RelWithDebInfo build): inserting identity edges into the table of edges seen
+  21% (one random access into a table of tens of millions of entries per edge), making key terms 15%, adding objects to
+  sets 13%. The work left is the size of the constraint graph the analysis builds.
+- Two ways on, each a change of design to weigh with the owner's order (the costliest solution at the cause):
+  (a) the solver's representation: edges kept per source in the source's own adjacency (no global table), cycles of
+      identity edges collapsed (Hardekopf & Lin's lazy and hybrid cycle detection), sets as sorted chunks;
+  (b) answering the tracer's question instead of solving the whole program (F7, F9: demand-driven points-to,
+      Sridharan & Bodik; Boomerang): a feature trace needs the flows from its seed, not every flow of the lab.

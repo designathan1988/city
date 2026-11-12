@@ -81,3 +81,9 @@ measurements, as `superpowers:executing-plans` requires.
   (test_heap_contexts must stay green as it is).
 - Measured on the lab: runs, nodes, items, time to converge, links against the full-context run on the parts that
   converge (`src/sim`, `src/world/doc.ts` + `rescale.ts`).
+
+### E6/E7 status (2026-11-12 07:00)
+- Since 04:00: number keys (F25), contexts where they change the result (E7, F26), calls of what no call runs skipped
+  (F27), fields initialized per object and literals where evaluated (F28). The lab with contexts reaches ~370 k links
+  in 150 s and still grows; what is left is the graph's size (F29). Next, by the owner's choice of design: the solver's
+  representation (a) or demand-driven queries (b).
