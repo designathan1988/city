@@ -92,19 +92,40 @@ output. Anything less is `open`, with what failed written down. The questions co
 - **Searches:** context7 `/godotengine/godot-docs`, `tutorials/3d/visibility_ranges.rst` and `class_geometryinstance3d.rst`:
   the range's distance is measured "from the camera to the center of the instance's AABB"; with fade disabled the margins are
   a hysteresis ("will only change its visibility state when it goes over or under the threshold by this amount").
-- **Hypothesis 1 (failed):** inside the hysteresis band round 220 m of a chunk's centre, a camera that arrives by a jump sees
-  neither level. **Test:** `dist/research/q16/` (`proj/probe.gd`: two RenderingServer instances of one mesh, a 256 m box as
-  custom AABB, ranges 0..220 and 220..700 with 3 % margins, a fresh process per first-sight distance; `python run.py ranges
-  150 200 212 214 216 218 220 222 224 226 228 240 400`). **Real output:** `objects_drawn=1` at every one of the thirteen
-  distances. The engine draws exactly one level at first sight anywhere in the band. The hypothesis is wrong; the swap by a
-  chunk centre's distance is not what hides the wires.
-- **What stands from the reading:** the level a wire is drawn at is chosen by the distance to the centre of a 256 m box, so a
-  wire 26 m from the eye may be drawn by the coarse level and one 340 m away by the fine one: a defect of detail (the one
-  owner of detail is `render/detail.h`, which the wires do not ask), but not the cause of V1.
-- **Status: `open`.** The cause is to be found by reading the flow whole (the `trace-fix` trace of V1: `street_lines`
-  `node_line_spans`, `street_props` `push_span`, `prop_kit` `wire_mesh`, `props.gdshader`'s wire vertex, `prop_renderer`'s
-  chunk draw and box), with the two photos' camera poses as the case: which spans' instances exist in the buffer of each chunk
-  for that junction, and what the shader does with each from each side.
+- **Hypothesis:** inside the hysteresis band round 220 m of a chunk's box centre, a camera that finds both levels new (the
+  chunk just streamed in or rebuilt) sees neither. **Test:** `dist/research/q16/` (`proj/probe.gd`: two RenderingServer
+  instances of one mesh, a 256 m box as custom AABB, ranges 0..220 and 220..700 with 3 % margins, a fresh process per
+  first-sight distance; `python run.py ranges <distances>`).
+  - **My first run was wrong and said the opposite** (`objects_drawn=1` at all thirteen distances): the probe moved the
+    instance, and the engine measures to the centre of the instance's *transformed* box, so every distance was 124 m short and
+    the band was never visited. Recorded because the wrong "failed" stood in this file for an hour (commit 62fe932d).
+  - **Corrected probe (the instance at the origin), real output:**
+
+    ```
+    d_to_box_centre=200.0 objects_drawn=1      d_to_box_centre=222.0 objects_drawn=0
+    d_to_box_centre=212.0 objects_drawn=1      d_to_box_centre=224.0 objects_drawn=0
+    d_to_box_centre=214.0 objects_drawn=0      d_to_box_centre=226.0 objects_drawn=0
+    d_to_box_centre=216.0 objects_drawn=0      d_to_box_centre=228.0 objects_drawn=1
+    d_to_box_centre=218.0 objects_drawn=0      d_to_box_centre=240.0 objects_drawn=1
+    d_to_box_centre=220.0 objects_drawn=0      d_to_box_centre=720.0 objects_drawn=0
+    ```
+    **The problem is reproduced:** from 214 to 226 m of the box's centre, at first sight, the engine draws neither level
+    (each instance, not drawn before, waits to be inside its own range by its margin: 220 - 6.6 and 220 + 6.6).
+- **In the game** (read whole in the trace `pole-no-wires`, `dist/trace/pole-no-wires/`): the chunk's box is the chunk grown
+  by 63 m, from y -100 over 700 m (`rs_util.h:19`), its centre at y = 250. The photo's camera stands about 62 m from its
+  target (zoom 25 px/m: half 21.2 m, lens about 37 degrees, `camera_profile.gd`), some 36 m over the ground, so about 193 m
+  under the box's centre: the band 213.4 to 226.6 m is, in plan, a ring 91 to 119 m round the chunk's centre. The T joint is
+  131 m from its chunk's centre in plan and the two shots stand 51 m either side of it (80 to 182 m): one of them falls in the
+  ring, the other does not. That is the photo with no wires and the photo with them.
+- **Solution applied in the test (after):** `python run.py owner <distances>`: no engine range; one owner shows exactly one
+  level by its own rule each frame. Real output: `objects_drawn=1` at 150, 214, 216, 218, 220, 222, 224, 226, 240 and 400 m.
+- **Conclusion:** the cause of V1 is a design decision: the level of a thing drawn is left to two engine instances that each
+  decide alone, with a hysteresis of their own, by the distance to a box's centre; nothing guarantees one of them is drawn.
+  The same decision swaps the poles' shadows (`prop_renderer.cpp:94-95`) and gives the buildings' prop casts a range with a
+  begin (`building_renderer_reach.cpp:88`, to read). The fix (Phase 3, trace `pole-no-wires` P1, P2): one owner of the level
+  drawn (`render/detail.h`, by pixels on the live lens, measured to the nearest point of the box), shown by instance
+  visibility; a probe of the wire instances drawn from the band's distances as the failing test.
+- **Status: `proven`** (the problem reproduced with its before, the solution with its after, the steps above).
 
 ### Q6. How is input injected so that the game cannot tell it from a player's? (pending items T3, F1; 2026-11-12, session 2)
 
