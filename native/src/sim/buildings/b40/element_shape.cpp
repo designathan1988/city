@@ -98,13 +98,11 @@ Point2 Outline::nearest(float x, float y) const {
 	float least = FAR_AWAY;
 	for (int k = 0; k < n; k++) {
 		const Point2 &a = p[k], &b = p[(k + 1) % n];
-		const float ex = b.x - a.x, ey = b.y - a.y, l2 = ex * ex + ey * ey;
-		const float t = l2 > 0 ? std::clamp(((x - a.x) * ex + (y - a.y) * ey) / l2, 0.f, 1.f) : 0.f;
-		const Point2 q{ a.x + ex * t, a.y + ey * t };
-		const float away = std::hypot(q.x - x, q.y - y);
+		float along = 0; // of the side, where its nearest point lies
+		const float away = dist_point_segment(V2(x, y), V2(a.x, a.y), V2(b.x, b.y), &along);
 		if (away >= least) continue;
 		least = away;
-		best = q;
+		best = { a.x + (b.x - a.x) * along, a.y + (b.y - a.y) * along };
 	}
 	return best;
 }

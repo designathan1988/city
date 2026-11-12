@@ -39,6 +39,18 @@ struct Placed {
 	PlacedHold hold; // set by BuildingBodies::place: `b`, `whole` and `rooms` point into it
 };
 
+// A body placed alone at the world's origin, its lot's frame the world's axes (x along the front, z away from the street), on the
+// ground `ground` gives: what a probe draws a body made on the spot on.
+inline Placed placed_alone(const Data &data, const BuildingLook &look, const Body &b, std::function<float(const godot::Vector3 &)> ground) {
+	Placed pl;
+	pl.data = &data;
+	pl.look = &look;
+	pl.b = pl.whole = &b;
+	pl.lot = Basis{ godot::Vector3(), godot::Vector3(1, 0, 0), godot::Vector3(0, 0, 1), godot::Vector3(0, 1, 0) };
+	pl.ground = std::move(ground);
+	return pl;
+}
+
 // The frame a block is drawn in: the lot's, raised by the block's lift. What a block draws, it draws through the frame, so a split level needs nothing else of the emitters.
 inline const Placed &block_frame(const Placed &pl, const Volume &v, Placed &raised) {
 	if (v.lift == 0) return pl;

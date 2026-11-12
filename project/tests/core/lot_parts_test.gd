@@ -23,6 +23,17 @@ const COURTS := [[13, 30.0, 44.0]]
 const STREET_SIDES := [0, 4, 7]
 const PARK_FN := 6
 const COURT_FN := 13
+## covers laid by hand on sloping ground, whose grid's lines stand 3 m apart: what it is, then x, y, width, depth, round
+const SLOPE_LOT := Vector2(30.0, 54.0)
+const SLOPE_COVERS := [
+	["a strip clear of the grid's lines", 7.7, 22.3, 4.0, 0.5, false],
+	["a strip whose far side lies a hair inside a line of the grid", 7.7, 26.749998, 4.0, 0.5, false],
+	["a strip whose far side lies on a line of the grid", 7.5, 26.75, 4.0, 0.5, false],
+	["a paving between lines of the grid", 0.0, 27.0, 6.0, 6.0, false],
+	["a round paving about a point of the grid", 0.0, 27.0, 14.0, 14.0, true],
+	["a round paving off the grid", 1.3, 25.1, 11.0, 11.0, true],
+	["a small round mark", -4.2, 10.4, 3.0, 3.0, true],
+]
 
 
 func _ready() -> void:
@@ -64,6 +75,7 @@ func _ready() -> void:
 	for lot: Array in OPEN_LOTS:
 		_check_fountain(lot[0], lot[1], lot[2])
 	_check_pools()
+	_check_covers_on_slope()
 	print("lot_parts: lamps on posts by zone %s" % posts)
 	print("lot_parts: %d planters, %d trees over %d bodies; planters by zone %s" % [planters, trees, ZONES.size() * LOTS.size() * BODIES, by_zone])
 	finish()
@@ -107,6 +119,15 @@ func _check_fountain(fn: int, w: float, d: float) -> void:
 	check(int(rims.pavings_round) == int(rims.pavings), "%s: the paving a fountain stands on is round (%d of %d; the first square one (seed, middle, size): %s)" % [where, rims.pavings_round, rims.pavings, rims.first_square])
 	if fn == PARK_FN:
 		check(int(rims.pavings) == int(rims.basins), "%s: a park's fountain stands on its round-point (%d pavings for %d basins)" % [where, rims.pavings, rims.basins])
+
+
+## A cover cut out of sloping ground is drawn whole wherever its lines fall on the ground's grid (probe covers_on_slope: covers laid
+## by hand on a lot 30 x 54, each drawn alone, its mesh's ground against its outline's area).
+func _check_covers_on_slope() -> void:
+	for cover: Array in SLOPE_COVERS:
+		var drawn: Dictionary = CityStore.query(&"covers_on_slope", [[cover.slice(1)], SLOPE_LOT.x, SLOPE_LOT.y])
+		check(int(drawn.covers) == 1 and int(drawn.covers_short) == 0, "on sloping ground %s is drawn whole (drawn short: %d; row, middle, size, m2 drawn, m2 of its outline: %s)"
+				% [cover[0], drawn.covers_short, drawn.first_short])
 
 
 ## The houses' pools, drawn by the same owner as a fountain's basin: the water to the pool's outline, the coping closed round it.

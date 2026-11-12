@@ -1,8 +1,10 @@
 // What a placed body's lot draws against its own lines and its open gates: each element drawn alone as lot_emit.cpp draws it, its vertices
-// held against the lot's lines and against its gate's passage; the lot's parts and blocks held against the strips the open leaves stand in.
+// held against the lot's lines and against its gate's passage; the lot's parts and blocks held against the strips the open leaves stand in;
+// each ground cover's mesh against the area its outline holds.
 #include "render/buildings/lot_census.h"
 
 #include "render/buildings/roof_util.h"
+#include "sim/buildings/b40/element_shape.h"
 
 #include <algorithm>
 #include <cmath>
@@ -15,7 +17,6 @@ namespace city {
 namespace {
 constexpr float PAST_LOT_M = 0.02f; // how far past its lot's line a part may be written and still stand on it
 constexpr float LEAF_CLEAR_M = 0.01f; // a hair past a leaf's thickness: a leaf hung at a post stands beside the passage, not in it
-
 // How many of the points lie past the lot's lines of the body placed (its plan's width either side of the front's middle, its depth back).
 int64_t past_lines(const b40::Placed &pl, const std::vector<Vector3> &points) {
 	const b40::Body &b = *pl.b;
@@ -114,6 +115,35 @@ int64_t gate_in_passage(const b40::Placed &only, const b40::LotElement &e) {
 	return in;
 }
 } // namespace
+
+int64_t covers_short(const b40::Placed &pl, Array &first) {
+	const b40::Body &b = *pl.b;
+	b40::Body one = b;
+	b40::Placed only = pl;
+	only.b = &one;
+	int64_t count = 0;
+	for (size_t i = 0; i < b.elements.size(); i++) {
+		const b40::LotElement &e = b.elements[i];
+		if (e.kind != b40::EL_SURFACE) continue;
+		one.elements.assign(1, e);
+		b40::Shell shell, parts;
+		b40::emit_lot(shell, parts, only);
+		double drawn = 0; // twice the triangles' area in the lot's plan
+		for (size_t k = 0; k + 2 < shell.idx.size(); k += 3) {
+			const Vector3 ab = shell.pos[size_t(shell.idx[k + 1])] - shell.pos[size_t(shell.idx[k])], ac = shell.pos[size_t(shell.idx[k + 2])] - shell.pos[size_t(shell.idx[k])];
+			drawn += std::abs(double(ab.dot(pl.lot.e0)) * ac.dot(pl.lot.e1) - double(ab.dot(pl.lot.e1)) * ac.dot(pl.lot.e0));
+		}
+		// Whole, less what the corners' rounding may take: a band of the geometric tolerance along the outline's sides.
+		const b40::Outline o = b40::outline_of(e);
+		const float whole = o.area();
+		double round_about = 0;
+		for (int k = 0; k < o.n; k++) round_about += std::hypot(o.p[(k + 1) % o.n].x - o.p[k].x, o.p[(k + 1) % o.n].y - o.p[k].y);
+		if (drawn / 2 >= double(whole) - round_about * b40::EPS) continue;
+		count++;
+		if (first.is_empty()) first = Array::make(int(i), e.x, e.y, e.w, e.d, drawn / 2, whole);
+	}
+	return count;
+}
 
 void LotCensus::add(const b40::Placed &pl, int id) {
 	roof_past += roof_past_lot(pl);

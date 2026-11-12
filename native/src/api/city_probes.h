@@ -125,6 +125,9 @@ public:
 	// each drawn alone and read from its mesh: its water to its outline, its rim right past it all round; and the paving a basin
 	// stands on, round as the basin (city_core_basin_probe.cpp).
 	godot::Dictionary basin_rims(int fn, int zone, float w, float d, int seed, int count) const;
+	// Tests: ground covers laid by hand (rows of x, y, width, depth, round) on a lot `w` by `d` whose ground slopes: those whose mesh
+	// holds less ground than their outline (city_core_basin_probe.cpp).
+	godot::Dictionary covers_on_slope(const godot::Array &rows, float w, float d) const;
 	// Tests: a square of the city's plan laid on a block of lots given by hand (rows of x, z, width, depth, facing), no city read, and
 	// every square of the city: each tree's room against the square's ground, the other trees' rooms, the plan's step and edge
 	// clearance, and its walks (city_core_square_probe.cpp).

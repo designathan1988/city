@@ -7,6 +7,7 @@
 // and stays so through a save's bytes. square_fit lays a square on a block of lots given by hand, with no city; square_rooms reads the city's own.
 #include "api/city_probes.h"
 
+#include "render/buildings/lot_census.h"
 #include "sim/buildings/b40/element_shape.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/citygen/lot_gen.h"
@@ -31,6 +32,7 @@ constexpr float ROOM_SLACK_M = 0.01f; // two rooms side by side share a line; a 
 constexpr int LOT_FIELDS = 5; // a lot laid by hand: x, z, width, depth, the way it faces
 
 constexpr size_t PLAZA_FROM = 3; // a square's covers in the order it lays them: its lawn, its two walks, then its plaza
+constexpr float SLOPE_ALONG = 0.02f, SLOPE_IN = 0.03f; // the ground the square's covers are drawn on for the test: rise per metre
 
 struct Tally {
 	int squares = 0, trees = 0, out = 0, meet = 0, on_walk = 0;
@@ -167,6 +169,12 @@ Dictionary CityProbes::square_fit(const Array &lots, int seed) const {
 		}, float(2 * plan.square_plaza_m), t);
 	}
 	Dictionary r = answer(t, plan);
+	// The square drawn on ground that slopes both ways (the covers are then cut out of the ground's triangles): every cover whole.
+	const b40::BuildingLook look;
+	const b40::Placed pl = b40::placed_alone(state_->buildings.designs, look, body, [](const Vector3 &p) { return p.x * SLOPE_ALONG + p.z * SLOPE_IN; });
+	Array first_short;
+	r["covers_short"] = covers_short(pl, first_short); // covers whose mesh holds less ground than their outline
+	r["first_short"] = first_short; // the first: its element, middle, size, the m2 drawn and the outline's
 	r["laid"] = t.squares > 0; // laid, and whole after its bytes
 	r["w"] = body.plan.W;
 	r["d"] = body.plan.D;

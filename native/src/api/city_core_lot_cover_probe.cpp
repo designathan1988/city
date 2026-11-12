@@ -5,6 +5,7 @@
 // plant that stand beside a hard cover.
 #include "api/city_probes.h"
 
+#include "render/buildings/lot_census.h"
 #include "render/buildings/lot_covers.h"
 #include "sim/buildings/b40/element_shape.h"
 #include "sim/buildings/b40/record.h"
@@ -185,7 +186,8 @@ Dictionary CityProbes::lot_covers() {
 	const float least = tn.lot_cover_step_m * HALF;
 	int lots = 0, samples = 0, under = 0;
 	float worst = 0;
-	Array first;
+	Array first, short_first;
+	int64_t short_covers = 0;
 	std::vector<Laid> pieces;
 	GroundCensus ground;
 	const b40::Paint lawn = s.buildings.designs.color("lawn");
@@ -202,6 +204,10 @@ Dictionary CityProbes::lot_covers() {
 		pl.lot = b40::Basis{ Vector3(f.o.x, floor, f.o.y), Vector3(f.e0.x, 0, f.e0.y), Vector3(f.e1.x, 0, f.e1.y), Vector3(0, 1, 0) };
 		pl.ground = [&s](const Vector3 &p) { return s.terrain.height_at(p.x, p.z); };
 		ground.count(id, *body, lawn);
+		Array short_one;
+		const int64_t short_here = covers_short(pl, short_one);
+		if (short_here > 0 && short_first.is_empty()) short_first = Array::make(id, short_one);
+		short_covers += short_here;
 		pieces.clear();
 		b40::lot_covers(pl, [&pieces](const b40::CoverPiece &c) { pieces.push_back(laid(c)); });
 		if (pieces.empty()) continue;
@@ -233,6 +239,8 @@ Dictionary CityProbes::lot_covers() {
 	d["samples"] = samples; // points of a cover over an earlier cover of its lot
 	d["under"] = under; // of them, where the later does not stand over the earlier by half a step (crossed, or at one depth)
 	d["worst"] = first; // building, x, z, the later less the earlier (m), the two elements
+	d["covers_short"] = short_covers; // covers whose mesh, drawn alone, holds less ground than their outline (render/buildings/lot_census.h)
+	d["short_first"] = short_first; // the first: building, then its element, middle, size, the m2 drawn and the outline's
 	d["ground_lots"] = ground.lots; // lots whose ground was read, in their own frame
 	d["bare_m2"] = ground.bare_m2; // their ground under no cover and no building
 	d["sliver_lots"] = ground.sliver_lots; // lots with a planted or bare band under a lawn's least width beside a hard cover

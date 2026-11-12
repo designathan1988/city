@@ -12,6 +12,10 @@
 
 namespace city {
 
+// The ground covers of a placed body drawn short of their outline: each cover drawn alone, the ground its mesh covers in plan against
+// the area its outline holds (sim/buildings/b40/element_shape.h). `first`: the first one's element, middle, size, drawn and whole m2.
+int64_t covers_short(const b40::Placed &pl, godot::Array &first);
+
 struct LotCensus {
 	int64_t roof_past = 0, lot_past = 0, gates = 0, shut = 0, blocked = 0;
 	godot::Array lot_past_first, shut_first, blocked_first;

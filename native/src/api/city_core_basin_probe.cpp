@@ -1,10 +1,13 @@
 // CityProbes::basin_rims: the basins of water of lots made on the spot, with no city (an open lot's fountain, a house's pool), each
 // body placed on level ground and each basin drawn alone and read from its mesh (render/buildings/basin_census.h): the water to the
 // basin's outline and the rim right past it, all round. And the paving a basin stands on (a park's round-point): the hard cover
-// laid over the lot's ground that holds the whole basin, round as the basin is.
+// laid over the lot's ground that holds the whole basin, round as the basin is. CityProbes::covers_on_slope: covers laid by hand on
+// sloping ground, each drawn whole.
 #include "api/city_probes.h"
 
 #include "render/buildings/basin_census.h"
+#include "render/buildings/lot_census.h"
+#include "sim/buildings/b40/cover_layers.h"
 #include "sim/buildings/b40/element_shape.h"
 #include "sim/buildings/b40/gen.h"
 #include "sim/buildings/b40/record.h"
@@ -15,6 +18,9 @@ using namespace godot;
 namespace city {
 
 namespace {
+constexpr int COVER_FIELDS = 5; // a cover laid by hand: x, y, width, depth, round
+constexpr float SLOPE_ALONG = 0.02f, SLOPE_IN = 0.03f; // the sloping ground of covers_on_slope: rise per metre along the front and in
+
 // The pavings the basins of a body stand on, and those of them that are round.
 struct Pavings {
 	int count = 0, round = 0;
@@ -42,6 +48,38 @@ struct Pavings {
 };
 } // namespace
 
+// Covers laid by hand on a lot `w` by `d` whose ground slopes both ways, so each is cut out of the ground's triangles: rows of
+// (x, y, width, depth, round) in the lot's frame. How many are drawn short of their outline (render/buildings/lot_census.h).
+Dictionary CityProbes::covers_on_slope(const Array &rows, float w, float d) const {
+	const b40::Data &data = state_->buildings.designs;
+	b40::Body b;
+	b.plan.W = w;
+	b.plan.D = d;
+	const int paint = b.add_paint(data.color("concrete"));
+	for (const Variant &row : rows) {
+		const Array a = row;
+		if (a.size() < COVER_FIELDS) continue;
+		b40::LotElement e;
+		e.kind = b40::EL_SURFACE;
+		e.x = float(a[0]);
+		e.y = float(a[1]);
+		e.w = float(a[2]);
+		e.d = float(a[3]);
+		e.round = bool(a[4]);
+		e.h = b40::cover_h(b40::COVER_WAY);
+		e.paint = paint;
+		b.elements.push_back(e);
+	}
+	const b40::BuildingLook look;
+	const b40::Placed pl = b40::placed_alone(data, look, b, [](const Vector3 &p) { return p.x * SLOPE_ALONG + p.z * SLOPE_IN; });
+	Array first;
+	Dictionary r;
+	r["covers"] = int(b.elements.size());
+	r["covers_short"] = covers_short(pl, first); // covers whose mesh holds less ground than their outline
+	r["first_short"] = first; // the first: its row, middle, size, the m2 drawn and the outline's
+	return r;
+}
+
 // `fn`: an open lot's function (BuildingFn: a park, a square), or 0 for a lot of `zone` round a building.
 Dictionary CityProbes::basin_rims(int fn, int zone, float w, float d, int seed, int count) const {
 	const b40::Data &data = state_->buildings.designs;
@@ -60,13 +98,7 @@ Dictionary CityProbes::basin_rims(int fn, int zone, float w, float d, int seed, 
 		} else {
 			b40::make_body(data, b, zone, 0, w, d, uint32_t(seed + k), b40::LotEdges());
 		}
-		b40::Placed pl;
-		pl.data = &data;
-		pl.look = &look;
-		pl.b = pl.whole = &b;
-		pl.lot = b40::Basis{ Vector3(), Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0) };
-		pl.ground = [](const Vector3 &) { return 0.f; };
-		census.add(pl, seed + k);
+		census.add(b40::placed_alone(data, look, b, [](const Vector3 &) { return 0.f; }), seed + k);
 		pavings.take(b, seed + k);
 	}
 	Dictionary r;

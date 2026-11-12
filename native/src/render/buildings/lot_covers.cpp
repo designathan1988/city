@@ -1,6 +1,7 @@
 // A lot's covers clipped out of one triangulated ground, in one order (lot_covers.h).
 #include "render/buildings/lot_covers.h"
 
+#include "core/math.h"
 #include "sim/buildings/b40/element_shape.h"
 
 #include <algorithm>
@@ -16,6 +17,7 @@ constexpr float GROUND_CELL_M = 3.f; // the side of the lot ground's cells, thei
 constexpr float FLAT_M = 1e-4f; // every node this close to one height: the ground is level, each cover its outline at that height
 constexpr float HALF = 0.5f;
 constexpr int CLIP_MOST = OUTLINE_MOST + 3; // a triangle clipped by an outline gains a corner for each of its sides at the most
+constexpr float HAIR_M = 1e-4f; // two corners nearer than this, or a corner this near the line between its neighbours, are one place
 
 // A point of the lot's frame and its height over the floor.
 struct Q {
@@ -30,7 +32,7 @@ int clip(const Q *in, int n, const Point2 &a, const Point2 &b, Q *out) {
 		const Q &p = in[i], &q = in[(i + 1) % n];
 		const float sp = side(p), sq = side(q);
 		if (sp >= 0) out[m++] = p;
-		if ((sp >= 0) != (sq >= 0)) {
+		if ((sp > 0 && sq < 0) || (sp < 0 && sq > 0)) { // a corner standing on the line is itself where the edge meets it: nothing between
 			const float t = sp / (sp - sq);
 			out[m++] = { p.x + (q.x - p.x) * t, p.y + (q.y - p.y) * t, p.h + (q.h - p.h) * t };
 		}
@@ -62,9 +64,39 @@ CoverGround ground_under(const Placed &pl, float x0, float y0, float x1, float y
 	return g;
 }
 
+// A clipped polygon as a piece is handed: without the corners that carry no shape (one at the place of its neighbour, one on the line
+// between its neighbours: what the clip's rounding leaves where a line of the outline passes a hair from a corner of the ground), and
+// starting at the corner whose triangle with the next two is the widest, since whoever draws or reads a piece takes its plane from
+// its first three corners (Shell::face, the probe lot_covers). Returns its corners; under three, nothing is left of it.
+int tidy(Q *q, int n) {
+	const auto plan = [&](int i) { return V2(q[i].x, q[i].y); };
+	for (int i = 0; n >= 3 && i < n;) {
+		if (dist_point_segment(plan(i), plan((i + n - 1) % n), plan((i + 1) % n)) >= HAIR_M) {
+			i++;
+			continue;
+		}
+		std::copy(q + i + 1, q + n, q + i);
+		n--;
+		i = 0; // its neighbours are judged again
+	}
+	if (n < 3) return 0;
+	int widest = 0;
+	float most = -1;
+	for (int i = 0; i < n; i++) {
+		const Q &a = q[i], &b = q[(i + 1) % n], &c = q[(i + 2) % n];
+		const float spread = std::fabs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+		if (spread <= most) continue;
+		most = spread;
+		widest = i;
+	}
+	std::rotate(q, q + widest, q + n);
+	return n;
+}
+
 // A convex polygon of the lot's frame into the world, `lift` over the ground it was cut from: pieces of COVER_POLY_MOST corners at the
 // most, fanned from its first corner.
-void send(const Placed &pl, const Q *q, int n, float lift, CoverPiece &piece, const std::function<void(const CoverPiece &)> &out) {
+void send(const Placed &pl, Q *q, int n, float lift, CoverPiece &piece, const std::function<void(const CoverPiece &)> &out) {
+	n = tidy(q, n);
 	const auto at = [&](const Q &c) { return pl.lot.at(c.x, c.y, c.h + lift); };
 	for (int k = 1; k + 1 < n; k += COVER_POLY_MOST - 2) {
 		const int last = std::min(k + COVER_POLY_MOST - 2, n - 1);

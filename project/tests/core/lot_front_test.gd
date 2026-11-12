@@ -8,7 +8,8 @@
 ## deck). And nothing of a lot stands on the paving as it is drawn (probe lot_paving: the bands, the junctions' plates out to their
 ## corners' footway backs, the bulbs), in the town and in the metropolis, whose wide footways give the corners with a round back.
 ## And a lot's covers lie in their order (probe lot_covers): wherever a later cover lies over an earlier one (a forecourt's asphalt over
-## its pavers, a court's lines over the court) it stands over it everywhere, never crossing it, never at its depth; and no band of lawn
+## its pavers, a court's lines over the court) it stands over it everywhere, never crossing it, never at its depth; every cover is drawn
+## whole, its mesh holding the ground its outline holds, whatever lines of the ground's grid it lies along; and no band of lawn
 ## or bare ground too thin to plant stands beside a hard cover (a walk, a yard, a forecourt) of a lot. And every plant of a lot is drawn
 ## inside the room its element is (probe garden_rooms): no crown over the fence or the footway, no hedge thicker than its band; the
 ## open lots' trees (a park's grove, a square's) are among them, and there are some. And every tree of the plan's squares is an
@@ -102,6 +103,8 @@ func _check_covers(city: String, d: Dictionary) -> void:
 	check(int(d.samples) > 0, "%s has covers lying over covers: %d" % [city, d.samples])
 	check(int(d.under) == 0, "%s: every later cover stands over the earlier one it lies on: %d of %d not, the worst (building, x, z, later less earlier, elements) %s"
 			% [city, d.under, d.samples, d.worst])
+	check(int(d.covers_short) == 0, "%s: every cover of a lot is drawn whole, its mesh holding the ground its outline holds: %d drawn short, the first (building, then its element, middle, size, m2 drawn, m2 of its outline) %s"
+			% [city, d.covers_short, d.short_first])
 	print("%s: the lots' ground: %d lots read, %.1f m2 under no cover, %d bands too thin to plant in %d lots" % [city, d.ground_lots, d.bare_m2, d.slivers, d.sliver_lots])
 	check(int(d.ground_lots) > 0, "%s has lots whose ground was read: %d" % [city, d.ground_lots])
 	check(float(d.bare_m2) <= 0.0, "%s: every lot's ground is covered from line to line: %.1f m2 under no cover" % [city, d.bare_m2])
