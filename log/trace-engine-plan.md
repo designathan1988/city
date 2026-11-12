@@ -65,3 +65,19 @@ measurements, as `superpowers:executing-plans` requires.
 - Open (log/trace-research.md F24, in order): number keys write the elements only (ECMA-262 ToPropertyKey), both cores,
   with a canonical-numeric name read reading the elements; contexts selected by flows from parameters (Zipper); the
   engine's constant factors. Then the lab and the city measured, previous and this one, and the CLI switched.
+
+### Task E7: Contexts where they change the result (log/trace-research.md F21-F25; Zipper, OOPSLA 2018)
+- Criterion, per function, from its own trees only (no threshold, no name of a program or library): a run needs its own
+  call context when objects that differ between callers can reach its outputs — its returns and yields, or a store into
+  an object reached from an input. Inputs are its parameters and `this`; a parameter whose declared type admits only the
+  language's primitive values (number, string, boolean, bigint, symbol, undefined, null) carries no object a context
+  could tell apart. A tree carries what its value can hold: a name its parameter or its local's assignments; a member or
+  an index its base's; a call its receiver's and arguments' (the callee may hand them back); `new`, a literal, an array,
+  a closure an allocation (the run's own objects); an operator, a literal, a typeof, a text none (fresh primitives).
+  A run whose outputs carry neither an input nor an allocation of its own runs once per environment (`of_call(env,
+  ROOT)`); every other keeps the call site (and the receiver for a method).
+- Tests first (both cores): a function whose result is a number computed from its parameters runs once; an identity
+  (`<T>(x: T) => x`), a factory (`() => ({})`), a closure maker and a store into a parameter's object keep their contexts
+  (test_heap_contexts must stay green as it is).
+- Measured on the lab: runs, nodes, items, time to converge, links against the full-context run on the parts that
+  converge (`src/sim`, `src/world/doc.ts` + `rescale.ts`).
