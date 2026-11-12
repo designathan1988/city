@@ -60,7 +60,7 @@ threads and the whole command list follow the map; the rules are CLAUDE.md's.
 - `native/src/core/grid.h` — chunks, chaves de célula, hash espacial e orçamento de build
 - `native/src/core/job_pool.cpp` · `native/src/core/job_pool.h` — pool de jobs por prioridade e `parallel_for`; a chave do job é tipada (`JobKey`: uma `JobLane` por usuário e um id), então dois usuários não se substituem na fila
 - `native/src/core/lru_cache.h` — a bounded cache of shared values made from their keys, safe from any thread: made once outside the lock, the least recently asked pushed out by cost (the bodies, their looks and lot elements, the render's rooms and cut bodies)
-- `native/src/core/js_array.h` · `native/src/core/js_map.h` · `native/src/core/js_number.h` · `native/src/core/js_runtime.h` · `native/src/core/js_string.h` · `native/src/core/js_value.h` — what the translated code calls: the built-ins with ECMAScript semantics (runtime of `tools/converter/cpp/js`); a debt that goes with the translated code it serves, redesigned at its cause
+- `native/src/core/js_array.h` · `native/src/core/js_map.h` · `native/src/core/js_number.h` · `native/src/core/js_runtime.h` · `native/src/core/js_string.h` · `native/src/core/js_value.h` — what the translated code calls: the built-ins with ECMAScript semantics (the runtime of the old converter's cpp/js, kept under the tag archive/2026-11-12/before-cleanup); a debt that goes with the translated code it serves, redesigned at its cause
 - `native/src/core/math.h` — vetores 2D no plano XZ
 - `native/src/core/memory.cpp` · `native/src/core/memory.h` — the core's `new` and `delete` on mimalloc (a heap a thread, without the C runtime's lock); what the allocator holds of the system and a thread giving back what it freed
 - `native/src/core/polygon_ops.cpp` · `native/src/core/polygon_ops.h` — booleanas de plantas em milímetros inteiros (Clipper2): o que cai dentro e o que sobra, em anéis simples; a simple ring in triangles by ear clipping (`ring_triangles`, the lots' and the corner footways')
@@ -178,7 +178,7 @@ threads and the whole command list follow the map; the rules are CLAUDE.md's.
 - `native/src/sim/roads/profiles.cpp` · `native/src/sim/roads/profiles.h` — derivação do perfil (faixas, linhas, calçadas, preço)
 - `native/src/sim/roads/road_network.cpp` · `native/src/sim/roads/road_network.h` · `native/src/sim/roads/road_network_deck.cpp` · `native/src/sim/roads/road_network_node.cpp` · `native/src/sim/roads/road_network_shape.cpp` · `native/src/sim/roads/road_network_runs.cpp` — the road graph's storage, ids, spatial queries, heights over the grade line and change marks; where a ray lands on a deck (`ray_deck`); what a node is to whoever goes through it (crossing, U-turn, banned movement); the nodes' shapes (setbacks, a dead end's bulb, a joint); the streets' runs and the pieces a laid road was cut into
 - `native/src/sim/roads/road_network_cut.cpp` — a cut of the road network: the records a reader of a box needs (the box's segments and nodes, twice their nodes' arms, each segment's street and solved heights), under their own ids
-- `native/src/sim/roads/flow_stats.h` · `native/src/sim/roads/flow_stats_types.h` · `native/src/sim/roads/flow_stats_query.cpp` · `native/src/sim/roads/control_advisor.h` · `native/src/sim/roads/control_advisor_enums.h` · `native/src/sim/roads/control_advisor_types.h` · `native/src/sim/roads/control_advisor_query.cpp` — translated by the converter from the roadcraft (`tools/converter/configs/plans/flow-control.json`): the flow measured at each crossing and the control it calls for; a debt, never regenerated: redesigned at its cause for this game (CLAUDE.md)
+- `native/src/sim/roads/flow_stats.h` · `native/src/sim/roads/flow_stats_types.h` · `native/src/sim/roads/flow_stats_query.cpp` · `native/src/sim/roads/control_advisor.h` · `native/src/sim/roads/control_advisor_enums.h` · `native/src/sim/roads/control_advisor_types.h` · `native/src/sim/roads/control_advisor_query.cpp` — translated by the old converter from the roadcraft (its plan flow-control.json, kept under the tag archive/2026-11-12/before-cleanup): the flow measured at each crossing and the control it calls for; a debt, never regenerated: redesigned at its cause for this game (CLAUDE.md)
 - `native/src/sim/roads/road_grade.cpp` · `native/src/sim/roads/road_grade.h` · `native/src/sim/roads/road_grade_internal.h` · `native/src/sim/roads/road_grade_profile.cpp` · `native/src/sim/roads/road_grade_solve.cpp` — single owner of road heights: the stations of each segment, ground read at 7 points, junction and transition plates, the ground, variable, elevated and sunken solvers, the rounds until the nodes settle; a segment's structure (ground, elevated, bridge, tunnel)
 - `native/src/sim/roads/road_variants.cpp` · `native/src/sim/roads/road_variants.h` · `native/src/sim/roads/road_spec.cpp` · `native/src/sim/roads/road_spec.h` · `native/src/api/city_core_road_spec.cpp` — a class road with the lanes, width and parking of the tool options, one more profile in the catalogue; the road the player composes element by element, what blocks it, and the editor API
 - `native/src/sim/roads/parking_layout.cpp` · `native/src/sim/roads/parking_layout.h` — dono único das vagas da guia e da pintura delas (CTB art. 181 I, MBST vol. IV: MER e LPP), lido pelo tráfego e pelo render
@@ -719,11 +719,14 @@ threads and the whole command list follow the map; the rules are CLAUDE.md's.
 - `tools/atlas/render.py` — the register's generated view `log/problems.md`, by area then status (`--check` for the generated-files gate)
 - `tools/atlas/areas.py` · `tools/atlas/imports.py` — the register's area of a file by its place (longest prefix); what enters the register from a tool's own output, deduplicated (the gates' standing findings, one problem per rule and file), and the register's statistics (the median minutes from a report to its cause)
 - `tools/tasks/block.py` · `tools/tasks/tests/test_block.py` — the block rule's mechanism: the block's state (dist/block/state.json, out of git) moved by one setter through `MOVES` (closed, open, verify), the one refusal the orchestrator, `tools/build/build.sh`, `tools/build/deliver.sh`, the pre-commit hook and the project's shell hook ask while a block is open, the block's times appended to the process history at its close; its tests
+- `tools/tasks/files.py` · `tools/tasks/ledger.py` — the file primitives the writers share (a temporary name, a text written whole, a removal, a size); the task store's bound kept on every write (each entry added to its ledger, the least recently used evicted past the bound, a hit marking its entry used)
+- `tools/tasks/outputs.py` · `tools/tasks/lifecycle.py` · `tools/tasks/clean.py` · `tools/tasks/tests/test_lifecycle.py` — the bounds of what the work writes under dist/ (`tools/tasks/suites.json` lifecycle), their one reader; every worktree, sibling copy, nested repository, branch and stash with its class and age, failing when one is older than its work (`cli.py worktrees [--all]`); every output folder held to its bound now and what no one declared listed or removed (`cli.py clean [--dry-run] [--unowned] [--only DIR]`); their tests
 - `tools/build/git-hooks/**` — the repository's own git hooks (git's core.hooksPath, set by `tools/build/build.sh hooks`): `pre-commit` refuses a commit of the main checkout while a block is open
-- `tools/tasks/tests/test_guards.py` — the project's shell hooks (`.claude/hooks`): the standing authorisation's limits and the block's refusal, as Claude Code runs them
+- `tools/tasks/tests/test_guards.py` — the project's hooks (`.claude/hooks`): the standing authorisation's limits, the block's refusal and the agents' (the reader alone, no worktree, at most two at once, the places given back), as Claude Code runs them
 - `tools/gates/tests/test_register_join.py` — the gates against the register: a finding an open problem names is registered, any other NEW, nothing filtered
 - `CLAUDE.md` — the project's only source of instructions: the authority, the method, the orders, the rules, each tagged and guarded in `tools/gates/contracts.json`
-- `.claude/settings.json` · `.claude/hooks/block_guard.py` · `.claude/hooks/destructive_guard.py` — the project's Claude Code settings (auto memory off, the fixtures' instruction files excluded, no agents, no transcript read, the shell hooks); the hooks: the block rule at the shell, the standing authorisation's limits
+- `.claude/settings.json` · `.claude/hooks/block_guard.py` · `.claude/hooks/destructive_guard.py` · `.claude/hooks/agent_guard.py` — the project's Claude Code settings (auto memory off, the fixtures' instruction files excluded, no transcript read, the shell hooks, the agents' hooks); the hooks: the block rule at the shell, the standing authorisation's limits, agents that only read and few at once (PreToolUse and PostToolUseFailure on the Agent tool, SubagentStop)
+- `.claude/agents/reader.md` — the project's one agent: it reads and reports (Read, Grep, Glob, the web, Context7), never changes, builds, runs or removes; every claim with its source, an empty search said as such
 - `.claude/skills/trace-fix/**` — the trace-fix skill: the procedure of tracing and fixing one reported problem, its ledger and its hooks
 - `tools/atlas/tests/**` — the atlas's tests and their fixture register
 - `log/problems.jsonl` · `log/problems.md` — the one register of every known problem of the game and the project (one JSON object a line, schema `tools/gates/schemas/problem.schema.json`) and its generated view
@@ -769,7 +772,7 @@ threads and the whole command list follow the map; the rules are CLAUDE.md's.
   mechanism). `build/`: `build.sh`, `deliver.sh`, `quick.sh`, `pgo.sh`, `photodiff.py`, `free_dll.sh`, `check_scripts.gd`,
   `rename_english.py`, the git hooks. `tracer/`: the generic code reader. `assets/`: the kitchen of people, landmarks, noise,
   furniture, poles and road profiles. `analysis/`: the stack sampler, the cause analysers. `audit/`: the game's audit.
-- Leaving with specification 001 (history under the archive tags below): `converter/`, `process/`, `ports/`, `oracle-4.0/`.
+- Left with specification 001 on 2026-11-12 (history under the archive tags below): converter/, process/, ports/, oracle-4.0/.
 
 **Others:** `dist/` (builds, captures and logs, out of git), `log/` (the documents of CLAUDE.md), `.specify/` and `specs/` (Spec Kit).
 
@@ -807,6 +810,7 @@ threads and the whole command list follow the map; the rules are CLAUDE.md's.
 | The register | `python tools/atlas/cli.py problems [--area --owner --status --cause]`, `add`, `update`, `close`, `drop`, `render`, `import-gates` |
 | Scripts that do not compile | `python tools/tasks/cli.py run scripts` (`tools/build/check_scripts.gd`) |
 | Orchestrator | `python tools/tasks/cli.py run <suite or task> [--list]`, `serve` (JSON lines), `status`; its tests: `python -m unittest discover tools/tasks/tests` |
+| What lies on disk | `python tools/tasks/cli.py worktrees [--all]` (worktrees, copies, nested repositories, branches, stashes; exit 1 while one is older than its work), `python tools/tasks/cli.py clean [--dry-run] [--unowned]` (every output folder to its bound) |
 | Export and package | `tools/build/deliver.sh export` (`dist/builds/<date>_<commit>/Roadcraft.exe`, the Desktop shortcut), `tools/build/deliver.sh package` |
 | Captures | `tools/build/build.sh capture [folder]` (= `cli.py run capture`, hidden, one task per plan) |
 | Look at the game through a plan | `godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<json> --capture-dir=<folder>` |
@@ -821,5 +825,20 @@ threads and the whole command list follow the map; the rules are CLAUDE.md's.
 What leaves the working tree stays reachable in the history under these tags (git tag -l "archive/*").
 
 - `archive/2026-11-12/before-cleanup` — `main` at `89be3acd`, before the cleanup of specification 001 (worktrees, copies, branches,
-  stashes, obsolete trees and documents)
+  stashes, obsolete trees and documents): the tracked files of tools/converter, tools/process, tools/oracle-4.0 and tools/ports
+- `archive/2026-11-12/claude-records` — the 34 memory notes, `.claude/metas.md`, `.claude/metas/`, `.claude/REGISTRO-GOAL.md`
+- `archive/2026-11-12/docs` — the untracked research notes and sheets of docs/
+- `archive/2026-11-12/city-archive` — the ten authored files only the Desktop copy city-archive held;
+  `archive/2026-11-12/city-archive-converter/{master,slice-envelope,worktree}` — that copy's converter repository, its two branches
+  and its uncommitted tree
+- `archive/2026-11-12/wt-<name>` — the uncommitted changes of a worktree, one tag each: `wt-codex-performance-causes`,
+  `wt-temp-base`, `wt-agent-{a07591d,a4ad025,a5089bf,a5ffcd3,a8bf1bc,ac81c2a}`,
+  `wt-bisect-{036d91b8,0f4b04af,2595d766,5e6bd2c3,c3dd7b97,fd6931fc}`, `wt-city-{head,nov07,preport,realism-pre}`
+- `archive/2026-11-12/stash-<subject>` — every stash: `stash-old-tracer-scaler`, `stash-L6-P476-P485-P486-P487`,
+  `stash-tracer-value-flow`, `stash-allocator-census`, `stash-vehicles-9-of-22`, `stash-realism-look-aim`,
+  `stash-porte-elevacao-postes`
+- `archive/2026-11-12/branch-<name, / as ->` — the 38 branches with commits main lacked, one tag each: `arquivo-transit-parado-2026-11-04-convert-transit`,
+  `codex-performance-causes`, `copia-b6785d7`, `fix-root-causes`, `portes-*` (nine), `realism`, `realism-port`,
+  `tools-converter-antigo-master`, `tools-converter-master`, `tools-converter-slice-envelope`, `tools-processo-historia-master`,
+  `wip-allocator-2026-11-10`, `worktree-agent-*` (sixteen), `worktree-port-zoning-bomb`
 

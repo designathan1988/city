@@ -3,7 +3,9 @@
 Opened 2026-11-11 (night) at the owner's order. One entry per question, written when the research is made. A question is
 `proven` only with all four: the problem reproduced with a before measure or image; the solution applied in a test (in an
 isolated folder outside the game tree); the after measure or image meeting the criterion; the steps to repeat it with the real
-output. Anything less is `open`, with what failed written down. The questions come from `log/specification.md`.
+output. Anything less is `open`, with what failed written down. The questions come from `log/specification.md`. The test folders
+were moved on 2026-11-12 from `dist/research/` to `dist/evidence/research/` (specification 001 T041, their owner and bound in
+`tools/tasks/suites.json` lifecycle); the paths below are the new ones.
 
 ## Entry format
 
@@ -58,7 +60,7 @@ output. Anything less is `open`, with what failed written down. The questions co
   (`Win32_VideoController`: Intel UHD Graphics 770 and NVIDIA GeForce RTX 3060; i9-12900K: logical processors 0-15 are the 8
   P-cores' threads, 16-23 the 8 E-cores); `tools/tasks/proc.py` (`run(..., hidden=True, cores=[...])`: a Job Object with an
   affinity, on the private desktop).
-- **Test (isolated folder, outside the game tree):** `dist/research/q2/` (out of git): `proj/` (a Godot project: 20,000 boxes in one
+- **Test (isolated folder, outside the game tree):** `dist/evidence/research/q2/` (out of git): `proj/` (a Godot project: 20,000 boxes in one
   MultiMesh, a sun with shadows, 1920x1080, vsync off, 60 frames to settle, 180 sampled, the viewport's measured GPU time) and
   `run.py <gpu index|default> <cores|all> <tag>` (runs it through `tasks.proc.run`, hidden, 90 s deadline). Real output:
 
@@ -77,7 +79,7 @@ output. Anything less is `open`, with what failed written down. The questions co
   count: on four cores it would start as many workers as on 24. A faithful floor run needs the pool to count the processors
   the process may run on (pending item M3); memory is capped by the Job Object's limit, not yet exercised here (owed: a run
   with `JOB_OBJECT_LIMIT_JOB_MEMORY` at 8 GB once the game is the subject).
-- **Steps to repeat:** `cd dist/research/q2 && python run.py 1 16,17,18,19 igpu_4e` (log beside it, `igpu_4e.log`).
+- **Steps to repeat:** `cd dist/evidence/research/q2 && python run.py 1 16,17,18,19 igpu_4e` (log beside it, `igpu_4e.log`).
 - **Status: `proven`** for GPU and processor selection; `open` for the memory cap and the pool's count.
 
 ### Q16. Why are a line's wires drawn from one view and not from another? (pending item V1; 2026-11-12, session 2)
@@ -93,7 +95,7 @@ output. Anything less is `open`, with what failed written down. The questions co
   the range's distance is measured "from the camera to the center of the instance's AABB"; with fade disabled the margins are
   a hysteresis ("will only change its visibility state when it goes over or under the threshold by this amount").
 - **Hypothesis:** inside the hysteresis band round 220 m of a chunk's box centre, a camera that finds both levels new (the
-  chunk just streamed in or rebuilt) sees neither. **Test:** `dist/research/q16/` (`proj/probe.gd`: two RenderingServer
+  chunk just streamed in or rebuilt) sees neither. **Test:** `dist/evidence/research/q16/` (`proj/probe.gd`: two RenderingServer
   instances of one mesh, a 256 m box as custom AABB, ranges 0..220 and 220..700 with 3 % margins, a fresh process per
   first-sight distance; `python run.py ranges <distances>`).
   - **My first run was wrong and said the opposite** (`objects_drawn=1` at all thirteen distances): the probe moved the
@@ -135,7 +137,7 @@ output. Anything less is `open`, with what failed written down. The questions co
   `_shortcut_input`, `_unhandled_key_input`, `_unhandled_input`), `tutorials/inputs/inputevent.rst` (the DisplayServer reads the
   operating system's events and feeds them to the root window: `parse_input_event` enters at that point). The game's driver:
   `project/tests/visual/ui_driver.gd` (`move`, `button`, `key` set a position, `pressed` and a keycode, nothing else).
-- **Problem reproduced (before):** `dist/research/q6/` (`proj/probe.gd`: a Button, a LineEdit, a pad that drags only while the
+- **Problem reproduced (before):** `dist/evidence/research/q6/` (`proj/probe.gd`: a Button, a LineEdit, a pad that drags only while the
   motion event says the left button is held, as a game tool does; the events sent by `Input.parse_input_event`, flushed, a
   process and a physics frame awaited after each; run hidden). `python run.py bare` (events as `ui_driver.gd` makes them):
 
@@ -183,7 +185,7 @@ output. Anything less is `open`, with what failed written down. The questions co
 - **Searches:** context7 `/godotengine/godot-docs` `classes/class_gdextensionmanager.rst`: `reload_extension` ("You can only
   reload extensions in the editor; in release builds, this method always fails"), `load_extension`, `unload_extension`
   (no such restriction written), `is_extension_loaded`.
-- **Test:** `dist/research/q4/`: `src/probe_ext.cpp` (a GDExtension class `ProbeCounter` that owns a thread, joined in its
+- **Test:** `dist/evidence/research/q4/`: `src/probe_ext.cpp` (a GDExtension class `ProbeCounter` that owns a thread, joined in its
   destructor, as the core owns its simulation thread), compiled twice against the game's own built godot-cpp
   (`native/build-win-debug/bin/libgodot-cpp.windows.template_debug.x86_64.a`) with `-DPROBE_VERSION=1` and `=2`; `proj/`
   runs on the installed Godot 4.7.2 (`editor_hint=false`), hidden. `python run.py` (first part, the extension loaded at run
@@ -234,7 +236,7 @@ output. Anything less is `open`, with what failed written down. The questions co
 - **Searches:** the machine's own counters (`Get-Counter -ListSet 'GPU*'`: `GPU Engine`, `GPU Process Memory`); context7
   `/godotengine/godot-docs` `class_renderingserver.rst` (`RENDERING_INFO_VIDEO_MEM_USED`: what the renderer tracks, "always
   greater than the sum of texture and buffer memory").
-- **Test:** `dist/research/q5/` (`proj/`: the Q2 scene rendering hidden for 24 s, printing its PID; `run.py <gpu index>`
+- **Test:** `dist/evidence/research/q5/` (`proj/`: the Q2 scene rendering hidden for 24 s, printing its PID; `run.py <gpu index>`
   samples by PID from another process five times: PDH `\GPU Engine(pid_N_*)\Utilization Percentage`,
   `\GPU Process Memory(pid_N_*)\Dedicated Usage` and `Shared Usage`, the working set and each thread's processor time).
   Real output (`python run.py 0`):
@@ -260,9 +262,9 @@ output. Anything less is `open`, with what failed written down. The questions co
 
 ### Q12. What does the `low` tier pay per pixel on an integrated GPU? (pending item M5; 2026-11-12, session 2) — first attempt, not answered
 
-- **Tried:** a look plan outside the game tree (`dist/research/q12/plan.json`: the town at three views, `{"passes": true}`,
+- **Tried:** a look plan outside the game tree (`dist/evidence/research/q12/plan.json`: the town at three views, `{"passes": true}`,
   `{"info": true}`, a shot each) run on the floor profile with `--preset=low`
-  (`python dist/research/measure/run_game.py floor q12_low_floor 560 res://tests/visual/look.tscn --preset=low --plan=... --capture-dir=...`).
+  (`python dist/evidence/research/measure/run_game.py floor q12_low_floor 560 res://tests/visual/look.tscn --preset=low --plan=... --capture-dir=...`).
 - **Real output:** GPU 208.9, 198.4 and 134.5 ms at the three views, with 452 to 553 shadow draws and up to 6.0 M shadow
   primitives, though `low` has `shadows: false`; `passes` gave one entry (`vp_begin`); the log opens with an engine error
   (pending item V9).

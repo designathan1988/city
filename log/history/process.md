@@ -9,7 +9,8 @@ takes), newest last.
 |---|---|---|---|
 | 2026-11-12 | speckit-analyze | 12 findings (no critical): coverage of FR-052's mechanism, FR-015's bringing in, FR-050's times, SC-002, SC-009 through the engine, FR-032's drawn elements and unread updates, FR-010's notes; FR-006 made checkable; the quickstart's rule names; the removal list written in this file (standing authorisation). Applied to spec, plan, research, data model, contracts, quickstart and tasks (T020a, T022a, T038a, T038b, T074a added) | done | (with the first block) |
 | 2026-11-12 | Setup and Foundational (T001 to T011): the register | verified and committed | `8588f342` |
-| 2026-11-12 | US1 (T012 to T023): CLAUDE.md the only source of instructions, memory off, the block rule and the gates' close by mechanism | verified and committed | see `git log --grep "the only source of instructions"` |
+| 2026-11-12 | US1 (T012 to T023): CLAUDE.md the only source of instructions, memory off, the block rule and the gates' close by mechanism | verified and committed | `28501cbd` |
+| 2026-11-12 | US2 (T024 to T042a): the lifecycle, the triage and the removals; the owner's addendum on agents | removals done, verified | (US2's close) |
 
 ## US1, the instruction source (2026-11-12)
 
@@ -43,6 +44,105 @@ takes), newest last.
 - **Not run**: the quickstart's "fresh session" question (no new session may be opened); the three PRECEDENCE_CLAIM findings left
   are in records US2 and US3 remove (registered).
 
+## US2, the project folder (2026-11-12)
+
+- **Problems** (spec.md D): about 95 GB of worktrees, copies, branches, stashes, nested repositories and outputs no one owned; four
+  retired trees in `tools/`; empty folders named `-`, `-E`, `-v`, `-x`, `c++` in `tools/analysis`.
+- **Causes**: no output under `dist/` had an owner and a bound; a worktree, branch or stash had no end; nothing listed them.
+  The dash folders: `tools/analysis/arch/adapters/cpp_build.py` asked `ninja -t compdb` with no rule names, which lists every edge of
+  the build (its custom commands among them), took the first word of each entry as a compiler and ran it with `-E -v -x c++ -` in
+  the caller's folder; the program that made those arguments into folders is unknown (no command of the time was kept), the query
+  that handed them over is the only one with that argument list in the tree.
+- **Done**: `tools/tasks/lifecycle.py` (`cli.py worktrees [--all]`, failing while a piece is older than its work), `clean.py`
+  (`cli.py clean [--dry-run] [--unowned] [--only]`), `outputs.py` (the bounds, `suites.json` lifecycle: max_mb, keep, while_open,
+  migrating, whole_mb), the task store's ledger (`ledger.py`, `files.py`: least recently used past 4 GB), the runs' keep,
+  `deliver.sh` keeping the last two builds and those an open problem names, the export preset writing under `dist/builds/`; owners
+  declared for `dist/pgo`, `dist/build-pgo`, `dist/lab_scan.json`, `dist/audit`, `dist/promo`, `dist/arch` (US7 retires its tool);
+  `cpp_build.py` reads a build's `compile_commands.json` only (every entry a compile by that format's definition).
+- **Verified**: tools/tasks tests 83 OK; gates on the changed files and the whole gates 162 findings, 0 NEW.
+- **Failed on the way, fixed at the cause**: `clean --unowned` stopped on a read-only file of an old `.git` under `dist/`
+  (`files.remove` used `shutil.rmtree` with no handler: Windows refuses to unlink a read-only file; now the bit is cleared and the
+  removal tried once more, Python's own documented handler). The first `clean` counted `dist/builds/latest.txt`, deliver.sh's
+  index, as one of the two builds kept, so it removed the build before `2026-11-12_1307_feda0be8` (an export of a commit in
+  history, made again by exporting that commit); the bound now names its owner's index files (`index`), never counted nor removed.
+
+### The survey and what was kept (T031, T032)
+
+From `python tools/tasks/cli.py worktrees --all` and `clean --dry-run` (2026-11-12 16:40): 187 pieces, 105 older than their work.
+Every piece below is removed; what had value is reachable by the tag named (all under `archive/2026-11-12/`).
+
+| Pieces | Class | MB | Kept | Tag |
+|---|---|---|---|---|
+| 26 worktrees whose commit is in main, clean: temp `before_main`; agents `a0f3625`, `a16a675`, `a18a23d`, `a2b67f1`, `a3034db`, `a376e72`, `a5aa038`, `a5c2500`, `a5d5bef`, `a64aabf`, `a9b5473`, `aa34be1`, `ab26643`, `ab5aa06`, `ab7ea21`, `abef5e7`, `ad5f5c6`, `ae74361`, `aeee98d`, `af17d76`, `af71121`; `bomb-and-zoning`; `Desktop/city-realism-before`, `city-scenic`, `city-verify` | in main, clean | 21,808 | nothing to keep: main holds them | none |
+| temp `before5f` (3,427 uncommitted), agent `a6b9f2b` (2) | in main, uncommitted | 1,113 | judged empty: `before5f`'s changes are deletions of the tracked tree only; `a6b9f2b`'s two are the rebuilt DLLs | none |
+| `.codex/worktrees/performance-causes` (435 files uncommitted on a base of 2026-11-06) | unmerged | 797 | the survey and the rewrite, registered Pperformance-1 | `wt-codex-performance-causes` |
+| temp `base` | unmerged | 209 | its three test files | `wt-temp-base` |
+| agents `a07591d`, `a4ad025`, `a5089bf`, `a5ffcd3`, `a8bf1bc`, `ac81c2a` (uncommitted) | unmerged | 3,788 | their uncommitted changes | `wt-agent-<id>` |
+| agents `a1fc4a1`, `a31bf43`, `a40909`, `a486021`, `a59a187`, `a70fca1`, `aa66def`, `ab9695a`, `abeaa03`, `ad40db2`, `ae22101`, `port-zoning-bomb` | unmerged, behaviour to redo | 11,639 | their branches | `branch-worktree-<name>` |
+| `Desktop/city-bisect/*` (six), `city-head`, `city-nov07`, `city-preport`, `city-realism-pre` (uncommitted test scenes of a bisection) | unmerged | 5,724 | their uncommitted files | `wt-bisect-<commit>`, `wt-city-<name>` |
+| `Desktop/city-realism` (branch `realism-port`) | unmerged | 1,559 | the branch | `branch-realism-port` |
+| `Desktop/city-archive` (a copy: `tools/oracle-4.0`, `tools/converter` with its own repository, `tools/ports`, `tools/process`, `project/dist`) | copy | 8,446 | the converter's refs and uncommitted tree; the ten authored files no object of the repository held (`tools/gaps`, the conversions' records); not kept: 21,728 generated conversion files, the oracle's caches and Claude folders, 145 old captures of `project/dist/rq` | `city-archive-converter/*`, `city-archive` |
+| `native/godot-cpp/.git` (upstream `e103d34`, clean) | nested repository | 41 | the folder stays, tracked; only its `.git` goes | none (upstream) |
+| 81 branches merged into main | merged | | main holds them | none |
+| 38 unmerged branches | 17 old tool history (`portes/*`, `tools/converter*/*`, `tools/processo-historia/master`, `arquivo/*`, `copia-b6785d7`, `fix/root-causes`), 21 behaviour to redo or notes | | every branch | `branch-<name, / as ->` |
+| 7 stashes | stash | | every stash | `stash-old-tracer-scaler`, `stash-L6-P476-P485-P486-P487`, `stash-tracer-value-flow`, `stash-allocator-census`, `stash-vehicles-9-of-22`, `stash-realism-look-aim`, `stash-porte-elevacao-postes` |
+| `tools/converter/` (225 tracked, 66,793 generated in `out/`), `tools/process/`, `tools/oracle-4.0/`, `tools/ports/` | retired trees | 930 | the tracked files | `before-cleanup` |
+| `docs/` (34 untracked research notes and sheets) | untracked documents | 3 | every file | `docs` |
+| `native/build-android/`, `tools/analysis/{-,-E,-v,-x,c++}`, `.claude/state/`, `.claude/.pipeline_state_*` (4), `dist/trace/*.txt` (14) | junk | 1,492 | nothing | none |
+| `dist/builds` past the last two, `dist/held` past four | past their bound | 7,130 | nothing | none |
+| `dist/` with no owner: `arch` (16,324), `analysis` (1,211), `measure` (680, a copy of `8a1858e0`'s project), `Roadcraft.zip`, `windows`, `windows-antes-da-volta`, the 13 `review-*`, `fotos`, `cache/feature_trace`, `cache/ftrace`, `live`, `compare`, and 140 loose logs, probes and captures | no owner | about 21,000 | `dist/research`'s proofs moved to `dist/evidence/research` (T041); `LEIA-ME.txt` and `READ-ME.txt` judged empty (the old zip's player notes, superseded by the delivered build) | none |
+
+### The pieces worth bringing in (T038, T038a) and the notes of the removed documents (T038b)
+
+- **L6** (stash of P476, P485, P486, P487, base `4ca4fe7b` in main): already in main, brought back by `fe77bdd2` (its walkers and
+  the save's version 9); nothing to redo.
+- **Behaviour to redo**, each on a base the tree has since moved from (the ported tree of 2026-11-08 or earlier), so none is
+  applied: registered by behaviour, the tag as evidence: Proads-2 (terrain beside the road, `a07591d`, `abeaa03`), Ptransit-2
+  (bus boarding, `a70fca1`), Pwalkers-1 (umbrellas and backpacks, `a40909`), Pwalkers-2 (benches, `ab9695a`), Pterrain-3 (coast,
+  strata, dry grass, `a486021`), Pbuildings-1 (interior furniture, `ae22101`), Plots-2 (corner lots and dug garages, `a31bf43`,
+  `a5089bf`), Plots-3 (zoning by whole lots, `ab9695a`), Psimulation-9 (the blast's effects, `ab9695a`), Psimulation-10 (the
+  lab's generated city, `a1fc4a1`), Proads-6 (floor markings, `aa66def`), Pstreet-1 (eua and europa styles, `a59a187`), Pstreet-2
+  (utility poles, `a8bf1bc`), Ptraffic-4 (drivers, `ad40db2` and the stash "9 of 22", lab code: behaviour only), Prender-25 (the
+  physical sky, `realism`), Prender-26 (VISEMES at exit, `a5ffcd3`'s note), Ptools-5 (a capture killed without its step,
+  `ac81c2a`'s note), Pperformance-1 (Codex's survey), Pperformance-2 (the allocator census, US6 T089); their origin reads "US2
+  T038 triage".
+- **Old tool history** (17 branches, the city-archive converter): kept by tag, no behaviour (the conversions of the 4.0, which
+  is no reference).
+- **T038b**: `tools/ports/*` (reports, coverage tables and evidence of the 4.0's ports) and `tools/process/features-4.0` describe
+  the 4.0 (no reference): judged to hold no note of how this game must behave; `tools/process/records` (379 process records) read
+  by title and sample only: registered Pprocess-3 for a reading whole; `tools/process/converter-old`, `GODOT-PORT-GUIDE.md`,
+  `session-rules.md`: the converter's and the ports' guides, judged none; `docs/`: four groups of research registered Proads-7,
+  Pperformance-3, Pbuildings-2, Ptools-6; `docs/Claude Code obediente e honesto.md`: research on instructions, its conclusions
+  already in CLAUDE.md's Authority section.
+
+### Measured at the close (T042, quickstart step 2, 2026-11-12)
+
+`cli.py worktrees`: 0 pieces (no worktree, copy, nested repository, branch besides main, or stash), exit 0. `cli.py clean
+--dry-run`: 0 MB would go (dist/arch and dist/trace left to their migrations). `git tag -l "archive/*"`: 70 tags, all pushed.
+`git stash list`: empty. The Desktop holds no sibling copy (`city-*`), `.codex/worktrees` no worktree of this repository.
+The project folder: 15,281 MB (`.git` 1,650, `dist` 11,666 of which `trace` 6,111 and the task store 4,016, `native` 1,552,
+`project` 340, `tools` 72), from about 106 GB with its siblings at the audit. SC-003 (under 12 GB) is not yet met: `dist/trace`
+leaves with US3 (T050), which brings the folder to about 9 GB.
+
+### The owner's addendum on agents (2026-11-12, T042a)
+
+The owner, during US2: "the rule of not using agents can be revoked: agents may be used without abuse, never many at once; never
+delegate editing or writing code, removals or any action that is yours, you answer for the whole project; agents only read, sent
+well-built prompts, and whatever they return is checked, never trusted blind; update CLAUDE.md, the spec, the plans and the other
+documents, with the skills it needs". Settled in CLAUDE.md as `[c:agents-read-only]` (it replaces `[c:no-agents]`), held by
+`.claude/agents/reader.md` (an agent whose tools only read: Read, Grep, Glob, the web and Context7), `.claude/hooks/agent_guard.py`
+(the Agent tool refused for any other type, for an `isolation` worktree, and past two readers at once; the count kept per session
+through `SubagentStop` and `PostToolUseFailure`, under an OS file lock) and `.claude/settings.json` (through `update-config`: the
+`Agent` deny removed, the three hooks added). Sources: Claude Code's subagents, permissions and hooks documentation through
+Context7 `/websites/code_claude` (a subagent's `tools` allowlist; `Agent(name)` rules; `subagent_type` in the Agent tool's input;
+`SubagentStart` cannot block; `SubagentStop` carries `agent_type` and `agent_id`).
+
+### The map (US2)
+
+`log/mapa.md` is 203 KB in 828 lines: read whole in four parts to change six lines (the two descriptions naming the removed
+converter, the agents' hook and agent, the tree's structure, the archive tags). That cost is a defect of its own, registered as
+Pprocess-4 (the map written by hand instead of generated from the files' headers), for US3 (T052) and the atlas.
+
 ## Block times
 
 Appended by `python tools/tasks/cli.py block close` (FR-050: the time each step of the method takes, so its trend shows).
@@ -50,6 +150,7 @@ Appended by `python tools/tasks/cli.py block close` (FR-050: the time each step 
 | Block | Opened | Verified | Closed | Coding (min) | Verifying (min) |
 |---|---|---|---|---|---|
 | US1-mechanism-check | 2026-11-12T15:47 | 2026-11-12T15:47 | 2026-11-12T15:47 | 0 | 0 |
+| US2 | 2026-11-12T15:50 | 2026-11-12T16:47 | 2026-11-12T16:50 | 57 | 3 |
 
 ## How the work was done before 2026-11-12 (history; the orders themselves live in CLAUDE.md)
 
