@@ -11,3 +11,9 @@ void hold(Walker &w, WalkMode m) {
 void park(Walker *w, WalkMode m) {
 	w->mode = m;
 }
+
+// ... and through a reference bound to it, then written by its own name.
+void lend(Walker &w) {
+	WalkMode &m = w.mode;
+	m = WalkMode::WAIT;
+}

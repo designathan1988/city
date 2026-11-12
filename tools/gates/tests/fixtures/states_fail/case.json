@@ -6,6 +6,7 @@
   "STATE_CONTROLLER native/src/sim/walker.cpp:3",
   "STATE_CONTROLLER native/src/sim/walker.cpp:8",
   "STATE_CONTROLLER native/src/sim/walker.cpp:12",
+  "STATE_CONTROLLER native/src/sim/walker.cpp:17",
   "STATE_CONTROLLER project/game/flow/flow.gd:17",
   "STATE_CONTROLLER project/game/tools/grip_user.gd:6",
   "STATE_CONTROLLER project/game/tools/grip_user.gd:10",

@@ -82,9 +82,40 @@ def _past_index(code, j):
     return j
 
 
-def _writes(code, member):
-    """Indexes of the tokens where `member` is written: assigned with `=` (itself or an element of it), or an atomic's
-    store/exchange."""
+def _alias_bound(code, i, j):
+    """Whether the member at code[i] (its subscripts end at code[j]) is the whole initializer of a non-const reference or
+    pointer: `T &name = ...member;`, `T *name = &...member;`, `for (T &name : ...member)`. Whatever is written through
+    that name is written to the member."""
+    if j >= len(code) or code[j].text not in (";", ",", ")"):
+        return False
+    k, depth = i - 1, 0
+    while k >= 0:  # back to the `=` or the range-for `:` the initializer starts after, at the member's depth
+        t = code[k].text
+        if t in (")", "]", "}"):
+            depth += 1
+        elif t in ("(", "[", "{"):
+            if depth == 0:
+                return False
+            depth -= 1
+        elif depth == 0 and t == ";":
+            return False
+        elif depth == 0 and t in ("=", ":"):
+            break
+        k -= 1
+    name = k - 1
+    if k <= 0 or code[name].kind != "ident" or name == 0 or code[name - 1].text not in ("&", "*", "&&"):
+        return False
+    for s in range(name - 1, -1, -1):  # a const anywhere in the declaration makes it a reading
+        if code[s].text in (";", "{", "}", "(", ","):
+            break
+        if code[s].text == "const":
+            return False
+    return True
+
+
+def _writes(code, member, gd=False):
+    """Indexes of the tokens where `member` is written: assigned with `=` (itself or an element of it), an atomic's
+    store/exchange, or (C++) bound to a non-const reference or pointer, which writes it under another name."""
     n = len(code)
     for i, t in enumerate(code):
         if t.kind != "ident" or t.text != member:
@@ -95,7 +126,7 @@ def _writes(code, member):
         j = _past_index(code, i + 1)
         after = code[j].text if j < n else ""
         atomic = after == "." and j + 1 < n and code[j + 1].text in _ATOMIC_WRITES
-        if after == "=" or atomic:
+        if after == "=" or atomic or (not gd and _alias_bound(code, i, j)):
             yield i
 
 
@@ -223,7 +254,7 @@ def check_states(ctx, src, err):
             continue
         if own:
             _controller_problems(src, machine, spans, code, err)
-        for i in _writes(code, machine["member"]):
+        for i in _writes(code, machine["member"], gd):
             line = code[i].line
             if own and _inside(spans, machine["setter"], line):
                 continue
