@@ -20,7 +20,8 @@ because the owner is in a hurry, is a step skipped. The goal behind every step: 
 - Involved: every file the path goes through (callers, callees, owners), its data and schema, its tests, `doc/history/<area>.md`,
   the area's register entries, the gates' limits it will meet (`tools/gates/rules.json`), every document the owner names.
 - The Read tool from line 1 to the last line; a long file in chunks (`offset`/`limit`, about 400 lines) until it ends. Write
-  `path: 1-N of N` in the memory file. Grep, cat and an agent's summary only point where to read.
+  `path: 1-N of N` in the memory file. Grep, cat and an agent's summary only point where to read. Whatever an agent brings or
+  changes is never trusted: each claim and each change is checked in the files before it is believed, built on or kept.
 - Ask "why" down to the design decision that makes the symptom. `python tools/hunt/hunt.py` only on the owner's order.
 
 ## 2. Context7 before any code; never your own memory
@@ -93,7 +94,19 @@ cap a question, which then says what it did not answer. `--json` or `--out F` ke
    - a simulation or its window tied to the camera; generation serial or bound to random streams and insertion order;
    - allocation or search in a hot loop; quadratic proximity; a JavaScript-shaped runtime (`js::Map`, `js::Set`) in the core;
    - swallowed errors; a cooked city or a measure on the wrong city presented as the player's; a half-done feature or side path;
-   - its names, data keys, units and numbers taken over; the reference used as a test's oracle.
+   - its names, data keys, units and numbers taken over; the reference used as a test's oracle;
+   - geometry far heavier than it shows (`reports/polygon-geometry-audit.md`): rounded boxes for furniture (25x the
+     triangles), a disc drawn as overlapping strokes, lines sampled every metre on straight streets, closed cylinders whose
+     caps never show, a sphere for the sky, centimetre boxes for railings and spokes, hair strands at 172k triangles;
+   - work sent to the GPU for nothing: zero-area skirts drawn both ways, non-indexed patches and cards, degenerate or hidden
+     instances still submitted, a whole pool of points always drawn, back faces of closed meshes shaded (two-sided);
+   - memory for nothing: buffers allocated and never written, 32-bit indices where 16 fit, quantised data widened again,
+     constant attributes stored per vertex, capacities that only grow, GPU buffers never freed, a second copy of every mesh;
+   - draws and shadows: tens of draws per building, every tiny box casting into every cascade, objects never culled, a whole
+     tail re-uploaded on one removal, one mesh per material per block, paint as polygons instead of the surface's shader;
+   - overlap: welded bodies kept whole (hidden faces drawn and casting), a lawn under every surface, deliberate seam overlaps;
+   - CPU: a ghost rebuilt on every pointer move, quadratic self-intersection pruning, edges sampled 64 times, debris kept
+     forever, decals that only accumulate, generated furnishing with no cap; counters that count instances, not what is drawn.
    This game does the same behaviour within its architecture, decided once per chunk or per change, on its own threads, within
    the budgets.
 9. This game's defects: `trace.py [<START>] --wrong --root ...` (behaviour that contradicts what the program itself states: a
@@ -115,8 +128,8 @@ The loop per feature: trace and read whole (this section), plan (5), code with n
 analysed (8); a pass closes it (9) and the next feature begins at item 1.
 
 ## 4. Nothing runs before the code is written
-No test, measurement, photo, script or `hunt.py` before every fix of the block is written: a doubt is settled by reading.
-After it, nothing runs until the block's code is whole.
+No test, measurement, photo, script or `hunt.py` while an item (one problem or one feature) is being coded: a doubt is settled
+by reading. When the item's code is whole, its own check in seconds (7), then the next item.
 
 ## 5. Plan
 In the memory file: the cause with file:line, the fix of that decision, its owner, the files, why the symptom cannot return,
@@ -124,11 +137,15 @@ what else it fixes. The fix that removes the cause, whatever its size (a rewrite
 special case, swallowed error, loosened check, switched-off feature or lowered quality.
 
 ## 6. Code the whole block, nothing run
-`python tools/tasks/cli.py block open <block>`; write every fix; settle doubts by reading; update the memory file per file.
-No test, build, measurement, photo or process runs until every fix of the block is written.
+`python tools/tasks/cli.py block open <block>`; write the item's code whole; settle doubts by reading; update the memory file
+per file. No test, build, measurement, photo or process runs while the item is being written.
 
-## 7. Check once, after the whole block, fast
-`python tools/tasks/cli.py block verify`, then only what the block reaches, each check taking seconds (CLAUDE.md's table):
+## 7. Check each item in seconds; the suites at the block's end
+After each item: `python tools/tasks/cli.py block verify`, then the item's own check, seconds each, to see that it passed and
+nothing near it broke: the test scenes it reaches, one by one (`python tools/tasks/cli.py run <task>`: a scene takes 2 to 30 s,
+its build, import and script check come from the cache when unchanged; `run tests --list` names them), and its photos (a
+`looks` item of only the shots that prove the item, about 15 s, analysed as in 8). A pass: `block open <block>` and the next
+item; a failure: fixed in code first. At the block's end, the suites of what the whole block reaches (CLAUDE.md's table):
 tools (their tests, `run_gates.py --file` on each changed file), GDScript/data (the test scenes it reaches,
 `python tools/tasks/cli.py run <task>`, and the gates of the changed files), C++ (both DLLs, `build.sh core-windows`, and the
 scenes it reaches), what the player sees (the photos of the change, 8). A check that takes minutes is a defect of its tool,
@@ -136,6 +153,8 @@ registered. `quick.sh --ready`, the whole gates and `km24.py` run only on the ow
 errors in a pass are a failure. A failure: `superpowers:systematic-debugging`, fix in code (`block open` again), check again.
 
 ## 8. Photos of the changed thing
+- Every item is photographed: one small plan with the shots that prove its claim, taken in seconds (about 15 s with the town
+  open), chosen from the views below; the block's end photographs the whole of what the block changed.
 - The subjects come from the change: the elements the feature draws or moves (the trace's outputs say which). Poles are
   photographed at poles, cars at cars, a building at that building, people where they walk. Never the same views for every change;
   the frozen views of `quick.sh` prove nothing about a change.

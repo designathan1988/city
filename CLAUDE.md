@@ -47,23 +47,23 @@ lists every file; nothing here is status.
 3. **Trace** a feature in both games before it is built or fixed (Bringing a feature from the reference; the tracer).
 4. **Plan** the fix of the cause: the design decision with `file:line`, the fix, its one owner, every file it touches, why the
    symptom cannot return, what else it fixes; whatever its size (a rewrite when the design asks for one).
-5. **Code the whole block with nothing run.** `python tools/tasks/cli.py block open <name>`. A block is every open problem the
-   owner named (with none named, those of the area in hand), each fixed at its cause, one after another, without trial and
-   error. From the task's start until `block verify` nothing runs: no test, build, game run, measurement, photo, gate or
-   script (the tools refuse inside a block); a doubt is settled by reading, never by a run.
-6. **Check once, at the block's end, fast.** `block verify`, then only what the block reaches, each check under a minute:
+5. **Code each item with nothing run, then check it in seconds.** `python tools/tasks/cli.py block open <name>`. A block is
+   every open problem the owner named (with none named, those of the area in hand); an item is one problem or one feature, fixed
+   at its cause without trial and error. While an item is coded nothing runs (the tools refuse inside a block); a doubt is
+   settled by reading. Then `block verify` and the item's own check, seconds each: the test scenes it reaches (`cli.py run
+   <task>`, 2 to 30 s) and its photos (a `looks` plan of the shots that prove it, about 15 s); a pass, `block open`, next item.
+6. **At the block's end, the suites, fast.** `block verify`, then what the whole block reaches, each check under a minute:
 
    | Changed | Check |
    |---|---|
    | Tool under `tools/` | its own tests and `python tools/gates/run_gates.py --file <each changed file>` |
    | GDScript, scene or data | the test scenes it reaches, one by one (`python tools/tasks/cli.py run <task>`), and the gates of the changed files |
-   | C++ | first both DLLs (`timeout 1500 tools/build/build.sh core-windows`, a build, not a check), then the test scenes it reaches |
+   | C++ | first both DLLs (`tools/build/build.sh core-windows`, a build, not a check), then the test scenes it reaches |
    | What the player sees | the photos of the change (the image protocol) |
 
-   Each runs in the foreground with a deadline; `cli.py run` prints its progress and each result, the task's own lines are
-   in `dist/tasks/<run>/<task>.log`, read whole when it ends. A check over a minute is not started: it is a defect of its tool,
-   registered. The long runs (`quick.sh --ready`, the whole gates, `km24.py`, `hunt.py`, a whole-city capture) run only when
-   the owner asks. An engine error in a passing log is a failure; a slow, heavy or crashing result is a failure, with numbers.
+   Each in the foreground with a deadline, its lines shown live, its log (`dist/tasks/<run>/<task>.log`) read whole. A check
+   over a minute is a defect of its tool. Only on the owner's order: `quick.sh --ready`, the whole gates, `km24.py`, `hunt.py`,
+   a whole-city capture. An engine error in a passing log, a slow, heavy or crashing result: a failure, said with its numbers.
 7. **Stop and check.** A failure is read to its cause with `superpowers:systematic-debugging`, fixed in the code (`block open`
    again), and the checks of step 6 run once more; a pass is confirmed with `superpowers:verification-before-completion`.
 8. **Close** (`block close`): the area's history (problems, sources, reasoning, plan, files created, changed and deleted, the
@@ -136,10 +136,10 @@ fixed at its cause; its tests: `python -m unittest discover -s tools/tracer/test
   for a failure's cause; `superpowers:verification-before-completion` before any "done"; `speckit-*` for a specification;
   `update-config` for settings; the LSP tool for C++; any skill whose subject is the step in hand. A skill's step that
   contradicts this file does not apply.
-- Agents read and report, up to five at once, each prompt naming the goal, the files and the answer's form; what an agent
-  returns is checked in the files.
-- **Processes** (the owner's order, repeated many times): a process is launched only if its output shows as it runs and it can
-  be watched: in the foreground, or under a monitor that shows its lines as they come, always with a short deadline. Never a
+- Agents (the owner's orders): no limit on their number or work, sent to finish the ordered work sooner; what one brings is
+  never trusted: each claim and change is checked in the files, and only what was verified is taken as true, built on or kept.
+- **Processes** (the owner's order, repeated many times): a process is launched only if its output shows as it runs (never held
+  back by a filter, `tail` or `grep`) and it can be watched, in the foreground or under a monitor, with a short deadline. Never a
   process that shows nothing, that cannot be watched, that has no deadline, that waits on another without a limit, or that
   makes another task wait or fail because one stopped or is slow: independent tasks run on their own, a stuck one is stopped
   by its PID and recorded, the others go on. No long run is started to be waited on. Only your own processes are stopped, by
@@ -189,11 +189,11 @@ fixed at its cause; its tests: `python -m unittest discover -s tools/tracer/test
 | What | Command |
 |---|---|
 | A block | `python tools/tasks/cli.py block open <name>` · `block verify` · `block close` · `block status` |
-| Build both DLLs | `timeout 1500 tools/build/build.sh core-windows`, in the foreground |
+| Build both DLLs | `tools/build/build.sh core-windows`, in the foreground (each DLL an orchestrator task with its deadline) |
 | One test or photo plan | `python tools/tasks/cli.py run <task>` (the names: `python tools/tasks/cli.py run tests --list`) |
 | Gates of a file | `python tools/gates/run_gates.py --file X` (`--selftest`; the whole tree with `--register doc/problems.jsonl`) |
 | The register | `python tools/atlas/cli.py problems [--area A --status S]`, `add`, `update`, `close`, `drop` |
-| Deliver | `timeout 900 tools/build/deliver.sh export`, in the foreground |
+| Deliver | `tools/build/deliver.sh export`, in the foreground (the export an orchestrator task with its deadline) |
 | On the owner's order | `tools/build/quick.sh --ready`, the whole gates, `python tools/tasks/km24.py` (km24 on two builds), `python tools/hunt/hunt.py` (the game's defects, `dist/hunt/hunt.json`) |
 
 The DLLs in `project/bin` are versioned (rebuilt from the joined sources in a rebase). A clone needs Godot 4.7.2, llvm-mingw
