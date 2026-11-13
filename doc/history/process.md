@@ -156,6 +156,7 @@ Appended by `python tools/tasks/cli.py block close` (FR-050: the time each step 
 | pending-five | 2026-11-12T23:04 | 2026-11-12T23:32 | 2026-11-12T23:43 | 28 | 11 |
 | method-skill | 2026-11-12T23:53 | 2026-11-13T00:01 | 2026-11-13T00:01 | 8 | 0 |
 | claude-md-obedience | 2026-11-13T00:09 | 2026-11-13T00:12 | 2026-11-13T00:13 | 3 | 1 |
+| fix-all | 2026-11-13T00:14 | 2026-11-13T00:25 | 2026-11-13T00:44 | 11 | 19 |
 
 ## 2026-11-12: the audit of 2026-11-07 (log/review.md) folded into the register
 
@@ -372,3 +373,29 @@ the residential ring (r > 350 m on the town map).
   nothing of the game changed here, and the tree holds another session's uncommitted C++ that it would build.
 - **Files changed**: `CLAUDE.md`, `tools/gates/contracts.json`, `tools/gates/rules.json` (doc_places), `.gitignore`,
   `doc/map.md`, `.claude/settings.json`, `.claude/skills/city-method/SKILL.md` (new), this history.
+
+## 2026-11-13: CLAUDE.md without bureaucracy (block `fix-all`, the owner's order)
+
+- **The order**: "see in CLAUDE.md all the useless bureaucracy and take it out", after an analysis of what was wrong in it.
+- **Removed**: every `[c:...]` marker and the contracts system behind them (contracts.json, its gate, schema and fixtures);
+  the rule on other sessions' transcripts and the list of skills never to use (removed in 3a4172cb too); rules said twice
+  (km24 in two places, processes and deadlines in two, hidden runs and one engine in two, the verification and its table);
+  rules that described tools' internals now one line on what a tool must be.
+- **Contradictions settled**: this file and the owner's words over tool and plugin descriptions (Context7's own text had kept it
+  off the project's own code); "the costliest solution" against "expensive proves no cause": now "the fix of the cause, whatever
+  its size"; `--bless` forbidden yet needed when a save format moves on purpose: allowed then, its cause in the history; "only
+  reading" against `hunt.py` and a reproduction: one run before a block; "the owner's tracer used as it is" against fixing it.
+- **Impossible made possible**: km24 on two builds had no command (`tools/tasks/km24.py`); the photos of the street capture
+  could not show their subject (`CityCamera.pin`).
+- **Stale fixed**: Spec Kit's constitution and folders; `run fast <scene>` (a suite, not a test); the photo command that opened
+  a window; the history's "commit", which cannot exist before the commit (now the block).
+- **Added**: read the gates' rules before the first line (the cost of three verification rounds on 2026-11-12); one session in
+  this folder at a time (two sessions' blocks collided twice); the camera rig as the camera's one writer.
+- **Rewritten again the same day, by the owner's order** ("make it minimal, keep everything I said, the method whole, the
+  tracer's summary in it"): every file read whole in chunks, recorded `path: 1-N of N`; the work stays in this folder (a path
+  found in a record is no order to go there: this session had gone to the tracer's origin repository unasked); every order of
+  the owner kept for the session; no report until everything is done and checked, the real reason when asked why; the checks
+  at a block's end fast, only what the block reaches (the long runs, `quick.sh --ready`, the whole gates and `km24.py`, on the
+  owner's order); the photos planned from the change; the tracer's use summarised from `tools/tracer/trace.py` and its modules'
+  own words; the skill `city-method`'s check step brought to the same rule.
+

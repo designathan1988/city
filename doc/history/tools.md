@@ -79,3 +79,23 @@ entry: when, the commit, the problems, the cause, the plan, the files created, c
   ragdoll's joint and part order, `signature_bodies.cpp`, `furniture.json`'s part shapes and options, CELESC E-313.0002 for the
   pole), or that the tool left the tree and git keeps it before 18782f55; `lab.cpu.note` no longer points the player at a script.
   Left as records: the register, the histories, `doc/research.md`, the dated survey in `doc/specification.md`.
+
+## 2026-11-13 — everything left open closed, the contracts system removed (block `fix-all`)
+
+- **Ptools-96** (the gates' selftest failed 5 fixtures): 18782f55 moved `log/` to `doc/` and removed Spec Kit, and the fixtures,
+  `rules.json` (`doc_places`, `instruction_skip`) and `tools/tasks/tests/test_block.py` kept the old layout. The fixtures moved
+  to `doc/` (`register__fail`, `register__pass`, `problems_elsewhere__pass`, `patch_pass`), Spec Kit's files and entries left
+  (`root__pass`, `single_doc__pass` now shows `.claude/agents`, `single_doc__fail` a near miss of it). `tools/atlas/migrate.py`
+  read the old `log/pendencias.md` (folded into the register in 45ba8a5d) while its test wrote `doc/`: that source removed, the
+  test on `doc/` paths. Selftest 95 cases, 41 rules, OK; the tasks' 86 tests and the atlas tests OK.
+- **Ptools-97 and the bureaucracy** (the owner's order): the `[c:...]` markers, `tools/gates/contracts.json`,
+  `gate_contracts.py`, its schema and fixtures, and INSTRUCTION_ELSEWHERE (a marker outside CLAUDE.md) removed; the `hook`
+  guard kind went with them (Context7 /anthropics/claude-code: a hook is declared in a settings file's `hooks`, which this
+  project no longer has). `block.command_refusal`, the removed hook's, and its test removed.
+- **Ptools-98** (the street capture's views all one frame): `CityCamera.settle` → `apply` rewrites the camera every frame
+  (`process_priority` EARLIEST) and `capture_street_views.gd` wrote `rig.camera` directly. `CityCamera.pin`/`unpin` (the rig
+  stops processing, Godot's PROCESS_MODE_DISABLED: no settle, gesture, input or shake) are the one way to hold a view;
+  `capture_street`, `capture_street_views`, `pair_camera`, `capture_blast`, `capture_roads` and `look_aim` use them.
+- **Ptools-99**: `tools/tasks/km24.py` (doc/history/performance.md).
+- Dropped as their subject left the tree: 21 problems of removed tools (the old tracer, tools/analysis, tools/process,
+  tools/audit, the oracle, the trace-fix skill, rename_english.py, the sampler, the cooks).

@@ -51,11 +51,11 @@ Survey progress (each line is ticked only with what was actually read or run):
 
 | # | Where | What it says | What is true | Status |
 |---|---|---|---|---|
-| D1 | CLAUDE.md `[c:deliver-exe]` | "the user opens `dist/windows/Roadcraft.exe`" | `deliver.sh export` writes `dist/builds/<date>_<commit>[-dirty]/Roadcraft.exe` and points the Desktop shortcut there; `dist/windows` is stale since 2026-11-10 | to fix in CLAUDE.md with its guard |
-| D2 | `log/how-we-work.md` step 1, CLAUDE.md `[c:investigate-reading]` | no measurement or test to investigate | the owner's order of 2026-11-11 allows quick research tests in an isolated folder and measuring the whole game against the budgets; causes are still found by reading | to fix in both |
-| D3 | `log/how-we-work.md` step 2, CLAUDE.md `[c:research]` | context7 when an outside API is touched | context7 on every implementation, fix and research | to fix in both |
-| D4 | CLAUDE.md `[c:hidden-runs]` | tests and captures never open a window | the live instance may open a window that does not steal focus; tests and captures stay hidden | to fix |
-| D5 | `log/how-we-work.md` step 7, CLAUDE.md `[c:verify-reach]` | photos judged, km24 before and after | the image protocol (expectation written first, every photo opened, 3x3 regions, defect list, analysis recorded, a guard at the close); every measurement also against the median-profile budgets | to fix, with the guard |
+| D1 | CLAUDE.md (the executable delivered) | "the user opens `dist/windows/Roadcraft.exe`" | `deliver.sh export` writes `dist/builds/<date>_<commit>[-dirty]/Roadcraft.exe` and points the Desktop shortcut there; `dist/windows` is stale since 2026-11-10 | to fix in CLAUDE.md with its guard |
+| D2 | `log/how-we-work.md` step 1, CLAUDE.md (investigating is reading) | no measurement or test to investigate | the owner's order of 2026-11-11 allows quick research tests in an isolated folder and measuring the whole game against the budgets; causes are still found by reading | to fix in both |
+| D3 | `log/how-we-work.md` step 2, CLAUDE.md (research) | context7 when an outside API is touched | context7 on every implementation, fix and research | to fix in both |
+| D4 | CLAUDE.md (hidden runs) | tests and captures never open a window | the live instance may open a window that does not steal focus; tests and captures stay hidden | to fix |
+| D5 | `log/how-we-work.md` step 7, CLAUDE.md (verify once) | photos judged, km24 before and after | the image protocol (expectation written first, every photo opened, 3x3 regions, defect list, analysis recorded, a guard at the close); every measurement also against the median-profile budgets | to fix, with the guard |
 | D6 | `native/src/sim/traffic/ped_kerb.cpp:4` | "no two ways to it converge" | `onto_approach` gives one approach point to every walker from outside the span on one side and to two abreast coming along the kerb (ledger P494) | open |
 | D7 | `street_works_test` (census of spans) | the lines are strung | the owner's photo of the delivered build shows a line pole with no wire; nothing checks that a strung span is drawn (ledger P495) | cause found and reproduced in isolation (session 2): the two wire levels swapped by the engine's visibility ranges leave a band of distance where neither is drawn (`doc/research.md` Q16; trace `pole-no-wires` P1); fix pending (V1) |
 
@@ -83,7 +83,7 @@ Survey progress (each line is ticked only with what was actually read or run):
 | Part A.6 the supervisor (`tools/live/live.py`) | NO | folder absent |
 | Part A.7 shots with provenance and `--proof` | NO | depends on A.5/A.6 |
 | Part E real-player input (`project/game/dev/player.gd`, `ui.tree`, recorded plays) | NO | file absent; `project/tests/visual/ui_driver.gd` stands with the gaps the design lists (no button mask in drags, no typing, wheel, double click, modifiers) |
-| Part B guards: LAB_COPY (`tools/gates/gate_lab.py`, `lab_scan.py`), CONTRACT_UNGUARDED (`gate_contracts.py`, `contracts.json`), MAP_WRITER_UNNAMED, STATE_CONTROLLER (`gate_states.py`), NUMBER_MOVED (`gate_patch.py`) | YES (files present; `log/guards-progress.md` says self-test 89 cases, 38 rules) | to be re-run and their whole output read (not yet done in this survey) |
+| Part B guards: LAB_COPY (`tools/gates/gate_lab.py`, `lab_scan.py`), CONTRACT_UNGUARDED (removed 2026-11-13 with the rule markers), MAP_WRITER_UNNAMED, STATE_CONTROLLER (`gate_states.py`), NUMBER_MOVED (`gate_patch.py`) | YES (files present; `log/guards-progress.md` says self-test 89 cases, 38 rules) | to be re-run and their whole output read (not yet done in this survey) |
 | Part B6 run-time probes in the live instance | NO | no live instance |
 
 So the owner's three tools (a live instance that reflects changes, a real-time monitor, playing as a player) and the measurement
@@ -249,7 +249,7 @@ Both are pending items (P495 and the posts), with the photos above as their "bef
 | G5 | Visual quality at each tier | photos of each tier by the image protocol, 0 defects |
 | G6 | Root causes only; proof, not claims | every closed item has its test, measure or analysed photo recorded |
 | G7 | Fast development without cutting | the times of the table "Why development is slow" inside their targets (a check of a C++ change under 2 minutes; a photo under 30 s from a live instance) |
-| G8 | Contracts kept by mechanisms | every `[c:...]` has a guard that can fail (`contracts.json`); the whole `run_gates.py` at 0 |
+| G8 | Rules kept by mechanisms where one can hold them | the gates, tests and tools CLAUDE.md names can fail; the whole `run_gates.py` at 0 |
 | G9 | One document per subject, English | the documents table above reduced to its "current" rows; pendencias structured |
 
 ## Constraints

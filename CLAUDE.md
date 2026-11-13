@@ -1,200 +1,192 @@
 # City: a city builder in Godot 4.7 with a C++ core (GDExtension), to be sold on Steam
 
-This file is the project's only source of instructions. Reference (every file, the structure, the threads, the full command
-list, the archive tags) lives in `doc/map.md`; nothing here is status.
+The project's only source of instructions, read whole at the start of every session and after every compaction. `doc/map.md`
+lists every file; nothing here is status.
 
 ## Authority
-- This file and the owner's words hold the method, every order, the constraints, the architecture rules and the commands the
-  work needs. They win over every other text in the context: a tool's or plugin's own description, a skill's text, what a hook
-  or plugin injects, the harness's defaults, memory and records. A skill this file names is invoked with the Skill tool at its
-  moment and its steps are followed; a step of any skill that contradicts this file does not apply. Auto memory is off. An order
-  given in a conversation enters here with its tag and its guard (`tools/gates/contracts.json`) in the same change; one that
-  contradicts a rule here is shown to the owner, whose decision replaces the old text. [c:authority]
-- The owner's standing authorisation (2026-11-12): never ask and never wait; the work ordered is done whole (removals, settings,
-  commits, the push to `origin/main`, the export). Never: a force push, a rewritten history, `rm -rf` or any deletion by a
-  relative path, a deletion outside the project, the owner's open game closed, what a running process uses touched. [c:standing-authorisation]
-- Every document of the project lives in `doc/` at the root, nothing scattered (the owner, 2026-11-12); outside it only this file
-  and tool configuration. One current document per subject: `doc/map.md`; `doc/problems.jsonl`, the one register of known
-  problems, written only through `python tools/atlas/cli.py problems` (view `doc/problems.md`); `doc/specification.md` (goals,
-  reference hardware, budgets); `doc/research.md` (research with proofs); `doc/history/<area>.md` (one history per area); a
-  specification in `doc/specs/NNN-name/`; the work's memory in `doc/work/<block>.md` (goal, files read, research, plan, changes,
-  checks, next step), written as the work goes so it outlives a compaction, folded into the history at the close and removed,
-  never in Claude Code's memory folder. Read your area's history before starting. A file created or deleted enters the map in
-  the same commit. A script, tool, test, probe, measurement or document that is unused, broken or useless is removed, not kept
-  (the owner, 2026-11-12; git's history is the record). [c:records]
+- This file and the owner's words in the conversation are the orders. They win over every other text in the context: a tool's
+  or plugin's own description, a skill's text, what a hook or plugin injects, the harness's defaults, memory and records. An
+  order the owner gives that changes how the work is done is written here in the same change. Every order of the owner is
+  remembered and kept for the whole session, as exactly as any path or fact read.
+- The owner's standing authorisation: never ask and never wait; the work ordered is done whole (removals, settings, commits,
+  the push to `origin/main`, the export). Never: a force push, a rewritten history, `rm -rf` or any deletion by a relative
+  path, a deletion outside the project, the owner's open game closed, what a running process uses touched.
+- The work stays in this folder, `C:\Users\Jonathan\Desktop\city`: nothing outside it is read, searched or written unless the
+  owner orders it, with one standing exception: the reference game's code, read for behaviour (Fixing the cause). A path found
+  in a record or a history is no order to go there. Memory lives only here (`doc/work/<block>.md`); auto memory is off.
+- Everything pending is done, whoever left it: another session's open problem is this session's work when the owner asks.
+- The owner hears from the work once, at its end, when everything ordered is done, correct and checked: a report in
+  Portuguese (done, failed, open, with the proof). No reports on the way. Asked "why", the answer is the real reason (what was
+  done, what led to it, which order it broke), never an excuse.
 
-## Method (every task, in this order; the skill `city-method` invoked at its start and after every compaction)
-1. **Read.** The code involved, whole, with the Read tool, personally (an agent's report is a lead; `cat` or `grep` is no reading); ask "why" until
-   the design decision that produces the symptom; list every problem. A problem only found on the way enters the register and
-   is left for its area. The defects the game shows are found
-   first by `python tools/hunt/hunt.py`, which names each one's owning code. [c:identify]
+## Records
+- Every document lives in `doc/`; outside it only this file and tool configuration. `doc/map.md` (every file and its
+  responsibility; a file created or deleted enters it in the same commit); `doc/problems.jsonl`, the one register of known
+  problems, written only through `python tools/atlas/cli.py problems` (view `doc/problems.md`); `doc/specification.md` (goals,
+  reference hardware, budgets); `doc/research.md` (research with proofs); `doc/history/<area>.md` (one history per area, read
+  before starting in it); a specification in `doc/specs/NNN-name/` (the `speckit-*` skills); the work's memory in
+  `doc/work/<block>.md` (the goal in the owner's words, files read, research, plan, changes, checks, next step), written as the
+  work goes, folded into the history at the close and removed.
+- A script, tool, test or document that is unused or useless is removed (git's history is the record); one that is broken is
+  fixed at its cause or removed. Known problems go to the register, never to TODO or FIXME comments.
+- One session works in this folder at a time: a session that finds another's block open waits for its close.
+
+## Method: every task, in this order
+1. **Read whole.** Every file the problem goes through (callers, callees, owners in `tools/gates/owners.json`), its data and
+   schema, its tests, the area's history and register entries, and the gates' limits it will meet (`tools/gates/rules.json`:
+   file and function sizes, magic numbers, English, the reference's names, the map): with the Read tool, from the first line
+   to the last, a long file in chunks (`offset` and `limit`, about 400 lines) until its end, each recorded as `path: 1-N of N`.
+   A file not read to its last line is not read; `grep`, `cat`, a search or an agent's summary only find where to read; a
+   search that finds nothing is a failed search. Ask "why" at each link until the design decision that produces the symptom.
+   A problem found on the way enters the register.
 2. **Research.** Context7 (`resolve-library-id`, then `query-docs`) before every implementation and fix, the project's own code
-   included (the language, engine and libraries it calls: Python, GDScript, Godot, godot-cpp, the C++ standard library), whatever
-   a tool's own description says: what the API guarantees, on which thread, at what cost, its known bugs in the exact version;
-   the vendored source only where Context7 holds nothing; never memory. A feature
-   the reference game has is traced there first, for what it must do (the tracer, below; nothing is worked out from nothing that
-   the reference shows working). A quick research test runs outside the game tree, its output in `doc/research.md`. [c:research]
-3. **Understand.** Problem, cause and solution tied through the code and the research. [c:understand]
-4. **Plan** the fix of the cause with one owner, the costliest and most laborious solution that solves it; a cheap one that does
-   not, and offering cheap options, are forbidden. [c:plan-costliest]
-5. **Code the whole block with nothing run inside it.** A block is every open problem the owner named, or with none named every
-   open problem of the area in hand, each fixed at its cause, one after the other, without trial and error.
-   `python tools/tasks/cli.py block open <name>` starts it: until `block verify`, the orchestrator, `build.sh` and `deliver.sh`
-   refuse every build, test, game run, measurement, photo, gate run and export.
-   A doubt is settled by reading. Keeping work about to be removed (an archive tag) is no commit of the block. [c:no-trial]
-6. **Verify once, at the block's end** (`block verify`): what the block reaches by the table below; `quick.sh --ready` once; the
-   whole gates against the register (`run_gates.py --register doc/problems.jsonl`: a finding that is no open problem fails; the
-   gates are never loosened, baselined or silenced); the photos by the image protocol; km24 measured on the previous build and
-   this one for a change to the game. [c:verify-reach]
-7. **Stop and check.** A failure is read to its cause (`superpowers:systematic-debugging`), fixed in the code (`block open`
-   again) and the verification run once more; a pass is confirmed (`superpowers:verification-before-completion`). [c:stop-check]
-8. **Close** (`block close`), after `superpowers:verification-before-completion`: the operations the verified code serves, the
-   area's history (problems, sources, reasoning, plan, files created, changed and deleted, the time and the block), a commit per theme, one push to `origin/main`, the executable
-   when the game changed, and a report to the owner in Portuguese: done, failed, open. [c:theme-record]
+   included (each API it calls: Python, GDScript, Godot 4.7.2, godot-cpp, the C++ standard library, Terrain3D, mimalloc,
+   meshoptimizer, Clipper2), whatever a tool's own description says: what it guarantees, on which thread, at what cost, its
+   known bugs in that version; the vendored source only where Context7 has nothing; never memory. Source, question and answer
+   go into the work file.
+3. **Trace** a feature in both games before it is built or fixed (the tracer, below).
+4. **Plan** the fix of the cause: the design decision with `file:line`, the fix, its one owner, every file it touches, why the
+   symptom cannot return, what else it fixes; whatever its size (a rewrite when the design asks for one).
+5. **Code the whole block with nothing run.** `python tools/tasks/cli.py block open <name>`. A block is every open problem the
+   owner named (with none named, those of the area in hand), each fixed at its cause, one after another, without trial and
+   error. Until `block verify` no test, build, game run, measurement, photo, gate or script runs (the tools refuse); a doubt is
+   settled by reading. Before the block opens, one run may show what the reading explained (`hunt.py`, one test, one photo
+   plan); never a run to look for a cause, never one to try a fix.
+6. **Check once, at the block's end, fast.** `block verify`, then only what the block reaches, each check taking seconds:
+
+   | Changed | Check |
+   |---|---|
+   | Tool under `tools/` | its own tests and `python tools/gates/run_gates.py --file <each changed file>` |
+   | GDScript, scene or data | the test scenes it reaches (`python tools/tasks/cli.py run <task>`) and the gates of the changed files |
+   | C++ | both DLLs (`tools/build/build.sh core-windows`) and the test scenes it reaches |
+   | What the player sees | the photos of the change (the image protocol) |
+
+   A check that takes minutes is a defect of that tool, registered and fixed at its cause. The long runs (`quick.sh --ready`,
+   the whole gates, `tools/tasks/km24.py`, a whole-city capture) run only when the owner asks. Every output is read whole:
+   an engine error in a passing run is a failure; a slow, heavy or crashing result is a failure, said with its numbers.
+7. **Stop and check.** A failure is read to its cause with `superpowers:systematic-debugging`, fixed in the code (`block open`
+   again), and the checks of step 6 run once more; a pass is confirmed with `superpowers:verification-before-completion`.
+8. **Close** (`block close`): the area's history (problems, sources, reasoning, plan, files created, changed and deleted, the
+   time, the block), a commit per theme holding only the block's files, one push to `origin/main`, the executable when the
+   game changed (`tools/build/deliver.sh export`: `dist/builds/<date>_<commit>/Roadcraft.exe`, the Desktop shortcut on it),
+   then the one report to the owner.
+
+Haste, an order to go faster or a complaint of slowness removes no step; slowness is a defect fixed at its cause.
+
+## The image protocol
+Every photo proves one claim about the element the block changed, planned from that change and never reused: written first
+what it must prove; aimed at the changed element's position (found by reading or a `query` step): near, mid and far, four
+azimuths, street level, oblique and from above, day and night where light is involved, each tier the change touches, movers
+with the clock running; a plan of `project/tests/visual/look.gd` steps as an item of `looks` in `tools/tasks/suites.json`, run
+hidden (`python tools/tasks/cli.py run <name>`), each shot after `{"until": "render_pending", "equals": 0}`. Every photo is
+opened with Read, whole; a photo that missed its subject is retaken; then crops of the element at real size, each looked at for
+every kind of defect by name (missing or extra, broken, deformed, scale, orientation, bodies in one another, floating or sunk,
+holes, the street's seams, textures, colour, light, shadow, detail pops, artefacts, interface text); the analysis written per
+photo with pixel positions, sound and defective alike. A defect, or a photo not analysed, fails the block.
 
 ## Fixing the cause
-- The fix changes the design decision that produces the symptom. If the right fix asks for a rewrite, rewrite. [c:fix-decision]
-- It is a patch, and forbidden: changing a timeout, threshold, thread count or tolerance; creating a special case; swallowing an
-  error; loosening a check; writing the reference again (`--bless`) to make a test pass; moving the cost elsewhere. [c:no-patch]
-- Every fix says, with file and line: what the cause is, why the symptom does not come back another way and which other symptoms go with it. [c:fix-says]
-- Expensive does not prove a cause and cheap does not prove a patch: the criterion is the one above. [c:cost-no-proof]
-- **Nothing of the roadcraft is copied, ever**: no line, line-by-line translation, structure, name or function. The lab
-  (`C:\Users\Jonathan\Documents\Projects\lab\roadcraft`, the game with everything working) is read only to write down what the
-  game must do (behaviour, rules, cases, values, what the player sees); the code is designed for this game's architecture and
-  checked against that behaviour. The lab ports of the tag `antes-da-volta-2026-11-10` never come back (this game's own earlier
-  fixes from it were authorised); code translated from the old 4.0 is redone at its cause, never regenerated; `roadcraft-4.0-main`
-  is no reference. [c:no-roadcraft-copy]
-- **Proof, not claims.** Say what was read, run and verified, how, and where the proof is; read the whole output of every build,
-  test and gate; a slow, heavy, crashing or failing result is a failure, said plainly with its numbers; a cause not proven is
-  "unknown"; never a fake (a stand-in for a real element, a feature switched off, quality lowered, a test weakened or skipped, a metric massaged). [c:proof]
+- The fix changes the design decision that produces the symptom. It is a patch, and forbidden: changing a timeout,
+  threshold, thread count or tolerance; a special case; a swallowed error; a loosened check; a cost moved elsewhere; a feature
+  switched off; quality lowered; a reference written again (`--bless`) to make a test pass. A reference is written again only
+  when the change means to move it and its cause is in the history.
+- Every fix says, with file and line, what the cause is, why the symptom does not come back another way and which other
+  symptoms go with it. A cause not proven is "unknown"; never a fake (a stand-in, a test weakened or skipped, a metric
+  massaged).
+- **Nothing of the roadcraft is copied, ever**: no line, line-by-line translation, structure, name or data key. The lab
+  (`C:\Users\Jonathan\Documents\Projects\lab\roadcraft\src`, the game with everything working) is read only to learn what the
+  game must do (behaviour, rules, cases, values, what the player sees); the code is this game's own design, checked against that
+  behaviour. Never brought in from it: allocation or search in a hot loop, quadratic proximity, per-frame work that belongs on
+  change, a simulation tied to the camera, a half-done feature. `roadcraft-4.0-main` and the tag `antes-da-volta-2026-11-10`
+  are no reference. Values of the real world come from a cited norm or published method.
 
-## Principles
-- The cause of performance problems is the architecture. Shadows, polygons and GPU time are symptoms and change with the card. [c:perf-architecture]
-- **The bar is a game sold on Steam**: the reference profiles and budgets of `doc/specification.md` (median: 6 cores, 16 GB,
-  RTX 3060 class, 1080p `medium` at 60 fps; floor: 4 cores, 8 GB, integrated GPU, 1080p `low` at 30 fps). Performance,
-  optimisation and visual quality are acceptance criteria of every feature; every change to the game is measured against them in
-  the 24 km city (map `km24`), the previous build and this one. [c:budgets]
-- Do what was asked, whole: the goal, not the literal words; the neighbouring cases; a limit found is a cause to resolve. [c:do-it-whole]
-- A check takes seconds: the most likely place first (the newest folders, one targeted search); an empty result of a fragile
-  search is a failed search, not a "no". Slowness of the work is a defect, recorded and fixed at its cause, never by a skipped
-  step: haste, an order to go faster or a complaint of slowness removes no step of the method. [c:fast-checks]
-- Agents are used to go faster, up to five at once (the owner, 2026-11-12), each sent a prompt that names the goal, the files,
-  what is known, what it may change and the answer's form; the main session checks what an agent returns. [c:agents-read-only]
-- Skills: `city-method` at every task's start and after every compaction; `superpowers:systematic-debugging` when a failure needs
-  its cause; `superpowers:verification-before-completion` before a close or any claim that something is done; `speckit-*` for a
-  specification; `update-config` for settings; the LSP tool for C++; Context7 always (step 2); and any other skill whose subject is
-  the step in hand. A skill's step that contradicts this method (a test before the block is whole, a question to the owner, a
-  worktree) does not apply; the rest of that skill does. [c:skills]
-- Never wait blind on a launched process (a deadline and following it). Stop only your own processes, by PID. [c:no-blind-wait]
-- A launched process runs in the foreground or under a monitor, with a short deadline and its lines shown as they come. [c:watched-process]
-- One engine process at a time while working (the live instance counts as the one); the suite runs only at a verification. [c:one-engine]
-- Never close the game open on the owner's screen: `tools/build/free_dll.sh` frees the DLL. [c:user-game]
-- Tests and captures run hidden on a private desktop (`tools/tasks`); the live instance alone shows a window, never taking focus. [c:hidden-runs]
-- Every block that changes the game delivers an executable: `tools/build/deliver.sh export` writes
-  `dist/builds/<date>_<commit>/Roadcraft.exe`, points the Desktop's Roadcraft shortcut at it and keeps the last two builds (and
-  any an open problem names). Every folder under `dist/` has one owner and a bound (`tools/tasks/suites.json` lifecycle). [c:deliver-exe]
-- Direct work on `main`, in `C:\Users\Jonathan\Desktop\city`, without a worktree; a commit per theme at the block's close and one
-  push to `origin/main` (`https://github.com/designathan1988/city`). A worktree or copy exists only with an owner and an end:
-  `python tools/tasks/cli.py worktrees` fails while one is older than its work. [c:main-direct]
-- Work from another branch, worktree, stash or session enters `main` only read whole against the copy rule, redone on today's
-  tree where its base is gone, and verified at a block's close; otherwise its behaviour enters the register. [c:bring-in]
-- Repository files are changed with the Edit and Write tools, never by `sed` or a script's `write_text`; a script writes bytes; a file
-  whose last commit had no carriage return gains none. [c:lf-bytes]
-- In a long C++ session the session's own clangd is watched and stopped by its PID past about 3 GB. [c:clangd]
-- A photo is taken only when the view is drawn (`{"until": "render_pending", "equals": 0}` before each `shot`), shown with its commit and date. [c:drawn-photo]
-- **The image protocol**, every photo: written first what it must prove; planned by what the change reaches (the element near, mid and
-  far, several angles, day and night, each tier it touches, movers with the clock running) plus a few general views; every photo and
-  crop opened with Read, whole, then by regions at real size; each defect kind looked for (missing or extra, broken, deformed, scale,
-  orientation, bodies in one another, floating or sunk, holes, the street's seams, textures, colour, light, shadow, detail pops,
-  artefacts, interface text); the analysis written per photo with positions; judged on its own, never against another run or an
-  older commit's photo. A defect, or a photo not analysed, fails the block. [c:image-protocol]
+## The tracer (`tools/tracer/trace.py`)
+It reads code with each language's grammar (GDScript, C++, TypeScript/JavaScript, shaders) and never runs it. Roots are the
+feature's files only (`--root FILE`, repeated), never a whole game; the entry is found by a Grep for what the feature outputs,
+in the reference's `src` and in this game. A start is a label (`Class.method`), the end of one (`method`) or `path:line`; exit 1
+when the roots hold no code or the start names nothing (`--list` shows every name). Each link says how it was found: exact,
+by text, by name (one step only), ambiguous (too many candidates: not followed); a call no definition answers is "outside the
+code read". The analysis is kept in `tools/tracer/.index` and read back in under a second (`--fresh` redoes it).
+- `trace.py START --depth N`: what runs from it and what reaches it (`--back N`, `--exact`, `--state`: the state each step
+  writes and reads, its owner and its readers); a file reported outside the code read is added as a root.
+- `--feature POINT[,POINT]`: the functionality of outputs (`path:line` or a function): the conditions, state, constants and
+  data that decide them and the roots that set them off.
+- `--conditions` and `--cases [NAME] [--range LOW:HIGH]`: when each effect happens, cases where none or two of the
+  alternatives happen or a value leaves its range. `--wrong`: checks most peers make and one misses, writes breaking an
+  invariant the others keep. `--broken`: state never read or written, events with no handler, data keys missing or unread,
+  uniforms never set. `--cost ROOT`: its loops, their growth, what is made and called each turn. `--gaps`: what cannot be
+  followed and why.
+- `--evaluate "A;B*3" [--given NAME=VALUE] [--why path:line] [--why-not path:line]`: what the code produces in a situation.
+  `--compare MAP MAP`: the reference and this game in the same situation (a map: `{"root", "start", "inputs", "given",
+  "outputs"}`). `--versions OLD_ROOT`: two versions. `--json`, `--html F`, `--dot F` for the output.
+- Use: the trace of the reference says what the feature must do; the trace of this game says what it does; each difference
+  enters the register; `--cost` on the reference says what must not come in; `--wrong` and `--broken` on this game find its
+  defects. A tracer failure is fixed at its cause. Its tests: `python -m unittest discover -s tools/tracer/tests`.
 
-## Running and checking
-- Investigating is reading code. One run is allowed before a block opens, to see what the reading explains (`hunt.py`, one test,
-  one measurement or one photo plan); then nothing runs until `block verify`, and no measurement or profile hunts a cause. [c:investigate-reading]
-- Check, at the block's end, what the block reaches: [c:check-reach]
+## The bar
+- A game sold on Steam: the budgets of `doc/specification.md` (median: 6 cores, 16 GB, RTX 3060 class, 1080p `medium` at 60
+  fps; floor: 4 cores, 8 GB, integrated GPU, 1080p `low` at 30 fps). Performance, optimisation and visual quality are acceptance
+  criteria of every feature; the cause of a performance problem is the architecture.
+- Do what was asked, whole: the goal, not the literal words; the neighbouring cases; a limit found is a cause to resolve.
 
-| Changed | Check |
-|---|---|
-| Tool under `tools/` | its own tests and `run_gates.py --file` on the changed files |
-| GDScript, scene or data | `quick.sh <linked scenes>` and the gates of the changed files |
-| C++ | both DLLs and `quick.sh <linked scenes>` |
-| Block's close, before the push | `quick.sh --ready` once, the whole gates against the register, the photos, the executable |
+## Working rules
+- Skills: `city-method` (the method's checklist) at a task's start and after a compaction; `superpowers:systematic-debugging`
+  for a failure's cause; `superpowers:verification-before-completion` before any "done"; `speckit-*` for a specification;
+  `update-config` for settings; the LSP tool for C++; any skill whose subject is the step in hand. A skill's step that
+  contradicts this file does not apply.
+- Agents read and report, up to five at once, each prompt naming the goal, the files and the answer's form; what an agent
+  returns is checked in the files.
+- A launched process runs in the foreground or under a monitor, with a deadline, its lines read as they come; only your own
+  processes are stopped, by PID; one engine process at a time; tests and captures run hidden through `tools/tasks`; the owner's
+  open game is never closed (`tools/build/free_dll.sh` frees the DLL).
+- Direct work on `main`, no worktree or branch; repository files changed with the Edit and Write tools, never `sed` or a
+  script; a file whose last commit had no carriage return gains none.
+- Every new or changed text in the repository is English; the texts the player sees live in `project/data/i18n`; the owner is
+  spoken to in Portuguese.
 
-## Tools and processes
-- Independent tasks run in parallel, each with its own deadline; one that hangs or fails is stopped and recorded, and the others go on. [c:parallel-tasks]
-- Nothing is redone without a change of input: the result is kept by the key of its inputs. [c:cached-results]
-- Each tool processes only what the change reaches. The whole run is an explicit option. [c:change-scope]
-- A checking tool has to be able to fail: it exits non-zero on a failure, and an empty set fails. [c:checks-can-fail]
-- **A feature is traced in both games, side by side, before it is built or fixed** (the owner, 2026-11-12), with `tools/tracer/trace.py`
-  (the owner's tracer, used as it is; it reads code, never runs it). Roots: the feature's files only, never a whole game (`--root FILE`,
-  repeated; the entry found by a Grep for what it outputs, in the reference's `src` and in the game). (1) `trace.py ENTRY --depth N`:
-  what runs; a file named "outside the code read" is added as a root. (2) `--feature ENTRY|path:line`: outputs, conditions, state,
-  constants, data. (3) Side by side: what the reference has and the game lacks or does otherwise enters the register (`--compare`
-  where both take the same inputs). (4) `--cost`, `--wrong`, `--broken`: on the reference what is never brought, on the game its
-  defects. A tracer failure enters the register, the file left out. [c:feature-trace]
+## Architecture
+- **Single source of truth:** `CityState` (`native/src/sim/state/city_state.h`). Only `sim/commands` changes it at the player's
+  request; only `sim/simulation` advances time.
+- **C++ layers:** `core` → `sim/*` (pure C++, no Godot) → `render` (only reads) → `api`.
+- **Files:** each starts with a comment saying its responsibility; split by responsibility, never to fit a limit; no god file
+  nor a god class split over files nor a scattered feature; the size limits of `tools/gates/rules.json` hold.
+- **One owner per definition** (`tools/gates/owners.json`); no duplicated code: extract an owner.
+- **Data:** tunable values only in `project/data/**` (JSON with a schema in `tools/gates/schemas`), read only by `DataTables`;
+  the tuning's names in the X-macro `CITY_TUNING_FIELDS`, its values in `project/data/catalog/tuning.json`; `CityStore.boot`
+  sends the catalogue to the `CityCore`, which refuses a missing key. **No magic numbers** in `native/src`, `project/game`,
+  `project/ui`.
+- **Interface:** keeps no game numbers: it reads `CityStore.snapshot` and sends `CityStore.dispatch(...)`; colours and sizes
+  only through `data/ui/tokens.json` and `ui/theme/theme_builder.gd`; texts only through `tr("KEY")`; buttons in
+  `data/ui/*.json`. Screen changes, pause and quit only through `GameFlow` (BOOT → MENU → PLAYING → QUITTING, its `TRANSITIONS`).
+- **Threads:** `Simulation` on its own thread with a fixed tick (`sim_tick_hz`); commands and the clock take `map_mutex`
+  exclusively, each hold naming its writer (`map_hold::WriterHold`); growth decides under the shared lock and takes the
+  exclusive one only to add; `ChangeLog` is the single "dirty" channel; `RenderWorld.sync` never takes the map exclusively; a
+  mesh job copies what it reads under a short shared lock (`MapRead`, `CityCut`, `HeightPatch`) and builds with it let go;
+  mesh jobs never read the traffic; mesh conversion within `render.upload_budget_mb` a frame, the commit within
+  `render.commit_budget_ms`; poses through `PoseBuffer`; the save writes on its own thread.
+- **Owners:** the land's maps are `TerrainBridge`'s (Terrain3D keeps no region); a record's derived body is the `BodyCache`'s;
+  `Daylight` owns the sun, the ambient and the sky (the moon casts all night; the street's light is `LampLights`;
+  `CityWorld.set_sky_mode` day and night fix 16h and 22h); the camera rig `CityCamera` is the camera's one writer (`pin`/`unpin`
+  for a fixed view).
+- **State machines:** every enum named like a state is a machine with one setter and its table (`SimSpeed.enter` and
+  `SPEED_MOVES`; `ToolController.set_tool` and its `Phase`), or a declared kind (`rules.json` states).
+- **Tests** check what the player sees (the HUD, the instance buffer sent to the GPU, the core's probes); `probes/state_hash`
+  is the city as a number and `edit_fuzz_test` passes undo, redo, save and load through the same hashes (every new edit enters
+  its draw); tests and captures (`--no-flow`) run on the data (no `settings.cfg`, the `tests_preset` tier, saves in
+  `user://saves_tests`, the clock and the sky together by `UiDriver.at_hour`); memory and timing bugs are read in the stack and
+  the code (the debug DLL has libc++'s hardening), never hunted with load.
 
-## Language
-- Every new or changed text in the repository is written in English: code, file and folder names, comments, identifiers, data,
-  records, reports, documents and commit messages. [c:english]
-- Exceptions: the texts the player sees (`project/data/i18n`) and outside copies. The conversation with the owner is in Portuguese. [c:player-texts]
-
-## Architecture rules
-- **Single source of truth:** `CityState` (`native/src/sim/state/city_state.h`). Only `sim/commands` changes the state at the
-  player's request; only `sim/simulation` advances time. [c:single-truth]
-- **C++ layers:** `core` → `sim/*` (pure C++, no Godot) → `render` (only reads) → `api`. [c:layers]
-- **No god file:** no god class split over several files either, nor a scattered feature. Split by responsibility, never to fit a limit. [c:no-god-file]
-- **One owner per definition:** rules with a single owner in `tools/gates/owners.json`. No duplicated code: extract an owner. [c:one-owner]
-- **Data:** tunable values only in `project/data/**` (JSON with a schema), read only by `DataTables`; the tuning's names in the
-  X-macro `CITY_TUNING_FIELDS`, the values in `project/data/catalog/tuning.json`. [c:data]
-- **No magic numbers** in `native/src`, `project/game`, `project/ui`: name them or move them to data. [c:no-magic]
-- **Interface:** keeps no game numbers: it reads `CityStore.snapshot` and sends `CityStore.dispatch(...)`. Colours and sizes only
-  through `data/ui/tokens.json` and `ui/theme/theme_builder.gd`; texts only through `tr("KEY")`; buttons in `data/ui/*.json`. [c:interface]
-- **Flow:** screen changes, pause and quit only through `GameFlow`. [c:flow]
-- **Header:** every file starts with a comment that says its responsibility. [c:header]
-- **Known problems** go to the register, never to TODO or FIXME comments. [c:pending]
-- `DataTables` reads `data/**`; `CityStore.boot` sends the catalogue to the `CityCore`, which refuses a missing key. [c:catalogue-boot]
-- `Simulation` runs on its own thread with a fixed tick (`sim_tick_hz`), under the shared `map_mutex` and `traffic_mutex`. [c:sim-thread]
-- Commands and the clock take `map_mutex` exclusively, each hold naming its writer (`map_hold::WriterHold`); growth decides under
-  the shared lock and takes the exclusive one only to add. [c:exclusive-lock]
-- `ChangeLog` is the single "dirty" channel, drained under the shared lock and the log's mutex. [c:change-log]
-- `RenderWorld.sync` never takes the map exclusively and is handed the city const; mesh jobs read the map, never the traffic. [c:render-shared]
-- A mesh job copies what it reads under a short shared lock (`MapRead`, `CityCut`, `HeightPatch`) and builds with it let go. [c:mesh-cut]
-- The land's maps are `TerrainBridge`'s; Terrain3D keeps no region. A record's derived body has one owner, the `BodyCache`. [c:land-owner]
-- Mesh conversion enters `render.upload_budget_mb` per frame; the commit only swaps meshes, within `render.commit_budget_ms`. [c:frame-budgets]
-- Poses through `PoseBuffer`. The save writes on its own thread. [c:poses-save]
-- `Daylight` owns the sun, the ambient and the sky; at night the moon casts all night; the street's light is `LampLights`. [c:daylight]
-- `CityWorld.set_sky_mode("day"|"night"|"cycle")`: day and night fix the hours of `daylight.json` (16h and 22h). [c:sky-mode]
-- Tests and captures move the clock and the sky together (`UiDriver.at_hour`). [c:clock-sky]
-- `GameFlow.State`: BOOT → MENU → PLAYING → QUITTING by its `TRANSITIONS` table (closing the window goes through `quit`). [c:gameflow-states]
-- `SimSpeed`: only `start()`/`stop()` enter and leave STOPPED; every move through `enter` and its table `SPEED_MOVES`. [c:sim-speed]
-- `ToolController.Tool`: only `set_tool` changes it; the stroke is its `Phase` machine, which a tool change cancels. Every enum
-  named like a state is a machine with one setter and its table, or a declared kind (`rules.json` states). [c:tool-states]
-
-## Tests
-- They check what the player sees: the HUD, the instance buffer sent to the GPU, the core's probes. [c:tests-see]
-- **State hash:** `probes/state_hash` is the city as a number; `edit_fuzz_test` requires undo, redo, save and load to pass through
-  the same hashes: every new edit enters its draw. [c:state-hash]
-- Tests and captures (`--no-flow`) run on the data: no `settings.cfg`, no `health.json`; the `tests_preset` tier (another by
-  `--preset=`); saves in `user://saves_tests`. [c:tests-on-data]
-- A clone's `user://` is isolated by `project/override.cfg` (`application/config/use_custom_user_dir`, `custom_user_dir_name`). [c:user-dir]
-- Memory and timing bugs are not hunted with load: the debug DLL has libc++'s hardening; the failure is read in the stack and the code. [c:no-load-hunt]
-
-## Commands (the whole list: `doc/map.md`)
+## Commands
 | What | Command |
 |---|---|
 | A block | `python tools/tasks/cli.py block open <name>` · `block verify` · `block close` · `block status` |
 | Build both DLLs | `tools/build/build.sh core-windows` |
-| Check a change | `tools/build/quick.sh [task,task]` (`--ready` at a block's close) |
-| One test | `python tools/tasks/cli.py run <task>` (the names: `run tests --list`); the orchestrator's state: `python tools/tasks/cli.py status` |
-| Gates | `python tools/gates/run_gates.py` (`--file X`, `--summary`, `--selftest`, `--register doc/problems.jsonl`, `--json`) |
-| The register | `python tools/atlas/cli.py problems [--area A --status S]`, `add`, `update`, `close`, `drop`, `render` |
+| One test or photo plan | `python tools/tasks/cli.py run <task>` (the names: `python tools/tasks/cli.py run tests --list`) |
+| Gates of a file | `python tools/gates/run_gates.py --file X` (`--selftest`; the whole tree with `--register doc/problems.jsonl`) |
+| The register | `python tools/atlas/cli.py problems [--area A --status S]`, `add`, `update`, `close`, `drop` |
+| The game's defects | `python tools/hunt/hunt.py` (each defect with where and its owning file; `dist/hunt/hunt.json`) |
 | Deliver | `tools/build/deliver.sh export` |
-| Find the game's defects | `python tools/hunt/hunt.py`: one hidden run of the town that lists every defect the core's probes see (vehicles in one another classed by mechanism, street pieces in one another, wires drawn at no level, road surfaces in one another, the engine's errors), each with where and the owning file; `dist/hunt/hunt.json` |
-| Photograph a place | a plan of look.gd's steps, as an item of `looks` in `tools/tasks/suites.json`, then `python tools/tasks/cli.py run <name>` (hidden; the photos in `dist/captures/<name>`) |
-| Trace a feature in both games | `python tools/tracer/trace.py ENTRY --root FILE ...`, then `--feature`, `--cost`, `--wrong`, `--broken`, `--compare` (the steps in "Tools and processes"; the reference: `C:\Users\Jonathan\Documents\Projects\lab\roadcraft\src`, never copied) |
+| On the owner's order | `tools/build/quick.sh --ready`, the whole gates, `python tools/tasks/km24.py` (km24 on two builds) |
 
-The DLLs in `project/bin` are versioned, so a clone opens the game without building: no ignore pattern may drop them, and in a
-rebase they are rebuilt from the joined sources, never one side picked. A clone also needs Godot 4.7.2, llvm-mingw
-`20261020-ucrt-x86_64`, CMake 4.4 (meshoptimizer, mimalloc and Clipper2 come through it), Python 3.12, Node 23.6+ for the
-tracer's TypeScript answers (`npm ci` in `tools/tracer/tracer/tools`), and a processor with x86-64-v3 (AVX2, FMA, BMI). [c:dlls]
+The DLLs in `project/bin` are versioned (a clone opens the game without building; in a rebase they are rebuilt from the joined
+sources). A clone needs Godot 4.7.2, llvm-mingw `20261020-ucrt-x86_64`, CMake 4.4, Python 3.12, Node 23.6+ for the tracer's
+TypeScript answers (`npm ci` in `tools/tracer/tracer/tools`), and a processor with x86-64-v3 (AVX2, FMA, BMI).

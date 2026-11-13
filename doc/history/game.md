@@ -835,3 +835,16 @@ and the reason is given for each.
   layers and rounds, the drawing of a batch).
 - **Moved on purpose**: the city digest's whole hash (the save's bytes: version 10 and three fields a street item) while every
   derived hash (grades, graph, heights, lots) and the fleet's stayed equal; the golden written again for that reason.
+
+## 2026-11-13: one rule for a roof another block stands on, at every distance (block `fix-all`, Prender-256, Prender-257)
+
+- **Cause** (Prender-256, the build's unused `on_top`): `roof_emit.cpp:119` worked out `covered_by_above` and dropped it (0a0f498f
+  moved the edge to per-bay coverage; the revert dcfd4c7c brought the dead variable back). The near level painted a covered roof
+  with the slab and packed its plant over the whole roof, into the block standing on it (`roof_plant.cpp` marked only the
+  cores); the far level painted it the terrace's floor and drew neither plant nor machine room on a covered volume: two rules,
+  a pop when the level changes. **Fix**: `roof_surface_of` (`placed.cpp`) and `machine_room_roof` (`roof_util.h`) answer both
+  levels; the plant's packer keeps every block standing on the roof, with its ring, clear; the machine room's square is the
+  core's (`CORE_SIDE_M`), its two copies of 3 m gone.
+- **Prender-257**: `WallRun` (`facade_bay.h`) was an aggregate made with one of its fields; an explicit constructor on its shell.
+  Both DLLs build with no warning.
+- `far_mass.cpp`'s `PLINTH_BURY` (a name the reference defines) renamed `PLINTH_BELOW_M`.
