@@ -3,7 +3,8 @@
 ## their feet that walk nearest one another within `reach` metres of there (LookAim.nearest_pair; PAIR_REACH_M when left out), moved by
 ## `off` (metres; none when left out): a blow to one side of them throws both the same way, together, {"crowd": m, "off": [dx, dz]} the
 ## ground at the walker with the most others within m metres (LookAim.busiest), moved by `off`, {"roundAt"}, {"poleRound"} and
-## {"legRound": [x, z]} a round's origin and direction (at a head; at a head by a post; level at the legs), {"profile": id} the index of that road
+## {"legRound": [x, z]} a round's origin and direction (at a head; at a head by a post; level at the legs), {"deadRound": [x, z]} one
+## straight down into the dead body lying nearest there, {"profile": id} the index of that road
 ## class, {"v3": [x, y, z]} a vector, {"path": [[x, z], ...]} the ground's points, the rest as the JSON gives it. What cannot be found
 ## is said and counted in `failures`.
 class_name LookArgs
@@ -15,6 +16,7 @@ const LEG_STAND_M := 0.5 # a standing walker's legs, a share of a metre by their
 const LIE_AIM_M := 0.15 # somebody lying: the round at the body on the ground
 const LEGS_LIE_M := 0.6 # from the middle of somebody lying towards the feet
 const LEVEL_STANDOFF_M := 4.0 # a level round's origin east of its mark (shoot_test.gd)
+const DEAD_ABOVE_M := 4.0 # a round straight down from this far over a dead body's middle meets its trunk (shoot_lying_cases.gd)
 
 var ui: UiDriver
 var failures := 0
@@ -39,6 +41,8 @@ func decode(raw: Array) -> Array:
 			out.append_array(_pole_round(a.poleRound))
 		elif a is Dictionary and a.has("legRound"):
 			out.append_array(_leg_round(a.legRound))
+		elif a is Dictionary and a.has("deadRound"):
+			out.append_array(_dead_round(a.deadRound))
 		elif a is Dictionary and a.has("profile"):
 			out.push_back(_profile(a.profile))
 		elif a is Dictionary and a.has("v3"):
@@ -142,6 +146,24 @@ func _leg_round(xz: Array) -> Array:
 		way = Vector3.DOWN
 	print("round at the legs of walker %d at %s (fallen %s)" % [who.id, who.position, who.fallen])
 	return [legs - way * LEVEL_STANDOFF_M, way]
+
+
+## A round straight down at the middle of the dead body lying nearest `xz` (shot_targets dead: ped_dead.cpp): it stops there and the
+## body jolts. The shoot command's origin and direction, two arguments; none found: said, counted, a round at the sky from the point.
+func _dead_round(xz: Array) -> Array:
+	var best := INF
+	var body := {}
+	for d: Dictionary in CityStore.query(&"shot_targets", [LookAim.WALKERS_READ]).dead:
+		var far := Vector2(d.position.x, d.position.z).distance_to(Vector2(xz[0], xz[1]))
+		if far < best:
+			best = far
+			body = d
+	if body.is_empty():
+		failures += 1
+		print("FAIL no dead body near ", xz)
+		return [point(xz), Vector3.UP]
+	print("round at dead body %d at %s" % [body.id, body.position])
+	return [body.position + Vector3(0, DEAD_ABOVE_M, 0), Vector3.DOWN]
 
 
 func _pair(xz: Array, off: Array, reach: float) -> Vector3:

@@ -95,9 +95,23 @@ Dictionary CityCore::shot_targets(int limit) const {
 		d["stopped"] = v.vf <= 0.f;
 		vehicles.push_back(d);
 	}
+	Array dead; // the dead bodies lying (ped_dead.cpp), as the walkers lying: the body's middle, the way it lies, its id the render's
+	for (const DeadBody &b : t.dead) {
+		if (int(dead.size()) >= limit) break;
+		const V2 mid = traffic::dead_middle(state_->catalog.blast, b);
+		Dictionary d;
+		d["id"] = b.id;
+		d["position"] = Vector3(mid.x, b.y, mid.y);
+		d["facing"] = Vector2(b.fall_x, b.fall_z);
+		d["lost"] = int(b.lost);
+		d["scale"] = b.scale;
+		d["sidewalk"] = b.side >= 0 ? b.seg * 2 + b.side : -1;
+		dead.push_back(d);
+	}
 	Dictionary out;
 	out["walkers"] = walkers;
 	out["vehicles"] = vehicles;
+	out["dead"] = dead;
 	out["count_walkers"] = t.ped_count;
 	return out;
 }

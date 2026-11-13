@@ -347,6 +347,7 @@
     "open_hits",
     "vehicle_shots_to_burst",
     "burst_force",
+    "dead_kept",
     "flinch_s",
     "startle_m",
     "pace_light",
@@ -421,6 +422,12 @@
     },
     "burst_force": {
      "type": "number"
+    },
+    "dead_kept": {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 56,
+     "description": "the dead bodies the street keeps lying, the first to die going first: under the render's 64 rows of bodies (body_renderer.cpp MOST_BODIES) by the 8 the living down and the limbs need at least, so every dead body kept keeps its drawn body"
     },
     "flinch_s": {
      "type": "number"

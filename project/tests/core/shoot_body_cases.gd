@@ -70,6 +70,7 @@ func fallen() -> void:
 	var lying := ShootLyingCases.new(t, _walker_of, _lamed, _census)
 	await lying.gone_round()
 	await lying.maimed_by_blast()
+	await lying.dead_met() # the dead shot above and the maimed bled out lie in the simulation
 	var lone: Array = _alone.call(CityStore.query(&"shot_targets", [LIMIT]).walkers) # afresh: minutes have gone by
 	var down: Dictionary = await _bled(lone.filter(func(w: Dictionary) -> bool: return not w.fallen))
 	var deep: float = _census().deepest

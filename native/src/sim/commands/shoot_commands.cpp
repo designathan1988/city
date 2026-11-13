@@ -1,6 +1,6 @@
 // The pistol (Roadcraft actionsWiring.ts shootAt): one round along the player's line of sight. The ray stops at the
 // terrain; the first walker (a standing one a body's reach from the ray, one on the ground a thin capsule along its
-// length) or vehicle (an oriented box, a rider's shoulders over a two-wheeler's frame) it meets takes it. Not an undoable
+// length), dead body lying (the same capsule: ped_dead.cpp) or vehicle (an oriented box, a rider's shoulders over a two-wheeler's frame) it meets takes it. Not an undoable
 // edit: walkers and traffic are not part of the saved city. A car that takes enough rounds bursts (the caller strikes).
 #include "sim/commands/shoot_internal.h"
 
@@ -25,6 +25,7 @@ struct Found {
 	bool vehicle = false, lying = false;
 	BodyPart part = BodyPart::TORSO;
 	float up = 0;
+	int dead = -1; // a dead body met (TrafficState::dead), id -1 then
 };
 
 // Closest approach of the ray (o + t d, t >= 0, d unit) to the segment a-b: t along the ray, u along the segment, distance.
@@ -51,27 +52,46 @@ BodyPart part_standing(const BlastParams &p, float h, float side) {
 	return side >= 0 ? BodyPart::LEG_L : BodyPart::LEG_R;
 }
 
+// A body on the ground (ped_system.h lying), its middle `mid` at height `y`, lying the way (lx, lz) and `half` long either way, its head at
+// the far end: whether the round meets it nearer than `nearest`, how far along the round (tt) and on which part.
+bool lying_hit(const Round &r, V2 mid, float y, float lx, float lz, float half, float nearest, float &tt, BodyPart &part) {
+	const float o[3] = { r.ox, r.oy, r.oz }, d[3] = { r.dx, r.dy, r.dz };
+	const float a[3] = { mid.x - lx * half, y + LYING_HEIGHT_M, mid.y - lz * half };
+	const float b[3] = { mid.x + lx * half, y + LYING_HEIGHT_M, mid.y + lz * half };
+	float u, dist;
+	ray_segment(o, d, a, b, tt, u, dist);
+	if (dist > LYING_R || tt >= nearest) return false;
+	const float along = u - 0.5f, px = o[0] + d[0] * tt, pz = o[2] + d[2] * tt;
+	const float side = (px - mid.x) * -lz + (pz - mid.y) * lx;
+	part = along > LYING_HEAD_SHARE ? BodyPart::HEAD : along > LYING_LEGS_SHARE ? (std::fabs(side) > r.p.arm_aside_m ? (side > 0 ? BodyPart::ARM_L : BodyPart::ARM_R) : BodyPart::TORSO)
+																					: (side >= 0 ? BodyPart::LEG_L : BodyPart::LEG_R);
+	return true;
+}
+
+// The dead lying (TrafficState::dead), each the capsule of somebody lying.
+void aim_at_dead(const Round &r, float limit, Found &best) {
+	const std::deque<DeadBody> &dead = r.s.traffic.dead;
+	for (int k = 0; k < int(dead.size()); k++) {
+		const DeadBody &b = dead[size_t(k)];
+		float tt;
+		BodyPart part;
+		if (!lying_hit(r, traffic::dead_middle(r.p, b), b.y, b.fall_x, b.fall_z, traffic::dead_half(r.p, b), std::min(best.t, limit), tt, part)) continue;
+		best = Found{ tt, -1, false, true, part, 0.f, k };
+	}
+}
+
 void aim_at_walkers(const Round &r, float limit, Found &best) {
 	const TrafficState &t = r.s.traffic;
 	const BlastParams &p = r.p;
-	const float o[3] = { r.ox, r.oy, r.oz }, d[3] = { r.dx, r.dy, r.dz };
 	for (int id = 0; id < int(t.peds.size()); id++) {
 		const Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive) continue;
 		const float height = p.body_height_m * w.scale;
 		if (traffic::lying(t, w)) { // on the ground: from its feet the way it went down, the head at the far end (ped_system.h lying)
-			const float half = traffic::lying_half(p, w);
-			const V2 mid = traffic::lying_middle(p, w);
-			const float a[3] = { mid.x - w.fall_x * half, w.cur.y + LYING_HEIGHT_M, mid.y - w.fall_z * half };
-			const float b[3] = { mid.x + w.fall_x * half, w.cur.y + LYING_HEIGHT_M, mid.y + w.fall_z * half };
-			float tt, u, dist;
-			ray_segment(o, d, a, b, tt, u, dist);
-			if (dist > LYING_R || tt >= std::min(best.t, limit)) continue;
-			const float along = u - 0.5f, px = o[0] + d[0] * tt, pz = o[2] + d[2] * tt;
-			const float side = (px - mid.x) * -w.fall_z + (pz - mid.y) * w.fall_x;
-			best = Found{ tt, id, false, true, BodyPart::TORSO, 0.f };
-			best.part = along > LYING_HEAD_SHARE ? BodyPart::HEAD : along > LYING_LEGS_SHARE ? (std::fabs(side) > p.arm_aside_m ? (side > 0 ? BodyPart::ARM_L : BodyPart::ARM_R) : BodyPart::TORSO)
-																								: (side >= 0 ? BodyPart::LEG_L : BodyPart::LEG_R);
+			float tt;
+			BodyPart part;
+			if (lying_hit(r, traffic::lying_middle(p, w), w.cur.y, w.fall_x, w.fall_z, traffic::lying_half(p, w), std::min(best.t, limit), tt, part))
+				best = Found{ tt, id, false, true, part, 0.f };
 			continue;
 		}
 		// standing: where the ray passes nearest the axis, seen from above, and how high it is there
@@ -128,8 +148,10 @@ ShotResult shoot_at(CityState &s, double ox, double oy, double oz, double dx, do
 	if (landed) limit = std::hypot(std::hypot(gx - r.ox, gz - r.oz), gy - r.oy);
 	Found best;
 	aim_at_walkers(r, limit, best);
+	aim_at_dead(r, limit, best);
 	aim_at_vehicles(r, limit, best);
-	const float reach = best.id >= 0 ? best.t : limit;
+	const bool met = best.id >= 0 || best.dead >= 0;
+	const float reach = met ? best.t : limit;
 	r.x = r.ox + r.dx * reach;
 	r.y = r.oy + r.dy * reach;
 	r.z = r.oz + r.dz * reach;
@@ -137,12 +159,13 @@ ShotResult shoot_at(CityState &s, double ox, double oy, double oz, double dx, do
 	line.kind = DamageEvent::SHOT;
 	line.x = r.x; line.y = r.y; line.z = r.z;
 	line.dx = r.dx; line.dz = r.dz; line.a = r.dy;
-	line.u = best.id < 0 ? 0u : best.vehicle ? 2u : 1u;
+	line.u = !met ? 0u : best.vehicle ? 2u : 1u;
 	r.emit(line);
-	if (best.id >= 0 && best.vehicle) shoot_vehicle(r, best.id, best.up, r.x, r.y, r.z);
+	if (best.dead >= 0) shoot_dead(r, best.dead, best.part, r.x, r.y, r.z);
+	else if (best.id >= 0 && best.vehicle) shoot_vehicle(r, best.id, best.up, r.x, r.y, r.z);
 	else if (best.id >= 0) shoot_walker(r, best.id, best.part, r.x, r.y, r.z, best.lying);
 	// Heard where it lands, whatever it lands on; a round into the sky lands nowhere near anybody.
-	if (best.id >= 0 || landed) traffic::startle_pedestrians(s, r.x, r.z, p.startle_m, s.catalog.traffic.ped_shot_fright_s);
+	if (met || landed) traffic::startle_pedestrians(s, r.x, r.z, p.startle_m, s.catalog.traffic.ped_shot_fright_s);
 	return out;
 }
 

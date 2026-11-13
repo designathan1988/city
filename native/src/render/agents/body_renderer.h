@@ -45,12 +45,16 @@ public:
 	void reset();
 	void release();
 	void add(const BodySpec &spec);
-	// A walker down struck again (`spec.who` a living body's): that body takes the blow: its wounds join, a death makes it a dead one,
-	// a knock sets when it gets up, the push shoves it, and each of `pieces` (BodySpec::piece) comes off it as it lies. False when the
-	// walker has no body down: the caller adds one.
+	// body_blows.cpp: a body down struck again (`spec.who` a walker's or a dead body's): that body takes the blow: its wounds join, a death
+	// makes it a dead one, a knock sets when it gets up, the push shoves it, and each of `pieces` (BodySpec::piece) comes off it as it lies.
+	// False when nobody's body of that id is down: the caller adds one.
 	bool strike(const BodySpec &spec, const std::vector<BodySpec> &pieces);
 	// Somebody lying hurt has died where they lie (a wound bled out, wounds.cpp CAS_BLED): their body gets up no more and stays.
 	void die(int who);
+	// The walker `from` died: their body lies on under the dead body's id `to` (ped_dead.cpp BODY_DEAD), the walker's id free for another.
+	void rename(int from, int to);
+	// The simulation lets dead body `who` go (BODY_GONE, past its cap): the body and the limbs torn off it go too.
+	void let_go(int who);
 	// One frame; a bleeding body that strikes the ground faster than `hard_ms` splashes there, `splashes_most` times at most.
 	void update(float dt, const Ragdoll::Ground &ground, float hard_ms, int splashes_most);
 	void take_marks(std::vector<BodyMark> &out); // what the bodies left since the last call
@@ -59,13 +63,15 @@ public:
 	// its own; deepest, the metres the deepest body come to rest has lain under the ground since the city opened; overlap, the metres the
 	// deepest joint of a body at rest lies within another's (its own torn limbs aside), nearer than they touch; in_walls, the metres the
 	// deepest joint of a body at rest lies inside a wall it meets; street_walls, how many of the bodies' walls are the street's pieces
-	// (those with a bottom); who, the living casualties (DamageEvent::id) whose whole bodies lie there, the dead having let go of theirs}.
+	// (those with a bottom); who, the ids (DamageEvent::id) of the whole bodies lying there: a walker's while they live, the dead body's
+	// once dead (DEAD_BODY_ID_BASE + n, ped_dead.cpp)}.
 	godot::Dictionary census() const;
 	godot::PackedVector3Array places() const; // each whole body's pelvis, where it lies, its torn limbs by it (a look plan aims at one)
 
 private:
 	static constexpr float FOR_GOOD_S = std::numeric_limits<float>::infinity(); // the dead stay where they fell, the aftermath kept, till the cap
 	static constexpr float NEAR_BODY_M = 2.5f; // a body's joints reach this far from its pelvis, and as far again for another's: farther, they cannot touch
+	static constexpr float GET_UP_S = 1.7f, RISE_SHARE_MOST = 0.7f; // how long getting up takes, at most of the time down
 	struct Body {
 		Ragdoll doll;
 		std::vector<godot::Transform3D> base; // each bone, bind to the world as it stood
@@ -75,7 +81,7 @@ private:
 		godot::Transform3D stands; // where it gets up to
 		std::vector<godot::Transform3D> lying; // each bone when it began to
 		int variation = 0, slot = 0, splashes = 0;
-		int who = -1; // the walker's id while they live (strike, die); the dead let go of it, a walker's id passing to another
+		int who = -1; // the walker's id while they live, the dead body's once dead (rename): the later blows find it (strike, die, let_go)
 		float pool = 0;
 		bool pooled = false; // its pool laid
 		bool from_drawn = false; // fell from its walker's drawn pose, not the idle
@@ -86,7 +92,8 @@ private:
 		godot::AABB box; // where its skin lies now: each bone's place, out by the variation's reach along the bone's axes
 	};
 	void make_ready();
-	// A row of the texture for a new body; full, the oldest of those who will not get up goes (none of `keep`, the family it joins).
+	// A row of the texture for a new body; full, the oldest limb torn off goes, else the oldest of those who will not get up (none of
+	// `keep`, the family it joins): the dead the simulation keeps (blast.shot dead_kept, under the rows) keep their bodies.
 	int take_slot(uint32_t keep);
 	void pose(Body &b);
 	void rise(Body &b);

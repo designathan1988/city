@@ -31,7 +31,8 @@ int kerb_hailable(CityState &s, const DirSeg &d, float a0, float a1, int *on_foo
 	const float lo = std::min(a0, a1), hi = std::max(a0, a1);
 	int found = -1, there = 0;
 	for (const CrowdEntry &e : t.crowd[key]) {
-		if (e.s < lo || e.s > hi) continue;
+		// somebody lying (a dead body, no walker at all: ped_dead.cpp, or the living down) is neither on foot nor called
+		if (e.s < lo || e.s > hi || e.lie > 0.f) continue;
 		there++;
 		if (found < 0 && may_be_hailed(t, t.peds[size_t(e.id)])) found = e.id;
 	}

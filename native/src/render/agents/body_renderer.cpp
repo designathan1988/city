@@ -1,4 +1,4 @@
-// The fallen, drawn (body_renderer.h): a body comes, takes the blows that reach it lying, falls, rests, gets up or stays.
+// The fallen, drawn (body_renderer.h): a body comes, falls, rests, gets up or stays; the blows that reach it lying are body_blows.cpp's.
 #include "render/agents/body_renderer.h"
 
 #include <godot_cpp/classes/image.hpp>
@@ -17,7 +17,7 @@ constexpr int TEXELS_A_BONE = 3, FLOATS_A_TEXEL = 4, FLOATS_A_BONE = TEXELS_A_BO
 constexpr float STEP_S = 1.f / 60.f;
 constexpr int STEPS_MOST = 4;
 constexpr float CHARRED_MARK = 1.f;
-constexpr float GET_UP_S = 1.7f, RISE_SHARE_MOST = 0.7f, RISE_TO_CROUCH = 0.45f; // how long getting up takes, at most of the time down; and the blend's part of it
+constexpr float RISE_TO_CROUCH = 0.45f; // the blend's part of getting up (BodyRenderer::GET_UP_S)
 const Vector3 AXIS_X(1, 0, 0), AXIS_Y(0, 1, 0), AXIS_Z(0, 0, 1);
 constexpr int PART_JOINT[RAGDOLL_PARTS] = { 0, 2, 3, 4, 5, 7, 8, 10, 11, 12, 14, 15, 16 }; // the joint each part starts at: ragdoll.cpp PART_FRAMES
 
@@ -81,9 +81,10 @@ void BodyRenderer::release() {
 }
 
 int BodyRenderer::take_slot(uint32_t keep) {
-	if (free_slots_.empty()) { // full: the oldest of those who will not get up goes first; the living get up on their own
+	if (free_slots_.empty()) { // full: the oldest limb, else the oldest of those who will not get up; the living get up on their own
 		const auto other = [keep](const Body &o) { return keep == 0 || o.family != keep; };
-		auto gone = std::find_if(bodies_.begin(), bodies_.end(), [&](const Body &o) { return o.rise_s <= 0.f && other(o); });
+		auto gone = std::find_if(bodies_.begin(), bodies_.end(), [&](const Body &o) { return o.piece && other(o); });
+		if (gone == bodies_.end()) gone = std::find_if(bodies_.begin(), bodies_.end(), [&](const Body &o) { return o.rise_s <= 0.f && other(o); });
 		if (gone == bodies_.end()) gone = std::find_if(bodies_.begin(), bodies_.end(), other);
 		if (gone == bodies_.end()) gone = bodies_.begin(); // one family over every row: not with a body and its five limbs to MOST_BODIES
 		free_slots_.push_back(gone->slot);
@@ -104,7 +105,7 @@ void BodyRenderer::add(const BodySpec &spec) {
 	b.slot = slot;
 	b.family = family;
 	b.variation = spec.variation;
-	b.who = spec.rises ? spec.who : -1; // the dead keep no walker's id: it passes to another walker
+	b.who = spec.who; // a walker's, the dead body's under its own once dead (rename)
 	b.pool = spec.pool;
 	b.left = spec.life_s > 0.f ? spec.life_s : FOR_GOOD_S;
 	b.floor = spec.at.y;
@@ -141,63 +142,6 @@ void BodyRenderer::add(const BodySpec &spec) {
 	b.piece = spec.piece != 0;
 	pose(b);
 	layers_dirty_ = true;
-}
-
-// The reference's body takes every later blow too (one body a casualty): a round in somebody lying wounds the body lying there.
-bool BodyRenderer::strike(const BodySpec &spec, const std::vector<BodySpec> &pieces) {
-	if (spec.who < 0) return false;
-	const auto found = std::find_if(bodies_.begin(), bodies_.end(), [&](const Body &o) { return !o.piece && o.who == spec.who; });
-	if (found == bodies_.end()) return false;
-	Body &b = *found;
-	b.lost |= spec.lost;
-	b.bleeds |= spec.bleeds;
-	b.charred = b.charred || spec.charred;
-	if (spec.pool > b.pool) { // a graver wound: its pool where the body comes to rest again
-		b.pool = spec.pool;
-		b.pooled = false;
-	}
-	if (spec.rises) { // knocked again: down till the simulation's end of it (traffic::lay_down keeps the later end)
-		b.left = spec.life_s > 0.f ? spec.life_s : FOR_GOOD_S;
-		b.rise_s = spec.life_s > 0.f ? std::min(GET_UP_S, spec.life_s * RISE_SHARE_MOST) : 0.f;
-	} else { // killed where they lay: a dead body, kept, the walker's id let go
-		b.rise_s = 0.f;
-		b.left = FOR_GOOD_S;
-		b.who = -1;
-	}
-	std::vector<Body> torn; // each limb that comes off: a piece of this body as it lies, on a ragdoll of its own
-	torn.reserve(pieces.size());
-	for (const BodySpec &p : pieces) {
-		Body &c = torn.emplace_back(b);
-		c.doll.keep_parts(p.piece);
-		c.doll.shove(p.velocity, p.scatter, rng_);
-		c.piece = true;
-		c.lost = p.lost;
-		c.who = -1;
-		c.pool = 0.f;
-		c.pooled = false;
-		c.rise_s = 0.f;
-		c.left = FOR_GOOD_S;
-		c.splashes = 0;
-	}
-	b.doll.shove(spec.velocity, spec.scatter, rng_);
-	pose(b);
-	const uint32_t family = b.family; // b is touched no more: a row taken may erase a body in the middle, which moves the others
-	for (Body &c : torn) {
-		c.slot = take_slot(family);
-		pose(bodies_.emplace_back(std::move(c)));
-	}
-	layers_dirty_ = true;
-	return true;
-}
-
-void BodyRenderer::die(int who) {
-	if (who < 0) return;
-	for (Body &b : bodies_) {
-		if (b.who != who) continue;
-		b.rise_s = 0.f;
-		b.left = FOR_GOOD_S;
-		b.who = -1; // dead: kept, the walker's id let go
-	}
 }
 
 // The rows of its bones, and its box: a vertex is its bones' bind -> world rows applied to it, weighted to one (people_look.gdshaderinc

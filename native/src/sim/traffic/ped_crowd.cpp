@@ -131,6 +131,12 @@ void file_walkers(CityState &s) {
 		else if (w.way_node >= 0)
 			for (int k = junctions_round(s, w.way_node, near); k-- > 0;) file(t.node_walkers, t.node_keys, near[k], e);
 	}
+	for (const DeadBody &d : t.dead) { // the dead lying: bodies like somebody lying, nobody's choice (no walker: id -1)
+		const CrowdEntry e = dead_entry(s.catalog.blast, d);
+		if (e.sidewalk >= 0 && size_t(e.sidewalk) < t.crowd.size()) file(t.crowd, t.crowd_keys, e.sidewalk, e);
+		else if (d.node >= 0 && size_t(d.node) < s.roads.nodes.size() && s.roads.nodes[size_t(d.node)].alive)
+			for (int k = junctions_round(s, d.node, near); k-- > 0;) file(t.node_walkers, t.node_keys, near[k], e);
+	}
 	for (int key : t.crowd_keys) { // in order of arc; those within reach of an end also with its junction
 		auto &list = t.crowd[size_t(key)];
 		std::sort(list.begin(), list.end(), [](const CrowdEntry &a, const CrowdEntry &b) { return a.s < b.s; });
@@ -263,8 +269,9 @@ void crowd_step(CityState &s, float dt) {
 	for (int node : t.node_keys) { // round the corners and over the zebras of each junction
 		bool gathered = false;
 		for (const CrowdEntry &e : t.node_walkers[size_t(node)]) {
+			if (e.lie > 0.f) continue; // lying on a corner or a zebra (a dead body is no walker at all): no choice either
 			const Pedestrian &w = t.peds[size_t(e.id)];
-			if (w.mode != PedMode::WAY || w.way_node != node || e.lie > 0.f) continue; // lying on a corner or a zebra: no choice either
+			if (w.mode != PedMode::WAY || w.way_node != node) continue;
 			if (!gathered) junction_furniture(s, node, p.ped_look_m, around);
 			gathered = true;
 			WayFrame f;

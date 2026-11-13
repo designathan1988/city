@@ -73,8 +73,9 @@ void harm_walker(Blow &b, int id) {
 		const bool torn = p >= b.p.torn_kpa;
 		const uint32_t lost = severed_limbs(b, who, torn);
 		const uint32_t flags = (torn ? CAS_TORN : CAS_DEAD) | (lost << CAS_SEVERED_SHIFT) | (lost << CAS_LOST_SHIFT) | CAS_CHARRED;
-		b.emit(casualty(b, id, at, look, p, flags, 0.f));
-		traffic::remove_pedestrian(b.s, id);
+		const DamageEvent dead = casualty(b, id, at, look, p, flags, 0.f);
+		b.emit(dead);
+		traffic::lay_dead(b.s, id, dead); // the body lies on where the blast throws it down
 		return;
 	}
 	if (b.roll(SALT_EAR, who) < blast::eardrum(b.p, p)) {
@@ -113,6 +114,17 @@ void strike_people(Blow &b) {
 		if (!w.alive) continue;
 		const float dx = w.cur.x - b.x, dz = w.cur.z - b.z;
 		if (dx * dx + dz * dz <= reach2) harm_walker(b, id);
+	}
+	// the dead lying where the blast throws the living down (the eardrum's threshold): their bodies thrown again, a CASUALTY of the body's
+	// own id that the render's body takes (BodyRenderer::strike); where they lie on stays the simulation's record of them
+	const float thrown = blast::range_at_pressure(b.p, b.kg, b.p.ear_threshold_kpa);
+	for (const DeadBody &d : t.dead) {
+		const float r = std::hypot(d.x - b.x, d.z - b.z);
+		if (r > thrown) continue;
+		Pose at;
+		at.x = d.x; at.y = d.y; at.z = d.z;
+		at.fx = d.fall_x; at.fz = d.fall_z;
+		b.emit(casualty(b, d.id, at, d.look, b.pressure(r), CAS_DEAD | (uint32_t(d.lost) << CAS_LOST_SHIFT), 0.f));
 	}
 	traffic::add_shock(b.s, b.x, b.z, std::min(reach, b.s.catalog.traffic.ped_blast_shock_m));
 }

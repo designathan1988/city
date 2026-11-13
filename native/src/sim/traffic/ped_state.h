@@ -92,6 +92,18 @@ struct PedShock {
 	float x = 0, z = 0, reach = 0, until = 0;
 };
 
+// A dead walker's body lying where it fell (ped_dead.cpp): no walker, a body the rounds meet and the crowd goes round as they do somebody
+// lying (ped_system.h lying): its id (DEAD_BODY_ID_BASE + n), its feet and the way it lies from them, its size, look and limbs gone; on a
+// sidewalk (seg, side, its arc and place across; side -1 none) or, fallen round a corner or on a zebra, with that junction (node).
+struct DeadBody {
+	int id = -1;
+	float x = 0, y = 0, z = 0, fall_x = 1, fall_z = 0, scale = 1;
+	uint32_t look = 0;
+	uint8_t lost = 0;
+	int seg = -1, side = -1, node = -1;
+	float s = 0, u = 0;
+};
+
 // A walker with a destination: a route of nodes over streets with sidewalks; along a sidewalk on
 // its own track, round each corner and over the crosswalks (waiting at the kerb for the walk phase or a gap).
 // What every step reads comes first (two cache lines, copied out by ped_crowd.cpp), the way and the trail after.

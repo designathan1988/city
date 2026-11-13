@@ -16,6 +16,7 @@
 #include "sim/traffic/traffic_view.h"
 
 #include <cstdint>
+#include <deque>
 #include <unordered_map>
 #include <string>
 #include <vector>
@@ -98,6 +99,8 @@ struct TrafficState {
 	std::string graph_fault; // the debug DLL: the first broken rule of the lane graph (lane_graph_check.cpp)
 	std::vector<Pedestrian> peds;
 	std::vector<int> free_peds;
+	std::deque<DeadBody> dead; // the dead bodies lying, the first to die first (ped_dead.cpp), at most blast.shot dead_kept
+	uint32_t dead_serial = 0; // the dead bodies laid since the city opened: the next one's id
 	// The light each approach shows, refreshed once per step: light_for() is asked many times per vehicle and conflict.
 	std::vector<uint8_t> light_now;
 	std::vector<int> lit_ds; // the approaches update_lights set last: green again before it sets this step's

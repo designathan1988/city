@@ -415,7 +415,8 @@
     {"name": "lots", "plan": "res://tests/visual/lots_plan.json", "resolution": "1920x1080", "timeout_s": 300},
     {"name": "wounded", "plan": "res://tests/visual/wounded_plan.json", "resolution": "1920x1080", "timeout_s": 300},
     {"name": "maimed", "plan": "res://tests/visual/maimed_plan.json", "resolution": "1920x1080", "timeout_s": 300},
-    {"name": "shot_again", "plan": "res://tests/visual/shot_again_plan.json", "resolution": "1920x1080", "timeout_s": 300}
+    {"name": "shot_again", "plan": "res://tests/visual/shot_again_plan.json", "resolution": "1920x1080", "timeout_s": 300},
+    {"name": "dead", "plan": "res://tests/visual/dead_plan.json", "resolution": "1920x1080", "timeout_s": 300}
    ]
   },
   "capture_scenes": {

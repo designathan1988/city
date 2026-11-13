@@ -91,11 +91,12 @@ void shoot_walker(Round &r, int id, BodyPart part, float hx, float hy, float hz,
 	r.out.id = id;
 	const uint32_t shared = (uint32_t(w.lost) << CAS_LOST_SHIFT) | (severed << CAS_SEVERED_SHIFT) | ((uint32_t(k) + 1u) << CAS_STRUCK_SHIFT) | (opened ? CAS_OPENED : 0u);
 	if (w.hp <= 0.f) {
-		r.emit(casualty_of(r, id, w, CAS_DEAD | shared, PUSH_KILL, 0.f, hx, hz));
+		const DamageEvent dead = casualty_of(r, id, w, CAS_DEAD | shared, PUSH_KILL, 0.f, hx, hz);
+		r.emit(dead);
 		r.out.killed = true;
 		traffic::mourn_pedestrian(r.s, id);
 		traffic::add_shock(r.s, w.cur.x, w.cur.z, r.s.catalog.traffic.ped_body_shock_m);
-		traffic::remove_pedestrian(r.s, id);
+		traffic::lay_dead(r.s, id, dead); // the body lies on where it falls
 		return;
 	}
 	const bool grave = w.hp < p.grave_hp || w.lost != 0;
@@ -113,6 +114,36 @@ void shoot_walker(Round &r, int id, BodyPart part, float hx, float hy, float hz,
 		wound_for_good(r.s, w, severed, e);
 		r.emit(e);
 	}
+}
+
+void shoot_dead(Round &r, int k, BodyPart part, float hx, float hy, float hz) {
+	DeadBody &d = r.s.traffic.dead[size_t(k)];
+	const int pk = int(part);
+	uint32_t severed = 0;
+	if (LIMB_INDEX[pk] >= 0 && (d.lost & LIMB_OF[pk]) == 0) { // a limb of somebody lying comes off when hit (shoot_walker's rule)
+		severed = LIMB_OF[pk];
+		d.lost = uint8_t(d.lost | severed);
+	}
+	DamageEvent wound;
+	wound.kind = DamageEvent::WOUND;
+	wound.id = d.id;
+	wound.x = hx; wound.y = hy; wound.z = hz;
+	wound.dx = r.dx; wound.dz = r.dz;
+	wound.u = severed;
+	r.emit(wound);
+	r.out.hit = ShotResult::WALKER;
+	r.out.id = d.id;
+	DamageEvent e; // the body jolts where it lies: a round throws nobody (effect_bodies.cpp), the limb comes off at its stump
+	e.kind = DamageEvent::CASUALTY;
+	e.id = d.id;
+	e.x = d.x; e.y = d.y; e.z = d.z;
+	e.a = std::atan2(d.fall_z, d.fall_x);
+	e.b = hx - r.dx * BULLET_BACK_M;
+	e.c = hz - r.dz * BULLET_BACK_M;
+	e.d = PUSH_KILL;
+	e.u = d.look;
+	e.v = CAS_DEAD | (uint32_t(d.lost) << CAS_LOST_SHIFT) | (severed << CAS_SEVERED_SHIFT) | ((uint32_t(pk) + 1u) << CAS_STRUCK_SHIFT);
+	r.emit(e);
 }
 
 } // namespace city

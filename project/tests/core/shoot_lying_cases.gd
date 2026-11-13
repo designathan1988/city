@@ -1,5 +1,6 @@
 ## The shoot_test's cases of somebody lying wounded among the living (ShootBodyCases brings them down): the crowd goes round the body
-## and never stands in it, and with the walking window gone from them they stay till they bleed out, their body kept, dead.
+## and never stands in it, and with the walking window gone from them they stay till they bleed out, their body kept, dead; the dead lie
+## in the simulation, a body the rounds meet and the crowd goes round.
 class_name ShootLyingCases
 extends RefCounted
 
@@ -18,6 +19,7 @@ const MAIM_FORCE := 5 # 50 kg: a limb can go from 120.7 kPa, some 11 m off, and 
 const MAIM_OFF_M := 9.0
 const MAIM_TRIES := 12
 const STREET_LOOK_M := 3.0 # round the body's middle: its feet are within half a body of it
+const DEAD_ABOVE_M := 4.0 # a round straight down from this far over a dead body's middle meets its trunk
 
 var t: Node # the shoot_test (TestCase): its check and ticks
 var _walker_of: Callable
@@ -71,7 +73,7 @@ func gone_round() -> void:
 		t.ticks(SAMPLE_TICKS)
 		var still: Dictionary = _walker_of.call(down.id)
 		if still.is_empty() or not still.fallen:
-			break # dead (no longer a walker) or up again: the body there is the render's, or gone
+			break # dead (a dead body now: dead_met) or up again
 		var now_in := {}
 		for w: Dictionary in CityStore.query(&"shot_targets", [LookAim.WALKERS_READ]).walkers:
 			var at := Vector2(w.position.x, w.position.z)
@@ -87,6 +89,39 @@ func gone_round() -> void:
 		inside = now_in
 	print("the other by the body (m from its middle line, each quarter second): ", trail)
 	t.check(longest <= GRACE_TICKS, "nobody stands in the body lying there longer than a step off it takes, the one they walked with included (%d ticks at most: %s)" % [longest, longest_who])
+
+
+## The dead lie in the simulation (Pwalkers-11: the dead left it, a round passed through their bodies and the crowd through them): a round
+## from above meets a dead body where it lies, the same body takes it (no second one), and whoever passes steps round it, never in it.
+func dead_met() -> void:
+	var dead: Array = CityStore.query(&"shot_targets", [LIMIT]).dead
+	if not t.check(not dead.is_empty(), "the dead lie in the simulation (%d dead bodies kept)" % dead.size()):
+		return
+	var on_walk: Array = dead.filter(func(d: Dictionary) -> bool: return int(d.sidewalk) >= 0) # lying on a sidewalk, where the crowd passes
+	var body: Dictionary = on_walk[0] if not on_walk.is_empty() else dead[0]
+	var round: Dictionary = CityStore.dispatch(&"shoot", [body.position + Vector3(0, DEAD_ABOVE_M, 0), Vector3.DOWN])
+	await _frames(BODY_SETTLE_FRAMES)
+	t.check(int(round.get("hit", 0)) == 1 and not round.get("killed", true), "a round from above meets the dead body where it lies (%s)" % [round])
+	# by its own id, not the town's count of bodies, which another getting up in these frames changes: a second body for it would carry the
+	# same id (BodyRenderer census who)
+	var of_it: int = Array(_census.call().who).count(body.id)
+	t.check(of_it == 1, "the dead body takes the round, no second body (%d bodies of id %d)" % [of_it, body.id])
+	var half: float = BODY_HEIGHT_M * body.scale * 0.5
+	var middle := Vector2(body.position.x, body.position.z)
+	var facing: Vector2 = body.facing
+	var inside := {}
+	var longest := 0
+	for k in PASS_TICKS / SAMPLE_TICKS:
+		t.ticks(SAMPLE_TICKS)
+		var now_in := {}
+		for w: Dictionary in CityStore.query(&"shot_targets", [LookAim.WALKERS_READ]).walkers:
+			var at := Vector2(w.position.x, w.position.z)
+			if w.fallen or at.distance_to(Geometry2D.get_closest_point_to_segment(at, middle - facing * half, middle + facing * half)) >= LYING_R:
+				continue
+			now_in[w.id] = int(inside.get(w.id, 0)) + SAMPLE_TICKS
+			longest = maxi(longest, now_in[w.id])
+		inside = now_in
+	t.check(longest <= GRACE_TICKS, "nobody stands in a dead body longer than a step off it takes (%d ticks at most)" % longest)
 
 
 ## A blast beside walkers until it takes somebody's limb: they are down for good, bleeding, the limb gone (Pwalkers-13, 16: the blast took

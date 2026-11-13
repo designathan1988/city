@@ -66,9 +66,17 @@ bool enter_mode(Pedestrian &w, PedMode next);
 void step_pedestrians(CityState &s, float dt);
 void reset_pedestrians(CityState &s);
 
-// A blow or a shot reached a walker (sim/commands/strike_people.cpp): gone for good, knocked to the ground for a while
-// (it walks on after), or frightened into running for a while.
-void remove_pedestrian(CityState &s, int id);
+// ped_dead.cpp: walker `id` died (a round, a blow, a wound bled out: event `e`): the walker is gone and their body lies on where they
+// fell (TrafficState::dead), as they lay or the way `e` fells them (damage_event.h fall_way), under a new id the render's body takes
+// (BODY_DEAD); past blast.shot dead_kept the first of the dead goes (BODY_GONE). The rounds meet the body (shoot_commands.cpp), a blast
+// throws it (strike_people.cpp) and the crowd goes round it (file_dead), as somebody lying.
+void lay_dead(CityState &s, int id, const DamageEvent &e);
+float dead_half(const BlastParams &b, const DeadBody &d); // half its length, as lying_half
+V2 dead_middle(const BlastParams &b, const DeadBody &d); // its middle, as lying_middle
+CrowdEntry dead_entry(const BlastParams &b, const DeadBody &d); // the crowd's body for it: lying, no choice of its own
+void move_dead_off_seg(CityState &s, int seg); // a street gone: the dead on its sidewalks lie on the nearest left (lie_on_nearest)
+// pedestrians.cpp: somebody lying whose street went, onto the sidewalk of the streets left nearest their feet (side -1: none near).
+void lie_on_nearest(CityState &s, Pedestrian &w);
 // ped_fright.cpp: a bang at (x, z) heard: a shot, or a blast's stampede. Frightened for about `seconds`; what it does first, and then away.
 void frighten_pedestrian(CityState &s, int id, float seconds, float x, float z, bool stampede);
 void startle_pedestrians(CityState &s, float x, float z, float reach, float seconds); // a shot heard by those within `reach`

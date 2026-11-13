@@ -172,6 +172,12 @@ void EffectWorld::apply(const DamageEvent &e, const CityState &s) {
 		case DamageEvent::VEHICLE_HIT: vehicle_hit(e); break;
 		case DamageEvent::VEHICLE_DROP: vehicle(e, s); break;
 		case DamageEvent::GEYSER: geysers_.push_back({ e.x, e.y, e.z, now_ + double(params_.geyser_s), 0.f }); break;
+		case DamageEvent::BODY_DEAD: // the walker's body lies on under the dead body's id (ped_dead.cpp)
+			if (people_) people_->bodies().rename(e.id, int(e.u));
+			break;
+		case DamageEvent::BODY_GONE: // the simulation keeps that dead body no more: nor do the effects
+			if (people_) people_->bodies().let_go(e.id);
+			break;
 		default: break;
 	}
 }

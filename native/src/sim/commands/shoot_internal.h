@@ -22,6 +22,9 @@ struct Round {
 
 // The wound a round at (hx, hy, hz) leaves in walker `id`, on `part` (`lying`: it was shot where it lies).
 void shoot_walker(Round &r, int id, BodyPart part, float hx, float hy, float hz, bool lying);
+// The round meets dead body `k` of TrafficState::dead where it lies (the reference's shootBody 'hit': it stops there): the wound's spray, a
+// limb struck comes off as on anybody lying, and the body jolts (a CASUALTY of its own id, the render's body takes it).
+void shoot_dead(Round &r, int k, BodyPart part, float hx, float hy, float hz);
 // A rider shot off a two-wheeler, or the bodywork of a car hit at relative height `up` (0..1).
 void shoot_vehicle(Round &r, int id, float up, float hx, float hy, float hz);
 

@@ -124,6 +124,7 @@ bool load_blast_params(const Dictionary &t, BlastParams &p, PackedStringArray &e
 	p.open_hits = int(number(shot, "shot", "open_hits", errors));
 	p.vehicle_shots_to_burst = int(number(shot, "shot", "vehicle_shots_to_burst", errors));
 	p.burst_force = int(number(shot, "shot", "burst_force", errors));
+	p.dead_kept = int(number(shot, "shot", "dead_kept", errors));
 	Dictionary crater = group(t, "crater", errors);
 	p.crater_k_earth = number(crater, "crater", "k_earth", errors);
 	p.crater_k_hard = number(crater, "crater", "k_hard", errors);

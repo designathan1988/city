@@ -40,7 +40,7 @@ void bleed_step(CityState &s, double dt) {
 		e.b = w.cur.x; e.c = w.cur.z;
 		s.log.damage_events.push_back(e);
 		traffic::add_shock(s, w.cur.x, w.cur.z, s.catalog.traffic.ped_body_shock_m);
-		traffic::remove_pedestrian(s, id);
+		traffic::lay_dead(s, id, e); // their body lies on where they lay
 	}
 }
 

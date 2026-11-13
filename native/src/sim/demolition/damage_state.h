@@ -1,6 +1,7 @@
 // What blows and shots have done to the city, kept in CityState (a field of it) so it is saved, undone and read by the
 // render: craters in the ground, ruins left by buildings brought down, street furniture and trees knocked out, buildings
-// burning. People and vehicles that died are simply gone from the traffic; this is only what stays on the map.
+// burning. Vehicles blown are gone from the traffic, and the dead walkers' bodies lie in it (TrafficState::dead: ped_dead.cpp), not saved
+// as the traffic is not; this is only what stays on the map.
 #pragma once
 
 #include "sim/buildings/building_store.h"

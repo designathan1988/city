@@ -99,7 +99,7 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		b.charred = charred;
 		b.lost = parts_gone(lost | severed);
 		b.rises = kind == CAS_KNOCKED;
-		b.who = e.id;
+		b.who = body_kept_by_id(e.id) ? e.id : -1; // a walker's or a dead body's: the later blows find it (an occupant is nobody's twice)
 		// the dead bleed where they come to rest, and so do the gravely hurt lying there for good (crawl); who only fell does not
 		b.pool = kind == CAS_TORN ? params_.pool_torn : kind == CAS_DEAD || crawl ? 1.f : 0.f;
 		b.bleeds = bleeding(struck, lost | severed);

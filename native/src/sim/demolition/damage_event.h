@@ -24,9 +24,11 @@ namespace city {
 //   FURNITURE      x y z, u = GoneKind, dx dz = the way thrown, a = 1 when it burst into splinters
 //   IGNITE         id = building, x z
 //   DRIP           x y z: somebody hurt walked there, bleeding
+//   BODY_DEAD      id = the walker who died, u = the id their body lies on by now (DEAD_BODY_ID_BASE + n: TrafficState::dead)
+//   BODY_GONE      id = a dead body's: the simulation keeps it no more (past blast.shot dead_kept), nor does the render
 struct DamageEvent {
 	enum Kind : uint8_t { BLAST, SHOT, WOUND, BUILDING_DOWN, BUILDING_HIT, BUILDING_SCAR, VEHICLE_BLOWN, VEHICLE_HIT, VEHICLE_DROP, CASUALTY, GEYSER,
-		LEAK, SPARK, FURNITURE, IGNITE, DRIP };
+		LEAK, SPARK, FURNITURE, IGNITE, DRIP, BODY_DEAD, BODY_GONE };
 	Kind kind = BLAST;
 	int id = -1;
 	float x = 0, y = 0, z = 0, dx = 0, dz = 0, a = 0, b = 0, c = 0, d = 0;
@@ -40,6 +42,10 @@ constexpr uint32_t VEHICLE_PAINT_SHIFT = 8; // VEHICLE_BLOWN / VEHICLE_DROP: u =
 constexpr uint32_t CAS_KIND_MASK = 3, CAS_LOST_SHIFT = 2, CAS_SEVERED_SHIFT = 7, CAS_LIMB_MASK = 31;
 constexpr uint32_t CAS_CHARRED = 1u << 12, CAS_CRAWL = 1u << 13, CAS_OPENED = 1u << 14, CAS_BLED = 1u << 15, CAS_STRUCK_SHIFT = 16; // struck part 0 none, 1 head ... 6 legR
 constexpr int VEHICLE_BODY_ID_BASE = 8'000'000; // CASUALTY ids of a vehicle's occupants (the 4.0's convention)
+// CASUALTY ids of the dead bodies lying in the simulation (TrafficState::dead), over every walker's and occupant's, going round
+constexpr int DEAD_BODY_ID_BASE = 9'000'000, DEAD_BODY_IDS = 1'000'000;
+// Whether a CASUALTY's id names a body the render keeps by it: a walker's (alive) or a dead body's; an occupant's is nobody's twice.
+constexpr bool body_kept_by_id(int id) { return (id >= 0 && id < VEHICLE_BODY_ID_BASE) || id >= DEAD_BODY_ID_BASE; }
 
 // The way a CASUALTY goes down, flat (x, z): away from the push's point (b, c), or the way it faced (a) when that point lies under
 // FALL_PUSH_LEAST_M off. The render tips the body that way (effect_bodies.cpp) and the simulation lays the walker that way

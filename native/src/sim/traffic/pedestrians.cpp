@@ -86,7 +86,7 @@ void despawn_party(CityState &s, int id, bool arrived) {
 
 // A casualty belongs to what happened, not to the crowd round the camera: whoever lies down (a trip, a blow) or bleeds is not taken
 // away by the walking window, by distance alone, nor by the one they walked with (ped_party.cpp company_near), but stays until they
-// rise (then the window takes them as anybody) or die (wounds.cpp lays them dead); a body lying there with nobody to die in it never
+// rise (then the window takes them as anybody) or die (ped_dead.cpp lays their body); a body lying there with nobody to die in it never
 // comes about (Pwalkers-14). Bounded: who bleeds always dies.
 bool casualty(const TrafficState &t, const Pedestrian &w) { return lying(t, w) || w.bleed > 0.f; }
 
@@ -197,14 +197,11 @@ void turn_body(const TrafficState &t, const TrafficParams &p, Pedestrian &w, con
 
 void ped_gone(CityState &s, int id) { despawn(s.traffic, id, false); }
 
-void remove_pedestrian(CityState &s, int id) {
-	if (id >= 0 && id < int(s.traffic.peds.size()) && s.traffic.peds[size_t(id)].alive) despawn(s.traffic, id, false);
-}
-
 void reset_pedestrians(CityState &s) {
 	TrafficState &t = s.traffic;
 	t.peds.clear();
 	t.free_peds.clear();
+	t.dead.clear();
 	t.ped_pool.clear();
 	t.ped_waste = 0;
 	t.ped_count = 0;
@@ -222,8 +219,6 @@ void reset_pedestrians(CityState &s) {
 	t.door_sides.clear();
 	t.doors_in = t.doors_out = 0;
 }
-
-namespace {
 
 // Somebody lying on a sidewalk whose street went: onto the sidewalk of the streets left nearest their feet (a cut's halves keep the
 // ground they lay on), its arc and place across read again, so the crowd there sees them; with none within their body's length of
@@ -255,12 +250,12 @@ void lie_on_nearest(CityState &s, Pedestrian &w) {
 	where_on_sidewalk(s, w);
 }
 
-} // namespace
-
 // A street gone: who walked it or crossed it leaves; somebody lying there does not (a casualty belongs to what happened: casualty()),
-// and lies on where they are (lie_on_nearest) until they rise, when walk() takes them away if their street is gone, or die.
+// and lies on where they are (lie_on_nearest) until they rise, when walk() takes them away if their street is gone, or die; nor do the
+// dead (move_dead_off_seg).
 void drop_pedestrians_on_seg(CityState &s, int seg) {
 	TrafficState &t = s.traffic;
+	move_dead_off_seg(s, seg);
 	for (int id = 0; id < int(t.peds.size()); id++) {
 		Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive || (w.seg != seg && w.cross_seg != seg)) continue;
