@@ -1,5 +1,5 @@
 """The register's commands of the atlas (`python tools/atlas/cli.py problems ...`): list with filters, add, update, close, drop,
-render, import-gates, stats and rename-rule. Every change goes through tools/atlas/problems.py (the one writer) and the view is
+render, import-gates, stats, rename-rule and rename-path; a filter is checked against the schema's values. Every change goes through tools/atlas/problems.py (the one writer) and the view is
 written again after it."""
 import json
 import os
@@ -14,10 +14,12 @@ from atlas import render  # noqa: E402
 
 
 def add_parser(commands, common):
-    p = commands.add_parser("problems", parents=[common], help="the register: list (filters), add, update, close, drop, render")
+    p = commands.add_parser("problems", parents=[common], help="the register: list (filters), add, update, close, drop, render, "
+                            "import-gates, stats (of the filtered problems), rename-rule, rename-path")
     p.add_argument("--area")
     p.add_argument("--owner")
     p.add_argument("--status")
+    p.add_argument("--kind")
     p.add_argument("--cause", help="words the cause holds, all of them")
     actions = p.add_subparsers(dest="action")
     add = actions.add_parser("add", parents=[common], help="a new problem, status open, id assigned")
@@ -35,7 +37,8 @@ def add_parser(commands, common):
     actions.add_parser("render", parents=[common], help="write the generated view doc/problems.md")
     gates = actions.add_parser("import-gates", parents=[common], help="the gates' standing findings, one problem per rule and file")
     gates.add_argument("findings", help="the JSON python tools/gates/run_gates.py --json wrote")
-    actions.add_parser("stats", parents=[common], help="counts by area, status and origin; the median minutes to a cause")
+    actions.add_parser("stats", parents=[common], help="counts by area, status and origin, and the median minutes to a cause, "
+                       "of the problems the filters keep")
     rename = actions.add_parser("rename-rule", parents=[common], help="a gate rule renamed: its problems' origins and words follow")
     rename.add_argument("old")
     rename.add_argument("new")
@@ -68,15 +71,21 @@ def _show(found, as_json):
 
 
 def run(args, root=register.ROOT):
-    """The exit code: 0 an answer, 1 a change the rules refuse (nothing written)."""
+    """The exit code: 0 an answer, 1 a change the rules refuse (nothing written), 2 a filter no problem can match."""
     reg = register.Register(root=root)
+    wrong = reg.wrong_filters(area=args.area, status=args.status, kind=args.kind)
+    for field, value, allowed in wrong:
+        print(f"problems: --{field} {value!r} is none of the register's: {', '.join(allowed)}")
+    if wrong:
+        return 2
+    kept = reg.query(args.area, args.owner, args.status, args.cause, args.kind)
     if args.action is None:
-        _show(reg.query(args.area, args.owner, args.status, args.cause), args.json)
+        _show(kept, args.json)
         return 0
     if args.action == "render":
         return render.main(["--root", root])
     if args.action == "stats":
-        doc = imports.stats(reg)
+        doc = imports.stats(reg, kept)
         print(json.dumps(doc, indent=1) if args.json else "\n".join(f"{k}: {v}" for k, v in doc.items()))
         return 0
     if args.action in ("rename-rule", "rename-path"):

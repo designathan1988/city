@@ -110,15 +110,16 @@ def _texts(dictionaries):
 
 
 def _uses(texts_by_rel, keys):
-    """Each text key's first use in the code: a string literal equal to it, outside the dictionaries."""
+    """Each text key's uses in the code: a string literal equal to it, outside the dictionaries; the first in each file."""
     used = {}
     for rel, text in texts_by_rel:
-        lines = None
+        lines, here = None, set()
         for m in LITERAL.finditer(text):
             key = m.group(1) or m.group(2)
-            if key in keys and key not in used:
+            if key in keys and key not in here:
+                here.add(key)
                 lines = lines or ts.Lines(text)
-                used[key] = _at(rel, lines, m.start())
+                used.setdefault(key, []).append(_at(rel, lines, m.start()))
     return used
 
 

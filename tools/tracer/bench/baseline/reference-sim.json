@@ -1,0 +1,116 @@
+{
+ "exact": {
+  "calls through a function type (not compared)": 130,
+  "calls into own code": 3417,
+  "recall": 0.9944,
+  "links at those calls": 3514,
+  "precision": 0.9966,
+  "calls into the platform": 5959,
+  "links at platform calls (noise)": 0,
+  "exact links at platform calls (an object of the code where a platform type is declared)": 4,
+  "most missed callees": [
+   [
+    "rng.float",
+    8
+   ],
+   [
+    "w.buildings.near",
+    2
+   ],
+   [
+    "w.buildings.get",
+    2
+   ],
+   [
+    "w.buildings.facts",
+    2
+   ],
+   [
+    "scope.postMessage",
+    2
+   ],
+   [
+    "this.listener?.set",
+    1
+   ],
+   [
+    "this.listener?.delete",
+    1
+   ],
+   [
+    "this.listener?.clear",
+    1
+   ]
+  ],
+  "most wrong targets": [
+   [
+    "<lambda:40>",
+    11
+   ],
+   [
+    "TrafficBuildings",
+    1
+   ]
+  ]
+ },
+ "all": {
+  "calls through a function type (not compared)": 130,
+  "calls into own code": 3417,
+  "recall": 0.9947,
+  "links at those calls": 3521,
+  "precision": 0.9957,
+  "calls into the platform": 5959,
+  "links at platform calls (noise)": 14,
+  "exact links at platform calls (an object of the code where a platform type is declared)": 4,
+  "most missed callees": [
+   [
+    "rng.float",
+    8
+   ],
+   [
+    "w.buildings.near",
+    2
+   ],
+   [
+    "w.buildings.facts",
+    2
+   ],
+   [
+    "scope.postMessage",
+    2
+   ],
+   [
+    "w.buildings.get",
+    1
+   ],
+   [
+    "this.listener?.set",
+    1
+   ],
+   [
+    "this.listener?.delete",
+    1
+   ],
+   [
+    "this.listener?.clear",
+    1
+   ]
+  ],
+  "most wrong targets": [
+   [
+    "<lambda:40>",
+    11
+   ],
+   [
+    "<lambda:81>",
+    3
+   ],
+   [
+    "TrafficBuildings",
+    1
+   ]
+  ]
+ },
+ "seconds": 9.3,
+ "links": 4357
+}

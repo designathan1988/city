@@ -19,12 +19,13 @@ USAGE = 2
 
 def parser():
     """The options every command takes, wherever they are written: each subcommand's parser shares them with defaults
-    suppressed, so a subcommand never overwrites what the top level read (argparse's defaults of a subparser otherwise do)."""
+    suppressed, so a subcommand never overwrites what the top level read (argparse's defaults of a subparser otherwise do).
+    Their defaults are given after parsing (`main`): `set_defaults` on the top parser would change the actions the
+    subparsers share with it, and each subparser would then write its default over what was read before it."""
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--json", action="store_true", default=argparse.SUPPRESS, help="the answer as JSON")
     common.add_argument("--root", default=argparse.SUPPRESS, help="the repository (the tests give a folder of their own)")
     ap = argparse.ArgumentParser(prog="atlas", description=__doc__.splitlines()[0], parents=[common])
-    ap.set_defaults(json=False, root=register.ROOT)
     commands = ap.add_subparsers(dest="command", required=True)
     problems_cli.add_parser(commands, common)
     inventory.add_parser(commands, common)
@@ -43,6 +44,9 @@ def main(argv=None):
         args = parser().parse_args(argv)
     except SystemExit as e:  # argparse's own exit: 0 for --help, 2 for a usage error
         return e.code if isinstance(e.code, int) else USAGE
+    for name, value in (("json", False), ("root", register.ROOT)):
+        if not hasattr(args, name):
+            setattr(args, name, value)
     try:
         if args.command == "problems":
             return problems_cli.run(args, root=args.root)

@@ -138,21 +138,26 @@ def _modules(repo, gaps):
         if kind == "system" and rel.endswith(".gd"):
             out += enums(rel, text)
     native = sum(len(rels) for rels in grouped.values())
-    return out, [rel for rel, kind in scripts if kind == "system" and rel.endswith(".gd")], native + len(scripts)
+    code = [rel for rels in grouped.values() for rel in rels] + [rel for rel, kind in scripts if kind == "system"
+                                                                 and rel.endswith(".gd")]
+    return out, code, native + len(scripts)
 
 
-def _uses(repo, scripts, used, keys):
-    """Each text key's first use: a string literal equal to it in a script, else a text key field of an interface table."""
-    first = {}
-    for rel in scripts:
-        text, lines = _read(repo, rel), None
+def _uses(repo, code, used, keys):
+    """Each text key's uses: a string literal equal to it in a script or a native file (the first in each file), then the
+    text key fields of the interface tables."""
+    found = {}
+    for rel in code:
+        text, lines, here = _read(repo, rel), None, set()
         for m in LITERAL.finditer(text):
-            if m.group(1) in keys and m.group(1) not in first:
+            key = m.group(1)
+            if key in keys and key not in here:
+                here.add(key)
                 lines = lines or ts.Lines(text)
-                first[m.group(1)] = f"{rel}:{lines.of(m.start())}"
+                found.setdefault(key, []).append(f"{rel}:{lines.of(m.start())}")
     for key, at in used:
-        first.setdefault(key, at)
-    return first
+        found.setdefault(key, []).append(at)
+    return found
 
 
 def read(repo):
@@ -161,7 +166,7 @@ def read(repo):
             "tables that cannot be read": 0, "interface text keys with no text": 0}
     by_key, languages = texts(repo, gaps)
     out = store_api(repo)
-    modules, scripts, code_files = _modules(repo, gaps)
+    modules, code, code_files = _modules(repo, gaps)
     used = []
     ui = _walk(repo, UI, (".json",))
     for rel in ui:
@@ -175,7 +180,7 @@ def read(repo):
         found, why = inventory_json.entries(GAME, rel, _read(repo, rel))
         out += found
         gaps["tables that cannot be read"] += 1 if why else 0
-    rules.mark_uses(by_key.values(), _uses(repo, scripts, used, by_key))
+    rules.mark_uses(by_key.values(), _uses(repo, code, used, by_key))
     files = len(ui) + len(data) + code_files + len(_walk(repo, I18N, (".csv",))) + 1  # and StoreApi
     return {"features": list(by_key.values()) + out + modules, "files": files, "languages": languages,
             "gaps": [{"game": GAME, "what": k, "count": v} for k, v in gaps.items() if v]}

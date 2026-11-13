@@ -102,14 +102,19 @@ def write(doc, root):
 
 def show_summary(doc, as_json):
     if as_json:
-        print(json.dumps({k: doc[k] for k in ("summary", "evidence", "files", "seconds", "languages", "unextracted")},
+        print(json.dumps({k: doc[k] for k in ("summary", "systems", "evidence", "files", "seconds", "languages",
+                                              "unextracted")},
                          ensure_ascii=False, indent=1))
         return
-    print(f"{'area':<18} {'reference':>9} {'paired':>6} {'only':>5}   {'city':>6} {'paired':>6} {'only':>5}")
+    print(f"{'area':<18} {'reference':>9} {'paired':>6} {'only':>5}   {'city':>6} {'paired':>6} {'only':>5}   "
+          f"systems paired: reference, city")
+    nobody = {"systems": 0, "paired": 0}
     for area, row in doc["summary"].items():
         r, c = row["reference"], row["city"]
+        s = doc.get("systems", {}).get(area, {})
+        sr, sc = s.get("reference", nobody), s.get("city", nobody)
         print(f"{area:<18} {r['features']:>9} {r['paired']:>6} {r['only']:>5}   {c['features']:>6} {c['paired']:>6} "
-              f"{c['only']:>5}")
+              f"{c['only']:>5}   {sr['paired']}/{sr['systems']}, {sc['paired']}/{sc['systems']}")
     print("evidence: " + ", ".join(f"{k} {v}" for k, v in doc["evidence"].items()))
     print("not extracted: " + ("; ".join(f"{g['game']} {g['what']} {g['count']}" for g in doc["unextracted"]) or "nothing"))
     print(f"unclassified places: {len(doc['unclassified'])} (listed in the reports)")

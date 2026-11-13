@@ -3,7 +3,10 @@ For every call to a function or a method written in the project's own files (ope
 out), the declaration and the definition the compiler resolves it to. Not part of the tracer: the bench compares
 the tracer's links with these.
 
-    python cpp_calls.py <compile_commands.json> <project folder> <out.jsonl> [--toolchain DIR] [--jobs N]
+    python cpp_calls.py <compile_commands.json> <project folder> <out.jsonl> [--toolchain DIR] [--libclang FILE] [--jobs N]
+
+`--libclang`: the C API library of a clang as new as the toolchain's (its headers use what an older clang reads wrong). A
+unit clang cannot read without errors makes no answer: the run says the first errors and exits 1 (a ruler with holes).
 
 Each line: {"file", "line", "end": [line, column], "callee", "targets": [{"file", "line", "name"}], "outside"},
 paths from the project folder, the end column counted from 0 as the grammar reader counts it.
@@ -20,9 +23,13 @@ from pathlib import Path
 
 DROP_WITH_VALUE = {"-o", "-MF", "-MT", "-MQ"}
 DROP = {"-c", "-MD", "-MMD", "-Winvalid-pch"}
+SHOWN = 8                        # the compiler errors a failed run shows
 
 
 def arguments(entry: dict, toolchain: str | None) -> list:
+    """The unit's own compile flags, and what the build's compiler adds to them that the library reads from nowhere: the
+    target and options of the toolchain's configuration files for the compiler's name, its sysroot and its own builtin
+    headers (the library would otherwise look for another target's headers in its own install)."""
     words = entry.get("arguments") or shlex.split(entry["command"].replace("\\", "/"), posix=True)
     out, skip = [], False
     for word in words[1:]:
@@ -37,10 +44,39 @@ def arguments(entry: dict, toolchain: str | None) -> list:
         out.append(word)
     if toolchain:
         tc = Path(toolchain)
-        triple = next((p.name for p in tc.iterdir() if p.name.endswith("-w64-mingw32") and (p / "include").is_dir()), None)
-        out += ["-nostdinc++", "-isystem", str(tc / "include" / "c++" / "v1")]
-        if triple:
-            out += [f"--target={triple}", "-isystem", str(tc / triple / "include")]
+        compiler = Path(words[0]).name.removesuffix(".exe")
+        triple, _, driver = compiler.rpartition("-")
+        out = config_flags(tc, triple, driver) + out + [f"--sysroot={tc}"]
+        builtin = sorted((tc / "lib" / "clang").iterdir()) if (tc / "lib" / "clang").is_dir() else []
+        if builtin:
+            out += ["-resource-dir", str(builtin[-1])]
+    return out
+
+
+def config_flags(tc: Path, triple: str, driver: str) -> list:
+    """The flags the toolchain's clang reads from its default configuration files (Clang User's Manual, Configuration
+    files): `<triple>-<driver>.cfg`, else `<driver>.cfg` and `<triple>.cfg`, in the folder of the executable; the triple as
+    written and as clang normalizes a MinGW one (`-mingw32` is `-windows-gnu`)."""
+    folder = tc / "bin"
+    triples = [triple] + ([triple.removesuffix("mingw32") + "windows-gnu"] if triple.endswith("-mingw32") else [])
+    for t in triples:
+        if (folder / f"{t}-{driver}.cfg").is_file():
+            return read_config(folder / f"{t}-{driver}.cfg")
+    out = read_config(folder / f"{driver}.cfg") if (folder / f"{driver}.cfg").is_file() else []
+    for t in triples:
+        if (folder / f"{t}.cfg").is_file():
+            return out + read_config(folder / f"{t}.cfg")
+    return out
+
+
+def read_config(path: Path) -> list:
+    """A configuration file's flags, its `@file` lines read from the including file's folder; `#` lines are comments."""
+    out = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip().startswith("#"):
+            continue
+        for word in shlex.split(line, posix=True):
+            out += read_config(path.parent / word[1:]) if word.startswith("@") else [word]
     return out
 
 
@@ -49,15 +85,18 @@ def norm(path) -> str:
 
 
 def one(job):
-    """The calls of one translation unit, as rows."""
+    """The calls of one translation unit, as rows; its errors, the first of them said."""
     import clang.cindex as ci
-    path, args, project = job
+    path, args, project, library = job
+    if library and not ci.Config.loaded:
+        ci.Config.set_library_file(library)
     index = ci.Index.create()
     try:
         tu = index.parse(path, args=args)
     except ci.TranslationUnitLoadError:
-        return [], 1
-    errors = sum(1 for d in tu.diagnostics if d.severity >= ci.Diagnostic.Error)
+        return [], [f"{path}: clang could not read it"]
+    errors = [f"{d.location.file}:{d.location.line}: {d.spelling}" for d in tu.diagnostics
+              if d.severity >= ci.Diagnostic.Error]
     kinds = {ci.CursorKind.FUNCTION_DECL, ci.CursorKind.CXX_METHOD, ci.CursorKind.FUNCTION_TEMPLATE}
     rows = []
     root = norm(project) + "/"
@@ -100,13 +139,14 @@ def main(argv=None) -> int:
     parser.add_argument("project")
     parser.add_argument("out")
     parser.add_argument("--toolchain", help="a clang toolchain folder whose headers the build used")
+    parser.add_argument("--libclang", help="the libclang library to load (as new as the toolchain's clang)")
     parser.add_argument("--jobs", type=int, default=os.cpu_count())
     args = parser.parse_args(argv)
     project = norm(args.project)
     entries = [e for e in json.loads(Path(args.database).read_text(encoding="utf-8"))
                if norm(e["file"]).startswith(project + "/")]
-    jobs = [(e["file"], arguments(e, args.toolchain), args.project) for e in entries]
-    seen, rows, errors = set(), [], 0
+    jobs = [(e["file"], arguments(e, args.toolchain), args.project, args.libclang) for e in entries]
+    seen, rows, errors = set(), [], []
     with ProcessPoolExecutor(args.jobs) as pool:
         for found, wrong in pool.map(one, jobs):
             errors += wrong
@@ -115,8 +155,13 @@ def main(argv=None) -> int:
                 if key not in seen:
                     seen.add(key)
                     rows.append(row)
+    if errors:
+        print(f"{len(entries)} units read with {len(errors)} compiler errors: no answer written; the first:", file=sys.stderr)
+        for line in errors[:SHOWN]:
+            print(f"  {line}", file=sys.stderr)
+        return 1
     Path(args.out).write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
-    print(f"{len(entries)} units, {len(rows)} calls, {errors} compiler errors -> {args.out}", file=sys.stderr)
+    print(f"{len(entries)} units, {len(rows)} calls, no compiler error -> {args.out}", file=sys.stderr)
     return 0
 
 

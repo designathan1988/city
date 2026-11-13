@@ -1,9 +1,11 @@
 """The register's tests: ids, every allowed and refused move of a status, the rules a save holds, a gate rule renamed and a
 path moved followed by the problems naming them, the generated view and its check, a malformed line refused, the command
-line's exit codes. Each test works on a register of its own in a temporary repository (the real schema copied in, the
+line's exit codes, its common options wherever they are written, a filter no problem can match refused, the stats of the
+filtered problems. Each test works on a register of its own in a temporary repository (the real schema copied in, the
 fixture register as its doc/problems.jsonl)."""
 import contextlib
 import io
+import json
 import os
 import shutil
 import sys
@@ -199,6 +201,29 @@ class CommandLine(RegisterCase):
         code, out = self.atlas("problems", "--area", "tools", "--json")
         self.assertEqual(code, 0)
         self.assertIn('"Ptools-1"', out)
+
+    def test_json_and_root_before_the_command(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = cli.main(["--json", "--root", self.root, "problems", "--area", "tools"])
+        self.assertEqual(code, 0)
+        found = json.loads(out.getvalue())
+        self.assertEqual({p["area"] for p in found}, {"tools"})
+        self.assertLess(len(found), 10)          # the temporary register's, not the repository's
+
+    def test_a_filter_no_problem_can_match_is_refused(self):
+        code, out = self.atlas("problems", "--area", "moon")
+        self.assertEqual(code, 2)
+        self.assertIn("roads", out)
+        self.assertEqual(self.atlas("problems", "--status", "Open")[0], 2)
+        self.assertEqual(self.atlas("problems", "--kind", "bug")[0], 2)
+
+    def test_stats_count_the_filtered_problems(self):
+        code, out = self.atlas("problems", "--area", "tools", "--json", "stats")
+        self.assertEqual(code, 0, out)
+        doc = json.loads(out)
+        self.assertEqual(set(doc["by_area"]), {"tools"})
+        self.assertIn("traced when added", doc)
 
 
 if __name__ == "__main__":

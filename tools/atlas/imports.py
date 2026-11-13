@@ -15,6 +15,8 @@ from atlas import problems as register  # noqa: E402
 STAMPED = "%Y-%m-%dT%H:%M"
 SECONDS_PER_MINUTE = 60
 
+UNPREFIXED = "(no prefix)"  # an origin written without a kind before a colon
+
 
 def gate_findings(reg, findings, when=None):
     """One open problem per (rule, file) of the findings that no problem of the register names yet; the new ones returned."""
@@ -46,16 +48,29 @@ def _minutes(a, b):
         return None
 
 
-def stats(reg):
-    """Counts by area, status and origin, and the median minutes from a report (opened) to its located cause (traced)."""
+def stats(reg, problems=None):
+    """Counts by area, status and origin, and the median minutes from a report (opened) to its located cause (traced), of
+    the problems given (the register's, by default). A problem added with its cause is traced in the minute it is opened: its
+    span measures no search and is counted apart (`traced when added`), not as a zero in the median."""
+    problems = reg.problems if problems is None else problems
+
     def count(key):
         out = {}
-        for p in reg.problems:
+        for p in problems:
             k = key(p)
             out[k] = out.get(k, 0) + 1
         return dict(sorted(out.items()))
-    spans = [m for m in (_minutes(p.get("opened"), p.get("traced")) for p in reg.problems) if m is not None and m >= 0]
-    return {"problems": len(reg.problems), "by_area": count(lambda p: p.get("area")),
+    spans = [m for m in (_minutes(p.get("opened"), p.get("traced")) for p in problems) if m is not None and m >= 0]
+    searched = [m for m in spans if m > 0]
+    return {"problems": len(problems), "by_area": count(lambda p: p.get("area")),
             "by_status": count(lambda p: p.get("status")),
-            "by_origin": count(lambda p: (p.get("origin") or ["?"])[0].split(":", 1)[0]),
-            "minutes_to_cause": {"measured": len(spans), "median": statistics.median(spans) if spans else None}}
+            "by_origin": count(lambda p: origin_kind((p.get("origin") or [""])[0])),
+            "minutes_to_cause": {"measured": len(searched), "median": statistics.median(searched) if searched else None},
+            "traced when added": len(spans) - len(searched)}
+
+
+def origin_kind(origin):
+    """What an origin is, by the prefix before its colon (gate, trace, run, block...); one written without a prefix is said
+    so, not a kind of its own."""
+    prefix, colon, _ = origin.partition(":")
+    return prefix if colon and prefix else UNPREFIXED

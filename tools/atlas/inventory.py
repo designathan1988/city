@@ -5,7 +5,9 @@ name, label, description, source}; its label is its text, or the text of the key
 kind pair by evidence only: the same player's text in a language both games hold (inventory_rules.norm_text), the same
 text key, the same id in the same area (an action's or a data entry's, inventory_rules.norm_id); a pair made by one
 language's text says `differs:<lang>` when the other language's texts differ (a doubt shown, not a pair taken back); what no
-evidence pairs is listed by area as reference only or city only. The reports are written whole under dist/inventory (inventory_report.py)."""
+evidence pairs is listed by area as reference only or city only. An id pair holds only where the two tables share a word (the same
+entry name in two unrelated tables is no pair). Systems pair through the features they hold or use (inventory_systems.py).
+The reports are written whole under dist/inventory (inventory_report.py)."""
 import os
 import sys
 import time
@@ -17,6 +19,7 @@ from atlas import inventory_game  # noqa: E402
 from atlas import inventory_reference  # noqa: E402
 from atlas import inventory_report as report  # noqa: E402
 from atlas import inventory_rules as rules  # noqa: E402
+from atlas import inventory_systems as systems  # noqa: E402
 from tasks import locations  # noqa: E402
 
 GAMES = ("reference", "city")
@@ -89,10 +92,31 @@ def pair(features, shared):
         for what, value in _evidence(f, shared):
             for other in index.get((what, value), ()):
                 pairs.setdefault((f["id"], other), []).append(what)
-    for (r, c), evidence in pairs.items():
-        if any(what.startswith("text:") for what in evidence):
+    for (r, c), evidence in list(pairs.items()):
+        if evidence == ["id"] and not same_table(by_id[r], by_id[c]):
+            del pairs[(r, c)]
+        elif any(what.startswith("text:") for what in evidence):
             evidence += _differs(by_id[r], by_id[c], shared)
     return [{"reference": r, "city": c, "evidence": ev} for (r, c), ev in pairs.items()]
+
+
+def same_table(ref, city):
+    """Whether two entries' tables may hold the same thing: a word of their names in common (each in the singular), or a
+    table unnamed."""
+    a, b = (set(map(rules.singular, rules.words(f.get("table", "")))) for f in (ref, city))
+    return not a or not b or bool(a & b)
+
+
+def systems_summary(features, pairs):
+    """Per area and game: its systems and how many of them are paired (the measure of the port by what runs)."""
+    paired = {p["reference"] for p in pairs} | {p["city"] for p in pairs}
+    out = {}
+    for f in features:
+        if f["kind"] == "system":
+            row = out.setdefault(f["area"], {g: {"systems": 0, "paired": 0} for g in GAMES})[f["game"]]
+            row["systems"] += 1
+            row["paired"] += f["id"] in paired
+    return dict(sorted(out.items()))
 
 
 def summarize(features, pairs):
@@ -147,12 +171,14 @@ def build(repo, reference=None, progress=print):
     resolve_labels(features)
     shared = sorted(set(ref["languages"]) & set(city["languages"]))
     pairs = pair(features, shared)
+    pairs += systems.pair_systems(features, pairs)
     summary, evidence = summarize(features, pairs)
     t_pair = time.perf_counter()
     progress(f"paired: {len(pairs)} pairs in {t_pair - t_city:.2f} s (languages both games hold: {', '.join(shared)})")
     return {"generated": time.strftime("%Y-%m-%dT%H:%M:%S"), "roots": {"reference": root, "city": repo},
             "languages": {"reference": ref["languages"], "city": city["languages"], "shared": shared},
             "files": {"reference": ref["files"], "city": city["files"]}, "summary": summary, "evidence": evidence,
+            "systems": systems_summary(features, pairs),
             "unclassified": unclassified_places(features), "unextracted": ref["gaps"] + city["gaps"],
             "seconds": {"reference": round(t_ref - start, 3), "city": round(t_city - t_ref, 3),
                         "pairing": round(t_pair - t_city, 3)},
@@ -175,6 +201,9 @@ def run(args, root):
     2 for an area no feature has."""
     start = time.perf_counter()
     say = (lambda line: print(line, file=sys.stderr, flush=True)) if args.json else (lambda line: print(line, flush=True))
+    if args.reference and not os.path.isdir(args.reference):
+        print(f"inventory: the reference folder {args.reference} does not exist: nothing read")
+        return 1
     try:
         doc = build(root, args.reference, progress=say)
     except locations.Missing as e:

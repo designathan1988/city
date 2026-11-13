@@ -3,6 +3,9 @@ compiler's answer (made when missing), compared with the recorded baseline, and 
 
     python bench/run.py [--only NAME]... [--update] [--strict]
 
+A path a project names is from the repository, or `@name/...` where tools/tasks/locations.py finds `name` on this machine (the
+reference's tree, the toolchain): no machine's path is written in projects.json.
+
 Exit 1 when a figure is worse than the baseline beyond the tolerance, or a golden trace fails, or no project is measured
 (a bench of nothing proves nothing); with --strict, also when a target is not met. --update records the figures as the new baseline. Not part of the tracer.
 """
@@ -16,7 +19,9 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+REPO = HERE.parents[2]
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(REPO / "tools"))
 
 import callers  # noqa: E402
 import compare  # noqa: E402
@@ -25,6 +30,28 @@ import golden  # noqa: E402
 # How much a figure may move against the baseline before it is a regression: the share for recall and precision
 # (down), the ratio for the noise and the time (up).
 TOLERANCE = {"recall": 0.005, "precision": 0.005, "links at platform calls (noise)": 0.10, "seconds": 0.25}
+
+
+def place(path: str) -> str:
+    """A path a project names, on this machine: `@name/rest` under what tools/tasks/locations.py finds for `name`, any other
+    from the repository."""
+    if path.startswith("@"):
+        from tasks.locations import locate
+        name, _, rest = path[1:].partition("/")
+        return str(Path(locate(name)) / rest) if rest else locate(name)
+    return path if Path(path).is_absolute() else str(REPO / path)
+
+
+def placed(spec: dict) -> dict:
+    """A project with every path it names placed on this machine (its oracle's files stay the bench's own)."""
+    out = {**spec, "roots": [place(r) for r in spec["roots"]]}
+    if spec.get("base"):
+        out["base"] = place(spec["base"])
+    for part in ("oracle", "callers"):
+        if part in spec:
+            out[part] = {k: place(v) if k in ("project", "build", "toolchain", "libclang") else v
+                         for k, v in spec[part].items()}
+    return out
 
 
 def oracle(name: str, spec: dict) -> Path | None:
@@ -47,6 +74,8 @@ def oracle(name: str, spec: dict) -> Path | None:
         command = [sys.executable, str(HERE / "oracle" / "cpp_calls.py"), str(database), spec["project"], str(out)]
         if spec.get("toolchain"):
             command += ["--toolchain", spec["toolchain"]]
+        if spec.get("libclang"):
+            command += ["--libclang", spec["libclang"]]
     print(f"{name}: making the oracle ...", file=sys.stderr)
     done = subprocess.run(command)
     return out if done.returncode == 0 and out.exists() else None
@@ -61,6 +90,7 @@ def callers_oracle(name: str, spec: dict) -> Path:
             command += ["--table", table]
         command += [word for via in spec.get("via", ()) for word in ("--via", via)]
         command += [word for one in spec.get("direct", ()) for word in ("--direct", one)]
+        command += [word for one in spec.get("skip", ()) for word in ("--skip", one)]
         subprocess.run(command, check=True)
     return out
 
@@ -125,6 +155,11 @@ def main(argv=None) -> int:
     for name, spec in projects.items():
         if args.only and name not in args.only:
             continue
+        try:
+            spec = placed(spec)
+        except Exception as e:           # a place this machine does not name (tasks.locations.Missing): said, skipped
+            print(f"{name}: skipped, {e}", file=sys.stderr)
+            continue
         if not all(Path(root).exists() for root in spec["roots"]):
             print(f"{name}: skipped, a root is missing", file=sys.stderr)
             continue
@@ -133,7 +168,11 @@ def main(argv=None) -> int:
         figures, result = None, None
         if "oracle" in spec:
             found = oracle(name, spec["oracle"])
-            if found is not None:
+            if found is None:                    # no compiler's answer: nothing to measure the links against, said
+                print("   FAILED: the compiler's answer could not be made (its errors above): nothing measured")
+                failed = True
+                continue
+            else:
                 rows = [json.loads(line) for line in found.read_text(encoding="utf-8").splitlines() if line.strip()]
                 links, result, seconds = compare.links_by_call(spec["roots"], spec.get("base"))
                 figures = compare.measure(rows, links)

@@ -1,4 +1,4 @@
-# Where this machine's tools are (Godot, Git for Windows' bash, llvm-mingw): the one owner of their locations, so no path of one
+# Where this machine's tools are (Godot, Git for Windows' bash, llvm-mingw, the C API library of clang): the one owner of their locations, so no path of one
 # machine is written in the tools. A tool is its environment variable, else that name in tools/tasks/local.json (this machine's
 # own file, ignored by git), else what its locator finds on the PATH; with none of them the selection stops naming what to set.
 # Run as a script it prints a tool's location (tools/build/pgo.sh): python tools/tasks/locations.py godot
@@ -56,6 +56,20 @@ def _mingw() -> str:
     return Path(found).resolve().parent.parent.as_posix() if found else ""
 
 
+def _libclang() -> str:
+    """The C API library of the clang on the PATH (libclang: what clang's Python binding loads), beside its compiler; the
+    binding's own copy may be older than the headers a toolchain ships and read them wrong."""
+    found = shutil.which("clang")
+    if not found:
+        return ""
+    folder = Path(found).resolve().parent
+    for name in ("libclang.dll", "libclang.so", "libclang.dylib"):
+        for place in (folder / name, folder.parent / "lib" / name):
+            if place.is_file():
+                return place.as_posix()
+    return ""
+
+
 def _nowhere() -> str:
     """A place no search finds: it is this machine's to name."""
     return ""
@@ -65,6 +79,7 @@ TOOLS = {  # name -> (environment variable, locator)
     "godot": ("GODOT", _godot),
     "bash": ("BASH_EXE", _bash),
     "mingw": ("MINGW", _mingw),
+    "libclang": ("LIBCLANG", _libclang),
     "roadcraft_lab": ("ROADCRAFT_LAB", _nowhere),  # the reference game's tree, read for behaviour only (LAB_COPY's store)
 }
 

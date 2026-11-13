@@ -18,6 +18,8 @@ if TOOLS_DIR not in sys.path:
     sys.path.insert(0, TOOLS_DIR)
 from atlas import cli  # noqa: E402
 from atlas import inventory  # noqa: E402
+from atlas import inventory_rules as rules  # noqa: E402
+from atlas import inventory_systems as systems  # noqa: E402
 
 ACCENTED = "Zorv" + chr(0xE1) + "n Blip!"  # an invented word with an accented letter, written so the source stays ASCII
 REFERENCE = {
@@ -114,6 +116,7 @@ class Extraction(InventoryCase):
 
     def test_a_text_first_use(self):
         self.assertEqual(self.one("reference", "text", "hint.only")["used"], "editor/hand.ts:4")
+        self.assertEqual(self.one("reference", "text", "hint.only")["uses"], ["editor/hand.ts:4"])
         self.assertEqual(self.one("reference", "text", "blip.zone")["used"], "")
         self.assertEqual(self.one("city", "text", "tool.lane")["used"], "project/data/ui/drawers.json:5")
 
@@ -190,6 +193,48 @@ class CommandLine(InventoryCase):
         self.assertEqual(code, 0, out)
         self.assertEqual({f["area"] for f in json.loads(out)}, {"street furniture"})
         self.assertEqual(self.atlas("inventory", "--area", "moon")[0], 2)
+
+
+class Systems(unittest.TestCase):
+    def test_a_files_own_name_before_its_folder(self):
+        self.assertEqual(rules.module_area("native/src/sim/traffic/ped_steps.cpp"), "people")
+        self.assertEqual(rules.module_area("native/src/sim/traffic/car_step.h"), "traffic")
+        self.assertEqual(rules.module_area("native/src/sim/traffic/flow_step.h"), "traffic")
+
+    def test_an_id_pair_needs_tables_that_share_a_word(self):
+        self.assertTrue(inventory.same_table({"table": "LAMP_KINDS"}, {"table": "street_furniture/lamps"}))
+        self.assertFalse(inventory.same_table({"table": "TOOLS"}, {"table": "tuning"}))
+        self.assertFalse(inventory.same_table({"table": "TOOLS"}, {"table": "materials"}))
+        self.assertTrue(inventory.same_table({}, {"table": "tuning"}))
+
+    def test_systems_pair_through_the_features_they_share(self):
+        def f(id_, game, kind, source, **extra):
+            return dict(id=id_, game=game, kind=kind, source=source, area="roads", name=id_, **extra)
+        features = [f("r1", "reference", "system", "sim/lanes.ts:1"), f("r2", "reference", "system", "ui/hub.ts:1"),
+                    f("c1", "city", "system", "native/src/sim/roads/lanes.h:1"),
+                    f("c2", "city", "system", "project/game/store/hub.gd:1"),
+                    f("rt1", "reference", "text", "i18n/en.ts:1", uses=["sim/lanes.ts:5"]),
+                    f("rt2", "reference", "text", "i18n/en.ts:2", uses=["sim/lanes.ts:9"]),
+                    f("rt3", "reference", "text", "i18n/en.ts:3", uses=["ui/hub.ts:2"]),
+                    f("ct1", "city", "text", "strings.csv:1", uses=["native/src/sim/roads/lanes.cpp:4"]),
+                    f("ct2", "city", "text", "strings.csv:2", uses=["native/src/sim/roads/lanes.cpp:8"]),
+                    f("ct3", "city", "text", "strings.csv:3", uses=["project/game/store/hub.gd:3"])]
+        pairs = [{"reference": "rt1", "city": "ct1"}, {"reference": "rt2", "city": "ct2"},
+                 {"reference": "rt3", "city": "ct3"}]
+        found = systems.pair_systems(features, pairs)
+        self.assertEqual([(p["reference"], p["city"], p["evidence"], p["shared"]) for p in found],
+                         [("r1", "c1", ["via:text"], 2)])
+
+    def test_a_reference_folder_that_does_not_exist_is_refused(self):
+        city = tempfile.mkdtemp(prefix="inventory-city-")
+        try:
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                code = cli.main(["inventory", "--root", city, "--reference", os.path.join(city, "nowhere")])
+            self.assertEqual(code, 1)
+            self.assertIn("does not exist", out.getvalue())
+        finally:
+            shutil.rmtree(city, ignore_errors=True)
 
 
 if __name__ == "__main__":

@@ -1,1 +1,60 @@
-{}
+{
+ "city-core": {
+  "about": "the core's C++: the tracer's links against clang's answer for every call into the project's own code",
+  "roots": [
+   "native/src"
+  ],
+  "base": "native/src",
+  "oracle": {
+   "kind": "cpp",
+   "file": "out/city-core.oracle.jsonl",
+   "database": "out/city-core.compile_commands.json",
+   "build": "native/build-win-debug",
+   "project": "native/src",
+   "toolchain": "@mingw",
+   "libclang": "@libclang"
+  }
+ },
+ "city-scripts": {
+  "about": "the scripts and the core's bindings: each method the core exposes, its callers in the scripts, as the tracer's backward trace finds them against the store's tables and the direct calls",
+  "roots": [
+   "project/game",
+   "project/ui",
+   "project/render",
+   "project/tests",
+   "native/src/api"
+  ],
+  "base": ".",
+  "callers": {
+   "file": "out/city-scripts.callers.json",
+   "project": "project",
+   "table": [
+    "game/store/store_api.gd"
+   ],
+   "via": [
+    "dispatch",
+    "query"
+   ],
+   "direct": [
+    "_core"
+   ],
+   "skip": [
+    "addons"
+   ],
+   "language": "gdscript"
+  }
+ },
+ "reference-sim": {
+  "about": "the reference's simulation: the tracer's links against the TypeScript type checker's answers",
+  "roots": [
+   "@roadcraft_lab/src/sim"
+  ],
+  "base": "@roadcraft_lab/src/sim",
+  "oracle": {
+   "kind": "ts",
+   "file": "out/reference-sim.oracle.jsonl",
+   "project": "@roadcraft_lab",
+   "keep": "src/sim"
+  }
+ }
+}

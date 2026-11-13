@@ -251,13 +251,24 @@ class Register:
                 changed.append(problem)
         return changed
 
-    def query(self, area=None, owner=None, status=None, cause=None):
-        """The problems matching every filter given: area and status exactly, owner as a part of it, cause by all its words."""
+    def query(self, area=None, owner=None, status=None, cause=None, kind=None):
+        """The problems matching every filter given: area, status and kind exactly, owner as a part of it, cause by all its
+        words."""
         words = cause.lower().split() if cause else []
         return [p for p in self.problems
                 if (area is None or p.get("area") == area) and (status is None or p.get("status") == status)
+                and (kind is None or p.get("kind") == kind)
                 and (owner is None or owner.lower() in str(p.get("owner", "")).lower())
                 and all(w in str(p.get("cause", "")).lower() for w in words)]
+
+    def wrong_filters(self, **given):
+        """The filters whose value is none of the schema's for that field: [(field, value, the allowed values)]."""
+        out = []
+        for field, value in given.items():
+            allowed = self.schema.get("properties", {}).get(field, {}).get("enum")
+            if value is not None and allowed and value not in allowed:
+                out.append((field, value, allowed))
+        return out
 
     def faults(self):
         return faults(self.problems, self.schema, self.root, lambda refs: git_refs_present(self.root, refs))

@@ -1,0 +1,110 @@
+{
+ "seconds": 13.1,
+ "links": 10761,
+ "callers": {
+  "pairs": 687,
+  "found": 0.0218,
+  "callers presented straight": 147,
+  "false": 0.9048,
+  "most missed methods": [
+   [
+    "undo",
+    63
+   ],
+   [
+    "build_road",
+    31
+   ],
+   [
+    "city_bounds",
+    29
+   ],
+   [
+    "traffic_probe",
+    24
+   ],
+   [
+    "list_buildings",
+    21
+   ],
+   [
+    "inspect",
+    20
+   ],
+   [
+    "shot_targets",
+    20
+   ],
+   [
+    "probe_building",
+    15
+   ],
+   [
+    "redo",
+    15
+   ],
+   [
+    "height_at",
+    14
+   ],
+   [
+    "strike",
+    14
+   ],
+   [
+    "end_stroke",
+    13
+   ]
+  ],
+  "some false callers": [
+   [
+    "city_store._route -> add_crossing",
+    1
+   ],
+   [
+    "city_store._route -> add_uturn",
+    1
+   ],
+   [
+    "city_store._route -> agent_cost",
+    1
+   ],
+   [
+    "city_store._route -> begin_stroke",
+    1
+   ],
+   [
+    "city_store._route -> bend_road",
+    1
+   ],
+   [
+    "city_store._route -> blast_probe",
+    1
+   ],
+   [
+    "city_store._route -> block_lines",
+    1
+   ],
+   [
+    "city_store._route -> build_blocks",
+    1
+   ],
+   [
+    "city_store._route -> build_road",
+    1
+   ],
+   [
+    "city_store._route -> build_road_path",
+    1
+   ],
+   [
+    "city_store._route -> building_chunk",
+    1
+   ],
+   [
+    "city_store._route -> building_cost",
+    1
+   ]
+  ]
+ }
+}

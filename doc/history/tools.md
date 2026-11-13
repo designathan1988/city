@@ -180,3 +180,20 @@ entry: when, the commit, the problems, the cause, the plan, the files created, c
 - **Registered**: the empty bench; atlas's dropped `--json` and unfiltered stats, unknown filters accepted, systems never paired.
 - **Checked**: tracer 145 tests OK in 65 s (134 before, 11 new in test_limits.py, the partial guard shown red then green);
   gates of every changed file clean but MEMORY_ON (Ptools-121); `port.py check` 1 pair OK; `port.py sheet roads` 53 s.
+
+## 2026-11-13: block t040-tool-defects, the tools say what they did (specification 003)
+
+- **Goal** (the owner): "resolva tudo o que está aberto": the defects t039 registered and its investigations found.
+- **atlas**: the common options defaulted after parsing (argparse's `parents` reuse the action objects and `set_defaults`
+  changed every subparser's default: Context7, Python docs), so `--json` and `--root` work wherever written (before, `--root X
+  problems ...` read the real register); filters outside the schema's enums refused (exit 2); `stats` of the filtered problems,
+  a cause found when the problem was added counted apart; `--kind`.
+- **inventory**: systems paired through the features they hold or use (inventory_systems.py, the cosine of their feature sets:
+  37 pairs, each with its score); every use of a key, in scripts and C++; an id pair only where the tables share a word (in the
+  singular); a file's own name before its folder (`traffic/ped_*` is people's); `--reference` to a missing folder refused.
+- **tracer bench**: three projects for this repository (paths placed by tasks.locations); the C++ oracle loads a libclang as
+  new as the toolchain (the binding's 18 read clang 23's libc++ wrong: 7671 errors) and reads the toolchain's configuration
+  files (Clang User's Manual, Configuration files), and refuses to answer with compiler errors; a project with no answer fails.
+  Measured: core recall 0.950, precision 0.9989 on 32222 calls (Ptools-126: the misses); reference 0.994/0.997; the scripts'
+  callers of the core found 2% (the next block: a callable made from a text, and the keys that select it).
+- **Closed**: Ptools-122 to Ptools-125. **Checked**: atlas 42 tests OK (7 new); gates clean; the bench's baselines recorded.

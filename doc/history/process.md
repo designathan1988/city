@@ -164,6 +164,7 @@ Appended by `python tools/tasks/cli.py block close` (FR-050: the time each step 
 | t007-people | 2026-11-13T03:44 | 2026-11-13T04:05 | 2026-11-13T04:05 | 21 | 0 |
 | t008-people | 2026-11-13T04:07 | 2026-11-13T11:06 | 2026-11-13T11:30 | 419 | 24 |
 | t039-port-tools | 2026-11-13T12:20 | 2026-11-13T12:35 | 2026-11-13T12:53 | 15 | 18 |
+| t040-tool-defects | 2026-11-13T12:59 | 2026-11-13T13:14 | 2026-11-13T13:16 | 15 | 2 |
 
 ## 2026-11-12: the audit of 2026-11-07 (log/review.md) folded into the register
 

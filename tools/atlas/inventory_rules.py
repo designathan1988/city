@@ -50,6 +50,11 @@ NOT_ALNUM = re.compile(r"[^0-9a-z]+")
 DESCRIPTION_CHARS = 240
 
 
+def singular(word):
+    """A word without the plural's last `s` (lamps, lamp; status stays): what two names compare when one says many."""
+    return word[:-1] if len(word) > 3 and word.endswith("s") and not word.endswith("ss") and not word.endswith("us") else word
+
+
 def words(text):
     """The lower-case words of a name, split on case, digits, underscores and any punctuation."""
     return [w.lower() for w in WORD.findall(text or "")]
@@ -67,10 +72,11 @@ def area_of(*places):
 
 
 def module_area(rel):
-    """A file's area: its deepest folder, then its own name, then the folders above (a generic folder names nothing)."""
+    """A file's area: the first word of its own name (a file says more of itself than its folder: `traffic/ped_steps` is
+    people's), then its deepest folder, then its whole name, then the folders above (a generic folder names nothing)."""
     parts = rel.replace("\\", "/").split("/")
     folders, stem = parts[:-1], parts[-1].split(".")[0]
-    return area_of(*(folders[-1:] + [stem] + folders[-2::-1]))
+    return area_of(*(words(stem)[:1] + folders[-1:] + [stem] + folders[-2::-1]))
 
 
 def language_file(stem):
@@ -120,11 +126,14 @@ def label_keys(type_name, member):
     return out + [member]
 
 
-def mark_uses(texts, first):
-    """Each text's first use (`first`: key -> path:line) as its `used` and its description."""
+def mark_uses(texts, uses):
+    """Each text's uses (`uses`: key -> [path:line], the first in each file, in the order read): `uses`, the first as
+    `used`, and its description; a key no literal names may still be composed as the program runs (`prefix.%s`)."""
     for f in texts:
-        f["used"] = first.get(f["name"], "")
-        f["description"] = f"first used at {f['used']}" if f["used"] else "no literal use of its key found in the code"
+        f["uses"] = list(uses.get(f["name"], ()))
+        f["used"] = f["uses"][0] if f["uses"] else ""
+        f["description"] = (f"used at {f['used']}" + (f" and in {len(f['uses']) - 1} more file(s)" if len(f["uses"]) > 1 else "")
+                            if f["used"] else "no literal use of its key in the code read (it may be composed as it runs)")
 
 
 def feature(game, area, kind, name, source, label="", description="", **extra):
