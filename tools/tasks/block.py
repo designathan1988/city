@@ -81,15 +81,37 @@ def tree(root: Path = ROOT) -> str | None:
     return seen.hexdigest()
 
 
-def failed(doc: dict) -> list[str]:
-    """The checks of this verification that failed (what a check stands on, a build, apart)."""
-    return sorted(n for n, status in (doc.get("runs") or {}).items() if status not in PASSED and n not in BUILDS)
+def registered(root: Path = ROOT) -> set[str]:
+    """The checks an open problem of the register says it closes on (the criterion of doc/problems.jsonl: "<check> passes"):
+    failing for a cause written down and owned, they do not hold a block, as a finding an open problem names does not fail the
+    gates. A check merely mentioned in a problem's story is not owned by it."""
+    path, names = Path(root) / "doc" / "problems.jsonl", set()
+    if not path.is_file():
+        return names
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if entry.get("status") in ("fixed", "dropped", "closed"):
+            continue
+        text = str(entry.get("criterion") or "")
+        names.update(re.findall(r"\b\w+_test\b", text))
+    return names
+
+
+def failed(doc: dict, root: Path = ROOT) -> list[str]:
+    """The checks of this verification that failed and hold the block: a build (what a check stands on) and a check an open
+    problem of the register names apart."""
+    known = registered(root)
+    return sorted(n for n, status in (doc.get("runs") or {}).items() if status not in PASSED and n not in BUILDS and n not in known)
 
 
 def _cause(doc: dict, cause: str | None, owner: str | None, root: Path) -> None:
     """A verification that failed opens again only with its cause: every failed check named, and a `file:line` that exists;
     past MAX_ROUNDS failed verifications only with the owner's word."""
-    broke = [n for n, status in (doc.get("runs") or {}).items() if status not in PASSED]
+    known = registered(root)
+    broke = [n for n, status in (doc.get("runs") or {}).items() if status not in PASSED and n not in known]
     if not broke:
         return
     said = cause or ""
@@ -102,7 +124,7 @@ def _cause(doc: dict, cause: str | None, owner: str | None, root: Path) -> None:
                          f"`block open --cause \"<check>: <file:line>: <what is wrong there and why>\"`, every failed check named "
                          f"({', '.join(missing) or 'all named'}) and a file:line that exists ({'none given' if not real else 'given'}). "
                          f"A guess is no cause: read the failing lines and the code they name first")
-    if failed(doc):
+    if failed(doc, root):
         doc["round"] = int(doc.get("round") or 0) + 1
     if doc["round"] > MAX_ROUNDS and not owner:
         raise BlockError(f"{doc['round']} verifications of '{doc['name']}' failed: more than {MAX_ROUNDS} is no fix, the design is "
@@ -141,8 +163,8 @@ def enter(target: str, name: str | None = None, root: Path = ROOT, cause: str | 
         _cause(doc, cause, owner, root)
         doc.update(state=OPEN, runs={})
     else:
-        if failed(doc):
-            raise BlockError(f"checks of this verification failed ({', '.join(failed(doc))}): a block closes on checks that pass")
+        if failed(doc, root):
+            raise BlockError(f"checks of this verification failed ({', '.join(failed(doc, root))}): a block closes on checks that pass")
         doc["state"] = target
     if target == CLOSED:
         _append_times(doc, root)
@@ -214,7 +236,7 @@ def main(argv: list[str]) -> int:
         doc = load(root)
         print(f"block {doc['state']}" + (f": {doc['name']} (opened {doc['opened']}, verified {doc['verified'] or '-'}; "
                                          f"failed verifications {doc.get('round') or 0} of {MAX_ROUNDS}; failed now: "
-                                         f"{', '.join(failed(doc)) or 'none'})" if doc["state"] != CLOSED else ""))
+                                         f"{', '.join(failed(doc, root)) or 'none'})" if doc["state"] != CLOSED else ""))
         return 0
     try:
         doc = enter(CLOSED if a.action == "close" else a.action, a.name, root, a.cause, a.owner)

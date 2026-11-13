@@ -124,6 +124,19 @@ class Brake(BlockCase):
         self.assertEqual(self.block("open", "--cause", "lane_test: a.txt:1: why"), 1, "past the rounds: the owner's word")
         self.assertEqual(self.block("open", "--cause", "lane_test: a.txt:1: why", "--owner", "go on"), 0)
 
+    def test_a_check_the_register_names_does_not_hold_the_block(self):
+        (self.root / "doc").mkdir(exist_ok=True)
+        (self.root / "doc" / "problems.jsonl").write_text(
+            json.dumps({"id": "P1", "status": "open", "title": "the camera jolts", "criterion": "camera_feel_test passes"}) + "\n"
+            + json.dumps({"id": "P2", "status": "open", "title": "a story", "symptom": "lane_test failed once"}) + "\n", encoding="utf-8")
+        self.block("open", "traffic")
+        self.block("verify")
+        block.record({"camera_feel_test": "FAIL"}, self.root)
+        self.assertEqual(self.block("close"), 0, "a failure the register owns is not this block's")
+        self.block("open", "traffic")
+        self.verify()
+        self.assertEqual(self.block("close"), 1, "a check a problem only mentions is not owned by it")
+
     def test_a_failed_build_names_its_cause_and_is_no_round(self):
         self.block("open", "traffic")
         self.block("verify")

@@ -5,12 +5,13 @@ its work file names (doc/work/<block>.md), what is uncommitted and the last comm
     python .claude/hooks/port_state.py            the state, as text (any time, by hand)
     python .claude/hooks/port_state.py hook       Claude Code's hook: the event's JSON on stdin, the state as
                                                   hookSpecificOutput.additionalContext on stdout (SessionStart: whole;
-                                                  UserPromptSubmit and SubagentStart: one line; PreToolUse of an
-                                                  edit: the game's code is not edited before a skill and Context7
-                                                  were used in the session, CLAUDE.md step 1)
+                                                  UserPromptSubmit and SubagentStart: one line; PreToolUse: the
+                                                  refusals of port_gate.py, and of everything but the hooks' own
+                                                  repair when that file does not load;
                                                   PostToolUse: when the work's note was not written for NOTE_SECONDS,
                                                   it asks for it, once per that time; PreCompact: what the summary
-                                                  of a compaction must keep)
+                                                  of a compaction must keep; Stop: refused once while a block is not
+                                                  closed and no run of its own is going)
 Nothing read may be lost to a compaction: the note doc/work/<name>.md is what survives one (CLAUDE.md), and this hook asks
 for it while the work goes, tells the summary to keep it, and gives it back whole after. The orders are CLAUDE.md's.
 """
@@ -25,7 +26,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from port_gate import CONTEXT7, block, gate  # noqa: E402  the hook's refusals (PreToolUse)
+try:
+    from port_gate import CONTEXT7, block, gate  # noqa: E402  the hook's refusals (PreToolUse)
+    FAULT = ""
+except Exception as fault:  # noqa: BLE001  a gate that does not load, whatever the reason, refuses all but its own repair
+    FAULT = f"{type(fault).__name__}: {fault}"
 
 BOARD = ROOT / "doc" / "port.md"
 WORK = ROOT / "doc" / "work"
@@ -178,16 +183,63 @@ def whole(source: str = "") -> str:
     return "\n".join(lines)
 
 
+def runs_live() -> bool:
+    """A run of the project's tools is still going (the orchestrator's own record)."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    try:
+        from tasks.runs import live_runs
+        return bool(live_runs(ROOT))
+    except (ImportError, OSError):
+        return False
+
+
+def unfinished(payload: dict) -> str:
+    """Why the session may not stop yet: a block that is not closed, with no run of its own still going. Nothing the second
+    time it is asked in a row (the session then says why it stops)."""
+    k = block()
+    if payload.get("stop_hook_active") or k["state"] not in ("open", "verify") or runs_live():
+        return ""
+    name = str(k.get("name"))
+    steps = work_next(name) if (WORK / f"{name}.md").is_file() else [f"doc/work/{name}.md is missing: write it"]
+    return (f"The block {name} is {k['state']}: its functionality is not delivered, and the owner does not accept work left on "
+            "the way nor a question about what to do next. Go on now with the next step of its note: " + " | ".join(steps)
+            + " Stop only when a third verification failed or when the owner alone can decide; then the first line of the "
+            "answer says which, with the proof.")
+
+
+def broken(event: str, payload: dict) -> int:
+    """The gate did not load: every tool call is refused but an edit of the hooks themselves, and every other event says so."""
+    said = (f"The hook's gate .claude/hooks/port_gate.py does not load ({FAULT}): nothing of CLAUDE.md is held by the tools. "
+            "Repair that file with Edit before anything else.")
+    if event == "PreToolUse":
+        path = str((payload.get("tool_input") or {}).get("file_path", "")).replace("\\", "/")
+        if "/.claude/hooks/" not in path:
+            sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": event, "permissionDecision": "deny",
+                                                                "permissionDecisionReason": said}}))
+    elif event in ("SessionStart", "UserPromptSubmit", "SubagentStart", "PostToolUse"):
+        sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": event, "additionalContext": said}}))
+    else:
+        print(said, file=sys.stderr)
+    return 0
+
+
 def main() -> int:
     if len(sys.argv) < 2:
-        print(whole())
-        return 0
+        print(FAULT and f"port_gate.py does not load: {FAULT}" or whole())
+        return 1 if FAULT else 0
     if sys.argv[1] != "hook":
         print(f"port_state.py: unknown argument '{sys.argv[1]}' (none, or 'hook')", file=sys.stderr)
         return 2
     raw = sys.stdin.buffer.read().decode("utf-8", errors="replace")
     payload = json.loads(raw) if raw.strip() else {}
     event = payload.get("hook_event_name", "")
+    if FAULT:
+        return broken(event, payload)
+    if event == "Stop":
+        held = unfinished(payload)
+        if held:
+            sys.stdout.write(json.dumps({"decision": "block", "reason": held}))
+        return 0
     if event == "PreToolUse":
         refusal = gate(payload)
         if refusal:

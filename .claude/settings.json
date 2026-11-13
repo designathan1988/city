@@ -47,7 +47,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell|Agent|Task",
         "hooks": [
           {
             "type": "command",
@@ -58,6 +58,17 @@
       }
     ],
     "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/port_state.py\" hook",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "Stop": [
       {
         "hooks": [
           {

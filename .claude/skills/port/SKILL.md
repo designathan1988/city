@@ -20,12 +20,17 @@ when_to_use: Invoke it before the first tool call of any port work and again aft
    `superpowers:systematic-debugging`, until the cause is a `file:line` you can state. Then
    `block open --cause "<check>: <file:line>: <why>"`, fix it in the code, `block verify`, run that check once.
    A guess, a "let me try", an added print "to see" is trial and error: it is what the owner forbids.
-4. **Two verifications may fail. A third stops the work**: tell the owner what failed and why each fix did not hold.
-5. **Your own knowledge is not a source.** Every API the code calls is asked of Context7 first; every value of the real
+4. **A process is seen as it runs.** A run of the project's tools is one command of its own, started with
+   `run_in_background: true`, never piped through grep, tail or head, never redirected, never joined to another command
+   (`&&`, `;`); watched with `python tools/tasks/cli.py status`; its output read when it ends. A file is changed with Edit or
+   Write and a script is a file written with Write into the scratchpad: no heredoc, no `sed -i`, no redirect into the
+   project. The hook refuses each of these; a refusal is obeyed, never worked round.
+5. **Two verifications may fail. A third stops the work**: tell the owner what failed and why each fix did not hold.
+6. **Your own knowledge is not a source.** Every API the code calls is asked of Context7 first; every value of the real
    world and every design decision is searched on the internet first, and the source's own sentence is what the data's
    `_doc` cites. A figure written from memory is a defect.
-6. **You do the reading.** No agent reads, traces or codes the port.
-7. **The note `doc/work/<area>.md` is written before the first line of code** and as each case is coded: the owner's orders
+7. **You do the reading.** No agent reads, traces or codes the port.
+8. **The note `doc/work/<area>.md` is written before the first line of code** and as each case is coded: the owner's orders
    in their words, facts with `file:line`, each case's design, what is done, what is left. After a compaction the work goes
    on from the note, never from memory.
 
@@ -64,3 +69,8 @@ when_to_use: Invoke it before the first tool call of any port work and again aft
 | "This case is too big, I'll leave it" | The functionality is whole. Say so to the owner before the block, not after. |
 | "I'll write the note later" | A compaction loses everything not in it. Write it now. |
 | "An agent can read this for me" | The owner forbade it. Read it. |
+| "A quick heredoc to patch this file" | It eats backslashes and broke the hook. Edit, or a script written with Write. |
+| "I'll pipe the run through grep to keep it short" | A muted run. Start it alone, in the background; read its output at the end. |
+| "Verify and run in one command" | Joined commands: one waits on the other and one result hides the other. One each. |
+| "The hook refused; another tool does the same" | A way round. The refusal is the owner's order: do what it says. |
+| "This is a good place to stop and report" | The block is not closed. Go on with the note's next step. |

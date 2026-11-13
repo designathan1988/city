@@ -78,6 +78,10 @@ tool call of any port work, and again after every compaction. What it says in st
 - Routine doubts are settled by the standard games' practice and the project's documents; the work does not stop to ask.
 - Processes show their output as they run and have a deadline; tests and captures run hidden through `tools/tasks`; one engine
   at a time; only your own processes stopped, by PID; `tools/build/free_dll.sh` frees the DLL the owner's open game holds.
+- A run of the project's tools is one command of its own, in the background, never piped, redirected or joined to another;
+  `python tools/tasks/cli.py status` shows it. A file is changed with Edit or Write and a script is a file written with Write:
+  nothing is typed into the shell as a heredoc, no file of the project is written by the shell. The hook refuses the rest
+  (`.claude/hooks/port_gate.py`, its tests `tools/tasks/tests/test_port_gate.py`); a refusal is obeyed, never worked round.
 - The port's tracing, reading and coding are the session's own work: no agent does them.
 - Work on `main`; commit and push per feature. The owner hears, in Portuguese, once the work is done: what was done, what
   failed, what is open, with proof.

@@ -1,7 +1,13 @@
-"""The hook's refusals (PreToolUse, called by port_state.py): what may not be done yet by CLAUDE.md. The game's code edited
-with no block open, or before the skill `port`, Context7 and the internet were used in the session; the engine or the compiler
-started outside the project's tools; a failed verification's cause named before the debugging skill was followed; a block's
-work committed before the verification skill was. What the session did is read from its transcript's own records."""
+"""The hook's refusals (PreToolUse, called by port_state.py): what may not be done, by CLAUDE.md, whatever the session thinks.
+
+A shell command (Bash, PowerShell): the engine or the compiler started outside the project's tools; a script or a file's text
+typed into the shell (a heredoc, a here-string); a file of the project changed by the shell instead of Edit or Write; a run of
+the project's tools muted (piped, redirected), joined to another command or kept in the foreground; a failed verification's
+cause named before the debugging skill was followed; a block's work committed before the verification skill was.
+An edit (Edit, Write): a Python or JSON file left unreadable by it; the game's code with no block open, or before the skill
+`port`, Context7 and the internet were used in the session.
+An agent: started while the port is in hand.
+What the session did is read from its transcript's own records."""
 
 import json
 import re
@@ -10,8 +16,30 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 BLOCK = ROOT / "dist" / "block" / "state.json"
 GAME_CODE = ("native/src/", "project/")      # what the edit gate holds
+SHELLS = ("Bash", "PowerShell")
+AGENTS = ("Agent", "Task")
+SOUND = (".py", ".json")                     # files an edit may not leave unreadable
+OWN = r"(?:\.claude|native[/\\]src|project|tools)[/\\]"   # the project's places a shell does not write into
+START = r"(?:^|[;&|(\n]\s*)"                 # where a command starts inside a command line
 # the engine, the compiler's driver or the build system started as a command of its own (not named inside another's arguments)
 ENGINE = re.compile(r"(?:^|[;&|(]\s*)(?:\"?[\w:/\\.-]*godot[\w.-]*\"?|ninja|cmake)(?:\s|$)", re.IGNORECASE)
+# a run of the project's tools, as a command of its own
+RUN = (START + r"(?:(?:python[\d.]*(?:\s+-\w+)*|bash|sh)\s+)?[\"']?[\w:./\\-]*"
+       r"(?:cli\.py[\"']?\s+run\b|build\.sh|km24\.py|hunt\.py|deliver\.sh|quick\.sh)")
+RUNS = re.compile(RUN)
+LISTED = re.compile(r"\s--list\b")           # a run that only names its tasks
+MUTED = re.compile(RUN + r"[^;&\n]*(?:\||>)")  # its output piped away or sent somewhere
+JOINED = re.compile(r"&&|\|\||;|\n")
+LEAD = re.compile(r"^\s*cd\s+[^;&|\n]+(?:&&|;)\s*")   # the one thing a run may follow: the folder it runs in
+# a script fed to an interpreter from the command line itself, or a file's text laid by a heredoc
+TYPED = re.compile(START + r"(?:python[\d.]*|py|node)\b[^\n;&|]*<<"
+                   r"|@['\"]\s*\r?\n[\s\S]*?\r?\n['\"]@\s*\|\s*(?:python[\d.]*|py|node)\b"
+                   r"|\b(?:cat|tee)\b[^\n;&|<]*>[^\n;&|<]*<<"
+                   r"|\b(?:cat|tee)\b\s*<<-?\s*['\"]?\w+['\"]?\s*>"
+                   r"|\btee\b[^\n;&|<]*<<", re.IGNORECASE)
+# a file of the project changed by the shell
+SHELL_WRITE = re.compile(r"(?:\bsed\s+(?:-\w+\s+)*-\w*i\w*|\bperl\s+-\w*i\w*|\btee|\bSet-Content|\bOut-File|\bAdd-Content)\b"
+                         r"[^;&|\n]*" + OWN + r"|>>?\s*[\"']?(?:[\w:./\\-]*[/\\])?" + OWN, re.IGNORECASE)
 CONTEXT7 = ("ToolSearch `select:mcp__plugin_context7_context7__resolve-library-id,"
             "mcp__plugin_context7_context7__query-docs`")
 
@@ -62,45 +90,113 @@ def deny(reason: str) -> dict:
     return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": reason}}
 
 
-def gate(payload: dict) -> dict | None:
-    """What may not be done yet (CLAUDE.md): the game's code edited with no block open, or before a skill, Context7 and the
-    internet were used in the session; a failed verification's cause named before the debugging skill was followed; a block's
-    work committed before the verification skill was. Nothing for anything else."""
-    did = used(payload.get("transcript_path", ""))
+def porting(did: dict) -> bool:
+    """The port is in hand: its block is not closed, or its skill was invoked in the session."""
+    return block()["state"] != "closed" or any(k == "port" or k.endswith(":port") for k in did.get("skills", ()))
+
+
+def shell(command: str, background: bool, did: dict) -> dict | None:
+    """What a shell command may not be."""
     skills = did.get("skills", set())
-    command = str((payload.get("tool_input") or {}).get("command", ""))
-    if payload.get("tool_name") == "Bash":
-        if ENGINE.search(command):
-            return deny("CLAUDE.md: the engine and the compiler are started only by the project's tools, which hold the block's "
-                        "rule (nothing runs while code is written, a failed check is not run again as it is): "
-                        "`python tools/tasks/cli.py run <task>`, `tools/build/build.sh core-windows`.")
-        if not did:
-            return None
-        if re.search(r"\bblock\s+open\b", command) and "--cause" in command and not any("systematic-debugging" in k for k in skills):
-            return deny("CLAUDE.md step 7: a failed check's cause is found by the skill superpowers:systematic-debugging (invoke it "
-                        "with the Skill tool and follow it: read the failing lines, the code they name, the evidence) before "
-                        "it is named at `block open --cause`. A guess is no cause.")
-        if re.search(r"\bgit\b[^|;&]*\bcommit\b", command) and block()["state"] == "verify" and not any(
-                "verification-before-completion" in k for k in skills):
-            return deny("CLAUDE.md step 8: before a block's work is committed, invoke superpowers:verification-before-completion "
-                        "with the Skill tool and follow it (each claim against the output of its check).")
+    if ENGINE.search(command):
+        return deny("CLAUDE.md: the engine and the compiler are started only by the project's tools, which hold the block's "
+                    "rule (nothing runs while code is written, a failed check is not run again as it is): "
+                    "`python tools/tasks/cli.py run <task>`, `tools/build/build.sh core-windows`.")
+    if TYPED.search(command):
+        return deny("A script or a file's text is never typed into the shell: a heredoc eats its backslashes and has broken "
+                    "this project's files (the hook itself among them). Write the script with the Write tool into the "
+                    "scratchpad and run it by its path; change a file with Edit.")
+    if SHELL_WRITE.search(command):
+        return deny("A file of the project is changed with Edit or Write, where the gates of an edit hold; never by sed -i, a "
+                    "redirect, tee or Set-Content from the shell.")
+    if RUNS.search(command) and not LISTED.search(command):
+        if MUTED.search(command):
+            return deny("CLAUDE.md, Working: a process shows its output as it runs. A run of the project's tools is never piped "
+                        "through grep, tail or head nor redirected: start it as it is, watch it with "
+                        "`python tools/tasks/cli.py status`, and read its output when it ends.")
+        if JOINED.search(LEAD.sub("", command).strip()):
+            return deny("One run, one command: a run of the project's tools is not joined to another command (&&, ;, a new "
+                        "line), so that none waits on another and each one's result is read by itself. Only `cd <folder> &&` "
+                        "may come before it.")
+        if not background:
+            return deny("A run of the project's tools is started with run_in_background: true: it never holds the session, "
+                        "its end is told to you, `python tools/tasks/cli.py status` shows it as it goes. Start it again so.")
+    if not did:
         return None
-    written = str((payload.get("tool_input") or {}).get("file_path", "")).replace("\\", "/")
+    if re.search(r"\bblock\s+open\b", command) and "--cause" in command and not any("systematic-debugging" in k for k in skills):
+        return deny("CLAUDE.md: a failed check's cause is found by the skill superpowers:systematic-debugging (invoke it "
+                    "with the Skill tool and follow it: read the failing lines, the code they name, the evidence) before "
+                    "it is named at `block open --cause`. A guess is no cause.")
+    if re.search(r"\bgit\b[^|;&]*\bcommit\b", command) and block()["state"] == "verify" and not any(
+            "verification-before-completion" in k for k in skills):
+        return deny("CLAUDE.md: before a block's work is committed, invoke superpowers:verification-before-completion "
+                    "with the Skill tool and follow it (each claim against the output of its check).")
+    return None
+
+
+def unreadable(path: str, text: str) -> str:
+    """Why a Python or JSON file's text cannot be read by its own reader; nothing when it can."""
+    try:
+        if path.endswith(".py"):
+            compile(text, path, "exec")
+        else:
+            json.loads(text)
+    except (SyntaxError, ValueError) as fault:
+        return f"{type(fault).__name__}: {fault}"
+    return ""
+
+
+def left_broken(tool: str, data: dict, path: str) -> str:
+    """Why this edit would leave a Python or JSON file unreadable; nothing when it would not, when the file was unreadable
+    before it, or when what the edit leaves cannot be told (the tool answers that itself)."""
+    if not path.endswith(SOUND):
+        return ""
+    file = Path(path)
+    try:
+        before = file.read_text(encoding="utf-8").replace("\r\n", "\n") if file.is_file() else None
+    except (OSError, UnicodeDecodeError):
+        return ""
+    if tool == "Write":
+        after = str(data.get("content", ""))
+    else:
+        old, new = str(data.get("old_string", "")).replace("\r\n", "\n"), str(data.get("new_string", "")).replace("\r\n", "\n")
+        if tool != "Edit" or before is None or not old or old not in before:
+            return ""
+        after = before.replace(old, new) if data.get("replace_all") else before.replace(old, new, 1)
+    if before is not None and unreadable(path, before):
+        return ""
+    return unreadable(path, after)
+
+
+def gate(payload: dict) -> dict | None:
+    """The refusal of a tool call, or nothing (the module's head names each)."""
+    tool = str(payload.get("tool_name", ""))
+    data = payload.get("tool_input") or {}
+    did = used(payload.get("transcript_path", ""))
+    if tool in SHELLS:
+        return shell(str(data.get("command", "")), bool(data.get("run_in_background")), did)
+    if tool in AGENTS:
+        return deny("CLAUDE.md: the session does its own work. No agent reads, traces or codes the port: do it yourself, "
+                    "with Read, the tracer and Edit.") if porting(did) else None
+    written = str(data.get("file_path", "")).replace("\\", "/")
+    fault = left_broken(tool, data, written)
+    if fault:
+        return deny(f"This edit would leave {written} unreadable ({fault}). Make the edit whole and right; nothing was written.")
     root = ROOT.as_posix()
     inside = written[len(root) + 1:] if written.lower().startswith(root.lower() + "/") else written
     if not inside.startswith(GAME_CODE):
         return None
     k = block()
     if k["state"] != "open":
-        return deny(f"CLAUDE.md step 6: the game's code is written only with its block open (the block is {k['state']}). "
+        return deny(f"CLAUDE.md: the game's code is written only with its block open (the block is {k['state']}). "
                     + ("A fix after a failed check: `python tools/tasks/cli.py block open --cause \"<check>: <file:line>: <why>\"`."
                        if k["state"] == "verify" else "`python tools/tasks/cli.py block open <area>` first."))
     if not did:
         return None
     owed = [what for what, done in (
         ("invoke the project's skill `port` with the Skill tool (the procedure: it is invoked again after every compaction)",
-         any(k == "port" or k.endswith(":port") for k in skills)),
+         any(k == "port" or k.endswith(":port") for k in did["skills"])),
         (f"load Context7 ({CONTEXT7}) and ask it (query-docs) about the APIs this code calls", did["docs"]),
         ("search the internet (WebSearch, WebFetch) for the design decision and for each value of the real world this code "
          "takes from a norm or a published method", did["web"])) if not done]
-    return deny("CLAUDE.md steps 1 and 5, before the game's code is edited: " + "; ".join(owed) + ". Then make this edit again.") if owed else None
+    return deny("CLAUDE.md, before the game's code is edited: " + "; ".join(owed) + ". Then make this edit again.") if owed else None
