@@ -162,6 +162,7 @@ Appended by `python tools/tasks/cli.py block close` (FR-050: the time each step 
 | t004-aim | 2026-11-13T03:28 | 2026-11-13T03:35 | 2026-11-13T03:37 | 7 | 2 |
 | t031-close-check | 2026-11-13T03:38 | 2026-11-13T03:42 | 2026-11-13T03:42 | 4 | 0 |
 | t007-people | 2026-11-13T03:44 | 2026-11-13T04:05 | 2026-11-13T04:05 | 21 | 0 |
+| t008-people | 2026-11-13T04:07 | 2026-11-13T11:06 | 2026-11-13T11:30 | 419 | 24 |
 
 ## 2026-11-12: the audit of 2026-11-07 (log/review.md) folded into the register
 
@@ -460,4 +461,37 @@ the residential ring (r > 350 m on the town map).
   with a pipe or a redirection to a file. A commit asks for a photo only when it carries the game's code (the staged files, and
   with `-a` the tracked files modified: `git diff --cached`, `git diff HEAD`). Its tests moved to `test_edit_guard.py`
   (`test_block_item.py` keeps the item gates); 36 tests pass.
+
+## 2026-11-13: the owner's orders only (constitution 2.0.0)
+
+- **The order**: the owner deleted CLAUDE.md, the hooks (`.claude/settings.json`) and the project's Claude folder, and said why: the
+  work does not do what was asked (port the old game right with the tracer, never copying, built in this game's architecture), tests
+  and measures ran while coding although the order is one look before the feature, research, the code, and the tests at the end;
+  the session dwelt for days on a minor feature while the main ones waited; CLAUDE.md and the skill restricted what was never
+  asked.
+- **What the record shows** (git log; this file; the block times above):
+  - The unit of checking was the item, one register problem, each with its build, test scenes, photo plan and commit (constitution
+    1.4.0 IV; the skill's section 7). One session made 80 builds and about 175 runs (above, 1.3.0's diagnosis); t008-people made
+    about 30 commits in 7 hours (419 minutes of coding in its row above) on items that took minutes to code each.
+  - The scope fed itself: a block was "every open problem of the area", every defect a photo showed was registered, and the next
+    item was taken from the register, so the photos of each casualty item made the next ones (Prender-262 to Prender-284,
+    Pwalkers-9 to Pwalkers-18 born inside the block). The area's own sheet put the casualties seventh of eight
+    (specification 003, sheets/people.md); no main system (T009 to T027) began.
+  - Research and records were required at full depth for every item ("every time, with no exception"; every file logged
+    `path: 1-N of N` with its hour; 3 distances x 4 azimuths x 3 elevations of photos, each cut in crops): fabric friction, knee
+    viscosity and rifle momentum were researched for the fallen bodies' details.
+  - The rules grew at each correction: constitution 1.0.0 to 1.4.0 in seven hours, a 190-line CLAUDE.md, a 200-line skill, an
+    edit guard, item gates and a close check; the guard checked the ceremony (CLAUDE.md read, the skill loaded, Context7, a web
+    search, the tracer, a photo opened) and never the order itself. Claude Code's own guidance (Context7 /websites/code_claude,
+    memory and best-practices pages): every line of CLAUDE.md weighs on every task; contradictory instructions are followed
+    arbitrarily.
+  - The inventory pairs texts, data keys and actions only: every reference system is "unpaired" in every area, so T008's "done
+    when the unpaired list holds only justified entries" could never be met (registered).
+- **Done**: the constitution rewritten from the owner's orders (2.0.0: the port by the tracer, one feature at a time with one look
+  before and the checks at its end, focus on the feature, the cause fixed, the architecture); CLAUDE.md regenerated from it; the
+  skill `city-method`, the edit guard, the item gates (`block_item.py`) and the close's record check (`block_method.py`) removed
+  with their tests; `block.py` keeps the owner's one rule (nothing runs while a feature is coded) and the block times; Phase 3 of
+  specification 003 reordered (roads, junctions and signals, traffic, zones, lots and growth, buildings, then the rest, the camera
+  last); T008 parked; the block t008-people closed and its work file kept whole as `doc/history/people.md`. `.claude/settings.json`
+  stays deleted, as the owner left it.
 

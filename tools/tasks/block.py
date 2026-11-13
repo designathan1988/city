@@ -1,22 +1,16 @@
-# The block rule's mechanism (CLAUDE.md, Method step 5): a block is coded whole with nothing run inside it, then verified once.
-# Its state is one file, dist/block/state.json, moved only by `enter` through MOVES: closed -> open (the code written, nothing run) ->
-# verify (the one verification and the close's operations run) -> open again (a failure fixed in the code) or closed.
-# `refusal` is the one answer every gatekeeper asks (the orchestrator's `run`, build.sh, deliver.sh, km24.py).
-# `close` refuses while the block's work file lacks the method's records (block_method.py), then appends the block's times to the
-# process history (FR-050). Run as a script by the build scripts, so it finds its package itself.
+# The block rule's mechanism (the constitution, principle III): a feature is coded whole with nothing run, then checked at its end.
+# Its state is one file, dist/block/state.json, moved only by `enter` through MOVES: closed -> open (the feature being coded, nothing
+# run) -> verify (its checks run) -> open again (a failure fixed in the code) or closed. `refusal` is the one answer every gatekeeper
+# asks (the orchestrator's `run` and `serve`, build.sh, deliver.sh, km24.py). `close` appends the block's times to the process
+# history, so the time each feature takes shows. Run as a script by the build scripts, so it finds its package itself.
 from __future__ import annotations
 
 import argparse
 import datetime
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
-
-if str(Path(__file__).resolve().parents[1]) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from tasks import block_item, block_method, proc  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 STATE = Path("dist/block/state.json")
@@ -54,48 +48,26 @@ def _save(doc: dict, root: Path) -> None:
     os.replace(part, path)
 
 
-def enter(target: str, name: str | None = None, root: Path = ROOT, item: str | None = None) -> dict:
-    """The one setter of the block's state: refused unless MOVES allows the move. The code of an item is opened (`item`: the block's
-    first, or the next after a verification) only when the item holds its reading, trace, research and failing red check
-    (block_item.py); opened again with no item, it is the same item's code after a failure."""
+def enter(target: str, name: str | None = None, root: Path = ROOT) -> dict:
+    """The one setter of the block's state: refused unless MOVES allows the move. A closed block opens with its name; a block in
+    verification opens again (a failure fixed in the code) under the name it has."""
     doc = load(root)
     if target not in MOVES.get(doc["state"], ()):
         raise BlockError(f"the block is {doc['state']}: it may move to {', '.join(MOVES.get(doc['state'], ())) or 'nothing'}, "
                          f"not to {target}")
-    if target == OPEN and (doc["state"] == CLOSED or item):
-        block_name = name if doc["state"] == CLOSED else doc["name"]
-        if not block_name:
+    if target == OPEN and doc["state"] == CLOSED:
+        if not name:
             raise BlockError("a block is opened with its name")
-        if not item:
-            raise BlockError("a block's code is opened for an item: --item <ID>, its `## Item` section in the work file")
-        missing = block_item.opening_gaps(Path(root), block_name, item)
-        if missing:
-            raise BlockError(f"item {item} is not ready for its code:\n  " + "\n  ".join(missing))
-        # the item's preparation began when the one before it went to its verification (the block's first: at the session's last
-        # compaction, the guard's own default); its code from now (edit_guard.py reads both)
-        prepared_from = doc.get("verified_utc") if doc["state"] == VERIFY else None
-        if doc["state"] == CLOSED:
-            doc = {"state": OPEN, "name": block_name, "opened": _now(), "verified": None, "head": _head(root)}
-        doc.update(state=OPEN, item=item, fails={}, item_from=prepared_from, item_opened=block_item.utc_now())
+        doc = {"state": OPEN, "name": name, "opened": _now(), "verified": None}
     elif target == VERIFY:
-        doc.update(state=VERIFY, verified=_now(), verified_utc=block_item.utc_now())
+        doc.update(state=VERIFY, verified=_now())
     else:
         doc["state"] = target
     if target == CLOSED:
-        missing = block_method.gaps(Path(root), doc)
-        if missing:
-            raise BlockError("the work file lacks the method's records:\n  " + "\n  ".join(missing))
         _append_times(doc, root)
         doc = {"state": CLOSED, "name": None, "opened": None, "verified": None, "last": doc["name"]}
     _save(doc, root)
     return doc
-
-
-def _head(root: Path) -> str | None:
-    """The commit the block opens on (what its close measures the changed code against); None outside a repository."""
-    done = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True,
-                          timeout=block_method.GIT_TIMEOUT_S, creationflags=proc.NO_WINDOW)
-    return done.stdout.strip() if done.returncode == 0 else None
 
 
 def _minutes(a: str | None, b: str | None) -> str:
@@ -127,28 +99,14 @@ def refusal(what: str, root: Path = ROOT) -> str | None:
     if doc["state"] != OPEN:
         return None
     return (f"refused: the block '{doc['name']}' is open (since {doc['opened']}): nothing is run, built, exported or committed "
-            f"while its code is written (CLAUDE.md, the block rule). `python tools/tasks/cli.py block verify` opens the one "
-            f"verification. Asked: {what}")
-
-
-def check_refusal(tasks: list[str], root: Path = ROOT) -> str | None:
-    """Why the checks `tasks` may not run again for the item under verification (block_item.run_refusal); None when they may."""
-    doc = load(root)
-    return block_item.run_refusal(Path(root), doc, tasks) if doc["state"] == VERIFY else None
-
-
-def record(results: dict[str, str], root: Path = ROOT) -> None:
-    """A verification's results (task: status) remembered for its item: what failed, with the causes and sources written then."""
-    doc = load(root)
-    if doc["state"] == VERIFY:
-        _save(block_item.remember(Path(root), doc, results), root)
+            f"while the feature is coded (the constitution, principle III). `python tools/tasks/cli.py block verify` starts its "
+            f"checks. Asked: {what}")
 
 
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="cli.py block", description="the block rule: open, verify, close, status, check")
     ap.add_argument("action", choices=(OPEN, VERIFY, "close", "status", "check"))
     ap.add_argument("name", nargs="?", help="the block's name (open); what is asked (check: run, build, export, commit)")
-    ap.add_argument("--item", help="open: the item whose code is opened (its `## Item` section in the work file)")
     ap.add_argument("--root", default=str(ROOT), help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
     root = Path(a.root)
@@ -159,12 +117,11 @@ def main(argv: list[str]) -> int:
         return 1 if why else 0
     if a.action == "status":
         doc = load(root)
-        print(f"block {doc['state']}" + (f": {doc['name']} (opened {doc['opened']}, verified {doc['verified'] or '-'}, item "
-                                         f"{doc.get('item') or '-'}, failing {sorted(doc.get('fails', {})) or '-'})"
+        print(f"block {doc['state']}" + (f": {doc['name']} (opened {doc['opened']}, verified {doc['verified'] or '-'})"
                                          if doc["state"] != CLOSED else ""))
         return 0
     try:
-        doc = enter(CLOSED if a.action == "close" else a.action, a.name, root, a.item)
+        doc = enter(CLOSED if a.action == "close" else a.action, a.name, root)
     except BlockError as e:
         print(f"refused: {e}", file=sys.stderr)
         return 1

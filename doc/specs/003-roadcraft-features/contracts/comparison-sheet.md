@@ -11,10 +11,10 @@ justified.
 
 ## Reference (read for behaviour; nothing copied)
 - Trace: `trace.py --feature <output> --root <files>` (its outputs and roots)
-- Read whole: <path>: 1-N of N, <hour>, what it does
+- Read: <path>, what it does
 - Outputs, conditions, cases, values (each file:line)
 - State it reads and writes; what sets it off
-- Cost (`--cost`): loops, growth, per-frame or per-change; faults never to bring (city-method 3 item 8 by name)
+- Cost (`--cost`): loops, growth, per-frame or per-change; faults never to bring (the constitution, principle II, by name)
 
 ## This game
 - The same, from its own trace and reading, or "absent"

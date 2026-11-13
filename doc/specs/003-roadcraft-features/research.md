@@ -132,9 +132,9 @@ only by area.
 ## R3. One feature's comparison sheet
 
 **Decision**: per feature, `python tools/tracer/trace.py --feature <output> --root <its files>` on each game, then each file the trace
-reached read whole (city-method section 3, item 4), written as a sheet in `doc/specs/003-roadcraft-features/sheets/<area>-<name>.md`
-(contract: contracts/comparison-sheet.md): the reference's outputs, conditions, cases, values with file:line, its costs (`--cost`) and
-faults (the list of city-method section 3, item 8), this game's same, the differences, the design here.
+reached read, written as a sheet in `doc/specs/003-roadcraft-features/sheets/<area>-<name>.md` (contract:
+contracts/comparison-sheet.md): the reference's outputs, conditions, cases, values with file:line, its costs (`--cost`) and faults (the
+constitution's list, principle II), this game's same, the differences, the design here.
 
 **Why**: the tracer reads, never runs; the sheet is the requirement; the reading prevents the trial and error this session did on the
 camera (six runs, each finding a cause the reading of `isoViewport.ts` would have given at once).
@@ -220,7 +220,7 @@ Skylines II's economy, lifepath and traffic pages opened and their sentences che
 
 ## R8. Making the method hold (skills, Context7, no trial and error)
 
-**Decision**: the block's close (`tools/tasks/block.py close`) refuses while the work file `doc/work/<block>.md` lacks, for each item:
-the reference read (its sheet or `Read` lines), the Context7 answers (`Research`: source, question, answer) for the APIs it calls, and
-the skills used (`Skills`: city-method, systematic-debugging when a check failed, verification-before-completion). A project tool, not
-a hook (the owner refused hooks).
+**Decision** (first): the block's close refused a work file without its reading, Context7 answers and skills (T031); an edit guard
+hook and item gates followed (constitution 1.3.0). **Superseded** (2026-11-13, constitution 2.0.0): those checks held ceremony, not
+the owner's order, and one session still ran 80 builds; the owner removed the hooks. The block keeps one rule, the owner's: nothing
+runs while a feature is coded; its checks come at its end.

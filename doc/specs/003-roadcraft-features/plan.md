@@ -46,10 +46,10 @@ The constitution is `.specify/memory/constitution.md` (CLAUDE.md generated from 
 
 | Gate (CLAUDE.md) | Met by |
 |---|---|
-| Read whole before code | each item's sheet lists every file read `path: 1-N of N` with the hour (city-method section 0, 3 item 4) |
-| Context7 before every implementation | each item's work file `Research` section; the block's close refuses without it (R8, T031) |
-| Trace both games before building | each feature's comparison sheet from the tracer on both (R3) |
-| One look, then code whole with nothing run | the per-item loop (quickstart step 2); the block tool refuses runs while open |
+| Trace both games before building | each feature's comparison sheet from the tracer on both, the files it reached read (R3) |
+| Context7 and the internet before the code | the feature's sheet names the APIs asked and the design's sources |
+| One look, then code whole with nothing run | the per-feature loop (quickstart step 2); the block tool refuses runs while open |
+| Main systems first, focus on the feature | Phase 3's order in tasks.md; a defect outside the feature goes to the register |
 | Checks under a minute, lines shown, deadlines | the orchestrator (live lines, no lock reservation, start deadlines: FR-012, done in 56926e1b); the two slow scenes fixed (R4, R5) |
 | Fix the cause, never a patch | each item names the design decision at fault with file:line in its sheet or work file |
 | Nothing of the reference copied | the copy scan per item; the text keys renamed and LAB_COPY extended to the text tables (FR-015) |
@@ -98,7 +98,7 @@ tools/
 ├── atlas/inventory*.py                       # done (R2)
 ├── tasks/{block.py, pool.py, ...}            # the close's method check (R8)
 └── gates/{gate_lab.py, lab_scan.py, rules.json}   # LAB_COPY over the text tables (FR-015)
-CLAUDE.md, .claude/skills/city-method/SKILL.md, doc/**                    # US6
+CLAUDE.md, .specify/memory/constitution.md, doc/**                        # US6
 ```
 
 **Structure Decision**: the existing layout; no new top-level folder. Comparison sheets live under the specification (documents
