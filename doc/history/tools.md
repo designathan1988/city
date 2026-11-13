@@ -59,3 +59,23 @@ entry: when, the commit, the problems, the cause, the plan, the files created, c
   byte for byte the original's (24,463 links, about 15 s); the whole gates against the register 161 findings, 0 NEW. The gaps
   a real trace showed are registered: Ptools-7 (nothing shown reaching a function handed as a bound callable), Ptools-8 (back
   from a command, every caller of the dispatcher whose text names no function kept), for the atlas (US4).
+
+## 2026-11-12 — the tracer's endless walk; the comments that named removed tools (block `pending-five`)
+
+- **Ptools-94**: `trace.py --list --root world/roadTypes.ts` (the reference) stopped with RecursionError. The file nests five deep,
+  so it was a cycle, not depth: the traceback repeats `value -> of_definition -> called -> given_back -> guard -> condition ->
+  value`. **Cause** (read in `tools/tracer/tracer/conditions.py`): `given_back` asked `guard(f, node, d)` for each return's
+  condition without its `depth` and `seen`, and `guard` and `chosen` weighed every test with `condition(f, test)` at depth 0 and an
+  empty `seen`; a return guarded by a call back into a function on the way began the walk again, so neither the depth ceiling
+  (`DEPTH`) nor `seen` ever stopped it. **Fix**: `guard` and `chosen` take the caller's `depth` and `seen` and hand them to every
+  `condition` and `value`; `given_back` passes its own. A top-level guard keeps depth 0 and an empty set, so what a start asks is
+  unchanged; a nested one now stops as the value around it does. The register's owner (the owner's other copy) moved to this
+  repository's `tools/tracer/tracer/conditions.py`.
+- **The tracer's cache**: `index.py:116` writes its saved analyses to `tools/tracer/.index`, while `.gitignore` ignored
+  `tools/tracer/tracer/.index/` (a folder nothing writes): the pattern now names the folder written.
+- **Ptools-95**: comments and `_doc`s that described a format by the script that wrote it (`cook_people.py`,
+  `cook_signatures.py`, `make_furniture.py`, `make_pole_parts.py`, `rider_poses.py`, the yard bench, the landscape capture, the
+  sampler). Each now says the format itself or where it is read (`people_asset.cpp` load order, the palette's fixed point, the
+  ragdoll's joint and part order, `signature_bodies.cpp`, `furniture.json`'s part shapes and options, CELESC E-313.0002 for the
+  pole), or that the tool left the tree and git keeps it before 18782f55; `lab.cpu.note` no longer points the player at a script.
+  Left as records: the register, the histories, `doc/research.md`, the dated survey in `doc/specification.md`.

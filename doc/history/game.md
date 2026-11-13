@@ -799,3 +799,39 @@ and the reason is given for each.
     closures by their maker's template, and objects by allocation site in the new core;
   - classes inside a function are now made per run.
   The open ones entered the register as Ptools-58 to Ptools-67. Ptools-68 records that two feature tracers stand in the tree.
+
+## 2026-11-12: the plates read in the player's language; the traffic style's keys of this game (block `pending-five`)
+
+- **Problems**: Pstreet-17 (the words before a street's name, "Rua", "Avenida", "Rodovia", Portuguese in
+  `street_furniture.json`), and with it, the same cause, the plates' own words in `streets.json` drawings (PARE, ESCOLA, Centro,
+  Rua, Informação, E) and the given names themselves; Ptraffic-84 (`traffic.json` styles keyed `drive_side`, `signal_plan`,
+  `signal_lenses`, the reference's names).
+- **Read**: `street_names.cpp/.h`, `furniture_loader.cpp`, `street_works.h`, `street_spots.cpp`, `street_signs.cpp`,
+  `sign_atlas.cpp/.h`, `project/render/sign_sheet.gd`, `save_street.cpp`, `save_blocks.cpp`, `save_format.h`, `edit_reduce.cpp`,
+  `journal_ops.cpp`, `city_gen.cpp`, `road_commands.cpp`, `street_commands.cpp`, `city_core_state_probe.cpp` (the state hash is the
+  save's bytes), `traffic_loader.cpp`, `traffic_params.h`, `parking_lanes.cpp`, `parking_sources.cpp`, the three schemas.
+  Traced side by side (`tools/tracer/trace.py --feature`): the reference's `nameFor` (`world/roads/streetNames.ts`) and this game's
+  `names_for` both write the name out as text when the street is named, the reference's prefixes hard-coded in Portuguese.
+- **Research**: Godot 4.7 `Object.tr` (context7, docs.godotengine.org class_object): returns the message unchanged when no
+  translation exists or `can_translate_messages()` is false; `Node.NOTIFICATION_TRANSLATION_CHANGED` comes when the locale changes
+  and on entering the tree.
+- **Cause** (Pstreet-17): `street_names.cpp` `pick` composed `prefix + " " + name` at naming time and the item, the save and the
+  atlas key kept that text; nothing between the data and the painter passed through the translations, and the word order was
+  fixed in code. **Fix**: the core keeps keys, never words. `StreetNamesDef` holds `form` and `forms` (translations with one
+  `%s`: "Rua %s" / "%s Street") and the names as keys; a `GivenName` (form, name, ordinal: `street_works.h`) is what
+  `names_for` gives (`street_names.cpp`), what a STREETNAME item and a `SignStand` carry beside the player's own `text`, what the
+  atlas keys a cell by and hands the painter (`sign_atlas.cpp take_pending`: five fields, then form, name, ordinal). The painter
+  (`project/render/sign_paper.gd _words_of`) shows the player's text as written, else `tr(form) % tr(name)`, else the drawing's
+  `words` key translated or its `number`; `sign_sheet.gd` repaints every cell on `NOTIFICATION_TRANSLATION_CHANGED`. The words
+  live in `project/data/i18n/strings_world.csv`; the schemas require keys (`street\.form\.`, `street\.name\.`, `sign\.words\.`).
+  The save holds the given name (version 10, `GIVEN_NAME_SAVE_VERSION`: an older file's names stay as the text they were written
+  in). Why it does not come back: no text of a plate is composed before the painter, and the schemas refuse a word where a key
+  goes; `road_commands_test` checks every key of both filled styles is translated and every form has one place.
+- **Cause** (Ptraffic-84): the keys were named after the reference; two were read by nothing. **Fix**: `traffic_hand` (data, schema,
+  `TrafficParams::traffic_hand`, its two readers); `signal_lenses` and `signal_plan` removed with their schema entries.
+- **Files**: changed the ones read above plus `furniture_types.h`, `street_furniture.json`, `streets.json`, `traffic.json`,
+  `data_tables.gd` (the new table), `road_commands_test.gd`, `doc/map.md`; created `project/data/i18n/strings_world.csv` (+ its
+  `.import`) and `project/render/sign_paper.gd` (the plate drawing, split from `sign_sheet.gd` by responsibility: the sheets'
+  layers and rounds, the drawing of a batch).
+- **Moved on purpose**: the city digest's whole hash (the save's bytes: version 10 and three fields a street item) while every
+  derived hash (grades, graph, heights, lots) and the fleet's stayed equal; the golden written again for that reason.

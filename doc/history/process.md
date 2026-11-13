@@ -152,6 +152,8 @@ Appended by `python tools/tasks/cli.py block close` (FR-050: the time each step 
 | US1-mechanism-check | 2026-11-12T15:47 | 2026-11-12T15:47 | 2026-11-12T15:47 | 0 | 0 |
 | US2 | 2026-11-12T15:50 | 2026-11-12T16:47 | 2026-11-12T16:50 | 57 | 3 |
 | tracer | 2026-11-12T16:51 | 2026-11-12T17:00 | 2026-11-12T17:01 | 9 | 1 |
+| US3 | 2026-11-12T17:03 | 2026-11-12T17:16 | 2026-11-12T22:59 | 13 | 343 |
+| pending-five | 2026-11-12T23:04 | 2026-11-12T23:32 | 2026-11-12T23:43 | 28 | 11 |
 
 ## 2026-11-12: the audit of 2026-11-07 (log/review.md) folded into the register
 
@@ -306,6 +308,20 @@ through `tools/tasks/proc.run(..., hidden=True)`; `--fixed-fps 30` (not Movie Ma
 samples poses at the steady clock less `pose_delay_ticks`); frames grabbed on `RenderingServer.frame_post_draw`, written raw as
 rgb24 and assembled by ffmpeg (xfade, drawtext); the hidden window is 1920x1061, cropped to 16:9 and scaled to 1080p; low shots in
 the residential ring (r > 350 m on the town map).
+
+## 2026-11-12: block `pending-five` (Pprocess-17, Ptools-94, Ptools-95, Pstreet-17, Ptraffic-84)
+
+- **Before it**: the block US3 stood in `verify` since 17:16, never closed; it was closed (its row above, 343 minutes of
+  "verifying" that were no verification) so this block could open.
+- **Pprocess-17**: the consolidation commit was never built nor run whole. This block built both DLLs, ran `quick.sh --ready` and
+  the whole gates against the register. The whole run found what the per-file runs had not: `project/tests/hunt/hunt.gd` read
+  `traffic.json` by itself (DATA_ONE_READER), now through `DataTables.catalog_table`.
+- **What went wrong in the method, said plainly**: the code was written whole first, but runs were made where reading was owed:
+  the tracer was run to reproduce Ptools-94 and to trace the street names, and a gate was run on two files, all before the code.
+  Then the first verification found six findings that reading the gates' rules before writing would have shown: the 600-line CSV
+  and 250-line script limits, two names the reference defines (`read_records`, `CELL_RECT`), a Portuguese word in a comment, and a
+  short name in backticks the map gate reads as a path. Each cost another round of open, fix, verify (three verifications in all),
+  and the owner stopped the third, rightly: the gates' rules are read before the code, as the code is.
 
 ## 2026-11-12: two contract texts brought back to CLAUDE.md (Ptools-96, Ptools-97 registered)
 

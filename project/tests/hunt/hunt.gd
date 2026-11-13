@@ -55,7 +55,6 @@ const OWNERS := {
 	"other": ["state not classed", "native/src/sim/traffic"],
 }
 
-const TRAFFIC := "res://data/catalog/traffic.json"
 const CLASS_LENGTH := 6 # a class row's length (traffic.json _classes_doc)
 
 var _out := ""
@@ -70,7 +69,7 @@ func _ready() -> void:
 	if not boot():
 		finish()
 		return
-	for row: Array in JSON.parse_string(FileAccess.get_file_as_string(TRAFFIC)).classes:
+	for row: Array in DataTables.catalog_table("traffic").classes: # data is read by its one reader
 		_lengths.append(float(row[CLASS_LENGTH]))
 	new_map(TOWN_MAP, SEED, true)
 	Settings.attach(world, get_viewport())
