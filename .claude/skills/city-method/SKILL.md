@@ -5,12 +5,13 @@ description: Use at the start of every task in the City project (C:\Users\Jonath
 
 # City method: the checklist
 
-CLAUDE.md holds the orders; this is the order to do them in. Do each step; a step skipped because the case looks small, or
+The constitution (`.specify/memory/constitution.md`, and `CLAUDE.md` generated from it) holds the orders; this is the order to
+do them in. Do each step; a step skipped because the case looks small, or
 because the owner is in a hurry, is a step skipped. The goal behind every step: the cause fixed, never the effect.
 
 ## 0. Memory (now, and after every compaction)
 - `python tools/tasks/cli.py block status`; read every file in `doc/work/` whole; go on from your file's `Next:` line.
-- New task: write `doc/work/<block>.md` first: the owner's goal in his words (English), `State:`, `Next:`, then sections Read,
+- New task: write `doc/work/<block>.md` first: the owner's goal in the owner's words (English), `State:`, `Next:`, then sections Read,
   Research, Trace, Look, Plan, Changed, Checks, Photos. Update it after every step and before every long command. Each file
   enters Read the moment its reading ends: `path: 1-N of N`, the hour, what it does (rules, cases, values with `file:line`)
   and its faults; after a compaction this section, not the summary, says what was read and learnt.
@@ -148,7 +149,7 @@ nothing near it broke: the test scenes it reaches, one by one (`python tools/tas
 its build, import and script check come from the cache when unchanged; `run tests --list` names them), and its photos (a
 `looks` item of only the shots that prove the item, about 15 s, analysed as in 8). A pass: the item's commit and its push to `origin/main` (the owner's order: regularly, never only at the end), then
 `block open <block>` and the next
-item; a failure: fixed in code first. At the block's end, the suites of what the whole block reaches (CLAUDE.md's table):
+item; a failure: fixed in code first. At the block's end, the suites of what the whole block reaches (the constitution's method, step 6):
 tools (their tests, `run_gates.py --file` on each changed file), GDScript/data (the test scenes it reaches,
 `python tools/tasks/cli.py run <task>`, and the gates of the changed files), C++ (both DLLs, `build.sh core-windows`, and the
 scenes it reaches), what the player sees (the photos of the change, 8). A check that takes minutes is a defect of its tool,
@@ -185,11 +186,12 @@ errors in a pass are a failure. A failure: `superpowers:systematic-debugging`, f
 
 ## 9. Close
 `superpowers:verification-before-completion`, then `python tools/tasks/cli.py block close`; the area's history from the memory
-file, then remove the memory file; a commit per theme with only this block's files; one push to `origin/main`;
-`tools/build/deliver.sh export` when the game changed; the report to the owner in Portuguese: done, failed, open, with proof.
+file, then remove the memory file; the close's commit with only this block's files (each item was committed and pushed as it
+passed) and the last push to `origin/main`; `tools/build/deliver.sh export` when the game changed; the report to the owner in Portuguese: done, failed, open, with proof.
 
 ## Skills
 Invoke with the Skill tool: `city-method` (start, compaction), `superpowers:systematic-debugging` (a failure),
-`superpowers:verification-before-completion` (before any "done"), `speckit-*` (a specification), `update-config` (settings),
-and any skill whose subject is the step in hand. A skill's step that clashes with this method (a test before the block is
+`superpowers:verification-before-completion` (before any "done"), every `speckit-*` skill in its order (a specification),
+`elements-of-style:writing-clearly-and-concisely` (documents), `update-config` (settings), the LSP tool (C++), and any skill whose
+subject is the step in hand. A skill's step that clashes with this method (a test before the block is
 whole, a question to the owner, a worktree) is skipped; the rest of the skill is used.

@@ -1,7 +1,7 @@
 # Map of the code, file by file
 
 A file created or deleted enters here in the same commit: the gate `MAP_OUTDATED` checks it. The structure by folder, the
-threads and the whole command list follow the map; the rules are CLAUDE.md's.
+threads and the whole command list follow the map; the rules are the constitution's (`.specify/memory/constitution.md`).
 
 <!-- MAP:START -->
 **Root and tools**
@@ -608,17 +608,19 @@ threads and the whole command list follow the map; the rules are CLAUDE.md's.
 - `tools/tasks/files.py` · `tools/tasks/ledger.py` — the file primitives the writers share (a temporary name, a text written whole, a removal, a size); the task store's bound kept on every write (each entry added to its ledger, the least recently used evicted past the bound, a hit marking its entry used)
 - `tools/tasks/outputs.py` · `tools/tasks/lifecycle.py` · `tools/tasks/clean.py` · `tools/tasks/tests/test_lifecycle.py` — the bounds of what the work writes under dist/ (`tools/tasks/suites.json` lifecycle), their one reader; every worktree, sibling copy, nested repository, branch and stash with its class and age, failing when one is older than its work (`cli.py worktrees [--all]`); every output folder held to its bound now and what no one declared listed or removed (`cli.py clean [--dry-run] [--unowned] [--only DIR]`); their tests
 - `tools/gates/tests/test_register_join.py` — the gates against the register: a finding an open problem names is registered, any other NEW, nothing filtered
-- `CLAUDE.md` — the project's only source of instructions: the authority, the method, the orders, the rules, the commands
+- `.specify/memory/constitution.md` — the constitution, the project's only source of orders (principles I-X, the method, the image protocol, the tracer, the commands, governance and its version)
+- `CLAUDE.md` — generated from the constitution for Claude Code: the same orders in its words, naming the version it was generated from (the gate CLAUDE_MD holds both together)
+- `.specify/**` — Spec Kit's project files (version 1.4.0, PowerShell scripts): its templates, scripts, workflows and integration records, and its feature record naming the specification in hand under `doc/specs/`
 - `.claude/settings.json` — the project's Claude Code settings (auto memory off, the fixtures' instruction files excluded)
-- `.claude/agents/worker.md` — the project's agent: every tool, does whatever its brief orders by CLAUDE.md's method
-- `.claude/skills/city-method/SKILL.md` — the skill `city-method`: CLAUDE.md's method as the checklist a session follows step by step (the work's memory, reading whole, Context7, the trace, the block, the verification, the photos, the close)
+- `.claude/agents/worker.md` — the project's agent: every tool, does whatever its brief orders by the constitution's method
+- `.claude/skills/city-method/SKILL.md` — the skill `city-method`: the constitution's method as the checklist a session follows step by step (the work's memory, reading whole, Context7, the trace, the block, the verification, the photos, the close)
 - `doc/work/**` — the work's memory, one file a block (goal, files read, research, plan, changes, checks, next step), folded into the area's history at the close and removed
 - `tools/atlas/tests/**` — the atlas's tests and their fixture register
 - `doc/problems.jsonl` · `doc/problems.md` — the one register of every known problem of the game and the project (one JSON object a line, schema `tools/gates/schemas/problem.schema.json`) and its generated view
 - `doc/history/tools.md` · `doc/history/process.md` · `doc/history/game.md` · `doc/history/performance.md` · `doc/history/architecture.md` — one history per area of work: the tools; the process (the method, the triage and cleanup, the progress of a specification, the time each step takes); the game's work, session by session; the performance fixes measured in the 24 km city; the architecture's line
 <!-- MAP:END -->
 
-## The project's structure (reference; the rules are CLAUDE.md's)
+## The project's structure (reference; the rules are the constitution's)
 
 `C:\Users\Jonathan\Desktop\city` is the whole project.
 
@@ -659,9 +661,9 @@ threads and the whole command list follow the map; the rules are CLAUDE.md's.
   suite ran.
 - Left with specification 001 on 2026-11-12 (history under the archive tags below): converter/, process/, ports/, oracle-4.0/.
 
-**Others:** `dist/` (builds, captures and logs, out of git), `doc/` (every document of the project, CLAUDE.md aside).
+**Others:** `dist/` (builds, captures and logs, out of git), `doc/` (every document of the project, the constitution and CLAUDE.md aside).
 
-## Data flow, threads, light and state machines (reference; each rule is in CLAUDE.md with its tag)
+## Data flow, threads, light and state machines (reference; each rule is in the constitution, principle VIII)
 
 - `DataTables` reads `data/**` → `CityStore.boot` sends the catalogue to the `CityCore`, which refuses a missing key.
 - `Simulation` runs on its own thread with a fixed tick (`sim_tick_hz`), under the shared `map_mutex` and `traffic_mutex`;

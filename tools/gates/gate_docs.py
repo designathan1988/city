@@ -1,6 +1,7 @@
-"""Memory gates: the map file lists every source file and no file that no longer exists; CLAUDE.md stays short and is the only
-source of instructions (PRECEDENCE_CLAIM, NESTED_CLAUDE, MEMORY_ON: CLAUDE.md, the authority rule); known problems are kept in
-the register alone (PROBLEMS_ELSEWHERE: CLAUDE.md, the records rule)."""
+"""Memory gates: the map file lists every source file and no file that no longer exists; CLAUDE.md stays short, is generated
+from the constitution (it names the constitution's version) and with it is the only source of instructions (PRECEDENCE_CLAIM,
+NESTED_CLAUDE, MEMORY_ON: the constitution, principle I); known problems are kept in the register alone (PROBLEMS_ELSEWHERE:
+principle II)."""
 import json
 import os
 import re
@@ -13,6 +14,10 @@ from tasks import inputs as tree  # noqa: E402  the one owner of path globs
 
 GENERATED = (".uid", ".import", ".translation")  # Godot sidecars and import outputs: they belong to their source file
 CLAUDE_MD = "CLAUDE.md"
+CONSTITUTION = ".specify/memory/constitution.md"  # the project's only source of orders; CLAUDE.md is generated from it
+ORDER_SOURCES = (CLAUDE_MD, CONSTITUTION)
+CONSTITUTION_VERSION = re.compile(r"\*\*Version\*\*:\s*(\d+\.\d+\.\d+)")
+GENERATED_FROM = re.compile(r"`\.specify/memory/constitution\.md`\s*\(version\s*(\d+\.\d+\.\d+)\)")
 SETTINGS = ".claude/settings.json"
 INSTRUCTION_NAMES = ("CLAUDE.md", "CLAUDE.local.md")  # the files Claude Code loads as instructions wherever they stand
 RULES_DIR = ".claude/rules/"  # path-scoped rules, instructions too (Claude Code's memory documentation)
@@ -38,7 +43,23 @@ def mapped(f, rules):
 
 
 def inputs(ctx, path):
-    return path in ("CLAUDE.md", ctx.rules["map_file"]) or (path in ctx.file_set and mapped(path, ctx.rules))
+    return path in (*ORDER_SOURCES, ctx.rules["map_file"]) or (path in ctx.file_set and mapped(path, ctx.rules))
+
+
+def check_generated_from(ctx, err):
+    """CLAUDE.md is generated from the constitution: it names the constitution's path and the version it was generated from,
+    and that version is the constitution's own (an amendment regenerates CLAUDE.md in the same commit)."""
+    if CONSTITUTION not in ctx.listed_set:
+        err("CLAUDE_MD", CONSTITUTION, "file missing: the constitution is the project's only source of orders")
+        return
+    own = CONSTITUTION_VERSION.search(ctx.source(CONSTITUTION).text)
+    named = GENERATED_FROM.search(ctx.source(CLAUDE_MD).text)
+    if own is None:
+        err("CLAUDE_MD", CONSTITUTION, "no '**Version**: X.Y.Z' line")
+    elif named is None:
+        err("CLAUDE_MD", CLAUDE_MD, f"does not say it is generated from `{CONSTITUTION}` (version X.Y.Z)")
+    elif named.group(1) != own.group(1):
+        err("CLAUDE_MD", CLAUDE_MD, f"generated from version {named.group(1)}, the constitution is {own.group(1)}: regenerate it")
 
 
 def check_claude_md(ctx, err):
@@ -68,6 +89,7 @@ def check_claude_md(ctx, err):
     limit = rules["claude_md_max_lines"]
     if lines > limit:
         err("CLAUDE_MD", "CLAUDE.md", f"{lines} lines: keep it concise (up to {limit}); the detail goes to doc/")
+    check_generated_from(ctx, err)
 
 
 def memory_folder(root):
@@ -116,27 +138,29 @@ def _text(ctx, path):
 
 
 def check_instructions(ctx, err):
-    """CLAUDE.md is the only source of instructions: no precedence claim anywhere else (a citation in quotes or backticks is no
-    claim), no other instruction file Claude Code would load, auto memory off and no note left in it."""
+    """The constitution and CLAUDE.md (generated from it) are the only source of instructions: no precedence claim anywhere
+    else (a citation in quotes or backticks is no claim), no other instruction file Claude Code would load, auto memory off and
+    no note left in it."""
     settings = _settings(ctx)
     for path in sorted(p for p in ctx.listed if _scanned(ctx, p)):
         name = os.path.basename(path)
         if path != CLAUDE_MD and (name in INSTRUCTION_NAMES or path.startswith(RULES_DIR)) and not _excluded(ctx, path, settings):
-            err("NESTED_CLAUDE", path, "an instruction file other than the root's CLAUDE.md: its orders belong in CLAUDE.md")
-        if path == CLAUDE_MD:
+            err("NESTED_CLAUDE", path, "an instruction file other than the root's CLAUDE.md: its orders belong in the "
+                                       "constitution")
+        if path in ORDER_SOURCES:
             continue
         for n, line in enumerate(_text(ctx, path).splitlines(), 1):
             bare = QUOTED.sub(" ", line)
             if CLAIM.search(bare):
-                err("PRECEDENCE_CLAIM", f"{path}:{n}", "a claim of precedence outside CLAUDE.md: only CLAUDE.md states what "
-                                                       "wins (a citation of one is written in quotes)")
+                err("PRECEDENCE_CLAIM", f"{path}:{n}", "a claim of precedence outside the constitution and CLAUDE.md: only "
+                                                       "they state what wins (a citation of one is written in quotes)")
     if settings is None or settings.get("autoMemoryEnabled") is not False:
         err("MEMORY_ON", SETTINGS, "auto memory must be off for this project (autoMemoryEnabled false)")
     folder = memory_folder(ctx.root)
     notes = sorted(n for n in os.listdir(folder) if n.endswith(".md")) if os.path.isdir(folder) else []
     if notes:
         err("MEMORY_ON", folder.replace("\\", "/"), f"{len(notes)} note(s) left in the project's memory folder: their orders "
-                                                    "belong in CLAUDE.md, their facts in the documents")
+                                                    "belong in the constitution, their facts in the documents")
 
 
 def problems_inputs(ctx, path):
