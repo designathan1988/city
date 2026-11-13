@@ -1,7 +1,6 @@
 # people: how people are drawn (the body, its levels, the far card)
 
-- State: drafted (the reference read whole; to read whole here: native/src/render/agents/people_asset.cpp, body_renderer.cpp,
-  project/render/shaders/people_look.gdshaderinc, people_skin.gdshaderinc)
+- State: read (both games' files read whole; body_renderer.cpp, the fallen's drawing, is people-casualties')
 - Inventory rows: r2809 `cookedLoad`, r2810 `cookedPerson`, r2811-r2816 `VERTEX_LAYOUT/*`, r2826 `lodPool`, r2827 `lodWorker`, r2828
   `paletteTargets`, r2829 `personImpostor`, r2830 `personMaterial` | this game: people_asset.h/.cpp, people_renderer.cpp,
   people_levels.cpp, body_renderer.cpp, people.gdshader, people_far.gdshader, people_blob.gdshader
@@ -24,15 +23,27 @@
   shadows' reach, a card under the card's pixels on the frame's lens, a blob under the far ones, a hold at a level's edge so it does
   not flicker; the card a translation of the reference's impostor shader (registered).
 
+- Also read whole: native/src/render/agents/people_asset.cpp 1-315 of 315 (people.bin read and checked end to end: clips, card,
+  variations, their levels' meshes with float attributes, the palette as 16-bit fixed point in RGBA8 pairs, the face table, the
+  ragdoll's joints; the atlases DXT5 with mips); project/render/shaders/people_look.gdshaderinc 1-118 of 118 (the light: the copy
+  registered), people_skin.gdshaderinc 1-29 of 29 (the four-bone blend from the palette rows); body_renderer.cpp 1-234 of 234.
+
 ## Differences
+- The reference quantises a body's vertex to 26 bytes (KHR_mesh_quantization, cookedPerson.ts:20-33); this game's meshes are made
+  of float attributes (people_asset.cpp:54-114): to measure against the budgets and compress (the engine's compressed vertex
+  attributes, read in Context7 first), part of the drawing item of T008.
 - Paired by behaviour: the levels by distance, the far card by yaw view, nothing cast far off, the cooked bodies (people.bin, all
   bodies in one file, a palette texture of every clip).
 - lodPool and lodWorker belong to the vehicles' drawing (their own comment): justified here, the vehicles area's.
 - A copy where a port was due: the far card's shader.
 
-## Design here (to finish after the remaining reading)
-- The far card rebuilt from the impostor literature with its source cited (T008), in this game's design; the copy scan over shaders
-  first (T024).
+## Design here (T008, after the copy scan reads shaders, T024)
+- The far card rebuilt from the impostor literature (yaw-strip or octahedral impostors, the source researched and cited), in this
+  game's design. Owner: project/render/shaders/people_far.gdshader.
+- The people's light rebuilt from published models with their sources (wrap or pre-integrated skin scattering; Kajiya-Kay or
+  Marschner hair) and values measured for this game. Owner: project/render/shaders/people_look.gdshaderinc.
+- The bodies' vertex attributes compressed by the engine's own compression, measured on km24's crowd. Owner:
+  native/src/render/agents/people_asset.cpp.
 
 ## Proof
 - Photos of a crowd from near to far across the level changes and the card (setViewNear walker at 40, 12, 3 px a metre), no pop or
