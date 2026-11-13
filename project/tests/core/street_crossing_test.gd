@@ -1,6 +1,6 @@
 ## The street's two gestures of the Inspector, seen working in traffic: a car gives way to who is on a zebra between junctions and never reaches them (a
 ## scene of its own: a street, a zebra, somebody bound for the other sidewalk and a car coming while they are on it), and a car turns back through the
-## opening of a median. Run: godot --path project res://tests/core/street_crossing_test.tscn -- --no-flow
+## opening of a median; and nobody walks along or across a highway. Run: godot --path project res://tests/core/street_crossing_test.tscn -- --no-flow
 extends TestCase
 
 const TOWN_MAP := 0
@@ -25,6 +25,8 @@ const HOLD_CROSSING := 8 # lane_graph_types.h Hold::CROSSING
 const SIDEWALK := 0 # ped_state.h PedMode::SIDEWALK
 const EVERYBODY := 1.0 # the Optimisations tab's share of the fleet and the walkers: all of them again after the scene
 const NO_CAR := -1
+const BARRED_SAMPLES := 300 # looks at the walkers, TICKS apart: twenty seconds of the clock
+const HIGHWAY_HALF_M := 250.0 # the expressway laid through the town's middle, over its streets
 
 func _ready() -> void:
 	if not boot():
@@ -34,7 +36,32 @@ func _ready() -> void:
 	new_map(TOWN_MAP, SEED, true)
 	ticks(WARM_TICKS)
 	_openings()
+	_off_highways()
 	finish()
+
+
+## Nobody walks along a highway or a ramp, nor crosses one at grade (the Brazilian traffic code, annex I): an expressway laid through the
+## town at grade, over its streets, and the town's walkers watched while its traffic runs.
+func _off_highways() -> void:
+	var expressway := -1
+	for p: Dictionary in CityStore.query(&"road_profiles"):
+		if String(p.id) == "expressway":
+			expressway = int(p.index)
+	var built: Dictionary = CityStore.dispatch(&"build_road", [Vector3(-HIGHWAY_HALF_M, 0, 0), Vector3(HIGHWAY_HALF_M, 0, 0), false, Vector3.ZERO, expressway, PX])
+	if not check(expressway >= 0 and built.get("ok", false), "an expressway laid across the town (%s)" % built):
+		return
+	ticks(WARM_TICKS)
+	var worst := 0
+	var walking := 0
+	var closed := 0
+	for i in BARRED_SAMPLES:
+		ticks(TICKS)
+		var probe: Dictionary = CityStore.query(&"traffic_probe", [0])
+		worst = maxi(worst, int(probe.walkers_barred))
+		walking = maxi(walking, int(probe.walking))
+		closed = int(probe.closed_roads)
+	check(closed > 0 and walking > 0, "the town has highways (%d pieces) and walkers (%d at most)" % [closed, walking])
+	check(worst == 0, "no walker along a highway or over one: %d at worst in %d looks" % [worst, BARRED_SAMPLES])
 
 
 func _middle_of(at: Vector3) -> Variant:

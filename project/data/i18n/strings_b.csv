@@ -241,6 +241,7 @@ profile.problem.footways,"A via precisa de uma calçada em cada borda, e só nel
 profile.problem.laneBalance,Os dois sentidos precisam ter o mesmo número de faixas.,Both directions must have the same number of lanes.
 profile.problem.laneWidths,Todas as faixas precisam ter a mesma largura.,All lanes must be the same width.
 profile.problem.median,O canteiro fica entre os dois sentidos.,A median goes between the two directions.
+profile.problem.noFootways,Rodovias e alças não têm calçada: ninguém anda nem atravessa nelas.,Highways and ramps carry no footway: nobody walks along or across them.
 profile.problem.noLanes,A via precisa de pelo menos uma faixa.,A road needs at least one lane.
 profile.problem.order,"As faixas para A ficam à esquerda; as faixas para B, à direita.","Lanes to A go on the left, lanes to B on the right."
 profile.problem.parkingSide,Estacionamento e ciclofaixa ficam junto à calçada.,Parking and cycle lanes go next to the footway.

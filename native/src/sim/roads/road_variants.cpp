@@ -23,11 +23,13 @@ constexpr KerbBands KERB_BANDS[] = { { BAND_NONE, BAND_NONE }, { BAND_BAY, BAND_
 	{ BAND_NONE, BAND_BAY }, { BAND_CYCLE, BAND_CYCLE }, { BAND_CYCLE, BAND_BAY } };
 constexpr int PRESETS = int(sizeof(KERB_BANDS) / sizeof(KERB_BANDS[0]));
 
-// What a class road is made of, read back from its strips.
+// What a class road is made of, read back from its strips. `edge` is what runs at each side, a footway or a highway's shoulder;
+// `walk` its whole width with the kerb between it and the carriageway (`edge_kerb`, none beside a shoulder).
 struct Section {
-	float walk = 0, kerb = 0, lane = 0, median = 0;
+	float walk = 0, kerb = 0, edge_kerb = 0, lane = 0, median = 0;
 	int lanes = 0;
-	Strip sidewalk, planted;
+	Strip edge, planted;
+	bool edged = false;
 };
 
 Section read_section(const Profile &b) {
@@ -40,9 +42,15 @@ Section read_section(const Profile &b) {
 		else if (x.kind == StripKind::MEDIAN) {
 			s.planted = x;
 			s.median = x.width;
-		} else if (x.kind == StripKind::SIDEWALK) s.sidewalk = x;
+		}
 	}
-	s.walk = s.sidewalk.width + s.kerb;
+	const Strip &outer = b.strips.front();
+	s.edged = outer.kind == StripKind::SIDEWALK || outer.kind == StripKind::SHOULDER;
+	if (s.edged) {
+		s.edge = outer;
+		s.edge_kerb = b.strips.size() > 1 && b.strips[1].kind == StripKind::CURB ? b.strips[1].width : 0.f;
+		s.walk = outer.width + s.edge_kerb;
+	}
 	if (s.median > 0) s.median += 2 * s.kerb;
 	return s;
 }
@@ -72,11 +80,14 @@ void push_lanes(std::vector<Strip> &out, int count, float width, int dir) {
 }
 
 std::vector<Strip> strips_of(const Profile &b, const Section &s, int lanes, const KerbBands &bands, float bay) {
-	Strip walk = s.sidewalk, kerb;
-	walk.width = s.walk - s.kerb;
-	kerb.kind = StripKind::CURB;
+	Strip edge = s.edge, kerb, edge_kerb;
+	edge.width = s.walk - s.edge_kerb;
+	kerb.kind = edge_kerb.kind = StripKind::CURB;
 	kerb.width = s.kerb;
-	std::vector<Strip> out{ walk, kerb };
+	edge_kerb.width = s.edge_kerb;
+	std::vector<Strip> out;
+	if (s.edged) out.push_back(edge);
+	if (s.edge_kerb > 0) out.push_back(edge_kerb);
 	if (bands.right != BAND_NONE) out.push_back(band_strip(bands.right, bay));
 	if (b.one_way) push_lanes(out, lanes, s.lane, 1);
 	else {
@@ -90,8 +101,8 @@ std::vector<Strip> strips_of(const Profile &b, const Section &s, int lanes, cons
 		push_lanes(out, side, s.lane, -1);
 	}
 	if (bands.left != BAND_NONE) out.push_back(band_strip(bands.left, bay));
-	out.push_back(kerb);
-	out.push_back(walk);
+	if (s.edge_kerb > 0) out.push_back(edge_kerb);
+	if (s.edged) out.push_back(edge);
 	return out;
 }
 
@@ -116,6 +127,10 @@ Profile composed(const Catalog &c, const Profile &b, const Section &s, const Roa
 	p.custom = true;
 	p.class_card = false;
 	p.strips = spec_strips(spec, kerb_of(c, s));
+	if (s.edged && s.edge.kind == StripKind::SHOULDER) { // a shoulder is the class's, not what was composed (road_spec.cpp spec_of)
+		p.strips.insert(p.strips.begin(), s.edge);
+		p.strips.push_back(s.edge);
+	}
 	p.speed = spec.speed;
 	p.priority = spec.priority;
 	p.centre = spec_centre(spec);

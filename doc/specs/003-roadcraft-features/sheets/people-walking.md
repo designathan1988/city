@@ -52,7 +52,10 @@
   with the leader's trip). Registered with this sheet.
 
 ## Design here
-- **Walkers off the expressway** (T008, first item): a profile carries walkers by the catalog's data, a `pedestrians` field of each
+- **Walkers off the expressway**: built 2026-11-13 (Ptraffic-85 closed): highways and ramps have shoulders where a footway stood, no
+  crosswalk over them, walkers' routes go round them; the design below, changed in one point: the class decides by `foot_crossing`
+  (profiles.cpp) and the strips, with no data flag said twice.
+- (the design as planned) **Walkers off the expressway** (T008, first item): a profile carries walkers by the catalog's data, a `pedestrians` field of each
   road profile (project/data/catalog/road_profiles*.json and its schema), false for the expressway; profiles.cpp reads it into
   Profile and `walkable` (ped_routes.cpp:134) asks it with the strips; the expressway's edge strips become verges, so no footway is
   drawn. Owner: native/src/sim/roads/profiles.cpp. Values: CTB Anexo I (no at-grade pedestrian crossing on a via de trânsito rápido).

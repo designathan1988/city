@@ -81,6 +81,9 @@ void derive_profile(Profile &p, const RoadPrices &prices) {
 	p.has_walk_left = l.strip.kind == StripKind::SIDEWALK;
 	p.walk_right = (r.u0 + r.u1) / 2;
 	p.walk_left = (l.u0 + l.u1) / 2;
+	// A highway or a ramp is an expressway in the Brazilian traffic code's sense (CTB, law 9.503/1997, annex I): no pedestrian
+	// crossing at grade, and its catalogue section carries no footway; nor does a railway.
+	p.foot_crossing = !p.rail && p.road_class != RoadClass::HIGHWAY && p.road_class != RoadClass::RAMP;
 	float carriage = 0, median = 0, foot = 0;
 	for (size_t i = 0; i < p.edges.size(); i++) {
 		float w = p.edges[i].u1 - p.edges[i].u0;

@@ -308,12 +308,8 @@
    "centre": "none",
    "strips": [
     {
-     "kind": "sidewalk",
-     "width": 0.85
-    },
-    {
-     "kind": "curb",
-     "width": 0.15
+     "kind": "shoulder",
+     "width": 1
     },
     {
      "kind": "lane",
@@ -349,12 +345,8 @@
      "dir": -1
     },
     {
-     "kind": "curb",
-     "width": 0.15
-    },
-    {
-     "kind": "sidewalk",
-     "width": 0.85
+     "kind": "shoulder",
+     "width": 1
     }
    ],
    "class_card": true

@@ -68,12 +68,14 @@ std::vector<SpecIssue> spec_issues(const RoadSpec &s, RoadClass road_class) {
 	std::vector<SpecIssue> out;
 	const std::vector<SpecElement> &e = s.elements;
 	const int n = int(e.size());
-	if (n == 0 || e[0].kind != SpecKind::FOOTWAY) add(out, "footways", n > 0 ? std::vector<int>{ 0 } : std::vector<int>{});
-	if (n < 3 || e[size_t(n - 1)].kind != SpecKind::FOOTWAY) add(out, "footways", n > 1 ? std::vector<int>{ n - 1 } : std::vector<int>{});
+	// A highway or a ramp carries no footway at all (profiles.cpp foot_crossing; its shoulders are the class's); any other road one at each edge.
+	const bool walks = road_class != RoadClass::HIGHWAY && road_class != RoadClass::RAMP;
+	if (walks && (n == 0 || e[0].kind != SpecKind::FOOTWAY)) add(out, "footways", n > 0 ? std::vector<int>{ 0 } : std::vector<int>{});
+	if (walks && (n < 3 || e[size_t(n - 1)].kind != SpecKind::FOOTWAY)) add(out, "footways", n > 1 ? std::vector<int>{ n - 1 } : std::vector<int>{});
 	std::vector<int> inner, lanes;
-	for (int i = 1; i < n - 1; i++) {
+	for (int i = walks ? 1 : 0; i < (walks ? n - 1 : n); i++) {
 		inner.push_back(i);
-		if (e[size_t(i)].kind == SpecKind::FOOTWAY) add(out, "footways", { i });
+		if (e[size_t(i)].kind == SpecKind::FOOTWAY) add(out, walks ? "footways" : "noFootways", { i });
 		if (e[size_t(i)].kind == SpecKind::LANE) lanes.push_back(i);
 	}
 	check_lanes(s, lanes, out);

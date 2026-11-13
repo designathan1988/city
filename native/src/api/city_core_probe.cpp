@@ -213,6 +213,33 @@ static void push_sample(const TrafficState &t, const Vehicle &v, Array &poses, A
 	speeds.push_back(v.v);
 }
 
+// The walkers as the probe tells them: their places for close looks in the visual captures, how many walk, and those along a road
+// that carries none or over one closed to them (profiles.cpp foot_crossing, by the road's class, not its strips); the roads closed.
+static void walker_census(const CityState &s, int sample, Dictionary &d) {
+	Array walkers, walker_dirs;
+	int walking = 0, barred = 0;
+	for (const Pedestrian &w : s.traffic.peds) {
+		if (!w.alive) continue;
+		walking++;
+		const bool along = w.mode == PedMode::SIDEWALK && !s.roads.profile_of(w.seg).foot_crossing;
+		barred += along || (w.cross_seg >= 0 && !s.roads.profile_of(w.cross_seg).foot_crossing) ? 1 : 0;
+		if (walkers.size() < sample) {
+			walkers.push_back(Vector3(w.cur.x, w.cur.y, w.cur.z));
+			walker_dirs.push_back(Vector3(w.cur.fx, 0, w.cur.fz));
+		}
+	}
+	int closed = 0;
+	for (int seg = 0; seg < int(s.roads.segs.size()); seg++) {
+		const Profile &p = s.roads.profile_of(seg);
+		closed += s.roads.segs[size_t(seg)].alive && !p.rail && !p.foot_crossing ? 1 : 0;
+	}
+	d["walking"] = walking;
+	d["walkers_barred"] = barred;
+	d["closed_roads"] = closed;
+	d["walkers"] = walkers;
+	d["walker_dirs"] = walker_dirs;
+}
+
 Dictionary CityCore::traffic_probe(int sample) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
@@ -289,14 +316,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	d["sample_type"] = types; // VehicleType, for the close looks at a bus, a truck, a motorbike
 	d["sample_mid_m"] = mids; // how far along its lane from either end; 0 on a connector or off the lanes
 	d["sample_speed"] = speeds;
-	Array walkers, walker_dirs; // pedestrians, for close looks in the visual captures
-	for (const Pedestrian &w : t.peds)
-		if (w.alive && walkers.size() < sample) {
-			walkers.push_back(Vector3(w.cur.x, w.cur.y, w.cur.z));
-			walker_dirs.push_back(Vector3(w.cur.fx, 0, w.cur.fz));
-		}
-	d["walkers"] = walkers;
-	d["walker_dirs"] = walker_dirs;
+	walker_census(*state_, sample, d);
 	d["jam_info"] = jam_info;
 	d["jams"] = jams; // held heads (not queued behind someone)
 	return d;

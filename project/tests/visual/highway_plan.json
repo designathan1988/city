@@ -1,0 +1,19 @@
+{
+ "_doc": "The expressway with no footway (specification 003 T008, Ptraffic-85): an expressway laid across the town's middle at grade, over its streets, the clock run 10 s so walkers and cars are out. Its edge (a shoulder where a footway stood) at street level from four azimuths, near (40 px a metre); oblique (35 degrees, along it: at 300 degrees a tower took the view) and from above (75) mid (12); the crossings with the streets far (5) from above: crosswalks over the streets, none over the expressway; by day, then near and mid by night (22 h).",
+ "city": {"map": 0, "seed": 1, "generate": true},
+ "steps": [
+  {"hour": 16},
+  {"dispatch": "build_road", "args": [{"at": [-250, 0]}, {"at": [250, 0]}, false, {"v3": [0, 0, 0]}, {"profile": "expressway"}, 0.25]},
+  {"dispatch": "set_speed", "args": [1]}, {"frames": 600},
+  {"setView": [60, 0, 40, 0, 8]}, {"until": "render_pending", "equals": 0}, {"shot": "edge_street_0"},
+  {"setView": [60, 0, 40, 90, 8]}, {"until": "render_pending", "equals": 0}, {"shot": "edge_street_90"},
+  {"setView": [60, 0, 40, 180, 8]}, {"until": "render_pending", "equals": 0}, {"shot": "edge_street_180"},
+  {"setView": [60, 0, 40, 270, 8]}, {"until": "render_pending", "equals": 0}, {"shot": "edge_street_270"},
+  {"setView": [60, 0, 12, 0, 35]}, {"until": "render_pending", "equals": 0}, {"shot": "edge_oblique"},
+  {"setView": [60, 0, 12, 300, 75]}, {"until": "render_pending", "equals": 0}, {"shot": "edge_above"},
+  {"setView": [0, 0, 5, 300, 75]}, {"until": "render_pending", "equals": 0}, {"shot": "crossings_far"},
+  {"hour": 22},
+  {"setView": [60, 0, 40, 90, 8]}, {"until": "render_pending", "equals": 0}, {"shot": "edge_street_night"},
+  {"setView": [60, 0, 12, 0, 35]}, {"until": "render_pending", "equals": 0}, {"shot": "edge_oblique_night"}
+ ]
+}

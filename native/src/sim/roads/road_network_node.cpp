@@ -32,11 +32,11 @@ bool RoadNetwork::movement_banned(int node, int from, int to) const {
 }
 
 bool RoadNetwork::crosswalk_on(int node, int seg) const {
-	return has_crosswalks(node) && (!mid_block(node) || seg == crossing_arm(node));
+	return has_crosswalks(node) && profile_of(seg).foot_crossing && (!mid_block(node) || seg == crossing_arm(node));
 }
 
 double RoadNetwork::stop_line_back(int node, int seg) const {
-	if (!has_crosswalks(node)) return 0;
+	if (!has_crosswalks(node) || !profile_of(seg).foot_crossing) return 0; // no crosswalk over a road walkers may not cross
 	const RoadSegment &g = segs[size_t(seg)];
 	// behind the crosswalk as the style lays it; a stretch too short for that keeps its share in front of the line
 	const double between = std::max(0.0, g.len - g.retreat_a - g.retreat_b);

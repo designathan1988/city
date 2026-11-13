@@ -93,6 +93,7 @@ struct Profile {
 	std::vector<LaneInfo> fwd, back; // index 0 = the rightmost lane in that direction
 	float walk_right = 0, walk_left = 0;
 	bool has_walk_right = false, has_walk_left = false, rail = false;
+	bool foot_crossing = true; // walkers may cross it at grade (profiles.cpp: none over a highway, a ramp or rails)
 	float cost_per_m = 0;
 	bool walk() const { return has_walk_right || has_walk_left; }
 	int lanes_fwd() const { return int(fwd.size()); }

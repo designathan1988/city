@@ -27,6 +27,7 @@ const OPEN_DEG := 40.0
 const AVENUE_GAP_M := 20.0
 const SIDE_OFF_M := 720.0
 const COMPOSED_LANE_M := 4.5
+const COMPOSED_WALK_M := 2.0 # a footway the player tries to put on a highway
 const SIDE_GAP_M := 8.0
 const CURVE_OFF_M := 800.0
 const CHORD_M := 100.0
@@ -226,3 +227,23 @@ func _composed_road() -> void:
 	check(int(CityStore.query(&"road_spec_make", [base, own])) == index, "profile: the same road is the same profile")
 	var back: Dictionary = CityStore.query(&"road_spec", [index])
 	check(is_equal_approx(RoadSpecOps.total(back), RoadSpecOps.total(own)), "profile: the width comes back the same (%.2f)" % RoadSpecOps.total(back))
+	_composed_highway()
+
+
+## A highway composed: no footway (the Brazilian traffic code, annex I), its shoulders the class's, kept on what is composed.
+func _composed_highway() -> void:
+	var base := -1
+	for p: Dictionary in CityStore.query(&"road_profiles"):
+		if String(p.id) == "expressway":
+			base = int(p.index)
+	var spec: Dictionary = CityStore.query(&"road_spec", [base])
+	check(base >= 0 and (CityStore.query(&"road_spec_issues", [base, spec]) as Array).is_empty(), "profile: the expressway read with no footway can be built")
+	var walked: Dictionary = spec.duplicate(true)
+	walked.elements.insert(0, {"kind": "footway", "width": COMPOSED_WALK_M, "dir": 0, "bus": false, "solid": false, "flush": false, "pave": 0})
+	var problems: Array = (CityStore.query(&"road_spec_issues", [base, walked]) as Array).map(func(i: Dictionary) -> String: return String(i.problem))
+	check(problems.has("noFootways"), "profile: a footway on a highway is refused (%s)" % [problems])
+	var own: Dictionary = spec.duplicate(true)
+	RoadSpecOps.with_width(own, 0, COMPOSED_LANE_M)
+	var index: int = CityStore.query(&"road_spec_make", [base, own])
+	var strips: Array = CityStore.query(&"road_profiles")[index].strips if index >= 0 else []
+	check(not strips.is_empty() and strips[0].kind == "shoulder" and strips[-1].kind == "shoulder", "profile: the composed highway keeps its shoulders (%s)" % [strips.map(func(s: Dictionary) -> String: return String(s.kind))])
