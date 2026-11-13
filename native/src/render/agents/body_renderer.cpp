@@ -109,7 +109,7 @@ void BodyRenderer::add(const BodySpec &spec) {
 	Vector3 joints[RAGDOLL_JOINTS];
 	const float *rest = asset_->variations[size_t(spec.variation)].joints;
 	for (int j = 0; j < RAGDOLL_JOINTS; j++) joints[j] = b.base[size_t(asset_->joint_bone[size_t(j)])].xform(Vector3(rest[j * 3], rest[j * 3 + 1], rest[j * 3 + 2]));
-	b.doll.begin(joints, spec.velocity, spec.tip, spec.scatter, rng_);
+	b.doll.begin(joints, spec.velocity, spec.tip, spec.scatter, spec.brace, rng_);
 	b.doll.set_walls(spec.walls);
 	b.stands = stands;
 	if (spec.rises) b.rise_s = std::min(GET_UP_S, spec.life_s * RISE_SHARE_MOST);

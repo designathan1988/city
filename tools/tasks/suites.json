@@ -405,7 +405,8 @@
     {"name": "roofs", "plan": "res://tests/visual/roofs_plan.json", "resolution": "1920x1080", "timeout_s": 300},
     {"name": "near", "plan": "res://tests/visual/near_plan.json", "resolution": "1920x1080", "timeout_s": 300},
     {"name": "highway", "plan": "res://tests/visual/highway_plan.json", "resolution": "1920x1080", "timeout_s": 300},
-    {"name": "fallen", "plan": "res://tests/visual/fallen_plan.json", "resolution": "1920x1080", "timeout_s": 300}
+    {"name": "fallen", "plan": "res://tests/visual/fallen_plan.json", "resolution": "1920x1080", "timeout_s": 300},
+    {"name": "stampede", "plan": "res://tests/visual/stampede_plan.json", "resolution": "1920x1080", "timeout_s": 300}
    ]
   },
   "capture_scenes": {

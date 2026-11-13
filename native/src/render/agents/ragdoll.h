@@ -30,8 +30,10 @@ class Ragdoll {
 public:
 	using Ground = std::function<float(float, float)>;
 	// `joints`: where they are; thrown at `velocity`, each a little differently by `scatter` m/s, and tipped: `tip` is what the head moves at over the feet,
-	// so a body topples rather than dropping on its own feet.
-	void begin(const godot::Vector3 joints[RAGDOLL_JOINTS], const godot::Vector3 &velocity, const godot::Vector3 &tip, float scatter, Rng &rng);
+	// so a body topples rather than dropping on its own feet. `brace`: what the hands move at besides (the living put them out the way they fall), the
+	// elbows at half of it, halfway along the arm.
+	void begin(const godot::Vector3 joints[RAGDOLL_JOINTS], const godot::Vector3 &velocity, const godot::Vector3 &tip, float scatter, const godot::Vector3 &brace,
+			Rng &rng);
 	void step(float dt, const Ground &ground);
 	void set_walls(std::vector<BodyWall> walls) { walls_ = std::move(walls); }
 	bool asleep() const { return asleep_; }

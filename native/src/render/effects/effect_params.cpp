@@ -168,6 +168,8 @@ void EffectParams::load_things(const Dictionary &t, PackedStringArray &errors) {
 	tracer_m = down.num("tracer_m");
 	flash_m = down.num("flash_m");
 	body_lead = down.num("body_lead_s");
+	brace_ms = down.num("brace_ms");
+	brace_down = down.num("brace_down");
 	Reader tints(errors, t, "tints");
 	tint_wood = tints.color("wood");
 	tint_metal = tints.color("metal");

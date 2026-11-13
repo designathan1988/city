@@ -15,7 +15,7 @@
 namespace city {
 
 struct BodySpec {
-	godot::Vector3 at, velocity, tip; // at: the feet; tip: Ragdoll::begin
+	godot::Vector3 at, velocity, tip, brace; // at: the feet; tip and brace: Ragdoll::begin
 	float heading = 0, scatter = 0, life_s = 0; // radians; m/s between its joints; seconds it stays, 0 for good (the dead)
 	bool rises = false; // gets up at the end of them, to where it stood: the walker goes on from there
 	int who = -1; // the casualty's id (DamageEvent::id): a walker down who dies there is found by it (die)

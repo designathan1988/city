@@ -30,6 +30,7 @@ constexpr float KNEE_LEAST = 0.45f, ELBOW_LEAST = 0.35f, FOLD_LEAST = 0.62f; // 
 constexpr float RESTING_MS = 0.12f, RESTING_S = 0.6f;
 constexpr float NOTHING_M = 1e-5f;
 constexpr float ONE_STEP_S = 1.f / 60.f;
+constexpr float ELBOW_BRACE_SHARE = 0.5f; // the elbow is halfway along the arm the hand swings out on
 } // namespace
 
 void Ragdoll::link(int a, int b, float share, bool least_only) {
@@ -40,7 +41,7 @@ void Ragdoll::link(int a, int b, float share, bool least_only) {
 	s.least_only = least_only;
 }
 
-void Ragdoll::begin(const Vector3 joints[RAGDOLL_JOINTS], const Vector3 &velocity, const Vector3 &tip, float scatter, Rng &rng) {
+void Ragdoll::begin(const Vector3 joints[RAGDOLL_JOINTS], const Vector3 &velocity, const Vector3 &tip, float scatter, const Vector3 &brace, Rng &rng) {
 	for (int i = 0; i < RAGDOLL_JOINTS; i++) now_[i] = joints[i];
 	now_[TOP] = now_[HEA] + (now_[HEA] - now_[NEC]) * TOP_OVER_HEAD;
 	const Vector3 up = (now_[CHE] - now_[PEL]).normalized(), side = (now_[LS] - now_[RS]).normalized();
@@ -60,7 +61,8 @@ void Ragdoll::begin(const Vector3 joints[RAGDOLL_JOINTS], const Vector3 &velocit
 	link(RK, CHE, FOLD_LEAST, true);
 	for (int i = 0; i < PARTICLES; i++) {
 		const float up = (now_[i].y - feet) / height;
-		const Vector3 own = velocity + tip * up + Vector3(rng.f() - 0.5f, rng.f() - 0.5f, rng.f() - 0.5f) * scatter;
+		const float hand = i == LW || i == RW ? 1.f : i == LE || i == RE ? ELBOW_BRACE_SHARE : 0.f;
+		const Vector3 own = velocity + tip * up + brace * hand + Vector3(rng.f() - 0.5f, rng.f() - 0.5f, rng.f() - 0.5f) * scatter;
 		was_[i] = now_[i] - own * ONE_STEP_S;
 	}
 	for (Vector3 &s : last_side_) s = side;

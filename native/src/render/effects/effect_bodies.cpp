@@ -110,6 +110,8 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		b.heading = yaw;
 		b.velocity = Vector3(px, 0, pz) * (params_.push_ms * power) + Vector3(0, power > 0.f ? params_.lift_ms : 0.f, 0);
 		b.tip = Vector3(px, 0, pz) * TOPPLE_MS;
+		// the living put their hands out the way they go down, to take the fall (down.brace_ms, its source in effects.json); the dead do not
+		if (kind == CAS_KNOCKED) b.brace = Vector3(px, -params_.brace_down, pz).normalized() * params_.brace_ms;
 		b.scatter = power > 0.f ? LIMB_SCATTER_MS : 0.f;
 		b.life_s = life;
 		b.charred = charred;

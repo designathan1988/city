@@ -515,7 +515,9 @@
     "tracer_life_s",
     "tracer_m",
     "flash_m",
-    "body_lead_s"
+    "body_lead_s",
+    "brace_ms",
+    "brace_down"
    ],
    "properties": {
     "dust_count": {
@@ -550,6 +552,14 @@
     },
     "body_lead_s": {
      "type": "number"
+    },
+    "brace_ms": {
+     "type": "number",
+     "description": "how fast a living body going down puts its hands out: young adults' arm movement, 1.3 m/s (Wisner and DeGoede, ISB 2005, https://media.isbweb.org/images/conf/2005/abstracts/0549.pdf), within the 280-335 ms of DeGoede et al. 2001"
+    },
+    "brace_down": {
+     "type": "number",
+     "description": "how far down, against the way it falls (1), the hands go: toward the ground ahead"
     }
    }
   },
