@@ -24,6 +24,6 @@ static func stand_on_walker(rig: CityCamera, ui: UiDriver, view: Array) -> void:
 ## (degrees). The zoom is the half height of the ground in view there, which the rig's distance and lens follow from.
 static func stand(rig: CityCamera, ui: UiDriver, p: Vector3, view: Array) -> void:
 	var half := clampf(rig.get_viewport().get_visible_rect().size.y / (2.0 * float(view[0])), rig.cfg.view_half_min, rig.cfg.view_half_max)
-	rig.set_process(true)
+	rig.unpin() # a view pinned before (a pair's camera) goes back to the rig
 	rig.jump(p, RIGHT_ANGLE - float(view[1]), float(view[2]), CameraProfile.view_distance(rig.cfg, half))
 	await ui.frames(STAND_FRAMES)

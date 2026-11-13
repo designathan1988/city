@@ -98,6 +98,20 @@ func stop() -> void:
 	gestures.cancel()
 
 
+## Holds the camera at `eye` looking at `at`, as a photo or a test needs a view the orbit cannot give (a person's height, a
+## reference game's camera): the rig stops processing (no settle, gesture, input or shake moves the camera) until `unpin`, which
+## gives the view back to the rig's own state, unchanged meanwhile. The rig is the camera's one writer: nothing else places it.
+func pin(eye: Vector3, at: Vector3) -> void:
+	stop()
+	process_mode = Node.PROCESS_MODE_DISABLED
+	camera.global_position = eye
+	camera.look_at(at)
+
+
+func unpin() -> void:
+	process_mode = Node.PROCESS_MODE_INHERIT
+
+
 func _process(dt: float) -> void:
 	motion.step(dt)
 	gestures.advance(dt)

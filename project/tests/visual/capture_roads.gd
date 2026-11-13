@@ -179,7 +179,7 @@ func _pair(name: String, p: Vector3, azimuth: float, tilt: float, zoom: float) -
 	if await CaptureWait.until_drawn(self, JUMP_SETTLE_FRAMES, name) == 0:
 		await CaptureWait.until_drawn(self, JUMP_SETTLE_FRAMES * 2, name + " again")
 	await ui.shot(name)
-	rig.set_process(true)
+	rig.unpin()
 
 
 func _worn(p: Vector3) -> void:
@@ -190,7 +190,7 @@ func _worn(p: Vector3) -> void:
 	await ui.frames(JUMP_SETTLE_FRAMES)
 	PairCamera.lay_wear(p)
 	await get_tree().create_timer(WEAR_UPLOAD_S).timeout
-	rig.set_process(true)
+	rig.unpin()
 	await _pair("worn_top", p, 20.0, 62.0, 14.0)
 	await _pair("worn_low", p, 30.0, 30.0, 30.0)
 

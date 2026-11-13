@@ -154,11 +154,12 @@ static func _close_views(cap: Node, dir: Vector3) -> void:
 			await _look(cap, "street_22_sign_%d" % i, from, at + Vector3.UP * cap.SIGN_LOOK_M)
 
 
+## The camera held at a person's height at `from`, looking at `at`, for one shot (CityCamera.pin: the rig would put its own view back).
 static func _look(cap: Node, name: String, from: Vector3, at: Vector3) -> void:
-	cap.rig.camera.global_position = cap.ui.ground(from.x, from.z) + Vector3.UP * cap.EYE_M
-	cap.rig.camera.look_at(at)
+	cap.rig.pin(cap.ui.ground(from.x, from.z) + Vector3.UP * cap.EYE_M, at)
 	await cap.ui.drawn()
 	await cap.ui.shot(name)
+	cap.rig.unpin()
 
 
 ## A view of the street from `from` looking at `at`. It must see what it looks at: a building between the two (the eye
@@ -178,10 +179,10 @@ static func _eye(cap: Node, name: String, from: Vector3, at: Vector3, lift: bool
 	cap._check(blocker < 0, "%s sees the street (building %d in the way, eye %s)" % [name, blocker, eye])
 	if rose > 0:
 		print("  %s: eye %.0f m above, over the building in the way" % [name, rose])
-	cap.rig.camera.global_position = eye
-	cap.rig.camera.look_at(look)
+	cap.rig.pin(eye, look)
 	await cap.ui.drawn()
 	await cap.ui.shot(name)
+	cap.rig.unpin()
 
 
 ## The building between `look` and `eye` (-1: none), by the core's pick of the bodies.

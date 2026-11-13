@@ -116,10 +116,8 @@ func _report_relief(at: Vector3, half_m: float) -> void:
 
 ## The camera where the reference game's stood for the same photograph (the rig is off, so nothing moves it).
 func _pin_camera(at: Vector3) -> void:
-	rig.process_mode = Node.PROCESS_MODE_DISABLED
+	rig.pin(at + camera_offset, at)
 	rig.camera.fov = REF_FOV_DEG
-	rig.camera.global_position = at + camera_offset
-	rig.camera.look_at(at)
 
 
 func _check(ok: bool, what: String) -> void:

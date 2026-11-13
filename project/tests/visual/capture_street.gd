@@ -177,16 +177,16 @@ func _poles(a: Vector3, b: Vector3) -> void:
 	await ui.key(KEY_ESCAPE, false)
 
 
-## A shot from low over the street, where a pole and its wires read; the camera goes back to where the mouse needs it.
+## A shot from low over the street, where a pole and its wires read; the rig takes the view back after it, where the mouse
+## needs it.
 func _shot_low(name: String, a: Vector3, b: Vector3) -> void:
-	var held := rig.camera.global_transform
 	var dir := (b - a).normalized()
 	hud.visible = false
-	rig.camera.global_position = a - dir * LOW_BACK_M + dir.cross(Vector3.UP) * LOW_SIDE_M + Vector3.UP * LOW_UP_M
-	rig.camera.look_at(a.lerp(b, LOW_LOOK_SHARE) + Vector3.UP * LOW_LOOK_M)
+	rig.pin(a - dir * LOW_BACK_M + dir.cross(Vector3.UP) * LOW_SIDE_M + Vector3.UP * LOW_UP_M, a.lerp(b, LOW_LOOK_SHARE) + Vector3.UP * LOW_LOOK_M)
+	await ui.drawn()
 	await ui.shot(name)
+	rig.unpin()
 	hud.visible = true
-	rig.camera.global_transform = held
 	await ui.frames(2)
 
 
