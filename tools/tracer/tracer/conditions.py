@@ -559,7 +559,8 @@ class Weigh:
             at = self.p.at.get((f.index, node.id))
             unit = at if at is not None and self.p.defs[at].kind == FUNCTION else self.sc.unit(f, node)
             if unit == d and VALUE in parts:
-                rows.append((self.guard(f, node, d) if at is None else True, self.value(f, parts[VALUE], depth, seen)))
+                rows.append((self.guard(f, node, d, depth, seen) if at is None else True,
+                             self.value(f, parts[VALUE], depth, seen)))
         out = (SYMBOL, f"{self.p.label(d)}()", f"{self.p.label(d)}()", f"{f.display}:{it.line}")
         for guard, value in reversed(rows):
             out = value if guard is True else (ITE, guard, value, out)
@@ -667,8 +668,10 @@ class Weigh:
         return [k for k in child_nodes(node) if not k.is_extra
                 and not overlaps(k, branch[TEST]) and not overlaps(k, branch[THEN])]
 
-    def guard(self, f, node, unit: int):
-        """When code written at a node runs, once the function around it runs."""
+    def guard(self, f, node, unit: int, depth: int = 0, seen: frozenset = frozenset()):
+        """When code written at a node runs, once the function around it runs. Asked while a value follows calls
+        (`given_back`), its tests are weighed at that depth and with the definitions already on the way, as the
+        value itself is: a test that calls back into a function on the way stops there, never starts the walk again."""
         stop = self.p.defs[unit].node
         conds, child, up, case = [], node, node.parent, None
         while up is not None and not (up.start_byte == stop.start_byte and up.end_byte == stop.end_byte
@@ -677,20 +680,20 @@ class Weigh:
             branch = self.branches.get(key)
             if branch is not None and LOOP in branch:    # a loop: its body runs while its test holds
                 if TEST in branch and child.id == branch[THEN].id:
-                    conds.append(self.condition(f, branch[TEST]))
+                    conds.append(self.condition(f, branch[TEST], depth, seen))
             elif branch is not None:
                 test = branch[TEST]
                 inside_test = child.start_byte <= test.start_byte and test.end_byte <= child.end_byte or \
                     test.start_byte <= child.start_byte and child.end_byte <= test.end_byte
                 if not inside_test:
-                    cond = self.condition(f, test)
+                    cond = self.condition(f, test, depth, seen)
                     conds.append(cond if child.id == branch[THEN].id else negate(cond))
                     for k in child_nodes(up):          # the ways before it, each a branch of its own: not taken
                         if k.id == child.id:
                             break
                         other = self.branches.get((f.index, k.id))
                         if other is not None and k.id != branch[THEN].id and k.id != test.id:
-                            conds.append(negate(self.condition(f, other[TEST])))
+                            conds.append(negate(self.condition(f, other[TEST], depth, seen)))
             else:
                 for k in child_nodes(up):              # the statements before it that may leave the function
                     if k.id == child.id:
@@ -700,40 +703,40 @@ class Weigh:
                         continue
                     rest = self.rest(f, k, other)
                     if self.leaves(f, other[THEN]) and not rest:
-                        conds.append(negate(self.condition(f, other[TEST])))
+                        conds.append(negate(self.condition(f, other[TEST], depth, seen)))
                     elif rest and not self.leaves(f, other[THEN]) and \
                             all(self.leaves(f, r) for r in rest if (f.index, r.id) not in self.branches) and \
                             not any((f.index, r.id) in self.branches for r in rest):
-                        conds.append(self.condition(f, other[TEST]))
+                        conds.append(self.condition(f, other[TEST], depth, seen))
             op = self.ops.get(key)
             if op is not None and LEFT in op and child.id == op[RIGHT].id:
                 head = self.head(f, op[OP])
                 if head in (ALL, ANY):
-                    cond = self.condition(f, op[LEFT])
+                    cond = self.condition(f, op[LEFT], depth, seen)
                     conds.append(cond if head == ALL else negate(cond))
             if key in self.cases:
                 case = up
             choose = self.chooses.get(key)
             if choose is not None and case is not None:
-                conds.append(self.chosen(f, up, choose, case))
+                conds.append(self.chosen(f, up, choose, case, depth, seen))
                 case = None
             child, up = up, up.parent
         return conj(list(reversed(conds)))
 
-    def chosen(self, f, node, choose, case):
+    def chosen(self, f, node, choose, case, depth: int = 0, seen: frozenset = frozenset()):
         """The condition of a case of a choice: the value is the case's; with none, no other case's."""
-        test = self.value(f, choose[TEST])
+        test = self.value(f, choose[TEST], depth, seen)
         where = self.where(f, case)
         parts = self.cases[(f.index, case.id)]
         if VALUE in parts:
-            return (AT, where, (EQ, test, self.value(f, parts[VALUE])))
+            return (AT, where, (EQ, test, self.value(f, parts[VALUE], depth, seen)))
         others = []
         stack = list(child_nodes(node))
         while stack:
             k = stack.pop()
             got = self.cases.get((f.index, k.id))
             if got is not None and VALUE in got:
-                others.append((NE, test, self.value(f, got[VALUE])))
+                others.append((NE, test, self.value(f, got[VALUE], depth, seen)))
             elif (f.index, k.id) not in self.chooses:
                 stack.extend(child_nodes(k))
         return (AT, where, conj(others))
