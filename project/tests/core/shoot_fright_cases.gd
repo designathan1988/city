@@ -65,14 +65,7 @@ func stampede() -> void:
 		return
 	# by the busiest walker, within the stampede's trip reach (traffic.json ped_stampede_trip_m 30 m) of those round it; force 2 knocks
 	# nobody down there (its eardrum odds are nil): who is on the ground after it has tripped
-	var busiest: Dictionary = found[0]
-	var most := -1
-	for w: Dictionary in found:
-		var round_it := found.filter(func(o: Dictionary) -> bool: return o.position.distance_to(w.position) < CROWD_M).size()
-		if round_it > most:
-			most = round_it
-			busiest = w
-	var at: Vector3 = busiest.position + Vector3(BLAST_OFF_M, 0, BLAST_OFF_M)
+	var at := LookAim.busiest(found.map(func(w: Dictionary) -> Vector3: return w.position), CROWD_M) + Vector3(BLAST_OFF_M, 0, BLAST_OFF_M)
 	CityStore.dispatch(&"strike", [at, BLAST_FORCE])
 	var down := 0
 	var fell := 0 # tripped in the stampede: on the ground, a body of their own (ped_fright.cpp trip_now), not crouched

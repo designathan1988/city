@@ -14,7 +14,8 @@ namespace city {
 
 namespace {
 constexpr int MOST_BODIES = 64; // past it the oldest of the dead goes: a row of the texture each
-constexpr float FOR_GOOD_S = std::numeric_limits<float>::infinity(); // the dead stay where they fell, the aftermath kept, till MOST_BODIES
+constexpr float NEAR_BODY_M = 2.5f; // a body's joints reach this far from its pelvis, and as far again for another's: farther, they cannot touch
+constexpr float FOR_GOOD_S =std::numeric_limits<float>::infinity(); // the dead stay where they fell, the aftermath kept, till MOST_BODIES
 constexpr int TEXELS_A_BONE = 3, FLOATS_A_TEXEL = 4, FLOATS_A_BONE = TEXELS_A_BONE * FLOATS_A_TEXEL;
 constexpr float STEP_S = 1.f / 60.f;
 constexpr int STEPS_MOST = 4;
@@ -129,6 +130,7 @@ void BodyRenderer::add(const BodySpec &spec) {
 	for (Transform3D &t : b.stood) t = t.affine_inverse();
 	if (spec.piece != 0) b.doll.keep_parts(spec.piece); // a limb torn off: the rest of the body stays closed on its joint (lost)
 	b.piece = spec.piece != 0;
+	b.family = b.piece ? families_ : ++families_; // a limb torn off comes right after its body: one family, which does not push itself
 	pose(b);
 	layers_dirty_ = true;
 }
@@ -240,6 +242,9 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground, float hard_ms
 		}
 		if (b.doll.asleep() || steps == 0) continue;
 		const float floor = b.floor;
+		// the bodies near it hold it off: it lies on them, not in them; before the steps, whose passes then hold its bones to the push
+		for (const Body &o : bodies_)
+			if (o.family != b.family && o.doll.pelvis().distance_squared_to(b.doll.pelvis()) < NEAR_BODY_M * NEAR_BODY_M) b.doll.push_out_of(o.doll);
 		Vector3 hits[RAGDOLL_HITS];
 		for (int k = 0; k < steps; k++) {
 			const int n = b.doll.step(STEP_S, [&](float x, float z) { return std::max(ground(x, z), floor); }, b.pool > 0.f ? hard_ms : FOR_GOOD_S, hits);
@@ -272,24 +277,33 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground, float hard_ms
 
 PackedVector3Array BodyRenderer::places() const {
 	PackedVector3Array out;
-	for (const Body &b : bodies_) out.push_back(b.doll.pelvis());
+	for (const Body &b : bodies_)
+		if (!b.piece) out.push_back(b.doll.pelvis()); // a limb torn off has no pelvis: it lies by its body, at its joint
 	return out;
 }
 
-int BodyRenderer::pieces() const {
-	return int(std::count_if(bodies_.begin(), bodies_.end(), [](const Body &b) { return b.piece; }));
-}
-
-int BodyRenderer::from_drawn() const {
-	return int(std::count_if(bodies_.begin(), bodies_.end(), [](const Body &b) { return b.from_drawn; }));
-}
-
-int BodyRenderer::kept() const {
-	return int(std::count_if(bodies_.begin(), bodies_.end(), [](const Body &b) { return b.left == FOR_GOOD_S; }));
-}
-
-int BodyRenderer::moving() const {
-	return int(std::count_if(bodies_.begin(), bodies_.end(), [](const Body &b) { return !b.doll.asleep(); }));
+Dictionary BodyRenderer::census() const {
+	int moving = 0, kept = 0, from_drawn = 0, pieces = 0;
+	float overlap = 0.f;
+	for (const Body &b : bodies_) {
+		moving += b.doll.asleep() ? 0 : 1;
+		kept += b.left == FOR_GOOD_S ? 1 : 0;
+		from_drawn += b.from_drawn ? 1 : 0;
+		pieces += b.piece ? 1 : 0;
+		if (!b.doll.asleep()) continue;
+		for (const Body &o : bodies_)
+			if (o.family != b.family && o.doll.asleep() && o.doll.pelvis().distance_squared_to(b.doll.pelvis()) < NEAR_BODY_M * NEAR_BODY_M)
+				overlap = std::max(overlap, b.doll.overlap(o.doll));
+	}
+	Dictionary out;
+	out["bodies"] = int(bodies_.size());
+	out["moving"] = moving;
+	out["kept"] = kept;
+	out["from_drawn"] = from_drawn;
+	out["pieces"] = pieces;
+	out["deepest"] = deepest_;
+	out["overlap"] = overlap;
+	return out;
 }
 
 } // namespace city

@@ -1,0 +1,19 @@
+{
+ "_doc": "Bodies falling together lie one on the other (specification 003 T008, Pwalkers-9): in shoot_test's town (seed 7), a blow of force 3 four metres west of the heart of the densest crowd (the walker with the most others within 5 m: {crowd, off}, LookArgs), which throws the crowd east together (a blow in its middle would throw them apart); four seconds after it the census and the bodies' places, and again ten seconds later (all at rest, none sunk in another: overlap); then the two bodies lying nearest one another (setViewNear pair) near (90 px a metre) from 40 degrees at four azimuths, at street level (12 degrees), from above (80) and mid (25): limbs on limbs, none sunk in the other.",
+ "city": {"map": 0, "seed": 7, "generate": true},
+ "steps": [
+  {"hour": 16}, {"dispatch": "set_speed", "args": [1]}, {"frames": 300},
+  {"dispatch": "strike", "args": [{"crowd": 5, "off": [-4, 0]}, 3]},
+  {"frames": 240},
+  {"query": "effects_bodies_census"}, {"query": "effects_body_places"},
+  {"frames": 600},
+  {"query": "effects_bodies_census"}, {"query": "effects_body_places"},
+  {"setViewNear": ["pair", 0, 0, 90, 0, 40]}, {"until": "render_pending", "equals": 0}, {"shot": "pile_0"},
+  {"setViewNear": ["pair", 0, 0, 90, 90, 40]}, {"until": "render_pending", "equals": 0}, {"shot": "pile_90"},
+  {"setViewNear": ["pair", 0, 0, 90, 180, 40]}, {"until": "render_pending", "equals": 0}, {"shot": "pile_180"},
+  {"setViewNear": ["pair", 0, 0, 90, 270, 40]}, {"until": "render_pending", "equals": 0}, {"shot": "pile_270"},
+  {"setViewNear": ["pair", 0, 0, 90, 45, 12]}, {"until": "render_pending", "equals": 0}, {"shot": "pile_street"},
+  {"setViewNear": ["pair", 0, 0, 90, 0, 80]}, {"until": "render_pending", "equals": 0}, {"shot": "pile_above"},
+  {"setViewNear": ["pair", 0, 0, 25, 30, 60]}, {"until": "render_pending", "equals": 0}, {"shot": "pile_mid"}
+ ]
+}

@@ -48,6 +48,11 @@ public:
 	// Each part's frame now: its origin on its joint, its axes along it. The frames only: what a bone does with them is the caller's.
 	void frames(godot::Transform3D out[RAGDOLL_PARTS]);
 	godot::Vector3 pelvis() const;
+	// Its joints out of another body's (two limbs' half thicknesses apart), the other held where it is: two bodies falling together lie
+	// one on the other.
+	void push_out_of(const Ragdoll &other);
+	// How far its joints lie within another body's, nearer than they touch; 0 when none does: a probe.
+	float overlap(const Ragdoll &other) const;
 
 private:
 	static constexpr int PARTICLES = RAGDOLL_JOINTS + 2; // and the top of the head and the belly, which brace what the joints leave free

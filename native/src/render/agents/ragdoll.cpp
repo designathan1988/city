@@ -294,4 +294,47 @@ void Ragdoll::frames(Transform3D out[RAGDOLL_PARTS]) {
 
 Vector3 Ragdoll::pelvis() const { return now_[PEL]; }
 
+// Two joints of two bodies touch nearer than this: two limbs' half thicknesses, surface to surface.
+constexpr float TOUCH_M = 2.f * LIMB_HALF_M;
+// Clothes on clothes, static and kinetic (Babaarslan and Kalebek, Tekstil ve Konfeksiyon 3/2010, fabric on fabric under the heaviest load
+// measured, 20 N: both 0.7; they fall as the load grows, and a body is heavier).
+constexpr float CLOTH_STATIC = 0.7f, CLOTH_KINETIC = 0.7f;
+
+// A contact as Position Based Dynamics resolves it: the joint moved out along the line between the two, the speed it had along that
+// line towards the other taken away (Mueller et al. 2007, 3.5), then friction at the position level (Macklin et al., Unified Particle
+// Physics, SIGGRAPH 2014, 6.1): its step across the line, against the other's, taken away whole while under the static share of how deep
+// it sank, else by the kinetic share. Damping the speed alone lets a pile slide apart; this holds a body lying on another.
+void Ragdoll::push_out_of(const Ragdoll &other) {
+	constexpr float TOUCH2 = TOUCH_M * TOUCH_M;
+	for (int i = 0; i < PARTICLES; i++) {
+		if ((kept_ >> i & 1u) == 0) continue;
+		for (int j = 0; j < PARTICLES; j++) {
+			if ((other.kept_ >> j & 1u) == 0) continue;
+			const Vector3 d = now_[i] - other.now_[j];
+			const float d2 = d.length_squared();
+			if (d2 >= TOUCH2) continue;
+			const float len = std::sqrt(d2);
+			const Vector3 out = len > NOTHING_M ? d / len : Vector3(0, 1, 0); // atop the other when they coincide
+			const float deep = TOUCH_M - len;
+			const float towards = std::min((now_[i] - was_[i]).dot(out), 0.f); // its step along the line, when it closes in
+			now_[i] += out * deep;
+			was_[i] += out * (deep + towards); // moved, not thrown, and no longer closing in
+			const Vector3 rel = (now_[i] - was_[i]) - (other.now_[j] - other.was_[j]);
+			const Vector3 slide = rel - out * rel.dot(out);
+			const float slid = slide.length();
+			now_[i] -= slid < CLOTH_STATIC * deep ? slide : slide * std::min(CLOTH_KINETIC * deep / std::max(slid, NOTHING_M), 1.f);
+		}
+	}
+}
+
+float Ragdoll::overlap(const Ragdoll &other) const {
+	float most = 0.f;
+	for (int i = 0; i < PARTICLES; i++) {
+		if ((kept_ >> i & 1u) == 0) continue;
+		for (int j = 0; j < PARTICLES; j++)
+			if ((other.kept_ >> j & 1u) != 0) most = std::max(most, TOUCH_M - now_[i].distance_to(other.now_[j]));
+	}
+	return most;
+}
+
 } // namespace city

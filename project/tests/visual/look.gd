@@ -8,8 +8,7 @@
 ## lamp, pole, sign or building to the point), {"shot": name} (after the world is drawn),
 ## {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
 ## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"blastShot": name, "at": s, "timeout": ms}, {"walker": [zoom, azimuth, elevation]}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
-## In args, {"at": [x, z]} is the point of the ground there (what the player's pointer would hit), {"profile": id} the index of
-## that road class, {"v3": [x, y, z]} a vector.
+## Args: look_args.gd ({"at": [x, z]} the ground there, {"pair": [x, z]} between two walkers together, {"profile": id}, {"v3"}, {"path"}).
 ## Measures (look_measure.gd): {"record": name} … {"recordEnd": true} (the frames between: intervals, hitches, vsyncs missed,
 ## CPU and GPU), {"usage": seconds} (peak, mean and least), {"info": true} (what the last frame drew and what is held),
 ## {"clock": true} (the stages' stamps on the camera), {"switch": [key, on]} (an F7 switch), {"passes": true} (the GPU's stamps), {"view": "overdraw"} (any Viewport.DEBUG_DRAW_* by its name, "disabled" back),
@@ -29,6 +28,7 @@ var ui: UiDriver
 var failures := 0
 var shots := 0
 var measure: LookMeasure
+var args: LookArgs
 var frozen := false
 
 
@@ -71,6 +71,7 @@ func _ready() -> void:
 		Engine.time_scale = 0.0 # the clock and every delta stand: the same plan gives the same picture, by frames alone
 		world.still_dither()
 	ui = UiDriver.new(rig, get_tree(), out_dir)
+	args = LookArgs.new(ui)
 	add_child(ToolController.new(rig))
 	add_child(RoadcraftHud.new())
 	add_child(InteriorController.new())
@@ -81,6 +82,7 @@ func _ready() -> void:
 	if shots == 0: # a plan that photographs nothing proves nothing
 		failures += 1
 		print("FAIL the plan took no shot")
+	failures += args.failures
 	print("FAILURES: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -131,17 +133,17 @@ func _step(step: Dictionary) -> void:
 	elif step.has("hour"):
 		UiDriver.at_hour(world, float(step.hour))
 	elif step.has("dispatch"):
-		var r: Variant = CityStore.dispatch(StringName(step.dispatch), _args(step.get("args", [])))
+		var r: Variant = CityStore.dispatch(StringName(step.dispatch), args.decode(step.get("args", [])))
 		print("command %s: %s" % [step.dispatch, r])
 		if r is Dictionary and r.has("ok") and not r.ok:
 			failures += 1
 			print("FAIL command refused: ", step.dispatch)
 	elif step.has("query"):
-		print("query %s %s: %s" % [step.query, step.get("args", []), CityStore.query(StringName(step.query), _args(step.get("args", [])))])
+		print("query %s %s: %s" % [step.query, step.get("args", []), CityStore.query(StringName(step.query), args.decode(step.get("args", [])))])
 	elif step.has("key"):
 		await ui.key(OS.find_keycode_from_string(step.key), false)
 	elif step.has("click"):
-		await ui.click(_point(step.click))
+		await ui.click(args.point(step.click))
 	elif step.has("global"):
 		SentParams.send_global(StringName(step.global[0]), step.global[1]) # through the one sender: it keeps what the engine was told
 	elif step.has("reference"):
@@ -170,7 +172,7 @@ func _pointer_step(step: Dictionary) -> bool:
 	elif step.has("letGo"):
 		await ui.button(Vector2(step.letGo[0], step.letGo[1]), false)
 	elif step.has("drag"):
-		await ui.drag(_point(step.drag[0]), _point(step.drag[1]))
+		await ui.drag(args.point(step.drag[0]), args.point(step.drag[1]))
 	elif step.has("control"): # the `press` of scripts/look.mjs: a control found by what it says, pressed with the mouse where it stands
 		await _press_control(str(step.control))
 	else:
@@ -195,34 +197,13 @@ func _press_control(said: String) -> void:
 
 
 ## A model translucent over the map: [file, x, z, scale].
-func _reference(args: Array) -> void:
+func _reference(model_args: Array) -> void:
 	var model := ReferenceModel.new()
 	add_child(model)
-	print("reference ", model.load_file(args[0]))
-	var at := _point([args[1], args[2]])
+	print("reference ", model.load_file(model_args[0]))
+	var at := args.point([model_args[1], model_args[2]])
 	model.place_on(at.x, at.z, at.y, 0.0)
-	model.scale = Vector3.ONE * float(args[3])
-
-
-## A plan's arguments for a command: {"at": [x, z]} the ground's point there, {"profile": id} a road class's index,
-## {"v3": [x, y, z]} a vector, the rest as the JSON gives it.
-func _args(raw: Array) -> Array:
-	var out := []
-	for a: Variant in raw:
-		if a is Dictionary and a.has("at"):
-			out.push_back(_point(a.at))
-		elif a is Dictionary and a.has("profile"):
-			out.push_back(_profile(a.profile))
-		elif a is Dictionary and a.has("v3"):
-			out.push_back(Vector3(a.v3[0], a.v3[1], a.v3[2]))
-		elif a is Dictionary and a.has("path"):
-			var path := PackedVector3Array()
-			for p: Array in a.path:
-				path.push_back(_point(p))
-			out.push_back(path)
-		else:
-			out.push_back(a)
-	return out
+	model.scale = Vector3.ONE * float(model_args[3])
 
 
 ## {"until": query, "args": [...], "equals": value, "timeout": ms}: frames until the game's own answer is the one asked
@@ -231,19 +212,6 @@ func _args(raw: Array) -> Array:
 func _until(step: Dictionary) -> void:
 	var raw: Array = step.get("args", [])
 	var want: Variant = step.get("equals", 0)
-	if not await LookWait.until(get_tree(), "query %s %s to equal %s" % [step.until, raw, want], func() -> Variant: return CityStore.query(StringName(step.until), _args(raw)),
+	if not await LookWait.until(get_tree(), "query %s %s to equal %s" % [step.until, raw, want], func() -> Variant: return CityStore.query(StringName(step.until), args.decode(raw)),
 			func(answer: Variant) -> bool: return answer == want, float(step.get("timeout", UNTIL_TIMEOUT_MS))):
 		failures += 1
-
-
-func _profile(id: String) -> int:
-	for p: Dictionary in CityStore.query(&"road_profiles"):
-		if p.id == id:
-			return p.index
-	failures += 1
-	print("FAIL unknown road class: ", id)
-	return -1
-
-
-func _point(xz: Array) -> Vector3:
-	return ui.ground(xz[0], xz[1])

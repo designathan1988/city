@@ -407,7 +407,8 @@
     {"name": "highway", "plan": "res://tests/visual/highway_plan.json", "resolution": "1920x1080", "timeout_s": 300},
     {"name": "fallen", "plan": "res://tests/visual/fallen_plan.json", "resolution": "1920x1080", "timeout_s": 300},
     {"name": "stampede", "plan": "res://tests/visual/stampede_plan.json", "resolution": "1920x1080", "timeout_s": 300},
-    {"name": "torn", "plan": "res://tests/visual/torn_plan.json", "resolution": "1920x1080", "timeout_s": 300}
+    {"name": "torn", "plan": "res://tests/visual/torn_plan.json", "resolution": "1920x1080", "timeout_s": 300},
+    {"name": "pile", "plan": "res://tests/visual/pile_plan.json", "resolution": "1920x1080", "timeout_s": 300}
    ]
   },
   "capture_scenes": {

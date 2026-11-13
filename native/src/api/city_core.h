@@ -93,12 +93,8 @@ public:
 	int effects_ruin_pieces() const { return render_.ruin_pieces(); } // of the buildings drawn in pieces, and of those in the air
 	int effects_ruin_flying() const { return render_.ruin_pieces_flying(); }
 	int64_t effects_ruin_digest(int64_t seed) const { return int64_t(render_.ruin_digest(uint32_t(seed))); } // where a ruin's pieces lie
-	int effects_bodies() const { return render_.bodies(); } // of people off their feet, and of those still falling
-	int effects_bodies_moving() const { return render_.bodies_moving(); }
-	int effects_bodies_kept() const { return render_.bodies_kept(); } // the dead, who stay where they fell
-	int effects_bodies_from_drawn() const { return render_.bodies_from_drawn(); } // fallen from the pose they were drawn in
-	int effects_body_pieces() const { return render_.body_pieces(); } // limbs torn off, each a body of its own
-	float effects_bodies_deepest() const { return render_.bodies_deepest(); } // metres the deepest body at rest lay under the ground
+	// People off their feet: {bodies, moving, kept, from_drawn, pieces, deepest, overlap} (render/agents/body_renderer.h census)
+	godot::Dictionary effects_bodies_census() const { return render_.bodies_census(); }
 	godot::PackedVector3Array effects_body_places() const { return render_.body_places(); } // where each body lies
 	// The pistol along a line of sight: {ok, hit 0 none / 1 walker / 2 vehicle, killed, burst}; a car that took enough rounds bursts as a blow.
 	godot::Dictionary shoot(const godot::Vector3 &origin, const godot::Vector3 &direction);

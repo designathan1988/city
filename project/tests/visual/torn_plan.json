@@ -1,12 +1,12 @@
 {
- "_doc": "Limbs torn off (specification 003 T008, Prender-263): a blow of force 10 on the street corner at (60, 8), where people walk, the camera on the corner before it so the walkers are drawn; three seconds after it, the body nearest where the bodies lie (60, -25: setView's y is the map's north, -z, where the blow's {at: [x, z]} is not; they land some 15 m off the blow) (setViewNear body: the effects' bodies, the pieces included) near (60 px a metre) from 45 degrees at four azimuths: each limb that came off a piece of the same body, its own skin and clothes, lying apart; from above, mid (20). The pieces counted (effects_body_pieces).",
+ "_doc": "Limbs torn off (specification 003 T008, Prender-263): a blow of force 10 on the street corner at (60, 8), where people walk, the camera on the corner before it so the walkers are drawn; three seconds after it, the body nearest where the bodies lie (60, -25: setView's y is the map's north, -z, where the blow's {at: [x, z]} is not; they land some 15 m off the blow) (setViewNear body: the effects' whole bodies, their torn limbs by them) near (60 px a metre) from 45 degrees at four azimuths: each limb that came off a piece of the same body, its own skin and clothes, lying apart; from above, mid (20). The pieces counted (effects_bodies_census).",
  "city": {"map": 0, "seed": 1, "generate": true},
  "steps": [
   {"hour": 16}, {"dispatch": "set_speed", "args": [1]}, {"frames": 300},
   {"setView": [60, 8, 30, 0, 50]}, {"until": "render_pending", "equals": 0}, {"frames": 30},
   {"dispatch": "strike", "args": [{"at": [60, 8]}, 10]},
   {"frames": 180},
-  {"query": "effects_body_pieces"}, {"query": "effects_body_places"},
+  {"query": "effects_bodies_census"}, {"query": "effects_body_places"},
   {"setViewNear": ["body", 60, -25, 60, 0, 45]}, {"until": "render_pending", "equals": 0}, {"shot": "torn_0"},
   {"setViewNear": ["body", 60, -25, 60, 90, 45]}, {"until": "render_pending", "equals": 0}, {"shot": "torn_90"},
   {"setViewNear": ["body", 60, -25, 60, 180, 45]}, {"until": "render_pending", "equals": 0}, {"shot": "torn_180"},
