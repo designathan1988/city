@@ -306,3 +306,21 @@ through `tools/tasks/proc.run(..., hidden=True)`; `--fixed-fps 30` (not Movie Ma
 samples poses at the steady clock less `pose_delay_ticks`); frames grabbed on `RenderingServer.frame_post_draw`, written raw as
 rgb24 and assembled by ffmpeg (xfade, drawtext); the hidden window is 1920x1061, cropped to 16:9 and scaled to 1080p; low shots in
 the residential ring (r > 350 m on the town map).
+
+## 2026-11-12: two contract texts brought back to CLAUDE.md (Ptools-96, Ptools-97 registered)
+
+- **Problem**: two rules of `tools/gates/contracts.json` said other than the CLAUDE.md items they guard. `agents-read-only` said
+  "at most two at once" and "no fork, worktree agent or session unless ordered"; CLAUDE.md says up to five, each prompt naming
+  what the agent may change. `standing-authorisation` said "never ask nor wait for what an accepted specification names";
+  CLAUDE.md's authorisation has no such condition and also forbids `rm -rf` and touching what a running process uses.
+- **Cause**: the contract gate (`gate_contracts.py`) checks that every item has a marker and every marker an entry with real
+  guards; it never compares an entry's `rule` with the item's text, so the CLAUDE.md items changed (the owner's orders of
+  2026-11-12) and the two entries stayed as they were.
+- **Fix**: the two `rule` texts now say what the CLAUDE.md items say; the tags and guards are unchanged. CLAUDE.md itself is
+  unchanged: a full reading of it against the contracts found nothing else to correct (the owner, in conversation).
+- **Verified**: `run_gates.py --file tools/gates/contracts.json` passes; `run_gates.py --selftest` passes `contracts_pass` and
+  `contracts_fail` and fails five other fixtures, unrelated to this change, registered as Ptools-96. Found on the way:
+  Ptools-97 (`gate_contracts.py:19` still accepts hooks under the removed `.claude/skills/trace-fix/`).
+- **Not in a block**: the block `pending-five` (another session's) stood in `verify`, uncommitted, so no block of this change
+  could open; it was left as it was, and this commit holds only this change's lines.
+- **Files changed**: `tools/gates/contracts.json`, `doc/problems.jsonl` and `doc/problems.md` (two entries), this history.
