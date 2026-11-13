@@ -1,4 +1,4 @@
-# The block rule's mechanism (the constitution, principle III): a feature is coded whole with nothing run, then checked at its end.
+# The block rule's mechanism (CLAUDE.md, "One feature, start to end"): a feature is coded whole with nothing run, then checked at its end.
 # Its state is one file, dist/block/state.json, moved only by `enter` through MOVES: closed -> open (the feature being coded, nothing
 # run) -> verify (its checks run) -> open again (a failure fixed in the code) or closed. `refusal` is the one answer every gatekeeper
 # asks (the orchestrator's `run` and `serve`, build.sh, deliver.sh, km24.py). `close` appends the block's times to the process
@@ -99,7 +99,7 @@ def refusal(what: str, root: Path = ROOT) -> str | None:
     if doc["state"] != OPEN:
         return None
     return (f"refused: the block '{doc['name']}' is open (since {doc['opened']}): no test, build, measurement, photo or export "
-            f"runs and nothing is committed while the feature is coded (the constitution, principle III; skills and Context7 "
+            f"runs and nothing is committed while the feature is coded (CLAUDE.md, steps 5 and 6; skills and Context7 "
             f"go on being used). `python tools/tasks/cli.py block verify` starts its checks. Asked: {what}")
 
 

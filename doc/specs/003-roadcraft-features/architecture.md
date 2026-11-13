@@ -16,9 +16,17 @@ error happened.
 - Record ids are reused most recently freed first with no generation (native/src/core/slot_ids.h:1-4): a reference kept past
   its record's removal attaches to whatever takes the id next (lane links and bans after a road removal, flow statistics and
   the control advisor after a junction is rebuilt: agents D and E of sheets/roads.md).
-- No invariant is checked while the game runs (no check in native/src outside the api's test probes).
-- Failures go unseen: a refusal with no text key shows the raw key (`hint.road.invalid`), Apply past 256 custom roads does
-  nothing, a grade-limited end is never told (sheets/roads.md).
+- No invariant was checked while the game ran, and failures went unseen (a refusal with no text key shown raw, results
+  dropped by the panels): both fixed by the backbone's first two blocks, below.
+
+## Where the backbone stands (the board: doc/port.md, section 0)
+
+- Built: items 2 (every command's outcome told in one place, a gate on the refusal keys: T036, commit 02beaa45), 4 and 5 (a
+  removal reaches every table that names the record; record invariants in `native/src/sim/checks`, run after every command in
+  the tests' DLL and at every test's end: T037, commit 90b67e27). Of item 1, a test fails on any engine `ERROR:` or `WARNING:`
+  line (T036).
+- Open: item 8, the scale probe on the 24 km map and its opening (T038, the board's next line); item 3 (handles with a
+  generation), item 6 (the feature map) and item 7 (declared propagation), each where the port first needs it.
 
 ## The backbone (each ported feature lands in it)
 
@@ -135,7 +143,7 @@ simulation tied to the camera.
 ## This game's own performance faults known today
 
 - The 24 km city opens in 69.8 s on the debug DLL, 23.6 s on the release, 473,839 buildings: `fill_all` walks every lot serially
-  and builds four complete candidate bodies a lot to compare their looks (research.md R4, growth.cpp 110-198; task T014).
+  and builds four complete candidate bodies a lot to compare their looks (research.md R4, growth.cpp 110-198; T038 on the board, doc/port.md).
 - The grade solver keeps four float lines a segment for good, about 390 MiB of the 24 km city (Proads-8).
 - km24 on the median profile: GPU p95 up to 14.9 ms, 151 frames over 33 ms (doc/history/process.md, the mandatory pause).
 - The scale probe (backbone item 8) measures the rest at each block's end: memory by system, CPU by section of the frame and by

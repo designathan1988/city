@@ -26,7 +26,9 @@
 ## Plan
 
 ## Next
-- Paused (2026-11-13, the owner's question on the architecture): feature 1 (the grade solver in this game's design) was read,
-  traced and researched (one look: road_grade_test 46 checks pass, 2.0 s; Whittaker-Eilers smoothing, Eilers 2003; exact
-  two-pass envelopes, Felzenszwalb and Huttenlocher; vertical alignment as constrained least squares, UBC thesis 1.0400121);
-  nothing coded, no block opened. Resume from its design once the owner settles the architecture's order.
+- Feature 1 (the grade solver in this game's design) was read, traced and researched (one look: road_grade_test 46 checks
+  pass, 2.0 s; Whittaker-Eilers smoothing, Eilers 2003; exact two-pass envelopes, Felzenszwalb and Huttenlocher; vertical
+  alignment as constrained least squares, UBC thesis 1.0400121); nothing coded, no block opened.
+- The architecture's order is settled (architecture.md, "Where the backbone stands"): T036 and T037 are built, feature 3 of
+  this area with them. Before feature 1: T038 (the board's next line, doc/port.md). Then feature 1 from its design: its own
+  sheet `sheets/roads-heights.md` first (`python tools/tracer/port.py sheet roads --feature 1`), then its block.

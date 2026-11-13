@@ -14,7 +14,7 @@ justified.
 - Read: <path>, what it does
 - Outputs, conditions, cases, values (each file:line)
 - State it reads and writes; what sets it off
-- Cost (`--cost`): loops, growth, per-frame or per-change; faults never to bring (the constitution, principle II, by name)
+- Cost (`--cost`): loops, growth, per-frame or per-change; faults never to bring (CLAUDE.md, "Never", and architecture.md's list, by name)
 
 ## This game
 - The same, from its own trace and reading, or "absent"

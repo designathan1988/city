@@ -124,8 +124,7 @@ def whole_rules(rules):
               lambda ctx: _site_listing()),
         Whole("line_endings", ["LINE_ENDINGS"], gate_files.line_ending_inputs, gate_files.check_line_endings,
               lambda ctx: sorted(ctx.changed)),
-        Whole("instructions", ["PRECEDENCE_CLAIM", "NESTED_CLAUDE", "MEMORY_ON"],
-              gate_docs.instruction_inputs, gate_docs.check_instructions, gate_docs.instruction_extra),
+        Whole("instructions", ["PRECEDENCE_CLAIM", "NESTED_CLAUDE"], gate_docs.instruction_inputs, gate_docs.check_instructions),
         Whole("problems_elsewhere", ["PROBLEMS_ELSEWHERE"], gate_docs.problems_inputs, gate_docs.check_problems_elsewhere,
               lambda ctx: sorted(ctx.listed)),
     ]

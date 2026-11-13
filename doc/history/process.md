@@ -169,6 +169,7 @@ Appended by `python tools/tasks/cli.py block close` (FR-050: the time each step 
 | t042-tool-defects | 2026-11-13T14:10 | 2026-11-13T14:26 | 2026-11-13T14:37 | 16 | 11 |
 | t042-tool-defects | 2026-11-13T14:38 | 2026-11-13T14:53 | 2026-11-13T15:01 | 15 | 8 |
 | t036-errors-seen | 2026-11-13T15:05 | 2026-11-13T15:40 | 2026-11-13T15:51 | 35 | 11 |
+| t037-records-true | 2026-11-13T16:05 | 2026-11-13T17:22 | 2026-11-13T17:41 | 77 | 19 |
 
 ## 2026-11-12: the audit of 2026-11-07 (log/review.md) folded into the register
 
@@ -501,3 +502,35 @@ the residential ring (r > 350 m on the town map).
   last); T008 parked; the block t008-people closed and its work file kept whole as `doc/history/people.md`. `.claude/settings.json`
   stays deleted, as the owner left it.
 
+## 2026-11-13: one board, one file of orders, the state shown at every start (the owner's order)
+
+- **The order**: the owner, after another session that did not know what to do next: "you do not even know what has to be done,
+  you do not read the documentation, you do not know the steps of the port; hooks, CLAUDE.md, documents and settings are
+  useless; understand it reading everything yourself and fix it once and for all"; then: "remove the rubbish from this supposed
+  constitution, from CLAUDE.md, from every document; no more bureaucracy; I believe memory is off and you record nothing".
+- **Causes found by reading** (the orders, the specification's eleven documents, the six histories, the hooks, the tools run):
+  - What is next was written nowhere. CLAUDE.md said "the next feature of tasks.md"; tasks.md listed areas ("T016 Roads: as
+    T008"), the features stood in the areas' sheets, their state in no file, and the one pointer in a work file that said
+    "paused". T038 stood unchecked before the port while CLAUDE.md ordered at every feature's end a scale probe T038 had not
+    built.
+  - The port's own driver, `tools/tracer/port.py` (block t039: both games traced from a sheet's row in one run, 45 s for roads
+    feature 1; `check` proving a law against the reference), was named by no order: not in CLAUDE.md, the constitution or the
+    quickstart.
+  - The hooks repeated "invoke a skill, load Context7" at every start and every prompt, named a skill that does not exist
+    (`skillspec`), and gated edits on any Skill call at all; none said where the work stood.
+  - The same orders lived twice (the constitution and CLAUDE.md, held together by a version and a gate), and the
+    specification's documents contradicted them: the plan's area order (people first), "no hooks", a close check and a
+    contract removed since; the spec's FR-020 and SC-011 (a guard the owner had removed); a checklist citing principles VI,
+    VIII and X of a constitution with five.
+  - Auto memory was off by this project's own gate (MEMORY_ON, specification 001), so nothing a session learnt from the owner
+    reached the next.
+- **Done**: `doc/port.md`, the one board (107 features, a line each, from the sheets' tables in the owner's order of areas, the
+  backbone first; 5 done); `.claude/hooks/port_state.py` prints the next line, the open block, its work file's next steps, what is
+  uncommitted and the last commits at a session's start, one line at each prompt (it states facts, no order); CLAUDE.md
+  rewritten as the only file of orders, with the seven steps and each step's commands, the port driver among them; the
+  constitution a pointer; auto memory on; the gates' version and memory checks removed with their fixtures
+  (`tools/gates/gate_docs.py`, `registry.py`); the edit gate removed.
+- **Removed** (git keeps them at 90b67e27): the specification's spec.md, plan.md, tasks.md, quickstart.md, data-model.md and
+  its two checklists (what of tasks.md was still owed is on the board, with its goals); `.claude/hooks/standing_orders.py`.
+- **Left as it is, said to the owner**: the work files of three closed blocks (t036, t037, t042) were never folded into their
+  histories.

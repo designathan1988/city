@@ -23,7 +23,7 @@
 
 ## Differences
 - The reference's maker is a remnant (a tool slot, a hint, a saved list with no writer and no reader): a half-done feature, which the
-  constitution keeps out (VI). Not brought; nothing to register here.
+  orders keep out (CLAUDE.md, "Never"). Not brought; nothing to register here.
 - The genre: city builders draw their people from a generated cast (Cities: Skylines II's citizens, genre-gaps.md) and name them; a
   maker of individuals belongs to life simulations. What the player meets of a person here is the cast (people-cast) and the
   inspector of a walker (interface area, T024).

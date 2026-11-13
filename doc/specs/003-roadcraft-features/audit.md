@@ -1,6 +1,6 @@
 # The architecture audit (specification 003, 2026-11-13)
 
-Seven reading agents, one per area, each claim checked in the code before a fix rests on it (the constitution's agents rule).
+Seven reading agents, one per area, each claim checked in the code before a fix rests on it (CLAUDE.md's agents rule).
 Verdict and findings by area; the defects outrank every cleanup. The fixes land in the backbone (architecture.md) or with the
 area's port features (sheets/<area>.md).
 

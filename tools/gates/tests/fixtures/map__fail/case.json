@@ -2,7 +2,6 @@
  "rule": "map",
  "expect": [
   "CLAUDE_MD CLAUDE.md",
-  "CLAUDE_MD CLAUDE.md",
   "MAP_OUTDATED log/mapa.md",
   "MAP_OUTDATED tools/b.py"
  ],

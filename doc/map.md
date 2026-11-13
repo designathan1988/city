@@ -1,7 +1,7 @@
 # Map of the code, file by file
 
 A file created or deleted enters here in the same commit: the gate `MAP_OUTDATED` checks it. The structure by folder, the
-threads and the whole command list follow the map; the rules are the constitution's (`.specify/memory/constitution.md`).
+threads and the whole command list follow the map; the rules are `CLAUDE.md`'s.
 
 <!-- MAP:START -->
 **Root and tools**
@@ -653,19 +653,20 @@ threads and the whole command list follow the map; the rules are the constitutio
 - `tools/tasks/files.py` · `tools/tasks/ledger.py` — the file primitives the writers share (a temporary name, a text written whole, a removal, a size); the task store's bound kept on every write (each entry added to its ledger, the least recently used evicted past the bound, a hit marking its entry used)
 - `tools/tasks/outputs.py` · `tools/tasks/lifecycle.py` · `tools/tasks/clean.py` · `tools/tasks/tests/test_lifecycle.py` — the bounds of what the work writes under dist/ (`tools/tasks/suites.json` lifecycle), their one reader; every worktree, sibling copy, nested repository, branch and stash with its class and age, failing when one is older than its work (`cli.py worktrees [--all]`); every output folder held to its bound now and what no one declared listed or removed (`cli.py clean [--dry-run] [--unowned] [--only DIR]`); their tests
 - `tools/gates/tests/test_register_join.py` — the gates against the register: a finding an open problem names is registered, any other NEW, nothing filtered
-- `.specify/memory/constitution.md` — the constitution: the owner's orders (principles I-V: the orders, the port by the tracer, one feature at a time, focus, the cause fixed; the architecture and the bar; tools, processes and records; governance and its version)
-- `CLAUDE.md` — generated from the constitution for Claude Code: the same orders in its words, naming the version it was generated from (the gate CLAUDE_MD holds both together)
+- `.specify/memory/constitution.md` — a pointer to CLAUDE.md, the project's orders, kept so Spec Kit's commands find the file and write no template in its place
+- `CLAUDE.md` — the project's orders, whole: the port and where it stands, one feature start to end with its commands, focus, what never happens, the architecture, how the work is done
 - `.specify/**` — Spec Kit's project files (version 1.4.0, PowerShell scripts): its templates, scripts, workflows and integration records, and its feature record naming the specification in hand under `doc/specs/`
-- `.claude/agents/worker.md` — the project's agent: every tool, does whatever its brief orders by the constitution's method
-- `.claude/settings.json` · `.claude/hooks/standing_orders.py` — Claude Code's project settings (Context7 enabled; the hooks) and the hook that puts the owner's standing orders back in the model's context at every session start (startup, resume, clear, compact, fork: CLAUDE.md whole, superpowers:using-superpowers, Context7, the skills the work needs, and after a compaction the skills the session had invoked), at every prompt and at every subagent's start
-- `doc/specs/**` — the specifications made by the Spec Kit skills, one folder each (spec, research with its sources, plan, data model, contracts, quickstart, tasks with verifiable goals, the comparison sheets, the genre's gap list)
-- `doc/work/**` — the work's memory, one short file a block (goal, sheet, plan, state, next), folded into the area's history at the close and removed
+- `.claude/agents/worker.md` — the project's agent: every tool, does whatever its brief orders by CLAUDE.md's method
+- `.claude/settings.json` · `.claude/hooks/port_state.py` — Claude Code's project settings (auto memory on, Context7 enabled, the hook at a session's start, at each prompt and at a subagent's start) and the hook: where the port stands, read from `doc/port.md` (the next feature, how many are done), the open block and the next steps of its work file, what is uncommitted and the last commits; run by hand it prints the same
+- `doc/specs/**` — the port's documents (`doc/specs/003-roadcraft-features`): how a feature lands and what never comes from the reference (architecture), the architecture audit, the research with its sources, the contracts (the comparison sheet's sections, the look plan's steps, the camera's solids, the inventory's command), the comparison sheets by area, the genre's gap list
+- `doc/port.md` — the port's board: every feature in order, one line each, checked when its checks pass; the first unchecked line is the next
+- `doc/work/**` — the work's memory, one short file a block (goal, sheet, plan, state, next), folded into the area's history at the close
 - `tools/atlas/tests/**` — the atlas's tests and their fixture register
 - `doc/problems.jsonl` · `doc/problems.md` — the one register of every known problem of the game and the project (one JSON object a line, schema `tools/gates/schemas/problem.schema.json`) and its generated view
 - `doc/history/tools.md` · `doc/history/process.md` · `doc/history/game.md` · `doc/history/performance.md` · `doc/history/architecture.md` · `doc/history/people.md` — one history per area of work: the tools; the process (the method, the triage and cleanup, the progress of a specification, the time each step takes); the game's work, session by session; the performance fixes measured in the 24 km city; the architecture's line; the people area's port (specification 003, T007 and T008, item by item)
 <!-- MAP:END -->
 
-## The project's structure (reference; the rules are the constitution's)
+## The project's structure (reference; the rules are CLAUDE.md's)
 
 `C:\Users\Jonathan\Desktop\city` is the whole project.
 
@@ -706,9 +707,9 @@ threads and the whole command list follow the map; the rules are the constitutio
   suite ran.
 - Left with specification 001 on 2026-11-12 (history under the archive tags below): converter/, process/, ports/, oracle-4.0/.
 
-**Others:** `dist/` (builds, captures and logs, out of git), `doc/` (every document of the project, the constitution and CLAUDE.md aside).
+**Others:** `dist/` (builds, captures and logs, out of git), `doc/` (every document of the project, CLAUDE.md aside).
 
-## Data flow, threads, light and state machines (reference; each rule is in the constitution, principle VIII)
+## Data flow, threads, light and state machines (reference; each rule is in CLAUDE.md, Architecture)
 
 - `DataTables` reads `data/**` → `CityStore.boot` sends the catalogue to the `CityCore`, which refuses a missing key.
 - `Simulation` runs on its own thread with a fixed tick (`sim_tick_hz`), under the shared `map_mutex` and `traffic_mutex`;
