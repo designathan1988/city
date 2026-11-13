@@ -45,6 +45,7 @@ public:
 	int bodies() const { return people_ ? people_->bodies().count() : 0; }
 	int bodies_moving() const { return people_ ? people_->bodies().moving() : 0; }
 	int bodies_kept() const { return people_ ? people_->bodies().kept() : 0; }
+	godot::PackedVector3Array body_places() const { return people_ ? people_->bodies().places() : godot::PackedVector3Array(); }
 	int ruin_pieces_flying() const { return ruins_.flying(); }
 	uint32_t ruin_digest(uint32_t seed) const { return ruins_.digest(seed); }
 	int blood_marks() const { return marks_.blood(); }

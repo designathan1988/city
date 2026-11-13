@@ -21,7 +21,8 @@ static func stand_on_walker(rig: CityCamera, ui: UiDriver, view: Array) -> void:
 
 ## setViewNear [kind, x, y, zoom, azimuth, elevation]: the plan's view of the element of `kind` nearest (x, y) (y is the map's north, -z),
 ## found by the core: "walker" or "vehicle" (shot_targets, the clock stopped so it stays in the frame, a fallen walker skipped); "fallen"
-## (a walker on the ground, tripped or knocked down: its body is drawn where it fell);
+## (a walker on the ground, tripped or knocked down: its body is drawn where it fell); "body" (a body the effects draw, the dead included:
+## effects_body_places);
 ## "lamp", "pole" or "sign" (the street furniture of the street under the vehicle nearest the point: furniture_spots of segment_at, the
 ## player's own pole runs too for "pole"; a plan runs the clock first so traffic is out); "building" (the tallest within
 ## BUILDING_REACH_M, CityCore.highest_roof, aimed at its foot). False, said, with none of that kind there.
@@ -48,6 +49,9 @@ static func _nearest(kind: String, from: Vector2) -> Vector3:
 			for t: Dictionary in CityStore.query(&"shot_targets", [WALKERS_READ])[kind + "s"]:
 				if not t.get("fallen", false):
 					points.push_back(t.position)
+		"body":
+			for at: Vector3 in CityStore.query(&"effects_body_places"):
+				points.push_back(at)
 		"fallen":
 			CityStore.dispatch(&"set_speed", [0])
 			for t: Dictionary in CityStore.query(&"shot_targets", [WALKERS_READ]).walkers:

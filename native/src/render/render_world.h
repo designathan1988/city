@@ -119,6 +119,7 @@ public:
 	int bodies() const { return effects_.bodies(); }
 	int bodies_moving() const { return effects_.bodies_moving(); }
 	int bodies_kept() const { return effects_.bodies_kept(); }
+	godot::PackedVector3Array body_places() const { return effects_.body_places(); }
 	int effect_pieces() const { return effects_.pieces(); }
 	int broken_buildings() const { return int(effects_.broken().size()); }
 	int blood_marks() const { return effects_.blood_marks(); }

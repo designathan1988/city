@@ -46,6 +46,7 @@ public:
 	int count() const { return int(bodies_.size()); }
 	int moving() const;
 	int kept() const; // those who stay where they fell: the dead
+	godot::PackedVector3Array places() const; // each body's pelvis, where it lies (a look plan aims at one)
 
 private:
 	struct Body {

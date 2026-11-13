@@ -257,6 +257,12 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground, float hard_ms
 	rows_dirty_ = false;
 }
 
+PackedVector3Array BodyRenderer::places() const {
+	PackedVector3Array out;
+	for (const Body &b : bodies_) out.push_back(b.doll.pelvis());
+	return out;
+}
+
 int BodyRenderer::kept() const {
 	return int(std::count_if(bodies_.begin(), bodies_.end(), [](const Body &b) { return b.left == FOR_GOOD_S; }));
 }
