@@ -13,6 +13,7 @@
   {"setViewNear": ["body", 60, -25, 60, 270, 45]}, {"until": "render_pending", "equals": 0}, {"shot": "torn_270"},
   {"setView": [60, 8, 20, 0, 80]}, {"until": "render_pending", "equals": 0}, {"shot": "torn_above"},
   {"setViewNear": ["body", 65.6, -22.9, 200, 0, 60]}, {"until": "render_pending", "equals": 0}, {"shot": "torn_piece_close"},
+  {"setViewNear": ["body", 65.6, -22.9, 150, 180, 70]}, {"until": "render_pending", "equals": 0}, {"shot": "torn_piece_close_back"},
   {"setViewNear": ["body", 53.8, -27.2, 200, 90, 60]}, {"until": "render_pending", "equals": 0}, {"shot": "torn_piece_close_2"}
  ]
 }

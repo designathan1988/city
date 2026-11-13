@@ -60,6 +60,8 @@ private:
 	// more_rad more than it stands now (no more than straight).
 	void link_angle(int a, int mid, int b, float less_rad, float more_rad);
 	void bones_on_ground(const Ground &ground);
+	void bones_off_walls(); // no bone across a wall: its nearer end brought to the side the other stands on
+	bool uncross(int a, int b, const BodyWall &w, bool across_deep); // one bone against one of a wall's two thin ways
 	void relax();
 	void hinge(int top, int middle, int end, float way);
 	void off_walls(int particle);

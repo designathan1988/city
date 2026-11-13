@@ -164,6 +164,38 @@ void Ragdoll::bones_on_ground(const Ground &ground) {
 	}
 }
 
+// A bone with its ends on the two sides of a wall (its plane crossed within the wall's length and under its top) has the end nearer the
+// wall brought to the other end's side, its old place moved alike (no speed added): a body lies against a fence, not astride it.
+bool Ragdoll::uncross(int a, int b, const BodyWall &w, bool across_deep) {
+	const Vector2 axis = across_deep ? w.deep : w.along, other = across_deep ? w.along : w.deep;
+	const float lo = across_deep ? w.y0 : w.x0, hi = across_deep ? w.y1 : w.x1;
+	const float olo = across_deep ? w.x0 : w.y0, ohi = across_deep ? w.x1 : w.y1;
+	const Vector2 ra = Vector2(now_[a].x, now_[a].z) - w.at, rb = Vector2(now_[b].x, now_[b].z) - w.at;
+	const float ka = ra.dot(axis), kb = rb.dot(axis), mid = (lo + hi) * 0.5f;
+	if (!((ka < lo && kb > hi) || (ka > hi && kb < lo))) return false;
+	const float t = (mid - ka) / (kb - ka);
+	const float along_t = ra.dot(other) + (rb.dot(other) - ra.dot(other)) * t, y_t = now_[a].y + (now_[b].y - now_[a].y) * t;
+	if (along_t <= olo || along_t >= ohi || y_t >= w.top) return false;
+	const bool move_a = std::fabs(ka - mid) < std::fabs(kb - mid);
+	const int i = move_a ? a : b;
+	const float from = move_a ? ka : kb, to_side = (move_a ? kb : ka) > mid ? hi + LIMB_HALF_M : lo - LIMB_HALF_M;
+	const Vector2 shift = axis * (to_side - from);
+	now_[i].x += shift.x;
+	now_[i].z += shift.y;
+	was_[i].x += shift.x;
+	was_[i].z += shift.y;
+	return true;
+}
+
+void Ragdoll::bones_off_walls() {
+	for (const PartFrame &f : PART_FRAMES) {
+		const int a = f.origin, b = f.to;
+		if ((kept_ >> a & 1u) == 0 || (kept_ >> b & 1u) == 0) continue;
+		for (const BodyWall &w : walls_)
+			if (!uncross(a, b, w, true)) uncross(a, b, w, false);
+	}
+}
+
 float Ragdoll::deepest(const Ground &ground) const {
 	float deep = 0.f;
 	for (int i = 0; i < PARTICLES; i++)
@@ -225,7 +257,10 @@ int Ragdoll::step(float dt, const Ground &ground, float hard_ms, Vector3 hits[RA
 			was_[i].x = now_[i].x + (was_[i].x - now_[i].x) * SLIDE_KEEP;
 			was_[i].z = now_[i].z + (was_[i].z - now_[i].z) * SLIDE_KEEP;
 		}
-		if (k % BONE_PASS_EVERY == BONE_PASS_EVERY - 1 || k == ITERATIONS - 1) bones_on_ground(ground);
+		if (k % BONE_PASS_EVERY == BONE_PASS_EVERY - 1 || k == ITERATIONS - 1) {
+			bones_on_ground(ground);
+			bones_off_walls();
+		}
 	}
 	if (kept_ != ~0u) // a piece: what is not on it stays at its root
 		for (int i = 0; i < PARTICLES; i++)
