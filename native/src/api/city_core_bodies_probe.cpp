@@ -7,8 +7,7 @@
 
 #include "sim/roads/standing_body.h"
 #include "sim/state/city_state.h"
-#include "sim/street/street_spots.h"
-#include "sim/traffic/traffic_system.h"
+#include "sim/traffic/street_volumes.h"
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -29,11 +28,7 @@ namespace {
 
 constexpr int BESIDE = 1; // a cell and the cells beside it
 
-struct Piece {
-	StandingBody body;
-	FurnitureSpot spot;
-	std::vector<BodyBox> boxes; // the piece in volume: its parts as boxes
-};
+using Piece = StreetPiece;
 
 // The cell a body's middle is filed in: cells wider than the longest body and the gap, so two that meet are in neighbouring cells.
 std::pair<int, int> cell_of(const V2 &at, float cell) { return { int(std::floor(at.x / cell)), int(std::floor(at.y / cell)) }; }
@@ -43,25 +38,6 @@ Array told(const Piece &p) {
 	return Array::make(int(p.spot.kind), p.spot.seg, p.spot.v, p.spot.u, Vector2(p.body.at.x, p.body.at.y), p.spot.station);
 }
 
-// Every plate standing in the city: the rules' at every node, those the player placed, the streets' names (in the order of their items).
-std::vector<SignStand> plates_standing(const CityState &s) {
-	std::vector<SignStand> stands;
-	for (int n = 0; n < int(s.roads.nodes.size()); n++)
-		if (s.roads.nodes[size_t(n)].alive) traffic::junction_signs(s, n, stands);
-	for (size_t i = 0; i < s.street.items.items.size(); i++) {
-		const StreetItem &it = s.street.items.items[i];
-		if (it.alive && it.kind == ItemKind::SIGN) placed_sign(s.roads, it, stands);
-	}
-	std::vector<int> named;
-	for (const auto &entry : s.street.names.by_item) named.push_back(entry.first);
-	std::sort(named.begin(), named.end());
-	for (int id : named) {
-		const std::vector<SignStand> &plates = s.street.names.by_item.at(id).plates;
-		stands.insert(stands.end(), plates.begin(), plates.end());
-	}
-	return stands;
-}
-
 } // namespace
 
 Dictionary CityProbes::bodies_audit(float clearance_m) {
@@ -69,34 +45,13 @@ Dictionary CityProbes::bodies_audit(float clearance_m) {
 	const CityState &s = *state_;
 	const float gap = s.catalog.furniture.items.gap_m;
 	std::vector<Piece> pieces;
-	std::vector<FurnitureSpot> spots;
+	street_pieces_all(s, pieces);
 	float longest = 0, reach = 0;
 	int boxes = 0;
-	for (int sid = 0; sid < int(s.roads.segs.size()); sid++) {
-		if (!s.roads.segs[size_t(sid)].alive) continue;
-		spots.clear();
-		traffic::street_furniture_of(s, sid, FURNITURE_ALL, spots);
-		for (const FurnitureSpot &p : spots) {
-			if (p.kind == FurnitureKind::SIGN) continue; // a plate's post: its plate stands below, with the post
-			Piece piece{ body_of(s.roads, p), p, {} };
-			body_boxes(s.roads, s.catalog.furniture, p, piece.boxes);
-			reach = std::max(reach, boxes_reach(piece.boxes, piece.body.at));
-			boxes += int(piece.boxes.size());
-			longest = std::max({ longest, 2 * std::hypot(p.half_v, p.half_u), 2 * reach });
-			pieces.push_back(std::move(piece));
-		}
-	}
-	const float post = s.catalog.furniture.signs.post_radius_m;
-	for (const SignStand &st : plates_standing(s)) {
-		Piece piece;
-		piece.spot.kind = FurnitureKind::SIGN;
-		piece.spot.station = int(st.type); // which plate, for a case's line
-		piece.body = StandingBody{ V2(st.x, st.z), V2(1, 0), post, post };
-		sign_boxes(s.catalog.furniture, st.type, piece.body.at, V2(st.face_x, st.face_z), piece.boxes);
+	for (const Piece &piece : pieces) {
 		reach = std::max(reach, boxes_reach(piece.boxes, piece.body.at));
 		boxes += int(piece.boxes.size());
-		longest = std::max(longest, 2 * reach);
-		pieces.push_back(std::move(piece));
+		longest = std::max({ longest, 2 * std::hypot(piece.spot.half_v, piece.spot.half_u), 2 * reach });
 	}
 	const float cell = longest + std::max(gap, clearance_m);
 	std::map<std::pair<int, int>, std::vector<int>> grid;

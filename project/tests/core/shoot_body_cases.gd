@@ -98,6 +98,9 @@ func _together() -> void:
 	print("thrown together: ", census)
 	t.check(census.bodies >= before + 2, "both of them thrown down (%d bodies, %d before)" % [census.bodies, before])
 	t.check(census.overlap <= CONTACT_SLACK_M, "bodies at rest lie on one another, none sunk in another (deepest %.3f m in)" % census.overlap)
+	# the street's poles, posts, benches, bins and plates round them are walls they meet, and none lies through one (Prender-271)
+	t.check(census.street_walls > 0, "the street's pieces round the bodies are walls to them (%d)" % census.street_walls)
+	t.check(census.in_walls <= CONTACT_SLACK_M, "no body at rest lies through a wall, a pole or a post (deepest %.3f m in)" % census.in_walls)
 
 
 ## Somebody shot down for good who bleeds to death where they lie: their body stays, a dead one (BodyRenderer::die); frames between the

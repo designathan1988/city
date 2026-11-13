@@ -1,6 +1,6 @@
 # City: a city builder in Godot 4.7 with a C++ core (GDExtension), to be sold on Steam
 
-Generated from the constitution, `.specify/memory/constitution.md` (version 1.1.1), the project's only source of orders: the same
+Generated from the constitution, `.specify/memory/constitution.md` (version 1.2.0), the project's only source of orders: the same
 orders in its words. Read this file whole at the start of every session and after every compaction; an amendment changes the
 constitution first, then this file is generated again in the same commit. `doc/map.md` lists every file; nothing here is status.
 
@@ -104,8 +104,8 @@ constitution first, then this file is generated again in the same commit. `doc/m
   failure's cause; `superpowers:verification-before-completion` before any "done"; every `speckit-*` skill for a specification;
   `elements-of-style:writing-clearly-and-concisely` for documents; `update-config` for settings; the LSP tool for C++; any skill
   whose subject is the step in hand. A skill's step that contradicts the constitution does not apply.
-- Agents: no limit on their number; they help the work go faster and never do the session's own (the essential, coordination,
-  decisions, core fixes); what one brings is never trusted: checked in the files, and only what was verified is kept.
+- Agents, unasked and without limit, whenever reading, tracing or research can run beside the session's work; never the session's
+  own (the essential, coordination, decisions, core fixes); what one brings is checked in the files, only the verified kept.
 - Direct work on `main`, no worktree or branch; repository files changed with the Edit and Write tools, never `sed` or a script; a
   file whose last commit had no carriage return gains none. Every new or changed text is English; the player's texts live in
   `project/data/i18n`; the owner is spoken to in Portuguese.

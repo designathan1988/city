@@ -120,8 +120,8 @@ Rationale: the owner judges the game; every wrong turn of this project came from
   failure's cause; `superpowers:verification-before-completion` before any "done"; every `speckit-*` skill for a specification;
   `elements-of-style:writing-clearly-and-concisely` for documents; `update-config` for settings; the LSP tool for C++; any skill
   whose subject is the step in hand. A skill's step that contradicts this constitution does not apply.
-- Agents: no limit on their number; they help the work go faster and never do the session's own (the essential, coordination,
-  decisions, core fixes); what one brings is never trusted: checked in the files, and only what was verified is kept.
+- Agents, unasked and without limit, whenever reading, tracing or research can run beside the session's work; never the session's
+  own (the essential, coordination, decisions, core fixes); what one brings is checked in the files, only the verified kept.
 - Direct work on `main`, no worktree or branch; repository files changed with the Edit and Write tools, never `sed` or a script;
   a file whose last commit had no carriage return gains none. Every new or changed text in the repository is English; the texts
   the player sees live in `project/data/i18n`; the owner is spoken to in Portuguese.
@@ -238,4 +238,4 @@ The DLLs in `project/bin` are versioned (rebuilt from the joined sources in a re
 - Compliance: every plan's Constitution Check reads these principles; the block's close refuses an item without its reading,
   research and skills (IV); the gates hold what they can check (`tools/gates/rules.json`).
 
-**Version**: 1.1.1 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13
+**Version**: 1.2.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13

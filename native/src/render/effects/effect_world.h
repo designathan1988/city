@@ -22,7 +22,8 @@ namespace city {
 
 class EffectWorld {
 public:
-	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
+	// `look`: the roads', what a street piece stands on, for the walls round a body (kept by reference: the roads outlive the effects).
+	bool init(const RenderContext &ctx, const StreetLook &look, godot::PackedStringArray &errors);
 	void set_people(PeopleRenderer *people) { people_ = people; }
 	void set_ruin_maker(RuinPieces::Maker maker) { ruins_.set_maker(std::move(maker)); }
 	void set_wrecks(const std::vector<godot::Ref<godot::Mesh>> &bodies, const std::vector<godot::Vector3> &sizes); // the burnt bodies, by vehicle type
@@ -88,6 +89,7 @@ private:
 	Debris debris_;
 	RuinPieces ruins_;
 	PeopleRenderer *people_ = nullptr; // whose bodies fall (render_world.cpp)
+	const StreetLook *street_look_ = nullptr; // the roads' (render_world.cpp)
 	static constexpr uint64_t EFFECTS_SEED = 0xb1a57ULL; // the effects' own stream: the same blow scatters the same way every run
 	Rng rng_{ EFFECTS_SEED };
 	godot::RID scenario_, light_, light_inst_;

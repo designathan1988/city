@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 using namespace godot;
 
@@ -21,6 +22,24 @@ constexpr float TOUCH_M = 2.f * LIMB_HALF_M;
 // Clothes on clothes, static and kinetic (Babaarslan and Kalebek, Tekstil ve Konfeksiyon 3/2010, fabric on fabric under the heaviest load
 // measured, 20 N: both 0.7; they fall as the load grows, and a body is heavier).
 constexpr float CLOTH_STATIC = 0.7f, CLOTH_KINETIC = 0.7f;
+
+// How far a point stands inside a wall from each of its four sides in plan, and the nearest of them: above 0 inside. A point over the
+// wall's top or under its bottom is outside it (least below 0) whatever its plan.
+struct WallSides {
+	float west = 0, east = 0, south = 0, north = 0, least = -1.f;
+};
+WallSides sides_of(const BodyWall &w, const Vector3 &p) {
+	WallSides s;
+	if (p.y >= w.top || p.y <= w.bottom) return s; // over it, or under what hangs
+	const Vector2 rel = Vector2(p.x, p.z) - w.at;
+	const float lx = rel.dot(w.along), ly = rel.dot(w.deep);
+	s.west = lx - w.x0;
+	s.east = w.x1 - lx;
+	s.south = ly - w.y0;
+	s.north = w.y1 - ly;
+	s.least = std::min({ s.west, s.east, s.south, s.north });
+	return s;
+}
 } // namespace
 
 // The bones as capsules on the ground (Jakobsen, Advanced Character Physics, GDC 2001: a stick with a thickness): points along each are
@@ -54,7 +73,7 @@ bool Ragdoll::uncross(int a, int b, const BodyWall &w, bool across_deep) {
 	if (!((ka < lo && kb > hi) || (ka > hi && kb < lo))) return false;
 	const float t = (mid - ka) / (kb - ka);
 	const float along_t = ra.dot(other) + (rb.dot(other) - ra.dot(other)) * t, y_t = now_[a].y + (now_[b].y - now_[a].y) * t;
-	if (along_t <= olo || along_t >= ohi || y_t >= w.top) return false;
+	if (along_t <= olo || along_t >= ohi || y_t >= w.top || y_t <= w.bottom) return false;
 	const bool move_a = std::fabs(ka - mid) < std::fabs(kb - mid);
 	const int i = move_a ? a : b;
 	const float from = move_a ? ka : kb, to_side = (move_a ? kb : ka) > mid ? hi + LIMB_HALF_M : lo - LIMB_HALF_M;
@@ -93,18 +112,15 @@ float Ragdoll::deepest(const Ground &ground) const {
 void Ragdoll::off_walls(int i) {
 	Vector3 &p = now_[i];
 	for (const BodyWall &w : walls_) {
-		if (p.y >= w.top) continue;
-		const Vector2 rel = Vector2(p.x, p.z) - w.at;
-		const float lx = rel.dot(w.along), ly = rel.dot(w.deep);
-		if (lx <= w.x0 || lx >= w.x1 || ly <= w.y0 || ly >= w.y1) continue;
+		const WallSides s = sides_of(w, p);
+		if (s.least <= 0.f) continue;
 		if (was_[i].y >= w.top) { // come down on it from above: onto its roof, as onto the ground
 			p.y = w.top + LIMB_HALF_M;
 			was_[i].x = p.x + (was_[i].x - p.x) * SLIDE_KEEP;
 			was_[i].z = p.z + (was_[i].z - p.z) * SLIDE_KEEP;
 			continue;
 		}
-		const float west = lx - w.x0, east = w.x1 - lx, south = ly - w.y0, north = w.y1 - ly;
-		const float least = std::min({ west, east, south, north });
+		const float west = s.west, east = s.east, south = s.south, least = s.least; // the north side is what remains
 		const Vector2 out = least == west ? -w.along : least == east ? w.along : least == south ? -w.deep : w.deep;
 		const Vector2 move = out * (least + LIMB_HALF_M);
 		p.x += move.x;
@@ -139,6 +155,19 @@ void Ragdoll::push_out_of(const Ragdoll &other) {
 			now_[i] -= slid < CLOTH_STATIC * deep ? slide : slide * std::min(CLOTH_KINETIC * deep / std::max(slid, NOTHING_M), 1.f);
 		}
 	}
+}
+
+float Ragdoll::in_walls() const {
+	float most = 0.f;
+	for (int i = 0; i < PARTICLES; i++) {
+		if ((kept_ >> i & 1u) == 0) continue;
+		for (const BodyWall &w : walls_) most = std::max(most, sides_of(w, now_[i]).least);
+	}
+	return most;
+}
+
+int Ragdoll::footed_walls() const {
+	return int(std::count_if(walls_.begin(), walls_.end(), [](const BodyWall &w) { return w.bottom > std::numeric_limits<float>::lowest(); }));
 }
 
 float Ragdoll::overlap(const Ragdoll &other) const {

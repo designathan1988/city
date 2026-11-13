@@ -30,6 +30,8 @@ func decode(raw: Array) -> Array:
 			out.push_back(_crowd(a.get("off", [0.0, 0.0]), float(a.crowd)))
 		elif a is Dictionary and a.has("roundAt"):
 			out.append_array(_round_at(a.roundAt))
+		elif a is Dictionary and a.has("poleRound"):
+			out.append_array(_pole_round(a.poleRound))
 		elif a is Dictionary and a.has("profile"):
 			out.push_back(_profile(a.profile))
 		elif a is Dictionary and a.has("v3"):
@@ -79,6 +81,34 @@ func _round_at(xz: Array) -> Array:
 	var head := target + Vector3(0, HEAD_M, 0)
 	var origin := head + ROUND_FROM
 	print("round at the walker at ", target)
+	return [origin, (head - origin).normalized()]
+
+
+## A round at the head of the walker on their feet who stands nearest a lamp, pole or plate of the street round `xz`
+## (LookAim.street_spots), fired from the side away from the post: the body it kills falls towards the post. The shoot command's origin
+## and direction, two arguments; none found: said, counted, a round at the sky from the point.
+func _pole_round(xz: Array) -> Array:
+	var poles: Array = []
+	for kind: String in LookAim.FURNITURE.keys(): # its lamps, poles and plates' posts
+		poles.append_array(LookAim.street_spots(kind, Vector2(xz[0], xz[1])))
+	var best := INF
+	var walker := Vector3.INF
+	var pole := Vector3.INF
+	for w: Vector3 in _standing():
+		for p: Vector3 in poles:
+			var d := Vector2(w.x, w.z).distance_to(Vector2(p.x, p.z))
+			if d < best:
+				best = d
+				walker = w
+				pole = p
+	if walker == Vector3.INF:
+		failures += 1
+		print("FAIL no walker by a pole near ", xz)
+		return [point(xz), Vector3.UP]
+	var away := Vector2(walker.x - pole.x, walker.z - pole.z).normalized()
+	var head := walker + Vector3(0, HEAD_M, 0)
+	var origin := head + Vector3(away.x, 0.0, away.y) * ROUND_FROM.z + Vector3(0, ROUND_FROM.y, 0)
+	print("round at the walker at %s, %.1f m from the post at %s" % [walker, best, pole])
 	return [origin, (head - origin).normalized()]
 
 

@@ -44,7 +44,7 @@ static func _nearest(kind: String, from: Vector2) -> Vector3:
 	var points: Array = []
 	match kind:
 		"lamp", "pole", "sign":
-			points = _street_furniture(kind, from)
+			points = street_spots(kind, from)
 		"walker", "vehicle":
 			CityStore.dispatch(&"set_speed", [0])
 			for t: Dictionary in CityStore.query(&"shot_targets", [WALKERS_READ])[kind + "s"]:
@@ -69,7 +69,7 @@ static func _nearest(kind: String, from: Vector2) -> Vector3:
 
 ## The furniture of `kind` on the first street that has it, of the streets under the vehicles from the nearest to `from` outwards
 ## (and, for poles, the player's pole runs).
-static func _street_furniture(kind: String, from: Vector2) -> Array:
+static func street_spots(kind: String, from: Vector2) -> Array:
 	var points: Array = Array(CityStore.query(&"street_poles")) if kind == "pole" else []
 	CityStore.dispatch(&"set_speed", [0])
 	var cars: Array = CityStore.query(&"shot_targets", [WALKERS_READ]).vehicles.map(func(v: Dictionary) -> Vector3: return v.position)

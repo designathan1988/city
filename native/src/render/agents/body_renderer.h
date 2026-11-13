@@ -50,8 +50,9 @@ public:
 	// What the tests and look plans read of the bodies: {bodies; moving, those still falling; kept, those who stay where they fell (the
 	// dead); from_drawn, those fallen from the pose their walker was drawn in; pieces, limbs torn off, each a body of its own; deepest, the
 	// metres the deepest body come to rest has lain under the ground since the city opened; overlap, the metres the deepest joint of a body
-	// at rest lies within another's (its own torn limbs aside), nearer than they touch; who, the casualties (DamageEvent::id) whose whole
-	// bodies lie there}.
+	// at rest lies within another's (its own torn limbs aside), nearer than they touch; in_walls, the metres the deepest joint of a body at
+	// rest lies inside a wall it meets; street_walls, how many of the bodies' walls are the street's pieces (those with a bottom); who,
+	// the casualties (DamageEvent::id) whose whole bodies lie there}.
 	godot::Dictionary census() const;
 	godot::PackedVector3Array places() const; // each whole body's pelvis, where it lies, its torn limbs by it (a look plan aims at one)
 

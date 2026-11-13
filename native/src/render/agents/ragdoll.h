@@ -10,6 +10,7 @@
 #include <godot_cpp/variant/vector3.hpp>
 
 #include <functional>
+#include <limits>
 #include <vector>
 
 namespace city {
@@ -22,10 +23,12 @@ constexpr int RAGDOLL_PARTS = 13;
 constexpr int RAGDOLL_HITS = 4; // the most hard landings a step tells
 
 
-// A wall of a building a body can strike: a box of the lot's frame, up to `top`.
+// Something a body can strike: a box in a frame on the ground (a lot's, a street piece's), from `bottom` up to `top`. A wall stands
+// on the ground (no bottom); a signal's arm or a plate hangs over it, and a body passes under.
 struct BodyWall {
-	godot::Vector2 at, along, deep; // the lot's corner and its axes
+	godot::Vector2 at, along, deep; // the frame's corner and its axes, square to each other
 	float x0 = 0, y0 = 0, x1 = 0, y1 = 0, top = 0;
+	float bottom = std::numeric_limits<float>::lowest();
 };
 
 class Ragdoll {
@@ -53,6 +56,10 @@ public:
 	void push_out_of(const Ragdoll &other);
 	// How far its joints lie within another body's, nearer than they touch; 0 when none does: a probe.
 	float overlap(const Ragdoll &other) const;
+	// How deep its deepest joint lies inside one of its walls, between their bottom and top; 0 when none does: a probe.
+	float in_walls() const;
+	// Its walls with a bottom: the street's pieces among them (a lot's walls stand on the ground): a probe.
+	int footed_walls() const;
 
 private:
 	static constexpr int PARTICLES = RAGDOLL_JOINTS + 2; // and the top of the head and the belly, which brace what the joints leave free

@@ -1,0 +1,16 @@
+{
+ "_doc": "A body meets the street's poles (Prender-271, walls_about's street walls): a round at the head of the walker who stands nearest a lamp, pole or plate of the street at the corner (60, 8), fired from the side away from the post ({poleRound}: LookArgs; in this town a post at (56.2, -24), the walker 2.1 m from it), so the body falls towards it (a blow there was judged a roof burst, Psimulation-106, and knocked nobody down); a second after, the body nearest that post (setViewNear body at setView (56, 24): y is -z) close (120 px a metre) from four azimuths at 35 degrees and from above (80): the body against the post, no limb through it. The census (in_walls, street_walls) printed.",
+ "city": {"map": 0, "seed": 1, "generate": true},
+ "steps": [
+  {"hour": 16}, {"dispatch": "set_speed", "args": [1]}, {"frames": 300},
+  {"setView": [56, 24, 30, 0, 50]}, {"until": "render_pending", "equals": 0}, {"frames": 30},
+  {"dispatch": "shoot", "args": [{"poleRound": [60, 8]}]},
+  {"frames": 60},
+  {"query": "effects_bodies_census"}, {"query": "effects_body_places"},
+  {"setViewNear": ["body", 56, 24, 120, 0, 35]}, {"shot": "pole_0"},
+  {"setViewNear": ["body", 56, 24, 120, 90, 35]}, {"shot": "pole_90"},
+  {"setViewNear": ["body", 56, 24, 120, 180, 35]}, {"shot": "pole_180"},
+  {"setViewNear": ["body", 56, 24, 120, 270, 35]}, {"shot": "pole_270"},
+  {"setViewNear": ["body", 56, 24, 120, 0, 80]}, {"shot": "pole_above"}
+ ]
+}

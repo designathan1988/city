@@ -44,7 +44,7 @@ bool RenderWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	ok = agents_.init(ctx, errors) && ok;
 	ok = transit_.init(ctx, errors) && ok;
 	ok = overlays_.init(ctx, errors) && ok;
-	ok = effects_.init(ctx, errors) && ok;
+	ok = effects_.init(ctx, roads_.look(), errors) && ok;
 	effects_.set_people(&agents_.people());
 	effects_.set_ruin_maker([this](const b40::Data &data, const Building &rec, const HeightPatch &ground) { return buildings_.ruin_of(data, rec, ground); });
 	if (ok) {

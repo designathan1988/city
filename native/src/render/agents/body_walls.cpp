@@ -1,7 +1,10 @@
 // The walls round a body (body_walls.h).
 #include "render/agents/body_walls.h"
 
+#include "render/props/street_props.h"
 #include "sim/buildings/b40/record.h"
+#include "sim/state/city_view.h"
+#include "sim/traffic/street_volumes.h"
 
 #include <cmath>
 
@@ -14,10 +17,28 @@ namespace {
 bool stands_in_the_way(b40::Element kind) {
 	return kind == b40::EL_WALL || kind == b40::EL_FENCE || kind == b40::EL_RAILING || kind == b40::EL_HEDGE || kind == b40::EL_SHED || kind == b40::EL_STALL;
 }
+
+// Each part of each street piece within `reach` as a wall in its own frame (its length along, its width across), from its foot's
+// height up: a pole's mast stands from the pavement, a signal's arm and a plate hang over it.
+void street_walls(const CityState &s, const StreetLook &look, float x, float z, float reach, std::vector<BodyWall> &out) {
+	std::vector<StreetPiece> pieces;
+	street_pieces_in(s, x - reach, z - reach, x + reach, z + reach, pieces);
+	const CityView view(s);
+	for (const StreetPiece &p : pieces) {
+		const float foot = street_ground(view, look, p.body.at.x, p.body.at.y);
+		for (const BodyBox &b : p.boxes) {
+			const Vector2 along(b.plan.along.x, b.plan.along.y), across(b.plan.along.y, -b.plan.along.x);
+			BodyWall w{ Vector2(b.plan.at.x, b.plan.at.y), along, across, -b.plan.half_along, -b.plan.half_across, b.plan.half_along, b.plan.half_across, foot + b.y1 };
+			w.bottom = foot + b.y0;
+			out.push_back(w);
+		}
+	}
+}
 } // namespace
 
-std::vector<BodyWall> walls_near(const CityState &s, float x, float z, float reach) {
+std::vector<BodyWall> walls_about(const CityState &s, const StreetLook &look, float x, float z, float reach) {
 	std::vector<BodyWall> out;
+	street_walls(s, look, x, z, reach, out);
 	s.buildings.query(x - reach, z - reach, x + reach, z + reach, [&](int id) {
 		const Building &rec = s.buildings.items[size_t(id)];
 		const std::shared_ptr<const b40::Body> held = b40::record_mass(s.buildings.designs, rec);
