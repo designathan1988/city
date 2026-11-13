@@ -55,6 +55,10 @@ Rationale: the owner judges the game; every wrong turn of this project came from
   (each API it calls: Python, GDScript, Godot 4.7.2, godot-cpp, the C++ standard library, Terrain3D, mimalloc, meshoptimizer,
   Clipper2), whatever a tool's own description says: what it guarantees, on which thread, at what cost, its known bugs in that
   version; the vendored source only where Context7 has nothing; never memory. Source, question and answer go to the work file.
+- The internet is researched before every design decision, every fix whose cause is not plain in the code, and every system brought
+  (web search and the pages themselves: the shipped engines' and standard games' documentation, published methods, norms, talks),
+  each source opened and cited with its URL in the work file and the specification's research. A design not researched is not coded;
+  a check that fails twice sends the work back to research, never to another run.
 - A feature is traced in both games before it is built or fixed (VI, the tracer).
 
 ### IV. One look, code whole, check in seconds
@@ -165,7 +169,7 @@ Rationale: the owner judges the game; every wrong turn of this project came from
 
 ## The method in order
 
-1. Read whole (III). 2. Research with Context7 (III). 3. Trace both games (VI). 4. Plan the fix of the cause: the design decision
+1. Read whole (III). 2. Research with Context7 and the internet (III). 3. Trace both games (VI). 4. Plan the fix of the cause: the design decision
 with `file:line`, the fix, its one owner, every file it touches, why the symptom cannot return, what else it fixes. 5. One look,
 then `block open`, code each item whole with nothing run, then its checks and photos in seconds, commit and push (IV). 6. At the
 block's end, the suites, each under a minute:
@@ -233,4 +237,4 @@ The DLLs in `project/bin` are versioned (rebuilt from the joined sources in a re
 - Compliance: every plan's Constitution Check reads these principles; the block's close refuses an item without its reading,
   research and skills (IV); the gates hold what they can check (`tools/gates/rules.json`).
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13
+**Version**: 1.1.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13

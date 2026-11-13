@@ -418,3 +418,13 @@ the residential ring (r > 350 m on the town map).
   deleted before any commit; the existing skill holds the method.
 - **Not read by the agent** (a gap for whoever brings a feature in its subject): `reports/polygon-geometry-audit.md` (4,120 lines).
 
+## 2026-11-13: the constitution, CLAUDE.md generated from it, and research on the internet always
+
+- **The orders**: the owner removed CLAUDE.md and ordered the Spec Kit flow to generate it; then, after the camera took three designs
+  that failed their checks, that the internet be researched always and Context7 used always.
+- **Done**: `.specify/memory/constitution.md` 1.0.0 (commit 300d89a9) holds every order; CLAUDE.md is generated from it and names its
+  version (the gate CLAUDE_MD fails when they differ). 1.1.0: principle III gains the internet's research before every design
+  decision, every fix whose cause is not plain and every system brought, each source cited with its URL; a check failing twice sends
+  the work back to research. Specification 003 reordered: the port first, the camera last (its research R1b from the engines'
+  documentation, cited).
+

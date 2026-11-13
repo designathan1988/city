@@ -1,6 +1,6 @@
 # City: a city builder in Godot 4.7 with a C++ core (GDExtension), to be sold on Steam
 
-Generated from the constitution, `.specify/memory/constitution.md` (version 1.0.0), the project's only source of orders: the same
+Generated from the constitution, `.specify/memory/constitution.md` (version 1.1.0), the project's only source of orders: the same
 orders in its words. Read this file whole at the start of every session and after every compaction; an amendment changes the
 constitution first, then this file is generated again in the same commit. `doc/map.md` lists every file; nothing here is status.
 
@@ -46,6 +46,10 @@ constitution first, then this file is generated again in the same commit. `doc/m
   (each API it calls: Python, GDScript, Godot 4.7.2, godot-cpp, the C++ standard library, Terrain3D, mimalloc, meshoptimizer,
   Clipper2), whatever a tool's own description says: what it guarantees, on which thread, at what cost, its known bugs in that
   version; the vendored source only where Context7 has nothing; never memory. Source, question and answer go to the work file.
+- The internet is researched before every design decision, every fix whose cause is not plain in the code, and every system brought
+  (the shipped engines' and standard games' documentation, published methods, norms, talks), each source opened and cited with its
+  URL in the work file and the specification's research. A design not researched is not coded; a check that fails twice sends the
+  work back to research, never to another run.
 - A feature is traced in both games before it is built or fixed (VI, the tracer).
 
 ## IV. One look, code whole, check in seconds
@@ -150,7 +154,7 @@ constitution first, then this file is generated again in the same commit. `doc/m
   pixel positions, sound and defective alike. A defect, or a photo not analysed, fails the item.
 
 ## The method in order
-1 read whole; 2 Context7; 3 trace both games; 4 plan the cause (`file:line`, the fix, its owner, the files, why it cannot return);
+1 read whole; 2 Context7 and the internet; 3 trace both games; 4 plan the cause (`file:line`, the fix, its owner, the files, why it cannot return);
 5 one look, `block open`, code each item whole, its checks and photos in seconds, commit and push; 6 at the block's end the suites:
 tools, their tests and `run_gates.py --file` on each changed file; GDScript, scenes, data, the scenes they reach and their gates;
 C++, both DLLs (`tools/build/build.sh core-windows`) then the scenes; what the player sees, its photos. Each in the foreground with a
