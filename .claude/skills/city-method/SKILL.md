@@ -128,8 +128,10 @@ The loop per feature: trace and read whole (this section), plan (5), code with n
 analysed (8); a pass closes it (9) and the next feature begins at item 1.
 
 ## 4. Nothing runs before the code is written
-No test, measurement, photo, script or `hunt.py` while an item (one problem or one feature) is being coded: a doubt is settled
-by reading. When the item's code is whole, its own check in seconds (7), then the next item.
+Before an item's code, one look, once: the scene, the measure or the photo that shows its defect or the feature's state (the
+owner's order: once before coding, never a run per change). Then everything involved is read whole (1 to 3) and the item is
+coded whole with no test, measurement, photo, script or `hunt.py` run: a doubt is settled by reading. When the code is whole, its
+own specific checks in seconds and its photos analysed in depth (7, 8), then the next item.
 
 ## 5. Plan
 In the memory file: the cause with file:line, the fix of that decision, its owner, the files, why the symptom cannot return,
@@ -144,7 +146,8 @@ per file. No test, build, measurement, photo or process runs while the item is b
 After each item: `python tools/tasks/cli.py block verify`, then the item's own check, seconds each, to see that it passed and
 nothing near it broke: the test scenes it reaches, one by one (`python tools/tasks/cli.py run <task>`: a scene takes 2 to 30 s,
 its build, import and script check come from the cache when unchanged; `run tests --list` names them), and its photos (a
-`looks` item of only the shots that prove the item, about 15 s, analysed as in 8). A pass: `block open <block>` and the next
+`looks` item of only the shots that prove the item, about 15 s, analysed as in 8). A pass: the item's commit and its push to `origin/main` (the owner's order: regularly, never only at the end), then
+`block open <block>` and the next
 item; a failure: fixed in code first. At the block's end, the suites of what the whole block reaches (CLAUDE.md's table):
 tools (their tests, `run_gates.py --file` on each changed file), GDScript/data (the test scenes it reaches,
 `python tools/tasks/cli.py run <task>`, and the gates of the changed files), C++ (both DLLs, `build.sh core-windows`, and the
