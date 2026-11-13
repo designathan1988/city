@@ -39,6 +39,7 @@ bool BodyRenderer::init(const RenderContext &ctx, const PeopleAsset &asset, Pack
 	}
 	bones_ = int(asset.bone_part.size());
 	idle_clip_ = asset.clip("idle");
+	walk_clip_ = asset.clip("walk");
 	crouch_clip_ = asset.clip("crouchIdle");
 	up_clip_ = asset.clip("crouchUp");
 	return true;
@@ -105,7 +106,15 @@ void BodyRenderer::add(const BodySpec &spec) {
 	const Transform3D stands(stands_b, spec.at);
 	std::vector<float> &rows = clip_scratch_;
 	rows.resize(size_t(bones_) * FLOATS_A_BONE);
-	asset_->clip_rows(spec.variation, idle_clip_, 0, rows.data());
+	// from the pose it was drawn in when struck, of the frames the CPU keeps (people_asset.cpp POSED_CLIPS); the idle when there is none
+	int clip = idle_clip_, frame = 0;
+	if (asset_->posed(spec.clip) > 0) {
+		clip = spec.clip;
+		b.from_drawn = true;
+		const int frames = clip == walk_clip_ ? asset_->variations[size_t(spec.variation)].walk_frames : asset_->posed(clip);
+		frame = std::clamp(int(spec.phase * float(frames)), 0, asset_->posed(clip) - 1);
+	}
+	asset_->clip_rows(spec.variation, clip, frame, rows.data());
 	b.base.resize(size_t(bones_));
 	for (int i = 0; i < bones_; i++) b.base[size_t(i)] = stands * rows_to_transform(rows.data() + size_t(i) * FLOATS_A_BONE);
 	Vector3 joints[RAGDOLL_JOINTS];
@@ -261,6 +270,10 @@ PackedVector3Array BodyRenderer::places() const {
 	PackedVector3Array out;
 	for (const Body &b : bodies_) out.push_back(b.doll.pelvis());
 	return out;
+}
+
+int BodyRenderer::from_drawn() const {
+	return int(std::count_if(bodies_.begin(), bodies_.end(), [](const Body &b) { return b.from_drawn; }));
 }
 
 int BodyRenderer::kept() const {

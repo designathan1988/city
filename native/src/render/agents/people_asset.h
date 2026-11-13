@@ -66,6 +66,7 @@ struct PeopleAsset {
 	void keep_posed(const uint8_t *texels); // fills them from the palette's bytes
 	// A body's bones in a frame of a clip, bind -> pose rows, twelve floats a bone: of the frames kept (keep_posed).
 	void clip_rows(int variation, int clip_index, int frame, float *rows) const;
+	int posed(int clip_index) const { return clip_index >= 0 && size_t(clip_index) < posed_frames.size() ? posed_frames[size_t(clip_index)] : 0; } // frames kept
 	void read_card(ByteReader &r);
 	void read_ragdoll(ByteReader &r, uint32_t bones);
 	// The clip of that name, as its index in `clips`; -1 when the file has none.

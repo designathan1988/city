@@ -191,7 +191,10 @@ struct PosedClip {
 	const char *name;
 	bool first_frame_only;
 };
-constexpr PosedClip POSED_CLIPS[] = { { "idle", true }, { "crouchIdle", true }, { "crouchUp", false } }; // body_renderer.cpp add and rise
+// body_renderer.cpp add and rise: a body struck down falls from the pose it was drawn in (the walk at its phase, every frame of it, some 1 MB;
+// an act from its first frame) and gets up through the crouch
+constexpr PosedClip POSED_CLIPS[] = { { "idle", true }, { "crouchIdle", true }, { "crouchUp", false }, { "walk", false }, { "talk", true }, { "listen", true },
+	{ "look", true }, { "phone", true }, { "headphones", true }, { "bag", true }, { "photo", true }, { "crouchDown", true } };
 } // namespace
 
 void PeopleAsset::keep_posed(const uint8_t *texels) {

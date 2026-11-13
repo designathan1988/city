@@ -69,6 +69,9 @@ public:
 	void set_view(const DetailView &view) { view_ = view; } // the frame's lens, before seat and update
 	BodyRenderer &bodies() { return bodies_; }
 	int variation_of(uint32_t look, int age) const; // which body a walker is drawn with
+	// The clip and phase walker `id` was drawn in a frame or two ago (a body struck down falls from it, body_renderer.cpp); false when
+	// it was not drawn lately (out of the view, or gone longer).
+	bool drawn_pose(int id, int &clip, float &phase) const;
 	int shown(int level) const; // people drawn at this slot on the last frame
 	// The probes: how many slots a body has (its lods, the shadowless mesh, the card), and from how far a body `height` tall is a card
 	// on this frame's lens (0: at any distance or at none, an orthographic view).
@@ -117,6 +120,17 @@ private:
 	void set_faces(const godot::RID &material) const;
 	int act_clips_[int(PedAct::COUNT)] = {}; // what each act plays
 	int crouch_down_ = 0, crouch_up_ = 0; // either side of the crouch's own clip
+	struct DrawnPose {
+		int clip = -1;
+		float phase = 0;
+		uint32_t frame = 0;
+	};
+	std::vector<DrawnPose> drawn_; // by walker id: what each was drawn in (drawn_pose)
+	uint32_t frame_ = 0; // update's count
+	int walk_clip_ = -1, idle_clip_ = -1;
+	void remember_pose(uint32_t id, float rest, float doing, float walk);
+	static constexpr float WALK_WEIGHS_MORE = 0.5f; // a standing share under this: the walk weighs most in the pose
+	static constexpr uint32_t DRAWN_LATELY = 2; // frames: the casualty comes the frame after its walker was last drawn, or the same
 	struct Played {
 		int clip = 0;
 		float phase = 0;

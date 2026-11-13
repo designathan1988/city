@@ -24,6 +24,8 @@ struct BodySpec {
 	uint32_t lost = 0; // parts gone, a bit each (ragdoll.h order)
 	bool charred = false;
 	float pool = 0; // the blood it leaves where it comes to rest, a share of a pool's size; 0 none (the living)
+	int clip = -1; // the clip it was drawn in at the blow (PeopleRenderer::drawn_pose), -1 the idle
+	float phase = 0; // and how far into it
 };
 
 // What a body leaves on the ground: a pool where it came to rest (pool > 0, its share of a pool's size), a splash where it landed hard (0).
@@ -46,6 +48,7 @@ public:
 	int count() const { return int(bodies_.size()); }
 	int moving() const;
 	int kept() const; // those who stay where they fell: the dead
+	int from_drawn() const; // those that fell from the pose their walker was drawn in
 	godot::PackedVector3Array places() const; // each body's pelvis, where it lies (a look plan aims at one)
 
 private:
@@ -60,6 +63,7 @@ private:
 		int variation = 0, slot = 0, who = -1, splashes = 0;
 		float pool = 0;
 		bool pooled = false; // its pool laid
+		bool from_drawn = false; // fell from its walker's drawn pose, not the idle
 		uint32_t lost = 0;
 		bool charred = false;
 		godot::AABB box; // where its skin lies now: each bone's place, out by the variation's reach along the bone's axes
@@ -83,7 +87,7 @@ private:
 	static constexpr uint64_t FALL_SEED = 0xb0d1e5ULL; // the bodies' own draws: the same falls on every run
 	Rng rng_{ FALL_SEED };
 	float clock_ = 0;
-	int bones_ = 0, idle_clip_ = 0, crouch_clip_ = 0, up_clip_ = 0;
+	int bones_ = 0, idle_clip_ = 0, walk_clip_ = -1, crouch_clip_ = 0, up_clip_ = 0;
 	bool rows_dirty_ = false, layers_dirty_ = false;
 };
 

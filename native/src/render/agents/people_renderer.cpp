@@ -144,6 +144,8 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, co
 		act_clips_[i] = ACT_CLIPS[i] ? asset_.clip(ACT_CLIPS[i]) : 0;
 		if (act_clips_[i] < 0) errors.push_back(String("people: missing the clip ") + ACT_CLIPS[i]);
 	}
+	walk_clip_ = asset_.clip("walk");
+	idle_clip_ = asset_.clip("idle");
 	crouch_down_ = asset_.clip("crouchDown");
 	crouch_up_ = asset_.clip("crouchUp");
 	if (crouch_down_ < 0 || crouch_up_ < 0) errors.push_back("people: missing the crouch clip");
@@ -271,6 +273,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	RenderingServer::get_singleton()->material_set_param(material_, "idle_clock", clock);
 	RenderingServer::get_singleton()->material_set_param(held_.material(), "idle_clock", clock);
 	int drawn = 0;
+	frame_++;
 	card_px_most_ = mesh_px_least_ = 0;
 	for (const AgentRecord &rec : f.people) {
 		Pose p = record_pose(rec, at);
@@ -303,6 +306,7 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 			walk = at_it.phase;
 		}
 		place(rec.id, v, level, p, rec.look, doing, walk, 1.f - rec.rest, rec.frightened);
+		remember_pose(rec.id, rec.rest, doing, walk);
 		if (level == 0 && doing > 0) {
 			if (float *row = held_.row(rec.id, act)) agent_row(row, p, 1.f, float(v), doing, float(rec.look & SEED_MASK), walk, 1.f - rec.rest);
 		}
@@ -320,17 +324,6 @@ int PeopleRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 	held_.draw(scenario_, box, LAYER_PEOPLE);
 	helmets_.draw(scenario_, box, LAYER_PEOPLE);
 	return drawn;
-}
-
-PeopleRenderer::Played PeopleRenderer::crouch_at(int female, float since, float left) const {
-	const PersonClip &down = asset_.clips[size_t(crouch_down_)], &up = asset_.clips[size_t(crouch_up_)];
-	const PersonClip &stay = asset_.clips[size_t(act_clips_[int(PedAct::CROUCH)])];
-	// the last frame is the end of a clip played once: a clip's phase 1 is its first frame again
-	auto once = [](const PersonClip &c, float share) { return clampf(share, 0.f, 1.f) * float(c.frames - 1) / float(c.frames); };
-	if (left < up.seconds[female]) return { crouch_up_, once(up, 1.f - left / up.seconds[female]) };
-	if (since < down.seconds[female]) return { crouch_down_, once(down, since / down.seconds[female]) };
-	const float turns = (since - down.seconds[female]) / stay.seconds[female];
-	return { act_clips_[int(PedAct::CROUCH)], turns - std::floor(turns) };
 }
 
 } // namespace city

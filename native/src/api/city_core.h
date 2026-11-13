@@ -96,6 +96,7 @@ public:
 	int effects_bodies() const { return render_.bodies(); } // of people off their feet, and of those still falling
 	int effects_bodies_moving() const { return render_.bodies_moving(); }
 	int effects_bodies_kept() const { return render_.bodies_kept(); } // the dead, who stay where they fell
+	int effects_bodies_from_drawn() const { return render_.bodies_from_drawn(); } // fallen from the pose they were drawn in
 	godot::PackedVector3Array effects_body_places() const { return render_.body_places(); } // where each body lies
 	// The pistol along a line of sight: {ok, hit 0 none / 1 walker / 2 vehicle, killed, burst}; a car that took enough rounds bursts as a blow.
 	godot::Dictionary shoot(const godot::Vector3 &origin, const godot::Vector3 &direction);

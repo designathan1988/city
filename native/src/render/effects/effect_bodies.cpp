@@ -122,6 +122,7 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		b.walls = walls_near(s, e.x, e.z, WALLS_REACH_M);
 		const bool walker = e.id >= 0 && e.id < int(s.traffic.peds.size());
 		b.variation = people_->variation_of(e.u, walker ? int(s.traffic.peds[size_t(e.id)].age) : -1);
+		if (walker) people_->drawn_pose(e.id, b.clip, b.phase); // it falls from the pose it was drawn in
 		people_->bodies().add(b);
 		// what came off stays where it fell (0: for good), whether its owner gets up or not
 		for (int k = 1; k < PART_KINDS; k++)
