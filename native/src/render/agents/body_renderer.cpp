@@ -6,13 +6,15 @@
 
 #include <algorithm>
 #include <cstring>
+#include <limits>
 
 using namespace godot;
 
 namespace city {
 
 namespace {
-constexpr int MOST_BODIES = 64; // past it the oldest goes: a row of the texture each
+constexpr int MOST_BODIES = 64; // past it the oldest of the dead goes: a row of the texture each
+constexpr float FOR_GOOD_S = std::numeric_limits<float>::infinity(); // the dead stay where they fell, the aftermath kept, till MOST_BODIES
 constexpr int TEXELS_A_BONE = 3, FLOATS_A_TEXEL = 4, FLOATS_A_BONE = TEXELS_A_BONE * FLOATS_A_TEXEL;
 constexpr float STEP_S = 1.f / 60.f;
 constexpr int STEPS_MOST = 4;
@@ -80,15 +82,18 @@ void BodyRenderer::release() {
 void BodyRenderer::add(const BodySpec &spec) {
 	if (!asset_ || spec.variation >= int(asset_->variations.size())) return;
 	make_ready();
-	if (free_slots_.empty()) {
-		free_slots_.push_back(bodies_.front().slot);
-		bodies_.pop_front();
+	if (free_slots_.empty()) { // full: the oldest of those who will not get up goes first; the living get up on their own
+		auto gone = std::find_if(bodies_.begin(), bodies_.end(), [](const Body &o) { return o.rise_s <= 0.f; });
+		if (gone == bodies_.end()) gone = bodies_.begin();
+		free_slots_.push_back(gone->slot);
+		bodies_.erase(gone);
 	}
 	Body &b = bodies_.emplace_back();
 	b.slot = free_slots_.back();
 	free_slots_.pop_back();
 	b.variation = spec.variation;
-	b.left = spec.life_s;
+	b.who = spec.who;
+	b.left = spec.life_s > 0.f ? spec.life_s : FOR_GOOD_S;
 	b.floor = spec.at.y;
 	b.lost = spec.lost;
 	b.charred = spec.charred;
@@ -112,6 +117,15 @@ void BodyRenderer::add(const BodySpec &spec) {
 	for (Transform3D &t : b.stood) t = t.affine_inverse();
 	pose(b);
 	layers_dirty_ = true;
+}
+
+void BodyRenderer::die(int who) {
+	if (who < 0) return;
+	for (Body &b : bodies_) {
+		if (b.who != who) continue;
+		b.rise_s = 0.f;
+		b.left = FOR_GOOD_S;
+	}
 }
 
 // The rows of its bones, and its box: a vertex is its bones' bind -> world rows applied to it, weighted to one (people_look.gdshaderinc
@@ -225,6 +239,10 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground) {
 	for (MmLayer &l : layers_) l.send_bounds();
 	RenderingServer::get_singleton()->texture_2d_update(texture_, Image::create_from_data(bones_ * TEXELS_A_BONE, MOST_BODIES, false, Image::FORMAT_RGBAF, rows_), 0);
 	rows_dirty_ = false;
+}
+
+int BodyRenderer::kept() const {
+	return int(std::count_if(bodies_.begin(), bodies_.end(), [](const Body &b) { return b.left == FOR_GOOD_S; }));
 }
 
 int BodyRenderer::moving() const {

@@ -48,7 +48,8 @@ struct EffectParams {
 	float paper_size = 0, paper_life = 0, paper_spread = 0;
 	int down_dust_count = 0;
 	float down_dust_size = 0, down_dust_life = 0, down_dust_spread = 0;
-	float body_life = 0, push_ms = 0, lift_ms = 0, limb_push_ms = 0, tracer_life = 0, tracer_m = 0, flash_m = 0, body_lead = 0; // bodies, tracers and the muzzle
+	float push_ms = 0, lift_ms = 0, limb_push_ms = 0, tracer_life = 0, tracer_m = 0, flash_m = 0, body_lead = 0; // bodies, tracers and the muzzle
+	godot::Color tint_wood, tint_metal, tint_leaf, tint_char, tint_flesh, tint_paint; // what is thrown: wood, metal, leaves, charred, flesh, a wreck's paint (sRGB)
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);
 

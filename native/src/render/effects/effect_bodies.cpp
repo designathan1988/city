@@ -76,8 +76,9 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 	const float pl = std::hypot(px, pz);
 	if (pl > NO_PUSH_BELOW_M) { px /= pl; pz /= pl; } else { px = std::cos(e.a); pz = std::sin(e.a); }
 	const float power = bled ? 0.f : e.d * (kind == CAS_TORN ? TORN_PUSH : 1.f);
-	// Someone knocked down gets up when the simulation says; the effects clock runs a little late, so the body goes a moment early.
-	const float life = kind == CAS_KNOCKED && e.dx > 0.f ? std::max(LEAST_LIFE_S, std::min(e.dx, params_.body_life) - params_.body_lead) : params_.body_life;
+	// Someone knocked down gets up when the simulation says (lying hurt for good, the simulation's long while: dying there makes the
+	// body a dead one, BodyRenderer::die); the effects clock runs a little late, so the body goes a moment early. The dead stay (0).
+	const float life = kind == CAS_KNOCKED && e.dx > 0.f ? std::max(LEAST_LIFE_S, e.dx - params_.body_lead) : 0.f;
 	const float yaw = e.a;
 	const float side_x = -std::sin(yaw), side_z = std::cos(yaw); // to the walker's left
 	struct Part { Vector3 box, at; Color tint; uint32_t bit; };
@@ -114,13 +115,15 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		b.charred = charred;
 		b.lost = parts_gone(lost | severed);
 		b.rises = kind == CAS_KNOCKED;
+		b.who = e.id;
 		b.walls = walls_near(s, e.x, e.z, WALLS_REACH_M);
 		const bool walker = e.id >= 0 && e.id < int(s.traffic.peds.size());
 		b.variation = people_->variation_of(e.u, walker ? int(s.traffic.peds[size_t(e.id)].age) : -1);
 		people_->bodies().add(b);
+		// what came off stays where it fell (0: for good), whether its owner gets up or not
 		for (int k = 1; k < PART_KINDS; k++)
-			if ((severed & parts[k].bit) != 0) lay(parts[k].box, parts[k].at, parts[k].tint, params_.limb_push_ms, life, true);
-		if ((severed & CAS_LIMB_HEAD) != 0) lay(HEAD_BOX, parts[0].at, skin, params_.limb_push_ms, life, true);
+			if ((severed & parts[k].bit) != 0) lay(parts[k].box, parts[k].at, parts[k].tint, params_.limb_push_ms, 0.f, true);
+		if ((severed & CAS_LIMB_HEAD) != 0) lay(HEAD_BOX, parts[0].at, skin, params_.limb_push_ms, 0.f, true);
 	}
 	if (severed != 0) puffs_.burst(e.x, ground + TRUNK_CENTRE_M, e.z, int(WOUND_SPRAY * 2.f), PUFF_BLOOD, WOUND_SPREAD_M * 2.f, WOUND_SIZE_M, WOUND_LIFE_S);
 }

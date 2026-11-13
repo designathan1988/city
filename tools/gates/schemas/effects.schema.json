@@ -18,11 +18,44 @@
   "down",
   "flash",
   "sources",
-  "emitter"
+  "emitter",
+  "tints"
  ],
  "properties": {
   "_doc": {
    "type": "string"
+  },
+  "tints": {
+   "type": "object",
+   "strict": true,
+   "required": [
+    "wood",
+    "metal",
+    "leaf",
+    "char",
+    "flesh",
+    "paint"
+   ],
+   "properties": {
+    "wood": {
+     "type": "string"
+    },
+    "metal": {
+     "type": "string"
+    },
+    "leaf": {
+     "type": "string"
+    },
+    "char": {
+     "type": "string"
+    },
+    "flesh": {
+     "type": "string"
+    },
+    "paint": {
+     "type": "string"
+    }
+   }
   },
   "sources": {
    "type": "array",
@@ -476,7 +509,6 @@
     "dust_size_m",
     "dust_life_s",
     "dust_spread_m",
-    "body_life_s",
     "push_ms",
     "lift_ms",
     "limb_push_ms",
@@ -496,9 +528,6 @@
      "type": "number"
     },
     "dust_spread_m": {
-     "type": "number"
-    },
-    "body_life_s": {
      "type": "number"
     },
     "push_ms": {

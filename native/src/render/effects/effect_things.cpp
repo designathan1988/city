@@ -12,13 +12,6 @@ using namespace godot;
 namespace city {
 
 namespace {
-// Tints (sRGB) of what is thrown.
-const Color WOOD = Color(0.372f, 0.282f, 0.19f);
-const Color METAL_TINT = Color(0.165f, 0.176f, 0.192f);
-const Color LEAF = Color(0.239f, 0.42f, 0.165f);
-const Color CHAR = Color(0.112f, 0.101f, 0.1f);
-const Color FLESH = Color(0.43f, 0.05f, 0.063f);
-const Color PAINT_GREY = Color(0.45f, 0.45f, 0.47f);
 // The pieces' sizes in metres: a pole, a post, a hydrant, a bench, a bin, a trunk and a leaf.
 constexpr float MAST_R = 0.15f, MAST_H = 7.f, POST_RAD = 0.1f, POST_H = 6.2f, HYDRANT_R = 0.2f, HYDRANT_H = 0.7f;
 constexpr float BENCH_L = 1.6f, BENCH_W = 0.5f, BENCH_H = 0.5f, BIN_L = 0.5f, BIN_H = 0.9f;
@@ -58,23 +51,23 @@ void EffectWorld::furniture(const DamageEvent &e, const CityState &) {
 			const float h = pole ? MAST_H : POST_H, r = pole ? MAST_R : POST_RAD;
 			if (e.a > 0.f) { // to splinters: pieces of it flung out
 				for (float y = 0; y < h; y += SPLINTER_STEP_MIN + rng_.f() * SPLINTER_STEP_SPAN)
-					piece(at + Vector3(0, y + SPLINTER_BASE_M, 0), Vector3(r, SPLINTER_STEP_MIN + rng_.f(), r), push * (SPLINTER_PUSH_MIN + rng_.f()) + scatter(rng_, THROW_SCATTER), pole ? WOOD : METAL_TINT, true);
+					piece(at + Vector3(0, y + SPLINTER_BASE_M, 0), Vector3(r, SPLINTER_STEP_MIN + rng_.f(), r), push * (SPLINTER_PUSH_MIN + rng_.f()) + scatter(rng_, THROW_SCATTER), pole ? params_.tint_wood : params_.tint_metal, true);
 			} else { // whole: it falls the way it is thrown
-				piece(at + Vector3(0, h * TRUNK_HALF, 0), Vector3(r, h, r), push * THROWN_SLOW, pole ? WOOD : METAL_TINT, true);
+				piece(at + Vector3(0, h * TRUNK_HALF, 0), Vector3(r, h, r), push * THROWN_SLOW, pole ? params_.tint_wood : params_.tint_metal, true);
 			}
 			if (pole) puffs_.burst(e.x, e.y + h, e.z, int(SPARK_PUFFS), PUFF_SPARK, SPARK_SPREAD, SPARK_SIZE, SPARK_LIFE); // a flash and sparks off the line
 			break;
 		}
-		case GoneKind::HYDRANT: piece(at + Vector3(0, HYDRANT_H * TRUNK_HALF, 0), Vector3(HYDRANT_R, HYDRANT_H, HYDRANT_R), push, METAL_TINT, true); break;
-		case GoneKind::BENCH: piece(at + Vector3(0, BENCH_H, 0), Vector3(BENCH_L, BENCH_H * BENCH_SLAT_SHARE, BENCH_W), push, WOOD); break;
-		case GoneKind::BIN: piece(at + Vector3(0, BIN_H * TRUNK_HALF, 0), Vector3(BIN_L, BIN_H, BIN_L), push, METAL_TINT); break;
+		case GoneKind::HYDRANT: piece(at + Vector3(0, HYDRANT_H * TRUNK_HALF, 0), Vector3(HYDRANT_R, HYDRANT_H, HYDRANT_R), push, params_.tint_metal, true); break;
+		case GoneKind::BENCH: piece(at + Vector3(0, BENCH_H, 0), Vector3(BENCH_L, BENCH_H * BENCH_SLAT_SHARE, BENCH_W), push, params_.tint_wood); break;
+		case GoneKind::BIN: piece(at + Vector3(0, BIN_H * TRUNK_HALF, 0), Vector3(BIN_L, BIN_H, BIN_L), push, params_.tint_metal); break;
 		default: { // a tree: a charred stump, the trunk thrown, splinters and the crown in clumps of leaves
-			piece(at + Vector3(0, TRUNK_H * TRUNK_STUMP_SHARE, 0), Vector3(TRUNK_R, TRUNK_H * TRUNK_HALF, TRUNK_R), Vector3(), CHAR, true);
-			piece(at + Vector3(0, TRUNK_H, 0), Vector3(TRUNK_R * TRUNK_TOP_SHARE, TRUNK_H * TRUNK_HALF, TRUNK_R * TRUNK_TOP_SHARE), push * THROWN_TREE, WOOD, true, TRUNK_BURN_S);
+			piece(at + Vector3(0, TRUNK_H * TRUNK_STUMP_SHARE, 0), Vector3(TRUNK_R, TRUNK_H * TRUNK_HALF, TRUNK_R), Vector3(), params_.tint_char, true);
+			piece(at + Vector3(0, TRUNK_H, 0), Vector3(TRUNK_R * TRUNK_TOP_SHARE, TRUNK_H * TRUNK_HALF, TRUNK_R * TRUNK_TOP_SHARE), push * THROWN_TREE, params_.tint_wood, true, TRUNK_BURN_S);
 			for (int k = 0; k < SPLINTERS; k++)
-				piece(at + Vector3(0, TRUNK_H * TRUNK_HALF, 0), Vector3(SPLINTER_R, SPLINTER_LEN_MIN + rng_.f() * SPLINTER_LEN_SPAN, SPLINTER_R), push + scatter(rng_, THROW_SCATTER), WOOD);
+				piece(at + Vector3(0, TRUNK_H * TRUNK_HALF, 0), Vector3(SPLINTER_R, SPLINTER_LEN_MIN + rng_.f() * SPLINTER_LEN_SPAN, SPLINTER_R), push + scatter(rng_, THROW_SCATTER), params_.tint_wood);
 			for (int k = 0; k < CROWN_LEAVES; k++)
-				piece(at + Vector3(0, TRUNK_H * CROWN_HEIGHT_K, 0), Vector3(LEAF_SIZE * (SPLINTER_PUSH_MIN + rng_.f()), LEAF_THICK, LEAF_SIZE * (SPLINTER_PUSH_MIN + rng_.f())), push + scatter(rng_, THROW_SCATTER * 2.f), LEAF);
+				piece(at + Vector3(0, TRUNK_H * CROWN_HEIGHT_K, 0), Vector3(LEAF_SIZE * (SPLINTER_PUSH_MIN + rng_.f()), LEAF_THICK, LEAF_SIZE * (SPLINTER_PUSH_MIN + rng_.f())), push + scatter(rng_, THROW_SCATTER * 2.f), params_.tint_leaf);
 			break;
 		}
 	}
@@ -89,7 +82,7 @@ void EffectWorld::vehicle(const DamageEvent &e, const CityState &) {
 	shell.at = Vector3(e.x, e.y + shell.size.y * TRUNK_HALF, e.z);
 	shell.turn = Quaternion(Vector3(0, 1, 0), -e.a);
 	shell.velocity = Vector3((rng_.f() - 0.5f) * CAR_THROW_SPEED, WRECK_LIFT, (rng_.f() - 0.5f) * CAR_THROW_SPEED);
-	shell.tint = PAINT_GREY;
+	shell.tint = params_.tint_paint;
 	const bool drop = e.kind == DamageEvent::VEHICLE_DROP; // a rider shot off: the machine falls over, it does not burn
 	shell.burn_s = drop ? 0.f : rider ? MOPED_BURN_S : CAR_BURN_S;
 	debris_.add(shell);
@@ -98,7 +91,7 @@ void EffectWorld::vehicle(const DamageEvent &e, const CityState &) {
 		w.at = Vector3(e.x, e.y + ROLL_R, e.z);
 		w.size = Vector3(ROLL_R, ROLL_W, ROLL_R);
 		w.cylinder = true;
-		w.tint = CHAR;
+		w.tint = params_.tint_char;
 		w.velocity = Vector3((rng_.f() - 0.5f) * CAR_THROW_SPEED, WRECK_LIFT + rng_.f() * THROW_SCATTER, (rng_.f() - 0.5f) * CAR_THROW_SPEED);
 		debris_.add(w);
 	}
@@ -120,7 +113,8 @@ void EffectWorld::drip(const DamageEvent &e) {
 
 void EffectWorld::casualty(const DamageEvent &e, const CityState &s) {
 	const uint32_t kind = e.v & CAS_KIND_MASK;
-	if ((e.v & CAS_BLED) == 0) body(e, s); // the walker is drawn no more: the body takes its place (one that bled out is already lying there)
+	if ((e.v & CAS_BLED) == 0) body(e, s); // the walker is drawn no more: the body takes its place
+	else if (people_) people_->bodies().die(e.id); // one that bled out is lying there already: it gets up no more
 	if (kind == CAS_KNOCKED) return; // a knock bleeds no more than the wound that came with it
 	puffs_.burst(e.x, e.y + CHEST_RISE_M, e.z, int(BLOOD_PUFFS), PUFF_BLOOD, BLOOD_SPREAD_M, BLOOD_SIZE_M, BLOOD_LIFE_S);
 	const bool torn = kind == CAS_TORN;
@@ -141,7 +135,7 @@ void EffectWorld::casualty(const DamageEvent &e, const CityState &s) {
 	for (int k = 0; k < organs; k++) { // a body torn apart: what was inside, thrown over the street
 		const float s0 = ORGAN_MIN_M + rng_.f() * ORGAN_SPAN_M, a = rng_.f() * TAU_F;
 		piece(Vector3(e.x, e.y + CHEST_RISE_M, e.z), Vector3(s0, s0 * (ORGAN_FLAT_MIN + rng_.f()), s0 * (ORGAN_THIN + rng_.f() * ORGAN_THIN_SPAN)),
-				Vector3(std::cos(a) * ORGAN_SPEED, THROW_LIFT, std::sin(a) * ORGAN_SPEED), FLESH, rng_.f() < ORGAN_ROUND);
+				Vector3(std::cos(a) * ORGAN_SPEED, THROW_LIFT, std::sin(a) * ORGAN_SPEED), params_.tint_flesh, rng_.f() < ORGAN_ROUND);
 	}
 }
 

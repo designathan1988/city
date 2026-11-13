@@ -118,6 +118,7 @@ public:
 	uint32_t ruin_digest(uint32_t seed) const { return effects_.ruin_digest(seed); }
 	int bodies() const { return effects_.bodies(); }
 	int bodies_moving() const { return effects_.bodies_moving(); }
+	int bodies_kept() const { return effects_.bodies_kept(); }
 	int effect_pieces() const { return effects_.pieces(); }
 	int broken_buildings() const { return int(effects_.broken().size()); }
 	int blood_marks() const { return effects_.blood_marks(); }

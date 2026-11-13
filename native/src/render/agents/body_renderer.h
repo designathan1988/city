@@ -16,8 +16,9 @@ namespace city {
 
 struct BodySpec {
 	godot::Vector3 at, velocity, tip; // at: the feet; tip: Ragdoll::begin
-	float heading = 0, scatter = 0, life_s = 0; // radians; m/s between its joints; seconds it stays
+	float heading = 0, scatter = 0, life_s = 0; // radians; m/s between its joints; seconds it stays, 0 for good (the dead)
 	bool rises = false; // gets up at the end of them, to where it stood: the walker goes on from there
+	int who = -1; // the casualty's id (DamageEvent::id): a walker down who dies there is found by it (die)
 	std::vector<BodyWall> walls; // of the buildings around it
 	int variation = 0;
 	uint32_t lost = 0; // parts gone, a bit each (ragdoll.h order)
@@ -30,9 +31,12 @@ public:
 	void reset();
 	void release();
 	void add(const BodySpec &spec);
+	// Somebody lying hurt has died where they lie (a wound bled out, wounds.cpp CAS_BLED): their body gets up no more and stays.
+	void die(int who);
 	void update(float dt, const Ragdoll::Ground &ground);
 	int count() const { return int(bodies_.size()); }
 	int moving() const;
+	int kept() const; // those who stay where they fell: the dead
 
 private:
 	struct Body {
@@ -43,7 +47,7 @@ private:
 		float rise_s = 0; // how long it takes to get up, 0 when it does not
 		godot::Transform3D stands; // where it gets up to
 		std::vector<godot::Transform3D> lying; // each bone when it began to
-		int variation = 0, slot = 0;
+		int variation = 0, slot = 0, who = -1;
 		uint32_t lost = 0;
 		bool charred = false;
 		godot::AABB box; // where its skin lies now: each bone's place, out by the variation's reach along the bone's axes
@@ -63,7 +67,8 @@ private:
 	godot::PackedByteArray rows_;
 	std::vector<float> clip_scratch_; // a clip's rows of one body, for a pose being worked out (add, rise)
 	std::vector<godot::Transform3D> bone_scratch_;
-	Rng rng_{ 0xb0d1e5ULL };
+	static constexpr uint64_t FALL_SEED = 0xb0d1e5ULL; // the bodies' own draws: the same falls on every run
+	Rng rng_{ FALL_SEED };
 	float clock_ = 0;
 	int bones_ = 0, idle_clip_ = 0, crouch_clip_ = 0, up_clip_ = 0;
 	bool rows_dirty_ = false, layers_dirty_ = false;

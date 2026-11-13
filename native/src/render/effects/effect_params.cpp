@@ -24,6 +24,11 @@ struct Reader {
 		return 0.f;
 	}
 	int integer(const char *key) { return int(num(key)); }
+	Color color(const char *key) { // "#rrggbb", sRGB
+		if (d.has(key)) return Color::html(String(d[key]));
+		errors.push_back(String("effects.") + where + ": missing '" + key + "'");
+		return Color();
+	}
 };
 } // namespace
 
@@ -156,7 +161,6 @@ void EffectParams::load_things(const Dictionary &t, PackedStringArray &errors) {
 	down_dust_size = down.num("dust_size_m");
 	down_dust_life = down.num("dust_life_s");
 	down_dust_spread = down.num("dust_spread_m");
-	body_life = down.num("body_life_s");
 	push_ms = down.num("push_ms");
 	lift_ms = down.num("lift_ms");
 	limb_push_ms = down.num("limb_push_ms");
@@ -164,6 +168,13 @@ void EffectParams::load_things(const Dictionary &t, PackedStringArray &errors) {
 	tracer_m = down.num("tracer_m");
 	flash_m = down.num("flash_m");
 	body_lead = down.num("body_lead_s");
+	Reader tints(errors, t, "tints");
+	tint_wood = tints.color("wood");
+	tint_metal = tints.color("metal");
+	tint_leaf = tints.color("leaf");
+	tint_char = tints.color("char");
+	tint_flesh = tints.color("flesh");
+	tint_paint = tints.color("paint");
 }
 
 } // namespace city

@@ -28,12 +28,6 @@ const FIRST_HEAVY := 6
 const BIG_FORCE := 45
 const BOX_HALF_M := 120.0
 const ROOF_M := 6.0
-const BODY_FRAMES := 1200
-const BODY_SETTLE_FRAMES := 30
-const RISE_FORCE := 3
-const RISE_KPA := 130.0
-const RISE_TRIES := 8
-const RISE_LOOK_FRAMES := 20
 const SLOT := "shoot_test_slot"
 
 
@@ -47,7 +41,7 @@ func _ready() -> void:
 	fright.reactions()
 	fright.stampede()
 	_walkers()
-	await _fallen()
+	await ShootBodyCases.new(self, _shoot, _shoot_level, _walker_of, _alone).fallen()
 	_vehicles()
 	_demolish()
 	await _save_marks()
@@ -112,51 +106,6 @@ func _walkers() -> void:
 		ticks(BLEED_TICKS)
 		var later := _walker_of(hurt.id)
 		check(later.is_empty() or later.position.distance_to(wounded.position) > SAME_SPOT_M, "and dies of the bleeding (the slot went to another)")
-
-
-## Somebody shot lies down as a body of their own, which comes to rest.
-func _fallen() -> void:
-	for f in BODY_SETTLE_FRAMES: # the blows above come and go first: their undo starts the effects over
-		await get_tree().process_frame
-	var walkers := _alone(CityStore.query(&"shot_targets", [LIMIT]).walkers)
-	check(not walkers.is_empty(), "someone for the body shot")
-	var kill := _shoot(walkers[0].position + Vector3(0, HEAD_AIM_M * walkers[0].scale, 0))
-	print("body shot: ", kill)
-	for f in BODY_FRAMES:
-		if CityStore.query(&"effects_bodies") > 0:
-			break
-		await get_tree().process_frame
-	check(CityStore.query(&"effects_bodies") > 0, "who fell is a body")
-	for f in BODY_FRAMES:
-		if CityStore.query(&"effects_bodies_moving") == 0:
-			break
-		await get_tree().process_frame
-	check(CityStore.query(&"effects_bodies_moving") == 0, "the body lands")
-	await _rises()
-
-
-## Somebody knocked over by a small blast gets up: their body goes and they are walking again. Far enough off that nobody dies, and a drum goes one time in two: several tries.
-func _rises() -> void:
-	var off := 1.0
-	while CityStore.query(&"blast_probe", [float(RISE_FORCE), off]).pressure_kpa > RISE_KPA:
-		off += 0.5
-	var risen := 0
-	var found: Array = _alone(CityStore.query(&"shot_targets", [LIMIT]).walkers)
-	for who: Dictionary in found.slice(0, RISE_TRIES):
-		var before: int = CityStore.query(&"effects_bodies")
-		CityStore.dispatch(&"strike", [who.position + Vector3(off, 0, 0), RISE_FORCE])
-		var most := before
-		for f in BODY_FRAMES:
-			most = maxi(most, CityStore.query(&"effects_bodies"))
-			if f > RISE_LOOK_FRAMES and most == before or most > before and CityStore.query(&"effects_bodies") <= before:
-				break
-			await get_tree().process_frame
-		risen += most - CityStore.query(&"effects_bodies")
-		CityStore.dispatch(&"undo")
-		if risen > 0:
-			break
-	print("on their feet again: ", risen)
-	check(risen > 0, "who fell gets up")
 
 
 func _vehicles() -> void:
