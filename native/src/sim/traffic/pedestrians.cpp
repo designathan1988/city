@@ -112,8 +112,9 @@ void walk(CityState &s, int id, float dt) {
 	TrafficState &t = s.traffic;
 	Pedestrian &w = t.peds[id];
 	if (w.mode == PedMode::KERB) return; // a kerb stop moves it
-	if (!walkable(s, w.seg)) { despawn(t, id, false); return; }
-	if (t.time < w.down_until || t.time < w.flinch_until) return; // down (a trip, trips.cpp, or a blow: the render shows the body) or bent over a wound
+	if (lying(t, w)) return; // down (a trip, trips.cpp, or a blow: the render shows the body), whether its street is there or not
+	if (!walkable(s, w.seg) || w.side < 0) { despawn(t, id, false); return; } // up again where no street is (drop_pedestrians_on_seg)
+	if (t.time < w.flinch_until) return; // bent over a wound
 	if (held_by_fright(t, w)) return;
 	turn_from_bang(s, w);
 	if (w.mode == PedMode::LOT) {
@@ -222,12 +223,53 @@ void reset_pedestrians(CityState &s) {
 	t.doors_in = t.doors_out = 0;
 }
 
+namespace {
+
+// Somebody lying on a sidewalk whose street went: onto the sidewalk of the streets left nearest their feet (a cut's halves keep the
+// ground they lay on), its arc and place across read again, so the crowd there sees them; with none within their body's length of
+// them, on no sidewalk (side -1: filed nowhere, nobody walks there). The slot of the street gone may be another street's next.
+void lie_on_nearest(CityState &s, Pedestrian &w) {
+	const float reach = 2.f * lying_half(s.catalog.blast, w);
+	float best = reach;
+	int best_seg = -1, best_side = -1;
+	Pedestrian probe = w;
+	s.roads.for_segments_near(w.cur.x - reach, w.cur.z - reach, w.cur.x + reach, w.cur.z + reach, [&](int seg) {
+		if (!walkable(s, seg)) return;
+		const Profile &p = s.roads.profile_of(seg);
+		for (int side = 0; side < 2; side++) {
+			if (!(side == 0 ? p.has_walk_right : p.has_walk_left)) continue;
+			probe.seg = seg;
+			probe.side = side;
+			where_on_sidewalk(s, probe);
+			const float off = std::fabs(probe.u) - walk_half(s, seg, side); // how far beyond its room's edge (inside: under 0)
+			if (off < best) {
+				best = off;
+				best_seg = seg;
+				best_side = side;
+			}
+		}
+	});
+	w.side = best_side;
+	if (best_seg < 0) return;
+	w.seg = best_seg;
+	where_on_sidewalk(s, w);
+}
+
+} // namespace
+
+// A street gone: who walked it or crossed it leaves; somebody lying there does not (a casualty belongs to what happened: casualty()),
+// and lies on where they are (lie_on_nearest) until they rise, when walk() takes them away if their street is gone, or die.
 void drop_pedestrians_on_seg(CityState &s, int seg) {
 	TrafficState &t = s.traffic;
 	for (int id = 0; id < int(t.peds.size()); id++) {
-		const Pedestrian &w = t.peds[size_t(id)];
+		Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive || (w.seg != seg && w.cross_seg != seg)) continue;
-		despawn(t, id, false);
+		if (!lying(t, w)) {
+			despawn(t, id, false);
+			continue;
+		}
+		off_crosswalk(t, id); // no longer crossing: lying there
+		if (w.mode == PedMode::SIDEWALK && w.seg == seg) lie_on_nearest(s, w);
 	}
 }
 

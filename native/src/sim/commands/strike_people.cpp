@@ -81,14 +81,18 @@ void harm_walker(Blow &b, int id) {
 		uint32_t flags = CAS_KNOCKED, lost = 0;
 		float lie = b.p.knock_min_s + b.p.knock_span_s * b.roll(SALT_LIE, who);
 		if (p >= b.p.ear_half_kpa && b.roll(SALT_MAIM, who) < b.p.maim_chance) { // near the blow some lose an arm or a leg
+			// a limb lost is a grave wound, a blast's as a round's (wound_for_good): the walker stays, the limb gone with its blood's cost,
+			// down for good, bleeding (a leg the worst) until they die of it, where the body lies (Pwalkers-13, 16: the walker was taken
+			// away, or kept the limb)
 			lost = limb_bit(1 + int(b.bits(SALT_MAIM, who) % uint32_t(LIMB_KINDS - 1)));
-			flags |= (lost << CAS_SEVERED_SHIFT) | (lost << CAS_LOST_SHIFT);
-			if ((lost & (limb_bit(3) | limb_bit(4))) != 0) { // a leg gone: down for good, crawling, and bleeding to death
-				flags |= CAS_CRAWL;
-				b.emit(casualty(b, id, at, look, p, flags, 0.f));
-				traffic::remove_pedestrian(b.s, id);
-				return;
-			}
+			Pedestrian &m = t.peds[size_t(id)];
+			m.lost = uint8_t(m.lost | lost);
+			m.hp -= b.p.sever_hp_cost;
+			flags |= (uint32_t(m.lost) << CAS_LOST_SHIFT) | (lost << CAS_SEVERED_SHIFT) | CAS_CRAWL;
+			const DamageEvent maimed = casualty(b, id, at, look, p, flags, LIE_FOR_GOOD_S);
+			wound_for_good(b.s, m, lost, maimed);
+			b.emit(maimed);
+			return;
 		}
 		const DamageEvent down = casualty(b, id, at, look, p, flags, lie);
 		float fx = 0, fz = 0;

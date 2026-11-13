@@ -41,4 +41,11 @@ void strike_ground(Blow &b); // the crater, the terrain, the roads it cuts, the 
 void strike_traffic(Blow &b); // the vehicles
 void strike_people(Blow &b); // the walkers
 
+// shoot_people.cpp: a grave wound, a round's or a blast's (half the health gone, or a limb lost: Pedestrian::lost already holds it):
+// down for good the way event `e` fells them (damage_event.h fall_way), bleeding by the worst of their wounds (a leg gone, a limb off,
+// else hurt: blast.json shot.bleed_*) until they die of it (wounds.cpp). One rule for both.
+constexpr float LIE_FOR_GOOD_S = 600.f; // down until they bleed out (the longest any bleeding lasts)
+struct Pedestrian;
+void wound_for_good(CityState &s, Pedestrian &w, uint32_t severed, const DamageEvent &e);
+
 } // namespace city

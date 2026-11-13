@@ -84,7 +84,7 @@ CrowdEntry entry_of(const Pedestrian &w, int id, float moving, float level, floa
 	CrowdEntry e;
 	e.id = id;
 	e.kerb = w.mode == PedMode::KERB;
-	e.sidewalk = w.mode == PedMode::SIDEWALK || e.kerb ? w.seg * 2 + w.side : -1;
+	e.sidewalk = (w.mode == PedMode::SIDEWALK || e.kerb) && w.side >= 0 ? w.seg * 2 + w.side : -1; // side -1: lying where no sidewalk is
 	e.s = w.s;
 	e.u = w.u;
 	e.x = w.cur.x;

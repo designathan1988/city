@@ -1,0 +1,15 @@
+{
+ "_doc": "A blast that takes a limb (Pwalkers-13, 16): a force 5 blow 9 m east of the busiest crowd of the town (a limb can go from 120.7 kPa, some 11 m off; death begins at some 7 m: blast.json), the clock running; four seconds on, the body nearest it (setViewNear body) near (90 px a metre) from 210 degrees at 35 and from above: somebody maimed lies there down for good, the limb gone, bleeding, the limb thrown clear; the shoot_test's census says who; then 1500 frames on, bled out where they lay, the body kept. By day.",
+ "city": {"map": 0, "seed": 1, "generate": true},
+ "steps": [
+  {"hour": 16}, {"dispatch": "set_speed", "args": [1]}, {"frames": 300},
+  {"dispatch": "strike", "args": [{"crowd": 10, "off": [9, 0]}, 5]},
+  {"frames": 240},
+  {"query": "effects_bodies_census"},
+  {"setViewNear": ["body", 60, 8, 90, 210, 35]}, {"until": "render_pending", "equals": 0}, {"shot": "maimed_near"},
+  {"setViewNear": ["body", 60, 8, 90, 0, 80]}, {"until": "render_pending", "equals": 0}, {"shot": "maimed_above"},
+  {"frames": 1500},
+  {"query": "effects_bodies_census"},
+  {"setViewNear": ["body", 60, 8, 90, 210, 35]}, {"until": "render_pending", "equals": 0}, {"shot": "bled_out"}
+ ]
+}

@@ -69,7 +69,8 @@ func fallen() -> void:
 	t.check(kill.get("killed", false) and kept > 0, "the dead stay where they fell, for good till the bodies' cap: %d kept of %d" % [kept, _census().bodies])
 	var lying := ShootLyingCases.new(t, _walker_of, _lamed, _census)
 	await lying.gone_round()
-	var lone: Array = _alone.call(CityStore.query(&"shot_targets", [LIMIT]).walkers) # afresh: ten seconds have gone by
+	await lying.maimed_by_blast()
+	var lone: Array = _alone.call(CityStore.query(&"shot_targets", [LIMIT]).walkers) # afresh: minutes have gone by
 	var down: Dictionary = await _bled(lone.filter(func(w: Dictionary) -> bool: return not w.fallen))
 	var deep: float = _census().deepest
 	t.check(deep <= UNDER_GROUND_M, "no body at rest lies in the ground, its bones held out as its joints are (deepest %.3f m)" % deep)
@@ -150,7 +151,7 @@ func _bled(walkers: Array) -> Dictionary:
 
 
 ## Walker `id` shot down for good: a level round along `way` in a leg knocks them down, away from it (damage_event.h fall_way); one
-## across the legs of somebody lying takes a leg off, a grave wound, down for good and bleeding (shoot_people.cpp; lying, their position
+## into the legs of somebody lying takes a leg off, a grave wound, down for good and bleeding (shoot_people.cpp; lying, their position
 ## is the body's middle and the legs lie behind it, the head the way they lie: shot_targets). Rounds in the trunk first would leave too
 ## little health for the leg's cost to be survived. Returns them as they lie then.
 func _lamed(id: int, way := Vector3.LEFT) -> Dictionary:
@@ -160,9 +161,10 @@ func _lamed(id: int, way := Vector3.LEFT) -> Dictionary:
 			break
 		var lies := Vector3(w.facing.x, 0.0, w.facing.y)
 		var legs: Vector3 = w.position + Vector3(0, LIE_AIM_M, 0) - lies * LEGS_LIE_M
-		var across := Vector3(-lies.z, 0.0, lies.x) # a round along a body lying would meet it end on
 		var mark: Vector3 = legs if w.fallen else w.position + Vector3(0, LEG_STAND_M * w.scale, 0)
-		var dir: Vector3 = across if w.fallen else way
+		# lying: from above and across the legs by turns, as somebody standing by may take one of them (a round along the body would
+		# meet it end on)
+		var dir: Vector3 = way if not w.fallen else (Vector3.DOWN if k % 2 == 1 else Vector3(-lies.z, 0.0, lies.x))
 		var round: Dictionary = CityStore.dispatch(&"shoot", [mark - dir * LEVEL_STANDOFF_M, dir])
 		print("round %d at %s: %s" % [k, w, round])
 		await _frames(BODY_SETTLE_FRAMES)

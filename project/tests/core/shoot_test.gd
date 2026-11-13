@@ -78,8 +78,9 @@ func _shoot_level(at: Vector3) -> Dictionary:
 	return CityStore.dispatch(&"shoot", [origin, Vector3.LEFT])
 
 
+## Walker `id` as shot_targets gives it (all of them: a walker's place in the list is its id's), {} gone.
 func _walker_of(id: int) -> Dictionary:
-	for w in CityStore.query(&"shot_targets", [LIMIT * 4]).walkers:
+	for w in CityStore.query(&"shot_targets", [LookAim.WALKERS_READ]).walkers:
 		if w.id == id:
 			return w
 	return {}

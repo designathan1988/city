@@ -19,7 +19,6 @@ constexpr float OPEN_SECOND_HIT_CHANCE = 0.4f; // the second round in the trunk 
 constexpr float KNOCK_TRUNK_CHANCE = 0.5f; // a light round in the trunk throws the walker down this often
 constexpr float PUSH_KILL = 0.25f, PUSH_KNOCK = 0.1f, PUSH_GRAVE = 0.15f, PUSH_SEVER = 0.35f; // how hard the body is pushed (0..1)
 constexpr uint32_t HITS_SALT_SHIFT = 8; // the draw of a hit differs from the same walker's next
-constexpr float LIE_FOR_GOOD_S = 600.f; // down until they bleed out
 constexpr float BULLET_BACK_M = 10.f; // the push comes from this far behind the walker along the round
 constexpr uint32_t LIMB_OF[6] = { CAS_LIMB_HEAD, 0, CAS_LIMB_ARM_L, CAS_LIMB_ARM_R, CAS_LIMB_LEG_L, CAS_LIMB_LEG_R };
 constexpr int LIMB_INDEX[6] = { -1, -1, 0, 1, 2, 3 }; // into Pedestrian::hurt_limb
@@ -48,6 +47,15 @@ void put_down(Round &r, Pedestrian &w, const DamageEvent &e) {
 }
 
 } // namespace
+
+void wound_for_good(CityState &s, Pedestrian &w, uint32_t severed, const DamageEvent &e) {
+	const BlastParams &p = s.catalog.blast;
+	const bool leg_gone = (w.lost & (CAS_LIMB_LEG_L | CAS_LIMB_LEG_R)) != 0;
+	w.bleed = std::max(w.bleed, leg_gone ? p.bleed_leg : severed != 0 ? p.bleed_limb : p.bleed_hurt);
+	float fx = 0, fz = 0;
+	fall_way(e, fx, fz);
+	traffic::lay_down(s.traffic, w, LIE_FOR_GOOD_S, fx, fz);
+}
 
 void shoot_walker(Round &r, int id, BodyPart part, float hx, float hy, float hz, bool lying) {
 	TrafficState &t = r.s.traffic;
@@ -101,9 +109,9 @@ void shoot_walker(Round &r, int id, BodyPart part, float hx, float hy, float hz,
 			w.flinch_until = now + p.flinch_s;
 		}
 	} else {
-		const bool leg_gone = (w.lost & (CAS_LIMB_LEG_L | CAS_LIMB_LEG_R)) != 0;
-		w.bleed = std::max(w.bleed, leg_gone ? p.bleed_leg : severed != 0 ? p.bleed_limb : p.bleed_hurt);
-		put_down(r, w, casualty_of(r, id, w, CAS_KNOCKED | CAS_CRAWL | shared, severed != 0 ? PUSH_SEVER : PUSH_GRAVE, LIE_FOR_GOOD_S, hx, hz));
+		const DamageEvent e = casualty_of(r, id, w, CAS_KNOCKED | CAS_CRAWL | shared, severed != 0 ? PUSH_SEVER : PUSH_GRAVE, LIE_FOR_GOOD_S, hx, hz);
+		wound_for_good(r.s, w, severed, e);
+		r.emit(e);
 	}
 }
 

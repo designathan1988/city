@@ -119,7 +119,7 @@ func _pole_round(xz: Array) -> Array:
 	return [origin, (head - origin).normalized()]
 
 
-## A level round at the legs of the walker nearest `xz`, on their feet (from the east) or lying (across their legs) (shoot_body_cases.gd
+## A round at the legs of the walker nearest `xz`, on their feet (level, from the east) or lying (from above) (shoot_body_cases.gd
 ## _lamed): the first knocks them down, a second at the legs of somebody lying takes a leg off, a grave wound, down for good and bleeding. The shoot command's
 ## origin and direction, two arguments; nobody found: said, counted, a round at the sky from the point.
 func _leg_round(xz: Array) -> Array:
@@ -136,10 +136,10 @@ func _leg_round(xz: Array) -> Array:
 		return [point(xz), Vector3.UP]
 	var way := Vector3.LEFT
 	var legs: Vector3 = who.position + Vector3(0, LEG_STAND_M * who.scale, 0)
-	if who.fallen: # lying: the body's middle, the legs behind it, the head the way they lie (shot_targets); the round across them
+	if who.fallen: # lying: the body's middle, the legs behind it, the head the way they lie (shot_targets); the round from above
 		var lies := Vector3(who.facing.x, 0.0, who.facing.y)
 		legs = who.position + Vector3(0, LIE_AIM_M, 0) - lies * LEGS_LIE_M
-		way = Vector3(-lies.z, 0.0, lies.x)
+		way = Vector3.DOWN
 	print("round at the legs of walker %d at %s (fallen %s)" % [who.id, who.position, who.fallen])
 	return [legs - way * LEVEL_STANDOFF_M, way]
 

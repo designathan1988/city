@@ -14,6 +14,10 @@ const LYING_R := 0.3 # and that thick either side of their middle line (ped_syst
 const GRACE_TICKS := 20 # a second: who stands where a body fell (or gets up there) steps off it within this
 const SAMPLE_TICKS := 5
 const PASS_TICKS := 200 # ten seconds of passers, while the casualty bleeds (a leg's wound: 3 hp a second, from some 45)
+const MAIM_FORCE := 5 # 50 kg: a limb can go from 120.7 kPa, some 11 m off, and death begins at some 7 m (blast.json)
+const MAIM_OFF_M := 9.0
+const MAIM_TRIES := 12
+const STREET_LOOK_M := 3.0 # round the body's middle: its feet are within half a body of it
 
 var t: Node # the shoot_test (TestCase): its check and ticks
 var _walker_of: Callable
@@ -83,6 +87,49 @@ func gone_round() -> void:
 		inside = now_in
 	print("the other by the body (m from its middle line, each quarter second): ", trail)
 	t.check(longest <= GRACE_TICKS, "nobody stands in the body lying there longer than a step off it takes, the one they walked with included (%d ticks at most: %s)" % [longest, longest_who])
+
+
+## A blast beside walkers until it takes somebody's limb: they are down for good, bleeding, the limb gone (Pwalkers-13, 16: the blast took
+## the walker away, or left the limb); the street under them demolished, they lie on (Pwalkers-17: a street gone took everybody on it);
+## they bleed out where the body lies, kept dead. The blasts' draws are the blow's and the walker's: several walkers are tried.
+func maimed_by_blast() -> void:
+	var maimed := {}
+	for w: Dictionary in CityStore.query(&"shot_targets", [LIMIT]).walkers.slice(0, MAIM_TRIES):
+		if w.fallen:
+			continue
+		var before := {} # those a round maimed already: not the blast's
+		for o: Dictionary in CityStore.query(&"shot_targets", [LookAim.WALKERS_READ]).walkers:
+			if int(o.lost) != 0:
+				before[o.id] = true
+		CityStore.dispatch(&"strike", [w.position + Vector3(MAIM_OFF_M, 0, 0), MAIM_FORCE])
+		for o: Dictionary in CityStore.query(&"shot_targets", [LookAim.WALKERS_READ]).walkers:
+			if not before.has(o.id) and o.fallen and int(o.lost) != 0 and o.bleed > 0.0 and o.hp > 0.0:
+				maimed = o
+		if not maimed.is_empty():
+			break
+	if not t.check(not maimed.is_empty(), "a blast takes somebody's limb: down for good, bleeding (%s)" % [maimed]):
+		return
+	var kept: int = _census.call().kept
+	var gone: Dictionary = CityStore.dispatch(&"demolish", [_carriageway_of(maimed)])
+	t.check(gone.get("ok", false), "the street under them demolished (%s)" % [gone])
+	t.ticks(SAMPLE_TICKS)
+	var after: Dictionary = _walker_of.call(maimed.id)
+	t.check(not after.is_empty() and after.fallen and after.position.distance_to(maimed.position) <= SAME_SPOT_M, "the street under them gone, they lie on (%s, %s before)" % [after, maimed])
+	t.ticks(BLEED_TICKS)
+	await _frames(BODY_SETTLE_FRAMES)
+	t.check(_walker_of.call(maimed.id).get("position", Vector3.INF).distance_to(maimed.position) > SAME_SPOT_M and _census.call().kept > kept, "who lost a limb to the blast bleeds out where they lay, kept dead (%d kept, %d before)" % [_census.call().kept, kept])
+
+
+## The middle of the carriageway of the street walker `w` lies on (walker_bodies: its street, row 5), where a click takes that street
+## (one on the footway takes the street piece there first, and by a junction the nearest street may be the other).
+func _carriageway_of(w: Dictionary) -> Vector3:
+	var seg := -1
+	for row: Array in CityStore.query(&"walker_bodies", [w.position, STREET_LOOK_M]).bodies:
+		if row[0] == w.id:
+			seg = row[5]
+	var path: PackedVector3Array = CityStore.query(&"segment_path", [seg]) if seg >= 0 else PackedVector3Array()
+	print("their street %d, its middle at %s" % [seg, path[path.size() / 2] if not path.is_empty() else w.position])
+	return path[path.size() / 2] if not path.is_empty() else Vector3(w.position)
 
 
 ## The camera far off, the walking window round it leaves the wounded `down` lying there: they stay till they bleed out, and their body

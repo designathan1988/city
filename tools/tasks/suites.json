@@ -413,7 +413,8 @@
     {"name": "falling", "plan": "res://tests/visual/falling_plan.json", "resolution": "1920x1080", "timeout_s": 300},
     {"name": "pole", "plan": "res://tests/visual/pole_plan.json", "resolution": "1920x1080", "timeout_s": 300},
     {"name": "lots", "plan": "res://tests/visual/lots_plan.json", "resolution": "1920x1080", "timeout_s": 300},
-    {"name": "wounded", "plan": "res://tests/visual/wounded_plan.json", "resolution": "1920x1080", "timeout_s": 300}
+    {"name": "wounded", "plan": "res://tests/visual/wounded_plan.json", "resolution": "1920x1080", "timeout_s": 300},
+    {"name": "maimed", "plan": "res://tests/visual/maimed_plan.json", "resolution": "1920x1080", "timeout_s": 300}
    ]
   },
   "capture_scenes": {

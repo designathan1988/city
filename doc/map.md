@@ -535,6 +535,7 @@ threads and the whole command list follow the map; the rules are the constitutio
 - `project/tests/visual/pole_plan.json` — a walker thrown into a pole of the street (the `pole` item of `looks`): the body against it, four azimuths and from above
 - `project/tests/visual/falling_plan.json` — a body falling after a blow, its joints damped (the `falling` item of `looks`): shots a few frames apart with the clock running, then at rest from above
 - `project/tests/visual/wounded_plan.json` — a walker wounded for good, the camera taken far off and brought back (the `wounded` item of `looks`): still lying there bleeding, then bled out where they lay
+- `project/tests/visual/maimed_plan.json` — a blast beside a crowd (the `maimed` item of `looks`): the body of somebody it maimed, near and from above, then bled out where they lay
 - `project/tests/visual/crater_plan.json` — the ground marks as decals (the `crater` item of `looks`): a blow's crater on the paving, four azimuths, street level, from above and mid
 - `project/tests/visual/pile_plan.json` — bodies falling together (the `pile` item of `looks`): the two lying nearest one another, four azimuths, street level and from above
 - `project/tests/visual/stampede_plan.json` — a stampede's falls (the `stampede` item of `looks`): a blow that knocks nobody down by a street corner, who trips going down forwards with their hands out, four azimuths and from above, the bodies counted
