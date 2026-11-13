@@ -23,6 +23,13 @@ struct BodySpec {
 	int variation = 0;
 	uint32_t lost = 0; // parts gone, a bit each (ragdoll.h order)
 	bool charred = false;
+	float pool = 0; // the blood it leaves where it comes to rest, a share of a pool's size; 0 none (the living)
+};
+
+// What a body leaves on the ground: a pool where it came to rest (pool > 0, its share of a pool's size), a splash where it landed hard (0).
+struct BodyMark {
+	godot::Vector3 at;
+	float pool = 0;
 };
 
 class BodyRenderer {
@@ -33,7 +40,9 @@ public:
 	void add(const BodySpec &spec);
 	// Somebody lying hurt has died where they lie (a wound bled out, wounds.cpp CAS_BLED): their body gets up no more and stays.
 	void die(int who);
-	void update(float dt, const Ragdoll::Ground &ground);
+	// One frame; a bleeding body that strikes the ground faster than `hard_ms` splashes there, `splashes_most` times at most.
+	void update(float dt, const Ragdoll::Ground &ground, float hard_ms, int splashes_most);
+	void take_marks(std::vector<BodyMark> &out); // what the bodies left since the last call
 	int count() const { return int(bodies_.size()); }
 	int moving() const;
 	int kept() const; // those who stay where they fell: the dead
@@ -47,7 +56,9 @@ private:
 		float rise_s = 0; // how long it takes to get up, 0 when it does not
 		godot::Transform3D stands; // where it gets up to
 		std::vector<godot::Transform3D> lying; // each bone when it began to
-		int variation = 0, slot = 0, who = -1;
+		int variation = 0, slot = 0, who = -1, splashes = 0;
+		float pool = 0;
+		bool pooled = false; // its pool laid
 		uint32_t lost = 0;
 		bool charred = false;
 		godot::AABB box; // where its skin lies now: each bone's place, out by the variation's reach along the bone's axes
@@ -67,6 +78,7 @@ private:
 	godot::PackedByteArray rows_;
 	std::vector<float> clip_scratch_; // a clip's rows of one body, for a pose being worked out (add, rise)
 	std::vector<godot::Transform3D> bone_scratch_;
+	std::vector<BodyMark> marks_;
 	static constexpr uint64_t FALL_SEED = 0xb0d1e5ULL; // the bodies' own draws: the same falls on every run
 	Rng rng_{ FALL_SEED };
 	float clock_ = 0;

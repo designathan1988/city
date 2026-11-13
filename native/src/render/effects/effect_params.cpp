@@ -151,6 +151,9 @@ void EffectParams::load_things(const Dictionary &t, PackedStringArray &errors) {
 	pool_size = blood.num("pool_size_m");
 	splat_m = blood.num("splat_m");
 	drop_m = blood.num("drop_m");
+	pool_torn = blood.num("pool_torn");
+	splash_ms = blood.num("splash_ms");
+	splashes_most = blood.integer("splashes_most");
 	Reader paper(errors, t, "paper");
 	paper_count = paper.integer("count");
 	paper_size = paper.num("size_m");

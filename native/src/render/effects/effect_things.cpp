@@ -33,7 +33,8 @@ constexpr float ORGAN_MIN_M = 0.04f, ORGAN_SPAN_M = 0.07f, ORGAN_SPEED = 3.f, OR
 constexpr float ORGAN_ROUND = 0.7f; // the share of organs drawn as short cylinders
 constexpr int ORGANS_MIN = 4, ORGANS_SPAN = 4;
 constexpr float CHEST_RISE_M = 0.5f; // blood sprays from the chest of someone falling
-constexpr float SCATTER_BLOOD_M = 1.2f, POOL_MIN = 0.6f, POOL_SPAN = 0.8f, POOL_TORN = 1.4f;
+constexpr float SCATTER_BLOOD_M = 1.2f, POOL_MIN = 0.6f, POOL_SPAN = 0.8f;
+constexpr float SPLASH_MIN = 0.5f, SPLASH_SPAN = 0.5f; // of blood.splat_m: a splash where a body struck the ground
 constexpr int TORN_POOLS = 3;
 constexpr float DRIP_SCATTER_M = 0.3f, DRIP_MIN_M = 0.12f, DRIP_SPAN_M = 0.16f; // playEffects.ts: 6 to 14 cm of radius
 constexpr uint32_t VEHICLE_TYPE_MASK = 255; // VEHICLE_BLOWN u: the vehicle's type in the low byte
@@ -118,14 +119,16 @@ void EffectWorld::casualty(const DamageEvent &e, const CityState &s) {
 	if (kind == CAS_KNOCKED) return; // a knock bleeds no more than the wound that came with it
 	puffs_.burst(e.x, e.y + CHEST_RISE_M, e.z, int(BLOOD_PUFFS), PUFF_BLOOD, BLOOD_SPREAD_M, BLOOD_SIZE_M, BLOOD_LIFE_S);
 	const bool torn = kind == CAS_TORN;
-	for (int k = 0; k < (torn ? TORN_POOLS : 1); k++) { // the pool the body leaves, spreading
+	// the pool under the body spreads where it comes to rest (lay_body_marks); here only what a body torn apart flung round it, or the
+	// one pool when no body is drawn
+	for (int k = people_ ? 1 : 0; k < (torn ? TORN_POOLS : 1); k++) {
 		Mark m;
 		m.kind = MARK_POOL;
 		const float a = rng_.f() * TAU_F, r = k == 0 ? 0.f : rng_.f() * SCATTER_BLOOD_M;
 		m.x = e.x + std::cos(a) * r;
 		m.z = e.z + std::sin(a) * r;
 		m.y = s.terrain.height_at(m.x, m.z) + Marks::SURFACE_LIFT_M;
-		m.size = params_.pool_size * (POOL_MIN + rng_.f() * POOL_SPAN) * (torn ? POOL_TORN : 1.f);
+		m.size = params_.pool_size * (POOL_MIN + rng_.f() * POOL_SPAN) * (torn ? params_.pool_torn : 1.f);
 		m.seed = rng_.f();
 		m.born = now_;
 		marks_.add_blood(m);
@@ -136,6 +139,21 @@ void EffectWorld::casualty(const DamageEvent &e, const CityState &s) {
 		const float s0 = ORGAN_MIN_M + rng_.f() * ORGAN_SPAN_M, a = rng_.f() * TAU_F;
 		piece(Vector3(e.x, e.y + CHEST_RISE_M, e.z), Vector3(s0, s0 * (ORGAN_FLAT_MIN + rng_.f()), s0 * (ORGAN_THIN + rng_.f() * ORGAN_THIN_SPAN)),
 				Vector3(std::cos(a) * ORGAN_SPEED, THROW_LIFT, std::sin(a) * ORGAN_SPEED), params_.tint_flesh, rng_.f() < ORGAN_ROUND);
+	}
+}
+
+void EffectWorld::lay_body_marks() {
+	people_->bodies().take_marks(body_marks_);
+	for (const BodyMark &b : body_marks_) {
+		Mark m;
+		m.kind = b.pool > 0.f ? MARK_POOL : MARK_SPLAT;
+		m.x = b.at.x;
+		m.z = b.at.z;
+		m.y = b.at.y + Marks::SURFACE_LIFT_M;
+		m.size = b.pool > 0.f ? params_.pool_size * (POOL_MIN + rng_.f() * POOL_SPAN) * b.pool : params_.splat_m * (SPLASH_MIN + rng_.f() * SPLASH_SPAN);
+		m.seed = rng_.f();
+		m.born = now_;
+		marks_.add_blood(m);
 	}
 }
 

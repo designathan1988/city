@@ -19,6 +19,8 @@ namespace city {
 constexpr int RAGDOLL_JOINTS = 18;
 // The parts, in people.bin's order: torso, neck, head, the upper arm and forearm left then right, the thigh, calf and foot left then right
 constexpr int RAGDOLL_PARTS = 13;
+constexpr int RAGDOLL_HITS = 4; // the most hard landings a step tells
+
 
 // A wall of a building a body can strike: a box of the lot's frame, up to `top`.
 struct BodyWall {
@@ -34,7 +36,8 @@ public:
 	// elbows at half of it, halfway along the arm.
 	void begin(const godot::Vector3 joints[RAGDOLL_JOINTS], const godot::Vector3 &velocity, const godot::Vector3 &tip, float scatter, const godot::Vector3 &brace,
 			Rng &rng);
-	void step(float dt, const Ground &ground);
+	// One step; where particles struck the ground faster than `hard_ms` (a body landing hard) go into `hits`, how many returned.
+	int step(float dt, const Ground &ground, float hard_ms, godot::Vector3 hits[RAGDOLL_HITS]);
 	void set_walls(std::vector<BodyWall> walls) { walls_ = std::move(walls); }
 	bool asleep() const { return asleep_; }
 	// Each part's frame now: its origin on its joint, its axes along it. The frames only: what a bone does with them is the caller's.

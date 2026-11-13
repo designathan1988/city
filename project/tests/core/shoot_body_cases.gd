@@ -42,6 +42,7 @@ func fallen() -> void:
 	t.check(not walkers.is_empty(), "someone for the body shot")
 	if walkers.is_empty():
 		return
+	var marks_before: int = CityStore.query(&"damage_probe").blood_marks
 	var kill: Dictionary = _shoot.call(walkers[0].position + Vector3(0, HEAD_AIM_M * walkers[0].scale, 0))
 	print("body shot: ", kill)
 	for f in BODY_FRAMES:
@@ -54,6 +55,9 @@ func fallen() -> void:
 			break
 		await t.get_tree().process_frame
 	t.check(CityStore.query(&"effects_bodies_moving") == 0, "the body lands")
+	await _frames(BODY_SETTLE_FRAMES) # the frame it falls asleep lays its pool
+	var marks: int = CityStore.query(&"damage_probe").blood_marks
+	t.check(marks > marks_before, "a pool spreads under the body where it came to rest (blood marks %d -> %d)" % [marks_before, marks])
 	var kept: int = CityStore.query(&"effects_bodies_kept")
 	t.check(kill.get("killed", false) and kept > 0, "the dead stay where they fell, for good till the bodies' cap: %d kept of %d" % [kept, CityStore.query(&"effects_bodies")])
 	await _bled(walkers.slice(1))

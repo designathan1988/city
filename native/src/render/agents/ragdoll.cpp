@@ -112,9 +112,10 @@ void Ragdoll::off_walls(int i) {
 	}
 }
 
-void Ragdoll::step(float dt, const Ground &ground) {
+int Ragdoll::step(float dt, const Ground &ground, float hard_ms, Vector3 hits[RAGDOLL_HITS]) {
 	float floor_y[PARTICLES];
 	float fastest = 0;
+	int hit = 0;
 	for (int i = 0; i < PARTICLES; i++) {
 		const Vector3 move = (now_[i] - was_[i]) * AIR_KEEP;
 		fastest = std::max(fastest, move.length() / dt);
@@ -127,6 +128,8 @@ void Ragdoll::step(float dt, const Ground &ground) {
 		for (int i = 0; i < PARTICLES; i++) {
 			off_walls(i);
 			if (now_[i].y >= floor_y[i]) continue;
+			// coming down on the ground faster than hard_ms (the step's own fall, before the sticks' first pass corrects it)
+			if (k == 0 && hit < RAGDOLL_HITS && now_[i].y - was_[i].y < -hard_ms * dt) hits[hit++] = Vector3(now_[i].x, floor_y[i] - LIMB_HALF_M, now_[i].z);
 			now_[i].y = floor_y[i];
 			was_[i].x = now_[i].x + (was_[i].x - now_[i].x) * SLIDE_KEEP;
 			was_[i].z = now_[i].z + (was_[i].z - now_[i].z) * SLIDE_KEEP;
@@ -134,6 +137,7 @@ void Ragdoll::step(float dt, const Ground &ground) {
 	}
 	still_ = fastest < RESTING_MS ? still_ + dt : 0.f;
 	asleep_ = still_ > RESTING_S;
+	return hit;
 }
 
 void Ragdoll::frames(Transform3D out[RAGDOLL_PARTS]) {

@@ -118,6 +118,7 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		b.lost = parts_gone(lost | severed);
 		b.rises = kind == CAS_KNOCKED;
 		b.who = e.id;
+		b.pool = kind == CAS_KNOCKED ? 0.f : kind == CAS_TORN ? params_.pool_torn : 1.f; // the dead bleed where they come to rest
 		b.walls = walls_near(s, e.x, e.z, WALLS_REACH_M);
 		const bool walker = e.id >= 0 && e.id < int(s.traffic.peds.size());
 		b.variation = people_->variation_of(e.u, walker ? int(s.traffic.peds[size_t(e.id)].age) : -1);

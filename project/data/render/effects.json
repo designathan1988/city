@@ -25,7 +25,7 @@
  "soot": { "base": 6, "count_k": 1.0, "max": 40, "reach_r": 1.6, "size_min_m": 2.0, "size_span_m": 4.0, "size_r": 0.08, "kept": 600 },
  "debris": { "max_pieces": 6000, "gravity_ms2": 9.8, "restitution": 0.25, "friction": 0.6, "rest_s": 0.6, "damp_ground": 0.985 },
  "geyser": { "seconds": 45, "fade_s": 6.0, "jet_hz": 110, "size_m": 0.8 },
- "blood": { "max_decals": 400, "pool_spread_s": 6.0, "pool_size_m": 1.1, "splat_m": 0.6, "drop_m": 0.3 },
+ "blood": { "max_decals": 400, "pool_spread_s": 6.0, "pool_size_m": 1.1, "splat_m": 0.6, "drop_m": 0.3, "pool_torn": 1.4, "splash_ms": 4.0, "splashes_most": 3 },
  "paper": { "count": 120, "size_m": 0.35, "life_s": 22.0, "spread_m": 8.0 },
  "down": { "dust_count": 60, "dust_size_m": 5.0, "dust_life_s": 6.0, "dust_spread_m": 10.0, "push_ms": 9.0, "lift_ms": 3.5, "limb_push_ms": 6.0, "tracer_life_s": 0.12, "tracer_m": 0.03, "flash_m": 0.5, "body_lead_s": 0.5, "brace_ms": 1.3, "brace_down": 0.5 }
 }

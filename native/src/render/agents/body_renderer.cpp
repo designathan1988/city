@@ -68,6 +68,7 @@ void BodyRenderer::make_ready() {
 void BodyRenderer::reset() {
 	for (const Body &b : bodies_) free_slots_.push_back(b.slot);
 	bodies_.clear();
+	marks_.clear();
 	layers_dirty_ = !layers_.empty();
 }
 
@@ -93,6 +94,7 @@ void BodyRenderer::add(const BodySpec &spec) {
 	free_slots_.pop_back();
 	b.variation = spec.variation;
 	b.who = spec.who;
+	b.pool = spec.pool;
 	b.left = spec.life_s > 0.f ? spec.life_s : FOR_GOOD_S;
 	b.floor = spec.at.y;
 	b.lost = spec.lost;
@@ -209,7 +211,12 @@ void BodyRenderer::bound_layers() {
 	for (const Body &b : bodies_) layers_[size_t(b.variation)].grow(b.box);
 }
 
-void BodyRenderer::update(float dt, const Ragdoll::Ground &ground) {
+void BodyRenderer::take_marks(std::vector<BodyMark> &out) {
+	out.clear();
+	out.swap(marks_);
+}
+
+void BodyRenderer::update(float dt, const Ragdoll::Ground &ground, float hard_ms, int splashes_most) {
 	clock_ = std::min(clock_ + dt, STEP_S * float(STEPS_MOST));
 	const int steps = int(clock_ / STEP_S);
 	clock_ -= float(steps) * STEP_S;
@@ -221,8 +228,17 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground) {
 		}
 		if (b.doll.asleep() || steps == 0) continue;
 		const float floor = b.floor;
-		for (int k = 0; k < steps; k++) b.doll.step(STEP_S, [&](float x, float z) { return std::max(ground(x, z), floor); });
+		Vector3 hits[RAGDOLL_HITS];
+		for (int k = 0; k < steps; k++) {
+			const int n = b.doll.step(STEP_S, [&](float x, float z) { return std::max(ground(x, z), floor); }, b.pool > 0.f ? hard_ms : FOR_GOOD_S, hits);
+			for (int h = 0; h < n && b.splashes < splashes_most; h++, b.splashes++) marks_.push_back({ hits[h], 0.f });
+		}
 		pose(b);
+		if (b.doll.asleep() && b.pool > 0.f && !b.pooled) { // at rest: the blood spreads from under it
+			b.pooled = true;
+			const Vector3 at = b.doll.pelvis();
+			marks_.push_back({ Vector3(at.x, std::max(ground(at.x, at.z), floor), at.z), b.pool });
+		}
 	}
 	const auto gone = std::remove_if(bodies_.begin(), bodies_.end(), [this](const Body &b) {
 		if (b.left > 0.f) return false;

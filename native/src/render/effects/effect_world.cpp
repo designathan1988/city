@@ -182,7 +182,10 @@ void EffectWorld::sync(const CityState &s, ChangeLog &log, FrameAdmission &admis
 	step_sources(dt);
 	debris_.update(now_, dt, [&](float x, float z) { return s.terrain.height_at(x, z); }, puffs_);
 	ruins_.update(dt, puffs_, admission);
-	if (people_) people_->bodies().update(dt, [&](float x, float z) { return s.terrain.height_at(x, z); });
+	if (people_) {
+		people_->bodies().update(dt, [&](float x, float z) { return s.terrain.height_at(x, z); }, params_.splash_ms, params_.splashes_most);
+		lay_body_marks();
+	}
 	for (const RuinPieces::Uncut &u : ruins_.take_uncut()) {
 		ground_here_ = s.terrain.height_at(u.ruin.x, u.ruin.z);
 		pile(u.ruin, u.falling, false, true);

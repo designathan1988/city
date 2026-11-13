@@ -73,6 +73,7 @@ private:
 	void vehicle_hit(const DamageEvent &e);
 	void vehicle(const DamageEvent &e, const CityState &s);
 	void casualty(const DamageEvent &e, const CityState &s);
+	void lay_body_marks(); // the pools under the bodies come to rest and the splashes where they landed hard (effect_things.cpp)
 	void burn_fires(const CityState &s, float dt);
 	void step_geysers(float dt);
 	void step_sources(float dt); // the flame sources a blast leaves (effect_blast.cpp)
@@ -93,6 +94,7 @@ private:
 	Rng rng_{ EFFECTS_SEED };
 	godot::RID scenario_, light_, light_inst_;
 	std::vector<DamageEvent> events_, events_played_; // to play; played this frame
+	std::vector<BodyMark> body_marks_; // what the bodies left this frame
 	struct Source {
 		float x = 0, y = 0, z = 0, size = 0, rate = 0, carry = 0;
 		double until = 0;

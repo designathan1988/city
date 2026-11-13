@@ -43,7 +43,8 @@ struct EffectParams {
 	float gravity = 0, restitution = 0, friction = 0, rest_s = 0, damp_ground = 0;
 	float geyser_s = 0, geyser_fade = 0, geyser_rate = 0, geyser_size = 0;
 	int blood_max = 0;
-	float pool_spread_s = 0, pool_size = 0, splat_m = 0, drop_m = 0;
+	float pool_spread_s = 0, pool_size = 0, splat_m = 0, drop_m = 0, pool_torn = 0, splash_ms = 0;
+	int splashes_most = 0;
 	int paper_count = 0;
 	float paper_size = 0, paper_life = 0, paper_spread = 0;
 	int down_dust_count = 0;

@@ -457,7 +457,10 @@
     "pool_spread_s",
     "pool_size_m",
     "splat_m",
-    "drop_m"
+    "drop_m",
+    "pool_torn",
+    "splash_ms",
+    "splashes_most"
    ],
    "properties": {
     "max_decals": {
@@ -474,6 +477,18 @@
     },
     "drop_m": {
      "type": "number"
+    },
+    "pool_torn": {
+     "type": "number",
+     "description": "a body torn apart leaves this many times a pool's size"
+    },
+    "splash_ms": {
+     "type": "number",
+     "description": "a dead body striking the ground faster than this (m/s, downward) splashes blood there"
+    },
+    "splashes_most": {
+     "type": "number",
+     "description": "the most splashes one body leaves: blood comes from its wounds, the trunk and the head, not from every limb striking the ground"
     }
    }
   },
