@@ -14,7 +14,7 @@ WORK = Path("doc/work")
 CODE_ROOTS = ("native/", "project/", "tools/")
 GIT_TIMEOUT_S = 60
 READ_WHOLE = re.compile(r"\b(\d+)-(\d+) of (\d+)\b")
-SECTION = re.compile(r"^## (.+?)\s*$", re.MULTILINE)
+SECTION = re.compile(r"^## (\w+).*$", re.MULTILINE)  # a heading's first word: the template's carry a note, `## Read (path: ...)`
 SKILLS_ALWAYS = ("city-method", "verification-before-completion")
 SKILL_AFTER_FAIL = "systematic-debugging"
 FAILED = "FAIL"
@@ -22,7 +22,7 @@ CAUSE = "cause"
 
 
 def sections(text: str) -> dict[str, str]:
-    """The work file's `## ` sections by their heading, each with its text."""
+    """The work file's `## ` sections by their heading's first word, each with its text."""
     marks = list(SECTION.finditer(text))
     return {m.group(1): text[m.end():marks[i + 1].start() if i + 1 < len(marks) else len(text)] for i, m in enumerate(marks)}
 

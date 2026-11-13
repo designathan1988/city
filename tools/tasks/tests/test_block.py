@@ -90,6 +90,17 @@ class Method(BlockCase):
         self.assertEqual(self.closes("ok"), 0)
         self.assertEqual(block.load(self.root)["state"], block.CLOSED)
 
+    def test_the_templates_headings_are_read(self):
+        """city-method's template writes `## Read (path: lines read of total)`: the section is the heading's first word."""
+        self.block("open", "t")
+        self.block("verify")
+        path = self.root / block_method.WORK / "t.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("# t: a goal\n\n## Read (path: lines read of total, 2026-11-13)\n- a.txt: 1-1 of 1\n\n## Research (source)\n"
+                        "- Context7 x\n- https://example.org\n\n## Skills\n- city-method; verification-before-completion\n",
+                        encoding="utf-8")
+        self.assertEqual(self.block("close"), 0)
+
     def test_no_work_file_refuses(self):
         self.block("open", "none")
         self.block("verify")
