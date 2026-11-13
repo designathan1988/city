@@ -635,6 +635,7 @@ threads and the whole command list follow the map; the rules are the constitutio
 - `CLAUDE.md` — generated from the constitution for Claude Code: the same orders in its words, naming the version it was generated from (the gate CLAUDE_MD holds both together)
 - `.specify/**` — Spec Kit's project files (version 1.4.0, PowerShell scripts): its templates, scripts, workflows and integration records, and its feature record naming the specification in hand under `doc/specs/`
 - `.claude/agents/worker.md` — the project's agent: every tool, does whatever its brief orders by the constitution's method
+- `.claude/settings.json` · `.claude/hooks/standing_orders.py` — Claude Code's project settings (Context7 enabled; the hooks) and the hook that puts the owner's standing orders back in the model's context at every session start (startup, resume, clear, compact, fork: CLAUDE.md whole, superpowers:using-superpowers, Context7, the skills the work needs, and after a compaction the skills the session had invoked), at every prompt and at every subagent's start
 - `doc/specs/**` — the specifications made by the Spec Kit skills, one folder each (spec, research with its sources, plan, data model, contracts, quickstart, tasks with verifiable goals, the comparison sheets, the genre's gap list)
 - `doc/work/**` — the work's memory, one short file a block (goal, sheet, plan, state, next), folded into the area's history at the close and removed
 - `tools/atlas/tests/**` — the atlas's tests and their fixture register

@@ -16,9 +16,10 @@ __pycache__/
 *.swp
 .DS_Store
 Thumbs.db
-# .claude/: only the project's settings, agents and skills are versioned; everything else there is the sessions' runtime
+# .claude/: only the project's settings, hooks, agents and skills are versioned; everything else there is the sessions' runtime
 /.claude/*
 !/.claude/settings.json
+!/.claude/hooks/
 !/.claude/agents/
 !/.claude/skills/
 *.translation
