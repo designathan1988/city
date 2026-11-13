@@ -1,31 +1,14 @@
 #!/usr/bin/env bash
-# Build, test and package commands (documented in CLAUDE.md > Commands). Usage: tools/build/build.sh <target>. Game ships for Windows only.
-# Env: GODOT (Godot 4.7 binary), MINGW (llvm-mingw root, Windows cross-build), OUT (package folder). The Windows build uses
-# Ninja: on a Windows host CMake would otherwise pick NMake, which is not installed.
+# The core's two Windows DLLs. dll-debug and dll-release build one DLL incrementally (its build folder configured the first
+# time): they are the processes of the tasks build_debug and build_release of tools/tasks/suites.json. core-windows is the one
+# way to build both: the orchestrator runs those two tasks, each with its deadline, its lines shown as they come, the dll lock
+# and the cache. Usage: tools/build/build.sh core-windows | dll-debug | dll-release. Env: MINGW (llvm-mingw root), JOBS.
+# The build uses Ninja: on a Windows host CMake would otherwise pick NMake, which is not installed.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-GODOT="${GODOT:-godot}"
-OUT="${OUT:-$ROOT/dist}"
 JOBS="${JOBS:-$(nproc 2>/dev/null || echo 2)}"
 
-core_linux() {
-	cmake -S "$ROOT/native" -B "$ROOT/native/build-linux" -DCMAKE_BUILD_TYPE=Release
-	cmake --build "$ROOT/native/build-linux" --target citycore -j "$JOBS"
-}
-
-core_windows() { # template_release ships in the export; template_debug is what the editor, tests and captures load
-	local dir target failed=0
-	bash "$ROOT/tools/build/free_dll.sh"
-	for target in template_release template_debug; do # at once: the link of one runs beside the compile of the other
-		dir="$ROOT/native/build-win"; [ "$target" = template_debug ] && dir="$dir-debug"
-		(cmake -S "$ROOT/native" -B "$dir" -G Ninja -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET="$target" \
-			-DCMAKE_TOOLCHAIN_FILE="$ROOT/native/toolchain-mingw.cmake" && cmake --build "$dir" --target citycore -j "$JOBS") &
-	done
-	for target in $(jobs -p); do wait "$target" || failed=1; done
-	return $failed
-}
-
-# One DLL, incrementally (the build folder is configured the first time): the build tasks of tools/tasks/suites.json.
+# One DLL, incrementally: template_release ships in the export; template_debug is what the editor, tests and captures load.
 dll() { # <template_debug|template_release> <build dir>
 	bash "$ROOT/tools/build/free_dll.sh"
 	[ -f "$2/build.ninja" ] || cmake -S "$ROOT/native" -B "$2" -G Ninja -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET="$1" \
@@ -33,34 +16,15 @@ dll() { # <template_debug|template_release> <build dir>
 	cmake --build "$2" --target citycore -j "$JOBS"
 }
 
-gates() { python3 "$ROOT/tools/gates/run_gates.py"; }
-
-# Every test scene and the captures are suites of tools/tasks: each scene a task with its own deadline, on the hidden desktop.
-e2e() { "${PY:-python}" "$ROOT/tools/tasks/cli.py" run tests; }
-
-capture() { # [dir]: one folder per capture task under it
-	CAPTURE_DIR="${1:-$OUT/captures}" "${PY:-python}" "$ROOT/tools/tasks/cli.py" run capture
-}
-
-deliver() { bash "$ROOT/tools/build/deliver.sh" "$@"; } # the export, the Desktop's shortcut and the zip
-
-# The block rule (CLAUDE.md, Method step 5): nothing is built, tested, captured or exported while a block's code is written.
-# tools/tasks/block.py gives the one answer.
+# The block rule (CLAUDE.md, Method step 5): nothing is built while a block's code is written. tools/tasks/block.py gives the
+# one answer; core-windows asks it through `cli.py run`, which refuses a run while a block is open.
 case "${1:-}" in
-	core|core-windows|dll-debug|dll-release|gates|e2e|capture|export|package|all)
-		"${PY:-python}" "$ROOT/tools/tasks/block.py" check "build $1" || exit 1 ;;
+	dll-debug|dll-release) "${PY:-python}" "$ROOT/tools/tasks/block.py" check "build $1" || exit 1 ;;
 esac
 
 case "${1:-}" in
-	core) core_linux ;; # only for tests/captures in this environment; the game is Windows
-	core-windows) core_windows ;;
+	core-windows) exec "${PY:-python}" "$ROOT/tools/tasks/cli.py" run build_debug build_release ;;
 	dll-debug) dll template_debug "$ROOT/native/build-win-debug" ;;
 	dll-release) dll template_release "$ROOT/native/build-win" ;;
-	gates) gates ;;
-	e2e) e2e ;;
-	capture) capture "${2:-}" ;;
-	export) deliver export ;;
-	package) deliver package ;;
-	all) core_linux; core_windows; gates; e2e; deliver export; deliver package ;;
-	*) echo "targets: core | core-windows | dll-debug | dll-release | gates | e2e | capture [dir] | export | package | all"; exit 2 ;;
+	*) echo "targets: core-windows | dll-debug | dll-release" >&2; exit 2 ;;
 esac

@@ -3,7 +3,7 @@
 
 #include "res://render/shaders/building_hash.gdshaderinc"
 
-// The lattice's values, one a texel (tools/assets/make_lattice_noise.py): value noise is the sampler's bilinear filter at a point
+// The lattice's values, one a texel (made once, a one-off tool git keeps in its history): value noise is the sampler's bilinear filter at a point
 // moved by the smooth step, one fetch where four hashes ran on every pixel of every wall.
 uniform sampler2D noise_lattice : filter_linear, repeat_enable;
 

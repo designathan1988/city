@@ -1,5 +1,6 @@
 // The cooked designs of signature buildings as meshes and instances (signature_bodies.h). Layout of a design (<name>.sig): what this
-// file reads, in its order; of the looks (materials.sig): tools/assets/pack_signature_looks.py.
+// file reads, in its order; of the looks (materials.sig): what read_table reads, in its order (packed once, a one-off tool
+// git keeps in its history).
 #include "render/buildings/signature_bodies.h"
 
 #include "render/mesh_levels.h"

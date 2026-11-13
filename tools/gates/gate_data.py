@@ -113,7 +113,7 @@ def check_register(ctx, err):
     except register.RegisterError as e:
         err("PROBLEM_REGISTER", entry["file"], str(e))
         return
-    for where, reason in register.faults(problems, schema, ctx.root, lambda ref: register.git_ref_exists(ctx.root, ref)):
+    for where, reason in register.faults(problems, schema, ctx.root, lambda refs: register.git_refs_present(ctx.root, refs)):
         err("PROBLEM_REGISTER", f"{entry['file']}:{where}", reason)
 
 

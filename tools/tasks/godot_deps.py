@@ -49,6 +49,8 @@ class Project:
         self.native = [f for f in listed for n in native if f.startswith(n.strip("/") + "/")
                        and Path(f).suffix in NATIVE_SUFFIXES]
         self._text: dict[str, str] = {}
+        self._links: dict[str, frozenset[str]] = {}  # links() per file: every task's closure walks the same files
+        self._native_refs: set[str] | None = None  # native_refs(), read once: every task's closure starts from it
         self.classes = self._classes()
         self.uids = self._uids()
         self.main_scene, self.settings_refs = self._settings()
@@ -142,8 +144,13 @@ class Project:
         return [m.group(0) for m in RES.finditer(text)
                 if m.group(0) != "res://" or JOINED.match(text, m.end())]
 
-    def links(self, rel: str) -> set[str]:
-        """The files one project file makes the run load."""
+    def links(self, rel: str) -> frozenset[str]:
+        """The files one project file makes the run load, worked out once per file."""
+        if rel not in self._links:
+            self._links[rel] = frozenset(self._read_links(rel))
+        return self._links[rel]
+
+    def _read_links(self, rel: str) -> set[str]:
         if rel == SETTINGS:
             return set(self.settings_refs)  # the main scene only when the command line names no scene (closure)
         text = self.text(rel)
@@ -175,13 +182,16 @@ class Project:
         return set().union(*(self.resolve(u, rel) for u in uris if u and not u.startswith("data:"))) if uris else set()
 
     def native_refs(self) -> set[str]:
-        """The res:// paths the loaded libraries' sources name."""
-        out: set[str] = set()
-        for f in self.native:
-            text = (self.root / f).read_text(encoding="utf-8", errors="replace")
-            for lit in self.literals(text):
-                out |= self.resolve(lit)
-        return out
+        """The res:// paths the loaded libraries' sources name, read once per Project (the same set each call: not to be
+        changed)."""
+        if self._native_refs is None:
+            out: set[str] = set()
+            for f in self.native:
+                text = (self.root / f).read_text(encoding="utf-8", errors="replace")
+                for lit in self.literals(text):
+                    out |= self.resolve(lit)
+            self._native_refs = out
+        return self._native_refs
 
     # closure --------------------------------------------------------------------------------------------------------------
     def closure(self, roots: list[str]) -> list[str]:

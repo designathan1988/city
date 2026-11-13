@@ -112,7 +112,7 @@ OwnedMesh read_mesh(ByteReader &r, const LodSize &sz, float &reach, const RID &m
 	// (drivers/gles3/storage/mesh_storage.cpp: size = fmtsize / sizeof(float)), so g, b, a read 0, 0, 1
 	return OwnedMesh::of(mesh_of_arrays(arr, material)).shared(); // a body's draw is made when the first of them walks into view
 }
-// The atlases of atlas.bin (tools/assets/compress_atlas.gd), compressed and with their mipmaps as they are to be drawn: nothing to decode.
+// The atlases of atlas.bin, compressed and with their mipmaps as they are to be drawn: nothing to decode.
 Ref<Texture2DArray> read_atlas(const String &path, uint32_t count) {
 	const PackedByteArray raw = FileAccess::get_file_as_bytes(path);
 	ByteReader r{ raw.ptr(), size_t(raw.size()) };

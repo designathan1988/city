@@ -1,5 +1,5 @@
 """The area of the register a file belongs to, by its place in the tree (the register's areas are the schema's enum): the one
-owner of that mapping, read by the import of the gates' findings and by the migration of the old trackers. The longest prefix
+owner of that mapping, read by the import of the gates' findings (atlas/imports.py). The longest prefix
 that matches wins; a file under no prefix is of the area `process` (the project's own files: CLAUDE.md, .claude, the root)."""
 AREAS_BY_PLACE = (
     ("native/src/sim/traffic/", "traffic"),

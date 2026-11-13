@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
-# free_dll.sh: a game left open holds its DLL, and the linker cannot write over it. Windows lets a file in use be renamed: each DLL goes aside under
-# dist/held, the open game keeps running from it, and a copy stands in its place for the link to replace. Old ones go when nothing holds them.
+# free_dll.sh: a wrapper of `python tools/tasks/cli.py free-dll` (tools/tasks/cache.py free_dlls, the one owner of dist/held):
+# a game left open holds its DLL and the linker cannot write over it, so each DLL of project/bin goes aside under dist/held,
+# where the open game keeps running from it, and a copy stands in its place for the link to replace; dist/held is held to its
+# bound. Exit 1 when a move or a copy fails.
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-mkdir -p "$ROOT/dist/held"
-rm -f "$ROOT"/dist/held/*.dll 2>/dev/null
-for dll in "$ROOT"/project/bin/*.dll; do
-	[ -f "$dll" ] || continue
-	held="$ROOT/dist/held/$(basename "$dll" .dll).$$.dll"
-	mv "$dll" "$held" && cp "$held" "$dll"
-done
-exit 0
+exec "${PY:-python}" "$ROOT/tools/tasks/cli.py" free-dll

@@ -1,11 +1,13 @@
-# The command line of tools/tasks: run suites or tasks (suites.json), serve tasks to other tools (JSON lines), status, a
-# machine var (suites.json vars: where Godot, bash and llvm-mingw are) for the shell scripts, and the block rule (block.py).
+# The command line of tools/tasks: run suites or tasks (suites.json), serve tasks to other tools (JSON lines), status, the
+# block rule (block.py), the worktrees, the bounds of dist/ (clean) and the DLLs an open game holds set aside (free-dll).
 # Exit codes of `run`: 0 only when the selection is non-empty and every task passed; 1 for any FAIL, TIMEOUT, BROKEN or
 # SKIPPED, and for a run refused while a block is open; 2 for a usage error, an unknown name or an empty selection.
-# While tasks run, `run` prints a line of what it is doing every few seconds; `status` shows every run that lives.
+# While tasks run, `run` prints each running task's lines as it writes them ("  [task] line") and a line of what the run is
+# doing every few seconds; `serve` writes both to stderr (its stdout is the JSON results alone); `status` shows every run
+# that lives. print_line and print_progress are the one way the tools print a run (km24.py, hunt.py import them).
 # Use: python tools/tasks/cli.py run <suite|task ...> [--all] [--<variant>] [--list] [--json OUT] [--jobs N]
 #      python tools/tasks/cli.py serve [--jobs N]      python tools/tasks/cli.py status [--watch]      python tools/tasks/cli.py --list
-#      python tools/tasks/cli.py var <name>      python tools/tasks/cli.py block open <name>|verify|close|status
+#      python tools/tasks/cli.py block open <name>|verify|close|status      python tools/tasks/cli.py free-dll
 #      python tools/tasks/cli.py worktrees [--all]      python tools/tasks/cli.py clean [--dry-run] [--unowned] [--only DIR]
 from __future__ import annotations
 
@@ -18,10 +20,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tasks import block, clean, lifecycle, verdicts  # noqa: E402
+from tasks import block, cache, clean, lifecycle, verdicts  # noqa: E402
 from tasks.cache import remove, write_atomic  # noqa: E402
 from tasks.pool import Pool, run  # noqa: E402
-from tasks.runs import RUNS, live_runs, newest_run  # noqa: E402
+from tasks.runs import RUNS, last_line, live_runs, newest_run  # noqa: E402
 from tasks.suites import Suites, UsageError  # noqa: E402
 from tasks.task import PASSED, ROOT, Task  # noqa: E402
 
@@ -29,8 +31,23 @@ OK, FAILED, USAGE = 0, 1, 2
 SHOWN_RUNNING = 6  # running tasks named in a progress line; the rest are counted
 MB_PER_GB = 1024.0
 WATCH_S = 2.0  # status --watch: the state printed again this often, until no run lives
-TAIL_BYTES = 4096  # of a running task's log read for its last line
 STATUS_LINE = 100  # characters of that line shown
+LOADING = "Loading resource: "  # Godot's --verbose trace of each resource it loads: kept in the log, never printed live
+_out = threading.Lock()  # the lines of a run come from several threads (followers, delivery, scheduler): one at a time
+
+
+def _emit(text: str, out=None) -> None:
+    with _out:
+        stream = out or sys.stdout
+        stream.write(text + "\n")
+        stream.flush()
+
+
+def print_line(ident: str, line: str, out=None) -> None:
+    """One line a running task wrote, as "  [ident] line" (to `out`, stdout by default). Godot's resource trace and empty
+    lines stay in the log only."""
+    if line.strip() and not line.startswith(LOADING):
+        _emit(f"  [{ident}] {line}", out)
 
 
 def _print_result(r) -> None:
@@ -39,20 +56,18 @@ def _print_result(r) -> None:
         first, *rest = r.message.splitlines() or [""]
         line += f"  {first}"
         line += "".join(f"\n    {x}" for x in rest[:verdicts.SHOWN_LINES])
-    print(line, flush=True)
     if r.status not in PASSED and r.log:
-        for x in verdicts.failure_lines(r.log):
-            print(f"    | {x}")
-        print(f"    log: {r.log}", flush=True)
+        line += "".join(f"\n    | {x}" for x in verdicts.failure_lines(r.log)) + f"\n    log: {r.log}"
+    _emit(line)
 
 
 def _spent(seconds: float, expected: float | None) -> str:
     return f"{seconds:.0f} s" + (f" of ~{expected:.0f}" if expected else "")
 
 
-def _print_progress(p: dict) -> None:
-    """One line of what the run is doing: how far it is, each running task with its seconds against what it took before,
-    how many wait and for what, and the memory the machine has free."""
+def print_progress(p: dict, out=None) -> None:
+    """One line of what the run is doing (to `out`, stdout by default): how far it is, each running task with its seconds
+    against what it took before, how many wait and for what, and the memory the machine has free."""
     running = ", ".join(f"{r['task']} {_spent(r['seconds'], r['expected'])}" for r in p["running"][:SHOWN_RUNNING])
     more = len(p["running"]) - SHOWN_RUNNING
     reasons: dict[str, int] = {}
@@ -60,9 +75,9 @@ def _print_progress(p: dict) -> None:
         key = "the tasks before them" if why.startswith("after ") else why.split(" (")[0]
         reasons[key] = reasons.get(key, 0) + 1
     waits = ", ".join(f"{n} for {why}" for why, n in sorted(reasons.items(), key=lambda kv: -kv[1]))
-    print(f"  .. {p['done']}/{p['total']} done | running {len(p['running'])}: {running}{f' (+{more})' if more > 0 else ''}"
+    _emit(f"  .. {p['done']}/{p['total']} done | running {len(p['running'])}: {running}{f' (+{more})' if more > 0 else ''}"
           f" | waiting {len(p['waiting'])}{f' ({waits})' if waits else ''} | {p['memory_free_mb'] / MB_PER_GB:.1f} GB free",
-          flush=True)
+          out)
 
 
 def _list(s: Suites, sel=None) -> int:
@@ -110,11 +125,14 @@ def cmd_run(argv: list[str]) -> int:
     if not names:
         print("nothing selected: name a suite, group or task (--list shows them)", file=sys.stderr)
         return USAGE
+    print(f"selecting {' '.join(names)} ...", flush=True)
+    t0 = time.monotonic()
     try:
         sel = s.select(names, variants, no_cache=a.all)
     except UsageError as e:
         print(e, file=sys.stderr)
         return USAGE
+    print(f"{len(sel.tasks)} task(s) selected in {time.monotonic() - t0:.1f} s", flush=True)
     if a.list:
         return _list(s, sel)
     for n in sel.dropped:
@@ -131,7 +149,7 @@ def cmd_run(argv: list[str]) -> int:
     capacity = s.doc.get("capacity", {})
     t0 = time.monotonic()
     results = run(sel.tasks, jobs=a.jobs, on_result=_print_result, root=root, use_cache=not sel.no_cache,
-                  capacity=capacity, label="-".join(names)[:40], on_progress=_print_progress)
+                  capacity=capacity, label="-".join(names)[:40], on_progress=print_progress, on_line=print_line)
     passed = sum(r.status in PASSED for r in results)
     counts = {}
     for r in results:
@@ -149,25 +167,26 @@ def cmd_run(argv: list[str]) -> int:
 
 def cmd_serve(argv: list[str]) -> int:
     """JSON lines in: {"id","name","argv","cwd","inputs","extra","outputs","timeout_s","env","hidden"}; JSON lines out as
-    each finishes: {"id","status","exit","seconds","log","key"} (a malformed line answers BROKEN with an "error")."""
+    each finishes: {"id","status","exit","seconds","log","key"} (a malformed line answers BROKEN with an "error"). Each
+    running task's lines ("  [id] line") and what the run is doing go to stderr. Refused, exit 1, while a block is open."""
     ap = argparse.ArgumentParser(prog="cli.py serve")
     ap.add_argument("--jobs", type=int)
     ap.add_argument("--root", help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
     root = Path(a.root).resolve() if a.root else ROOT
-    out_lock = threading.Lock()
+    why = block.refusal("serve", root)
+    if why:
+        print(why, file=sys.stderr)
+        return FAILED
     ids: dict[str, object] = {}
 
-    def emit(doc: dict) -> None:
-        with out_lock:
-            sys.stdout.write(json.dumps(doc, ensure_ascii=False) + "\n")
-            sys.stdout.flush()
-
     def finished(ident: str, r) -> None:
-        emit({"id": ids[ident], "status": r.status, "exit": r.exit_code, "seconds": r.seconds, "log": r.log, "key": r.key,
-              "message": r.message})
+        _emit(json.dumps({"id": ids[ident], "status": r.status, "exit": r.exit_code, "seconds": r.seconds, "log": r.log,
+                          "key": r.key, "message": r.message}, ensure_ascii=False), sys.stdout)
 
-    pool = Pool(root=root, jobs=a.jobs, label="serve", on_finish=finished)
+    pool = Pool(root=root, jobs=a.jobs, label="serve", on_finish=finished,
+                on_line=lambda i, line: print_line(f"{ids.get(i, i)}", line, sys.stderr),
+                on_progress=lambda p: print_progress(p, sys.stderr))
     n = 0
     for line in sys.stdin:
         line = line.strip()
@@ -187,22 +206,12 @@ def cmd_serve(argv: list[str]) -> int:
             ids[key] = doc.get("id", n)
             pool.submit(task, ident=key)
         except Exception as e:  # a malformed request is answered, not dropped
-            emit({"id": doc.get("id") if isinstance(doc, dict) else None, "status": "BROKEN", "exit": None,
-                  "seconds": 0, "log": "", "key": "", "error": f"{type(e).__name__}: {e}"})
+            _emit(json.dumps({"id": doc.get("id") if isinstance(doc, dict) else None, "status": "BROKEN", "exit": None,
+                              "seconds": 0, "log": "", "key": "", "error": f"{type(e).__name__}: {e}"}, ensure_ascii=False),
+                  sys.stdout)
     pool.wait_all()
     pool.close()
     return OK
-
-
-def _last_line(log: Path) -> str:
-    """The last line with anything on it of a log another process is still writing."""
-    try:
-        with open(log, "rb") as fh:
-            fh.seek(max(0, log.stat().st_size - TAIL_BYTES))
-            lines = [x.strip() for x in fh.read().decode("utf-8", errors="replace").splitlines() if x.strip()]
-    except OSError:
-        return ""
-    return lines[-1] if lines else ""
 
 
 def _print_run(run_dir: Path, live: bool) -> None:
@@ -217,7 +226,7 @@ def _print_run(run_dir: Path, live: bool) -> None:
     print(f"run {run_dir.name}  ({'live' if live else 'ended'}: {done} done, {len(running)} running)")
     for task, e in state.items():
         if e["event"] == "start":
-            said = _last_line(run_dir / f"{task}.log") if live else ""
+            said = last_line(run_dir / f"{task}.log") if live else ""
             print(f"RUNNING      {task}  {_spent(time.time() - e['t'], e.get('expected'))}, {len(e.get('cores', []))} cores"
                   + (f"  | {said[:STATUS_LINE]}" if said else ""))
         else:
@@ -251,23 +260,26 @@ def cmd_status(argv: list[str]) -> int:
         time.sleep(WATCH_S)
 
 
-def cmd_var(argv: list[str]) -> int:
-    """A machine var as the tasks resolve it, its environment variable first and then this platform's default."""
-    ap = argparse.ArgumentParser(prog="cli.py var")
-    ap.add_argument("name")
-    ap.add_argument("--suites", help=argparse.SUPPRESS)
+def cmd_free_dll(argv: list[str]) -> int:
+    """Each DLL of project/bin set aside under dist/held and copied back, dist/held held to its bound (cache.free_dlls)."""
+    ap = argparse.ArgumentParser(prog="cli.py free-dll", description=cmd_free_dll.__doc__)
+    ap.add_argument("--root", help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
-    print(Suites(a.suites, root=ROOT).var(a.name), end="")  # no newline: a shell's $(...) keeps no \r of Windows' own
+    try:
+        cache.free_dlls(Path(a.root).resolve() if a.root else ROOT)
+    except OSError as e:
+        print(f"free-dll failed: {e}", file=sys.stderr)
+        return FAILED
     return OK
 
 
 def main(argv: list[str]) -> int:
     if argv[:1] == ["--list"]:
         return cmd_run(["--list"] + argv[1:])
-    commands = {"run": cmd_run, "serve": cmd_serve, "status": cmd_status, "var": cmd_var, "block": block.main,
+    commands = {"run": cmd_run, "serve": cmd_serve, "status": cmd_status, "block": block.main, "free-dll": cmd_free_dll,
                 "worktrees": lifecycle.cmd_worktrees, "clean": clean.cmd_clean}
     if not argv or argv[0] not in commands:
-        print(__doc__ if __doc__ else "", "usage: cli.py run|serve|status|var|block|worktrees|clean ... (or --list)",
+        print(__doc__ if __doc__ else "", "usage: cli.py run|serve|status|block|free-dll|worktrees|clean ... (or --list)",
               file=sys.stderr)
         return USAGE
     try:

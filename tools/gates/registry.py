@@ -51,7 +51,10 @@ def _function_files(ctx, path):
 
 
 def _forbidden(entry):
-    check = gate_forbidden.CHECKS.get(entry["id"], gate_forbidden.pattern_on_code)
+    """The per-file rule of one rules.json forbidden entry, judged by its own check (gate_forbidden.CHECKS)."""
+    check = gate_forbidden.CHECKS.get(entry["id"])
+    if check is None:
+        raise ValueError(f"rules.json forbidden {entry['id']}: no check judges it in gate_forbidden.CHECKS")
     context = None
     if entry["id"] == "JOB_WITHOUT_KEY":
         context = lambda ctx: sorted(gate_forbidden.job_pool_members(ctx))  # noqa: E731

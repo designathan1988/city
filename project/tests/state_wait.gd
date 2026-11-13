@@ -1,14 +1,19 @@
 ## A wait on what runs on threads of its own (a save, the mesh jobs, a hand-over's clock): those run in real time whatever the
 ## frames' pace, and the tests run in simulated time (tools/tasks/suites.json: --fixed-fps, uncapped), so frames say nothing of how
 ## long they had. The wait is on the state; its guard against a hang is real time, the time the old frame counts gave at 60 Hz.
+## A wait says what it waits for when it starts (when the caller names it), and one past its limit is a FAIL line in the log.
 class_name StateWait
 extends RefCounted
 
-## Frames on `tree` until `done` returns true, at most `limit_s` seconds of real time. True when it came.
-static func until(tree: SceneTree, done: Callable, limit_s: float) -> bool:
+## Frames on `tree` until `done` returns true, at most `limit_s` seconds of real time. True when it came. `what` names the wait
+## in the log ("wait: ..." at its start); past the limit "FAIL wait: ..." is printed whether it was named or not.
+static func until(tree: SceneTree, done: Callable, limit_s: float, what := "") -> bool:
+	if not what.is_empty():
+		print("wait: %s (at most %.1f s)" % [what, limit_s])
 	var started := Time.get_ticks_msec()
 	while not done.call():
 		if float(Time.get_ticks_msec() - started) / 1000.0 >= limit_s:
+			print("FAIL wait: %s past %.1f s" % [what if not what.is_empty() else "an unnamed state", limit_s])
 			return false
 		await tree.process_frame
 	return true
@@ -20,4 +25,4 @@ static func until(tree: SceneTree, done: Callable, limit_s: float) -> bool:
 static func drawn(tree: SceneTree, limit_s: float) -> bool:
 	await tree.process_frame
 	await tree.process_frame
-	return await until(tree, func() -> bool: return int(CityStore.query(&"render_pending")) == 0, limit_s)
+	return await until(tree, func() -> bool: return int(CityStore.query(&"render_pending")) == 0, limit_s, "render_pending to reach 0")

@@ -5,8 +5,12 @@
 class_name UiDriver
 extends RefCounted
 
+## The frames a shot waits by default, for a script that did not wait for the drawing first (CaptureWait.until_drawn).
 const SETTLE_FRAMES := 8
 const DRAWN_SETTLE := 2 # the frames the world takes to ask for what a move showed
+## The frames a shot of a drawn view waits when a temporal filter (TAA or FSR2, game/settings/quality.gd) resolves the picture
+## from the frames before it: its history fills with the view as it stands. Without one the drawn picture is the photo at once.
+const TEMPORAL_SETTLE := 8
 
 var rig: CityCamera
 var tree: SceneTree
@@ -132,6 +136,12 @@ func modifier(code: Key, pressed: bool) -> void:
 func drawn() -> void:
 	step("waits for the render")
 	await CaptureWait.until_drawn(rig, DRAWN_SETTLE, "ui")
+
+
+## The frames a shot of a view already drawn waits: TEMPORAL_SETTLE when the photographed viewport runs a temporal filter, else none.
+func temporal_settle() -> int:
+	var view := tree.root
+	return TEMPORAL_SETTLE if view.use_taa or view.scaling_3d_mode == Viewport.SCALING_3D_MODE_FSR2 else 0
 
 
 func shot(name: String, settle: int = SETTLE_FRAMES) -> void:

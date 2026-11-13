@@ -21,7 +21,6 @@ RULES_DIR = ".claude/rules/"  # path-scoped rules, instructions too (Claude Code
 CLAIM = re.compile(r"(?i:\bbinding over\b|\b(wins?|outranks?|overrides?|takes? precedence)\b[^.;\n]{0,40}"
                    r"\b(claude\.md|memor(y|ies)|skills?|records?|instructions?|orders?)\b)|\bBINDING\b")
 QUOTED = re.compile(r'"[^"]*"|`[^`]*`|\u201c[^\u201d]*\u201d')  # a citation: the words are someone else's, not a claim here
-BINARY_PROBE = 8000
 # Known problems live in doc/problems.jsonl alone: no ledger of problems and no table of symptoms and causes elsewhere. The
 # register's generated view and the histories (records of what was, by their place) are no tracker.
 REGISTER_VIEW = "doc/problems.md"
@@ -107,12 +106,13 @@ def _excluded(ctx, path, settings):
 
 
 def _text(ctx, path):
+    """A listed file's text through the run's Sources (each file read once a run, whichever rule asks first): "" for a
+    binary one (a NUL in its head, or no UTF-8) or one gone from the disk."""
     try:
-        with open(os.path.join(ctx.root, path), "rb") as fh:
-            data = fh.read()
+        src = ctx.source(path)
     except OSError:
         return ""
-    return "" if b"\0" in data[:BINARY_PROBE] else data.decode("utf-8", "replace")
+    return "" if src.binary else src.text
 
 
 def check_instructions(ctx, err):

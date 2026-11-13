@@ -256,12 +256,6 @@ def changed(include: list[str], exclude: list[str] = (), root: Path | str | None
     return [f for f in snapshot(root).changed() if any(r.match(f) for r in inc) and not any(r.match(f) for r in exc)]
 
 
-def content_ids(paths: list[str], root: Path | str | None = None) -> dict[str, str]:
-    """path -> content id for many files in one pass (one git call for all the changed ones): ask this first, then key_of
-    per file reads the ids back."""
-    return snapshot(root).blobs(list(paths))
-
-
 def key_of(paths: list[str], extra=(), root: Path | str | None = None) -> str:
     """SHA-256 of the sorted path:content ids of what `paths` resolve to, the patterns that matched nothing, and `extra`."""
     snap = snapshot(root)

@@ -1,6 +1,6 @@
 # The task store's bound (tools/tasks/suites.json lifecycle, max_mb), kept on every write: each entry the store writes is added
 # to its ledger, and when the total passes the bound the least recently used entries go (a hit touches its entry: an entry's
-# time of use is its mtime). An entry is a task's result folder, a memo's file or a materialized folder.
+# time of use is its mtime). An entry is a task's result folder or a memo's file.
 from __future__ import annotations
 
 import os
@@ -10,7 +10,6 @@ from pathlib import Path
 from .files import remove, size_of, write_atomic
 from .locks import FileLock
 
-COMPLETE = ".complete"  # the mark of a materialized folder built whole
 LEDGER = ".ledger"  # in the store: one line an entry written, "<bytes> <entry relative to the store>"; an entry's last line wins
 TOTAL = ".total"  # in the store: the bytes the ledger's entries hold, kept with it
 LEDGER_LOCK = ".ledger.lock"
@@ -21,10 +20,8 @@ YOUNG_S = 600  # an entry used this recently is never evicted: a task may be res
 
 
 def entries_on_disk(base: Path):
-    """Every entry the store holds: a task's result folder, a memo's file, a materialized folder."""
+    """Every entry the store holds: a task's result folder, a memo's file."""
     for tool in (p for p in base.iterdir() if p.is_dir()) if base.is_dir() else []:
-        if tool.name == "_materialized":
-            yield from (d for d in tool.iterdir() if d.is_dir() and (d / COMPLETE).is_file())
         for prefix in (p for p in tool.iterdir() if p.is_dir() and len(p.name) == 2):
             yield from (d for d in prefix.iterdir() if d.is_dir() and (d / "result.json").is_file())
         memo_dir = tool / "memo"

@@ -218,7 +218,6 @@
       "paths": [
         "native/src/"
       ],
-      "pattern": "(jobs->|pool\\.)submit\\(\\s*(?!JobKey\\{|job,|b->job\\.bake\\(\\))",
       "message": "every job goes to the queue with a JobKey (lane and id, core/job_pool.h): the queue replaces the job of the same key silently, and a key made by hand collides with another renderer's"
     },
     {
@@ -227,7 +226,6 @@
         "native/src/core/",
         "native/src/sim/"
       ],
-      "pattern": "#include\\s*<godot",
       "message": "core/ and sim/ are pure C++ (thread-safe, the single source of truth); Godot only in render/ and api/"
     },
     {
@@ -235,7 +233,6 @@
       "paths": [
         "native/src/render/"
       ],
-      "pattern": "#include\\s*\"sim/commands/|CityState\\s*[&*]",
       "message": "render/ only reads the city: no sim/commands include, and the CityState it is handed is const (the ChangeLog it consumes comes apart, by its own reference); changes go through sim/commands"
     },
     {
@@ -243,7 +240,6 @@
       "paths": [
         "native/src/"
       ],
-      "pattern": "unique_lock|lock_guard|scoped_lock|map_mutex\\s*(\\.|->)\\s*(try_)?lock",
       "except": [
         "native/src/sim/state/map_hold.h"
       ],
@@ -254,7 +250,6 @@
       "paths": [
         "project/"
       ],
-      "pattern": "\\bCityCore\\b",
       "except": [
         "project/game/store/city_store.gd"
       ],
@@ -265,7 +260,6 @@
       "paths": [
         "project/"
       ],
-      "pattern": "change_scene_to|get_tree\\(\\)\\.paused\\s*=|get_tree\\(\\)\\.quit",
       "except": [
         "project/game/flow/game_flow.gd",
         "project/tests/"
@@ -279,7 +273,6 @@
         "project/ui/",
         "project/game/"
       ],
-      "pattern": "Color\\(|Color8\\(|\"#[0-9a-fA-F]{6}|add_theme_[a-z_]+_override",
       "except": [
         "project/ui/icons/",
         "project/ui/theme/theme_builder.gd"
@@ -292,7 +285,6 @@
         "project/ui/",
         "project/game/"
       ],
-      "pattern": "(\\.text|tooltip_text|\\.title)\\s*=\\s*\"[^\"]*[A-Za-zÀ-ú]{2}",
       "message": "visible texts go through tr(\"KEY\") with data/i18n/strings.csv"
     },
     {
@@ -300,7 +292,6 @@
       "paths": [
         "project/"
       ],
-      "pattern": "res://data/[a-z_/]+\\.json",
       "except": [
         "project/game/data/data_tables.gd"
       ],
@@ -315,10 +306,6 @@
         "project/render/",
         "project/tests/",
         "tools/"
-      ],
-      "pattern": "\\b(TODO|FIXME|XXX|HACK)\\b",
-      "except": [
-        "tools/gates/rules.json"
       ],
       "message": "known problems go to the register (doc/problems.jsonl), not to comments"
     },

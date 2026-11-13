@@ -2,8 +2,10 @@
 # run (its processors within the run's own share, any other counted name), its memory (admitted by measure: the most it was
 # seen to take, runs.py, or what it declares until then), its locks (OS files a repository's tools share: the dll
 # readers/writer lock, the GPU a timing test takes alone) and its processors (the machine's, machine.py: lock files every
-# run shares). It starts only with all of them and holds nothing while it waits; what it waits for is said, and no task
-# behind it overtakes it for the same thing.
+# run shares). It starts only with all of them and holds nothing while it waits; what it waits for is said. A task behind
+# the first that does not fit in memory or processors does not overtake it unless it delays it not; a lock reserves nothing,
+# so no task waits behind the slowest holder of a lock it could share. When its process tree ends, its counts and processors go back at once and its
+# locks once its result is stored (release).
 from __future__ import annotations
 
 import time
@@ -79,18 +81,17 @@ class Admission:
         seen = self.record.memory.get(t.name)
         return seen * MEMORY_MARGIN if seen else float((t.resources or {}).get(MEMORY, UNKNOWN_MB))
 
-    def try_start(self, i: str, t: Task, waiting_cores: int, blocked: set[str], expected: float | None = None) -> str | None:
+    def try_start(self, i: str, t: Task, waiting_cores: int, expected: float | None = None) -> str | None:
         """Takes all the task needs and returns None; or takes nothing and returns what it waits for. The tasks are offered
         the most urgent first. The first that does not fit (memory, processors) is the one nothing may delay: a task behind it
         starts only if it fits now and either ends before that one can start (`expected`: the seconds it took before) or
         takes no more than will be left over when it does (EASY backfilling: one reservation, for the first that waits; it
-        is not starved, and nothing that fits stands idle behind it). A lock a task ahead waits for (`blocked`) is not taken
-        by one behind it. `waiting_cores`: the processors the other tasks of the run that still wait will ask for."""
+        is not starved, and nothing that fits stands idle behind it). A lock is no reservation: a task that waits for one
+        (a GPU timing test that takes the GPU alone while others draw on it) holds back no task that can take it now, so no
+        task ever waits behind the slowest holder of a lock it could share; the one that waits starts when the lock is free.
+        `waiting_cores`: the processors the other tasks of the run that still wait will ask for."""
         need = self.needs(t)
         locks = (t.resources or {}).get("locks", {})
-        lock_wants = {f"lock {name}" for name in locks}
-        if lock_wants & blocked:
-            return "its turn for " + ", ".join(sorted(lock_wants & blocked))
         short = [k for k, v in need.items() if self.used[k] + v > self.capacity[k]]
         mb = self.memory_of(t)
         if short or not self._memory_fits(mb):
@@ -100,7 +101,6 @@ class Admission:
             return "the task ahead of it, which it would delay"
         got = self._take_locks(locks)
         if got is None:
-            blocked |= lock_wants
             self.retry = True
             return "lock " + ", ".join(sorted(locks))
         room = self.capacity["cores"] - self.used["cores"]
@@ -138,12 +138,20 @@ class Admission:
         ends_before = expected is not None and time.monotonic() + expected <= can_start
         return ends_before or (mb <= free_mb - head_mb and cores <= free_cores - head_cores)
 
-    def release(self, i: str) -> None:
+    def release(self, i: str, keep_locks: bool = False) -> list[FileLock]:
+        """What a task held goes back: its counted resources and its processors at once; its locks too, or, with
+        `keep_locks`, they are returned for the caller to release when it is done with what they guard (the outputs a
+        task's result stores while no other task may write them)."""
         grant = self.granted.pop(i)
         for k, v in grant.need.items():
             self.used[k] -= v
-        for lock in list(grant.cores.values()) + grant.locks:
+        for lock in grant.cores.values():
             lock.release()
+        if keep_locks:
+            return list(grant.locks)
+        for lock in grant.locks:
+            lock.release()
+        return []
 
     def _memory_fits(self, mb: float) -> bool:
         """Whether a task of `mb` may start now. With nothing of this run running it may, whatever it takes: a task larger

@@ -199,6 +199,7 @@ func _write() -> void:
 		print("  %5d  %-40s %s  ->  %s" % [d.count, d.kind, d.why, d.owner])
 	if _out.is_empty():
 		return
+	DirAccess.make_dir_recursive_absolute(_out.get_base_dir()) # the list's folder may not exist yet (a clean dist/)
 	var f := FileAccess.open(_out, FileAccess.WRITE)
 	if f == null:
 		check(false, "the hunt's list could not be written to %s" % _out)

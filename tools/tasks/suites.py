@@ -149,7 +149,7 @@ class Suites:
                   outputs=[ex(x) for x in f.get("outputs", [])], after=list(f.get("after", [])),
                   cwd=ex(f["cwd"]) if "cwd" in f else None, env={k: ex(v) for k, v in f.get("env", {}).items()} or None,
                   hidden=f.get("hidden", False), verdict=f.get("verdict"), resources=self._resources(f, item),
-                  params=params, fresh=f.get("fresh", False), hint=f.get("hint", ""))
+                  params=params, fresh=f.get("fresh", False))
         if "call" in f:
             spec = self._deep(f.get("spec", {}), ex)
             spec.setdefault("root", self.root.as_posix())

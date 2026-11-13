@@ -1,5 +1,6 @@
 # OS file locks, shared or exclusive, that hold across processes and across handles of one process (LockFileEx on Windows,
-# flock on POSIX): the dll readers/writer lock of every tool on this machine, and the build-once lock of materialize.
+# flock on POSIX): the locks a task declares (the dll readers/writer lock of every tool on this machine, the GPU), the
+# machine's processors (machine.py), the task store's ledger (ledger.py) and the pruning of old runs (runs.py).
 from __future__ import annotations
 
 import os

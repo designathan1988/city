@@ -54,7 +54,8 @@ func save(slot := "") -> Dictionary:
 			outcome.merge(result)
 	CityStore.saved.connect(keep)
 	var started: Dictionary = CityStore.saves.save_city() if slot.is_empty() else CityStore.saves.save_game(slot)
-	await StateWait.until(get_tree(), func() -> bool: return not outcome.is_empty() or not started.get("pending", false), SAVE_LIMIT_S)
+	await StateWait.until(get_tree(), func() -> bool: return not outcome.is_empty() or not started.get("pending", false), SAVE_LIMIT_S,
+			"the save of %s" % (slot if not slot.is_empty() else "the city to its own slot"))
 	CityStore.saved.disconnect(keep)
 	if outcome.is_empty() and started.get("pending", false):
 		check(false, "the save of %s never ended (%.0f s)" % [slot, SAVE_LIMIT_S])

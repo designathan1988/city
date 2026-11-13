@@ -1,7 +1,8 @@
 """Generated files: each output listed in rules.json/generated is what its generator writes. The generator is asked with
 --check (it compares and writes nothing; exit 0 when the outputs on disk are its own) through tools/tasks/proc, the tools'
-one owner of processes (its own tree, killed at the deadline, on the private desktop). A table edited by hand, or a
-generator that no longer runs on its inputs, fails here."""
+one owner of processes (its own tree, killed at the deadline, with no window: a generator is a console program and opens
+none, so it needs no private desktop, whose start is a cost of its own). A table edited by hand, or a generator that no
+longer runs on its inputs, fails here."""
 import os
 import sys
 import tempfile
@@ -11,7 +12,9 @@ if TOOLS_DIR not in sys.path:
     sys.path.insert(0, TOOLS_DIR)
 from tasks import proc  # noqa: E402
 
-GENERATOR_DEADLINE_S = 300  # one generator's check; a generator that gives no answer by then is an error, not a wait
+# One generator's check, within the project's rule that a check answers in under a minute (CLAUDE.md, the method's step 6;
+# tools/atlas/render.py --check answers in about a second): a generator silent by then is an error, not a wait.
+GENERATOR_DEADLINE_S = 60
 REPORT_TAIL = 400  # characters of the generator's own words kept in the finding
 
 
@@ -27,7 +30,7 @@ def _ask(ctx, generator):
     """(exit code or None when the deadline passed, the generator's last words)."""
     with tempfile.TemporaryDirectory() as tmp:
         log = os.path.join(tmp, "check.log")
-        code, late = proc.run([sys.executable, generator, "--check"], GENERATOR_DEADLINE_S, cwd=ctx.root, log=log, hidden=True)
+        code, late = proc.run([sys.executable, generator, "--check"], GENERATOR_DEADLINE_S, cwd=ctx.root, log=log, hidden=False)
         with open(log, encoding="utf-8", errors="replace") as fh:
             words = fh.read().strip()
     return (None if late else code), words[-REPORT_TAIL:]

@@ -1,6 +1,7 @@
 # lifecycle: every worktree, copy, branch and stash classed, the ones older than their work failing the listing; clean holding
 # each output folder to its bound (keep with the builds an open problem names kept, while_open, max_mb, whole_mb), listing and removing
-# what no one declared, a dry run removing nothing; the task cache's ledger evicting the least recently used past its bound.
+# what no one declared, a dry run removing nothing, nothing removed while the register cannot be read; the task cache's ledger
+# evicting the least recently used past its bound; dist/held (free_dlls) holding what an open game runs from, to its bound.
 import json
 import os
 import shutil
@@ -8,16 +9,17 @@ import stat
 import sys
 import time
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # support
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))  # tools: the tasks package
 
 from support import RepoCase, git  # noqa: E402
 
-from tasks import clean, ledger, lifecycle  # noqa: E402
+from tasks import cache, clean, cli, ledger, lifecycle, outputs  # noqa: E402
 
 OLD = "2026-01-01T00:00:00+00:00"
 LIFECYCLE = {"lifecycle": {"stale_days": 7, "outputs": [
@@ -26,8 +28,7 @@ LIFECYCLE = {"lifecycle": {"stale_days": 7, "outputs": [
     {"path": "dist/evidence/research", "owner": "research", "whole_mb": 1},
     {"path": "dist/quick", "owner": "quick", "max_mb": 1},
     {"path": "dist/build-x", "owner": "a build", "whole_mb": 1},
-    {"path": "dist/small-x", "owner": "a build", "whole_mb": 1},
-    {"path": "dist/trace", "owner": "skill", "migrating": "a later task"}]}}
+    {"path": "dist/small-x", "owner": "a build", "whole_mb": 1}]}}
 
 
 def quiet(fn, *args):
@@ -98,7 +99,6 @@ class Clean(LifecycleCase):
         self.make("dist/evidence/research/q2/run.log")
         self.make("dist/quick/old.bin", size=800_000, age=500)
         self.make("dist/quick/new.bin", size=800_000, age=10)
-        self.make("dist/trace/slug/ledger.json")
         self.make("dist/build-x/a/one.o", size=700_000)
         self.make("dist/build-x/b/two.o", size=700_000)
         self.make("dist/small-x/one.o", size=10)
@@ -125,12 +125,70 @@ class Clean(LifecycleCase):
         self.assertTrue((self.root / "dist/evidence/research/q2/run.log").exists(), "a folder declared inside another keeps its own bound")
         self.assertFalse((self.root / "dist/quick/old.bin").exists())
         self.assertTrue((self.root / "dist/quick/new.bin").exists())
-        self.assertTrue((self.root / "dist/trace/slug").exists(), "a migrating folder is left to its migration")
         self.assertFalse((self.root / "dist/build-x").exists(), "a piece written whole goes whole past its size")
         self.assertTrue((self.root / "dist/small-x/one.o").exists(), "and stays whole inside it")
         self.assertTrue((self.root / "dist/stray").exists(), "an unowned folder is listed, not removed, without --unowned")
         self.run_clean("--unowned")
         self.assertFalse((self.root / "dist/stray").exists(), "removed whole, its read-only files included")
+
+    def test_an_unreadable_register_stops_clean_before_anything_goes(self):
+        (self.root / "doc/problems.jsonl").write_bytes(b"not a problem\n")
+        err = StringIO()
+        with redirect_stdout(StringIO()), redirect_stderr(err):
+            code = clean.cmd_clean(["--root", str(self.root), "--suites", str(self.suites), "--unowned"])
+        self.assertEqual(code, 1)
+        self.assertIn("the register cannot be read", err.getvalue())
+        self.assertTrue((self.root / "dist/evidence/Ptools-9").exists(), "evidence went while no one could say it was free")
+        self.assertTrue(all((self.root / "dist/builds" / n).exists() for n in ("b1", "b2", "b3", "b4")))
+        self.assertTrue((self.root / "dist/stray").exists())
+
+
+class Held(unittest.TestCase):
+    """free_dlls: each DLL set aside under dist/held and copied back; dist/held held to its bound, the newest set aside kept."""
+
+    def setUp(self):
+        import tempfile
+        self.root = Path(tempfile.mkdtemp(prefix="tasks-held-")).resolve()
+        self.addCleanup(shutil.rmtree, self.root, True)
+        (self.root / cache.BIN).mkdir(parents=True)
+        for name in ("a.dll", "b.dll"):
+            (self.root / cache.BIN / name).write_bytes(name.encode() * 10)
+        self.keep = outputs.bound(cache.HELD)["keep"]
+        self.old = []
+        for k in range(self.keep + 2):  # left by earlier links, the script of before included (no time in the name)
+            p = self.root / cache.HELD / f"old{k}.dll"
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(b"old")
+            t = time.time() - 1000 + k
+            os.utime(p, (t, t))
+            self.old.append(p)
+
+    def test_each_dll_goes_aside_and_a_copy_stands_in_its_place(self):
+        with redirect_stdout(StringIO()):
+            cache.free_dlls(self.root)
+        for name in ("a.dll", "b.dll"):
+            self.assertEqual((self.root / cache.BIN / name).read_bytes(), name.encode() * 10)
+        held = sorted(p.name for p in (self.root / cache.HELD).iterdir())
+        self.assertEqual(len(held), self.keep, "dist/held past its bound")
+        self.assertEqual(len([n for n in held if n.startswith(("a.dll.", "b.dll."))]), 2, "the DLLs just set aside went")
+        self.assertTrue(self.old[-1].exists(), "the newest of the earlier ones went before an older one")
+        self.assertFalse(self.old[0].exists())
+
+    @unittest.skipUnless(sys.platform == "win32", "Windows refuses to delete a file a process holds open")
+    def test_a_held_file_in_use_is_kept_and_said(self):
+        out = StringIO()
+        with open(self.old[0], "rb"), redirect_stdout(out):
+            cache.free_dlls(self.root)
+        self.assertTrue(self.old[0].exists())
+        self.assertIn(f"kept, in use: {cache.HELD}/old0.dll", out.getvalue())
+
+    def test_the_command_says_a_failed_move(self):
+        err = StringIO()
+        with mock.patch.object(cache, "set_aside", side_effect=PermissionError("held by another")), \
+                redirect_stdout(StringIO()), redirect_stderr(err):
+            code = cli.main(["free-dll", "--root", str(self.root)])
+        self.assertEqual(code, 1)
+        self.assertIn("free-dll failed: held by another", err.getvalue())
 
 
 class Ledger(unittest.TestCase):

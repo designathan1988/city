@@ -1,30 +1,31 @@
 # The scheduler: tasks run in parallel within what the machine has, by what each one takes (admission.py: its processors,
 # which every run of the machine shares; its memory, admitted by measure; its locks). So the number of tasks at once follows
 # from the tasks and the machine, any number of runs share it, and a task waits only for what it needs. A failed or hung task
-# only SKIPs its dependents; every task has its own deadline; recorded times order the queue (longest path first). The cores
-# a task is counted for are the processors its process tree runs on (an affinity): a process that sizes its thread pools by
-# the machine cannot take what was given to others. While tasks run, the run says what it is doing (on_progress).
+# only SKIPs its dependents; every task has its own deadline, for its start as for its run; recorded times order the queue
+# (longest path first). The cores a task is counted for are the processors its process tree runs on (an affinity): a process
+# that sizes its thread pools by the machine cannot take what was given to others. While tasks are unfinished the run says
+# what it is doing (on_progress) and each running task's lines as it writes them (on_line); every listener is called off the
+# scheduler's lock (listen.py). One task's own process, verdict and store are execute.py's.
 from __future__ import annotations
 
 import json
-import os
 import threading
 import time
 import traceback
 from pathlib import Path
 from typing import Callable
 
-from . import inputs, proc, verdicts
-from .admission import Admission
-from .cache import Cache, remove
+from . import execute, inputs, proc
+from .admission import Admission, Grant
+from .cache import Cache
+from .listen import Delivery
 from .machine import Machine
-from .runs import RunRecord, check_graph
-from .task import (BROKEN, CACHEABLE, CACHED_FAIL, CACHED_PASS, FAIL, HERE, PASS, ROOT, SKIPPED, TIMEOUT, Result,
-                   Task)
+from .runs import RunRecord, check_graph, priorities
+from .task import BROKEN, CACHEABLE, CACHED_FAIL, CACHED_PASS, HERE, PASS, ROOT, SKIPPED, TIMEOUT, Result, Task
 
 LOCK_RETRY_S = 0.25  # a task waiting for a lock or a processor another process holds is tried again this often
 WAIT_TURN_S = 1.0  # the scheduler wakes at least this often to look at the clock and the locks
-PROGRESS_S = 10.0  # while tasks run, what the run is doing is said this often
+PROGRESS_S = 10.0  # while tasks are unfinished, what the run is doing is said this often
 UNSTARTED = ("waiting", "keying", "ready")
 
 
@@ -37,13 +38,16 @@ class Pool:
     def __init__(self, root: Path | str | None = None, jobs: int | None = None, capacity: dict | None = None,
                  on_result: Callable[[Result], None] | None = None, use_cache: bool = True, label: str = "run",
                  on_finish: Callable[[str, Result], None] | None = None, machine: Machine | None = None,
-                 on_progress: Callable[[dict], None] | None = None, progress_s: float = PROGRESS_S):
+                 on_progress: Callable[[dict], None] | None = None, progress_s: float = PROGRESS_S,
+                 on_line: Callable[[str, str], None] | None = None):
         self.root = Path(root or ROOT).resolve()
         self.on_result = on_result
         self.on_finish = on_finish  # (ident, result): for callers that submit under idents of their own
         self.on_progress = on_progress
+        self.on_line = on_line  # (ident, line): each line a running task writes to its log, as it comes
         self.progress_s = progress_s
         self._said = time.monotonic()
+        self._turned = time.monotonic()  # the scheduler's last turn: the waits of the ready tasks are counted from it
         self.use_cache = use_cache
         self.cache = Cache(self.root)
         self.snapshot = inputs.snapshot(self.root)
@@ -56,9 +60,12 @@ class Pool:
         self.results: dict[str, Result] = {}
         self.prio: dict[str, float] = {}
         self.why: dict[str, str] = {}  # what a task that has not started waits for
+        self.ready_at: dict[str, float] = {}  # when a task became ready
+        self.started_at: dict[str, float] = {}  # when it started
+        self.waited: dict[str, float] = {}  # the seconds a ready task waited that count against its deadline
         self.record = RunRecord(self.root, label)
-        self.run_dir = self.record.dir
         self.admission = Admission(self.root, machine or Machine(), jobs, capacity, self.record)
+        self.delivery = Delivery(self._deliver, "tasks-delivery")
         self.closed = False
         self.thread = threading.Thread(target=self._loop, name="tasks-scheduler", daemon=True)
         self.thread.start()
@@ -72,46 +79,42 @@ class Pool:
             self.tasks[ident] = task
             self.order.append(ident)
             self.state[ident] = "waiting"
-            self._prioritise()
+            self.prio = priorities(self.tasks, self.record.times)
             self.cond.notify_all()
         return ident
 
     def wait_all(self) -> list[Result]:
+        """Every result, once every task is done and every listener has been told of it."""
         with self.cond:
             while any(s != "done" for s in self.state.values()):
                 self.cond.wait(WAIT_TURN_S)
-            return [self.results[i] for i in self.order]
+            results = [self.results[i] for i in self.order]
+        self.delivery.drain()
+        return results
 
     def close(self) -> None:
         with self.cond:
             self.closed = True
             self.cond.notify_all()
         self.thread.join()
+        self.delivery.close()
         self.record.close()
 
     # scheduling -----------------------------------------------------------------------------------------------------
-    def _prioritise(self) -> None:
-        """Longest path first: a task's own recorded time plus the longest chain of tasks that wait for it."""
-        users: dict[str, list[str]] = {i: [] for i in self.tasks}
-        for j in self.tasks:
-            for d in self.tasks[j].after:
-                if d in users:
-                    users[d].append(j)
-        memo: dict[str, float] = {}
-
-        def path(i: str, seen: frozenset) -> float:
-            if i not in memo:
-                memo[i] = self.record.times.get(self.tasks[i].name, 0.0) + max(
-                    (path(u, seen | {i}) for u in users[i] if u not in seen), default=0.0)
-            return memo[i]
-        self.prio = {i: path(i, frozenset()) for i in self.tasks}
-
     def _loop(self) -> None:
-        with self.cond:
-            while not self.closed:
+        while True:
+            with self.cond:
+                if self.closed:
+                    return
                 self._advance()
-                self._say()
-                self.cond.wait(min(LOCK_RETRY_S if self.admission.retry else WAIT_TURN_S, self.progress_s))
+                report = self._report()
+                if report is None:
+                    self.cond.wait(min(LOCK_RETRY_S if self.admission.retry else WAIT_TURN_S, self.progress_s))
+            try:
+                if report is not None:
+                    self.on_progress(report)  # off the lock: a slow listener delays no start, finish or deadline
+            except Exception:
+                traceback.print_exc()  # a broken listener is reported; the run itself goes on
 
     def _advance(self) -> None:
         for i in self.order:
@@ -134,40 +137,56 @@ class Pool:
             self.state[i] = "keying"
             self.why[i] = "its key"
             threading.Thread(target=self._key, args=(i,), name=f"key {i}", daemon=True).start()
+        now = time.monotonic()
+        step, self._turned = now - self._turned, now
+        idle = not self.admission.granted  # nothing of this run runs: a ready task waits on what is held outside it
         self.admission.begin()
         place = {i: n for n, i in enumerate(self.order)}
         ready = sorted((i for i in self.order if self.state[i] == "ready"), key=lambda i: (-self.prio.get(i, 0.0), place[i]))
-        blocked: set[str] = set()  # the locks a task ahead waits for: no task behind it takes them first
         for i in ready:
             others = sum(self.admission.needs(self.tasks[j])["cores"] for j in self.order if j != i and self.state[j] in UNSTARTED)
-            why = self.admission.try_start(i, self.tasks[i], others, blocked, self.record.times.get(self.tasks[i].name))
+            why = self.admission.try_start(i, self.tasks[i], others, self.record.times.get(self.tasks[i].name))
             if why is not None:
                 self.why[i] = why
+                self._count_wait(i, why, min(step, now - self.ready_at[i]) if idle else 0.0)
                 continue
             self.why.pop(i, None)
             self.state[i] = "running"
+            self.started_at[i] = now
             threading.Thread(target=self._execute, args=(i,), name=f"run {i}", daemon=True).start()
+
+    def _count_wait(self, i: str, why: str, seconds: float) -> None:
+        """Under the condition: a ready task's wait counted against its own deadline. It counts only while no task of this
+        run runs: a wait for this run's own tasks is bounded already, each of them ending by its deadline; a wait for what
+        another process holds (a lock, the processors of another run) is bounded here. Past it the task ends TIMEOUT."""
+        t = self.tasks[i]
+        self.waited[i] = self.waited.get(i, 0.0) + seconds
+        if self.waited[i] >= t.timeout_s:
+            self._finish(i, Result(t.name, TIMEOUT, None, round(self.waited[i], 2), "", self.keys.get(i, ""),
+                                   f"never started within its deadline of {t.timeout_s:g} s: waited for {why}"))
 
     # what the run is doing --------------------------------------------------------------------------------------------
     def progress(self) -> dict:
         """Under the condition: how far the run is, each running task with its seconds, the seconds it took before and the
         memory it holds, and what each task that has not started waits for."""
-        now = time.monotonic()
-        running = [{"task": i, "seconds": round(now - g.started, 1), "expected": self.record.times.get(self.tasks[i].name),
-                    "memory_mb": round(g.peak_mb()), "cores": len(g.cores)} for i, g in self.admission.granted.items()]
+        now, granted = time.monotonic(), self.admission.granted
+        running = [{"task": i, "seconds": round(now - self.started_at[i], 1),
+                    "expected": self.record.times.get(self.tasks[i].name),
+                    "memory_mb": round(granted[i].peak_mb()) if i in granted else 0,
+                    "cores": len(granted[i].cores) if i in granted else 0}  # none once its tree ended: its result is stored
+                   for i in self.order if self.state[i] == "running"]
         waiting = {i: self.why.get(i, "its turn") for i in self.order if self.state[i] in UNSTARTED}
         return {"done": sum(s == "done" for s in self.state.values()), "total": len(self.order), "running": running,
                 "waiting": waiting, "memory_free_mb": round(self.admission.machine.memory()[0])}
 
-    def _say(self) -> None:
+    def _report(self) -> dict | None:
+        """Under the condition: what the run is doing, when it is time to say it and a task is unfinished (running or
+        waiting, for its turn, a lock, processors or memory)."""
         now = time.monotonic()
-        if self.on_progress is None or now - self._said < self.progress_s or not self.admission.granted:
-            return
+        if self.on_progress is None or now - self._said < self.progress_s or all(s == "done" for s in self.state.values()):
+            return None
         self._said = now
-        try:
-            self.on_progress(self.progress())
-        except Exception:
-            traceback.print_exc()  # a broken listener is reported; the run itself goes on
+        return self.progress()
 
     # one task -------------------------------------------------------------------------------------------------------
     def _task_key(self, t: Task) -> str:
@@ -196,83 +215,79 @@ class Pool:
             self.keys[i] = key
             self.state[i] = "ready"
             self.why[i] = "its turn"
+            self.ready_at[i] = time.monotonic()
             self.cond.notify_all()
 
     def _execute(self, i: str) -> None:
         t = self.tasks[i]
         log = self.record.log(i)
         grant = self.admission.granted[i]
-        cores = sorted(grant.cores)
         self.record.event({"event": "start", "task": i, "name": t.name, "expected": self.record.times.get(t.name),
-                           "cores": cores, "memory_mb": round(grant.memory_mb)})
+                           "cores": sorted(grant.cores), "memory_mb": round(grant.memory_mb)})
         t0 = time.monotonic()
-        code, message, peak = None, "", 0.0
+        code, peak, broke = None, 0.0, ""
         try:
-            if t.fresh:
-                for out in t.outputs:
-                    remove(self.cache.output_path(out))
-            cwd = t.cwd if t.cwd is None or os.path.isabs(t.cwd) else str(self.root / t.cwd)
-            with proc.Process(t.argv, cwd=cwd or str(self.root), env=t.env, log=log, hidden=t.hidden, cores=cores) as tree:
-                grant.tree = tree
+            code, peak = execute.run_tree(i, t, log, self.cache, sorted(grant.cores), self.on_line,
+                                          lambda tree: self._set_tree(grant, tree))
+        except Exception:
+            broke = traceback.format_exc()
+        seconds = time.monotonic() - t0
+        with self.cond:  # the tree ended: its processors and counts go to the next task now, its locks after the store
+            try:
+                locks = self.admission.release(i, keep_locks=True)
+            except Exception:
+                locks, broke = [], broke or traceback.format_exc()
+            self.cond.notify_all()
+        result = Result(t.name, BROKEN, code, round(seconds, 2), str(log), self.keys.get(i, ""), broke)
+        try:
+            if not broke:
+                result.status, result.message = execute.outcome(t, str(log), code, self.cache)
+            if result.status in CACHEABLE:
+                execute.keep(self.cache, t, result)
+            if result.status != BROKEN:
+                self.record.took(t.name, seconds, peak)
+        except Exception:
+            result.status, result.message = BROKEN, traceback.format_exc()
+        finally:
+            with self.cond:
                 try:
-                    code = tree.wait(t.timeout_s)
-                    peak = tree.peak_memory_mb()
+                    for lock in locks:
+                        lock.release()
                 finally:
-                    with self.cond:
-                        grant.tree = None
-            seconds = time.monotonic() - t0
-            if code is None:
-                status, message = TIMEOUT, f"killed at its deadline of {t.timeout_s:g} s"
-            elif code not in (0, 1):
-                status, message = BROKEN, f"exit {code}"
-            else:
-                status, message = verdicts.judge(t, str(log), code, self.root)
-                if status == PASS:
-                    gone = [o for o in t.outputs if not self.cache.output_path(o).exists()]
-                    if gone:
-                        status, message = FAIL, f"declared output missing: {', '.join(gone)}"
-        except Exception:
-            seconds = time.monotonic() - t0
-            status, message = BROKEN, traceback.format_exc()
-        result = Result(t.name, status, code, round(seconds, 2), str(log), self.keys.get(i, ""), message)
-        try:
-            if status in CACHEABLE:
-                self.cache.store(t.name, result.key, result, t.outputs)
-        except Exception:
-            result.status, result.message = BROKEN, "storing the result failed:\n" + traceback.format_exc()
-        if status != BROKEN:
-            self.record.took(t.name, seconds, peak)
+                    self._finish(i, result, wrote=True)
+
+    def _set_tree(self, grant: Grant, tree: proc.Process | None) -> None:
         with self.cond:
-            self.admission.release(i)
-            self._finish(i, result, wrote=True)
+            grant.tree = tree  # what progress() reads the memory of
 
     def _finish(self, i: str, result: Result, wrote: bool = False) -> None:
-        """Under the condition: records the result, tells whoever listens, wakes the scheduler. `wrote`: a process ran or
-        outputs were restored, so the files the next key reads may have changed."""
+        """Under the condition: records the result, hands it to the delivery (listen.py: the listeners are called off this
+        lock), wakes the scheduler. `wrote`: a process ran or outputs were restored, so the files the next key reads may
+        have changed."""
         self.results[i] = result
         self.state[i] = "done"
         self.why.pop(i, None)
         if wrote:
             self.snapshot.refresh()
         self.record.event({"event": "finish", "task": i, **result.to_json()})
-        try:
-            if self.on_result:
-                self.on_result(result)
-            if self.on_finish:
-                self.on_finish(i, result)
-        except Exception:
-            traceback.print_exc()  # a broken listener is reported; the run itself goes on
+        self.delivery.put(i, result)
         self.cond.notify_all()
+
+    def _deliver(self, i: str, result: Result) -> None:
+        if self.on_result:
+            self.on_result(result)
+        if self.on_finish:
+            self.on_finish(i, result)
 
 
 def run(tasks: list[Task], jobs: int | None = None, on_result: Callable[[Result], None] | None = None, *,
         root: Path | str | None = None, use_cache: bool = True, capacity: dict | None = None, label: str = "run",
         machine: Machine | None = None, on_progress: Callable[[dict], None] | None = None,
-        progress_s: float = PROGRESS_S) -> list[Result]:
+        progress_s: float = PROGRESS_S, on_line: Callable[[str, str], None] | None = None) -> list[Result]:
     """Runs the tasks; results in the order given. Raises ValueError on a malformed set (names, dependencies, cycles)."""
     check_graph(tasks)
     pool = Pool(root=root, jobs=jobs, capacity=capacity, on_result=on_result, use_cache=use_cache, label=label,
-                machine=machine, on_progress=on_progress, progress_s=progress_s)
+                machine=machine, on_progress=on_progress, progress_s=progress_s, on_line=on_line)
     try:
         for t in tasks:
             pool.submit(t)

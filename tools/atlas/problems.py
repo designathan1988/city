@@ -73,13 +73,21 @@ def read(path):
     return problems
 
 
-def git_ref_exists(root, ref):
-    """Whether git names an object by this reference (a tag, a branch, a commit) in the repository at `root`."""
+def git_refs_present(root, refs):
+    """The references of `refs` git names an object by (a tag, a branch, a commit) in the repository at `root`, all asked in
+    one call: git cat-file --batch-check answers a line per `<ref>^{object}` written to it, in their order, and a line ending
+    "missing" (or "ambiguous") for one it names nothing by. A git that cannot answer finds none of them."""
+    asked = sorted(set(refs))
+    if not asked:
+        return set()
     try:
-        inputs.git(root, "rev-parse", "--verify", "--quiet", ref + "^{object}")
-        return True
+        answer = inputs.git(root, "cat-file", "--batch-check", stdin="".join(f"{ref}^{{object}}\n" for ref in asked))
     except (RuntimeError, OSError, subprocess.TimeoutExpired):
-        return False
+        return set()
+    lines = answer.splitlines()
+    if len(lines) != len(asked):
+        return set()
+    return {ref for ref, line in zip(asked, lines) if not line.endswith((" missing", " ambiguous"))}
 
 
 def _rules(problem, ids):
@@ -98,11 +106,20 @@ def _rules(problem, ids):
     return out
 
 
-def faults(problems, schema, root, ref_exists):
+def _git_evidence(problems):
+    """Every git reference the register's evidence names (the part after git:)."""
+    return [item[len(GIT_REF):] for p in problems for item in p.get("evidence") or []
+            if isinstance(item, str) and item.startswith(GIT_REF)]
+
+
+def faults(problems, schema, root, refs_present):
     """Everything wrong with a register as (problem id or line, reason): the schema's verdict on each problem, ids used twice,
-    the rules no keyword states, and evidence that is not there (`ref_exists` answers for a git reference)."""
+    the rules no keyword states, and evidence that is not there (`refs_present(refs)` answers, once for the whole register,
+    the set of git references that name an object)."""
     out, seen = [], set()
     ids = {p.get("id") for p in problems}
+    wanted = _git_evidence(problems)
+    present = refs_present(wanted) if wanted else set()
     for n, problem in enumerate(problems, 1):
         where = str(problem.get("id") or f"line {n}")
         out += [(where, e) for e in json_schema.errors(problem, schema, complete=True)]
@@ -114,7 +131,7 @@ def faults(problems, schema, root, ref_exists):
             if not isinstance(item, str):
                 continue
             if item.startswith(GIT_REF):
-                if not ref_exists(item[len(GIT_REF):]):
+                if item[len(GIT_REF):] not in present:
                     out.append((where, f"evidence {item}: no such git reference"))
             elif not os.path.exists(os.path.join(root, item)):
                 out.append((where, f"evidence {item}: not on disk"))
@@ -150,7 +167,7 @@ class Register:
 
     def add(self, opened_at=None, traced_at=None, **given):
         """A new problem, status open (traced at once when its cause is given), its id assigned. `opened_at` and `traced_at`
-        carry the times a problem brought from another record already had there (the migration); a new one is stamped now."""
+        carry the times a problem brought from another record already had there (an import); a new one is stamped now."""
         area = given.get("area")
         if area not in self.enum("area"):
             raise RegisterError(f"area {area!r} is not one of {self.enum('area')}")
@@ -243,7 +260,7 @@ class Register:
                 and all(w in str(p.get("cause", "")).lower() for w in words)]
 
     def faults(self):
-        return faults(self.problems, self.schema, self.root, lambda ref: git_ref_exists(self.root, ref))
+        return faults(self.problems, self.schema, self.root, lambda refs: git_refs_present(self.root, refs))
 
     def save(self):
         """The register written whole, one problem a line, bytes with LF, only when every rule holds."""

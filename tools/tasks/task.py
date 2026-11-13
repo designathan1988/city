@@ -9,7 +9,6 @@ from pathlib import Path
 
 PASS, FAIL, TIMEOUT, BROKEN, SKIPPED = "PASS", "FAIL", "TIMEOUT", "BROKEN", "SKIPPED"
 CACHED_PASS, CACHED_FAIL = "CACHED_PASS", "CACHED_FAIL"
-STATUSES = (PASS, FAIL, TIMEOUT, BROKEN, SKIPPED, CACHED_PASS, CACHED_FAIL)
 PASSED = frozenset({PASS, CACHED_PASS})
 CACHEABLE = frozenset({PASS, FAIL})  # they follow from the inputs; a timeout or a crash may follow from the machine
 
@@ -38,7 +37,6 @@ class Task:
     resources: dict = field(default_factory=dict)
     params: dict = field(default_factory=dict)  # read by the verdict
     fresh: bool = False  # the declared outputs are removed before the process starts: nothing stale survives a run
-    hint: str = ""  # printed beside a failure: what to do about it
 
     def __post_init__(self):
         if not isinstance(self.name, str) or not self.name:

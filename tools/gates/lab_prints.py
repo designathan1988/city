@@ -2,8 +2,9 @@
 in its normal form, the winnowed k-gram fingerprints of each of its units (a function body, the code outside them, a program
 in a string: lab_units.py) read as language-neutral tokens (lab_tokens.py), and each unit's non-trivial numbers in order;
 and the base, what independent code on this machine also writes (the vendored and fetched libraries: every k-gram and
-number of theirs), which is no evidence of a copy (MOSS's base files, -b). Kept by the gates' own version and the content of
-every file read, so the trees are read again only when one changed."""
+number of theirs), which is no evidence of a copy (MOSS's base files, -b). Kept by the content of the gate sources the store
+is built by (STORE_SOURCES) and each tree file's path, size and modification time, so the trees are read again only when one
+of their files or one of those sources changed, and an edit of another gate file keeps the store."""
 import hashlib
 import os
 import sys
@@ -20,6 +21,12 @@ from tasks import locations  # noqa: E402  the one owner of this machine's paths
 CODE_EXTENSIONS = frozenset({".ts", ".tsx", ".js", ".mjs", ".cpp", ".cc", ".c", ".h", ".hpp", ".gd", ".gdshader",
                              ".gdshaderinc", ".glsl"})
 STORE_SETTINGS = ("k", "w", "min_name_len", "trivial_numbers")  # what of rules.json lab_copy the store is made with
+# The gate sources build_store reaches through their imports (this file, lab_tokens, lab_units, source and theirs): the store
+# is made by them alone, so their content keys it and no other gate file's edit rebuilds it. tasks/locations is left out: it
+# finds the reference tree, whose place the trees' digest holds.
+STORE_SOURCES = tuple(f"tools/gates/{name}.py" for name in (
+    "lab_prints", "lab_tokens", "lab_units", "source", "cpp_syntax", "gd_syntax", "facts", "lex_c", "lex_gd", "lex_other",
+    "tokens"))
 
 
 class NoReference(Exception):
@@ -115,17 +122,17 @@ def build_store(ref_root, place, cfg, repo_root=None):
 
 
 def tree_digest(ref_root, place, cfg, repo_root):
-    """The store's key: every reference and base file's path and bytes, where they were read from and the settings the
-    store is made with."""
+    """The trees' part of the store's key: where they are read from, the settings the store is made with, and every
+    reference and base file's path, size and modification time (os.stat, no byte read: the trees are outside git, whose
+    blob ids key the repository's files, and hashing their bytes cost every run a read of both trees whole)."""
     settings = {k: cfg[k] for k in STORE_SETTINGS}
-    h = hashlib.sha256(repr((sorted(settings.items()), place.get("dirs"), place.get("skip_dirs"),
+    h = hashlib.sha256(repr((ref_root, repo_root, sorted(settings.items()), place.get("dirs"), place.get("skip_dirs"),
                              place.get("base"))).encode("utf-8"))
     files = [(ref_root, rel) for rel in reference_files(ref_root, place)]
     files += [(repo_root, rel) for rel in code_files(repo_root, place.get("base", []))]
     for root, rel in files:
-        h.update(rel.encode("utf-8"))
-        with open(os.path.join(root, rel), "rb") as fh:
-            h.update(hashlib.sha256(fh.read()).digest())
+        st = os.stat(os.path.join(root, rel))
+        h.update(f"{rel}\0{st.st_size}\0{st.st_mtime_ns}\n".encode("utf-8"))
     return h.hexdigest()
 
 
@@ -146,11 +153,13 @@ def reference_root(ctx):
 
 
 def store_key(ctx):
-    """The store's key, once a run: the gates' own version and the trees' digest."""
+    """The store's key, once a run: the content key of the sources the store is built by (STORE_SOURCES, not the gates'
+    whole version) and the trees' digest."""
     def build():  # the key names a cache file: letters, digits and '_' only
         root = reference_root(ctx)
         digest = tree_digest(root, ctx.rules["lab_reference"], ctx.rules["lab_copy"], ctx.root)
-        return "lab_prints_" + hashlib.sha256((ctx.cache.version + digest).encode()).hexdigest()
+        sources = ctx.cache.key_of(STORE_SOURCES, versioned=False)
+        return "lab_prints_" + hashlib.sha256((sources + digest).encode()).hexdigest()
     return ctx.lazy("lab_prints key", build)
 
 

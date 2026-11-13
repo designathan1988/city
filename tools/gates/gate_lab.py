@@ -129,16 +129,17 @@ def best_numbers(store, cfg, piece):
     return best, where
 
 
-def matches(store, cfg, piece):
-    """[Match] of one piece past the thresholds: shared passages, numbers in order."""
-    out = []
-    share, covered, unit = best_share(store, cfg, piece)
+def verdict(store, cfg, piece):
+    """The Verdict of one piece: its shared passages and its numbers in order, each measured once, and the matches past the
+    thresholds."""
+    share, covered, passages_unit = best_share(store, cfg, piece)
+    count, numbers_unit = best_numbers(store, cfg, piece)
+    found = []
     if covered + cfg["k"] - 1 >= cfg["min_tokens"] and share >= cfg["min_share"]:
-        out.append(Match("passages", unit, share))
-    count, unit = best_numbers(store, cfg, piece)
+        found.append(Match("passages", passages_unit, share))
     if count >= cfg["min_numbers"]:
-        out.append(Match("numbers", unit, count))
-    return out
+        found.append(Match("numbers", numbers_unit, count))
+    return Verdict(piece.line, share, covered, count, found)
 
 
 def judge(ctx, src):
@@ -151,9 +152,7 @@ def judge(ctx, src):
     for span in lab_units.spans(src, trivial, lines):
         piece = Piece(span.line, [t for t, _l in span.tokens], lab_tokens.kgrams(span.tokens, cfg["k"], informative=True),
                       span.values)
-        share, covered, _u = best_share(store, cfg, piece)
-        count, _u = best_numbers(store, cfg, piece)
-        out.append(Verdict(span.line, share, covered, count, matches(store, cfg, piece)))
+        out.append(verdict(store, cfg, piece))
     return out
 
 

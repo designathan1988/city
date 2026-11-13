@@ -30,7 +30,8 @@ func _ready() -> void:
 	for v: Array in VIEWS:
 		rig.jump(rig.focus, v[0], v[1], v[2])
 		# until roads stand and the stream has nothing left to draw: a first frame has not asked for anything yet
-		await StateWait.until(get_tree(), func() -> bool: return int(CityStore.query(&"road_mesh_counts").roads.chunks) > 0 and int(CityStore.query(&"render_pending")) == 0, SETTLE_LIMIT_S)
+		await StateWait.until(get_tree(), func() -> bool: return int(CityStore.query(&"road_mesh_counts").roads.chunks) > 0 and int(CityStore.query(&"render_pending")) == 0,
+				SETTLE_LIMIT_S, "road chunks built and render_pending at 0 in the view %s" % [v])
 	var roads := int(CityStore.query(&"road_mesh_counts").roads.chunks)
 	check(roads > 0 and int(CityStore.query(&"render_pending")) == 0, "the town is streamed in (%d road chunks, nothing pending)" % roads)
 	var seen: Dictionary = CityStore.query(&"map_hold", [false])

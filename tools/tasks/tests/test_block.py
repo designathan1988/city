@@ -1,5 +1,5 @@
 # The block rule's mechanism: the moves its table allows and refuses, the refusal every tool asks while a block is open (a run
-# of the orchestrator included), and the block's times appended to the process history at its close.
+# and a serve of the orchestrator included), and the block's times appended to the process history at its close.
 import json
 import sys
 import unittest
@@ -77,6 +77,13 @@ class Refusals(BlockCase):
         self.block("verify")
         with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
             self.assertEqual(cli.main(run), 0)
+
+    def test_serve_is_refused_while_open(self):
+        self.block("open", "US1")
+        err = StringIO()
+        with redirect_stdout(StringIO()), redirect_stderr(err):
+            self.assertEqual(cli.main(["serve", "--root", str(self.root)]), 1)
+        self.assertIn("refused", err.getvalue())
 
 
 if __name__ == "__main__":

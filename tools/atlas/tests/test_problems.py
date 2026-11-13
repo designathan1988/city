@@ -1,6 +1,7 @@
-"""The register's tests: ids, every allowed and refused move of a status, the rules a save holds, the generated view and its
-check, a malformed line refused, the command line's exit codes. Each test works on a register of its own in a temporary
-repository (the real schema copied in, the fixture register as its doc/problems.jsonl)."""
+"""The register's tests: ids, every allowed and refused move of a status, the rules a save holds, a gate rule renamed and a
+path moved followed by the problems naming them, the generated view and its check, a malformed line refused, the command
+line's exit codes. Each test works on a register of its own in a temporary repository (the real schema copied in, the
+fixture register as its doc/problems.jsonl)."""
 import contextlib
 import io
 import os
@@ -143,6 +144,32 @@ class Save(RegisterCase):
         self.assertEqual([p["id"] for p in reg.query(area="traffic", status="open")], ["Ptraffic-1"])
         self.assertEqual([p["id"] for p in reg.query(owner="lane_change")], ["Ptraffic-2"])
         self.assertEqual([p["id"] for p in reg.query(cause="renamed module")], ["Ptools-1"])
+
+
+class Rename(RegisterCase):
+    def test_a_rule_renamed_is_followed_by_its_problems_and_no_other(self):
+        reg = self.reg()
+        kept = dict(title="TABLE in a.json", symptom="the gate TABLE reports", area="tools", kind="architecture",
+                    reading="r", owner="a.json", criterion="no TABLE", origin=[register.gate_origin("TABLE", "a.json")])
+        longer = dict(kept, title="TABLE_NO_SCHEMA in b.json", symptom="the gate TABLE_NO_SCHEMA reports",
+                      criterion="no TABLE_NO_SCHEMA", origin=[register.gate_origin("TABLE_NO_SCHEMA", "b.json")])
+        one, other = reg.add(**kept), reg.add(**longer)
+        self.assertEqual([one], reg.rename_rule("TABLE", "DATA"))
+        self.assertEqual(["gate:DATA:a.json"], one["origin"])
+        self.assertEqual("DATA in a.json", one["title"])
+        self.assertEqual(["gate:TABLE_NO_SCHEMA:b.json"], other["origin"], "a longer name holding the old one is another rule")
+        reg.save()
+
+    def test_a_path_moved_is_followed_by_the_evidence_and_owner_naming_it(self):
+        reg = self.reg()
+        os.makedirs(os.path.join(self.root, "doc", "old"))
+        open(os.path.join(self.root, "doc", "old", "map.md"), "w").close()
+        one = reg.add(title="t", symptom="s", area="docs", kind="process", reading="r", criterion="c",
+                      owner="doc/old/map.md", evidence=["doc/old/map.md"], origin=["o"])
+        os.rename(os.path.join(self.root, "doc", "old"), os.path.join(self.root, "doc", "new"))
+        self.assertEqual([one], reg.rename_path("doc/old", "doc/new"))
+        self.assertEqual((["doc/new/map.md"], "doc/new/map.md"), (one["evidence"], one["owner"]))
+        reg.save()
 
 
 class View(RegisterCase):

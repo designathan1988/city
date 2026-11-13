@@ -1,6 +1,6 @@
 """The forbidden constructs of rules.json/forbidden, each judged on syntax (tokens, includes, receivers), never on raw
-lines: rules.json gives each one its id, paths, exceptions and message; an id without a syntax check here is matched
-as a pattern on code only (comments blanked)."""
+lines: rules.json gives each one its id, paths, exceptions and message (and MACHINE_PATH its pattern); every id has its
+check in CHECKS, and an id with none is refused when the rules are listed (registry._forbidden)."""
 import re
 
 import cpp_syntax
@@ -208,13 +208,6 @@ def job_pool_members(ctx):
                 names.update(ctx.facts(f).get("jobpool_names", []))
         return names
     return ctx.lazy("job_pool_members", build)
-
-
-def pattern_on_code(ctx, src, rule, err):
-    rx = re.compile(rule["pattern"])
-    for n, line in enumerate(src.blanked(), 1):
-        if rx.search(line):
-            err(rule["id"], f"{src.path}:{n}", rule["message"])
 
 
 def machine_paths(ctx, src, rule, err):

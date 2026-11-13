@@ -99,3 +99,30 @@ entry: when, the commit, the problems, the cause, the plan, the files created, c
 - **Ptools-99**: `tools/tasks/km24.py` (doc/history/performance.md).
 - Dropped as their subject left the tree: 21 problems of removed tools (the old tracer, tools/analysis, tools/process,
   tools/audit, the oracle, the trace-fix skill, rename_english.py, the sampler, the cooks).
+
+## 2026-11-13 — every tool watched, bounded and owned (block `tools-open`, Ptools-100 to Ptools-108)
+
+- **The order**: "nothing open, no limitation": the tools' violations of the process rule registered the same day closed whole;
+  the work split among four agents (the owner's order: agents with no limit), each change checked in the files here.
+- **Read whole** (the block's memory file, folded here): tools/tasks (pool, admission, machine, ledger, win32, proc, cli,
+  suites, godot_deps, cache, task, inputs, km24, clean, verdicts, suites.json), tools/build (build, deliver, pgo, free_dll,
+  quick), tools/hunt/hunt.py, the tests' waits (look, capture_wait, state_wait, test_case, ui_driver), the gates' run_gates,
+  context, lab_prints, gate_lab, gate_docs, gate_generated, gate_forbidden, gate_tuning and tools/atlas/problems.py.
+- **Causes and fixes** (each in its register entry): a task's lines only in its log, now followed live (`listen.py`); progress
+  only while a grant was held; a ready task's wait with no deadline; listeners under the scheduler's lock (a delivery thread
+  now); grants freed after the store; a failed store turning a pass BROKEN (`execute.py` keeps the verdict); closures re-reading
+  native/src. build.sh's own background builds: `core-windows` runs the build tasks. km24 and hunt run through the pool, km24's
+  previous build kept by its commit, hunt a suites task. deliver's export a suites task (not `fresh`: Godot's
+  `--export-release` needs its folder to exist, Context7 Godot docs), package removed; pgo's junctions removed before `rm -rf`
+  and on every exit. Every test wait with a real-time deadline and its words (`look_wait.gd`). Gates: progress on stderr, the
+  lab store keyed by its own sources and by stat, one measure a piece, Sources reused, the generator not hidden (60 s), one git
+  call for the register's references. Dead code and one-off tools removed; dist/trace (784 MB) removed by `clean --unowned`.
+- **Found at the check and fixed in the block**: the suite showed 52 scenes waiting 90 s behind window_traffic_test, because a
+  GPU-alone test's lock reservation (admission `blocked`) held back every task that could share the GPU: the reservation removed
+  (a lock reserves nothing; the exclusive task starts when the lock is free). Proven: lab_test beside four scenes, 39 s.
+- **The method's own fault, said plainly**: the whole test suite was run (263 s) with its lines filtered through grep and tail,
+  against the owner's order (a check in seconds, its lines shown); CLAUDE.md's process rule now names the filter.
+- **Checked**: tools/tasks tests 94 OK (47 s); atlas 22 OK; gates tests 31 OK; selftest 95 cases; gates on the 63 changed files
+  0 NEW; both DLLs 23 s; the test scenes 65/65; roofs and photos plans PASS in 17 s, every wait named.
+- **Registered from the checks**: the roofs plan cannot aim at a roof (setView aims at the ground; no roof height query), the
+  frozen street view inside a building, window_traffic_test past a minute.

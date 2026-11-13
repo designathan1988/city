@@ -9,6 +9,9 @@ const BUILD_LIMIT_S := 6.7
 ## in the background replaces the ubershader's drawing on a frame the machine decides: Godot docs, pipeline compilations).
 const STEADY_FRAMES := 16
 const STEADY_LOOKS := 30
+## Most real time the frozen photo waits to hold still: the looks' frames (STEADY_FRAMES * STEADY_LOOKS) at the floor's 30 fps
+## (doc/specification.md), so a machine slow to draw or to read the picture back ends the wait by the clock, not by the frames.
+const STEADY_LIMIT_S := 16.0
 
 ## Photos of this run that came out incomplete.
 static var incomplete := 0
@@ -35,19 +38,26 @@ static func until_drawn(host: Node, settle: int, label: String) -> int:
 
 
 ## Frames until the picture holds still (two looks STEADY_FRAMES apart give the same bytes), so whatever settles after the
-## drawing is done settles before the photo. False, told, past STEADY_LOOKS.
+## drawing is done settles before the photo. False, told with the limit that ended it, past STEADY_LOOKS or STEADY_LIMIT_S.
 static func until_steady(host: Node, label: String) -> bool:
+	print("wait: %s to hold still (two looks %d frames apart alike; at most %d looks and %.0f s)" % [label, STEADY_FRAMES,
+			STEADY_LOOKS, STEADY_LIMIT_S])
+	var started := Time.get_ticks_msec()
 	var last := PackedByteArray()
 	for i in STEADY_LOOKS:
+		if float(Time.get_ticks_msec() - started) / 1000.0 >= STEADY_LIMIT_S:
+			print("FAIL the picture of %s never held still: past the limit of %.0f s, after %d looks" % [label, STEADY_LIMIT_S, i])
+			return false
 		for f in STEADY_FRAMES:
 			await host.get_tree().process_frame
 		await RenderingServer.frame_post_draw
 		var now := host.get_viewport().get_texture().get_image().get_data()
 		if now == last:
-			print("steady: %s after %d looks" % [label, i + 1])
+			print("steady: %s after %d looks, %d ms" % [label, i + 1, Time.get_ticks_msec() - started])
 			return true
 		last = now
-	print("FAIL the picture of %s never held still (%d looks)" % [label, STEADY_LOOKS])
+	print("FAIL the picture of %s never held still: past the limit of %d looks, after %d ms" % [label, STEADY_LOOKS,
+			Time.get_ticks_msec() - started])
 	return false
 
 

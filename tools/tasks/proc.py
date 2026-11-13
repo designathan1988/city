@@ -7,7 +7,6 @@ import os
 import shlex
 import shutil
 import subprocess
-import threading
 import time
 from pathlib import Path
 
@@ -21,14 +20,12 @@ KILL_WAIT_S = 30  # after the kill, the wait for the tree to be gone; a tree tha
 
 
 class Process:
-    """A started process tree. `deadline_s` arms a watchdog that kills the tree when it passes, whoever waits."""
+    """A started process tree; its deadline is its waiter's (wait), and close() kills what is left of it."""
 
     def __init__(self, argv: list[str] | str, *, cwd: str | Path | None = None, env: dict | None = None,
-                 log: str | Path | None = None, hidden: bool = False, deadline_s: float | None = None,
-                 cores: list[int] | None = None):
+                 log: str | Path | None = None, hidden: bool = False, cores: list[int] | None = None):
         self.started = time.monotonic()
         self._done = False
-        self._timer = None
         log_file = open(log, "wb") if log else open(os.devnull, "wb")
         try:
             if os.name == "nt":
@@ -38,10 +35,6 @@ class Process:
                 self._start_posix(argv, cwd, env, hidden, log_file, cores)
         finally:
             log_file.close()  # the child has its own handle
-        if deadline_s is not None:
-            self._timer = threading.Timer(deadline_s, self.kill_tree)
-            self._timer.daemon = True
-            self._timer.start()
 
     def _start_posix(self, argv, cwd, env, hidden, log_file, cores):
         args = shlex.split(argv) if isinstance(argv, str) else list(argv)
@@ -88,8 +81,6 @@ class Process:
         """Kills what is left of the tree and frees the handles."""
         if self._done:
             return
-        if self._timer is not None:
-            self._timer.cancel()
         self.kill_tree()
         self._done = True
         if os.name == "nt":

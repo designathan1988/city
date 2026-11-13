@@ -1,7 +1,7 @@
 # The records of a run: its folder under dist/tasks (one log per task, the event stream events.jsonl, the times its tasks
 # took, times.json; the newest run is the folder of the latest name, newest_run), the times known per task name (every kept
-# run's, the newest winning, used only to order the queue), and the check of a task set's shape before it runs (names,
-# dependencies, cycles). No file is shared by runs that write at once: each writes in its own folder.
+# run's, the newest winning, used only to order the queue: priorities), and the check of a task set's shape before it runs
+# (names, dependencies, cycles). No file is shared by runs that write at once: each writes in its own folder.
 from __future__ import annotations
 
 import json
@@ -19,6 +19,7 @@ RUNS = "dist/tasks"
 RUN_TIMES = "times.json"  # in a run's folder: the seconds each of its tasks took, by task name
 RUN_MEMORY = "memory.json"  # beside it: the most MiB each task's process tree held at once
 PRUNE_LOCK = ".prune.lock"  # held by the one run that prunes the old run folders (RunRecord._prune)
+TAIL_BYTES = 4096  # of a running task's log read for its last line (last_line)
 
 
 def kept_runs() -> int:
@@ -101,6 +102,17 @@ def newest_run(root: Path) -> Path | None:
     return base / names[-1] if names else None
 
 
+def last_line(log: Path) -> str:
+    """The last line with anything on it of a task's log, which its process may still be writing (cli.py status)."""
+    try:
+        with open(log, "rb") as fh:
+            fh.seek(max(0, log.stat().st_size - TAIL_BYTES))
+            lines = [x.strip() for x in fh.read().decode("utf-8", errors="replace").splitlines() if x.strip()]
+    except OSError:
+        return ""
+    return lines[-1] if lines else ""
+
+
 def live_runs(root: Path) -> list[Path]:
     """The folders of the runs whose process still lives (a run's folder carries its process id), oldest first."""
     base = root / RUNS
@@ -110,6 +122,24 @@ def live_runs(root: Path) -> list[Path]:
         if p.is_dir() and p.name[:1].isdigit() and len(parts) > 2 and parts[2].isdigit() and proc.alive(int(parts[2])):
             out.append(p)
     return out
+
+
+def priorities(tasks: dict, times: dict[str, float]) -> dict[str, float]:
+    """The order of the queue (pool.py), longest path first: by ident, a task's own recorded time plus the longest chain of
+    the tasks that wait for it."""
+    users: dict[str, list[str]] = {i: [] for i in tasks}
+    for j in tasks:
+        for d in tasks[j].after:
+            if d in users:
+                users[d].append(j)
+    memo: dict[str, float] = {}
+
+    def path(i: str, seen: frozenset) -> float:
+        if i not in memo:
+            memo[i] = times.get(tasks[i].name, 0.0) + max((path(u, seen | {i}) for u in users[i] if u not in seen),
+                                                          default=0.0)
+        return memo[i]
+    return {i: path(i, frozenset()) for i in tasks}
 
 
 def check_graph(tasks) -> None:

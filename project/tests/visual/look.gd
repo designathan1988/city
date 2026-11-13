@@ -5,18 +5,18 @@
 ## Steps: {"setView": [x, y, zoom, azimuth, elevation]} (metres with y to the map's north, which is -z; the zoom in screen pixels a
 ## metre at the point looked at; degrees, the azimuth from +x towards +z), {"shot": name} (after the world is drawn),
 ## {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
-## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"blastShot": name, "at": s}, {"walker": [zoom, azimuth, elevation]}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
+## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"blastShot": name, "at": s, "timeout": ms}, {"walker": [zoom, azimuth, elevation]}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
 ## In args, {"at": [x, z]} is the point of the ground there (what the player's pointer would hit), {"profile": id} the index of
 ## that road class, {"v3": [x, y, z]} a vector.
 ## Measures (look_measure.gd): {"record": name} … {"recordEnd": true} (the frames between: intervals, hitches, vsyncs missed,
 ## CPU and GPU), {"usage": seconds} (peak, mean and least), {"info": true} (what the last frame drew and what is held),
 ## {"clock": true} (the stages' stamps on the camera), {"switch": [key, on]} (an F7 switch), {"passes": true} (the GPU's stamps), {"view": "overdraw"} (any Viewport.DEBUG_DRAW_* by its name, "disabled" back),
-## {"until": query, "args": [...], "equals": value, "timeout": ms}.
+## {"until": query, "args": [...], "equals": value, "timeout": ms}. Every wait has a deadline of real time and tells its progress (LookWait).
 ## Run: godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<file> --capture-dir=<dir>
 extends Node3D
 
 const SETTLE_FRAMES := 4
-const UNTIL_TIMEOUT_MS := 60000.0
+const UNTIL_TIMEOUT_MS := 60000.0 # the real time an "until" or a "blastShot" waits when its step names no "timeout"
 const TIP_SHORTCUT := " · " # a tip says the name, then the key (HudWidgets)
 
 var out_dir := "user://captures"
@@ -59,8 +59,12 @@ func _ready() -> void:
 		return
 	var city: Dictionary = plan.get("city", {})
 	var t0 := Time.get_ticks_msec()
-	CityStore.new_map(int(city.get("map", 0)), int(city.get("seed", 1)), bool(city.get("generate", true)), true)
-	print("city opened in %d ms" % (Time.get_ticks_msec() - t0))
+	var opened: Dictionary = CityStore.new_map(int(city.get("map", 0)), int(city.get("seed", 1)), bool(city.get("generate", true)), true)
+	print("city opened in %d ms: %s" % [Time.get_ticks_msec() - t0, opened])
+	if not opened.get("ok", false): # the core refused the map (CityCore.new_map): the plan's steps would act on no city
+		print("FAIL the core refused the map %s\nFAILURES: %d" % [city, failures + 1])
+		get_tree().quit(1)
+		return
 	if frozen:
 		Engine.time_scale = 0.0 # the clock and every delta stand: the same plan gives the same picture, by frames alone
 		world.still_dither()
@@ -103,12 +107,15 @@ func _step(step: Dictionary) -> void:
 			if not await CaptureWait.until_steady(self, step.shot):
 				failures += 1
 			await ui.shot("%02d-%s" % [shots, step.shot], 0)
-		else:
-			await ui.shot("%02d-%s" % [shots, step.shot])
+		else: # the drawn view waits only for a temporal filter's history
+			await ui.shot("%02d-%s" % [shots, step.shot], ui.temporal_settle())
 		shots += 1
 	elif step.has("blastShot"): # at that second of the effects' own clock, with no wait for the world to be drawn
-		while CityStore.query(&"effects_since_blast") < float(step.at):
-			await get_tree().process_frame
+		var at := float(step.at)
+		if not await LookWait.until(get_tree(), "effects_since_blast to reach %s s" % at, func() -> Variant: return CityStore.query(&"effects_since_blast"),
+				func(answer: Variant) -> bool: return float(answer) >= at, float(step.get("timeout", UNTIL_TIMEOUT_MS))):
+			failures += 1
+			return
 		await ui.shot("%02d-%s" % [shots, step.blastShot], 0)
 		shots += 1
 	elif step.has("frames"):
@@ -212,17 +219,14 @@ func _args(raw: Array) -> Array:
 
 
 ## {"until": query, "args": [...], "equals": value, "timeout": ms}: frames until the game's own answer is the one asked
-## (a wait on a signal, never a guess at a time); past the timeout the step fails.
+## (a wait on a signal, never a guess at a time); past the timeout the step fails. The args' ground points are found again at each
+## look, as the ground under them may still be streaming in.
 func _until(step: Dictionary) -> void:
-	var t0 := Time.get_ticks_msec()
-	var limit := float(step.get("timeout", UNTIL_TIMEOUT_MS))
-	while CityStore.query(StringName(step.until), _args(step.get("args", []))) != step.get("equals", 0):
-		if Time.get_ticks_msec() - t0 > limit:
-			failures += 1
-			print("FAIL until %s: not %s after %d ms" % [step.until, step.get("equals", 0), limit])
-			return
-		await get_tree().process_frame
-	print("until %s: %d ms" % [step.until, Time.get_ticks_msec() - t0])
+	var raw: Array = step.get("args", [])
+	var want: Variant = step.get("equals", 0)
+	if not await LookWait.until(get_tree(), "query %s %s to equal %s" % [step.until, raw, want], func() -> Variant: return CityStore.query(StringName(step.until), _args(raw)),
+			func(answer: Variant) -> bool: return answer == want, float(step.get("timeout", UNTIL_TIMEOUT_MS))):
+		failures += 1
 
 
 func _profile(id: String) -> int:

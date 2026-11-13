@@ -46,8 +46,13 @@ class Cache:
             k = self._file_keys[path] = self._key_of([path], extra=(self.version,), root=self.root)
         return k
 
-    def key_of(self, paths, extra=()):
-        return self._key_of(list(paths), extra=(self.version, *extra), root=self.root) if self.enabled else ""
+    def key_of(self, paths, extra=(), versioned=True):
+        """The content key of `paths` and `extra`; `versioned` adds the gates' own version (every gate source and the
+        configuration), which a result made by a few gate sources alone leaves out, naming them in `paths` instead
+        (lab_prints.STORE_SOURCES)."""
+        if not self.enabled:
+            return ""
+        return self._key_of(list(paths), extra=((self.version,) if versioned else ()) + tuple(extra), root=self.root)
 
     def get(self, key, fn):
         return self._memo(TOOL, key, fn, root=self.root) if self.enabled else fn()

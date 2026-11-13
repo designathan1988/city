@@ -43,11 +43,10 @@
        "max_mb": {"type": "integer", "minimum": 1},
        "keep": {"type": "integer", "minimum": 1},
        "while_open": {"const": true},
-       "migrating": {"type": "string", "minLength": 1},
        "whole_mb": {"type": "integer", "minimum": 1, "description": "a folder or file its owner writes as one piece (a build tree, a report): it goes whole past this size"},
        "index": {"type": "array", "items": {"type": "string", "minLength": 1}, "description": "names of the owner's own index files beside its entries (deliver.sh's latest.txt): never counted as an entry, never removed"}
       },
-      "oneOf": [{"required": ["max_mb"]}, {"required": ["keep"]}, {"required": ["while_open"]}, {"required": ["migrating"]}, {"required": ["whole_mb"]}]
+      "oneOf": [{"required": ["max_mb"]}, {"required": ["keep"]}, {"required": ["while_open"]},{"required": ["whole_mb"]}]
      }
     }
    }
@@ -110,7 +109,6 @@
     "params": {"type": "object", "additionalProperties": {"type": "string"}},
     "resources": {"$ref": "#/$defs/resources"},
     "fresh": {"type": "boolean"},
-    "hint": {"type": "string"},
     "call": {"type": "string", "minLength": 3},
     "spec": {"type": "object"}
    }

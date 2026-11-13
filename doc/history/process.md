@@ -157,6 +157,7 @@ Appended by `python tools/tasks/cli.py block close` (FR-050: the time each step 
 | method-skill | 2026-11-12T23:53 | 2026-11-13T00:01 | 2026-11-13T00:01 | 8 | 0 |
 | claude-md-obedience | 2026-11-13T00:09 | 2026-11-13T00:12 | 2026-11-13T00:13 | 3 | 1 |
 | fix-all | 2026-11-13T00:14 | 2026-11-13T00:25 | 2026-11-13T00:44 | 11 | 19 |
+| tools-open | 2026-11-13T01:08 | 2026-11-13T01:35 | 2026-11-13T01:42 | 27 | 7 |
 
 ## 2026-11-12: the audit of 2026-11-07 (log/review.md) folded into the register
 

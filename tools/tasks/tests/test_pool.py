@@ -1,11 +1,15 @@
 # pool: a hung task does not block a sibling, a failure SKIPs its dependents only, results are cached by content (hit on
-# unchanged inputs, miss on changed content), timeouts are never cached, outputs come back on a hit.
+# unchanged inputs, miss on changed content), timeouts are never cached, outputs come back on a hit; a task's lines are heard
+# as it writes them, a task that cannot start ends at its deadline, a store that fails leaves the verdict as it was.
 import json
 import sys
 import threading
 import time
 import unittest
+from contextlib import redirect_stderr
+from io import StringIO
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # support
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))  # tools: the tasks package
@@ -13,7 +17,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))  # tools:
 from support import RepoCase, py  # noqa: E402
 
 from tasks import Task, key_of, memo, proc, run  # noqa: E402
+from tasks.admission import LOCKS  # noqa: E402
+from tasks.cache import Cache  # noqa: E402
 from tasks.inputs import invalidate  # noqa: E402
+from tasks.locks import FileLock  # noqa: E402
 from tasks.machine import Machine  # noqa: E402
 from tasks.runs import newest_run  # noqa: E402
 from tasks.task import CACHED_PASS, FAIL, PASS, SKIPPED, TIMEOUT  # noqa: E402
@@ -118,6 +125,40 @@ class PoolTest(RepoCase):
         self.assertEqual((last["done"], last["total"]), (0, 1))
         self.assertEqual([r["task"] for r in last["running"]], ["slow"])
         self.assertGreater(last["running"][0]["seconds"], 0.0)
+
+    def test_a_task_says_its_lines_while_it_runs(self):
+        talks = Task("talks", py("import time\nprint('first', flush=True)\ntime.sleep(2)\nprint('second', flush=True)\n"
+                                 "print('last, with no end', end='', flush=True)\n"), timeout_s=60)
+        heard = []
+        results, finished = self.run_tasks([talks], on_line=lambda i, line: heard.append((i, line, time.monotonic())))
+        self.assertEqual(results["talks"].status, PASS)
+        self.assertEqual([(i, line) for i, line, _t in heard],
+                         [("talks", "first"), ("talks", "second"), ("talks", "last, with no end")])
+        ended = finished[0][1]
+        self.assertLess(heard[0][2], ended - 1.2, "the first line came only when the task ended, not as it was written")
+        self.assertLessEqual(heard[-1][2], ended, "a line came after its task's result")
+
+    def test_a_ready_task_that_never_gets_its_lock_ends_at_its_deadline(self):
+        lock = FileLock(self.root / LOCKS / "held.lock")
+        self.assertTrue(lock.try_acquire(shared=False))  # held by another holder for the whole run
+        try:
+            t = Task("locked", py("pass"), timeout_s=1, resources={"locks": {"held": "exclusive"}})
+            started = time.monotonic()
+            results, _ = self.run_tasks([t])
+        finally:
+            lock.release()
+        self.assertEqual(results["locked"].status, TIMEOUT)
+        self.assertIn("never started within its deadline of 1 s: waited for lock held", results["locked"].message)
+        self.assertLess(time.monotonic() - started, 30, "the wait for a lock had no deadline")
+
+    def test_a_store_that_fails_keeps_the_verdict(self):
+        t = Task("kept", py("pass"), timeout_s=60, inputs=["a.txt"])
+        err = StringIO()
+        with mock.patch.object(Cache, "store", side_effect=TimeoutError("the ledger was held")), redirect_stderr(err):
+            results, _ = self.run_tasks([t])
+        self.assertEqual(results["kept"].status, PASS, "a failed store turned the task's own verdict")
+        self.assertIn("(not kept in the cache: TimeoutError: the ledger was held)", results["kept"].message)
+        self.assertIn("kept: not kept in the cache", err.getvalue())
 
     def test_hung_task_does_not_block_a_sibling(self):
         hang = Task("hang", py(f"import time; time.sleep({HANG_S})"), timeout_s=3)

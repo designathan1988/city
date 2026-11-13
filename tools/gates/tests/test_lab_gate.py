@@ -138,8 +138,8 @@ class Idioms(unittest.TestCase):
             return lab_prints.Store({}, {h: [["ref.ts", u, p] for u in units] for h, p in grams},
                                     {f"ref.ts:{u}": numbers for u in units}, {f"ref.ts:{u}": " ".join(tokens) for u in units})
         piece = gate_lab.Piece(1, tokens, grams, numbers)
-        self.assertEqual(gate_lab.matches(store(range(1, cfg["max_spread"] + 2)), cfg, piece), [])
-        self.assertEqual({m.kind for m in gate_lab.matches(store([1]), cfg, piece)}, {"passages", "numbers"})
+        self.assertEqual(gate_lab.verdict(store(range(1, cfg["max_spread"] + 2)), cfg, piece).matches, [])
+        self.assertEqual({m.kind for m in gate_lab.verdict(store([1]), cfg, piece).matches}, {"passages", "numbers"})
 
 
 if __name__ == "__main__":

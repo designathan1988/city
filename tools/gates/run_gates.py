@@ -6,12 +6,15 @@ path is unknown (not on disk and not in git). Given paths that every gate leaves
 skipped; when all of them are, the exit is 0. Each rule runs on its own: one crashing rule is a failure and the others
 still run. --register joins the findings with the register (a block's close, FR-052): each finding shown with the open
 problem whose origin names it (gate:<RULE>:<file>) or as NEW, and the exit is 1 only for a NEW finding; the findings
-themselves are the same, never filtered, baselined or silenced. --json prints the findings as JSON instead of text."""
+themselves are the same, never filtered, baselined or silenced. --json prints the findings as JSON instead of text.
+While it judges, a run says on stderr how many files it has judged (every PROGRESS_EVERY_S) and each whole-repo rule it
+starts; stdout holds only the report."""
 import argparse
 import json
 import os
 import re
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import registry  # noqa: E402
@@ -23,6 +26,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(
 from atlas import problems as register  # noqa: E402  the register's one owner
 
 SUMMARY_SHOWN = 15
+PROGRESS_EVERY_S = 2.0  # how often a run says on stderr how many files it has judged: a whole run is never silent
 WHERE_LINE = re.compile(r"^(.*?):(\d+)$")
 
 
@@ -34,14 +38,35 @@ def load_config(root):
     return rules, owners
 
 
-def run_rules(ctx, targets, rules_list, whole_filter=None):
+class Progress:
+    """What a run says on stderr while it judges (stdout, the report and --json, is left alone): the files judged so far
+    every PROGRESS_EVERY_S seconds of real time and at the last one, and each whole-repo rule's name as it starts."""
+
+    def __init__(self, total):
+        self.total = total
+        self.last = time.monotonic()
+
+    def file(self, done):
+        now = time.monotonic()
+        if self.total and (done == self.total or now - self.last >= PROGRESS_EVERY_S):
+            self.last = now
+            print(f"gates: {done}/{self.total} files", file=sys.stderr, flush=True)
+
+    def rule(self, name):
+        print(f"gates: whole-repo rule {name}", file=sys.stderr, flush=True)
+
+
+def run_rules(ctx, targets, rules_list, whole_filter=None, progress=None):
     """Problems as (id, where, message). `targets`: files the per-file rules judge; whole-repo rules run when
-    `whole_filter` is None or one of their inputs is in it."""
+    `whole_filter` is None or one of their inputs is in it. `progress` (a Progress, or None for a silent run such as the
+    self-test's) is told each file judged and each whole-repo rule started."""
     problems = []
     per_file = [r for r in rules_list if isinstance(r, registry.PerFile)]
     whole = [r for r in rules_list if isinstance(r, registry.Whole)]
     contexts = {}
-    for f in targets:
+    for done, f in enumerate(targets):
+        if progress:
+            progress.file(done)
         active = []
         for r in per_file:
             try:
@@ -61,11 +86,15 @@ def run_rules(ctx, targets, rules_list, whole_filter=None):
         key = digest("per_file", ctx.cache.file_key(f), [r.name for r in active],
                      [contexts.get(r.name) for r in active], ctx.changed.get(f) if f in ctx.changed else "-")
         problems += [tuple(p) for p in ctx.cache.get(key, lambda: _judge(ctx, f, active))]
+    if progress:
+        progress.file(len(targets))
     for r in whole:
-        inputs = [f for f in ctx.listed if r.inputs(ctx, f)]
-        if whole_filter is not None and not any(r.inputs(ctx, f) for f in whole_filter):
-            continue
         try:
+            if whole_filter is not None and not any(r.inputs(ctx, f) for f in whole_filter):
+                continue
+            if progress:
+                progress.rule(r.name)
+            inputs = [f for f in ctx.listed if r.inputs(ctx, f)]
             key = digest("whole", r.name, ctx.cache.key_of(inputs, extra=(json.dumps(r.extra(ctx) if r.extra else None),)))
             problems += [tuple(p) for p in ctx.cache.get(key, lambda: _collect(lambda err: r.check(ctx, err)))]
         except Exception as e:  # noqa: BLE001
@@ -171,7 +200,8 @@ def main(argv=None):
             print(f"Gates: none of the {len(requested)} given file(s) is in a gate's scope; nothing to judge.")
             return 0
     ctx.cache.warm(ctx.listed)
-    problems = run_rules(ctx, [t for t in targets if t in ctx.file_set], rules_list, None if requested is None else targets)
+    judged = [t for t in targets if t in ctx.file_set]
+    problems = run_rules(ctx, judged, rules_list, None if requested is None else targets, Progress(len(judged)))
     problems.sort(key=lambda p: (p[0], p[1]))
     findings = [finding(*p) for p in problems]
     if args.register:

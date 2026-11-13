@@ -265,12 +265,6 @@ def fingerprints(tokens, k, w):
     return out
 
 
-def guaranteed_length(k, w):
-    """The shortest match winnowing is sure to find (w + k - 1 tokens): a piece shorter than this has too few fingerprints
-    for its share of them to say anything."""
-    return w + k - 1
-
-
 def numbers_in_order(code, lang, trivial, line_offset=0):
     """[(value, line)] of the non-trivial numbers of code tokens, in the order they are written."""
     out = []

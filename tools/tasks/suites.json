@@ -10,7 +10,7 @@
   "bash": {"doc": "the bash that runs tools/build/*.sh: Git for Windows' own, found beside its git, never the WSL one in System32 (BASH_EXE)", "locate": "bash"},
   "mingw": {"doc": "llvm-mingw root of the Windows build (MINGW, or the folder above its x86_64-w64-mingw32-clang++)", "locate": "mingw"},
   "captures": {
-   "doc": "where the capture suite writes, one folder per task (tools/build/build.sh capture DIR sets it)",
+   "doc": "where the capture suite writes, one folder per task (the environment's CAPTURE_DIR sets another)",
    "env": "CAPTURE_DIR",
    "windows": "{root}/dist/captures",
    "posix": "{root}/dist/captures"
@@ -24,7 +24,7 @@
  },
  "loads": {"doc": "{loads}: the C++ folders whose res:// paths the loaded core library opens", "native": ["native/src"]},
  "lifecycle": {
-  "doc": "Every folder the work writes under dist/ has one owner and a bound, enforced by that owner on every write (tools/tasks/outputs.py reads this; python tools/tasks/cli.py clean applies them all now): max_mb, the least recently used entries past it go; keep, the newest entries past the count go (and those an open problem's evidence names stay); while_open, an entry stays while the problem its name is stays open; migrating, a folder another task of a specification empties and removes, left alone until then; whole_mb, a folder or file its owner writes as one piece (a build tree, a report), removed whole past that size; index, the owner's own index files beside its entries, never counted nor removed. A folder under dist/ declared nowhere has no owner: clean lists it and removes it with --unowned. stale_days: a worktree, branch or stash untouched this long, and every one already in main, is older than its work (cli.py worktrees exits 1).",
+  "doc": "Every folder the work writes under dist/ has one owner and a bound, enforced by that owner on every write (tools/tasks/outputs.py reads this; python tools/tasks/cli.py clean applies them all now): max_mb, the least recently used entries past it go; keep, the newest entries past the count go (and those an open problem's evidence names stay); while_open, an entry stays while the problem its name is stays open; whole_mb, a folder or file its owner writes as one piece (a build tree, a report), removed whole past that size; index, the owner's own index files beside its entries, never counted nor removed. A folder under dist/ declared nowhere has no owner: clean lists it and removes it with --unowned. stale_days: a worktree, branch or stash untouched this long, and every one already in main, is older than its work (cli.py worktrees exits 1).",
   "stale_days": 7,
   "outputs": [
    {"path": "dist/cache/tasks", "owner": "tools/tasks/cache.py", "max_mb": 4096},
@@ -34,16 +34,14 @@
    {"path": "dist/evidence/research", "owner": "doc/research.md (the proofs it cites)", "whole_mb": 1024},
    {"path": "dist/quick", "owner": "tools/tasks/suites.json quick", "max_mb": 1024},
    {"path": "dist/captures", "owner": "tools/tasks/suites.json capture", "max_mb": 2048},
-   {"path": "dist/held", "owner": "tools/tasks/cache.py place", "keep": 4},
+   {"path": "dist/held", "owner": "tools/tasks/cache.py (place, free_dlls)", "keep": 4},
    {"path": "dist/block", "owner": "tools/tasks/block.py", "max_mb": 1},
    {"path": "dist/pgo", "owner": "tools/build/pgo.sh", "whole_mb": 1024},
    {"path": "dist/build-pgo", "owner": "tools/build/pgo.sh", "whole_mb": 2048},
    {"path": "dist/lab_scan.json", "owner": "tools/gates/lab_scan.py", "whole_mb": 16},
    {"path": "dist/hunt", "owner": "tools/hunt/hunt.py", "whole_mb": 64},
    {"path": "dist/km24", "owner": "tools/tasks/km24.py", "whole_mb": 8192},
-   {"path": "dist/promo", "owner": "the promo recording (doc/history/process.md)", "keep": 2},
-   {"path": "dist/trace", "owner": "tools/atlas/migrate.py (the trace-fix skill that wrote it was removed on 2026-11-12)", "migrating": "specification 001 US3 (T050) moves what open problems name to dist/evidence and removes the folder"}
-  ]
+   {"path": "dist/promo", "owner": "the promo recording (doc/history/process.md)", "keep": 2}  ]
  },
  "changed": {
   "doc": "the changed files the gates look at (run_gates.py --files-from: a path outside every gate is reported and skipped there)",
@@ -119,8 +117,7 @@
    "after": ["build_debug", "import", "scripts"],
    "verdict": "matches_golden",
    "params": {"line": "^DIGEST ", "golden": "dist/quick/golden.txt"},
-   "resources": {"cores": 3, "memory_mb": 3000, "locks": {"dll": "shared", "gpu": "shared"}},
-   "hint": "a change meant to move the digest: run with --bless"
+   "resources": {"cores": 3, "memory_mb": 3000, "locks": {"dll": "shared", "gpu": "shared"}}
   },
   "digest_bless": {
    "doc": "--bless: the digest of this run becomes the golden",
@@ -160,24 +157,28 @@
    "verdict": "godot",
    "resources": {"cores": 3, "memory_mb": 3000, "locks": {"dll": "shared", "gpu": "shared"}}
   },
-  "photos_check": {
-   "doc": "where the frozen photos differ from a kept set (photos_bless), run by name only: a help to find where to look, never a verdict on the game and in no suite (a photo is judged on its own; two runs of the same code differ in pixels)",
-   "argv": ["{python}", "tools/build/photodiff.py", "dist/quick/golden_photos", "dist/quick/photos", "dist/quick/photos_diff"],
-   "timeout_s": 120,
-   "inputs": ["dist/quick/golden_photos", "dist/quick/photos", "tools/build/photodiff.py"],
-   "after": ["photos"],
-   "outputs": ["dist/quick/photos_diff"],
+  "hunt": {
+   "doc": "the defect hunt: the core's probes over the generated town (project/tests/hunt/hunt.tscn), the list written to dist/hunt/hunt.json (tools/hunt/hunt.py runs it and prints it)",
+   "argv": ["{godot}", "--verbose", "--path", "project", "res://tests/hunt/hunt.tscn", "--", "--no-flow", "--out={root}/dist/hunt/hunt.json"],
+   "timeout_s": 600,
+   "hidden": true,
+   "inputs": ["{loads}", "!@release_libraries"],
+   "extra": ["{godot_version}"],
+   "after": ["build_debug", "import", "scripts"],
+   "outputs": ["dist/hunt/hunt.json"],
    "fresh": true,
-   "hint": "look at this run's photos (dist/quick/photos): only what is wrong in them is a finding"
+   "verdict": "godot",
+   "resources": {"cores": 3, "memory_mb": 3000, "locks": {"dll": "shared", "gpu": "shared"}}
   },
-  "photos_bless": {
-   "doc": "the photos of this run kept as the set photos_check compares with, run by name only",
-   "call": "tasks.steps:copy",
-   "spec": {"from": "dist/quick/photos", "to": "dist/quick/golden_photos"},
-   "timeout_s": 120,
-   "inputs": ["dist/quick/photos"],
-   "after": ["photos"],
-   "outputs": ["dist/quick/golden_photos"]
+  "export": {
+   "doc": "the Windows export of the game into dist/builds/next (tools/build/deliver.sh empties and makes that folder first, since Godot's --export-release needs its folder to exist, then names and keeps the build); keyed by the whole project, the release DLL it ships included",
+   "argv": ["{godot}", "--headless", "--path", "project", "--export-release", "Windows", "{root}/dist/builds/next/Roadcraft.exe"],
+   "timeout_s": 900,
+   "inputs": ["project/**"],
+   "extra": ["{godot_version}"],
+   "after": ["build_release", "import"],
+   "outputs": ["dist/builds/next"],
+   "resources": {"cores": 2, "locks": {"dll": "shared"}}
   }
  },
  "templates": {
@@ -400,7 +401,6 @@
    "doc": "the look plans the capture suite photographs",
    "template": "look",
    "items": [
-    {"name": "frozen", "plan": "res://tests/visual/frozen_plan.json", "resolution": "1280x720", "timeout_s": 90},
     {"name": "roofs", "plan": "res://tests/visual/roofs_plan.json", "resolution": "1920x1080", "timeout_s": 300}
    ]
   },
