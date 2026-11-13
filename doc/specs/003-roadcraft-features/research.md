@@ -172,9 +172,8 @@ pass or in the cell itself, each cell's lots in their fixed order with the cell'
 scenes and its plan in one `cli.py run`, the build, import and script check from the cache when unchanged.
 
 **Decision**: the two scenes over a minute are defects of their own (FR-011): window_traffic_test by R4; camera_feel_test by asking
-the core once per frame for the eye (the test's own extra `eye_free` call reuses the rig's answer) and by fewer rides where its
-cases repeat (each zoom x tilt x bearing x start x six motions: the cases the reference's behaviour distinguishes are kept, the
-repeats measured and dropped only where two rides prove the same thing).
+the core once per frame for the eye (the test's own eye check reuses the rig's answer) and by the cost of the core's queries alone
+(R1b's camera floor: one lookup); every ride and check stays (a removed ride would be a loosened check: the constitution, principle V).
 
 ## R6. Photos aimed at the element changed
 

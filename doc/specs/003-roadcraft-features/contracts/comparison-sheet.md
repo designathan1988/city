@@ -1,6 +1,8 @@
 # Contract: a feature's comparison sheet
 
 File: `doc/specs/003-roadcraft-features/sheets/<area>-<feature>.md`. Written before the feature's code; the item's commit holds it.
+Each area has an index, `sheets/<area>.md`: every unpaired inventory row of the area, the feature sheet it belongs to or why it is
+justified.
 
 ```markdown
 # <area>: <feature>

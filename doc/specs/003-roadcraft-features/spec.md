@@ -1,6 +1,6 @@
 # Feature Specification: Bring the reference game's features, correctly and fast
 
-**Feature Branch**: `main` (the project works on main, CLAUDE.md)
+**Feature Branch**: `main` (the project works on main: the constitution, principle VII)
 
 **Created**: 2026-11-13
 
@@ -39,8 +39,8 @@ level, mid and far show the view outside the buildings.
 
 1. **Given** the town and the camera a few metres over a street, **When** the player walks the view past a row of buildings,
    **Then** the eye is outside every building on every frame and the view has no jolt.
-2. **Given** the camera at any zoom, **When** the point looked at passes into a building's lot, **Then** the view keeps looking
-   at that point from outside the building and does not leap onto its roof.
+2. **Given** the camera at a street zoom, **When** the point looked at passes into a building's plan, **Then** the view rises
+   over that building smoothly (no jolt) with the eye outside it, and comes down as smoothly when the point leaves it.
 3. **Given** a photo plan aimed at the highest roof of the town's centre, **When** it runs, **Then** each near and mid photo shows
    the roofs from above, not the street between the towers.
 
@@ -137,7 +137,7 @@ frozen photo, the copy scan over the text tables, the camera scenes.
 
 The owner, in conversation: see what is wrong in CLAUDE.md, the documents and the scattered files, and correct all of it; remove
 the tools that do not work or are no longer used; fix the documents that contradict each other. Whoever works reads one set of
-orders (CLAUDE.md), one map of the files, one register of problems, one history per area, and finds no document saying otherwise,
+orders (the constitution, CLAUDE.md generated from it), one map of the files, one register of problems, one history per area, and finds no document saying otherwise,
 no tool that is dead, broken or unused, and no file outside its place.
 
 **Why this priority**: every contradiction costs a session a wrong turn; every dead tool is a trap; the port of the features
@@ -201,7 +201,8 @@ budgets of doc/specification.md.
 
 - **FR-001**: The camera MUST keep its eye outside every building on every frame, at every zoom and bearing, including while the
   point looked at is inside a building's lot.
-- **FR-002**: The camera MUST NOT move the point looked at onto a roof the player did not aim at.
+- **FR-002**: The camera MUST raise the point looked at only over a building whose plan holds it (the reference's rule), smoothly
+  on the slope-limited floor, at street zooms only; never onto a roof the point does not stand in.
 - **FR-003**: The camera's behaviour against buildings MUST keep the reference's outcomes (the eye never in a building, the point
   raised over a building it stands in, the pull in front of a wall with its four times) by the shipped engines' design (research
   R1b): the eye's body pushed out of what it overlaps toward the point (Cinemachine Decollider, Unreal SpringArm), the line of sight
@@ -232,8 +233,8 @@ budgets of doc/specification.md.
 - **FR-015**: This game's text keys MUST NOT be keys the reference defines, and the copy scan MUST read the text tables.
 - **FR-016**: The frozen street view of the quick photos MUST show a street with the eye outside every building.
 - **FR-017**: CLAUDE.md, the map, the register, the histories, the research record, the specification documents and the skill MUST
-  agree; an order is said once (in CLAUDE.md), a fact once (in its owner), and every document's command, path and number MUST be
-  true of the tree.
+  agree; an order is said once (in the constitution, CLAUDE.md generated from it), a fact once (in its owner), and every
+  document's command, path and number MUST be true of the tree.
 - **FR-018**: Every tool under tools/ MUST have a caller (a suite task, a command of CLAUDE.md or the map, another tool) and MUST
   run; an unused, broken or duplicated tool MUST be removed or fixed at its cause.
 - **FR-020**: Every item MUST record, before its code, the reference traced and read (US2's sheet), the Context7 source, question

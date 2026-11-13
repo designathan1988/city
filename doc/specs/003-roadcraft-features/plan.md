@@ -47,7 +47,7 @@ The constitution is `.specify/memory/constitution.md` (CLAUDE.md generated from 
 | Gate (CLAUDE.md) | Met by |
 |---|---|
 | Read whole before code | each item's sheet lists every file read `path: 1-N of N` with the hour (city-method section 0, 3 item 4) |
-| Context7 before every implementation | each item's work file `Research` section; the block's close refuses without it (R8, T006) |
+| Context7 before every implementation | each item's work file `Research` section; the block's close refuses without it (R8, T031) |
 | Trace both games before building | each feature's comparison sheet from the tracer on both (R3) |
 | One look, then code whole with nothing run | the per-item loop (quickstart step 2); the block tool refuses runs while open |
 | Checks under a minute, lines shown, deadlines | the orchestrator (live lines, no lock reservation, start deadlines: FR-012, done in 56926e1b); the two slow scenes fixed (R4, R5) |
