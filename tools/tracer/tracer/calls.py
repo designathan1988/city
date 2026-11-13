@@ -98,6 +98,7 @@ class Result:
     imported: set = None             # every name some file imports from another
     cases: object = None             # when each effect happens, what it writes, and each call's condition (`conditions`)
     answers: dict = None             # the questions asked of it, answered (saved with it: asked again, read back)
+    read_in: dict = None             # state definition -> the units that read it (one writing it too among them)
     cut: str = ""                    # why the analysis stopped before its end (a ceiling: time, memory), or nothing
     sites: dict = None               # (file, node) of a call -> what it runs [(definition, kind)] (kept: evaluating)
 
@@ -617,10 +618,13 @@ class Calls:
         for (unit, d), how in self.fl.touched.items():
             state_out[unit][d] = how
             state_in[d][unit] = how
+        read_in = defaultdict(set)
+        for unit, d in self.fl.read_by:
+            read_in[d].add(unit)
         return Result(p, self.fl.sc, dict(out), dict(into), {unit: sorted(names) for unit, names in self.outside.items()},
                       self.tables(), {unit: sorted(calls) for unit, calls in self.ambiguous.items()},
                       dict(state_out), dict(state_in), None, unresolved, texts, open_classes,
-                      {what for f in p.files for _, _, what in f.imports})
+                      {what for f in p.files for _, _, what in f.imports}, read_in=dict(read_in))
 
     def unguess(self) -> None:
         """A call that runs more functions found by name alone than a trace follows is ambiguous: its guesses are

@@ -1,0 +1,66 @@
+{
+ "name": "following: the acceleration behind a leader, swept over the speed",
+ "why": "This game's following law is the improved IDM (Treiber and Kesting, Traffic Flow Dynamics, 2013, 11.3.7: no braking when the gap is above the desired one, a free road branch), the reference's the plain IDM with a release fade: their values differ by design wherever the follower is below its desired gap; the pair keeps that difference the only one",
+ "reference": {
+  "root": [
+   "sim/vehicles/idm.ts",
+   "world/units.ts",
+   "core/units.ts",
+   "core/scalar.ts"
+  ],
+  "start": "idmAccel",
+  "inputs": {
+   "v": "v",
+   "v0": "v0"
+  },
+  "given": {
+   "p": {
+    "a": 1.5,
+    "b": 2,
+    "T": 1.2,
+    "s0": 2
+   },
+   "o": {
+    "gap": 30,
+    "speed": 8,
+    "kind": "car"
+   }
+  },
+  "outputs": [
+   "return"
+  ]
+ },
+ "city": {
+  "root": [
+   "native/src/sim/traffic/vehicle_speed.cpp",
+   "native/src/sim/traffic/traffic_system.h",
+   "native/src/core/math.h"
+  ],
+  "start": "city.traffic.idm_accel",
+  "inputs": {
+   "v": "v",
+   "v0": "v0"
+  },
+  "given": {
+   "c": {
+    "a": 1.5,
+    "b": 2,
+    "headway": 1.2,
+    "min_gap": 2
+   },
+   "gap": 30,
+   "vl": 8
+  },
+  "outputs": [
+   "return"
+  ]
+ },
+ "shared": {
+  "v": 10,
+  "v0": 14
+ },
+ "sweep": "v:0:20:21",
+ "expected": [
+  "other values: return"
+ ]
+}

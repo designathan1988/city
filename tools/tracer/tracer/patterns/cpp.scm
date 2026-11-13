@@ -45,6 +45,9 @@
 (template_type name: (_) @name) @named
 
 (declaration type: (_) @type declarator: (identifier) @name @variable)
+; A name declared `extern` with no value ([basic.def]: a declaration that is not a definition): defined in another
+; translation unit, its value an input.
+((declaration (storage_class_specifier) @_linkage declarator: (identifier) @elsewhere) (#eq? @_linkage "extern"))
 (declaration type: (_) @type declarator: (pointer_declarator declarator: (identifier) @name) @variable)
 (declaration type: (_) @type declarator: (reference_declarator (identifier) @name) @variable)
 (declaration type: (_) @type declarator: (array_declarator declarator: (identifier) @name) @variable)

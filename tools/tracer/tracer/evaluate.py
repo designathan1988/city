@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from fractions import Fraction
 
 from .conditions import number, number_function
-from .vocab import ABS, CLAMP, CROSS, DISTANCE, DOT, LENGTH, MAX, MIN, MIX, NORMALIZE, SIGN, SMOOTH, SQRT
+from .vocab import ABS, CLAMP, CROSS, DISTANCE, DOT, LENGTH, MAX, MIN, MIX, NORMALIZE, POW, SIGN, SMOOTH, SQRT
 from .vocab import VECTOR_FUNCTIONS
 from .model import text, unquoted, child_nodes
 from .vocab import (AFTER, AGAIN, ALL, ANY, ARGS, ASSIGN, BODY, BRANCH, CALL, CASE, CHAIN, CHOOSE, CLASS, CONSTRUCT,
@@ -342,6 +342,8 @@ class Machine:
             if VALUE in it.parts:
                 g = self.p.files[it.file]
                 value = self.kept_as(g, d, self.ev(g, it.parts[VALUE], None, None))
+            elif it.elsewhere:                   # declared here, defined by code not read: an input to give
+                value = self.unknown(label, f, node, f"{label}: declared here, its value given by code not read")
             else:
                 self.run.reads_before_writes.append((self.where(f, node) if f else "", label))
                 value = self.default(self.p.files[it.file], d)
@@ -658,7 +660,7 @@ class Machine:
             test = self.ev(f, branch[TEST], env, this)
             held = self.truth(f, test)
             if held is None:
-                self.partial(f, node, "a choice on an unknown value")
+                self.partial(f, node, f"a choice on an unknown value ({unknown_text(test)})")
                 return V(Unknown("a choice"), Why("a choice on an unknown value", self.where(f, node)))
             return self.ev(f, branch[THEN] if held else branch[ELSE], env, this)
         at = self.p.at.get((f.index, node.id))
@@ -736,6 +738,11 @@ class Machine:
         left, right = self.ev(f, op[LEFT], env, this), self.ev(f, op[RIGHT], env, this)
         if head in (ADD, SUB, MUL, DIV, MOD, LT, LE, GT, GE, EQ, NE):
             return self.arith(f, node, head, left, right)
+        if head == POW:                              # `**` is the language's pow: the number function, its operands known
+            if all(isinstance(v.value, (int, float)) and not isinstance(v.value, bool) for v in (left, right)):
+                return self.function(f, node, POW, [left, right])
+            self.partial(f, node, f"the operator ** on an unknown value ({unknown_text(left)}, {unknown_text(right)})")
+            return V(Unknown(written), Why(written, self.where(f, node), (left.why, right.why)))
         self.partial(f, node, f"the operator {written}")
         return V(Unknown(written), Why(written, self.where(f, node), (left.why, right.why)))
 
@@ -1004,7 +1011,7 @@ class Machine:
         held = self.truth(f, test)
         where = self.where(f, parts[TEST])
         if held is None:
-            self.partial(f, node, "a branch on an unknown value: neither way followed")
+            self.partial(f, node, f"a branch on an unknown value ({unknown_text(test)}): neither way followed")
             return
         then = parts[THEN]
         if held:
@@ -1025,7 +1032,7 @@ class Machine:
                     t = self.ev(f, other[TEST], env, this)
                     h = self.truth(f, t)
                     if h is None:
-                        self.partial(f, k, "a branch on an unknown value")
+                        self.partial(f, k, f"a branch on an unknown value ({unknown_text(t)})")
                         return
                     if h:
                         self.path.append((self.where(f, other[TEST]), t, True))
@@ -1063,7 +1070,7 @@ class Machine:
                 cond = self.ev(f, test if test is not None else parts[AFTER], scope, this)
                 held = self.truth(f, cond)
                 if held is None:
-                    self.partial(f, node, "a loop on an unknown value: stopped")
+                    self.partial(f, node, f"a loop on an unknown value ({unknown_text(cond)}): stopped")
                     return
                 if not held:
                     self.skip(f, then, self.where(f, test if test is not None else parts[AFTER]), cond)
@@ -1086,7 +1093,7 @@ class Machine:
                 cond = self.ev(f, parts[AFTER], scope, this)
                 held = self.truth(f, cond)
                 if held is None:
-                    self.partial(f, node, "a loop on an unknown value: stopped")
+                    self.partial(f, node, f"a loop on an unknown value ({unknown_text(cond)}): stopped")
                     return
                 if not held:
                     return
@@ -1167,7 +1174,7 @@ class Machine:
                     start = i
                     break
                 if isinstance(same.value, Unknown):
-                    self.partial(f, k, "a case on an unknown value")
+                    self.partial(f, k, f"a case on an unknown value ({unknown_text(same)})")
                     return
         if start is None:
             start = next((i for i, (k, got) in enumerate(cases) if VALUE not in got), None)
@@ -1226,6 +1233,23 @@ def overlaps(k, part) -> bool:
 
 def unknown_name(x) -> str:
     return x.name if isinstance(x, Unknown) else repr(x)
+
+
+def unknown_text(v) -> str:
+    """An unknown value said so a reader can give it: the input it is, or what it was made of, and where (a partial
+    names what it waits for: `--given NAME=VALUE` gives it)."""
+    if not isinstance(v, V):
+        return repr(v)
+    if not isinstance(v.value, Unknown):
+        return repr(plain(v))
+    inputs = []
+    stack = [v.why]
+    while stack and len(inputs) < 3:
+        w = stack.pop()
+        if w.say.startswith("input "):
+            inputs.append(f"{w.say[len('input '):]}{f' at {w.where}' if w.where else ''}")
+        stack.extend(reversed(w.parts))
+    return "; ".join(inputs) if inputs else f"{v.value.name}{f' at {v.why.where}' if v.why.where else ''}"
 
 
 def plain(v):
@@ -1308,6 +1332,11 @@ def run_text(result, run: Run) -> str:
             lines.append(f"  {o.where}  {o.callee}({args})" + ("  (partial)" if o.partial else ""))
             for where, test, taken in o.path[-4:]:
                 lines.append(f"      because {where} was {'true' if taken else 'false'}")
+    if run.returned is not None:                 # what the last start gave back: a pure function's output
+        lines.append(f"Returned: {plain(run.returned)!r}" + (f"  [{run.returned.why.where}]" if isinstance(
+            run.returned, V) and run.returned.why.where else ""))
+        if isinstance(run.returned, V):
+            lines += ["    " + row for row in why_lines(run.returned.why, limit=20)]
     lines.append("State at the end:")
     lines += [f"  {k} = {v!r}" for k, v in sorted(run.state.items())]
     if run.fixpoint is not None:
@@ -1331,6 +1360,9 @@ def run_data(result, run: Run) -> dict:
                                             "the values come from": [why_lines(a.why, limit=12) for a in o.args]}
                                            for o in outputs],
                            "the state after": state} for label, outputs, state in run.steps],
+            "what it gave back": plain(run.returned) if run.returned is not None else None,
+            "where what it gave back comes from": why_lines(run.returned.why, limit=20) if isinstance(run.returned, V)
+            else [],
             "the state at the end": run.state, "a fixed point after step": run.fixpoint, "a cycle": run.cycle,
             "read before written": run.reads_before_writes,
             "not worked out": [{"where it is": w, "the reason": y} for w, y in run.partial]}

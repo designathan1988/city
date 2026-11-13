@@ -274,6 +274,10 @@ def fold(head: str, a, b=None):
         return conj([a, b])
     if head == ANY:
         return disj([a, b])
+    if numbers and head == POW:          # `**`: exact for a whole power, else the reals' pow as the languages do it
+        done = a ** int(b) if b.denominator == 1 and abs(b) <= 64 and (a != 0 or b >= 0) else number_function(POW, [a, b])
+        if done is not None:
+            return done
     if numbers:
         try:
             return {ADD: lambda: a + b, SUB: lambda: a - b, MUL: lambda: a * b, DIV: lambda: a / b,

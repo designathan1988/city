@@ -3,8 +3,8 @@ compiler's answer (made when missing), compared with the recorded baseline, and 
 
     python bench/run.py [--only NAME]... [--update] [--strict]
 
-Exit 1 when a figure is worse than the baseline beyond the tolerance, or a golden trace fails; with --strict, also
-when a target is not met. --update records the figures as the new baseline. Not part of the tracer.
+Exit 1 when a figure is worse than the baseline beyond the tolerance, or a golden trace fails, or no project is measured
+(a bench of nothing proves nothing); with --strict, also when a target is not met. --update records the figures as the new baseline. Not part of the tracer.
 """
 from __future__ import annotations
 
@@ -121,7 +121,7 @@ def main(argv=None) -> int:
     parser.add_argument("--strict", action="store_true")
     args = parser.parse_args(argv)
     projects = json.loads((HERE / "projects.json").read_text(encoding="utf-8"))
-    failed = False
+    failed, measured = False, 0
     for name, spec in projects.items():
         if args.only and name not in args.only:
             continue
@@ -129,6 +129,7 @@ def main(argv=None) -> int:
             print(f"{name}: skipped, a root is missing", file=sys.stderr)
             continue
         print(f"== {name}")
+        measured += 1
         figures, result = None, None
         if "oracle" in spec:
             found = oracle(name, spec["oracle"])
@@ -167,6 +168,9 @@ def main(argv=None) -> int:
             baseline.parent.mkdir(parents=True, exist_ok=True)
             baseline.write_text(json.dumps(figures, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
             print(f"   baseline recorded: {baseline.relative_to(HERE)}")
+    if not measured:
+        print("nothing measured: no project of bench/projects.json has its roots here", file=sys.stderr)
+        return 1
     return 1 if failed else 0
 
 

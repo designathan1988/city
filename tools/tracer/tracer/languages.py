@@ -188,10 +188,10 @@ GDSCRIPT = Language("gdscript", "tree_sitter_gdscript", "language", ("gdscript.s
                     file_is_class=True, implicit_base=True, duck_typed=True, super_names_method=True, beside=True,
                     project="godot", invokes=(("call", 0), ("callv", None), ("call_deferred", 0)),
                     node_marks="$%", node_lookup=("get_node", "get_node_or_null"),
-                    spelled=(("and", ALL), ("or", ANY), ("not", NOT)), numbers=DYNAMIC, divides_whole=True,
+                    spelled=(("and", ALL), ("or", ANY), ("not", NOT), ("**", POW)), numbers=DYNAMIC, divides_whole=True,
                     whole_types=("int",), math=GD_MATH, counts=True, nothing=("null",), real64_types=("float",))
-#                   GDScript reference, Operators: `and`, `or`, `not` are `&&`, `||`, `!`; int / int is an int
-#                   (truncated); `for i in 3` goes over 0, 1, 2; float is 64 bits
+#                   GDScript reference, Operators: `and`, `or`, `not` are `&&`, `||`, `!`; `**` is the power; int / int is
+#                   an int (truncated); `for i in 3` goes over 0, 1, 2; float is 64 bits
 #                   GDScript reference: `$path` is short for get_node("path"), `%name` for a node unique in its scene
 #                   GDScript reference, Callable: call, callv, call_deferred run it (bind, bindv, unbind make another)
 CPP = Language("cpp", "tree_sitter_cpp", "language", ("cpp.scm",), implicit_members=True,
@@ -207,15 +207,17 @@ CPP = Language("cpp", "tree_sitter_cpp", "language", ("cpp.scm",), implicit_memb
 TYPESCRIPT = Language("typescript", "tree_sitter_typescript", "language_typescript",
                       ("typescript.scm", "typescript_only.scm"), folder_file=("index",), project="typescript",
                       invokes=(("call", 1), ("apply", None)),
-                      spelled=(("===", EQ), ("!==", NE)), steps=(("++", ADD), ("--", SUB)), math=JS_MATH,
+                      spelled=(("===", EQ), ("!==", NE), ("**", POW)), steps=(("++", ADD), ("--", SUB)), math=JS_MATH,
                       keys_word="in", picks_operand=True, falls_through=True, nothing=("null", "undefined"),
                       size_words=("length",), compiler="typescript")
-#                     ECMA-262, Equality Operators: `===` and `!==` compare without conversion; UpdateExpression;
+#                     ECMA-262, Exponentiation Operator: `**` is Math.pow; Equality Operators: `===` and `!==` compare
+#                     without conversion; UpdateExpression;
 #                     Number: every number a 64-bit real; for-in goes over keys, for-of over values; || and && give
 #                     an operand; switch cases fall through
 TSX = Language("tsx", "tree_sitter_typescript", "language_tsx", ("typescript.scm", "jsx.scm"), folder_file=("index",),
                project="typescript", invokes=(("call", 1), ("apply", None)),
-               spelled=(("===", EQ), ("!==", NE)), steps=(("++", ADD), ("--", SUB)), math=JS_MATH, keys_word="in",
+               spelled=(("===", EQ), ("!==", NE), ("**", POW)), steps=(("++", ADD), ("--", SUB)), math=JS_MATH,
+               keys_word="in",
                picks_operand=True, falls_through=True, nothing=("null", "undefined"), size_words=("length",),
                compiler="typescript")
 #   ECMA-262, Function.prototype: call (its first argument is `this`) and apply run it; bind makes another

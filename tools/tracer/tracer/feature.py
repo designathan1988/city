@@ -8,11 +8,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from fractions import Fraction
+from pathlib import Path
 
 from .conditions import state_of
 from .decide import render, satisfy, symbols
 from .situations import lifted, lifted_value, reach
-from .vocab import AT, DATA, OUTCALL, PARAM, SYMBOL, TEXT, WRITE
+from .vocab import AT, CLASS, DATA, MODULE, NAMESPACE, OUTCALL, PARAM, SHAPE, SYMBOL, TEXT, WRITE
 
 DEEP = 6                         # how many writers back the state a functionality reads is followed
 
@@ -31,19 +32,47 @@ class Sheet:
     rows: list = field(default_factory=list)         # (output, root, its condition, its arguments, an example)
 
 
+def same_file(display: str, written: str) -> bool:
+    """A file's path as the analysis shows it and as a point writes it name the same file: equal, or one the other's
+    end at a folder's boundary (`roads/x.cpp` is not `myroads/x.cpp`)."""
+    display, written = display.replace("\\", "/"), written.replace("\\", "/")
+    return display == written or written.endswith("/" + display) or display.endswith("/" + written)
+
+
 def points(result, wanted: list) -> list:
-    """The effects at those points: `file:line`, or a function's label (its outputs and writes)."""
+    """The effects at those points: `file:line`; a file alone (every output and write in it); or a function's label
+    (its outputs and writes)."""
+    from .languages import BY_EXTENSION
     p, out = result.program, []
     for want in wanted:
         path, _, line = want.rpartition(":")
+        whole = not line.isdigit() and Path(want).suffix.lower() in BY_EXTENSION
         for i, e in enumerate(result.cases.effects):
             display = p.files[e.file].display
-            if line.isdigit() and path and int(line) == e.line and (display.endswith(path) or path.endswith(display)):
+            if line.isdigit() and path and int(line) == e.line and same_file(display, path):
                 out.append(i)
-            elif not line.isdigit() and (p.label(e.unit) == want or p.label(e.unit).endswith("." + want)) \
-                    and e.kind in (OUTCALL, WRITE):
+            elif whole and e.kind in (OUTCALL, WRITE) and same_file(display, want):
+                out.append(i)
+            elif not line.isdigit() and not whole and e.kind in (OUTCALL, WRITE) \
+                    and (p.label(e.unit) == want or p.label(e.unit).endswith("." + want)):
                 out.append(i)
     return list(dict.fromkeys(out))
+
+
+def units_of(result, wanted: list) -> set:
+    """The definitions of the functionality's slice: the functions its outputs are in and every one on the way to them
+    (what its graph shows, not the whole of the roots)."""
+    from .walk import backward
+    effects = result.cases.effects
+    units = list(dict.fromkeys(effects[i].unit for i in points(result, wanted)))
+    return set(units) | {step.at for step in backward(result, units)}
+
+
+def kept(p, d: int) -> bool:
+    """Whether a definition is state a functionality reads or writes: a variable of a file, a namespace, a class or a
+    record, not one of a function (a local carries a value on the way and is followed back, but is no state)."""
+    it = p.defs[d]
+    return it.kind != PARAM and it.owner >= 0 and p.defs[it.owner].kind in (CLASS, MODULE, NAMESPACE, SHAPE)
 
 
 def gather(x, conditions: set, states: set, constants: set, data: set) -> None:
@@ -92,9 +121,9 @@ def sheet(result, wanted: list) -> Sheet:
         if not todo:
             break
     s.conditions = sorted(conditions)
-    s.reads = sorted({p.label(d) for d in states if 0 <= d < len(p.defs) and p.defs[d].kind != PARAM})
+    s.reads = sorted({p.label(d) for d in states if 0 <= d < len(p.defs) and kept(p, d)})
     s.writes = sorted({p.label(state_of(effects[i].target)) for i in rows if effects[i].kind == WRITE
-                       and state_of(effects[i].target) is not None})
+                       and state_of(effects[i].target) is not None and kept(p, state_of(effects[i].target))})
     s.constants = sorted(constants, key=lambda c: Fraction(c))
     s.data = sorted(data)
     for root, _, _ in s.roots[:4]:
@@ -136,9 +165,10 @@ def text_report(result, wanted: list) -> str:
     return "\n".join(lines)
 
 
-def data_of(result, wanted: list) -> dict:
+def data_of(result, wanted: list, s: Sheet | None = None) -> dict:
+    """The sheet as data (`s`: one already made of these points)."""
     from .situations import effect_text
-    s = sheet(result, wanted)
+    s = s if s is not None else sheet(result, wanted)
     return {"the outputs": [effect_text(result, i) for i in s.outputs],
             "set off by": [f"{result.program.where(root)} [{why}] {way}" for root, why, way in s.roots],
             "the functions": s.functions, "conditions at": s.conditions, "state read": s.reads,

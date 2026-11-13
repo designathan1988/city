@@ -147,3 +147,36 @@ entry: when, the commit, the problems, the cause, the plan, the files created, c
 - **Causes read on the way**: an absolute `from tasks import` where the package imports relatively (the import gate); the template's
   headings carry a note, so a section is its heading's first word (the check refused its own block's file, then closed it).
 - **Checked**: test_block 14 OK; tools/tasks 101 OK in 50.7 s; gates 0 findings.
+
+## 2026-11-13: block t039-port-tools, the tools do the port (specification 003)
+
+- **Goal** (the owner): the tracer traces a feature end to end in both games, by graphs, values and behaviour; adjust what the
+  goal needs, link the tools, no manual work.
+- **The port driver** `tools/tracer/port.py`: `sheet AREA` reads the area's sheet, its evidence and the register's problems it
+  names (owner, symptom, cause, criterion), resolves each `file[:line]` in its game (`tasks.locations` for the reference), analyses
+  each side once for the area (the folders its evidence is in) and gives per feature both tracer sheets, what one holds that the
+  other lacks (constants, state, data, counts) and each side's cost kept to the feature's own functions (`dist/port/AREA.json`);
+  `check` runs the comparison pairs of `project/tests/port` (first: the following law, swept over the speed), failing on any
+  difference a pair does not declare, on a comparison of nothing and on a run that stayed partial. Roads: 53 s for seven features.
+- **The tracer's limits fixed at their cause**:
+  - `**` worked out in TypeScript, JavaScript and GDScript (the spelled operator tables, the power in `fold` and `operate`);
+  - the start's return value reported (`Returned:`, "what it gave back") and compared (`return` among a map's outputs);
+  - a choice, branch, loop or case on an unknown names the input it waits on;
+  - a map may name several roots (a function and the header of its constants);
+  - GDScript getters and setters written in place are functions run on a read or write (a match holds one anchor:
+    `read.py:117`, so the function and its mark are two patterns);
+  - a function that reads a state and writes it too reads it (`Flow.touch` kept only the strongest action, flow.py:71; the
+    readers kept apart, `Result.read_in`): no more "written, never read" on every cache;
+  - `declare` (TypeScript) and `extern` (C++) variables are inputs given by code not read, not zero or undefined;
+  - a namespace's one stored value is found through includes not read (scopes.py `inside`), as a compiled program's would;
+  - a box of no variable decides by its rows or is undecided, never a crash or a false "impossible" (decide.py `nonlinear`);
+  - a feature's points match files at a folder's boundary, a file alone is every output in it, its state is the files',
+    classes' and records' (not a function's locals), its graph is its slice;
+  - the cost of a feature keeps the loops in its functions (`cost.Item.units`);
+  - the bench exits 1 when it measured nothing (its projects.json is empty here: registered).
+- **Found by the driver itself**: the first pair passed while both sides were partial (`m` re-exported from a file not among
+  the roots; `BIG` behind an include chain): the partial guard, the namespace rule and the root were the fixes, then real
+  values on both sides (identical at rest, the improved IDM braking less near the leader, by design).
+- **Registered**: the empty bench; atlas's dropped `--json` and unfiltered stats, unknown filters accepted, systems never paired.
+- **Checked**: tracer 145 tests OK in 65 s (134 before, 11 new in test_limits.py, the partial guard shown red then green);
+  gates of every changed file clean but MEMORY_ON (Ptools-121); `port.py check` 1 pair OK; `port.py sheet roads` 53 s.

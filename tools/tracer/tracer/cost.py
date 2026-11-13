@@ -22,6 +22,7 @@ class Item:
     loops: list = field(default_factory=list)        # the loops around it, outermost first: (where, grows)
     order: str = ""
     note: str = ""
+    units: tuple = ()            # the functions it and the loops around it are in (what a feature's cost keeps)
 
 
 def order_of(loops: list) -> str:
@@ -70,7 +71,7 @@ def report(result, roots: list) -> list:
         mine = loops + [t]
         out.append(Item(where(t), "a loop", f"over {t.over}" + (" (grows)" if t.grows else " (fixed)"),
                         [(where(k), k.grows) for k in mine], order_of([(where(k), k.grows) for k in mine]),
-                        f"{t.turns} turns" if t.turns is not None else ""))
+                        f"{t.turns} turns" if t.turns is not None else "", tuple({k.unit for k in mine})))
     for unit, file, line, start, shown in cases.makes:
         if unit not in reached:
             continue
@@ -78,7 +79,7 @@ def report(result, roots: list) -> list:
         if loops:
             pairs = [(where(k), k.grows) for k in loops]
             out.append(Item(f"{p.files[file].display}:{line}", "made at each turn", shown, pairs, order_of(pairs),
-                            "a new object or collection each turn"))
+                            "a new object or collection each turn", tuple({unit} | {k.unit for k in loops})))
     for unit, file, line, shown, _ in result.unresolved or ():     # every call no definition answers
         if unit not in reached:
             continue
@@ -88,7 +89,7 @@ def report(result, roots: list) -> list:
             pairs = [(where(k), k.grows) for k in loops]
             out.append(Item(f"{p.files[file].display}:{line}", "code not read at each turn", shown, pairs,
                             order_of(pairs), "what it does is not read: its own cost is not known (if it goes "
-                                             "over a collection, one order more)"))
+                                             "over a collection, one order more)", tuple({unit} | {k.unit for k in loops})))
     return out
 
 
@@ -104,7 +105,9 @@ def text_report(result, roots: list) -> str:
     return "\n".join(lines)
 
 
-def data(result, roots: list) -> list:
+def data(result, roots: list, among: set | None = None) -> list:
+    """The cost as data; with `among` (definition ids: a feature's slice), only what is in those functions or inside
+    a loop of theirs."""
     return [{"where it is": i.where, "what is found": i.what, "as written": i.shown, "the order": i.order,
              "inside the loops": [{"where it is": w, "it grows": g} for w, g in i.loops], "the note": i.note}
-            for i in report(result, roots)]
+            for i in report(result, roots) if among is None or among.intersection(i.units)]

@@ -40,6 +40,7 @@ class Flow:
         self.node_of = {}            # an expression's flow node -> (its file, the node)
         self.active, self.waiting = set(), {}    # the shapes holding a function; the nodes waiting for one
         self.touched = {}            # (unit, definition) -> what the unit does to it (`TOUCHES`)
+        self.read_by = set()         # (unit, definition) read, whatever else the unit does to it (a write is stronger)
         self.kept_in = defaultdict(set)  # an expression's node -> the state definitions its value is read from
         self.builts = {}             # a variable written member by member -> the shape it builds
         self.closed = set()          # nodes holding what the code read cannot define (a base it does not write)
@@ -74,6 +75,8 @@ class Flow:
         old = self.touched.get(key)
         if old is None or TOUCHES.index(how) < TOUCHES.index(old):
             self.touched[key] = how
+        if how == READS:
+            self.read_by.add(key)
 
     def read_state(self, f, node, d: int, key) -> None:
         if self.is_state(d) or self.p.is_shape(self.p.defs[d].owner):
@@ -508,6 +511,7 @@ class Flow:
         for unit, d in result.cases.reads:       # state read where no value was asked of the flow: a read too
             result.state_out.setdefault(unit, {}).setdefault(d, READS)
             result.state_in.setdefault(d, {}).setdefault(unit, READS)
+            result.read_in.setdefault(d, set()).add(unit)
         result.cut = self.ceiling.why if self.ceiling is not None and self.ceiling.why else ""
         result.sites = {(site.f.index, site.node.id): list(site.targets or ()) for site in self.calls.sites} \
             if self.keep else None

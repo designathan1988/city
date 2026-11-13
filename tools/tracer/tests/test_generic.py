@@ -52,7 +52,8 @@ LANGUAGE_WORDS = {
     #                                                                TypeScript handbook, Everyday Types: the open types
     "typescript_only.scm": set(),
     "jsx.scm": set(),
-    "cpp.scm": {"static_cast", "dynamic_cast", "const_cast", "reinterpret_cast"},   # ISO C++ [expr.post]
+    "cpp.scm": {"static_cast", "dynamic_cast", "const_cast", "reinterpret_cast",    # ISO C++ [expr.post]
+                "extern"},                                                          # [dcl.stc]: a storage class
 }
 PREDICATE = re.compile(r"\(#[\w-]+\?[^)]*\)")
 QUOTED = re.compile(r'"([^"]*)"')

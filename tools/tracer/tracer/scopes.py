@@ -44,7 +44,9 @@ class Scopes:
 
     def inside(self, c: int, name: str, f):
         """A container's name as read from a file: a function's own; a class's member, where the language reads
-        members by a plain name; a namespace's, written in a file that one reaches; a file's."""
+        members by a plain name; a namespace's, written in a file that one reaches (else, for a value, the one
+        definition of that name the namespace has in the code read: a file reached through an include not read
+        declares it, as a compiled program's would); a file's."""
         p = self.p
         kind = p.defs[c].kind
         if kind == FUNCTION:
@@ -55,7 +57,11 @@ class Scopes:
             return self.members(c, name, True) if f.lang.implicit_members else ()
         if kind == NAMESPACE:
             reach = self.sources.reach(f.module)
-            return [i for i in p.held(c, name) if p.files[p.defs[i].file].module in reach]
+            held = list(p.held(c, name))
+            found = [i for i in held if p.files[p.defs[i].file].module in reach]
+            if not found and len(held) == 1 and p.defs[held[0]].kind in STORED:
+                return held
+            return found
         return self.local(c, name) if kind == MODULE else ()
 
     def local(self, m: int, name: str, seen=None) -> list:

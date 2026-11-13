@@ -10,6 +10,13 @@
 (class_definition name: (name) @name) @class
 
 (variable_statement name: (name) @name type: (type)? @type value: (_)? @value) @variable
+; A property's getter and setter written in place (GDScript reference: Properties, `var x: get: ... set(value): ...`):
+; functions named as the property, run when its name is read or written; the property's own name read inside them is
+; its stored value. A match holds one anchor: the function is one pattern, its mark as a getter or setter another.
+(variable_statement name: (name) @name setget: (setget get: (get_body body: (body) @body) @function))
+(variable_statement name: (name) @name setget: (setget set: (set_body body: (body) @body) @function))
+(setget get: (get_body) @getter)
+(setget set: (set_body) @setter)
 (const_statement name: (name) @name type: (type)? @type value: (_)? @value) @variable @fixed
 (signal_statement name: (name) @name) @variable @handlers
 (enum_definition name: (name) @name) @variable

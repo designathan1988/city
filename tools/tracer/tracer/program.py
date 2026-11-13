@@ -16,9 +16,9 @@ from .configs import Configs
 from .model import LAMBDA, OBJECT as SHAPED, Definition, File, named as text_named, spelled, text, child_nodes
 from .sources import Sources
 from .vocab import (ALIAS, BASE, BODY, CLASS, CLASSES, CONSTRUCTOR, CONTAINERS, DEFAULT, DEFINING, DRIVEN, EXPORT,
-                    EXPORT_DEFAULT, FIELD, FUNCTION, GETTER, IMPORT, INCLUDE, KEY, KIND, MEMBER, MODULE, MODULE_NAME,
-                    NAME, NAMED, NAMESPACE, OBJECT, OPEN, PAIR, PARAM, PASS, PROPERTY, ROLES, SETTER, SHAPE, SOURCE,
-                    VALUE, VARIABLE, WEIGHED, WHOLE, EFFECT)
+                    ELSEWHERE, EXPORT_DEFAULT, FIELD, FUNCTION, GETTER, IMPORT, INCLUDE, KEY, KIND, MEMBER, MODULE,
+                    MODULE_NAME, NAME, NAMED, NAMESPACE, OBJECT, OPEN, PAIR, PARAM, PASS, PROPERTY, ROLES, SETTER,
+                    SHAPE, SOURCE, VALUE, VARIABLE, WEIGHED, WHOLE, EFFECT)
 
 
 class Program:
@@ -119,7 +119,7 @@ class Program:
                     d.name = text_named(parts[NAME]) or d.name      # a name written as a text (an entry's key)
                 if VALUE in parts:
                     self.value_names[(f.index, parts[VALUE].id)] = d.name
-        for anchor, flag in ((GETTER, "getter"), (SETTER, "setter")):
+        for anchor, flag in ((GETTER, "getter"), (SETTER, "setter"), (ELSEWHERE, "elsewhere")):
             for node, _ in f.facts.get(anchor, ()):
                 if (f.index, node.id) in self.at:
                     setattr(self.defs[self.at[(f.index, node.id)]], flag, True)

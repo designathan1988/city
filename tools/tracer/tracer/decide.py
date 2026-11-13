@@ -846,9 +846,10 @@ def nonlinear(lits: tuple, terms: dict, values: dict, until: float | None):
     boxes = [{k: (-BIG, BIG) for k in base}]
     for k, v in point.items():                   # the linear values first: a box around them
         boxes.append({**{j: (-BIG, BIG) for j in base}, k: (float(v) - 1, float(v) + 1)})
+    unknown = False                              # a box no split decides held a term with no value at its point
     for _ in range(STEPS):
         if not boxes:
-            return None
+            return UNDECIDED if unknown else None
         if until is not None and time.monotonic() > until:
             return UNDECIDED
         box = boxes.pop()
@@ -871,8 +872,12 @@ def nonlinear(lits: tuple, terms: dict, values: dict, until: float | None):
             if keeps_exactly(p):
                 return {**values, **p}
         near = middle
-        if all(row_near(r, terms, near) for r in rows) and max(b - a for a, b in box.values()) < 1e-7:
+        if all(row_near(r, terms, near) for r in rows) and (not box or max(b - a for a, b in box.values()) < 1e-7):
             return {**values, **near, APPROXIMATE: True}
+        if not box:                      # no variable left to split: its rows failed, or a term has no value (not proved)
+            unknown = unknown or any(row_value((c, k, s), terms, lambda y: at_point(y, near) if isinstance(y, tuple)
+                                               else Fraction(y)) is None for c, k, s, _ in rows)
+            continue
         widest = max(box, key=lambda k: box[k][1] - box[k][0])
         a, b = box[widest]
         if b - a < 1e-12:

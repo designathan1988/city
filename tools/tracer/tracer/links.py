@@ -15,7 +15,7 @@ from pathlib import Path
 from .conditions import state_of
 from .decide import symbols
 from .languages import DATA_FORMATS
-from .vocab import FIRES, FUNCTION, HANDED, OUTCALL, READS, SYMBOL, TEXT, UNIFORM, WRITE, WRITES, CHANGES
+from .vocab import FIRES, FUNCTION, HANDED, OUTCALL, READS, STORED, SYMBOL, TEXT, UNIFORM, WRITE, WRITES, CHANGES
 
 WRITTEN_NOT_READ = "state written, never read by the code read"
 READ_NOT_WRITTEN = "state read, never written nor given a first value by the code read"
@@ -63,14 +63,20 @@ def never(result) -> list:
 
 
 def states(result) -> list:
+    """State written and never read, read and never written: of variables and fields alone (a module or a class read is
+    code named, not state); a computed property is given its value by its getter. A function that reads a state and
+    writes it too reads it (a cache made on its first read)."""
     p = result.program
     out = []
     first = (result.cases.first or {}) if result.cases else {}
+    getters = {(other.owner, other.name) for other in p.defs if other.kind == FUNCTION and other.getter}
     for d, units in (result.state_in or {}).items():
         hows = set(units.values())
         it = p.defs[d]
+        if it.kind not in STORED or (it.owner, it.name) in getters or it.elsewhere:
+            continue
         where = f"{p.files[it.file].display}:{it.line}"
-        if hows & {WRITES, CHANGES} and READS not in hows:
+        if hows & {WRITES, CHANGES} and READS not in hows and not (result.read_in or {}).get(d):
             writers = sorted(p.label(u) for u, how in units.items() if how in (WRITES, CHANGES))
             out.append(Broken(WRITTEN_NOT_READ, where, p.label(d), f"written by {', '.join(writers[:5])}"))
         elif READS in hows and not hows & {WRITES, CHANGES} and d not in first:
@@ -81,11 +87,11 @@ def states(result) -> list:
 
 
 def events(result) -> list:
-    """Names handed with a function (registration) and names given to a call that fires handlers somewhere (a
-    firing): the ones on one side only."""
+    """Names handed with a function (registration) and names given to a call that fires handlers (a firing): the ones
+    on one side only. A firing is a call whose own place fires a handler, never one that only shares its name with
+    such a call (a dictionary's `get("busy")` is no event because a `get` elsewhere fires one)."""
     p = result.program
     effects = result.cases.effects if result.cases else []
-    firing_names = set()
     fired_lines = {(link.src, link.file, link.line) for links in result.out.values() for link in links
                    if link.kind == FIRES}
     registered, fired = {}, {}
@@ -96,21 +102,19 @@ def events(result) -> list:
         functions = [a for a in e.args if isinstance(a, tuple) and a and a[0] == SYMBOL and isinstance(a[1], int)
                      and p.defs[a[1]].kind == FUNCTION]
         where = f"{p.files[e.file].display}:{e.line}"
-        if (e.unit, e.file, e.line) in fired_lines:
-            firing_names.add(e.name)
         if texts and functions:
             for t in texts:
                 registered.setdefault(t, []).append((where, functions[0][1]))
-        elif texts:
+        elif texts and (e.unit, e.file, e.line) in fired_lines:
             for t in texts:
                 fired.setdefault((e.name, t), []).append(where)
     out = []
     for (name, t), wheres in sorted(fired.items()):
-        if name in firing_names and t not in registered:
+        if t not in registered:
             out.append(Broken(FIRED_NO_LISTENER, wheres[0], f"{name}({t!r})", f"fired at {', '.join(wheres[:5])}"))
-    fired_texts = {t for (name, t) in fired if name in firing_names}
+    fired_texts = {t for (name, t) in fired}
     for t, rows in sorted(registered.items()):
-        if t in fired_texts or not firing_names:
+        if t in fired_texts or not fired:
             continue
         for where, d in rows:
             others = [link for link in result.into.get(d, ()) if link.kind != HANDED]

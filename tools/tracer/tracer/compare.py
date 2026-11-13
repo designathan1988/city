@@ -5,8 +5,11 @@ functionality. Over a range of one variable, the bands where the outputs differ 
 values, another order), with why on each side; of two versions, the lines changed that the differing outputs went
 through.
 
-A map (JSON): {"root": "<folder>", "start": "<label>", "inputs": {"<input>": "<expression of the shared variables>"},
-"given": {"<input>": <value>}, "outputs": ["<what is called, or file:line>", ...]}
+A map (JSON): {"root": "<folder or file>" (or a list of them: a header its constants are in, beside the function), "start": "<label>", "inputs": {"<input>": "<expression of the shared variables>"},
+"given": {"<input>": <value>}, "outputs": ["<what is called, or file:line, or `return`>", ...]}; `return` is what the
+start gives back (a pure function's output). A comparison where neither side gave an output its map names compared
+nothing, and one where a side's run stayed partial (it waited on a value the code read does not give) proved nothing;
+each says so: it is never "the same".
 """
 from __future__ import annotations
 
@@ -18,9 +21,13 @@ import math
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .evaluate import evaluate, plain, why_lines, why_not
+from .evaluate import Output, V, evaluate, plain, why_lines, why_not
 
 CLOSE = 1e-9                     # values this near are the same (said where it matters)
+RETURN_OUTPUT = "return"         # the output a map names for what its start gives back
+NOTHING = "nothing compared: neither side gave an output its map names"
+PARTIAL = "partial: a side's run waited on values the code read does not give, so its outputs prove nothing"
+UNPROVEN = (NOTHING, PARTIAL)    # what a comparison may never be declared to expect
 
 
 def value_of(expression: str, names: dict):
@@ -55,7 +62,7 @@ def value_of(expression: str, names: dict):
 @dataclass
 class Side:
     """One program as a map says it."""
-    root: str
+    root: object                 # a path, or a list of them (each resolved from the map's folder)
     start: str
     inputs: dict
     given: dict
@@ -67,26 +74,33 @@ class Side:
 def side(path: str) -> Side:
     held = json.loads(Path(path).read_text(encoding="utf-8"))
     base = Path(path).parent
-    root = str((base / held["root"]).resolve()) if not Path(held["root"]).is_absolute() else held["root"]
-    return Side(root, held["start"], held.get("inputs", {}), held.get("given", {}), held.get("outputs", []))
+    written = held["root"] if isinstance(held["root"], list) else [held["root"]]
+    roots = [str((base / r).resolve()) if not Path(r).is_absolute() else r for r in written]
+    return Side(roots[0] if len(roots) == 1 else roots, held["start"], held.get("inputs", {}), held.get("given", {}), held.get("outputs", []))
 
 
 def ready(s: Side) -> Side:
     from . import analyse
     from .walk import find
     if s.result is None:
-        s.result = analyse([s.root], s.root, keep=True)
+        roots = s.root if isinstance(s.root, list) else [s.root]
+        s.result = analyse(roots, roots[0] if len(roots) == 1 else None, keep=True)
         s.starts = find(s.result, s.start)
     return s
 
 
 def outputs_of(s: Side, run) -> list:
-    """The outputs of the functionality in a run, in order: (what is called, its values, the output)."""
+    """The outputs of the functionality in a run, in order: (what is called, its values, the output); with `return`
+    among the map's outputs, what the start gave back, last."""
     out = []
     for o in run.outputs:
         if not s.outputs or o.callee in s.outputs or any(o.where.endswith(w) or w.endswith(o.where)
                                                          for w in s.outputs):
             out.append((o.callee, [plain(a) for a in o.args], o))
+    if RETURN_OUTPUT in s.outputs and run.returned is not None:
+        where = run.returned.why.where if isinstance(run.returned, V) else s.start
+        out.append((RETURN_OUTPUT, [plain(run.returned)],
+                    Output(where or s.start, RETURN_OUTPUT, [run.returned], [], bool(run.partial))))
     return out
 
 
@@ -146,7 +160,10 @@ def compare(path_one: str, path_two: str, shared: dict, sweep: tuple | None = No
     rows = []
     for situation in samples:
         run_one, run_two = run_side(one, situation), run_side(two, situation)
-        found = differences(outputs_of(one, run_one), outputs_of(two, run_two))
+        got_one, got_two = outputs_of(one, run_one), outputs_of(two, run_two)
+        found = differences(got_one, got_two) if got_one or got_two else [(NOTHING, None, None)]
+        if run_one.partial or run_two.partial:
+            found = found + [(PARTIAL, None, None)]
         rows.append((situation, found, run_one, run_two))
     bands = []
     for situation, found, run_one, run_two in rows:
@@ -236,6 +253,9 @@ def text_report(done, changed: dict | None = None) -> str:
         run_one, run_two = band.runs
         for kind, a, b in band.found:
             lines.append(f"    {kind}: {a.callee if a else ''} {b.callee if b else ''}")
+            if kind == PARTIAL:
+                lines += [f"      first, partial at {where}: {why}" for where, why in run_one.partial[:4]]
+                lines += [f"      second, partial at {where}: {why}" for where, why in run_two.partial[:4]]
             for row in why_side(run_one, a):
                 lines.append(f"      first:  {row}")
             for row in why_side(run_two, b):

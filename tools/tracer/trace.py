@@ -207,6 +207,7 @@ def evaluating(args, roots, say) -> int:
         units = situations.reach(result, [d for d, _ in steps])
         pages.append((views.GRAPH, "The graph of what it runs", views.graph(result, units)))
         return finish(args, text, pages, result, units)
+    units = None                                 # the graph's part: the functionality's slice, the root's reach, or all
     if args.broken:
         text = json.dumps(links.data(result), indent=1) if args.json else links.text_report(result)
         pages.append((views.WORDS, "Links that lead nowhere", text))
@@ -215,6 +216,7 @@ def evaluating(args, roots, say) -> int:
         text = json.dumps(feature.data_of(result, wanted), indent=1, default=str) if args.json else \
             feature.text_report(result, wanted)
         pages.append((views.WORDS, "The functionality", text))
+        units = feature.units_of(result, wanted)
     else:
         roots_found = find(result, args.cost)
         if not roots_found:
@@ -223,8 +225,9 @@ def evaluating(args, roots, say) -> int:
         text = json.dumps(cost.data(result, roots_found), indent=1) if args.json else \
             cost.text_report(result, roots_found)
         pages.append((views.WORDS, "The cost", text))
-    pages.append((views.GRAPH, "The graph", views.graph(result)))
-    return finish(args, text, pages, result, None)
+        units = situations.reach(result, roots_found)
+    pages.append((views.GRAPH, "The graph", views.graph(result, units)))
+    return finish(args, text, pages, result, units)
 
 
 def finish(args, text: str, pages: list, result=None, units=None) -> int:

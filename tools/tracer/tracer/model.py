@@ -26,6 +26,7 @@ class Definition:
     constructor: bool = False
     getter: bool = False
     setter: bool = False
+    elsewhere: bool = False          # declared here, defined (given its value) by code not read
     body: bool = False               # written with a body (a declaration alone has none)
     adopted: bool = False            # written out of its scope and given to it
     named: bool = False              # a file its own words name (known by that name everywhere)

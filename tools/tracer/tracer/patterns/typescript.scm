@@ -30,6 +30,10 @@
 ; A name taken out of an object or a list, wherever the pattern is written: each is a variable; in a declaration or a
 ; parameter, the property of its name (of that key) of what is taken apart.
 (variable_declarator name: (identifier) @name type: (_)? @type value: (_)? @value) @variable
+; A variable declared with `declare` (TypeScript handbook: Declaration Reference, ambient declarations): defined by
+; code not read, its value an input.
+(ambient_declaration (lexical_declaration (variable_declarator) @elsewhere))
+(ambient_declaration (variable_declaration (variable_declarator) @elsewhere))
 (object_pattern (shorthand_property_identifier_pattern) @name @variable)
 (object_pattern (pair_pattern value: (identifier) @name @variable))
 (object_pattern (object_assignment_pattern left: (shorthand_property_identifier_pattern) @name @variable))

@@ -9,6 +9,7 @@ FUNCTION = "function"            # a function, a method, a lambda: +name, +type 
 CONSTRUCTOR = "constructor"      # a function that makes its class's objects
 GETTER = "getter"                # a function a read of its name runs
 SETTER = "setter"                # a function a write of its name runs
+ELSEWHERE = "elsewhere"          # a variable declared here whose value code not read gives (defined elsewhere)
 CLASS = "class"                  # a class, an interface, a struct: +name
 NAMESPACE = "namespace"          # a named scope holding definitions: +name
 VARIABLE = "variable"            # a variable, a constant, a field, a signal: +name, +type, +value, or +object (+key):
@@ -53,7 +54,7 @@ EXIT = "exit"                    # a statement leaving the function (a return, a
 LEAVE = "leave"                  # a statement leaving the loop around it (a break)
 AGAIN = "again"                  # a statement going on with the next turn of the loop around it (a continue)
 OPERATION = "operation"          # an operator applied to values: +left (none: one operand), +op, +right
-ANCHORS = (FUNCTION, CONSTRUCTOR, GETTER, SETTER, CLASS, NAMESPACE, VARIABLE, FIELD, PARAM, BASE, MODULE_NAME, NAMED,
+ANCHORS = (FUNCTION, CONSTRUCTOR, GETTER, SETTER, ELSEWHERE, CLASS, NAMESPACE, VARIABLE, FIELD, PARAM, BASE, MODULE_NAME, NAMED,
            CAST, PASS, ASSIGN, CALL, NEW, MEMBER, CHAIN, STEP, INDEX, RETURN, SELF, SUPER, IDENT, LITERAL, PAIR, IMPORT,
            INCLUDE, EXPORT, EXPORT_DEFAULT, SHAPE, OPERATE, OPEN, EFFECT, NODE, BRANCH, CHOOSE, CASE, EXIT, OPERATION,
            LEAVE, AGAIN)
