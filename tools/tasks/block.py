@@ -2,15 +2,21 @@
 # Its state is one file, dist/block/state.json, moved only by `enter` through MOVES: closed -> open (the code written, nothing run) ->
 # verify (the one verification and the close's operations run) -> open again (a failure fixed in the code) or closed.
 # `refusal` is the one answer every gatekeeper asks (the orchestrator's `run`, build.sh, deliver.sh, km24.py).
-# `close` appends the block's times to the process history (FR-050). Standard library only.
+# `close` refuses while the block's work file lacks the method's records (block_method.py), then appends the block's times to the
+# process history (FR-050). Run as a script by the build scripts, so it finds its package itself.
 from __future__ import annotations
 
 import argparse
 import datetime
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
+
+if str(Path(__file__).resolve().parents[1]) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tasks import block_method, proc  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 STATE = Path("dist/block/state.json")
@@ -57,16 +63,26 @@ def enter(target: str, name: str | None = None, root: Path = ROOT) -> dict:
     if target == OPEN and doc["state"] == CLOSED:
         if not name:
             raise BlockError("a block is opened with its name")
-        doc = {"state": OPEN, "name": name, "opened": _now(), "verified": None}
+        doc = {"state": OPEN, "name": name, "opened": _now(), "verified": None, "head": _head(root)}
     elif target == VERIFY:
         doc.update(state=VERIFY, verified=_now())
     else:
         doc["state"] = target
     if target == CLOSED:
+        missing = block_method.gaps(Path(root), doc)
+        if missing:
+            raise BlockError("the work file lacks the method's records:\n  " + "\n  ".join(missing))
         _append_times(doc, root)
         doc = {"state": CLOSED, "name": None, "opened": None, "verified": None, "last": doc["name"]}
     _save(doc, root)
     return doc
+
+
+def _head(root: Path) -> str | None:
+    """The commit the block opens on (what its close measures the changed code against); None outside a repository."""
+    done = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True,
+                          timeout=block_method.GIT_TIMEOUT_S, creationflags=proc.NO_WINDOW)
+    return done.stdout.strip() if done.returncode == 0 else None
 
 
 def _minutes(a: str | None, b: str | None) -> str:
