@@ -15,3 +15,9 @@ __pycache__/
 *.translation
 # Where this machine's tools are (tools/tasks/locations.py): the machine's own, never committed
 tools/tasks/local.json
+# The feature tracer's runtime: its saved analyses, the TypeScript compiler it installs (npm ci in tools/tracer/tracer/tools),
+# what its bench writes
+tools/tracer/tracer/.index/
+tools/tracer/tracer/tools/node_modules/
+tools/tracer/bench/out/
+tools/tracer/bench/baseline/*.oracle.jsonl

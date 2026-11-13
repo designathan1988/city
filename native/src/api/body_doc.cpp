@@ -65,11 +65,11 @@ public:
 		const std::string s = text(v);
 		for (const Named &n : table)
 			if (s == n.name) return n.value;
-		errors_.push_back(String("documento: ") + what + " desconhecido: " + s.c_str());
+		errors_.push_back(String("document: unknown ") + what + ": " + s.c_str());
 		return table[0].value;
 	}
 	Paint paint(const Dictionary &m) {
-		return Paint{ int8_t(named(DOC_FINISHES, m.get("finish", "plaster"), "acabamento")), uint32_t(int64_t(m.get("colour", 0))) };
+		return Paint{ int8_t(named(DOC_FINISHES, m.get("finish", "plaster"), "finish")), uint32_t(int64_t(m.get("colour", 0))) };
 	}
 	void building(const Dictionary &doc);
 
@@ -98,13 +98,13 @@ bool bay_key_of(const std::string &key, int &side, int &bay) {
 
 void Reader::storey(Volume &v, int k, const Dictionary &row) {
 	const Dictionary facade = row.get("facade", Dictionary());
-	v.fill.push_back(uint8_t(named(DOC_BAYS, facade.get("fill", "wall"), "componente")));
+	v.fill.push_back(uint8_t(named(DOC_BAYS, facade.get("fill", "wall"), "bay")));
 	const Dictionary sides = facade.get("sides", Dictionary());
-	for (const Variant &key : sides.keys()) v.side_fill[side_key(k, int(String(key).to_int()))] = uint8_t(named(DOC_BAYS, sides[key], "componente"));
+	for (const Variant &key : sides.keys()) v.side_fill[side_key(k, int(String(key).to_int()))] = uint8_t(named(DOC_BAYS, sides[key], "bay"));
 	const Dictionary bays = facade.get("bays", Dictionary());
 	for (const Variant &key : bays.keys()) {
 		int side = 0, bay = 0;
-		if (bay_key_of(text(key), side, bay)) v.bays[bay_key(k, side, bay)] = uint8_t(named(DOC_BAYS, bays[key], "componente"));
+		if (bay_key_of(text(key), side, bay)) v.bays[bay_key(k, side, bay)] = uint8_t(named(DOC_BAYS, bays[key], "bay"));
 	}
 	const Dictionary paints = row.get("materials", Dictionary());
 	for (const Variant &key : paints.keys()) v.storey_paint[side_key(k, int(String(key).to_int()))] = b_.add_paint(paint(paints[key]));
@@ -161,7 +161,7 @@ void Reader::block(const Dictionary &d) {
 	v.w = float(d.get("w", 0));
 	v.d = float(d.get("d", 0));
 	v.base = int(d.get("base", 0));
-	v.roof = Roof(named(DOC_ROOFS, d.get("roof", "flat"), "telhado"));
+	v.roof = Roof(named(DOC_ROOFS, d.get("roof", "flat"), "roof"));
 	v.pitch = float(d.get("pitch", -1));
 	v.keep = true;
 	const Array storeys = d.get("storeys", Array());
@@ -172,20 +172,20 @@ void Reader::block(const Dictionary &d) {
 		v.outline.push_back(Point2{ float(point.get("x", 0)), float(point.get("y", 0)) });
 	}
 	const Dictionary dress = d.get("dress", Dictionary());
-	v.lines = Lines(named(DOC_LINES, dress.get("lines", "none"), "linha"));
-	v.crown = Crown(named(DOC_CROWNS, dress.get("crown", "none"), "coroa"));
+	v.lines = Lines(named(DOC_LINES, dress.get("lines", "none"), "lines"));
+	v.crown = Crown(named(DOC_CROWNS, dress.get("crown", "none"), "crown"));
 	const Dictionary paints = d.get("materials", Dictionary());
 	if (paints.has("wall")) v.wall = b_.add_paint(paint(paints["wall"]));
 	if (paints.has("roof")) v.roof_paint = b_.add_paint(paint(paints["roof"]));
 	faces(v, d.get("facadeGeometry", Dictionary()));
 	reliefs(v, d.get("reliefs", Array()));
 	b_.volumes.push_back(std::move(v));
-	if (d.has("facadePattern")) op_set_pattern(b_, int(b_.volumes.size()) - 1, -1, -1, named(DOC_PATTERNS, d["facadePattern"], "fachada"));
+	if (d.has("facadePattern")) op_set_pattern(b_, int(b_.volumes.size()) - 1, -1, -1, named(DOC_PATTERNS, d["facadePattern"], "facade pattern"));
 }
 
 void Reader::element(const Dictionary &d) {
 	LotElement e;
-	e.kind = Element(named(DOC_ELEMENTS, d.get("kind", ""), "peça"));
+	e.kind = Element(named(DOC_ELEMENTS, d.get("kind", ""), "element"));
 	e.x = float(d.get("x", 0));
 	e.y = float(d.get("y", 0));
 	e.w = float(d.get("w", 1));
@@ -207,7 +207,7 @@ Kind Reader::kind_of(const std::string &function) const {
 }
 
 void Reader::building(const Dictionary &doc) {
-	b_.use = Use(named(DOC_USES, doc.get("use", "residential"), "uso"));
+	b_.use = Use(named(DOC_USES, doc.get("use", "residential"), "use"));
 	b_.kind = b_.plan.kind = kind_of(text(doc.get("function", "")));
 	b_.ground = b_.kind == KIND_HOUSE ? GROUND_HOUSE : b_.kind == KIND_SHOP ? GROUND_SHOP : b_.kind == KIND_WORKS ? GROUND_WORKS : GROUND_LOBBY;
 	b_.palette = int(doc.get("palette", 0));
@@ -232,7 +232,7 @@ bool body_from_doc(const Dictionary &doc, const Data &data, Body &out, float &fr
 	const int before = int(errors.size());
 	Reader reader(data, out, errors);
 	reader.building(doc);
-	function = doc.has("function") ? reader.named(FUNCTION_NAMES, doc["function"], "função") : int(FN_NONE);
+	function = doc.has("function") ? reader.named(FUNCTION_NAMES, doc["function"], "function") : int(FN_NONE);
 	if (int(errors.size()) != before || out.volumes.empty()) return false;
 	const V2 front = fit_plan(out);
 	front_x = front.x;

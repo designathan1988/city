@@ -27,9 +27,9 @@ func _ready() -> void:
 	await _frames(BOOT_FRAMES)
 	var hud: Node = play.find_children("*", "RoadcraftHud", true, false)[0]
 	var world: CityWorld = play.find_children("*", "CityWorld", true, false)[0]
-	await _press(hud.top_bar._sky_buttons[MOON_BUTTON], world, "modo_noite")
-	await _press(hud.top_bar._sky_buttons[SUN_BUTTON], world, "modo_dia")
-	await _press(hud.top_bar._sky_buttons[CLOCK_BUTTON], world, "modo_relogio")
+	await _press(hud.top_bar._sky_buttons[MOON_BUTTON], world, "mode_night")
+	await _press(hud.top_bar._sky_buttons[SUN_BUTTON], world, "mode_day")
+	await _press(hud.top_bar._sky_buttons[CLOCK_BUTTON], world, "mode_clock")
 	hud.top_bar._speed_buttons[FASTEST].pressed.emit()
 	var hour: float = CityStore.snapshot.hour
 	for i in SHOTS:
@@ -37,8 +37,8 @@ func _ready() -> void:
 		while absf(float(CityStore.snapshot.hour) - next) > HOURS_APART * 0.1:
 			await get_tree().process_frame
 		hour = next
-		await _shot("relogio_%d" % i, world)
-	print("capture_clock: pronto")
+		await _shot("clock_%d" % i, world)
+	print("capture_clock: done")
 	get_tree().quit(CaptureWait.exit_code(0))
 
 
@@ -51,7 +51,7 @@ func _press(b: Button, world: CityWorld, name: String) -> void:
 func _shot(name: String, world: CityWorld) -> void:
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(out_dir.path_join(name + ".png"))
-	print(name, ": hora ", CityStore.snapshot.hour, " modo ", world.sky_mode, " sol ", world.sun.light_energy, " noite ", world.daylight.night)
+	print(name, ": hour ", CityStore.snapshot.hour, " mode ", world.sky_mode, " sun ", world.sun.light_energy, " night ", world.daylight.night)
 
 
 func _frames(n: int) -> void:

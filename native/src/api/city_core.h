@@ -1,4 +1,4 @@
-// CityCore: the GDExtension facade. Only project/game/store/city_store.gd talks to it (gate UM_DONO_DO_CORE).
+// CityCore: the GDExtension facade. Only project/game/store/city_store.gd talks to it (gate ONE_CORE_OWNER).
 // It owns the CityState (single source of truth), the simulation thread and the render world.
 #pragma once
 

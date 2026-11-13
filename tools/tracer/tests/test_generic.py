@@ -2,7 +2,8 @@
 
 - Every text its Python writes that reads as a name (letters, digits, `_`, `.`) is one of its own words: a constant
   of `vocab.py`, or one of the few words of its command and report listed here, each with what it is.
-- The only modules it imports are Python's own, the grammar library and its own.
+- The only modules it imports are Python's own, the grammar library, the SMT solver (z3), the C++ compiler's library
+  (clang: what a C++ call runs, `compilers.py`) and its own.
 - The words its pattern files compare a node's text with are words of the language the file is for, listed here
   with where the language defines each. (A word written as a token of a pattern, `"as"`, is checked by the grammar
   itself: a pattern naming a token the grammar does not have does not compile.)
@@ -26,15 +27,23 @@ OWN = {
     "utf-8", "replace",                                  # how a file's bytes are read as text
     "git", "ls-files",                                   # the command asked which files a project holds (read.py)
     "getter", "setter",                                  # the two flags of a definition set by their anchors
-    "start", "forward", "backward", "depth", "label", "at", "again", "kind", "how", "written", "outside",   # the
-    #                                                      fields of a trace given as data (report.py, trace.py)
+    "start", "forward", "backward", "depth", "label", "at", "again", "kind", "how", "written", "outside", "owner",
+    "state",                                             # the fields of a trace given as data (report.py, trace.py)
     "store_true", "append",                              # argparse's own actions
     "__main__",                                          # Python's name for the script being run
+    "true", "false",                                     # how a report shows the two truths (decide.py)
+    "NAME",                                              # the name of the value an option takes (trace.py)
+    "root", "start", "inputs", "given", "outputs",       # the keys of a comparison's map file (compare.py)
+    "digraph",                                           # the word a graph starts with in the DOT format (views.py)
+    "STEPS", "FILE", "POINTS", "ROOT", "MAP", "OLD_ROOT",  # the names of the values options take (trace.py)
+    "eval", "equal",                                     # Python's own: ast's mode, difflib's tag (compare.py)
+    "win", "darwin",                                     # Python's names of the systems (sys.platform; limits.py)
 }
 # Where each language's file names a language, a grammar package or a pattern file (languages.py), and the keys of
 # the files each language itself reads to resolve names, each from the language's own reference (configs.py:
 # tsconfig/jsconfig, project.godot, compile_commands.json). Neither names a program, a library or a platform.
-REGISTRY = {"languages.py", "configs.py"}
+REGISTRY = {"languages.py", "configs.py", "views.py"}
+# (views.py: the names of the fields its page reads, a format of the tracer's own, beside the page's HTML and script)
 
 # The words a pattern file compares a node's text with, each a word of its language.
 LANGUAGE_WORDS = {
@@ -74,7 +83,8 @@ class Generic(unittest.TestCase):
         self.assertEqual([], strangers)
 
     def test_it_imports_python_the_grammar_library_and_itself(self):
-        allowed = set(sys.stdlib_module_names) | {"tree_sitter", "tracer"}
+        allowed = set(sys.stdlib_module_names) | {"tree_sitter", "tracer", "z3", "clang"}   # z3: the SMT solver;
+        #                                                                       clang: the C++ compiler (`compilers.py`)
         strangers = []
         for path in CODE:
             for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):

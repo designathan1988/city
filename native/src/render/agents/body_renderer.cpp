@@ -32,7 +32,7 @@ bool BodyRenderer::init(const RenderContext &ctx, const PeopleAsset &asset, Pack
 	scenario_ = ctx.scenario;
 	material_ = ctx.material_objects.get("people_body", Variant());
 	if (material_.is_null()) {
-		errors.push_back("material ausente: people_body");
+		errors.push_back("missing material: people_body");
 		return false;
 	}
 	bones_ = int(asset.bone_part.size());

@@ -22,7 +22,7 @@ const ON_THE_RUN := ["banco", "lixeira", "hidrante", "luminaria", "poste", "sol-
 ## The picture the game shows (game/play.gd): without it a wire of half a pixel breaks up on the photo.
 static func picture(world: CityWorld, viewport: Viewport) -> void:
 	Settings.apply(world, viewport)
-	print("qualidade: ", Settings.preset, " msaa ", viewport.msaa_3d, " escala ", viewport.scaling_3d_scale)
+	print("quality: ", Settings.preset, " msaa ", viewport.msaa_3d, " scale ", viewport.scaling_3d_scale)
 
 
 static func run(cap: Node, a: Vector3, dir: Vector3) -> void:

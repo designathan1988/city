@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .sources import ends
-from .vocab import BY_NAME, BY_TEXT, DEEP, EVERY, HANDED, INLINE, NEAR, NONE, RUNNING
+from .vocab import BY_NAME, BY_TEXT, DEEP, EVERY, FUNCTION, HANDED, INLINE, NEAR, NONE, RUNNING
 
 
 @dataclass
@@ -41,24 +41,28 @@ def find(result, start: str) -> list:
     return p.bodies(found)
 
 
-def walk(starts: list, links: dict, end, depth: int | None, after, leaf=lambda link: False) -> list:
-    """The steps of a walk from the starts along the links `after` keeps (given the link that led to a
-    definition and the links out of it), to that depth (none: to the end); a link `leaf` says is shown, its end not
-    gone into."""
+def walk(starts: list, links: dict, end, depth: int | None, after, leaf=lambda link: False,
+         context=lambda before, link: None, key=lambda ctx: ctx) -> list:
+    """The steps of a walk from the starts along the links `after` keeps (given the link that led to a definition,
+    the links out of it and the context it was reached in), to that depth (none: to the end); a link `leaf` says is
+    shown, its end not gone into. The context is carried along the way (`context(the one before, the link)`), and a
+    definition is gone into once for each `key` of it (what `after` keeps depends on that), so a second way in with
+    another context is followed too."""
     out, seen = [], set()
-    todo = [(0, None, start) for start in reversed(starts)]
+    todo = [(0, None, start, None) for start in reversed(starts)]
     while todo:
-        level, link, at = todo.pop()
+        level, link, at, ctx = todo.pop()
         if link is not None and leaf(link):
             out.append(Step(level, link, at, False, True))
             continue
-        again = at in seen
+        visit = (at, key(ctx))
+        again = visit in seen
         out.append(Step(level, link, at, again))
         if again or (depth is not None and level >= depth):
             continue
-        seen.add(at)
-        for one in reversed(after(link, links.get(at, ()))):
-            todo.append((level + 1, one, end(one)))
+        seen.add(visit)
+        for one in reversed(after(link, links.get(at, ()), ctx)):
+            todo.append((level + 1, one, end(one), context(ctx, one)))
     return out
 
 
@@ -97,15 +101,28 @@ def handed_away(result, handed: str):
     return away
 
 
+def written_in(result, d: int) -> list:
+    """The functions a function is written inside (innermost first)."""
+    p = result.program
+    return [c for c in p.chain(d)[1:] if p.defs[c].kind == FUNCTION]
+
+
 def forward(result, starts: list, depth: int | None = None, keep=lambda link: True, guesses: str = NEAR,
             handed: str = INLINE) -> list:
+    """Forward, each step in the context of the way it was reached: the functions the calls on the way gave (a
+    function given by one caller is not run for another that gave something else, at any depth), the keys and texts
+    the call gave, and the functions passed through (a function written inside another is reached only through it)."""
     name = lambda d: result.program.defs[d].name                                         # noqa: E731
     near = guessed(guesses)
+    reached, todo = set(starts), list(starts)    # what the starts reach at all: a function written inside one
+    while todo:                                  # of them is reached only where that one is
+        at = todo.pop()
+        for one in result.out.get(at, ()):
+            if one.dst not in reached:
+                reached.add(one.dst)
+                todo.append(one.dst)
 
-    def after(link, found) -> list:
-        """Entered with names given: by text, only the functions of those names, where any is. Entered with
-        functions given: not the ones only its other callers give it. Entered with texts written that are keys of
-        an object it reads by a key: only what those keys' entries hold."""
+    def after(link, found, ctx) -> list:
         found = [one for one in found if keep(one) and near(link, one)]
         if link is None:
             return found
@@ -117,29 +134,49 @@ def forward(result, starts: list, depth: int | None = None, keep=lambda link: Tr
             keyed = [(one, keys_of(result, link.dst, one, name)) for one in found]
             if any(keys & given for _, keys in keyed if keys):
                 found = [one for one, keys in keyed if keys is None or keys & given]
-        others = handed_to(result, link.dst) - link.fns if link.fns else ()
-        return [one for one in found if one.dst not in others]
-    return walk(starts, result.out, lambda link: link.dst, depth, after, handed_away(result, handed))
+        fns, path, _ = ctx
+        others = handed_to(result, link.dst) - fns
+        found = [one for one in found if one.dst not in others]
+        return [one for one in found if all(c in reached for c in written_in(result, one.dst))]
+
+    def context(before, link):
+        """What the next step is in: the functions the call gives (those it was given itself, only where they are
+        the ones its way gave), and the functions passed through."""
+        fns, path, _ = before if before is not None else (None, frozenset(starts), None)
+        received = handed_to(result, link.src)
+        gives = frozenset(g for g in link.fns if fns is None or g not in received or g in fns)
+        words = link.words | link.texts if (result.tables or {}).get(link.dst) else frozenset()
+        return gives, path | {link.src, link.dst}, words
+
+    def key(ctx):
+        return (ctx[0], ctx[2]) if ctx is not None else None
+    return walk(starts, result.out, lambda link: link.dst, depth, after, handed_away(result, handed), context, key)
 
 
 def backward(result, starts: list, depth: int | None = None, keep=lambda link: True, guesses: str = NEAR) -> list:
+    """Backward, each step in the context of the way it was reached: a function received as an argument is followed
+    back only to the callers that gave it, at any depth; by text, not to the callers that gave the name of another
+    function; from an entry read by a key, to the callers that wrote that key."""
     name = lambda d: result.program.defs[d].name                                         # noqa: E731
     near = guessed(guesses)
 
-    def after(link, found) -> list:
-        """Reached from a function that is given it: its callers that gave it, or gave no function. Reached by text:
-        not its callers that gave the name of another function it runs by text. Reached from what an entry of an
-        object it reads by a key holds: its callers that wrote one of those keys, or wrote no text."""
+    def after(link, found, ctx) -> list:
         found = [one for one in found if keep(one) and near(link, one)]
         if link is None:
             return found
         keys = keys_of(result, link.src, link, name)
         if keys:
             found = [one for one in found if (one.words | one.texts) & keys or not (one.words | one.texts)]
-        if link.dst in handed_to(result, link.src):          # a function its callers give it: the ones that gave it
-            found = [one for one in found if link.dst in one.fns or not one.fns]
+        carried = ctx or frozenset()
+        if carried:                              # functions it was given: only the callers that gave them
+            found = [one for one in found if carried <= one.fns]
         if link.how != BY_TEXT:
             return found
         others = {name(one.dst) for one in result.out.get(link.src, ()) if one.how == BY_TEXT} - {name(link.dst)}
         return [one for one in found if name(link.dst) in one.texts or not one.texts & others]
-    return walk(starts, result.into, lambda link: link.src, depth, after)
+
+    def context(before, link):
+        """The functions carried back: the one reached, and the ones carried, where the caller was given them."""
+        received = handed_to(result, link.src)
+        return frozenset(g for g in (before or frozenset()) | {link.dst} if g in received)
+    return walk(starts, result.into, lambda link: link.src, depth, after, context=context)

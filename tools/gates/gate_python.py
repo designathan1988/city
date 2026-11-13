@@ -1,6 +1,7 @@
 """Every import in the tools' Python resolves: to the standard library, an installed package, or a module file on the
 sys.path its program has. A file's sys.path is its own folder when it runs as a script (a __main__ block, or nothing
-imports it), the folders it inserts into sys.path, and the sys.path of every program that imports it."""
+imports it), the folders it inserts into sys.path, the folders the modules it imports insert (sys.path is one list for the
+process), and the sys.path of every program that imports it."""
 import ast
 import os
 import site
@@ -164,6 +165,7 @@ def check_imports(ctx, err):
                     imported[local] = source_prog.env[name]
             prog.bind(imported)
     importers = {p: set() for p in progs}
+    imported = {p: set() for p in progs}
 
     def own(prog):
         return prog.inserted | {prog.folder}
@@ -173,12 +175,15 @@ def check_imports(ctx, err):
             target = _target(prog, imp, own(prog))
             if target in progs:
                 importers[target].add(key)
+                imported[key].add(target)
+    # sys.path is one list for the whole process: a module's own insertions run when it is imported, so they reach the module
+    # that imports it (and that one's importers) as well as everything imported after them
     roots = {k: p.inserted | ({p.folder} if p.main or not importers[k] else set()) for k, p in progs.items()}
     changed = True
     while changed:
         changed = False
         for k in progs:
-            merged = roots[k].union(*(roots[g] for g in importers[k])) if importers[k] else roots[k]
+            merged = roots[k].union(*(roots[g] for g in importers[k]), *(progs[t].inserted for t in imported[k]))
             if merged != roots[k]:
                 roots[k], changed = merged, True
     for k, prog in progs.items():

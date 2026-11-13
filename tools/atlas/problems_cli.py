@@ -32,7 +32,7 @@ def add_parser(commands, common):
     drop = actions.add_parser("drop", parents=[common], help="dropped, with why it is no problem")
     drop.add_argument("id")
     drop.add_argument("--why", required=True)
-    actions.add_parser("render", parents=[common], help="write the generated view log/problems.md")
+    actions.add_parser("render", parents=[common], help="write the generated view doc/problems.md")
     gates = actions.add_parser("import-gates", parents=[common], help="the gates' standing findings, one problem per rule and file")
     gates.add_argument("findings", help="the JSON python tools/gates/run_gates.py --json wrote")
     actions.add_parser("stats", parents=[common], help="counts by area, status and origin; the median minutes to a cause")

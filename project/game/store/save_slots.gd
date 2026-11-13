@@ -1,6 +1,6 @@
 ## Where cities are saved (one save per city, so saving a city never overwrites
-## another): the city on screen is written to a slot of its own, cidade-<seed> (cidade-<seed>-2... when another city
-## holds that name); "Save map" copies it to mapa-<seed>, a copy that opens as a new city; the index names the
+## another): the city on screen is written to a slot of its own, city-<seed> (city-<seed>-2... when another city
+## holds that name); "Save map" copies it to map-<seed>, a copy that opens as a new city; the index names the
 ## player's last city (what "Load the last game" opens). Runs driven by tests (GameFlow.tests_drive) keep their files
 ## in a folder of their own process, so they never touch the player's saves nor each other's.
 class_name SaveSlots
@@ -8,19 +8,19 @@ extends RefCounted
 
 const SAVES_DIR := "user://saves"
 const TEST_SAVES_DIR := "user://saves_tests"
-const EXT := "cidade"
-const CITY_SLOT := "cidade-%d"
-const CITY_SLOT_AGAIN := "cidade-%d-%d"
+const EXT := "city"
+const CITY_SLOT := "city-%d"
+const CITY_SLOT_AGAIN := "city-%d-%d"
 const FIRST_AGAIN := 2
-const EXPORT_PREFIX := "mapa-"
-const INDEX_FILE := "cidades.cfg"
+const EXPORT_PREFIX := "map-"
+const INDEX_FILE := "cities.cfg"
 const INDEX_SECTION := "index"
 const INDEX_LAST := "last"
-const QUARANTINE_DIR := "quarentena"
+const QUARANTINE_DIR := "quarantine"
 
 
 ## Runs driven by tests save in a folder of their own process: the suite runs its tests in parallel, each its own Godot, and in
-## one shared folder a test read or set aside another's city, index or quarantine (log/pendencias.md, save_undo_test).
+## one shared folder a test read or set aside another's city, index or quarantine (save_undo_test).
 static func dir() -> String:
 	return "%s/%d" % [TEST_SAVES_DIR, OS.get_process_id()] if GameFlow.tests_drive else SAVES_DIR
 
@@ -47,7 +47,7 @@ static func export_slot(seed: int) -> String:
 	return EXPORT_PREFIX + str(seed)
 
 
-## A city's own slot (saved again in place); a map copy (mapa-*) opens as a new city, saved to a slot of its own.
+## A city's own slot (saved again in place); a map copy (map-*) opens as a new city, saved to a slot of its own.
 static func is_city_slot(slot: String) -> bool:
 	return not slot.begins_with(EXPORT_PREFIX)
 

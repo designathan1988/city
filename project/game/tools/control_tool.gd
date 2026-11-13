@@ -1,4 +1,4 @@
-## Control (tab Controle): a click on a junction takes it to its next control, Shift to the one before
+## Control (Control tab): a click on a junction takes it to its next control, Shift to the one before
 ## (Roadcraft main.ts cycleNodeControl). The marks of every junction are the HUD's (ui/junction_marks.gd).
 extends ToolBase
 

@@ -34,6 +34,15 @@ GODOT_FILES = ("project.godot",)
 GODOT_GLOBALS = "autoload"
 GODOT_ENABLED = "*"
 GODOT_SCHEME = "res"
+SCENES = "*.tscn"                    # a scene: its nodes, the script each runs, the scenes it places
+SCENE_RESOURCE = re.compile(r'^\[ext_resource\b(.*)\]\s*$')
+SCENE_NODE = re.compile(r'^\[node\b(.*)\]\s*$')
+SCENE_SCRIPT = re.compile(r'^script\s*=\s*ExtResource\(\s*"?([^")]+)"?\s*\)')
+SCENE_UNIQUE = re.compile(r'^unique_name_in_owner\s*=\s*true')
+SCENE_ATTR = re.compile(r'(\w+)=("[^"]*"|ExtResource\(\s*"?[^")]*"?\s*\)|\S+)')
+SCENE_REF = re.compile(r'ExtResource\(\s*"?([^")]+)"?\s*\)')
+SCENE_KEYS = ("type", "path", "id", "name", "parent", "instance")
+SCRIPT_TYPE, ROOT = "Script", "."
 # C++
 DATABASE_FILES = ("compile_commands.json", "build/compile_commands.json")
 DATABASE_DIRECTORY, DATABASE_FILE, DATABASE_COMMAND, DATABASE_ARGUMENTS = "directory", "file", "command", "arguments"
@@ -57,6 +66,8 @@ class Project:
     schemes: dict = field(default_factory=dict)     # scheme -> the folder it stands for
     includes: dict = field(default_factory=dict)    # a unit's file -> its include folders
     every_include: list = field(default_factory=list)   # the include folders of every unit (for a header)
+    nodes: dict = field(default_factory=dict)       # a script -> {a node's path from the node running it: its script}
+    unique: dict = field(default_factory=dict)      # a script -> {a node's unique name in its scene: its script}
     problem: str = ""                               # why the file could not be read
 
     def places(self, written: str) -> list:
@@ -154,7 +165,72 @@ def read_godot(path: Path) -> Project:
             scheme, _, rest = written.partition(SCHEME)
             if rest and scheme in project.schemes:
                 project.globals[entry.group(1)] = (project.schemes[scheme] / rest).resolve()
+    read_scenes(project, path.parent)
     return project
+
+
+def scene(path: Path, folder: Path) -> tuple:
+    """A scene's nodes: [(path from its root, the script it runs or the scene it places, unique)]."""
+    resources, nodes, current = {}, [], None
+    typ, path_k, ident, name_k, parent_k, instance_k = SCENE_KEYS
+    for line in path.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+        head = SCENE_RESOURCE.match(line)
+        if head:
+            attrs = {k: v.strip('"') for k, v in SCENE_ATTR.findall(head.group(1))}
+            if attrs.get(path_k, "").partition(SCHEME)[2]:
+                resources[attrs.get(ident)] = (attrs.get(typ), folder / attrs[path_k].partition(SCHEME)[2])
+            continue
+        head = SCENE_NODE.match(line)
+        if head:
+            attrs = dict(SCENE_ATTR.findall(head.group(1)))
+            name, parent = attrs.get(name_k, '""').strip('"'), attrs.get(parent_k)
+            parent = parent.strip('"') if parent is not None else None
+            where = ROOT if parent is None else name if parent == ROOT else f"{parent}/{name}"
+            placed = SCENE_REF.match(attrs.get(instance_k, ""))
+            current = [where, None, False, resources.get(placed.group(1)) if placed else None]
+            nodes.append(current)
+            continue
+        if current is not None:
+            script = SCENE_SCRIPT.match(line)
+            if script and script.group(1) in resources:
+                current[1] = resources[script.group(1)][1]
+            if SCENE_UNIQUE.match(line):
+                current[2] = True
+    return nodes
+
+
+def read_scenes(project: Project, folder: Path) -> None:
+    """Every scene under the project's folder: for each node running a script, the scripts of the nodes below it by
+    their paths from it, and every node's by its unique name (GDScript reference: `$path`, `%name`)."""
+    scenes = {}
+    for path in sorted(folder.rglob(SCENES)):
+        try:
+            scenes[norm(path)] = scene(path, folder)
+        except OSError:
+            continue
+
+    def script_of(node):
+        if node[1] is not None:
+            return node[1]
+        placed = node[3]
+        if placed is not None and norm(placed[1]) in scenes:
+            root = next((one for one in scenes[norm(placed[1])] if one[0] == ROOT), None)
+            return root[1] if root is not None else None
+        return None
+    for nodes in scenes.values():
+        scripts = {node[0]: script_of(node) for node in nodes}
+        for where, script in scripts.items():
+            if script is None:
+                continue
+            below = project.nodes.setdefault(norm(script), {})
+            prefix = "" if where == ROOT else where + "/"
+            for other, theirs in scripts.items():
+                if theirs is not None and other != where and (where == ROOT or other.startswith(prefix)):
+                    below[other if where == ROOT else other[len(prefix):]] = theirs
+            names = project.unique.setdefault(norm(script), {})
+            for node in nodes:
+                if node[2] and scripts.get(node[0]) is not None:
+                    names[node[0].rsplit("/", 1)[-1]] = scripts[node[0]]
 
 
 def read_database(path: Path) -> Project:

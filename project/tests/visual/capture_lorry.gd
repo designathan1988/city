@@ -1,4 +1,4 @@
-## A lorry at a dock for the visual capture (--only=doca), the way a player gets one: the generated town has no industry, so a
+## A lorry at a dock for the visual capture (--only=dock), the way a player gets one: the generated town has no industry, so a
 ## new street is zoned industrial, grows, and the camera waits over it for a truck to be called, each step bounded.
 class_name CaptureLorry
 extends RefCounted
@@ -48,10 +48,10 @@ static func shots(cap: Node) -> void:
 		var key := "%d %d %d" % [s.lorries_sent, s.lorries_docked, s.lorries_left]
 		if not seen.has(key):
 			seen[key] = true
-			print("lorries (called, docked, left) ", key, " passo ", i)
+			print("lorries (called, docked, left) ", key, " step ", i)
 			if s.has("lorry"):
 				await CaptureSignals.at_hour(cap, cap.DAY) # the wait moved the clock on
-				await cap._shot("36_doca_%d" % seen.size(), s.lorry + Vector3(CAMERA_BACK, CAMERA_UP, CAMERA_BACK), s.lorry)
+				await cap._shot("36_dock_%d" % seen.size(), s.lorry + Vector3(CAMERA_BACK, CAMERA_UP, CAMERA_BACK), s.lorry)
 		if s.lorries_left > 0:
 			return
 	print("capture: no lorry made the cycle in ", WAIT_STEPS * STEP_TICKS, " ticks")

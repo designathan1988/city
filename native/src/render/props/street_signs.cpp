@@ -69,7 +69,7 @@ void stand(MeshBuilder &mb, const SignLook &K, SignAtlas &atlas, const StreetLoo
 
 bool SignLook::load(const Dictionary &t, PackedStringArray &errors) {
 	if (!t.has("signs")) {
-		errors.push_back("streets.json: falta signs");
+		errors.push_back("streets.json: missing signs");
 		return false;
 	}
 	const Dictionary d = t["signs"], plates = d["plates"];
@@ -79,7 +79,7 @@ bool SignLook::load(const Dictionary &t, PackedStringArray &errors) {
 	back = rgba8_to_color(parse_hex_color(String(d["back_color"]).utf8().get_data()));
 	for (int k = 0; k < SIGN_TYPES; k++) {
 		if (!plates.has(SIGN_TYPE_KEYS[k])) {
-			errors.push_back(String("streets.json signs.plates: falta ") + SIGN_TYPE_KEYS[k]);
+			errors.push_back(String("streets.json signs.plates: missing ") + SIGN_TYPE_KEYS[k]);
 			continue;
 		}
 		const Dictionary p = plates[SIGN_TYPE_KEYS[k]];

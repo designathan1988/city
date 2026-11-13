@@ -41,7 +41,7 @@ func _ready() -> void:
 	finish()
 
 
-## Construir > Interior from its cards in the data: the building chosen opens, goes up a floor, and closes.
+## Build > Inside from its cards in the data: the building chosen opens, goes up a floor, and closes.
 func _inside(tool: BuildingTool, id: int) -> void:
 	var cards: Array = DataTables.ui("builder").tabs.interior.sections[0].tools
 	tool.act(cards[0])
@@ -104,7 +104,7 @@ func _one_tool(tool: BuildingTool, id: int, tab: String, spec: Dictionary) -> vo
 		check(r.get("ok", false) or said, "%s/%s answers: %s" % [tab, spec.id, r])
 
 
-## Massa › Ala as the player does it: the card, a press beside the block, a drag and a release make a block; pressing the card again ends it.
+## Mass › Wing as the player does it: the card, a press beside the block, a drag and a release make a block; pressing the card again ends it.
 func _drag_a_wing(tool: BuildingTool, id: int) -> void:
 	var card := {"id": "wing", "do": "mass", "value": 0}
 	var before: int = CityStore.query(&"body_info", [id]).volumes.size()

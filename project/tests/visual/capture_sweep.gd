@@ -1,4 +1,4 @@
-## The sweep of the visual capture (`--only=varredura`): the town seen from many angles, distances and along a line, to judge how
+## The sweep of the visual capture (`--only=sweep`): the town seen from many angles, distances and along a line, to judge how
 ## everything behaves together. Where the camera stands is defined here, never found in the photo: the targets come from the
 ## game (the probe's busiest crossing, the middle and the east rim of the built area, the first school), and each is taken from
 ## fixed azimuths (the orbit), three distances (the zoom) and two tilts; then a pan along a straight line through the town.
@@ -11,13 +11,13 @@ const LOW_DEG := 15.0
 const HIGH_DEG := 80.0
 const ORBIT_DEG := [45.0, 135.0, 225.0, 315.0]
 const ZOOM_YAW_DEG := 45.0
-const SCHOOL := 1 # BuildingFn escola (sim/buildings/building_store.h), as capture.gd's CIVIC_SHOTS
+const SCHOOL := 1 # BuildingFn FN_SCHOOL (sim/buildings/building_store.h), as capture.gd's CIVIC_SHOTS
 ## Per target the height looked at (metres over the ground) and the distances far, mid and near.
 const TARGETS := {
-	"cruzamento": {"look_m": 0.0, "from_m": [160.0, 60.0, 20.0]},
-	"miolo": {"look_m": 30.0, "from_m": [320.0, 140.0, 60.0]},
-	"borda": {"look_m": 2.0, "from_m": [160.0, 60.0, 25.0]},
-	"escola": {"look_m": 4.0, "from_m": [120.0, 45.0, 18.0]},
+	"crossing": {"look_m": 0.0, "from_m": [160.0, 60.0, 20.0]},
+	"middle": {"look_m": 30.0, "from_m": [320.0, 140.0, 60.0]},
+	"rim": {"look_m": 2.0, "from_m": [160.0, 60.0, 25.0]},
+	"school": {"look_m": 4.0, "from_m": [120.0, 45.0, 18.0]},
 }
 const FAR := 0
 const MID := 1
@@ -47,15 +47,15 @@ static func _places() -> Dictionary:
 	var places := {}
 	var cross: Vector3 = CityStore.query(&"traffic_probe", [0]).get("busy_crossing", Vector3.ZERO)
 	if cross != Vector3.ZERO:
-		places["cruzamento"] = cross
+		places["crossing"] = cross
 	var b: Dictionary = CityStore.query(&"city_bounds")
 	var mid: Vector3 = (b.min + b.max) / 2.0
-	places["miolo"] = mid
-	places["borda"] = Vector3(b.max.x, 0.0, mid.z)
+	places["middle"] = mid
+	places["rim"] = Vector3(b.max.x, 0.0, mid.z)
 	for id in CityStore.query(&"list_buildings"):
 		var info: Dictionary = CityStore.query(&"probe_building", [id])
 		if info.get("fn", 0) == SCHOOL:
-			places["escola"] = info.position
+			places["school"] = info.position
 			break
 	return places
 

@@ -20,7 +20,7 @@ bool RoadRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	Dictionary t = ctx.table("streets", errors);
 	if (!errors.is_empty()) return false;
 	if (!ctx.catalog) {
-		errors.push_back("render sem catálogo");
+		errors.push_back("render without the catalog");
 		return false;
 	}
 	if (!look_.load(t, ctx.catalog->tune, errors)) return false;

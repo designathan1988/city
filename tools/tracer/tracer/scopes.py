@@ -1,16 +1,15 @@
 """What a name means where it is written, by the language's scopes: the function around it, the class around it (and
 its bases) where the language reads members by a plain name, the namespaces, the file with what it imports and
 includes, a file its own words name; a name no scope gives is none of the code read. A member of a class is found in
-the class, then up its bases, and down in the classes below it (an override may be the one that runs). What an object
-nothing is known of may hold under a name, found by that name alone, is the member reads' (`reads`).
+the class, then up its bases, and down in the classes below it (an override may be the one that runs).
 """
 from __future__ import annotations
 
 from collections import defaultdict
 
-from .model import text, unquoted
-from .vocab import (ARGS, CLASS, DEFAULT, EXACT, FUNCTION, IDENT, MEMBER, MODULE, NAMESPACE, OBJECT, PARAM, PROPERTY,
-                    SCOPES, SHAPE, STORED, TYPE, VARIABLE, WHOLE)
+from .model import text, unquoted, child_nodes
+from .vocab import (ARGS, CLASS, DEFAULT, EXACT, FUNCTION, IDENT, MEMBER, MODULE, NAMESPACE, OBJECT, OPTIONAL, PARAM,
+                    PROPERTY, REST, SCOPES, SHAPE, STORED, TYPE, VALUE, VARIABLE, WHOLE)
 
 
 class Scopes:
@@ -18,11 +17,11 @@ class Scopes:
         self.p = program
         self.sources = program.sources
         self.base_of, self.below_of, self.local_of = {}, {}, {}
-        self.rooted_of, self.member_of = {}, {}
+        self.rooted_of, self.named_of, self.member_of = {}, {}, {}
         self.params = defaultdict(lambda: defaultdict(list))     # function -> place -> its parameters there
         self.subs = defaultdict(list)
         self.open = set()                # the classes extending one the code read does not define
-        self.entries_of, self.named_classes = {}, None
+        self.entries_of, self.named_classes, self.arity_of = {}, None, {}
         self.ready = False
         for c in list(program.base_nodes):
             for b in self.bases(c):
@@ -164,6 +163,42 @@ class Scopes:
             self.rooted_of[c] = lang.implicit_base or c in self.open or any(self.rooted(b, seen) for b in self.bases(c))
         return self.rooted_of[c]
 
+    def by_name(self, name: str, lang) -> list:
+        """The members of that name an object nothing is known of may hold a function in (a function, or a variable a
+        class declares), read from a file of a language: every class's of that language; where the language looks a
+        member up in the object as it runs, also those of the other languages' classes below a type not defined
+        here (what reaches one language from another)."""
+        if (name, lang.package) not in self.named_of:
+            p = self.p
+            holder = lambda i: p.defs[i].owner if p.is_class(p.defs[i].owner) else p.defs[i].holder    # noqa: E731
+            same = lambda i: p.files[p.defs[i].file].lang.package == lang.package                      # noqa: E731
+            found = [i for i in p.bodies(p.member.get(name, ())) if p.defs[i].kind in (FUNCTION,) + STORED]
+            self.named_of[(name, lang.package)] = [i for i in found
+                                                   if same(i) or (lang.duck_typed and self.rooted(holder(i)))]
+        return self.named_of[(name, lang.package)]
+
+    def takes(self, d: int, count: int) -> bool:
+        """Whether a function can be called with that many arguments: no fewer than the parameters that may not be
+        left out, no more than all of them (any number past a parameter taking the rest)."""
+        if d not in self.arity_of:
+            least, most = 0, 0
+            for place in sorted(self.params.get(d, {})):
+                parts = self.p.defs[self.params[d][place][0]].parts
+                if REST in parts:
+                    most = None
+                    break
+                most += 1
+                if VALUE not in parts and OPTIONAL not in parts:
+                    least = most
+            self.arity_of[d] = (least, most)
+        least, most = self.arity_of[d]
+        return count >= least and (most is None or count <= most)
+
+    def holder(self, i: int) -> int:
+        """The class a member is written in (or is also a member of)."""
+        owner = self.p.defs[i].owner
+        return owner if owner >= 0 and self.p.is_class(owner) else self.p.defs[i].holder
+
     def makers(self, c: int, seen=None) -> list:
         """What runs when an object of a class is made: its constructors (the class itself where it writes none), and
         its bases'."""
@@ -194,7 +229,7 @@ class Scopes:
         source = unquoted(node)
         if source is not None:
             return [(m, EXACT) for m in self.sources.resolve(f, source)]
-        kids = node.named_children
+        kids = child_nodes(node)
         return self.static(f, kids[0]) if len(kids) == 1 else []
 
     def step(self, scopes: list, name: str) -> list:
@@ -208,7 +243,7 @@ class Scopes:
         out = []
         while True:
             if node.id in f.named:
-                out += [c for c in node.named_children if c.id != f.named[node.id].id]
+                out += [c for c in child_nodes(node) if c.id != f.named[node.id].id]
                 node = f.named[node.id]
             elif f.is_a(node, MEMBER):
                 out += self.given(f, f.role(node)[1][OBJECT])
@@ -230,7 +265,7 @@ class Scopes:
             if at is not None and self.p.defs[at].kind == FUNCTION:
                 continue
             if node.id not in f.named and not f.is_a(node, IDENT) and not f.is_a(node, MEMBER):
-                todo += node.named_children
+                todo += child_nodes(node)
                 continue
             found = self.static(f, node)
             missing = missing or not found
@@ -247,12 +282,12 @@ class Scopes:
             f = p.files[d.file]
             if not f.lang.ambiguous_declarations or d.kind != FUNCTION or d.body or p.defs[d.owner].kind != FUNCTION:
                 continue
-            given = d.parts[ARGS].named_children if ARGS in d.parts and TYPE in d.parts else ()
+            given = child_nodes(d.parts[ARGS]) if ARGS in d.parts and TYPE in d.parts else ()
             if given and all(self.is_value(f, one) for one in given):
                 d.kind, d.remade = VARIABLE, True
 
     def is_value(self, f, written) -> bool:
-        kids = written.named_children
+        kids = child_nodes(written)
         return len(kids) == 1 and f.is_a(kids[0], IDENT) and not self.classes(f, kids[0])
 
     # ---- around a node -------------------------------------------------------------------------------------------
@@ -274,6 +309,15 @@ class Scopes:
         if c not in self.entries_of:
             self.entries_of[c] = [i for held in self.p.names.get(c, {}).values() for i in held]
         return self.entries_of[c]
+
+    def classes_named(self, name: str) -> list:
+        """Every class of that name, in any language read."""
+        if self.named_classes is None:
+            self.named_classes = {}
+            for d in self.p.defs:
+                if d.kind == CLASS and d.name:
+                    self.named_classes.setdefault(d.name, []).append(d.id)
+        return self.named_classes.get(name, [])
 
     def foreign(self, name: str, lang) -> list:
         """The classes of that name another language read defines below a type not defined here: what a name no

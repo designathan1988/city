@@ -21,7 +21,7 @@ const char *const FOOTPRINT_KEYS[FURNITURE_KINDS] = { "signal_post", "lamp_post"
 const char *const BARRIER_KEYS[BARRIER_KINDS] = { "fence", "wall", "hedge", "guardrail", "railing" };
 
 Dictionary block(const Dictionary &t, const char *key, PackedStringArray &errors) {
-	if (!t.has(key)) errors.push_back(String("street_furniture: falta '") + key + "'");
+	if (!t.has(key)) errors.push_back(String("street_furniture: missing '") + key + "'");
 	return t.get(key, Dictionary());
 }
 
@@ -77,12 +77,12 @@ bool part_box(const Dictionary &p, PartBox &b) {
 
 bool number(const Dictionary &d, const char *where, const char *key, float &out, PackedStringArray &errors) {
 	if (!d.has(key)) {
-		errors.push_back(String("street_furniture.") + where + ": falta '" + key + "'");
+		errors.push_back(String("street_furniture.") + where + ": missing '" + key + "'");
 		return false;
 	}
 	const Variant v = d[key];
 	if (v.get_type() != Variant::FLOAT && v.get_type() != Variant::INT) {
-		errors.push_back(String("street_furniture.") + where + "." + key + ": esperado numero");
+		errors.push_back(String("street_furniture.") + where + "." + key + ": expected a number");
 		return false;
 	}
 	out = float(double(v));
@@ -163,7 +163,7 @@ bool load_street_furniture(const Dictionary &t, StreetFurnitureDef &d, PackedStr
 	for (int k = 0; k < FURNITURE_KINDS; k++) {
 		const Array a = footprints.get(FOOTPRINT_KEYS[k], Array());
 		if (a.size() != FOOTPRINT_VALUES) {
-			errors.push_back(String("street_furniture.footprints.") + FOOTPRINT_KEYS[k] + ": esperado [x_m, z_m]");
+			errors.push_back(String("street_furniture.footprints.") + FOOTPRINT_KEYS[k] + ": expected [x_m, z_m]");
 			continue;
 		}
 		d.footprint[k] = { float(double(a[0])), float(double(a[1])) };

@@ -52,8 +52,8 @@ static func report(minutes: int) -> void:
 			"; inside the pavement's furniture: %d, pedestrian-seconds in the minute: %d" % [p.get("people_in_furniture", 0),
 			furniture_seconds])
 		print("  stopped at the junction, vehicle-seconds in the minute (behind another, for pedestrians, for a signal ahead, starting): ", box,
-			", entradas no vermelho %d (%d paradas)" % [p.get("red_entries", 0), p.get("red_from_stop", 0)])
+			", entries on red %d (%d from a stop)" % [p.get("red_entries", 0), p.get("red_from_stop", 0)])
 	var last: Dictionary = CityStore.query(&"traffic_probe", [SOAK_JAMS])
 	print("  street furniture (signals, poles, hydrants, bins, benches, trees): ", last.get("street_furniture", []))
 	for line in last.jam_info:
-		print("  retido: ", line)
+		print("  held: ", line)

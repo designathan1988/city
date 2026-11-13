@@ -110,11 +110,11 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, co
 	lod_m_.clear();
 	for (const Variant &m : Array(people["lod_m"])) lod_m_.push_back(float(m));
 	if (int(lod_m_.size()) != asset_.lods) {
-		errors.push_back("agents.json people.lod_m: um limite por nível do arquivo de pessoas");
+		errors.push_back("agents.json people.lod_m: one limit per level of the people file");
 		return false;
 	}
 	if (asset_.variations.size() > size_t(BODY_TABLE)) {
-		errors.push_back("pessoas: variações demais para as tabelas dos corpos");
+		errors.push_back("people: too many variations for the body tables");
 		return false;
 	}
 	PackedVector4Array palms, shells;
@@ -133,24 +133,24 @@ bool PeopleRenderer::init(const RenderContext &ctx, const Dictionary &people, co
 	}
 	for (const std::vector<int> &list : by_age_)
 		if (list.empty()) {
-			errors.push_back("pessoas: falta corpo de alguma idade");
+			errors.push_back("people: missing a body of some age");
 			return false;
 		}
 	if (asset_.clips.size() > size_t(CLIP_TABLE)) {
-		errors.push_back("pessoas: clipes demais para a tabela do shader");
+		errors.push_back("people: too many clips for the shader's table");
 		return false;
 	}
 	for (int i = 0; i < int(PedAct::COUNT); i++) {
 		act_clips_[i] = ACT_CLIPS[i] ? asset_.clip(ACT_CLIPS[i]) : 0;
-		if (act_clips_[i] < 0) errors.push_back(String("pessoas: falta o clipe ") + ACT_CLIPS[i]);
+		if (act_clips_[i] < 0) errors.push_back(String("people: missing the clip ") + ACT_CLIPS[i]);
 	}
 	crouch_down_ = asset_.clip("crouchDown");
 	crouch_up_ = asset_.clip("crouchUp");
-	if (crouch_down_ < 0 || crouch_up_ < 0) errors.push_back("pessoas: falta o clipe de agachar");
+	if (crouch_down_ < 0 || crouch_up_ < 0) errors.push_back("people: missing the crouch clip");
 	for (int i = 0; i < int(SeatPose::COUNT); i++) {
 		seat_clips_[i] = asset_.clip(SEAT_CLIPS[i]);
 		stop_clips_[i] = STOP_CLIPS[i] ? asset_.clip(STOP_CLIPS[i]) : -1;
-		if (seat_clips_[i] < 0) errors.push_back(String("pessoas: falta o clipe ") + SEAT_CLIPS[i]);
+		if (seat_clips_[i] < 0) errors.push_back(String("people: missing the clip ") + SEAT_CLIPS[i]);
 	}
 	if (!errors.is_empty() || !held_.init(ctx, held, ACT_CLIPS, errors) || !helmets_.init(ctx, held["helmet"], errors)) return false;
 	RenderingServer *rs = RenderingServer::get_singleton();

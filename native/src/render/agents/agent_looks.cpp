@@ -25,7 +25,7 @@ constexpr int MIN_STRIDE = 2;    // a shuffled order skips at least one seat (st
 PackedColorArray palette(const Variant &list, int max, const char *name, PackedStringArray &errors) {
 	PackedColorArray out;
 	for (const Variant &c : Array(list)) out.push_back(agent_hex(c));
-	if (out.is_empty() || out.size() > max) errors.push_back(String("agents.json: paleta ") + name + " vazia ou longa demais");
+	if (out.is_empty() || out.size() > max) errors.push_back(String("agents.json: palette ") + name + " empty or too long");
 	while (out.size() < max) out.push_back(out.is_empty() ? Color() : out[0]);
 	return out;
 }
@@ -68,9 +68,9 @@ bool AgentRenderer::read_loads(const Dictionary &loads, PackedStringArray &error
 		float sum = 0;
 		for (const Variant &w : Array(d["bands"])) l.bands.push_back(sum += float(w));
 		for (float &b : l.bands) b /= sum;
-		if (l.bands.empty() || sum <= 0) errors.push_back(String("agents.json: occupants.load.") + key + " sem faixas");
+		if (l.bands.empty() || sum <= 0) errors.push_back(String("agents.json: occupants.load.") + key + " has no bands");
 		const int widest = (HALF_EXACT - l.seats) / l.seats; // the largest stride whose order a half float still holds
-		if (l.shuffle && widest < MIN_STRIDE) errors.push_back(String("agents.json: ") + key + " tem lugares demais para a ordem em meia precisão");
+		if (l.shuffle && widest < MIN_STRIDE) errors.push_back(String("agents.json: ") + key + " has too many seats for the order in half precision");
 		for (int s = MIN_STRIDE; l.shuffle && s <= std::min(l.seats - MIN_STRIDE, widest); s++)
 			if (std::gcd(s, l.seats) == 1) l.strides.push_back(s);
 		if (l.strides.empty()) l.strides.push_back(1);

@@ -21,7 +21,7 @@ func _check() -> void:
 	for p in all:
 		var s: Script = ResourceLoader.load(p, "Script", ResourceLoader.CACHE_MODE_IGNORE)
 		if s == null or not s.can_instantiate() and not s.is_abstract():
-			print("FALHA ", p)
+			print("FAIL ", p)
 			bad += 1
-	print("scripts: %d, falhas: %d" % [all.size(), bad])
+	print("scripts: %d, FAILURES: %d" % [all.size(), bad])
 	quit(1 if bad > 0 else 0)

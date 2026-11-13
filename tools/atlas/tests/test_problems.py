@@ -1,6 +1,6 @@
 """The register's tests: ids, every allowed and refused move of a status, the rules a save holds, the generated view and its
 check, a malformed line refused, the command line's exit codes. Each test works on a register of its own in a temporary
-repository (the real schema copied in, the fixture register as its log/problems.jsonl)."""
+repository (the real schema copied in, the fixture register as its doc/problems.jsonl)."""
 import contextlib
 import io
 import os
@@ -24,7 +24,7 @@ class RegisterCase(unittest.TestCase):
     def setUp(self):
         self.root = tempfile.mkdtemp(prefix="atlas-")
         os.makedirs(os.path.join(self.root, "tools", "gates", "schemas"))
-        os.makedirs(os.path.join(self.root, "log"))
+        os.makedirs(os.path.join(self.root, "doc"))
         shutil.copy(os.path.join(register.ROOT, register.SCHEMA), os.path.join(self.root, register.SCHEMA))
         shutil.copy(FIXTURE, os.path.join(self.root, register.REGISTER))
 

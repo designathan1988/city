@@ -41,7 +41,7 @@ static func build(strip: Control, table: Dictionary, in_hand: String, use: Calla
 	_cards(cards, table.poles, 1, last.call("POLE", "mode", null) if in_hand == "POLE" else null,
 		func(c: Dictionary) -> void: use.call("POLE", _pole_params(table, c.kind, lamps, kind), true))
 	if in_hand == "POLE" and last.call("POLE", "mode", "") == "build":
-		# Roadcraft: Poste (urban or rural) and Luzes (three choices).
+		# Roadcraft: Pole (urban or rural) and Lights (three choices).
 		_choice_row(HudWidgets.hbox(body), "v2.row.poleKind", table.pole_kinds, kind, "pole.kind",
 			func(c: Dictionary) -> void: use.call("POLE", _pole_params(table, "build", lamps, c.kind), true))
 		_choice_row(HudWidgets.hbox(body), "v2.row.lights", table.lamps, lamps, "pole.lamps",

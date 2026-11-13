@@ -36,7 +36,7 @@ class GDScript(unittest.TestCase):
         self.assertEqual({"plain.greet"}, reached(self.r, "desk.hello", (CALL,), EXACT))
         where = {self.r.program.where(link.dst) for src, links in self.r.out.items() for link in links
                  if self.r.program.label(src) == "desk.hello"}
-        self.assertEqual({"base/plain.gd:4"}, where)
+        self.assertEqual({"base/plain.gd:3"}, where)
 
 
 class Cpp(unittest.TestCase):
@@ -44,7 +44,7 @@ class Cpp(unittest.TestCase):
         r = traced("cfg/cpp")
         where = {r.program.where(link.dst) for src, links in r.out.items() for link in links
                  if r.program.label(src) == "run"}
-        self.assertEqual({"inc/kit/gear.h:3"}, where)
+        self.assertEqual({"inc/kit/gear.h:2"}, where)
 
 
 if __name__ == "__main__":

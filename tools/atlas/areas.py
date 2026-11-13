@@ -27,7 +27,7 @@ AREAS_BY_PLACE = (
     ("project/tests/", "tools"),
     ("project/", "product"),
     ("tools/", "tools"),
-    ("log/", "docs"),
+    ("doc/", "docs"),
     ("specs/", "docs"),
     (".specify/", "docs"),
 )

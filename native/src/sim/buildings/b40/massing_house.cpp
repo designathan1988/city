@@ -26,7 +26,7 @@ enum Form { FORM_WING, FORM_VERANDA, FORM_ELL, FORM_TWIN, FORM_BUNGALOW };
 Roof house_roof(Xoshiro128 &r, int style) {
 	if (style == STYLE_COLONIAL_HOUSE) return choose(r, { ROOF_FLAT, ROOF_FLAT, ROOF_GABLE, ROOF_HIP });
 	if (style == STYLE_MODERN_HOUSE) return choose(r, { ROOF_FLAT, ROOF_FLAT, ROOF_FLAT, ROOF_SHED });
-	if (style == STYLE_SOBRADO) return choose(r, { ROOF_GABLE, ROOF_HIP, ROOF_FLAT });
+	if (style == STYLE_TOWNHOUSE) return choose(r, { ROOF_GABLE, ROOF_HIP, ROOF_FLAT });
 	return choose(r, { ROOF_GABLE, ROOF_HIP, ROOF_HIP });
 }
 
@@ -104,7 +104,7 @@ void house(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r) {
 	b.storey_h = mixr(r, STOREY_LO, STOREY_HI);
 	look(b, wall, roof_paint, trim);
 	b.ground = GROUND_HOUSE;
-	int storeys = b.style == STYLE_SOBRADO ? 2 : r.f() < HALF ? 2 : 1;
+	int storeys = b.style == STYLE_TOWNHOUSE ? 2 : r.f() < HALF ? 2 : 1;
 	Roof roof = house_roof(r, b.style);
 	float w = snap(env.W), d = snap(env.D);
 	std::vector<Form> forms{ FORM_WING, FORM_VERANDA };

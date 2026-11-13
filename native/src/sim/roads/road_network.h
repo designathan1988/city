@@ -55,7 +55,7 @@ constexpr uint16_t flags_reversed(uint16_t f) {
 	return uint16_t(keep | sides | rules | runs);
 }
 
-// What the player set a junction to (Roadcraft 4.0 JunctionControl); the order the Controle tab cycles it in.
+// What the player set a junction to (Roadcraft 4.0 JunctionControl); the order the Control tab cycles it in.
 // A crossing on a road between junctions (Roadcraft editor/streetObjects.ts commitPedestrianCrossing): a node of two arms with a crosswalk over one of them.
 enum NodeCrossing : uint8_t { CROSSING_NONE, CROSSING_ZEBRA, CROSSING_SIGNAL };
 // A U-turn through the median (Roadcraft commitUturn), for the traffic arriving by the node's arm of lower id or of higher.

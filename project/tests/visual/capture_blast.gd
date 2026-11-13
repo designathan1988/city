@@ -38,10 +38,10 @@ func earth() -> void:
 	var b: Dictionary = CityStore.query(&"city_bounds")
 	var at: Vector3 = ui.ground(b.max.x + EARTH_OUT_M, (b.min.z + b.max.z) * 0.5)
 	at = ui.ground(at.x + EARTH_NEXT_M, at.z) # a clearing: the first stretch past the town is forest
-	await blow("terra_f%d" % SMALL, at, SMALL, 0.0, EARTH_MOMENTS)
+	await blow("earth_f%d" % SMALL, at, SMALL, 0.0, EARTH_MOMENTS)
 	await ui.frames(SETTLE_FRAMES)
 	at = ui.ground(at.x, at.z) # the first crater lowered the ground: a point above it would read as a roof
-	await blow("terra_f%d" % BIG, at, BIG, 0.0, EARTH_MOMENTS)
+	await blow("earth_f%d" % BIG, at, BIG, 0.0, EARTH_MOMENTS)
 
 
 ## A force 45 bomb seen from straight above, 4 s after: the decal's size in pixels against the pixels a metre the log prints.
@@ -49,13 +49,13 @@ func topdown() -> void:
 	var b: Dictionary = CityStore.query(&"city_bounds")
 	var at: Vector3 = ui.ground(b.max.x + EARTH_OUT_M + 2.0 * EARTH_NEXT_M, (b.min.z + b.max.z) * 0.5)
 	camera_offset = Vector3(0, TOP_HEIGHT_M, TOP_TILT_M)
-	await blow("topo_f%d" % BIG, at, BIG, 0.0, [4.0])
+	await blow("top_f%d" % BIG, at, BIG, 0.0, [4.0])
 	camera_offset = REF_CAMERA_OFFSET
 
 
 ## One bomb: photographed before, then at each moment of the effects' clock. `dist` 0: the reference game's camera.
 func blow(label: String, at: Vector3, force: int, dist: float, moments: Array) -> void:
-	_check(at != Vector3.INF, "%s: ponto achado" % label)
+	_check(at != Vector3.INF, "%s: point found" % label)
 	if at == Vector3.INF:
 		return
 	if dist > 0.0:
@@ -63,15 +63,15 @@ func blow(label: String, at: Vector3, force: int, dist: float, moments: Array) -
 	else: # the rig stands aside
 		_pin_camera(at)
 	await ui.drawn()
-	await ui.shot("%s_0_antes" % label)
+	await ui.shot("%s_0_before" % label)
 	var probe: Dictionary = CityStore.query(&"blast_probe", [float(force), 1.0])
-	print(label, " sonda: ", probe)
+	print(label, " probe: ", probe)
 	_report_scale(at, probe.crater_radius_m)
 	_report_relief(at, probe.crater_radius_m * DECAL_HALF_PER_RADIUS)
 	var before: Dictionary = CityStore.query(&"damage_probe")
 	var since: float = CityStore.query(&"effects_since_blast")
 	var r: Dictionary = CityStore.dispatch(&"strike", [at, force])
-	_check(r.ok, "%s: golpe" % label)
+	_check(r.ok, "%s: strike" % label)
 	while true: # the clock restarts when the effects play this blow (a frame later)
 		var now: float = CityStore.query(&"effects_since_blast")
 		if now >= 0.0 and (since < 0.0 or now < since):
@@ -83,7 +83,7 @@ func blow(label: String, at: Vector3, force: int, dist: float, moments: Array) -
 			await ui.frames(1)
 		await ui.shot("%s_%04dms" % [label, roundi(CityStore.query(&"effects_since_blast") * 1000.0)], 0)
 	var after: Dictionary = CityStore.query(&"damage_probe")
-	print(label, ": ", before, " -> ", after, " tremor ", CityStore.query(&"effects_shake"))
+	print(label, ": ", before, " -> ", after, " shake ", CityStore.query(&"effects_shake"))
 
 
 ## The scale on screen at the point (pixels a metre along the ground's two axes, and where the crater's physical edge and the decal's
@@ -93,9 +93,9 @@ func _report_scale(at: Vector3, crater_m: float) -> void:
 	var c := cam.unproject_position(at)
 	var along_x := cam.unproject_position(at + Vector3(1, 0, 0)).distance_to(c)
 	var along_z := cam.unproject_position(at + Vector3(0, 0, 1)).distance_to(c)
-	print("escala: centro ", c, ", pixels por metro ", snappedf(along_x, 0.01), " in x and ", snappedf(along_z, 0.01), " in z; viewport ",
-			get_viewport_size(), "; raio fisico ", snappedf(crater_m, 0.01), " m = ", snappedf(crater_m * along_x, 0.1), " px em x e ",
-			snappedf(crater_m * along_z, 0.1), " px em z")
+	print("scale: centre ", c, ", pixels per metre ", snappedf(along_x, 0.01), " in x and ", snappedf(along_z, 0.01), " in z; viewport ",
+			get_viewport_size(), "; physical radius ", snappedf(crater_m, 0.01), " m = ", snappedf(crater_m * along_x, 0.1), " px in x and ",
+			snappedf(crater_m * along_z, 0.1), " px in z")
 
 
 func get_viewport_size() -> Vector2:
@@ -111,7 +111,7 @@ func _report_relief(at: Vector3, half_m: float) -> void:
 			var h: float = CityStore.query(&"height_at", [at.x + half_m * i / RELIEF_STEPS, at.z + half_m * j / RELIEF_STEPS])
 			lo = minf(lo, h - at.y)
 			hi = maxf(hi, h - at.y)
-	print("relief under the decal (half width ", snappedf(half_m, 0.1), " m): from ", snappedf(lo, 0.01), " a ", snappedf(hi, 0.01), " m round the point")
+	print("relief under the decal (half width ", snappedf(half_m, 0.1), " m): from ", snappedf(lo, 0.01), " to ", snappedf(hi, 0.01), " m round the point")
 
 
 ## The camera where the reference game's stood for the same photograph (the rig is off, so nothing moves it).

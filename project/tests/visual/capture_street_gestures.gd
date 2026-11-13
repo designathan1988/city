@@ -1,5 +1,5 @@
 ## The gestures of the Street tab, by the mouse (capture_street.gd, `cap`): the barriers traced point to point, a row dragged along a footway, a piece taken away
-## with Shift, and the set of furniture a new road is laid with, picked on the road's options (the Mobiliário row).
+## with Shift, and the set of furniture a new road is laid with, picked on the road's options (the Furniture row).
 class_name CaptureStreetGestures
 extends RefCounted
 
@@ -52,7 +52,7 @@ static func _furniture_set(cap: Node) -> void:
 	await cap.ui.frames(4)
 	await cap._pick("roadFurniture.basic")
 	cap._check(CityStore.query(&"road_furniture") == LEVEL_BASIC, "the basic set by the Furniture row")
-	await cap.ui.shot("rua_08_conjunto_via")
+	await cap.ui.shot("street_08_road_set")
 	await cap._pick("roadFurniture.complete")
 	cap._check(CityStore.query(&"road_furniture") == LEVEL_FULL, "the full set back")
 	cap.hud.open_category("roads")
@@ -75,8 +75,8 @@ static func barriers(cap: Node, a: Vector3, b: Vector3) -> void:
 		await cap.ui.key(KEY_ENTER, false)
 		cap.spots[names[i]] = o - dir * BARRIER_LEG_M * 0.5
 		var now: int = CityStore.query(&"street_counts").barriers
-		print("barreira ", names[i], ": ", now - before.barriers - built)
+		print("barrier ", names[i], ": ", now - before.barriers - built)
 		built = now - before.barriers
 	await cap.ui.drawn()
-	await cap.ui.shot("rua_06_barreiras")
+	await cap.ui.shot("street_06_barriers")
 	cap._check(built == names.size(), "barriers by mouse %d" % built)

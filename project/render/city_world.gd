@@ -19,7 +19,7 @@ const NATIVE_SHADERS := [
 	"res://render/shaders/signature_glass.gdshader",
 	"res://render/shaders/transit.gdshader", "res://render/shaders/transit_glass.gdshader", "res://render/shaders/transit_xray.gdshader",
 	"res://render/shaders/building_props.gdshader", "res://render/shaders/shadow_caster.gdshader",
-	"res://render/shaders/road_far.gdshader", "res://render/shaders/building_ruin.gdshader", "res://render/shaders/people_body.gdshader",
+	"res://render/shaders/road_far.gdshader", "res://render/shaders/building_ruin.gdshader", "res://render/shaders/people_body.gdshader", "res://render/shaders/wires.gdshader",
 ]
 const WIND_FULL_WAVES_MS := 40.0 # a wind this fast alone makes the roughest water
 

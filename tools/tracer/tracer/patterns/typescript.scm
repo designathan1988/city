@@ -39,7 +39,7 @@
 (variable_declarator name: (object_pattern (pair_pattern key: (_) @key value: (identifier) @name @variable))
   value: (_) @object)
 (variable_declarator name: (array_pattern (identifier) @name @variable) value: (_) @value)
-(public_field_definition name: (_) @name type: (_)? @type value: (_)? @value) @variable
+(public_field_definition "readonly"? @fixed name: (_) @name type: (_)? @type value: (_)? @value) @variable
 (property_signature name: (_) @name type: (_)? @type) @variable
 (for_in_statement left: (identifier) @name right: (_) @value) @variable
 (for_in_statement left: (array_pattern (identifier) @name @variable) right: (_) @value)
@@ -57,8 +57,12 @@
 
 (assignment_expression left: (_) @left right: (_) @right) @assign
 (augmented_assignment_expression left: (_) @left right: (_) @right) @assign
+(update_expression argument: (_) @left) @assign
 
 (call_expression function: (_) @callee type_arguments: (_)? @type arguments: (arguments) @args) @call
+; A tagged template calls its tag with each substitution (ECMA-262, TaggedTemplate).
+(call_expression function: (_) @callee arguments: (template_string) @args) @call
+(template_substitution (_) @value) @pass
 (new_expression constructor: (_) @callee type_arguments: (_)? @type arguments: (arguments)? @args) @new
 (member_expression object: (_) @object property: (_) @property) @member
 (subscript_expression object: (_) @object index: (_) @key) @index
@@ -80,6 +84,10 @@
 (as_expression . (_) @value (_) @type .) @cast
 
 (return_statement (_) @value) @return
+
+; A call made for its effect: its value is taken by nothing (or only waited for).
+(expression_statement (call_expression) @effect)
+(expression_statement (await_expression (call_expression) @effect))
 (arrow_function body: (expression) @value) @return
 
 ; The types that may be any value: the ones the language leaves open (TypeScript handbook, Everyday Types: `any`,
@@ -119,3 +127,21 @@
 (object (pair key: [(property_identifier) (string)] @name value: (_) @value) @variable)
 (object (shorthand_property_identifier) @name @value @variable)
 [(string) (template_string) (number) (array) (object) (true) (false) (null) (undefined) (regex)] @literal
+
+; What decides which code runs and what a value is (ECMA-262: IfStatement, the iteration statements,
+; ConditionalExpression, SwitchStatement, ReturnStatement, ThrowStatement; the binary and unary operators).
+(if_statement condition: (_) @test consequence: (_) @then) @branch
+(while_statement condition: (_) @test body: (_) @then) @branch @loop
+(for_statement condition: (_) @test body: (_) @then) @branch @loop
+(for_in_statement body: (_) @then) @branch @loop
+(do_statement body: (_) @then condition: (_) @after) @branch @loop
+(break_statement) @leave
+(continue_statement) @again
+(ternary_expression condition: (_) @test consequence: (_) @then alternative: (_) @else) @branch
+(switch_statement value: (_) @test) @choose
+(switch_case value: (_) @value) @case
+(switch_default) @case
+(return_statement) @exit
+(throw_statement) @exit
+(binary_expression left: (_) @left operator: _ @op right: (_) @right) @operation
+(unary_expression operator: _ @op argument: (_) @right) @operation

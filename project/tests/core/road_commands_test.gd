@@ -22,7 +22,7 @@ const TANGENT_DOT := 0.999
 const COST_RUNS := 20
 const TOWN_STEPS := 400
 const TOWN_SWING_M := 60.0
-const FILLED_STYLES := ["roadcraft", "brasil"] # session-rules.md, section 10
+const FILLED_STYLES := ["roadcraft", "brazil"] # session-rules.md, section 10
 
 const RAY_FROM_M := 400.0
 const OFF_ROAD_M := 120.0

@@ -15,7 +15,7 @@ namespace {
 
 float number(const Dictionary &d, const char *group, const char *key, PackedStringArray &errors) {
 	if (!d.has(key)) {
-		errors.push_back(String("blast.") + group + ": falta '" + key + "'");
+		errors.push_back(String("blast.") + group + ": missing '" + key + "'");
 		return 0.f;
 	}
 	return float(double(d[key]));
@@ -23,7 +23,7 @@ float number(const Dictionary &d, const char *group, const char *key, PackedStri
 
 Dictionary group(const Dictionary &t, const char *key, PackedStringArray &errors) {
 	if (!t.has(key)) {
-		errors.push_back(String("blast: falta '") + key + "'");
+		errors.push_back(String("blast: missing '") + key + "'");
 		return Dictionary();
 	}
 	return t[key];
@@ -37,12 +37,12 @@ void curves(const Dictionary &t, const char *key, std::vector<BlastCurve> &out, 
 		c.z0 = number(row, key, "z0", errors);
 		c.z1 = number(row, key, "z1", errors);
 		Array coeffs = row.has("c") ? Array(row["c"]) : Array();
-		if (coeffs.size() != BLAST_COEFFS) errors.push_back(String("blast.") + key + ": esperado 7 coeficientes");
+		if (coeffs.size() != BLAST_COEFFS) errors.push_back(String("blast.") + key + ": expected 7 coefficients");
 		for (int k = 0; k < BLAST_COEFFS && k < coeffs.size(); k++) c.c[k] = float(double(coeffs[k]));
-		if (!out.empty() && c.z0 < out.back().z1) errors.push_back(String("blast.") + key + ": faixas fora de ordem");
+		if (!out.empty() && c.z0 < out.back().z1) errors.push_back(String("blast.") + key + ": ranges out of order");
 		out.push_back(c);
 	}
-	if (out.empty()) errors.push_back(String("blast.") + key + ": nenhuma faixa");
+	if (out.empty()) errors.push_back(String("blast.") + key + ": no range");
 }
 
 } // namespace

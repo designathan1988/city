@@ -70,11 +70,11 @@ PackedStringArray CityCore::load_catalog(const Dictionary &tables) {
 PackedStringArray CityCore::setup_render(const Dictionary &tables, const Dictionary &materials) {
 	PackedStringArray errors;
 	if (!is_inside_tree()) {
-		errors.push_back("CityCore fora da arvore");
+		errors.push_back("CityCore outside the tree");
 		return errors;
 	}
 	if (!catalog_ok_) { // the render draws the simulation's street furniture and crosswalks from the catalog
-		errors.push_back("render antes do catalogo");
+		errors.push_back("render before the catalog");
 		return errors;
 	}
 	// The building generator's tables belong to the simulation (lots are world data): read before any body is made.

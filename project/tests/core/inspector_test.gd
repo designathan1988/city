@@ -36,7 +36,7 @@ func _ready() -> void:
 
 ## What a save of the whole town takes, written on its thread: the number the autosave's period is judged by.
 func _save_time() -> void:
-	var slot := "cidade-medida"
+	var slot := "city-measured"
 	var from := Time.get_ticks_msec()
 	CityStore.saves.save_game(slot)
 	while CityStore.saves.save_busy():
@@ -173,7 +173,7 @@ func _saves() -> void:
 	check(not r.get("ok", true), "a bad file is refused")
 	check(CityStore.snapshot.get("ready", false) and CityStore.snapshot.segments == before, "the city on screen stayed")
 	for i in 2:
-		var slot := "cidade-quarentena"
+		var slot := "city-quarantine"
 		DirAccess.make_dir_recursive_absolute(SaveSlots.dir())
 		var q := FileAccess.open(SaveSlots.path(slot), FileAccess.WRITE)
 		q.store_string(str(i))

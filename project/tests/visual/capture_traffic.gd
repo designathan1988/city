@@ -1,4 +1,4 @@
-## The parked side of the traffic for the visual capture (--only=trafego): a kerb bay, a lot's bays, a car off the road and a
+## The parked side of the traffic for the visual capture (--only=traffic): a kerb bay, a lot's bays, a car off the road and a
 ## bicycle on the edge of a street and in a cycle lane, each from nearly straight over a place the core's park_sample chose
 ## with no tall building round it: a camera at an angle would look through the low roofs beside a lot's bays.
 class_name CaptureTraffic
@@ -6,8 +6,8 @@ extends RefCounted
 
 const CAMERA_UP := 24.0
 const CAMERA_BACK := 2.0
-const SHOTS := [["30_vaga_rua", "kerb"], ["31_vaga_lote", "lot"], ["32_carro_manobra", "moving"], ["33_bicicleta", "bike"]]
-const BAND_SHOT := "35_ciclofaixa"
+const SHOTS := [["30_kerb_bay", "kerb"], ["31_lot_bay", "lot"], ["32_car_manoeuvre", "moving"], ["33_bicycle", "bike"]]
+const BAND_SHOT := "35_cycle_lane"
 const KERB_WAIT_S := 300
 const KERB_TICKS := 10
 const KERB_FROM := Vector3(5, 3.5, 7)
@@ -18,15 +18,15 @@ const BAND_BEHIND := 9.0 # along the lane, behind the bicycle and over the road:
 const BAND_UP := 4.5
 
 
-## A capture of its own instead of the tour (--only=doca, paridade or trafego): whether there was one. `cap`: the capture scene.
+## A capture of its own instead of the tour (--only=dock, parity, boarding or traffic): whether there was one. `cap`: the capture scene.
 static func directed(cap: Node, probe: Dictionary, ground: Vector3) -> bool:
-	if cap.only.has("doca"):
+	if cap.only.has("dock"):
 		await CaptureLorry.shots(cap)
 	elif cap.only.has(CaptureParity.ONLY):
 		await CaptureParity.shots(cap, cap.pairs)
-	elif cap.only.has("embarque"):
+	elif cap.only.has("boarding"):
 		await kerb_shot(cap)
-	elif cap.only.has("trafego"):
+	elif cap.only.has("traffic"):
 		await CaptureVehicles.car_shots(cap, probe, ground) # first: the wait for a bicycle moves the cars of the sample on
 		await shots(cap)
 	else:
@@ -45,7 +45,7 @@ static func kerb_shot(cap: Node) -> void:
 		await cap._frames(1)
 		CityStore.step_ticks(1)
 		var now: Variant = CityStore.query(&"kerb_busy", [])
-		await cap._shot("37_embarque", (now if now != null else at) + KERB_FROM, now if now != null else at)
+		await cap._shot("37_boarding", (now if now != null else at) + KERB_FROM, now if now != null else at)
 		return
 	print("capture: nobody waiting at the kerb")
 

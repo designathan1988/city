@@ -105,7 +105,7 @@ class Clean(LifecycleCase):
         self.make("dist/stray/junk.txt")
         os.chmod(self.make("dist/stray/.git/objects/01/object"), stat.S_IREAD)  # git's objects are read-only
         open_one = {"id": "Ptools-1", "status": "open", "evidence": ["dist/builds/b1/Roadcraft.exe"]}
-        self.make("log/problems.jsonl").write_bytes((json.dumps(open_one) + "\n").encode())
+        self.make("doc/problems.jsonl").write_bytes((json.dumps(open_one) + "\n").encode())
 
     def run_clean(self, *flags):
         return quiet(clean.cmd_clean, ["--root", str(self.root), "--suites", str(self.suites), *flags])[1]

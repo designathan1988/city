@@ -42,7 +42,7 @@ bool HeldThings::init(const RenderContext &ctx, const Dictionary &held, const ch
 		thing_of_[act] = n++;
 	}
 	if (n != kinds.size()) {
-		errors.push_back("agents.json held: uma coisa sem ato que a segure");
+		errors.push_back("agents.json held: a thing with no act that holds it");
 		return false;
 	}
 	keeper_.clear();

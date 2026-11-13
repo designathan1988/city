@@ -1,11 +1,11 @@
-## The player's own roads (Meus modelos): one file each, kept for every city, as ModelLibrary keeps the buildings. A road is {name, base, spec}: the
+## The player's own roads (My roads): one file each, kept for every city, as ModelLibrary keeps the buildings. A road is {name, base, spec}: the
 ## class it is drawn in, by id, and its elements. Runs driven by tests keep theirs apart.
 class_name RoadModels
 extends RefCounted
 
 const FOLDER := "user://road_models"
 const TEST_DIR := "user://road_models_tests"
-const EXT := "via"
+const EXT := "road"
 
 
 static func dir() -> String:

@@ -1,5 +1,5 @@
-## Personalizar… (Roadcraft ui/roads/profileEditor.ts): the road picked in the catalogue, element by element, docked over the drawer. What stops it from
-## being built is told by name and marked on the element; "use" makes the profile the road tool draws with, "save" keeps it under Meus modelos.
+## Customise… (Roadcraft ui/roads/profileEditor.ts): the road picked in the catalogue, element by element, docked over the drawer. What stops it from
+## being built is told by name and marked on the element; "use" makes the profile the road tool draws with, "save" keeps it under My roads.
 class_name RoadProfilePanel
 extends PanelContainer
 

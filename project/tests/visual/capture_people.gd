@@ -10,16 +10,16 @@ const SHOT_M := 14.0 # a person fills an eighth of the picture at the capture's 
 const SHOT_UP_RAD := 0.157 # 9 degrees
 const SHOT_ALONG := 0.5 # the camera stands over the street, this share of the way ahead of the walker
 const LOOK_Y := 0.9
-const SHOTS := {"couple": "30_casal", "family": "31_familia", "child": "32_crianca", "elder": "33_idoso",
-	"coming_out": "34_saindo", "going_in": "35_entrando", "wait": "36_espera", "phone": "39_celular", "bag": "40_sacola", "talk": "41_conversa",
-	"look": "42_olhando", "headphones": "43_fones", "listen": "44_ouvindo"}
+const SHOTS := {"couple": "30_couple", "family": "31_family", "child": "32_child", "elder": "33_elder",
+	"coming_out": "34_coming_out", "going_in": "35_going_in", "wait": "36_waiting", "phone": "39_phone", "bag": "40_bag", "talk": "41_talk",
+	"look": "42_looking", "headphones": "43_headphones", "listen": "44_listening"}
 const FAR_FROM := Vector3(-58, 9, 150) # from the ground under FAR_AT
 const FAR_AT := Vector3(-58, 1, 0)
 const CLIPS := ["chairSit", "carDrive", "carRide", "cabDrive", "motoRide", "motoStop", "bikeStop", "bikePedal"]
 const HANDS := ["phone", "bag"] # looked at again from where the hand reads
 const HANDS_M := 2.2
 const HANDS_Y := 1.1
-const BANG := {"crouch": "45_agachado", "photo": "46_filmando"}
+const BANG := {"crouch": "45_crouching", "photo": "46_filming"}
 const BANG_HEAD := {"crouch": 0.85, "photo": 1.55}
 const FACE_M := 0.8
 const TALK_HEAD := 1.55
@@ -40,7 +40,7 @@ static func shots(cap: Node) -> void:
 	Settings.apply(cap.world, cap.get_viewport())
 	UiDriver.at_hour(cap.world, HOUR)
 	var left: Dictionary = SHOTS.duplicate()
-	for key in SHOTS: # --only=pessoas,34_saindo: only those, a moment later
+	for key in SHOTS: # --only=people,34_coming_out: only those, a moment later
 		if cap.only.size() > 1 and not cap.only.has(SHOTS[key]):
 			left.erase(key)
 	if cap.only.size() > 1:
@@ -57,9 +57,9 @@ static func shots(cap: Node) -> void:
 			if key == "talk":
 				var head: Vector3 = spot[0] + Vector3.UP * TALK_HEAD
 				var facing: Vector3 = spot[1]
-				await cap._shot(left[key] + "_rosto", head + facing * FACE_M, head)
+				await cap._shot(left[key] + "_face", head + facing * FACE_M, head)
 			if key in HANDS:
-				await cap._shot(left[key] + "_perto", spot[0] + (_from(spot[0], spot[1], spot[2]) - spot[0]).normalized() * HANDS_M + Vector3.UP, spot[0] + Vector3.UP * HANDS_Y)
+				await cap._shot(left[key] + "_near", spot[0] + (_from(spot[0], spot[1], spot[2]) - spot[0]).normalized() * HANDS_M + Vector3.UP, spot[0] + Vector3.UP * HANDS_Y)
 			left.erase(key)
 		if left.is_empty():
 			break
@@ -67,10 +67,10 @@ static func shots(cap: Node) -> void:
 	print("no photo: ", left.keys())
 	CityStore.query(&"set_city_hour", [HOUR])
 	var ground: Vector3 = cap._ground(FAR_AT.x, FAR_AT.z)
-	await cap._shot("37_multidao", ground + FAR_FROM - Vector3(FAR_AT.x, 0, FAR_AT.z), ground + FAR_AT - Vector3(FAR_AT.x, 0, FAR_AT.z))
+	await cap._shot("37_crowd", ground + FAR_FROM - Vector3(FAR_AT.x, 0, FAR_AT.z), ground + FAR_AT - Vector3(FAR_AT.x, 0, FAR_AT.z))
 
 
-## Who has just heard a shot: down where they were near it, a phone held up to it far off: --only=tiro.
+## Who has just heard a shot: down where they were near it, a phone held up to it far off: --only=shot.
 static func bang(cap: Node) -> void:
 	Settings.apply(cap.world, cap.get_viewport())
 	UiDriver.at_hour(cap.world, HOUR)
@@ -91,10 +91,10 @@ static func bang(cap: Node) -> void:
 				var spot: Array = census.spots[key]
 				var seen := _from(spot[0], spot[1], spot[2])
 				await cap._shot(left[key], seen, spot[0] + Vector3.UP * LOOK_Y)
-				await cap._shot(left[key] + "_perto", spot[0] + (seen - spot[0]).normalized() * HANDS_M + Vector3.UP, spot[0] + Vector3.UP * HANDS_Y)
+				await cap._shot(left[key] + "_near", spot[0] + (seen - spot[0]).normalized() * HANDS_M + Vector3.UP, spot[0] + Vector3.UP * HANDS_Y)
 				var head: Vector3 = spot[0] + Vector3.UP * BANG_HEAD[key]
 				var facing: Vector3 = spot[1]
-				await cap._shot(left[key] + "_rosto", head + facing * FACE_M, head)
+				await cap._shot(left[key] + "_face", head + facing * FACE_M, head)
 				left.erase(key)
 		if left.is_empty():
 			break
@@ -102,7 +102,7 @@ static func bang(cap: Node) -> void:
 	print("no photo: ", left.keys())
 
 
-## The clips of people in vehicles, on who waits at a kerb: --only=clipes. They are drawn with no vehicle round them, as the
+## The clips of people in vehicles, on who waits at a kerb: --only=clips. They are drawn with no vehicle round them, as the
 ## skin of people.gdshader reads them from the palette.
 static func clips(cap: Node) -> void:
 	Settings.apply(cap.world, cap.get_viewport())
@@ -113,7 +113,7 @@ static func clips(cap: Node) -> void:
 		if census.spots.has("wait"):
 			var spot: Array = census.spots.wait
 			for clip: String in CLIPS:
-				print("clipe ", clip, ": ", CityStore.query(&"show_people_clip", [clip]))
+				print("clip ", clip, ": ", CityStore.query(&"show_people_clip", [clip]))
 				await cap._shot("38_" + clip, _from(spot[0], spot[1], spot[2]), spot[0] + Vector3.UP * LOOK_Y)
 			CityStore.query(&"show_people_clip", ["idle"])
 			return

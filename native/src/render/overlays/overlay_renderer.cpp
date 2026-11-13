@@ -41,7 +41,7 @@ bool OverlayRenderer::init(const RenderContext &ctx, PackedStringArray &errors) 
 	jam_share_ = float(t.get("jam_share", 0));
 	Array cols = t.get("congestion", Array());
 	if (cols.size() != JAM_STOPS) {
-		errors.push_back("overlays.json: congestion precisa de 3 cores");
+		errors.push_back("overlays.json: congestion needs 3 colours");
 		return false;
 	}
 	for (int i = 0; i < JAM_STOPS; i++) {

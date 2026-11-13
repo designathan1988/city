@@ -18,14 +18,14 @@ Color hexc(const Variant &v) { return rgba8_to_color(parse_hex_color(String(v).u
 
 // A required table: reports the key when it is missing so the caller fails loudly.
 Dictionary sub(const Dictionary &t, const char *key, PackedStringArray &errors) {
-	if (!t.has(key)) errors.push_back(String("streets.json: falta ") + key);
+	if (!t.has(key)) errors.push_back(String("streets.json: missing ") + key);
 	return t.get(key, Dictionary());
 }
 
 void load_colors(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	Array sc = t.get("surface_colors", Array()), pc = t.get("paving_colors", Array()), mc = t.get("median_colors", Array());
 	if (sc.size() < PALETTE || pc.size() < PALETTE || mc.size() < PALETTE) {
-		errors.push_back("streets.json: paletas de superfície incompletas");
+		errors.push_back("streets.json: surface palettes incomplete");
 		return;
 	}
 	for (int i = 0; i < PALETTE; i++) {
@@ -103,7 +103,7 @@ void load_marks(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 		floats("dash_m", st.dash);
 		floats("gap_m", st.gap);
 		if (st.dash.empty() || st.dash.size() != st.gap.size() || st.dash.size() != st.dash_kmh.size() + 1)
-			errors.push_back("streets.json markings.styles: dash_m e gap_m com uma faixa a mais que dash_kmh");
+			errors.push_back("streets.json markings.styles: dash_m and gap_m need one band more than dash_kmh");
 		L.styles.push_back(st);
 	}
 	L.parking_line_w = float(m["mer_line_m"]);

@@ -246,7 +246,7 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, const RID &
 		sound = sound && c.frames > 0 && c.row + c.frames <= block_rows;
 	}
 	if (!r.ok || !sound || clip("idle") < 0 || hand_bone < 0 || uint32_t(hand_bone) >= bones) {
-		errors.push_back("pessoas: arquivo ausente ou inválido: " + path);
+		errors.push_back("people: file missing or invalid: " + path);
 		return false;
 	}
 	read_card(r);
@@ -294,7 +294,7 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, const RID &
 	}
 	read_ragdoll(r, bones);
 	if (!r.ok || r.o != r.n) {
-		errors.push_back("pessoas: arquivo truncado ou com sobra: " + path);
+		errors.push_back("people: file truncated or with bytes left over: " + path);
 		return false;
 	}
 	keep_posed(texels.ptr()); // the few rows the CPU reads; the rest goes with `texels` once the texture has them
@@ -303,7 +303,7 @@ bool PeopleAsset::load(const String &path, const String &atlas_path, const RID &
 	card = card_mesh(far_material);
 	atlas = read_atlas(atlas_path, count);
 	if (atlas.is_null()) {
-		errors.push_back("pessoas: atlas ausente ou inválido: " + atlas_path);
+		errors.push_back("people: atlas missing or invalid: " + atlas_path);
 		return false;
 	}
 	return true;

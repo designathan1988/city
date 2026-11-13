@@ -42,7 +42,7 @@ func _plates() -> void:
 	# the 4.0's matrix: every layout, on flat and broken ground, two boulevards or a boulevard and an avenue, two chains
 	for ground in ["flat", "hilly"]:
 		for east_west in ["boulevard", "avenue"]:
-			for layout in ["chão", "toda elevada", "elevada sobre chão", "elevada pousando nas ruas"]:
+			for layout in ["ground", "all raised", "raised over ground", "raised landing on the streets"]:
 				var worst = 0.0
 				for chain in [[3, 150 * t.U], [2, 200 * t.U]]:
 					worst = maxf(worst, _plate_seam(ground, east_west, layout, chain[0], chain[1]))
@@ -58,7 +58,7 @@ func _plate_seam(ground: String, east_west: String, layout: String, count: int, 
 		var prev = 0
 		for k in range(1, count + 1):
 			nodes.append([arms[arm][0] * length * k, arms[arm][1] * length * k])
-			var raised: bool = layout == "toda elevada" or (layout == "elevada sobre chão" and arm % 2 == 0) 					or (layout == "elevada pousando nas ruas" and k < count)
+			var raised: bool = layout == "all raised" or (layout == "raised over ground" and arm % 2 == 0) 					or (layout == "raised landing on the streets" and k < count)
 			segs.append([prev, nodes.size() - 1, "boulevard" if arm % 2 == 0 else east_west, 1 if raised else 0])
 			prev = nodes.size() - 1
 	var r = t.solve({"kind": ground}, nodes, segs)

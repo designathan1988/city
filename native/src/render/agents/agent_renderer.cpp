@@ -68,13 +68,13 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 	const AgentTrim trim = read_trim(t["trim"]);
 	const Array cars = t["cars"];
 	const Dictionary body = t["car_body"], inside = t["cars_cabin"];
-	if (cars.size() != CAR_MODELS + 1) errors.push_back("agents.json: esperado um carro por estilo");
+	if (cars.size() != CAR_MODELS + 1) errors.push_back("agents.json: expected one car per style");
 	CabinLook look;
-	if (!look.load(t["cabin"])) errors.push_back("agents.json: cabin incompleto");
+	if (!look.load(t["cabin"])) errors.push_back("agents.json: cabin incomplete");
 	if (!errors.is_empty()) return false;
 	const Array wheel_sides = body["wheel_sides"];
 	for (const char *key : { "wheel_sides", "stations", "arch_steps", "end_steps", "end_roll_steps" }) // one entry per level (agent_meshes.h)
-		if (Array(body[key]).size() != LEVELS + 1) errors.push_back(String("agents.json: car_body.") + key + " precisa de um valor por nível e um para a sombra da frota");
+		if (Array(body[key]).size() != LEVELS + 1) errors.push_back(String("agents.json: car_body.") + key + " needs one value per level and one for the fleet's shadow");
 	if (!errors.is_empty()) return false;
 	const Dictionary far_shadow = t["far_shadow"], lod = t["lod"];
 	const float cabin_error = lod["cabin_error_m"], body_error = lod["body_error_m"], far_error = lod["far_error_m"];
@@ -105,7 +105,7 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 				const AABB box = mesh_outline(mb);
 				reach_m_[i] = box.position.abs().max(box.get_end().abs()).length();
 			}
-			if (seats < 0) errors.push_back(String("agents.json: o veículo ") + String::num_int64(i) + " tem a cabine invertida (fundo à frente da frente)");
+			if (seats < 0) errors.push_back(String("agents.json: vehicle ") + String::num_int64(i) + " has its cabin reversed (the back ahead of the front)");
 			if (level == CABIN_LEVEL) {
 				load_[i].seats = seats;
 				commit_mesh(i, MID_DRAW, simplify_parts(mb, cabin_error));

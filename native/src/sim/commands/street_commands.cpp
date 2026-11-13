@@ -24,7 +24,7 @@ constexpr int MIN_RULE_ARMS = 3;
 constexpr double ROW_STEP_EPS_M = 0.002; // a row reaches its last station past the rounding of the sum
 constexpr int KIT_ARC_STEPS = 64; // the arc table a moved road's kit is put back along (as road_commands.cpp lays its pieces)
 
-// The approach a Stop or Give Way plate at (x, z) governs ("placa = regra"), or -1: the node of the segment end it stands
+// The approach a Stop or Give Way plate at (x, z) governs ("the plate is the rule"), or -1: the node of the segment end it stands
 // by, within signs.approach_reach_m of its mouth, where traffic arrives.
 int sign_approach(const CityState &s, const FootwayHit &h) {
 	const RoadNetwork &net = s.roads;

@@ -5,7 +5,7 @@ extends RefCounted
 
 const MODELS_DIR := "user://models"
 const TEST_MODELS_DIR := "user://models_tests"
-const EXT := "modelo"
+const EXT := "model"
 
 
 static func dir() -> String:

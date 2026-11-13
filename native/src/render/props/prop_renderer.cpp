@@ -35,7 +35,7 @@ bool PropRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 	Dictionary t = ctx.table("streets", errors);
 	if (!errors.is_empty()) return false;
 	if (!t.has("props")) {
-		errors.push_back("streets.json: falta props");
+		errors.push_back("streets.json: missing props");
 		return false;
 	}
 	if (!furniture_.load(t, errors) || !barriers_.load(t, errors) || !signs_.load(t, errors) || !kit_.build(t["props"], t["wires"], Dictionary(t["barriers"])["beam_section"], errors)) return false;

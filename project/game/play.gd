@@ -15,12 +15,12 @@ func _ready() -> void:
 	add_child(cam)
 	var errors := CityStore.boot(world.terrain, world.materials())
 	if not errors.is_empty():
-		push_error("Falha ao iniciar: %s" % "\n".join(errors))
+		push_error("Failed to start: %s" % "\n".join(errors))
 		return
 	cam.look_at_ground(Vector3.ZERO)
 	var saved := _open_last()
 	if not saved:
-		print("cidade: ", CityStore.new_map(TOWN_MAP, randi_range(1, int(DataTables.game("start").seed_max)), true))
+		print("city: ",CityStore.new_map(TOWN_MAP, randi_range(1, int(DataTables.game("start").seed_max)), true))
 	Settings.attach(world, get_viewport())
 	var tools := ToolController.new(cam)
 	add_child(tools)

@@ -57,10 +57,11 @@
   declarator: (init_declarator declarator: (array_declarator declarator: (identifier) @name) value: (_) @value) @variable)
 (structured_binding_declarator (identifier) @name @variable)
 (field_declaration type: (_) @type declarator: (field_identifier) @name @variable)
-(field_declaration declarator: (field_identifier) @name @variable . default_value: (_) @value)
+(field_declaration (type_qualifier)? @fixed declarator: (field_identifier) @name @variable . default_value: (_) @value)
 (field_declaration type: (_) @type declarator: (pointer_declarator declarator: (field_identifier) @name) @variable)
 (field_declaration type: (_) @type declarator: (reference_declarator (field_identifier) @name) @variable)
-(field_declaration type: (_) @type declarator: (array_declarator declarator: (field_identifier) @name) @variable)
+(field_declaration type: (_) @type declarator: (array_declarator declarator: (field_identifier) @name) @variable
+  default_value: (_)? @value)
 (for_range_loop type: (_) @type declarator: (identifier) @name right: (_) @value) @variable
 (for_range_loop type: (_) @type declarator: (reference_declarator (identifier) @name) right: (_) @value) @variable
 
@@ -73,6 +74,12 @@
   declarator: (parenthesized_declarator (pointer_declarator declarator: (_) @name))) value: (_) @value) @variable)
 (parameter_declaration declarator: (function_declarator
   declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name)))) @param
+; The same in a function's body with no parameters, which the grammar reads as calls of the type: a statement that
+; can be a declaration is one ([stmt.ambig]).
+(assignment_expression left: (call_expression
+  function: (call_expression function: [(primitive_type) (identifier) (type_identifier) (qualified_identifier)]
+                             arguments: (argument_list . (pointer_expression argument: (identifier) @name) .))
+  arguments: (argument_list)) right: (_) @value) @variable
 
 (parameter_declaration type: (_) @type declarator: (identifier) @name) @param
 (parameter_declaration type: (_) @type declarator: (pointer_declarator declarator: (identifier) @name)) @param
@@ -85,9 +92,11 @@
   declarator: (reference_declarator (identifier) @name) default_value: (_) @value) @param
 
 (assignment_expression left: (_) @left right: (_) @right) @assign
+(update_expression argument: (_) @left) @assign
 
 (call_expression function: (_) @callee arguments: (argument_list) @args) @call
 (new_expression type: (_) @callee arguments: (argument_list)? @args) @new
+(compound_literal_expression type: (_) @callee value: (initializer_list) @args) @new
 (declaration type: (_) @callee declarator: (init_declarator value: (argument_list) @args) @new)
 (declaration type: (_) @callee declarator: (init_declarator value: (initializer_list) @args) @new)
 (field_initializer (field_identifier) @callee (argument_list) @args) @new
@@ -116,6 +125,9 @@
 
 (return_statement (_) @value) @return
 
+; A call made for its effect: its value is taken by nothing.
+(expression_statement (call_expression) @effect)
+
 ; The types that may be any value: deduced ([dcl.spec.auto], [dcl.type.decltype]) or depending on a parameter.
 (placeholder_type_specifier) @open
 (decltype) @open
@@ -130,3 +142,21 @@
 (preproc_include path: (_) @source) @include
 
 [(number_literal) (string_literal) (char_literal) (true) (false) (null) (raw_string_literal)] @literal
+
+; What decides which code runs and what a value is ([stmt.if], [stmt.while], [expr.cond], [stmt.switch],
+; [stmt.return], [expr.throw]; the built-in operators).
+(if_statement condition: (condition_clause value: (_) @test) consequence: (_) @then) @branch
+(while_statement condition: (condition_clause value: (_) @test) body: (_) @then) @branch @loop
+(for_statement condition: (_) @test body: (_) @then) @branch @loop
+(for_range_loop body: (_) @then) @branch @loop
+(do_statement body: (_) @then condition: (_) @after) @branch @loop
+(break_statement) @leave
+(continue_statement) @again
+(conditional_expression condition: (_) @test consequence: (_) @then alternative: (_) @else) @branch
+(switch_statement condition: (condition_clause value: (_) @test)) @choose
+(case_statement value: (_) @value) @case
+(case_statement) @case
+(return_statement) @exit
+(throw_statement) @exit
+(binary_expression left: (_) @left operator: _ @op right: (_) @right) @operation
+(unary_expression operator: _ @op argument: (_) @right) @operation

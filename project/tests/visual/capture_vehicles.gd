@@ -24,15 +24,15 @@ const ORBIT := [[Vector3(3.5, 1.4, 3.5), 0.7], [Vector3(-3.5, 1.4, 3.5), 0.7], [
 	[Vector3(4.5, 0.5, 0.0), 0.5], [Vector3(-4.5, 0.5, 0.0), 0.5], [Vector3(1.8, 0.6, 1.8), 0.3], [Vector3(0.5, 5.0, 0.5), 0.5]]
 ## Per type: name, camera offset in the vehicle frame (x to its left, y up, z ahead) and the height looked at.
 const VIEWS := {
-	BUS: [["22_onibus", Vector3(4, 3, 16), 1.6], ["22_onibus_lado", Vector3(-7, 2.6, 1), 1.6], ["22_onibus_alto", Vector3(7, 9, 4), 1.0]],
-	TRUCK: [["23_caminhao", Vector3(3, 3, 11), 1.8], ["23_caminhao_lado", Vector3(-5, 2.8, 4), 2.0], ["23_caminhao_alto", Vector3(5, 8, 3), 1.5]],
-	MOTO: [["24_moto", Vector3(2, 1.6, 5), 1.0], ["24_moto_longe", Vector3(5, 2.2, 13), 1.0]],
-	BICYCLE: [["27_bicicleta", Vector3(2, 1.6, 5), 1.0], ["27_bicicleta_longe", Vector3(5, 2.2, 13), 1.0]],
-	VAN: [["25_van", Vector3(3, 2.4, 8), 1.1], ["25_van_tras", Vector3(3, 2.4, -8), 1.1]],
-	SEDAN: [["26_sedan_tras", Vector3(0.8, 2.4, -7.5), 0.7]],
-	HATCH: [["28_hatch", Vector3(3, 2.4, 8), 0.7], ["28_hatch_perto", Vector3(2, 1.8, 5), 0.7], ["28_hatch_longe", Vector3(4, 2.4, 12), 0.7]],
-	SUV: [["28_suv", Vector3(3, 2.4, 8), 0.7], ["28_suv_longe", Vector3(4, 2.4, 12), 0.7]],
-	PICKUP: [["28_picape", Vector3(3, 2.4, 8), 0.7]],
+	BUS: [["22_bus", Vector3(4, 3, 16), 1.6], ["22_bus_side", Vector3(-7, 2.6, 1), 1.6], ["22_bus_high", Vector3(7, 9, 4), 1.0]],
+	TRUCK: [["23_truck", Vector3(3, 3, 11), 1.8], ["23_truck_side", Vector3(-5, 2.8, 4), 2.0], ["23_truck_high", Vector3(5, 8, 3), 1.5]],
+	MOTO: [["24_moto", Vector3(2, 1.6, 5), 1.0], ["24_moto_far", Vector3(5, 2.2, 13), 1.0]],
+	BICYCLE: [["27_bicycle", Vector3(2, 1.6, 5), 1.0], ["27_bicycle_far", Vector3(5, 2.2, 13), 1.0]],
+	VAN: [["25_van", Vector3(3, 2.4, 8), 1.1], ["25_van_rear", Vector3(3, 2.4, -8), 1.1]],
+	SEDAN: [["26_sedan_rear", Vector3(0.8, 2.4, -7.5), 0.7]],
+	HATCH: [["28_hatch", Vector3(3, 2.4, 8), 0.7], ["28_hatch_near", Vector3(2, 1.8, 5), 0.7], ["28_hatch_far", Vector3(4, 2.4, 12), 0.7]],
+	SUV: [["28_suv", Vector3(3, 2.4, 8), 0.7], ["28_suv_far", Vector3(4, 2.4, 12), 0.7]],
+	PICKUP: [["28_pickup", Vector3(3, 2.4, 8), 0.7]],
 }
 
 
@@ -45,10 +45,10 @@ static func car_shots(cap: Node, probe: Dictionary, ground: Vector3) -> void:
 		if int(probe.sample_type[k]) >= MOTO or not CityStore.query(&"camera_clear", [eye, CAMERA_CLEAR_M]):
 			continue
 		var car: Vector3 = probe.sample[k]
-		await cap._shot("07_carro", eye, car + CAR_VIEW_AT)
-		await cap._shot("08_carro_alto", _eye(probe, k, CAR_HIGH_FROM), car)
+		await cap._shot("07_car", eye, car + CAR_VIEW_AT)
+		await cap._shot("08_car_high", _eye(probe, k, CAR_HIGH_FROM), car)
 		for i in ORBIT.size():
-			await cap._shot("09_carro_orbita_%d" % i, _eye(probe, k, ORBIT[i][0]), car + Vector3.UP * ORBIT[i][1])
+			await cap._shot("09_car_orbit_%d" % i, _eye(probe, k, ORBIT[i][0]), car + Vector3.UP * ORBIT[i][1])
 		return
 	print("capture: no car with the camera clear of geometry")
 

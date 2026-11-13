@@ -33,7 +33,7 @@ func run() -> void:
 	t.hud.drawer.close()
 
 
-## The Controle and Mover tabs on the urban crossing.
+## The Control and Move tabs on the urban crossing.
 func _node_tools() -> void:
 	var junction = t.at(0, -120)
 	t.rig.jump(junction, 0.0, 70.0, t.NODE_VIEW_M)

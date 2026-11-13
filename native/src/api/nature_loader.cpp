@@ -15,7 +15,7 @@ struct Read {
 	String where;
 	bool has(const Dictionary &d, const char *k) {
 		if (d.has(k)) return true;
-		errors.push_back("nature." + where + ": falta '" + String(k) + "'");
+		errors.push_back("nature." + where + ": missing '" + String(k) + "'");
 		return false;
 	}
 	float num(const Dictionary &d, const char *k) { return has(d, k) ? float(double(d[k])) : 0.f; }
@@ -68,7 +68,7 @@ PaintClass paint_class(const String &s, Read &r) {
 	if (s == "cover") return PaintClass::COVER;
 	if (s == "biome") return PaintClass::BIOME;
 	if (s == "eraser") return PaintClass::ERASER;
-	r.errors.push_back("nature.paint: classe desconhecida '" + s + "'");
+	r.errors.push_back("nature.paint: unknown class '" + s + "'");
 	return PaintClass::GROUND;
 }
 
@@ -93,7 +93,7 @@ void load_paint(const Dictionary &t, PaintDef &p, PackedStringArray &e) {
 		int found = -1;
 		for (int k = 0; k < int(p.kinds.size()); k++)
 			if (p.kinds[size_t(k)].id == text(rocks[i])) found = k;
-		if (found < 0) e.push_back("nature.paint.landform_rock: tipo desconhecido");
+		if (found < 0) e.push_back("nature.paint.landform_rock: unknown kind");
 		p.landform_rock.push_back(found);
 	}
 }
@@ -145,7 +145,7 @@ void load_ecology(const Dictionary &t, const Dictionary &style, const PaintDef &
 	c.default_biome = -1;
 	for (const PaintKindDef &k : paint.kinds)
 		if (k.cls == PaintClass::BIOME && k.id == def) c.default_biome = k.slot;
-	if (c.default_biome < 0) e.push_back("nature.ecology.default_biome: bioma desconhecido");
+	if (c.default_biome < 0) e.push_back("nature.ecology.default_biome: unknown biome");
 }
 } // namespace
 

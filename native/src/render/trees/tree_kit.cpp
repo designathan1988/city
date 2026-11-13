@@ -35,7 +35,7 @@ Color hexc(const Variant &v) { return rgba8_to_color(parse_hex_color(String(v).u
 
 bool need(const Dictionary &d, const char *const *keys, int n, const String &where, PackedStringArray &errors) {
 	for (int i = 0; i < n; i++)
-		if (!d.has(keys[i])) errors.push_back("streets.json trees " + where + ": falta " + keys[i]);
+		if (!d.has(keys[i])) errors.push_back("streets.json trees " + where + ": missing " + keys[i]);
 	return errors.is_empty();
 }
 
@@ -145,11 +145,11 @@ TreeSpecies make_species(const Dictionary &d, int row, float caster_error_m, flo
 bool TreeKit::build(const Dictionary &trees, const RID &body_material, const RID &card_material, PackedStringArray &errors) {
 	species_.clear();
 	if (!trees.has("atlas") || !atlas_.build(trees["atlas"], errors)) {
-		errors.push_back("streets.json trees: atlas das folhas inválido");
+		errors.push_back("streets.json trees: invalid leaf atlas");
 		return false;
 	}
 	Array list = trees.get("species", Array());
-	if (list.is_empty()) errors.push_back("streets.json trees: sem espécies");
+	if (list.is_empty()) errors.push_back("streets.json trees: no species");
 	if (!pictures_.begin(trees.get("pictures", Dictionary()), int(list.size()), atlas_.take_image(), errors)) return false;
 	for (int i = 0; i < list.size(); i++)
 		species_.push_back(make_species(list[i], i, trees["caster_error_m"], atlas_.tuft_reach(), pictures_, body_material, card_material, errors));

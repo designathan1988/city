@@ -11,13 +11,29 @@ sys.path.insert(0, str(HERE.parent))
 from tracer import analyse, vocab  # noqa: E402
 from tracer.languages import PATTERNS  # noqa: E402,F401
 from tracer.solver import Solver  # noqa: E402,F401
-from tracer.vocab import (AS_KEPT, AS_NAME, BY_NAME, BY_TEXT, CALL, EXACT, FN, HANDED, INST, KEPT,  # noqa: E402,F401
-                          NEW, RUNNING)
-from tracer.walk import backward, find, forward  # noqa: E402,F401
+from tracer.vocab import (AS_KEPT, AS_NAME, BY_NAME, BY_TEXT, CALL, EXACT, FIRES, FN, HANDED, INST,  # noqa: E402,F401
+                          KEPT, NEW, RUNNING)
 
 FIXTURE = HERE / "fixture"
 WORDS = {value for value in vars(vocab).values() if isinstance(value, str)}      # every word of the vocabulary
 _DONE = {}
+
+
+def compiler() -> str | None:
+    """A C++ compiler with its standard library: g++ on the path, else the one winget installed (a shell opened before
+    it does not have it on its path yet), else clang++."""
+    import os
+    import shutil
+    found = shutil.which("g++")
+    if found:
+        return found
+    packages = Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WinGet" / "Packages"
+    if packages.is_dir():
+        for folder in sorted(packages.iterdir()):
+            hit = next(iter(folder.rglob("g++.exe")), None) if "WinLibs" in folder.name else None
+            if hit:
+                return str(hit)
+    return shutil.which("clang++")
 
 
 def traced(folder: str):

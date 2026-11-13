@@ -13,7 +13,7 @@ LAMBDA = "<lambda:{}>"
 OBJECT = "<object:{}>"
 
 
-@dataclass
+@dataclass(slots=True)
 class Definition:
     id: int
     kind: str
@@ -54,6 +54,8 @@ class File:
     exports: dict = field(default_factory=dict)      # exported name -> name in the file
     default: list = field(default_factory=list)      # the nodes exported by default
     open: set = field(default_factory=set)           # the types written there that may be any value
+    effects: set = field(default_factory=set)        # the calls whose value nothing takes
+    uniforms: tuple = ()                             # the uniforms a shader declares (the code outside sets them)
 
     def role(self, node):
         """What a node is as an expression, (role, parts): by a pattern that matched it, else by its kind alone."""
@@ -62,6 +64,22 @@ class File:
     def is_a(self, node, role: str) -> bool:
         found = self.role(node)
         return found is not None and found[0] == role
+
+
+def child_nodes(node, named: bool = True) -> list:
+    """A node's children (the named ones, by default), read with a cursor: no list of them is kept on the node
+    (py-tree-sitter keeps a node's `children` on it for as long as the node lives; the tracer holds hundreds of
+    thousands of nodes, and kept so their trees would be held whole as objects)."""
+    out = []
+    cursor = node.walk()
+    if cursor.goto_first_child():
+        while True:
+            child = cursor.node
+            if not named or child.is_named:
+                out.append(child)
+            if not cursor.goto_next_sibling():
+                break
+    return out
 
 
 def text(node) -> str:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Project gates: python tools/gates/run_gates.py [--file PATH ...] [--files-from LIST] [--summary] [--selftest] [--json]
-[--register log/problems.jsonl]
+[--register doc/problems.jsonl]
 Exit 0 clean; 1 when any rule reports a problem or crashes; 2 when no file is given or the scope is empty, or a given
 path is unknown (not on disk and not in git). Given paths that every gate leaves out by a declared rule are listed and
 skipped; when all of them are, the exit is 0. Each rule runs on its own: one crashing rule is a failure and the others
@@ -231,7 +231,7 @@ def report(problems, judged, summary):
         print(f"... and {len(problems) - len(shown)} more")
     if problems:
         print("by rule: " + ", ".join(f"{g} {n}" for g, n in sorted(counts.items())))
-        print(f"Gates FAILED: {len(problems)} problem(s) in {judged} file(s). Rules: CLAUDE.md; map: log/map.md.")
+        print(f"Gates FAILED: {len(problems)} problem(s) in {judged} file(s). Rules: CLAUDE.md; map: doc/map.md.")
     else:
         print(f"Gates OK: {judged} file(s).")
 

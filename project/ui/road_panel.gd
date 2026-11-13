@@ -57,7 +57,7 @@ static func point(col: Control, info: Dictionary, changed: Callable, gone: Calla
 		col.add_child(b)
 
 
-## Both ways, or one: the road's own section with its lanes turned, as Editar perfil would leave it.
+## Both ways, or one: the road's own section with its lanes turned, as Edit profile would leave it.
 static func _direction(col: Control, info: Dictionary, at: Vector3, changed: Callable) -> void:
 	var spec: Dictionary = CityStore.query(&"road_spec", [info.profile_id])
 	var now := 0
@@ -119,7 +119,7 @@ static func works(row: Control, info: Dictionary, at: Vector3, redraw: Callable)
 		_work(row, row.tr("inspector.addUturnToStart"), &"add_uturn", [at, false], redraw)
 
 
-## A dead end of the road: "Ponta inicial [balão]"; the choice comes back from the core, so a refused one stays off.
+## A dead end of the road: "Start of the road [bulb]"; the choice comes back from the core, so a refused one stays off.
 static func end_row(col: Control, e: Dictionary, redraw: Callable) -> void:
 	var row := HudWidgets.hbox(col)
 	var name := HudWidgets.label(row, &"MutedLabel", col.tr("inspector.endStart" if e.start else "inspector.endEnd"))

@@ -2,7 +2,7 @@
 // (sim/roads/standing_body.h), whichever segment placed it, and every plate (the rules', the player's, the streets' names), and
 // every two of them standing nearer than the hand's gap two pieces of the street keep (items.gap_m), or with a part of one through
 // a part of the other: how many, by the two kinds, and the first of each pair of kinds with where they stand. What a player sees
-// as a hydrant against a post, a bench against a pole or a plate's post in a bin (log/pendencias.md V2, V3).
+// as a hydrant against a post, a bench against a pole or a plate's post in a bin (register Prender-156, Prender-157).
 #include "api/city_probes.h"
 
 #include "sim/roads/standing_body.h"

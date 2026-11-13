@@ -63,8 +63,8 @@ func _buses() -> void:
 	check(CityStore.dispatch(&"transit_line", [ids]).get("ok", false), "bus line")
 	ticks(RUN_TICKS)
 	var run: Dictionary = CityStore.query(&"transit_run")
-	# a bus takes aboard whoever is walking alone past its stop as it calls (bus_calls.cpp): nobody walks to a stop for it (log/pendencias.md
-	# S7), so who gets on is who happens by. The test waits for it on the state, as long as it takes somebody to be there
+	# a bus takes aboard whoever is walking alone past its stop as it calls (bus_calls.cpp): nobody walks to a stop for it (the register,
+	# Ptransit-2), so who gets on is who happens by. The test waits for it on the state, as long as it takes somebody to be there
 	var looks := 0
 	while int(run.boarded) == 0 and looks < BOARD_LOOKS:
 		ticks(BOARD_LOOK_TICKS)

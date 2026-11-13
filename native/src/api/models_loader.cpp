@@ -44,7 +44,7 @@ int named(const Named (&list)[N], const Variant &v, const char *what, PackedStri
 	std::string s = str(v);
 	for (const Named &n : list)
 		if (s == n.name) return n.value;
-	errors.push_back(String("models.json: ") + what + " desconhecido: " + s.c_str());
+	errors.push_back(String("models.json: unknown ") + what + ": " + s.c_str());
 	return list[0].value;
 }
 
@@ -82,7 +82,7 @@ void parts(const Layout &l, const Array &list, PackedStringArray &errors) {
 	for (int i = 0; i < list.size(); i++) {
 		Dictionary p = list[i];
 		Array where = at(p, "at");
-		LotElement e = part(l, named(ELEMENT_NAMES, at(p, "kind"), "peça", errors), float(where[0]), float(where[1]), int(p.get("facing", 0)));
+		LotElement e = part(l, named(ELEMENT_NAMES, at(p, "kind"), "part", errors), float(where[0]), float(where[1]), int(p.get("facing", 0)));
 		Dictionary size = p.get("size", Dictionary());
 		e.w = float(size.get("w", e.w));
 		e.d = float(size.get("d", e.d));
@@ -96,7 +96,7 @@ void rows(const Layout &l, const Array &list, PackedStringArray &errors) {
 	for (int i = 0; i < list.size(); i++) {
 		Dictionary r = list[i];
 		Array from = at(r, "from"), to = at(r, "to");
-		int n = int(at(r, "count")), kind = named(ELEMENT_NAMES, at(r, "kind"), "peça", errors), facing = int(r.get("facing", 0));
+		int n = int(at(r, "count")), kind = named(ELEMENT_NAMES, at(r, "kind"), "part", errors), facing = int(r.get("facing", 0));
 		for (int k = 0; k < n; k++) {
 			float share = n == 1 ? 0.5f : float(k) / float(n - 1);
 			float x = float(from[0]) + (float(to[0]) - float(from[0])) * share, y = float(from[1]) + (float(to[1]) - float(from[1])) * share;
@@ -110,7 +110,7 @@ void rings(const Layout &l, const Array &list, PackedStringArray &errors) {
 	for (int i = 0; i < list.size(); i++) {
 		Dictionary r = list[i];
 		Array rect = at(r, "at");
-		int kind = named(ELEMENT_NAMES, at(r, "kind"), "peça", errors);
+		int kind = named(ELEMENT_NAMES, at(r, "kind"), "part", errors);
 		float x = float(rect[0]), y = float(rect[1]), w = float(rect[RECT_WIDTH]), d = float(rect[RECT_DEPTH]), gate = float(at(r, "opening_m")), piece = l.ring_piece;
 		auto lay = [&](float px, float py, int facing) {
 			LotElement e = part(l, kind, px, py, facing);
@@ -167,7 +167,7 @@ ModelBlock block_of(const Dictionary &s, PackedStringArray &errors) {
 	b.base = int(s.get("base", 0));
 	b.storeys = int(at(s, "storeys"));
 	b.pitch = float(s.get("pitch_deg", -1.0));
-	if (s.has("roof")) b.roof = Roof(named(ROOF_NAMES, at(s, "roof"), "telhado", errors));
+	if (s.has("roof")) b.roof = Roof(named(ROOF_NAMES, at(s, "roof"), "roof", errors));
 	b.fill = bay_named(str(at(s, "fill")), errors);
 	if (s.has("ground_fill")) b.ground = bay_named(str(at(s, "ground_fill")), errors);
 	if (s.has("door_kind")) b.door_kind = bay_named(str(at(s, "door_kind")), errors);
@@ -175,7 +175,7 @@ ModelBlock block_of(const Dictionary &s, PackedStringArray &errors) {
 		Variant door = at(s, "door_bay");
 		b.door_bay = door.get_type() == Variant::STRING ? MIDDLE_BAY : int(door);
 	}
-	if (s.has("pattern")) b.pattern = named(PATTERN_NAMES, at(s, "pattern"), "padrão", errors);
+	if (s.has("pattern")) b.pattern = named(PATTERN_NAMES, at(s, "pattern"), "pattern", errors);
 	Array outline = s.get("outline", Array());
 	for (int i = 0; i < outline.size(); i++) {
 		Array p = outline[i];
@@ -203,7 +203,7 @@ bool load_models(const Dictionary &table, Data &d, PackedStringArray &errors) {
 	l.ring_piece = float(at(t, "ring_piece_m"));
 	for (int i = 0; i < sizes.size(); i++) {
 		Array s = sizes[i];
-		l.sizes[named(ELEMENT_NAMES, s[0], "peça", errors)] = Sizes{ float(s[SPEC_W]), float(s[SPEC_D]), float(s[SPEC_H]) };
+		l.sizes[named(ELEMENT_NAMES, s[0], "part", errors)] = Sizes{ float(s[SPEC_W]), float(s[SPEC_D]), float(s[SPEC_H]) };
 	}
 	d.models.items.resize(size_t(list.size()));
 	for (int i = 0; i < list.size(); i++) {
@@ -212,10 +212,10 @@ bool load_models(const Dictionary &table, Data &d, PackedStringArray &errors) {
 		l.model = &m;
 		m.id = str(at(s, "id"));
 		m.group = str(at(s, "group"));
-		m.zone = named(USE_NAMES, at(s, "use"), "uso", errors);
+		m.zone = named(USE_NAMES, at(s, "use"), "use", errors);
 		m.use = m.zone == ZONE_RESIDENTIAL ? USE_RESIDENTIAL : m.zone == ZONE_INDUSTRIAL ? USE_INDUSTRIAL : USE_COMMERCIAL;
 		m.kind = kind_named(str(at(s, "kind")), errors);
-		if (s.has("function")) m.function = named(FUNCTION_NAMES, at(s, "function"), "função", errors);
+		if (s.has("function")) m.function = named(FUNCTION_NAMES, at(s, "function"), "function", errors);
 		m.palette = int(at(s, "scheme"));
 		m.ground_h = float(s.get("ground_m", ground_h));
 		m.storey_h = float(s.get("storey_m", storey_h));

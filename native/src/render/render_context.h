@@ -27,13 +27,13 @@ struct RenderContext {
 	godot::RID material(const char *name, godot::PackedStringArray &errors) const {
 		auto it = materials.find(name);
 		if (it != materials.end()) return it->second;
-		errors.push_back(godot::String("material ausente: ") + name);
+		errors.push_back(godot::String("missing material: ") + name);
 		return godot::RID();
 	}
 	godot::Dictionary table(const char *name, godot::PackedStringArray &errors) const {
 		godot::String key(name);
 		if (tables.has(key)) return tables.get(key, godot::Dictionary());
-		errors.push_back(godot::String("tabela de render ausente: ") + name);
+		errors.push_back(godot::String("missing render table: ") + name);
 		return godot::Dictionary();
 	}
 };

@@ -1,4 +1,4 @@
-// The profile editor's API (Personalizar, Meus modelos): a road as elements for script, what stops it from being built, and the profile made
+// The profile editor's API (Customise, My roads): a road as elements for script, what stops it from being built, and the profile made
 // of it. The dictionaries are the editor's own: {elements: [{kind, width, dir, bus, solid, flush, pave}], speed, priority, centre}.
 #include "api/city_core.h"
 

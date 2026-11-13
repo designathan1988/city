@@ -1,4 +1,0 @@
-{
-  // the config a project's sources sit under: TypeScript finds it walking up from them (tsc, tsserver)
-  "compilerOptions": { "baseUrl": ".", "paths": { "@lib/*": ["src/lib/*"] } }
-}

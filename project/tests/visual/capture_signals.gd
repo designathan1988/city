@@ -16,7 +16,7 @@ static func shots(cap: Node, cross: Vector3, hours: Array) -> void:
 		await at_hour(cap, hours[i])
 		for k in SIDES:
 			var side := Vector3.FORWARD.rotated(Vector3.UP, k * TAU / SIDES) * LOW_M
-			await cap._shot("19_semaforo_%s_%d" % ["dia" if i == 0 else "noite", k], cross + side + Vector3.UP * LOW_Y,
+			await cap._shot("19_signal_%s_%d" % ["day" if i == 0 else "night", k], cross + side + Vector3.UP * LOW_Y,
 					cross + Vector3.UP * LOOK_AT_Y)
 	await at_hour(cap, hours[0])
 

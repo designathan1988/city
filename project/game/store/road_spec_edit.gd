@@ -1,4 +1,4 @@
-## The road section being composed in Personalizar...: what it started from and where the editing stands (RoadProfilePanel draws it).
+## The road section being composed in Customise...: what it started from and where the editing stands (RoadProfilePanel draws it).
 class_name RoadSpecEdit
 extends Resource
 

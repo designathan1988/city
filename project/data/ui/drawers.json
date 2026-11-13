@@ -146,23 +146,23 @@
  "first_road": "urbanStreet",
  "catalog_tabs": [
   [
-   "ruas",
+   "streets",
    "catalog.cat.streets"
   ],
   [
-   "avenidas",
+   "avenues",
    "catalog.cat.avenues"
   ],
   [
-   "rodovias",
+   "highways",
    "catalog.cat.highways"
   ],
   [
-   "especiais",
+   "special",
    "catalog.cat.special"
   ],
   [
-   "trilhos",
+   "rails",
    "catalog.cat.rails"
   ],
   [

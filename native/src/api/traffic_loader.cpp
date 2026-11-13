@@ -20,12 +20,12 @@ static_assert(sizeof(VehicleClass) == sizeof(float) * CLASS_FIELDS, "traffic.jso
 
 bool numbers(const Dictionary &t, const char *key, float *out, int count, PackedStringArray &errors) {
 	if (!t.has(key)) {
-		errors.push_back(String("traffic: falta '") + key + "'");
+		errors.push_back(String("traffic: missing '") + key + "'");
 		return false;
 	}
 	Array a = t[key];
 	if (a.size() != count) {
-		errors.push_back(String("traffic.") + key + ": esperado " + String::num_int64(count) + " valores");
+		errors.push_back(String("traffic.") + key + ": expected " + String::num_int64(count) + " values");
 		return false;
 	}
 	for (int i = 0; i < count; i++) out[i] = float(double(a[i]));
@@ -37,7 +37,7 @@ bool numbers(const Dictionary &t, const char *key, float *out, int count, Packed
 bool load_traffic_params(const Dictionary &t, TrafficParams &p, PackedStringArray &errors) {
 	Dictionary params = t.has("params") ? Dictionary(t["params"]) : Dictionary();
 #define CITY_TRAFFIC_LOAD(name) \
-	if (!params.has(#name)) errors.push_back("traffic.params: falta '" #name "'"); \
+	if (!params.has(#name)) errors.push_back("traffic.params: missing '" #name "'"); \
 	else p.name = float(double(params[#name]));
 	CITY_TRAFFIC_FIELDS(CITY_TRAFFIC_LOAD)
 #undef CITY_TRAFFIC_LOAD
@@ -45,10 +45,10 @@ bool load_traffic_params(const Dictionary &t, TrafficParams &p, PackedStringArra
 	const Dictionary styles = t.has("styles") ? Dictionary(t["styles"]) : Dictionary();
 	const Dictionary style = styles.has(REGIONAL_STYLE) ? Dictionary(styles[REGIONAL_STYLE]) : Dictionary();
 	// the lanes are laid out for right-hand traffic (sim/roads/profiles.h): a left-hand style would come out half mirrored
-	if (String(style.get("drive_side", "")) != "right") errors.push_back("traffic.styles: drive_side deve ser 'right' por enquanto");
+	if (String(style.get("drive_side", "")) != "right") errors.push_back("traffic.styles: drive_side must be 'right' for now");
 	p.drive_side = 0;
 	Array classes = t.has("classes") ? Array(t["classes"]) : Array();
-	if (classes.size() != VEHICLE_TYPES) errors.push_back("traffic.classes: esperado uma linha por tipo de veiculo");
+	if (classes.size() != VEHICLE_TYPES) errors.push_back("traffic.classes: expected one row per vehicle type");
 	for (int i = 0; i < classes.size() && i < VEHICLE_TYPES; i++) {
 		float v[CLASS_FIELDS] = {};
 		Dictionary row;

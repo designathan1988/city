@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import unittest
 
-from support import BY_NAME, BY_TEXT, CALL, EXACT, HANDED, NEW, backward, find, forward, reached, traced
+from support import BY_NAME, BY_TEXT, CALL, EXACT, FIRES, HANDED, NEW, reached, traced
+from tracer.walk import backward, find, forward
 
 
 class GDScript(unittest.TestCase):
@@ -62,8 +63,16 @@ class Cpp(unittest.TestCase):
     def test_a_function_kept_in_a_member_and_called_through_it(self):
         self.assertIn("fx.heat.stoke", reached(self.r, "fx.heat.Kiln.fire", (CALL,), EXACT))
 
-    def test_what_a_template_gives_back_is_found_by_name(self):
-        self.assertEqual({"fx.Crate.lift", "fx.Lamp.lift"}, reached(self.r, "fx.heat.Kiln.fire", (CALL,), BY_NAME))
+    def test_what_a_template_gives_back_is_the_compiler_s_answer(self):
+        """`rack_.take().lift(n)`: a `Rack<Crate>` gives back a Crate; clang says so (the text alone found `lift` by
+        name in every class writing one)."""
+        try:
+            from clang import cindex
+            cindex.Index.create()
+        except Exception as error:
+            self.skipTest(f"clang is not installed: {error}")
+        self.assertIn("fx.Crate.lift", reached(self.r, "fx.heat.Kiln.fire", (CALL,), EXACT))
+        self.assertNotIn("fx.Lamp.lift", reached(self.r, "fx.heat.Kiln.fire", (CALL,)))
 
     def test_an_initializer_makes_the_member(self):
         self.assertIn("fx.Crate", reached(self.r, "fx.heat.Kiln.Kiln", (NEW,)))
@@ -215,24 +224,28 @@ class Held(unittest.TestCase):
         self.assertEqual({"fx.drift"}, reached(r, "fx.poke", (CALL,), BY_NAME))
 
     def test_a_call_given_a_function_keeps_it_and_one_given_none_may_run_it(self):
+        """Given a function, a call registers it (handed); given none, it fires what the object keeps (spec 002,
+        D16: once both were `handed`)."""
         r = traced("gd")
         self.assertEqual({"lamp.polish_a"}, reached(r, "lamp.wire_a", (HANDED,)))
         self.assertEqual({"lamp.polish_b"}, reached(r, "lamp.wire_b", (HANDED,)))
-        self.assertEqual({"lamp.polish_a", "lamp.polish_b"}, reached(r, "lamp.fire", (HANDED,)))
+        self.assertEqual({"lamp.polish_a", "lamp.polish_b"}, reached(r, "lamp.fire", (FIRES,)))
         self.assertEqual(set(), reached(r, "lamp.wire_c", (HANDED,)))       # given a function not defined here
 
     def test_a_function_an_object_keeps_is_not_the_object_s_value(self):
         r = traced("gd")
-        self.assertEqual(set(), reached(r, "lamp.look", (HANDED,)))
-        self.assertEqual({"lamp.polish_a", "lamp.polish_b"}, reached(r, "lamp.first", (HANDED,)))
+        self.assertEqual(set(), reached(r, "lamp.look", (HANDED, FIRES)))
+        self.assertEqual({"lamp.polish_a", "lamp.polish_b"}, reached(r, "lamp.first", (FIRES,)))
 
     def test_what_an_object_keeps_by_name_is_not_run_after_it_has_travelled(self):
-        self.assertEqual(set(), reached(traced("gd"), "lamp.drift", (HANDED,)))
-        self.assertEqual({"Shop._on_sold"}, reached(traced("gd"), "Shop.sell", (HANDED,), EXACT))
+        self.assertEqual(set(), reached(traced("gd"), "lamp.drift", (HANDED, FIRES)))
+        self.assertEqual({"Shop._on_sold"}, reached(traced("gd"), "Shop.sell", (FIRES,), EXACT))
 
     def test_what_an_object_keeps_runs_where_an_element_of_it_is_called(self):
+        """`queue.push(onA)`, then `job()` for each element: calling a value that keeps a function fires it, exactly
+        (spec 002, D23; once a guess by name)."""
         r = traced("ts")
-        self.assertEqual({"onA"}, reached(r, "flush", (CALL,), BY_NAME))
+        self.assertEqual({"onA"}, reached(r, "flush", (FIRES,), EXACT))
         self.assertEqual({"byFirst"}, reached(r, "sorted", (HANDED,)))
         self.assertEqual(set(), reached(r, "listed", (HANDED,)))
 

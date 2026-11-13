@@ -38,7 +38,7 @@ static func _pair(cap: Node, pair: Dictionary) -> void:
 		var was: Vector3 = probe.sample[k]
 		tried.append(was)
 		cap.camera.global_position = _eye(probe, k, pair)
-		await CaptureWait.until_drawn(cap, DRAW_FRAMES, pair.name + " salto")
+		await CaptureWait.until_drawn(cap, DRAW_FRAMES, pair.name + " jump")
 		CityStore.step_ticks(WINDOW_TICKS)
 		probe = CityStore.query(&"traffic_probe", [SAMPLE])
 		k = _nearest(probe, pair, was)

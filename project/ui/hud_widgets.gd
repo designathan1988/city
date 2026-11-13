@@ -34,7 +34,7 @@ static func tip_for(b: Button, tip: String) -> void:
 	b.tooltip_text = "" if tip == b.text else tip
 
 
-## Disabled "being built" button: tooltip "<name> · em construção".
+## Disabled "being built" button: tooltip "<name> · being built".
 static func soon(b: Button, name_key: String) -> void:
 	b.disabled = true
 	b.tooltip_text = "%s · %s" % [TranslationServer.translate(name_key), TranslationServer.translate("ui.soon")]

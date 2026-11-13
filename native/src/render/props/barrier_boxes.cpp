@@ -113,7 +113,7 @@ BarrierFinish finish(const Dictionary &d, const char *key) {
 
 bool BarrierLook::load(const Dictionary &t, PackedStringArray &errors) {
 	if (!t.has("barriers")) {
-		errors.push_back("streets.json: falta barriers");
+		errors.push_back("streets.json: missing barriers");
 		return false;
 	}
 	const Dictionary b = t["barriers"];

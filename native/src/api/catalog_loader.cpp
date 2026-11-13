@@ -20,14 +20,14 @@ struct Reader {
 
 	bool has(const Dictionary &d, const char *key) {
 		if (d.has(key)) return true;
-		errors.push_back(where + ": falta '" + String(key) + "'");
+		errors.push_back(where + ": missing '" + String(key) + "'");
 		return false;
 	}
 	float num(const Dictionary &d, const char *key) {
 		if (!has(d, key)) return 0.f;
 		Variant v = d[key];
 		if (v.get_type() != Variant::FLOAT && v.get_type() != Variant::INT) {
-			errors.push_back(where + "." + String(key) + ": esperado numero");
+			errors.push_back(where + "." + String(key) + ": expected a number");
 			return 0.f;
 		}
 		return float(double(v));
@@ -39,7 +39,7 @@ struct Reader {
 	Dictionary dict(const Dictionary &d, const char *key) { return has(d, key) ? Dictionary(d[key]) : Dictionary(); }
 	IntRange range(const Dictionary &d, const char *key) {
 		Array a = arr(d, key);
-		if (a.size() != 2) { errors.push_back(where + "." + String(key) + ": esperado [min, max)"); return {}; }
+		if (a.size() != 2) { errors.push_back(where + "." + String(key) + ": expected [min, max)"); return {}; }
 		return { int(a[0]), int(a[1]) };
 	}
 };
@@ -63,7 +63,7 @@ void load_tuning(const Dictionary &t, Tuning &tn, PackedStringArray &errors) {
 StripKind strip_kind(const String &k, Reader &r) {
 	for (int i = 0; i < int(StripKind::COUNT); i++)
 		if (k == STRIP_KIND_NAMES[i]) return StripKind(i);
-	r.errors.push_back(r.where + ": faixa desconhecida '" + k + "'");
+	r.errors.push_back(r.where + ": unknown strip '" + k + "'");
 	return StripKind::LANE;
 }
 
@@ -71,7 +71,7 @@ RoadClass road_class(const String &k, Reader &r) {
 	static const char *NAMES[] = { "local", "urban", "avenue", "boulevard", "highway", "ramp", "rail" };
 	for (int i = 0; i < int(RoadClass::COUNT); i++)
 		if (k == NAMES[i]) return RoadClass(i);
-	r.errors.push_back(r.where + ": classe de via desconhecida '" + k + "'");
+	r.errors.push_back(r.where + ": unknown road class '" + k + "'");
 	return RoadClass::LOCAL;
 }
 
@@ -116,7 +116,7 @@ void load_profiles(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
 			s.turns = uint8_t(opt_int(sd, "turns"));
 			p.strips.push_back(s);
 		}
-		if (p.strips.empty()) errors.push_back(r.where + ": perfil sem faixas");
+		if (p.strips.empty()) errors.push_back(r.where + ": profile without strips");
 		else derive_profile(p, c.prices);
 		c.add_profile(std::move(p));
 	}
@@ -125,12 +125,12 @@ void load_profiles(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
 void load_zones(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
 	Reader top{ errors, "zones" };
 	Array list = top.arr(t, "zones");
-	if (list.size() != ZONE_CODES) errors.push_back("zones: esperado " + String::num_int64(ZONE_CODES) + " zonas");
+	if (list.size() != ZONE_CODES) errors.push_back("zones: expected " + String::num_int64(ZONE_CODES) + " zones");
 	for (int i = 0; i < list.size() && i < ZONE_CODES; i++) {
 		Dictionary d = list[i];
 		Reader r{ errors, "zones[" + String::num_int64(i) + "]" };
 		int code = r.integer(d, "code");
-		if (code < 0 || code >= ZONE_CODES) { errors.push_back(r.where + ": codigo fora da faixa"); continue; }
+		if (code < 0 || code >= ZONE_CODES) { errors.push_back(r.where + ": code out of range"); continue; }
 		ZoneDef &z = c.zones[code];
 		z.id = s8(r.str(d, "id"));
 		z.name_key = s8(r.str(d, "name_key"));
@@ -220,7 +220,7 @@ bool CatalogLoader::load(const Dictionary &tables, Catalog &out, PackedStringArr
 	load_street_furniture(r.dict(tables, "street_furniture"), c.furniture, errors);
 	load_blast_params(r.dict(tables, "blast"), c.blast, errors);
 	load_nature(r.dict(tables, "nature"), c.nature, errors);
-	if (c.maps.empty()) errors.push_back("maps: nenhum mapa");
+	if (c.maps.empty()) errors.push_back("maps: no map");
 	if (!errors.is_empty()) return false;
 	out = std::move(c);
 	return true;

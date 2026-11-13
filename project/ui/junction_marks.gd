@@ -1,4 +1,4 @@
-## With the Controle tab up every junction says what it runs by: a ring and a letter over it, bigger under the pointer
+## With the Control tab up every junction says what it runs by: a ring and a letter over it, bigger under the pointer
 ## (Roadcraft main.ts). Drawn only for the junctions on the screen; the list is the store's, read again only when the
 ## network changes (CityStore.cached), not with every refresh of the snapshot. The marks are placed on the screen again
 ## only when the view or the list changes, and drawn again only when they moved or the pointer came onto or off one.

@@ -77,7 +77,7 @@ struct TreePictures::Frame {
 
 bool TreePictures::begin(const Dictionary &spec, int species, const Ref<Image> &leaves, PackedStringArray &errors) {
 	if (!spec.has("picture_px") || !spec.has("elevations_deg") || !spec.has("picture_share") || !spec.has("picture_shade")) {
-		errors.push_back("streets.json trees: falta pictures");
+		errors.push_back("streets.json trees: missing pictures");
 		return false;
 	}
 	px_ = spec["picture_px"];

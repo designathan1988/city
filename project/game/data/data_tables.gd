@@ -1,4 +1,4 @@
-## The only reader of project/data/*.json (gate DADOS_POR_UM_LEITOR). Everything else asks this class.
+## The only reader of project/data/*.json (gate DATA_ONE_READER). Everything else asks this class.
 class_name DataTables
 extends RefCounted
 

@@ -1,4 +1,4 @@
-"""The problem register (log/problems.jsonl), its one owner: read, judged, changed and written only here. One problem a line,
+"""The problem register (doc/problems.jsonl), its one owner: read, judged, changed and written only here. One problem a line,
 written as UTF-8 bytes with LF; a status moves only through `Register.move`, which reads MOVES (the transitions of the feature's
 data model); an id is P<area>-<n>, n one past the largest the area ever had, so no id is reused. The fields and their enums are
 the schema's (tools/gates/schemas/problem.schema.json); `faults` is the rule the register gate (tools/gates/gate_data.py) holds."""
@@ -16,7 +16,7 @@ from tasks import inputs  # noqa: E402  the tools' one wrapper of git (a deadlin
 from tasks import schema as json_schema  # noqa: E402  the tools' one JSON Schema checker
 
 ROOT = os.path.abspath(os.path.join(TOOLS_DIR, ".."))
-REGISTER = "log/problems.jsonl"
+REGISTER = "doc/problems.jsonl"
 SCHEMA = "tools/gates/schemas/problem.schema.json"
 UNKNOWN = "unknown"  # a cause not found yet; the reading that would find it is then required
 GIT_REF = "git:"  # evidence that is a git reference (an archive tag, a commit), not a path on disk
@@ -211,7 +211,7 @@ class Register:
         old_origin, new_origin = gate_origin(old, ""), gate_origin(new, "")
         for problem in self.problems:
             origins = [new_origin + o[len(old_origin):] if o.startswith(old_origin) else o for o in problem.get("origin") or []]
-            name = re.compile(rf"\b{re.escape(old)}\b")      # the name whole: DADOS is no part of DADOS_SEM_SCHEMA
+            name = re.compile(rf"\b{re.escape(old)}\b")      # the name whole: TABLE is no part of TABLE_NO_SCHEMA
             words = {k: name.sub(new, problem[k]) for k in ("title", "symptom", "reading", "criterion")
                      if isinstance(problem.get(k), str) and name.search(problem[k])}
             if origins != (problem.get("origin") or []) or words:

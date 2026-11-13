@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import unittest
 
-from support import BY_NAME, CALL, EXACT, HANDED, NEW, reached, traced
+from support import BY_NAME, CALL, EXACT, FIRES, HANDED, NEW, reached, traced
 
 
 class GDScript(unittest.TestCase):
@@ -21,15 +21,18 @@ class GDScript(unittest.TestCase):
         self.assertEqual({"base.greet", "Shop.greet"}, reached(self.r, "base.visit", (CALL,)))
 
     def test_a_lambda_kept_in_a_variable_is_handed_to_what_calls_it(self):
-        self.assertIn("Shop.hook", reached(self.r, "Shop.open", (HANDED,)))
+        """`hook.call(a)`: `call` is the member of a function value that runs it (spec 002, D15/D16): fired."""
+        self.assertIn("Shop.hook", reached(self.r, "Shop.open", (FIRES,)))
         self.assertEqual({"Shop.polish"}, reached(self.r, "Shop.hook", (CALL,)))
 
     def test_a_handler_handed_to_a_signal_runs_where_the_signal_is_used(self):
+        """Connecting hands the handler over (registered); emitting fires it (spec 002, D16)."""
         self.assertIn("Shop._on_sold", reached(self.r, "Shop._init", (HANDED,)))
-        self.assertIn("Shop._on_sold", reached(self.r, "Shop.sell", (HANDED,)))
+        self.assertIn("Shop._on_sold", reached(self.r, "Shop.sell", (FIRES,)))
 
     def test_a_function_kept_in_a_dictionary(self):
-        self.assertIn("Shop.polish", reached(self.r, "Shop.count", (HANDED,)))
+        """`table["run"].call(n)`: the entry's function, run by `call` (spec 002, D15/D16): fired."""
+        self.assertIn("Shop.polish", reached(self.r, "Shop.count", (FIRES,)))
 
     def test_a_receiver_nothing_is_known_of_is_found_by_name(self):
         self.assertEqual({"Crate.lift"}, reached(self.r, "Shop.unknown", (CALL,), BY_NAME))

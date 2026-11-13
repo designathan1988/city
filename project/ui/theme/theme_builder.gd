@@ -1,4 +1,4 @@
-## The only owner of UI styles (gate UI_SEM_ESTILO_SOLTO): builds one Theme from data/ui/tokens.json with a type
+## The only owner of UI styles (gate UI_LOOSE_STYLE): builds one Theme from data/ui/tokens.json with a type
 ## variation per control style. Controls only pick a
 ## `theme_type_variation`; colours other code needs (preview ribbon, swatches) come from `color()`.
 class_name ThemeBuilder

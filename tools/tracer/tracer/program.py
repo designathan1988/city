@@ -1,7 +1,7 @@
 """The program as definitions: every file a definition (a module), every fact that defines something a definition
 inside the one around it, each container with the names it holds. Built the same way for every language from the facts
 its patterns found; what differs between languages is read from `languages` (a file that is a class, a method named as
-its class). A definition whose name is written as a member of a scope (`A::f`) is given to that scope (`adopt`).
+its class). A definition whose name is written as a member of a scope (`A::f`) is given to that scope.
 
 An object written in place (a shape) is a definition whose members are the entries written in it with a name. It is
 no scope of a plain name, no class `this` is an object of, no unit code belongs to, and no part of a label; its
@@ -12,21 +12,20 @@ from __future__ import annotations
 import posixpath
 from collections import defaultdict
 
-from .adopt import adopt
 from .configs import Configs
-from .model import LAMBDA, OBJECT as SHAPED, Definition, File, named as text_named, spelled, text
+from .model import LAMBDA, OBJECT as SHAPED, Definition, File, named as text_named, spelled, text, child_nodes
 from .sources import Sources
 from .vocab import (ALIAS, BASE, BODY, CLASS, CLASSES, CONSTRUCTOR, CONTAINERS, DEFAULT, DEFINING, DRIVEN, EXPORT,
                     EXPORT_DEFAULT, FIELD, FUNCTION, GETTER, IMPORT, INCLUDE, KEY, KIND, MEMBER, MODULE, MODULE_NAME,
                     NAME, NAMED, NAMESPACE, OBJECT, OPEN, PAIR, PARAM, PASS, PROPERTY, ROLES, SETTER, SHAPE, SOURCE,
-                    VALUE, WHOLE)
+                    VALUE, VARIABLE, WEIGHED, WHOLE, EFFECT)
 
 
 class Program:
     def __init__(self, parsed: list, base=None):
         self.base = base
         self.configs = Configs()                      # the files each language reads to resolve names
-        self.files = [File(i, p.display, p.lang, p.tree, p.path) for i, p in enumerate(parsed)]
+        self.files = [File(i, p.display, p.lang, p.tree, p.path, uniforms=p.uniforms) for i, p in enumerate(parsed)]
         self.defs: list[Definition] = []
         self.at = {}                                  # (file, node id) -> definition
         self.names = defaultdict(lambda: defaultdict(list))   # container -> name -> definitions
@@ -37,16 +36,17 @@ class Program:
         for f, p in zip(self.files, parsed):
             for anchor, node, parts in p.facts:
                 f.facts[anchor].append((node, parts))
+            p.facts = []                              # the file holds them now (the ones read later, alone: memory)
             self.settle(f)
             self.define(f)
         self.sources = Sources(self)
         for f in self.files:
             self.own(f)
-        adopt(self)                                   # definitions written out of their scope, given to it
+        self.adopt()
         self.labels = [self.label_of(d) for d in self.defs]
         self.index()
         for f in self.files:                          # what is left to read of the facts: the ones the flow starts from
-            f.facts = {anchor: f.facts[anchor] for anchor in DRIVEN if anchor in f.facts}
+            f.facts = {anchor: f.facts[anchor] for anchor in DRIVEN + WEIGHED if anchor in f.facts}
 
     # ---- building ------------------------------------------------------------------------------------------------
     def settle(self, f: File) -> None:
@@ -75,6 +75,7 @@ class Program:
                 f.exports[text(parts[ALIAS])] = text(parts[NAME])
         f.default = [parts[VALUE] for node, parts in f.facts.get(EXPORT_DEFAULT, ()) if VALUE in parts]
         f.open = {node.id for node, _ in f.facts.get(OPEN, ())}
+        f.effects = {node.id for node, _ in f.facts.get(EFFECT, ())}
 
     def new(self, kind: str, name: str, f: File, node) -> Definition:
         d = Definition(len(self.defs), kind, name, f.index, node.start_point[0] + 1, node)
@@ -144,7 +145,7 @@ class Program:
             up = self.above(f, d.node.parent, (FUNCTION,) if d.kind == PARAM else CONTAINERS)
             d.owner = up if up is not None else f.module
             if d.kind == PARAM and d.node.parent is not None:
-                d.position = [c.id for c in d.node.parent.named_children].index(d.node.id)
+                d.position = [c.id for c in child_nodes(d.node.parent)].index(d.node.id)
             if d.name and not d.constructor and (up is not None or d.kind != PARAM):
                 self.names[d.owner][d.name].append(i)
             if d.holder == 0:
@@ -157,11 +158,74 @@ class Program:
             if holder is not None or f.lang.file_is_class:
                 self.base_nodes[holder if holder is not None else f.module].append((f.index, node))
 
+    def held_scopes(self, c: int, name: str) -> list:
+        return [i for i in self.held(c, name) if self.defs[i].kind in (CLASS, NAMESPACE)]
+
+    def move(self, d: Definition, owner: int) -> None:
+        if d.id in self.names[d.owner].get(d.name, ()):
+            self.names[d.owner][d.name].remove(d.id)
+        d.owner, d.adopted = owner, True
+        self.names[owner][d.name].append(d.id)
+
+    def adopt(self) -> None:
+        """Definitions written out of their scope go to it: a namespace under the namespaces its name writes (made
+        where no file writes them alone), then every other one under the class or namespace its name's scopes name.
+        A namespace written in several places is one scope: its parts keep one table of names."""
+        for d in [d for d in self.defs if d.kind == NAMESPACE and d.scopes]:
+            holder = d.owner
+            for part in d.scopes:
+                found = [i for i in self.names[holder].get(part, ()) if self.defs[i].kind == NAMESPACE]
+                if not found:
+                    made = self.new(NAMESPACE, part, self.files[d.file], d.node)
+                    made.owner = holder
+                    self.names[holder][part].append(made.id)
+                    found = [made.id]
+                holder = found[0]
+            self.move(d, holder)
+        groups, known = defaultdict(list), defaultdict(list)
+        for d in self.defs:
+            if d.kind == NAMESPACE:
+                groups[self.label_of(d)].append(d.id)
+            if d.kind in (CLASS, NAMESPACE) and d.name:
+                known[d.name].append(d.id)
+        for ids in groups.values():
+            shared = self.names[ids[0]]
+            for other in ids[1:]:
+                for name, held in self.names[other].items():
+                    shared[name] += held
+                self.names[other] = shared
+        for d in [d for d in self.defs if d.kind != NAMESPACE and d.scopes]:
+            found = None
+            for part in d.scopes:
+                if found is None:
+                    cands = [i for c in self.chain(d.owner) for i in self.held_scopes(c, part)] or known.get(part, [])
+                else:
+                    cands = self.held_scopes(found, part)
+                seen = [i for i in cands if self.sources.sees(d.file, self.defs[i].file)]    # the one it can see first
+                found = (seen or cands)[0] if cands else None
+                if found is None:
+                    break
+            if found is not None:
+                self.move(d, found)
+        for d in self.defs:
+            if d.kind != FUNCTION:
+                continue
+            owner = self.defs[d.owner]
+            if self.files[d.file].lang.class_named_constructor and owner.kind == CLASS and d.name == owner.name:
+                d.constructor = True
+                if d.id in self.names[d.owner][d.name]:
+                    self.names[d.owner][d.name].remove(d.id)
+            if d.constructor and self.is_class(d.owner):
+                self.constructors[d.owner].append(d.id)
+
     def index(self) -> None:
         """Where a name is found beyond its scope: a file its own words name, by that name anywhere; a member, by its
         name among every class's."""
         self.top, self.member = defaultdict(list), defaultdict(list)
-        self.callable = {d.name for d in self.defs if d.kind == FUNCTION and d.name}      # the functions' names
+        self.callable = {d.name for d in self.defs if d.name and (      # what a text may name: a function, a class,
+            d.kind in (FUNCTION, CLASS)                                 # a member of a class (a signal, a property
+            or (d.kind == VARIABLE and d.owner >= 0 and self.is_class(d.owner) and not self.is_shape(d.owner)))}
+        #                                                                 looked up by its name)
         self.by_label = defaultdict(list)
         for d in self.defs:
             if d.kind == FUNCTION:

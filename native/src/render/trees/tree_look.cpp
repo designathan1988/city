@@ -66,13 +66,13 @@ bool SpeciesMix::load(const Dictionary &mix, const TreeKit &kit, const String &w
 	Array keys = mix.keys();
 	for (int i = 0; i < keys.size(); i++) total += float(mix[keys[i]]);
 	if (total <= 0) {
-		errors.push_back("streets.json trees " + where + ": mistura de espécies vazia");
+		errors.push_back("streets.json trees " + where + ": empty species mix");
 		return false;
 	}
 	float run = 0;
 	for (int i = 0; i < keys.size(); i++) {
 		int sp = kit.find(String(keys[i]));
-		if (sp < 0) errors.push_back("streets.json trees " + where + ": espécie desconhecida " + String(keys[i]));
+		if (sp < 0) errors.push_back("streets.json trees " + where + ": unknown species " + String(keys[i]));
 		run += float(mix[keys[i]]) / total;
 		species.push_back(std::max(sp, 0));
 		weight.push_back(run);
@@ -82,7 +82,7 @@ bool SpeciesMix::load(const Dictionary &mix, const TreeKit &kit, const String &w
 
 bool TreeLook::load(const Dictionary &t, const TreeKit &kit, PackedStringArray &errors) {
 	if (!t.has("placement")) {
-		errors.push_back("streets.json trees: falta placement");
+		errors.push_back("streets.json trees: missing placement");
 		return false;
 	}
 	Dictionary p = t["placement"], bands = p.get("bands", Dictionary());
@@ -103,7 +103,7 @@ bool TreeLook::load(const Dictionary &t, const TreeKit &kit, PackedStringArray &
 	flowering_species = { kit.find("shrub_flowering"), kit.find("shrub_flowering_cream"), kit.find("shrub_flowering_red") };
 	bed_species = { kit.find("flower_bed"), kit.find("flower_bed_cream"), kit.find("flower_bed_red") };
 	if (shrub_species < 0 || hedge_species < 0 || *std::min_element(flowering_species.begin(), flowering_species.end()) < 0 || *std::min_element(bed_species.begin(), bed_species.end()) < 0)
-		errors.push_back("streets.json trees: faltam espécies do jardim (shrub, shrub_flowering*, hedge, flower_bed*)");
+		errors.push_back("streets.json trees: missing garden species (shrub, shrub_flowering*, hedge, flower_bed*)");
 	park.load(p["park_mix"], kit, "park_mix", errors);
 	street.load(p["street_mix"], kit, "street_mix", errors);
 	for (int b = 0; b < WOOD_BANDS; b++) {

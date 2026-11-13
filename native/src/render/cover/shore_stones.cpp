@@ -30,7 +30,7 @@ void each_sample(const GroundRead &t, float x0, float z0, float x1, float z1, F 
 bool ShoreLook::load(const Dictionary &d, PackedStringArray &errors) {
 	static const char *const KEYS[] = { "spacing_m", "search_m", "size_m", "size_power", "reach_m", "bands" };
 	for (const char *k : KEYS)
-		if (!d.has(k)) errors.push_back(String("cover.json shore: falta ") + k);
+		if (!d.has(k)) errors.push_back(String("cover.json shore: missing ") + k);
 	if (!errors.is_empty()) return false;
 	spacing_m = d["spacing_m"];
 	search_m = d["search_m"];

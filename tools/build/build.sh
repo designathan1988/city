@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build, test and package commands (documented in CLAUDE.md > Comandos). Usage: tools/build/build.sh <target>. Game ships for Windows only.
+# Build, test and package commands (documented in CLAUDE.md > Commands). Usage: tools/build/build.sh <target>. Game ships for Windows only.
 # Env: GODOT (Godot 4.7 binary), MINGW (llvm-mingw root, Windows cross-build), OUT (package folder). The Windows build uses
 # Ninja: on a Windows host CMake would otherwise pick NMake, which is not installed.
 set -euo pipefail
@@ -52,7 +52,7 @@ case "${1:-}" in
 esac
 
 case "${1:-}" in
-	core) core_linux ;; # so para testes/capturas neste ambiente; o jogo e Windows
+	core) core_linux ;; # only for tests/captures in this environment; the game is Windows
 	core-windows) core_windows ;;
 	dll-debug) dll template_debug "$ROOT/native/build-win-debug" ;;
 	dll-release) dll template_release "$ROOT/native/build-win" ;;

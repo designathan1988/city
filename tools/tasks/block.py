@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 STATE = Path("dist/block/state.json")
-HISTORY = Path("log/history/process.md")
+HISTORY = Path("doc/history/process.md")
 TIMES_HEADER = "| Block | Opened | Verified | Closed | Coding (min) | Verifying (min) |"
 CLOSED, OPEN, VERIFY = "closed", "open", "verify"
 MOVES = {CLOSED: (OPEN,), OPEN: (VERIFY,), VERIFY: (OPEN, CLOSED)}

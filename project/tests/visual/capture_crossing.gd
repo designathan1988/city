@@ -10,8 +10,8 @@ const NEAR_FROM := Vector3(-6, 22, 10)
 
 ## `cap` is the capture scene (its _shot); `cross` the probe's crossing.
 static func views(cap: Node, cross: Vector3) -> void:
-	await cap._shot("15_travessia", cross + FROM, cross)
-	await cap._shot("16_travessia_perto", cross + NEAR_FROM, cross)
+	await cap._shot("15_crosswalk", cross + FROM, cross)
+	await cap._shot("16_crosswalk_near", cross + NEAR_FROM, cross)
 
 
 ## The close view again under each regional paint standard of Menu > Paint, by day, the paint the only thing that changes:
@@ -21,5 +21,5 @@ static func paint(cap: Node, cross: Vector3) -> void:
 	var styles: Array = DataTables.render().streets.markings.styles
 	for i in styles.size():
 		CityStore.dispatch(&"set_marking_style", [i, false])
-		await cap._shot("16_pintura_%s" % styles[i].id, cross + NEAR_FROM, cross)
+		await cap._shot("16_paint_%s" % styles[i].id, cross + NEAR_FROM, cross)
 	CityStore.dispatch(&"set_marking_style", [0, false])

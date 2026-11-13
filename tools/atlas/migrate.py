@@ -1,9 +1,9 @@
 """Every open item of the trackers kept before the register, entered once into it (specification 001 US3, T043, T050):
 the trace ledgers under dist/trace (each open problem with its file, its cause or the reading the ledger planned, the
 time it was found), the structured rows of log/pendencias.md (one problem per id; a row its last column calls done, or
-marked a wrong row, is history and stays out), and the rows of log/specification.md's divergences and slowness the
+marked a wrong row, is history and stays out), and the rows of doc/specification.md's divergences and slowness the
 method has not settled. Each enters through the register's one writer (problems.Register.add) with its origin
-(`ledger:<slug>:<id>`, `log/pendencias.md:<line> <id>`, `log/specification.md:<line> <id>`); an origin already in the
+(`ledger:<slug>:<id>`, `log/pendencias.md:<line> <id>`, `doc/specification.md:<line> <id>`); an origin already in the
 register is passed over, so the migration may run again and adds nothing twice. A row citing a ledger's problem (trace
 `<slug>` P<n>, ledger P<n>) is related to it. `--evidence` moves the photos an open problem's words name from its trace's
 folder to dist/evidence/<id>/ and names them as its evidence. The counts per origin are printed.
@@ -26,7 +26,7 @@ from atlas import problems as register  # noqa: E402
 LEDGERS = "dist/trace"
 EVIDENCE = "dist/evidence"
 PENDING = "log/pendencias.md"
-SPECIFICATION = "log/specification.md"
+SPECIFICATION = "doc/specification.md"
 OPEN = ("open",)
 TITLE = 100                                  # the most characters of a title made from a longer text
 ROW = re.compile(r"^\|\s*([A-Z]+-?\d+)\s*\|(.*)\|\s*$")
@@ -44,7 +44,7 @@ BY_PREFIX = {                                # a row's id prefix: (its area when
     "I": ("process", "process"), "A": ("tools", "architecture"), "T": ("tools", "missing-feature"),
     "L": ("process", "process"),
 }
-SETTLED = re.compile(r"^\s*to fix", re.I)    # a divergence of log/specification.md that CLAUDE.md settled (US1)
+SETTLED = re.compile(r"^\s*to fix", re.I)    # a divergence of doc/specification.md that CLAUDE.md settled (US1)
 
 
 def short(text):
@@ -119,7 +119,7 @@ def pending_items(root):
 
 
 def specification_items(root):
-    """(origin, fields, related) of log/specification.md's divergences still open and its causes of slowness."""
+    """(origin, fields, related) of doc/specification.md's divergences still open and its causes of slowness."""
     path = os.path.join(root, SPECIFICATION)
     if not os.path.isfile(path):
         return

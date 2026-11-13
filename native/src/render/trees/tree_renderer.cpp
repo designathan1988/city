@@ -44,7 +44,7 @@ bool TreeRenderer::init(const RenderContext &ctx, const StreetLook &look, Packed
 	Dictionary t = ctx.table("streets", errors);
 	if (!errors.is_empty()) return false;
 	if (!t.has("trees")) {
-		errors.push_back("streets.json: falta trees");
+		errors.push_back("streets.json: missing trees");
 		return false;
 	}
 	if (!kit_.build(t["trees"], body_material_, card_material_, errors) || !trees_.load(t["trees"], kit_, errors)) return false;

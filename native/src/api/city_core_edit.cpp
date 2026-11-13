@@ -129,7 +129,7 @@ Dictionary CityCore::set_node_control(int node, int ctl) {
 	return run_edit(*state_, "cmd.place.control", [&](CityState &s) { return city::set_node_control(s, node, ctl); });
 }
 
-// Every junction: [{node, at, ctl}], for the marks of the Controle tab.
+// Every junction: [{node, at, ctl}], for the marks of the Control tab.
 Array CityCore::junctions() {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	Array out;

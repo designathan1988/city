@@ -1,4 +1,4 @@
-## Construir › Cores: the brush. Pintar turns clicking into painting with what the brush holds; a finish card loads it, and Copiar estilo loads what the pick is made of.
+## Build › Colours: the brush. Paint turns clicking into painting with what the brush holds; a finish card loads it, and Copy style loads what the pick is made of.
 ## With the brush off a finish card paints the pick at once.
 class_name PaintBrush
 extends RefCounted

@@ -34,7 +34,7 @@ template <size_t N>
 int index_of(const char *const (&names)[N], const std::string &s, const char *what, PackedStringArray &errors) {
 	for (size_t i = 0; i < N; i++)
 		if (s == names[i]) return int(i);
-	errors.push_back(String("interiors.json: ") + what + " desconhecido: " + s.c_str());
+	errors.push_back(String("interiors.json: unknown ") + what + ": " + s.c_str());
 	return 0;
 }
 
@@ -42,16 +42,16 @@ Ref ref_of(const Dictionary &d, const char *key, PackedStringArray &errors) {
 	Ref r;
 	if (!d.has(key)) return r;
 	Array a = d[key];
-	r.edge = Edge(index_of(EDGES, str(a[0]), "lado", errors));
+	r.edge = Edge(index_of(EDGES, str(a[0]), "edge", errors));
 	r.off = float(a[1]);
 	return r;
 }
 
 Step step_of(const Dictionary &d, PackedStringArray &errors) {
 	Step s;
-	s.op = StepOp(index_of(OPS, str(d["op"]), "passo", errors));
-	if (d.has("kind")) s.kind = FurnitureKind(index_of(KINDS, str(d["kind"]), "peça", errors));
-	if (d.has("level")) s.level = StepLevel(index_of(LEVELS, str(d["level"]), "andar", errors));
+	s.op = StepOp(index_of(OPS, str(d["op"]), "step", errors));
+	if (d.has("kind")) s.kind = FurnitureKind(index_of(KINDS, str(d["kind"]), "piece", errors));
+	if (d.has("level")) s.level = StepLevel(index_of(LEVELS, str(d["level"]), "level", errors));
 	s.a = ref_of(d, d.has("x") ? "x" : "x0", errors);
 	s.b = ref_of(d, d.has("y") ? "y" : "y0", errors);
 	s.c = ref_of(d, "x1", errors);
@@ -61,7 +61,7 @@ Step step_of(const Dictionary &d, PackedStringArray &errors) {
 	s.gy = float(d.get("gy", 0));
 	s.wide = bool(d.get("wide", false));
 	if (d.has("angle")) {
-		const int turn = index_of(ANGLES, str(d["angle"]), "ângulo", errors);
+		const int turn = index_of(ANGLES, str(d["angle"]), "angle", errors);
 		s.angle = float(turn > 2 ? turn - 4 : turn) * RADIANS_PER_STEP;
 	}
 	return s;
@@ -75,18 +75,18 @@ bool load_interiors(const Dictionary &table, InteriorTables &out, PackedStringAr
 	bool sized[FK_COUNT] = {};
 	for (int64_t r = 0; r < sizes.size(); r++) {
 		Array row = sizes[r];
-		const int k = index_of(KINDS, str(row[0]), "peça", errors);
+		const int k = index_of(KINDS, str(row[0]), "piece", errors);
 		sized[k] = true;
 		for (int i = 0; i < SIZE_AXES; i++) out.size[k][i] = float(row[i + 1]);
 	}
 	for (int k = 0; k < FK_COUNT; k++)
-		if (!sized[k]) errors.push_back(String("interiors.json: falta o tamanho de ") + KINDS[k]);
+		if (!sized[k]) errors.push_back(String("interiors.json: missing the size of ") + KINDS[k]);
 	Array seen = t.get("seen", Array());
-	for (int64_t i = 0; i < seen.size(); i++) out.seen[index_of(KINDS, str(seen[i]), "peça", errors)] = true;
+	for (int64_t i = 0; i < seen.size(); i++) out.seen[index_of(KINDS, str(seen[i]), "piece", errors)] = true;
 	Dictionary recipes = t.get("recipes", Dictionary());
 	Array keys = recipes.keys();
 	for (int64_t i = 0; i < keys.size(); i++) {
-		const int p = index_of(PURPOSES, str(keys[i]), "uso", errors);
+		const int p = index_of(PURPOSES, str(keys[i]), "purpose", errors);
 		Array steps = recipes[keys[i]];
 		for (int64_t k = 0; k < steps.size(); k++) out.recipes[p].push_back(step_of(steps[k], errors));
 	}

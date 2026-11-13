@@ -1,6 +1,6 @@
 ## Visual capture: generates a city through the store (the same path as the start screen), waits until every chunk is
 ## drawn and saves screenshots to user://captures (or --capture-dir=PATH). Views match the Roadcraft reference shots
-## (docs/referencia-visual: street from above, neighbourhood, whole town). --map=N --seed=S choose the city.
+## (the visual reference: street from above, neighbourhood, whole town). --map=N --seed=S choose the city.
 extends Node3D
 
 const SETTLE_FRAMES := 4
@@ -24,8 +24,8 @@ const DAY := CaptureViews.DAY
 const NIGHT := CaptureViews.NIGHT
 
 ## Functions shot by _civic_tour (sim/buildings/building_store.h BuildingFn) and the view offset per lot size.
-const CIVIC_SHOTS := {1: "escola", 2: "igreja", 3: "hospital", 4: "clinica", 5: "praca", 6: "parque", 7: "posto", 8: "mercado",
-	9: "prefeitura", 10: "policia", 11: "bombeiros", 12: "shopping", 13: "quadra"}
+const CIVIC_SHOTS := {1: "school", 2: "church", 3: "hospital", 4: "clinic", 5: "square", 6: "park", 7: "gas_station", 8: "supermarket",
+	9: "city_hall", 10: "police", 11: "fire_station", 12: "mall", 13: "sports_court"}
 const CIVIC_VIEW := Vector3(0.5, 0.75, 1.1)
 const CIVIC_LOOK_UP_M := 4.0
 
@@ -57,22 +57,22 @@ func _ready() -> void:
 		await _frames(wear_frames)
 		CityStore.dispatch(&"set_speed", [0])
 		var wear: Dictionary = CityStore.query(&"wear_probe")
-		print("desgaste: ", wear.worn_cells, " cells, ", wear.wear_publications, " published")
-	print("traffic: ", CityStore.snapshot.get("vehicles"), " vehicles, ", CityStore.snapshot.get("people"), " pessoas")
+		print("wear: ", wear.worn_cells, " cells, ", wear.wear_publications, " published")
+	print("traffic: ", CityStore.snapshot.get("vehicles"), " vehicles, ", CityStore.snapshot.get("people"), " people")
 	_memory("traffic warmed up")
 	var ground := _ground(0, 0)
 	var probe: Dictionary = CityStore.query(&"traffic_probe", [TRAFFIC_SAMPLE])
-	print("sonda: ", probe.vehicles, " vehicles, ", probe.moving, " andando, ", probe.waiting, " parados, ", probe.on_connectors, " on connectors, ", probe.signals, " signals, stopped by ", probe.held_by)
+	print("probe: ", probe.vehicles, " vehicles, ", probe.moving, " moving, ", probe.waiting, " stopped, ", probe.on_connectors, " on connectors, ", probe.signals, " signals, stopped by ", probe.held_by)
 	if measure:
 		print("street: ", CityStore.query(&"street_counts"))
 		print("pieces: ", CityStore.query(&"furniture_census"))
-		_memory("medido")
+		_memory("measured")
 		get_tree().quit(CaptureWait.exit_code(0))
 		return
 	await _capture_all(probe, ground)
-	print("desenhados: ", CityStore.query(&"traffic_probe", [0]))
+	print("drawn: ", CityStore.query(&"traffic_probe", [0]))
 	print("snapshot: ", CityStore.snapshot)
-	_memory("fim")
+	_memory("end")
 	get_tree().quit(CaptureWait.exit_code(0))
 
 
@@ -105,8 +105,8 @@ func _boot_world() -> bool:
 
 
 func _wait_render() -> void:
-	var waited: int = await CaptureWait.until_drawn(self, 2, "cidade")
-	print("frames until all is drawn: ", waited, " ms/quadro ~", Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
+	var waited: int = await CaptureWait.until_drawn(self, 2, "city")
+	print("frames until all is drawn: ", waited, " ms/frame ~", Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
 	_memory("city drawn")
 
 
@@ -139,7 +139,7 @@ func _capture_all(probe: Dictionary, ground: Vector3) -> void:
 	for i in mini(JAM_SHOTS, probe.jams.size()):
 		var j: Vector3 = probe.jams[i]
 		print("held at ", j, " ", probe.jam_info[i])
-		await _shot("09_retido_%d" % i, j + Vector3(0, 40, 25), j)
+		await _shot("09_held_%d" % i, j + Vector3(0, 40, 25), j)
 	await _civic_tour()
 
 
@@ -178,7 +178,7 @@ func _shot(name: String, from: Vector3, at: Vector3) -> void:
 	var img := get_viewport().get_texture().get_image()
 	var path := "%s/%s.png" % [out_dir, name]
 	img.save_png(path)
-	print("captura: ", path)
+	print("capture: ", path)
 
 
 ## Close look at the pedestrian nearest to `ground`, from ahead of it and a little to its side.
@@ -189,13 +189,13 @@ func _person_shot(probe: Dictionary, ground: Vector3) -> void:
 	var at: Vector3 = probe.walkers[w]
 	var dir: Vector3 = probe.walker_dirs[w]
 	var side := Vector3(dir.z, 0, -dir.x)
-	await _shot("14_pessoa", at + dir * PERSON_VIEW_FROM.z + side * PERSON_VIEW_FROM.x + Vector3.UP * PERSON_VIEW_FROM.y, at + Vector3.UP * PERSON_VIEW_AT_Y)
+	await _shot("14_person",at + dir * PERSON_VIEW_FROM.z + side * PERSON_VIEW_FROM.x + Vector3.UP * PERSON_VIEW_FROM.y, at + Vector3.UP * PERSON_VIEW_AT_Y)
 
 
 ## One shot of the first record of each function in CIVIC_SHOTS (civic buildings, squares, parks), seen from the
 ## street side at CIVIC_VIEW (lot frame: x along the front, y up, z out over the street; scaled by the lot size).
 func _civic_tour() -> void:
-	if not only.is_empty() and not only.has("civico"):
+	if not only.is_empty() and not only.has("civic"):
 		return
 	var seen := {}
 	for id in CityStore.query(&"list_buildings"):

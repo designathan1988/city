@@ -66,7 +66,7 @@ void shape(MeshBuilder &b, const Dictionary &p, const Color &col, const Vector2 
 	else if (shape == "blob") b.blob(vec3(p["center"]), vec3(p["radius"]), col, t2);
 	else if (shape == "frustum") frustum(b, vec3(p["base"]), float(p["radius"]), float(p["top_radius"]), float(p["height"]), int(p["segments"]), col, t2);
 	else if (shape == "beam") beam(b, vec3(p["from"]), vec3(p["to"]), float(p["width"]), float(p["thick"]), col, t2);
-	else errors.push_back(String("streets.json props: forma desconhecida '") + shape + "'");
+	else errors.push_back(String("streets.json props: unknown shape '") + shape + "'");
 }
 
 Color part_color(const Dictionary &p) {
@@ -92,7 +92,7 @@ void mark_surface(MeshBuilder &b, int64_t from, PropTag tag) {
 MeshBuilder parts(const Dictionary &props, const char *name, PackedStringArray &errors) {
 	MeshBuilder b;
 	if (!props.has(name)) {
-		errors.push_back(String("streets.json props: falta ") + name);
+		errors.push_back(String("streets.json props: missing ") + name);
 		return b;
 	}
 	Array list = props[name];
@@ -208,7 +208,7 @@ bool PropKit::build(const Dictionary &props, const Dictionary &wires, const Arra
 	meshes_[int(PropKind::TREE_PIT)] = parts(props, "tree_pit", errors);
 	meshes_[int(PropKind::MEADOW)] = parts(props, "meadow", errors);
 	pole_ = parts(props, "pole", errors);
-	if (!props.has("pole_cast")) errors.push_back("streets.json props: falta pole_cast");
+	if (!props.has("pole_cast")) errors.push_back("streets.json props: missing pole_cast");
 	if (!errors.is_empty()) return false;
 	const Dictionary cast = props["pole_cast"];
 	pole_cast_ = cast_parts(props, "pole", cast, errors);
@@ -219,10 +219,10 @@ bool PropKit::build(const Dictionary &props, const Dictionary &wires, const Arra
 		return false;
 	}
 	for (const char *key : { "y_m", "z_m", "rural_z_m", "secondary_z_m" })
-		if (!wires.has(key)) errors.push_back(String("streets.json wires: falta ") + key);
+		if (!wires.has(key)) errors.push_back(String("streets.json wires: missing ") + key);
 	if (!errors.is_empty()) return false;
 	if (Array(wires["z_m"]).size() != Array(wires["rural_z_m"]).size() || Array(wires["y_m"]).is_empty()) {
-		errors.push_back("streets.json wires: z_m e rural_z_m com tamanhos diferentes, ou y_m vazio");
+		errors.push_back("streets.json wires: z_m and rural_z_m of different sizes, or y_m empty");
 		return false;
 	}
 	wire_mesh(wire_near_, wires, int(wires["near_chords"]), int(wires["near_sides"]));
@@ -239,7 +239,7 @@ bool PropKit::build(const Dictionary &props, const Dictionary &wires, const Arra
 		if (!p.has("lens")) continue;
 		const int k = int(p["lens"]);
 		if (k < 0 || k >= int(Lens::COUNT)) {
-			errors.push_back("streets.json props.signal: lente fora de 0..4");
+			errors.push_back("streets.json props.signal: lens outside 0..4");
 			continue;
 		}
 		const Array row = dark[k];
@@ -247,7 +247,7 @@ bool PropKit::build(const Dictionary &props, const Dictionary &wires, const Arra
 		seen[k] = true;
 	}
 	for (bool s : seen)
-		if (!s) errors.push_back("streets.json props.signal: falta uma das lentes 0..4");
+		if (!s) errors.push_back("streets.json props.signal: missing one of the lenses 0..4");
 	return errors.is_empty();
 }
 

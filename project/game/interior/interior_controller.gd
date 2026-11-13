@@ -95,7 +95,7 @@ func open(id: int, level: int) -> void:
 	_send(true, id, level)
 
 
-## Construir > Interior: the building opened, or closed when it is the one open.
+## Build > Inside: the building opened, or closed when it is the one open.
 func see_inside(id: int) -> void:
 	if is_on() and _state.target == id:
 		_send(false, -1, 0)

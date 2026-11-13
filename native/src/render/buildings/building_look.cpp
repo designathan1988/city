@@ -37,13 +37,13 @@ bool BuildingLook::load(const Dictionary &t, PackedStringArray &errors) {
 		Dictionary b = bands[i];
 		part_bands.push_back(PartBand{ float(at(b, "thick_max")), float(at(b, "px_min")) });
 	}
-	if (part_bands.empty()) errors.push_back("buildings.json: falta lod.part_bands");
+	if (part_bands.empty()) errors.push_back("buildings.json: missing lod.part_bands");
 	Array tones = at(at(t, "finish_far"), "tones");
 	for (int i = 0; i < tones.size(); i++) {
 		Array c = tones[i];
 		finish_far.push_back(Lin{ float(c[0]), float(c[1]), float(c[2]) });
 	}
-	if (int(finish_far.size()) != FIN_COUNT) errors.push_back("buildings.json: finish_far.tones precisa de um tom por acabamento");
+	if (int(finish_far.size()) != FIN_COUNT) errors.push_back("buildings.json: finish_far.tones needs one tone per finish");
 	return errors.is_empty();
 }
 

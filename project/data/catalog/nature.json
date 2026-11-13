@@ -83,7 +83,7 @@
  "styles": {
   "_doc": "What the regional style of a city changes in the landscape: the flora of its climate. Sun, sky and light are physical and do not change. Until the style lives in the CityState the loader reads roadcraft.",
   "roadcraft": { "default_biome": "cerrado" },
-  "brasil": { "default_biome": "cerrado" }
+  "brazil": { "default_biome": "cerrado" }
  },
  "ecology": {
   "site_grid_m": 16,

@@ -1,4 +1,4 @@
-## Construir › Massa › Referência 3D: the cards on the model, its file dialog, and the building read off it (the 4.0's loadReference and buildReference).
+## Build › Mass › 3D reference: the cards on the model, its file dialog, and the building read off it (the 4.0's loadReference and buildReference).
 class_name ReferenceHand
 extends RefCounted
 

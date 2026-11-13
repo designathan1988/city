@@ -1,6 +1,6 @@
 ## CityStore: the only owner of the C++ core (CityCore) on the script side.
 ## State flows one way: commands go in through dispatch(); the UI reads `snapshot` (refreshed from the core)
-## and reacts to `changed`. Nothing else keeps copies of game numbers (gate ESTADO_NA_UI / owners.json).
+## and reacts to `changed`. Nothing else keeps copies of game numbers (gate STATE_IN_UI / owners.json).
 ## The snapshot is read from the core when it is read after something may have moved it (a command, the clock's
 ## SNAPSHOT_INTERVAL_S, refresh): a read right after a command sees it, and many commands in a frame cost one reading.
 ## `changed` follows at the end of the frame, once however many marks came in it.
@@ -53,7 +53,7 @@ func _route(spec: String) -> Callable:
 	if cut < 0:
 		return Callable(_core, spec)
 	var area: Object = _core.area(spec.left(cut))
-	assert(area != null, "área desconhecida: %s" % spec)
+	assert(area != null, "unknown area: %s" % spec)
 	return Callable(area, spec.substr(cut + 1))
 
 
@@ -93,7 +93,7 @@ func first_road() -> int:
 
 
 func dispatch(command: StringName, args: Array = []) -> Variant:
-	assert(StoreApi.COMMANDS.has(command), "comando desconhecido: %s" % command)
+	assert(StoreApi.COMMANDS.has(command), "unknown command: %s" % command)
 	var result: Variant = _routes[command].callv(args)
 	if not command.begins_with("preview"):
 		_mark()
@@ -103,7 +103,7 @@ func dispatch(command: StringName, args: Array = []) -> Variant:
 
 
 func query(name: StringName, args: Array = []) -> Variant:
-	assert(StoreApi.QUERIES.has(name), "consulta desconhecida: %s" % name)
+	assert(StoreApi.QUERIES.has(name), "unknown query: %s" % name)
 	return _routes[name].callv(args)
 
 

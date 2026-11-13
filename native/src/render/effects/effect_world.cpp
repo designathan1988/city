@@ -38,7 +38,7 @@ bool EffectWorld::init(const RenderContext &ctx, PackedStringArray &errors) {
 	debris_material_ = debris;
 	mounds_.init(scenario_, rubble, MOUND_SLOTS);
 	const Ref<ShaderMaterial> ruin = ctx.material_objects.get("building_ruin", Variant());
-	if (ruin.is_null()) errors.push_back("material ausente: building_ruin");
+	if (ruin.is_null()) errors.push_back("missing material: building_ruin");
 	ruins_.init(scenario_, ruin, params_);
 	RenderingServer *rs = RenderingServer::get_singleton();
 	light_ = rs->omni_light_create();

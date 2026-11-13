@@ -72,7 +72,7 @@ bool load(const Dictionary &d, Look &L, PackedStringArray &errors) {
 		"rim_share", "leaflets", "leaflet_px", "leaflet_reach", "leaflet_vary", "leaflet_rise", "leaflet_tilt", "rachis_px", "rachis_tone", "frond_tone_min",
 		"seed" };
 	for (const char *k : keys)
-		if (!d.has(k)) errors.push_back(String("streets.json trees.atlas: falta ") + k);
+		if (!d.has(k)) errors.push_back(String("streets.json trees.atlas: missing ") + k);
 	if (!errors.is_empty()) return false;
 	Array len = d["leaf_len_px"], wid = d["leaf_wid_px"];
 	L.px = d["px"]; L.leaves = d["leaves"]; L.near_leaves = d["near_leaves"]; L.leaflets = d["leaflets"];

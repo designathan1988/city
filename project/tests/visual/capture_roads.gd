@@ -167,7 +167,7 @@ func _photo(name: String, p: Vector3, view: Array, dist: float) -> void:
 	rig.jump(p, view[0], view[1], dist)
 	# nothing pending right after a jump may only mean the view has not reached the drawing yet: a photo that lies
 	if await CaptureWait.until_drawn(self, JUMP_SETTLE_FRAMES, name) == 0:
-		await CaptureWait.until_drawn(self, JUMP_SETTLE_FRAMES * 2, name + " de novo")
+		await CaptureWait.until_drawn(self, JUMP_SETTLE_FRAMES * 2, name + " again")
 	await ui.shot(name)
 
 
@@ -177,7 +177,7 @@ func _pair(name: String, p: Vector3, azimuth: float, tilt: float, zoom: float) -
 		return
 	await PairCamera.stand(rig, ui, p, azimuth, tilt, zoom)
 	if await CaptureWait.until_drawn(self, JUMP_SETTLE_FRAMES, name) == 0:
-		await CaptureWait.until_drawn(self, JUMP_SETTLE_FRAMES * 2, name + " de novo")
+		await CaptureWait.until_drawn(self, JUMP_SETTLE_FRAMES * 2, name + " again")
 	await ui.shot(name)
 	rig.set_process(true)
 

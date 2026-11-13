@@ -138,25 +138,25 @@ func _ready() -> void:
 		await get_tree().process_frame
 		waited += 1
 	print("city %s .. %s, drawn in %d frames" % [lo, hi, waited])
-	print("malhas: ", CityStore.query(&"road_mesh_counts"))
+	print("meshes: ", CityStore.query(&"road_mesh_counts"))
 	if "--verges=0" in OS.get_cmdline_user_args():
 		CityStore.query(&"draw_verges", [false])
-	await _run("parada", STILL_S, func(_dt: float, _t: float) -> void: pass)
+	await _run("still", STILL_S, func(_dt: float, _t: float) -> void: pass)
 	var a := Vector3(lerpf(lo.x, hi.x, CROSS_INSET), 0.0, centre.z)
 	var b := Vector3(lerpf(lo.x, hi.x, 1.0 - CROSS_INSET), 0.0, centre.z)
 	rig.look_at_ground(a)
-	await _run("cruzar", a.distance_to(b) / SLIDE_MPS, func(_dt: float, t: float) -> void:
+	await _run("cross", a.distance_to(b) / SLIDE_MPS, func(_dt: float, t: float) -> void:
 		rig.look_at_ground(a.move_toward(b, SLIDE_MPS * t)))
 	var radius := LOOP_RADIUS * minf(hi.x - lo.x, hi.z - lo.z)
 	await _run("circular", LOOP_S, func(_dt: float, t: float) -> void:
 		var angle := SLIDE_MPS * t / radius
 		rig.look_at_ground(centre + Vector3(cos(angle), 0.0, sin(angle)) * radius))
 	rig.look_at_ground(centre)
-	await _run("girar", TURN_S, func(dt: float, _t: float) -> void: rig.orbit(TAU * dt / TURN_S, 0.0))
+	await _run("turn", TURN_S, func(dt: float, _t: float) -> void: rig.orbit(TAU * dt / TURN_S, 0.0))
 	await _run("zoom", ZOOM_S, func(_dt: float, t: float) -> void:
 		var k := 1.0 - absf(2.0 * t / ZOOM_S - 1.0) # out and back
 		rig.jump(rig.focus, rad_to_deg(rig.yaw), VIEW_PITCH_DEG, lerpf(ZOOM_NEAR_M, ZOOM_FAR_M, k)))
-	await _run("perto", CLOSE_S, func(_dt: float, t: float) -> void:
+	await _run("close", CLOSE_S, func(_dt: float, t: float) -> void:
 		rig.jump(centre, rad_to_deg(TAU * t / CLOSE_S), CLOSE_PITCH_DEG, CLOSE_M))
 	GameFlow.quit_now()
 
@@ -199,7 +199,7 @@ func _run(name: String, seconds: float, step: Callable) -> void:
 func _report(name: String) -> void:
 	var sorted := frames.duplicate()
 	sorted.sort()
-	var line := "%s: %d quadros" % [name, sorted.size()]
+	var line := "%s: %d frames" % [name, sorted.size()]
 	for p in PERCENTILES:
 		line += ", p%d %.1f ms" % [int(p * 100), sorted[mini(int(p * sorted.size()), sorted.size() - 1)]]
 	for limit in SLOW_MS:
@@ -207,7 +207,7 @@ func _report(name: String) -> void:
 	print(line)
 	var worst := sorted.slice(maxi(0, sorted.size() - WORST))
 	worst.reverse()
-	print("  piores: ", worst.map(func(f: float) -> String: return "%.0f" % f))
+	print("  worst: ", worst.map(func(f: float) -> String: return "%.0f" % f))
 	var order := range(frames.size())
 	order.sort_custom(func(a: int, b: int) -> bool: return frames[a] > frames[b])
 	for i in order.slice(0, BROKEN_DOWN):

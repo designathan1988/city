@@ -1,5 +1,5 @@
 ## Captures of the features that used to be "being built", driven like a player (real mouse and key events through
-## the viewport): undo/redo, save and open, the road tabs Melhorar/Dividir/Rotatória, the Relief brush, a park and a
+## the viewport): undo/redo, save and open, the road tabs Upgrade/Split/Roundabout, the Relief brush, a park and a
 ## school drawn from the Build drawer and the map layers. Each step checks the core's numbers and saves a PNG.
 ## Run under xvfb: godot --path project --rendering-driver opengl3 --rendering-method gl_compatibility
 ##   --resolution 1280x720 res://tests/visual/capture_features.tscn -- --no-flow --capture-dir=/tmp/x
@@ -74,15 +74,15 @@ func _undo_redo(a: Vector3, e: Vector3) -> void:
 	hud.drawer.close()
 	await ui.drawn()
 	_check(CityStore.snapshot.segments > s0 and CityStore.snapshot.can_undo, "road built, undo active")
-	await ui.shot("feat_undo_1_via")
+	await ui.shot("feat_undo_1_road")
 	await ui.key(KEY_Z, true)
 	await ui.drawn()
 	_check(CityStore.snapshot.segments == s0 and CityStore.snapshot.can_redo, "Ctrl+Z undid the road")
-	await ui.shot("feat_undo_2_desfeita")
+	await ui.shot("feat_undo_2_undone")
 	await ui.press(hud.top_bar.history_button("redo"))
 	await ui.drawn()
 	_check(CityStore.snapshot.segments > s0, "Redo by the button")
-	await ui.shot("feat_undo_3_refeita")
+	await ui.shot("feat_undo_3_redone")
 
 
 func _road_tabs(a: Vector3, e: Vector3) -> void:
@@ -90,15 +90,15 @@ func _road_tabs(a: Vector3, e: Vector3) -> void:
 	hud.open_category("roads")
 	await ui.frames(4)
 	await ui.press(hud.drawer._tabs.upgrade)
-	hud.drawer.catalog.show_category("avenidas")
+	hud.drawer.catalog.show_category("avenues")
 	await ui.press(hud.drawer.catalog._cards_row.get_child(0).get_meta(&"button"))
 	await ui.hover(mid)
-	await ui.shot("feat_upgrade_1_previa")
+	await ui.shot("feat_upgrade_1_preview")
 	var m0: float = CityStore.snapshot.money
 	await ui.click(mid)
 	await ui.drawn()
 	_check(CityStore.snapshot.money < m0, "Upgrade charged the difference")
-	await ui.shot("feat_upgrade_2_avenida")
+	await ui.shot("feat_upgrade_2_avenue")
 	await ui.press(hud.drawer._tabs.split)
 	var s0: int = CityStore.snapshot.segments
 	await ui.hover(a.lerp(e, 0.3))
@@ -108,7 +108,7 @@ func _road_tabs(a: Vector3, e: Vector3) -> void:
 	await ui.press(hud.drawer._tabs.roundabout)
 	var ring := e + Vector3(0, 0, -VIEW_AHEAD_M * 1.5)
 	await ui.hover(ring)
-	await ui.shot("feat_roundabout_1_previa")
+	await ui.shot("feat_roundabout_1_preview")
 	s0 = CityStore.snapshot.segments
 	await ui.click(ring)
 	await ui.hover(ring + Vector3(0, 0, 80))
@@ -117,7 +117,7 @@ func _road_tabs(a: Vector3, e: Vector3) -> void:
 	tools.preview.clear()
 	rig.jump(ring, 20.0, 50.0, 260.0)
 	await ui.drawn()
-	await ui.shot("feat_roundabout_2_construida")
+	await ui.shot("feat_roundabout_2_built")
 
 
 ## The card of this value in the Landscape panel, as it stands now (a pick draws the panel again).
@@ -141,9 +141,9 @@ func _relief(e: Vector3) -> void:
 	await ui.hold(hill + Vector3(-140, 0, 0), HOLD_FRAMES)
 	await ui.drawn()
 	var h1 := ui.ground(hill.x, hill.z).y
-	_check(h1 > h0 + 5.0, "relevo: chapada subiu %.1f -> %.1f m" % [h0, h1])
+	_check(h1 > h0 + 5.0, "relief: mesa rose %.1f -> %.1f m" % [h0, h1])
 	await ui.hover(hill + Vector3(-140, 0, 0))
-	await ui.shot("feat_terrain_1_chapada")
+	await ui.shot("feat_terrain_1_mesa")
 	await ui.key(KEY_Z, true) # the raised hill beside it
 	await ui.drawn()
 	await ui.key(KEY_Z, true) # the mesa: two strokes, two undo steps
@@ -152,7 +152,7 @@ func _relief(e: Vector3) -> void:
 	var drawn: Dictionary = CityStore.query(&"ground_drawn", [hill]) # what the terrain's shader reads there, back from the GPU
 	_check(absf(back - h0) < 0.1, "relief undone in the core: %.1f m (was %.1f)" % [back, h0])
 	_check(drawn.get("fine", false) and absf(drawn.height - h0) < 0.5, "relief undone in the ground drawn: %s (was %.1f)" % [drawn, h0])
-	await ui.shot("feat_terrain_2_desfeito")
+	await ui.shot("feat_terrain_2_undone")
 	await ui.key(KEY_Z, true, true)
 	await ui.key(KEY_Z, true, true)
 	await ui.drawn()
@@ -168,13 +168,13 @@ func _build(a: Vector3, e: Vector3) -> void:
 	await ui.frames(2)
 	var cards := hud.drawer.strip.get_children().filter(func(c: Node) -> bool: return c.has_meta(&"pick"))
 	var b0: int = CityStore.snapshot.buildings
-	await ui.press(cards[1]) # parque
-	await ui.drag(mid + Vector3(-30, 0, 16), mid + Vector3(30, 0, 56), func() -> void: await ui.shot("feat_build_previa"))
-	await ui.press(cards[2]) # escola
+	await ui.press(cards[1]) # park
+	await ui.drag(mid + Vector3(-30, 0, 16), mid + Vector3(30, 0, 56), func() -> void: await ui.shot("feat_build_preview"))
+	await ui.press(cards[2]) # school
 	await ui.drag(mid + Vector3(-30, 0, -16), mid + Vector3(20, 0, -50))
 	await ui.drawn()
 	_check(CityStore.snapshot.buildings >= b0 + 2, "park and school drawn (%d -> %d)" % [b0, CityStore.snapshot.buildings])
-	await ui.shot("feat_build_parque_escola")
+	await ui.shot("feat_build_park_school")
 	hud.drawer.close()
 
 
@@ -221,11 +221,11 @@ func _save_open() -> void:
 	await ui.frames(3)
 	await ui.press(_row_with(tr("action.openMap")))
 	await ui.frames(4)
-	await ui.shot("feat_save_1_abrir")
+	await ui.shot("feat_save_1_open")
 	await ui.press(_row_with(slot + "  ·")) # the row of exactly that slot (hud_popover: "<slot>  ·  <date>")
 	await ui.drawn()
 	_check(CityStore.snapshot.segments == segs and CityStore.saves.city_slot() == slot, "opened the saved city (%d roads)" % segs)
-	await ui.shot("feat_save_2_aberto")
+	await ui.shot("feat_save_2_opened")
 	DirAccess.remove_absolute(CityStore.saves.save_path(slot)) # the next run saves to the same name again
 
 
@@ -233,7 +233,7 @@ func _row_with(text: String) -> Button:
 	for c in hud.popover.get_child(0).get_children():
 		if c is Button and c.text.begins_with(text):
 			return c
-	push_error("linha ausente: " + text)
+	push_error("row missing: " + text)
 	return Button.new()
 
 

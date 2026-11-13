@@ -1,5 +1,5 @@
 ## Core test of the road edits beyond laying one, through the store: the tool's options on a class road, the Move and
-## Controle tabs and what an edit may not leave behind, on open ground past the town.
+## Control tabs and what an edit may not leave behind, on open ground past the town.
 ## Run: godot --headless --path project res://tests/core/road_edit_test.tscn -- --no-flow
 extends TestCase
 
@@ -69,7 +69,7 @@ func _variants(e: Vector3) -> void:
 	check(profiles[four].lanes == 4 and profiles[four].width == URBAN_M + 2 * LANE_M, "four lanes: %s" % profiles[four].width)
 	check(profiles[four].centre == "solid", "two lanes each way have the 4.0's line: %s" % profiles[four].centre)
 	check(profiles[bays].width == URBAN_M + 2 * BAY_M, "bays on both sides: %s" % profiles[bays].width)
-	check(profiles[wide].width == WIDE_M and profiles[wide].lanes == 2, "largura total: %s" % profiles[wide].width)
+	check(profiles[wide].width == WIDE_M and profiles[wide].lanes == 2, "total width: %s" % profiles[wide].width)
 	check(CityStore.dispatch(&"road_variant", [urban, 4, 0.0, 0]) == four, "the same variant is the same profile")
 	check(CityStore.dispatch(&"road_variant", [urban, 0, 0.0, 0]) == urban, "with no option it is the road itself")
 	var card: int = profiles.filter(func(p: Dictionary) -> bool: return p.id == "narrowStreet")[0].index
@@ -104,7 +104,7 @@ func _move_node(e: Vector3) -> void:
 	check(not far.get("ok", false) and far.get("error", "") == "hint.move.tooShort", "too short is refused: %s" % far)
 
 
-## The Controle tab: a junction takes a control and undoes it; a node of two roads is refused.
+## The Control tab: a junction takes a control and undoes it; a node of two roads is refused.
 func _control(e: Vector3) -> void:
 	var a := e + Vector3(0, 0, CONTROL_OFF_M)
 	var urban: int = CityStore.first_road()
@@ -209,7 +209,7 @@ func _curves(e: Vector3) -> void:
 	check(radius >= TIGHTEST_M - NEAR_M, "least radius of the design car: %s" % radius)
 
 
-## Personalizar: a road of the catalogue read as elements, what stops one from being built, and a road of the player's laid.
+## Customise: a road of the catalogue read as elements, what stops one from being built, and a road of the player's laid.
 func _composed_road() -> void:
 	var base: int = CityStore.first_road()
 	var spec: Dictionary = CityStore.query(&"road_spec", [base])

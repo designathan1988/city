@@ -28,7 +28,7 @@ PENDING = """# Pending items
 | Id | Symptom | Root cause | Tried | Resolved when |
 |---|---|---|---|---|
 | V1 | A pole with no wires (`native/src/render/props/street_props.cpp`) | found (trace `made-up` P1): two levels | none | the wires drawn |
-| M1 | No budgets | never defined | none | defined (done: log/specification.md) |
+| M1 | No budgets | never defined | none | defined (done: doc/specification.md) |
 | T2 | No live monitor | unknown | a sampler | the monitor reads the run |
 
 ## Carried from before 2026-11-11
@@ -60,9 +60,9 @@ class Migrate(unittest.TestCase):
             json.dump(LEDGER, fh)
         with open(os.path.join(trace, "photos", "patch.png"), "wb") as fh:
             fh.write(b"\x89PNG")
-        os.makedirs(os.path.join(self.root, "log"))
+        os.makedirs(os.path.join(self.root, "doc"))
         for name, text in (("pendencias.md", PENDING), ("specification.md", SPECIFICATION)):
-            with open(os.path.join(self.root, "log", name), "w", encoding="utf-8") as fh:
+            with open(os.path.join(self.root, "doc", name), "w", encoding="utf-8") as fh:
                 fh.write(text)
         open(os.path.join(self.root, register.REGISTER), "w").close()
 
@@ -72,7 +72,7 @@ class Migrate(unittest.TestCase):
     def test_every_open_item_once_with_its_origin(self):
         reg = register.Register(root=self.root)
         counts = migrate.migrate(reg, self.root)
-        self.assertEqual({"ledgers": (2, 0), "log/pendencias.md": (2, 0), "log/specification.md": (2, 0)}, counts)
+        self.assertEqual({"ledgers": (2, 0), "log/pendencias.md": (2, 0), "doc/specification.md": (2, 0)}, counts)
         got = self.by_origin(reg)
         self.assertEqual("unknown", got["ledger:made-up:P1"]["cause"])
         self.assertIn("read road_segment.cpp", got["ledger:made-up:P1"]["reading"])
@@ -88,7 +88,7 @@ class Migrate(unittest.TestCase):
         self.assertEqual([got["ledger:made-up:P3"]["id"]], d6["related"], "a divergence citing a ledger's problem")
         reg.save()
         again = register.Register(root=self.root)
-        self.assertEqual({"ledgers": (0, 2), "log/pendencias.md": (0, 2), "log/specification.md": (0, 2)},
+        self.assertEqual({"ledgers": (0, 2), "log/pendencias.md": (0, 2), "doc/specification.md": (0, 2)},
                          migrate.migrate(again, self.root), "a second run adds nothing")
 
     def test_the_photos_an_open_problem_names_are_its_evidence(self):
@@ -104,24 +104,24 @@ class Migrate(unittest.TestCase):
 class RenameRule(Migrate):
     def test_a_rule_renamed_is_followed_by_its_problems_and_no_other(self):
         reg = register.Register(root=self.root)
-        kept = dict(title="DADOS in a.json", symptom="the gate DADOS reports", area="tools", kind="architecture",
-                    reading="r", owner="a.json", criterion="no DADOS", origin=[register.gate_origin("DADOS", "a.json")])
-        longer = dict(kept, title="DADOS_SEM_SCHEMA in b.json", symptom="the gate DADOS_SEM_SCHEMA reports",
-                      criterion="no DADOS_SEM_SCHEMA", origin=[register.gate_origin("DADOS_SEM_SCHEMA", "b.json")])
+        kept = dict(title="TABLE in a.json", symptom="the gate TABLE reports", area="tools", kind="architecture",
+                    reading="r", owner="a.json", criterion="no TABLE", origin=[register.gate_origin("TABLE", "a.json")])
+        longer = dict(kept, title="TABLE_NO_SCHEMA in b.json", symptom="the gate TABLE_NO_SCHEMA reports",
+                      criterion="no TABLE_NO_SCHEMA", origin=[register.gate_origin("TABLE_NO_SCHEMA", "b.json")])
         one, other = reg.add(**kept), reg.add(**longer)
-        self.assertEqual([one], reg.rename_rule("DADOS", "DATA"))
+        self.assertEqual([one], reg.rename_rule("TABLE", "DATA"))
         self.assertEqual(["gate:DATA:a.json"], one["origin"])
         self.assertEqual("DATA in a.json", one["title"])
-        self.assertEqual(["gate:DADOS_SEM_SCHEMA:b.json"], other["origin"], "a longer name holding the old one is another rule")
+        self.assertEqual(["gate:TABLE_NO_SCHEMA:b.json"], other["origin"], "a longer name holding the old one is another rule")
         reg.save()
 
     def test_a_path_moved_is_followed_by_the_evidence_and_owner_naming_it(self):
         reg = register.Register(root=self.root)
-        os.makedirs(os.path.join(self.root, "log", "old"))
-        open(os.path.join(self.root, "log", "old", "map.md"), "w").close()
+        os.makedirs(os.path.join(self.root, "doc", "old"))
+        open(os.path.join(self.root, "doc", "old", "map.md"), "w").close()
         one = reg.add(title="t", symptom="s", area="docs", kind="process", reading="r", criterion="c",
                       owner="log/old/map.md", evidence=["log/old/map.md"], origin=["o"])
-        os.rename(os.path.join(self.root, "log", "old"), os.path.join(self.root, "log", "new"))
+        os.rename(os.path.join(self.root, "doc", "old"), os.path.join(self.root, "doc", "new"))
         self.assertEqual([one], reg.rename_path("log/old", "log/new"))
         self.assertEqual((["log/new/map.md"], "log/new/map.md"), (one["evidence"], one["owner"]))
         reg.save()

@@ -1,4 +1,4 @@
-## Postes (Roadcraft editor/poles.ts): a line of poles traced as stretches, each a drag; the next starts where the last ended
+## Poles (Roadcraft editor/poles.ts): a line of poles traced as stretches, each a drag; the next starts where the last ended
 ## until Esc. The run under the pointer is drawn as it will stand, and the same plan is built on
 ## release. Remove takes the pole under a click and its wires; so does Shift-click while building.
 extends ToolBase

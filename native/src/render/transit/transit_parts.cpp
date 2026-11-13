@@ -48,7 +48,7 @@ TransitBoxes boxes(const TransitLook &look, const Array &list, PackedStringArray
 		const std::string name(String(d["part"]).utf8().get_data());
 		const auto it = look.part_of.find(name);
 		if (it == look.part_of.end()) {
-			errors.push_back(String("transit: parte desconhecida ") + name.c_str());
+			errors.push_back(String("transit: unknown part ") + name.c_str());
 			continue;
 		}
 		out.push_back({ it->second, v3(d["at"]), v3(d["size"]), bool(d.get("tint", false)) });

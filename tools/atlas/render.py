@@ -1,4 +1,4 @@
-"""The register's generated view: log/problems.md written from log/problems.jsonl, by area (the schema's order), then status (the
+"""The register's generated view: doc/problems.md written from doc/problems.jsonl, by area (the schema's order), then status (the
 order a problem moves in), then id. `python tools/atlas/render.py` writes it; `--check` writes nothing and exits 0 only when the
 view on disk is what it would write (the generated-files gate asks this, so a hand edit of the view cannot stand)."""
 import argparse
@@ -10,7 +10,7 @@ if TOOLS_DIR not in sys.path:
     sys.path.insert(0, TOOLS_DIR)
 from atlas import problems as register  # noqa: E402
 
-VIEW = "log/problems.md"
+VIEW = "doc/problems.md"
 
 
 def _line(p):

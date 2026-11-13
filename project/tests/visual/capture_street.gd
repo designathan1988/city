@@ -80,7 +80,7 @@ func _ready() -> void:
 	ui = UiDriver.new(rig, get_tree(), out_dir)
 	tools = ToolController.new(rig)
 	add_child(tools)
-	tools.hint.connect(func(text: String, ok: bool) -> void: print("dica: ", text, " ", ok))
+	tools.hint.connect(func(text: String, ok: bool) -> void: print("hint: ", text, " ", ok))
 	hud = RoadcraftHud.new()
 	add_child(hud)
 	await _run()
@@ -99,13 +99,13 @@ func _run() -> void:
 	hud.open_category("landscape")
 	await ui.frames(2)
 	await ui.press(hud.drawer._tabs["street"])
-	await ui.shot("rua_01_aba")
+	await ui.shot("street_01_tab")
 	await _poles(a, b)
 	await _items(a, dir)
 	await CaptureStreetGestures.barriers(self, a, b)
 	await CaptureStreetGestures.run(self, dir)
 	await CaptureStreetViews.views(self, a, b)
-	print("contagens: ", CityStore.query(&"street_counts"))
+	print("counts: ",CityStore.query(&"street_counts"))
 	print("FAILURES: ", failures)
 	get_tree().quit(CaptureWait.exit_code(failures))
 
@@ -157,14 +157,14 @@ func _pick(key: String) -> void:
 
 func _poles(a: Vector3, b: Vector3) -> void:
 	await _pick("pole.mode.build")
-	await ui.shot("rua_02_postes_opcoes")
+	await ui.shot("street_02_poles_options")
 	await _pick("pole.lamps.all")
 	var before: Dictionary = CityStore.query(&"street_counts")
 	await ui.hover(a)
 	await ui.button(rig.camera.unproject_position(ui.ground(a.x, a.z)), true)
 	var first: Vector3 = CityStore.query(&"preview_item", [a.lerp(b, CHAIN_SHARE), ITEM_BIN, REACH]).position
 	await ui.hover(first)
-	await _shot_low("rua_03_postes_previa", a, b)
+	await _shot_low("street_03_poles_preview", a, b)
 	await ui.button(rig.camera.unproject_position(ui.ground(first.x, first.z)), false)
 	await ui.drawn()
 	var after: Dictionary = CityStore.query(&"street_counts")
@@ -172,8 +172,8 @@ func _poles(a: Vector3, b: Vector3) -> void:
 	await ui.click(b) # the next stretch starts where this one ended
 	await ui.drawn()
 	var chained: Dictionary = CityStore.query(&"street_counts")
-	_check(chained.poles > after.poles and chained.spans > after.spans, "trecho encadeado %s" % chained)
-	await _shot_low("rua_04_postes_prontos", a, b)
+	_check(chained.poles > after.poles and chained.spans > after.spans, "chained stretch %s" % chained)
+	await _shot_low("street_04_poles_done", a, b)
 	await ui.key(KEY_ESCAPE, false)
 
 
@@ -217,7 +217,7 @@ func _items(a: Vector3, dir: Vector3) -> void:
 			walked += ITEM_GAP_M
 		print("piece ", key, ": ", at.get("ok"), " ", at.get("error"), " ", at.get("position"))
 	await ui.drawn()
-	await ui.shot("rua_05_pecas")
+	await ui.shot("street_05_pieces")
 	var after: Dictionary = CityStore.query(&"street_counts")
 	_check(after.items == before.items + placed and placed >= list.size() - 2, "pieces by mouse %d" % placed)
 	await CaptureStreetViews.signs(self, a, dir)

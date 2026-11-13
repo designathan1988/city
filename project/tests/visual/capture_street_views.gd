@@ -26,11 +26,11 @@ static func views(cap: Node, a: Vector3, b: Vector3) -> void:
 	for hour: float in [cap.DAY, cap.NIGHT]:
 		UiDriver.at_hour(cap.world, hour)
 		await cap.ui.frames(int(ProjectSettings.get_setting("rendering/reflections/sky_reflections/roughness_layers")) + 1)
-		var tag := "dia" if hour == cap.DAY else "noite"
-		await _eye(cap, "rua_10_rua_" + tag, a - dir * cap.BACK_M + side * cap.SIDE_M, a + dir * cap.RUN_M * 0.5)
-		await _eye(cap, "rua_11_volta_" + tag, b + dir * cap.BACK_M + side * cap.SIDE_M, b - dir * cap.RUN_M * 0.5)
-		await _eye(cap, "rua_13_ao_longo_" + tag, a - dir * cap.ALONG_BACK_M + Vector3.UP * cap.ALONG_UP_M, a + dir * cap.RUN_M)
-		await _eye(cap, "rua_12_alto_" + tag, a + dir * cap.RUN_M * 0.3 + Vector3.UP * cap.TOP_M + side * cap.TOP_M, a + dir * cap.RUN_M * 0.3, true)
+		var tag := "day" if hour == cap.DAY else "night"
+		await _eye(cap, "street_10_street_" + tag, a - dir * cap.BACK_M + side * cap.SIDE_M, a + dir * cap.RUN_M * 0.5)
+		await _eye(cap, "street_11_back_" + tag, b + dir * cap.BACK_M + side * cap.SIDE_M, b - dir * cap.RUN_M * 0.5)
+		await _eye(cap, "street_13_along_" + tag, a - dir * cap.ALONG_BACK_M + Vector3.UP * cap.ALONG_UP_M, a + dir * cap.RUN_M)
+		await _eye(cap, "street_12_high_" + tag, a + dir * cap.RUN_M * 0.3 + Vector3.UP * cap.TOP_M + side * cap.TOP_M, a + dir * cap.RUN_M * 0.3, true)
 
 
 ## Each sign of the dropdown on the footway across the street, with its words where it carries them.
@@ -70,11 +70,11 @@ static func signs(cap: Node, a: Vector3, dir: Vector3) -> void:
 		if at.get("ok", false):
 			var had: int = CityStore.query(&"street_counts").items
 			await cap.ui.click(at.position)
-			cap._check(CityStore.query(&"street_counts").items == had + 1, "placa %d colocada" % i)
-			cap.spots["placa_%d" % i] = at.position
+			cap._check(CityStore.query(&"street_counts").items == had + 1, "sign %d placed" % i)
+			cap.spots["sign_%d" % i] = at.position
 			if i >= RULE_PLATES:
 				walked += cap.SIGN_GAP_M
-	await cap.ui.shot("rua_07_placa_opcoes")
+	await cap.ui.shot("street_07_sign_options")
 	await cap.ui.frames(SHEET_FRAMES)
 	_check_ink(cap)
 
@@ -105,7 +105,7 @@ static func _check_ink(cap: Node) -> void:
 	var images: Array[Image] = []
 	for i in sheet.layers.get_layers():
 		images.append(sheet.layers.get_layer_data(i))
-		images[i].save_png("%s/rua_23_folha_%d.png" % [cap.out_dir, i])
+		images[i].save_png("%s/street_23_sheet_%d.png" % [cap.out_dir, i])
 	var look: Dictionary = DataTables.render().streets.signs
 	for c: Array in sheet.drawn:
 		var p: Dictionary = look.drawings[c[0]]
@@ -128,7 +128,7 @@ static func many_names(cap: Node, road: Vector3) -> void:
 	var sheet: SignSheet = _sheet(cap)
 	var had: int = CityStore.query(&"street_counts").sign_cells
 	for i in NAMES_TRIED:
-		CityStore.dispatch(&"place_item", [road, ITEM_NAME, 0, "Rua Teste %d" % i, 1.0])
+		CityStore.dispatch(&"place_item", [road, ITEM_NAME, 0, "Test Road %d" % i, 1.0])
 	for f in NAMES_FRAMES:
 		if sheet.drawn.size() >= had + NAMES_TRIED:
 			break
@@ -142,16 +142,16 @@ static func _close_views(cap: Node, dir: Vector3) -> void:
 	var side := dir.cross(Vector3.UP)
 	for key: String in cap.spots:
 		var at: Vector3 = cap.spots[key]
-		if key.begins_with("placa"):
+		if key.begins_with("sign_"):
 			continue
 		var toward := -side if key.begins_with("barrier") else side
 		var name: String = key.get_slice(".", key.get_slice_count(".") - 1)
-		await _look(cap, "rua_20_" + name, at + toward * cap.CLOSE_SIDE_M - dir * cap.CLOSE_BACK_M, at + Vector3.UP * cap.CLOSE_LOOK_M)
+		await _look(cap, "street_20_" + name, at + toward * cap.CLOSE_SIDE_M - dir * cap.CLOSE_BACK_M, at + Vector3.UP * cap.CLOSE_LOOK_M)
 	for i in DataTables.ui("drawers").street.signs.size():
-		if cap.spots.has("placa_%d" % i):
-			var at: Vector3 = cap.spots["placa_%d" % i]
+		if cap.spots.has("sign_%d" % i):
+			var at: Vector3 = cap.spots["sign_%d" % i]
 			var from: Vector3 = at - side * FACE_M if i >= FIRST_STREET_FACED else at - dir * FACE_M - side * FACE_ROAD_M
-			await _look(cap, "rua_22_placa_%d" % i, from, at + Vector3.UP * cap.SIGN_LOOK_M)
+			await _look(cap, "street_22_sign_%d" % i, from, at + Vector3.UP * cap.SIGN_LOOK_M)
 
 
 static func _look(cap: Node, name: String, from: Vector3, at: Vector3) -> void:

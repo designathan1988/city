@@ -3,7 +3,7 @@
 // rendering_server_default.h mesh_create_from_surfaces calls mesh_generate_pipelines with the surfaces' own materials, in the
 // background when the caller is not the server's thread). A mesh made by mesh_create and mesh_add_surface_from_arrays, or given its
 // material by an instance override, has its pipelines made on the frame it is first drawn (the "surface" compilations of the Godot
-// docs, Reducing stutter from shader (pipeline) compilations): the stall of log/owner-review.md §9. The bytes follow Godot's own
+// docs, Reducing stutter from shader (pipeline) compilations): the stall of doc/owner-review.md §9. The bytes follow Godot's own
 // RenderingServer::mesh_create_surface_data_from_arrays and _surface_set_data (servers/rendering/rendering_server.cpp, 4.7-stable),
 // which the extension API does not expose.
 #pragma once

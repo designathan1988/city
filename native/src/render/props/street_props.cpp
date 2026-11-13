@@ -303,7 +303,7 @@ void place_street_trees(const CityView &s, const StreetLook &L, int64_t key, std
 
 bool FurnitureLook::load(const Dictionary &t, PackedStringArray &errors) {
 	if (!t.has("wires") || !t.has("lamp_light")) {
-		errors.push_back("streets.json: falta wires ou lamp_light");
+		errors.push_back("streets.json: missing wires or lamp_light");
 		return false;
 	}
 	Dictionary w = t["wires"], l = t["lamp_light"];

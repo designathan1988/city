@@ -10,8 +10,8 @@
 (class_definition name: (name) @name) @class
 
 (variable_statement name: (name) @name type: (type)? @type value: (_)? @value) @variable
-(const_statement name: (name) @name type: (type)? @type value: (_)? @value) @variable
-(signal_statement name: (name) @name) @variable
+(const_statement name: (name) @name type: (type)? @type value: (_)? @value) @variable @fixed
+(signal_statement name: (name) @name) @variable @handlers
 (enum_definition name: (name) @name) @variable
 (for_statement left: (identifier) @name right: (_) @value) @variable
 
@@ -43,6 +43,13 @@
 
 (return_statement (_) @value) @return
 
+; A node of the scene, by its path or its unique name written in place (`$Hud/Bar`, `%Menu`).
+(get_node) @node
+
+; A call made for its effect: its value is taken by nothing.
+(expression_statement (call) @effect)
+(expression_statement (attribute) @effect)
+
 ((identifier) @self (#eq? @self "self"))
 ((identifier) @super (#eq? @super "super"))
 (identifier) @ident
@@ -57,3 +64,18 @@
 (dictionary (pair left: [(string) (string_name)] @name value: (_) @value) @variable)
 (dictionary (pair left: (identifier) @name "=" value: (_) @value) @variable)
 [(string) (string_name) (node_path) (integer) (float) (array) (dictionary) (true) (false) (null)] @literal
+
+; What decides which code runs and what a value is (GDScript reference: if/elif/else, while, the conditional
+; expression, match, return; the operators).
+(if_statement condition: (_) @test body: (_) @then) @branch
+(elif_clause condition: (_) @test body: (_) @then) @branch
+(while_statement condition: (_) @test body: (_) @then) @branch @loop
+(for_statement body: (_) @then) @branch @loop
+(break_statement) @leave
+(continue_statement) @again
+(conditional_expression left: (_) @then condition: (_) @test right: (_) @else) @branch
+(match_statement value: (_) @test) @choose
+(pattern_section . (_) @value) @case
+(return_statement) @exit
+(binary_operator left: (_) @left op: _ @op right: (_) @right) @operation
+(unary_operator . _ @op . (_) @right) @operation

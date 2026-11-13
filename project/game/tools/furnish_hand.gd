@@ -1,5 +1,5 @@
-## Construir › Interior, as in The Sims: what is in hand on the cut floor. A core goes where the floor is clicked, through every level; a piece goes down where it is clicked
-## and R turns it; Mover picks a piece and sets it down, Tirar takes what is clicked. Opens the building picked at its ground floor when it is not open.
+## Build › Inside, as in The Sims: what is in hand on the cut floor. A core goes where the floor is clicked, through every level; a piece goes down where it is clicked
+## and R turns it; Move picks a piece and sets it down, Take away takes what is clicked. Opens the building picked at its ground floor when it is not open.
 class_name FurnishHand
 extends RefCounted
 
@@ -51,7 +51,7 @@ func act(spec: Dictionary, picked: Dictionary) -> Dictionary:
 	return {"ok": true}
 
 
-## Construir › Interior: the building chosen cut open, a floor up or down (Roadcraft openInside, seeInside).
+## Build › Inside: the building chosen cut open, a floor up or down (Roadcraft openInside, seeInside).
 func inside(what: String, by: int, picked: Dictionary) -> void:
 	var view: InteriorController = _ctl.get_tree().get_first_node_in_group(&"interior_controller")
 	if view == null:

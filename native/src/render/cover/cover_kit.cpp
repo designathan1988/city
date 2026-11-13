@@ -94,12 +94,12 @@ MeshBuilder variant(CoverPiece p, const Dictionary &k, int i, Rng &r) {
 bool CoverKit::build(const Dictionary &t, const CoverMaterials &with, PackedStringArray &errors) {
 	static const char *const TOP[] = { "reach_m", "fade_m", "tuft_share" };
 	for (const char *key : TOP)
-		if (!t.has(key)) errors.push_back(String("cover.json: falta ") + key);
+		if (!t.has(key)) errors.push_back(String("cover.json: missing ") + key);
 	if (!errors.is_empty()) return false;
 	reach_m = t["reach_m"]; fade_m = t["fade_m"]; tuft_share = t["tuft_share"];
 	for (int i = 0; i < COVER_PIECES; i++) {
 		if (!t.has(PIECE_KEYS[i])) {
-			errors.push_back(String("cover.json: falta ") + PIECE_KEYS[i]);
+			errors.push_back(String("cover.json: missing ") + PIECE_KEYS[i]);
 			continue;
 		}
 		Dictionary k = t[PIECE_KEYS[i]];

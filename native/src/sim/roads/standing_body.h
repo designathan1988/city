@@ -2,7 +2,7 @@
 // segment or junction placed it. A piece is placed in its own segment's frame (street_furniture.h FurnitureSpot); two pieces of
 // two segments, or a piece and anything else, can only be asked about each other in the world, and this is that one form: a
 // rectangle on the ground (its middle, the direction of its length, half its length and half its width). The street's audit reads
-// it (api/city_core_bodies_probe.cpp); the placers are to ask it (log/pendencias.md V2, V3).
+// it (api/city_core_bodies_probe.cpp); the placers are to ask it (register Prender-156, Prender-157).
 #pragma once
 
 #include "core/math.h"

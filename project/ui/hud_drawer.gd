@@ -64,7 +64,7 @@ func _ready() -> void:
 	hide()
 
 
-## Personalizar…: the editor docked over the strip, one at a time.
+## Customise…: the editor docked over the strip, one at a time.
 func _customise(profile: Dictionary, spec: Dictionary, col: Control) -> void:
 	if not is_instance_valid(_editor):
 		_editor = RoadProfilePanel.new()

@@ -1,4 +1,4 @@
-## Build (Massa, Fachada, Telhado, Cores): a click picks a block, its face and its bay; the strip's tools then act on the pick. With a
+## Build (Mass, Facade, Roof, Colours): a click picks a block, its face and its bay; the strip's tools then act on the pick. With a
 ## component in hand a click puts it in the wall, at the scope chosen. Holds what is picked, never a number of the game: each edit
 ## goes to the core, which answers, and undo is the game's own. A model in hand (Models shelf) follows the pointer as a ghost: R turns it,
 ## a click sets it down and picks it.

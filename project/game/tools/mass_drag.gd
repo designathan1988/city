@@ -1,4 +1,4 @@
-## Massa › Ala, Empilhar e Recortar: a rectangle dragged against the block picked. A wing is drawn on the ground; a block on the roof and a cut on the block's roof, which
+## Mass › Wing, Stack and Cut out: a rectangle dragged against the block picked. A wing is drawn on the ground; a block on the roof and a cut on the block's roof, which
 ## is where the pointer's ray is read, because the ground under the pointer lies far behind a tall building.
 class_name MassDrag
 extends RefCounted

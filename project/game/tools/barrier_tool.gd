@@ -1,4 +1,4 @@
-## Muros (Roadcraft editor/barriers.ts): a wall, fence, hedge, guardrail or railing traced point by point. A double click or
+## Walls (Roadcraft editor/barriers.ts): a wall, fence, hedge, guardrail or railing traced point by point. A double click or
 ## Enter builds the run in one undo step, Backspace takes the last point, Esc drops the run, Shift-click takes a run away.
 ## Points snap to the back of the footway, or to the kerb for a guardrail and a railing.
 extends ToolBase

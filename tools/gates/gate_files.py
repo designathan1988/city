@@ -34,7 +34,7 @@ def check_single_doc(ctx, src, err):
         return
     if (os.path.splitext(src.path)[1].lower() in rules["doc_extensions"] and src.path not in set(rules["allowed_docs"])
             and not in_doc_place(rules, src.path)):
-        err("SINGLE_DOC", src.path, "the project's documents are CLAUDE.md, log/ and the declared places (rules.json doc_places): "
+        err("SINGLE_DOC", src.path, "the project's documents are CLAUDE.md, doc/ and the declared places (rules.json doc_places): "
                                    "move the content there")
 
 

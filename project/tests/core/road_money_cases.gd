@@ -140,10 +140,10 @@ func _generated_roads(b: Dictionary) -> void:
 	CityStore.dispatch(&"undo")
 	t.check(_money() == m0, "undo took the refund away")
 	var cheaper: Dictionary = CityStore.dispatch(&"upgrade_road", [p, NARROW_PROFILE, false])
-	t.check(cheaper.ok and cheaper.money < 0 and _money() == m0 - cheaper.money, "perfil mais barato devolveu %s" % [_money() - m0])
+	t.check(cheaper.ok and cheaper.money < 0 and _money() == m0 - cheaper.money, "cheaper profile refunded %s" % [_money() - m0])
 	CityStore.dispatch(&"undo")
 	var dearer: Dictionary = CityStore.dispatch(&"upgrade_road", [p, WIDE_PROFILE, false])
-	t.check(dearer.ok and dearer.money > 0 and _money() == m0 - dearer.money, "perfil mais caro cobrou %s" % [m0 - _money()])
+	t.check(dearer.ok and dearer.money > 0 and _money() == m0 - dearer.money, "dearer profile charged %s" % [m0 - _money()])
 	CityStore.dispatch(&"undo")
 	t.check(_money() == m0, "undoing Upgrade put the money back")
 
@@ -164,7 +164,7 @@ func _refusals(b: Dictionary) -> void:
 		"roundabout": CityStore.dispatch(&"roundabout", [ring, RING_RADIUS, false]),
 	}
 	for what in edits:
-		t.check(not edits[what].ok and edits[what].error == "hint.rule.funds", "%s recusada: %s" % [what, edits[what].error])
+		t.check(not edits[what].ok and edits[what].error == "hint.rule.funds", "%s refused: %s" % [what, edits[what].error])
 	t.check(_money() == LOW_FUNDS and CityStore.snapshot.segments == s0, "nothing changed: %s %d" % [_money(), CityStore.snapshot.segments])
 	_set_money(START_FUNDS)
 	var built: Dictionary = CityStore.dispatch(&"roundabout", [ring, RING_RADIUS, false])

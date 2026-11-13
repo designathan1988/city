@@ -24,10 +24,10 @@ CLAIM = re.compile(r"(?i:\bbinding over\b|\b(wins?|outranks?|overrides?|takes? p
                    r"\b(claude\.md|memor(y|ies)|skills?|records?|instructions?|orders?)\b)|\bBINDING\b")
 QUOTED = re.compile(r'"[^"]*"|`[^`]*`|\u201c[^\u201d]*\u201d')  # a citation: the words are someone else's, not a claim here
 BINARY_PROBE = 8000
-# Known problems live in log/problems.jsonl alone: no ledger of problems and no table of symptoms and causes elsewhere. The
+# Known problems live in doc/problems.jsonl alone: no ledger of problems and no table of symptoms and causes elsewhere. The
 # register's generated view and the histories (records of what was, by their place) are no tracker.
-REGISTER_VIEW = "log/problems.md"
-HISTORIES = "log/history/"
+REGISTER_VIEW = "doc/problems.md"
+HISTORIES = "doc/history/"
 LEDGER_NAMES = ("ledger.json",)
 TABLE_ROW = re.compile(r"^\s*\|.+\|\s*$")
 SYMPTOM = {"symptom", "sintoma"}
@@ -70,7 +70,7 @@ def check_claude_md(ctx, err):
     lines = ctx.source("CLAUDE.md").text.count("\n")
     limit = rules["claude_md_max_lines"]
     if lines > limit:
-        err("CLAUDE_MD", "CLAUDE.md", f"{lines} lines: keep it concise (up to {limit}); the detail goes to log/")
+        err("CLAUDE_MD", "CLAUDE.md", f"{lines} lines: keep it concise (up to {limit}); the detail goes to doc/")
 
 
 def memory_folder(root):
@@ -155,11 +155,11 @@ def check_problems_elsewhere(ctx, err):
         if path == REGISTER_VIEW or path.startswith(HISTORIES):
             continue
         if os.path.basename(path) in LEDGER_NAMES:
-            err("PROBLEMS_ELSEWHERE", path, "a problem ledger outside log/problems.jsonl: its problems belong in the register "
+            err("PROBLEMS_ELSEWHERE", path, "a problem ledger outside doc/problems.jsonl: its problems belong in the register "
                                             "(python tools/atlas/cli.py problems add)")
             continue
         for n, line in enumerate(_text(ctx, path).splitlines(), 1):
             columns = {c.strip().strip("*").lower() for c in line.strip().strip("|").split("|")} if TABLE_ROW.match(line) else ()
             if columns and columns & SYMPTOM and columns & CAUSE:
                 err("PROBLEMS_ELSEWHERE", f"{path}:{n}", "a table of symptoms and causes outside the register: each open "
-                                                         "problem belongs in log/problems.jsonl, what was belongs in a history")
+                                                         "problem belongs in doc/problems.jsonl, what was belongs in a history")

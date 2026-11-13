@@ -75,7 +75,7 @@ func pick_m(p: Vector3, least_m: float, px: float) -> float:
 	return maxf(least_m, px * ctl.px_at(p))
 
 
-## The refusal text for a command result: "Não dá para construir aqui: {why}." / other keys as they are.
+## The refusal text for a command result: "Cannot build here: {why}." / other keys as they are.
 func refusal(result: Dictionary) -> String:
 	var why: String = result.get("error", "")
 	if why.begins_with("refuse.") or why.begins_with("road.reason."):

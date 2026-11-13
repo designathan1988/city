@@ -16,11 +16,11 @@ struct Reader {
 
 	Reader(PackedStringArray &e, const Dictionary &root, const char *group) : errors(e), where(group) {
 		if (root.has(group)) d = root[group];
-		else errors.push_back(String("effects: falta '") + group + "'");
+		else errors.push_back(String("effects: missing '") + group + "'");
 	}
 	float num(const char *key) {
 		if (d.has(key)) return float(double(d[key]));
-		errors.push_back(String("effects.") + where + ": falta '" + key + "'");
+		errors.push_back(String("effects.") + where + ": missing '" + key + "'");
 		return 0.f;
 	}
 	int integer(const char *key) { return int(num(key)); }

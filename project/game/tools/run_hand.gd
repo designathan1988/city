@@ -1,4 +1,4 @@
-## Construir › Peças › Traçados: a wall, fence, footpath or stair laid along a path. Each click sets a corner, Enter lays the run in one step of undo, Backspace takes the last
+## Build › Parts › Runs: a wall, fence, footpath or stair laid along a path. Each click sets a corner, Enter lays the run in one step of undo, Backspace takes the last
 ## corner back. A stair climbs the floor picked along the whole path.
 class_name RunHand
 extends RefCounted

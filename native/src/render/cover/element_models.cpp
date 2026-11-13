@@ -44,13 +44,13 @@ ElementModel fitted(const Ref<Mesh> &mesh) {
 Ref<Mesh> scene_mesh(const String &path, PackedStringArray &errors) {
 	Ref<PackedScene> scene = ResourceLoader::get_singleton()->load(path);
 	if (scene.is_null()) {
-		errors.push_back("cover.json elements: não abriu " + path);
+		errors.push_back("cover.json elements: could not open " + path);
 		return Ref<Mesh>();
 	}
 	Node *root = scene->instantiate();
 	Ref<Mesh> mesh = first_mesh(root);
 	memdelete(root);
-	if (mesh.is_null()) errors.push_back("cover.json elements: sem malha em " + path);
+	if (mesh.is_null()) errors.push_back("cover.json elements: no mesh in " + path);
 	return mesh;
 }
 
@@ -58,7 +58,7 @@ Ref<Mesh> scene_mesh(const String &path, PackedStringArray &errors) {
 Ref<Mesh> ground_quad(const String &path, PackedStringArray &errors) {
 	Ref<Texture2D> tex = ResourceLoader::get_singleton()->load(path);
 	if (tex.is_null()) {
-		errors.push_back("cover.json elements: não abriu " + path);
+		errors.push_back("cover.json elements: could not open " + path);
 		return Ref<Mesh>();
 	}
 	Ref<StandardMaterial3D> mat;

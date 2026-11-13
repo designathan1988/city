@@ -145,7 +145,7 @@ void part(MeshBuilder &m, const Dictionary &p, PackedStringArray &errors) {
 	else if (shape == "rosette") rosette(m, p);
 	else if (shape == "mound") mound(m, p);
 	else if (shape == "bowl") bowl(m, p);
-	else errors.push_back(String("bay_props.json: forma desconhecida '") + shape + "'");
+	else errors.push_back(String("bay_props.json: unknown shape '") + shape + "'");
 }
 
 std::vector<uint32_t> colours(const Array &list) {
@@ -160,7 +160,7 @@ bool BayPropLook::load(const Dictionary &t, PackedStringArray &errors) {
 	const Dictionary list = t.get("models", Dictionary()), c = t.get("colours", Dictionary()), s = t.get("shares", Dictionary());
 	for (int k = 0; k < BAY_PROPS; k++) {
 		if (!list.has(MODEL_NAMES[k])) {
-			errors.push_back(String("bay_props.json: falta o modelo ") + MODEL_NAMES[k]);
+			errors.push_back(String("bay_props.json: missing the model ") + MODEL_NAMES[k]);
 			continue;
 		}
 		const Array parts = list[MODEL_NAMES[k]];

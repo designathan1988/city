@@ -5,7 +5,7 @@ class_name RoadCatalog
 extends VBoxContainer
 
 signal profile_picked(index: int)
-signal customise(profile: Dictionary, spec: Dictionary) ## Personalizar… on the road picked
+signal customise(profile: Dictionary, spec: Dictionary) ## Customise… on the road picked
 
 const MINE := "mine"
 
@@ -125,7 +125,7 @@ func show_category(category: String) -> void:
 		_mine(widest)
 
 
-## Meus modelos: the player's own roads, each made into a profile as it is picked.
+## My roads: the player's own roads, each made into a profile as it is picked.
 func _mine(widest: float) -> void:
 	var models := RoadModels.list()
 	if models.is_empty():

@@ -8,7 +8,7 @@ const LENSES := 5 # props.gdshader lit_radiance (prop_kit.h Lens::COUNT)
 ## colour (render/tone_map.gd mirrors Godot's ACES).
 static func lenses(m: ShaderMaterial, environment: Environment) -> void:
 	if environment.tonemap_mode != Environment.TONE_MAPPER_ACES:
-		push_error("CityWorld: ToneMap só espelha o ACES; as lentes não mostrariam a sua cor")
+		push_error("CityWorld: ToneMap mirrors ACES only; the lenses would not show their colour")
 	var lit := PackedVector3Array()
 	lit.resize(LENSES)
 	var done := {}

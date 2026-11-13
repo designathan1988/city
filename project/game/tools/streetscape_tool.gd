@@ -1,4 +1,4 @@
-## Peças da rua (Roadcraft editor/streetscapeTool.ts): a tree, bench, bin, light, hydrant, post box, phone, drain, long grass,
+## Street pieces (Roadcraft editor/streetscapeTool.ts): a tree, bench, bin, light, hydrant, post box, phone, drain, long grass,
 ## sign or street name put where the pointer is; a ring shows where it would stand, red where it cannot. A drag lays a row
 ## along the footway; Shift-click takes away what stands there. A Stop or Give Way plate at an approach is that leg's rule.
 extends ToolBase

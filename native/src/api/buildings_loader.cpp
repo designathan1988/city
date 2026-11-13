@@ -23,7 +23,7 @@ const char *const BAY_NAMES[BAY_COUNT] = { "wall", "window", "sash", "french", "
 const char *const FINISH_NAMES[FIN_COUNT] = { "plaster", "stucco", "ceramic", "brick", "stone", "concrete", "wood", "metal",
 	"glass", "tile", "slate", "panel", "roofing" };
 const char *const STYLE_NAMES[STYLE_COUNT] = { "colonial", "artDeco", "modernist", "contemporary", "brick", "tropical", "glass",
-	"industrial", "colonialHouse", "bungalow", "modernHouse", "sobrado" };
+	"industrial", "colonialHouse", "bungalow", "modernHouse", "townhouse" };
 const char *const KIND_NAMES[KIND_COUNT] = { "house", "flats", "tower", "shop", "office", "works" };
 const char *const LINE_NAMES[] = { "every", "base", "slab", "none" };
 const char *const CROWN_NAMES[] = { "cornice", "deco", "slab", "attic", "none" };
@@ -41,14 +41,14 @@ template <size_t N>
 int index_of(const char *const (&names)[N], const std::string &s, const char *what, PackedStringArray &errors) {
 	for (size_t i = 0; i < N; i++)
 		if (s == names[i]) return int(i);
-	errors.push_back(String("buildings.json: ") + what + " desconhecido: " + s.c_str());
+	errors.push_back(String("buildings.json: unknown ") + what + ": " + s.c_str());
 	return 0;
 }
 
 int8_t finish_of(const std::string &s, PackedStringArray &errors) {
 	if (s == NO_FINISH) return FIN_NONE;
 	if (s == PLASTIC) return FIN_PLASTER;
-	return int8_t(index_of(FINISH_NAMES, s, "acabamento", errors));
+	return int8_t(index_of(FINISH_NAMES, s, "finish", errors));
 }
 
 Paint paint_of(const Variant &pair, PackedStringArray &errors) {
@@ -70,7 +70,7 @@ std::vector<uint32_t> hexes(const Array &a) {
 
 uint8_t bay_of(const Variant &v, PackedStringArray &errors) {
 	std::string s = str(v);
-	return s.empty() ? uint8_t(BAY_NONE) : uint8_t(index_of(BAY_NAMES, s, "componente", errors));
+	return s.empty() ? uint8_t(BAY_NONE) : uint8_t(index_of(BAY_NAMES, s, "bay", errors));
 }
 
 StyleDef style_of(const Dictionary &d, PackedStringArray &errors) {
@@ -93,8 +93,8 @@ StyleDef style_of(const Dictionary &d, PackedStringArray &errors) {
 	s.side_fill = bay_of(at(d, "side_fill"), errors);
 	s.ground_fill = bay_of(at(d, "ground_fill"), errors);
 	s.top = bay_of(at(d, "top"), errors);
-	s.lines = Lines(index_of(LINE_NAMES, str(at(d, "lines")), "linha", errors));
-	s.crown = Crown(index_of(CROWN_NAMES, str(at(d, "crown")), "coroa", errors));
+	s.lines = Lines(index_of(LINE_NAMES, str(at(d, "lines")), "lines", errors));
+	s.crown = Crown(index_of(CROWN_NAMES, str(at(d, "crown")), "crown", errors));
 	Array o = at(d, "opening");
 	s.win_w0 = float(o[0]); s.win_w1 = float(o[1]); s.win_h0 = float(o[2]); s.win_h1 = float(o[3]); s.sill = float(o[4]);
 	Array p = at(d, "piers");
@@ -136,10 +136,10 @@ bool lot_rules(const Dictionary &d, LotRules &l, PackedStringArray &errors) {
 		for (int i = 0; i < styles.size(); i++) {
 			Array row = styles[i];
 			enum { KIND, HEIGHT, BASE };
-			int kind = index_of(BOUNDARY_NAMES, str(row[KIND]), "divisa", errors);
+			int kind = index_of(BOUNDARY_NAMES, str(row[KIND]), "boundary", errors);
 			l.boundary[k].push_back(BoundaryStyle{ BOUNDARY_KINDS[kind], float(row[HEIGHT]), float(row[BASE]) });
 		}
-		if (l.boundary[k].empty()) errors.push_back(String("buildings.json: lots.boundary sem estilo para ") + KIND_NAMES[k]);
+		if (l.boundary[k].empty()) errors.push_back(String("buildings.json: lots.boundary has no style for ") + KIND_NAMES[k]);
 	}
 	return errors.is_empty();
 }
@@ -152,21 +152,21 @@ void grove_rules(const Dictionary &grove, GroveRules &g) {
 }
 } // namespace
 
-uint8_t bay_named(const std::string &s, PackedStringArray &errors) { return uint8_t(index_of(BAY_NAMES, s, "componente", errors)); }
-Kind kind_named(const std::string &s, PackedStringArray &errors) { return Kind(index_of(KIND_NAMES, s, "tipo", errors)); }
+uint8_t bay_named(const std::string &s, PackedStringArray &errors) { return uint8_t(index_of(BAY_NAMES, s, "bay", errors)); }
+Kind kind_named(const std::string &s, PackedStringArray &errors) { return Kind(index_of(KIND_NAMES, s, "kind", errors)); }
 Paint paint_named(const Variant &pair, PackedStringArray &errors) { return paint_of(pair, errors); }
 
 bool load_buildings(const Dictionary &table, Data &d, PackedStringArray &errors) {
 	const Dictionary t = region_table(table);
 	Array st = at(t, "architectures");
 	for (int i = 0; i < st.size(); i++) d.styles.push_back(style_of(st[i], errors));
-	if (int(d.styles.size()) != STYLE_COUNT) errors.push_back("buildings.json: são 12 estilos");
+	if (int(d.styles.size()) != STYLE_COUNT) errors.push_back("buildings.json: there must be 12 styles");
 	Dictionary kw = at(t, "kind_weights");
 	for (int k = 0; k < KIND_COUNT; k++) {
 		Array list = at(kw, KIND_NAMES[k]);
 		for (int i = 0; i < list.size(); i++) {
 			Array pair = list[i];
-			d.weights[k].push_back({ index_of(STYLE_NAMES, str(pair[0]), "estilo", errors), float(pair[1]) });
+			d.weights[k].push_back({ index_of(STYLE_NAMES, str(pair[0]), "style", errors), float(pair[1]) });
 		}
 	}
 	Array ea = at(t, "era_affinity");
@@ -188,7 +188,7 @@ bool load_buildings(const Dictionary &table, Data &d, PackedStringArray &errors)
 	for (int i = 0; i < ok.size(); i++) {
 		if (str(ok[i]) == DOC_KEY) continue;
 		Array r = at(op, ok[i]);
-		OpeningDef &o = d.openings[index_of(BAY_NAMES, str(ok[i]), "abertura", errors)];
+		OpeningDef &o = d.openings[index_of(BAY_NAMES, str(ok[i]), "opening", errors)];
 		enum { W_IN, W_MAX, SILL, HEAD_IN, HEAD_MAX, DEPTH };
 		o = OpeningDef{ true, float(r[W_IN]), float(r[W_MAX]), float(r[SILL]), float(r[HEAD_IN]), float(r[HEAD_MAX]), float(r[DEPTH]) };
 	}

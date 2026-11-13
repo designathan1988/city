@@ -1,4 +1,4 @@
-// The regional style of a table (regras-sessoes.md, 10): what changes from one region to another lives under `styles.<id>`. A city
+// The regional style of a table (session-rules.md, 10): what changes from one region to another lives under `styles.<id>`. A city
 // does not carry its style yet, so every table is read at the default; when it does, only this file changes.
 #pragma once
 

@@ -51,7 +51,7 @@ func save_city() -> Dictionary:
 	return save_game(_city_slot)
 
 
-## Save map: the city is saved, and its file is copied to mapa-<seed> once it is written.
+## Save map: the city is saved, and its file is copied to map-<seed> once it is written.
 func export_map() -> Dictionary:
 	var to := SaveSlots.path(SaveSlots.export_slot(int(_store.snapshot.get("seed", 0))))
 	var r := save_city()

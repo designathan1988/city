@@ -1,4 +1,4 @@
-## Roundabout (tab Rotatória): a click on vacant ground lays a ring with four
+## Roundabout (Roundabout tab): a click on vacant ground lays a ring with four
 ## approaches; on a junction (or with Shift) the roads inside the circle are cut and join the ring. [ and ] scale the
 ## radius; the disc previews it green or red with the core's refusal.
 extends ToolBase

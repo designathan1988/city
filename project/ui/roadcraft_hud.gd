@@ -81,7 +81,7 @@ func _ready() -> void:
 		tools.set_tool(ToolController.Tool.INSPECT) # with nothing in hand a click asks what is there, as in the reference
 
 
-## "Editar perfil" of the Inspector: the same editor as the road tool's, over the dock, working on that road.
+## "Edit profile" of the Inspector: the same editor as the road tool's, over the dock, working on that road.
 func _edit_road_profile(profile: Dictionary, spec: Dictionary, at: Vector3, root: Control) -> void:
 	if is_instance_valid(_road_editor):
 		_road_editor.queue_free()

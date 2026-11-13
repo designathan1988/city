@@ -53,7 +53,7 @@ bool EffectWorld::load_looks(const RenderContext &ctx, PackedStringArray &errors
 	const Array skin = Dictionary(agents.get("occupants", Dictionary())).get("skin", Array());
 	const Array clothes = Dictionary(agents.get("people", Dictionary())).get("clothes", Array());
 	if (skin.is_empty() || clothes.is_empty()) {
-		errors.push_back("agents.json: occupants.skin e people.clothes são necessários para os corpos");
+		errors.push_back("agents.json: occupants.skin and people.clothes are needed for the bodies");
 		return false;
 	}
 	for (int k = 0; k < int(skin.size()); k++) skins_.push_back(parse_color(skin[k]));

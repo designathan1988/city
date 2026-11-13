@@ -19,7 +19,7 @@
    ]
   },
   {
-   "shot": "cidade"
+   "shot": "city"
   },
   {
    "setView": [
@@ -31,7 +31,7 @@
    ]
   },
   {
-   "shot": "bairro"
+   "shot": "neighbourhood"
   },
   {
    "setView": [
@@ -43,13 +43,13 @@
    ]
   },
   {
-   "shot": "rua"
+   "shot": "street"
   },
   {
    "hour": 22
   },
   {
-   "shot": "rua_noite"
+   "shot": "street_night"
   }
  ]
 }

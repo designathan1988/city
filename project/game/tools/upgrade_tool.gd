@@ -1,4 +1,4 @@
-## Upgrade (tab Melhorar): the profile picked in the catalogue goes on the road
+## Upgrade (Upgrade tab): the profile picked in the catalogue goes on the road
 ## under the click; with Shift on its whole street (through the junctions, straightest continuation). The core charges
 ## the difference in value or refunds a share; the ribbon previews the new width over the segment.
 extends ToolBase

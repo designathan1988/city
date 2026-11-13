@@ -1,4 +1,4 @@
-## The falls of the demolition captures: a tall building, and people knocked over who get up (--phase=torre,derrubados).
+## The falls of the demolition captures: a tall building, and people knocked over who get up (--phase=tower,knocked).
 class_name CaptureFalls
 extends RefCounted
 
@@ -18,7 +18,7 @@ const TARGETS := 80
 ## How the walls of a tall building break and how the break runs up it, seen from a street away.
 static func tower(blast: CaptureBlast, tall: Array) -> void:
 	if not tall.is_empty():
-		await blast.blow("torre", tall[tall.size() - 1], TOWER_FORCE, TOWER_DIST, [0.2, 0.6, 1.2, 2.0, 3.5, 9.0])
+		await blast.blow("tower", tall[tall.size() - 1], TOWER_FORCE, TOWER_DIST, [0.2, 0.6, 1.2, 2.0, 3.5, 9.0])
 
 
 ## A small blast in a crowd: who is knocked over lies a moment and gets up where they stood.
@@ -35,4 +35,4 @@ static func knocked(rig: CityCamera, ui: UiDriver, host: Node) -> void:
 	CityStore.dispatch(&"strike", [at + Vector3(off, 0, 0), KNOCK_FORCE])
 	for k in KNOCK_SHOTS:
 		await host.get_tree().create_timer(KNOCK_EVERY_S).timeout
-		await ui.shot("derrubado_%02d" % k)
+		await ui.shot("knocked_%02d" % k)

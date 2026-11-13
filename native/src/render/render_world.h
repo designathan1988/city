@@ -1,6 +1,6 @@
 // Everything drawn from CityState. Consumes the ChangeLog (the only dirty channel) on the main thread under the shared
 // map lock and the log's own mutex (never the map exclusively: that would wait for every mesh job reading the map). It is
-// handed the city const and the log apart: the log is the one thing of the state it changes (tools/gates RENDER_SO_LEITURA).
+// handed the city const and the log apart: the log is the one thing of the state it changes (tools/gates RENDER_READ_ONLY).
 // Road, furniture and building chunks are streamed around the camera (render.road_end_m,
 // render.props_end_m, render.building_far_end_m), and the lamps' pools by superchunk as far as the buildings: built nearest-first within a
 // per-frame budget, freed when the camera leaves, so memory follows the view and not the size of the map.

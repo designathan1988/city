@@ -1,4 +1,4 @@
-## The lots of the Roadcraft's lot lab (lotLibrary.ts): landmarks and whole projects, each a building with its lot, offered on the shelf of Modelos. The
+## The lots of the Roadcraft's lot lab (lotLibrary.ts): landmarks and whole projects, each a building with its lot, offered on the shelf of Models. The
 ## documents come from DataTables; the core makes each a body once, the first time the shelf opens.
 class_name LotProjects
 extends RefCounted
@@ -26,7 +26,7 @@ static func entries() -> Array[Dictionary]:
 		for doc: Dictionary in DataTables.lot_projects():
 			var made: Dictionary = CityStore.query(&"doc_body", [doc.body])
 			if not made.has("bytes"):
-				push_error("lote %s recusado: %s" % [doc.key, made.errors])
+				push_error("lot %s refused: %s" % [doc.key, made.errors])
 				continue
 			_entries.append({"key": KEY_PREFIX + doc.key, "label": TranslationServer.translate(LABEL_PREFIX + doc.key), "group": GROUP, "function": made.function,
 				"zone": _zone(doc), "bytes": made.bytes})

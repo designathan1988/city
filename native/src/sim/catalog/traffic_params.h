@@ -85,7 +85,7 @@ struct VehicleClass {
 	float a = 0, b = 0, b_emergency = 0, headway = 0, min_gap = 0, speed_share = 0, length = 0, half_width = 0;
 };
 
-// The regional style read until a city carries its own (regras-sessoes.md, section 10): the one name of it.
+// The regional style read until a city carries its own (session-rules.md, section 10): the one name of it.
 constexpr const char *REGIONAL_STYLE = "roadcraft";
 
 struct TrafficParams {

@@ -36,13 +36,13 @@ int finish_of(const String &name) {
 }
 
 bool part_of(const Array &a, const InteriorLook &look, FurniturePart &p, String &why) {
-	if (a.size() < SHORT_PART) return why = "parte curta", false;
+	if (a.size() < SHORT_PART) return why = "short part", false;
 	const String shape = a[0];
 	p.shape = shape == "box" ? PART_BOX : shape == "cyl" ? PART_CYL : PART_BALL;
-	if (shape != "box" && shape != "cyl" && shape != "ball") return why = "forma " + shape, false;
-	if (!vec3(a[1], p.size) || !vec3(a[2], p.at)) return why = "medidas", false;
+	if (shape != "box" && shape != "cyl" && shape != "ball") return why = "shape " + shape, false;
+	if (!vec3(a[1], p.size) || !vec3(a[2], p.at)) return why = "sizes", false;
 	auto colour = look.index.find(std::string(String(a[3]).utf8().get_data()));
-	if (colour == look.index.end()) return why = "cor " + String(a[3]), false;
+	if (colour == look.index.end()) return why = "colour " + String(a[3]), false;
 	p.colours.push_back(uint16_t(colour->second));
 	if (a.size() < WITH_OPTIONS) return true;
 	Dictionary o = a[4];
@@ -55,7 +55,7 @@ bool part_of(const Array &a, const InteriorLook &look, FurniturePart &p, String 
 	Array names = o["colours"];
 	for (int i = 0; i < names.size(); i++) {
 		auto named = look.index.find(std::string(String(names[i]).utf8().get_data()));
-		if (named == look.index.end()) return why = "cor " + String(names[i]), false;
+		if (named == look.index.end()) return why = "colour " + String(names[i]), false;
 		p.colours.push_back(uint16_t(named->second));
 	}
 	return true;
@@ -75,17 +75,17 @@ bool InteriorLook::load(const Dictionary &table, PackedStringArray &errors) {
 		Array def = colours[names[i]];
 		const int fin = def.size() == 2 ? finish_of(def[0]) : -1;
 		if (fin < 0) {
-			errors.push_back("furniture.json: paleta " + String(names[i]));
+			errors.push_back("furniture.json: invalid palette entry " + String(names[i]));
 			continue;
 		}
 		index[std::string(String(names[i]).utf8().get_data())] = int(palette.size());
 		palette.push_back(Paint{ int8_t(fin), uint32_t(String(def[1]).substr(HEX_SKIP).hex_to_int()) });
 	}
 	for (const char *need : NEEDED)
-		if (!index.count(need)) errors.push_back(String("furniture.json: falta a cor ") + need);
+		if (!index.count(need)) errors.push_back(String("furniture.json: missing the colour ") + need);
 	for (int k = 0; k < FK_COUNT; k++) {
 		if (!models_t.has(FURNITURE_NAMES[k])) {
-			errors.push_back(String("furniture.json: falta o modelo ") + FURNITURE_NAMES[k]);
+			errors.push_back(String("furniture.json: missing the model ") + FURNITURE_NAMES[k]);
 			continue;
 		}
 		Array parts = models_t[FURNITURE_NAMES[k]];

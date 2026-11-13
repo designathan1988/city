@@ -1,4 +1,0 @@
-{
-"timeouts_s": {"baseline": 2400, "determinism": 1800, "mutation": 1800, "gold": 300, "registry": 300, "cleanliness": 900},
-"stack_margin_s": 60
-}

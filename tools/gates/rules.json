@@ -7,23 +7,22 @@
     "native/build-win",
     "native/build-win-debug",
     "project/addons",
+    "tools/tracer",
     "project/bin",
     "dist",
     "__pycache__",
     ".claude/worktrees",
-    "log"
+    "doc"
   ],
   "root_allowed": [
     "CLAUDE.md",
     ".claude",
     ".gitignore",
-    ".specify",
-    "specs",
     "native",
     "project",
     "tools",
     "dist",
-    "log"
+    "doc"
   ],
   "allowed_docs": [
     "CLAUDE.md"
@@ -41,7 +40,7 @@
     "tools/gates/tests/fixtures"
   ],
   "_instruction_skip_doc": "Folders the instruction rules (gate_docs.check_instructions) do not read: vendored code whose words are no order of this project (godot-cpp, Terrain3D, Spec Kit's shipped scripts and templates), and the gates' own fixtures, which hold instruction files on purpose. Spec Kit's constitution and every specification are read.",
-  "_doc_places_doc": "Folders whose documents are the project's own besides CLAUDE.md and log/ (which the gates leave out whole): Spec Kit's layout, its tool files and one folder per specification; the definitions of Claude Code's agents (.claude/agents, a Markdown file each by that tool's format). They hold no order: INSTRUCTION_ELSEWHERE and PRECEDENCE_CLAIM judge them like every file.",
+  "_doc_places_doc": "Folders whose documents are the project's own besides CLAUDE.md and doc/ (which the gates leave out whole): Spec Kit's layout, its tool files and one folder per specification; the definitions of Claude Code's agents (.claude/agents, a Markdown file each by that tool's format). They hold no order: INSTRUCTION_ELSEWHERE and PRECEDENCE_CLAIM judge them like every file.",
   "doc_exempt_names": [
     "CMakeLists.txt"
   ],
@@ -105,10 +104,10 @@
     "tools",
     "tools/gates/owners.json"
   ],
-  "map_file": "log/map.md",
+  "map_file": "doc/map.md",
   "map_markers": [
-    "<!-- MAPA:INICIO -->",
-    "<!-- MAPA:FIM -->"
+    "<!-- MAP:START -->",
+    "<!-- MAP:END -->"
   ],
   "claude_md_max_lines": 200,
   "cpp_layers": {
@@ -324,7 +323,7 @@
       "except": [
         "tools/gates/rules.json"
       ],
-      "message": "known problems go to the register (log/problems.jsonl), not to comments"
+      "message": "known problems go to the register (doc/problems.jsonl), not to comments"
     },
     {
       "id": "MACHINE_PATH",
@@ -487,32 +486,23 @@
       {"paths": ["tools/tasks/suites.json"], "kind": "json", "keys": ["timeout_s"]},
       {"paths": ["tools/gates/rules.json"], "kind": "json", "keys": ["*"]}
     ],
-    "logs": ["log"],
+    "logs": ["doc"],
     "ledgers": "dist/trace"
   },
   "mirrors": [],
   "generated": [
     {
-      "generator": "tools/assets/make_furniture.py",
-      "inputs": [
-        "project/data/render/interiors.json"
-      ],
-      "outputs": [
-        "project/data/render/furniture.json"
-      ]
-    },
-    {
       "generator": "tools/atlas/render.py",
       "inputs": [
-        "log/problems.jsonl"
+        "doc/problems.jsonl"
       ],
       "outputs": [
-        "log/problems.md"
+        "doc/problems.md"
       ]
     }
   ],
   "register": {
-    "file": "log/problems.jsonl",
+    "file": "doc/problems.jsonl",
     "schema": "tools/gates/schemas/problem.schema.json"
   },
   "_register_doc": "The one register of known problems (PROBLEM_REGISTER, gate_data.check_register): each line one problem against its schema, and what no schema keyword states: ids unique, an unknown cause with the reading that would find it, a fix for every fixed problem, a closing date only on a fixed or dropped one, related ids that exist, evidence that exists (a path on disk, or a git reference written git:<ref>).",

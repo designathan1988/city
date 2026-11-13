@@ -1,5 +1,5 @@
 ## GameFlow: the explicit state machine of the application. The only place that changes scenes or quits
-## (gate FLUXO_CENTRAL). Every transition is validated. It holds the states the game
+## (gate CENTRAL_FLOW). Every transition is validated. It holds the states the game
 ## has: the play scene (project main scene) opens the last city or generates one, the title screen stands over it (MENU) until
 ## the first choice, and the game plays on.
 extends Node
@@ -55,7 +55,7 @@ func _notification(what: int) -> void:
 
 func _to(next: State) -> bool:
 	if not TRANSITIONS[state].has(next):
-		push_error("GameFlow: transição inválida %s -> %s" % [State.keys()[state], State.keys()[next]])
+		push_error("GameFlow: invalid transition %s -> %s" % [State.keys()[state], State.keys()[next]])
 		return false
 	var prev := state
 	state = next

@@ -33,7 +33,7 @@ static func shot(cap: Node, near: Vector3) -> void:
 	await cap.ui.drawn()
 	await cap.ui.frames(HOLD_FRAMES)
 	cap._check(_in_frame(cap.rig.camera, pose.top), "the flag inside the photo")
-	await cap.ui.shot("feat_build_bandeira")
+	await cap.ui.shot("feat_build_flag")
 
 
 ## The first building, bearing and aim (tallest buildings first, the least lift first) whose line of sight is clear; {} if none.

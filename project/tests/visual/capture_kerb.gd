@@ -18,5 +18,5 @@ static func shots(cap: Node, kerb: Array) -> void:
 	var along: Vector3 = kerb[1]
 	var across: Vector3 = kerb[2]
 	var place := func(o: Vector3) -> Vector3: return at + across * o.x + Vector3.UP * o.y + along * o.z
-	await cap._shot("20_rebaixo", place.call(ALONG_FROM), place.call(ALONG_AT))
-	await cap._shot("20_rebaixo_frente", place.call(FRONT_FROM), place.call(FRONT_AT))
+	await cap._shot("20_dropped_kerb", place.call(ALONG_FROM), place.call(ALONG_AT))
+	await cap._shot("20_dropped_kerb_front", place.call(FRONT_FROM), place.call(FRONT_AT))

@@ -24,7 +24,7 @@ bool Helmets::init(const RenderContext &ctx, const Dictionary &helmet, PackedStr
 	if (!errors.is_empty()) return false;
 	const Array colours = helmet["colours"];
 	if (colours.is_empty() || colours.size() > MOST_COLOURS) {
-		errors.push_back("agents.json held.helmet: cores fora do que o shader guarda");
+		errors.push_back("agents.json held.helmet: colours outside what the shader holds");
 		return false;
 	}
 	PackedVector3Array linear;
