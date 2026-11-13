@@ -1,5 +1,6 @@
 # The suites file (tools/tasks/suites.json) read, checked against its schema and turned into Task objects: names, groups
-# made from templates, variants (--ready, --bless, --all), sets of inputs, vars, and the dependency closure.
+# made from templates (an item's resources and expected errors laid over its template's), variants (--ready, --bless,
+# --all), sets of inputs, vars, and the dependency closure.
 from __future__ import annotations
 
 import copy
@@ -8,18 +9,16 @@ import json
 import os
 import re
 import sys
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import godot_deps, inputs, locations, proc, schema
+from . import godot_deps, inputs, locations, schema, versions
 from .task import HERE, ROOT, Task
 
 SUITES = HERE / "suites.json"
 SCHEMA = HERE.parent / "gates" / "schemas" / "suites.schema.json"
 VAR = re.compile(r"\{([a-z_]+)\}")
 EXPANDS = re.compile(r"^\{changed_list:(.+)\}$")  # a whole argv element: that flag and a file listing the changed files
-VERSION_TIMEOUT_S = 60
 # The suites.json syntax word an inputs list writes, as it writes {changed}, to declare "every file the Godot run of this
 # task's argv may load"; _loads expands it to that closure (tools/tasks/godot_deps.py).
 LOADS = "{loads}"
@@ -88,21 +87,8 @@ class Suites:
         return value
 
     def _version(self, name: str) -> str:
-        """A machine tool's version (suites.json versions: the whole output of its command, line endings normalised): a tool
-        a task's result follows from keys it, so another tool, or none, is never taken for the result of the same sources.
-        A tool that is missing or fails stops the selection with the reason (ValueError, the CLI's usage exit): nothing runs
-        and nothing is cached on a machine without it."""
-        argv = [self.expand(a) for a in self.doc["versions"][name]["argv"]]
-        with tempfile.TemporaryDirectory() as tmp:
-            log = Path(tmp) / "version.txt"
-            try:
-                code, timed_out = proc.run(argv, VERSION_TIMEOUT_S, log=log)
-            except OSError as e:
-                raise ValueError(f"{name}: {' '.join(argv)} could not start: {e}") from e
-            text = log.read_text(encoding="utf-8", errors="replace").strip()
-        if timed_out or code != 0 or not text:
-            raise ValueError(f"{name}: {' '.join(argv)} gave exit {code}{' (timed out)' if timed_out else ''}: {text}")
-        return "\n".join(line.rstrip() for line in text.splitlines())
+        """A machine tool's version (tools/tasks/versions.py), its command's vars expanded."""
+        return versions.version(name, [self.expand(a) for a in self.doc["versions"][name]["argv"]])
 
     def expand(self, text: str, item: dict | None = None) -> str:
         def one(m: re.Match) -> str:
@@ -144,7 +130,7 @@ class Suites:
                 argv += [m.group(1), self._changed_list()]
             else:
                 argv.append(ex(a))
-        params = {k: ex(v) for k, v in f.get("params", {}).items()}
+        params = self._params(f, item, ex)
         kw = dict(inputs=self._inputs(f.get("inputs", []), ex, argv, params, name), extra=[ex(x) for x in f.get("extra", [])],
                   outputs=[ex(x) for x in f.get("outputs", [])], after=list(f.get("after", [])),
                   cwd=ex(f["cwd"]) if "cwd" in f else None, env={k: ex(v) for k, v in f.get("env", {}).items()} or None,
@@ -164,6 +150,16 @@ class Suites:
         base, own = fields.get("resources", {}), (item or {}).get("resources", {})
         locks = {**base.get("locks", {}), **own.get("locks", {})}
         return {**base, **own, **({"locks": locks} if locks else {})}
+
+    def _params(self, fields: dict, item: dict | None, ex) -> dict:
+        """A task's params, read by its verdict: its template's (or its own), each string expanded and a list kept a list
+        (expected_errors); a group item's own expected_errors, the engine errors its scene provokes on purpose, added to
+        its template's."""
+        params = {k: self._deep(v, ex) for k, v in fields.get("params", {}).items()}
+        own = (item or {}).get("expected_errors")
+        if own:
+            params["expected_errors"] = params.get("expected_errors", []) + self._deep(own, ex)
+        return params
 
     def _changed_list(self) -> str:
         """The changed files written one per line to a file named by its content (any number of paths fits; no command line

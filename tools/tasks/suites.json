@@ -138,6 +138,8 @@
    "argv": [
     "{godot}",
     "--verbose",
+    "--audio-driver",
+    "Dummy",
     "--path",
     "project",
     "--resolution",
@@ -161,7 +163,7 @@
   },
   "hunt": {
    "doc": "the defect hunt: the core's probes over the generated town (project/tests/hunt/hunt.tscn), the list written to dist/hunt/hunt.json (tools/hunt/hunt.py runs it and prints it)",
-   "argv": ["{godot}", "--verbose", "--path", "project", "res://tests/hunt/hunt.tscn", "--", "--no-flow", "--out={root}/dist/hunt/hunt.json"],
+   "argv": ["{godot}", "--verbose", "--audio-driver", "Dummy", "--path", "project", "res://tests/hunt/hunt.tscn", "--", "--no-flow", "--out={root}/dist/hunt/hunt.json"],
    "timeout_s": 600,
    "hidden": true,
    "inputs": ["{loads}", "!@release_libraries"],
@@ -188,6 +190,8 @@
    "argv": [
     "{godot}",
     "--verbose",
+    "--audio-driver",
+    "Dummy",
     "--path",
     "project",
     "--rendering-method",
@@ -212,6 +216,8 @@
    "argv": [
     "{godot}",
     "--verbose",
+    "--audio-driver",
+    "Dummy",
     "--path",
     "project",
     "--resolution",
@@ -235,6 +241,8 @@
    "argv": [
     "{godot}",
     "--verbose",
+    "--audio-driver",
+    "Dummy",
     "--path",
     "project",
     "--resolution",
@@ -270,7 +278,13 @@
     {"name": "wire_level_test@forward_plus", "scene": "tests/core/wire_level_test", "renderer": "forward_plus", "timeout_s": 600},
     {"name": "tier_order_test@forward_plus", "scene": "tests/core/tier_order_test", "renderer": "forward_plus", "timeout_s": 600},
     {"name": "look_view_test", "scene": "tests/core/look_view_test", "renderer": "gl_compatibility", "timeout_s": 600},
-    {"name": "reference_test", "scene": "tests/core/reference_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {
+     "name": "reference_test",
+     "scene": "tests/core/reference_test",
+     "renderer": "gl_compatibility",
+     "timeout_s": 600,
+     "expected_errors": ["^ERROR: Can't open file at path \"user://tests/nothing_here\\.glb\"$"]
+    },
     {
      "name": "street_crossing_test",
      "scene": "tests/core/street_crossing_test",

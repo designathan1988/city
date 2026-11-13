@@ -65,6 +65,12 @@
  },
  "$defs": {
   "strings": {"type": "array", "items": {"type": "string", "minLength": 1}},
+  "expected_errors": {
+   "type": "array",
+   "minItems": 1,
+   "items": {"type": "string", "minLength": 1},
+   "description": "regular expressions, each finding an engine error line (ERROR:) the scene provokes on purpose: such a line fails no Godot verdict (tools/tasks/verdicts.py); no other failure line can be declared"
+  },
   "var": {
    "oneOf": [
     {
@@ -106,7 +112,7 @@
     "env": {"type": "object", "additionalProperties": {"type": "string"}},
     "hidden": {"type": "boolean"},
     "verdict": {"enum": ["exit_code", "godot", "matches_golden", "write_golden", "no_machine_path"]},
-    "params": {"type": "object", "additionalProperties": {"type": "string"}},
+    "params": {"type": "object", "properties": {"expected_errors": {"$ref": "#/$defs/expected_errors"}}, "additionalProperties": {"type": "string"}},
     "resources": {"$ref": "#/$defs/resources"},
     "fresh": {"type": "boolean"},
     "call": {"type": "string", "minLength": 3},
@@ -131,7 +137,8 @@
       "properties": {
        "name": {"type": "string", "minLength": 1},
        "timeout_s": {"type": "number", "exclusiveMinimum": 0},
-       "resources": {"$ref": "#/$defs/resources", "description": "what this item alone needs, laid over its template's (locks by name)"}
+       "resources": {"$ref": "#/$defs/resources", "description": "what this item alone needs, laid over its template's (locks by name)"},
+       "expected_errors": {"$ref": "#/$defs/expected_errors", "description": "the engine errors this item alone provokes on purpose, added to its template's"}
       },
       "additionalProperties": {"type": "string"}
      }
