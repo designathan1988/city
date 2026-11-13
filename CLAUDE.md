@@ -135,9 +135,17 @@ code read". The analysis is kept in `tools/tracer/.index` and read back in under
   contradicts this file does not apply.
 - Agents read and report, up to five at once, each prompt naming the goal, the files and the answer's form; what an agent
   returns is checked in the files.
-- A launched process runs in the foreground or under a monitor, with a deadline, its lines read as they come; only your own
-  processes are stopped, by PID; one engine process at a time; tests and captures run hidden through `tools/tasks`; the owner's
-  open game is never closed (`tools/build/free_dll.sh` frees the DLL).
+- **Processes** (the owner's order, repeated many times): a process is launched only if its output shows as it runs and it can
+  be watched: in the foreground, or under a monitor that shows its lines as they come, always with a short deadline. Never a
+  process that shows nothing, that cannot be watched, that has no deadline, that waits on another without a limit, or that
+  makes another task wait or fail because one stopped or is slow: independent tasks run on their own, a stuck one is stopped
+  by its PID and recorded, the others go on. No long run is started to be waited on. Only your own processes are stopped, by
+  PID; one engine process at a time; tests and captures run hidden through `tools/tasks`; the owner's open game is never closed
+  (`tools/build/free_dll.sh` frees the DLL).
+- **Tools:** the project's tools (`doc/map.md`, the `tools` section) are used as they are; a new script or tool is written only
+  where none does the job, never for a one-off look; a tool that is slow, shows nothing or blocks is fixed at its cause. Known
+  today (read whole on 2026-11-13): the orchestrator's runs, `hunt.py`, `km24.py`, `deliver.sh`, `pgo.sh` and the whole gates
+  show nothing while they run, and several waits have no limit (Ptools-100 to Ptools-108): run them only on the owner's order.
 - Direct work on `main`, no worktree or branch; repository files changed with the Edit and Write tools, never `sed` or a
   script; a file whose last commit had no carriage return gains none.
 - Every new or changed text in the repository is English; the texts the player sees live in `project/data/i18n`; the owner is
@@ -179,7 +187,7 @@ code read". The analysis is kept in `tools/tracer/.index` and read back in under
 | What | Command |
 |---|---|
 | A block | `python tools/tasks/cli.py block open <name>` · `block verify` · `block close` · `block status` |
-| Build both DLLs | `tools/build/build.sh core-windows` |
+| Build both DLLs | `timeout 1500 tools/build/build.sh core-windows` in the foreground (its own script has no deadline: Ptools-101) |
 | One test or photo plan | `python tools/tasks/cli.py run <task>` (the names: `python tools/tasks/cli.py run tests --list`) |
 | Gates of a file | `python tools/gates/run_gates.py --file X` (`--selftest`; the whole tree with `--register doc/problems.jsonl`) |
 | The register | `python tools/atlas/cli.py problems [--area A --status S]`, `add`, `update`, `close`, `drop` |
