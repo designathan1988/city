@@ -137,3 +137,13 @@ entry: when, the commit, the problems, the cause, the plan, the files created, c
 - **Photos**: three missed their subject behind the centre's towers from 20-25 degrees and were retaken from 55 and 75 degrees; every
   photo analysed. Noted for the street furniture area (T011): a main-row pole showed no span leaving its arm.
 - **Time**: about 45 minutes, three runs of 23 s.
+
+## 2026-11-13: block t031-close-check, the close checks the method (specification 003 T031, commits e1bca423, 31d03612)
+
+- **Done**: `tools/tasks/block_method.py`: the close refuses while `doc/work/<block>.md` lacks a file read to its last line,
+  Context7 and a source on the internet when code changed (git since the commit the block opened on, kept in its state), the skills
+  (city-method, verification-before-completion, systematic-debugging after a failure), or a failing run's cause. Research: Danger JS
+  (https://www.twilio.com/en-us/blog/company/inside-twilio/danger-js-helping-paste-focus), Context7 on subprocess and re.
+- **Causes read on the way**: an absolute `from tasks import` where the package imports relatively (the import gate); the template's
+  headings carry a note, so a section is its heading's first word (the check refused its own block's file, then closed it).
+- **Checked**: test_block 14 OK; tools/tasks 101 OK in 50.7 s; gates 0 findings.

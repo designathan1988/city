@@ -160,6 +160,7 @@ Appended by `python tools/tasks/cli.py block close` (FR-050: the time each step 
 | tools-open | 2026-11-13T01:08 | 2026-11-13T01:35 | 2026-11-13T01:42 | 27 | 7 |
 | fix-three | 2026-11-13T01:44 | 2026-11-13T03:03 | 2026-11-13T03:27 | 79 | 24 |
 | t004-aim | 2026-11-13T03:28 | 2026-11-13T03:35 | 2026-11-13T03:37 | 7 | 2 |
+| t031-close-check | 2026-11-13T03:38 | 2026-11-13T03:42 | 2026-11-13T03:42 | 4 | 0 |
 
 ## 2026-11-12: the audit of 2026-11-07 (log/review.md) folded into the register
 
