@@ -43,6 +43,8 @@ public:
 	// particles hold, every other particle stays on the piece's root (the joint it came off at).
 	void keep_parts(uint32_t parts);
 	bool asleep() const { return asleep_; }
+	// How far its deepest joint or bone point lies under the ground (its middle under the surface), 0 when none does: a probe.
+	float deepest(const Ground &ground) const;
 	// Each part's frame now: its origin on its joint, its axes along it. The frames only: what a bone does with them is the caller's.
 	void frames(godot::Transform3D out[RAGDOLL_PARTS]);
 	godot::Vector3 pelvis() const;
@@ -51,10 +53,13 @@ private:
 	static constexpr int PARTICLES = RAGDOLL_JOINTS + 2; // and the top of the head and the belly, which brace what the joints leave free
 	struct Stick {
 		int a = 0, b = 0;
-		float rest = 0;
-		bool least_only = false; // a limit: never nearer than this, free beyond
+		float rest = 0, most = 0; // never nearer than rest nor farther than most: a bone (rest = most), or a joint's range
 	};
 	void link(int a, int b, float share = 1.f, bool least_only = false);
+	// A joint's range of bend at `mid` as its two ends' distance: the angle between mid -> a and mid -> b kept within less_rad less and
+	// more_rad more than it stands now (no more than straight).
+	void link_angle(int a, int mid, int b, float less_rad, float more_rad);
+	void bones_on_ground(const Ground &ground);
 	void relax();
 	void hinge(int top, int middle, int end, float way);
 	void off_walls(int particle);

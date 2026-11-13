@@ -51,6 +51,7 @@ public:
 	int kept() const; // those who stay where they fell: the dead
 	int from_drawn() const; // those that fell from the pose their walker was drawn in
 	int pieces() const; // limbs torn off, each a body of its own
+	float deepest() const { return deepest_; } // the deepest a body come to rest has lain under the ground since the city opened (a probe)
 	godot::PackedVector3Array places() const; // each body's pelvis, where it lies (a look plan aims at one)
 
 private:
@@ -87,6 +88,7 @@ private:
 	std::vector<float> clip_scratch_; // a clip's rows of one body, for a pose being worked out (add, rise)
 	std::vector<godot::Transform3D> bone_scratch_;
 	std::vector<BodyMark> marks_;
+	float deepest_ = 0;
 	static constexpr uint64_t FALL_SEED = 0xb0d1e5ULL; // the bodies' own draws: the same falls on every run
 	Rng rng_{ FALL_SEED };
 	float clock_ = 0;

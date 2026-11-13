@@ -47,6 +47,7 @@ public:
 	int bodies_kept() const { return people_ ? people_->bodies().kept() : 0; }
 	int bodies_from_drawn() const { return people_ ? people_->bodies().from_drawn() : 0; }
 	int body_pieces() const { return people_ ? people_->bodies().pieces() : 0; }
+	float bodies_deepest() const { return people_ ? people_->bodies().deepest() : 0.f; }
 	godot::PackedVector3Array body_places() const { return people_ ? people_->bodies().places() : godot::PackedVector3Array(); }
 	int ruin_pieces_flying() const { return ruins_.flying(); }
 	uint32_t ruin_digest(uint32_t seed) const { return ruins_.digest(seed); }

@@ -1,6 +1,8 @@
 // The particles of a fallen body (ragdoll.h).
 #include "render/agents/ragdoll.h"
 
+#include "core/math.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -31,6 +33,13 @@ constexpr float RESTING_MS = 0.12f, RESTING_S = 0.6f;
 constexpr float NOTHING_M = 1e-5f;
 constexpr float ONE_STEP_S = 1.f / 60.f;
 constexpr float ELBOW_BRACE_SHARE = 0.5f; // the elbow is halfway along the arm the hand swings out on
+constexpr float NO_LIMIT_M = 1e9f; // a stick that only keeps its ends apart
+constexpr float DEG_TO_RAD = PI_F / 180.f;
+// The normal range of motion (American Academy of Orthopaedic Surgeons): the neck bends 45 degrees either way, the ankle 20 up and 50 down.
+constexpr float NECK_BEND_RAD = 45.f * DEG_TO_RAD, ANKLE_UP_RAD = 20.f * DEG_TO_RAD, ANKLE_DOWN_RAD = 50.f * DEG_TO_RAD;
+constexpr float BONE_SAMPLES[] = { 1.f / 3.f, 2.f / 3.f }; // where along a bone it is held out of the ground, besides its ends
+constexpr float BANK_M = 0.08f; // deeper than this under a bone's middle: a bank beside it (a kerb's face), left to its ends
+constexpr int BONE_PASS_EVERY = 3; // the bones' pass on every third relaxation and the last
 } // namespace
 
 void Ragdoll::link(int a, int b, float share, bool least_only) {
@@ -38,7 +47,20 @@ void Ragdoll::link(int a, int b, float share, bool least_only) {
 	s.a = a;
 	s.b = b;
 	s.rest = now_[a].distance_to(now_[b]) * share;
-	s.least_only = least_only;
+	s.most = least_only ? NO_LIMIT_M : s.rest;
+}
+
+void Ragdoll::link_angle(int a, int mid, int b, float less_rad, float more_rad) {
+	const Vector3 u = now_[a] - now_[mid], v = now_[b] - now_[mid];
+	const float l1 = u.length(), l2 = v.length();
+	if (l1 < NOTHING_M || l2 < NOTHING_M) return;
+	const float at = u.angle_to(v); // the inside angle at the joint now
+	auto apart = [&](float angle) { return std::sqrt(l1 * l1 + l2 * l2 - 2.f * l1 * l2 * std::cos(std::clamp(angle, 0.f, PI_F))); };
+	Stick &s = sticks_[sticks_used_++];
+	s.a = a;
+	s.b = b;
+	s.rest = apart(at - less_rad);
+	s.most = apart(at + more_rad);
 }
 
 void Ragdoll::begin(const Vector3 joints[RAGDOLL_JOINTS], const Vector3 &velocity, const Vector3 &tip, float scatter, const Vector3 &brace, Rng &rng) {
@@ -59,6 +81,11 @@ void Ragdoll::begin(const Vector3 joints[RAGDOLL_JOINTS], const Vector3 &velocit
 	link(RH, RA, KNEE_LEAST, true);
 	link(LK, CHE, FOLD_LEAST, true);
 	link(RK, CHE, FOLD_LEAST, true);
+	// the neck and the ankles within a body's normal range of motion (AAOS: neck flexion and extension 45 degrees; ankle dorsiflexion 20,
+	// plantarflexion 50): the head no longer folds into the chest, a foot no longer swings round its shin
+	link_angle(CHE, NEC, HEA, NECK_BEND_RAD, NECK_BEND_RAD);
+	link_angle(LK, LA, LT, ANKLE_UP_RAD, ANKLE_DOWN_RAD);
+	link_angle(RK, RA, RT, ANKLE_UP_RAD, ANKLE_DOWN_RAD);
 	for (int i = 0; i < PARTICLES; i++) {
 		const float up = (now_[i].y - feet) / height;
 		const float hand = i == LW || i == RW ? 1.f : i == LE || i == RE ? ELBOW_BRACE_SHARE : 0.f;
@@ -105,8 +132,8 @@ void Ragdoll::relax() {
 		const Stick &s = sticks_[i];
 		const Vector3 d = now_[s.b] - now_[s.a];
 		const float len = d.length();
-		if (len < NOTHING_M || (s.least_only && len >= s.rest)) continue;
-		const Vector3 move = d * (0.5f * (len - s.rest) / len);
+		if (len < NOTHING_M || (len >= s.rest && len <= s.most)) continue;
+		const Vector3 move = d * (0.5f * (len - (len < s.rest ? s.rest : s.most)) / len);
 		now_[s.a] += move;
 		now_[s.b] -= move;
 	}
@@ -117,6 +144,40 @@ void Ragdoll::relax() {
 	hinge(RS, RE, RW, -1.f);
 }
 
+// The bones as capsules on the ground (Jakobsen, Advanced Character Physics, GDC 2001: a stick with a thickness): points along each are
+// held out of it as its ends are, the move shared by the ends by how near each is, and their old places moved alike so it adds no
+// speed. A shin no longer sinks over a kerb's edge; a point deeper than a bank's face is beside it, not on it.
+void Ragdoll::bones_on_ground(const Ground &ground) {
+	for (const PartFrame &f : PART_FRAMES) {
+		const int a = f.origin, b = f.to;
+		if ((kept_ >> a & 1u) == 0 || (kept_ >> b & 1u) == 0) continue;
+		for (float t : BONE_SAMPLES) {
+			const Vector3 q = now_[a].lerp(now_[b], t);
+			const float deep = ground(q.x, q.z) + LIMB_HALF_M - q.y;
+			if (deep <= 0.f || deep > BANK_M) continue;
+			const float wa = 1.f - t, wb = t, lift = deep / (wa * wa + wb * wb);
+			now_[a].y += wa * lift;
+			was_[a].y += wa * lift;
+			now_[b].y += wb * lift;
+			was_[b].y += wb * lift;
+		}
+	}
+}
+
+float Ragdoll::deepest(const Ground &ground) const {
+	float deep = 0.f;
+	for (int i = 0; i < PARTICLES; i++)
+		if ((kept_ >> i & 1u) != 0) deep = std::max(deep, ground(now_[i].x, now_[i].z) - now_[i].y);
+	for (const PartFrame &f : PART_FRAMES) {
+		if ((kept_ >> f.origin & 1u) == 0 || (kept_ >> f.to & 1u) == 0) continue;
+		for (float t : BONE_SAMPLES) {
+			const Vector3 q = now_[f.origin].lerp(now_[f.to], t);
+			deep = std::max(deep, ground(q.x, q.z) - q.y);
+		}
+	}
+	return deep;
+}
+
 // Out of a wall by the nearest side: the static collision of Position Based Dynamics, the point projected to the closest of the surface, and the speed along it damped.
 void Ragdoll::off_walls(int i) {
 	Vector3 &p = now_[i];
@@ -125,6 +186,12 @@ void Ragdoll::off_walls(int i) {
 		const Vector2 rel = Vector2(p.x, p.z) - w.at;
 		const float lx = rel.dot(w.along), ly = rel.dot(w.deep);
 		if (lx <= w.x0 || lx >= w.x1 || ly <= w.y0 || ly >= w.y1) continue;
+		if (was_[i].y >= w.top) { // come down on it from above: onto its roof, as onto the ground
+			p.y = w.top + LIMB_HALF_M;
+			was_[i].x = p.x + (was_[i].x - p.x) * SLIDE_KEEP;
+			was_[i].z = p.z + (was_[i].z - p.z) * SLIDE_KEEP;
+			continue;
+		}
 		const float west = lx - w.x0, east = w.x1 - lx, south = ly - w.y0, north = w.y1 - ly;
 		const float least = std::min({ west, east, south, north });
 		const Vector2 out = least == west ? -w.along : least == east ? w.along : least == south ? -w.deep : w.deep;
@@ -158,6 +225,7 @@ int Ragdoll::step(float dt, const Ground &ground, float hard_ms, Vector3 hits[RA
 			was_[i].x = now_[i].x + (was_[i].x - now_[i].x) * SLIDE_KEEP;
 			was_[i].z = now_[i].z + (was_[i].z - now_[i].z) * SLIDE_KEEP;
 		}
+		if (k % BONE_PASS_EVERY == BONE_PASS_EVERY - 1 || k == ITERATIONS - 1) bones_on_ground(ground);
 	}
 	if (kept_ != ~0u) // a piece: what is not on it stays at its root
 		for (int i = 0; i < PARTICLES; i++)

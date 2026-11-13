@@ -70,6 +70,7 @@ void BodyRenderer::reset() {
 	for (const Body &b : bodies_) free_slots_.push_back(b.slot);
 	bodies_.clear();
 	marks_.clear();
+	deepest_ = 0;
 	layers_dirty_ = !layers_.empty();
 }
 
@@ -245,6 +246,7 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground, float hard_ms
 			for (int h = 0; h < n && b.splashes < splashes_most; h++, b.splashes++) marks_.push_back({ hits[h], 0.f });
 		}
 		pose(b);
+		if (b.doll.asleep()) deepest_ = std::max(deepest_, b.doll.deepest([&](float x, float z) { return std::max(ground(x, z), floor); }));
 		if (b.doll.asleep() && b.pool > 0.f && !b.pooled) { // at rest: the blood spreads from under it
 			b.pooled = true;
 			const Vector3 at = b.doll.pelvis();

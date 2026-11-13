@@ -14,6 +14,7 @@ const RISE_FORCE := 3
 const RISE_KPA := 130.0
 const RISE_TRIES := 8
 const RISE_LOOK_FRAMES := 20
+const UNDER_GROUND_M := 0.02 # a limb's middle under the surface by more than this: in the ground (a limb stands 6 cm thick over it)
 
 var t: Node # the shoot_test (TestCase): its check, ticks and aim
 var _shoot: Callable
@@ -61,6 +62,8 @@ func fallen() -> void:
 	var kept: int = CityStore.query(&"effects_bodies_kept")
 	t.check(kill.get("killed", false) and kept > 0, "the dead stay where they fell, for good till the bodies' cap: %d kept of %d" % [kept, CityStore.query(&"effects_bodies")])
 	await _bled(walkers.slice(1))
+	var deep: float = CityStore.query(&"effects_bodies_deepest")
+	t.check(deep <= UNDER_GROUND_M, "no body at rest lies in the ground, its bones held out as its joints are (deepest %.3f m)" % deep)
 	await _rises()
 
 
