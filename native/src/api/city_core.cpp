@@ -107,6 +107,7 @@ Dictionary CityCore::new_map(int map, int seed, bool with_city, bool paused) {
 	CityGenReport r;
 	{
 		map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::GENERATION);
+		state_->log.drop_damage(); // the old city's blows go with it
 		state_->growth.clear();
 		state_->interior = InteriorView(); // the layer closes with the city it showed
 		r = generate_map(*state_, map, uint32_t(seed), with_city);

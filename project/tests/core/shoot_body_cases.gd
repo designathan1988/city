@@ -7,6 +7,8 @@ const LIMIT := 40
 const HEAD_AIM_M := 1.7
 const LIE_AIM_M := 0.15 # a walker knocked down lies on the ground: the next round is aimed at the body, not at where the chest was
 const TRUNK_AIM_M := 1.2
+const LEGS_LIE_M := 0.6 # from the middle of somebody lying towards the feet: the legs (past a tenth of the body, LYING_LEGS_SHARE)
+const LEG_STAND_M := 0.5 # a standing walker's legs, a share of a metre by their scale: under the trunk (blast.json torso_above_m)
 const BLEED_TICKS := 2400
 const BODY_FRAMES := 1200
 const BODY_SETTLE_FRAMES := 30
@@ -104,19 +106,27 @@ func _bled(walkers: Array) -> void:
 	if not t.check(not walkers.is_empty(), "someone to wound gravely"):
 		return
 	var kept: int = _census().kept
-	var bodies: int = _census().bodies
 	var pieces: int = _census().pieces
 	var hurt: Dictionary = walkers[0]
+	# a round in a leg knocks them down; one in the legs of somebody lying takes a leg off, a grave wound: down for good, bleeding
+	# (shoot_people.cpp; the legs lie behind the middle, the head ahead the way they faced, shoot_commands.cpp). Rounds in the trunk
+	# first would leave too little health for the leg's cost to be survived.
 	for k in 2:
 		var w: Dictionary = _walker_of.call(hurt.id)
-		if not w.is_empty():
-			_shoot_level.call(w.position + Vector3(0, (LIE_AIM_M if w.fallen else TRUNK_AIM_M * w.scale), 0))
+		if w.is_empty():
+			break
+		var legs: Vector3 = w.position + Vector3(0, LIE_AIM_M, 0) - Vector3(w.facing.x, 0.0, w.facing.y) * LEGS_LIE_M
+		var round: Dictionary = _shoot_level.call(legs if w.fallen else w.position + Vector3(0, LEG_STAND_M * w.scale, 0))
+		print("round %d at %s: %s" % [k, w, round])
 		await _frames(BODY_SETTLE_FRAMES)
+		if w.fallen:
+			break
 	var down: Dictionary = _walker_of.call(hurt.id)
-	t.check(not down.is_empty() and down.fallen and down.bleed > 0.0 and _census().bodies > bodies, "wounded for good: down, bleeding, a body (%s)" % [down])
-	# the second round, in a limb of somebody lying, takes it off (shoot_people.cpp): a piece of the same body on a ragdoll of its own
-	if int(down.get("lost", 0)) != 0:
-		t.check(_census().pieces > pieces, "the limb shot off is a piece of the body (%d pieces, %d before)" % [_census().pieces, pieces])
+	# by its own id: a count could rise by this body and fall by another getting up in the same frames
+	var who: PackedInt32Array = _census().who
+	t.check(not down.is_empty() and down.fallen and down.bleed > 0.0 and who.has(hurt.id), "wounded for good: down, bleeding, a body (%s; bodies of %s)" % [down, who])
+	# the round in the legs of somebody lying takes one off: a piece of the same body on a ragdoll of its own
+	t.check(int(down.get("lost", 0)) != 0 and _census().pieces > pieces, "the limb shot off is a piece of the body (lost %d; %d pieces, %d before)" % [int(down.get("lost", 0)), _census().pieces, pieces])
 	t.ticks(BLEED_TICKS)
 	await _frames(BODY_SETTLE_FRAMES)
 	t.check(_census().kept > kept, "who bled out stays where they lay, dead (%d kept, %d before)" % [_census().kept, kept])

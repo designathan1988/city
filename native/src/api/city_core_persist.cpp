@@ -147,6 +147,7 @@ Dictionary CityCore::load_city(const String &path, bool paused) {
 	state_->jobs->pause();
 	{
 		map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::LOAD);
+		state_->log.drop_damage(); // the old city's blows go with it
 		state_->interior = InteriorView(); // the layer closes with the city it showed
 		take_city(*state_, *read);
 		spent["take"] = laps.lap();

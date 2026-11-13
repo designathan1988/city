@@ -93,13 +93,13 @@ public:
 	int effects_ruin_pieces() const { return render_.ruin_pieces(); } // of the buildings drawn in pieces, and of those in the air
 	int effects_ruin_flying() const { return render_.ruin_pieces_flying(); }
 	int64_t effects_ruin_digest(int64_t seed) const { return int64_t(render_.ruin_digest(uint32_t(seed))); } // where a ruin's pieces lie
-	// People off their feet: {bodies, moving, kept, from_drawn, pieces, deepest, overlap} (render/agents/body_renderer.h census)
+	// People off their feet: {bodies, moving, kept, from_drawn, pieces, deepest, overlap, who} (render/agents/body_renderer.h census)
 	godot::Dictionary effects_bodies_census() const { return render_.bodies_census(); }
 	godot::PackedVector3Array effects_body_places() const { return render_.body_places(); } // where each body lies
 	// The pistol along a line of sight: {ok, hit 0 none / 1 walker / 2 vehicle, killed, burst}; a car that took enough rounds bursts as a blow.
 	godot::Dictionary shoot(const godot::Vector3 &origin, const godot::Vector3 &direction);
 	godot::Dictionary damage_probe() const;
-	// The first `limit` walkers and vehicles as the pistol sees them (tests, probes): id, position, health, fallen, ...
+	// The first `limit` walkers and vehicles as the pistol sees them (tests, probes): id, position, facing, health, fallen, ...
 	godot::Dictionary shot_targets(int limit) const; // what blows left on the map (counts)
 	godot::Dictionary blast_probe(float strength, float distance) const; // the blast model's numbers at a distance
 

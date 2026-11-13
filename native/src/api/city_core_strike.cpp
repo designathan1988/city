@@ -71,6 +71,7 @@ Dictionary CityCore::shot_targets(int limit) const {
 		Dictionary d;
 		d["id"] = id;
 		d["position"] = Vector3(w.cur.x, w.cur.y, w.cur.z);
+		d["facing"] = Vector2(w.cur.fx, w.cur.fz); // the way it walks; on the ground its head lies that way (shoot_commands.cpp)
 		d["hp"] = w.hp;
 		d["fallen"] = float(t.time) < w.down_until;
 		d["lost"] = int(w.lost);

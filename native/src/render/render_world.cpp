@@ -116,7 +116,7 @@ void RenderWorld::full_rebuild(const CityState &s, ChangeLog &log, Object *terra
 	for (const Building &b : s.buildings.items)
 		if (b.alive) building_stream_.mark(chunk_of(b.x, b.z));
 	buildings_.set_ranges(s);
-	std::lock_guard<std::mutex> lk(log.mutex); // everything already in the map is drawn by the rebuild
+	std::lock_guard<std::mutex> lk(log.mutex); // everything already in the map is drawn by the rebuild; the blows since its cause still play
 	log.clear_render();
 }
 

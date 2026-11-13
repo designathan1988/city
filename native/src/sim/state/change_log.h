@@ -107,13 +107,20 @@ struct ChangeLog {
 		add(signal_nodes, from.signal_nodes);
 		add(damage_events, from.damage_events);
 	}
+	// The blows of a city that is gone (a new map, a load), dropped where it goes: made before it, they would play on nothing. Those made
+	// after are the new city's, kept for the render to play. The map held exclusively; takes `mutex` itself.
+	void drop_damage() {
+		std::lock_guard<std::mutex> lk(mutex);
+		damage_events.clear();
+	}
+	// What a full rebuild draws of the map as it stands: the chunks marked so far. Not the blows: an event is played once, not drawn
+	// from the map, and those made since the rebuild's cause are still to play (drop_damage is the cause's, when the city goes).
 	void clear_render() {
 		road_chunks.clear();
 		prop_chunks.clear();
 		building_chunks.clear();
 		view_chunks.clear();
 		terrain_rects.clear();
-		damage_events.clear();
 		paint_rects.clear();
 		nature_chunks.clear();
 		water_chunks.clear();

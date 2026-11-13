@@ -285,7 +285,9 @@ PackedVector3Array BodyRenderer::places() const {
 Dictionary BodyRenderer::census() const {
 	int moving = 0, kept = 0, from_drawn = 0, pieces = 0;
 	float overlap = 0.f;
+	PackedInt32Array who;
 	for (const Body &b : bodies_) {
+		if (!b.piece && b.who >= 0) who.push_back(b.who);
 		moving += b.doll.asleep() ? 0 : 1;
 		kept += b.left == FOR_GOOD_S ? 1 : 0;
 		from_drawn += b.from_drawn ? 1 : 0;
@@ -303,6 +305,7 @@ Dictionary BodyRenderer::census() const {
 	out["pieces"] = pieces;
 	out["deepest"] = deepest_;
 	out["overlap"] = overlap;
+	out["who"] = who;
 	return out;
 }
 

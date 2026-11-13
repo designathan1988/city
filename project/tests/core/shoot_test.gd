@@ -29,6 +29,7 @@ const BIG_FORCE := 45
 const BOX_HALF_M := 120.0
 const ROOF_M := 6.0
 const SLOT := "shoot_test_slot"
+const OPENED_FRAMES := 120 # two seconds: the rebuild, then the blow played
 
 
 func _ready() -> void:
@@ -37,6 +38,7 @@ func _ready() -> void:
 		return
 	new_map(TOWN_MAP, SEED, true)
 	ticks(WARM_TICKS)
+	await _opened_shot()
 	var fright := ShootFrightCases.new(self, _shoot, _walker_of)
 	fright.reactions()
 	fright.stampede()
@@ -46,6 +48,22 @@ func _ready() -> void:
 	_demolish()
 	await _save_marks()
 	finish()
+
+
+## A round fired as the city opens, before a frame has drawn it: the new city's rebuild keeps the blow made after its cause, and the
+## one shot falls as a body (Prender-269: the rebuild once dropped every blow still waiting).
+func _opened_shot() -> void:
+	var walkers: Array = _alone(CityStore.query(&"shot_targets", [LIMIT]).walkers)
+	if not check(not walkers.is_empty(), "someone to shoot as the city opens"):
+		return
+	var kill := _shoot(walkers[0].position + Vector3(0, HEAD_AIM_M * walkers[0].scale, 0))
+	var bodies := 0
+	for f in OPENED_FRAMES:
+		bodies = CityStore.query(&"effects_bodies_census").bodies
+		if bodies > 0:
+			break
+		await get_tree().process_frame
+	check(kill.get("killed", false) and bodies > 0, "a round fired as the city opens falls as a body (%d bodies)" % bodies)
 
 
 ## A round at `at` from above and behind it: the origin is the point plus STANDOFF, the direction through the point.
