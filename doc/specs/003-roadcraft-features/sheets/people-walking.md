@@ -59,7 +59,11 @@
   road profile (project/data/catalog/road_profiles*.json and its schema), false for the expressway; profiles.cpp reads it into
   Profile and `walkable` (ped_routes.cpp:134) asks it with the strips; the expressway's edge strips become verges, so no footway is
   drawn. Owner: native/src/sim/roads/profiles.cpp. Values: CTB Anexo I (no at-grade pedestrian crossing on a via de trânsito rápido).
-- **Parties of more than two, with an archetype** (T008, second item): a party record (its members, its archetype, whether it holds a
+- **Parties of more than two** moved to the genre's systems (T029, after the port): read again for T008 (2026-11-13), the reference
+  forms pairs only, at most one companion a new walker, 40% of the time (ambient.ts:710-726), named couple or family by a child
+  (walk.ts:1275-1284); its other archetypes are declared, never made. Pairs are paired already here; groups of three and four are a
+  gap of both games (Ptraffic-86 corrected).
+- (the design as planned before that reading) **Parties of more than two, with an archetype**: a party record (its members, its archetype, whether it holds a
   child) in place of the pair, the archetypes' shares by hour in traffic.json, a party crossing on one leave and going in at one door
   as the pair does now; the genre's and the reference's walking groups. Owner: native/src/sim/traffic/ped_party.cpp. Its design is
   written when ped_party.cpp and ped_spawn.cpp are read whole for that item.
