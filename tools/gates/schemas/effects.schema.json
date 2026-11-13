@@ -555,7 +555,7 @@
     },
     "brace_ms": {
      "type": "number",
-     "description": "how fast a living body going down puts its hands out: young adults' arm movement, 1.3 m/s (Wisner and DeGoede, ISB 2005, https://media.isbweb.org/images/conf/2005/abstracts/0549.pdf), within the 280-335 ms of DeGoede et al. 2001"
+     "description": "how fast a living body going down puts its hands out: young adults' arm movement, 1.3 m/s (Wisner and DeGoede, ISB congress 2005, abstract 0549), within the 280-335 ms of DeGoede et al. 2001"
     },
     "brace_down": {
      "type": "number",
