@@ -9,7 +9,9 @@ City is a city builder in Godot 4.7.2 with a C++ core (GDExtension), to be sold 
 
 - This constitution and the owner's words in the conversation are the orders; no other text adds rules. An order of the owner that
   changes how the work is done enters this file and `CLAUDE.md` in the same commit.
-- Skills and Context7 are used at every step, while coding too.
+- In every session and every conversation, always: the skills the work needs are loaded (the Skill tool) and Context7 is used
+  for every library, engine or API the work touches, at the start and at every step after it (reading, tracing, research,
+  design, coding, debugging, checks, review). No step and no size of task goes without them.
 - Routine doubts are settled by the standard games' practice and the project's documents; the work does not stop to ask.
 - Never: a force push, a rewritten history, `rm -rf` or a deletion by a relative path, a deletion outside the project, the owner's
   open game closed.
@@ -112,4 +114,4 @@ Rationale: the people area spent a day on the fallen bodies' details while the m
 - Versions: MAJOR when a principle is removed or redefined, MINOR when one is added or widened, PATCH for wording.
 - `CLAUDE.md` names the version it carries (the gate CLAUDE_MD).
 
-**Version**: 2.1.1 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13
+**Version**: 2.2.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13

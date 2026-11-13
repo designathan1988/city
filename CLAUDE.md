@@ -1,6 +1,12 @@
 # City: a city builder in Godot 4.7.2 with a C++ core (GDExtension), to be sold on Steam
 
-Generated from `.specify/memory/constitution.md` (version 2.1.1): the owner's orders, nothing else. `doc/map.md` lists every file.
+Generated from `.specify/memory/constitution.md` (version 2.2.0): the owner's orders, nothing else. `doc/map.md` lists every file.
+
+## Always, in every session and every conversation
+
+- Load the skills the work needs (the Skill tool) and use Context7 (`resolve-library-id`, then `query-docs`) for every library,
+  engine or API the work touches: at the start of the session and at every step after it: reading, tracing, research, design,
+  coding, debugging, checks and review. Always; no step and no size of task goes without them.
 
 ## What the work is
 
@@ -69,7 +75,7 @@ propagation, cost): `doc/specs/003-roadcraft-features/architecture.md`.
 
 ## Working
 
-- Skills and Context7 are used at every step, while coding too.
+- Skills and Context7: always, in every session and conversation, at every step (above).
 - Routine doubts are settled by the standard games' practice and the project's documents; the work does not stop to ask.
 - Processes show their output as they run and have a deadline; tests and captures run hidden through `tools/tasks`; one engine
   at a time; only your own processes stopped, by PID; `tools/build/free_dll.sh` frees the DLL the owner's open game holds.
