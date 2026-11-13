@@ -42,6 +42,6 @@ file, analysis), Skills (which, when). The block's close refuses an item missing
 | eye free | the eye out of every solid, the reference's rules 1-4 (research R1) |
 | highest roof | the highest top within a radius, over the middle of its volume |
 
-Values (camera.json, read by DataTables): `eye_roof_clearance_m` 1, `eye_wall_reach_m` 2, `eye_step_back_m` 4,
-`pull_soft_m` 1.5, `pull_wait_s` 0.35, `pull_in_s` 0.12, `pull_hold_s` 0.4, `pull_out_s` 0.6, `near_share` 0.02, `near_gap_share` 0.5,
-`near_min_m` 0.08 (the reference's behaviour, research R1).
+New values (camera.json, read by DataTables): `eye_roof_clearance_m` 1, `eye_wall_reach_m` 2, `eye_step_back_m` 4,
+`near_gap_share` 0.5 (the reference's behaviour, research R1). The pull's (`pull_*`) and the near plane's (`near_per_m`, `near_min`)
+values already stand in camera.json and stay; their differences from the reference are recorded in the camera's sheet.

@@ -113,7 +113,23 @@ element of a kind to a point (a building's roof, a pole, a vehicle, a walker: th
 
 ## R7. Documents and tools that contradict or are dead
 
-Surveys running (two reading agents, their claims checked in the files before use); results appended here.
+Two reading agents surveyed; each claim is checked in the files when its task acts on it (CLAUDE.md agents rule).
+
+**Tools** (survey of 2026-11-13; no Python import under tools/ resolves to nothing; all 59 schemas referenced):
+- Unused, to remove: the task-as-a-Python-call mechanism (`tools/tasks/call.py`, `Task.call`, its branch in `suites.py`, the `call`
+  field of suites.schema.json: no suites.json task uses it); the tracer's bench (`tools/tracer/bench/**`: `projects.json` is `{}`, so it
+  measures nothing); `project/tests/visual/capture_falls.gd` and `capture_blast.gd` (no caller); `tools/tracer/tests/run.py` (a second
+  test runner beside `unittest discover`, 600 s a file, its own process handling).
+- Broken by design: the pair captures (`capture_parity.gd`, `capture_street_pairs.gd`, `pair_camera.gd`, the `_pair` shots of
+  `capture_roads.gd`) match photos of the 4.0, which is no reference; `capture_transit.gd:2` cites the removed `ports/`.
+- Run by nothing: `capture_clock`, `capture_features` (+ `capture_flag`), `capture_roads` (+ `capture_road_tools`), `capture_street`
+  (+ gestures, views), and `capture.gd`'s `--only`/`--soak` branches (Ptools-18): each becomes a `looks`/`capture_scenes` item or goes.
+- Duplicates: `inventory_ts.py` tokenises TypeScript beside `tools/gates/lex_c.py`, which lexes `.ts`; `inventory_json.py` positions
+  beside gate_data's JSON reading (to check).
+- Slow: window_traffic_test 89-102 s, camera_feel_test 57-66 s (both tasks of this specification); deadlines far past a minute on
+  the city capture (1800 s), gates_all (1200 s), hunt (600 s), km24 (900 + 1500 s), pgo (900 s a scene).
+
+**Documents**: the survey's findings are appended when it returns.
 
 ## R9. Beyond the reference: the genre's systems and the reference's own faults
 

@@ -262,7 +262,8 @@ budgets of doc/specification.md.
 - **SC-003**: The inventory of both games ends in under 5 seconds and every sampled row (at least 20) matches its source line.
 - **SC-004**: Every test scene and photo plan takes under 60 seconds; an item's check (its scenes and photos) gives its verdict in
   under 60 seconds.
-- **SC-005**: The 24 km city opens within its budget on the median profile and the traffic window scene ends in under 60 seconds.
+- **SC-005**: The 24 km city opens within its budget (15 s on the median profile, the release build: Pperformance-7) and the
+  traffic window scene ends in under 60 seconds.
 - **SC-006**: Every feature brought has a comparison sheet, a test, photos analysed region by region, and a zero copy-scan result;
   the inventory shows it paired afterwards.
 - **SC-007**: No commit of the work holds more than one item; every passing item reaches the remote before the next starts.

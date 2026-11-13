@@ -49,7 +49,7 @@ The constitution is CLAUDE.md. Gates, each with how this plan meets it:
 | Context7 before every implementation | each item's work file `Research` section; the block's close refuses without it (R8, T006) |
 | Trace both games before building | each feature's comparison sheet from the tracer on both (R3) |
 | One look, then code whole with nothing run | the per-item loop (quickstart step 2); the block tool refuses runs while open |
-| Checks under a minute, lines shown, deadlines | the orchestrator (live lines, no lock reservation, start deadlines); the two slow scenes fixed (R4, R5) |
+| Checks under a minute, lines shown, deadlines | the orchestrator (live lines, no lock reservation, start deadlines: FR-012, done in 56926e1b); the two slow scenes fixed (R4, R5) |
 | Fix the cause, never a patch | each item names the design decision at fault with file:line in its sheet or work file |
 | Nothing of the reference copied | the copy scan per item; the text keys renamed and LAB_COPY extended to the text tables (FR-015) |
 | Architecture | camera solids as the core's queries over CityState under a shared lock; the rig the camera's one writer; values in camera.json |
