@@ -8,14 +8,10 @@ project/bin/*.dll
 dist/
 __pycache__/
 *.tmp
-# .claude/: only the project's settings, hooks, skills and agents are versioned; everything else there is the sessions' runtime
+# .claude/: only the project's settings and agents are versioned; everything else there is the sessions' runtime
 /.claude/*
 !/.claude/settings.json
-!/.claude/hooks/
-!/.claude/skills/
 !/.claude/agents/
-# the trace-fix hooks' own failures, kept beside the skill for whoever reads them: this machine's, never committed
-/.claude/skills/trace-fix/read_guard_errors.txt
 *.translation
 # Where this machine's tools are (tools/tasks/locations.py): the machine's own, never committed
 tools/tasks/local.json

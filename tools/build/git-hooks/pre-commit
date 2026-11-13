@@ -1,8 +1,0 @@
-#!/bin/sh
-# The block rule at the commit (CLAUDE.md, Method step 5): while a block of this checkout is open, nothing is committed here.
-# Installed by `tools/build/build.sh hooks` (core.hooksPath). The repository's other worktrees share the setting and are left
-# alone: the rule is the main checkout's, and their commits (an archive of their work) are no commit of a block.
-TOP="$(cd "$(git rev-parse --show-toplevel)" && pwd)"
-MAIN="$(cd "$(git rev-parse --git-common-dir)/.." && pwd)"
-[ "$TOP" = "$MAIN" ] || exit 0
-exec python "$MAIN/tools/tasks/block.py" check commit

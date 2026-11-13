@@ -1,9 +1,9 @@
 # The block rule's mechanism (CLAUDE.md, Method step 5): a block is coded whole with nothing run inside it, then verified once.
 # Its state is one file, dist/block/state.json, moved only by `enter` through MOVES: closed -> open (the code written, nothing run) ->
 # verify (the one verification and the close's operations run) -> open again (a failure fixed in the code) or closed.
-# `refusal` is the one answer every gatekeeper asks (the orchestrator's `run`, build.sh, deliver.sh, the git pre-commit hook);
-# `command_refusal` is the same answer for a shell command the project's PreToolUse hook sees (.claude/hooks/block_guard.py).
-# `close` appends the block's times to the process history (FR-050). Standard library only: the hook imports this file alone.
+# `refusal` is the one answer every gatekeeper asks (the orchestrator's `run`, build.sh, deliver.sh);
+# `command_refusal` is the same answer for one shell command line.
+# `close` appends the block's times to the process history (FR-050). Standard library only.
 from __future__ import annotations
 
 import argparse

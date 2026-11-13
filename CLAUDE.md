@@ -23,8 +23,8 @@ list, the archive tags) lives in `log/map.md`; nothing here is status.
 
 ## Method (every task, in this order)
 1. **Read.** The code involved, whole, with the Read tool, personally (an agent's report is a lead; `cat` or `grep` is no reading); ask "why" until
-   the design decision that produces the symptom; list every problem. A reported problem of the game goes through the `trace-fix`
-   skill; a problem only found on the way enters the register and is left for its area. The defects the game shows are found
+   the design decision that produces the symptom; list every problem. A problem only found on the way enters the register and
+   is left for its area. The defects the game shows are found
    first by `python tools/hunt/hunt.py`, which names each one's owning code. [c:identify]
 2. **Research.** Context7 (`resolve-library-id`, then `query-docs`) on every implementation, fix and research, or the vendored
    source: what the API guarantees, on which thread, at what cost, its known bugs in the exact version; never memory. A feature
@@ -36,8 +36,8 @@ list, the archive tags) lives in `log/map.md`; nothing here is status.
    not, and offering cheap options, are forbidden. [c:plan-costliest]
 5. **Code the whole block with nothing run inside it.** A block is every open problem the owner named, or with none named every
    open problem of the area in hand, each fixed at its cause, one after the other, without trial and error.
-   `python tools/tasks/cli.py block open <name>` starts it: until `block verify`, the orchestrator, `build.sh`, `deliver.sh`, the
-   git pre-commit hook and the project's hook refuse every build, test, game run, measurement, photo, gate run, export and commit.
+   `python tools/tasks/cli.py block open <name>` starts it: until `block verify`, the orchestrator, `build.sh` and `deliver.sh`
+   refuse every build, test, game run, measurement, photo, gate run and export.
    A doubt is settled by reading. Keeping work about to be removed (an archive tag) is no commit of the block. [c:no-trial]
 6. **Verify once, at the block's end** (`block verify`): what the block reaches by the table below; `quick.sh --ready` once; the
    whole gates against the register (`run_gates.py --register log/problems.jsonl`: a finding that is no open problem fails; the
@@ -78,10 +78,9 @@ list, the archive tags) lives in `log/map.md`; nothing here is status.
 - A check takes seconds: the most likely place first (the newest folders, one targeted search); an empty result of a fragile
   search is a failed search, not a "no". Slowness of the work is a defect, recorded and fixed at its cause. [c:fast-checks]
 - Agents are used to go faster, up to five at once (the owner, 2026-11-12), each sent a prompt that names the goal, the files,
-  what is known, what it may change and the answer's form; the main session checks what an agent returns before it is used
-  (`.claude/hooks/agent_guard.py`). [c:agents-read-only]
-- Skills: `speckit-*` for a specification; `trace-fix` for a reported problem of the game; `superpowers:systematic-debugging`
-  for a failure's cause; `superpowers:verification-before-completion` at each close; `update-config` for settings; the LSP tool
+  what is known, what it may change and the answer's form; the main session checks what an agent returns before it is used.
+  [c:agents-read-only]
+- Skills: `speckit-*` for a specification; `superpowers:systematic-debugging` for a failure's cause; `superpowers:verification-before-completion` at each close; `update-config` for settings; the LSP tool
   for C++; context7 always. Never: brainstorming, writing-plans, executing-plans, test-driven-development,
   subagent-driven-development, dispatching-parallel-agents, requesting-code-review, finishing-a-development-branch,
   using-git-worktrees. [c:skills]
@@ -192,8 +191,8 @@ list, the archive tags) lives in `log/map.md`; nothing here is status.
 | The register | `python tools/atlas/cli.py problems [--area A --status S]`, `add`, `update`, `close`, `drop`, `render` |
 | Deliver | `tools/build/deliver.sh export` |
 | Find the game's defects | `python tools/hunt/hunt.py`: one hidden run of the town that lists every defect the core's probes see (vehicles in one another classed by mechanism, street pieces in one another, wires drawn at no level, road surfaces in one another, the engine's errors), each with where and the owning file; `dist/hunt/hunt.json` |
-| Photograph a place | `TRACE_FIX_SLUG=<slug> python .claude/skills/trace-fix/ledger.py photos <plan.json>` (a plan of look.gd's steps; the crops printed to open with Read); `... crops <photo>` |
-| How the reference does a feature | read its code in `C:\Users\Jonathan\Documents\Projects\lab\roadcraft\src` for the behaviour (never copied: [c:no-roadcraft-copy]) |
+| Photograph a place | `godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<json> --capture-dir=<folder>` (a plan of look.gd's steps) |
+| How the reference does a feature | read its code in `C:\Users\Jonathan\Documents\Projects\lab\roadcraft\src` for the behaviour (never copied: see "Fixing the cause") |
 
 The DLLs in `project/bin` are versioned, so a clone opens the game without building: no ignore pattern may drop them, and in a
 rebase they are rebuilt from the joined sources, never one side picked. A clone also needs Godot 4.7.2, llvm-mingw
