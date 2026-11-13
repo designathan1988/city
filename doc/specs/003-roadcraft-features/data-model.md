@@ -37,11 +37,9 @@ file, analysis), Skills (which, when). The block's close refuses an item missing
 | Entity | Meaning |
 |---|---|
 | Solid | a building's volume as it stands: lot frame, plan ring, roof shape, eaves height over the lot's floor |
-| roof at (x, z) | the top of the solid whose plan holds the point; none outside |
-| floor at (x, z) | the lowest the eye may stand: inside a plan its roof plus `eye_roof_clearance_m`; within `eye_wall_reach_m` round it, easing to the foot by a smoothstep of the distance; none farther |
-| eye free | the eye out of every solid, the reference's rules 1-4 (research R1) |
+| Camera floor tile | `floor_tile_m` square of `floor_cell_m` cells: each the highest roof top plus `eye_roof_clearance_m` over it (the ground where no building stands), then slope-limited to `floor_slope` by a forward and a backward sweep over the tile and an apron of `max roof height / floor_slope`; built on first ask, kept in an LRU of `floor_tiles_kept`, dropped when ChangeLog names a building in it (derived data: never saved, never in the city's digest) |
+| eye clear | the eye's sphere pushed out of the solids it overlaps toward the point (research R1b) |
 | highest roof | the highest top within a radius, over the middle of its volume |
 
-New values (camera.json, read by DataTables): `eye_roof_clearance_m` 1, `eye_wall_reach_m` 2, `eye_step_back_m` 4,
-`near_gap_share` 0.5 (the reference's behaviour, research R1). The pull's (`pull_*`) and the near plane's (`near_per_m`, `near_min`)
-values already stand in camera.json and stay; their differences from the reference are recorded in the camera's sheet.
+Validation: `floor_slope` > 0; `floor_cell_m` divides `floor_tile_m`; a floor read is the bilinear mix of its four cells (continuous);
+memory bounded by `floor_tiles_kept` whatever the area explored.

@@ -6,13 +6,14 @@
 
 ## Summary
 
-Six stories, one loop. The loop for every item (CLAUDE.md method, the owner's orders of 2026-11-13): one look before the code; the
-reference traced and every file the trace reached read whole into a comparison sheet; Context7 for every API; the code written
-whole with nothing run; then the item's own test scenes and a photo plan aimed at what changed, in seconds, the photos analysed
-region by region; commit, push, next item. First the ground the rest stands on: the documents and tools made one true set (US6),
-the loop's tools fast and honest (US3), the inventory and the sheets (US2); then the camera rebuilt to the reference's behaviour
-(US1), the open items (US5), and the port of every reference feature area by area (US4) until the inventory shows nothing the
-player uses unpaired or unjustified.
+The port first (the owner, 2026-11-13: "the priority is first to port the old game to the new one correctly; porting is not
+copying"). One loop for every feature (the constitution's method): the feature's outputs found in both games; the tracer on each;
+every file it reached read whole into the feature's comparison sheet (what it does, when, with which values, what the player sees,
+its faults); the design here (CityState, commands, simulation, render read-only, DataTables, budgets); Context7 for every API; the
+code written whole with nothing run; its test scene and a photo plan aimed at it, in seconds, the photos analysed; commit, push,
+next feature. Area by area in the inventory's order of the player's gaps; the camera is one of the areas, built by the shipped
+engines' design (research R1b). The documents, tools and open items follow the port's areas where they block it, and the genre's
+systems neither game has (genre-gaps.md) come after the port.
 
 ## Technical Context
 
@@ -41,7 +42,7 @@ magic numbers, file sizes, English, nothing of the reference copied, no slow/sil
 
 ## Constitution Check
 
-The constitution is CLAUDE.md. Gates, each with how this plan meets it:
+The constitution is `.specify/memory/constitution.md` (CLAUDE.md generated from it). Gates, each with how this plan meets it:
 
 | Gate (CLAUDE.md) | Met by |
 |---|---|
@@ -89,7 +90,7 @@ native/src/
 ├── sim/commands/lot_sites.cpp               # settle_sites (R4)
 └── api/city_core_sight.cpp                  # the camera's solids: roof, floor field, eye_free, highest_roof (R1)
 project/
-├── game/camera/{city_camera,camera_ahead,camera_pull,camera_profile}.gd   # the rig to the reference's behaviour (R1)
+├── game/camera/{city_camera,camera_heights,camera_solids,camera_pull,camera_aim}.gd   # the camera area of the port (R1b)
 ├── data/game/camera.json (+ tools/gates/schemas/camera.schema.json)       # the camera's values (R1)
 ├── data/i18n/*.csv and every tr() caller                                   # the text keys renamed (FR-015)
 └── tests/{core/camera_*_test.gd, core/window_traffic_test.gd, visual/look*.gd, visual/*_plan.json}
@@ -105,13 +106,15 @@ in doc/, CLAUDE.md).
 
 ## Phases
 
-1. **Ground** (US6, US3, US2): the document and tool surveys (R7) and their fixes; the block close's method check (R8); the
-   inventory committed with its tests; the camera_feel_test under a minute (R5).
-2. **Camera** (US1, R1): the floor field, the margin step back, the reference's lift rule, the near plane by the gap, the values in
-   camera.json; the camera tests' criteria (R1 last paragraph); photos at street, mid and far.
-3. **Open items** (US5): the opening (R4), the text keys (FR-015), the frozen street view and roofs plan (photos).
-4. **Port** (US4): area by area in the inventory's order (people, traffic, street furniture, lots, roads, effects, saves, ...), each
-   feature an item of the loop with its sheet.
+1. **Port** (US4, first): the photo step that aims at a feature's element (US3, `setViewNear`, needed by every feature's photos),
+   then area by area in the inventory's order of the player's gaps (people, traffic, street furniture, lots, roads, effects, saves,
+   camera with R1b, terrain, sky, junctions, signals, zones, transit, growth, buildings, interface), each feature an item of the loop
+   with its sheet. The fix-three block's camera work in the working tree is set aside until the camera area (its good parts: the
+   lot-box index, the roof aim, CameraHeights and CameraAim, the north-turn key; its failed part: the eased margin, replaced by R1b).
+2. **Open items** (US5): the opening (R4), the text keys (FR-015), the frozen street view and roofs plan; each where the port
+   reaches it (the opening with growth, the keys with interface).
+3. **Ground as it blocks** (US6, US2's sheets): a document or tool finding fixed when a port item meets it.
+4. **Beyond the reference** (US7): the genre's systems neither game has (genre-gaps.md), each by its cited method.
 
 ## Complexity Tracking
 

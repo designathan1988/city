@@ -50,6 +50,70 @@ never enters a building.
 margin and the look ahead make it rare and small. The camera tests count the frames with the eye inside walls (at most 1 in 1,000:
 `INSIDE_SHARE`), the jolts of the rig's own smoothing (none), and report the at-once corrections with their size (SC-002).
 
+### R1b. Superseded (2026-11-13): what shipped engines do, from their documentation
+
+The decision above failed its checks three times in this session (at-once corrections 5.6% of frames; then eased corrections with a
+margin grown with the view: jolts up to 14 views, camera_feel_test 158 s; dist/tasks/20261113-030533-34572-camera_feel_test). The
+causes read: a correction computed from the eye's spot alone jumps whenever its answer changes topology (the line's first exit passes
+a corner, the margin's way flips, rule 1 lifts both by a whole building at once); easing a jumping answer trails into the walls.
+Researched on the internet (sources below), the engines split the problem in three and none of them computes it as this game did:
+
+1. **Collision of the camera's own body** (Cinemachine Decollider, Unreal SpringArm): the camera is a sphere of `Camera Radius`;
+   obstacles overlapping it push it out "along the direction toward the target"; "if the sphere doesn't actually intersect an object,
+   the camera isn't moved" (Decollider manual). Unreal's SpringArm sweeps a sphere of `ProbeSize` from the target to the desired
+   position and places the camera at the hit (`bDoCollisionTest`, `ProbeChannel`); its lag smooths the target's motion, the collision
+   displacement is reported apart (`IsCollisionFixApplied`, `GetUnfixedCameraPosition`) and the default blend returns the hit location
+   itself. Undersander (Game Developer, "Accurate collision zoom for cameras") sweeps the near plane's rectangle, not a ray: what must stay
+   out of the walls is the near plane, so the radius is the near plane's half diagonal plus a pad.
+2. **Occlusion of the line of sight** (Cinemachine Deoccluder): strategy "Pull Camera Forward" moves the camera along its axis in
+   front of the nearest obstacle; "Minimum Occlusion Time: do not take action unless the occlusion has lasted at least this long";
+   "Damping When Occluded: how quickly to move the camera to avoid an obstacle"; "Smoothing Time: minimum seconds to hold the camera at
+   the nearest point to the target"; "Damping: how quickly the camera returns after an occlusion clears". This game's CameraPull is
+   this already (pull_wait_s, pull_in_s, pull_hold_s, pull_out_s).
+3. **Height over terrain and roofs**: the Decollider casts "downward from above the camera" and moves it up to the hit (terrain
+   layers); the RTS camera of Halo Wars reads a proxy surface instead of the raw ground: a sparse heightfield with "two-pass asymmetric
+   smoothing", because a symmetric blur "brings everything toward an average, which isn't what you want for a camera" (Sullivan, via the
+   LinkedIn post below; SpringRTS's thread: the camera follows a smoothed height field, not the terrain). A two-pass forward/backward
+   sweep that keeps each cell at least its neighbour's value less a slope times the distance is the chamfer distance transform's
+   propagation (Felzenszwalb and Huttenlocher, Theory of Computing 8, 2012, for the linear-time envelope of sampled functions; the
+   chamfer two-pass scan, arXiv 2106.03503): the upper envelope of the roofs whose slope never passes a set value.
+
+**Decision** (this game's design, the reference's behaviour kept where it is right: the eye never in a building, the point raised
+over a building it stands in, the pull with the four times):
+- **The camera's floor** (`CameraFloor`, the core's derived data, built per 64 m tile from CityState's buildings under the shared lock
+  only for the tiles the camera asks, invalidated through ChangeLog, an LRU of tiles so memory never grows with the area explored):
+  2 m cells, each the highest roof top plus `eye_roof_clearance_m` over it (the ground where no building stands), then the two-pass
+  slope limit `floor_slope` (the cell kept at least its neighbour less the slope times the step). Read bilinearly: continuous, its slope
+  bounded by construction, one lookup a question.
+- **The point raised** (reference rule 1, made smooth): the point's rest height is the higher of the ground and the floor at the
+  point, by the pull's zoom weight (full at `pull_full_half`, none at `pull_none_half`: far views never ride the roofs), through the
+  ground spring with two stages (`CameraDamp.ease_to`), so the point rises over a building before the eye could reach its wall and the
+  rise starts from rest.
+- **The eye's body** (Decollider): a sphere of radius `max(near half diagonal + pad, frame move share)` at the orbit's eye; the core
+  answers the sphere's push-out toward the point (`eye_clear`), zero when it overlaps nothing; continuous, since it depends on the
+  eye's own spot and the walls' distance only.
+- **The line** (Deoccluder, unchanged CameraPull): the share taken off with its wait and times; while the eye is held in front of a wall,
+  its release goes no farther than the line is free (Smoothing Time's hold).
+- **Rejected**: the eased correction of a jumping answer (it trails into walls); the eye's own floor lifted over roofs (it lifts the
+  street view beside every tower); the at-once rules (5.6% of frames struck walls).
+- **Proof before code** (no run to find out): the worst vertical acceleration of the point is bounded by `floor_slope` times the
+  fastest pan (1.94 views a second) through the two-stage spring of `ground_smooth_s`; the sweep's push-out is a continuous function of
+  the eye's spot; both computed in the camera's sheet (T026) against the jolt limit (1% of the view a frame) before T027 is coded.
+  The camera is the port's last area (the owner, 2026-11-13: the port first, the camera last).
+
+**Sources**: [Cinemachine Deoccluder](https://docs.unity3d.com/Packages/com.unity.cinemachine@3.0/manual/CinemachineDeoccluder.html);
+[Cinemachine Decollider](https://docs.unity3d.com/Packages/com.unity.cinemachine@3.1/manual/CinemachineDecollider.html);
+[Unreal USpringArmComponent](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Runtime/Engine/USpringArmComponent);
+[Unreal spring arm forum: BlendLocations](https://forums.unrealengine.com/t/enable-camera-lag-on-spring-arm-only-for-collisions/379251);
+[Undersander, Accurate collision zoom for cameras](https://gamedeveloper.com/programming/accurate-collision-zoom-for-cameras);
+[Halo Wars style proxy camera (LinkedIn post)](https://pt.linkedin.com/in/factobot);
+[SpringRTS camera height thread](https://springrts.com/phpbb/viewtopic.php?p=29215);
+[Felzenszwalb and Huttenlocher, Distance Transforms of Sampled Functions](https://theoryofcomputing.org/articles/v008a019/abstract.txt);
+[The Distance Transform and its Computation, arXiv 2106.03503](https://arxiv.org/pdf/2106.03503);
+[Unreal critically damped smoothing](https://dev.epicgames.com/documentation/unreal-engine/API/Runtime/Core/FMath/CriticallyDampedSmoothing);
+[Cities: Skylines street level was never intended (community)](https://steamcommunity.com/sharedfiles/filedetails/comments/1756089251);
+[Manor Lords: seamless zoom to ground level (preview)](https://www.techradar.com/gaming/manor-lords-preview-camera-feature-brings-you-down-to-earth).
+
 ## R2. The inventory of both games and their pairing
 
 **Done and checked**: `python tools/atlas/cli.py inventory` (tools/atlas/inventory*.py, rules only, no hand list). Run on 2026-11-13:
@@ -92,6 +156,14 @@ reference written again with its cause in the history.
 
 **Why**: the cost is per lot and serial; the window traffic test proves the window's share of demand, which needs the big map, so the
 map is not changed (that would hide the defect).
+
+**Sources** (2026-11-13): the usual way to generate chunks in parallel yet deterministically is a generator per chunk seeded from
+the master seed and the chunk's coordinates, since "the order in which threads complete is non-deterministic"
+([seeds and determinism](https://abratabia.com/procedural-generation/seeds-and-determinism.php)); neighbours are read only from
+passes already finished ([Voxel Tools, procedural generation](https://voxel-tools.readthedocs.io/en/latest/procedural_generation/);
+[LayerProcGen](https://runevision.com/tech/layerprocgen/): layers that depend on neighbouring chunks generated first). The 2 x 2
+checkerboard is that rule with four passes: no two cells running at once are neighbours, every neighbour read lies in a finished
+pass or in the cell itself, each cell's lots in their fixed order with the cell's own seed.
 
 ## R5. The fast loop and the slow checks
 
@@ -142,6 +214,10 @@ present here (its scene), in the reference only, or in neither; the "neither" sy
 order at a block's end).
 
 **Why**: the owner: the reference is not all right nor complete; the product is sold on Steam against the genre, on median PCs.
+
+**Done** (2026-11-13): the gap list is [genre-gaps.md](genre-gaps.md), from the publishers' feature pages and dev diaries (Cities:
+Skylines II's economy, lifepath and traffic pages opened and their sentences checked here), 18 systems; six named by neither game
+(water and sewage, land value here, happiness, pollution, disasters, modding).
 
 ## R8. Making the method hold (skills, Context7, no trial and error)
 

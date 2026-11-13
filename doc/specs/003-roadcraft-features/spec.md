@@ -90,7 +90,10 @@ the orchestrator shows each task's lines as they come and every wait has a deadl
 
 ---
 
-### User Story 4 - Features brought from the reference in this game's architecture (Priority: P2)
+### User Story 4 - Features brought from the reference in this game's architecture (Priority: P1, first)
+
+The owner, 2026-11-13: the priority is first to port the old game to the new one correctly; porting is not copying: understand what
+it does and how, then do it in this game's design. Every other story serves this one or follows it.
 
 For each feature the inventory shows only in the reference, or diverging, the session brings it: traced in both games, read whole,
 its rules, cases and values understood, built as this game's own code (the city's one state, changed only by commands, advanced
@@ -184,8 +187,10 @@ budgets of doc/specification.md.
   (US2) decides by behaviour, and the inventory records the pair the sheet proves.
 - A reference feature that is itself one of its faults (a heavy geometry, a whole-map pass): its behaviour is brought, its cost
   never; the sheet names the fault and the design that avoids it.
-- A camera at a zoom where the arm must come in by tens of metres in one frame (a wall the look ahead could not see): the eye stays
-  outside, the reaction is counted and reported, and making it rarer is tracked, never hidden.
+- A camera whose eye's body meets a wall faster than its radius a frame: the eye stays outside, the push-out is counted and
+  reported; the radius grows with the frame's move so it stays rare, never hidden.
+- The point looked at walked into a tall building at street zoom: the point rises over it on the slope-limited floor before the eye
+  could reach the wall, the rise starting from rest; far views never ride the roofs.
 - A check that cannot finish in a minute: it is a defect of its tool, registered and fixed at its cause, never a raised deadline.
 - The reference tree missing on the machine: the inventory and the tracer refuse with the reason; nothing is judged against an
   absent reference.
@@ -197,10 +202,14 @@ budgets of doc/specification.md.
 - **FR-001**: The camera MUST keep its eye outside every building on every frame, at every zoom and bearing, including while the
   point looked at is inside a building's lot.
 - **FR-002**: The camera MUST NOT move the point looked at onto a roof the player did not aim at.
-- **FR-003**: The camera's behaviour against buildings MUST be the one traced in the reference game, and where the reference has
-  none, the standard games' camera arm (in front of a wall at once, letting go slowly, looking ahead to start early).
-- **FR-004**: Every motion of the camera that comes from its own smoothing MUST stay within the jolt limit of the camera tests;
-  every at-once reaction to a wall the look ahead could not see MUST be counted and reported by those tests.
+- **FR-003**: The camera's behaviour against buildings MUST keep the reference's outcomes (the eye never in a building, the point
+  raised over a building it stands in, the pull in front of a wall with its four times) by the shipped engines' design (research
+  R1b): the eye's body pushed out of what it overlaps toward the point (Cinemachine Decollider, Unreal SpringArm), the line of sight
+  freed by the eased pull (Cinemachine Deoccluder), and the heights read from a slope-limited floor of the roofs (a proxy surface,
+  the Halo Wars camera), never from corrections that jump when their answer changes.
+- **FR-004**: Every frame's motion of the camera, the buildings' corrections included, MUST stay within the jolt limit of the camera
+  tests (1% of the view's height from one frame's move to the next); the frames where the eye's body was pushed out at once by more
+  than that MUST be counted and reported.
 - **FR-005**: The camera tests MUST judge the eye with a sight that finds every building whose lot meets the eye, not only those
   whose lot centre is near it.
 - **FR-006**: The inventory MUST be produced from the two trees each time it runs, by extraction rules, never from a hand-written
@@ -257,8 +266,8 @@ budgets of doc/specification.md.
 
 - **SC-001**: Over the camera tests' rides (every zoom, tilt and bearing of the town), the eye is inside a building in at most 1
   frame in 1,000, and the picture of no ride jolts from the camera's own smoothing.
-- **SC-002**: The at-once reactions of the camera to unseen walls are reported, and fall from today's 2.2% of frames to at most
-  0.1% of frames.
+- **SC-002**: The frames where the eye's body is pushed out at once by more than a jolt are reported and are at most 0.1% of the
+  camera tests' frames (5.6% before this specification's design, 2026-11-13); camera_feel_test ends under 60 s.
 - **SC-003**: The inventory of both games ends in under 5 seconds and every sampled row (at least 20) matches its source line.
 - **SC-004**: Every test scene and photo plan takes under 60 seconds; an item's check (its scenes and photos) gives its verdict in
   under 60 seconds.
@@ -283,6 +292,6 @@ budgets of doc/specification.md.
 - The reference game stays at its place on this machine (tools/tasks/locations.py) and is read only for behaviour.
 - The owner's chosen order of areas comes with each request; without one, the inventory's gaps decide.
 - The budgets are those of doc/specification.md (median and floor profiles).
-- The standard games' camera practice (Unreal's spring arm, Cinemachine's deoccluder) is the reference for what the reference game
-  does not answer.
-- Spec Kit's files are not copied into the repository; the specification lives in doc/specs (CLAUDE.md).
+- The shipped engines' documented camera practice (Unreal's spring arm, Cinemachine's Decollider and Deoccluder, the RTS proxy
+  surface) decides what the reference game does wrong or does not answer (research R1b, with its sources).
+- The constitution is `.specify/memory/constitution.md` (CLAUDE.md generated from it); the specification lives in doc/specs.
