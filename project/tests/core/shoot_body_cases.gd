@@ -137,6 +137,8 @@ func _bled(walkers: Array) -> Dictionary:
 	# by its own id: a count could rise by this body and fall by another getting up in the same frames
 	var who: PackedInt32Array = _census().who
 	t.check(not down.is_empty() and down.fallen and down.bleed > 0.0 and who.has(hurt.id), "wounded for good: down, bleeding, a body (%s; bodies of %s)" % [down, who])
+	# shot again where they lay, they keep the one body that fell: the wound reaches it (Prender-278: each round once laid a new body)
+	t.check(Array(who).count(hurt.id) == 1, "shot again lying, one body still (%d bodies of walker %d)" % [Array(who).count(hurt.id), hurt.id])
 	# the round in the legs of somebody lying takes one off: a piece of the same body on a ragdoll of its own
 	t.check(int(down.get("lost", 0)) != 0 and _census().pieces > pieces, "the limb shot off is a piece of the body (lost %d; %d pieces, %d before)" % [int(down.get("lost", 0)), _census().pieces, pieces])
 	# lying there for good, the wounded bleed where they lie: a pool at the stump once the body is at rest (Prender-279)

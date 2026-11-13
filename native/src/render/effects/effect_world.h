@@ -95,6 +95,7 @@ private:
 	godot::RID scenario_, light_, light_inst_;
 	std::vector<DamageEvent> events_, events_played_; // to play; played this frame
 	std::vector<BodyMark> body_marks_; // what the bodies left this frame
+	std::vector<BodySpec> piece_scratch_; // the limbs one blow takes off (body)
 	struct Source {
 		float x = 0, y = 0, z = 0, size = 0, rate = 0, carry = 0;
 		double until = 0;

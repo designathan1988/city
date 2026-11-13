@@ -1,4 +1,4 @@
-// The fallen, drawn (body_renderer.h).
+// The fallen, drawn (body_renderer.h): a body comes, takes the blows that reach it lying, falls, rests, gets up or stays.
 #include "render/agents/body_renderer.h"
 
 #include <godot_cpp/classes/image.hpp>
@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <cstring>
-#include <limits>
 
 using namespace godot;
 
@@ -14,8 +13,6 @@ namespace city {
 
 namespace {
 constexpr int MOST_BODIES = 64; // past it the oldest of the dead goes: a row of the texture each
-constexpr float NEAR_BODY_M = 2.5f; // a body's joints reach this far from its pelvis, and as far again for another's: farther, they cannot touch
-constexpr float FOR_GOOD_S =std::numeric_limits<float>::infinity(); // the dead stay where they fell, the aftermath kept, till MOST_BODIES
 constexpr int TEXELS_A_BONE = 3, FLOATS_A_TEXEL = 4, FLOATS_A_BONE = TEXELS_A_BONE * FLOATS_A_TEXEL;
 constexpr float STEP_S = 1.f / 60.f;
 constexpr int STEPS_MOST = 4;
@@ -83,20 +80,31 @@ void BodyRenderer::release() {
 	texture_ = RID();
 }
 
+int BodyRenderer::take_slot(uint32_t keep) {
+	if (free_slots_.empty()) { // full: the oldest of those who will not get up goes first; the living get up on their own
+		const auto other = [keep](const Body &o) { return keep == 0 || o.family != keep; };
+		auto gone = std::find_if(bodies_.begin(), bodies_.end(), [&](const Body &o) { return o.rise_s <= 0.f && other(o); });
+		if (gone == bodies_.end()) gone = std::find_if(bodies_.begin(), bodies_.end(), other);
+		if (gone == bodies_.end()) gone = bodies_.begin(); // one family over every row: not with a body and its five limbs to MOST_BODIES
+		free_slots_.push_back(gone->slot);
+		bodies_.erase(gone);
+		layers_dirty_ = true;
+	}
+	const int slot = free_slots_.back();
+	free_slots_.pop_back();
+	return slot;
+}
+
 void BodyRenderer::add(const BodySpec &spec) {
 	if (!asset_ || spec.variation >= int(asset_->variations.size())) return;
 	make_ready();
-	if (free_slots_.empty()) { // full: the oldest of those who will not get up goes first; the living get up on their own
-		auto gone = std::find_if(bodies_.begin(), bodies_.end(), [](const Body &o) { return o.rise_s <= 0.f; });
-		if (gone == bodies_.end()) gone = bodies_.begin();
-		free_slots_.push_back(gone->slot);
-		bodies_.erase(gone);
-	}
+	const uint32_t family = spec.piece != 0 ? families_ : ++families_; // a limb torn off comes right after its body: one family, which does not push itself
+	const int slot = take_slot(spec.piece != 0 ? family : 0);
 	Body &b = bodies_.emplace_back();
-	b.slot = free_slots_.back();
-	free_slots_.pop_back();
+	b.slot = slot;
+	b.family = family;
 	b.variation = spec.variation;
-	b.who = spec.who;
+	b.who = spec.rises ? spec.who : -1; // the dead keep no walker's id: it passes to another walker
 	b.pool = spec.pool;
 	b.left = spec.life_s > 0.f ? spec.life_s : FOR_GOOD_S;
 	b.floor = spec.at.y;
@@ -131,9 +139,55 @@ void BodyRenderer::add(const BodySpec &spec) {
 	for (Transform3D &t : b.stood) t = t.affine_inverse();
 	if (spec.piece != 0) b.doll.keep_parts(spec.piece); // a limb torn off: the rest of the body stays closed on its joint (lost)
 	b.piece = spec.piece != 0;
-	b.family = b.piece ? families_ : ++families_; // a limb torn off comes right after its body: one family, which does not push itself
 	pose(b);
 	layers_dirty_ = true;
+}
+
+// The reference's body takes every later blow too (one body a casualty): a round in somebody lying wounds the body lying there.
+bool BodyRenderer::strike(const BodySpec &spec, const std::vector<BodySpec> &pieces) {
+	if (spec.who < 0) return false;
+	const auto found = std::find_if(bodies_.begin(), bodies_.end(), [&](const Body &o) { return !o.piece && o.who == spec.who; });
+	if (found == bodies_.end()) return false;
+	Body &b = *found;
+	b.lost |= spec.lost;
+	b.bleeds |= spec.bleeds;
+	b.charred = b.charred || spec.charred;
+	if (spec.pool > b.pool) { // a graver wound: its pool where the body comes to rest again
+		b.pool = spec.pool;
+		b.pooled = false;
+	}
+	if (spec.rises) { // knocked again: down till the simulation's end of it (traffic::lay_down keeps the later end)
+		b.left = spec.life_s > 0.f ? spec.life_s : FOR_GOOD_S;
+		b.rise_s = spec.life_s > 0.f ? std::min(GET_UP_S, spec.life_s * RISE_SHARE_MOST) : 0.f;
+	} else { // killed where they lay: a dead body, kept, the walker's id let go
+		b.rise_s = 0.f;
+		b.left = FOR_GOOD_S;
+		b.who = -1;
+	}
+	std::vector<Body> torn; // each limb that comes off: a piece of this body as it lies, on a ragdoll of its own
+	torn.reserve(pieces.size());
+	for (const BodySpec &p : pieces) {
+		Body &c = torn.emplace_back(b);
+		c.doll.keep_parts(p.piece);
+		c.doll.shove(p.velocity, p.scatter, rng_);
+		c.piece = true;
+		c.lost = p.lost;
+		c.who = -1;
+		c.pool = 0.f;
+		c.pooled = false;
+		c.rise_s = 0.f;
+		c.left = FOR_GOOD_S;
+		c.splashes = 0;
+	}
+	b.doll.shove(spec.velocity, spec.scatter, rng_);
+	pose(b);
+	const uint32_t family = b.family; // b is touched no more: a row taken may erase a body in the middle, which moves the others
+	for (Body &c : torn) {
+		c.slot = take_slot(family);
+		pose(bodies_.emplace_back(std::move(c)));
+	}
+	layers_dirty_ = true;
+	return true;
 }
 
 void BodyRenderer::die(int who) {
@@ -142,6 +196,7 @@ void BodyRenderer::die(int who) {
 		if (b.who != who) continue;
 		b.rise_s = 0.f;
 		b.left = FOR_GOOD_S;
+		b.who = -1; // dead: kept, the walker's id let go
 	}
 }
 
@@ -274,44 +329,6 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground, float hard_ms
 	for (MmLayer &l : layers_) l.send_bounds();
 	RenderingServer::get_singleton()->texture_2d_update(texture_, Image::create_from_data(bones_ * TEXELS_A_BONE, MOST_BODIES, false, Image::FORMAT_RGBAF, rows_), 0);
 	rows_dirty_ = false;
-}
-
-PackedVector3Array BodyRenderer::places() const {
-	PackedVector3Array out;
-	for (const Body &b : bodies_)
-		if (!b.piece) out.push_back(b.doll.pelvis()); // a limb torn off has no pelvis: it lies by its body, at its joint
-	return out;
-}
-
-Dictionary BodyRenderer::census() const {
-	int moving = 0, kept = 0, from_drawn = 0, pieces = 0, street_walls = 0;
-	float overlap = 0.f, in_walls = 0.f;
-	PackedInt32Array who;
-	for (const Body &b : bodies_) {
-		if (!b.piece && b.who >= 0) who.push_back(b.who);
-		moving += b.doll.asleep() ? 0 : 1;
-		kept += b.left == FOR_GOOD_S ? 1 : 0;
-		from_drawn += b.from_drawn ? 1 : 0;
-		pieces += b.piece ? 1 : 0;
-		street_walls += b.doll.footed_walls();
-		if (!b.doll.asleep()) continue;
-		in_walls = std::max(in_walls, b.doll.in_walls());
-		for (const Body &o : bodies_)
-			if (o.family != b.family && o.doll.asleep() && o.doll.pelvis().distance_squared_to(b.doll.pelvis()) < NEAR_BODY_M * NEAR_BODY_M)
-				overlap = std::max(overlap, b.doll.overlap(o.doll));
-	}
-	Dictionary out;
-	out["bodies"] = int(bodies_.size());
-	out["moving"] = moving;
-	out["kept"] = kept;
-	out["from_drawn"] = from_drawn;
-	out["pieces"] = pieces;
-	out["deepest"] = deepest_;
-	out["overlap"] = overlap;
-	out["in_walls"] = in_walls;
-	out["street_walls"] = street_walls;
-	out["who"] = who;
-	return out;
 }
 
 } // namespace city

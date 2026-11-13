@@ -1,6 +1,7 @@
 // The people a blow or a bullet struck, thrown as themselves: the walker's own body on a ragdoll (render/agents/body_renderer.h). A limb already lost is
 // not there; a limb that comes off at this blow is thrown clear as a piece of the same body on a ragdoll of its own, with a spray of blood. Someone knocked
-// down lies for as long as the simulation keeps them down (the walker is not drawn meanwhile) and the body goes when they get up. Also what a bullet draws:
+// down lies for as long as the simulation keeps them down (the walker is not drawn meanwhile) and the body goes when they get up; a blow on them
+// lying reaches that body (BodyRenderer::strike), never a second one. Also what a bullet draws:
 // the tracer, the wound's spray and a car's bodywork hit.
 #include "render/effects/effect_world.h"
 
@@ -101,12 +102,13 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		const bool walker = e.id >= 0 && e.id < int(s.traffic.peds.size());
 		b.variation = people_->variation_of(e.u, walker ? int(s.traffic.peds[size_t(e.id)].age) : -1);
 		if (walker) people_->drawn_pose(e.id, b.clip, b.phase); // it falls from the pose it was drawn in
-		people_->bodies().add(b);
 		// what came off: a piece of the same body, in the same pose, thrown clear on a ragdoll of its own (Ragdoll::keep_parts); it stays where it
 		// falls (0: for good), whether its owner gets up or not
+		std::vector<BodySpec> &pieces = piece_scratch_;
+		pieces.clear();
 		for (uint32_t limb : LIMBS) {
 			if ((severed & limb) == 0) continue;
-			BodySpec piece = b;
+			BodySpec &piece = pieces.emplace_back(b);
 			piece.piece = parts_gone(limb);
 			piece.lost = ALL_PARTS & ~piece.piece;
 			piece.velocity = Vector3(px * params_.limb_push_ms + (rng_.f() - 0.5f) * LIMB_SCATTER_MS, params_.lift_ms * (0.5f + rng_.f()),
@@ -116,7 +118,12 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 			piece.rises = false;
 			piece.who = -1;
 			piece.pool = 0.f;
-			people_->bodies().add(piece);
+		}
+		// somebody already down is struck as the body lying there (one body a casualty); only who stands falls as a new one
+		BodyRenderer &bodies = people_->bodies();
+		if (!bodies.strike(b, pieces)) {
+			bodies.add(b);
+			for (const BodySpec &piece : pieces) bodies.add(piece);
 		}
 	}
 	if (severed != 0) puffs_.burst(e.x, ground + TRUNK_CENTRE_M, e.z, int(WOUND_SPRAY * 2.f), PUFF_BLOOD, WOUND_SPREAD_M * 2.f, WOUND_SIZE_M, WOUND_LIFE_S);

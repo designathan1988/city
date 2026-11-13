@@ -39,6 +39,9 @@ public:
 	// elbows at half of it, halfway along the arm.
 	void begin(const godot::Vector3 joints[RAGDOLL_JOINTS], const godot::Vector3 &velocity, const godot::Vector3 &tip, float scatter, const godot::Vector3 &brace,
 			Rng &rng);
+	// A blow on a body already down: each particle it moves gains `velocity`, a little differently by `scatter` m/s, and it wakes (a
+	// round only jolts it: velocity 0).
+	void shove(const godot::Vector3 &velocity, float scatter, Rng &rng);
 	// One step; where particles of `bleeds` (a bit each, ragdoll_parts.h Joint) struck the ground faster than `hard_ms` (a wound landing
 	// hard) go into `hits`, how many returned.
 	int step(float dt, const Ground &ground, float hard_ms, uint32_t bleeds, godot::Vector3 hits[RAGDOLL_HITS]);

@@ -94,6 +94,14 @@ void Ragdoll::begin(const Vector3 joints[RAGDOLL_JOINTS], const Vector3 &velocit
 	asleep_ = false;
 }
 
+// Verlet's velocity is the step from the old place (Jakobsen, GDC 2001): a push moves the old place back by it, the particle stays.
+void Ragdoll::shove(const Vector3 &velocity, float scatter, Rng &rng) {
+	for (int i = 0; i < PARTICLES; i++)
+		if ((kept_ >> i & 1u) != 0) was_[i] -= (velocity + Vector3(rng.f() - 0.5f, rng.f() - 0.5f, rng.f() - 0.5f) * scatter) * ONE_STEP_S;
+	still_ = 0;
+	asleep_ = false;
+}
+
 void Ragdoll::keep_parts(uint32_t parts) {
 	uint32_t keep = 0;
 	int root = -1;
