@@ -126,3 +126,14 @@ entry: when, the commit, the problems, the cause, the plan, the files created, c
   0 NEW; both DLLs 23 s; the test scenes 65/65; roofs and photos plans PASS in 17 s, every wait named.
 - **Registered from the checks**: the roofs plan cannot aim at a roof (setView aims at the ground; no roof height query), the
   frozen street view inside a building, window_traffic_test past a minute.
+
+## 2026-11-13: block t004-aim, the look step that aims at an element (specification 003 T004, commit bb3a72c2)
+
+- **Done**: `setViewNear [kind, x, y, zoom, azimuth, elevation]` (project/tests/visual/look_aim.gd): walker and vehicle from
+  `shot_targets`, lamp, pole and sign from `furniture_spots` on the streets under the nearest vehicles, the tallest building within
+  60 m at its foot; the `near` plan proves each kind (23 s).
+- **Causes read on the way** (systematic-debugging): `street_poles` holds only the player's pole runs, and a plan that never runs the
+  clock has no traffic; the town's wires ride its main-row lamps, so a pole is a utility pole or such a lamp.
+- **Photos**: three missed their subject behind the centre's towers from 20-25 degrees and were retaken from 55 and 75 degrees; every
+  photo analysed. Noted for the street furniture area (T011): a main-row pole showed no span leaving its arm.
+- **Time**: about 45 minutes, three runs of 23 s.
