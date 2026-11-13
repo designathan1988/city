@@ -32,7 +32,7 @@ because the owner is in a hurry, is a step skipped. The goal behind every step: 
   bugs in that version. The vendored source only where Context7 has nothing. Source, question and answer go in the memory file.
   A tool's description saying "not needed here" changes nothing.
 - Where the game models something real (traffic rules, signals, kerbs, poles, light), values come from a cited norm or method.
-- Then the internet, always, before every design decision, every fix whose cause is not plain in the code and every system brought:
+- **Research always, every time, with no exception.** Then the internet, always, before every design decision, every fix whose cause is not plain in the code and every system brought:
   web search, then the pages themselves opened (the shipped engines' and standard games' documentation, published methods, norms,
   talks), each source cited with its URL in the work file and the specification's research. No design is coded unresearched; a check
   that fails twice sends the work back to research (the camera's three failed designs of 2026-11-13 are what skipping this costs).

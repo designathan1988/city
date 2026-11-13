@@ -55,7 +55,8 @@ Rationale: the owner judges the game; every wrong turn of this project came from
   (each API it calls: Python, GDScript, Godot 4.7.2, godot-cpp, the C++ standard library, Terrain3D, mimalloc, meshoptimizer,
   Clipper2), whatever a tool's own description says: what it guarantees, on which thread, at what cost, its known bugs in that
   version; the vendored source only where Context7 has nothing; never memory. Source, question and answer go to the work file.
-- The internet is researched before every design decision, every fix whose cause is not plain in the code, and every system brought
+- **Research always, every time, with no exception: Context7 and the internet.** The internet is researched before every design
+  decision, every fix whose cause is not plain in the code, and every system brought
   (web search and the pages themselves: the shipped engines' and standard games' documentation, published methods, norms, talks),
   each source opened and cited with its URL in the work file and the specification's research. A design not researched is not coded;
   a check that fails twice sends the work back to research, never to another run.
@@ -237,4 +238,4 @@ The DLLs in `project/bin` are versioned (rebuilt from the joined sources in a re
 - Compliance: every plan's Constitution Check reads these principles; the block's close refuses an item without its reading,
   research and skills (IV); the gates hold what they can check (`tools/gates/rules.json`).
 
-**Version**: 1.1.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13
+**Version**: 1.1.1 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13

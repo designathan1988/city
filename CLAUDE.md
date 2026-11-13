@@ -1,6 +1,6 @@
 # City: a city builder in Godot 4.7 with a C++ core (GDExtension), to be sold on Steam
 
-Generated from the constitution, `.specify/memory/constitution.md` (version 1.1.0), the project's only source of orders: the same
+Generated from the constitution, `.specify/memory/constitution.md` (version 1.1.1), the project's only source of orders: the same
 orders in its words. Read this file whole at the start of every session and after every compaction; an amendment changes the
 constitution first, then this file is generated again in the same commit. `doc/map.md` lists every file; nothing here is status.
 
@@ -46,7 +46,8 @@ constitution first, then this file is generated again in the same commit. `doc/m
   (each API it calls: Python, GDScript, Godot 4.7.2, godot-cpp, the C++ standard library, Terrain3D, mimalloc, meshoptimizer,
   Clipper2), whatever a tool's own description says: what it guarantees, on which thread, at what cost, its known bugs in that
   version; the vendored source only where Context7 has nothing; never memory. Source, question and answer go to the work file.
-- The internet is researched before every design decision, every fix whose cause is not plain in the code, and every system brought
+- **Research always, every time, with no exception: Context7 and the internet.** The internet is researched before every design
+  decision, every fix whose cause is not plain in the code, and every system brought
   (the shipped engines' and standard games' documentation, published methods, norms, talks), each source opened and cited with its
   URL in the work file and the specification's research. A design not researched is not coded; a check that fails twice sends the
   work back to research, never to another run.
