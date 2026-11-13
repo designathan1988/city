@@ -35,6 +35,7 @@ bool BodyRenderer::strike(const BodySpec &spec, const std::vector<BodySpec> &pie
 		c.doll.keep_parts(p.piece);
 		c.doll.shove(p.velocity, p.scatter, rng_);
 		c.piece = true;
+		c.root_bone = root_bone_of(p.piece); // its root follows its own part, not the torso it left
 		c.lost = p.lost;
 		c.who = -1;
 		c.pool = 0.f;

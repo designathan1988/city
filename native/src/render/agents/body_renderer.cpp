@@ -18,7 +18,7 @@ constexpr float STEP_S = 1.f / 60.f;
 constexpr int STEPS_MOST = 4;
 constexpr float CHARRED_MARK = 1.f;
 constexpr float RISE_TO_CROUCH = 0.45f; // the blend's part of getting up (BodyRenderer::GET_UP_S)
-const Vector3 AXIS_X(1, 0, 0), AXIS_Y(0, 1, 0), AXIS_Z(0, 0, 1);
+const Vector3 AXIS_Y(0, 1, 0);
 constexpr int PART_JOINT[RAGDOLL_PARTS] = { 0, 2, 3, 4, 5, 7, 8, 10, 11, 12, 14, 15, 16 }; // the joint each part starts at: ragdoll.cpp PART_FRAMES
 
 Transform3D rows_to_transform(const float *r) {
@@ -140,25 +140,41 @@ void BodyRenderer::add(const BodySpec &spec) {
 	for (Transform3D &t : b.stood) t = t.affine_inverse();
 	if (spec.piece != 0) b.doll.keep_parts(spec.piece); // a limb torn off: the rest of the body stays closed on its joint (lost)
 	b.piece = spec.piece != 0;
+	b.root_bone = root_bone_of(spec.piece);
 	pose(b);
 	layers_dirty_ = true;
 }
 
-// The rows of its bones, and its box: a vertex is its bones' bind -> world rows applied to it, weighted to one (people_look.gdshaderinc
-// BODY), so it lies within the boxes of its bones, each the bone's place out by the reach along the rows of its basis.
+int BodyRenderer::root_bone_of(uint32_t piece) const {
+	int part = 0; // the torso
+	if (piece != 0)
+		while ((piece >> part & 1u) == 0) part++; // a limb torn off: its first part, which it keeps
+	for (int i = 0; i < bones_; i++)
+		if (asset_->bone_part[size_t(i)] == part) return i;
+	return 0;
+}
+
+// The rows of its bones, and its box: a vertex is its bones' bind -> root rows applied to it, weighted to one (people_look.gdshaderinc
+// BODY), then its instance's transform, the root (`bones` are bind -> world: the root is its root bone's frame made orthonormal), so it
+// lies within the boxes of its bones, each the bone's place out by the reach along the rows of its basis. The root moves with the body:
+// the engine keeps its last for the motion vectors (MultiMesh), which a texture of bones alone never gives (Prender-284).
 void BodyRenderer::write_bones(Body &b, const Transform3D *bones) {
 	float *out = reinterpret_cast<float *>(rows_.ptrw()) + size_t(b.slot) * size_t(bones_) * FLOATS_A_BONE;
 	const float reach = asset_->variations[size_t(b.variation)].reach;
+	const Transform3D &stem = bones[b.root_bone];
+	b.root = Transform3D(stem.basis.orthonormalized(), stem.origin);
+	const Transform3D to_root = b.root.affine_inverse();
 	for (int i = 0; i < bones_; i++, out += FLOATS_A_BONE) {
 		const Transform3D &t = bones[i];
 		const Vector3 half = Vector3(t.basis.rows[0].length(), t.basis.rows[1].length(), t.basis.rows[2].length()) * reach;
 		const AABB bone(t.origin - half, half * 2.f);
 		b.box = i == 0 ? bone : b.box.merge(bone);
+		const Transform3D local = to_root * t;
 		for (int r = 0; r < TEXELS_A_BONE; r++) {
-			out[r * FLOATS_A_TEXEL] = t.basis.rows[r].x;
-			out[r * FLOATS_A_TEXEL + 1] = t.basis.rows[r].y;
-			out[r * FLOATS_A_TEXEL + 2] = t.basis.rows[r].z;
-			out[r * FLOATS_A_TEXEL + 3] = t.origin[r];
+			out[r * FLOATS_A_TEXEL] = local.basis.rows[r].x;
+			out[r * FLOATS_A_TEXEL + 1] = local.basis.rows[r].y;
+			out[r * FLOATS_A_TEXEL + 2] = local.basis.rows[r].z;
+			out[r * FLOATS_A_TEXEL + 3] = local.origin[r];
 		}
 	}
 	rows_dirty_ = true;
@@ -209,7 +225,8 @@ void BodyRenderer::lay_out() {
 	std::vector<int> shown(layers_.size(), 0);
 	for (const Body &b : bodies_) {
 		MmLayer &l = layers_[size_t(b.variation)];
-		l.put(shown[size_t(b.variation)]++, AXIS_X, AXIS_Y, AXIS_Z, Vector3(), float(b.variation), float(b.slot), 0.f, b.charred ? CHARRED_MARK : 0.f);
+		l.put(shown[size_t(b.variation)]++, b.root.basis.get_column(0), b.root.basis.get_column(1), b.root.basis.get_column(2), b.root.origin, float(b.variation),
+				float(b.slot), 0.f, b.charred ? CHARRED_MARK : 0.f);
 	}
 	bound_layers();
 	for (size_t v = 0; v < layers_.size(); v++) {
@@ -267,10 +284,9 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground, float hard_ms
 		bodies_.erase(gone, bodies_.end());
 		layers_dirty_ = true;
 	}
-	if (layers_dirty_) lay_out();
+	if (!layers_dirty_ && !rows_dirty_) return;
+	lay_out(); // the bodies came, went or moved: the instances' roots (the motion vectors') and the boxes follow
 	if (!rows_dirty_) return;
-	bound_layers(); // the bones moved: the boxes follow
-	for (MmLayer &l : layers_) l.send_bounds();
 	RenderingServer::get_singleton()->texture_2d_update(texture_, Image::create_from_data(bones_ * TEXELS_A_BONE, MOST_BODIES, false, Image::FORMAT_RGBAF, rows_), 0);
 	rows_dirty_ = false;
 }

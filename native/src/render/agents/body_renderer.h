@@ -1,5 +1,6 @@
 // The people a blow or a bullet took off their feet, drawn as themselves: the cooked body of the walker, near level, its bones carried by a ragdoll
-// (ragdoll.h). A row of a float texture per body holds its bones as bind -> world rows (people_look.gdshaderinc BODY), written only while it moves.
+// (ragdoll.h). A row of a float texture per body holds its bones as bind -> root rows (people_look.gdshaderinc BODY), written only while it moves;
+// its instance's transform is that root, its root bone's frame, so the engine's motion vectors carry the body's fall (TAA, FSR2 read them).
 // One body a casualty: struck again while down, the body that fell takes the blow (strike).
 #pragma once
 
@@ -90,8 +91,11 @@ private:
 		uint32_t lost = 0, bleeds = 0;
 		bool charred = false;
 		godot::AABB box; // where its skin lies now: each bone's place, out by the variation's reach along the bone's axes
+		int root_bone = 0; // the bone its root follows: the torso's, a limb torn off's first part's (root_bone_of)
+		godot::Transform3D root; // that bone's frame, orthonormal: its instance's transform, its rows relative to it (write_bones)
 	};
 	void make_ready();
+	int root_bone_of(uint32_t piece) const; // the first bone of the torso, or of the first part of a limb torn off (`piece`)
 	// A row of the texture for a new body; full, the oldest limb torn off goes, else the oldest of those who will not get up (none of
 	// `keep`, the family it joins): the dead the simulation keeps (blast.shot dead_kept, under the rows) keep their bodies.
 	int take_slot(uint32_t keep);
