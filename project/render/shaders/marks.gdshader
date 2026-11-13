@@ -25,6 +25,7 @@ uniform float lie_above_m = 0.05; // data/render/materials.json marks.params: a 
 uniform float flat_least = 0.5; // the least upward share of a surface's normal a pool lies on: steeper is a face
 
 const float WOB_HALF = 0.11; // how far a mark's outline wobbles either way of a circle, a share of its radius
+const float SQRT2 = 1.41421356;
 
 varying flat float v_kind;
 varying flat float v_seed;
@@ -60,10 +61,23 @@ float hash21(vec2 p) {
 	return fract(p.x * p.y);
 }
 
-float vnoise(vec2 p) {
+// A unit gradient at a lattice point, its direction from the hash.
+vec2 lattice_gradient(vec2 i) {
+	float turn = TAU * hash21(i);
+	return vec2(cos(turn), sin(turn));
+}
+
+// Gradient noise (Perlin 1985; the quintic fade of Perlin 2002), 0 to 1: random gradients interpolated, not random values. Value noise
+// on a square lattice, faded flat across each lattice line, gave the marks blocks with straight edges along the world's axes (The Book
+// of Shaders, ch. 11: value noise "tends to look blocky"). Two dimensions reach +-sqrt(2)/2 before the scale to 0..1.
+float gnoise(vec2 p) {
 	vec2 i = floor(p), f = fract(p);
-	f = f * f * (3.0 - 2.0 * f);
-	return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x), mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x), f.y);
+	vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+	float a = dot(lattice_gradient(i), f);
+	float b = dot(lattice_gradient(i + vec2(1.0, 0.0)), f - vec2(1.0, 0.0));
+	float c = dot(lattice_gradient(i + vec2(0.0, 1.0)), f - vec2(0.0, 1.0));
+	float d = dot(lattice_gradient(i + vec2(1.0, 1.0)), f - vec2(1.0, 1.0));
+	return 0.5 + 0.5 * SQRT2 * mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
 void fragment() {
@@ -82,18 +96,18 @@ void fragment() {
 	float k = v_kind;
 	vec3 c = vec3(0.0);
 	float a = 0.0;
-	float wob = 1.0 + 2.0 * WOB_HALF * (vnoise(q * 3.0 + v_seed * 17.0) - 0.5);
+	float wob = 1.0 + 2.0 * WOB_HALF * (gnoise(q * 3.0 + v_seed * 17.0) - 0.5);
 	float rn = r * (1.0 + WOB_HALF) / wob; // the outline wobbles inwards only: at its farthest it meets the square's edge, never cut by it
 	if (k < 1.5) { // crater: scorch spreading out, the hole, its lip, grit and (in paving) cracks
 		bool hard = k < 0.5;
 		int base = hard ? 0 : 4;
 		vec3 lip_c = crater_rad[base + 3];
-		float scorch = (1.0 - smoothstep(0.35, 1.0, rn)) * 0.55 * (0.6 + 0.4 * vnoise(q * 6.0 + v_seed));
+		float scorch = (1.0 - smoothstep(0.35, 1.0, rn)) * 0.55 * (0.6 + 0.4 * gnoise(q * 6.0 + v_seed));
 		float hole = 1.0 - smoothstep(0.5, 0.56, rn);
 		float lip = smoothstep(0.42, 0.52, rn) * (1.0 - smoothstep(0.56, 0.62, rn));
 		float tt = clamp(rn / 0.58, 0.0, 1.0); // the hole's gradient: centre, then mid at 0.7 of the way, then the rim
 		vec3 inner = tt < 0.7 ? mix(crater_rad[base], crater_rad[base + 1], tt / 0.7) : mix(crater_rad[base + 1], crater_rad[base + 2], (tt - 0.7) / 0.3);
-		float grit = step(0.72, vnoise(q * 22.0 + v_seed * 5.0)) * smoothstep(1.0, 0.3, rn) * 0.7;
+		float grit = step(0.72, gnoise(q * 22.0 + v_seed * 5.0)) * (1.0 - smoothstep(0.3, 1.0, rn)) * 0.7;
 		c = soot_color;
 		a = scorch;
 		c = mix(c, inner, hole);
@@ -104,12 +118,12 @@ void fragment() {
 		a = max(a, grit * 0.8);
 		if (hard) { // cracks running out through the paving
 			float ang = atan(q.y, q.x);
-			float crack = smoothstep(0.06, 0.0, abs(sin(ang * 5.5 + v_seed * 9.0 + 2.0 * vnoise(vec2(ang * 3.0, v_seed)))) * rn - 0.02) * smoothstep(0.5, 0.58, rn) * (1.0 - smoothstep(0.78, 1.0, rn));
+			float crack = (1.0 - smoothstep(0.0, 0.06, abs(sin(ang * 5.5 + v_seed * 9.0 + 2.0 * gnoise(vec2(ang * 3.0, v_seed)))) * rn - 0.02)) * smoothstep(0.5, 0.58, rn) * (1.0 - smoothstep(0.78, 1.0, rn));
 			c = mix(c, vec3(0.012), crack);
 			a = max(a, crack * 0.85);
 		}
 	} else if (k < 2.5) { // soot: soft dark blots
-		float n = vnoise(q * 4.0 + v_seed * 11.0);
+		float n = gnoise(q * 4.0 + v_seed * 11.0);
 		a = (1.0 - smoothstep(0.1, 1.0, rn)) * (0.25 + 0.4 * n);
 		c = soot_color;
 	} else if (k < 3.5) { // a pool that spreads
@@ -119,11 +133,11 @@ void fragment() {
 		a = blob * 0.97;
 	} else if (k < 4.5) { // a splat: a core and drops thrown out of it
 		float core = 1.0 - smoothstep(0.2, 0.3, rn);
-		float drops = step(0.78, vnoise(q * 14.0 + v_seed * 7.0)) * (1.0 - smoothstep(0.35, 0.95, rn));
+		float drops = step(0.78, gnoise(q * 14.0 + v_seed * 7.0)) * (1.0 - smoothstep(0.35, 0.95, rn));
 		a = max(core, drops) * 0.95;
 		c = blood_deep;
 	} else if (k < 5.5) { // a few drops
-		float drops = step(0.7, vnoise(q * 9.0 + v_seed * 3.0)) * (1.0 - smoothstep(0.1, 0.9, rn));
+		float drops = step(0.7, gnoise(q * 9.0 + v_seed * 3.0)) * (1.0 - smoothstep(0.1, 0.9, rn));
 		a = drops * 0.95;
 		c = blood_deep;
 	} else { // the shock ring: a bright thin ring racing out
