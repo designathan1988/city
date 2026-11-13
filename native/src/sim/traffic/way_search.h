@@ -16,9 +16,9 @@
 namespace city {
 namespace traffic {
 
-// What the steps of a yard's planning cost, in units of work. A unit is the time of writing CELLS_PER_WORK cells of a grid: 0.048 µs on
-// the planner's bench (tests/core/yard_bench, 2026-11-05), a row of a yard's street cells. Each step is charged what it measured there
-// in that unit, so a tick's budget bounds its time; the work is still counted, never timed: the same map gives the same plan on the
+// What the steps of a yard's planning cost, in units of work. A unit is the time of writing CELLS_PER_WORK cells of a grid: 0.048 µs
+// measured on 2026-11-05 on a bench of the planner since removed (git keeps it before commit 18782f55), a row of a yard's street cells. Each
+// step is charged what it measured there in that unit, so a tick's budget bounds its time; the work is still counted, never timed: the same map gives the same plan on the
 // same tick. Nothing a step does is left uncharged, and no step is bigger than a few of them: a yard's grid, its clearance and a
 // distance map are laid a row at a time.
 constexpr int CELLS_PER_WORK = 64;

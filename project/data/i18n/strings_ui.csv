@@ -221,7 +221,7 @@ lab.sweep,Medir todas as chaves,Measure every switch
 fx.tab.cpu,CPU,CPU
 lab.cpu.title,Últimos %d quadros,Last %d frames
 lab.cpu.row,"%.2f ms, p95 %.2f, pior %.2f, %d%%","%.2f ms, p95 %.2f, worst %.2f, %d%%"
-lab.cpu.note,Por zona do quadro. Por função: tools/analysis/sampler.py.,By zone of the frame. By function: tools/analysis/sampler.py.
+lab.cpu.note,Por zona do quadro.,By zone of the frame.
 lab.core.draw,Desenho do motor,The engine's drawing
 lab.core.setup,Preparo do quadro,Frame setup
 lab.capture.title,Quadro por camada,The frame by layer

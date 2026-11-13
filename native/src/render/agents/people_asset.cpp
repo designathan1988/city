@@ -1,5 +1,7 @@
-// Reads project/assets/people/people.bin (layout in tools/assets/cook_people.py) into ArrayMeshes and the palette texture, and atlas.bin
-// into the array of atlases. The file is checked end to end: a short or inconsistent file is refused with a message.
+// Reads project/assets/people/people.bin into ArrayMeshes and the palette texture, and atlas.bin into the array of atlases. The
+// files' layout is what this reader reads, in its order (load: the header, the clips, the far card, each variation, its meshes,
+// the palette, the face table, the ragdoll), little-endian. The file is checked end to end: a short or inconsistent file is refused
+// with a message.
 #include "render/agents/people_asset.h"
 
 #include "core/bytes.h"
@@ -36,8 +38,9 @@ constexpr int BYTE_MAX = 255, BYTE_BITS = 8, CHANNELS = 4;
 // What one vertex takes in the file (read_mesh): position, normal, colour, bone bytes, weight bytes, uv, face row.
 constexpr size_t VERTEX_BYTES = 6 * sizeof(float) + sizeof(uint32_t) + 2 * CHANNELS + 2 * sizeof(float) + sizeof(uint32_t);
 constexpr float SRGB_GAMMA = 2.2f;
-constexpr float BYTE_STEPS = 256.f, FIXED_MOST = 65535.f, PALETTE_SPAN = 3.f; // cook_people.py fixed_point, PALETTE_SPAN
-constexpr int TEXELS_PER_VALUE = 2; // the palette comes as it is drawn (cook_people.py fixed_point, decoded in people.gdshader)
+// A palette value is a 16-bit fixed point over -PALETTE_SPAN .. PALETTE_SPAN (people_pose.gdshaderinc BODY_SPAN, the same span)
+constexpr float BYTE_STEPS = 256.f, FIXED_MOST = 65535.f, PALETTE_SPAN = 3.f;
+constexpr int TEXELS_PER_VALUE = 2; // the palette comes as it is drawn: a value's high bytes in a texel, its low bytes in the next
 constexpr float CARD_HALF = 0.5f;
 
 // Float textures are not sampled reliably in the Compatibility renderer (Godot may fall back to 8 bits and clamp), so
@@ -217,7 +220,7 @@ void PeopleAsset::clip_rows(int variation, int clip_index, int frame, float *row
 	ERR_FAIL_COND_MSG(frame < 0 || frame >= posed_frames[size_t(clip_index)], "people: a clip's frame asked on the CPU that the asset does not keep (POSED_CLIPS)");
 	const uint8_t *from = posed_bytes.data() + (size_t(posed_at[size_t(clip_index)] + frame) * variations.size() + size_t(variation)) * line;
 	for (size_t t = 0; t < values; t++)
-		for (size_t c = 0; c < RGBA; c++) { // cook_people.py fixed_point: high bytes in a texel, low bytes in the next
+		for (size_t c = 0; c < RGBA; c++) { // the palette's fixed point: high bytes in a texel, low bytes in the next
 			const float fixed = float(from[t * TEXELS_PER_VALUE * RGBA + c]) * BYTE_STEPS + float(from[(t * TEXELS_PER_VALUE + 1) * RGBA + c]);
 			rows[t * RGBA + c] = fixed / FIXED_MOST * 2.f * PALETTE_SPAN - PALETTE_SPAN;
 		}

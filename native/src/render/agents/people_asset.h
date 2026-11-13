@@ -1,5 +1,5 @@
-// The cast (project/assets/people/people.bin and atlas.bin, made by tools/assets/cook_people.py and compress_atlas.gd from Roadcraft's
-// MakeHuman CC0 people on the Rocketbox MIT skeleton): per body and level an ArrayMesh in the bind pose (metres, +Z forward, feet at
+// The cast (project/assets/people/people.bin and atlas.bin, MakeHuman CC0 people on the Rocketbox MIT skeleton, provenance in
+// project/assets/people/LICENSES.json; the atlases compressed by tools/assets/compress_atlas.gd): per body and level an ArrayMesh in the bind pose (metres, +Z forward, feet at
 // y = 0) whose bone attributes carry four bone indices and their weights (summing to 1), UV = where in the body's atlas, UV2 = (region,
 // roughness), COLOR = the vertex's own colour over the atlas; the atlases as one array, a layer a body; the clips as a palette texture
 // (3 RGBA texels per bone and frame = the rows of the 3x4 bind -> pose matrix) that render/shaders/people.gdshader skins with; and a

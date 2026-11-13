@@ -1,4 +1,4 @@
-// A material of a signature building (tools/assets/cook_signatures.py): a colour, a picture over it, how it reflects. Both signature shaders read it.
+// A material of a signature building (project/assets/lots/materials.sig, render/buildings/signature_bodies.cpp): a colour, a picture over it, how it reflects. Both signature shaders read it.
 global uniform float night;
 global uniform float rooms_awake; // the share of people awake this hour (daylight.gd)
 global uniform float building_night_windows; // the Effects panel: 0 puts the lit rooms out
@@ -14,10 +14,10 @@ uniform float metallic = 0.0;
 uniform vec3 emission : source_color = vec3(0.0);
 uniform float alpha_cut = 0.0;
 uniform bool two_sided = false;
-uniform bool windows = false; // all of it glass, its uv in metres with one cell a pane (cook_signatures.py rooms_in_uv), or
+uniform bool windows = false; // all of it glass, its uv in metres with one cell a pane (a small pane a room of its own), or
 uniform bool painted_windows = false; // the alpha of its picture says what is glass, one bay and one storey to the cell
 
-const float GLASS_CELL_M = 3.2; // cook_signatures.py ROOM_M
+const float GLASS_CELL_M = 3.2; // the room the designs' glass uv was laid out for, in metres
 const float ROOM_GLOW = 0.62; // window_glow of the plain buildings (materials.json)
 
 // What the room behind a cell gives at night, by the rule of the plain buildings (building_lamps.gdshaderinc: the share lit of those

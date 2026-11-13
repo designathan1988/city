@@ -14,8 +14,11 @@
 
 namespace city {
 
-constexpr int RAGDOLL_JOINTS = 18; // the particles on a bone, in cook_people.py RAGDOLL_JOINTS order
-constexpr int RAGDOLL_PARTS = 13; // in cook_people.py RAGDOLL_PARTS order
+// The particles on a bone, in people.bin's order (its ragdoll block): pelvis, upper spine, neck, head, then the left arm (upper arm,
+// forearm, hand), the right arm, the left leg (thigh, calf, foot, toe) and the right leg
+constexpr int RAGDOLL_JOINTS = 18;
+// The parts, in people.bin's order: torso, neck, head, the upper arm and forearm left then right, the thigh, calf and foot left then right
+constexpr int RAGDOLL_PARTS = 13;
 
 // A wall of a building a body can strike: a box of the lot's frame, up to `top`.
 struct BodyWall {

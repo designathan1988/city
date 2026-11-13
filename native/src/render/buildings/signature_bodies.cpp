@@ -1,5 +1,5 @@
-// The cooked designs of signature buildings as meshes and instances (signature_bodies.h). Layout of a design: tools/assets/cook_signatures.py;
-// of the looks: tools/assets/pack_signature_looks.py.
+// The cooked designs of signature buildings as meshes and instances (signature_bodies.h). Layout of a design (<name>.sig): what this
+// file reads, in its order; of the looks (materials.sig): tools/assets/pack_signature_looks.py.
 #include "render/buildings/signature_bodies.h"
 
 #include "render/mesh_levels.h"

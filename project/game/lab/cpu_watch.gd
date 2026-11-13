@@ -1,4 +1,4 @@
-## The CPU tab of the F7 panel (the 4.0's CPU profile, by the core's zones and not by function: tools/analysis/sampler.py reads the functions): a window of
+## The CPU tab of the F7 panel (the 4.0's CPU profile, by the core's zones and not by function): a window of
 ## frames of what each zone of the frame took, the mean, the tail and the worst, since a single frame says nothing of what a frame usually costs.
 class_name CpuWatch
 extends RefCounted

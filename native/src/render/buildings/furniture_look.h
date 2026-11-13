@@ -1,5 +1,5 @@
-// What each piece of furniture is made of, part by part, read from data/render/furniture.json (tools/assets/make_furniture.py
-// writes it): the palette (finish and colour of each name) and a model per kind of furniture, built at the size of its row
+// What each piece of furniture is made of, part by part, read from data/render/furniture.json (its schema:
+// tools/gates/schemas/furniture.schema.json): the palette (finish and colour of each name) and a model per kind of furniture, built at the size of its row
 // in interiors.json and scaled to the piece placed (render/buildings/furniture_emit.cpp).
 #pragma once
 

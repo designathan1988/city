@@ -1,11 +1,11 @@
 // A person's face this instant (faceExpression.ts faceAt), worked out on the GPU from what the instance already says: its seed, the clock, what it is
-// doing and whether it is frightened. Only the near mesh's face vertices carry a row of face_table (tools/assets/cook_people.py): where each moves, by
-// channel; no other vertex pays for any of it.
+// doing and whether it is frightened. Only the near mesh's face vertices carry a row of face_table (people.bin's face block, read by
+// render/agents/people_asset.cpp): where each moves, by channel; no other vertex pays for any of it.
 uniform sampler2D face_table : filter_nearest, repeat_disable;
 uniform int act_face[24]; // by clip: what the face does at it (people_renderer.cpp FACE_ACTS)
 uniform float body_mood[32]; // by variation: -1 low .. 1 bright (cast.json)
 
-const float FACE_ROW_STEP = 4.0; // cook_people.py: UV2.x is the region plus this many a row
+const float FACE_ROW_STEP = 4.0; // people_asset.cpp FACE_ROW_STEP: UV2.x is the region plus this many a row
 const int FACE_CHANNELS = 13;
 const int FACE_SPAN = 8; // rows side by side in the table
 const int BLINK = 0, JOY = 1, SADNESS = 2, ANGER = 3, SURPRISE = 4, BROW_RAISE = 5, OPEN = 6, ROUND = 7, PUCKERED = 8, SPREAD = 9, SHUT = 10, LOOK_LEFT = 11, LOOK_RIGHT = 12;

@@ -16,7 +16,7 @@ uniform int body_female[32];
 
 const int TEXELS = 3;
 const float BYTE = 255.0;
-const float BODY_SPAN = 3.0; // cook_people.py PALETTE_SPAN
+const float BODY_SPAN = 3.0; // people_asset.cpp PALETTE_SPAN: the span of the palette's fixed point
 const float IDLE_SPREAD = 0.61803; // each person in another place of the clip (the golden ratio spreads whole numbers evenly)
 const float CLIP_CODE_BASE = 2.0; // people_renderer.cpp: an alpha from here on is a clip, held at the phase in INSTANCE_CUSTOM.a
 const float ACT_SPAN = 0.96; // people_renderer.cpp: the whole of an act, short of the next clip's number

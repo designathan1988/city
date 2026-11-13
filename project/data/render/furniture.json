@@ -1,5 +1,5 @@
 {
- "_doc": "What each piece of furniture is made of, part by part, for the cut-open view of a building (tools/assets/make_furniture.py writes it from the sizes of interiors.json). A part is [shape, size, place, colour, options]; see the script for the shapes and options.",
+ "_doc": "What each piece of furniture is made of, part by part, for the cut-open view of a building, each model at the size of its row in interiors.json \"sizes\" and scaled to the piece placed. A part is [shape, size, place, colour, options]: [\"box\", [across, up, deep], [centre x, bottom y, centre z]], [\"cyl\", [radius, height, radius at top], [centre x, bottom y, centre z]] or [\"ball\", [radius], [centre x, centre y, centre z]]; x across (right of the piece), y up, z towards the front. Options: n copies each moved by step and grown by grow, spin copies turned about the up axis, colours cycled one per copy.",
  "palette": {
   "oak": ["wood", "#9a6a43"],
   "walnut": ["wood", "#5e3d26"],

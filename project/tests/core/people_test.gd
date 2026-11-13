@@ -96,7 +96,7 @@ func _frames(n: int) -> void:
 		await get_tree().process_frame
 
 
-## The clips of people in vehicles (tools/assets/rider_poses.py): every one in the file, in the block, and a body seated in it.
+## The clips of people in vehicles (people.bin's clips): every one in the file, in the block, and a body seated in it.
 func _clips() -> void:
 	var clips: Array = CityStore.query(&"people_clips")
 	var named := {}

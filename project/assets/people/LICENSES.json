@@ -1,5 +1,5 @@
 {
- "_doc": "Provenance of people.bin and atlas.bin (made by tools/assets/cook_people.py from Roadcraft public/models/citizens/people).",
+ "_doc": "Provenance of people.bin and atlas.bin (cooked from Roadcraft public/models/citizens/people; the cook left the tree on 2026-11-12, git keeps it before commit 18782f55).",
  "makehuman": {
   "what": "bodies, clothes, hair, shoes and their textures (MakeHuman hm08 base mesh, MPFB2 system assets)",
   "source": "https://github.com/makehumancommunity/mpfb2 @ afb9f530a7c2741dedb8df0ebae2e0b183caec21",
