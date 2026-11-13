@@ -94,7 +94,7 @@ void read_kerb(CityState &s, int seg) {
 	const LaneGraph &g = s.traffic.g;
 	for (const KerbStretch &st : k.bays) {
 		// a parked car faces the way the traffic beside it goes (CTB art. 48)
-		const int dir = st.side == s.catalog.traffic.drive_side ? 0 : 1, ds = seg * 2 + (g.ds[size_t(seg) * 2 + dir].ok ? dir : 1 - dir);
+		const int dir = st.side == s.catalog.traffic.traffic_hand ? 0 : 1, ds = seg * 2 + (g.ds[size_t(seg) * 2 + dir].ok ? dir : 1 - dir);
 		Pose at;
 		seg_point(s, seg, float((st.v0 + st.v1) * 0.5), (st.u_kerb + st.u_inner) * 0.5f, at);
 		const float way = ds == seg * 2 ? 1.f : -1.f;

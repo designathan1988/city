@@ -46,7 +46,7 @@ bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out, YardReads *rea
 		r.q.at(t, x, z);
 		r.q.deriv(t, dx, dz);
 		// the lot on the kerb side of the way it drives; on a one-way street, whichever kerb the lot is on
-		const int side = (dz * (gate.x - x) - dx * (gate.y - z) > 0 ? 1 : 0) ^ p.drive_side;
+		const int side = (dz * (gate.x - x) - dx * (gate.y - z) > 0 ? 1 : 0) ^ p.traffic_hand;
 		int ds = seg * 2 + side;
 		int lane = 0;
 		if (!g.ds[size_t(ds)].ok) {

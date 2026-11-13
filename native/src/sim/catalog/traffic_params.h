@@ -99,7 +99,7 @@ struct TrafficParams {
 	float people_busy[PLACE_KINDS * HOURS] = {}; // how busy each kind is at each hour, 0..1
 	float people_working[HOURS] = {}, people_purchasing[HOURS] = {}; // percent of everybody, at each hour
 	float zone_kinds[BASE_ZONES * PLACE_KINDS] = {}; // what each base zone's land is
-	int drive_side = 0; // the side of the road traffic keeps to, in the road's side numbers (0 right): the style's
+	int traffic_hand = 0; // the side of the road traffic keeps to, in the road's side numbers (0 right): the style's
 };
 
 } // namespace city
