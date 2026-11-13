@@ -40,6 +40,7 @@
    {"path": "dist/build-pgo", "owner": "tools/build/pgo.sh", "whole_mb": 2048},
    {"path": "dist/lab_scan.json", "owner": "tools/gates/lab_scan.py", "whole_mb": 16},
    {"path": "dist/audit", "owner": "tools/audit/cli.py", "keep": 4},
+   {"path": "dist/hunt", "owner": "tools/hunt/hunt.py", "whole_mb": 64},
    {"path": "dist/promo", "owner": "the promo recording (log/history/process.md)", "keep": 2},
    {"path": "dist/arch", "owner": "tools/analysis/arch", "migrating": "specification 001 US7 (T095) retires tools/analysis and its output with it"},
    {"path": "dist/trace", "owner": "tools/atlas/migrate.py (the trace-fix skill that wrote it was removed on 2026-11-12)", "migrating": "specification 001 US3 (T050) moves what open problems name to dist/evidence and removes the folder"}

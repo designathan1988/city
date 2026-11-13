@@ -1,6 +1,6 @@
 # Feature Specification: Generic defect finder
 
-**Feature Branch**: `main` (work on main, CLAUDE.md [c:main-direct])
+**Feature Branch**: `main` (work on main, CLAUDE.md `[c:main-direct]`)
 
 **Created**: 2026-11-12
 
