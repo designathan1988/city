@@ -7,17 +7,76 @@ extends RefCounted
 const WALKERS_READ := 4096
 const RIGHT_ANGLE := 90.0 # a plan's bearing runs from +x towards +z, the rig's from +z towards +x
 const STAND_FRAMES := 2 # the frames the world takes to ask for what the new view shows
+const BUILDING_REACH_M := 60.0 # how far round the point setViewNear looks for a building: a town block and its streets
+## The street furniture's kinds as the core numbers them (native/src/sim/catalog/furniture_types.h, FurnitureKind).
+const FURNITURE := {"lamp": 1, "pole": 11, "sign": 12}
+## A pole carries wires: a utility pole, or a lamp of a street's main row, whose poles are wired (sim/roads/street_furniture.h, row).
+const WIRED_ROW := 0
 
 
-## `view` is the setView's zoom, azimuth and elevation.
+## `view` is the setView's zoom, azimuth and elevation: the walker nearest the map's middle.
 static func stand_on_walker(rig: CityCamera, ui: UiDriver, view: Array) -> void:
+	await stand_near(rig, ui, ["walker", 0.0, 0.0, view[0], view[1], view[2]])
+
+
+## setViewNear [kind, x, y, zoom, azimuth, elevation]: the plan's view of the element of `kind` nearest (x, y) (y is the map's north, -z),
+## found by the core: "walker" or "vehicle" (shot_targets, the clock stopped so it stays in the frame, a fallen walker skipped);
+## "lamp", "pole" or "sign" (the street furniture of the street under the vehicle nearest the point: furniture_spots of segment_at, the
+## player's own pole runs too for "pole"; a plan runs the clock first so traffic is out); "building" (the tallest within
+## BUILDING_REACH_M, CityCore.highest_roof, aimed at its foot). False, said, with none of that kind there.
+static func stand_near(rig: CityCamera, ui: UiDriver, args: Array) -> bool:
+	var kind := str(args[0])
+	var from := Vector2(float(args[1]), -float(args[2]))
+	var found := _nearest(kind, from)
+	if found == Vector3.INF:
+		print("FAIL no %s near %s" % [kind, [args[1], args[2]]])
+		return false
+	print("%s at %s" % [kind, found])
+	await stand(rig, ui, found, [args[3], args[4], args[5]])
+	return true
+
+
+## Where the element of `kind` nearest `from` (x, z) stands, or Vector3.INF.
+static func _nearest(kind: String, from: Vector2) -> Vector3:
+	var points: Array = []
+	match kind:
+		"lamp", "pole", "sign":
+			points = _street_furniture(kind, from)
+		"walker", "vehicle":
+			CityStore.dispatch(&"set_speed", [0])
+			for t: Dictionary in CityStore.query(&"shot_targets", [WALKERS_READ])[kind + "s"]:
+				if not t.get("fallen", false):
+					points.push_back(t.position)
+		"building":
+			var roof: Dictionary = CityStore.query(&"highest_roof", [from.x, from.y, BUILDING_REACH_M])
+			if roof.get("hit", false):
+				points.push_back(Vector3(roof.position.x, 0.0, roof.position.z)) # its foot: the rig stands on the ground there
+	return _closest(points, from)
+
+
+## The furniture of `kind` on the first street that has it, of the streets under the vehicles from the nearest to `from` outwards
+## (and, for poles, the player's pole runs).
+static func _street_furniture(kind: String, from: Vector2) -> Array:
+	var points: Array = Array(CityStore.query(&"street_poles")) if kind == "pole" else []
 	CityStore.dispatch(&"set_speed", [0])
+	var cars: Array = CityStore.query(&"shot_targets", [WALKERS_READ]).vehicles.map(func(v: Dictionary) -> Vector3: return v.position)
+	cars.sort_custom(func(a: Vector3, b: Vector3) -> bool: return Vector2(a.x, a.z).distance_squared_to(from) < Vector2(b.x, b.z).distance_squared_to(from))
+	for car: Vector3 in cars:
+		var under: Dictionary = CityStore.query(&"segment_at", [car])
+		for spot: Dictionary in CityStore.query(&"furniture_spots", [int(under.get("seg", -1))]):
+			if int(spot.kind) == FURNITURE[kind] or (kind == "pole" and int(spot.kind) == FURNITURE.lamp and int(spot.row) == WIRED_ROW):
+				points.push_back(spot.position)
+		if not points.is_empty():
+			return points
+	return points
+
+
+static func _closest(points: Array, from: Vector2) -> Vector3:
 	var best := Vector3.INF
-	for w: Dictionary in CityStore.query(&"shot_targets", [WALKERS_READ]).walkers:
-		if not w.fallen and Vector2(w.position.x, w.position.z).length() < Vector2(best.x, best.z).length():
-			best = w.position
-	print("walker at ", best)
-	await stand(rig, ui, best, view)
+	for p: Vector3 in points:
+		if best == Vector3.INF or Vector2(p.x, p.z).distance_squared_to(from) < Vector2(best.x, best.z).distance_squared_to(from):
+			best = p
+	return best
 
 
 ## setViewRoof [x, y, radius, zoom, azimuth, elevation]: the plan's view of the highest roof within `radius` metres of (x, y) (y is the map's
