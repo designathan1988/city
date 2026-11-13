@@ -399,3 +399,21 @@ the residential ring (r > 350 m on the town map).
   owner's order); the photos planned from the change; the tracer's use summarised from `tools/tracer/trace.py` and its modules'
   own words; the skill `city-method`'s check step brought to the same rule.
 
+## 2026-11-13: how a feature is brought from the reference (the owner's order)
+
+- **The order**: CLAUDE.md and the skill must say how a feature of the old game is brought here without copying it and without
+  its problems: why its code cannot come (it works, simulation and values right, but is slow and heavy in memory, CPU and GPU from
+  causes not known in its code), the tracer used to compare both games, then every file the trace reached read whole and written
+  down as it is read (the hour, what it does, its faults) so a compaction loses nothing, then the code, the checks in seconds, the
+  photos analysed, and the next feature.
+- **Done**: CLAUDE.md gains "Bringing a feature from the reference" (the why, the order in seven steps, the faults never brought
+  in); the tracer's section joined to fit 200 lines; the photo protocol's defect list left to the skill. `city-method`: the work
+  file's Read records each file with the hour, its rules, values and faults; section 3 gains item 4 (read whole every file the
+  trace reached, in both games), item 8 the concrete list of the reference's faults (from its own reports, read whole by a reader
+  agent: `ARQUITETURA.md`, `docs-optimization-brief.md`, `reports/why-10km-cities-fail-2026-10-26.md`, `reports/audit-f7/AUDIT.md`,
+  `.whole-review/FINDINGS.md`, `lab-reports/auditoria-2026-10-19.md` and others; three claims checked in the files: the cage
+  report's 422 ms frame, F-0005 every product refreshed each frame, F-0013 every road edit solving the whole map's heights), what
+  worked in earlier ports, and the loop per feature. A skill `bring-feature`, written before the existing one was read, was
+  deleted before any commit; the existing skill holds the method.
+- **Not read by the agent** (a gap for whoever brings a feature in its subject): `reports/polygon-geometry-audit.md` (4,120 lines).
+

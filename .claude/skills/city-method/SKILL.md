@@ -11,7 +11,9 @@ because the owner is in a hurry, is a step skipped. The goal behind every step: 
 ## 0. Memory (now, and after every compaction)
 - `python tools/tasks/cli.py block status`; read every file in `doc/work/` whole; go on from your file's `Next:` line.
 - New task: write `doc/work/<block>.md` first: the owner's goal in his words (English), `State:`, `Next:`, then sections Read,
-  Research, Trace, Look, Plan, Changed, Checks, Photos. Update it after every step and before every long command.
+  Research, Trace, Look, Plan, Changed, Checks, Photos. Update it after every step and before every long command. Each file
+  enters Read the moment its reading ends: `path: 1-N of N`, the hour, what it does (rules, cases, values with `file:line`)
+  and its faults; after a compaction this section, not the summary, says what was read and learnt.
 - Never Claude Code's memory folder. Problems go to the register (`python tools/atlas/cli.py problems add`), not to this file.
 
 ## 1. Read everything involved, whole
@@ -32,11 +34,14 @@ because the owner is in a hurry, is a step skipped. The goal behind every step: 
 ## 3. Trace the feature in both games (before building or fixing anything the reference has)
 What the reference is for: the roadcraft lab, `C:\Users\Jonathan\Documents\Projects\lab\roadcraft` (TypeScript in `src`, the
 game with everything working), shows how the simulation and each element must behave: what happens, when, in which cases, with
-which values, what the player sees. It is read to understand that. Nothing of it is copied: no line, no translation, no
-structure, no name, no data key (the gate LAB_COPY and `python tools/gates/lab_scan.py` find them). The old 4.0 is no reference.
+which values, what the player sees. Everything there works (a simulation is understood far faster from it than from nothing),
+but it is slow and heavy in memory, CPU and GPU, and where in its code that comes from is not known: that is why nothing of it is
+copied: no line, no translation, no structure, no name, no data key (the gate LAB_COPY and `python tools/gates/lab_scan.py` find
+them). It is read whole, understood, its faults named, and its behaviour done here in this game's design. The old 4.0 is no
+reference. One feature is one block, in the order below; when its checks and photos pass, the next feature.
 
-The tool: `python tools/tracer/trace.py` (the owner's tracer, from `C:\Projects\tracer`; its own docs are there, in
-`specs/003-behaviour-from-the-code/spec.md` and `specs/004-evaluate-and-compare/spec.md`, "How to use"). It reads the code and
+The tool: `python tools/tracer/trace.py` (its documentation is in this project: `tools/tracer/trace.py`, its usage and every
+option's help, and the header of each module in `tools/tracer/tracer/`; nothing outside this folder is read). It reads the code and
 never runs it, in TypeScript/JavaScript, GDScript, C++ and shaders (`.gdshader`, `.gdshaderinc`, GLSL), following calls, callbacks
 (bind, signals, events, jobs), calls between languages (GDScript to the C++ the core registers), state (who writes, who reads) and
 messages between threads and workers. It needs Python 3.12 with `tree_sitter`, `z3-solver`, and for TypeScript `npm ci` once in
@@ -54,31 +59,48 @@ cap a question, which then says what it did not answer. `--json` or `--out F` ke
 3. What runs from a start and what reaches it: `trace.py <START> --root ... --depth N` (`--back N` backwards, `--state` with the
    state each step reads, `--exact` without what was found by a name alone). A file reported "outside the code read" that belongs
    to the feature becomes another `--root`; `--gaps` says what cannot be followed and why.
-4. When and how: `trace.py <START> --conditions --root ...` (each effect: when it happens and what it writes, in the start's
+4. Read whole every file the trace reached, in both games, with the Read tool from the first line to the last (about 400 lines
+   a chunk): the trace says which files, never which lines are enough. As each file ends, write it in the work file's Read
+   (section 0): what it does, each rule, case and value with `file:line`, what the player sees, and in the reference its faults
+   by the list of item 8 (each loop and what it goes over, what each turn allocates, whole-map and per-frame work). A file the
+   reading shows the feature needs and the trace missed is a root added and read too.
+5. When and how: `trace.py <START> --conditions --root ...` (each effect: when it happens and what it writes, in the start's
    inputs); `trace.py <START> --cases [NAME] [--range LOW:HIGH] --root ...` (alternatives: a case where none happens, more than one
    at once, a value out of range).
-5. The simulation in concrete situations: `trace.py --evaluate "A;B*3" --given NAME=VALUE --root ...` (or `--situation F.json`,
+6. The simulation in concrete situations: `trace.py --evaluate "A;B*3" --given NAME=VALUE --root ...` (or `--situation F.json`,
    `--repeat N`): what the program produces, with where each value came from; `--why file:line`, `--why-not file:line`. Use it to
    understand how the reference behaves step by step: a car at a red light, a walker at a kerb, a lot on a corner.
-6. Side by side, in the memory file: for each output, the reference's condition, values and cases against this game's. Every
+7. Side by side, in the memory file: for each output, the reference's condition, values and cases against this game's. Every
    value or behaviour one has and the other lacks (a threshold, a size, a count, a case) enters the register and is read on both
    sides, whole. Where both take the same inputs: one map per game (JSON `{"root": "<folder>", "start": "<label>",
    "inputs": {"<input>": "<expression of the shared variables>"}, "given": {...}, "outputs": ["<what is called>", "file:line"]}`),
    then `trace.py --compare ref.json game.json [--shared NAME=VALUE] [--sweep NAME:LOW:HIGH:N]`: the bands where the outputs
    differ, with why on each side. Code not read with a known behaviour: a short model file in one of the languages, put among
    the roots.
-7. What never comes in: `trace.py --cost <ROOT> --root ...` on the reference: every loop, what it goes over and whether that grows
+8. What never comes in: `trace.py --cost <ROOT> --root ...` on the reference: every loop, what it goes over and whether that grows
    with the city, loops inside loops, what each turn makes and calls; the roots that run every frame (`requestAnimationFrame`,
-   `setAnimationLoop`, `onBeforeRender` there; `_process` here). A loop every frame over a collection that grows with the city, a
-   loop inside a loop over growing data, work redone each frame whose inputs do not change, a half-done or faked feature, and
-   everything the reference's own reports name as a problem (`reports/`, `lab-reports/`, `ARQUITETURA.md`,
-   `docs-optimization-brief.md`): never carried over. This game does the same behaviour within its architecture, decided once
-   per chunk or per change, on its own threads, within the budgets.
-8. This game's defects: `trace.py [<START>] --wrong --root ...` (behaviour that contradicts what the program itself states: a
+   `setAnimationLoop`, `onBeforeRender` there; `_process` here). Its own reports name its faults (`ARQUITETURA.md`,
+   `docs-optimization-brief.md`, `reports/why-10km-cities-fail-2026-10-26.md`, `reports/audit-f7/AUDIT.md`,
+   `.whole-review/FINDINGS.md`, `lab-reports/`), and the earlier ports here paid for others; each is looked for in the code read:
+   - whole-map work: the whole map rebuilt on opening and marked all changed, every road edit solving every road's heights
+     again, a second whole-map copy for the simulation, saving the whole map as one string;
+   - records kept as their expanded result instead of their parameters; memory that grows with the area explored, not seen;
+   - work redone each frame on unchanged inputs: every product refreshed, queues re-sorted, keys rebuilt, far blocks chosen
+     again, every shadow caster walked; a container allocated each frame; a profiler or lab code running in the game;
+   - a frame stalled by a large allocation or copy, or by a shader compiled inside it;
+   - detail by block instead of by instance, no far level (a signal at full detail at any distance), work for what is behind
+     the camera; road surfaces made by uniting polygons and triangulating the union (slivers, fans, global rebuilds);
+   - a simulation or its window tied to the camera; generation serial or bound to random streams and insertion order;
+   - allocation or search in a hot loop; quadratic proximity; a JavaScript-shaped runtime (`js::Map`, `js::Set`) in the core;
+   - swallowed errors; a cooked city or a measure on the wrong city presented as the player's; a half-done feature or side path;
+   - its names, data keys, units and numbers taken over; the reference used as a test's oracle.
+   This game does the same behaviour within its architecture, decided once per chunk or per change, on its own threads, within
+   the budgets.
+9. This game's defects: `trace.py [<START>] --wrong --root ...` (behaviour that contradicts what the program itself states: a
    check most peers make and one skips, an invariant one write breaks, gaps and overlaps of alternatives) and `--broken` (state
    never read or never written, events without a listener, data keys missing or unread, uniforms never set or read, code never
    reached). After the fix, `trace.py --versions <old copy> --evaluate <START> --root .` shows what changed, by which line.
-9. Its limits: behaviour no point of the program states is not found; a function handed as a bound callable to a signal is not
+10. Its limits: behaviour no point of the program states is not found; a function handed as a bound callable to a signal is not
    shown reached (Ptools-7) and callers back from a store command are over-listed (Ptools-8): read those links by hand. A tracer
    failure enters the register and is fixed at its cause in `tools/tracer`.
 
@@ -86,6 +108,11 @@ Then the design: the behaviour sheet is the requirement, the code is this game's
 `sim/commands`, advanced only by `sim/simulation`; render only reads; mesh jobs copy under a short shared lock and build
 unlocked; the frame's budgets; values in `project/data` through `DataTables`; one owner per definition. The feature is built
 complete, every case of the sheet, measured against the budgets; never a slice of it and never the reference's shape.
+What worked in earlier ports: the reference read for the rule only; both games traced with `--feature`; values from the primary
+norm (CELESC, CTB/MBST) rather than the reference's numbers; a test or probe that counts the defect before and after; a
+quadratic case replaced with an exact proof; one owner per rule; the check made against this game's own rule.
+The loop per feature: trace and read whole (this section), plan (5), code with nothing run (6), check in seconds (7), photos
+analysed (8); a pass closes it (9) and the next feature begins at item 1.
 
 ## 4. Nothing runs before the code is written
 No test, measurement, photo, script or `hunt.py` before every fix of the block is written: a doubt is settled by reading.

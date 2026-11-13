@@ -37,14 +37,14 @@ lists every file; nothing here is status.
    file and function sizes, magic numbers, English, the reference's names, the map): with the Read tool, from the first line
    to the last, a long file in chunks (`offset` and `limit`, about 400 lines) until its end, each recorded as `path: 1-N of N`.
    A file not read to its last line is not read; `grep`, `cat`, a search, an agent's summary or a path cited in a document
-   only point to the file: the file itself is opened; a search that finds nothing is a failed search. Ask "why" at each link until the design decision that produces the symptom.
-   A problem found on the way enters the register.
+   only point to the file: the file itself is opened; a search that finds nothing is a failed search. Ask "why" at each link
+   until the design decision that produces the symptom. A problem found on the way enters the register.
 2. **Research.** Context7 (`resolve-library-id`, then `query-docs`) before every implementation and fix, the project's own code
    included (each API it calls: Python, GDScript, Godot 4.7.2, godot-cpp, the C++ standard library, Terrain3D, mimalloc,
    meshoptimizer, Clipper2), whatever a tool's own description says: what it guarantees, on which thread, at what cost, its
    known bugs in that version; the vendored source only where Context7 has nothing; never memory. Source, question and answer
    go into the work file.
-3. **Trace** a feature in both games before it is built or fixed (the tracer, below).
+3. **Trace** a feature in both games before it is built or fixed (Bringing a feature from the reference; the tracer).
 4. **Plan** the fix of the cause: the design decision with `file:line`, the fix, its one owner, every file it touches, why the
    symptom cannot return, what else it fixes; whatever its size (a rewrite when the design asks for one).
 5. **Code the whole block with nothing run.** `python tools/tasks/cli.py block open <name>`. A block is every open problem the
@@ -79,11 +79,9 @@ what it must prove; aimed at the changed element's position (found by reading or
 azimuths, street level, oblique and from above, day and night where light is involved, each tier the change touches, movers
 with the clock running; a plan of `project/tests/visual/look.gd` steps as an item of `looks` in `tools/tasks/suites.json`, run
 hidden (`python tools/tasks/cli.py run <name>`), each shot after `{"until": "render_pending", "equals": 0}`. Every photo is
-opened with Read, whole; a photo that missed its subject is retaken; then crops of the element at real size, each looked at for
-every kind of defect by name (missing or extra, broken, deformed, scale, orientation, bodies in one another, floating or sunk,
-holes, the street's seams, textures, colour, light, shadow, detail pops, artefacts, interface text); the analysis written per
-photo with pixel positions, sound and defective alike, judged against what the change must show. A defect, or a photo not
-analysed, fails the block.
+opened with Read, whole (one that missed its subject is retaken), then in crops of the element at real size, each looked at for
+every kind of defect `city-method` names; the analysis written per photo with pixel positions, sound and defective alike,
+judged against what the change must show. A defect, or a photo not analysed, fails the block.
 
 ## Fixing the cause
 - The fix changes the design decision that produces the symptom. It is a patch, and forbidden: changing a timeout,
@@ -93,35 +91,39 @@ analysed, fails the block.
 - Every fix says, with file and line, what the cause is, why the symptom does not come back another way and which other
   symptoms go with it. A cause not proven is "unknown"; never a fake (a stand-in, a test weakened or skipped, a metric
   massaged).
-- **Nothing of the roadcraft is copied, ever**: no line, line-by-line translation, structure, name or data key. The lab
-  (`C:\Users\Jonathan\Documents\Projects\lab\roadcraft\src`, the game with everything working) is read only to learn what the
-  game must do (behaviour, rules, cases, values, what the player sees); the code is this game's own design, checked against that
-  behaviour. Never brought in from it: allocation or search in a hot loop, quadratic proximity, per-frame work that belongs on
-  change, a simulation tied to the camera, a half-done feature. `roadcraft-4.0-main` and the tag `antes-da-volta-2026-11-10`
-  are no reference. Values of the real world come from a cited norm or published method.
+
+## Bringing a feature from the reference
+- The roadcraft lab (`C:\Users\Jonathan\Documents\Projects\lab\roadcraft\src`) works (simulation, rules, cases and values are
+  right) but is slow and heavy in memory, CPU and GPU, from causes not known in its code: so nothing of it is copied (no line,
+  translation, structure, name or data key); its behaviour is learnt and done in this game's design (`roadcraft-4.0-main` and
+  the tag `antes-da-volta-2026-11-10` are no reference).
+- One feature a block, in this order: (1) its outputs found in both games by a Grep for the thing itself; (2) the tracer on
+  each (`--feature`, `START --depth N --state`, the feature's files as roots); (3) every file the trace reached, in both games,
+  read whole, each written in the work file as it is read (`path: 1-N of N`, the hour, its rules, cases and values with
+  `file:line`, what the player sees, its faults); (4) `--cost` on the reference, `--wrong` and `--broken` here; (5) side by
+  side, each difference in the register; (6) the design here, coded whole with nothing run; (7) checks in seconds, photos
+  analysed; a pass, then the next feature.
+- Never brought in (the list in `city-method`): whole-map work on opening, an edit or a frame; records kept expanded; memory
+  growing with the area explored; per-frame work on unchanged inputs; allocation or search in a hot loop; quadratic proximity;
+  a simulation tied to the camera; detail levels per block or missing; big copies or shader compiles in a frame; swallowed
+  errors; half-done features. Values of the real world come from a cited norm or published method.
 
 ## The tracer (`tools/tracer/trace.py`)
-It reads code with each language's grammar (GDScript, C++, TypeScript/JavaScript, shaders) and never runs it. Roots are the
-feature's files only (`--root FILE`, repeated), never a whole game; the entry is found by a Grep for what the feature outputs,
-in the reference's `src` and in this game. A start is a label (`Class.method`), the end of one (`method`) or `path:line`; exit 1
-when the roots hold no code or the start names nothing (`--list` shows every name). Each link says how it was found: exact,
-by text, by name (one step only), ambiguous (too many candidates: not followed); a call no definition answers is "outside the
-code read". The analysis is kept in `tools/tracer/.index` and read back in under a second (`--fresh` redoes it).
-- `trace.py START --depth N`: what runs from it and what reaches it (`--back N`, `--exact`, `--state`: the state each step
-  writes and reads, its owner and its readers); a file reported outside the code read is added as a root.
-- `--feature POINT[,POINT]`: the functionality of outputs (`path:line` or a function): the conditions, state, constants and
-  data that decide them and the roots that set them off.
-- `--conditions` and `--cases [NAME] [--range LOW:HIGH]`: when each effect happens, cases where none or two of the
-  alternatives happen or a value leaves its range. `--wrong`: checks most peers make and one misses, writes breaking an
-  invariant the others keep. `--broken`: state never read or written, events with no handler, data keys missing or unread,
-  uniforms never set. `--cost ROOT`: its loops, their growth, what is made and called each turn. `--gaps`: what cannot be
-  followed and why.
-- `--evaluate "A;B*3" [--given NAME=VALUE] [--why path:line] [--why-not path:line]`: what the code produces in a situation.
-  `--compare MAP MAP`: the reference and this game in the same situation (a map: `{"root", "start", "inputs", "given",
-  "outputs"}`). `--versions OLD_ROOT`: two versions. `--json`, `--html F`, `--dot F` for the output.
-- Use: the trace of the reference says what the feature must do; the trace of this game says what it does; each difference
-  enters the register; `--cost` on the reference says what must not come in; `--wrong` and `--broken` on this game find its
-  defects. A tracer failure is fixed at its cause. Its tests: `python -m unittest discover -s tools/tracer/tests`.
+It reads code with each language's grammar (GDScript, C++, TypeScript/JavaScript, shaders) and never runs it. Roots: the
+feature's files only (`--root FILE`, repeated), never a whole game. A start: a label (`Class.method`), the end of one or
+`path:line` (`--list` names them; exit 1 when the roots hold no code or the start names nothing). Each link says how it was
+found (exact, by text, by name, ambiguous: not followed); a call nothing answers is "outside the code read", and its file, if
+the feature's, becomes a root. The analysis is kept in `tools/tracer/.index` (`--fresh` redoes it). A failure of the tracer is
+fixed at its cause; its tests: `python -m unittest discover -s tools/tracer/tests`.
+- `START --depth N`: what runs from it (`--back N` what reaches it, `--exact`, `--state` the state each step writes and reads).
+- `--feature POINT[,POINT]`: the conditions, state, constants, data and roots that decide outputs (`path:line` or a function).
+- `--conditions`, `--cases [NAME] [--range LOW:HIGH]`: when each effect happens; where none or two alternatives happen or a
+  value leaves its range. `--gaps`: what cannot be followed and why.
+- `--cost ROOT`: its loops, their growth, what each turn makes and calls. `--wrong`: a check peers make and one misses, a write
+  breaking an invariant. `--broken`: state never read or written, events unheard, data keys missing or unread, uniforms unset.
+- `--evaluate "A;B*3" [--given NAME=VALUE] [--why|--why-not path:line]`: what the code produces in a situation. `--compare MAP
+  MAP`: both games in one situation (a map `{"root", "start", "inputs", "given", "outputs"}`). `--versions OLD_ROOT`; `--json`,
+  `--html F`, `--dot F`.
 
 ## The bar
 - A game sold on Steam: the budgets of `doc/specification.md` (median: 6 cores, 16 GB, RTX 3060 class, 1080p `medium` at 60
@@ -194,6 +196,5 @@ code read". The analysis is kept in `tools/tracer/.index` and read back in under
 | Deliver | `timeout 900 tools/build/deliver.sh export`, in the foreground |
 | On the owner's order | `tools/build/quick.sh --ready`, the whole gates, `python tools/tasks/km24.py` (km24 on two builds), `python tools/hunt/hunt.py` (the game's defects, `dist/hunt/hunt.json`) |
 
-The DLLs in `project/bin` are versioned (a clone opens the game without building; in a rebase they are rebuilt from the joined
-sources). A clone needs Godot 4.7.2, llvm-mingw `20261020-ucrt-x86_64`, CMake 4.4, Python 3.12, Node 23.6+ for the tracer's
-TypeScript answers (`npm ci` in `tools/tracer/tracer/tools`), and a processor with x86-64-v3 (AVX2, FMA, BMI).
+The DLLs in `project/bin` are versioned (rebuilt from the joined sources in a rebase). A clone needs Godot 4.7.2, llvm-mingw
+`20261020-ucrt-x86_64`, CMake 4.4, Python 3.12, Node 23.6+ (`npm ci` in `tools/tracer/tracer/tools`), an x86-64-v3 processor.
