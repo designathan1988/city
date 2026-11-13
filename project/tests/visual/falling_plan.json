@@ -1,0 +1,18 @@
+{
+ "_doc": "A body falling, its joints damped (Prender-264, Ragdoll::damp_joints, Mueller et al. 2007 3.5): a round at the head of the walker nearest the street corner at (60, 8) ({roundAt}: LookArgs; no fire, so nothing hides the limbs), the camera on the corner before so the walker is drawn and falls from its own pose; two frames after it the camera on the body (setViewNear body, 110 px a metre, from 210 degrees at 35: from 30 a street tree stood between), then held there while the clock runs: shots 4, 10, 20 and 45 frames on, the limbs swinging less and less as the body goes down whole; and at rest from above. A first take aimed at a blow's body inside its fire, where flames hid the limbs.",
+ "city": {"map": 0, "seed": 1, "generate": true},
+ "steps": [
+  {"hour": 16}, {"dispatch": "set_speed", "args": [1]}, {"frames": 300},
+  {"setView": [60, -8, 30, 0, 50]}, {"until": "render_pending", "equals": 0}, {"frames": 30},
+  {"dispatch": "shoot", "args": [{"roundAt": [60, 8]}]},
+  {"frames": 2},
+  {"setViewNear": ["body", 60, -8, 110, 210, 35]},
+  {"frames": 2}, {"shot": "fall_04"},
+  {"frames": 6}, {"shot": "fall_10"},
+  {"frames": 10}, {"shot": "fall_20"},
+  {"frames": 25}, {"shot": "fall_45"},
+  {"query": "effects_bodies_census"},
+  {"frames": 120},
+  {"setViewNear": ["body", 60, -8, 110, 0, 80]}, {"until": "render_pending", "equals": 0}, {"shot": "fall_rest_above"}
+ ]
+}

@@ -68,6 +68,7 @@ private:
 	void bones_off_walls(); // no bone across a wall: its nearer end brought to the side the other stands on
 	bool uncross(int a, int b, const BodyWall &w, bool across_deep); // one bone against one of a wall's two thin ways
 	void relax();
+	void damp_joints(float dt); // the joints' friction: what the particles do besides the body's rigid motion, damped
 	void hinge(int top, int middle, int end, float way);
 	void off_walls(int particle);
 	std::vector<BodyWall> walls_;

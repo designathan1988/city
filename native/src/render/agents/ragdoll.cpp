@@ -1,7 +1,9 @@
-// The particles of a fallen body (ragdoll.h).
+// The particles of a fallen body and their joints (ragdoll.h): its dynamics. What it meets, ground, walls and other bodies, is
+// ragdoll_contacts.cpp's.
 #include "render/agents/ragdoll.h"
 
 #include "core/math.h"
+#include "render/agents/ragdoll_parts.h"
 
 #include <algorithm>
 #include <cmath>
@@ -10,35 +12,29 @@ using namespace godot;
 
 namespace city {
 
+using namespace ragdoll;
+
 namespace {
-enum Joint { PEL, CHE, NEC, HEA, LS, LE, LW, RS, RE, RW, LH, LK, LA, LT, RH, RK, RA, RT, TOP, BEL };
-enum Ref { REF_SIDE, REF_LARM, REF_RARM, REF_LLEG, REF_RLEG };
-struct PartFrame {
-	int origin, to, ref;
-};
-constexpr PartFrame PART_FRAMES[RAGDOLL_PARTS] = { // torso, neck, head; arms; legs (ragdoll.ts PARTS)
-	{ PEL, CHE, REF_SIDE }, { NEC, HEA, REF_SIDE }, { HEA, TOP, REF_SIDE }, { LS, LE, REF_LARM }, { LE, LW, REF_LARM }, { RS, RE, REF_RARM }, { RE, RW, REF_RARM },
-	{ LH, LK, REF_LLEG }, { LK, LA, REF_LLEG }, { LA, LT, REF_LLEG }, { RH, RK, REF_RLEG }, { RK, RA, REF_RLEG }, { RA, RT, REF_RLEG },
-};
 constexpr int LIMB_OF[5][3] = { { 0, 0, 0 }, { LS, LE, LW }, { RS, RE, RW }, { LH, LK, LA }, { RH, RK, RA } };
 constexpr float FALL_MS2 = 9.81f;
-constexpr float AIR_KEEP = 0.995f; // of a particle's speed a step
-constexpr float LIMB_HALF_M = 0.06f; // a limb's half thickness: what stands off the ground
-constexpr float SLIDE_KEEP = 0.25f; // of the speed along the ground a step on it: a body drags
+// No air drag: a body falling belly down tops out near 55 m/s (https://en.wikipedia.org/wiki/Terminal_velocity), so at a fall's few
+// metres a second the air takes under a hundredth of its weight. What slows a limb is its joint (damp_joints).
+// A passive knee's swing dies away at B / 2J a second: B 0.014 from the pendulum test of healthy knees (Valle et al., BMC Musculoskelet
+// Disord 7:89, 2006, normalised by height^5), J 0.035 for the shank and foot about the knee (Winter's anthropometry: 6.1 % of the mass,
+// 0.285 of the height long, its radius of gyration 0.735 of that; the same normalisation): 0.2 a second.
+constexpr float JOINT_DAMP_PER_S = 0.2f;
+constexpr float SINGULAR = 1e-9f; // an inertia this flat (the particles in a line: a limb torn off) has no spin to read
 constexpr int ITERATIONS = 10;
 constexpr float TOP_OVER_HEAD = 0.9f; // of the neck to the head, above it
 constexpr float BELLY_OUT_M = 0.12f;
 constexpr float KNEE_LEAST = 0.45f, ELBOW_LEAST = 0.35f, FOLD_LEAST = 0.62f; // shares of a straight limb, of the thigh to the chest
 constexpr float RESTING_MS = 0.12f, RESTING_S = 0.6f;
-constexpr float NOTHING_M = 1e-5f;
 constexpr float ONE_STEP_S = 1.f / 60.f;
 constexpr float ELBOW_BRACE_SHARE = 0.5f; // the elbow is halfway along the arm the hand swings out on
 constexpr float NO_LIMIT_M = 1e9f; // a stick that only keeps its ends apart
 constexpr float DEG_TO_RAD = PI_F / 180.f;
 // The normal range of motion (American Academy of Orthopaedic Surgeons): the neck bends 45 degrees either way, the ankle 20 up and 50 down.
 constexpr float NECK_BEND_RAD = 45.f * DEG_TO_RAD, ANKLE_UP_RAD = 20.f * DEG_TO_RAD, ANKLE_DOWN_RAD = 50.f * DEG_TO_RAD;
-constexpr float BONE_SAMPLES[] = { 1.f / 3.f, 2.f / 3.f }; // where along a bone it is held out of the ground, besides its ends
-constexpr float BANK_M = 0.08f; // deeper than this under a bone's middle: a bank beside it (a kerb's face), left to its ends
 constexpr int BONE_PASS_EVERY = 3; // the bones' pass on every third relaxation and the last
 } // namespace
 
@@ -144,94 +140,38 @@ void Ragdoll::relax() {
 	hinge(RS, RE, RW, -1.f);
 }
 
-// The bones as capsules on the ground (Jakobsen, Advanced Character Physics, GDC 2001: a stick with a thickness): points along each are
-// held out of it as its ends are, the move shared by the ends by how near each is, and their old places moved alike so it adds no
-// speed. A shin no longer sinks over a kerb's edge; a point deeper than a bank's face is beside it, not on it.
-void Ragdoll::bones_on_ground(const Ground &ground) {
-	for (const PartFrame &f : PART_FRAMES) {
-		const int a = f.origin, b = f.to;
-		if ((kept_ >> a & 1u) == 0 || (kept_ >> b & 1u) == 0) continue;
-		for (float t : BONE_SAMPLES) {
-			const Vector3 q = now_[a].lerp(now_[b], t);
-			const float deep = ground(q.x, q.z) + LIMB_HALF_M - q.y;
-			if (deep <= 0.f || deep > BANK_M) continue;
-			const float wa = 1.f - t, wb = t, lift = deep / (wa * wa + wb * wb);
-			now_[a].y += wa * lift;
-			was_[a].y += wa * lift;
-			now_[b].y += wb * lift;
-			was_[b].y += wb * lift;
-		}
-	}
-}
-
-// A bone with its ends on the two sides of a wall (its plane crossed within the wall's length and under its top) has the end nearer the
-// wall brought to the other end's side, its old place moved alike (no speed added): a body lies against a fence, not astride it.
-bool Ragdoll::uncross(int a, int b, const BodyWall &w, bool across_deep) {
-	const Vector2 axis = across_deep ? w.deep : w.along, other = across_deep ? w.along : w.deep;
-	const float lo = across_deep ? w.y0 : w.x0, hi = across_deep ? w.y1 : w.x1;
-	const float olo = across_deep ? w.x0 : w.y0, ohi = across_deep ? w.x1 : w.y1;
-	const Vector2 ra = Vector2(now_[a].x, now_[a].z) - w.at, rb = Vector2(now_[b].x, now_[b].z) - w.at;
-	const float ka = ra.dot(axis), kb = rb.dot(axis), mid = (lo + hi) * 0.5f;
-	if (!((ka < lo && kb > hi) || (ka > hi && kb < lo))) return false;
-	const float t = (mid - ka) / (kb - ka);
-	const float along_t = ra.dot(other) + (rb.dot(other) - ra.dot(other)) * t, y_t = now_[a].y + (now_[b].y - now_[a].y) * t;
-	if (along_t <= olo || along_t >= ohi || y_t >= w.top) return false;
-	const bool move_a = std::fabs(ka - mid) < std::fabs(kb - mid);
-	const int i = move_a ? a : b;
-	const float from = move_a ? ka : kb, to_side = (move_a ? kb : ka) > mid ? hi + LIMB_HALF_M : lo - LIMB_HALF_M;
-	const Vector2 shift = axis * (to_side - from);
-	now_[i].x += shift.x;
-	now_[i].z += shift.y;
-	was_[i].x += shift.x;
-	was_[i].z += shift.y;
-	return true;
-}
-
-void Ragdoll::bones_off_walls() {
-	for (const PartFrame &f : PART_FRAMES) {
-		const int a = f.origin, b = f.to;
-		if ((kept_ >> a & 1u) == 0 || (kept_ >> b & 1u) == 0) continue;
-		for (const BodyWall &w : walls_)
-			if (!uncross(a, b, w, true)) uncross(a, b, w, false);
-	}
-}
-
-float Ragdoll::deepest(const Ground &ground) const {
-	float deep = 0.f;
+// Joint friction (Mueller et al., Position Based Dynamics, 2007, 3.5): the body's rigid motion is read from its particles (its centre's
+// step and its spin, the angular momentum through the inertia), and each particle's step less that motion, what its joints do, is
+// damped at JOINT_DAMP_PER_S; the fall and the spin of the whole are kept.
+void Ragdoll::damp_joints(float dt) {
+	Vector3 centre, step;
+	int n = 0;
 	for (int i = 0; i < PARTICLES; i++)
-		if ((kept_ >> i & 1u) != 0) deep = std::max(deep, ground(now_[i].x, now_[i].z) - now_[i].y);
-	for (const PartFrame &f : PART_FRAMES) {
-		if ((kept_ >> f.origin & 1u) == 0 || (kept_ >> f.to & 1u) == 0) continue;
-		for (float t : BONE_SAMPLES) {
-			const Vector3 q = now_[f.origin].lerp(now_[f.to], t);
-			deep = std::max(deep, ground(q.x, q.z) - q.y);
+		if ((kept_ >> i & 1u) != 0) {
+			centre += now_[i];
+			step += now_[i] - was_[i];
+			n++;
 		}
+	if (n < 2) return;
+	centre /= float(n);
+	step /= float(n);
+	Vector3 momentum;
+	Basis inertia{ Vector3(), Vector3(), Vector3() };
+	for (int i = 0; i < PARTICLES; i++) {
+		if ((kept_ >> i & 1u) == 0) continue;
+		const Vector3 r = now_[i] - centre;
+		momentum += r.cross(now_[i] - was_[i]);
+		const float r2 = r.length_squared();
+		inertia.rows[0] += Vector3(r2, 0, 0) - r * r.x;
+		inertia.rows[1] += Vector3(0, r2, 0) - r * r.y;
+		inertia.rows[2] += Vector3(0, 0, r2) - r * r.z;
 	}
-	return deep;
-}
-
-// Out of a wall by the nearest side: the static collision of Position Based Dynamics, the point projected to the closest of the surface, and the speed along it damped.
-void Ragdoll::off_walls(int i) {
-	Vector3 &p = now_[i];
-	for (const BodyWall &w : walls_) {
-		if (p.y >= w.top) continue;
-		const Vector2 rel = Vector2(p.x, p.z) - w.at;
-		const float lx = rel.dot(w.along), ly = rel.dot(w.deep);
-		if (lx <= w.x0 || lx >= w.x1 || ly <= w.y0 || ly >= w.y1) continue;
-		if (was_[i].y >= w.top) { // come down on it from above: onto its roof, as onto the ground
-			p.y = w.top + LIMB_HALF_M;
-			was_[i].x = p.x + (was_[i].x - p.x) * SLIDE_KEEP;
-			was_[i].z = p.z + (was_[i].z - p.z) * SLIDE_KEEP;
-			continue;
-		}
-		const float west = lx - w.x0, east = w.x1 - lx, south = ly - w.y0, north = w.y1 - ly;
-		const float least = std::min({ west, east, south, north });
-		const Vector2 out = least == west ? -w.along : least == east ? w.along : least == south ? -w.deep : w.deep;
-		const Vector2 move = out * (least + LIMB_HALF_M);
-		p.x += move.x;
-		p.z += move.y;
-		was_[i].x = p.x + (was_[i].x - p.x) * SLIDE_KEEP;
-		was_[i].z = p.z + (was_[i].z - p.z) * SLIDE_KEEP;
+	const Vector3 spin = std::fabs(inertia.determinant()) > SINGULAR ? inertia.inverse().xform(momentum) : Vector3();
+	const float share = 1.f - std::exp(-JOINT_DAMP_PER_S * dt);
+	for (int i = 0; i < PARTICLES; i++) {
+		if ((kept_ >> i & 1u) == 0) continue;
+		const Vector3 own = now_[i] - was_[i], rigid = step + spin.cross(now_[i] - centre);
+		was_[i] = now_[i] - (own + (rigid - own) * share);
 	}
 }
 
@@ -239,8 +179,9 @@ int Ragdoll::step(float dt, const Ground &ground, float hard_ms, Vector3 hits[RA
 	float floor_y[PARTICLES];
 	float fastest = 0;
 	int hit = 0;
+	damp_joints(dt);
 	for (int i = 0; i < PARTICLES; i++) {
-		const Vector3 move = (now_[i] - was_[i]) * AIR_KEEP;
+		const Vector3 move = now_[i] - was_[i];
 		fastest = std::max(fastest, move.length() / dt);
 		was_[i] = now_[i];
 		now_[i] += move + Vector3(0, -FALL_MS2 * dt * dt, 0);
@@ -293,48 +234,5 @@ void Ragdoll::frames(Transform3D out[RAGDOLL_PARTS]) {
 }
 
 Vector3 Ragdoll::pelvis() const { return now_[PEL]; }
-
-// Two joints of two bodies touch nearer than this: two limbs' half thicknesses, surface to surface.
-constexpr float TOUCH_M = 2.f * LIMB_HALF_M;
-// Clothes on clothes, static and kinetic (Babaarslan and Kalebek, Tekstil ve Konfeksiyon 3/2010, fabric on fabric under the heaviest load
-// measured, 20 N: both 0.7; they fall as the load grows, and a body is heavier).
-constexpr float CLOTH_STATIC = 0.7f, CLOTH_KINETIC = 0.7f;
-
-// A contact as Position Based Dynamics resolves it: the joint moved out along the line between the two, the speed it had along that
-// line towards the other taken away (Mueller et al. 2007, 3.5), then friction at the position level (Macklin et al., Unified Particle
-// Physics, SIGGRAPH 2014, 6.1): its step across the line, against the other's, taken away whole while under the static share of how deep
-// it sank, else by the kinetic share. Damping the speed alone lets a pile slide apart; this holds a body lying on another.
-void Ragdoll::push_out_of(const Ragdoll &other) {
-	constexpr float TOUCH2 = TOUCH_M * TOUCH_M;
-	for (int i = 0; i < PARTICLES; i++) {
-		if ((kept_ >> i & 1u) == 0) continue;
-		for (int j = 0; j < PARTICLES; j++) {
-			if ((other.kept_ >> j & 1u) == 0) continue;
-			const Vector3 d = now_[i] - other.now_[j];
-			const float d2 = d.length_squared();
-			if (d2 >= TOUCH2) continue;
-			const float len = std::sqrt(d2);
-			const Vector3 out = len > NOTHING_M ? d / len : Vector3(0, 1, 0); // atop the other when they coincide
-			const float deep = TOUCH_M - len;
-			const float towards = std::min((now_[i] - was_[i]).dot(out), 0.f); // its step along the line, when it closes in
-			now_[i] += out * deep;
-			was_[i] += out * (deep + towards); // moved, not thrown, and no longer closing in
-			const Vector3 rel = (now_[i] - was_[i]) - (other.now_[j] - other.was_[j]);
-			const Vector3 slide = rel - out * rel.dot(out);
-			const float slid = slide.length();
-			now_[i] -= slid < CLOTH_STATIC * deep ? slide : slide * std::min(CLOTH_KINETIC * deep / std::max(slid, NOTHING_M), 1.f);
-		}
-	}
-}
-
-float Ragdoll::overlap(const Ragdoll &other) const {
-	float most = 0.f;
-	for (int i = 0; i < PARTICLES; i++) {
-		if ((kept_ >> i & 1u) == 0) continue;
-		for (int j = 0; j < PARTICLES; j++)
-			if ((other.kept_ >> j & 1u) != 0) most = std::max(most, TOUCH_M - now_[i].distance_to(other.now_[j]));
-	}
-	return most;
-}
 
 } // namespace city

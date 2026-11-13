@@ -64,7 +64,7 @@ static func _nearest(kind: String, from: Vector2) -> Vector3:
 			var roof: Dictionary = CityStore.query(&"highest_roof", [from.x, from.y, BUILDING_REACH_M])
 			if roof.get("hit", false):
 				points.push_back(Vector3(roof.position.x, 0.0, roof.position.z)) # its foot: the rig stands on the ground there
-	return _closest(points, from)
+	return nearest_of(points, from)
 
 
 ## The furniture of `kind` on the first street that has it, of the streets under the vehicles from the nearest to `from` outwards
@@ -111,7 +111,8 @@ static func busiest(points: Array, crowd: float) -> Vector3:
 	return best
 
 
-static func _closest(points: Array, from: Vector2) -> Vector3:
+## Of `points`, the one nearest `from` (x, z) on the ground; Vector3.INF with none.
+static func nearest_of(points: Array, from: Vector2) -> Vector3:
 	var best := Vector3.INF
 	for p: Vector3 in points:
 		if best == Vector3.INF or Vector2(p.x, p.z).distance_squared_to(from) < Vector2(best.x, best.z).distance_squared_to(from):

@@ -8,6 +8,9 @@
 class_name LookArgs
 extends RefCounted
 
+const HEAD_M := 1.7 # a walker's head over its feet: where a round that kills is aimed
+const ROUND_FROM := Vector3(0.0, 6.0, 12.0) # where the round comes from, off the head (shoot_test.gd STANDOFF)
+
 var ui: UiDriver
 var failures := 0
 
@@ -25,6 +28,8 @@ func decode(raw: Array) -> Array:
 			out.push_back(_pair(a.pair, a.get("off", [0.0, 0.0]), float(a.get("reach", LookAim.PAIR_REACH_M))))
 		elif a is Dictionary and a.has("crowd"):
 			out.push_back(_crowd(a.get("off", [0.0, 0.0]), float(a.crowd)))
+		elif a is Dictionary and a.has("roundAt"):
+			out.append_array(_round_at(a.roundAt))
 		elif a is Dictionary and a.has("profile"):
 			out.push_back(_profile(a.profile))
 		elif a is Dictionary and a.has("v3"):
@@ -60,6 +65,21 @@ func _crowd(off: Array, crowd: float) -> Vector3:
 		return Vector3.ZERO
 	print("crowd's heart at ", heart)
 	return point([heart.x + float(off[0]), heart.z + float(off[1])])
+
+
+## A round at the head of the walker on their feet nearest `xz`, from above and behind it (shoot_test's): the shoot command's origin
+## and direction, two arguments. None found: said, counted, a round at the sky from the point.
+func _round_at(xz: Array) -> Array:
+	var walkers := _standing()
+	var target := LookAim.nearest_of(walkers, Vector2(xz[0], xz[1]))
+	if target == Vector3.INF:
+		failures += 1
+		print("FAIL no walker near ", xz)
+		return [point(xz), Vector3.UP]
+	var head := target + Vector3(0, HEAD_M, 0)
+	var origin := head + ROUND_FROM
+	print("round at the walker at ", target)
+	return [origin, (head - origin).normalized()]
 
 
 func _pair(xz: Array, off: Array, reach: float) -> Vector3:
