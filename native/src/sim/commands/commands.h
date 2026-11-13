@@ -143,11 +143,12 @@ EditResult demolish_at(CityState &s, double x, double z);
 EditResult set_signal(CityState &s, int node, const SignalSettings &to);
 EditResult green_wave(CityState &s, int node);
 // Zone brush (Roadcraft zoneTool.dab): paints `zone` on every road side whose frontage passes within `radius`;
-// buildings of another base zone facing a repainted side are knocked down.
+// buildings of another base zone facing a repainted side are knocked down. No side in reach: refused (zoneNoRoad); every
+// side hit already of the zone: ok, `note` tools.toast.zoneSame, nothing journaled (zone_lot answers a lot's zone so).
 EditResult paint_zone(CityState &s, double x, double z, double radius, int zone);
 // The zone brush's dabs of one pointer move, in order, as one command: a dab on a lot the player drew zones that lot whole
-// (zone_lot), any other paints the road sides (paint_zone). `error`: the last refusal of a road dab that found something
-// other than its zone already there (a lot dab, or a side already of the zone, says nothing).
+// (zone_lot), any other paints the road sides (paint_zone). ok when any dab was laid (`note` zoneSame when none changed
+// anything); else `error` the last refusal (a stroke of no dabs: tools.toast.zoneNoRoad).
 EditResult paint_zone_path(CityState &s, const std::vector<StrokePoint> &dabs, double radius, int zone);
 
 // The dabs a held brush lays along one pointer move, as one command: each laid in order by `dab` (refused dabs change

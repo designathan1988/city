@@ -55,10 +55,9 @@ func release(p: Vector3) -> void:
 		r = CityStore.dispatch(&"place_item_row", [from, p, _kind(), every])
 	else:
 		r = CityStore.dispatch(&"place_item", [from, _kind(), params.get("sign", 0), params.get("words", ""), _reach(from)])
-	var ok: bool = r.get("ok", false)
-	if not ok:
-		ctl.hint.emit(refusal(r), false)
-	elif row:
+	if not r.get("ok", false): # told by the store's channel
+		return
+	if row:
 		ctl.hint.emit(tr("hint.streetscape.row"), true)
 	elif not r.get("note", "").is_empty():
 		ctl.hint.emit(tr(r.note), true)

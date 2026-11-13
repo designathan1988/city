@@ -1,7 +1,8 @@
-"""Text-keys gate: every whole text key the core writes as a string literal (native/src C++, a command's or a hint's key such
-as "hint.road.join") has a row in the player's translations (project/data/i18n/*.csv, first column), or the player reads the
-bare key. A key built at run time ("cmd." + name, "hint.road." + reason: a literal ending in its separator) is no whole key
-and is not judged; a comment is not a literal."""
+"""Text-keys gate: every whole text key the core writes as a string literal (native/src C++, a command's, a hint's or a
+refusal's key such as "hint.road.join") has a row in the player's translations (project/data/i18n/*.csv, first column), or
+the player reads the bare key. A text key is one of the prefixes of rules.json text_keys, a dot, then letters, digits, dots
+and underscores. A key built at run time ("cmd." + name, "hint.road." + reason: a literal ending in its separator) is no
+whole key and is not judged; a comment is not a literal."""
 import csv
 import os
 import re
@@ -13,7 +14,7 @@ ID = "TEXT_KEY_MISSING"
 SOURCES = "native/src/"
 CODE_EXTENSIONS = (".h", ".cpp")
 TABLE_EXTENSION = ".csv"
-KEY = re.compile(r"^(cmd|hint)\.[A-Za-z0-9_.]+$")
+KEY_BODY = r"\.[A-Za-z0-9_.]+$"  # after the prefix: a dot, then the rest of the key
 SEPARATOR = "."  # a literal ending in it is the head of a key built at run time
 
 
@@ -40,16 +41,23 @@ def _table_keys(ctx):
     return keys
 
 
-def _whole_key(text):
+def _key_shape(ctx):
+    """The shape of a text key: one of the prefixes rules.json text_keys names, then KEY_BODY."""
+    heads = "|".join(re.escape(p) for p in ctx.rules["text_keys"]["prefixes"])
+    return re.compile(f"^(?:{heads}){KEY_BODY}")
+
+
+def _whole_key(key, text):
     """A whole key: the shape of one, not the head of a key built at run time."""
-    return bool(KEY.match(text)) and not text.endswith(SEPARATOR)
+    return bool(key.match(text)) and not text.endswith(SEPARATOR)
 
 
 def check_keys(ctx, err):
     """The cached string facts (facts.py) name a file's missing keys; only such a file is read again for their lines."""
     known = _table_keys(ctx)
+    key = _key_shape(ctx)
     for path in sorted(f for f in ctx.files if _code(f)):
-        missing = {s for s in ctx.facts(path).get("strings", []) if _whole_key(s) and s not in known}
+        missing = {s for s in ctx.facts(path).get("strings", []) if _whole_key(key, s) and s not in known}
         if not missing:
             continue
         for tok in ctx.source(path).code():

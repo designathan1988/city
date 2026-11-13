@@ -83,7 +83,7 @@ public:
 	godot::Dictionary node_lanes(int node), toggle_lane_link(int node, int from, int from_lane, int to, int to_lane);
 	godot::Dictionary road_spec(int profile) const, road_spec_limits() const;
 	godot::Array road_spec_issues(int base, const godot::Dictionary &spec) const;
-	int road_spec_make(int base, const godot::Dictionary &spec);
+	godot::Dictionary road_spec_make(int base, const godot::Dictionary &spec); // {ok, error, index}: index -1 when refused
 
 	// --- the bomb (city_core_strike.cpp)
 	godot::Dictionary strike(const godot::Vector3 &p, int strength); // p.y: the roof it fell on, or the ground

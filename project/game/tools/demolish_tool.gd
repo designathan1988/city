@@ -53,8 +53,7 @@ func release(p: Vector3) -> void:
 		return
 	var box := p != Vector3.INF and from.distance_to(p) > DRAG_MIN_M
 	var r: Dictionary = CityStore.dispatch(&"demolish_box", [from, p]) if box else CityStore.dispatch(&"demolish", [from])
-	if not r.get("ok", false):
-		ctl.hint.emit(refusal(r), false)
+	if not r.get("ok", false): # told by the store's channel
 		return
 	var text := tr("game.toast.demolished.one") if not box else tr("game.toast.demolished.box")
 	if r.money < 0:

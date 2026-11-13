@@ -373,6 +373,8 @@ hint.builder.flag,Clique numa agulha ou num farol para trocar a bandeira,Click a
 cmd.build.curve,curva da via,road curve
 hint.road.join,Só vias iguais em linha podem ser unidas.,Only like roads in line can be joined.
 hint.road.invalid,Nenhuma via da grade pôde ser construída aqui.,No road of the grid could be built here.
+hint.road.specInvalid,Esse perfil de via tem um problema e não pode ser feito.,That road profile has a problem and cannot be made.
+hint.road.variantsFull,Não cabem mais perfis de via próprios.,There is no room for more custom road profiles.
 inspector.toStreet,Rua inteira,Whole street
 profile.cityLocal,Rua de bairro,Neighbourhood street
 profile.cityUrban,Rua larga,Wide street

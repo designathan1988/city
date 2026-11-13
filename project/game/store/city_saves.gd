@@ -104,15 +104,33 @@ func save_path(slot: String) -> String:
 	return SaveSlots.path(slot)
 
 
-## The window closes, or a new city takes this one's place: what is unsaved is written, and the thread waited for (a city never lost
-## to the close button).
-func save_on_close() -> void:
+## The window closes, or a new city takes this one's place: a save in flight is waited for, what is still unsaved is written and
+## waited for too, and the settled outcome comes back (the result `saved` carries): {ok: true} when nothing was due, else
+## {ok, error}. The caller stops on a failure (a city never lost to the close button); `saved` has already told the player why.
+func write_before_leaving() -> Dictionary:
+	if _save_pending:
+		_wait_save()
 	if not _autosave_due():
-		return
-	save_city()
+		return {"ok": true}
+	var r := save_city()
+	if not r.get("pending", false):
+		return r # refused before the thread: save_game has settled and told it
+	return _wait_save()
+
+
+## The window closes unsaved (a close the failed save held, GameFlow): a save started since (save_on_hide, the autosave) ends
+## before the process does, its outcome told as any other; {} when none is in flight.
+func settle_in_flight() -> Dictionary:
+	return _wait_save() if _save_pending else {}
+
+
+## Holds this frame until the core's save thread is done, then settles it: the outcome `saved` carried ({} when none was in flight).
+func _wait_save() -> Dictionary:
 	while _save_pending and _core.save_status().get("busy", true):
 		OS.delay_msec(SAVE_WAIT_MS)
-	_settle_save()
+	var r := _settle_save()
+	_store.refresh()
+	return r
 
 
 ## The window went behind another or was minimised: what is unsaved starts writing, the frame does not wait (Roadcraft saves when
@@ -186,18 +204,19 @@ func _autosave_due() -> bool:
 	return s.get("ready", false) and s.get("unsaved", false) and not _save_pending and players
 
 
-## The save thread finished (or the core waited for it before a new map or a load): its outcome goes out.
-func _settle_save() -> void:
+## The save thread finished (or the core waited for it before a new map or a load): its outcome goes out, and comes back ({} when
+## no save was in flight).
+func _settle_save() -> Dictionary:
 	if not _save_pending:
-		return
+		return {}
 	_save_pending = false
 	var st: Dictionary = _core.save_status()
-	_finish_save(_save_slot, {"ok": st.get("ok", false), "error": st.get("error", ""), "bytes": st.get("bytes", 0)})
+	return _finish_save(_save_slot, {"ok": st.get("ok", false), "error": st.get("error", ""), "bytes": st.get("bytes", 0)})
 
 
 ## A save that ended: the city's own slot becomes the last city, a map copy asked for is made; listeners get the
-## result (`auto` for the autosave).
-func _finish_save(slot: String, result: Dictionary) -> void:
+## result (`auto` for the autosave), and so does the caller.
+func _finish_save(slot: String, result: Dictionary) -> Dictionary:
 	if result.get("ok", false) and slot == _city_slot:
 		SaveSlots.remember_last(slot)
 		Session.write(slot, _store.get_tree().get_first_node_in_group(&"camera_rig"))
@@ -208,3 +227,4 @@ func _finish_save(slot: String, result: Dictionary) -> void:
 	_export_to = ""
 	_save_auto = false
 	_store.saved.emit(slot, result)
+	return result

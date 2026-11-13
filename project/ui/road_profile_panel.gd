@@ -142,18 +142,21 @@ func on_road() -> void:
 	_street.show()
 
 
+## The profile composed made a road by the core; refused (told by CityStore.command_failed), the editor stays open on it.
 func _apply() -> void:
-	var index: int = CityStore.query(&"road_spec_make", [edit.base, edit.spec])
-	if index >= 0 and edit.on_road:
-		applied.emit(index, false)
-	elif index >= 0:
-		used.emit(index)
+	var made: Dictionary = CityStore.dispatch(&"road_spec_make", [edit.base, edit.spec])
+	if not made.get("ok", false):
+		return
+	if edit.on_road:
+		applied.emit(int(made.index), false)
+	else:
+		used.emit(int(made.index))
 
 
 func _apply_street() -> void:
-	var index: int = CityStore.query(&"road_spec_make", [edit.base, edit.spec])
-	if index >= 0:
-		applied.emit(index, true)
+	var made: Dictionary = CityStore.dispatch(&"road_spec_make", [edit.base, edit.spec])
+	if made.get("ok", false):
+		applied.emit(int(made.index), true)
 
 
 func _save() -> void:

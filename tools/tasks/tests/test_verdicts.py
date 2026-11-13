@@ -1,7 +1,7 @@
 # The Godot verdict: a scene passes on exit 0 with no failure line; a crash, a script or shader that does not compile, an
-# engine error the task does not declare (params expected_errors), a FAIL line or a failure count fails it, whatever the exit
-# code; a warning does not. suites.json declares those errors as a list (a task's params, a group item), the schema refuses
-# a string there, and the list reaches the verdict. Run: python -m unittest discover tools/tasks/tests
+# engine error or warning the task does not declare (params expected_errors), a FAIL line or a failure count fails it,
+# whatever the exit code. suites.json declares those lines as a list (a task's params, a group item), the schema refuses a
+# string there, and the list reaches the verdict. Run: python -m unittest discover tools/tasks/tests
 import json
 import shutil
 import sys
@@ -58,8 +58,17 @@ class GodotVerdictTest(unittest.TestCase):
     def test_a_declared_error_passes(self):
         self.assertEqual(self.verdict(ENGINE_ERROR_LOG, params={"expected_errors": ["Condition \"x\""]}), PASS)
 
-    def test_a_warning_passes(self):
-        self.assertEqual(self.verdict("WARNING: ObjectDB instances leaked at exit.\nFAILURES: 0\n"), PASS)
+    def test_an_engine_warning_fails(self):
+        status, message = self.judge("WARNING: x\nFAILURES: 0\n")
+        self.assertEqual(status, FAIL)
+        self.assertIn("WARNING: x", message)
+
+    def test_a_declared_warning_passes(self):
+        # declared exactly as an engine error: a pattern in params expected_errors finds the line
+        self.assertEqual(self.verdict("WARNING: x\nFAILURES: 0\n", params={"expected_errors": ["^WARNING: x$"]}), PASS)
+
+    def test_a_colored_warning_fails(self):
+        self.assertEqual(self.verdict("\x1b[1;33mWARNING:\x1b[0m x\nFAILURES: 0\n"), FAIL)
 
     def test_a_declared_error_never_hides_another_failure(self):
         # only an engine error can be expected: a FAIL line the same pattern finds still fails the scene

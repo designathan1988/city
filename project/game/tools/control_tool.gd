@@ -16,4 +16,5 @@ func click(p: Vector3) -> void:
 	var step := -1 if Input.is_key_pressed(KEY_SHIFT) else 1
 	var next := posmod(int(hit.ctl) + step, marks.size())
 	var r: Dictionary = CityStore.dispatch(&"set_node_control", [hit.node, next])
-	ctl.hint.emit(tr(marks[next].label_key) if r.get("ok", false) else refusal(r), r.get("ok", false))
+	if r.get("ok", false):
+		ctl.hint.emit(tr(marks[next].label_key), true)

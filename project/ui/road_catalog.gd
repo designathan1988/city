@@ -143,10 +143,14 @@ func _profile_of(id: String) -> Dictionary:
 	return _profiles[0]
 
 
+## A road of the player's made a profile by the core; refused (told by CityStore.command_failed), the road in hand stays
+## lit and in hand: the clicked card's own toggle is undone, nothing is retooled.
 func _pick_mine(m: Dictionary) -> void:
-	var index: int = CityStore.query(&"road_spec_make", [_profile_of(m.base).index, m.spec])
-	if index >= 0:
-		pick(index)
+	var made: Dictionary = CityStore.dispatch(&"road_spec_make", [_profile_of(m.base).index, m.spec])
+	if made.get("ok", false):
+		pick(int(made.index))
+	else:
+		_light(picked())
 
 
 ## The road in hand to the editor: as the core reads it, or a road of the player's when that is what is drawn.
@@ -173,9 +177,14 @@ func picked() -> int:
 
 
 func pick(index: int) -> void:
+	_light(index)
+	profile_picked.emit(index)
+
+
+## The card of `index` lit and the others not, emitting nothing.
+func _light(index: int) -> void:
 	for c in _cards_row.get_children():
 		c.get_meta(&"button").set_pressed_no_signal(c.get_meta(&"index") == index)
-	profile_picked.emit(index)
 
 
 func _card(p: Dictionary, widest: float, act: Callable) -> Control:

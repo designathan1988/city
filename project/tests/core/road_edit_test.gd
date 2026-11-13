@@ -152,8 +152,7 @@ func _lanes_by_hand(node: int) -> void:
 	check(CityStore.query(&"node_lanes", [node]).built.size() == before.size(), "connectors: undo brings the link back")
 
 
-## What an edit may not leave: two roads meeting under 25 degrees, a stretch too short for its two junctions. A refusal
-## rolls the whole edit back.
+## What an edit may not leave (two roads meeting under 25 degrees, a stretch too short for its two junctions): refused, undone.
 func _rules(e: Vector3) -> void:
 	var a := e + Vector3(0, 0, RULES_OFF_M)
 	var b := a + Vector3(MOVE_LEN_M, 0, 0)
@@ -219,13 +218,15 @@ func _composed_road() -> void:
 	var bad: Dictionary = spec.duplicate(true)
 	bad.elements.remove_at(0)
 	check(not (CityStore.query(&"road_spec_issues", [base, bad]) as Array).is_empty(), "profile: with no pavement at the end there is a problem")
-	check(int(CityStore.query(&"road_spec_make", [base, bad])) < 0, "profile: what has a problem does not become a road")
+	var refused: Dictionary = CityStore.dispatch(&"road_spec_make", [base, bad])
+	check(not refused.ok and refused.error == "hint.road.specInvalid" and refused.index < 0, "profile: what has a problem does not become a road, and says why (%s)" % [refused])
 	var own: Dictionary = spec.duplicate(true)
 	RoadSpecOps.with_width(own, 1, COMPOSED_LANE_M)
-	var index: int = CityStore.query(&"road_spec_make", [base, own])
-	check(index >= 0, "profile: the composed road becomes a profile")
-	check(int(CityStore.query(&"road_spec_make", [base, own])) == index, "profile: the same road is the same profile")
-	var back: Dictionary = CityStore.query(&"road_spec", [index])
+	var made: Dictionary = CityStore.dispatch(&"road_spec_make", [base, own])
+	check(made.ok and made.index >= 0, "profile: the composed road becomes a profile (%s)" % [made])
+	var again: Dictionary = CityStore.dispatch(&"road_spec_make", [base, own])
+	check(again.ok and again.index == made.index, "profile: the same road is the same profile (%s)" % [again])
+	var back: Dictionary = CityStore.query(&"road_spec", [made.index])
 	check(is_equal_approx(RoadSpecOps.total(back), RoadSpecOps.total(own)), "profile: the width comes back the same (%.2f)" % RoadSpecOps.total(back))
 	_composed_highway()
 
@@ -244,6 +245,6 @@ func _composed_highway() -> void:
 	check(problems.has("noFootways"), "profile: a footway on a highway is refused (%s)" % [problems])
 	var own: Dictionary = spec.duplicate(true)
 	RoadSpecOps.with_width(own, 0, COMPOSED_LANE_M)
-	var index: int = CityStore.query(&"road_spec_make", [base, own])
+	var index: int = CityStore.dispatch(&"road_spec_make", [base, own]).get("index", -1)
 	var strips: Array = CityStore.query(&"road_profiles")[index].strips if index >= 0 else []
 	check(not strips.is_empty() and strips[0].kind == "shoulder" and strips[-1].kind == "shoulder", "profile: the composed highway keeps its shoulders (%s)" % [strips.map(func(s: Dictionary) -> String: return String(s.kind))])

@@ -32,8 +32,7 @@ func click(p: Vector3) -> void:
 			ctl.set_tool(ToolController.Tool.UPGRADE, {"profile": seg.profile})
 		return
 	var r: Dictionary = CityStore.dispatch(&"upgrade_road", [p, profile, Input.is_key_pressed(KEY_SHIFT)])
-	if not r.get("ok", false):
-		ctl.hint.emit(refusal(r), false)
+	if not r.get("ok", false): # told by the store's channel
 		return
 	var text := Formatters.count_label("ui.insp.upgraded", r.segments) # the money joins it with " · ": no full stop
 	if r.money != 0:

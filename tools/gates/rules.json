@@ -509,5 +509,19 @@
     }
   ],
   "_uniform_tables_doc": "Blocks of a table set key by key on shaders (render/city_world.gd _build_terrain sets palette.terrain on the terrain's and the verge's): each key a uniform of the listed shaders.",
+  "text_keys": {
+    "prefixes": [
+      "cmd",
+      "hint",
+      "refuse",
+      "save",
+      "tool",
+      "tools",
+      "help",
+      "building",
+      "road.reason"
+    ]
+  },
+  "_text_keys_doc": "TEXT_KEY_MISSING (gate_keys.py): the heads of the text keys the core writes as string literals (native/src); a literal that is one of them, a dot, then letters, digits, dots and underscores is a key the player reads, so it needs a row in project/data/i18n/*.csv. A head joins this list only when every such literal of the core is a text key, never a catalogue id, a data path or a file name (save.json would be judged): when these heads were set, every building. literal there was a refusal a command returns (building.problem.*, building.reshapeRelief) and none of the others named a file.",
   "_generated_doc": "Files a generator writes: the generator's --check (exit 0 when the outputs on disk are what it writes, writing nothing) must pass, so a hand edit of an output cannot stand."
 }

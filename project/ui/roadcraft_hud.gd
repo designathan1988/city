@@ -44,6 +44,7 @@ func _ready() -> void:
 	root.add_child(PreviewTag.new())
 	messages = HudMessages.new(root)
 	add_child(messages)
+	CityStore.command_failed.connect(_on_command_failed) # the one listener: no tool or panel shows a refusal of its own
 	var options := HudWidgets.panel(root, &"Surface")
 	drawer = HudDrawer.new()
 	drawer.options_panel = options
@@ -151,6 +152,11 @@ func _category_button(id: String) -> Button:
 ## The tool's hint: the price while aiming and refusals.
 func show_hint(text: String, ok: bool) -> void:
 	messages.hint(text, ok)
+
+
+## A command the core refused, from any tool or panel: its text on the hint bar, in the danger style.
+func _on_command_failed(_command: StringName, result: Dictionary) -> void:
+	show_hint(Refusals.text(result), false)
 
 
 ## The game's answers (saved, refused, undone): a toast that goes by itself, apart from the tool's hint.

@@ -45,7 +45,8 @@ func release(p: Vector3) -> void:
 	if p == Vector3.INF or not (_moved or _left_press(p)):
 		return
 	var r: Dictionary = CityStore.dispatch(&"move_node", [node, p])
-	ctl.hint.emit(tr("hint.move") if r.get("ok", false) else refusal(r), r.get("ok", false))
+	if r.get("ok", false):
+		ctl.hint.emit(tr("hint.move"), true)
 
 
 ## Whether the pointer went far enough from the press to be a drag and not a click.

@@ -136,7 +136,7 @@ static func _biomes(col: Container) -> void:
 		button.icon = ThemeBuilder.swatch(b.swatch, int(HudWidgets.px("biome_swatch")))
 		button.tooltip_text = "%s: %s" % [TranslationServer.translate("terrain.mapBiome"),
 				TranslationServer.translate("terrain.mapBiome.none" if b.slot < 0 else "paint.kind." + b.id)]
-		button.pressed.connect(func() -> void:
-			CityStore.dispatch(&"set_biome", [b.slot])
-			DrawerStrips.light(row, b.slot))
+		button.pressed.connect(func() -> void: # lit once the core took it; refused, the map's own biome stays lit
+			var answer: Dictionary = CityStore.dispatch(&"set_biome", [b.slot])
+			DrawerStrips.light(row, b.slot if answer.get("ok", false) else int(CityStore.query(&"landscape").biome)))
 		row.add_child(button)

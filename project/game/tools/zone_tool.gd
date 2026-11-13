@@ -7,8 +7,6 @@ const DAB_SPACING := 0.5
 ## A fast drag reports the pointer far apart: the whole way is painted, up to this many dabs at a report (lotTool.ts move),
 ## sent as one command (paint_zone_path).
 const MOST_DABS := 400
-## A side the brush passes that already has the zone says nothing.
-const ZONE_SAME := "tools.toast.zoneSame"
 ## What the brush paints with Shift held: no zone (lotTool.ts `remove`).
 const UNZONED := 0
 
@@ -28,7 +26,10 @@ func click(p: Vector3) -> void:
 	_last = p
 	_painting = UNZONED if Input.is_key_pressed(KEY_SHIFT) else zone
 	CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
-	_paint(PackedVector3Array([p]))
+	var r := _paint(PackedVector3Array([p]))
+	var noted: bool = r.get("ok", false) and not str(r.get("note", "")).is_empty()
+	if noted and CityStore.query(&"lot_at", [p]) != 0: # a lot that has the zone already: said plainly (a side says nothing)
+		ctl.hint.emit(tr(r.note), true)
 
 
 ## The whole stroke is one undo step.
@@ -63,9 +64,8 @@ func exit() -> void:
 	ctl.preview.clear()
 
 
-## The dabs of one pointer move as one command: a lot the player drew takes the zone whole, elsewhere the road sides.
-func _paint(dabs: PackedVector3Array) -> void:
-	var r: Dictionary = CityStore.dispatch(&"paint_zone_path", [dabs, radius, _painting])
-	var why: String = r.get("error", "")
-	if not why.is_empty() and why != ZONE_SAME:
-		ctl.hint.emit(refusal(r), false)
+## The dabs of one pointer move as one command: a lot the player drew takes the zone whole, elsewhere the road sides. A
+## refusal is told by the store's channel; a side or lot that has the zone already is no refusal (the core answers ok, with
+## the note tools.toast.zoneSame), and a drag says nothing of it.
+func _paint(dabs: PackedVector3Array) -> Dictionary:
+	return CityStore.dispatch(&"paint_zone_path", [dabs, radius, _painting])

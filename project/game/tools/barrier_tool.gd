@@ -27,7 +27,8 @@ func _snapped(p: Vector3) -> Dictionary:
 func click(p: Vector3) -> void:
 	if Input.is_key_pressed(KEY_SHIFT):
 		var r: Dictionary = CityStore.dispatch(&"remove_street", [p, params.get("reach_m", 0.0)])
-		ctl.hint.emit(tr("hint.barrier.removed" if r.get("ok", false) else "hint.barrier.nothing"), r.get("ok", false))
+		if r.get("ok", false): # nothing there to take away is told by the store's channel
+			ctl.hint.emit(tr("hint.barrier.removed"), true)
 		return
 	var now := Time.get_ticks_msec()
 	var twice: bool = _last_click_ms >= 0 and now - _last_click_ms < int(params.get("double_click_ms", 0)) 		and p.distance_to(_last_click) < params.get("double_click_m", 0.0)
@@ -68,8 +69,8 @@ func _finish() -> void:
 	if run.size() < 2:
 		return
 	var r: Dictionary = CityStore.dispatch(&"build_barrier", [run, _kind()])
-	var ok: bool = r.get("ok", false)
-	ctl.hint.emit(tr("hint.barrier.built") if ok else refusal(r), ok)
+	if r.get("ok", false):
+		ctl.hint.emit(tr("hint.barrier.built"), true)
 
 
 ## A run being traced: Escape drops its points before the tool (Roadcraft barriers.ts).

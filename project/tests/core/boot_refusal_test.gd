@@ -23,7 +23,8 @@ func _ready() -> void:
 	var report: Dictionary = new_map(0, 1, false)
 	check(not report.ok, "no map without a catalog")
 	check(CityStore.query(&"road_profiles").is_empty(), "no roads to offer")
-	check(CityStore.dispatch(&"build_road", [Vector3.ZERO, Vector3.RIGHT * ROAD_M, false, Vector3.ZERO, 0, PX]).is_empty(), "no road is laid")
+	var laid: Dictionary = CityStore.dispatch(&"build_road", [Vector3.ZERO, Vector3.RIGHT * ROAD_M, false, Vector3.ZERO, 0, PX])
+	check(not laid.get("ok", true) and laid.get("error", "") == "hint.noCity", "no road is laid, and the refusal says why: %s" % [laid])
 	check(not CityStore.query(&"raycast", [Vector3.UP * ROAD_M, Vector3.DOWN]).hit, "a ray meets nothing")
 	var scene := {"nodes": [[0, 0], [ROAD_M, 0]], "segs": [[0, 1, "avenue", 0]], "ground": {}}
 	check(CityStore.query(&"grade_probe", [scene]).is_empty(), "the grade probe has no road to lay")

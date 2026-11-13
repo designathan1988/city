@@ -207,10 +207,19 @@
     "_styled_tables_doc": {"$ref": "#/$defs/doc"},
     "_material_tables_doc": {"$ref": "#/$defs/doc"},
     "_uniform_tables_doc": {"$ref": "#/$defs/doc"},
+    "text_keys": {
+      "type": "object", "strict": true,
+      "description": "TEXT_KEY_MISSING (gate_keys.py): the heads of the text keys the core writes as string literals",
+      "properties": {
+        "prefixes": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^[a-z][A-Za-z0-9_]*(\\.[a-z][A-Za-z0-9_]*)*$"}, "uniqueItems": true}
+      },
+      "required": ["prefixes"]
+    },
+    "_text_keys_doc": {"$ref": "#/$defs/doc"},
     "_generated_doc": {"$ref": "#/$defs/doc"}
   },
   "required": ["exclude_dirs", "root_allowed", "allowed_docs", "doc_places", "instruction_skip", "register", "doc_exempt_names", "doc_extensions", "junk_globs", "max_lines", "max_function_lines",
     "header_comment_extensions", "mapped_roots", "map_file", "map_markers", "claude_md_max_lines", "cpp_layers", "forbidden", "schemas",
     "magic_numbers", "clones", "lab_reference", "lab_copy", "states", "patch", "mirrors", "generated", "styled_tables", "material_tables",
-    "uniform_tables"]
+    "uniform_tables", "text_keys"]
 }

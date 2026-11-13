@@ -32,6 +32,7 @@ var _ghost := 0
 var _extent := Vector3.ZERO
 var _fit := {}
 var _last := Vector3.INF
+var _told: Variant = null # the store's last refusal, told by its channel (CityStore.command_failed): _report never tells it again
 
 
 func enter() -> void:
@@ -40,9 +41,11 @@ func enter() -> void:
 	_box = SelectionBox.new()
 	ctl.add_child(_box)
 	ctl.hint.emit(tr("hint.builder.select"), true)
+	CityStore.command_failed.connect(_on_told)
 
 
 func exit() -> void:
+	CityStore.command_failed.disconnect(_on_told)
 	_put_down()
 	hands.disarm()
 	handles.cancel()
@@ -225,9 +228,17 @@ func act(spec: Dictionary) -> void:
 	_show()
 
 
+## A refusal the hands gave without the store (no face picked, no piece carried) is told here. The store's own answer, told
+## by its channel already, is skipped once by reference (is_same), so a local refusal, a fresh object, is never hidden.
 func _report(r: Dictionary) -> void:
-	if not r.get("ok", false):
-		ctl.hint.emit(refusal(r), false)
+	var told := is_same(r, _told)
+	_told = null
+	if not r.get("ok", false) and not told:
+		ctl.hint.emit(Refusals.text(r), false)
+
+
+func _on_told(_command: StringName, result: Dictionary) -> void:
+	_told = result
 
 
 func _show() -> void:

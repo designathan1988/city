@@ -25,11 +25,19 @@ inline godot::Dictionary result_dict(const EditResult &r) {
 	return d;
 }
 
-// Locks the world, records the command under `label` (a strings.csv key) and returns its result.
+// The answer to a command given while no city is open: refused, with the key that says so.
+inline godot::Dictionary no_city_dict() {
+	EditResult r;
+	r.error = "hint.noCity";
+	return result_dict(r);
+}
+
+// Locks the world, records the command under `label` (a strings.csv key) and returns its result. With no city open the
+// command is refused with its key, never answered with an empty Dictionary.
 template <typename F>
 godot::Dictionary run_edit(CityState &s, const char *label, F &&fn) {
 	map_hold::WriterHold lk(s.map_mutex, map_hold::Writer::COMMAND);
-	if (!s.ready) return godot::Dictionary();
+	if (!s.ready) return no_city_dict();
 	s.history.begin(label);
 	EditResult r = fn(s);
 	s.history.end(s, r.ok);

@@ -144,8 +144,9 @@ func _movement(e: Vector3) -> void:
 	var along := a + (mid - a) * 0.5
 	var two: Dictionary = CityStore.query(&"inspect", [along])
 	var spec: Dictionary = CityStore.query(&"road_spec", [two.profile_id])
-	var index: int = CityStore.query(&"road_spec_make", [two.profile_id, RoadSpecOps.directed(spec, 1)])
-	t.check(index >= 0, "the one-way road is a profile")
+	var made: Dictionary = CityStore.dispatch(&"road_spec_make", [two.profile_id, RoadSpecOps.directed(spec, 1)])
+	var index: int = made.get("index", -1)
+	t.check(made.get("ok", false) and index >= 0, "the one-way road is a profile: %s" % [made])
 	var turned: Dictionary = CityStore.dispatch(&"upgrade_road", [along, index, false])
 	t.check(turned.get("ok", false) and CityStore.query(&"inspect", [along]).one_way, "two-way becomes one-way: %s" % [turned])
 	CityStore.dispatch(&"undo")

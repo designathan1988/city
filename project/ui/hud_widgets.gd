@@ -71,7 +71,9 @@ static func panel(parent: Control, variation: StringName) -> PanelContainer:
 	return p
 
 
-## A choice among a few, in a row: each [value, text]; the one in use lit; pick(value) on a click.
+## A choice among a few, in a row: each [value, text]; the one in use lit; pick(value) on a click. A pick that sends a command
+## returns its answer: the click's choice is lit only once that answer is ok; refused (told by CityStore.command_failed), the
+## choice lit before stays lit.
 static func choices(parent: Control, items: Array, value: Variant, pick: Callable) -> HBoxContainer:
 	var row := hbox(parent)
 	for item: Array in items:
@@ -80,9 +82,12 @@ static func choices(parent: Control, items: Array, value: Variant, pick: Callabl
 		b.toggle_mode = true
 		b.set_pressed_no_signal(item[0] == value)
 		b.pressed.connect(func() -> void:
+			var answer: Variant = pick.call(item[0])
+			if answer is Dictionary and not answer.get("ok", false):
+				b.set_pressed_no_signal(not b.button_pressed) # the click's own toggle undone: nothing changed
+				return
 			for other: Button in row.get_children():
-				other.set_pressed_no_signal(other == b)
-			pick.call(item[0]))
+				other.set_pressed_no_signal(other == b))
 		row.add_child(b)
 	return row
 

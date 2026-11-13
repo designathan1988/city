@@ -90,14 +90,30 @@ Array CityCore::road_spec_issues(int base, const Dictionary &spec) const {
 	return out;
 }
 
-int CityCore::road_spec_make(int base, const Dictionary &spec) {
+// The profile made of `spec`: {ok, error, index}. Refused (index -1) when the spec has issues (road_spec_issues tells
+// which) or when the catalogue holds no room for another variant (city::road_variant's -1 means only that).
+Dictionary CityCore::road_spec_make(int base, const Dictionary &spec) {
+	Dictionary d;
+	d["ok"] = false;
+	d["index"] = -1;
 	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
 	const RoadSpec s = read_spec(spec);
-	if (!spec_issues(s, state_->catalog.profile(base).road_class).empty()) return -1;
+	if (!spec_issues(s, state_->catalog.profile(base).road_class).empty()) {
+		d["error"] = "hint.road.specInvalid";
+		return d;
+	}
 	RoadVariant v;
 	v.base = base;
 	v.spec = s;
-	return city::road_variant(state_->catalog, v);
+	const int index = city::road_variant(state_->catalog, v);
+	if (index < 0) {
+		d["error"] = "hint.road.variantsFull";
+		return d;
+	}
+	d["ok"] = true;
+	d["error"] = "";
+	d["index"] = index;
+	return d;
 }
 
 } // namespace city

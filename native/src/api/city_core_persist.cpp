@@ -1,9 +1,11 @@
 // Save and open (sim/persistence): a worker thread encodes the city under the map lock shared (it only reads), then
-// writes it with ZSTD through a temporary file and renames it, so the frame never waits for the save. A city opened is read
-// once into a state of its own while the open one runs on, and taken in whole under the exclusive lock.
+// writes it with ZSTD through a temporary file, reads that back whole and renames it, so the frame never waits for the
+// save. A city opened is read once into a state of its own while the open one runs on, and taken in whole under the
+// exclusive lock.
 #include "api/city_core.h"
 
 #include "core/laps.h"
+#include "core/units.h"
 #include "sim/persistence/save_format.h"
 #include "sim/traffic/traffic_system.h"
 
@@ -11,6 +13,7 @@
 #include <godot_cpp/classes/file_access.hpp>
 
 #include <algorithm>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <utility>
@@ -22,31 +25,65 @@ namespace city {
 
 namespace {
 
+// The slice a written save is read back and compared in: one buffer of this size, reused, whatever the save's size.
+constexpr size_t READ_BACK_CHUNK_BYTES = size_t(BYTES_PER_MIB);
+
 std::string utf8(const String &s) {
 	return std::string(s.utf8().get_data());
 }
 
-// Writes `bytes` to `target` atomically: temporary file, old generation aside, rename, then drop the old one.
+// A save that failed: the temporary file goes when this save made it (`made`: never whatever stood in its way, a folder or
+// a file this save could not open), the previous generation stays where it was, the error key is told.
+bool write_failed(const String &tmp, bool made, std::string &error) {
+	if (made && FileAccess::file_exists(tmp)) DirAccess::remove_absolute(tmp);
+	error = "save.writeFailed";
+	return false;
+}
+
+// Is the file at `tmp` exactly `bytes`? It is opened again and read whole, which decompresses every block (a block cut
+// short or damaged reads short, reads -1, or reads other bytes), and compared slice by slice with what was stored; a byte
+// past the end is a difference too. This proves the file on disk opens and holds the city as encoded: not that the disk
+// will keep it.
+bool reads_back(const String &tmp, const std::vector<uint8_t> &bytes) {
+	Ref<FileAccess> f = FileAccess::open_compressed(tmp, FileAccess::READ, FileAccess::COMPRESSION_ZSTD);
+	if (f.is_null()) return false;
+	bool same = f->get_length() == uint64_t(bytes.size());
+	std::vector<uint8_t> chunk(std::min(bytes.size(), READ_BACK_CHUNK_BYTES));
+	for (size_t at = 0; same && at < bytes.size(); at += chunk.size()) {
+		const size_t want = std::min(chunk.size(), bytes.size() - at);
+		const uint64_t got = f->get_buffer(chunk.data(), uint64_t(want));
+		same = got == uint64_t(want) && f->get_error() == OK && std::memcmp(chunk.data(), bytes.data() + at, want) == 0;
+	}
+	uint8_t past = 0;
+	if (same) same = f->get_buffer(&past, 1) == 0; // nothing after the last byte stored
+	f->close();
+	return same;
+}
+
+// Writes `bytes` to `target` atomically: temporary file, read back whole (reads_back), old generation aside, rename, then
+// drop the old one. Any step that fails leaves the previous file as it was.
 bool write_atomic(const std::string &target, const std::vector<uint8_t> &bytes, std::string &error) {
 	const String tmp = String((target + ".tmp").c_str());
 	Ref<FileAccess> f = FileAccess::open_compressed(tmp, FileAccess::WRITE, FileAccess::COMPRESSION_ZSTD);
-	if (f.is_null()) {
-		error = "save.writeFailed";
-		return false;
-	}
+	if (f.is_null()) return write_failed(tmp, false, error);
 	f->store_buffer(bytes.data(), bytes.size());
+	const bool stored = f->get_error() == OK;
 	f->close();
+	f.unref();
+	if (!stored) return write_failed(tmp, true, error);
+	if (!reads_back(tmp, bytes)) return write_failed(tmp, true, error); // its handle closed when it returns: the rename can go
 	const String to = String(target.c_str());
 	const String old = to + String(".old");
-	DirAccess::remove_absolute(old);
-	if (FileAccess::file_exists(to)) DirAccess::rename_absolute(to, old);
-	if (DirAccess::rename_absolute(tmp, to) != OK) {
-		if (FileAccess::file_exists(old)) DirAccess::rename_absolute(old, to);
-		DirAccess::remove_absolute(tmp);
-		error = "save.writeFailed";
-		return false;
+	const bool had = FileAccess::file_exists(to);
+	if (had) {
+		if (FileAccess::file_exists(old)) DirAccess::remove_absolute(old); // a save cut short before: the target is newer
+		if (DirAccess::rename_absolute(to, old) != OK) return write_failed(tmp, true, error);
 	}
-	DirAccess::remove_absolute(old);
+	if (DirAccess::rename_absolute(tmp, to) != OK) {
+		if (had) DirAccess::rename_absolute(old, to); // the previous generation back in its place
+		return write_failed(tmp, true, error);
+	}
+	if (FileAccess::file_exists(old)) DirAccess::remove_absolute(old);
 	return true;
 }
 

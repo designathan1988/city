@@ -63,10 +63,8 @@ func build() -> Dictionary:
 	var at: Dictionary = model.frame()
 	var replaced: int = _picked.get("id", -1)
 	var r: Dictionary = CityStore.dispatch(&"build_reference", [read.triangles, read.views, at.x, at.z, at.rot, replaced])
-	if r.get("ok", false):
+	if r.get("ok", false): # a refusal is told by the store's channel
 		_ctl.hint.emit(_ctl.tr("hint.reference.built"), true)
-	else:
-		_ctl.hint.emit(_ctl.tr(r.get("error", "hint.reference.empty")), false)
 	return r
 
 

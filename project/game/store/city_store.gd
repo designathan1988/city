@@ -7,7 +7,10 @@
 extends Node
 
 signal changed(snapshot: Dictionary)
-signal command_failed(error_key: String)
+## A command the core refused, whole ({ok: false, error}) or in part ({ok: true, error}: done in part, the rest refused): its
+## name and the whole answer. A no-op answers with `note`, never `error`, and is not told; previews are never told (they ask,
+## they change nothing). The HUD listens once and shows Refusals.text(result) on the hint bar.
+signal command_failed(command: StringName, result: Dictionary)
 
 const SNAPSHOT_INTERVAL_S := 0.25
 ## Reads of the core that change only when a revision of the snapshot moves (the network with edit_revision, the transport
@@ -92,13 +95,17 @@ func first_road() -> int:
 	return 0
 
 
+## A command to the core, its answer returned; a refusal is told once more, to every listener, by `command_failed`.
 func dispatch(command: StringName, args: Array = []) -> Variant:
 	assert(StoreApi.COMMANDS.has(command), "unknown command: %s" % command)
 	var result: Variant = _routes[command].callv(args)
-	if not command.begins_with("preview"):
-		_mark()
-	if result is Dictionary and result.has("error") and not result.error.is_empty() and not command.begins_with("preview"):
-		command_failed.emit(result.error)
+	if command.begins_with("preview"):
+		return result
+	_mark()
+	if result is Dictionary:
+		var answer: Dictionary = result
+		if not str(answer.get("error", "")).is_empty(): # ok or not: an error key on an ok answer is a part refused
+			command_failed.emit(command, answer)
 	return result
 
 

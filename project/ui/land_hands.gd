@@ -71,9 +71,7 @@ static func _run(name: String, drawer: HudDrawer) -> void:
 	if name == "scatter_clouds":
 		var s := BrushDefaults.of("CLOUD", tools.remembered.get(ToolController.Tool.CLOUD, {}) if tools else {})
 		var like := {"height": s.height, "size": s.size, "density": s.density / PERCENT}
-		var r: Dictionary = CityStore.dispatch(&"scatter_clouds", [int(s.count), like, s.variation / PERCENT])
-		if r.get("error", "") != "" and tools:
-			tools.hint.emit(TranslationServer.translate(r.error), false)
+		CityStore.dispatch(&"scatter_clouds", [int(s.count), like, s.variation / PERCENT]) # a sky full is told by the store's channel
 	else:
 		CityStore.dispatch(StringName(name))
 

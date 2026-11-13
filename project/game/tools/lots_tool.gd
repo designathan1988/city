@@ -62,9 +62,8 @@ func _read() -> void:
 	ctl.preview.show_outlines(rings, DRAWN_PX)
 
 
-func _done(r: Dictionary) -> void:
-	if not r.get("ok", false):
-		ctl.hint.emit(refusal(r), false)
+## An edit answered (a refusal is told by the store's channel): the lots read again.
+func _done(_r: Dictionary) -> void:
 	_read()
 	cancel()
 

@@ -234,7 +234,12 @@ EditResult delete_lot(CityState &s, int id) {
 EditResult zone_lot(CityState &s, int id, int zone) {
 	const PlayerLot *found = s.lot_book.find(id);
 	if (!found) return refused("hint.lot.pick");
-	if (found->zone == zone) return refused("tools.toast.zoneSame");
+	if (found->zone == zone) { // a no-op, not a refusal: answered before anything is journaled (no undo step)
+		EditResult same;
+		same.ok = true;
+		same.note = "tools.toast.zoneSame";
+		return same;
+	}
 	PlayerLot l = *found;
 	EditResult razed;
 	if (l.zone != 0) raze(s, l.corners, razed); // what grew for the old zone goes

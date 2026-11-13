@@ -426,6 +426,7 @@ roadKeys.row,Teclas,Keys
 roadKeys.title,Teclas da ferramenta de vias,Road tool keys
 save.auto,Salvo automaticamente.,Saved automatically.
 save.blocked,A cidade na tela está incompleta (a abertura ou a geração não terminou) e não é salva. Abra ou crie uma cidade.,The city on screen is incomplete (opening or generating it did not finish) and is not saved. Open or make a city.
+save.closeAgain,O salvamento falhou: feche de novo para sair sem salvar.,The save failed: close again to quit without saving.
 save.damaged,"O salvamento não pôde ser aberto: está danificado. Ele foi guardado como estava em ""{folder}"".","The save could not be opened: it is damaged. It was kept as it was in ""{folder}""."
 save.discardConfirm,Esta cidade tem alterações que ainda não foram salvas. Descartar e continuar?,This city has changes that are not saved yet. Discard them and go on?
 save.done,Salvo.,Saved.

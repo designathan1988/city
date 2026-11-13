@@ -78,6 +78,7 @@ health.world.undo,Última edição: {label},Last edit: {label}
 help.do.resetView,"Vista padrão, mapa enquadrado","Default view, map framed"
 help.do.turn,Girar enquanto segura (Shift: um quarto de volta),Turn while held (Shift: a quarter turn)
 hint.newMap,Novo mapa iniciado · o anterior volta com Ctrl+Z,New map started · the previous one can be restored with Ctrl+Z
+hint.noCity,Nenhuma cidade aberta.,No city is open.
 hint.openFailed,Esse arquivo não é um mapa do Roadcraft ou está danificado. Nada foi alterado,"That file is not a Roadcraft map, or it is damaged. Nothing was changed"
 hint.opened,Mapa aberto,Map opened
 inspector.group,GRUPO {id},GROUP {id}

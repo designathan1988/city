@@ -7,8 +7,7 @@ extends ToolBase
 func click(p: Vector3) -> void:
 	var force: int = int(params.get("strength", DataTables.tuning("strike_force_start")))
 	var r: Dictionary = CityStore.dispatch(&"strike", [_landing(p), force])
-	if not r.get("ok", false):
-		ctl.hint.emit(refusal(r), false)
+	if not r.get("ok", false): # told by the store's channel
 		return
 	ctl.hint.emit(tr("hint.strike.done").format({"force": force}), true)
 

@@ -169,8 +169,8 @@ func _seg_paint(col: Control, r: Dictionary) -> void:
 	var styles: Array = DataTables.render_table("streets").markings.styles
 	for i in styles.size():
 		items.append([i, tr("paint." + styles[i].id)])
-	HudWidgets.choices(row, items, int(CityStore.snapshot.get("marking_style", 0)), func(v: int) -> void:
-		CityStore.dispatch(&"set_marking_style", [v, true]))
+	HudWidgets.choices(row, items, int(CityStore.snapshot.get("marking_style", 0)), func(v: int) -> Dictionary: # refused, the old one stays lit
+		return CityStore.dispatch(&"set_marking_style", [v, true]))
 
 
 func _seg_language(col: Control, r: Dictionary) -> void:

@@ -35,7 +35,7 @@ func drag(p: Vector3) -> void:
 	if pv.is_empty():
 		return
 	ctl.preview.show_ribbon(pv.points, pv.half_width, pv.ok)
-	ctl.hint.emit("" if pv.ok else refusal(pv), pv.ok)
+	ctl.hint.emit("" if pv.ok else Refusals.text(pv), pv.ok) # a preview: the store's channel never tells it
 
 
 func release(p: Vector3) -> void:
@@ -44,7 +44,8 @@ func release(p: Vector3) -> void:
 	var r: Dictionary = CityStore.dispatch(&"draw_building", [_a, p, fn, zone, shape])
 	_a = Vector3.INF
 	ctl.preview.clear()
-	ctl.hint.emit(tr("ui.build.placed") if r.get("ok", false) else refusal(r), r.get("ok", false))
+	if r.get("ok", false):
+		ctl.hint.emit(tr("ui.build.placed"), true)
 
 
 func in_progress() -> bool:

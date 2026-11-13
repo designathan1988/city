@@ -21,4 +21,5 @@ func hover(p: Vector3) -> void:
 
 func click(p: Vector3) -> void:
 	var r: Dictionary = CityStore.dispatch(&"split_road", [p])
-	ctl.hint.emit(tr("ui.insp.split") if r.get("ok", false) else refusal(r), r.get("ok", false))
+	if r.get("ok", false):
+		ctl.hint.emit(tr("ui.insp.split"), true)

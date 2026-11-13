@@ -56,7 +56,7 @@ func _zone_brush() -> void:
 	brush.drag(b)
 	brush.release(b)
 	var again: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_BRUSH_M, ZONE_KIND])
-	t.check(again.get("error", "") == "tools.toast.zoneSame", "a fast drag zones the middle of the way: %s" % [again])
+	t.check(again.get("ok", false) and again.get("note", "") == "tools.toast.zoneSame", "a fast drag zones the middle of the way: %s" % [again])
 	var shift := InputEventKey.new()
 	shift.keycode = KEY_SHIFT
 	shift.pressed = true
@@ -70,7 +70,7 @@ func _zone_brush() -> void:
 	Input.parse_input_event(shift)
 	Input.flush_buffered_events()
 	var none: Dictionary = CityStore.dispatch(&"paint_zone", [mid, ZONE_BRUSH_M, 0])
-	t.check(none.get("error", "") == "tools.toast.zoneSame", "with Shift the stroke takes the zone off: %s" % [none])
+	t.check(none.get("ok", false) and none.get("note", "") == "tools.toast.zoneSame", "with Shift the stroke takes the zone off: %s" % [none])
 
 
 ## With the road tool in hand Page Up and Down are the road's height, landing on whole metres, and the camera does not tilt.

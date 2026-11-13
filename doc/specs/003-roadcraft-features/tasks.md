@@ -33,7 +33,7 @@ at its end its scenes, measure and photos; commit and push; next. A defect outsi
 Three blocks before the port goes on, each fixing defects the architecture audit found (audit.md) and giving every later block
 what it is checked by. Each block ends with its checks; from T038 on, every block ends with the scale probe as well.
 
-- [ ] T036 [US6] Errors seen (backbone items 1, 2): an engine `ERROR:` or `WARNING:` line fails a test (tools/tasks/verdicts.py); every
+- [X] T036 [US6] Errors seen (backbone items 1, 2): an engine `ERROR:` or `WARNING:` line fails a test (tools/tasks/verdicts.py); every
   command's refusal reaches the player in one place (CityStore's refusal channel with one formatter shared with the tools; the
   inspector, road, approach, junction, connector, transit and land panels stop dropping results; the inspector stays open on a
   refusal; road_blocks shows the core's reason; `hint.road.invalid` and a no-city key in the text tables; road_spec_make a command);

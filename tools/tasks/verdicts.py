@@ -11,10 +11,10 @@ from .task import FAIL, PASS
 # The failure lines of the Godot tests and captures: a crash can leave exit code 0, and neither a SCRIPT ERROR nor a SHADER ERROR
 # (a material drawn by the fallback) stops a scene. These, the tools' FAIL lines and a failure count always fail.
 NEVER_EXPECTED = re.compile(r"Program crashed|SCRIPT ERROR|SHADER ERROR|^FAIL\b|FAILURES: [1-9]", re.M)
-# An engine error stops nothing either: Godot prints ERROR: at the start of the line for its own errors and for push_error
-# (coloured on a terminal). It is a failure unless the task declares it in params `expected_errors` (regular expressions),
-# as a test that provokes one on purpose does.
-GODOT_FAILED = re.compile(NEVER_EXPECTED.pattern + r"|^(?:\x1b\[[\d;]*m)*(?:USER )?ERROR:", re.M)
+# An engine error or warning stops nothing either: Godot prints ERROR: or WARNING: at the start of the line for its own and
+# for push_error / push_warning (coloured on a terminal). Such a line is a failure unless the task declares it in params
+# `expected_errors` (regular expressions), as a test that provokes one on purpose does.
+GODOT_FAILED = re.compile(NEVER_EXPECTED.pattern + r"|^(?:\x1b\[[\d;]*m)*(?:USER )?(?:ERROR|WARNING):", re.M)
 SHOWN_LINES = 5
 
 
@@ -24,15 +24,16 @@ def _text(log: str) -> str:
 
 
 def _expected(line: str, declared: list[re.Pattern]) -> bool:
-    """A failure line the task declared: one of its patterns finds it, and it is an engine error (NEVER_EXPECTED finds none)."""
+    """A failure line the task declared: one of its patterns finds it, and it is an engine error or warning (NEVER_EXPECTED
+    finds none)."""
     return any(rx.search(line) for rx in declared) and not NEVER_EXPECTED.search(line)
 
 
 def failure_lines(log: str, limit: int = SHOWN_LINES, expected: tuple = ()) -> list[str]:
     """The lines of a log that tell a failure (the Godot rule, which also covers the tools' own FAIL lines), but the engine
-    errors the task expects: `expected` is a sequence of regular expressions, and an engine error line one of them finds is
-    no failure. A string is refused (read character by character, it would expect almost every error), and a pattern that
-    does not compile raises: neither is taken for a declaration."""
+    errors and warnings the task expects: `expected` is a sequence of regular expressions, and an engine error or warning
+    line one of them finds is no failure. A string is refused (read character by character, it would expect almost every
+    error), and a pattern that does not compile raises: neither is taken for a declaration."""
     if isinstance(expected, str):
         raise TypeError(f"the expected errors are a list of regular expressions, not the string {expected!r}")
     declared = [re.compile(p) for p in expected]
@@ -45,9 +46,9 @@ def exit_code(task, log: str, code: int, root: Path):
 
 
 def godot(task, log: str, code: int, root: Path):
-    """A Godot scene: exit 0 and not one failure line (an engine error it declares in params `expected_errors` aside); and
-    when its inputs are what it loads ({loads}, params `loads`, a --verbose run), every resource the log says it loaded among
-    them."""
+    """A Godot scene: exit 0 and not one failure line (an engine error or warning it declares in params `expected_errors`
+    aside); and when its inputs are what it loads ({loads}, params `loads`, a --verbose run), every resource the log says
+    it loaded among them."""
     bad = failure_lines(log, expected=task.params.get("expected_errors", ()))
     if code != 0 or bad:
         return FAIL, "; ".join(bad)[:300] or f"exit {code}"

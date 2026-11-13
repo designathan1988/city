@@ -123,11 +123,11 @@ func _action(row: Control, key: String, command: StringName) -> void:
 	row.add_child(b)
 
 
-## A road edit: what the panel showed is gone or changed, so it closes, as after the reference's edits that replace the road.
+## A road edit done changes what the panel showed, so it closes; refused, it stays on it (CityStore.command_failed tells why).
 func _edit(command: StringName) -> void:
 	var at: Variant = _at if command == &"split_road" else _info.id
-	CityStore.dispatch(command, [at])
-	close()
+	if CityStore.dispatch(command, [at]).get("ok", false):
+		close()
 
 
 func duplicate_shown() -> bool:
@@ -161,9 +161,9 @@ func _impossible(col: Control) -> void:
 			continue
 		HudWidgets.label(col, &"BodyLabel", "%s · %s" % [tr("inspector.impossible"), tr("inspector.impossibleGap").format({"angle": roundi(n.gap_deg)})])
 		var off := HudWidgets.button(&"GhostDanger", "", tr("inspector.demolish"), "", "", "opt_row_h")
-		off.pressed.connect(func() -> void:
-			CityStore.dispatch(&"remove_node", [_info.id])
-			close())
+		off.pressed.connect(func() -> void: # closes once the junction is gone; refused, it stays told
+			if CityStore.dispatch(&"remove_node", [_info.id]).get("ok", false):
+				close())
 		col.add_child(off)
 
 
@@ -284,6 +284,6 @@ func _notification(what: int) -> void:
 		show_info(_info, _at)
 
 
-func _demolish(at: Vector3) -> void:
-	CityStore.dispatch(&"demolish", [at])
-	close()
+func _demolish(at: Vector3) -> void: # closes once it is gone; refused, the panel stays on what still stands
+	if CityStore.dispatch(&"demolish", [at]).get("ok", false):
+		close()

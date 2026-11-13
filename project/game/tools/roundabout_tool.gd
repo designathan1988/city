@@ -30,13 +30,12 @@ func hover(p: Vector3) -> void:
 	if pv.is_empty():
 		return
 	ctl.preview.show_disc(pv.centre, radius, pv.ok)
-	ctl.hint.emit("" if pv.ok else tr(pv.error), pv.ok)
+	ctl.hint.emit("" if pv.ok else Refusals.text(pv), pv.ok) # a preview: the store's channel never tells it
 
 
 func click(p: Vector3) -> void:
 	var r: Dictionary = CityStore.dispatch(&"roundabout", [p, radius, Input.is_key_pressed(KEY_SHIFT)])
-	if not r.get("ok", false):
-		ctl.hint.emit(refusal(r), false)
+	if not r.get("ok", false): # told by the store's channel
 		return
 	ctl.preview.clear()
 	ctl.hint.emit(tr("ui.do.roundabout") + " · " + Formatters.format_cost(r.money), true)

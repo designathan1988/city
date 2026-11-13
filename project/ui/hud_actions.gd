@@ -18,6 +18,7 @@ func _hud() -> RoadcraftHud:
 
 func _ready() -> void:
 	CityStore.saved.connect(_on_saved)
+	GameFlow.close_held.connect(_on_close_held)
 
 
 func menu(action: String) -> void:
@@ -45,8 +46,7 @@ func menu(action: String) -> void:
 ## The confirmed new map: what the player had is written first, as the question says.
 func new_city(action: String) -> void:
 	var map := _large_map() if action == "new_large" else TOWN_MAP
-	open_new(map, randi_range(1, int(DataTables.game("start").seed_max)), action != "new_empty")
-	if action == "new_empty":
+	if open_new(map, randi_range(1, int(DataTables.game("start").seed_max)), action != "new_empty") and action == "new_empty":
 		_hud().flash(tr("hint.newMap"), true)
 
 
@@ -55,11 +55,14 @@ func new_city_at(map: int, seed: int) -> void:
 	open_new(map, seed, true)
 
 
-## A new city on screen, as the start screen's form opens one: the city standing is saved first.
-func open_new(map: int, seed: int, with_city: bool) -> void:
-	CityStore.saves.save_on_close()
+## A new city on screen, as the start screen's form opens one: the city standing is saved first, and stays when that save fails
+## (its reason is already on screen, _on_saved): false, and nothing replaced.
+func open_new(map: int, seed: int, with_city: bool) -> bool:
+	if not CityStore.saves.write_before_leaving().get("ok", false):
+		return false
 	_hud().drawer.close()
 	CityStore.new_map(map, seed, with_city)
+	return true
 
 
 ## Where a map of that id stands in the catalogue; -1: the table does not have it.
@@ -137,6 +140,12 @@ func _on_saved(_slot: String, r: Dictionary) -> void:
 		return
 	_failed_at = now
 	_hud().flash(tr("save.failed").format({"message": tr(r.get("error", ""))}), false)
+
+
+## Closing the window found the save failed (GameFlow.close_held): the game stays, and the hint bar says the next close quits
+## unsaved; the failure itself is on the toast (_on_saved).
+func _on_close_held() -> void:
+	_hud().show_hint(tr("save.closeAgain"), false)
 
 
 ## Undo / redo (top bar buttons, Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y): the core's history; the hint names the step.

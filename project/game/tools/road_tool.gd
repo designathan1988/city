@@ -215,7 +215,7 @@ func _preview(pieces: PackedVector3Array, from_lift: float) -> void:
 	ctl.preview.show_road(_last_plan, RoadDraft.paint(drawn), ok, ctl.px_at(pieces[0]), ctl.px_at(pieces[-1]))
 	var text := RoadDraft.measure(_last_plan)
 	if not _last_plan.ok:
-		text += " · " + reason(_last_plan)
+		text += " · " + Refusals.reason(_last_plan)
 	elif not _last_plan.affordable:
 		text += " · " + tr("rule.short.funds")
 	ctl.tagged.emit(text, pieces[-1], ok)
@@ -227,8 +227,7 @@ func _lay(pieces: PackedVector3Array, from_lift: float) -> void:
 	if pieces.is_empty():
 		return
 	var r: Dictionary = CityStore.dispatch(&"build_road_path", [pieces, drawn, ctl.px_at(pieces[-1]), from_lift])
-	if r.is_empty() or not r.ok:
-		ctl.hint.emit(refusal(r), false)
+	if not r.get("ok", false): # told by the store's channel
 		return
 	chain = Vector3.INF
 	if laid_plan.has("points"):

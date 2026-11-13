@@ -2,6 +2,7 @@
  "rule": "keys",
  "expect": [
   "TEXT_KEY_MISSING native/src/api/a.cpp:4",
-  "TEXT_KEY_MISSING native/src/api/b.h:3"
+  "TEXT_KEY_MISSING native/src/api/b.h:3",
+  "TEXT_KEY_MISSING native/src/sim/c.cpp:4"
  ]
 }

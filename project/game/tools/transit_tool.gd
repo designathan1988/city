@@ -33,17 +33,17 @@ func exit() -> void:
 
 func click(p: Vector3) -> void:
 	if Input.is_key_pressed(KEY_SHIFT):
-		if _say(CityStore.dispatch(&"transit_remove", [p])):
+		if _done(CityStore.dispatch(&"transit_remove", [p])):
 			ctl.hint.emit(tr("hint.transit.removed"), true)
 			ctl.plan_changed.emit()
 		return
 	match kind:
 		"stop":
-			_say(CityStore.dispatch(&"transit_stop", [p]))
+			_done(CityStore.dispatch(&"transit_stop", [p]))
 		"terminal":
-			_say(CityStore.dispatch(&"transit_terminal", [p]))
+			_done(CityStore.dispatch(&"transit_terminal", [p]))
 		"station":
-			_say(CityStore.dispatch(&"transit_station", [p, mode]))
+			_done(CityStore.dispatch(&"transit_station", [p, mode]))
 		"track":
 			points.append(CityStore.query(&"transit_snap", [p, mode]))
 			if ctl.double_press:
@@ -112,15 +112,13 @@ func key(code: int) -> void:
 ## Lays the run or makes the line collected so far.
 func finish() -> void:
 	if kind == "track":
-		_say(CityStore.dispatch(&"transit_track", [points, mode]))
-	elif kind == "line" and _say(CityStore.dispatch(&"transit_line", [stops])):
+		_done(CityStore.dispatch(&"transit_track", [points, mode]))
+	elif kind == "line" and _done(CityStore.dispatch(&"transit_line", [stops])):
 		ctl.hint.emit(tr("hint.transit.lineMade"), true)
 		ctl.plan_changed.emit()
 	cancel()
 
 
-func _say(result: Dictionary) -> bool:
-	var ok: bool = result.get("ok", false)
-	if not ok:
-		ctl.hint.emit(tr(result.get("error", "")), false)
-	return ok
+## Whether the command was done: a refusal is told by the store's channel (CityStore.command_failed), never here.
+func _done(result: Dictionary) -> bool:
+	return result.get("ok", false)

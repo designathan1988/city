@@ -55,10 +55,9 @@ func release(_p: Vector3) -> void:
 	CityStore.dispatch(&"end_stroke")
 
 
+## A move refused, whole or in part (some dabs laid), is told by the store's channel (CityStore.command_failed); nothing here.
 func _lay(dabs: PackedVector3Array) -> void:
-	var r: Dictionary = _dab_path(dabs)
-	if not r.get("error", "").is_empty(): # a dab refused (the last refusal: those before it were shown and replaced)
-		ctl.hint.emit(refusal(r), false)
+	_dab_path(dabs)
 
 
 ## The dabs in order, as one command; its result as lay_dabs sums it (sim/commands/commands.h).

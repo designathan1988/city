@@ -29,9 +29,10 @@ static func fill(col: Control, node: int, redraw: Callable) -> void:
 		var items := []
 		for r: Array in RULES:
 			items.push_back([r[1], col.tr(r[0])])
-		HudWidgets.choices(row, items, leg.rule, func(rule: int) -> void:
-			CityStore.dispatch(&"set_approach_rule", [node, leg.seg, rule])
-			redraw.call())
+		HudWidgets.choices(row, items, leg.rule, func(rule: int) -> Dictionary: # the answer: refused, the old rule stays lit
+			var answer: Dictionary = CityStore.dispatch(&"set_approach_rule", [node, leg.seg, rule])
+			redraw.call()
+			return answer)
 	_movements(col, node, legs, redraw)
 
 

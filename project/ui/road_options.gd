@@ -156,8 +156,8 @@ func _furniture_row(spec: Dictionary) -> void:
 	var items := []
 	for c: Dictionary in spec.choices:
 		items.push_back([c.level, tr(c.label_key)])
-	HudWidgets.choices(row, items, CityStore.query(&"road_furniture"), func(level: int) -> void:
-		CityStore.dispatch(&"set_road_furniture", [level]))
+	HudWidgets.choices(row, items, CityStore.query(&"road_furniture"), func(level: int) -> Variant: # the answer (the core's is void today: never refused)
+		return CityStore.dispatch(&"set_road_furniture", [level]))
 
 
 func _parking_row(spec: Dictionary) -> void:

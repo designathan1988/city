@@ -5,6 +5,9 @@
 extends Node
 
 signal state_changed(from: State, to: State)
+## Closing the window found the city's save failed: the game stays (the save's failure is already shown, HudActions) and the next
+## close quits unsaved, which the HUD says (save.closeAgain).
+signal close_held
 
 enum State { BOOT, MENU, PLAYING, QUITTING }
 
@@ -23,6 +26,7 @@ var tests_drive := OS.get_cmdline_user_args().has("--no-flow")
 ## A test run in simulated time (--fixed-fps over 0, tools/tasks/suites.json test_fps): each frame is 1/fps s of the game whatever
 ## it takes, so nothing may hold a frame back to the wall clock.
 var simulated_time := tests_drive and _fixed_fps() > 0
+var _close_held := false # a close the failed save held back: the next one quits unsaved, until a save is written
 
 
 static func _fixed_fps() -> int:
@@ -36,6 +40,7 @@ func _ready() -> void:
 	TranslationServer.set_locale(Settings.language if Settings.language != "" else _system_locale())
 	# closing the window is a request this machine answers (Godot "Handling quit requests"), so quitting has one path
 	get_tree().set_auto_accept_quit(false)
+	CityStore.saved.connect(_on_saved) # CityStore is the autoload before this one (project.godot)
 
 
 ## The player's own language where the game has it, English otherwise (the catalog's two columns).
@@ -43,14 +48,32 @@ func _system_locale() -> String:
 	return LOCALE if OS.get_locale_language() == LOCALE.left(2) else FALLBACK_LOCALE
 
 
-## The city goes with the window (Roadcraft saveOnClose): the store writes what is unsaved first.
+## The city goes with the window: the store writes what is unsaved first.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		if state == State.PLAYING and not tests_drive:
-			CityStore.saves.save_on_close()
-		quit()
+		_close_requested()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT and state == State.PLAYING and not tests_drive:
 		CityStore.saves.save_on_hide()
+
+
+## The window's close button: the game quits once the city is written (or nothing was due). A save that fails keeps the game on,
+## its reason on screen, and a second close quits unsaved, as the hint says: the player chooses to lose the city, never the disk.
+## That second close still lets a save started since (save_on_hide, the autosave) finish: it may be the one that writes the city.
+func _close_requested() -> void:
+	if state == State.PLAYING and not tests_drive:
+		if _close_held:
+			CityStore.saves.settle_in_flight()
+		elif not CityStore.saves.write_before_leaving().get("ok", false):
+			_close_held = true
+			close_held.emit()
+			return
+	quit()
+
+
+## A save written after a held close: the next close saves again before it quits.
+func _on_saved(_slot: String, result: Dictionary) -> void:
+	if result.get("ok", false):
+		_close_held = false
 
 
 func _to(next: State) -> bool:

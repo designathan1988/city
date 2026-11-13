@@ -8,13 +8,15 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 namespace city {
 
 namespace {
 constexpr int SIDE_LEFT = 0, SIDE_RIGHT = 1;
 constexpr double FRONT_REACH_M = 80; // buildings this far behind a side still face it (deepest downtown lots)
-constexpr const char *ZONE_SAME = "tools.toast.zoneSame"; // every side the brush touched already has the zone
+constexpr const char *ZONE_SAME = "tools.toast.zoneSame"; // note: every side (or lot) the brush touched already has the zone
+constexpr const char *ZONE_NO_ROAD = "tools.toast.zoneNoRoad"; // refusal: the brush touched no side that takes a zone
 
 bool zonable(const Profile &p) { return !p.rail && p.walk(); }
 
@@ -82,27 +84,33 @@ EditResult paint_zone(CityState &s, double x, double z, double radius, int zone)
 		j_set_zone(s, h.first, h.second, zone);
 		r.zoned_sides++;
 	}
-	if (r.zoned_sides == 0) {
-		r.error = hits.empty() ? "tools.toast.zoneNoRoad" : ZONE_SAME;
+	if (hits.empty()) {
+		r.error = ZONE_NO_ROAD;
 		return r;
 	}
-	r.ok = true;
+	r.ok = true; // sides hit that all had the zone already: a no-op, not a refusal (nothing was journaled)
+	if (r.zoned_sides == 0) r.note = ZONE_SAME;
 	return r;
 }
 
 EditResult paint_zone_path(CityState &s, const std::vector<StrokePoint> &dabs, double radius, int zone) {
 	EditResult all;
+	bool changed = false;
+	std::string refusal = ZONE_NO_ROAD; // a stroke of no dabs touched nothing
 	for (const StrokePoint &p : dabs) {
 		const int lot = s.lot_book.at(p.x, p.z);
 		const EditResult r = lot != 0 ? zone_lot(s, lot, zone) : paint_zone(s, p.x, p.z, radius, zone);
 		if (r.ok) {
 			all.ok = true;
+			changed = changed || r.note != ZONE_SAME;
 			all.buildings_removed += r.buildings_removed;
 			all.zoned_sides += r.zoned_sides;
-		} else if (lot == 0 && r.error != ZONE_SAME) {
-			all.error = r.error;
+		} else {
+			refusal = r.error;
 		}
 	}
+	if (!all.ok) all.error = refusal; // no dab laid: the last refusal
+	else if (!changed) all.note = ZONE_SAME; // every dab found its zone already there
 	return all;
 }
 

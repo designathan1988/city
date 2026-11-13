@@ -77,11 +77,7 @@ func release(p: Vector3) -> void:
 	var r: Dictionary = CityStore.dispatch(&"build_pole_run", _run(_from, end))
 	_from = Vector3.INF
 	_clear()
-	if r.get("ok", false) and r.has("last"):
-		_chain = r.last
-	else:
-		_chain = Vector3.INF
-		ctl.hint.emit(refusal(r), false)
+	_chain = r.last if r.get("ok", false) and r.has("last") else Vector3.INF
 
 
 ## A line being strung (Roadcraft main.ts gestureInProgress: poleTool.inProgress).

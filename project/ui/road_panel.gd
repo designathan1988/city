@@ -65,9 +65,9 @@ static func _direction(col: Control, info: Dictionary, at: Vector3, changed: Cal
 		now = 1 if spec.elements.any(func(e: Dictionary) -> bool: return e.kind == "lane" and e.dir > 0) else -1
 	var items := [[0, tr_key("direction.both")], [1, tr_key("direction.aToB")], [-1, tr_key("direction.bToA")]]
 	HudWidgets.dropdown(col, tr_key("inspector.direction"), items, now, func(dir: int) -> void:
-		var index: int = CityStore.query(&"road_spec_make", [info.profile_id, RoadSpecOps.directed(spec, dir)])
-		if index >= 0:
-			CityStore.dispatch(&"upgrade_road", [at, index, false])
+		var made: Dictionary = CityStore.dispatch(&"road_spec_make", [info.profile_id, RoadSpecOps.directed(spec, dir)])
+		if made.get("ok", false): # refused, the road keeps its way (CityStore.command_failed tells why)
+			CityStore.dispatch(&"upgrade_road", [at, int(made.index), false])
 		changed.call())
 
 
