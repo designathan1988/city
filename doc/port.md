@@ -5,18 +5,17 @@ The one list of what the port has to do and where it stands. **The next feature 
 list, no other order. `python .claude/hooks/port_state.py` prints the next line, the open block and its work file.
 
 A line names its area's sheet and its row there (`doc/specs/003-roadcraft-features/sheets/<area>.md`, row N): what the player
-meets, what differs from the reference, the evidence on both sides with `file:line`. How a feature is done: `CLAUDE.md`,
+meets, what differs from the reference, the evidence on both sides with `file:line`; the port tool reads that row: `python tools/tracer/port.py sheet <area> --feature N`. How a feature is done: `CLAUDE.md`,
 "One feature, start to end". An order of the owner in the conversation goes before this list.
 
 ## 0. The backbone the port lands in (doc/specs/003-roadcraft-features/architecture.md)
 
 - [x] T036 errors seen: an engine ERROR or WARNING fails a test; every refusal told in one place; the city kept on a failed save (02beaa45)
 - [x] T037 records kept true: record invariants after every command and at every test's end; a removal reaches every table (90b67e27)
-- [ ] T038 scale: the 24 km city opens fast (research.md R4: a candidate's look from its massing; `fill_all` in a 2 x 2 checkerboard of 256 m cells over the job pool, the same city for any pool size; `settle_sites` in parallel) and the scale probe every later feature ends with: one scene on the 24 km map reporting memory by system (each CityState table's bytes, the render's buffers, video memory), CPU by section of the frame and by tick, GPU time, draws and triangles, at fixed views, against `doc/specification.md`'s budgets. Done when: the probe runs under 60 s on the debug DLL and prints its table; `window_traffic_test` under 60 s with the same check; city_mass_test, lot_front_test, lot_overlap_test, edit_fuzz_test, save_undo_test, traffic_hash_test pass; the city's digest written again with its cause in doc/history/game.md. (zones-lots-growth row 2 is this.)
 
 ## 1. Roads (sheets/roads.md; work so far: doc/work/t015-roads.md)
 
-- [ ] roads 1: the heights of the roads, solved in this game's design (read, traced and researched, nothing coded: doc/work/t015-roads.md)
+- [ ] roads 1: the heights of the roads, solved in this game's design (already read and researched, nothing coded: what was found is in doc/work/t015-roads.md)
 - [ ] roads 2: laying a road, what it will be and cost (bridge, fill, cut, tunnel stretches and their price in the draft)
 - [x] roads 3: the network's links and bans kept through edits (T037, 90b67e27)
 - [ ] roads 4: markings (turn arrows, bus legends, words, plate marks; far dashes and colours)
@@ -54,6 +53,7 @@ meets, what differs from the reference, the evidence on both sides with `file:li
 ## 4. Zones, lots and growth (sheets/zones-lots-growth.md)
 
 - [ ] zones-lots-growth 1: growth's order and pace
+- [ ] zones-lots-growth 2: the 24 km city opens fast (research.md R4: a candidate's look from its massing; `fill_all` in a 2 x 2 checkerboard of 256 m cells over the job pool, the same city for any pool size; `settle_sites` in parallel); `window_traffic_test` under 60 s with the same check
 - [ ] zones-lots-growth 3: rezoning keeps the building
 - [ ] zones-lots-growth 4: lots cut to the land and kept
 - [ ] zones-lots-growth 5: buildings that age into decay
@@ -161,5 +161,7 @@ meets, what differs from the reference, the evidence on both sides with `file:li
 
 ## Only on the owner's order
 
-`tools/build/quick.sh --ready`, the whole gates against the register, `python tools/tasks/km24.py` (two builds compared),
+Measurements at scale: `python tools/tasks/km24.py` (the 24 km city, two builds compared) and the scale probe that was T038
+(one scene on the 24 km map: memory by system, CPU by section of the frame and by tick, GPU time, draws and triangles against
+`doc/specification.md`'s budgets; not built). `tools/build/quick.sh --ready`, the whole gates against the register,
 `python tools/hunt/hunt.py`.

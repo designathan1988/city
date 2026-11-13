@@ -5,8 +5,10 @@ its work file names (doc/work/<block>.md), what is uncommitted and the last comm
     python .claude/hooks/port_state.py            the state, as text (any time, by hand)
     python .claude/hooks/port_state.py hook       Claude Code's hook: the event's JSON on stdin, the state as
                                                   hookSpecificOutput.additionalContext on stdout (SessionStart: whole;
-                                                  UserPromptSubmit and SubagentStart: one line)
-It states facts only; the orders are CLAUDE.md's.
+                                                  UserPromptSubmit and SubagentStart: one line; PreToolUse of an
+                                                  edit: the game's code is not edited before a skill and Context7
+                                                  were used in the session, CLAUDE.md step 1)
+The orders are CLAUDE.md's.
 """
 
 import json
@@ -25,6 +27,10 @@ SHOWN = 400          # characters of a board line or a work file's step shown
 BRIEF = 160          # characters of the next line in the one-line state
 NEXT_LINES = 8      # lines of the work file's "Next" section shown
 GIT_SECONDS = 5
+FEATURE = re.compile(r"^([a-z-]+) (\d+):")   # a board line of an area's sheet: its area and row
+GAME_CODE = ("native/src/", "project/")      # what the edit gate holds
+CONTEXT7 = ("ToolSearch `select:mcp__plugin_context7_context7__resolve-library-id,"
+            "mcp__plugin_context7_context7__query-docs`")
 
 
 def board() -> dict:
@@ -59,8 +65,6 @@ def block() -> dict:
 def work_next(name: str) -> list:
     """The lines under the work file's "Next" heading: what the block's author left to do."""
     path = WORK / f"{name}.md"
-    if not path.is_file():
-        return [f"doc/work/{name}.md is missing: write it (goal, sheet, plan, state, next)"]
     out, inside = [], False
     for line in path.read_text(encoding="utf-8").splitlines():
         if line.startswith("## "):
@@ -85,7 +89,7 @@ def one_line() -> str:
         return "Port: " + b["error"]
     held = "no block open" if k["state"] == "closed" else f"block {k.get('name')} is {k['state']}"
     return (f"Port ({b['done']} of {b['total']} done, doc/port.md): next = {b['next'][:BRIEF] or 'nothing left'}; {held}. "
-            "Steps and commands: CLAUDE.md, 'One feature, start to end'.")
+            "Skills and Context7 first; steps and commands: CLAUDE.md, 'One feature, start to end'.")
 
 
 def whole(source: str = "") -> str:
@@ -94,19 +98,63 @@ def whole(source: str = "") -> str:
         return "City, the port: " + b["error"]
     lines = [f"City, where the port stands ({b['done']} of {b['total']} features done; the board is doc/port.md):",
              f"NEXT: {b['next'][:SHOWN] or 'nothing left on the board'}" + (f"  [{b['section']}]" if b["next"] else "")]
+    lines.append(f"FIRST: invoke the skills the work needs (Skill tool) and load Context7 ({CONTEXT7}); the game's code "
+                 "cannot be edited before both were used.")
+    row = FEATURE.match(b["next"])
+    if row:
+        lines.append(f"TRACE IT (both games, under a minute): python tools/tracer/port.py sheet {row.group(1)} "
+                     f"--feature {row.group(2)}; then read its code whole in both games, code it whole with nothing run, "
+                     "and at the end build, test, photograph and analyse (CLAUDE.md, 'One feature, start to end').")
     if k["state"] == "closed":
-        lines.append("Block: none open. The next feature starts at step 1 of CLAUDE.md, 'One feature, start to end'.")
+        lines.append("Block: none open.")
     else:
         note = {"open": "being coded, nothing runs until `block verify`", "verify": "its checks are running"}.get(k["state"], "")
-        lines.append(f"Block: {k.get('name')} is {k['state']}" + (f" ({note})" if note else "")
-                     + f". Its work file doc/work/{k.get('name')}.md says next:")
-        lines += ["  " + step for step in work_next(str(k.get("name")))]
+        lines.append(f"Block: {k.get('name')} is {k['state']}" + (f" ({note})" if note else "") + ".")
+        if (WORK / f"{k.get('name')}.md").is_file():
+            lines.append(f"Its work file doc/work/{k.get('name')}.md says next:")
+            lines += ["  " + step for step in work_next(str(k.get("name")))]
     changed = git("status", "--short")
     lines.append(f"Uncommitted: {len(changed)} file(s)" + (": " + ", ".join(c[3:] for c in changed[:6]) if changed else ""))
     lines.append("Last commits: " + " | ".join(c[:110] for c in git("log", "-3", "--format=%h %s")))
     if source == "compact":
         lines.append("The conversation was just compacted: read CLAUDE.md's steps and the work file above again before going on.")
     return "\n".join(lines)
+
+
+def used(transcript: str) -> tuple:
+    """Whether this session, since its start or its last compaction, invoked a skill and asked Context7 (read from its
+    transcript's tool calls). A transcript that cannot be read holds nothing back."""
+    path = Path(transcript) if transcript else None
+    if path is None or not path.is_file():
+        return True, True
+    skill = docs = False
+    with path.open(encoding="utf-8", errors="replace") as lines:
+        for line in lines:
+            if "compact_boundary" in line:
+                skill = docs = False
+            if '"tool_use"' not in line:
+                continue
+            skill = skill or '"name":"Skill"' in line or '"name": "Skill"' in line
+            docs = docs or "context7__query-docs" in line
+    return skill, docs
+
+
+def gate(payload: dict) -> dict | None:
+    """The refusal of an edit of the game's code made before a skill and Context7 were used; nothing for any other edit."""
+    written = str((payload.get("tool_input") or {}).get("file_path", "")).replace("\\", "/")
+    root = ROOT.as_posix()
+    inside = written[len(root) + 1:] if written.lower().startswith(root.lower() + "/") else written
+    if not inside.startswith(GAME_CODE):
+        return None
+    skill, docs = used(payload.get("transcript_path", ""))
+    if skill and docs:
+        return None
+    owed = [what for what, done in (("invoke the skills the work needs with the Skill tool", skill),
+                                   (f"load Context7 ({CONTEXT7}) and ask it (query-docs) about the APIs this code calls", docs))
+            if not done]
+    return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                   "permissionDecisionReason": "CLAUDE.md step 1, before the game's code is edited: "
+                                                               + "; ".join(owed) + ". Then make this edit again."}}
 
 
 def main() -> int:
@@ -119,6 +167,11 @@ def main() -> int:
     raw = sys.stdin.buffer.read().decode("utf-8", errors="replace")
     payload = json.loads(raw) if raw.strip() else {}
     event = payload.get("hook_event_name", "")
+    if event == "PreToolUse":
+        refusal = gate(payload)
+        if refusal:
+            sys.stdout.write(json.dumps(refusal))
+        return 0
     if event == "SessionStart":
         context = whole(payload.get("source", ""))
     elif event == "UserPromptSubmit":

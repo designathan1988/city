@@ -534,3 +534,8 @@ the residential ring (r > 350 m on the town map).
   its two checklists (what of tasks.md was still owed is on the board, with its goals); `.claude/hooks/standing_orders.py`.
 - **Left as it is, said to the owner**: the work files of three closed blocks (t036, t037, t042) were never folded into their
   histories.
+- **The owner's corrections the same day**: no table, sheet or work file is owed on the way (the port tool's report and the
+  code are the record: the comparison sheet's contract removed); nothing runs while a feature is coded and nothing is measured
+  (the scale probe and km24 only on the owner's order: T038 left the board's head, the 24 km opening is its area's row); the
+  tracing, reading and coding are the session's own, no agent; skills and Context7 were not being used, so the hook names
+  them at every start and refuses an edit of the game's code until both were used in the session.
