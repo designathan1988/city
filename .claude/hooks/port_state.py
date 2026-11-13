@@ -8,13 +8,18 @@ its work file names (doc/work/<block>.md), what is uncommitted and the last comm
                                                   UserPromptSubmit and SubagentStart: one line; PreToolUse of an
                                                   edit: the game's code is not edited before a skill and Context7
                                                   were used in the session, CLAUDE.md step 1)
-The orders are CLAUDE.md's.
+                                                  PostToolUse: when the work's note was not written for NOTE_SECONDS,
+                                                  it asks for it, once per that time; PreCompact: what the summary
+                                                  of a compaction must keep)
+Nothing read may be lost to a compaction: the note doc/work/<name>.md is what survives one (CLAUDE.md), and this hook asks
+for it while the work goes, tells the summary to keep it, and gives it back whole after. The orders are CLAUDE.md's.
 """
 
 import json
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -28,6 +33,8 @@ BRIEF = 160          # characters of the next line in the one-line state
 WORK_WHOLE = 9000    # characters of the work file given back whole after a compaction (a hook's text holds 10,000)
 NEXT_LINES = 8      # lines of the work file's "Next" section shown
 GIT_SECONDS = 5
+NOTE_SECONDS = 900   # the note older than this while tools run: it is asked for
+ASKED = ROOT / "dist" / "block" / "note_asked"   # when the note was last asked for (its time of writing)
 FEATURE = re.compile(r"^([a-z-]+), complete")   # a board line of an area's sheet: its area
 GAME_CODE = ("native/src/", "project/")      # what the edit gate holds
 CONTEXT7 = ("ToolSearch `select:mcp__plugin_context7_context7__resolve-library-id,"
@@ -75,6 +82,59 @@ def work_next(name: str) -> list:
     return out[:NEXT_LINES] or [f"doc/work/{name}.md has no line under '## Next'"]
 
 
+def note_file() -> Path | None:
+    """The note of the work in hand: the open block's, else the one written last in doc/work; none when there is none."""
+    k = block()
+    if k["state"] != "closed":
+        named = WORK / f"{k.get('name')}.md"
+        return named if named.is_file() else None
+    notes = sorted(WORK.glob("*.md"), key=lambda f: f.stat().st_mtime) if WORK.is_dir() else []
+    return notes[-1] if notes else None
+
+
+def note_back() -> list:
+    """The note given back whole: what a compaction, or a new session, goes on from."""
+    note = note_file()
+    if note is None:
+        return ["There is no note of the work in doc/work: what was read before is lost; write one as the work goes."]
+    text = note.read_text(encoding="utf-8")
+    rel = note.relative_to(ROOT).as_posix()
+    return [f"The note {rel}, what was read, decided, done and left"
+            + (f" (its first {WORK_WHOLE} characters; Read the file for the rest)" if len(text) > WORK_WHOLE else "") + ":",
+            text[:WORK_WHOLE]]
+
+
+def checkpoint() -> str:
+    """The reminder to write the note, when it is older than NOTE_SECONDS and was not asked for in that time; else nothing."""
+    now = time.time()
+    note = note_file()
+    if note is not None and now - note.stat().st_mtime < NOTE_SECONDS:
+        return ""
+    if ASKED.is_file() and now - ASKED.stat().st_mtime < NOTE_SECONDS:
+        return ""
+    ASKED.parent.mkdir(parents=True, exist_ok=True)
+    ASKED.write_text(str(int(now)), encoding="utf-8")
+    k = block()
+    name = k.get("name") if k["state"] != "closed" else None
+    where = f"doc/work/{name}.md" if name else (note.relative_to(ROOT).as_posix() if note else "doc/work/<the work's name>.md")
+    return (f"Checkpoint (CLAUDE.md): the work's note was not written in the last {NOTE_SECONDS // 60} minutes. A compaction keeps "
+            f"nothing of what was read but that file. Write into {where} now, before going on: the owner's orders of this "
+            "session in their words, what was read (facts with file:line), what was decided for each case, what is done "
+            "(files changed) and what is left, in order.")
+
+
+def summary_orders() -> str:
+    """What the summary of a compaction must keep (PreCompact's stdout is its instructions)."""
+    note = note_file()
+    rel = note.relative_to(ROOT).as_posix() if note else "none yet"
+    return ("Keep in the summary, exactly and whole: (1) every order the owner gave in this conversation, in the owner's own "
+            "words, the latest last; (2) the work in hand, its board line (doc/port.md) and the open block; (3) the path of "
+            f"the work's note ({rel}) and that it is Read whole before anything else; (4) every fact read from the code "
+            "(with file:line) and every design decision that is not in that note yet; (5) the files changed so far, what "
+            "is coded and what is left, in order; (6) the commands that were run and what each answered, the failures "
+            "with their causes. Do not shorten file paths, numbers or names.")
+
+
 def git(*args: str) -> list:
     try:
         done = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True, encoding="utf-8",
@@ -112,22 +172,17 @@ def whole(source: str = "") -> str:
     else:
         note = {"open": "being coded, nothing runs until `block verify`", "verify": "its checks are running"}.get(k["state"], "")
         lines.append(f"Block: {k.get('name')} is {k['state']}" + (f" ({note})" if note else "") + ".")
-        note = WORK / f"{k.get('name')}.md"
-        if note.is_file() and source == "compact":
-            text = note.read_text(encoding="utf-8")
-            lines.append(f"Its note doc/work/{k.get('name')}.md, what was read and decided before the compaction"
-                         + (f" (its first {WORK_WHOLE} characters; Read the file for the rest)" if len(text) > WORK_WHOLE else "") + ":")
-            lines.append(text[:WORK_WHOLE])
-        elif note.is_file():
+        if source != "compact" and (WORK / f"{k.get('name')}.md").is_file():
             lines.append(f"Its note doc/work/{k.get('name')}.md says next:")
             lines += ["  " + step for step in work_next(str(k.get("name")))]
-        else:
+        elif source != "compact":
             lines.append(f"It has no note doc/work/{k.get('name')}.md: a compaction would lose what was read. Write it now.")
     changed = git("status", "--short")
     lines.append(f"Uncommitted: {len(changed)} file(s)" + (": " + ", ".join(c[3:] for c in changed[:6]) if changed else ""))
     lines.append("Last commits: " + " | ".join(c[:110] for c in git("log", "-3", "--format=%h %s")))
     if source == "compact":
-        lines.append("The conversation was just compacted: go on from the note above (Read it whole if it was cut), never from memory.")
+        lines.append("The conversation was just compacted: go on from the note below (Read it whole if it was cut), never from memory.")
+        lines += note_back()
     return "\n".join(lines)
 
 
@@ -181,6 +236,14 @@ def main() -> int:
         refusal = gate(payload)
         if refusal:
             sys.stdout.write(json.dumps(refusal))
+        return 0
+    if event == "PreCompact":
+        sys.stdout.write(summary_orders())
+        return 0
+    if event == "PostToolUse":
+        asked = checkpoint()
+        if asked:
+            sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": event, "additionalContext": asked}}))
         return 0
     if event == "SessionStart":
         context = whole(payload.get("source", ""))

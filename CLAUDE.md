@@ -19,9 +19,11 @@ is spoken to in Portuguese; repository text is English.
 
 ## One functionality, start to end
 
-One note is kept, and no other document: `doc/work/<area>.md`. What the reading found (facts with `file:line`), the design
-of each case, what is coded and what is left go into it before the first line of code and as each case is coded, because a
-compaction keeps nothing of what was read: after one, the hook gives the note back whole and the work goes on from it.
+Nothing read is lost to a compaction, in the port and in any other work: one note, `doc/work/<name>.md` (the block's name),
+holds the owner's orders of the session in their words, what the reading found (facts with `file:line`), the design of each
+case, what is done and what is left. It is written before the first line of code and again as the work goes (the hook asks
+for it every 15 minutes it was not written, tells a compaction's summary what to keep, and gives the note back whole after).
+After a compaction the work goes on from the note, never from memory. No other document is written on the way.
 
 1. **Load, before anything.** The skills the work needs (the Skill tool) and Context7's tools (ToolSearch,
    `select:mcp__plugin_context7_context7__resolve-library-id,mcp__plugin_context7_context7__query-docs`). The hook refuses an
