@@ -56,7 +56,9 @@ enum PaneDark { PANE_DARK_PICK, PANE_DARK_NONE, PANE_DARK_QUARTER, PANE_DARK_FIF
 PaneDark pane_dark(uint8_t comp);
 // The wall of bays side by side with nothing cut in it, as one face: a flush pane stands on it, so a storey of windows is a few faces
 // and a pane each, not four rectangles a bay. Short enough that the macro tone, written per vertex, still moves along it.
+// It is made on its shell alone (the run opens with the first bay added), never as an aggregate with half of its fields given.
 struct WallRun {
+	explicit WallRun(Shell &on) : shell(on) {}
 	Shell &shell;
 	int last = -1; // the bay it reaches, -1: none open
 	Basis f;

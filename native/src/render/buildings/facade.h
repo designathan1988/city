@@ -78,6 +78,7 @@ Lin paint_lin(const Paint &p);
 // Moulding (bands, cornices, coping) paint: the trim, or plaster wall x 1.1 when the trim is metal.
 Paint moulding_of(const Placed &pl);
 Paint flat_roof_of(const Placed &pl, const Volume &v); // a flat roof's slab
+Paint roof_surface_of(const Placed &pl, const Volume &v); // what a flat roof shows: a terrace's floor, or its slab
 // A two-tier band: lower tier 0.45 out from -h/2 to -0.1h, upper tier from -0.1h to +h/2;
 // `flush`: one strip.
 void band(Shell &s, const Side &sd, float z, float out, float h, const Lin &lin, int8_t fin, bool flush);

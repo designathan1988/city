@@ -1,7 +1,8 @@
 // Geometry and paint queries of a placed body: the sides of a volume as facade frames (rectangles and shaped
-// outlines), the covered test between volumes of one building, and the paints of walls, trims and mouldings.
+// outlines), the covered test between volumes of one building, and the paints of walls, trims, mouldings and roofs.
 #include "render/buildings/facade.h"
 
+#include "render/buildings/roof_util.h"
 #include "sim/buildings/b40/body_air.h"
 
 #include <cmath>
@@ -75,6 +76,12 @@ Paint flat_roof_of(const Placed &pl, const Volume &v) {
 		if (p.finish != FIN_TILE && p.finish != FIN_SLATE && !(p.finish == slab.finish && p.rgb == slab.rgb)) return p;
 	}
 	return pl.data->flat_roofs[((uint32_t(pl.id) + ID_OFF) * GOLDEN) % pl.data->flat_roofs.size()];
+}
+
+// What a flat roof is paved with: a terrace's floor where it is one or where another block stands on it (the storey above
+// steps out onto it), the slab elsewhere. The near and the far level both paint it from here.
+Paint roof_surface_of(const Placed &pl, const Volume &v) {
+	return v.roof == ROOF_TERRACE || covered_by_above(*pl.b, v) ? pl.data->color("terrace") : flat_roof_of(pl, v);
 }
 
 void band(Shell &s, const Side &sd, float z, float out, float h, const Lin &lin, int8_t fin, bool flush) {

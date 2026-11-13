@@ -16,7 +16,7 @@ namespace city::b40 {
 
 namespace {
 constexpr float ROOF_EDGE_H = 0.85f, ATTIC_H = 1.5f, COPING = 0.3f, COPING_H = 0.06f; // the coping's width in, and its lip (roof_emit.cpp LIP_H)
-constexpr float PLINTH_BURY = 0.8f, TEST_OUT = 0.03f, MACHINE_H = 3.f, MODULE = 3.f, SLAB_LIFT = 0.002f;
+constexpr float PLINTH_BELOW_M = 0.8f, TEST_OUT = 0.03f, MACHINE_H = 3.f, SLAB_LIFT = 0.002f;
 constexpr float MASS_IN_M = 0.7f, HALF = 0.5f; // the plain side stands this far behind the bays: past the deepest opening
 constexpr uint32_t CELL_OFFSETS = 64; // bays the far level's grid starts from, by building: two buildings light other rooms
 
@@ -242,7 +242,7 @@ void walls(Shell &s, const Placed &pl, const Volume &v, int vol, bool roofs, Lev
 			if (!pl.lean) s.box(sd.f, 0, sd.length, top + ph - COPING_H, top + ph, -COPING, 0, paint_lin(mp), mp.finish, SKIP_E1_NEG);
 		}
 		if (v.base == 0 && !covered(b, v, 0, mid))
-			s.rect(sd.f, 0, sd.length, pl.ground_lo - PLINTH_BURY, 0, 0, paint_lin(pl.data->color("plinth")), FIN_STONE);
+			s.rect(sd.f, 0, sd.length, pl.ground_lo - PLINTH_BELOW_M, 0, 0, paint_lin(pl.data->color("plinth")), FIN_STONE);
 		(void)z0;
 	}
 }
@@ -251,16 +251,15 @@ void roof(Shell &s, const Placed &pl, const Volume &v, int vol) {
 	const Body &b = *pl.b;
 	float eaves = b.level_z(v.top());
 	if (!roof_flat(v.roof)) { emit_pitched(s, pl, v, eaves); return; }
-	Paint rp = v.roof == ROOF_TERRACE || covered_by_above(b, v) ? pl.data->color("terrace") : flat_roof_of(pl, v);
+	const Paint rp = roof_surface_of(pl, v);
 	s.grime_floor = -FAR_AWAY;
 	top_face(s, pl, v, eaves + SLAB_LIFT, paint_lin(rp), rp.finish);
 	for (const Core &cr : b.cores) {
-		float cx = cr.x + MODULE / 2, cy = cr.y + MODULE / 2;
-		if (!(cx > v.x && cx < v.x + v.w && cy > v.y && cy < v.y + v.d) || covered_by_above(b, v)) continue;
+		if (machine_room_roof(b, cr) != &v) continue;
 		const Paint &wp = b.wall_of(v);
-		s.box(pl.lot, cr.x, cr.x + MODULE, cr.y, cr.y + MODULE, eaves, eaves + MACHINE_H, paint_lin(wp) * pl.shade, wp.finish, SKIP_E2_NEG);
+		s.box(pl.lot, cr.x, cr.x + CORE_SIDE_M, cr.y, cr.y + CORE_SIDE_M, eaves, eaves + MACHINE_H, paint_lin(wp) * pl.shade, wp.finish, SKIP_E2_NEG);
 	}
-	if (pl.lean && v.roof != ROOF_TERRACE && v.outline.empty() && !covered_by_above(b, v)) { // the plant where the near level has it, a box a piece
+	if (pl.lean && v.roof != ROOF_TERRACE && v.outline.empty()) { // the plant where the near level has it (clear of a block above), a box a piece
 		Shell finer;
 		emit_roof_plant(s, finer, pl, v, vol, eaves);
 	}

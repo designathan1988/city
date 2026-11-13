@@ -1,6 +1,6 @@
 // Roof plant on flat roofs: the 12 kinds in catalogue
 // order with their sizes, caps and chances by use, packed on a 0.5 m occupancy grid inside a 0.8 m margin, with a
-// two-cell clear ring round every piece and the machine rooms. Stream = mulberry32(id*2654435761 ^ (vol+7)*40503 ^
+// two-cell clear ring round every piece, the machine rooms and every block standing on the roof. Stream = mulberry32(id*2654435761 ^ (vol+7)*40503 ^
 // 0x5f3759df). Drains, masts and dish posts are fine parts.
 #include "render/buildings/facade.h"
 
@@ -189,8 +189,13 @@ void emit_roof_plant(Shell &shell, Shell &parts, const Placed &pl, const Volume 
 	pk.ny = int((v.d - 2 * MARGIN) / CELL);
 	if (pk.nx <= 0 || pk.ny <= 0) return;
 	pk.used.assign(size_t(pk.nx * pk.ny), 0);
-	for (const Core &c : b.cores) // the machine room square
-		pk.mark(int((c.x - v.x - MARGIN) / CELL), int((c.y - v.y - MARGIN) / CELL), int(3 / CELL), int(3 / CELL));
+	const auto keep_clear = [&](float x0, float y0, float x1, float y1) { // a square of the roof's plan no piece stands in
+		const int cx0 = int(std::floor((x0 - v.x - MARGIN) / CELL)), cy0 = int(std::floor((y0 - v.y - MARGIN) / CELL));
+		pk.mark(cx0, cy0, int(std::ceil((x1 - v.x - MARGIN) / CELL)) - cx0, int(std::ceil((y1 - v.y - MARGIN) / CELL)) - cy0);
+	};
+	for (const Core &c : b.cores) keep_clear(c.x, c.y, c.x + CORE_SIDE_M, c.y + CORE_SIDE_M); // the machine room square
+	for (const Volume &o : b.volumes) // a block standing on this roof: its walls and the ring round them stay clear
+		if (&o != &v && o.base == v.top()) keep_clear(o.x, o.y, o.x + o.w, o.y + o.d);
 	Mulberry32 r((pl.id * GOLDEN) ^ (uint32_t(vol + VOL_OFF) * VOL_K) ^ MAGIC);
 	int use = b.use == USE_RESIDENTIAL ? 0 : b.use == USE_COMMERCIAL ? 1 : 2;
 	float age = float((pl.id * AGE_MUL) % AGE_MOD) / float(AGE_MOD), area = v.w * v.d;
