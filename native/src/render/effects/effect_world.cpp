@@ -2,6 +2,8 @@
 #include "render/effects/effect_world.h"
 
 #include "core/math.h"
+#include "render/props/street_props.h"
+#include "sim/state/city_view.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 
@@ -24,6 +26,17 @@ constexpr float SHAKE_FLOOR = 1e-3f;
 constexpr float FLASH_DAMP = 2.f; // the flash dies off with the square of its life left
 constexpr float LIGHT_ATTEN = 2.f;
 constexpr float GEYSER_LIFT_M = 0.4f, JET_SPREAD_M = 0.1f, JET_LIFE_S = 4.2f;
+constexpr double DECK_LOOK_FROM_M = 1000.0; // over any deck: a ray straight down from this high meets the first under a point
+
+// The ground a crater's mark lies on at (x, z): the natural ground, a street's deck or a footway's top, the highest. The terrain lies
+// SHAPE_DROP_M under every street (sim/terrain/road_shape.cpp), so a mark laid on it alone left the street over its plane, unmarked
+// (marks.gdshader lie_above_m); a crater's pit, dug after, lies under the natural ground and so under its plane.
+float mark_ground(const CityState &s, const CityView &view, const StreetLook &look, float x, float z) {
+	float y = s.terrain.base_height_at(x, z);
+	double t = 0;
+	if (s.roads.ray_deck(x, DECK_LOOK_FROM_M, z, 0, -1, 0, 2 * DECK_LOOK_FROM_M, t)) y = std::max(y, float(DECK_LOOK_FROM_M - t));
+	return std::max(y, street_ground(view, look, x, z));
+}
 } // namespace
 
 bool EffectWorld::init(const RenderContext &ctx, const StreetLook &look, PackedStringArray &errors) {
@@ -167,7 +180,8 @@ void EffectWorld::sync(const CityState &s, ChangeLog &log, FrameAdmission &admis
 	if (craters_seen_ != craters.revision()) {
 		// only blows since (the layout held): the craters laid are still the list's first, and only the new ones are laid
 		const bool grew = crater_layout_seen_ == craters.layout_revision();
-		marks_.set_craters(craters.items(), grew ? marks_.craters() : 0, [&](float x, float z) { return s.terrain.base_height_at(x, z); });
+		const CityView view(s);
+		marks_.set_craters(craters.items(), grew ? marks_.craters() : 0, [&](float x, float z) { return mark_ground(s, view, *street_look_, x, z); });
 		craters_seen_ = craters.revision();
 		crater_layout_seen_ = craters.layout_revision();
 	}

@@ -128,7 +128,8 @@ func _roads() -> void:
 		while z < bounds.max.z and spot == Vector3.INF:
 			var anchor: Dictionary = CityStore.query(&"segment_at", [Vector3(x, 0, z)])
 			if anchor.get("seg", -1) >= 0:
-				spot = anchor.at
+				# on the deck, where the player's click lands (the terrain under a street lies 0.6 m lower: Psimulation-106)
+				spot = anchor.points[anchor.points.size() / 2]
 			z += SCAN_STEP_M
 		x += SCAN_STEP_M
 	check(spot != Vector3.INF, "found a point on a road")

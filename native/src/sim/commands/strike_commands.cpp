@@ -13,7 +13,7 @@ namespace city {
 
 namespace {
 constexpr size_t EVENT_CAP = 8192; // events kept when nothing drains them (a headless run)
-constexpr float ROOF_MIN_M = 0.5f; // a burst this high over the ground is on a building
+constexpr float ROOF_MIN_M = 0.5f; // a burst this high over the ground, off a street's deck, is on a building
 } // namespace
 
 void emit_damage_event(CityState &s, const DamageEvent &e) {
@@ -39,7 +39,11 @@ EditResult strike_at(CityState &s, double x, double z, double strength, double h
 	const float ground = s.terrain.height_at(float(x), float(z));
 	double t, d;
 	const int street = s.roads.find_segment_near(x, z, s.catalog.tune.road_pick_m, t, d);
-	const bool on_building = height > ground + ROOF_MIN_M;
+	// on the street, whatever the ground under it: the terrain lies SHAPE_DROP_M under every street (sim/terrain/road_shape.cpp), and the
+	// player's click lands on the deck (RoadNetwork::ray_deck from just over the point, straight down, meets it within ROOF_MIN_M)
+	double deck_t = 0;
+	const bool on_street = s.roads.ray_deck(x, height + ROOF_MIN_M, z, 0, -1, 0, 2 * ROOF_MIN_M, deck_t);
+	const bool on_building = !on_street && height > ground + ROOF_MIN_M;
 	Blow b{ s, p, float(x), float(z), ground, float(std::max(height, double(ground))), st, blast::charge_kg(p, st),
 		street >= 0 && !on_building ? blast::Surface::HARD : blast::Surface::EARTH, on_building, STRIKE_SALT ^ s.damage.strikes, r };
 	const uint32_t struck = s.damage.strikes++; // undone with the blow: the next one draws what this one drew
