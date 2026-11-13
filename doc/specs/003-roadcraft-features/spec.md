@@ -191,6 +191,11 @@ budgets of doc/specification.md.
   reported; the radius grows with the frame's move so it stays rare, never hidden.
 - The point looked at walked into a tall building at street zoom: the point rises over it on the slope-limited floor before the eye
   could reach the wall, the rise starting from rest; far views never ride the roofs.
+- A ported feature that changes the city's digest or what a save holds: the digest's reference is written again with its cause in
+  the area's history; a save of the previous build still loads (its missing fields take the data's defaults) or the change is
+  refused.
+- A feature the tracer cannot follow (a gap it reports, a call outside the code read): the files are read by hand, whole, and the
+  tracer's failure enters the register; the sheet says which links were read by hand.
 - A check that cannot finish in a minute: it is a defect of its tool, registered and fixed at its cause, never a raised deadline.
 - The reference tree missing on the machine: the inventory and the tracer refuse with the reason; nothing is judged against an
   absent reference.
@@ -276,7 +281,8 @@ budgets of doc/specification.md.
   traffic window scene ends in under 60 seconds.
 - **SC-006**: Every feature brought has a comparison sheet, a test, photos analysed region by region, and a zero copy-scan result;
   the inventory shows it paired afterwards.
-- **SC-007**: No commit of the work holds more than one item; every passing item reaches the remote before the next starts.
+- **SC-007**: No commit of the work holds more than one item (in the port, one feature with its sheet, code, scene and photos plan);
+  every passing item reaches the remote before the next starts.
 - **SC-008**: No run of the work is silent, unwatched or without a deadline (the orchestrator's records show each task's lines and
   deadline).
 - **SC-009**: The document and tool survey finds 0 contradictions, 0 stale commands or paths, 0 unused or broken tools; the whole
