@@ -54,10 +54,14 @@ struct Building {
 // copy: sim/state/city_cut.h). The generator's tables are not here: they are the session's, read beside the records.
 struct BuildingRecords {
 	IdTable<Building> items;
-	SpatialHash hash; // by lot centre
+	SpatialHash hash; // by lot centre: who owns a place (a chunk draws the lots whose centre it holds)
+	SpatialHash lots; // by the box of the lot's turned rectangle: what stands over a place, wherever its centre is
 
 	// Does the point stand on the building's lot (its rectangle grown by pad)?
 	static bool covers(const Building &b, float x, float z, float pad);
+	// The box of the lot's turned rectangle (what `lots` files it by).
+	static void bounds(const Building &b, float &minx, float &minz, float &maxx, float &maxz);
+	// The records whose lot centre lies in the box (each once per cell the box touches: the callers' own rule).
 	template <typename F>
 	void query(float minx, float minz, float maxx, float maxz, F &&fn) const {
 		hash.query(minx, minz, maxx, maxz, [&](int id) {
@@ -65,12 +69,25 @@ struct BuildingRecords {
 			if (b.alive && b.x >= minx && b.x <= maxx && b.z >= minz && b.z <= maxz) fn(id);
 		});
 	}
-	// The records filed in the cells the box touches, under their own ids, the copy's hash answering for the box alone.
+	// The records whose lot's box meets the box, each once: what may stand over any of its points (the camera's sight, a roof).
+	template <typename F>
+	void meeting(float minx, float minz, float maxx, float maxz, F &&fn) const {
+		lots.query_unique(minx, minz, maxx, maxz, [&](int id) {
+			const Building &b = items[id];
+			float x0, z0, x1, z1;
+			bounds(b, x0, z0, x1, z1);
+			if (b.alive && x0 <= maxx && x1 >= minx && z0 <= maxz && z1 >= minz) fn(id);
+		});
+	}
+	// The records filed in the cells the box touches (by centre or by lot), under their own ids, the copy's hashes answering
+	// for the box alone.
 	BuildingRecords cut(float minx, float minz, float maxx, float maxz) const {
 		BuildingRecords c;
 		c.items = IdTable<Building>::cut(items.size());
 		c.hash = hash.window(minx, minz, maxx, maxz);
-		for (int id : c.hash.filed()) c.items.put(size_t(id), items[size_t(id)]);
+		c.lots = lots.window(minx, minz, maxx, maxz);
+		for (const SpatialHash *h : { &c.hash, &c.lots })
+			for (int id : h->filed()) c.items.put(size_t(id), items[size_t(id)]);
 		return c;
 	}
 };

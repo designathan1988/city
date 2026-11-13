@@ -15,12 +15,6 @@
 
 namespace city {
 
-// A building's volume on its lot: the lot's frame, the rectangle there and the height of its top over the ground (clear_reach).
-struct Solid {
-	b40::LotFrame f;
-	float x0, y0, x1, y1, top;
-};
-
 // The save runs on a thread of its own (city_core_persist.cpp).
 struct SaveJob {
 	std::thread thread;

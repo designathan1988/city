@@ -35,6 +35,8 @@ var _worst: Array = []
 var _frames := 0
 var _inside := 0
 var _deepest := 0.0
+var _snaps := 0 # frames where the walls took the eye out at once by more than a jolt: the eased eye trailed into one (CameraWalls.snapped)
+var _largest_snap := 0.0 # the largest of those moves, a share of the view's height
 
 
 func _ready() -> void:
@@ -65,12 +67,14 @@ func _ready() -> void:
 	var over := _worst.filter(func(w: Dictionary) -> bool: return w.jolt > LIMIT).size()
 	check(over == 0, "no ride jolts past %.3f of the view: %d of %d" % [LIMIT, over, _worst.size()])
 	check(float(_inside) / _frames <= INSIDE_SHARE, "the eye stays out of the buildings: in one %d of %d frames, deepest %.3f of the view" % [_inside, _frames, _deepest])
+	print("walls met at once (the eye taken out of a wall by more than a jolt): %d of %d frames, the largest %.3f of the view" % [_snaps, _frames, _largest_snap])
+	check(float(_snaps) / _frames <= INSIDE_SHARE, "walls met at once in at most one frame in %d: %d of %d" % [roundi(1.0 / INSIDE_SHARE), _snaps, _frames])
 	finish()
 
 
 ## How much of the line from the eye to the point looked at, in metres, lies in a building at the eye's end.
 func _in_a_building(look: Vector3, eye: Vector3) -> float:
-	var free: PackedVector3Array = CityStore.query(&"eye_free", [look, eye, 0.0])
+	var free: PackedVector3Array = CityStore.query(&"eye_free", [look, eye, 0.0, Vector3.ZERO]) # no margin: the walls themselves
 	return free[1].distance_to(eye)
 
 
@@ -93,8 +97,8 @@ func _drag(half: float, tilt: float, yaw: float, start: Vector3, button: MouseBu
 	# The hand's own grain, which a ride may not be held to: whole pixels make one frame's move differ from the last by two, a turn's swinging the eye about
 	# what was pressed, a pan's running over the ground.
 	var height: float = _rig.gestures.drag.height
-	var held: Variant = _rig.hit_at(at, height)
-	var next: Variant = _rig.hit_at(at + Vector2.UP * GRAIN_PX, height)
+	var held: Variant = CameraAim.hit_at(_rig, at, height)
+	var next: Variant = CameraAim.hit_at(_rig, at + Vector2.UP * GRAIN_PX, height)
 	var grain: float = 0.0
 	if button == MOUSE_BUTTON_RIGHT:
 		var about: Vector3 = held if held != null else _rig.focus # a pointer over the horizon turns the view about its centre
@@ -133,6 +137,9 @@ func _ride(half: float, tilt: float, yaw: float, start: Vector3, step: Callable,
 	var move_look := Vector3.ZERO
 	var before := _rig.springs()
 	var worst := {"jolt": 0.0}
+	var ride_inside := 0 # this ride's frames with the eye in a building, and the first of them: where the rig let it in
+	var first_inside := {}
+	var met_last := false
 	for f in WALK_FRAMES:
 		var frames := HITCH_FRAMES if hitches and f % HITCH_EVERY == HITCH_EVERY - 1 else 1.0
 		step.call(frames)
@@ -146,8 +153,21 @@ func _ride(half: float, tilt: float, yaw: float, start: Vector3, step: Callable,
 		var inside := _in_a_building(look, eye)
 		_inside += 1 if inside > 0.0 else 0
 		_deepest = maxf(_deepest, inside / (2.0 * _rig.half))
+		if inside > 0.0:
+			ride_inside += 1
+			if first_inside.is_empty():
+				first_inside = {"frame": f, "depth_m": snappedf(inside, 0.01), "eye": eye.snappedf(0.1), "look": look.snappedf(0.1), "springs": _rig.springs()}
 		var parts := _rig.springs()
-		if f > 1 and jolt > worst.jolt:
+		# a wall met at once: the eased eye trailed into a wall and the walls took it out this frame by more than a jolt's share of the
+		# view; that frame and the next are the correction, counted apart (research R1). Every other frame, the eased corrections and the
+		# margin's slide included, is held to the limit
+		var met := f > 0 and _rig.solids.snapped > LIMIT * 2.0 * _rig.half
+		if met:
+			_snaps += 1
+			_largest_snap = maxf(_largest_snap, _rig.solids.snapped / (2.0 * _rig.half))
+		var counted := not met and not met_last
+		met_last = met
+		if f > 1 and counted and jolt > worst.jolt:
 			var moved := {}
 			for k: String in parts:
 				if absf(parts[k] - before[k]) > 1e-3:
@@ -161,4 +181,6 @@ func _ride(half: float, tilt: float, yaw: float, start: Vector3, step: Callable,
 	worst.jolt = maxf(worst.jolt - grain, 0.0)
 	if worst.jolt > LIMIT:
 		print("  over the limit: ", worst)
+	if ride_inside > 0:
+		print("  eye in a building: %d frames, half %.0f tilt %.0f yaw %.0f from %s; first %s" % [ride_inside, half, tilt, yaw, start, first_inside])
 	_worst.append(worst)

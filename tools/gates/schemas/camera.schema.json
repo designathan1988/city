@@ -61,8 +61,13 @@
     "ground_touch_m",
     "eye_rise_s",
     "eye_fall_s",
-    "eye_out_s",
-    "eye_back_s"
+    "eye_wall_reach_m",
+    "eye_roof_clearance_m",
+    "eye_step_back_m",
+    "eye_margin_share",
+    "eye_correct_s",
+    "near_gap_pad_m",
+    "near_gap_share"
   ],
   "additional": {
     "type": "number",
@@ -103,11 +108,13 @@
     "eye_fall_s": {
       "type": "number"
     },
-    "eye_out_s": {
-      "type": "number"
+    "eye_wall_reach_m": {
+      "type": "number",
+      "exclusiveMinimum": 0
     },
-    "eye_back_s": {
-      "type": "number"
+    "eye_correct_s": {
+      "type": "number",
+      "exclusiveMinimum": 0
     }
   }
 }

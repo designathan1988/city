@@ -94,7 +94,7 @@ func step(dt: float, weather: Dictionary, way: Vector2) -> void:
 
 func _ground_under(cam: Camera3D) -> Vector3:
 	var ahead := -cam.global_basis.z
-	var y := CityCamera.ground_below(cam)
+	var y := CameraHeights.below(cam)
 	var t := (y - cam.global_position.y) / ahead.y if ahead.y < -LEVEL_VIEW else float(_d.rain_look_m)
 	return cam.global_position + ahead * minf(t, _d.rain_look_m)
 

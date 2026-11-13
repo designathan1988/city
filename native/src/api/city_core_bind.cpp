@@ -104,7 +104,9 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("impossible_nodes"), &CityCore::impossible_nodes);
 	ClassDB::bind_method(D_METHOD("clear_reach", "from", "to", "samples"), &CityCore::clear_reach);
 	ClassDB::bind_method(D_METHOD("sight_pull", "focus", "eye", "samples", "soft"), &CityCore::sight_pull);
-	ClassDB::bind_method(D_METHOD("eye_free", "focus", "eye", "lift"), &CityCore::eye_free);
+	ClassDB::bind_method(D_METHOD("eye_free", "focus", "eye", "lift", "room"), &CityCore::eye_free);
+	ClassDB::bind_method(D_METHOD("eye_floor", "x", "z", "room"), &CityCore::eye_floor);
+	ClassDB::bind_method(D_METHOD("highest_roof", "x", "z", "radius"), &CityCore::highest_roof);
 	ClassDB::bind_method(D_METHOD("recent_edits", "count"), &CityCore::recent_edits);
 	ClassDB::bind_method(D_METHOD("reverse_road", "segment"), &CityCore::reverse_road);
 	ClassDB::bind_method(D_METHOD("duplicate_road", "segment"), &CityCore::duplicate_road);

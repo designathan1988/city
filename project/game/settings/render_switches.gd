@@ -115,7 +115,7 @@ func follow_zoom(world: CityWorld, viewport: Viewport, q: Dictionary) -> void:
 	var rig := camera.get_parent() as CityCamera if camera != null else null
 	if rig == null:
 		return
-	var beyond: bool = rig.px_per_m() < q.detail_cutoff_zoom
+	var beyond: bool = CameraAim.px_per_m(rig) < q.detail_cutoff_zoom
 	if beyond != far:
 		far = beyond
 		apply(world, viewport, q)

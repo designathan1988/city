@@ -58,11 +58,11 @@ func press(event: InputEvent) -> bool:
 	if b != MOUSE_BUTTON_RIGHT and not pan:
 		return false
 	coast = {}
-	var h := rig.height_under(at)
+	var h := CameraAim.pointer_ground(rig,at)
 	drag = {"kind": &"pan" if pan else &"orbit", "button": b, "pressed": at, "last": at, "height": h,
 			"moved": false, "grabbed": null}
 	if pan and CameraAim.holds(rig, at, h):
-		drag.grabbed = rig.hit_at(at, h)
+		drag.grabbed = CameraAim.hit_at(rig,at, h)
 	samples = [Vector3(at.x, at.y, _now())]
 	return true
 
@@ -98,7 +98,7 @@ func move(at: Vector2) -> void:
 	if drag.grabbed != null:
 		rig.pan_to(drag.grabbed, at, drag.height)
 	else:
-		var unit := 1.0 / rig.px_per_m()
+		var unit := 1.0 / CameraAim.px_per_m(rig)
 		rig.slide(-dp.x * unit, dp.y * unit)
 
 
@@ -163,7 +163,7 @@ func pinch() -> void:
 	var span: Vector2 = at[1] - at[0]
 	var mid: Vector2 = (at[0] + at[1]) * 0.5
 	if not _pinch.is_empty() and span.length() > 0.0:
-		rig.zoom_at(mid, span.length() / _pinch.span.length(), rig.height_under(mid))
+		rig.zoom_at(mid, span.length() / _pinch.span.length(), CameraAim.pointer_ground(rig,mid))
 		if span.length() >= cfg.pinch_min_spread_px:
 			rig.orbit(_pinch.span.angle_to(span) * TWIST_SIGN, 0.0)
 	_pinch = {"span": span}
@@ -189,10 +189,10 @@ func _throw() -> void:
 	# The ground under the hand moved at J v (the screen-to-ground Jacobian at the pointer).
 	var p: Vector2 = drag.last
 	var h: float = drag.height
-	var ax: Variant = rig.hit_at(p - Vector2.RIGHT, h)
-	var bx: Variant = rig.hit_at(p + Vector2.RIGHT, h)
-	var ay: Variant = rig.hit_at(p - Vector2.DOWN, h)
-	var by: Variant = rig.hit_at(p + Vector2.DOWN, h)
+	var ax: Variant = CameraAim.hit_at(rig,p - Vector2.RIGHT, h)
+	var bx: Variant = CameraAim.hit_at(rig,p + Vector2.RIGHT, h)
+	var ay: Variant = CameraAim.hit_at(rig,p - Vector2.DOWN, h)
+	var by: Variant = CameraAim.hit_at(rig,p + Vector2.DOWN, h)
 	if ax == null or bx == null or ay == null or by == null:
 		return
 	var g: Vector3 = ((bx - ax) * v.x + (by - ay) * v.y) * 0.5
@@ -227,7 +227,7 @@ func advance(dt: float) -> void:
 		rig.focus += Vector3(coast.v.x, 0.0, coast.v.z) * span
 		rig.slide(0.0, 0.0)
 	else:
-		var units := span / rig.px_per_m()
+		var units := span / CameraAim.px_per_m(rig)
 		rig.slide(-coast.v.x * units, coast.v.y * units)
 	coast.v *= keep
 	coast.px *= keep

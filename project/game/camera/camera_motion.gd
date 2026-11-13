@@ -103,11 +103,11 @@ func _key(k: InputEventKey) -> bool:
 ## A notch of the wheel: `log_factor` of zoom (positive: closer) about the pointer at `at`.
 func wheel(log_factor: float, at: Vector2) -> void:
 	if pending_zoom.x == 0.0 or at.distance_to(zoom_point) > cfg.wheel_new_point_px:
-		var ground := rig.height_under(at)
+		var ground := CameraAim.pointer_ground(rig,at)
 		var h := CameraAim.hold_height(rig, at, ground)
 		zoom_point = at
 		zoom_height = h
-		zoom_grabbed = rig.hit_at(at, h)
+		zoom_grabbed = CameraAim.hit_at(rig, at, h)
 	pending_zoom.x += log_factor
 
 
@@ -133,7 +133,7 @@ func step(dt: float) -> void:
 		var v := g + (v0 - g) * keep
 		velocity[axis] = 0.0 if g == 0.0 and absf(v) < cfg.key_stop_pct * PCT else v
 	if travel.forward != 0.0 or travel.right != 0.0:
-		var units: float = cfg.key_pan_px_s / rig.px_per_m()
+		var units: float = cfg.key_pan_px_s / CameraAim.px_per_m(rig)
 		rig.slide(travel.right * units, travel.forward * units)
 	var d_yaw: float = -travel.turn * cfg.key_turn_rad_s + _spend_turn(dt)
 	var d_tilt: float = travel.tilt * cfg.key_tilt_rad_s
@@ -141,7 +141,7 @@ func step(dt: float) -> void:
 		rig.orbit(d_yaw, d_tilt)
 	var centre := rig.get_viewport().get_visible_rect().size * 0.5
 	if travel.zoom != 0.0:
-		rig.zoom_at(centre, exp(travel.zoom * cfg.key_zoom_log_s), rig.height_under(centre))
+		rig.zoom_at(centre, exp(travel.zoom * cfg.key_zoom_log_s), CameraAim.pointer_ground(rig,centre))
 	_spend_zoom(dt, centre)
 
 
@@ -164,7 +164,7 @@ func _spend_turn(dt: float) -> float:
 		if absf(left) < deg_to_rad(cfg.aim_close_deg) or aimed_for > cfg.aim_max_s:
 			aiming = false
 		else:
-			spend += left if absf(left) < deg_to_rad(cfg.aim_snap_deg) else left * (1.0 - exp(-dt / cfg.turn_ease_s))
+			spend += left if absf(left) < deg_to_rad(cfg.aim_snap_deg) else left * (1.0 - exp(-dt / cfg.turn_smooth_s))
 	return spend
 
 
@@ -175,4 +175,4 @@ func _spend_zoom(dt: float, centre: Vector2) -> void:
 	if zoom_grabbed != null:
 		rig.zoom_at(zoom_point, exp(s), zoom_height, zoom_grabbed)
 	else:
-		rig.zoom_at(centre, exp(s), rig.height_under(centre))
+		rig.zoom_at(centre, exp(s), CameraAim.pointer_ground(rig,centre))

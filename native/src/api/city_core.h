@@ -165,7 +165,9 @@ public:
 	godot::Array impossible_nodes(); // the top bar's warning: nodes whose legs meet too sharply
 	float clear_reach(const godot::Vector3 &from, const godot::Vector3 &to, int samples); // the camera's line of sight (city_core_sight.cpp)
 	float sight_pull(const godot::Vector3 &focus, const godot::Vector3 &eye, int samples, float soft);
-	godot::PackedVector3Array eye_free(const godot::Vector3 &focus, const godot::Vector3 &eye, float lift);
+	godot::PackedVector3Array eye_free(const godot::Vector3 &focus, const godot::Vector3 &eye, float lift, const godot::Vector3 &room);
+	float eye_floor(float x, float z, const godot::Vector3 &room); // the lowest the eye may stand there (city_core_sight.cpp)
+	godot::Dictionary highest_roof(float x, float z, float radius); // where a photo of the roofs aims (city_core_sight.cpp)
 	godot::Dictionary probe_building(int id);
 	godot::Array list_buildings();
 	godot::Dictionary traffic_probe(int sample); // counts, instances drawn last frame and `sample` vehicle poses

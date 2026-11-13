@@ -25,6 +25,8 @@ void BuildingStore::clear() {
 	free_ids.clear();
 	hash.clear();
 	hash.cell = BUILDING_HASH_CELL;
+	lots.clear();
+	lots.cell = BUILDING_HASH_CELL;
 	count = 0;
 	residents = jobs = 0;
 	sites_due.clear();
@@ -43,6 +45,9 @@ void BuildingStore::remove(int id) {
 	if (!b.alive) return;
 	mark(id);
 	hash.remove_aabb(id, b.x, b.z, b.x, b.z);
+	float x0, z0, x1, z1;
+	bounds(b, x0, z0, x1, z1);
+	lots.remove_aabb(id, x0, z0, x1, z1);
 	tally(b, -1);
 	b.alive = false;
 	b.body = nullptr; // a dead slot holds no version: what the history keeps of it, the history holds
@@ -53,6 +58,15 @@ void BuildingStore::remove(int id) {
 bool BuildingRecords::covers(const Building &b, float x, float z, float pad) {
 	float c = std::cos(b.rot), sn = std::sin(b.rot), dx = x - b.x, dz = z - b.z;
 	return std::fabs(dx * c - dz * sn) < b.w / 2 + pad && std::fabs(dx * sn + dz * c) < b.d / 2 + pad;
+}
+
+void BuildingRecords::bounds(const Building &b, float &minx, float &minz, float &maxx, float &maxz) {
+	const float c = std::fabs(std::cos(b.rot)), sn = std::fabs(std::sin(b.rot));
+	const float hx = b.w / 2 * c + b.d / 2 * sn, hz = b.w / 2 * sn + b.d / 2 * c; // the turned rectangle's half box (covers' frame)
+	minx = b.x - hx;
+	maxx = b.x + hx;
+	minz = b.z - hz;
+	maxz = b.z + hz;
 }
 
 void BuildingStore::put(int id, const Building &b, bool evict) {
@@ -80,6 +94,9 @@ void BuildingStore::place(int id, const Building &b) {
 	items[id] = b;
 	items[id].alive = true;
 	hash.insert_aabb(id, b.x, b.z, b.x, b.z);
+	float x0, z0, x1, z1;
+	bounds(b, x0, z0, x1, z1);
+	lots.insert_aabb(id, x0, z0, x1, z1);
 	count++;
 	tally(b, 1);
 	mark(id);

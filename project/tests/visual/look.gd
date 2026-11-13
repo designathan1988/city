@@ -3,7 +3,8 @@
 ## (--preset=<tier>). The plan: {"city": {"map": 0, "seed": 1, "generate": true}, "steps": [...]}; `generate` false opens the
 ## bare land of the map, with no town to make and draw.
 ## Steps: {"setView": [x, y, zoom, azimuth, elevation]} (metres with y to the map's north, which is -z; the zoom in screen pixels a
-## metre at the point looked at; degrees, the azimuth from +x towards +z), {"shot": name} (after the world is drawn),
+## metre at the point looked at; degrees, the azimuth from +x towards +z), {"setViewRoof": [x, y, radius, zoom, azimuth, elevation]}
+## (the highest roof within radius of the point), {"shot": name} (after the world is drawn),
 ## {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
 ## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"blastShot": name, "at": s, "timeout": ms}, {"walker": [zoom, azimuth, elevation]}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
 ## In args, {"at": [x, z]} is the point of the ground there (what the player's pointer would hit), {"profile": id} the index of
@@ -101,6 +102,9 @@ func _step(step: Dictionary) -> void:
 	if step.has("setView"):
 		var v: Array = step.setView
 		await LookAim.stand(rig, ui, ui.ground(v[0], -v[1]), [v[2], v[3], v[4]])
+	elif step.has("setViewRoof"): # the highest roof near the point (LookAim.stand_on_roof): where a photo of the roofs aims
+		if not await LookAim.stand_on_roof(rig, ui, step.setViewRoof):
+			failures += 1
 	elif step.has("shot"):
 		await CaptureWait.until_drawn(self, SETTLE_FRAMES, step.shot)
 		if frozen:

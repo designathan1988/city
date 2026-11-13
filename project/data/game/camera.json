@@ -1,5 +1,5 @@
 {
- "_doc": "City camera rig (game/camera/*.gd), Roadcraft's perspective rig and its feel. view_half = half height of the ground in view at the point looked at, m. Angles in degrees unless _rad; px = screen pixels.",
+ "_doc": "City camera rig (game/camera/*.gd), Roadcraft's perspective rig and its feel. view_half = half height of the ground in view at the point looked at, m. Angles in degrees unless _rad; px = screen pixels. The buildings' rules (the reference's isoViewport and cameraSolids, specification 003 research R1): eye_wall_reach_m, how far round a building the eye's floor eases down to its foot (the camera's radius), at least eye_margin_share of the view's half height (beyond the reference: the margin outgrows a frame's move); eye_roof_clearance_m, how far over a roof the eye keeps; eye_step_back_m, how far along its line the eye moves out of a wall's margin, scaled with the margin; eye_correct_s, the time the eye's correction eases over (the walls themselves at once); the near plane short of the nearest building, (the eye's height over its floor + near_gap_pad_m) * near_gap_share.",
  "view_half_min": 0.8,
  "view_half_max": 5632,
  "start_view_half": 250,
@@ -52,7 +52,7 @@
  "key_shift": 3,
  "key_ease_s": 0.1,
  "key_stop_pct": 0.2,
- "turn_smooth_s": 0.22, "ground_smooth_s": 0.22, "ground_touch_m": 0.35, "eye_rise_s": 0.1, "eye_fall_s": 0.4, "eye_out_s": 0.3, "eye_back_s": 0.6, "look_ahead_s": 0.55, "trend_s": 0.12, "trend_still": 0.02,
+ "turn_smooth_s": 0.22, "ground_smooth_s": 0.22, "ground_touch_m": 0.35, "eye_rise_s": 0.1, "eye_fall_s": 0.4,
  "quarter_turn_deg": 90,
  "spend_snap_deg": 0.01,
  "aim_close_deg": 0.06,
@@ -71,5 +71,12 @@
  "pull_full_half": 4.8,
  "pull_none_half": 19.2,
  "pull_soft_m": 1.5,
+ "eye_wall_reach_m": 2,
+ "eye_roof_clearance_m": 1,
+ "eye_step_back_m": 4,
+ "eye_margin_share": 0.5,
+ "eye_correct_s": 0.04,
+ "near_gap_pad_m": 1,
+ "near_gap_share": 0.5,
  "pinch_min_spread_px": 40
 }

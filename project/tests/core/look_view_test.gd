@@ -29,7 +29,7 @@ func _ready() -> void:
 		await ui.frames(2)
 		var cam := rig.camera
 		var eye := cam.global_position
-		var free: PackedVector3Array = CityStore.query(&"eye_free", [rig.focus, eye, 0.0])
+		var free: PackedVector3Array = CityStore.query(&"eye_free", [rig.focus, eye, 0.0, Vector3.ZERO]) # no margin: the walls themselves
 		check(free[1].distance_to(eye) < NEAR_M, "view %s: the eye stands in no building (the core takes it %.2f m out)" % [view, free[1].distance_to(eye)])
 		check(rig.is_processing(), "view %s: the game's rig goes on living" % [view])
 		check(is_equal_approx(cam.fov, CameraProfile.fov_deg(rig.cfg, rig.half)), "view %s: the lens is the game's at this distance (%.1f, the game's %.1f)" % [view, cam.fov, CameraProfile.fov_deg(rig.cfg, rig.half)])

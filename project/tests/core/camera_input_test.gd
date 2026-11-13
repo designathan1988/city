@@ -91,7 +91,7 @@ func _zoom_test() -> void:
 	for i in 3:
 		await _wheel(MOUSE_BUTTON_WHEEL_UP, at)
 	await glide_settled()
-	await _pull_settled()
+	await CameraWaits.pull_settled(self)
 	var err := rig.camera.unproject_position(g0).distance_to(at)
 	var want := half0 / exp(3.0 * cfg.wheel_log_per_notch)
 	check(rig.pull.shown() < EPS, "wheel: far from buildings the eye is not pulled (%.3f)" % rig.pull.shown())
@@ -135,6 +135,7 @@ func _limit_tests() -> void:
 	await drag(MOUSE_BUTTON_RIGHT, c, c - Vector2(0, 2000), false, true)
 	lo = CameraProfile.min_tilt(cfg, rig.half)
 	check(rig.pitch < 0.0 and absf(rig.pitch - lo) < EPS, "in the street it looks up to %.1f degrees" % rad_to_deg(rig.pitch))
+	await CameraWaits.eye_at_rest(self, SETTLE_LIMIT_S)
 	var under: Variant = CityStore.query(&"raycast", [rig.camera.global_position + Vector3.UP * cfg.ray_top, Vector3.DOWN]).get("position")
 	check(under != null and rig.camera.global_position.y >= under.y + cfg.ground_clearance - EPS, "eye above the ground (eye %.3f, ground %s)" % [rig.camera.global_position.y, under])
 	for i in 120:
@@ -199,16 +200,6 @@ func _button(button: MouseButton, at: Vector2, pressed: bool, shift: bool) -> vo
 	e.global_position = at
 	Input.parse_input_event(e)
 	await frames(1)
-
-
-## Waits for the pull to let go, as long as the slowest let-go takes (camera.json: the hold, then the ease from a full pull down
-## to EPS): the state is checked, not a fixed time, so a slow frame cannot fail it and a pull that never lets go still does.
-func _pull_settled() -> void:
-	var limit: float = cfg.pull_hold_s + cfg.pull_out_s * log(1.0 / EPS)
-	var waited := 0.0
-	while rig.pull.shown() >= EPS and waited < limit:
-		await get_tree().process_frame
-		waited += get_process_delta_time()
 
 
 ## Waits for the glide to end: the state is checked, not a fixed time, so a machine sharing its cores cannot fail it.

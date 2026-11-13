@@ -384,8 +384,7 @@ threads and the whole command list follow the map; the rules are the constitutio
 - `native/src/render/trees/garden_census.cpp` · `native/src/render/trees/garden_census.h` · `project/tests/core/garden_room_test.gd` · `project/tests/core/garden_room_test.tscn` — the gardens' plants held against their rooms, for the probes `garden_rooms` (every lot of the city) and `garden_fit` (one plant element alone): each instance's model worked out point by point through the basis the renderer sends, in the lot's frame, against its element's rectangle and height; the test on an empty land: every room the lots' layout gives (trees, shrubs, hedges, beds) drawn inside, filled, a hedge from end to end in no more pieces than its length asks; `lot_front_test` holds the town's and the metropolis' plants, the open lots' trees among them (a park's grove and a square's trees are lot elements like the rest; `garden_rooms` counts them as `open_trees`)
 
 **Godot — project/**
-- `project/game/camera/camera_ahead.gd` — where the view is going: what the buildings ask now and ahead, on the springs of getting out of them
-- `project/game/camera/camera_aim.gd` — how far the pointer holds a height
+- `project/game/camera/camera_aim.gd` — the pointer and the ground: where a screen point meets the ground or a plane, pixels a metre at the point looked at, how far the pointer holds a height
 - `project/game/camera/camera_damp.gd` — critically damped spring, exact at any frame: the owner of every smooth movement of the camera
 - `project/game/camera/camera_gestures.gd` — mouse gestures (dragging rotates/tilts, middle or Shift+right moves the ground)
 - `project/game/camera/camera_motion.gd` — keys and wheel with smoothing
@@ -394,6 +393,8 @@ threads and the whole command list follow the map; the rules are the constitutio
 - `project/game/camera/camera_queries.gd` — the camera's questions about the world (what is under a point, the pull in front of a building, the eye taken out of one), asked of the core once per arguments while the map revision stays the same
 - `project/game/camera/camera_shake.gd` — the camera's shake by the effects' clock (the bomb), undone when it passes
 - `project/game/camera/city_camera.gd` — the camera rig (orbiting over a point of the ground), the camera's one writer: `pin`/`unpin` hold a fixed view for a photo or a test
+- `project/game/camera/camera_heights.gd` — what stands under the view, once a frame: the height the view rests on and the eye's rise clear of the ground, each on its spring; the terrain under a camera's eye for the daylight and the weather
+- `project/game/camera/camera_walls.gd` — the eye among the buildings (to be rebuilt by specification 003's R1b, task T027): the reference's rules (`CityCore.eye_free`: never inside a building, out of a wall's margin, the point raised only when both are inside) eased so they never reach the screen as a step, the margin grown with the view, the walls themselves at once, the near plane short of the nearest building (`eye_floor`)
 - `project/game/interior/interior_controller.gd` — the Interior layer on the script side: the switch (layers menu), the building in the middle of the view or double-clicked, the floor, the camera direction in 8 steps and the lights; the camera stays where the player put it; rereads the core only when the revision changes
 - `project/game/lab/doctor_run.gd` · `project/game/lab/frame_meter.gd` · `project/game/lab/pass_clock.gd` — the Diagnosis measuring (frame window, A/B of a switch without writing the options); owner of the frame readings (`LookMeasure` inherits); GPU timestamps per stage through the compositor, on only while measuring
 - `project/game/lab/lab_recorder.gd` · `project/game/lab/resource_watch.gd` · `project/game/lab/cpu_watch.gd` · `project/game/lab/frame_capture.gd` — the F7 recorder, cut at each change, with the settling left out; the checks, with what rises read as a slope; the CPU tab: mean, p95 and worst of each zone of the frame in a window; the frame by layer, with the image, to a file
@@ -471,6 +472,7 @@ threads and the whole command list follow the map; the rules are the constitutio
 - `project/tests/e2e/e2e.gd` · `project/tests/e2e/e2e.tscn` — end to end: real world + HUD, drawn chunks, fleet and instance buffers
 - `project/tests/core/camera_road_key_cases.gd` — what the road tool does with mouse and keys, in `camera_input_test`
 - `project/tests/core/camera_walk_cases.gd` — walking over the city without the zoom changing, in `camera_input_test`
+- `project/tests/core/camera_waits.gd` — what `camera_input_test` waits for, read from the rig's state: the pull let go, the eye at rest
 - `project/tests/core/camera_stroke_cases.gd` — the left button's stroke and a tool change, in `camera_input_test`: a tool taken while the button is held shapes nothing it was not pressed for (ToolController's Phase)
 - `project/tests/core/camera_feel_test.gd` · `project/tests/core/camera_feel_test.tscn` — the camera walking, turning and zooming over the city, frame by frame: no jolt above 1% of the view, and the spring that caused each one
 - `project/tests/core/camera_input_test.gd` · `project/tests/core/camera_input_test.tscn` · `project/tests/core/light_color_test.gd` · `project/tests/core/light_color_test.tscn` · `project/tests/core/building_light_test.gd` · `project/tests/core/building_light_test.tscn` — camera by real input; street lights on screen (lenses, night glow, the roads' light) and the buildings' colour and light, in both renderers
@@ -614,6 +616,7 @@ threads and the whole command list follow the map; the rules are the constitutio
 - `.claude/settings.json` — the project's Claude Code settings (auto memory off, the fixtures' instruction files excluded)
 - `.claude/agents/worker.md` — the project's agent: every tool, does whatever its brief orders by the constitution's method
 - `.claude/skills/city-method/SKILL.md` — the skill `city-method`: the constitution's method as the checklist a session follows step by step (the work's memory, reading whole, Context7, the trace, the block, the verification, the photos, the close)
+- `doc/specs/**` — the specifications made by the Spec Kit skills, one folder each (spec, research with its sources, plan, data model, contracts, quickstart, tasks with verifiable goals, the comparison sheets, the genre's gap list)
 - `doc/work/**` — the work's memory, one file a block (goal, files read, research, plan, changes, checks, next step), folded into the area's history at the close and removed
 - `tools/atlas/tests/**` — the atlas's tests and their fixture register
 - `doc/problems.jsonl` · `doc/problems.md` — the one register of every known problem of the game and the project (one JSON object a line, schema `tools/gates/schemas/problem.schema.json`) and its generated view

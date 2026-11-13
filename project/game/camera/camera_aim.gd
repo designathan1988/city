@@ -1,6 +1,30 @@
-## Whether the pointer can hold a height: how far the ray may run before the ground it grabs is past the view.
+## The pointer and the ground: where a screen point meets the ground or a plane, how many pixels a metre is at the point looked at, and
+## whether the pointer can hold a height (how far the ray may run before the ground it grabs is past the view).
 class_name CameraAim
 extends RefCounted
+
+
+## The point under a pointer on the horizontal plane at `h`, or null when the ray never meets it.
+static func hit_at(rig: CityCamera, screen: Vector2, h: float) -> Variant:
+	var o := rig.camera.project_ray_origin(screen)
+	var d := rig.camera.project_ray_normal(screen)
+	if absf(d.y) < CityCamera.PARALLEL:
+		return null
+	var t := (h - o.y) / d.y
+	return o + d * t if t > 0.0 else null
+
+
+## The height of the ground under a pointer: the plane a pan, zoom or turn holds (the view's rest where the ray misses).
+static func pointer_ground(rig: CityCamera, screen: Vector2) -> float:
+	var p: Variant = rig.ground_at(screen)
+	return p.y if p != null else rig.heights.ground()
+
+
+## Screen pixels per metre at the point looked at.
+static func px_per_m(rig: CityCamera) -> float:
+	var h := rig.get_viewport().get_visible_rect().size.y
+	var span := 2.0 * rig.camera.global_position.distance_to(rig.focus) * tan(deg_to_rad(rig.camera.fov) * 0.5)
+	return h / maxf(CityCamera.PARALLEL, span)
 
 
 ## The plane a zoom or turn holds: the ground's own if the ray meets it within `hold_reach` view distances, else
@@ -21,7 +45,7 @@ static func hold_height(rig: CityCamera, screen: Vector2, h: float) -> float:
 ## `was`, `reach` along it, over the sine of the shallowest hold, and the share of the way the hold still has.
 static func firm_reach(rig: CityCamera, screen: Vector2, point: Vector3, h: float, was: Vector3, reach: float) -> float:
 	var swing := (rig.camera.project_ray_origin(screen) + rig.camera.project_ray_normal(screen) * reach).distance_to(was)
-	var found: Variant = rig.hit_at(screen, h)
+	var found: Variant = hit_at(rig, screen, h)
 	if found == null:
 		return 0.0
 	var loose := sin(deg_to_rad(rig.cfg.keep_grazing_deg))
@@ -34,7 +58,7 @@ static func firm_reach(rig: CityCamera, screen: Vector2, point: Vector3, h: floa
 ## Moves the point looked at until `point` (on the plane at `h`) is under `screen`, by at most `most` metres.
 static func bring(rig: CityCamera, screen: Vector2, point: Vector3, h: float, most := INF) -> void:
 	for pass_i in int(rig.cfg.keep_passes):
-		var found: Variant = rig.hit_at(screen, h)
+		var found: Variant = hit_at(rig, screen, h)
 		if found == null:
 			return
 		var d: Vector3 = point - found

@@ -1,14 +1,14 @@
 {
- "_doc": "The roofs of the town's centre, where the towers step back: a block standing on a lower roof. Proves the near and the far level paint a covered roof alike (the terrace's floor), keep its plant and machine rooms off the block above, and put a machine room on the same roof at every distance. Near (40 px a metre), mid (12) and far (3), four azimuths, from above and oblique, by day.",
+ "_doc": "The roofs of the town's centre, where the towers step back: a block standing on a lower roof. Proves the near and the far level paint a covered roof alike (the terrace's floor), keep its plant and machine rooms off the block above, and put a machine room on the same roof at every distance. Near (40 px a metre) and mid (12) aimed at the highest roof within 120 m of the centre (setViewRoof: the ground there is the streets, the roofs stand tens of metres over them), far (3) at the centre; four azimuths, from above and oblique, by day.",
  "city": {"map": 0, "seed": 1, "generate": true},
  "steps": [
   {"hour": 16},
-  {"setView": [0, 0, 40, 0, 70]}, {"until": "render_pending", "equals": 0}, {"shot": "roofs_near_a0_above"},
-  {"setView": [0, 0, 40, 90, 45]}, {"until": "render_pending", "equals": 0}, {"shot": "roofs_near_a90_oblique"},
-  {"setView": [0, 0, 40, 180, 45]}, {"until": "render_pending", "equals": 0}, {"shot": "roofs_near_a180_oblique"},
-  {"setView": [0, 0, 40, 270, 70]}, {"until": "render_pending", "equals": 0}, {"shot": "roofs_near_a270_above"},
-  {"setView": [0, 0, 12, 0, 60]}, {"until": "render_pending", "equals": 0}, {"shot": "roofs_mid_a0_above"},
-  {"setView": [0, 0, 12, 135, 40]}, {"until": "render_pending", "equals": 0}, {"shot": "roofs_mid_a135_oblique"},
+  {"setViewRoof": [0, 0, 120, 40, 0, 70]}, {"until": "render_pending", "equals": 0}, {"shot": "roofs_near_a0_above"},
+  {"setViewRoof": [0, 0, 120, 40, 90, 45]}, {"until": "render_pending", "equals": 0}, {"shot": "roofs_near_a90_oblique"},
+  {"setViewRoof": [0, 0, 120, 40, 180, 45]}, {"until": "render_pending", "equals": 0}, {"shot": "roofs_near_a180_oblique"},
+  {"setViewRoof": [0, 0, 120, 40, 270, 70]}, {"until": "render_pending", "equals": 0}, {"shot": "roofs_near_a270_above"},
+  {"setViewRoof": [0, 0, 120, 12, 0, 60]}, {"until": "render_pending", "equals": 0}, {"shot": "roofs_mid_a0_above"},
+  {"setViewRoof": [0, 0, 120, 12, 135, 40]}, {"until": "render_pending", "equals": 0}, {"shot": "roofs_mid_a135_oblique"},
   {"setView": [0, 0, 3, 45, 60]}, {"until": "render_pending", "equals": 0}, {"shot": "roofs_far_a45_above"},
   {"setView": [0, 0, 3, 225, 35]}, {"until": "render_pending", "equals": 0}, {"shot": "roofs_far_a225_oblique"}
  ]

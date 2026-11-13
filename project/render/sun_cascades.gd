@@ -28,7 +28,7 @@ func _init(day: Dictionary, sun: DirectionalLight3D) -> void:
 
 ## The cascades for this view, when the eye, its tilt, the ground under it, the lens, the screen or the shadow settings changed.
 func fit(camera: Camera3D) -> void:
-	var ground := CityCamera.ground_below(camera)
+	var ground := CameraHeights.below(camera)
 	var view := [camera.global_position, camera.global_basis.z.y, ground, camera.near, camera.far, camera.projection, camera.fov, camera.size,
 			camera.get_viewport().get_visible_rect().size, side_px, filter_radius, _sun.shadow_blur, least_m]
 	if view != _fitted_for:
