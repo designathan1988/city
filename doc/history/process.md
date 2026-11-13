@@ -154,6 +154,8 @@ Appended by `python tools/tasks/cli.py block close` (FR-050: the time each step 
 | tracer | 2026-11-12T16:51 | 2026-11-12T17:00 | 2026-11-12T17:01 | 9 | 1 |
 | US3 | 2026-11-12T17:03 | 2026-11-12T17:16 | 2026-11-12T22:59 | 13 | 343 |
 | pending-five | 2026-11-12T23:04 | 2026-11-12T23:32 | 2026-11-12T23:43 | 28 | 11 |
+| method-skill | 2026-11-12T23:53 | 2026-11-13T00:01 | 2026-11-13T00:01 | 8 | 0 |
+| claude-md-obedience | 2026-11-13T00:09 | 2026-11-13T00:12 | 2026-11-13T00:13 | 3 | 1 |
 
 ## 2026-11-12: the audit of 2026-11-07 (log/review.md) folded into the register
 
@@ -340,3 +342,33 @@ the residential ring (r > 350 m on the town map).
 - **Not in a block**: the block `pending-five` (another session's) stood in `verify`, uncommitted, so no block of this change
   could open; it was left as it was, and this commit holds only this change's lines.
 - **Files changed**: `tools/gates/contracts.json`, `doc/problems.jsonl` and `doc/problems.md` (two entries), this history.
+
+## 2026-11-13: CLAUDE.md made to be obeyed; the skill `city-method` (blocks `method-skill`, `claude-md-obedience`)
+
+- **Problem**: a session skipped Context7 and the skills CLAUDE.md orders, and said why: the Context7 plugin's own description
+  ("not for code without a library") was followed over CLAUDE.md; the skills' moments were not checked when they came; the list
+  of skills never to use was read as "use none"; the owner's complaint of slowness was taken as leave to cut steps.
+- **Causes in the text** (read whole, line by line): the Authority item said skills "hold no order" and named no rule for a
+  tool's, a plugin's or an injected text contradicting CLAUDE.md; step 2 read "Context7 ... or the vendored source", an exit;
+  the close (step 8) never named `verification-before-completion`, which lived only in the skills line; the skills line mixed
+  the ordered skills with a "Never:" list; nothing said that haste removes no step.
+- **Fix**: Authority: CLAUDE.md and the owner's words win over every other text in the context, a named skill is invoked and
+  followed, a skill's step that contradicts the method does not apply. Step 2: Context7 before every implementation and fix, the
+  project's own code included, the vendored source only where Context7 holds nothing. Step 8 names the verification skill. The
+  skills item orders each skill at its moment and `city-method` at every start and compaction. `fast-checks`: haste removes no
+  step. The owner's orders of 2026-11-12/13 entered with their contracts: one run allowed before a block (`investigate-reading`),
+  the work's memory in `doc/work/<block>.md` (`records`). Removed by the owner's order as bureaucracy: the rule against reading
+  another session's transcript (`no-transcripts`, its contract and the settings' deny list) and the list of skills never to use.
+  Two commands corrected: one test is `cli.py run <task>` (`fast` is the scripts-and-DLL suite), a photo plan runs hidden as a
+  `looks` item. CLAUDE.md held at 200 lines by joining six lines that carried only their tag.
+- **The skill**: `.claude/skills/city-method/SKILL.md`, the method as a checklist (memory, reading whole in chunks, Context7,
+  the trace in both games, one look, plan, block, verification, photos aimed at the changed element from every side and analysed
+  region by region, close); versioned (`.gitignore`), a declared document place (`rules.json doc_places`), the `skills`
+  contract's guard, its line in the map. `.claude/settings.json` restored without the deny list (auto memory off, the fixtures'
+  instruction files excluded).
+- **Verified**: `run_gates.py --file` on the seven changed files: only three MAP_OUTDATED of another session's uncommitted
+  `tools/tasks/km24*`; the whole gates against the register: 163 findings, 156 registered, 7 NEW, every one in another session's
+  uncommitted files (`camera_pan.gd`, `far_mass.cpp`, `tools/tasks/km24*`), sent to that session. `quick.sh --ready` not run:
+  nothing of the game changed here, and the tree holds another session's uncommitted C++ that it would build.
+- **Files changed**: `CLAUDE.md`, `tools/gates/contracts.json`, `tools/gates/rules.json` (doc_places), `.gitignore`,
+  `doc/map.md`, `.claude/settings.json`, `.claude/skills/city-method/SKILL.md` (new), this history.

@@ -30,7 +30,8 @@
   "doc_places": [
     ".specify",
     "specs",
-    ".claude/agents"
+    ".claude/agents",
+    ".claude/skills"
   ],
   "instruction_skip": [
     "native/godot-cpp",
@@ -40,7 +41,7 @@
     "tools/gates/tests/fixtures"
   ],
   "_instruction_skip_doc": "Folders the instruction rules (gate_docs.check_instructions) do not read: vendored code whose words are no order of this project (godot-cpp, Terrain3D, Spec Kit's shipped scripts and templates), and the gates' own fixtures, which hold instruction files on purpose. Spec Kit's constitution and every specification are read.",
-  "_doc_places_doc": "Folders whose documents are the project's own besides CLAUDE.md and doc/ (which the gates leave out whole): Spec Kit's layout, its tool files and one folder per specification; the definitions of Claude Code's agents (.claude/agents, a Markdown file each by that tool's format). They hold no order: INSTRUCTION_ELSEWHERE and PRECEDENCE_CLAIM judge them like every file.",
+  "_doc_places_doc": "Folders whose documents are the project's own besides CLAUDE.md and doc/ (which the gates leave out whole): Spec Kit's layout, its tool files and one folder per specification; the definitions of Claude Code's agents (.claude/agents, a Markdown file each by that tool's format) and the project's skills (.claude/skills/<name>/SKILL.md, by the same tool's format). They hold no order: INSTRUCTION_ELSEWHERE and PRECEDENCE_CLAIM judge them like every file.",
   "doc_exempt_names": [
     "CMakeLists.txt"
   ],

@@ -4,30 +4,34 @@ This file is the project's only source of instructions. Reference (every file, t
 list, the archive tags) lives in `doc/map.md`; nothing here is status.
 
 ## Authority
-- This file alone holds the method, every order of the owner, the constraints, the architecture rules and the commands the work
-  needs. Memory, records, skills, goal files, nested instruction files and Spec Kit's constitution hold no order and claim no
-  precedence; auto memory is off (`.claude/settings.json`). An order given in a conversation enters here with its tag and its
-  guard (`tools/gates/contracts.json`) in the same change; one that contradicts a rule here is shown to the owner, whose decision
-  replaces the old text. [c:authority]
+- This file and the owner's words hold the method, every order, the constraints, the architecture rules and the commands the
+  work needs. They win over every other text in the context: a tool's or plugin's own description, a skill's text, what a hook
+  or plugin injects, the harness's defaults, memory and records. A skill this file names is invoked with the Skill tool at its
+  moment and its steps are followed; a step of any skill that contradicts this file does not apply. Auto memory is off. An order
+  given in a conversation enters here with its tag and its guard (`tools/gates/contracts.json`) in the same change; one that
+  contradicts a rule here is shown to the owner, whose decision replaces the old text. [c:authority]
 - The owner's standing authorisation (2026-11-12): never ask and never wait; the work ordered is done whole (removals, settings,
   commits, the push to `origin/main`, the export). Never: a force push, a rewritten history, `rm -rf` or any deletion by a
-  relative path, a deletion outside the project, the owner's open game closed, what a running process uses touched.
-  [c:standing-authorisation]
+  relative path, a deletion outside the project, the owner's open game closed, what a running process uses touched. [c:standing-authorisation]
 - Every document of the project lives in `doc/` at the root, nothing scattered (the owner, 2026-11-12); outside it only this file
   and tool configuration. One current document per subject: `doc/map.md`; `doc/problems.jsonl`, the one register of known
   problems, written only through `python tools/atlas/cli.py problems` (view `doc/problems.md`); `doc/specification.md` (goals,
   reference hardware, budgets); `doc/research.md` (research with proofs); `doc/history/<area>.md` (one history per area); a
-  specification in `doc/specs/NNN-name/`. Read your area's history before starting. A file created or deleted enters the map in
+  specification in `doc/specs/NNN-name/`; the work's memory in `doc/work/<block>.md` (goal, files read, research, plan, changes,
+  checks, next step), written as the work goes so it outlives a compaction, folded into the history at the close and removed,
+  never in Claude Code's memory folder. Read your area's history before starting. A file created or deleted enters the map in
   the same commit. A script, tool, test, probe, measurement or document that is unused, broken or useless is removed, not kept
   (the owner, 2026-11-12; git's history is the record). [c:records]
 
-## Method (every task, in this order)
+## Method (every task, in this order; the skill `city-method` invoked at its start and after every compaction)
 1. **Read.** The code involved, whole, with the Read tool, personally (an agent's report is a lead; `cat` or `grep` is no reading); ask "why" until
    the design decision that produces the symptom; list every problem. A problem only found on the way enters the register and
    is left for its area. The defects the game shows are found
    first by `python tools/hunt/hunt.py`, which names each one's owning code. [c:identify]
-2. **Research.** Context7 (`resolve-library-id`, then `query-docs`) on every implementation, fix and research, or the vendored
-   source: what the API guarantees, on which thread, at what cost, its known bugs in the exact version; never memory. A feature
+2. **Research.** Context7 (`resolve-library-id`, then `query-docs`) before every implementation and fix, the project's own code
+   included (the language, engine and libraries it calls: Python, GDScript, Godot, godot-cpp, the C++ standard library), whatever
+   a tool's own description says: what the API guarantees, on which thread, at what cost, its known bugs in the exact version;
+   the vendored source only where Context7 holds nothing; never memory. A feature
    the reference game has is traced there first, for what it must do (the tracer, below; nothing is worked out from nothing that
    the reference shows working). A quick research test runs outside the game tree, its output in `doc/research.md`. [c:research]
 3. **Understand.** Problem, cause and solution tied through the code and the research. [c:understand]
@@ -44,16 +48,15 @@ list, the archive tags) lives in `doc/map.md`; nothing here is status.
    this one for a change to the game. [c:verify-reach]
 7. **Stop and check.** A failure is read to its cause (`superpowers:systematic-debugging`), fixed in the code (`block open`
    again) and the verification run once more; a pass is confirmed (`superpowers:verification-before-completion`). [c:stop-check]
-8. **Close** (`block close`): the operations the verified code serves, the area's history (problems, sources, reasoning, plan,
-   files created, changed and deleted, the time and the commit), a commit per theme, one push to `origin/main`, the executable
+8. **Close** (`block close`), after `superpowers:verification-before-completion`: the operations the verified code serves, the
+   area's history (problems, sources, reasoning, plan, files created, changed and deleted, the time and the block), a commit per theme, one push to `origin/main`, the executable
    when the game changed, and a report to the owner in Portuguese: done, failed, open. [c:theme-record]
 
 ## Fixing the cause
 - The fix changes the design decision that produces the symptom. If the right fix asks for a rewrite, rewrite. [c:fix-decision]
 - It is a patch, and forbidden: changing a timeout, threshold, thread count or tolerance; creating a special case; swallowing an
   error; loosening a check; writing the reference again (`--bless`) to make a test pass; moving the cost elsewhere. [c:no-patch]
-- Every fix says, with file and line: what the cause is, why the symptom does not come back another way and which other
-  symptoms go with it. [c:fix-says]
+- Every fix says, with file and line: what the cause is, why the symptom does not come back another way and which other symptoms go with it. [c:fix-says]
 - Expensive does not prove a cause and cheap does not prove a patch: the criterion is the one above. [c:cost-no-proof]
 - **Nothing of the roadcraft is copied, ever**: no line, line-by-line translation, structure, name or function. The lab
   (`C:\Users\Jonathan\Documents\Projects\lab\roadcraft`, the game with everything working) is read only to write down what the
@@ -63,8 +66,7 @@ list, the archive tags) lives in `doc/map.md`; nothing here is status.
   is no reference. [c:no-roadcraft-copy]
 - **Proof, not claims.** Say what was read, run and verified, how, and where the proof is; read the whole output of every build,
   test and gate; a slow, heavy, crashing or failing result is a failure, said plainly with its numbers; a cause not proven is
-  "unknown"; never a fake (a stand-in for a real element, a feature switched off, quality lowered, a test weakened or skipped, a
-  metric massaged). [c:proof]
+  "unknown"; never a fake (a stand-in for a real element, a feature switched off, quality lowered, a test weakened or skipped, a metric massaged). [c:proof]
 
 ## Principles
 - The cause of performance problems is the architecture. Shadows, polygons and GPU time are symptoms and change with the card. [c:perf-architecture]
@@ -74,13 +76,15 @@ list, the archive tags) lives in `doc/map.md`; nothing here is status.
   the 24 km city (map `km24`), the previous build and this one. [c:budgets]
 - Do what was asked, whole: the goal, not the literal words; the neighbouring cases; a limit found is a cause to resolve. [c:do-it-whole]
 - A check takes seconds: the most likely place first (the newest folders, one targeted search); an empty result of a fragile
-  search is a failed search, not a "no". Slowness of the work is a defect, recorded and fixed at its cause. [c:fast-checks]
+  search is a failed search, not a "no". Slowness of the work is a defect, recorded and fixed at its cause, never by a skipped
+  step: haste, an order to go faster or a complaint of slowness removes no step of the method. [c:fast-checks]
 - Agents are used to go faster, up to five at once (the owner, 2026-11-12), each sent a prompt that names the goal, the files,
   what is known, what it may change and the answer's form; the main session checks what an agent returns. [c:agents-read-only]
-- Skills: `speckit-*` for a specification; `superpowers:systematic-debugging` for a failure's cause; `superpowers:verification-before-completion`
-  at each close; `update-config` for settings; the LSP tool for C++; context7 always. Never: brainstorming, writing-plans,
-  executing-plans, test-driven-development, subagent-driven-development, dispatching-parallel-agents, requesting-code-review,
-  finishing-a-development-branch, using-git-worktrees. [c:skills]
+- Skills: `city-method` at every task's start and after every compaction; `superpowers:systematic-debugging` when a failure needs
+  its cause; `superpowers:verification-before-completion` before a close or any claim that something is done; `speckit-*` for a
+  specification; `update-config` for settings; the LSP tool for C++; Context7 always (step 2); and any other skill whose subject is
+  the step in hand. A skill's step that contradicts this method (a test before the block is whole, a question to the owner, a
+  worktree) does not apply; the rest of that skill does. [c:skills]
 - Never wait blind on a launched process (a deadline and following it). Stop only your own processes, by PID. [c:no-blind-wait]
 - A launched process runs in the foreground or under a monitor, with a short deadline and its lines shown as they come. [c:watched-process]
 - One engine process at a time while working (the live instance counts as the one); the suite runs only at a verification. [c:one-engine]
@@ -94,8 +98,6 @@ list, the archive tags) lives in `doc/map.md`; nothing here is status.
   `python tools/tasks/cli.py worktrees` fails while one is older than its work. [c:main-direct]
 - Work from another branch, worktree, stash or session enters `main` only read whole against the copy rule, redone on today's
   tree where its base is gone, and verified at a block's close; otherwise its behaviour enters the register. [c:bring-in]
-- Never read another session's transcript (its `.jsonl`, tool results, subagent folders, `list_events`, the episodic archive):
-  its work is checked by its branch, diff, files and logs. [c:no-transcripts]
 - Repository files are changed with the Edit and Write tools, never by `sed` or a script's `write_text`; a script writes bytes; a file
   whose last commit had no carriage return gains none. [c:lf-bytes]
 - In a long C++ session the session's own clangd is watched and stopped by its PID past about 3 GB. [c:clangd]
@@ -108,8 +110,8 @@ list, the archive tags) lives in `doc/map.md`; nothing here is status.
   older commit's photo. A defect, or a photo not analysed, fails the block. [c:image-protocol]
 
 ## Running and checking
-- Investigating is reading code: no measurement, profile or heavy test to look for a cause; a measurement checks a change its
-  cause already explains. [c:investigate-reading]
+- Investigating is reading code. One run is allowed before a block opens, to see what the reading explains (`hunt.py`, one test,
+  one measurement or one photo plan); then nothing runs until `block verify`, and no measurement or profile hunts a cause. [c:investigate-reading]
 - Check, at the block's end, what the block reaches: [c:check-reach]
 
 | Changed | Check |
@@ -135,15 +137,13 @@ list, the archive tags) lives in `doc/map.md`; nothing here is status.
 ## Language
 - Every new or changed text in the repository is written in English: code, file and folder names, comments, identifiers, data,
   records, reports, documents and commit messages. [c:english]
-- Exceptions: the texts the player sees (`project/data/i18n`) and outside copies. The conversation with the owner is in
-  Portuguese. [c:player-texts]
+- Exceptions: the texts the player sees (`project/data/i18n`) and outside copies. The conversation with the owner is in Portuguese. [c:player-texts]
 
 ## Architecture rules
 - **Single source of truth:** `CityState` (`native/src/sim/state/city_state.h`). Only `sim/commands` changes the state at the
   player's request; only `sim/simulation` advances time. [c:single-truth]
 - **C++ layers:** `core` → `sim/*` (pure C++, no Godot) → `render` (only reads) → `api`. [c:layers]
-- **No god file:** no god class split over several files either, nor a scattered feature. Split by responsibility, never to fit
-  a limit. [c:no-god-file]
+- **No god file:** no god class split over several files either, nor a scattered feature. Split by responsibility, never to fit a limit. [c:no-god-file]
 - **One owner per definition:** rules with a single owner in `tools/gates/owners.json`. No duplicated code: extract an owner. [c:one-owner]
 - **Data:** tunable values only in `project/data/**` (JSON with a schema), read only by `DataTables`; the tuning's names in the
   X-macro `CITY_TUNING_FIELDS`, the values in `project/data/catalog/tuning.json`. [c:data]
@@ -186,12 +186,12 @@ list, the archive tags) lives in `doc/map.md`; nothing here is status.
 | A block | `python tools/tasks/cli.py block open <name>` · `block verify` · `block close` · `block status` |
 | Build both DLLs | `tools/build/build.sh core-windows` |
 | Check a change | `tools/build/quick.sh [task,task]` (`--ready` at a block's close) |
-| One test | `python tools/tasks/cli.py run fast <scene>`; the orchestrator's state: `python tools/tasks/cli.py status` |
+| One test | `python tools/tasks/cli.py run <task>` (the names: `run tests --list`); the orchestrator's state: `python tools/tasks/cli.py status` |
 | Gates | `python tools/gates/run_gates.py` (`--file X`, `--summary`, `--selftest`, `--register doc/problems.jsonl`, `--json`) |
 | The register | `python tools/atlas/cli.py problems [--area A --status S]`, `add`, `update`, `close`, `drop`, `render` |
 | Deliver | `tools/build/deliver.sh export` |
 | Find the game's defects | `python tools/hunt/hunt.py`: one hidden run of the town that lists every defect the core's probes see (vehicles in one another classed by mechanism, street pieces in one another, wires drawn at no level, road surfaces in one another, the engine's errors), each with where and the owning file; `dist/hunt/hunt.json` |
-| Photograph a place | `godot --path project --resolution 1920x1080 res://tests/visual/look.tscn -- --no-flow --plan=<json> --capture-dir=<folder>` (a plan of look.gd's steps) |
+| Photograph a place | a plan of look.gd's steps, as an item of `looks` in `tools/tasks/suites.json`, then `python tools/tasks/cli.py run <name>` (hidden; the photos in `dist/captures/<name>`) |
 | Trace a feature in both games | `python tools/tracer/trace.py ENTRY --root FILE ...`, then `--feature`, `--cost`, `--wrong`, `--broken`, `--compare` (the steps in "Tools and processes"; the reference: `C:\Users\Jonathan\Documents\Projects\lab\roadcraft\src`, never copied) |
 
 The DLLs in `project/bin` are versioned, so a clone opens the game without building: no ignore pattern may drop them, and in a

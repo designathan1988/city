@@ -2,15 +2,5 @@
   "autoMemoryEnabled": false,
   "claudeMdExcludes": [
     "**/tools/gates/tests/fixtures/**/CLAUDE.md"
-  ],
-  "permissions": {
-    "deny": [
-      "Read(~/.claude/projects/*/*.jsonl)",
-      "Read(~/.claude/projects/*/*/tool-results/**)",
-      "Read(~/.claude/projects/*/*/subagents/**)",
-      "mcp__ccd_session_mgmt__list_events",
-      "mcp__ccd_session_mgmt__search_session_transcripts",
-      "mcp__ccd_session_mgmt__export_transcript"
-    ]
-  }
+  ]
 }
