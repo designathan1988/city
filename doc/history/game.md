@@ -848,3 +848,13 @@ and the reason is given for each.
 - **Prender-257**: `WallRun` (`facade_bay.h`) was an aggregate made with one of its fields; an explicit constructor on its shell.
   Both DLLs build with no warning.
 - `far_mass.cpp`'s `PLINTH_BURY` (a name the reference defines) renamed `PLINTH_BELOW_M`.
+
+## 2026-11-13: block fix-three (the roofs plan, the frozen street view, the 24 km opening), folded into specification 003
+
+- **Done** (commit 6e8e53c6): buildings found by their lot's box (`BuildingRecords::meeting`, Psimulation-83's cause: the camera's
+  sight saw only lots whose centre stood within 1 m); `CityCore::highest_roof` and the look step `setViewRoof`; the rig split into
+  CameraHeights, CameraAim and CameraWalls; the north turn's missing key.
+- **Failed, sent back to research**: the camera's eye among the buildings took three designs (the reference's rules at once: 5.6%
+  of frames struck walls; then eased with a margin grown with the view: jolts up to 14 views, 158 s). Research on the engines'
+  documentation (specification 003 R1b) gives the design; the camera is the port's last area (T026-T027).
+- **Moved to specification 003**: the roofs plan and the frozen street view (T005), the 24 km opening (T014).
