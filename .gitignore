@@ -7,7 +7,15 @@ project/bin/*.dll
 !project/bin/libcitycore.windows.template_debug.x86_64.dll
 dist/
 __pycache__/
+*.pyc
+.venv/
 *.tmp
+# Editors' and systems' own files (Spec Kit's setup check, speckit-implement step 4)
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
 # .claude/: only the project's settings, agents and skills are versioned; everything else there is the sessions' runtime
 /.claude/*
 !/.claude/settings.json
