@@ -3,6 +3,7 @@
 // anything that must persist is in DamageState.
 #pragma once
 
+#include <cmath>
 #include <cstdint>
 
 namespace city {
@@ -39,5 +40,22 @@ constexpr uint32_t VEHICLE_PAINT_SHIFT = 8; // VEHICLE_BLOWN / VEHICLE_DROP: u =
 constexpr uint32_t CAS_KIND_MASK = 3, CAS_LOST_SHIFT = 2, CAS_SEVERED_SHIFT = 7, CAS_LIMB_MASK = 31;
 constexpr uint32_t CAS_CHARRED = 1u << 12, CAS_CRAWL = 1u << 13, CAS_OPENED = 1u << 14, CAS_BLED = 1u << 15, CAS_STRUCK_SHIFT = 16; // struck part 0 none, 1 head ... 6 legR
 constexpr int VEHICLE_BODY_ID_BASE = 8'000'000; // CASUALTY ids of a vehicle's occupants (the 4.0's convention)
+
+// The way a CASUALTY goes down, flat (x, z): away from the push's point (b, c), or the way it faced (a) when that point lies under
+// FALL_PUSH_LEAST_M off. The render tips the body that way (effect_bodies.cpp) and the simulation lays the walker that way
+// (traffic::lay_down): one rule, so the body drawn and the body the crowd goes round and the rounds meet lie alike.
+constexpr float FALL_PUSH_LEAST_M = 0.05f;
+inline void fall_way(const DamageEvent &e, float &fx, float &fz) {
+	fx = e.x - e.b;
+	fz = e.z - e.c;
+	const float l = std::sqrt(fx * fx + fz * fz);
+	if (l > FALL_PUSH_LEAST_M) {
+		fx /= l;
+		fz /= l;
+		return;
+	}
+	fx = std::cos(e.a);
+	fz = std::sin(e.a);
+}
 
 } // namespace city

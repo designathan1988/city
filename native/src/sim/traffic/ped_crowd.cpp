@@ -79,8 +79,8 @@ void file(std::vector<std::vector<CrowdEntry>> &lists, std::vector<int> &keys, i
 
 // `level`: the share of its own speed it goes at to stay level with the one it walks with (ped_party.cpp company_pace). Somebody under a
 // stop's hand (getting out or in, a truck's mate) is a body on its sidewalk where it stands (kerb_walkers.cpp kerb_place keeps its arc and
-// place across), not moving of its own.
-CrowdEntry entry_of(const Pedestrian &w, int id, float moving, float level) {
+// place across), not moving of its own; so is somebody lying on the ground, `lie` the half of their body's length (0 on their feet).
+CrowdEntry entry_of(const Pedestrian &w, int id, float moving, float level, float lie) {
 	CrowdEntry e;
 	e.id = id;
 	e.kerb = w.mode == PedMode::KERB;
@@ -98,7 +98,10 @@ CrowdEntry entry_of(const Pedestrian &w, int id, float moving, float level) {
 	e.speed = w.speed * level;
 	e.keep = w.dir == 0 ? -w.track : w.track; // its own side of the way
 	e.dir = uint8_t(w.dir);
-	e.moving = w.mode != PedMode::WAIT && !e.kerb && w.pace > moving;
+	e.moving = w.mode != PedMode::WAIT && !e.kerb && lie <= 0.f && w.pace > moving;
+	e.lie = lie;
+	e.lie_x = w.fall_x; // from its feet (x, z) the way it went down: it lies still (pedestrians.cpp step_pedestrians)
+	e.lie_z = w.fall_z;
 	return e;
 }
 
@@ -122,7 +125,8 @@ void file_walkers(CityState &s) {
 	for (int id = 0; id < int(t.peds.size()); id++) {
 		const Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive) continue;
-		const CrowdEntry e = entry_of(w, id, moving, company_pace(t, s.catalog.traffic, w));
+		const float lie = lying(t, w) ? lying_half(s.catalog.blast, w) : 0.f;
+		const CrowdEntry e = entry_of(w, id, moving, company_pace(t, s.catalog.traffic, w), lie);
 		if (e.sidewalk >= 0) file(t.crowd, t.crowd_keys, e.sidewalk, e);
 		else if (w.way_node >= 0)
 			for (int k = junctions_round(s, w.way_node, near); k-- > 0;) file(t.node_walkers, t.node_keys, near[k], e);
@@ -142,6 +146,7 @@ void file_walkers(CityState &s) {
 void sidewalk_choices(CityState &s, const StripeRules &rules, float zone, float touch, float reach, std::vector<CrowdChoice> &next) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
+	const float lie_most = s.catalog.blast.body_height_m * WALKER_SCALE_MAX * 0.5f; // the longest half of somebody lying (lying_half)
 	std::vector<size_t> &first = t.crowd_first;
 	first.resize(t.crowd_keys.size());
 	size_t total = 0;
@@ -167,11 +172,11 @@ void sidewalk_choices(CityState &s, const StripeRules &rules, float zone, float 
 		size_t from = 0; // the first piece within look behind the walker (the walkers come in order of arc)
 		for (size_t k = 0; k < list.size(); k++) {
 			const CrowdEntry &w = list[k];
-			if (w.kerb) continue; // the stop moves it: a body the others see, no choice of its own
+			if (w.kerb || w.lie > 0.f) continue; // the stop moves it, or it lies there: a body the others see, no choice of its own
 			const int nn = ends.ahead(w.s, w.dir, zone, near);
 			WayFrame f;
 			sidewalk_frame(w, half, p.ped_stripe_m, nn > 0, f);
-			Seen sn{ f, bodies, 0, p.ped_look_m, touch, reach };
+			Seen sn{ f, bodies, 0, p.ped_look_m, touch, reach, lie_most };
 			see_sidewalk(list, k, sn);
 			for (int j = 0; j < nn && !sn.full(); j++) see_junction(seen, near[j], w.id, key, sn);
 			while (from < pieces.size() && pieces[from].s0 < w.s - sn.look - sf.longest) from++;
@@ -186,11 +191,12 @@ void sidewalk_choices(CityState &s, const StripeRules &rules, float zone, float 
 		for (size_t i = 0; i < t.crowd_keys.size(); i++) one(i);
 }
 
-// The room between any two walkers (ped_apart.h): every living walker is a body where it stands, each choice the step it takes this
-// tick in the world (ahead by its pace as walk() steps it, aside by its change of stripe), and each choice is cut to the share of
-// step its walker takes: the nearest to the one it chose that keeps the room (ahead no further, aside within what its choice allows).
-// Two whose ways converge or cross never see each other's step in their own frames: here neither takes more than its half of the
-// room between them.
+// The room between any two walkers (ped_apart.h): every living walker on its feet is a body where it stands, each choice the step it
+// takes this tick in the world (ahead by its pace as walk() steps it, aside by its change of stripe), and each choice is cut to the
+// share of step its walker takes: the nearest to the one it chose that keeps the room (ahead no further, aside within what its choice
+// allows). Two whose ways converge or cross never see each other's step in their own frames: here neither takes more than its half of
+// the room between them. Somebody lying takes no step and is no round body where their feet are: their body is the footprint the
+// others see in their frames (ped_seen.cpp), which one standing where it fell walks out of.
 void hold_apart(CityState &s, float dt, float touch, std::vector<CrowdChoice> &next) {
 	TrafficState &t = s.traffic;
 	std::vector<Stride> &strides = t.crowd_strides;
@@ -199,7 +205,7 @@ void hold_apart(CityState &s, float dt, float touch, std::vector<CrowdChoice> &n
 	of.assign(t.peds.size(), -1);
 	for (int id = 0; id < int(t.peds.size()); id++) {
 		const Pedestrian &w = t.peds[size_t(id)];
-		if (!w.alive) continue;
+		if (!w.alive || lying(t, w)) continue;
 		of[size_t(id)] = int(strides.size());
 		strides.emplace_back();
 		strides.back().at = V2(w.cur.x, w.cur.z);
@@ -258,7 +264,7 @@ void crowd_step(CityState &s, float dt) {
 		bool gathered = false;
 		for (const CrowdEntry &e : t.node_walkers[size_t(node)]) {
 			const Pedestrian &w = t.peds[size_t(e.id)];
-			if (w.mode != PedMode::WAY || w.way_node != node) continue;
+			if (w.mode != PedMode::WAY || w.way_node != node || e.lie > 0.f) continue; // lying on a corner or a zebra: no choice either
 			if (!gathered) junction_furniture(s, node, p.ped_look_m, around);
 			gathered = true;
 			WayFrame f;

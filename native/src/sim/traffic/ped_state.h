@@ -59,6 +59,9 @@ struct CrowdEntry {
 	uint8_t dir = 0;
 	bool moving = false;
 	bool kerb = false; // under a stop's hand (PedMode::KERB): a body on its sidewalk that the stop moves, with no choice of its own
+	// lying on the ground (ped_system.h lying): half its body's length and the way it lies from its feet (x, z), a footprint the others
+	// go round, with no choice of its own; 0 on its feet
+	float lie = 0, lie_x = 0, lie_z = 0;
 };
 
 // What a walker's crowd step chose (ped_stripes.cpp): its stripe, the one it aims at and how long held, its pace, how long held up;
@@ -105,6 +108,7 @@ struct Pedestrian {
 	uint8_t hits = 0;
 	bool opened = false; // the trunk shot open
 	float down_until = 0, panic_until = 0, flinch_until = 0; // t.time until which a blow keeps it on the ground / running / bent over a wound
+	float fall_x = 1, fall_z = 0; // the way it went down (lay_down): lying, its body runs from its feet where it stands that way
 	float cross_cd = 0; // seconds until a WAIT walker tries the crosswalk again (5 Hz, not every step)
 	float rest = 0; // 0 walking .. 1 standing, eased (the render's idle share)
 	float act_share = 0; // how far into `act` it is, eased

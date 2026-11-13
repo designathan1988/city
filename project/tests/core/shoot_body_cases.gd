@@ -1,5 +1,6 @@
 ## The shoot_test's cases of the fallen: somebody shot lies down as a body of their own, which lands and stays where it fell; somebody
-## wounded for good who bleeds out stays there, dead; somebody knocked over by a small blast gets up and is not kept.
+## wounded for good lies bleeding, a limb off (what the living do round them: ShootLyingCases); somebody knocked over by a small blast gets
+## up and is not kept.
 class_name ShootBodyCases
 extends RefCounted
 
@@ -20,21 +21,18 @@ const UNDER_GROUND_M := 0.02 # a limb's middle under the surface by more than th
 const CONTACT_SLACK_M := 0.02 # two limbs nearer than they touch by more than this: one sunk in the other (each stands 6 cm from its middle)
 const SIDE_BLOW_M := 4.0 # how far to one side of two walkers together a blow throws both the same way
 const TOGETHER_FORCE := 3
-const AWAY_M := 2000.0 # well past where the walking window takes walkers away (traffic.json: 600 m x 1.2)
-const AWAY_TICKS := 60 # three seconds (tuning.json tick_hz 20): the window has passed over everybody, and a leg's wound (3 hp a second) leaves them alive
-const SAME_SPOT_M := 0.5
+const LEVEL_STANDOFF_M := 4.0 # a level round comes from this far off its mark (shoot_test.gd)
+const LAME_ROUNDS := 4 # down, then a leg off; one more each should a round meet somebody else on its way
 
 var t: Node # the shoot_test (TestCase): its check, ticks and aim
 var _shoot: Callable
-var _shoot_level: Callable
 var _walker_of: Callable
 var _alone: Callable
 
 
-func _init(test: Node, shoot: Callable, shoot_level: Callable, walker_of: Callable, alone: Callable) -> void:
+func _init(test: Node, shoot: Callable, walker_of: Callable, alone: Callable) -> void:
 	t = test
 	_shoot = shoot
-	_shoot_level = shoot_level
 	_walker_of = walker_of
 	_alone = alone
 
@@ -69,13 +67,16 @@ func fallen() -> void:
 	t.check(marks > marks_before, "a pool spreads under the body where it came to rest (blood marks %d -> %d)" % [marks_before, marks])
 	var kept: int = _census().kept
 	t.check(kill.get("killed", false) and kept > 0, "the dead stay where they fell, for good till the bodies' cap: %d kept of %d" % [kept, _census().bodies])
-	var down: Dictionary = await _bled(walkers.slice(1))
+	var lying := ShootLyingCases.new(t, _walker_of, _lamed, _census)
+	await lying.gone_round()
+	var lone: Array = _alone.call(CityStore.query(&"shot_targets", [LIMIT]).walkers) # afresh: ten seconds have gone by
+	var down: Dictionary = await _bled(lone.filter(func(w: Dictionary) -> bool: return not w.fallen))
 	var deep: float = _census().deepest
 	t.check(deep <= UNDER_GROUND_M, "no body at rest lies in the ground, its bones held out as its joints are (deepest %.3f m)" % deep)
 	await _rises()
 	await _together()
 	await _lots_toggled()
-	await _bleeds_out_away(down)
+	await lying.bleeds_out_away(down) # the last: the town's crowd and traffic go with the window
 
 
 ## Showing the lots and hiding them again redraws the buildings' lots only: the bodies lying and the blood they left stay (Prender-275:
@@ -89,7 +90,8 @@ func _lots_toggled() -> void:
 	await _frames(BODY_SETTLE_FRAMES)
 	var after := _census()
 	var marks_after: int = CityStore.query(&"damage_probe").blood_marks
-	t.check(after.bodies == before.bodies and marks_after == marks, "the lots hidden and shown again, the bodies and their blood stay (%d bodies, %d before; %d marks, %d before)" % [after.bodies, before.bodies, marks_after, marks])
+	# the bodies kept (the dead, for good): somebody knocked down beside a blow before gets up in the effects' own time, toggle or none
+	t.check(after.kept == before.kept and marks_after == marks, "the lots hidden and shown again, the bodies and their blood stay (%d kept, %d before; %d marks, %d before)" % [after.kept, before.kept, marks_after, marks])
 
 
 func _census() -> Dictionary:
@@ -122,7 +124,7 @@ func _together() -> void:
 	t.check(census.in_walls <= CONTACT_SLACK_M, "no body at rest lies through a wall, a pole or a post (deepest %.3f m in)" % census.in_walls)
 
 
-## Somebody shot down for good, a limb off, bleeding where they lie (their death: _bleeds_out_away); frames between the steps, so the
+## Somebody shot down for good, a limb off, bleeding where they lie (their death: ShootLyingCases.bleeds_out_away); frames between the steps, so the
 ## effects play each event as it comes. Returns them as they lie ({} if nobody was wounded so).
 func _bled(walkers: Array) -> Dictionary:
 	if not t.check(not walkers.is_empty(), "someone to wound gravely"):
@@ -130,20 +132,7 @@ func _bled(walkers: Array) -> Dictionary:
 	var pieces: int = _census().pieces
 	var marks: int = CityStore.query(&"damage_probe").blood_marks
 	var hurt: Dictionary = walkers[0]
-	# a round in a leg knocks them down; one in the legs of somebody lying takes a leg off, a grave wound: down for good, bleeding
-	# (shoot_people.cpp; the legs lie behind the middle, the head ahead the way they faced, shoot_commands.cpp). Rounds in the trunk
-	# first would leave too little health for the leg's cost to be survived.
-	for k in 2:
-		var w: Dictionary = _walker_of.call(hurt.id)
-		if w.is_empty():
-			break
-		var legs: Vector3 = w.position + Vector3(0, LIE_AIM_M, 0) - Vector3(w.facing.x, 0.0, w.facing.y) * LEGS_LIE_M
-		var round: Dictionary = _shoot_level.call(legs if w.fallen else w.position + Vector3(0, LEG_STAND_M * w.scale, 0))
-		print("round %d at %s: %s" % [k, w, round])
-		await _frames(BODY_SETTLE_FRAMES)
-		if w.fallen:
-			break
-	var down: Dictionary = _walker_of.call(hurt.id)
+	var down: Dictionary = await _lamed(hurt.id)
 	# by its own id: a count could rise by this body and fall by another getting up in the same frames
 	var who: PackedInt32Array = _census().who
 	t.check(not down.is_empty() and down.fallen and down.bleed > 0.0 and who.has(hurt.id), "wounded for good: down, bleeding, a body (%s; bodies of %s)" % [down, who])
@@ -160,26 +149,24 @@ func _bled(walkers: Array) -> Dictionary:
 	return down
 
 
-## The camera far off, the walking window round it leaves the wounded `down` lying there: they stay till they bleed out, and their body
-## stays, dead (Pwalkers-14: the window, or the one they walked with leaving it, once took them away, their body left lying with nobody
-## to die in it). A level camera's ground is its own place (city_core.cpp ground_seen), which the core makes the window's middle each
-## frame. The last case: the town's crowd and traffic go with the window.
-func _bleeds_out_away(down: Dictionary) -> void:
-	if down.is_empty():
-		return
-	var kept: int = _census().kept
-	var cam := Camera3D.new()
-	t.add_child(cam)
-	cam.make_current()
-	cam.global_position = down.position + Vector3(AWAY_M, 0, 0)
-	await _frames(1)
-	t.ticks(AWAY_TICKS)
-	var away: Dictionary = _walker_of.call(down.id)
-	t.check(not away.is_empty() and away.position.distance_to(down.position) <= SAME_SPOT_M and away.bleed > 0.0, "the walking window gone from them, the wounded still lie there bleeding (%s)" % [away])
-	t.ticks(BLEED_TICKS)
-	await _frames(BODY_SETTLE_FRAMES)
-	t.check(_census().kept > kept, "who bled out stays where they lay, dead (%d kept, %d before)" % [_census().kept, kept])
-	cam.global_position = Vector3.ZERO # the window back at the town's middle; the camera kept, which the terrain now follows
+## Walker `id` shot down for good: a level round along `way` in a leg knocks them down, away from it (damage_event.h fall_way); one
+## across the legs of somebody lying takes a leg off, a grave wound, down for good and bleeding (shoot_people.cpp; lying, their position
+## is the body's middle and the legs lie behind it, the head the way they lie: shot_targets). Rounds in the trunk first would leave too
+## little health for the leg's cost to be survived. Returns them as they lie then.
+func _lamed(id: int, way := Vector3.LEFT) -> Dictionary:
+	for k in LAME_ROUNDS:
+		var w: Dictionary = _walker_of.call(id)
+		if w.is_empty() or w.fallen and int(w.lost) != 0:
+			break
+		var lies := Vector3(w.facing.x, 0.0, w.facing.y)
+		var legs: Vector3 = w.position + Vector3(0, LIE_AIM_M, 0) - lies * LEGS_LIE_M
+		var across := Vector3(-lies.z, 0.0, lies.x) # a round along a body lying would meet it end on
+		var mark: Vector3 = legs if w.fallen else w.position + Vector3(0, LEG_STAND_M * w.scale, 0)
+		var dir: Vector3 = across if w.fallen else way
+		var round: Dictionary = CityStore.dispatch(&"shoot", [mark - dir * LEVEL_STANDOFF_M, dir])
+		print("round %d at %s: %s" % [k, w, round])
+		await _frames(BODY_SETTLE_FRAMES)
+	return _walker_of.call(id)
 
 
 ## Somebody knocked over by a small blast gets up: their body goes and they are walking again, and it is not kept as a dead one. Far

@@ -9,6 +9,17 @@
 
 namespace city {
 
+DamageEvent walker_casualty(const Pedestrian &w, int id, uint32_t flags) {
+	DamageEvent e;
+	e.kind = DamageEvent::CASUALTY;
+	e.id = id;
+	e.x = w.cur.x; e.y = w.cur.y; e.z = w.cur.z;
+	e.a = std::atan2(w.cur.fz, w.cur.fx);
+	e.u = w.look;
+	e.v = flags;
+	return e;
+}
+
 void bleed_step(CityState &s, double dt) {
 	TrafficState &t = s.traffic;
 	for (int id = 0; id < int(t.peds.size()); id++) {
@@ -24,14 +35,9 @@ void bleed_step(CityState &s, double dt) {
 		if (w.bleed <= 0.f) continue;
 		w.hp -= w.bleed * float(dt);
 		if (w.hp > 0.f) continue;
-		DamageEvent e; // CAS_BLED: the body already lies on the ground, the render adds only the blood
-		e.kind = DamageEvent::CASUALTY;
-		e.id = id;
-		e.x = w.cur.x; e.y = w.cur.y; e.z = w.cur.z;
-		e.a = std::atan2(w.cur.fz, w.cur.fx);
+		// CAS_BLED: the body already lies on the ground, the render adds only the blood
+		DamageEvent e = walker_casualty(w, id, CAS_DEAD | CAS_BLED | (uint32_t(w.lost) << CAS_LOST_SHIFT));
 		e.b = w.cur.x; e.c = w.cur.z;
-		e.u = w.look;
-		e.v = CAS_DEAD | CAS_BLED | (uint32_t(w.lost) << CAS_LOST_SHIFT);
 		s.log.damage_events.push_back(e);
 		traffic::add_shock(s, w.cur.x, w.cur.z, s.catalog.traffic.ped_body_shock_m);
 		traffic::remove_pedestrian(s, id);

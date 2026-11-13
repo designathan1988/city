@@ -22,18 +22,15 @@ void trip_step(CityState &s) {
 		Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive || w.trip_at <= 0 || now < w.trip_at) continue;
 		w.trip_at = 0;
-		w.down_until = now + w.trip_s;
-		DamageEvent e;
-		e.kind = DamageEvent::CASUALTY;
-		e.id = id;
-		e.x = w.cur.x; e.y = w.cur.y; e.z = w.cur.z;
-		e.a = std::atan2(w.cur.fz, w.cur.fx);
+		if (traffic::lying(t, w)) continue; // already on the ground (a blow, a round): the trip is over before it came
+		DamageEvent e = walker_casualty(w, id, CAS_KNOCKED);
 		e.b = w.cur.x - w.cur.fx * TRIP_BEHIND_M; // pushed from behind: forwards
 		e.c = w.cur.z - w.cur.fz * TRIP_BEHIND_M;
 		e.d = s.catalog.traffic.ped_trip_throw;
 		e.dx = w.trip_s;
-		e.u = w.look;
-		e.v = CAS_KNOCKED;
+		float fx = 0, fz = 0;
+		fall_way(e, fx, fz); // forwards, as the render pitches the body
+		traffic::lay_down(t, w, w.trip_s, fx, fz);
 		s.log.damage_events.push_back(e);
 	}
 }

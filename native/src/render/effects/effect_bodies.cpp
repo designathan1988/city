@@ -71,9 +71,8 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 	const bool charred = (e.v & CAS_CHARRED) != 0, bled = (e.v & CAS_BLED) != 0, crawl = (e.v & CAS_CRAWL) != 0;
 	const uint32_t struck = (e.v >> CAS_STRUCK_SHIFT) & STRUCK_MASK;
 	const float ground = s.terrain.height_at(e.x, e.z);
-	float px = e.x - e.b, pz = e.z - e.c;
-	const float pl = std::hypot(px, pz);
-	if (pl > NO_PUSH_BELOW_M) { px /= pl; pz /= pl; } else { px = std::cos(e.a); pz = std::sin(e.a); }
+	float px = 0, pz = 0;
+	fall_way(e, px, pz); // the way the simulation lays them too (traffic::lay_down)
 	// a round throws nobody: its knock-back never passes the recoil the shooter feels (https://en.wikipedia.org/wiki/Stopping_power), so
 	// somebody shot (a struck part) goes down from where they stand; a blow throws, a trip pitches forward
 	const float power = bled || struck != 0 ? 0.f : e.d * (kind == CAS_TORN ? TORN_PUSH : 1.f);

@@ -90,8 +90,11 @@ void harm_walker(Blow &b, int id) {
 				return;
 			}
 		}
-		b.emit(casualty(b, id, at, look, p, flags, lie));
-		traffic::down_pedestrian(b.s, id, lie);
+		const DamageEvent down = casualty(b, id, at, look, p, flags, lie);
+		float fx = 0, fz = 0;
+		fall_way(down, fx, fz); // the way the render throws the body
+		traffic::lay_down(t, t.peds[size_t(id)], lie, fx, fz);
+		b.emit(down);
 	}
 	traffic::frighten_pedestrian(b.s, id, b.p.panic_s, b.x, b.z, true);
 }

@@ -13,7 +13,8 @@ namespace city {
 
 namespace {
 constexpr uint32_t SHOT_SALT = 0x70697374U;
-constexpr float LYING_R = 0.3f, LYING_HEIGHT_M = 0.2f; // a body on the ground: a capsule this thick, this high
+using traffic::LYING_HEIGHT_M; // a body on the ground: the capsule ped_system.h states, which the crowd goes round
+using traffic::LYING_R;
 constexpr float LYING_HEAD_SHARE = 0.35f, LYING_LEGS_SHARE = -0.1f; // along its length from its middle: the head end, where the legs begin
 constexpr float EPS = 1e-6f;
 constexpr float RIDER_HALF_M = 0.35f; // a two-wheeler's box is at least this wide (the rider's shoulders)
@@ -58,15 +59,16 @@ void aim_at_walkers(const Round &r, float limit, Found &best) {
 		const Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive) continue;
 		const float height = p.body_height_m * w.scale;
-		if (float(t.time) < w.down_until) { // on the ground: along its length, head ahead of the way it faced
-			const float half = height * 0.5f;
-			const float a[3] = { w.cur.x - w.cur.fx * half, w.cur.y + LYING_HEIGHT_M, w.cur.z - w.cur.fz * half };
-			const float b[3] = { w.cur.x + w.cur.fx * half, w.cur.y + LYING_HEIGHT_M, w.cur.z + w.cur.fz * half };
+		if (traffic::lying(t, w)) { // on the ground: from its feet the way it went down, the head at the far end (ped_system.h lying)
+			const float half = traffic::lying_half(p, w);
+			const V2 mid = traffic::lying_middle(p, w);
+			const float a[3] = { mid.x - w.fall_x * half, w.cur.y + LYING_HEIGHT_M, mid.y - w.fall_z * half };
+			const float b[3] = { mid.x + w.fall_x * half, w.cur.y + LYING_HEIGHT_M, mid.y + w.fall_z * half };
 			float tt, u, dist;
 			ray_segment(o, d, a, b, tt, u, dist);
 			if (dist > LYING_R || tt >= std::min(best.t, limit)) continue;
 			const float along = u - 0.5f, px = o[0] + d[0] * tt, pz = o[2] + d[2] * tt;
-			const float side = (px - w.cur.x) * -w.cur.fz + (pz - w.cur.z) * w.cur.fx;
+			const float side = (px - mid.x) * -w.fall_z + (pz - mid.y) * w.fall_x;
 			best = Found{ tt, id, false, true, BodyPart::TORSO, 0.f };
 			best.part = along > LYING_HEAD_SHARE ? BodyPart::HEAD : along > LYING_LEGS_SHARE ? (std::fabs(side) > p.arm_aside_m ? (side > 0 ? BodyPart::ARM_L : BodyPart::ARM_R) : BodyPart::TORSO)
 																								: (side >= 0 ? BodyPart::LEG_L : BodyPart::LEG_R);

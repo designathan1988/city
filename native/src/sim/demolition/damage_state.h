@@ -179,5 +179,10 @@ struct CityState;
 void damage_step(CityState &s, double dt);
 void bleed_step(CityState &s, double dt); // wounds.cpp: the wounded bleed, and die of it
 void trip_step(CityState &s); // trips.cpp: who a fright tripped goes down when the trip comes
+struct DamageEvent;
+struct Pedestrian;
+// wounds.cpp: a CASUALTY of walker `id` where it stands, facing its way, with its look and `flags`; the push, power and lie are the
+// caller's (the bleeding, the trips)
+DamageEvent walker_casualty(const Pedestrian &w, int id, uint32_t flags);
 
 } // namespace city

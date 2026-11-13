@@ -36,6 +36,7 @@ struct Seen {
 	Body *out;
 	int n = 0;
 	float look, touch, reach; // ped_look_m, two body radii, a body radius
+	float lie_most = 0; // the longest half of somebody lying: how far behind a walker their body may still reach beside it
 
 	// Full: every later body would be turned away, so the looking stops there (what it saw is the same).
 	bool full() const { return n >= MAX_BODIES; }
@@ -57,10 +58,11 @@ struct Seen {
 };
 
 // ped_seen.cpp: what a walker sees. The walkers on its own sidewalk, by arc: those ahead as far as it looks, and those beside it
-// (Seen::walker), a little behind too.
+// (Seen::walker), a little behind too; somebody lying there as the footprint of their body (a piece of furniture: gone round, never
+// squeezed through).
 void see_sidewalk(const std::vector<CrowdEntry> &list, size_t k, Seen &sn);
-// The walkers filed with junction `node` but `self`, remapped into its frame (SUMO's walking areas); a sidewalk walker leaves out its own
-// sidewalk's, already seen by arc.
+// The walkers filed with junction `node` but `self`, remapped into its frame (SUMO's walking areas), somebody lying as their body's
+// footprint; a sidewalk walker leaves out its own sidewalk's, already seen by arc.
 void see_junction(const TrafficState &t, int node, int self, int own_sidewalk, Seen &sn);
 // Its own sidewalk's furniture near it, by arc: `from` is the first piece that may reach back to it, carried along by the caller as it goes
 // through the sidewalk's walkers in order of arc.

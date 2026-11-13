@@ -88,7 +88,21 @@ void despawn_party(CityState &s, int id, bool arrived) {
 // away by the walking window, by distance alone, nor by the one they walked with (ped_party.cpp company_near), but stays until they
 // rise (then the window takes them as anybody) or die (wounds.cpp lays them dead); a body lying there with nobody to die in it never
 // comes about (Pwalkers-14). Bounded: who bleeds always dies.
-bool casualty(const TrafficState &t, const Pedestrian &w) { return t.time < w.down_until || w.bleed > 0.f; }
+bool casualty(const TrafficState &t, const Pedestrian &w) { return lying(t, w) || w.bleed > 0.f; }
+
+bool lying(const TrafficState &t, const Pedestrian &w) { return t.time < w.down_until; }
+
+float lying_half(const BlastParams &b, const Pedestrian &w) { return b.body_height_m * w.scale * 0.5f; }
+
+V2 lying_middle(const BlastParams &b, const Pedestrian &w) { return V2(w.cur.x, w.cur.z) + V2(w.fall_x, w.fall_z) * lying_half(b, w); }
+
+void lay_down(const TrafficState &t, Pedestrian &w, float seconds, float fx, float fz) {
+	if (!lying(t, w)) {
+		w.fall_x = fx;
+		w.fall_z = fz;
+	}
+	w.down_until = std::max(w.down_until, float(t.time) + seconds);
+}
 
 namespace {
 
@@ -186,11 +200,6 @@ void remove_pedestrian(CityState &s, int id) {
 	if (id >= 0 && id < int(s.traffic.peds.size()) && s.traffic.peds[size_t(id)].alive) despawn(s.traffic, id, false);
 }
 
-void down_pedestrian(CityState &s, int id, float seconds) {
-	Pedestrian &w = s.traffic.peds[size_t(id)];
-	w.down_until = float(s.traffic.time) + seconds;
-}
-
 void reset_pedestrians(CityState &s) {
 	TrafficState &t = s.traffic;
 	t.peds.clear();
@@ -250,6 +259,7 @@ void step_pedestrians(CityState &s, float dt) {
 		walk(s, id, dt);
 		if (!t.peds[size_t(id)].alive) continue;
 		Pedestrian &after = t.peds[size_t(id)]; // its company may have been born: the list may have grown
+		if (lying(t, after)) continue; // still where it fell, its body along the way it faced (lying_half): no act, pose or turn
 		const bool standing = after.mode == PedMode::WAIT || after.pace <= p.ped_moving_ms || held_by_fright(t, after);
 		after.rest = clampf(after.rest + (standing ? dt : -dt) / p.ped_rest_fade_s, 0.f, 1.f);
 		step_act(t, p, after, dt);

@@ -3,6 +3,7 @@
 #include "api/city_core.h"
 
 #include "api/edit_result.h"
+#include "sim/traffic/traffic_system.h"
 
 using namespace godot;
 
@@ -70,10 +71,14 @@ Dictionary CityCore::shot_targets(int limit) const {
 		if (!w.alive) continue;
 		Dictionary d;
 		d["id"] = id;
-		d["position"] = Vector3(w.cur.x, w.cur.y, w.cur.z);
-		d["facing"] = Vector2(w.cur.fx, w.cur.fz); // the way it walks; on the ground its head lies that way (shoot_commands.cpp)
+		// on its feet: where it stands and the way it walks; lying: its body's middle and the way it lies, its head that way (ped_system.h
+		// lying, the capsule a round meets and the crowd goes round)
+		const bool down = traffic::lying(t, w);
+		const V2 mid = down ? traffic::lying_middle(state_->catalog.blast, w) : V2(w.cur.x, w.cur.z);
+		d["position"] = Vector3(mid.x, w.cur.y, mid.y);
+		d["facing"] = down ? Vector2(w.fall_x, w.fall_z) : Vector2(w.cur.fx, w.cur.fz);
 		d["hp"] = w.hp;
-		d["fallen"] = float(t.time) < w.down_until;
+		d["fallen"] = down;
 		d["lost"] = int(w.lost);
 		d["bleed"] = w.bleed;
 		d["scale"] = w.scale;

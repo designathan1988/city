@@ -14,7 +14,6 @@ namespace traffic {
 namespace {
 
 constexpr int PICK_TRIES = 12, DEST_TRIES = 12;
-constexpr float SCALE_MIN = 0.9f, SCALE_MAX = 1.1f;
 
 bool has_side(const Profile &p, int side) { return side == 0 ? p.has_walk_right : p.has_walk_left; }
 
@@ -109,7 +108,7 @@ void dress_walker(TrafficState &t, const TrafficParams &p, Pedestrian &w, PedAge
 	const float pace = age == PedAge::CHILD ? p.ped_child_pace : age == PedAge::ELDER ? p.ped_elder_pace : 1.f;
 	w.speed = t.rng.range(p.walk_speed_min, p.walk_speed_max) * pace;
 	w.track = t.rng.range(p.walk_track_min, p.walk_track_max);
-	w.scale = t.rng.range(SCALE_MIN, SCALE_MAX);
+	w.scale = t.rng.range(WALKER_SCALE_MIN, WALKER_SCALE_MAX);
 	w.walked = t.rng.range(0.f, w.speed);
 }
 

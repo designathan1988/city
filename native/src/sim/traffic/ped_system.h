@@ -31,6 +31,18 @@ void stand_on_sidewalk(const CityState &s, Pedestrian &w); // its pose at (seg, 
 void despawn(TrafficState &t, int id, bool arrived);
 void despawn_party(CityState &s, int id, bool arrived); // with the one it walks with, when that one is within reach
 bool casualty(const TrafficState &t, const Pedestrian &w); // down or bleeding: kept until it rises or dies, nobody's company to leave with
+// Somebody lying on the ground (down: a trip, a blow, a wound) lies still where they fell, their body a capsule from their feet where
+// they stood the way they went down (fall_x, fall_z: the event's fall_way, which the render tips the body by): as long as the body
+// (blast.json shot body_height_m by their scale), LYING_R thick, LYING_HEIGHT_M over the ground. The round's target (shoot_commands.cpp)
+// and a body the crowd goes round (ped_seen.cpp).
+constexpr float LYING_R = 0.3f, LYING_HEIGHT_M = 0.2f;
+constexpr float WALKER_SCALE_MIN = 0.9f, WALKER_SCALE_MAX = 1.1f; // a walker's size by the average's (ped_spawn.cpp dress_walker)
+bool lying(const TrafficState &t, const Pedestrian &w);
+float lying_half(const BlastParams &b, const Pedestrian &w); // half the capsule's length
+V2 lying_middle(const BlastParams &b, const Pedestrian &w); // the capsule's middle, half its length from the feet the way it lies
+// Down for `seconds` from now, the later end kept (a second blow never cuts a long lie short); one not lying yet goes down the way
+// (fx, fz) and lies so until it rises.
+void lay_down(const TrafficState &t, Pedestrian &w, float seconds, float fx, float fz);
 
 // ped_ways.cpp: the ways off the sidewalk
 void at_node(CityState &s, int id); // at the end of a sidewalk: arrived, or the way round the node onto the next street's sidewalk
@@ -57,7 +69,6 @@ void reset_pedestrians(CityState &s);
 // A blow or a shot reached a walker (sim/commands/strike_people.cpp): gone for good, knocked to the ground for a while
 // (it walks on after), or frightened into running for a while.
 void remove_pedestrian(CityState &s, int id);
-void down_pedestrian(CityState &s, int id, float seconds);
 // ped_fright.cpp: a bang at (x, z) heard: a shot, or a blast's stampede. Frightened for about `seconds`; what it does first, and then away.
 void frighten_pedestrian(CityState &s, int id, float seconds, float x, float z, bool stampede);
 void startle_pedestrians(CityState &s, float x, float z, float reach, float seconds); // a shot heard by those within `reach`

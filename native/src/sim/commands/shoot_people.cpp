@@ -39,6 +39,14 @@ DamageEvent casualty_of(const Round &r, int id, const Pedestrian &w, uint32_t fl
 	return e;
 }
 
+// Down for the event's lie (dx), the way the render tips the body (fall_way: away from the round), and the event told.
+void put_down(Round &r, Pedestrian &w, const DamageEvent &e) {
+	float fx = 0, fz = 0;
+	fall_way(e, fx, fz);
+	traffic::lay_down(r.s.traffic, w, e.dx, fx, fz);
+	r.emit(e);
+}
+
 } // namespace
 
 void shoot_walker(Round &r, int id, BodyPart part, float hx, float hy, float hz, bool lying) {
@@ -88,16 +96,14 @@ void shoot_walker(Round &r, int id, BodyPart part, float hx, float hy, float hz,
 		const bool leg = part == BodyPart::LEG_L || part == BodyPart::LEG_R;
 		if (leg || (part == BodyPart::TORSO && r.roll(SALT_KNOCK, uint32_t(id) ^ (uint32_t(w.hits) << HITS_SALT_SHIFT)) < KNOCK_TRUNK_CHANCE)) {
 			const float lie = p.shot_knock_min_s + p.shot_knock_span_s * r.roll(SALT_FALL, uint32_t(id));
-			w.down_until = now + lie;
-			r.emit(casualty_of(r, id, w, CAS_KNOCKED | shared, PUSH_KNOCK, lie, hx, hz));
+			put_down(r, w, casualty_of(r, id, w, CAS_KNOCKED | shared, PUSH_KNOCK, lie, hx, hz));
 		} else {
 			w.flinch_until = now + p.flinch_s;
 		}
 	} else {
 		const bool leg_gone = (w.lost & (CAS_LIMB_LEG_L | CAS_LIMB_LEG_R)) != 0;
-		w.down_until = now + LIE_FOR_GOOD_S;
 		w.bleed = std::max(w.bleed, leg_gone ? p.bleed_leg : severed != 0 ? p.bleed_limb : p.bleed_hurt);
-		r.emit(casualty_of(r, id, w, CAS_KNOCKED | CAS_CRAWL | shared, severed != 0 ? PUSH_SEVER : PUSH_GRAVE, LIE_FOR_GOOD_S, hx, hz));
+		put_down(r, w, casualty_of(r, id, w, CAS_KNOCKED | CAS_CRAWL | shared, severed != 0 ? PUSH_SEVER : PUSH_GRAVE, LIE_FOR_GOOD_S, hx, hz));
 	}
 }
 
