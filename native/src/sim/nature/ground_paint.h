@@ -54,6 +54,9 @@ public:
 	// Lays the dab; the sample rectangle of the cells whose bytes it changed goes in `rect` (x0, z0, x1, z1); false when
 	// none changed. A tile is made only for a cell that takes paint, and goes when its last painted cell is wiped.
 	bool dab(const PaintDab &d, int rect[4]);
+	// Whether dab(d) would change a cell, writing nothing (what dab returns): a command records the tiles for undo only before
+	// a dab that paints (sim/commands/nature_commands.cpp paint_dab). Stops at the first cell that would change.
+	bool changes(const PaintDab &d) const;
 	const PaintTile *tile(int key) const;
 	// For a reader of many cells in a row (a map of the painted ground): the tile a sample falls in, nullptr where nothing of it
 	// is painted, and the sample's place in that tile, so a tile is looked up once for the run of cells in it.
@@ -72,6 +75,9 @@ private:
 	int tile_key(int ix, int iz) const { return (iz / PAINT_TILE) * across_ + ix / PAINT_TILE; }
 	PaintCell &touch(int ix, int iz);
 	void paint_cell(PaintCell &c, const PaintDab &d, float w) const;
+	// Calls fn(ix, iz, now) for each cell of the dab whose bytes it changes, `now` what it becomes; fn returns false to stop.
+	template <typename F>
+	void each_change(const PaintDab &d, F &&fn) const;
 	void count(const PaintCell &c, int sign); // the cells holding a biome or a cover
 	void count(const PaintTile &t, int sign);
 	int n_ = 0, across_ = 0;

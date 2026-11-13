@@ -80,7 +80,7 @@ public:
 	int road_variant(int base, int lanes, float width, int parking);
 	godot::Array node_legs(int node);
 	godot::Dictionary set_approach_rule(int node, int seg, int rule);
-	godot::Dictionary node_lanes(int node), toggle_lane_link(int node, int from, int from_lane, int to, int to_lane);
+	godot::Dictionary junction_lane_map(int node), flip_lane_link(int node, int from, int from_lane, int to, int to_lane);
 	godot::Dictionary road_spec(int profile) const, road_spec_limits() const;
 	godot::Array road_spec_issues(int base, const godot::Dictionary &spec) const;
 	godot::Dictionary road_spec_make(int base, const godot::Dictionary &spec); // {ok, error, index}: index -1 when refused
@@ -221,6 +221,8 @@ private:
 	double process_ms_ = 0, agents_ms_ = 0, overlays_ms_ = 0; // the last _process (render_cost)
 	PoseStats pose_stats_;
 	void note_pose(const PoseFrame &f, bool fresh, const PoseSample &at);
+	// The tests' DLL, once a frame: what its record checks found since the last drain, one push_error per check (city_core.cpp).
+	void report_broken();
 	// The areas, made with the core on its state and render, freed before them (city_core_areas.cpp).
 	CityBuilder *builder_ = nullptr;
 	CityLandscape *landscape_ = nullptr;

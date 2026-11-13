@@ -1,7 +1,9 @@
 ## The control a junction on automatic gets: from its geometry before any flow is measured (junctions drawn on free ground), and
 ## from its flows: the translated classes against the Roadcraft 4.0 on one script (the numbers below came from its own code,
 ## tools/converter/scripts/call40.mjs, ORACLE), real vehicles counted, and a junction of the city turned into a signal by what
-## passes through it.
+## passes through it. Then the records kept true (doc/specs/003-roadcraft-features/sheets/backbone-records-true.md items 11, 12, 15):
+## the signal the flows chose stands on its arm's posts at once, an arm demolished leaves no flow on its leg, and the junction removed
+## leaves no control choice on its id, so one laid again starts with none.
 extends TestCase
 
 const TOWN_MAP := 0
@@ -33,6 +35,9 @@ const FURNITURE_SAMPLE := 1 # traffic_probe counts the street furniture only wit
 const T_ARMS := 3
 const T_JOINING := 1 # at a T the stem joins the road the junction is on
 
+## The T of two-lane streets the flows push (_geometry): where its stem meets the road it joins.
+var _stem := Vector3.ZERO
+
 func _ready() -> void:
 	var rig := CityCamera.new()
 	add_child(rig)
@@ -44,6 +49,7 @@ func _ready() -> void:
 	var quiet := _geometry()
 	_driven()
 	_junction(quiet)
+	_junction_gone(quiet)
 	_stop_sign()
 	finish()
 
@@ -79,6 +85,7 @@ func _geometry() -> int:
 	_signal_at(t, 3, true, "a T on a four-lane avenue")
 	var q := o - Vector3(0, 0, SITES_APART_M)
 	var stem := q + Vector3(ARM_M, 0, 0)
+	_stem = stem
 	_road(q, q + Vector3(2 * ARM_M, 0, 0), LOCAL)
 	_road(stem - Vector3(0, 0, ARM_M), stem, LOCAL)
 	return _signal_at(stem, 3, false, "another T of two-lane streets")
@@ -133,6 +140,60 @@ func _stop_sign() -> void:
 func _junction(node: int) -> void:
 	if not check(node >= 0, "a three-arm junction with no signal to push"):
 		return
+	var arm: int = _road_at(_stem - Vector3(0, 0, ARM_M * 0.5))
+	var before := _posts_on(arm) # read as the render reads it: the placement is kept
 	var state: Dictionary = CityStore.query(&"flow_push", [node, PUSH_S])
 	print("pushed: ", state)
 	check(state.choice == "signal" and state.signal, "the flow puts the signal at the junction")
+	ticks(SETTLE_TICKS)
+	check(_posts_on(arm) > before, "the signal the flows chose stands on the posts of its arm %d: %d -> %d" % [arm, before, _posts_on(arm)])
+	var broken := _broken("furniture.kept_matches_control")
+	check(broken.is_empty(), "every kept placement stands under its ends' control: %s" % [broken])
+
+
+## The flows and the choice keyed by the junction go with its roads (items 11 and 12): its stem demolished leaves no flow kept on that
+## leg; the junction removed leaves no choice on its id; a T laid again on the place starts with none, its node's id old or new.
+func _junction_gone(node: int) -> void:
+	if node < 0:
+		return
+	CityStore.dispatch(&"demolish", [_stem - Vector3(0, 0, ARM_M * 0.5)])
+	ticks(SETTLE_TICKS)
+	var stale := _broken("flow.stats_on_live_legs")
+	check(not node in stale, "no flow kept at node %d on the leg of its demolished arm: %s" % [node, stale])
+	for side: float in [-1.0, 1.0]: # the road it was on: one piece or two, as the edit left it
+		CityStore.dispatch(&"demolish", [_stem + Vector3(side * ARM_M * 0.5, 0, 0)])
+	ticks(SETTLE_TICKS)
+	var gone: Dictionary = CityStore.query(&"flow_state", [node])
+	check(gone.choice == "none", "the junction removed keeps no control choice on its id %d: %s" % [node, gone.choice])
+	var advised := _broken("flow.advisor_on_live_nodes")
+	check(advised.is_empty(), "every choice and advised junction is an alive node: %s" % [advised])
+	_road(_stem - Vector3(ARM_M, 0, 0), _stem + Vector3(ARM_M, 0, 0), LOCAL)
+	_road(_stem - Vector3(0, 0, ARM_M), _stem, LOCAL)
+	var again := _signal_at(_stem, T_ARMS, false, "the T laid again")
+	if again >= 0:
+		var state: Dictionary = CityStore.query(&"flow_state", [again])
+		check(state.choice == "none", "the T laid again (node %d, %s) starts with no choice: %s" % [again, "the old id" if again == node else "a new id", state.choice])
+
+
+## The road under `at` (inspect), -1 for none.
+func _road_at(at: Vector3) -> int:
+	var hit: Dictionary = CityStore.query(&"inspect", [at])
+	return hit.get("id", -1) if hit.get("kind", "") == "road" else -1
+
+
+## The signal posts standing on segment `seg` (furniture_spots reads the kept placement, as the render does).
+func _posts_on(seg: int) -> int:
+	var posts := 0
+	for spot: Dictionary in CityStore.query(&"furniture_spots", [seg]):
+		posts += 1 if spot.kind == SIGNAL_POST else 0
+	return posts
+
+
+## The records the core's invariant `name` (feature.check) finds broken now.
+func _broken(name: String) -> Array:
+	var out := []
+	for b: Dictionary in CityStore.query(&"broken_records"):
+		if "%s.%s" % [b.feature, b.check] == name:
+			for r in b.records:
+				out.append(r)
+	return out

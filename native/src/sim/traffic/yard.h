@@ -1,6 +1,9 @@
 // A works' loading yard as a lorry drives it: what is read from the world under the locks (YardInput), and the ways worked out from
 // that copy alone, a little each tick (YardPlanner): for each dock, from a stop on the lane before a gate, in reverse onto the dock,
 // and from the dock out to the lane past the gate. The work is counted, never timed: a map gives the same plan on the same tick.
+// A plan names its docks by their place among the lot's own bays (ParkSource::bays, laid in the order of the lot's elements: the same
+// record always reads the same order), never by ParkingState::bays: the lot's bays are let go when the camera leaves and take other
+// slots when it comes back, while the plan, which costs much, is kept until the lot or the roads it read change.
 #pragma once
 
 #include "sim/traffic/way_search.h"
@@ -14,6 +17,8 @@
 namespace city {
 
 struct CityState;
+struct Lorry;
+struct ParkingState;
 class RoadNetwork;
 
 namespace traffic {
@@ -37,7 +42,7 @@ struct YardGate {
 };
 
 struct YardDock {
-	int bay = -1; // ParkingState::bays
+	int bay = -1; // its place among the lot's bays (ParkSource::bays), resolved when a lorry is called (lot_bay)
 	V2 door, out; // the middle of its closed end and the unit direction out of it
 };
 
@@ -60,7 +65,7 @@ struct YardInput {
 enum YardReach { YARD_NO_PRE, YARD_NO_STOP, YARD_NO_WAY, YARD_NO_LANE, YARD_ONE_WAY, YARD_BOTH_WAYS, YARD_REACHES };
 
 struct DockWays {
-	int bay = -1, gate = -1; // -1: no way
+	int bay = -1, gate = -1; // its dock's place among the lot's bays (YardDock::bay); gate -1: no way
 	int reached = YARD_NO_PRE;
 	std::vector<AxlePose> into, away;
 	int into_street = 0, away_street = 0;
@@ -136,6 +141,19 @@ bool yard_input(const CityState &s, int building, YardInput &out);
 // A network change dropped `removed` and added or changed `changed`: the yards (planned and being planned) it reaches are let go,
 // to be planned again when a lorry is next called to them; the others stand.
 void forget_yards_near(CityState &s, const std::vector<int> &removed, const std::vector<int> &changed);
+
+// parking_sources.cpp: the lot's `place`-th bay as ParkingState::bays holds it now; -1 while the lot is not read or has no such bay.
+int lot_bay(const ParkingState &p, int building, int place);
+// Where bay `b` stands among its lot's bays (the place a plan names it by); -1 for a bay of no read lot.
+int place_in_lot(const ParkingState &p, int b);
+
+// lorry_traffic.cpp: a lorry is bound to its building and dock bay until it starts out of the yard (LEAVING, JOINING): until then
+// they are what it drives to, so its lot keeps its bays (drop_source) and the invariant parking.lorry_target_live holds them alive.
+bool lorry_bound(const Lorry &l);
+// The building changed or went (forget_parking_lot): every lorry bound to it gives up. One on the lanes goes on as a truck of the
+// traffic; one off them (stopped at the gate, backing in, docked) leaves the scene, as a lot's car whose bay went (lot_car_gone).
+// One already driving out finishes its way.
+void release_lorries(CityState &s, int building);
 
 } // namespace traffic
 } // namespace city

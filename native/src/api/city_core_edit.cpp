@@ -21,22 +21,22 @@ constexpr size_t JUNCTION_MARK_ARMS = 3;
 } // namespace
 
 bool CityCore::undo() {
-	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
+	CommandHold hold(*state_, "undo");
 	return state_->ready && state_->history.undo(*state_);
 }
 
 bool CityCore::redo() {
-	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
+	CommandHold hold(*state_, "redo");
 	return state_->ready && state_->history.redo(*state_);
 }
 
 void CityCore::begin_stroke(const String &label) {
-	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
+	CommandHold hold(*state_, "stroke.begin");
 	state_->history.begin_group(label.utf8().get_data());
 }
 
 void CityCore::end_stroke() {
-	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
+	CommandHold hold(*state_, "stroke.end");
 	state_->history.end_group(*state_);
 }
 
@@ -78,12 +78,12 @@ Dictionary CityCore::duplicate_road(int seg) {
 
 Dictionary CityCore::set_marking_style(int style, bool undoable) {
 	if (undoable) return run_edit(*state_, "cmd.paint", [&](CityState &s) { return city::set_marking_style(s, style); });
-	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
+	CommandHold hold(*state_, "cmd.paint");
 	return result_dict(city::set_marking_style(*state_, style));
 }
 
 Dictionary CityCore::set_style(const String &id) {
-	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
+	CommandHold hold(*state_, "style");
 	state_->style = id.utf8().get_data();
 	Dictionary d;
 	d["ok"] = true;

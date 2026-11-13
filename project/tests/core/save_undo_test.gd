@@ -1,7 +1,8 @@
 ## Core test of the history and the save file through the store (no rendering needed): every edit kind is undone to
 ## exactly the state before it and redone to the state after it (road, demolish, zone stroke, relief stroke, upgrade,
 ## split, roundabout, drawn building, and the Landscape: weather, cloud, fog, painted ground, planted trees); then a city with edits, grown buildings and sculpted ground is saved, a new map
-## replaces it, and opening the file brings back the same counts, money, clock, buildings, heights and landscape.
+## replaces it, and opening the file brings back the same counts, money, clock, buildings, heights and landscape; the road variants
+## keep their room through opening files with fewer and with more of them (variant_room_cases.gd).
 ## Run: godot --headless --path project res://tests/core/save_undo_test.tscn -- --no-flow
 extends TestCase
 
@@ -47,6 +48,7 @@ func _ready() -> void:
 	SignalCases.new(self).run()
 	await _save_round_trip(a, e)
 	await _refuses_bad_balance()
+	await VariantRoomCases.run(self)
 	finish()
 
 

@@ -142,12 +142,21 @@ public:
 	float stroke_h0 = 0;
 	size_t max_steps = 0, max_bytes = 0; // from tuning "history"
 
+	// The city's revisions (CityData revision, street_revision, edit_revision): what a refused command must leave as it found.
+	struct Revisions {
+		uint64_t map = 0, streets = 0, edits = 0;
+	};
+
 	void reset(const Tuning &t); // a new or loaded map: empty, with the limits of tuning "history"
 	void clear();
-	void begin(const std::string &label);
-	// Ends a command: kept (pushed when no stroke is open) when ok, else everything it did is rolled back. Either way the
-	// transaction is finished once (road_edit.h finish_command).
+	// Starts a command, keeping the city's revisions as they are: a refusal gives them back.
+	void begin(const CityState &s, const std::string &label);
+	// Ends a command: kept (pushed when no stroke is open) when ok, else everything it did is rolled back and the revisions it
+	// moved go back to their values at begin. Either way the transaction is finished once (road_edit.h finish_command).
 	void end(CityState &s, bool ok);
+	// What the last command found (edit.refusal_inert, sim/checks/edit.cpp): whether it was refused, and the revisions at its begin.
+	bool refused() const { return refused_; }
+	const Revisions &at_begin() const { return at_begin_; }
 	void begin_group(const std::string &label);
 	void end_group(CityState &s);
 	bool undo(CityState &s);
@@ -163,6 +172,12 @@ public:
 private:
 	size_t begin_ops = 0; // ops the open entry had when the current command began (its rollback stops there)
 	bool touched_ = false; // the command in progress recorded something
+	// A refused command's rollback is the same city: nothing made for the old revisions is stale, and raising them would mark the
+	// city unsaved and drop the kept furniture of every street (furniture_kept.h). No reader saw the raised values: the command
+	// holds the map exclusively. It holds because a refusal rolls back all a command changed: only ops are rolled back, so no command
+	// refuses after touching terrain or paint (j_terrain_touch, j_paint_touch).
+	bool refused_ = false;
+	Revisions at_begin_;
 	void push(CityState &s);
 	void close_terrain(const CityState &s);
 	void close_paint(const CityState &s);
@@ -183,7 +198,7 @@ void j_set_uturn(CityState &s, int n, uint8_t kind);
 void j_set_control(CityState &s, int n, uint8_t ctl);
 void j_set_signal(CityState &s, int n, const SignalSettings &to);
 int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags);
-void j_remove_segment(CityState &s, int seg);
+void j_remove_segment(CityState &s, int seg); // the links and bans naming it dropped, its bus stops left on no road
 void j_set_profile(CityState &s, int seg, int profile);
 void j_set_marking(CityState &s, int style);
 void j_set_zone(CityState &s, int seg, int side, int zone);
@@ -194,6 +209,8 @@ int j_add_modifier(CityState &s, const std::vector<float> &pts, float flat, floa
 void j_money(CityState &s, double delta);
 // The public transport plan replaced by `next`: what differs, record by record, is what the journal keeps.
 void j_transit(CityState &s, TransitData next);
+// The road of the bus stop at `index` of the plan set to `seg` (-1: none, the stop inert): one EDIT_STOP, not the whole plan.
+void j_stop_road(CityState &s, int index, int seg);
 // The player's lots, one record at a time (sim/commands/lot_commands.cpp). The lot cells they cover are the caller's to mark.
 int j_add_lot(CityState &s, PlayerLot lot); // its id, the book's next
 void j_remove_lot(CityState &s, int id);

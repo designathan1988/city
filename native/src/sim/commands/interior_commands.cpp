@@ -59,6 +59,7 @@ const char *set_interior_view(CityState &s, const InteriorRequest &r) {
 			problem = "game.toast.insideNone";
 		} else {
 			next.target = r.target;
+			next.seed = s.buildings.items[size_t(r.target)].seed; // alive: interior_floors found its body
 			next.cut.level = std::clamp(r.level, 0, floors - 1);
 		}
 	}

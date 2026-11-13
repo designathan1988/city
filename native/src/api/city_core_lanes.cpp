@@ -25,21 +25,10 @@ Dictionary lane_end(const CityState &s, int seg, int lane, int ds, float at) {
 	d["z"] = p.z;
 	return d;
 }
-
-std::vector<LaneLink> built_links(const CityState &s, int node) {
-	std::vector<LaneLink> out;
-	const LaneGraph &g = s.traffic.g;
-	if (node < 0 || node >= int(g.node_conn.size())) return out;
-	for (int c = g.node_conn[size_t(node)]; c >= 0; c = g.conns[size_t(c)].next_at_node) {
-		const Conn &k = g.conns[size_t(c)];
-		out.push_back({ g.ds[size_t(k.from_ds)].seg, k.from_lane, g.ds[size_t(k.to_ds)].seg, k.to_lane });
-	}
-	return out;
-}
 } // namespace
 
 // {arriving, leaving: [{seg, lane, x, z}], built: [[from, from_lane, to, to_lane]]}.
-Dictionary CityCore::node_lanes(int node) {
+Dictionary CityCore::junction_lane_map(int node) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const CityState &s = *state_;
@@ -55,7 +44,9 @@ Dictionary CityCore::node_lanes(int node) {
 			if (g.ds[size_t(dout)].ok)
 				for (int l = 0; l < g.ds[size_t(dout)].lanes; l++) leaving.push_back(lane_end(s, seg, l, dout, 0));
 		}
-		for (const LaneLink &k : built_links(s, node)) {
+		std::vector<LaneLink> links;
+		traffic::links_built(s, node, links);
+		for (const LaneLink &k : links) {
 			Array one;
 			one.push_back(k.from);
 			one.push_back(k.from_lane);
@@ -107,14 +98,8 @@ Dictionary CityCore::set_approach_rule(int node, int seg, int rule) {
 	return run_edit(*state_, "cmd.lane.rule", [&](CityState &s) { return city::set_approach_rule(s, node, seg, rule); });
 }
 
-Dictionary CityCore::toggle_lane_link(int node, int from, int from_lane, int to, int to_lane) {
-	std::vector<LaneLink> built;
-	{
-		std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
-		std::lock_guard<std::mutex> tr(state_->traffic_mutex);
-		built = built_links(*state_, node);
-	}
-	return run_edit(*state_, "cmd.lane.link", [&](CityState &s) { return city::toggle_lane_link(s, node, { from, from_lane, to, to_lane }, built); });
+Dictionary CityCore::flip_lane_link(int node, int from, int from_lane, int to, int to_lane) {
+	return run_edit(*state_, "cmd.lane.link", [&](CityState &s) { return city::flip_lane_link(s, node, { from, from_lane, to, to_lane }); });
 }
 
 } // namespace city

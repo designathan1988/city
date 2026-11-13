@@ -2,6 +2,7 @@
 // entry (sim/commands/edit_journal.h): kept when it succeeds, rolled back when it fails half way.
 #pragma once
 
+#include "api/command_hold.h"
 #include "sim/commands/commands.h"
 #include "sim/state/city_state.h"
 
@@ -33,14 +34,16 @@ inline godot::Dictionary no_city_dict() {
 }
 
 // Locks the world, records the command under `label` (a strings.csv key) and returns its result. With no city open the
-// command is refused with its key, never answered with an empty Dictionary.
+// command is refused with its key, never answered with an empty Dictionary. The hold's end checks what the command changed, and
+// after a refusal that the rollback left the city as it was (api/command_hold.h, the tests' DLL).
 template <typename F>
 godot::Dictionary run_edit(CityState &s, const char *label, F &&fn) {
-	map_hold::WriterHold lk(s.map_mutex, map_hold::Writer::COMMAND);
+	CommandHold hold(s, label);
 	if (!s.ready) return no_city_dict();
-	s.history.begin(label);
+	s.history.begin(s, label);
 	EditResult r = fn(s);
 	s.history.end(s, r.ok);
+	if (!r.ok) hold.refused();
 	return result_dict(r);
 }
 

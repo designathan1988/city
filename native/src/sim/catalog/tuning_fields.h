@@ -44,6 +44,7 @@
 	X(strike, force_start) X(strike, force_fine) X(strike, force_coarse) X(strike, frame_floors) X(strike, frame_collapse_kpa) X(strike, standing_least) X(strike, storey_m) X(strike, scar_radius_m) X(strike, scar_radius_per_force) X(strike, scar_near_share) X(strike, scar_force_gain) X(strike, scar_force_least) X(strike, scar_lift_m) X(strike, scars_most) \
 	X(street, kerb_m) X(street, kerb_by_median_m) X(street, sidewalk_m) X(street, median_m) X(street, barrier_m) \
 	X(lot, plate_m) X(lot, cover_step_m) X(lot, apron_m) X(lot, bank_batter) X(lot, bank_reach_m) \
-	X(build, road_clearance_m) X(build, snap_road_reach_m) X(build, snap_building_reach_m) X(build, snap_edge)
+	X(build, road_clearance_m) X(build, snap_road_reach_m) X(build, snap_building_reach_m) X(build, snap_edge) \
+	X(checks, records_kept)
 
 #define CITY_TUNING_DECLARE(group, name) float group##_##name = 0;

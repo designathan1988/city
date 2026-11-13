@@ -4,6 +4,7 @@
 // exclusive lock.
 #include "api/city_core.h"
 
+#include "api/command_hold.h"
 #include "core/laps.h"
 #include "core/units.h"
 #include "sim/persistence/save_format.h"
@@ -166,6 +167,7 @@ Dictionary CityCore::load_city(const String &path, bool paused) {
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // the road variants change it under the exclusive lock
 		read->catalog = state_->catalog;
 	}
+	read->catalog.keep_variant_room(); // the copy kept the size, not the room: the file's variants and the city's next ones need it
 	OpenTimes times;
 	bool decoded = false;
 	{
@@ -183,7 +185,7 @@ Dictionary CityCore::load_city(const String &path, bool paused) {
 	// let the map go (its cut refers to them). Paused before the map is taken: a job still gathering needs it shared to end.
 	state_->jobs->pause();
 	{
-		map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::LOAD);
+		CommandHold hold(*state_, "load", map_hold::Writer::LOAD); // the tests' DLL checks the city taken in, still under the hold (catalog.variant_room among them)
 		state_->log.drop_damage(); // the old city's blows go with it
 		state_->interior = InteriorView(); // the layer closes with the city it showed
 		take_city(*state_, *read);

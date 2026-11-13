@@ -99,6 +99,10 @@ public:
 	godot::Dictionary grade_probe(const godot::Dictionary &scene);
 	int undo_steps(); // tests: the steps the player can undo
 	godot::String graph_fault(); // tests: what the lane graph broke first, since the city opened (the debug DLL looks at every change)
+	// Tests: every record invariant on the whole city (sim/checks/records.h; the traffic-owned ones only once the traffic has drained
+	// the last commands, else pending), and what the debug DLL's passes found since the last drain: one entry per check,
+	// {feature, check, records, dropped, after} (api/broken_records.h). Empty: nothing broken.
+	godot::Array broken_records();
 	godot::PackedStringArray traffic_hashes(int ticks); // tests: a hash of the fleet after each of `ticks` steps; empty while the clock runs
 	godot::Dictionary state_hash(); // tests: the city as a number, whole and by part (city_core_state_probe.cpp)
 	godot::Dictionary bay_census(); // how many bays the city has and how many different ones (building_renderer_probe.cpp)
@@ -148,6 +152,7 @@ private:
 	CityState *state_ = nullptr; // the core's: it outlives this area (CityCore frees its areas first)
 	RenderWorld *render_ = nullptr;
 	Simulation *sim_ = nullptr; // the core's clock: a probe that steps the city on this thread asks it to hold still first
+	bool pending_said_ = false; // broken_records said the traffic-owned checks pending, and has not run them since
 };
 
 } // namespace city

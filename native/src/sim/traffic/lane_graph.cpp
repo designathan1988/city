@@ -124,6 +124,16 @@ void link_pair(CityState &s, int node, int din, int dout, Turn turn, std::vector
 
 } // namespace
 
+void links_built(const CityState &s, int node, std::vector<LaneLink> &out) {
+	out.clear();
+	const LaneGraph &g = s.traffic.g;
+	if (node < 0 || node >= int(g.node_conn.size())) return;
+	for (int c = g.node_conn[size_t(node)]; c >= 0; c = g.conns[size_t(c)].next_at_node) {
+		const Conn &k = g.conns[size_t(c)];
+		out.push_back({ g.ds[size_t(k.from_ds)].seg, k.from_lane, g.ds[size_t(k.to_ds)].seg, k.to_lane });
+	}
+}
+
 // How far across a bike strip lies from lane 0 at `lane_u`, on the kerb side of direction `dir` (0: none there).
 static float bike_strip_shift(const Profile &p, float lane_u, int dir) {
 	float best = 0;

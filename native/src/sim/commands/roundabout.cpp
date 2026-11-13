@@ -5,6 +5,7 @@
 #include "core/units.h"
 #include "sim/commands/commands.h"
 #include "sim/commands/road_edit.h"
+#include "sim/commands/road_refs.h"
 #include "sim/economy/road_economy.h"
 
 #include "sim/terrain/terrain_gen.h"
@@ -65,6 +66,12 @@ void Builder::cut(const Hit &h) {
 	RoadNetwork &net = s.roads;
 	if (!net.segs[h.seg].alive) return;
 	RoadSegment rec = net.segs[h.seg];
+	// An end inside the circle is a node the ring replaces: the bans and links it held were between roads that now meet the ring
+	// instead, so they die with it. An end outside keeps its node, and what it named the road by goes to the part kept there.
+	RoadRefs refs = refs_of(s, { h.seg });
+	if (inside(h.q, 0)) forget_refs_at(refs, rec.a);
+	if (inside(h.q, 1)) forget_refs_at(refs, rec.b);
+	std::vector<int> kept;
 	j_remove_segment(s, h.seg);
 	std::vector<double> pts{ 0 };
 	pts.insert(pts.end(), h.crossings.begin(), h.crossings.end());
@@ -76,8 +83,12 @@ void Builder::cut(const Hit &h) {
 		int na = t0 == 0 ? rec.a : entry_node(sub.x0, sub.z0);
 		int nb = t1 == 1 ? rec.b : entry_node(sub.x1, sub.z1);
 		sub.x0 = net.nodes[na].x; sub.z0 = net.nodes[na].z; sub.x1 = net.nodes[nb].x; sub.z1 = net.nodes[nb].z;
-		if (na != nb) approaches.push_back(j_add_segment(s, na, nb, sub, rec.profile, rec.zl, rec.zr, rec.flags));
+		if (na != nb) {
+			approaches.push_back(j_add_segment(s, na, nb, sub, rec.profile, rec.zl, rec.zr, rec.flags));
+			kept.push_back(approaches.back());
+		}
 	}
+	carry_refs(s, refs, h.seg, kept); // a stop to the nearest part kept in its reach, else on no road (the ring took its place)
 	j_remove_node_if_orphan(s, rec.a);
 	j_remove_node_if_orphan(s, rec.b);
 }

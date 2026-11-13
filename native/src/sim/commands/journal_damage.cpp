@@ -3,21 +3,45 @@
 // crater or a piece of furniture comes off the end, and a ruin goes back where it stood in the list.
 #include "sim/commands/edit_journal.h"
 
+#include "sim/commands/building_refs.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
+#include <vector>
 
 namespace city {
 
 namespace {
-// The lots a ruin sits on are drawn and grown again: its building chunk is marked.
+// The lots a ruin sits on are drawn and grown again: its building chunk is marked, and its lot cells queued for growth, which
+// weighs their lots again (a ruin blocks its lot: growth.cpp lot_occupied; cleared, the lot is free).
 void mark_ruin(CityState &s, const Ruin &r) {
 	Building b = r.record;
 	{
 		const float reach = std::max(b.w, b.d) * 0.5f;
 		for (int j = int(std::floor((b.z - reach) / CHUNK)); j <= int(std::floor((b.z + reach) / CHUNK)); j++)
-			for (int i = int(std::floor((b.x - reach) / CHUNK)); i <= int(std::floor((b.x + reach) / CHUNK)); i++)
+			for (int i = int(std::floor((b.x - reach) / CHUNK)); i <= int(std::floor((b.x + reach) / CHUNK)); i++) {
 				s.log.building_chunks.push_back(cell_key(i, j));
+				if (s.lots.lots_of(cell_key(i, j))) s.growth.push(cell_key(i, j));
+			}
+	}
+}
+
+// A ruin put back by the history (an undone clearing, a redone blow): what grew on its lot meanwhile, outside the history, is
+// knocked down, as BuildingStore::put knocks down what grew on a lot it puts a record back on. Unjournalled like growth itself,
+// and what named those buildings goes with them (building_refs.h). Its own building, still standing when a blow is redone, goes too:
+// the next op of the blow removes it anyway.
+void clear_grown(CityState &s, const Ruin &r) {
+	const Building &fallen = r.record; // the ruin's lot is its fallen record's
+	float x0, z0, x1, z1;
+	BuildingRecords::bounds(fallen, x0, z0, x1, z1);
+	std::vector<int> grown;
+	s.buildings.meeting(x0, z0, x1, z1, [&](int id) { // the ruin's centre in the building's lot, or the building's centre on the ruin's
+		const Building &b = s.buildings.items[size_t(id)];
+		if (BuildingRecords::covers(b, fallen.x, fallen.z, 0.f) || BuildingRecords::covers(fallen, b.x, b.z, 0.f)) grown.push_back(id);
+	});
+	for (int id : grown) {
+		s.buildings.remove(id);
+		building_gone(s, id);
 	}
 }
 } // namespace
@@ -94,8 +118,10 @@ void apply_damage_op(CityState &s, const EditOp &op, bool fwd) {
 		case OpKind::DMG_RUIN: {
 			const RuinChange &r = op.get<RuinChange>();
 			const bool add = !r.removed == fwd;
-			if (add) d.insert_ruin(size_t(op.id), r.ruin);
-			else if (op.id >= 0) d.erase_ruin(size_t(op.id));
+			if (add) {
+				d.insert_ruin(size_t(op.id), r.ruin);
+				clear_grown(s, r.ruin);
+			} else if (op.id >= 0) d.erase_ruin(size_t(op.id));
 			mark_ruin(s, r.ruin);
 			break;
 		}

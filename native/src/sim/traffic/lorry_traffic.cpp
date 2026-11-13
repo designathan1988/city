@@ -1,7 +1,8 @@
 // Lorries to the docks of the works near the camera. A truck on the lanes is called to a stop before a gate; there it leaves the
 // lanes and, no standing car or lorry on its way and the street it sweeps clear and closed, backs onto the dock along the way a
 // worker planned (yard.h), unloads, drives out and is a truck of the traffic again past the gate. In and out it drives by its swath
-// as the lots' cars do (swaths.h): it gives way to the swaths of those that started before it.
+// as the lots' cars do (swaths.h): it gives way to the swaths of those that started before it. Its dock is found by its place among
+// the lot's bays (yard.h); a building that changes or goes releases the lorries bound to it (release_lorries).
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/traffic/lane_closures.h"
@@ -269,8 +270,9 @@ void call(CityState &s) {
 	Bay &bay = pk.bays[size_t(b)];
 	const YardPlan *plan = yard_of(s, bay.source);
 	if (!plan) { pk.lorry_calls[CALL_PLANNING]++; return; }
+	const int place = place_in_lot(pk, b); // the plan names its docks by place among the lot's bays (yard.h)
 	const DockWays *ways = nullptr;
-	for (const DockWays &w : plan->docks) ways = w.bay == b ? &w : ways;
+	for (const DockWays &w : plan->docks) ways = place >= 0 && w.bay == place ? &w : ways;
 	if (!ways && pk.planner && pk.planner_building == bay.source) { pk.lorry_calls[CALL_PLANNING]++; return; }
 	if (!ways || ways->gate < 0) { pk.lorry_calls[CALL_NO_WAY]++; return; }
 	const YardGate &gate = plan->gates[size_t(ways->gate)];
@@ -301,6 +303,23 @@ void call(CityState &s) {
 	pk.lorry_calls[CALL_SENT]++;
 }
 } // namespace
+
+bool lorry_bound(const Lorry &l) { return l.phase != LorryPhase::LEAVING && l.phase != LorryPhase::JOINING; }
+
+void release_lorries(CityState &s, int building) {
+	ParkingState &pk = s.traffic.park;
+	for (int i = int(pk.lorries.size()) - 1; i >= 0; i--) { // forget moves the last lorry into the slot: those after it were seen
+		const Lorry &l = pk.lorries[size_t(i)];
+		if (l.building != building || !lorry_bound(l)) continue;
+		if (l.phase == LorryPhase::COMING) {
+			give_up(s, i);
+			continue;
+		}
+		const int id = l.id;
+		forget(s, i); // its closed stretches open
+		free_vehicle(s.traffic, id); // off the lanes, out of the fleet count already (coming)
+	}
+}
 
 void lorry_gone(CityState &s, int id) {
 	if (s.traffic.vehicles[size_t(id)].lorry >= 0) forget(s, s.traffic.vehicles[size_t(id)].lorry);

@@ -4,6 +4,7 @@
 #include "sim/commands/commands.h"
 #include "sim/commands/street_commands.h"
 #include "sim/commands/road_edit.h"
+#include "sim/commands/road_refs.h"
 
 #include "sim/economy/road_economy.h"
 #include "sim/state/city_state.h"
@@ -53,6 +54,7 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 	const std::map<int, double> before = squeezes_in(s, box);
 	std::vector<std::vector<CarriedPiece>> kits; // what the player put on each road, carried along (Roadcraft nodeMover.ts carryStreetKit)
 	for (int sid : was.segs) kits.push_back(street_kit_of(s, sid));
+	RoadRefs refs = refs_of(s, was.segs); // the links and bans at both ends of every arm, and the stops on them
 	for (int sid : was.segs) j_remove_segment(s, sid);
 	Anchor to = snap_point(s, x, z, tn.road_merge_m);
 	if (to.node == node) {
@@ -64,6 +66,8 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 	end.node = anchor_node(s, to);
 	end.x = net.nodes[size_t(end.node)].x;
 	end.z = net.nodes[size_t(end.node)].z;
+	refs.moved = node;
+	refs.to = end.node; // the links the moved node held go where it ends
 	for (size_t i = 0; i < roads.size(); i++) {
 		const RoadSegment &g = roads[i];
 		const bool at_a = g.a == node;
@@ -80,6 +84,7 @@ EditResult move_node(CityState &s, int node, double x, double z) {
 			return r;
 		}
 		carry_kit_along(s, kits[i], g.len, q, pieces);
+		carry_refs(s, refs, was.segs[i], pieces); // each arm's ids are fresh pieces now: what named it goes to the one at the same node
 		r.segments += laid.segments;
 		r.buildings_removed += laid.buildings_removed;
 	}

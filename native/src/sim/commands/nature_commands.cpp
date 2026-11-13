@@ -193,6 +193,9 @@ EditResult paint_dab(CityState &s, const PaintDab &d) {
 	GroundPaint &g = s.nature.ground;
 	const PaintDef &def = s.catalog.nature.paint;
 	if (d.kind >= int(def.kinds.size()) || d.kind < GULLY_WIPE) return refused("tool.failed");
+	// A dab that changes no cell (finished ground, a rim between samples) records nothing and makes no tile: ok, no hint, and
+	// a stroke of only such dabs leaves no undo step. The tiles are recorded for undo only before a dab that paints.
+	if (!g.changes(d)) return done();
 	std::vector<int> tiles;
 	g.tiles_under(d.x, d.z, d.radius, tiles);
 	int fresh = 0;
@@ -200,7 +203,7 @@ EditResult paint_dab(CityState &s, const PaintDab &d) {
 	if (int(g.all().size()) + fresh > def.max_tiles) return refused(FULL);
 	j_paint_touch(s, tiles);
 	int rect[4];
-	if (g.dab(d, rect)) {
+	if (g.dab(d, rect)) { // always, after changes(): the same cells, the same values
 		mark_paint(s, rect);
 		s.touch();
 	}
@@ -242,6 +245,9 @@ EditResult tree_dab(CityState &s, double x, double z, double radius, int mode, i
 	} else {
 		stand = plant_stand(TreeKind(kind), b, fx, fz, r, seed, nearby, d);
 	}
+	// No room or no tree drawn: the dab plants nothing and records nothing (a stroke whose every dab plants nothing leaves no undo
+	// step); ok, not refused, as element_dab: a held brush goes on over ground it has filled without a hint each dab.
+	if (stand.empty()) return done();
 	if (p.live_trees() + int(stand.size()) > d.max_planted) return refused(FULL);
 	std::vector<int> ids;
 	add_trees(s, stand, ids);

@@ -177,6 +177,10 @@
       "core/",
       "sim/"
     ],
+    "native/src/sim/checks": [
+      "core/",
+      "sim/"
+    ],
     "native/src/sim/commands": [
       "core/",
       "sim/"

@@ -17,7 +17,7 @@ Dictionary CityCore::shoot(const Vector3 &origin, const Vector3 &direction) {
 	Dictionary d;
 	ShotResult r;
 	{
-		map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
+		CommandHold hold(*state_, "shoot");
 		if (!state_->ready) return d;
 		r = shoot_at(*state_, double(origin.x), double(origin.y), double(origin.z), double(direction.x), double(direction.y), double(direction.z));
 	}

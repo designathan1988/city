@@ -149,9 +149,9 @@ bool yard_input(const CityState &s, int building, YardInput &out) {
 	const ParkingState &pk = s.traffic.park;
 	const auto lot = pk.lots.find(building);
 	if (lot == pk.lots.end()) return false;
-	for (int id : lot->second.bays) {
-		const Bay &bay = pk.bays[size_t(id)];
-		if (bay.dock) out.docks.push_back({ id, bay.at - bay.open * bay.room, bay.open }); // the closed end, a half depth behind its middle
+	for (int place = 0; place < int(lot->second.bays.size()); place++) { // a dock by its place among the lot's bays (yard.h)
+		const Bay &bay = pk.bays[size_t(lot->second.bays[size_t(place)])];
+		if (bay.dock) out.docks.push_back({ place, bay.at - bay.open * bay.room, bay.open }); // the closed end, a half depth behind its middle
 	}
 	return !out.gates.empty() && !out.docks.empty();
 }

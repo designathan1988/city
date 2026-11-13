@@ -13,6 +13,7 @@ const SAVE_LIMIT_S := 50.0 # a save on the core's thread may take this much real
 var failures := 0
 var checks := 0
 var world: CityWorld
+var booted := false # the store took the data tables: the city's records are asked at the end
 
 
 ## The world the store draws into, and the store booted on the data tables: false, and a failure, when the boot refuses.
@@ -20,7 +21,8 @@ func boot() -> bool:
 	world = CityWorld.new()
 	add_child(world)
 	var errors := CityStore.boot(world.terrain, world.materials())
-	return check(errors.is_empty(), "boot %s" % [errors])
+	booted = check(errors.is_empty(), "boot %s" % [errors])
+	return booted
 
 
 ## One check, printed; a failure is counted. Returns `ok`, so a test can stop where a failure makes the rest meaningless.
@@ -68,10 +70,15 @@ func scratch(file: String) -> String:
 	return "%s/%s" % [SCRATCH, file]
 
 
-## The end of every test: the count of failures and the exit code, 0 only when something was checked and nothing failed.
+## The end of every test: the count of failures and the exit code, 0 only when something was checked and nothing failed. A test
+## that checked nothing fails as itself first; then, with the store booted, every record invariant of the core is asked
+## (probes/broken_records, sim/checks/records.h) and each check that found a broken record is a failure naming its ids.
 func finish() -> void:
 	if checks == 0:
 		check(false, "the test made no check")
+	if booted or CityStore.ready_to_read():
+		for b: Dictionary in CityStore.query(&"broken_records"):
+			check(false, "records broken: %s.%s %s (after %s, %d past the room)" % [b.feature, b.check, b.records, b.after, b.dropped])
 	print("FAILURES: %d" % failures)
 	_remove_saves(SaveSlots.dir())
 	get_tree().quit(1 if failures > 0 else 0)

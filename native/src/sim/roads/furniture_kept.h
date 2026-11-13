@@ -4,7 +4,9 @@
 // the map moves but a building that grew: touch(), a new map, a load) and dropped together when it moves. The city grows many a
 // second: keyed by the city's whole revision, the furniture of every street in view was placed again all the time. A lot's gates
 // are an input of its street's placement (the pieces keep off them), so a lot that comes, goes or changes drops only the entries
-// whose reach meets it (forget_meeting, from BuildingStore::mark under the map's exclusive lock).
+// whose reach meets it (forget_meeting, from BuildingStore::mark under the map's exclusive lock). A junction's control is an input
+// too (its signal posts): an entry keeps the ends it was placed signalled at, and a control the traffic chose (RoadNode::auto_signal,
+// derived, never moving the revision) drops the placements of that junction's arms (forget_seg, from traffic::apply_flow_control).
 // Only a reader under the map's shared lock reads kept furniture (the render's jobs, the walkers, previews and probes): nothing
 // changes while it reads, so what it keeps holds. An edit, which may read a segment before and after changing it, has it placed
 // anew (FurnitureRead::PLACED).
@@ -35,8 +37,14 @@ public:
 		bool meets(const Reach &o) const { return x0 <= o.x1 && o.x0 <= x1 && z0 <= o.z1 && o.z0 <= z1; }
 	};
 
+	// Which of a segment's two ends a placement stood signalled at: bit 0 its end a, bit 1 its end b.
+	using Ends = uint8_t;
+	static constexpr Ends END_A = 1, END_B = 2;
+	static constexpr Ends ends(bool a_signalled, bool b_signalled) { return Ends((a_signalled ? END_A : 0) | (b_signalled ? END_B : 0)); }
+
 	// Segment `seg`'s furniture of every kind at `revision`: the kept placement, or the one `place(out)` makes, kept with the
-	// ground its lots stand on (`reach`). Two readers asking at once may both place it; the first kept is the one both read.
+	// ground its lots stand on (`reach`) and the ends `place` returns it placed signalled. Two readers asking at once may both place
+	// it; the first kept is the one both read.
 	template <typename Place>
 	Spots of(uint64_t revision, int seg, const Reach &reach, Place &&place) {
 		{
@@ -46,10 +54,26 @@ public:
 			if (it != segs_.end()) return it->second.spots;
 		}
 		auto made = std::make_shared<std::vector<FurnitureSpot>>();
-		place(*made);
+		const Ends signalled = place(*made);
 		std::lock_guard<std::mutex> lk(mutex_);
 		forget_older(revision);
-		return segs_.emplace(seg, Entry{ Spots(std::move(made)), reach }).first->second.spots;
+		return segs_.emplace(seg, Entry{ Spots(std::move(made)), reach, signalled }).first->second.spots;
+	}
+
+	// Segment `seg`'s placement is made again when next read: the control of one of its ends changed (traffic::apply_flow_control,
+	// under the map's exclusive lock). O(1).
+	void forget_seg(int seg) {
+		std::lock_guard<std::mutex> lk(mutex_);
+		segs_.erase(seg);
+	}
+
+	// `fn(seg, ends)` for each placement kept for `revision`, with the ends it was placed signalled at; none when the entries are
+	// another revision's (they go at their next read). The invariant's reader (sim/checks/furniture.cpp): nothing allocated.
+	template <typename F>
+	void each_kept(uint64_t revision, F &&fn) {
+		std::lock_guard<std::mutex> lk(mutex_);
+		if (revision != revision_) return;
+		for (const auto &kept : segs_) fn(kept.first, kept.second.signalled);
 	}
 
 	// A lot came, went or changed on `lot`: the placements whose lots it may be among are made again when next read.
@@ -62,6 +86,7 @@ private:
 	struct Entry {
 		Spots spots;
 		Reach reach;
+		Ends signalled = 0;
 	};
 	void forget_older(uint64_t revision) {
 		if (revision == revision_) return;

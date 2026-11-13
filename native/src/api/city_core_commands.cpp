@@ -212,7 +212,7 @@ Dictionary CityCore::paint_zone(const Vector3 &p, float radius, int zone) {
 }
 
 int CityCore::road_variant(int base, int lanes, float width, int parking) {
-	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
+	CommandHold hold(*state_, "road_variant");
 	RoadVariant v;
 	v.base = base;
 	v.lanes = lanes;

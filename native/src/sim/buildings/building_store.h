@@ -118,9 +118,16 @@ public:
 	void clear();
 	int add(const Building &b);
 	void remove(int id);
+	// What a put did besides placing its record: the live record that stood at the id moved to `moved` (-1: none), and the records
+	// knocked down to make room (`evicted`, the moved one among them when it stood on the lot). The caller has their dependents
+	// follow them (sim/commands/building_refs.h): a reference left on a dead id passes to the next record that takes it.
+	struct Put {
+		int moved = -1;
+		std::vector<int> evicted;
+	};
 	// Undo / redo / load: the record goes back under the same id. A building that
 	// grew there meanwhile (outside the history) moves to a new id; `evict` also knocks down what grew on the lot.
-	void put(int id, const Building &b, bool evict);
+	Put put(int id, const Building &b, bool evict);
 	// The record changed: its chunks drawn again, the traffic and the render told (the streets it faces lay their furniture off its
 	// gates again), its lot due to be graded.
 	void mark(int id);

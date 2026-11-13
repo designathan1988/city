@@ -115,9 +115,9 @@ RoadPlan plan_road(const CityState &s, const Anchor &a, bool has_control, double
 // Builds a planned road: splits crossed segments, cuts pieces longer than road_max_seg_m, removes buildings in the way,
 // conforms the terrain and charges the price. Refuses without enough money.
 EditResult build_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile);
-// A connection of a junction toggled by hand (connectors.ts toggleLaneLink): an arriving lane first taken by hand starts from what the traffic
-// built (`built`); a lane left with none is refused.
-EditResult toggle_lane_link(CityState &s, int node, const LaneLink &link, const std::vector<LaneLink> &built);
+// A connection of a junction flipped by hand: an arriving lane first taken by hand starts from what the traffic built (traffic::links_built,
+// under the command's own hold, of the roads that are arms now). Refused: a lane left with none, no junction standing, a road not its arm.
+EditResult flip_lane_link(CityState &s, int node, const LaneLink &link);
 // Nobody goes from one arm of a junction to another (junctionPanel.ts moveChip), or they may again; a node taken away with the roads that meet there.
 EditResult set_movement_banned(CityState &s, int node, int from, int to, bool banned);
 EditResult remove_node(CityState &s, int node);

@@ -2,6 +2,7 @@
 // redo cleared by a new step) and the inverse of each recorded op (journal.ts exec).
 #include "sim/commands/edit_journal.h"
 
+#include "sim/commands/building_refs.h"
 #include "sim/commands/commands.h"
 #include "sim/commands/road_edit.h"
 #include "sim/commands/street_journal.h"
@@ -64,6 +65,20 @@ void exec_transit(CityState &s, const EditOp &op, bool fwd) {
 		default: return;
 	}
 	s.transit_revision++;
+}
+
+// A building record put back at its id: the record that grew there meanwhile moved, what grew on its lot knocked down, and what
+// named either follows it (building_refs.h).
+void put_building(CityState &s, int id, const Building &b) {
+	const BuildingStore::Put done = s.buildings.put(id, b, true);
+	if (done.moved >= 0) building_moved(s, id, done.moved);
+	for (int gone : done.evicted) building_gone(s, gone);
+}
+
+// A building record taken out by the history: what named it goes with it.
+void take_building(CityState &s, int id) {
+	s.buildings.remove(id);
+	building_gone(s, id);
 }
 
 void exec(CityState &s, const EditOp &op, bool fwd) {
@@ -143,9 +158,9 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			mark_furniture(s, op.id);
 			break;
 		}
-		case OpKind::ADD_BLD: if (fwd) s.buildings.put(op.id, op.get<Building>(), true); else s.buildings.remove(op.id); break;
-		case OpKind::REM_BLD: if (fwd) s.buildings.remove(op.id); else s.buildings.put(op.id, op.get<Building>(), true); break;
-		case OpKind::EDIT_BLD: {
+		case OpKind::ADD_BLD: if (fwd) put_building(s, op.id, op.get<Building>()); else take_building(s, op.id); break;
+		case OpKind::REM_BLD: if (fwd) take_building(s, op.id); else put_building(s, op.id, op.get<Building>()); break;
+		case OpKind::EDIT_BLD: { // the same building at the same id: nothing that names it moves (removed first, so nothing is put aside)
 			const BuildingEdit &e = op.get<BuildingEdit>();
 			s.buildings.remove(op.id);
 			s.buildings.put(op.id, fwd ? e.after : e.before, false);
@@ -211,13 +226,18 @@ void EditHistory::clear() {
 	undo_stack.clear();
 	redo_stack.clear();
 	open = EditEntry();
-	recording = group = stroke_has_h0 = touched_ = false;
+	recording = group = stroke_has_h0 = touched_ = refused_ = false;
 	begin_ops = 0;
 }
 
-void EditHistory::begin(const std::string &label) {
+namespace {
+EditHistory::Revisions revisions_of(const CityState &s) { return { s.revision, s.street_revision, s.edit_revision }; }
+} // namespace
+
+void EditHistory::begin(const CityState &s, const std::string &label) {
 	recording = true;
-	touched_ = false;
+	touched_ = refused_ = false;
+	at_begin_ = revisions_of(s);
 	if (!group) {
 		open = EditEntry();
 		open.label = label;
@@ -241,6 +261,12 @@ void EditHistory::end(CityState &s, bool ok) {
 	} else {
 		finish_command(s, ok && touched_);
 	}
+	if (!ok) { // the rollback left the city as begin found it: so are its revisions (what the ops and the finish raised)
+		s.revision = at_begin_.map;
+		s.street_revision = at_begin_.streets;
+		s.edit_revision = at_begin_.edits;
+	}
+	refused_ = !ok;
 	if (!group) push(s);
 }
 

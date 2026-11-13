@@ -75,6 +75,8 @@ double generated_age(const GrowthDef &g, uint32_t seed) {
 }
 
 bool lot_occupied(const CityState &s, const Lot &l) {
+	// A ruin keeps its lot until the player clears it (damage_state.h Ruin): nothing grows over rubble, whatever the hold of the blow.
+	if (s.damage.ruin_under(float(l.x), float(l.z), float(l.w), float(l.d), float(l.rot))) return true;
 	float r = float(std::max(l.w, l.d));
 	bool hit = false;
 	s.buildings.query(float(l.x) - r, float(l.z) - r, float(l.x) + r, float(l.z) + r, [&](int id) {

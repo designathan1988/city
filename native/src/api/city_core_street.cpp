@@ -126,7 +126,7 @@ void CityStreet::show_pole_preview(const Array &poles) {
 }
 
 void CityStreet::set_road_walls(bool on) {
-	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
+	CommandHold hold(*state_, "road_walls");
 	state_->new_road_flags = uint16_t(on ? state_->new_road_flags | SEG_CUT_WALLS : state_->new_road_flags & ~SEG_CUT_WALLS);
 }
 
@@ -136,7 +136,7 @@ bool CityStreet::road_walls() {
 }
 
 void CityStreet::set_road_height(float metres) {
-	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
+	CommandHold hold(*state_, "road_height");
 	state_->new_road_lift = metres;
 }
 
@@ -146,7 +146,7 @@ float CityStreet::road_height() {
 }
 
 void CityStreet::set_road_furniture(int level) {
-	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
+	CommandHold hold(*state_, "road_furniture");
 	state_->new_road_flags = uint16_t((state_->new_road_flags & ~SEG_FURNITURE_MASK) | (uint16_t(level << SEG_FURNITURE_SHIFT) & SEG_FURNITURE_MASK));
 }
 

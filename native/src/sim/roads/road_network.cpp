@@ -95,7 +95,6 @@ int RoadNetwork::add_segment(int a, int b, const Quad &q, int profile, int zl, i
 	live_segs_++;
 	zoned_sides_ += zoned_of(g);
 	version++;
-	if (log) log->network_changed = true;
 	return id;
 }
 
@@ -117,7 +116,6 @@ void RoadNetwork::remove_segment(int s) {
 	grade.seg_changed(s);
 	for (int n : { g.a, g.b }) grade.node_changed(n); // its nodes' other roads settle again
 	version++;
-	if (log) log->network_changed = true;
 }
 
 void RoadNetwork::remove_node_if_orphan(int n) {
@@ -168,7 +166,6 @@ void RoadNetwork::put_segment(int id, const RoadSegment &rec) {
 	grade.seg_changed(id);
 	shape_changed(id);
 	version++;
-	if (log) log->network_changed = true;
 }
 
 void RoadNetwork::set_profile(int s, int profile) {
@@ -183,7 +180,6 @@ void RoadNetwork::set_profile(int s, int profile) {
 	mark_segment(s);
 	grade.seg_changed(s); // its casing, so the ground read under it and its plates
 	version++;
-	if (log) log->network_changed = true;
 }
 
 void RoadNetwork::set_zone(int s, int side, int zone) {

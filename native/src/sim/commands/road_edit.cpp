@@ -2,6 +2,7 @@
 #include "sim/commands/road_edit.h"
 
 #include "sim/commands/road_grade_sync.h"
+#include "sim/commands/road_refs.h"
 #include "sim/roads/street_furniture.h"
 #include "sim/street/footway.h"
 #include "sim/street/street_names.h"
@@ -37,10 +38,12 @@ int split_segment(CityState &s, int seg, double t) {
 	// The new node keeps the road where it was: its authored height the ends' along the road (the crossing reads it so).
 	const double along = rec.len > 0 ? arc_at(rec.table, t) / rec.len : 0; // by length, as the 4.0's segmentOffsetAt
 	const float lift = net.nodes[size_t(rec.a)].lift + (net.nodes[size_t(rec.b)].lift - net.nodes[size_t(rec.a)].lift) * float(along);
+	RoadRefs refs = refs_of(s, { seg }); // the first half takes the id again: what node b named it by goes to the second
 	j_remove_segment(s, seg);
 	int n = j_add_node(s, halves[0].x1, halves[0].z1, y, lift);
-	j_add_segment(s, rec.a, n, halves[0], rec.profile, rec.zl, rec.zr, uint16_t(rec.flags & ~SEG_RUNS_ON_B)); // a node of the player's: the road ends there
-	j_add_segment(s, n, rec.b, halves[1], rec.profile, rec.zl, rec.zr, uint16_t(rec.flags & ~SEG_RUNS_ON_A));
+	const int first = j_add_segment(s, rec.a, n, halves[0], rec.profile, rec.zl, rec.zr, uint16_t(rec.flags & ~SEG_RUNS_ON_B)); // a node of the player's: the road ends there
+	const int second = j_add_segment(s, n, rec.b, halves[1], rec.profile, rec.zl, rec.zr, uint16_t(rec.flags & ~SEG_RUNS_ON_A));
+	carry_refs(s, refs, seg, { first, second });
 	return n;
 }
 

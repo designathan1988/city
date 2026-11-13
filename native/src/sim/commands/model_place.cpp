@@ -21,6 +21,7 @@ constexpr double SEED_GRID_M = 0.5;
 constexpr uint32_t PLACE_SALT = 0x5bd1e995u;
 constexpr float FACE_REACH_M = 40.f; // how far off a street a lot still takes that street as its own
 constexpr float TOUCH_M2 = 1e-3f; // lots meeting at an edge do not overlap
+constexpr const char *RUBBLE = "refuse.rubble"; // a lot over a ruin (DamageState::ruin_under)
 
 Building record_at(const Body &body, double ax, double az, double rot) {
 	Building b;
@@ -90,6 +91,7 @@ std::string place_problem(const CityState &s, const Body &body, double ax, doubl
 	const float reach = std::hypot(b.w, b.d) / 2, edge = s.map_half - float(t.build_world_margin_m);
 	if (std::fabs(b.x) + reach > edge || std::fabs(b.z) + reach > edge) return "building.problem.bounds";
 	if (on_road(s, b)) return "building.problem.road";
+	if (s.damage.ruin_under(b.x, b.z, b.w, b.d, b.rot)) return RUBBLE; // a ruin keeps its lot until the player clears it
 	float hi = 0, lo = 0;
 	lot_ground(body, b, lot_frame(b), [&](float x, float z) { return s.terrain.height_at(x, z); }, hi, lo);
 	return hi - lo > float(t.build_max_plinth_m) ? "building.problem.slope" : "";
@@ -121,6 +123,10 @@ EditResult place_body(CityState &s, const Body &src, double ax, double az, doubl
 	}
 	r.error = body_problem(s.catalog.tune, body);
 	if (!r.error.empty()) return r;
+	if (!landed.empty() && s.damage.ruin_under(b.x, b.z, b.w, b.d, b.rot)) { // welded, the lot grew: over rubble it is refused too
+		r.error = RUBBLE;
+		return r;
+	}
 	int top = 0;
 	for (const Volume &v : body.volumes) top = std::max(top, v.top());
 	for (int id : landed) j_remove_building(s, id);

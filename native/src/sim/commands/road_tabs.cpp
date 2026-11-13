@@ -4,11 +4,13 @@
 #include "sim/commands/commands.h"
 #include "sim/commands/street_commands.h"
 #include "sim/commands/road_edit.h"
+#include "sim/commands/road_refs.h"
 #include "sim/economy/road_economy.h"
 
 #include "sim/roads/junction.h"
 #include "sim/state/city_state.h"
 #include "sim/street/street_spots.h"
+#include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
 #include <tuple>
@@ -96,9 +98,12 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 		if (!s.roads.segs[sg].alive) continue;
 		if (along.count(sg) && !along[sg]) {
 			RoadSegment rec = s.roads.segs[sg];
+			RoadRefs refs = refs_of(s, { sg }); // the bans and links at its ends and its stops stay with the road turned
+			const int was = sg;
 			j_remove_segment(s, sg);
 			Quad q{ rec.q.x1, rec.q.z1, rec.q.cx, rec.q.cz, rec.q.x0, rec.q.z0 };
 			sg = j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, flags_reversed(rec.flags));
+			carry_refs(s, refs, was, { sg });
 		}
 		const std::vector<CarriedPiece> kit = street_kit_of(s, sg);
 		j_set_profile(s, sg, profile);
@@ -185,15 +190,29 @@ EditResult remove_node(CityState &s, int node) {
 	return r;
 }
 
-EditResult toggle_lane_link(CityState &s, int node, const LaneLink &link, const std::vector<LaneLink> &built) {
+EditResult flip_lane_link(CityState &s, int node, const LaneLink &link) {
 	EditResult r;
+	const RoadNetwork &net = s.roads;
+	const auto arm = [&](int seg) {
+		const std::vector<int> &arms = net.nodes[size_t(node)].segs;
+		return seg >= 0 && size_t(seg) < net.segs.size() && net.segs[size_t(seg)].alive && std::find(arms.begin(), arms.end(), seg) != arms.end();
+	};
+	if (node < 0 || size_t(node) >= net.nodes.size() || !net.nodes[size_t(node)].alive || !arm(link.from) || !arm(link.to)) {
+		r.error = "hint.control.notJunction";
+		return r;
+	}
 	const auto same_lane = [&](const LaneLink &l) { return l.from == link.from && l.from_lane == link.from_lane; };
-	const std::vector<LaneLink> &held = s.roads.nodes[size_t(node)].links;
+	const std::vector<LaneLink> &held = net.nodes[size_t(node)].links;
 	std::vector<LaneLink> own, rest;
 	for (const LaneLink &l : held) (same_lane(l) ? own : rest).push_back(l);
-	if (own.empty())
+	if (own.empty()) {
+		// What the traffic built, read here: the command holds the map exclusively, so no tick steps the graph meanwhile
+		// (Simulation::tick takes it shared). A graph still behind the last commands may name roads gone: only arms count.
+		std::vector<LaneLink> built;
+		traffic::links_built(s, node, built);
 		for (const LaneLink &l : built)
-			if (same_lane(l)) own.push_back(l);
+			if (same_lane(l) && arm(l.to)) own.push_back(l);
+	}
 	const auto at = std::find(own.begin(), own.end(), link);
 	if (at != own.end()) own.erase(at);
 	else own.push_back(link);

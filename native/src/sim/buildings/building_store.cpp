@@ -69,25 +69,27 @@ void BuildingRecords::bounds(const Building &b, float &minx, float &minz, float 
 	maxz = b.z + hz;
 }
 
-void BuildingStore::put(int id, const Building &b, bool evict) {
+BuildingStore::Put BuildingStore::put(int id, const Building &b, bool evict) {
+	Put done;
 	if (id < int(items.size()) && items[id].alive) {
 		Building moved = items[id];
 		remove(id);
 		const int to = int(items.size()); // the record moves to a new slot at the end; `id` stays taken for `b`
 		items.resize(size_t(free_ids.claim(to, to)));
 		place(to, moved);
+		done.moved = to;
 	}
 	items.resize(size_t(free_ids.claim(id, int(items.size()))));
 	if (evict) {
-		std::vector<int> doomed;
 		float r = std::max(b.w, b.d);
 		query(b.x - r, b.z - r, b.x + r, b.z + r, [&](int o) {
 			const Building &ob = items[o];
-			if (covers(b, ob.x, ob.z, 0.f) || covers(ob, b.x, b.z, 0.f)) doomed.push_back(o);
+			if (covers(b, ob.x, ob.z, 0.f) || covers(ob, b.x, b.z, 0.f)) done.evicted.push_back(o);
 		});
-		for (int o : doomed) remove(o);
+		for (int o : done.evicted) remove(o); // each once: `hash` files a record by its lot centre, in one cell
 	}
 	place(id, b);
+	return done;
 }
 
 void BuildingStore::place(int id, const Building &b) {
@@ -140,7 +142,9 @@ void BuildingStore::changed(int id) {
 	log->lots_changed.push_back(id);
 	mark_into(id, log->building_chunks);
 	log->lot_boxes.insert(log->lot_boxes.end(), { b.x - r, b.z - r, b.x + r, b.z + r });
-	log->lot_fronts.insert(log->lot_fronts.end(), { b.x - r, b.z - r, b.x + r, b.z + r });
+	// The lot's box with its id, as it stands now, for the traffic: a slot freed and taken again before the drain would lose where
+	// the old lot stood (forget_parking_lot and the walkers' furniture read the box they are given, never items[id]).
+	log->lot_fronts.push_back({ id, { b.x - r, b.z - r, b.x + r, b.z + r } });
 }
 
 void BuildingStore::mark_look(int id) const {

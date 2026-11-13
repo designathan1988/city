@@ -262,6 +262,7 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("surface_probe", "arrays", "lods", "format"), &CityProbes::surface_probe);
 	ClassDB::bind_method(D_METHOD("traffic_hashes", "ticks"), &CityProbes::traffic_hashes);
 	ClassDB::bind_method(D_METHOD("graph_fault"), &CityProbes::graph_fault);
+	ClassDB::bind_method(D_METHOD("broken_records"), &CityProbes::broken_records);
 	ClassDB::bind_method(D_METHOD("undo_steps"), &CityProbes::undo_steps);
 }
 

@@ -9,6 +9,7 @@
 #include "sim/buildings/building_store.h"
 #include "sim/buildings/interior/view.h"
 #include "sim/catalog/catalog.h"
+#include "sim/checks/records.h"
 #include "sim/commands/edit_journal.h"
 #include "sim/demolition/damage_state.h"
 #include "sim/lots/lot_book.h"
@@ -123,6 +124,7 @@ struct CityState : CityData {
 	PoseBuffer poses; // published by the simulation, read by the render without a lock
 	std::shared_ptr<JobPool> jobs{ std::make_shared<JobPool>() }; // shared worker pool (lot cells, later mesh jobs)
 	std::atomic<float> camera_x{ 0 }, camera_z{ 0 }; // the ground the player is looking at, set by the api each frame: the traffic's and walkers' windows
+	checks::BrokenSink broken_sink; // the tests' DLL: the broken records its passes found, until the api drains them (sim/checks/records.h)
 
 	// The data's links to the channels and the catalogue (change log, job pool, tables), set again after the data moved in.
 	void bind();

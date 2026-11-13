@@ -135,21 +135,21 @@ func _control(e: Vector3) -> void:
 ## A lane's connection taken away by hand, the traffic's graph following, and undo bringing it back.
 func _lanes_by_hand(node: int) -> void:
 	ticks(TICKS_FOR_GRAPH)
-	var before: Array = CityStore.query(&"node_lanes", [node]).built
+	var before: Array = CityStore.query(&"junction_lane_map", [node]).built
 	check(before.size() > 1, "connectors: the junction has links (%d)" % before.size())
 	var one: Array = before[0]
 	var left := before.filter(func(b: Array) -> bool: return b[0] == one[0] and b[1] == one[1])
-	var r: Dictionary = CityStore.dispatch(&"toggle_lane_link", [node, one[0], one[1], one[2], one[3]])
+	var r: Dictionary = CityStore.dispatch(&"flip_lane_link", [node, one[0], one[1], one[2], one[3]])
 	if left.size() < 2:
 		check(r.get("error", "") == "hint.lane.last", "connectors: the lane is not left with no way out: %s" % r)
 		return
 	check(r.get("ok", false), "connectors: link taken away")
 	ticks(TICKS_FOR_GRAPH)
-	var now: Array = CityStore.query(&"node_lanes", [node]).built
+	var now: Array = CityStore.query(&"junction_lane_map", [node]).built
 	check(now.size() == before.size() - 1, "connectors: the graph lost the link (%d -> %d)" % [before.size(), now.size()])
 	CityStore.dispatch(&"undo")
 	ticks(TICKS_FOR_GRAPH)
-	check(CityStore.query(&"node_lanes", [node]).built.size() == before.size(), "connectors: undo brings the link back")
+	check(CityStore.query(&"junction_lane_map", [node]).built.size() == before.size(), "connectors: undo brings the link back")
 
 
 ## What an edit may not leave (two roads meeting under 25 degrees, a stretch too short for its two junctions): refused, undone.

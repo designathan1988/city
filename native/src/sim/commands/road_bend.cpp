@@ -3,6 +3,7 @@
 // through the steps of a new road; and two roads in line made one.
 #include "sim/commands/commands.h"
 #include "sim/commands/road_edit.h"
+#include "sim/commands/road_refs.h"
 #include "sim/commands/street_commands.h"
 
 #include "sim/economy/road_economy.h"
@@ -107,6 +108,8 @@ EditResult set_road_bend(CityState &s, int seg, double height, double at, double
 	for (const RoadSegment &g : old)
 		for (int n : { g.a, g.b })
 			if (n != a.node && n != b.node) joints.push_back(n);
+	RoadRefs refs = refs_of(s, pieces); // the bans, links and stops of the road, carried to the road laid again
+	for (int n : joints) forget_refs_at(refs, n); // its inner joints go: what they held goes with them
 	for (int p : pieces) j_remove_segment(s, p);
 	for (int n : joints) j_remove_node_if_orphan(s, n);
 	const RoadKeeps keeps{ first.zl, first.zr, uint16_t(first.flags & ~RUN_MARKS) };
@@ -117,6 +120,7 @@ EditResult set_road_bend(CityState &s, int seg, double height, double at, double
 		return r;
 	}
 	for (size_t i = 0; i < old.size(); i++) carry_kit_along(s, kits[i], old[i].len, old[i].q, laid);
+	for (int p : pieces) carry_refs(s, refs, p, laid); // at its two end nodes, to the piece meeting each; a stop to the nearest
 	r.segments += done.segments;
 	r.buildings_removed += done.buildings_removed;
 	for (int p : laid) box.add(net.segs[size_t(p)]);

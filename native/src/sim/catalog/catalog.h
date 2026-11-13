@@ -109,6 +109,10 @@ struct Catalog {
 		profiles_stamp_ = next_profiles_stamp();
 		return id;
 	}
+	// Room for every variant a city may hold (tuning road_max_variants) past the catalogue's own, so a profile never moves and
+	// road_variant refuses only past that limit. A copy of the vector keeps its size, not its room: the loader calls this once the
+	// catalogue's own are read, and whoever copies the catalogue (a city read aside: city_core_persist.cpp) calls it after the copy.
+	void keep_variant_room() { profiles.reserve(profiles.size() - variants.size() + size_t(tune.road_max_variants)); }
 	// The variants dropped (a new city): what is derived is worked out again over the catalogue's own.
 	void drop_variants() {
 		profiles.resize(profiles.size() - variants.size());

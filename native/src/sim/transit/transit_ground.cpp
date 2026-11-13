@@ -50,7 +50,7 @@ void transit_stop_frame(const CityState &s, const TransitStop &q, V2 &along, V2 
 		}
 	}
 	out = V2(along.y, -along.x); // to its left, seen from above: x east, z south
-	if (q.mode != TransitMode::BUS || q.seg < 0 || size_t(q.seg) >= s.roads.segs.size()) return;
+	if (q.mode != TransitMode::BUS || q.seg < 0 || size_t(q.seg) >= s.roads.segs.size() || !s.roads.segs[size_t(q.seg)].alive) return;
 	const RoadSegment &r = s.roads.segs[size_t(q.seg)];
 	double t, dist, cx, cz, dx, dz;
 	closest_t(r.q, q.at.x, q.at.y, t, dist);
@@ -59,6 +59,14 @@ void transit_stop_frame(const CityState &s, const TransitStop &q, V2 &along, V2 
 	along = V2(float(dx), float(dz)).norm();
 	const V2 from = q.at - V2(float(cx), float(cz));
 	out = from.len() > 0 ? from.norm() : V2(along.y, -along.x);
+}
+
+bool transit_stop_by_road(const CityState &s, const V2 &at, int seg, double &dist) {
+	dist = NO_DISTANCE;
+	if (seg < 0 || size_t(seg) >= s.roads.segs.size() || !s.roads.segs[size_t(seg)].alive) return false;
+	double t = 0;
+	closest_t(s.roads.segs[size_t(seg)].q, at.x, at.y, t, dist);
+	return dist <= double(s.roads.profile_of(seg).half()) + double(s.catalog.traffic.transit_stop_reach_m);
 }
 
 bool transit_built(const CityState &s, const V2 &p, float pad) {

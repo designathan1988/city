@@ -2,6 +2,7 @@
 // each changes the state and, while a command records, appends the op with the record its inverse needs.
 #include "sim/commands/edit_journal.h"
 
+#include "sim/commands/building_refs.h"
 #include "sim/commands/road_edit.h"
 #include "sim/state/city_state.h"
 
@@ -165,6 +166,7 @@ void j_remove_node_if_orphan(CityState &s, int n) {
 	}
 	s.roads.remove_node_if_orphan(n);
 	s.log.net_node(n);
+	s.log.net_nodes_removed.push_back(n); // what the traffic keyed by this node goes with it (lane_graph_edit.cpp)
 }
 
 void j_set_control(CityState &s, int n, uint8_t ctl) {
@@ -243,6 +245,21 @@ int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl
 void j_remove_segment(CityState &s, int seg) {
 	const RoadSegment &g = s.roads.segs[seg];
 	if (!g.alive) return;
+	// What names the road goes with it, journalled in the same command: the hand links and bans of its two nodes, and the bus
+	// stops on it, which stay inert (seg -1) until a road laid again carries them (road_refs.h) or the player moves them. An id
+	// freed here is the next road's, and must bring it nothing.
+	for (int n : { g.a, g.b }) {
+		const std::vector<LaneLink> &held = s.roads.nodes[size_t(n)].links;
+		const auto names = [seg](const LaneLink &l) { return l.from == seg || l.to == seg; };
+		if (std::none_of(held.begin(), held.end(), names)) continue;
+		std::vector<LaneLink> rest;
+		rest.reserve(held.size());
+		for (const LaneLink &l : held)
+			if (!names(l)) rest.push_back(l);
+		j_links(s, n, std::move(rest));
+	}
+	for (size_t i = 0; i < s.transit.stops.size(); i++)
+		if (s.transit.stops[i].seg == seg) j_stop_road(s, int(i), -1);
 	if (s.history.recording) {
 		record(s, OpKind::REM_SEG, seg, g);
 		grow_seg(s, g);
@@ -302,6 +319,7 @@ void j_remove_building(CityState &s, int id) {
 		grow_point(s, b.x, b.z, std::max(b.w, b.d));
 	}
 	s.buildings.remove(id);
+	building_gone(s, id); // what named the building goes with it (building_refs.h)
 }
 
 void j_edit_building(CityState &s, int id, const Building &after) {
@@ -367,6 +385,20 @@ void j_transit(CityState &s, TransitData next) {
 		if (t.next_id != next.next_id) record(s, OpKind::TRANSIT_NEXT, -1, Change{ 0, t.next_id, next.next_id });
 	}
 	s.transit = std::move(next);
+	s.transit_revision++;
+	s.touch();
+}
+
+void j_stop_road(CityState &s, int index, int seg) {
+	TransitStop &q = s.transit.stops[size_t(index)];
+	if (q.seg == seg) return;
+	if (s.history.recording) {
+		TransitStop after = q;
+		after.seg = seg;
+		record(s, OpKind::EDIT_STOP, q.id, Edited<TransitStop>{ index, q, after });
+		grow_point(s, q.at.x, q.at.y, 0);
+	}
+	q.seg = seg;
 	s.transit_revision++;
 	s.touch();
 }

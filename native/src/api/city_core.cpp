@@ -1,10 +1,12 @@
-// Lifecycle: catalog, render setup, new map, speed, per-frame render sync.
+// Lifecycle: catalog, render setup, new map, speed, per-frame render sync (and, in the tests' DLL, the broken records said).
 #include "api/city_core.h"
 
 #include "api/buildings_loader.h"
 #include "api/interiors_loader.h"
 #include "api/models_loader.h"
 #include "api/catalog_loader.h"
+#include "api/broken_records.h"
+#include "core/checks.h"
 #include "core/units.h"
 #include "sim/citygen/city_gen.h"
 #include "sim/traffic/traffic_system.h"
@@ -16,6 +18,8 @@
 #include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/classes/world3d.hpp>
 #include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -64,6 +68,7 @@ PackedStringArray CityCore::load_catalog(const Dictionary &tables) {
 	PackedStringArray errors;
 	sim_.stop();
 	catalog_ok_ = CatalogLoader::load(tables, state_->catalog, errors);
+	if (catalog_ok_) state_->broken_sink.reserve(size_t(state_->catalog.tune.checks_records_kept)); // the room, once a session
 	return errors;
 }
 
@@ -155,8 +160,27 @@ DetailView CityCore::detail_view(Camera3D *cam) {
 	return d;
 }
 
+// Drained on the main thread, so the lines come in order and in the test's own output; an engine ERROR: line fails the test
+// (tools/tasks/verdicts.py) at the frame after the command or the ticks that broke a record, not only at its end.
+void CityCore::report_broken() {
+	Array found;
+	{
+		checks::BrokenSink &sink = state_->broken_sink;
+		std::lock_guard<std::mutex> lk(sink.mutex);
+		if (sink.broken.records().empty() && sink.broken.dropped() == 0) return;
+		append_broken(found, sink.broken, &sink.causes);
+		sink.clear();
+	}
+	for (int i = 0; i < found.size(); i++) {
+		const Dictionary d = found[i];
+		UtilityFunctions::push_error("records broken: ", d["feature"], ".", d["check"], " ", d["records"], " (after ", d["after"], "; ",
+				d["dropped"], " more past the room)");
+	}
+}
+
 void CityCore::_process(double delta) {
 	if (Engine::get_singleton()->is_editor_hint()) return;
+	if constexpr (CHECKS) report_broken();
 	if (!render_ok_ || !state_->ready) {
 		// No consumer in this run (tests without a screen): drain the change log so it cannot grow without bound
 		// (shared map lock + the log's own mutex, as every consumer: change_log.h).

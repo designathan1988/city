@@ -102,9 +102,6 @@ void build(const CityState &s, int seg, SidewalkFurniture &out) {
 		std::sort(side.begin(), side.end(), [](const StreetObstacle &a, const StreetObstacle &b) { return a.s0 < b.s0; });
 }
 
-} // namespace
-
-namespace {
 GoneKind gone_kind(FurnitureKind k) {
 	switch (k) {
 		case FurnitureKind::SIGNAL: return GoneKind::POST;
@@ -129,11 +126,13 @@ bool furniture_xz(const CityState &s, int seg, const FurnitureSpot &f, float &x,
 }
 
 namespace {
-// The segment's furniture placed now, appended to `out`.
-void place_street_furniture(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out) {
+// The segment's furniture placed now, appended to `out`; returns the ends it placed signalled (FurnitureKept::Ends), which the kept
+// placement holds for the invariant furniture.kept_matches_control (sim/checks/furniture.cpp).
+FurnitureKept::Ends place_street_furniture(const CityState &s, int sid, uint32_t kinds, std::vector<FurnitureSpot> &out) {
 	const RoadSegment &g = s.roads.segs[size_t(sid)];
-	if (!g.alive) return;
+	if (!g.alive) return 0;
 	const bool signalled[2] = { control_of(s, g.a) == Control::SIGNAL, control_of(s, g.b) == Control::SIGNAL };
+	const FurnitureKept::Ends ends = FurnitureKept::ends(signalled[0], signalled[1]);
 	// the ways into the lots (NBR 9050: the service strip at the kerb holds the furniture and the vehicle ramps alike): a person's
 	// gate keeps a walker's body clear; a car's what the kerb's bays keep (the car sweeps the footway past its gate as it turns) and a
 	// walker's body more, so nobody is held between a car on the footway and a piece
@@ -148,7 +147,7 @@ void place_street_furniture(const CityState &s, int sid, uint32_t kinds, std::ve
 	const size_t first = out.size();
 	segment_furniture(s.roads, sid, signalled, gates, &plates, kinds, out);
 	merge_street(s.street, s.roads, sid, kinds, out, first); // what the player put up and cut
-	if (s.damage.gone.empty()) return;
+	if (s.damage.gone.empty()) return ends;
 	// what a blow knocked out is not placed again (sim/demolition/damage_state.h)
 	size_t keep = first;
 	for (size_t i = first; i < out.size(); i++) {
@@ -156,6 +155,7 @@ void place_street_furniture(const CityState &s, int sid, uint32_t kinds, std::ve
 		if (!furniture_xz(s, sid, out[i], x, z) || !s.damage.is_gone(gone_kind(out[i].kind), x, z, GONE_MATCH_M)) out[keep++] = out[i];
 	}
 	out.resize(keep);
+	return ends;
 }
 } // namespace
 
@@ -171,7 +171,7 @@ void street_furniture_of(const CityState &s, int sid, uint32_t kinds, std::vecto
 	const float lots = s.roads.profile_of(sid).half() + s.catalog.traffic.kerb_gate_reach_m;
 	const FurnitureKept::Reach reach{ float(g.minx) - lots, float(g.minz) - lots, float(g.maxx) + lots, float(g.maxz) + lots };
 	const FurnitureKept::Spots all = s.furniture_kept.of(s.street_revision, sid, reach, [&](std::vector<FurnitureSpot> &made) {
-		place_street_furniture(s, sid, FURNITURE_ALL, made);
+		return place_street_furniture(s, sid, FURNITURE_ALL, made);
 	});
 	for (const FurnitureSpot &f : *all)
 		if (kinds & furniture_bit(f.kind)) out.push_back(f);

@@ -75,10 +75,8 @@ void bring_down(Blow &b, int id, const Aim &aim) {
 	ruin.blow_force = aim.force;
 	j_add_ruin(b.s, ruin);
 	const uint32_t ruin_index = uint32_t(b.s.damage.ruins.size() - 1); // the event names the ruin it brought (damage_event.h)
-	j_remove_building(b.s, id);
+	j_remove_building(b.s, id); // its fire goes out with it (building_refs.h building_gone)
 	j_set_hurt(b.s, rec.seed, rec.x, rec.z, 0.f);
-	auto &fires = b.s.damage.fires;
-	fires.erase(std::remove_if(fires.begin(), fires.end(), [&](const Fire &f) { return f.building == id; }), fires.end());
 	b.result.buildings_removed++;
 	DamageEvent e;
 	e.kind = DamageEvent::BUILDING_DOWN;

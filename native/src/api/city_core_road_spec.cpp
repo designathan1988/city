@@ -1,6 +1,7 @@
 // The profile editor's API (Customise, My roads): a road as elements for script, what stops it from being built, and the profile made
 // of it. The dictionaries are the editor's own: {elements: [{kind, width, dir, bus, solid, flush, pave}], speed, priority, centre}.
 #include "api/city_core.h"
+#include "api/command_hold.h"
 
 #include "sim/roads/road_spec.h"
 #include "sim/roads/road_variants.h"
@@ -96,7 +97,7 @@ Dictionary CityCore::road_spec_make(int base, const Dictionary &spec) {
 	Dictionary d;
 	d["ok"] = false;
 	d["index"] = -1;
-	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
+	CommandHold hold(*state_, "road_spec_make");
 	const RoadSpec s = read_spec(spec);
 	if (!spec_issues(s, state_->catalog.profile(base).road_class).empty()) {
 		d["error"] = "hint.road.specInvalid";

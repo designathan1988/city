@@ -2,9 +2,12 @@
 // nodes it touched in the ChangeLog; traffic::step drains them here, rebuilding only those, and keeps the fleet and the
 // walkers on the streets that are still there. The walkers' street furniture of those segments, of every segment of
 // those nodes (their mouths, lamp stations and signal posts move) and of the segments the log names for it (a hydrant
-// or a bin moved) is built again when next met.
+// or a bin moved) is built again when next met. What the traffic keys by a record id goes here with the record, since an id
+// freed is the next record's: a lot's bays and the kerbs its gates kept, by the box it stood in when it changed, and the
+// flows and control choices of a removed road or node (flow_control.h forget_flows).
 #include "sim/traffic/lane_graph_internal.h"
 
+#include "sim/traffic/flow_control.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
@@ -13,8 +16,6 @@ namespace city {
 namespace traffic {
 
 namespace {
-
-constexpr size_t LOT_BOX_FLOATS = 4; // ChangeLog::lot_fronts: x0, z0, x1, z1
 
 // Takes `c` out of the list of connections leaving its lane of origin.
 void unlink_from_lane(LaneGraph &g, int ci) {
@@ -159,39 +160,43 @@ void clear_node(CityState &s, int n) {
 void apply_network_changes(CityState &s) {
 	TrafficState &t = s.traffic;
 	// the step holds the map shared: the net lists are taken out under the log's own mutex (change_log.h)
-	std::vector<int> nodes, removed, changed, furniture, lots, signals;
-	std::vector<float> fronts;
+	std::vector<int> nodes, removed, changed, furniture, lot_ids, signals, gone_nodes;
+	std::vector<LotBox> lots;
 	{
 		std::lock_guard<std::mutex> lk(s.log.mutex);
 		nodes.swap(s.log.net_nodes);
 		removed.swap(s.log.net_segs_removed);
 		changed.swap(s.log.net_segs_changed);
+		gone_nodes.swap(s.log.net_nodes_removed);
 		furniture.swap(s.log.furniture_segs);
-		lots.swap(s.log.lots_changed);
-		fronts.swap(s.log.lot_fronts);
+		lot_ids.swap(s.log.lots_changed); // the same buildings as `lots` (which carry their boxes): the checks' scope until drained
+		lots.swap(s.log.lot_fronts);
 		signals.swap(s.log.signal_nodes);
 	}
 	ChangeLog::dedup(signals);
 	for (int n : signals) replan_signal(s, n);
+	std::sort(lots.begin(), lots.end());
+	lots.erase(std::unique(lots.begin(), lots.end()), lots.end());
 	// the streets a changed lot may face: their furniture is laid off its gates (street_furniture.h), so it is met again
 	const float reach = s.catalog.traffic.kerb_gate_reach_m;
-	for (size_t i = 0; i + LOT_BOX_FLOATS <= fronts.size(); i += LOT_BOX_FLOATS)
-		s.roads.for_segments_near(fronts[i] - reach, fronts[i + 1] - reach, fronts[i + 2] + reach, fronts[i + 3] + reach, [&](int seg) { furniture.push_back(seg); });
+	for (const LotBox &l : lots)
+		s.roads.for_segments_near(l.box.x0 - reach, l.box.z0 - reach, l.box.x1 + reach, l.box.z1 + reach, [&](int seg) { furniture.push_back(seg); });
 	ChangeLog::dedup(furniture);
 	for (int seg : furniture) {
 		forget_furniture(s, seg);
 		forget_doors(s, seg);
 	}
-	ChangeLog::dedup(lots);
-	for (int id : lots) forget_parking_lot(s, id);
+	for (const LotBox &l : lots) forget_parking_lot(s, l.id, l.box);
+	ChangeLog::dedup(removed);
+	ChangeLog::dedup(changed);
+	ChangeLog::dedup(nodes);
+	ChangeLog::dedup(gone_nodes);
+	forget_flows(s, removed, nodes, gone_nodes);
 	if (nodes.empty() && removed.empty() && changed.empty()) {
 		t.g.version = s.roads.version;
 		return;
 	}
 	graph_grow(s, int(s.roads.segs.size()), int(s.roads.nodes.size()));
-	ChangeLog::dedup(removed);
-	ChangeLog::dedup(changed);
-	ChangeLog::dedup(nodes);
 	forget_yards_near(s, removed, changed); // their ways cross the streets: those of the streets that changed are planned again
 	for (int seg : removed) drop_segment(s, seg);
 	for (int seg : removed)
@@ -228,9 +233,9 @@ void apply_network_changes(CityState &s) {
 	}
 	t.g.version = s.roads.version;
 	s.lane_graph_serial++;
-#ifdef DEBUG_ENABLED
-	if (t.graph_fault.empty()) t.graph_fault = lane_graph_fault(s);
-#endif
+	if constexpr (CHECKS) { // the tests' DLL (core/checks.h); the scoped traffic.lane_graph check follows at the batch's end
+		if (t.graph_fault.empty()) t.graph_fault = lane_graph_fault(s);
+	}
 }
 
 } // namespace traffic

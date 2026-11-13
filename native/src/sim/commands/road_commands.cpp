@@ -4,6 +4,7 @@
 #include "sim/commands/street_commands.h"
 #include "sim/commands/road_edit.h"
 #include "sim/commands/road_grade_sync.h"
+#include "sim/commands/road_refs.h"
 #include "sim/commands/street_journal.h"
 #include "sim/street/footway.h"
 #include "sim/street/street_names.h"
@@ -157,10 +158,14 @@ bool merge_joint(CityState &s, int far, int past, RoadBox &box, std::vector<int>
 		if (dir_turn(first.q, second.q) > STRAIGHT_JOIN_COS || !joined_quad(first.q, second.q, q)) return false;
 		box.add(g);
 		box.add(o);
+		RoadRefs refs = refs_of(s, { seg, other }); // what the halves' outer nodes and stops named them by goes to the merged road
+		forget_refs_at(refs, far); // the joint goes: what it held goes with it
 		j_remove_segment(s, seg);
 		j_remove_segment(s, other);
 		const uint16_t runs = uint16_t((first.flags & SEG_RUNS_ON_A) | (second.flags & SEG_RUNS_ON_B));
 		const int merged = j_add_segment(s, first.a, second.b, q, g.profile, g.zl, g.zr, uint16_t((g.flags & ~(SEG_RUNS_ON_A | SEG_RUNS_ON_B)) | runs));
+		carry_refs(s, refs, seg, { merged });
+		carry_refs(s, refs, other, { merged });
 		const size_t was = made.size();
 		made.erase(std::remove_if(made.begin(), made.end(), [&](int m) { return m == seg || m == other; }), made.end());
 		if (made.size() != was) made.push_back(merged);

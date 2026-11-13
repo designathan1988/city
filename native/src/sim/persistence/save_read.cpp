@@ -290,7 +290,6 @@ bool decode_city(CityState &s, const uint8_t *data, size_t size, std::string &er
 	s.lots.process_dirty(s);
 	spent.lots = laps.lap();
 	if (times) *times = spent;
-	s.log.network_changed = true;
 	s.ready = true;
 	s.touch();
 	s.saved_revision = s.revision;

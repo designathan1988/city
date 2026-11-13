@@ -3,6 +3,7 @@
 #include "sim/commands/commands.h"
 #include "sim/commands/edit_journal.h"
 #include "sim/commands/road_edit.h"
+#include "sim/commands/road_refs.h"
 
 #include "sim/state/city_state.h"
 
@@ -24,11 +25,13 @@ EditResult reverse_road(CityState &s, int seg) {
 		return r;
 	}
 	const std::vector<int> pieces = s.roads.pieces_of(seg); // the whole road turns: half of one running against the other would stop it
+	RoadRefs refs = refs_of(s, pieces); // the bans, links and stops of the road stay with it turned (its nodes are the same)
 	for (int piece : pieces) {
 		const RoadSegment rec = s.roads.segs[size_t(piece)];
 		j_remove_segment(s, piece);
 		const Quad q{ rec.q.x1, rec.q.z1, rec.q.cx, rec.q.cz, rec.q.x0, rec.q.z0 };
-		j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, flags_reversed(rec.flags));
+		const int turned = j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, flags_reversed(rec.flags));
+		carry_refs(s, refs, piece, { turned });
 	}
 	r.ok = true;
 	r.segments = int(pieces.size());

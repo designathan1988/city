@@ -6,6 +6,7 @@
 #include "sim/roads/street_furniture.h"
 #include "sim/state/city_state.h"
 #include "sim/traffic/ped_system.h"
+#include "sim/traffic/records_changed.h"
 #include "sim/street/street_spots.h"
 
 namespace city {
@@ -33,13 +34,12 @@ void reset_traffic(CityState &s); // full graph build and an empty fleet: a new 
 // lane_graph.cpp / lane_geometry.cpp
 void build_lane_graph(CityState &s); // into s.traffic.g
 void lane_pose(const CityState &s, int ds, int lane, float at, Pose &out);
+// links_built, and what the parking lets go of a changed street or lot: sim/traffic/records_changed.h.
 void conn_pose(const Conn &c, float at, Pose &out);
 void sidewalk_pose(const CityState &s, int seg, int side, float arc, float track_u, Pose &out);
 
 // parking_sources.cpp: the bays near the camera and the scenery cars in them (parking_state.h)
 void step_parking_sources(CityState &s);
-void forget_parking_seg(CityState &s, int seg); // an edit touched the street: its kerb is laid out again
-void forget_parking_lot(CityState &s, int id); // a building came or went: its bays, and the kerbs its gates keep bays off
 void refile_bay(CityState &s, int b, bool away); // the bay on the free or scenery list its state says; `away`: on none
 void remove_row(ParkingState &p, int b); // the scenery car of bay `b` is gone
 bool read_bay_way(CityState &s, int b); // the bay's way out through its gate and the lane it joins; false: it has none

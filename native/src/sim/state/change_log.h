@@ -1,5 +1,5 @@
 // The one channel through which the simulation announces what changed: each consumer drains its own lists. Render adapters
-// consume and clear theirs on the main thread (lot_boxes among them); the traffic drains the net_* lists and lots_changed; the
+// consume and clear theirs on the main thread (lot_boxes among them); the traffic drains the net_* lists, lots_changed and lot_fronts; the
 // transit drains transit_segs; the lot cache consumes lot_cells. Nothing else keeps its own dirty flags: what an owner has still to work out of its own data (the
 // network's shapes and grades left to settle, growth's queue of cells) is that owner's state, and what is kept by the city's
 // revision (sim/roads/furniture_kept.h) or by an exact key (sim/buildings/b40/body_cache.h) needs no mark.
@@ -13,9 +13,25 @@
 #include <algorithm>
 #include <cstdint>
 #include <mutex>
+#include <tuple>
 #include <vector>
 
 namespace city {
+
+// A building that came, went or changed, with the box its lot reached then (x0, z0, x1, z1: its centre plus half its diagonal).
+// The box, not the record: the id may be freed and taken by another building before a consumer drains it.
+struct LotBox {
+	struct Box {
+		float x0 = 0, z0 = 0, x1 = 0, z1 = 0;
+	};
+	int id = -1;
+	Box box;
+};
+
+// The drain sorts and deduplicates them (lane_graph_edit.cpp apply_network_changes): by id, then by the corners of the box.
+inline auto lot_box_key(const LotBox &l) { return std::tie(l.id, l.box.x0, l.box.z0, l.box.x1, l.box.z1); }
+inline bool operator<(const LotBox &a, const LotBox &b) { return lot_box_key(a) < lot_box_key(b); }
+inline bool operator==(const LotBox &a, const LotBox &b) { return lot_box_key(a) == lot_box_key(b); }
 
 struct ChangeLog {
 	std::mutex mutex; // consumers under the shared map lock (see above)
@@ -28,10 +44,12 @@ struct ChangeLog {
 	std::vector<int> paint_rects; // x0, z0, x1, z1: the same samples, their painted ground changed
 	std::vector<int64_t> nature_chunks; // CHUNK keys whose trees and ground cover must be placed again
 	std::vector<int64_t> water_chunks; // CHUNK keys whose water surface must be built again
-	bool network_changed = false; // lanes and routes must be refreshed
 	// The lane graph's incremental work: drained by the traffic (not by the render). `net_nodes` are the nodes whose
 	// connectors and junction must be rebuilt; the segment lists are the ids added, removed or reprofiled.
 	std::vector<int> net_nodes, net_segs_removed, net_segs_changed;
+	// The nodes removed (j_remove_node_if_orphan), also on net_nodes: what the traffic keys by a node (the flows measured at it, the
+	// control chosen for it) goes with it, even when the id is taken again before the drain.
+	std::vector<int> net_nodes_removed;
 	// The same segments, added, removed or reprofiled, for the transit: its stops on them find their lanes again (transit_plan.cpp).
 	std::vector<int> transit_segs;
 	// Segments whose street furniture must be placed again though their lanes did not change (a hydrant moving to
@@ -43,9 +61,10 @@ struct ChangeLog {
 	// dropped across them, the parking paint kept off them) and their furniture, laid off the gates. Boxes, not ids: a slot freed
 	// and taken again before the render drains would lose where the old lot stood.
 	std::vector<float> lot_boxes;
-	// The same boxes for the traffic: the walkers' furniture and doors of the streets facing them are made again (the pieces keep off
-	// the lots' gates, a door's foot keeps off the pieces).
-	std::vector<float> lot_fronts;
+	// The same buildings with their boxes, for the traffic (BuildingStore::changed): each one's bays are laid out again, and the kerbs
+	// its car gates keep bays off and the walkers' furniture and doors of the streets facing it are read again where its lot stood
+	// (the pieces keep off the lots' gates, a door's foot keeps off the pieces), never where the record at its id stands at the drain.
+	std::vector<LotBox> lot_fronts;
 	// Junctions whose signal settings changed: only their plan is made again, the lanes and connectors stay.
 	std::vector<int> signal_nodes;
 	// Blows, shots and falls for the render to play once (damage_event.h): drained with the other render lists.
@@ -72,6 +91,7 @@ struct ChangeLog {
 		net_nodes.clear();
 		net_segs_removed.clear();
 		net_segs_changed.clear();
+		net_nodes_removed.clear();
 		transit_segs.clear();
 		furniture_segs.clear();
 		lots_changed.clear();
@@ -94,11 +114,10 @@ struct ChangeLog {
 		add(paint_rects, from.paint_rects);
 		add(nature_chunks, from.nature_chunks);
 		add(water_chunks, from.water_chunks);
-		network_changed = network_changed || from.network_changed;
-		from.network_changed = false;
 		add(net_nodes, from.net_nodes);
 		add(net_segs_removed, from.net_segs_removed);
 		add(net_segs_changed, from.net_segs_changed);
+		add(net_nodes_removed, from.net_nodes_removed);
 		add(transit_segs, from.transit_segs);
 		add(furniture_segs, from.furniture_segs);
 		add(lots_changed, from.lots_changed);

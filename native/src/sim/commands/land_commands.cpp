@@ -133,6 +133,8 @@ std::string lot_frame(const CityState &s, double ax, double az, double bx, doubl
 			});
 			if (on_road) return "refuse.lot.road";
 		}
+	// A ruin keeps its lot until the player clears it (damage_state.h Ruin): the drawn lot and its preview refuse rubble.
+	if (s.damage.ruin_under(b.x, b.z, b.w, b.d, b.rot)) return "refuse.rubble";
 	return "";
 }
 

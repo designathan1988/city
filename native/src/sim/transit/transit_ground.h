@@ -15,6 +15,10 @@ bool transit_on_road(const CityState &s, const V2 &p);
 bool transit_paved(const CityState &s, const V2 &p, float kerb, float &y, bool &carriageway);
 // A stop's frame: along its street or track, and out (from the kerb to the back of the footway; on a track, to the side of its platform).
 void transit_stop_frame(const CityState &s, const TransitStop &q, V2 &along, V2 &out);
+// Whether a bus stop at `at` stands by road `seg`: the road alive and the point within its profile's half plus the stop's reach
+// (traffic transit_stop_reach_m, where a stop is placed from) of its curve; `dist` how far it is. A road laid again carries a stop
+// to the nearest such piece (sim/commands/road_refs.cpp), and the checks hold every stop to it (sim/checks/transit.cpp).
+bool transit_stop_by_road(const CityState &s, const V2 &at, int seg, double &dist);
 // Whether a building stands within `pad` of a point.
 bool transit_built(const CityState &s, const V2 &p, float pad);
 

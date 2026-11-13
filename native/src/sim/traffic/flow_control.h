@@ -27,7 +27,14 @@ namespace traffic {
 
 void count_entry(CityState &s, int connector); // a vehicle enters a junction's movement: the flow from its leg
 void step_flow_control(CityState &s, float dt); // under the map's shared lock and the traffic mutex
-void apply_flow_control(CityState &s); // under the map's exclusive lock: the choices reach the network
+// Under the map's exclusive lock: the choices reach the network; a junction whose control changed has its arms' kept furniture
+// placed again (its signal posts) and their props drawn again.
+void apply_flow_control(CityState &s);
+// What the flows and the advisor keyed by what an edit took away, forgotten by the traffic's drain (lane_graph_edit.cpp), since an id
+// freed is the next record's: a removed road's leg at both its nodes, every key of a removed node (`gone_nodes`, and any node of
+// `nodes` found dead), and at every node of `nodes` the legs that are no longer its arms. A crossing or a control set by the player
+// (the node only on `nodes`) keeps the choice. Each list sorted and unique.
+void forget_flows(CityState &s, const std::vector<int> &removed_segs, const std::vector<int> &nodes, const std::vector<int> &gone_nodes);
 
 } // namespace traffic
 } // namespace city

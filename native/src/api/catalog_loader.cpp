@@ -85,7 +85,6 @@ void load_profiles(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
 	c.prices = { top.num(pr, "carriageway"), top.num(pr, "median"), top.num(pr, "footway") };
 	c.structure = { top.num(st, "ground"), top.num(st, "embankment"), top.num(st, "trench"), top.num(st, "bridge"), top.num(st, "tunnel") };
 	Array list = top.arr(t, "profiles");
-	c.profiles.reserve(size_t(list.size()) + size_t(c.tune.road_max_variants));
 	for (int i = 0; i < list.size(); i++) {
 		Dictionary d = list[i];
 		Reader r{ errors, "road_profiles[" + String::num_int64(i) + "]" };
@@ -120,6 +119,7 @@ void load_profiles(const Dictionary &t, Catalog &c, PackedStringArray &errors) {
 		else derive_profile(p, c.prices);
 		c.add_profile(std::move(p));
 	}
+	c.keep_variant_room(); // the catalogue's own read: room for every variant past them
 }
 
 void load_zones(const Dictionary &t, Catalog &c, PackedStringArray &errors) {

@@ -8,12 +8,39 @@
 #include "sim/terrain/terrain_gen.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstring>
 #include <iterator>
+#include <utility>
+#include <vector>
 
 namespace city {
 
 namespace {
 constexpr uint32_t MAX_LIST = 1u << 24; // the most slots a list of planted trees or clearings may claim
+
+// The painted tiles by key: the same paint gives the same bytes whatever order its tiles went into the map (a dab, an undo, a
+// redo, a load each insert in their own order), as body_codec.cpp put_map. The reader puts each tile at its key: any order reads the same.
+void put_tiles(ByteWriter &w, const GroundPaint &g) {
+	std::vector<std::pair<int, const PaintTile *>> sorted;
+	sorted.reserve(g.all().size());
+	for (const auto &kv : g.all()) sorted.emplace_back(kv.first, kv.second.get());
+	std::sort(sorted.begin(), sorted.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
+	w.put<uint32_t>(uint32_t(sorted.size()));
+	for (const auto &e : sorted) {
+		w.put<int32_t>(e.first);
+		w.put_bytes(e.second->data(), sizeof(PaintTile));
+	}
+}
+
+// The elements in the order of their bytes: Elements::all walks its chunk map, whose order is the history of its inserts and
+// swap removals, never the city's. Items with the same bytes are interchangeable, so the order of the bytes is a total one.
+// The reader adds each item to its chunk: any order reads the same set.
+static_assert(offsetof(ElementItem, kind) + sizeof(ElementItem::kind) == sizeof(ElementItem), "an element is its bytes: written and compared whole");
+void put_elements(ByteWriter &w, std::vector<ElementItem> items) {
+	std::sort(items.begin(), items.end(), [](const ElementItem &a, const ElementItem &b) { return std::memcmp(&a, &b, sizeof(ElementItem)) < 0; });
+	w.put_vec(items);
+}
 
 template <typename T>
 void put_slots(ByteWriter &w, const IdTable<T> &list) {
@@ -52,11 +79,7 @@ void write_nature(ByteWriter &w, const CityState &s) {
 	w.put_vec(n.fog);
 	w.put<int32_t>(n.nature.region);
 	w.put<uint32_t>(n.nature.seed);
-	w.put<uint32_t>(uint32_t(n.ground.all().size()));
-	for (const auto &kv : n.ground.all()) {
-		w.put<int32_t>(kv.first);
-		w.put_bytes(kv.second->data(), sizeof(PaintTile));
-	}
+	put_tiles(w, n.ground);
 	put_slots(w, n.planted.trees);
 	put_slots(w, n.planted.clearings);
 	const Heightfield &t = s.terrain;
@@ -68,7 +91,7 @@ void write_nature(ByteWriter &w, const CityState &s) {
 	for (uint32_t i : index) level.push_back(t.water[i]);
 	w.put_vec(index);
 	w.put_vec(level);
-	w.put_vec(n.elements.all());
+	put_elements(w, n.elements.all());
 }
 
 bool read_nature(ByteReader &r, CityState &s) {

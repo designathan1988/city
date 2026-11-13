@@ -41,10 +41,10 @@ what it is checked by. Each block ends with its checks; from T038 on, every bloc
   outcome and stop on a failure, its reason shown); a gate: every refusal key a command can return is a row of project/data/i18n.
   **Done when**: the gate refuses a key with no row (its fixture) and passes the tree; a test refuses a command from a panel and
   reads the reason on the hint bar; a test makes the save fail and the city stays; the suites pass with the stricter verdict.
-- [ ] T037 [US6] Records kept true (backbone items 4, 5): invariants per feature in the core, run at every test's end (TestCase
+- [X] T037 [US6] Records kept true (backbone items 4, 5): invariants per feature in the core, run at every test's end (TestCase
   .finish); a record's removal reaches every table referring to it: lane links and bans through remove, move and split; transit stops
   through split and remove; the interior target; fires; parking lots, yards and lorries; flow statistics and the control advisor; a
-  refused command neither touches the city nor drops the furniture; toggle_lane_link checks its node; auto_signal's change told to
+  refused command neither touches the city nor drops the furniture; flip_lane_link checks its node; auto_signal's change told to
   the furniture and the render; `network_changed` removed; the catalogue's road variants survive opening a save; growth never over
   rubble. **Done when**: each invariant fails on its defect before the fix (a case per defect in edit_fuzz_test or its own scene) and
   every test ends with none broken.

@@ -1,9 +1,12 @@
 // The city as one number (the state hash of a deterministic game, as Factorio's map CRC): the save's own bytes hashed whole and by
 // part, so whatever a save keeps is covered without a list to keep up, and a difference says which part it is in. `derived` is
 // what a save does not keep because it is made from the rest (final heights, lots, lane graph, solved grades): where an
-// optimisation works, it must leave those equal.
+// optimisation works, it must leave those equal. Beside it, what the tests ask of the city's consistency: the lane graph's first
+// fault, the fleet's hash per tick and the record invariants on the whole city (broken_records, sim/checks/records.h).
 #include "api/city_probes.h"
 
+#include "api/broken_records.h"
+#include "sim/checks/records.h"
 #include "sim/citygen/lot_gen.h"
 #include "sim/persistence/save_format.h"
 #include "sim/roads/road_grade.h"
@@ -11,9 +14,11 @@
 #include "sim/state/city_state.h"
 #include "sim/traffic/traffic_system.h"
 
+#include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 
 #include <algorithm>
 #include <cstdint>
@@ -114,6 +119,29 @@ int CityProbes::undo_steps() {
 String CityProbes::graph_fault() {
 	std::lock_guard<std::mutex> traffic(state_->traffic_mutex);
 	return String(state_->traffic.graph_fault.c_str());
+}
+
+Array CityProbes::broken_records() {
+	Array out;
+	std::shared_lock<std::shared_mutex> map(state_->map_mutex);
+	std::lock_guard<std::mutex> traffic(state_->traffic_mutex); // the traffic's tables, as traffic_hashes reads them
+	if (state_->ready) {
+		checks::Broken whole; // asked, not per frame: its room is made here
+		whole.reserve(size_t(state_->catalog.tune.checks_records_kept));
+		const checks::CheckScope all{ true, nullptr, nullptr, nullptr };
+		checks::run_city_checks(*state_, all, whole);
+		const bool drained = checks::traffic_drained(*state_);
+		if (drained) checks::run_traffic_checks(*state_, all, whole);
+		else if (!pending_said_) // said once until they run again: a test asking after every edit with the clock still is told once
+			UtilityFunctions::print("broken_records: the traffic-owned checks are pending (the traffic has not drained the last commands)");
+		pending_said_ = !drained;
+		append_broken(out, whole, nullptr);
+	}
+	checks::BrokenSink &sink = state_->broken_sink;
+	std::lock_guard<std::mutex> lk(sink.mutex);
+	append_broken(out, sink.broken, &sink.causes);
+	sink.clear();
+	return out;
 }
 
 PackedStringArray CityProbes::traffic_hashes(int ticks) {

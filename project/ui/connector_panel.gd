@@ -21,7 +21,7 @@ func _ready() -> void:
 
 
 func _read() -> void:
-	edit.lanes = CityStore.query(&"node_lanes", [edit.node])
+	edit.lanes = CityStore.query(&"junction_lane_map", [edit.node])
 	var ends: Array = edit.lanes.arriving + edit.lanes.leaving
 	if ends.is_empty():
 		return
@@ -86,6 +86,6 @@ func _gui_input(event: InputEvent) -> void:
 	elif not edit.picked.is_empty():
 		var leaving := _nearest(edit.lanes.leaving, b.position)
 		if not leaving.is_empty():
-			CityStore.dispatch(&"toggle_lane_link", [edit.node, edit.picked.seg, edit.picked.lane, leaving.seg, leaving.lane])
+			CityStore.dispatch(&"flip_lane_link", [edit.node, edit.picked.seg, edit.picked.lane, leaving.seg, leaving.lane])
 			get_tree().create_timer(HudWidgets.px("cn_reread_s")).timeout.connect(_read)
 	accept_event()

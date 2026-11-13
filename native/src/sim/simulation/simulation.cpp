@@ -1,7 +1,9 @@
 // Tick thread, speed state machine and the city clock.
 #include "sim/simulation/simulation.h"
 
+#include "core/checks.h"
 #include "core/units.h"
+#include "sim/checks/records.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <chrono>
@@ -83,6 +85,7 @@ void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 		{
 			std::shared_lock<std::shared_mutex> map(s.map_mutex);
 			std::lock_guard<std::mutex> tr(s.traffic_mutex);
+			if constexpr (CHECKS) checks::before_step(s);
 			traffic::step(s, float(dt));
 			growing = s.traffic_levels.growth_on && !s.growth.cells.empty();
 			chosen = !s.traffic.flow_control.changed.empty();
@@ -108,6 +111,7 @@ void Simulation::tick(CityState &s, int steps, int64_t stamp_ns) {
 		std::shared_lock<std::shared_mutex> map(s.map_mutex);
 		std::lock_guard<std::mutex> tr(s.traffic_mutex);
 		traffic::publish_poses(s, stamp_ns);
+		if constexpr (CHECKS) checks::after_ticks(s); // the tests' DLL: the records the batch's drain and growth reached
 	}
 }
 

@@ -1,6 +1,8 @@
 // The bays near the camera (parking_state.h): the kerbs of the streets that park and the lots, read a few a step as the
 // camera moves and dropped behind it, with the scenery cars that stand in them (seeded by where the bay is, so a bay
-// holds the same car whenever it comes back into view). The way out of a lot is asked only of a bay a car is sent to.
+// holds the same car whenever it comes back into view). The way out of a lot is asked only of a bay a car is sent to. A lot's bays
+// keep its elements' order (yard.h names docks by it); a building that changes takes its bays, yard and bound lorries with it, and
+// its gates' kerbs are read again where it stood (the box the change log kept: its id may be another building's by the drain).
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/buildings/b40/record.h"
@@ -61,9 +63,9 @@ PlaceKind place_of(const CityState &s, const Building &rec) {
 
 void read_lot(CityState &s, int id) {
 	ParkingState &p = s.traffic.park;
-	ParkSource &src = p.lots[id];
 	const Building &rec = s.buildings.items[size_t(id)];
-	if (!rec.alive) return;
+	if (!rec.alive) return; // no source for a building gone: parking.lot_sources_live
+	ParkSource &src = p.lots[id];
 	LotAccess acc;
 	lot_bays(*b40::record_elements(s.buildings.designs, rec), b40::lot_frame(rec), acc);
 	const PlaceKind kind = place_of(s, rec);
@@ -111,14 +113,26 @@ void read_kerb(CityState &s, int seg) {
 	}
 }
 
-// Takes a source's bays away, unless (`force` off) one holds a car on its way in or out. True when they went.
+// A lorry is bound to a dock of the source (lorry_bound): asked once by the lot's id, its building (parking.lorry_target_live).
+bool docks_awaited(const ParkingState &p, const ParkSource &src) {
+	if (src.bays.empty() || p.bays[size_t(src.bays.front())].kerb) return false;
+	const int lot = p.bays[size_t(src.bays.front())].source;
+	for (const Lorry &l : p.lorries)
+		if (l.building == lot && lorry_bound(l)) return true;
+	return false;
+}
+
+// Takes a source's bays away, unless (`force` off) one holds a car on its way in or out or a lorry is bound to its docks (forced: a
+// building's change, whose lorries forget_parking_lot released first). True when they went.
 bool drop_source(CityState &s, ParkSource &src, bool force) {
 	ParkingState &p = s.traffic.park;
-	if (!force)
+	if (!force) {
+		if (docks_awaited(p, src)) return false;
 		for (int b : src.bays) {
 			const int holder = p.bays[size_t(b)].holder;
 			if (holder >= 0 && !lot_car_at_rest(s, holder)) return false;
 		}
+	}
 	for (int b : src.bays) {
 		if (p.bays[size_t(b)].holder >= 0) lot_car_gone(s, p.bays[size_t(b)].holder);
 		remove_row(p, b);
@@ -267,8 +281,9 @@ void forget_parking_seg(CityState &s, int seg) {
 	p.relook = true;
 }
 
-void forget_parking_lot(CityState &s, int id) {
+void forget_parking_lot(CityState &s, int id, const LotBox::Box &box) {
 	ParkingState &p = s.traffic.park;
+	release_lorries(s, id); // before its bays go: a lorry holds its dock by bay
 	p.yards.erase(id);
 	if (p.planner_building == id) p.planner.reset();
 	auto it = p.lots.find(id);
@@ -277,19 +292,34 @@ void forget_parking_lot(CityState &s, int id) {
 		p.lots.erase(it);
 	}
 	p.relook = true;
-	if (size_t(id) >= s.buildings.items.size()) return;
-	const Building &b = s.buildings.items[size_t(id)];
-	// its car gates move the bays of the streets it faces: those streets' kerbs are read again (the render draws their surface and
-	// paint again from the same change: BuildingStore::mark, render_world.cpp mark_changed)
-	const float reach = std::max(b.w, b.d) + s.catalog.traffic.kerb_gate_reach_m;
+	// its car gates moved the bays of the streets it faced where it stood: their kerbs are read again (the render draws them again from
+	// the same change, render_world.cpp mark_changed); its gates stand within kerb_gate_reach_m of a facing segment's box (street_gates)
+	const float reach = s.catalog.traffic.kerb_gate_reach_m;
 	std::vector<int> streets;
-	s.roads.for_segments_near(b.x - reach, b.z - reach, b.x + reach, b.z + reach, [&](int seg) {
+	s.roads.for_segments_near(box.x0 - reach, box.z0 - reach, box.x1 + reach, box.z1 + reach, [&](int seg) {
 		if (p.kerbs.count(seg)) streets.push_back(seg);
 	});
 	for (int seg : streets) {
-		drop_source(s, p.kerbs[seg], true);
-		p.kerbs.erase(seg);
+		auto kerb = p.kerbs.find(seg);
+		if (kerb == p.kerbs.end()) continue; // listed twice (a segment filed in two cells)
+		drop_source(s, kerb->second, true);
+		p.kerbs.erase(kerb);
 	}
+}
+
+int lot_bay(const ParkingState &p, int building, int place) {
+	const auto lot = p.lots.find(building);
+	if (lot == p.lots.end() || place < 0 || place >= int(lot->second.bays.size())) return -1;
+	return lot->second.bays[size_t(place)];
+}
+
+int place_in_lot(const ParkingState &p, int b) {
+	const Bay &bay = p.bays[size_t(b)];
+	const auto lot = p.lots.find(bay.source);
+	if (bay.kerb || lot == p.lots.end()) return -1; // a kerb bay's source is a segment
+	const std::vector<int> &bays = lot->second.bays;
+	const auto at = std::find(bays.begin(), bays.end(), b); // a lot's few bays
+	return at == bays.end() ? -1 : int(at - bays.begin());
 }
 
 void publish_parked(CityState &s, PoseFrame &f) {

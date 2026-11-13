@@ -248,5 +248,8 @@
   "scar_force_least": 4,
   "scar_lift_m": 1.5,
   "scars_most": 8
+ },
+ "checks": {
+  "records_kept": 4096
  }
 }

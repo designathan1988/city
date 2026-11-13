@@ -134,8 +134,11 @@ struct DamageState {
 	void clear();
 	// The index of the building's record in `hurt`, or -1.
 	int hurt_of(uint32_t seed, float x, float z) const;
-	// Is there a ruin whose lot covers the point? (index or -1)
+	// Is there a ruin whose lot covers the point? (the least such index, or -1) O(ruins near the point): the ruins are filed by place.
 	int ruin_at(float x, float z, float pad) const;
+	// Does a ruin block the turned rectangle (centre x z, frontage w, depth d, turned rot, as a lot or a building record): its
+	// centre inside the rectangle, or the rectangle's centre on its lot? Growth builds on no such lot (growth.cpp lot_occupied).
+	bool ruin_under(float x, float z, float w, float d, float rot) const;
 	// Was furniture of this kind knocked out within `reach` of the point?
 	bool is_gone(GoneKind kind, float x, float z, float reach) const;
 	// The scars of the building (seed, bx, bz), in the order of the blows, without walking the others'.
@@ -162,10 +165,8 @@ struct DamageState {
 		if (!craters.empty()) craters.pop();
 	}
 	int add_ruin(const Ruin &r); // its index
-	void insert_ruin(size_t at, const Ruin &r) { ruins.insert(std::min(at, ruins.size()), r); }
-	void erase_ruin(size_t at) {
-		if (at < ruins.size()) ruins.erase(at);
-	}
+	void insert_ruin(size_t at, const Ruin &r);
+	void erase_ruin(size_t at);
 	void add_scar(const Scar &c);
 	void drop_last_scar();
 	void restore(std::vector<Crater> craters_read, std::vector<Ruin> ruins_read, std::vector<Scar> scars_read); // a save read
@@ -173,6 +174,13 @@ struct DamageState {
 private:
 	void index_scars(); // scars_by_seed_ from the whole list
 	std::unordered_map<uint32_t, std::vector<uint32_t>> scars_by_seed_; // by the building's seed: its scars' indices, ascending
+	// The ruins filed by the box of their lot, under their index in `ruins`: an append or the history's put-back at the end files
+	// one, an erase of the last unfiles it, an insert or an erase in the middle (which move the indices after it) files them all
+	// again. Growth asks it for every lot it weighs.
+	SpatialHash ruin_cells_;
+	void file_ruin(size_t i);
+	void unfile_ruin(size_t i);
+	void file_ruins();
 };
 
 // One step of the damage clock (caller holds the map exclusively): time passes, fires burn out.

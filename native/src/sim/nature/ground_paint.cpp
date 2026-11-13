@@ -8,13 +8,14 @@
 #include <algorithm>
 #include <climits>
 #include <cmath>
+#include <cstddef>
 #include <cstring>
 
 namespace city {
 
 namespace {
 const PaintCell EMPTY_CELL{};
-static_assert(sizeof(PaintCell) == 6 + COVER_KINDS, "a cell is its bytes: compared whole");
+static_assert(offsetof(PaintCell, gully_wipe) + sizeof(PaintCell::gully_wipe) == sizeof(PaintCell), "a cell is its bytes: compared whole");
 bool same(const PaintCell &a, const PaintCell &b) { return std::memcmp(&a, &b, sizeof(PaintCell)) == 0; }
 bool blank(const PaintTile &t) {
 	return std::all_of(t.begin(), t.end(), [](const PaintCell &c) { return same(c, EMPTY_CELL); });
@@ -148,13 +149,12 @@ void GroundPaint::paint_cell(PaintCell &c, const PaintDab &d, float w) const {
 	}
 }
 
-bool GroundPaint::dab(const PaintDab &d, int rect[4]) {
-	if (d.radius <= 0 || !def_) return false;
+template <typename F>
+void GroundPaint::each_change(const PaintDab &d, F &&fn) const {
+	if (d.radius <= 0 || !def_) return;
 	int x0 = clampi(int(std::floor((d.x - d.radius) / spacing_ + n_ * 0.5f)), 0, n_ - 1), x1 = clampi(int(std::ceil((d.x + d.radius) / spacing_ + n_ * 0.5f)), 0, n_ - 1);
 	int z0 = clampi(int(std::floor((d.z - d.radius) / spacing_ + n_ * 0.5f)), 0, n_ - 1), z1 = clampi(int(std::ceil((d.z + d.radius) / spacing_ + n_ * 0.5f)), 0, n_ - 1);
 	float rim = std::max(def_->land_rim, 1.f - d.hardness);
-	int cx0 = INT_MAX, cz0 = INT_MAX, cx1 = INT_MIN, cz1 = INT_MIN;
-	std::vector<int> wiped; // tiles a cell of which went back to no paint: they go when no paint is left in them
 	for (int iz = z0; iz <= z1; iz++)
 		for (int ix = x0; ix <= x1; ix++) {
 			float wx = (ix - n_ * 0.5f) * spacing_ - d.x, wz = (iz - n_ * 0.5f) * spacing_ - d.z;
@@ -166,14 +166,32 @@ bool GroundPaint::dab(const PaintDab &d, int rect[4]) {
 			PaintCell now = was;
 			paint_cell(now, d, w);
 			if (same(now, was)) continue;
-			PaintCell &c = touch(ix, iz);
-			count(c, -1);
-			c = now;
-			count(c, 1);
-			if (same(c, EMPTY_CELL)) wiped.push_back(tile_key(ix, iz));
-			cx0 = std::min(cx0, ix); cx1 = std::max(cx1, ix);
-			cz0 = std::min(cz0, iz); cz1 = std::max(cz1, iz);
+			if (!fn(ix, iz, now)) return;
 		}
+}
+
+bool GroundPaint::changes(const PaintDab &d) const {
+	bool any = false;
+	each_change(d, [&](int, int, const PaintCell &) {
+		any = true;
+		return false; // one is enough
+	});
+	return any;
+}
+
+bool GroundPaint::dab(const PaintDab &d, int rect[4]) {
+	int cx0 = INT_MAX, cz0 = INT_MAX, cx1 = INT_MIN, cz1 = INT_MIN;
+	std::vector<int> wiped; // tiles a cell of which went back to no paint: they go when no paint is left in them
+	each_change(d, [&](int ix, int iz, const PaintCell &now) {
+		PaintCell &c = touch(ix, iz);
+		count(c, -1);
+		c = now;
+		count(c, 1);
+		if (same(c, EMPTY_CELL)) wiped.push_back(tile_key(ix, iz));
+		cx0 = std::min(cx0, ix); cx1 = std::max(cx1, ix);
+		cz0 = std::min(cz0, iz); cz1 = std::max(cz1, iz);
+		return true;
+	});
 	if (cx0 > cx1) return false;
 	std::sort(wiped.begin(), wiped.end());
 	wiped.erase(std::unique(wiped.begin(), wiped.end()), wiped.end());

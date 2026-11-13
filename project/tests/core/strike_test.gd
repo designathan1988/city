@@ -1,6 +1,7 @@
 ## Core test of the bomb through the store (no rendering needed): the blast model against known points of the
 ## Kingery-Bulmash curve, and that a blow changes the city for real: buildings worn and brought down, a road cut by a
-## crater, furniture knocked out, walkers and vehicles gone; the whole blow undone in one step.
+## crater, furniture knocked out, walkers and vehicles gone; the whole blow undone in one step; growth kept off the rubble until it
+## is cleared (rubble_cases.gd).
 ## Run: godot --headless --path project res://tests/core/strike_test.tscn -- --no-flow
 extends TestCase
 
@@ -41,6 +42,7 @@ func _ready() -> void:
 	await _fall()
 	_effects()
 	_roads()
+	RubbleCases.run(self)
 	finish()
 
 

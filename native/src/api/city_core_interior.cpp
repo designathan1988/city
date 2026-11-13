@@ -1,6 +1,7 @@
 // The Interior layer as the script API: set the view (a command, under the map lock) and read it back with the floors of
 // the building and the lamps of the floor seen.
 #include "api/city_core.h"
+#include "api/command_hold.h"
 
 #include "render/buildings/interior_lamps.h"
 #include "sim/commands/interior_commands.h"
@@ -13,7 +14,7 @@ namespace city {
 
 Dictionary CityCore::set_interior(bool on, int target, int level, int dir) {
 	Dictionary d;
-	map_hold::WriterHold lk(state_->map_mutex, map_hold::Writer::COMMAND);
+	CommandHold hold(*state_, "interior");
 	if (!state_->ready) return d;
 	InteriorRequest r;
 	r.on = on;

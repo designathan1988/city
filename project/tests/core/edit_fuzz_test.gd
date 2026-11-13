@@ -1,6 +1,7 @@
 ## Random edits against what must hold for any of them, on the state hash (probes/state_hash: the save's bytes): undoing every step
 ## walks back through the same hashes, redoing walks forward through them, a save opened again is the same city, and the same seed
-## makes the same city. A failure prints its seed and step; `--seed=N` and `--steps=N` run that one again.
+## makes the same city; after every step no record points at a dead or wrong record (probes/broken_records). A failure prints its
+## seed and step; `--seed=N` and `--steps=N` run that one again.
 extends TestCase
 
 const BodyEdits := preload("res://tests/core/fuzz_body_edits.gd")
@@ -39,6 +40,7 @@ var shaped := {} # the Inspector's road edits dispatched, by name: the fuzz's re
 
 
 const PATH_KIND := 25 # a held brush's pointer move: the dabs of one move as one command
+const MOVE_KIND := 26 # a junction dragged up to half a grid cell each way: its roads re-laid, their lane links and bans carried
 const PATH_DABS := 3
 const PATH_BRUSHES := 4
 const TREE_LIKE := {"density": 1.0, "height": 1.0, "variation": 0.0, "spacing": 4.0}
@@ -121,6 +123,9 @@ func _walk(seed: int, steps: int) -> Array:
 			check(false, "seed %d an edit of kind %d left an undo step that changes nothing" % [seed, last_kind])
 		if now.whole != before:
 			trail.push_back(now)
+		for b: Dictionary in CityStore.query(&"broken_records"): # every record invariant of the core, after every step
+			check(false, "seed %d step %d (kind %d): records broken: %s.%s %s (after %s)" % [seed, i, last_kind, b.feature, b.check,
+					b.records, b.after])
 	return trail
 
 
@@ -129,13 +134,15 @@ func _point() -> Vector3:
 
 
 func _edit() -> void:
-	var kind := rng.randi_range(0, PATH_KIND)
+	var kind := rng.randi_range(0, MOVE_KIND)
 	last_kind = kind
 	var road: Vector3 = roads[rng.randi_range(0, roads.size() - 1)] if not roads.is_empty() else Vector3.ZERO
 	if kind < 5 or roads.is_empty():
 		_lay()
 	elif kind == PATH_KIND:
 		_brush_path(road)
+	elif kind == MOVE_KIND:
+		_move_junction()
 	elif kind >= RoadShapes.BEND or kind == RoadShapes.REVERSE:
 		var done: String = RoadShapes.run(rng, kind, road, PX)
 		if done != "":
@@ -180,10 +187,10 @@ func _other(kind: int, road: Vector3) -> void:
 			var junctions: Array = CityStore.query(&"junctions")
 			if not junctions.is_empty():
 				var node: int = junctions[rng.randi_range(0, junctions.size() - 1)].node
-				var built: Array = CityStore.query(&"node_lanes", [node]).built
+				var built: Array = CityStore.query(&"junction_lane_map", [node]).built
 				if not built.is_empty():
 					var one: Array = built[rng.randi_range(0, built.size() - 1)]
-					CityStore.dispatch(&"toggle_lane_link", [node, one[0], one[1], one[2], one[3]])
+					CityStore.dispatch(&"flip_lane_link", [node, one[0], one[1], one[2], one[3]])
 		16:
 			var lots: Array = CityStore.query(&"lots")
 			if lots.is_empty() or rng.randf() < 0.5:
@@ -195,6 +202,14 @@ func _other(kind: int, road: Vector3) -> void:
 				CityStore.dispatch(&"strike", [road, rng.randi_range(1, STRIKE_MAX)])
 			else:
 				CityStore.dispatch(&"demolish_box", [a, b])
+
+
+## A junction (a node of three roads or more) dragged a random way: move_node re-lays its roads, the links and bans on its arms kept.
+func _move_junction() -> void:
+	var junctions: Array = CityStore.query(&"junctions")
+	if not junctions.is_empty():
+		var j: Dictionary = junctions[rng.randi_range(0, junctions.size() - 1)]
+		CityStore.dispatch(&"move_node", [j.node, j.at + Vector3(rng.randf_range(-GRID_M, GRID_M), 0, rng.randf_range(-GRID_M, GRID_M)) * 0.5])
 
 
 ## One pointer move of a held brush (zones on the roads, ground paint, trees, fog, elements), inside its stroke.
