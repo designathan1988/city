@@ -308,8 +308,82 @@ H. Far traffic as flows, an adaptive window (row 8): NOT in this block. It repla
   segment side (window.cpp:49 zone_kinds); day_factor by hour.
 - The poses' publication (traffic_system.cpp:113 publish_poses, publish_radius_m) and the agents' render levels
   (agent_renderer.cpp: CABIN, MID, BODY, FAR by distance; fleet_shadow_).
-- To read whole before designing: demand.cpp, traffic_system.cpp (step order), traffic_state.h (the far model's fields),
-  the catalog's meso_* params, render/agents far level, the tests window_traffic_test and traffic_hash_test.
+- demand.cpp (282 lines), read whole: the fleet's target = the window's lane metres x density_per_lane_m x day_factor(hour)
+  x traffic_share x the levels (traffic, population, demand) x the governor (:213-220), at most 65536. spawn_vehicles :259:
+  first fill_window :227 (the segments that came into the window, t.fill_ds, filled to their share of the demand with
+  trips starting there, out of sight unless the city is opening); then, by a credit (target less driving, over
+  fleet_tau_s), spawn_one :86: a type drawn (bike_share, car_share, bus_share, styles), an origin and a destination drawn
+  among the window's directed segments (pick_ds :37, weighted by the zones beside them at this hour: home to work in the
+  morning, work to home in the evening; trucks by zone_truck), 200-7000 m apart with exp(-d / trip_decay_m), the start out
+  of sight (beyond publish_radius_m) past the opening, room on its lane, then a route (find_route); near the camera
+  (micro_spawn_m) it is a detailed vehicle, farther it enters the far queue (meso_enter) and is drawn if its lane is in the
+  window. So: every trip starts and ends inside the window; nothing lives on the rest of the map (but the buses' timetable
+  runs); the city's traffic away from the camera does not exist. That is what case H changes.
+- The tracer's `--cost` case of the board: `python tools/tracer/trace.py --cost city.traffic.step --root
+  native/src/sim/traffic` prints the loops now (41 s; the board's command had the arguments in the wrong order): nothing to
+  code; its tests (tests/run.py limits questions) running.
+- traffic_system.cpp (213), read whole: step :184 = apply_network_changes, route_compact, lights, check_window, parking
+  sources, governor, then spawn_vehicles, meso_process, change_lanes, step_vehicles, flow control, kerb stops, lots,
+  transit, pedestrians. publish_poses :106 walks every vehicle (the fleet is the window's), publishes those within
+  publish_radius_m of the camera; "far vehicles are queues and events, not poses" :132.
+- To read whole before designing: traffic_state.h (the far model's fields), what the simulation knows of the camera
+  (city_state.h camera_*), the catalog's meso_* params, render/agents far level and fleet_shadow_, the tests
+  window_traffic_test and traffic_hash_test.
+
+## H, the sources opened (2026-11-13 night)
+- The link model: tabenchmark's design note ADR-016 "ltm: Yperman (2007) link transmission model"
+  (tabenchmark.readthedocs.io/en/latest/_sources/docs/design/adr-016-ltm.md.txt), its own lines: "sending(k) =
+  min(N_up(t_{k+1} - L/vf) - N_dn(t_k), q_max·dt)", "receiving(k) = min(N_dn(t_{k+1} - L/w) + kappa·L - N_up(t_k),
+  q_max·dt)" (it cites Yperman eq. 4.31/4.35 and Boyles eq. 9.65/9.67); the step: "dt <= min(L/vf, L/w)"; the shifted
+  terms read by linear interpolation of the curve. Yperman's thesis and Boyles's notes did not open (404).
+- The node model: Tampere, Corthout, Cattrysse, Immers, "A generic class of first order node models for dynamic
+  macroscopic simulation of traffic flows", Transportation Research Part B 45(1), 2011, 289-309: its abstract, as the
+  search shows it, "an oriented capacity proportional distribution of the available supply over the incoming links of a
+  node". The paper itself was not opened: the first-in-first-out hold at a diverge is the reference's reading of it.
+- The diagram's values: TU Delft, Traffic Flow Theory, "Chapter 5 Shock wave theory" (ocw.tudelft.nl), as the search shows
+  it: "a triangular fundamental diagram with a free speed of 80 km/h, a capacity of 2000 veh/h/lane and a jam density of
+  150 veh/km/lane"; from those, the backward wave = 2000 / (150 - 25) = 16 km/h. This game's standing room a car is its
+  own slot_m (7.5 m, 133 a km: traffic.json), kept as the one owner of it.
+- Context7 (/godotengine/godot-docs, RenderingServer): multimesh_allocate_data(multimesh, instances, transform_format,
+  color_format, custom_data_format); multimesh_set_buffer: 3D with colour and custom data is 20 floats an instance, the
+  transform row-major (basis.x.x, basis.y.x, basis.z.x, origin.x, ...), then the colour's 4, then the custom data's 4;
+  multimesh_set_visible_instances(multimesh, visible).
+- What the simulation knows of the camera: only the ground point looked at (city_state.h:126 camera_x, camera_z, set at
+  city_core.cpp:197). The view's reach must be given too (the eye's distance to that point: cam_ and look are both there).
+- window_traffic_test: at the 24 km map, 1200 ticks after opening, the vehicles round the camera are at least half of what
+  the window's lanes carry at the hour.
+
+## H, the design's draft (this game's own; to be finished after the reading and the sources)
+- H1 The far traffic is flows on the lane graph's own directed segments (the graph here holds the whole map: no second
+  table of roads, no slots). A `StreetFlows` in TrafficState, arrays by ds: capacity, storage, the two cumulative curves
+  (in at its start, out at its end) as rings in one pooled array, sending, taking, in and out of the step, the queue at
+  its origin, its start rate and end share, whether its cars are the detailed ones (inside the window), the cars owed to
+  the window, the detailed vehicles on it. Turn shares from the connectors out of its lanes (pooled lists), rebuilt only
+  for the nodes an edit touched (apply_network_changes). A step every flow_dt_s of the city, its work spread over the
+  ticks by a budget of links a tick, in resumable phases; a step owed while one runs waits (counted late).
+- H2 One owner of the demand: the zones beside each segment at this hour (demand.cpp seg_weight), not a second grid of
+  cells: a ds's start rate = the demand's density a lane metre x its lane metres x its speed / the trip's mean length x its
+  origin weight; its end share = min(1, length / the trip's mean length) x its destination weight; a ds leaving a node
+  that is the map's edge also takes the edge's entry rate.
+- H3 The window follows the view: radius = clamp(the view's reach x window_view_share, window_min_m, window_max_m), moved
+  when the camera is past window_recentre_share of it, resized when the view outgrows it or shrinks under
+  window_shrink_share of it; in_window reads the window as it stands (win_x, win_z, win_r), not the camera and a constant.
+- H4 The handover: a ds coming into the window gives its count as cars owed, made as detailed vehicles along its lanes, a
+  few a tick, within the tick's route searches; what flows into an inside ds is owed at its mouth; an inside ds takes from
+  outside only the room its detailed vehicles and its owed leave; a detailed vehicle that drives onto a ds outside the
+  window is taken off and counted in at that ds's start; a ds leaving the window lays its detailed vehicles and its owed
+  along it as in free flow. A made car's trip: by the zones inside the window (new_trip) or out by a way out of the window,
+  by the share of trips longer than the window. Buses stay their timetable's (the event queue of meso.cpp, theirs alone).
+- H5 The window's fleet comes from the handover, the inflow at its edge, the origins of its own streets out of sight and
+  the lots: the credit that filled the window to a target (spawn_vehicles, fill_window) goes; fleet_target stays what the
+  lots and the governor read, computed from the same density.
+- H6 The far cars are drawn from the flows' numbers, never simulated one by one: a ds's cars = min(count, storage), its
+  queue standing packed at its end, the rest spaced over the free stretch and moving round it at the ds's speed, placed in
+  the vertex shader from the clock. The simulation publishes only the ds whose drawn numbers changed; the render keeps a
+  MultiMesh a map chunk, rewritten only when a ds of it changed; a car inside the window is not drawn (the detailed ones
+  are there).
+- Costs kept out: no walk of the map's segments on a tick, an edit or a window's move (lists by chunk; the budget); no
+  allocation in the step (arrays sized with the graph); the publication by change.
 
 ## Next
 - The whole suite's result; commit and push cases A to G.

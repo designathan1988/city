@@ -43,7 +43,7 @@ with `file:line` on both sides), which the port tool reads: `python tools/tracer
 ## 3. Traffic (sheets/traffic.md)
 
 - [ ] traffic, complete: every case below, in one block (`python tools/tracer/port.py sheet traffic`)
-  - the tracer's empty `--cost` on `city.traffic.step` (tools/tracer/tracer/cost.py), needed by this area's sheets. Done when: `python tools/tracer/trace.py city.traffic.step --cost --root native/src/sim/traffic` prints the loops; the tracer's tests pass
+  - the tracer's empty `--cost` on `city.traffic.step` (tools/tracer/tracer/cost.py), needed by this area's sheets (done: `python tools/tracer/trace.py --cost city.traffic.step --root native/src/sim/traffic` prints the loops; the tracer's 20 test files pass)
   - slowing for bends (done; the note: doc/work/traffic.md)
   - lane changes (politeness, indicators, positioning) (done)
   - cars leave only out of sight (done)
