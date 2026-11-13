@@ -1,5 +1,5 @@
 """The migration of the old trackers into the register (tools/atlas/migrate.py), on made-up ledgers and tables in a
-temporary repository: every open item enters once with its origin, a closed one and a row called done stay out, a known
+temporary repository: every open item enters once with its origin, a closed one and a settled divergence stay out, a known
 cause traces the problem, a row citing a ledger's problem is related to it, a second run adds nothing, and the photos an
 open problem names are kept as its evidence."""
 import json
@@ -23,18 +23,6 @@ LEDGER = {"slug": "made-up", "problems": [
     {"id": "P2", "status": "fixed", "path": "native/src/sim/traffic/window.cpp", "what": "gone", "cause": "found"},
     {"id": "P3", "status": "open", "path": "native/src/sim/traffic/window.cpp", "what": "walkers pop in",
      "cause": "the window lists no edge", "fix": "list the edge", "found": "2026-11-10 10:00"}]}
-PENDING = """# Pending items
-
-| Id | Symptom | Root cause | Tried | Resolved when |
-|---|---|---|---|---|
-| V1 | A pole with no wires (`native/src/render/props/street_props.cpp`) | found (trace `made-up` P1): two levels | none | the wires drawn |
-| M1 | No budgets | never defined | none | defined (done: doc/specification.md) |
-| T2 | No live monitor | unknown | a sampler | the monitor reads the run |
-
-## Carried from before 2026-11-11
-
-| Z9 | carried prose is no row of this table | x | y | z |
-"""
 SPECIFICATION = """# Specification
 
 | # | Where | What it says | What is true | Status |
@@ -61,9 +49,8 @@ class Migrate(unittest.TestCase):
         with open(os.path.join(trace, "photos", "patch.png"), "wb") as fh:
             fh.write(b"\x89PNG")
         os.makedirs(os.path.join(self.root, "doc"))
-        for name, text in (("pendencias.md", PENDING), ("specification.md", SPECIFICATION)):
-            with open(os.path.join(self.root, "doc", name), "w", encoding="utf-8") as fh:
-                fh.write(text)
+        with open(os.path.join(self.root, migrate.SPECIFICATION), "w", encoding="utf-8") as fh:
+            fh.write(SPECIFICATION)
         open(os.path.join(self.root, register.REGISTER), "w").close()
 
     def by_origin(self, reg):
@@ -72,23 +59,19 @@ class Migrate(unittest.TestCase):
     def test_every_open_item_once_with_its_origin(self):
         reg = register.Register(root=self.root)
         counts = migrate.migrate(reg, self.root)
-        self.assertEqual({"ledgers": (2, 0), "log/pendencias.md": (2, 0), "doc/specification.md": (2, 0)}, counts)
+        self.assertEqual({"ledgers": (2, 0), "doc/specification.md": (2, 0)}, counts)
         got = self.by_origin(reg)
         self.assertEqual("unknown", got["ledger:made-up:P1"]["cause"])
         self.assertIn("read road_segment.cpp", got["ledger:made-up:P1"]["reading"])
         self.assertEqual("traced", got["ledger:made-up:P3"]["status"], "a known cause traces it")
         self.assertEqual("2026-11-10T10:00", got["ledger:made-up:P3"]["opened"])
         self.assertNotIn("ledger:made-up:P2", got, "a fixed problem is history")
-        self.assertFalse(any(o.endswith(" M1") for o in got), "a row called done stays out")
-        self.assertFalse(any(o.endswith(" D1") or o.endswith(" Z9") for o in got), "settled, or carried prose")
-        v1 = next(p for o, p in got.items() if o.endswith(" V1"))
-        self.assertEqual([got["ledger:made-up:P1"]["id"]], v1["related"])
-        self.assertEqual("render", v1["area"])
+        self.assertFalse(any(o.endswith(" D1") for o in got), "a divergence CLAUDE.md settled stays out")
         d6 = next(p for o, p in got.items() if o.endswith(" D6"))
         self.assertEqual([got["ledger:made-up:P3"]["id"]], d6["related"], "a divergence citing a ledger's problem")
         reg.save()
         again = register.Register(root=self.root)
-        self.assertEqual({"ledgers": (0, 2), "log/pendencias.md": (0, 2), "doc/specification.md": (0, 2)},
+        self.assertEqual({"ledgers": (0, 2), "doc/specification.md": (0, 2)},
                          migrate.migrate(again, self.root), "a second run adds nothing")
 
     def test_the_photos_an_open_problem_names_are_its_evidence(self):
@@ -120,10 +103,10 @@ class RenameRule(Migrate):
         os.makedirs(os.path.join(self.root, "doc", "old"))
         open(os.path.join(self.root, "doc", "old", "map.md"), "w").close()
         one = reg.add(title="t", symptom="s", area="docs", kind="process", reading="r", criterion="c",
-                      owner="log/old/map.md", evidence=["log/old/map.md"], origin=["o"])
+                      owner="doc/old/map.md", evidence=["doc/old/map.md"], origin=["o"])
         os.rename(os.path.join(self.root, "doc", "old"), os.path.join(self.root, "doc", "new"))
-        self.assertEqual([one], reg.rename_path("log/old", "log/new"))
-        self.assertEqual((["log/new/map.md"], "log/new/map.md"), (one["evidence"], one["owner"]))
+        self.assertEqual([one], reg.rename_path("doc/old", "doc/new"))
+        self.assertEqual((["doc/new/map.md"], "doc/new/map.md"), (one["evidence"], one["owner"]))
         reg.save()
 
 

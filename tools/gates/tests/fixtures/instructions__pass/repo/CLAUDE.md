@@ -1,1 +1,1 @@
-- The only rules, each with its marker. [c:root-rule]
+- The only rules.

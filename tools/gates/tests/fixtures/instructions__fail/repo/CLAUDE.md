@@ -1,1 +1,1 @@
-- A rule of the root. [c:root-rule]
+- A rule of the root.

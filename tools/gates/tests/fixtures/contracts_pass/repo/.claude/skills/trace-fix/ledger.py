@@ -1,1 +1,0 @@
-"""A made-up hook."""

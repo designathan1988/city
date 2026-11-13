@@ -1,6 +1,5 @@
 # The block rule's mechanism: the moves its table allows and refuses, the refusal every tool asks while a block is open (a run
-# of the orchestrator included), the shell commands the project's hook refuses and lets through, and the block's times
-# appended to the process history at its close.
+# of the orchestrator included), and the block's times appended to the process history at its close.
 import json
 import sys
 import unittest
@@ -21,7 +20,7 @@ HISTORY = "# History: the process\n\n## Block times\n\n" + block.TIMES_HEADER + 
 class BlockCase(RepoCase):
     def setUp(self):
         super().setUp()
-        (self.root / "log" / "history").mkdir(parents=True)
+        (self.root / block.HISTORY).parent.mkdir(parents=True)
         (self.root / block.HISTORY).write_bytes(HISTORY.encode("utf-8"))
 
     def block(self, *args) -> int:
@@ -78,23 +77,6 @@ class Refusals(BlockCase):
         self.block("verify")
         with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
             self.assertEqual(cli.main(run), 0)
-
-    def test_shell_commands_refused_while_open(self):
-        refused = ['"C:/Programs/Godot/godot_v4.7.2.exe" --path project', "godot --headless --path project",
-                   "cmake --build native/build-win", "python -m unittest discover tools/atlas/tests",
-                   "python tools/gates/run_gates.py --summary", "python tools/tasks/cli.py run quick --ready",
-                   "bash tools/build/build.sh core-windows", "git add -A; git commit -m x", "& Roadcraft.exe"]
-        allowed = ["git status --short", "python tools/tasks/cli.py block verify", "python tools/atlas/cli.py problems --area roads",
-                   "ls native/godot-cpp", "git diff --stat"]
-        for command in refused + allowed:
-            self.assertIsNone(block.command_refusal(command, self.root), "a closed block refuses nothing")
-        self.block("open", "US1")
-        for command in refused:
-            with self.subTest(command=command):
-                self.assertIsNotNone(block.command_refusal(command, self.root))
-        for command in allowed:
-            with self.subTest(command=command):
-                self.assertIsNone(block.command_refusal(command, self.root))
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 """Memory gates: the map file lists every source file and no file that no longer exists; CLAUDE.md stays short and is the only
-source of instructions (INSTRUCTION_ELSEWHERE, PRECEDENCE_CLAIM, NESTED_CLAUDE, MEMORY_ON: CLAUDE.md, the authority rule);
-known problems are kept in the register alone (PROBLEMS_ELSEWHERE: CLAUDE.md, the records rule)."""
+source of instructions (PRECEDENCE_CLAIM, NESTED_CLAUDE, MEMORY_ON: CLAUDE.md, the authority rule); known problems are kept in
+the register alone (PROBLEMS_ELSEWHERE: CLAUDE.md, the records rule)."""
 import json
 import os
 import re
@@ -13,11 +13,9 @@ from tasks import inputs as tree  # noqa: E402  the one owner of path globs
 
 GENERATED = (".uid", ".import", ".translation")  # Godot sidecars and import outputs: they belong to their source file
 CLAUDE_MD = "CLAUDE.md"
-CONTRACTS = "tools/gates/contracts.json"
 SETTINGS = ".claude/settings.json"
 INSTRUCTION_NAMES = ("CLAUDE.md", "CLAUDE.local.md")  # the files Claude Code loads as instructions wherever they stand
 RULES_DIR = ".claude/rules/"  # path-scoped rules, instructions too (Claude Code's memory documentation)
-MARK = re.compile(r"\[c:[a-z0-9-]+\]")
 # A claim of precedence among instructions: the words below, with a source of orders as their object (a right of way in the
 # game's own words, one road given way to by another, is no claim of this kind).
 CLAIM = re.compile(r"(?i:\bbinding over\b|\b(wins?|outranks?|overrides?|takes? precedence)\b[^.;\n]{0,40}"
@@ -118,8 +116,8 @@ def _text(ctx, path):
 
 
 def check_instructions(ctx, err):
-    """CLAUDE.md is the only source of instructions: no rule marker or precedence claim anywhere else (a citation in quotes or
-    backticks is no claim), no other instruction file Claude Code would load, auto memory off and no note left in it."""
+    """CLAUDE.md is the only source of instructions: no precedence claim anywhere else (a citation in quotes or backticks is no
+    claim), no other instruction file Claude Code would load, auto memory off and no note left in it."""
     settings = _settings(ctx)
     for path in sorted(p for p in ctx.listed if _scanned(ctx, p)):
         name = os.path.basename(path)
@@ -129,9 +127,6 @@ def check_instructions(ctx, err):
             continue
         for n, line in enumerate(_text(ctx, path).splitlines(), 1):
             bare = QUOTED.sub(" ", line)
-            if path != CONTRACTS and MARK.search(bare):
-                err("INSTRUCTION_ELSEWHERE", f"{path}:{n}", "a rule marker outside CLAUDE.md: the rule belongs in CLAUDE.md "
-                                                            "(a citation of one is written in backticks)")
             if CLAIM.search(bare):
                 err("PRECEDENCE_CLAIM", f"{path}:{n}", "a claim of precedence outside CLAUDE.md: only CLAUDE.md states what "
                                                        "wins (a citation of one is written in quotes)")

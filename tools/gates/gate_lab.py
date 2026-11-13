@@ -186,5 +186,4 @@ def check_lab_copy(ctx, src, err):
         return
     for line in sorted(found):
         err("LAB_COPY", f"{src.path}:{line}", "; ".join(f"{what} ({ref})" for what, ref in found[line])
-            + ": the roadcraft is read for what the game does, never copied; design this for this game (CLAUDE.md, "
-            "log/how-we-work.md)")
+            + ": the roadcraft is read for what the game does, never copied; design this for this game (CLAUDE.md)")

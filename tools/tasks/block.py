@@ -1,8 +1,7 @@
 # The block rule's mechanism (CLAUDE.md, Method step 5): a block is coded whole with nothing run inside it, then verified once.
 # Its state is one file, dist/block/state.json, moved only by `enter` through MOVES: closed -> open (the code written, nothing run) ->
 # verify (the one verification and the close's operations run) -> open again (a failure fixed in the code) or closed.
-# `refusal` is the one answer every gatekeeper asks (the orchestrator's `run`, build.sh, deliver.sh);
-# `command_refusal` is the same answer for one shell command line.
+# `refusal` is the one answer every gatekeeper asks (the orchestrator's `run`, build.sh, deliver.sh, km24.py).
 # `close` appends the block's times to the process history (FR-050). Standard library only.
 from __future__ import annotations
 
@@ -10,7 +9,6 @@ import argparse
 import datetime
 import json
 import os
-import re
 import sys
 from pathlib import Path
 
@@ -23,15 +21,6 @@ MOVES = {CLOSED: (OPEN,), OPEN: (VERIFY,), VERIFY: (OPEN, CLOSED)}
 WHAT = ("run", "build", "export", "commit")  # what the tools ask before they act
 STAMP = "%Y-%m-%dT%H:%M"
 SECONDS_PER_MINUTE = 60
-
-# A shell command refused while a block is open: a segment whose program is one of these, or a Python or shell call of one of
-# these entry points. Words of the commands themselves; nothing else of a command line is judged.
-ENGINES = re.compile(r"^(godot[\w.]*|roadcraft)(\.exe)?$", re.I)
-BUILDERS = {"cmake", "ninja", "make", "mingw32-make", "ctest"}
-RUN_CALLS = re.compile(
-    r"-m\s+(unittest|pytest)\b|\bpytest\b|run_gates\.py|lab_scan\.py|tools[/\\]tasks[/\\]cli\.py\s+run\b"
-    r"|tools[/\\]build[/\\](build|quick|deliver|pgo)\.sh|\bgit\s+commit\b", re.I)
-SEGMENT = re.compile(r"(?:^|[;\n|(]|&&|\|\|)\s*(?:&\s*|\.\s+|call\s+|exec\s+|start(?:-process)?\s+)?[\"']?([^\s\"';&|()]+)", re.I)
 
 
 class BlockError(Exception):
@@ -111,18 +100,6 @@ def refusal(what: str, root: Path = ROOT) -> str | None:
     return (f"refused: the block '{doc['name']}' is open (since {doc['opened']}): nothing is run, built, exported or committed "
             f"while its code is written (CLAUDE.md, the block rule). `python tools/tasks/cli.py block verify` opens the one "
             f"verification. Asked: {what}")
-
-
-def command_refusal(command: str, root: Path = ROOT) -> str | None:
-    """Why a shell command may not run now (the engine, a build, a test runner, the gates, a run, an export, a commit), or None."""
-    if load(root)["state"] != OPEN:
-        return None
-    for m in SEGMENT.finditer(command):
-        program = os.path.basename(m.group(1).replace("\\", "/")).lower()
-        if ENGINES.match(program) or program in BUILDERS:
-            return refusal(f"the command '{program}'", root)
-    hit = RUN_CALLS.search(command)
-    return refusal(f"'{hit.group(0)}'", root) if hit else None
 
 
 def main(argv: list[str]) -> int:

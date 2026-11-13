@@ -1,7 +1,7 @@
 {
  "rule": "single_doc",
  "expect": [
-  "SINGLE_DOC specsx/notes.md",
+  "SINGLE_DOC .claude/agentsx/notes.md",
   "SINGLE_DOC tools/README.md"
  ]
 }

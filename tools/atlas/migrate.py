@@ -1,12 +1,11 @@
 """Every open item of the trackers kept before the register, entered once into it (specification 001 US3, T043, T050):
 the trace ledgers under dist/trace (each open problem with its file, its cause or the reading the ledger planned, the
-time it was found), the structured rows of log/pendencias.md (one problem per id; a row its last column calls done, or
-marked a wrong row, is history and stays out), and the rows of doc/specification.md's divergences and slowness the
-method has not settled. Each enters through the register's one writer (problems.Register.add) with its origin
-(`ledger:<slug>:<id>`, `log/pendencias.md:<line> <id>`, `doc/specification.md:<line> <id>`); an origin already in the
-register is passed over, so the migration may run again and adds nothing twice. A row citing a ledger's problem (trace
-`<slug>` P<n>, ledger P<n>) is related to it. `--evidence` moves the photos an open problem's words name from its trace's
-folder to dist/evidence/<id>/ and names them as its evidence. The counts per origin are printed.
+time it was found) and the rows of doc/specification.md's divergences and slowness the method has not settled (the old
+log/pendencias.md was folded into the register in 45ba8a5d and left the tree). Each enters through the register's one
+writer (problems.Register.add) with its origin (`ledger:<slug>:<id>`, `doc/specification.md:<line> <id>`); an origin
+already in the register is passed over, so the migration may run again and adds nothing twice. A row citing a ledger's
+problem (trace `<slug>` P<n>, ledger P<n>) is related to it. `--evidence` moves the photos an open problem's words name
+from its trace's folder to dist/evidence/<id>/ and names them as its evidence. The counts per origin are printed.
 
     python tools/atlas/migrate.py [--evidence] [--dry-run]
 """
@@ -25,25 +24,15 @@ from atlas import problems as register  # noqa: E402
 
 LEDGERS = "dist/trace"
 EVIDENCE = "dist/evidence"
-PENDING = "log/pendencias.md"
 SPECIFICATION = "doc/specification.md"
 OPEN = ("open",)
 TITLE = 100                                  # the most characters of a title made from a longer text
 ROW = re.compile(r"^\|\s*([A-Z]+-?\d+)\s*\|(.*)\|\s*$")
-CARRIED = "## Carried from before"           # where log/pendencias.md's structured rows end
-DONE = re.compile(r"\bdone\b|\bWRONG ROW\b", re.I)
 NOT_KNOWN = re.compile(r"^\s*(unknown|not read|not found|to read|\?|-|none)\b", re.I)
 CITED = re.compile(r"(?:trace `([\w-]+)`\s*|ledger\s+)(P\d+)")
-PATH = re.compile(r"`((?:native|project|tools|log)/[^`\s:]+)")
 PHOTO = re.compile(r"[\w./-]+\.png")
 DEFAULT_TRACE = "port-from-nov7"             # the trace a row means when it cites a ledger problem by id alone
 NO_OWNER = "unknown"                         # an item that names no file: its owner is found with its cause
-BY_PREFIX = {                                # a row's id prefix: (its area when no path says, its kind)
-    "R": ("simulation", "copy"), "S": ("simulation", "defect"), "F": ("product", "missing-feature"),
-    "M": ("performance", "performance"), "V": ("render", "defect"), "D": ("docs", "process"),
-    "I": ("process", "process"), "A": ("tools", "architecture"), "T": ("tools", "missing-feature"),
-    "L": ("process", "process"),
-}
 SETTLED = re.compile(r"^\s*to fix", re.I)    # a divergence of doc/specification.md that CLAUDE.md settled (US1)
 
 
@@ -87,37 +76,6 @@ def cells(line):
     return [c.strip() for c in line.strip().strip("|").split("|")]
 
 
-def pending_items(root):
-    """(origin, fields, related ledger origins) of the structured rows of log/pendencias.md not done."""
-    path = os.path.join(root, PENDING)
-    if not os.path.isfile(path):
-        return
-    with open(path, encoding="utf-8") as fh:
-        lines = fh.read().split("\n")
-    for number, line in enumerate(lines, 1):
-        if line.startswith(CARRIED):
-            break
-        match = ROW.match(line)
-        if not match:
-            continue
-        row = cells(line)
-        if len(row) < 5 or DONE.search(row[4]) or DONE.search(row[1]):
-            continue
-        pid, symptom, cause, tried, resolved = row[:5]
-        prefix = re.match(r"[A-Z]+", pid).group()
-        area, kind = BY_PREFIX.get(prefix, ("process", "defect"))
-        named = PATH.search(line)
-        fields = {"title": f"{pid}: {short(symptom)}", "symptom": symptom, "criterion": resolved or "the row's symptom gone",
-                  "area": areas.area_of(named.group(1)) if named else area, "kind": kind,
-                  "owner": named.group(1) if named else NO_OWNER, "spec": f"the {area} specification"}
-        if cause and not NOT_KNOWN.match(cause):
-            fields["cause"] = cause
-        else:
-            fields["reading"] = f"what was tried: {tried}" if tried else "read the code the row names"
-        cited = [f"ledger:{slug or DEFAULT_TRACE}:{p}" for slug, p in CITED.findall(line)]
-        yield f"{PENDING}:{number} {pid}", fields, cited
-
-
 def specification_items(root):
     """(origin, fields, related) of doc/specification.md's divergences still open and its causes of slowness."""
     path = os.path.join(root, SPECIFICATION)
@@ -152,7 +110,6 @@ def migrate(reg, root):
     counts = {}
     pending = []
     for source, items in (("ledgers", ((o, f, None, w) for o, f, w in ledger_items(root))),
-                          (PENDING, ((o, f, c, None) for o, f, c in pending_items(root))),
                           (SPECIFICATION, ((o, f, c, None) for o, f, c in specification_items(root)))):
         added = passed = 0
         for origin, fields, cited, when in items:
