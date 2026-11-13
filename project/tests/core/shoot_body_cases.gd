@@ -125,6 +125,7 @@ func _bled(walkers: Array) -> void:
 		return
 	var kept: int = _census().kept
 	var pieces: int = _census().pieces
+	var marks: int = CityStore.query(&"damage_probe").blood_marks
 	var hurt: Dictionary = walkers[0]
 	# a round in a leg knocks them down; one in the legs of somebody lying takes a leg off, a grave wound: down for good, bleeding
 	# (shoot_people.cpp; the legs lie behind the middle, the head ahead the way they faced, shoot_commands.cpp). Rounds in the trunk
@@ -145,6 +146,14 @@ func _bled(walkers: Array) -> void:
 	t.check(not down.is_empty() and down.fallen and down.bleed > 0.0 and who.has(hurt.id), "wounded for good: down, bleeding, a body (%s; bodies of %s)" % [down, who])
 	# the round in the legs of somebody lying takes one off: a piece of the same body on a ragdoll of its own
 	t.check(int(down.get("lost", 0)) != 0 and _census().pieces > pieces, "the limb shot off is a piece of the body (lost %d; %d pieces, %d before)" % [int(down.get("lost", 0)), _census().pieces, pieces])
+	# lying there for good, the wounded bleed where they lie: a pool at the stump once the body is at rest (Prender-279)
+	for f in BODY_FRAMES:
+		if _census().moving == 0:
+			break
+		await t.get_tree().process_frame
+	await _frames(BODY_SETTLE_FRAMES)
+	var pooled: int = CityStore.query(&"damage_probe").blood_marks
+	t.check(pooled > marks, "the wounded lying for good bleed where they lie (blood marks %d -> %d)" % [marks, pooled])
 	t.ticks(BLEED_TICKS)
 	await _frames(BODY_SETTLE_FRAMES)
 	t.check(_census().kept > kept, "who bled out stays where they lay, dead (%d kept, %d before)" % [_census().kept, kept])

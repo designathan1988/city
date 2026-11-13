@@ -39,8 +39,11 @@ public:
 	// elbows at half of it, halfway along the arm.
 	void begin(const godot::Vector3 joints[RAGDOLL_JOINTS], const godot::Vector3 &velocity, const godot::Vector3 &tip, float scatter, const godot::Vector3 &brace,
 			Rng &rng);
-	// One step; where particles struck the ground faster than `hard_ms` (a body landing hard) go into `hits`, how many returned.
-	int step(float dt, const Ground &ground, float hard_ms, godot::Vector3 hits[RAGDOLL_HITS]);
+	// One step; where particles of `bleeds` (a bit each, ragdoll_parts.h Joint) struck the ground faster than `hard_ms` (a wound landing
+	// hard) go into `hits`, how many returned.
+	int step(float dt, const Ground &ground, float hard_ms, uint32_t bleeds, godot::Vector3 hits[RAGDOLL_HITS]);
+	// The middle of the particles of `particles` it keeps (a bit each); the pelvis when it keeps none of them.
+	godot::Vector3 middle_of(uint32_t particles) const;
 	void set_walls(std::vector<BodyWall> walls) { walls_ = std::move(walls); }
 	// After begin: only these parts (a bit each, RAGDOLL_PARTS order) are a body of their own, a limb torn off: the sticks among their
 	// particles hold, every other particle stays on the piece's root (the joint it came off at).

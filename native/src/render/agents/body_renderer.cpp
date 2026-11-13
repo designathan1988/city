@@ -102,6 +102,7 @@ void BodyRenderer::add(const BodySpec &spec) {
 	b.floor = spec.at.y;
 	b.lost = spec.lost;
 	b.charred = spec.charred;
+	b.bleeds = spec.bleeds;
 	const Vector3 front(std::cos(spec.heading), 0, std::sin(spec.heading));
 	Basis stands_b;
 	stands_b.set_columns(AXIS_Y.cross(front), AXIS_Y, front);
@@ -247,14 +248,14 @@ void BodyRenderer::update(float dt, const Ragdoll::Ground &ground, float hard_ms
 			if (o.family != b.family && o.doll.pelvis().distance_squared_to(b.doll.pelvis()) < NEAR_BODY_M * NEAR_BODY_M) b.doll.push_out_of(o.doll);
 		Vector3 hits[RAGDOLL_HITS];
 		for (int k = 0; k < steps; k++) {
-			const int n = b.doll.step(STEP_S, [&](float x, float z) { return std::max(ground(x, z), floor); }, b.pool > 0.f ? hard_ms : FOR_GOOD_S, hits);
+			const int n = b.doll.step(STEP_S, [&](float x, float z) { return std::max(ground(x, z), floor); }, b.pool > 0.f ? hard_ms : FOR_GOOD_S, b.bleeds, hits);
 			for (int h = 0; h < n && b.splashes < splashes_most; h++, b.splashes++) marks_.push_back({ hits[h], 0.f });
 		}
 		pose(b);
 		if (b.doll.asleep()) deepest_ = std::max(deepest_, b.doll.deepest([&](float x, float z) { return std::max(ground(x, z), floor); }));
-		if (b.doll.asleep() && b.pool > 0.f && !b.pooled) { // at rest: the blood spreads from under it
+		if (b.doll.asleep() && b.pool > 0.f && !b.pooled) { // at rest: the blood spreads from under its wound
 			b.pooled = true;
-			const Vector3 at = b.doll.pelvis();
+			const Vector3 at = b.doll.middle_of(b.bleeds);
 			marks_.push_back({ Vector3(at.x, std::max(ground(at.x, at.z), floor), at.z), b.pool });
 		}
 	}

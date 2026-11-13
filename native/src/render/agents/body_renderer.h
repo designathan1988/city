@@ -25,6 +25,7 @@ struct BodySpec {
 	uint32_t lost = 0; // parts gone, a bit each (ragdoll.h order)
 	bool charred = false;
 	float pool = 0; // the blood it leaves where it comes to rest, a share of a pool's size; 0 none (the living)
+	uint32_t bleeds = 0; // the particles its wounds bleed from (ragdoll_parts.h Joint, a bit each): where it splashes and pools
 	uint32_t piece = 0; // a limb torn off: its parts (ragdoll.h order), the body of its own; `lost` then every other part. 0: a whole body
 	int clip = -1; // the clip it was drawn in at the blow (PeopleRenderer::drawn_pose), -1 the idle
 	float phase = 0; // and how far into it
@@ -71,7 +72,7 @@ private:
 		bool from_drawn = false; // fell from its walker's drawn pose, not the idle
 		bool piece = false; // a limb torn off
 		uint32_t family = 0; // a body and the limbs torn off it
-		uint32_t lost = 0;
+		uint32_t lost = 0, bleeds = 0;
 		bool charred = false;
 		godot::AABB box; // where its skin lies now: each bone's place, out by the variation's reach along the bone's axes
 	};

@@ -5,6 +5,7 @@
 #include "render/effects/effect_world.h"
 
 #include "core/math.h"
+#include "render/agents/ragdoll_parts.h"
 
 #include <algorithm>
 #include <cmath>
@@ -38,17 +39,44 @@ uint32_t parts_gone(uint32_t limbs) {
 	return ((limbs & CAS_LIMB_HEAD) != 0 ? SKULL : 0) | ((limbs & CAS_LIMB_ARM_L) != 0 ? FOREARM_L : 0) | ((limbs & CAS_LIMB_ARM_R) != 0 ? FOREARM_R : 0) |
 			((limbs & CAS_LIMB_LEG_L) != 0 ? CALF_L : 0) | ((limbs & CAS_LIMB_LEG_R) != 0 ? CALF_R : 0);
 }
+
+constexpr uint32_t bit(ragdoll::Joint j) { return 1u << j; }
+constexpr int STRUCK_KINDS = 7; // none, head, trunk, left arm, right arm, left leg, right leg (CAS_STRUCK_SHIFT)
+constexpr uint32_t STRUCK_MASK = 7;
+
+// The particles a casualty bleeds from (ragdoll_parts.h Joint): the struck part's, with none struck (a blow, a body blown apart) the
+// trunk's; a limb that came off bleeds at its stump, where the part closes (BodyRenderer::pose), and what it took bleeds nowhere.
+uint32_t bleeding(uint32_t struck, uint32_t gone) {
+	using namespace ragdoll;
+	constexpr uint32_t AT[STRUCK_KINDS] = { bit(PEL) | bit(CHE) | bit(BEL), bit(HEA) | bit(TOP), bit(CHE) | bit(BEL), bit(LE) | bit(LW), bit(RE) | bit(RW),
+		bit(LK) | bit(LA), bit(RK) | bit(RA) };
+	struct Loss {
+		uint32_t limb, stump, taken;
+	};
+	constexpr Loss LOSSES[] = { { CAS_LIMB_HEAD, bit(HEA), bit(TOP) }, { CAS_LIMB_ARM_L, bit(LE), bit(LW) }, { CAS_LIMB_ARM_R, bit(RE), bit(RW) },
+		{ CAS_LIMB_LEG_L, bit(LK), bit(LA) | bit(LT) }, { CAS_LIMB_LEG_R, bit(RK), bit(RA) | bit(RT) } };
+	uint32_t at = AT[struck < uint32_t(STRUCK_KINDS) ? struck : 0], taken = 0;
+	for (const Loss &l : LOSSES)
+		if ((gone & l.limb) != 0) {
+			at |= l.stump;
+			taken |= l.taken;
+		}
+	return at & ~taken;
+}
 } // namespace
 
 void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 	const uint32_t kind = e.v & CAS_KIND_MASK;
 	const uint32_t lost = (e.v >> CAS_LOST_SHIFT) & CAS_LIMB_MASK, severed = (e.v >> CAS_SEVERED_SHIFT) & CAS_LIMB_MASK;
-	const bool charred = (e.v & CAS_CHARRED) != 0, bled = (e.v & CAS_BLED) != 0;
+	const bool charred = (e.v & CAS_CHARRED) != 0, bled = (e.v & CAS_BLED) != 0, crawl = (e.v & CAS_CRAWL) != 0;
+	const uint32_t struck = (e.v >> CAS_STRUCK_SHIFT) & STRUCK_MASK;
 	const float ground = s.terrain.height_at(e.x, e.z);
 	float px = e.x - e.b, pz = e.z - e.c;
 	const float pl = std::hypot(px, pz);
 	if (pl > NO_PUSH_BELOW_M) { px /= pl; pz /= pl; } else { px = std::cos(e.a); pz = std::sin(e.a); }
-	const float power = bled ? 0.f : e.d * (kind == CAS_TORN ? TORN_PUSH : 1.f);
+	// a round throws nobody: its knock-back never passes the recoil the shooter feels (https://en.wikipedia.org/wiki/Stopping_power), so
+	// somebody shot (a struck part) goes down from where they stand; a blow throws, a trip pitches forward
+	const float power = bled || struck != 0 ? 0.f : e.d * (kind == CAS_TORN ? TORN_PUSH : 1.f);
 	// Someone knocked down gets up when the simulation says (lying hurt for good, the simulation's long while: dying there makes the
 	// body a dead one, BodyRenderer::die); the effects clock runs a little late, so the body goes a moment early. The dead stay (0).
 	const float life = kind == CAS_KNOCKED && e.dx > 0.f ? std::max(LEAST_LIFE_S, e.dx - params_.body_lead) : 0.f;
@@ -67,7 +95,9 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 		b.lost = parts_gone(lost | severed);
 		b.rises = kind == CAS_KNOCKED;
 		b.who = e.id;
-		b.pool = kind == CAS_KNOCKED ? 0.f : kind == CAS_TORN ? params_.pool_torn : 1.f; // the dead bleed where they come to rest
+		// the dead bleed where they come to rest, and so do the gravely hurt lying there for good (crawl); who only fell does not
+		b.pool = kind == CAS_TORN ? params_.pool_torn : kind == CAS_DEAD || crawl ? 1.f : 0.f;
+		b.bleeds = bleeding(struck, lost | severed);
 		b.walls = walls_about(s, *street_look_, e.x, e.z, WALLS_REACH_M);
 		const bool walker = e.id >= 0 && e.id < int(s.traffic.peds.size());
 		b.variation = people_->variation_of(e.u, walker ? int(s.traffic.peds[size_t(e.id)].age) : -1);

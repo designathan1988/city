@@ -175,7 +175,7 @@ void Ragdoll::damp_joints(float dt) {
 	}
 }
 
-int Ragdoll::step(float dt, const Ground &ground, float hard_ms, Vector3 hits[RAGDOLL_HITS]) {
+int Ragdoll::step(float dt, const Ground &ground, float hard_ms, uint32_t bleeds, Vector3 hits[RAGDOLL_HITS]) {
 	float floor_y[PARTICLES];
 	float fastest = 0;
 	int hit = 0;
@@ -193,7 +193,8 @@ int Ragdoll::step(float dt, const Ground &ground, float hard_ms, Vector3 hits[RA
 			off_walls(i);
 			if (now_[i].y >= floor_y[i]) continue;
 			// coming down on the ground faster than hard_ms (the step's own fall, before the sticks' first pass corrects it)
-			if (k == 0 && hit < RAGDOLL_HITS && now_[i].y - was_[i].y < -hard_ms * dt) hits[hit++] = Vector3(now_[i].x, floor_y[i] - LIMB_HALF_M, now_[i].z);
+			if (k == 0 && hit < RAGDOLL_HITS && (bleeds >> i & 1u) != 0 && now_[i].y - was_[i].y < -hard_ms * dt)
+				hits[hit++] = Vector3(now_[i].x, floor_y[i] - LIMB_HALF_M, now_[i].z);
 			now_[i].y = floor_y[i];
 			was_[i].x = now_[i].x + (was_[i].x - now_[i].x) * SLIDE_KEEP;
 			was_[i].z = now_[i].z + (was_[i].z - now_[i].z) * SLIDE_KEEP;
@@ -234,5 +235,16 @@ void Ragdoll::frames(Transform3D out[RAGDOLL_PARTS]) {
 }
 
 Vector3 Ragdoll::pelvis() const { return now_[PEL]; }
+
+Vector3 Ragdoll::middle_of(uint32_t particles) const {
+	Vector3 sum;
+	int n = 0;
+	for (int i = 0; i < PARTICLES; i++)
+		if ((particles >> i & 1u) != 0 && (kept_ >> i & 1u) != 0) {
+			sum += now_[i];
+			n++;
+		}
+	return n > 0 ? sum / float(n) : now_[PEL];
+}
 
 } // namespace city
