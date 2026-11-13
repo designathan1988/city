@@ -141,7 +141,7 @@ def cmd_run(argv: list[str]) -> int:
     if not sel.tasks:
         print("empty selection: no task to run", file=sys.stderr)
         return USAGE
-    why = block.refusal("run " + " ".join(names), root)
+    why = block.refusal("run " + " ".join(names), root, [t.name for t in sel.tasks])
     if why:
         print(why, file=sys.stderr)
         return FAILED
@@ -153,6 +153,7 @@ def cmd_run(argv: list[str]) -> int:
     results = run(sel.tasks, jobs=a.jobs, on_result=lambda r: _print_result(r, expected.get(r.name, ())), root=root,
                   use_cache=not sel.no_cache, capacity=capacity, label="-".join(names)[:40], on_progress=print_progress,
                   on_line=print_line)
+    block.record({r.name: r.status for r in results}, root)  # a failed check is not run again before its cause is named
     passed = sum(r.status in PASSED for r in results)
     counts = {}
     for r in results:

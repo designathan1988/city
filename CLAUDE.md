@@ -17,43 +17,25 @@ is spoken to in Portuguese; repository text is English.
   start prints it with the command that traces it (`python .claude/hooks/port_state.py` prints it again). Told to port, start
   there at once; never ask what to do next.
 
-## One functionality, start to end
+## One functionality, start to end: the skill `port`
 
-Nothing read is lost to a compaction, in the port and in any other work: one note, `doc/work/<name>.md` (the block's name),
-holds the owner's orders of the session in their words, what the reading found (facts with `file:line`), the design of each
-case, what is done and what is left. It is written before the first line of code and again as the work goes (the hook asks
-for it every 15 minutes it was not written, tells a compaction's summary what to keep, and gives the note back whole after).
-After a compaction the work goes on from the note, never from memory. No other document is written on the way.
+The procedure is the project's skill **`port`** (`.claude/skills/port/SKILL.md`): invoke it with the Skill tool before the first
+tool call of any port work, and again after every compaction. What it says in steps, the tools hold by force; these hold always:
 
-1. **Load, before anything.** The skills the work needs (the Skill tool) and Context7's tools (ToolSearch,
-   `select:mcp__plugin_context7_context7__resolve-library-id,mcp__plugin_context7_context7__query-docs`). The hook refuses an
-   edit of the game's code until both were used in the session.
-2. **The functionality.** The first unchecked line of `doc/port.md` with every case under it; its area is the port tool's
-   argument.
-3. **One look, once**: the one test or photo that shows the functionality's state now (`python tools/tasks/cli.py run <task>`). It is
-   the only run before the end.
-4. **Trace both games, then read.** `python tools/tracer/port.py sheet <area>` traces the whole functionality in both games
-   in one run, about a minute (what each side holds that the other lacks; each side's loops; the files it reached, in
-   `dist/port/<area>.json`). For a closer question: `python tools/tracer/trace.py <START> --depth N --state --root <files>`
-   (`--list` names the starts; `--feature <path:line>`, `--conditions`, `--cases`, `--cost`). Then its code is read
-   whole, in both games, by the session itself (no agent reads for it), until what it does, when, with which values and cases
-   is understood, and which of the reference's costs must not come.
-5. **Context7** (`resolve-library-id`, then `query-docs`) for each API the code will call; the internet for a design decision
-   or a value of the real world (a norm or a published method, not the reference's number).
-6. **Code the whole functionality.** `python tools/tasks/cli.py block open <area>`, the note `doc/work/<area>.md` written,
-   then every case of it, complete, in this game's architecture and names. While it is coded nothing runs: no build, test, measurement, photo or gate.
-7. **Check at the end, once.** `python tools/tasks/cli.py block verify`; both DLLs (`tools/build/build.sh core-windows`); its
-   tests (`python tools/tasks/cli.py run <tasks>`); `python tools/gates/run_gates.py --file X` on the changed files
-   and `python tools/gates/lab_scan.py` (nothing copied); photos aimed at its elements (day and night when light
-   changes), each one opened, looked at and analysed for errors; a quick measure of CPU, GPU and memory (`lab_test`, the
-   frame and the step in the tests' lines) against `doc/specification.md`. A failure: `superpowers:systematic-debugging`, the cause read
-   in the code and fixed there, only the failed check run again; never a guess tried by running.
-8. **A pass.** The line checked in `doc/port.md`; commit (with `file:line`) and push to `origin/main`; `block close`; the next
-   line at once.
-
-Skills: `superpowers:systematic-debugging` on a failure, `superpowers:verification-before-completion` before saying done, the
-`speckit-*` skills when the owner asks for a specification. A skill's step that runs a test while coding, writes a plan
-document or stops to ask does not apply here: this file decides.
+- **Nothing runs while code is written.** Between `block open` and `block verify` no build, test, measurement, photo, gate or
+  engine. The tools refuse; no way round them is looked for.
+- **A failed check is never run again as it is.** Its cause is read in the code (`superpowers:systematic-debugging`) to a
+  `file:line`, then `block open --cause "<check>: <file:line>: <why>"`, the fix, `block verify`, that check once. A guess is no
+  cause. Two verifications may fail; a third stops the work and the owner is told.
+- **Memory is no source.** Context7 for every API the code calls; the internet for every design decision and every value of
+  the real world, the source's own words cited in the data.
+- **Skills are used, not named**: `port` for the procedure, `superpowers:systematic-debugging` on a failure,
+  `superpowers:verification-before-completion` before a commit, the `speckit-*` skills when the owner asks for a
+  specification. A skill's step that runs a test while coding, writes a plan document or stops to ask does not apply here.
+- **The note `doc/work/<name>.md`** holds the owner's orders in their words, what was read (facts with `file:line`), each
+  case's design, what is done and what is left. Written before the first line of code and as the work goes; after a
+  compaction the work goes on from it, never from memory. No other document is written on the way.
+- **The session does its own work**: no agent reads, traces or codes the port.
 
 ## Focus
 
@@ -110,10 +92,11 @@ document or stops to ask does not apply here: this file decides.
 | What | Command |
 |---|---|
 | Where the port stands | `python .claude/hooks/port_state.py` (the board: `doc/port.md`) |
+| The procedure | the skill `port` (Skill tool) |
 | Both games traced for a functionality | `python tools/tracer/port.py sheet <area> [--feature N]` · `python tools/tracer/port.py check` |
 | Trace | `python tools/tracer/trace.py <START> --depth N --state --root <feature files>` (`--list` names the starts) |
 | What each game has | `python tools/atlas/cli.py inventory [--area A] [--game reference\|city] [--unpaired]` |
-| A feature's block | `python tools/tasks/cli.py block open <name>` · `block verify` · `block close` · `block status` |
+| A block | `python tools/tasks/cli.py block open <name>` · `block verify` · `block open --cause "<check>: <file:line>: <why>"` · `block close` · `block status` |
 | Build both DLLs | `tools/build/build.sh core-windows` |
 | One test or photo plan | `python tools/tasks/cli.py run <task>` (names: `python tools/tasks/cli.py run tests --list`) |
 | Gates of a file · nothing copied | `python tools/gates/run_gates.py --file X` · `python tools/gates/lab_scan.py` |

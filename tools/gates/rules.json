@@ -31,7 +31,8 @@
   ],
   "doc_places": [
     ".claude/agents",
-    ".claude/skills"
+    ".claude/skills",
+    ".claude/rules"
   ],
   "instruction_skip": [
     "native/godot-cpp",

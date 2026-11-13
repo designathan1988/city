@@ -16,7 +16,6 @@ CLAUDE_MD = "CLAUDE.md"
 ORDER_SOURCES = (CLAUDE_MD,)  # the project's only source of orders
 SETTINGS = ".claude/settings.json"
 INSTRUCTION_NAMES = ("CLAUDE.md", "CLAUDE.local.md")  # the files Claude Code loads as instructions wherever they stand
-RULES_DIR = ".claude/rules/"  # path-scoped rules, instructions too (Claude Code's memory documentation)
 # A claim of precedence among instructions: the words below, with a source of orders as their object (a right of way in the
 # game's own words, one road given way to by another, is no claim of this kind).
 CLAIM = re.compile(r"(?i:\bbinding over\b|\b(wins?|outranks?|overrides?|takes? precedence)\b[^.;\n]{0,40}"
@@ -104,12 +103,13 @@ def _text(ctx, path):
 
 
 def check_instructions(ctx, err):
-    """CLAUDE.md is the only source of instructions: no precedence claim anywhere else (a citation in quotes or backticks is
-    no claim), no other instruction file Claude Code would load."""
+    """CLAUDE.md is the one file of orders (its path-scoped rules, .claude/rules, and the project's skills, .claude/skills, say
+    how they are carried out): no precedence claim anywhere else (a citation in quotes or backticks is no claim), no other
+    CLAUDE.md Claude Code would load."""
     settings = _settings(ctx)
     for path in sorted(p for p in ctx.listed if _scanned(ctx, p)):
         name = os.path.basename(path)
-        if path != CLAUDE_MD and (name in INSTRUCTION_NAMES or path.startswith(RULES_DIR)) and not _excluded(ctx, path, settings):
+        if path != CLAUDE_MD and name in INSTRUCTION_NAMES and not _excluded(ctx, path, settings):
             err("NESTED_CLAUDE", path, "an instruction file other than the root's CLAUDE.md: its orders belong in "
                                        "that file")
         if path in ORDER_SOURCES:

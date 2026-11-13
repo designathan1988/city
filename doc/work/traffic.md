@@ -77,14 +77,59 @@ G. Lanes in the route (row 7). find_route over (segment, lane of entry) states: 
 H. Far traffic as flows, an adaptive window (row 8): NOT in this block. It replaces meso.cpp and window.cpp (the far model)
    and adds a render of far cars; it stays open under the traffic line.
 
-## Coded so far (update as each is done)
-- nothing yet.
+## Coded so far (nothing built nor run yet)
+- A, B, C, D, E, F, G are written (2026-11-13). Files: sim/traffic/driver.h (new), vehicle_speed.cpp (bend_speed, conn_top,
+  turn_limit, bend_ahead, follow_accel; conn_speed and turn_speed_kmh gone), lane_change.cpp (MOBIL with politeness, lc_want and
+  lc_lead), vehicle_motion.cpp (driver_of, patience, bends, positioning cap, in_sight, wander, finish_accel's pedal),
+  connector_motion.cpp, junction_gate.cpp:50, routing.cpp (states = segment x lane of entry, next_of gone), astar.h (astar_to
+  with a goal predicate), lane_graph.cpp (Conn::bend in make_curve, set_bend for DirSeg), lane_graph_types.h, motion_law.h
+  (Lead::a), traffic_state.h (Vehicle::temper, lc_want, lc_lead; route_next gone), traffic_params.h (22 new keys),
+  traffic_system.h/.cpp (signal_side in the look bits), vehicle_pose.cpp (signal_side), state/pose_buffer.h (LOOK_SIGNAL_SHIFT 25,
+  SIGNAL_*), demand.cpp (temper drawn), render/agents: agent_meshes.h (AgentTag SIGNAL_LEFT, SIGNAL_RIGHT), car_parts.cpp
+  (indicator lenses tagged by side, +x taken as the vehicle's left: check on the photo), agent_renderer.cpp (custom.a = signal),
+  project/render/shaders/agents.gdshader (tags 8, 9), lamp_radiance.gd, data: catalog/traffic.json (params, classes rows of bus
+  and truck, _drive_doc), render/materials.json (signal_hz, signal_duty), render/agents.json (trim.signal_lit), the two
+  schemas, doc/map.md (driver.h).
+- H (far traffic as flows) is not coded: it stays open.
+
+## Verification so far (2026-11-13, block in verify)
+- Both DLLs build (one old warning, bus_body.cpp:254, not this block's). First run: the 8 traffic scenes passed.
+- New probe and test: native/src/api/city_core_drive_probe.cpp (`driving_census`, bound in city_core_jobs.cpp, route in
+  project/game/store/store_api.gd), project/tests/core/driving_test.gd + .tscn, task in tools/tasks/suites.json, map line.
+- Failures found by the checks and their causes, each fixed in the code:
+  1. Turns entered 4.3 m/s over the bend speed: the following law only leans toward a falling target. Fix: `held_to`
+     (vehicle_speed.cpp) holds the acceleration to the braking curve after finish_accel, in step_lane and step_connector.
+     Now 0.00 m/s over in 462 passes.
+  2. No lane change was ever signalled: pick_connector (junction_gate.cpp:116) reads only the vehicle's own lane, so the
+     mandatory branch never ran and cars reached their line on the wrong lane and were pushed across by retry_route
+     (routing.cpp:168). Fix: choose() takes the needed lane from lane_reaches/lane_toward along the street; step_lane's
+     ci < 0 branch keeps room for the changes (lc_crawl_ms floor) and retries only when no lane reaches the turn.
+     Now 126 signalled, 98 made after their signal, 21 forced at a line.
+  3. A bicycle jumped 1.5 m: cycle_shift is lane 0's alone. Fix: move_vehicle_lane carries the band into lc_off.
+  4. Bodies slid sideways by time (a standing one at 2 m/s). Fix: a change is a path: lc_rate is metres sideways per metre
+     driven (lane_list.cpp, integrate in vehicle_motion.cpp), never steeper than the new key lc_slope (0.35).
+  5. "no body stands in another: 65 times, the deepest 0.89 m" (vehicle_motion_test). First guess wrong (a lane a slider
+     still stands over: gaps_open now refuses it, kept, but it was not this case). Read from the probe's rows (slid_from,
+     lc_clear added to vehicle_bodies' rows): a body changing out of a lane stopped driving against whoever is ahead of it on
+     that lane while still over it, and drove through it. Fix: lane_leads (vehicle_motion.cpp) takes the old lane's vehicles
+     ahead while v.slid_from stands; evaluate (lane_change.cpp) starts a change only with the road to get its body out of its
+     lane before its leader there. vehicle_motion_test and driving_test pass (130 signalled, 88 made, 22 forced).
+  6. yard_test failed once the fleet moved: 46 of 54 docks with a way at a site the test picks from where a vehicle stands.
+     Not the traffic's: registered (yard.cpp, the test's site), not worked.
+- The owner, during the verification: "o que eu mandei sobre não ficar rodando teste e processo e corrigir no código". Six
+  build-and-test rounds were run in this verification, one of them on a guess. From here: the whole suite's run (started
+  19:3x, in the background) is the one final check; nothing else is started until it ends; a failure is read to its cause in
+  the code before only that check runs again.
+- Counters added: TrafficState::lane_signals, lane_changes, lane_forced.
+- Settings: the node and headless Chrome processes the owner saw are MCP servers of account plugins, three copies; turned off
+  for this project (.claude/settings.json superpowers-chrome false; .claude/settings.local.json syncClaudeAiPlugins false).
 
 ## Next
-- Code A, B, C, D, E, F, G in that order (files: driver.h new, traffic_state.h, traffic_params.h, traffic.json,
-  vehicle_speed.cpp, motion_law.h, vehicle_motion.cpp, connector_motion.cpp, lane_change.cpp, lane_graph.cpp and where ds is
-  built, lane_graph_types.h, routing.cpp, astar.h, demand.cpp, traffic_system.cpp, pose_buffer.h, agent_renderer.cpp,
-  car_parts.cpp, agent_meshes.h, agents.gdshader, doc/map.md for driver.h).
-- Then `block verify`, both DLLs, vehicle_motion_test, traffic_hash_test (its digest moves: new draws; bless with the cause),
-  junction_sweep_test, records_traffic_test, window_traffic_test, street_crossing_test, transit_test, yard_test, lab_test
-  (CPU, GPU, memory), photos near vehicles day and night, gates of the changed files, lab_scan.
+- Wait for the whole suite (`python tools/tasks/cli.py run tests`, running). Then, once each: photos of vehicles day and night
+  (an indicator lit on the turn's side), lab_test alone for CPU, GPU and memory, the gates of the changed files, lab_scan.
+- Tests: vehicle_motion_test, traffic_hash_test (its digest moves: new draws in new_vehicle, bless with the cause),
+  junction_sweep_test, records_traffic_test, window_traffic_test, street_crossing_test, transit_test, yard_test, flow_control_test,
+  e2e, lab_test (CPU, GPU, memory).
+- Photos: setViewNear vehicle, day and night; look for a lit indicator on the right side of a turning car (if it shows on the
+  wrong side, the tags in car_parts.cpp lens_pair swap).
+- Gates of the changed files, lab_scan; check the traffic line's cases in doc/port.md (H stays open); commit, push, block close.

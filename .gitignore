@@ -16,12 +16,13 @@ __pycache__/
 *.swp
 .DS_Store
 Thumbs.db
-# .claude/: only the project's settings, hooks, agents and skills are versioned; everything else there is the sessions' runtime
+# .claude/: only the project's settings, hooks, agents, skills and rules are versioned; everything else there is the sessions' runtime
 /.claude/*
 !/.claude/settings.json
 !/.claude/hooks/
 !/.claude/agents/
 !/.claude/skills/
+!/.claude/rules/
 *.translation
 # Where this machine's tools are (tools/tasks/locations.py): the machine's own, never committed
 tools/tasks/local.json

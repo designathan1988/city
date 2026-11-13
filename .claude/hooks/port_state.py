@@ -23,8 +23,11 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from port_gate import CONTEXT7, block, gate  # noqa: E402  the hook's refusals (PreToolUse)
+
 BOARD = ROOT / "doc" / "port.md"
-BLOCK = ROOT / "dist" / "block" / "state.json"
 WORK = ROOT / "doc" / "work"
 LINE = re.compile(r"^- \[( |x|-)\] (.+)$")
 NEXT_HEADING = re.compile(r"^## +Next\b", re.IGNORECASE)
@@ -36,9 +39,6 @@ GIT_SECONDS = 5
 NOTE_SECONDS = 900   # the note older than this while tools run: it is asked for
 ASKED = ROOT / "dist" / "block" / "note_asked"   # when the note was last asked for (its time of writing)
 FEATURE = re.compile(r"^([a-z-]+), complete")   # a board line of an area's sheet: its area
-GAME_CODE = ("native/src/", "project/")      # what the edit gate holds
-CONTEXT7 = ("ToolSearch `select:mcp__plugin_context7_context7__resolve-library-id,"
-            "mcp__plugin_context7_context7__query-docs`")
 
 
 def board() -> dict:
@@ -59,15 +59,6 @@ def board() -> dict:
         elif not first:
             first, first_section = found.group(2), section
     return {"done": done, "total": total, "next": first, "section": first_section}
-
-
-def block() -> dict:
-    if not BLOCK.is_file():
-        return {"state": "closed", "name": None}
-    try:
-        return json.loads(BLOCK.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as fault:
-        return {"state": f"unreadable ({fault})", "name": None}
 
 
 def work_next(name: str) -> list:
@@ -159,8 +150,9 @@ def whole(source: str = "") -> str:
         return "City, the port: " + b["error"]
     lines = [f"City, where the port stands ({b['done']} of {b['total']} functionalities done; the board is doc/port.md):",
              f"NEXT: {b['next'][:SHOWN] or 'nothing left on the board'}" + (f"  [{b['section']}]" if b["next"] else "")]
-    lines.append(f"FIRST: invoke the skills the work needs (Skill tool) and load Context7 ({CONTEXT7}); the game's code "
-                 "cannot be edited before both were used.")
+    lines.append(f"FIRST: invoke the project's skill `port` (Skill tool): it is the procedure. Load Context7 ({CONTEXT7}) and "
+                 "WebSearch. The game's code cannot be edited before the skill, Context7 and the internet were used, nor "
+                 "without its block open.")
     row = FEATURE.match(b["next"])
     if row:
         lines.append(f"TRACE IT (both games, about a minute): python tools/tracer/port.py sheet {row.group(1)}; then read "
@@ -184,42 +176,6 @@ def whole(source: str = "") -> str:
         lines.append("The conversation was just compacted: go on from the note below (Read it whole if it was cut), never from memory.")
         lines += note_back()
     return "\n".join(lines)
-
-
-def used(transcript: str) -> tuple:
-    """Whether this session, since its start or its last compaction, invoked a skill and asked Context7 (read from its
-    transcript's tool calls). A transcript that cannot be read holds nothing back."""
-    path = Path(transcript) if transcript else None
-    if path is None or not path.is_file():
-        return True, True
-    skill = docs = False
-    with path.open(encoding="utf-8", errors="replace") as lines:
-        for line in lines:
-            if "compact_boundary" in line:
-                skill = docs = False
-            if '"tool_use"' not in line:
-                continue
-            skill = skill or '"name":"Skill"' in line or '"name": "Skill"' in line
-            docs = docs or "context7__query-docs" in line
-    return skill, docs
-
-
-def gate(payload: dict) -> dict | None:
-    """The refusal of an edit of the game's code made before a skill and Context7 were used; nothing for any other edit."""
-    written = str((payload.get("tool_input") or {}).get("file_path", "")).replace("\\", "/")
-    root = ROOT.as_posix()
-    inside = written[len(root) + 1:] if written.lower().startswith(root.lower() + "/") else written
-    if not inside.startswith(GAME_CODE):
-        return None
-    skill, docs = used(payload.get("transcript_path", ""))
-    if skill and docs:
-        return None
-    owed = [what for what, done in (("invoke the skills the work needs with the Skill tool", skill),
-                                   (f"load Context7 ({CONTEXT7}) and ask it (query-docs) about the APIs this code calls", docs))
-            if not done]
-    return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
-                                   "permissionDecisionReason": "CLAUDE.md step 1, before the game's code is edited: "
-                                                               + "; ".join(owed) + ". Then make this edit again."}}
 
 
 def main() -> int:

@@ -8,7 +8,8 @@
     ]
   },
   "enabledPlugins": {
-    "context7@claude-plugins-official": true
+    "context7@claude-plugins-official": true,
+    "superpowers-chrome@superpowers-marketplace": false
   },
   "hooks": {
     "SessionStart": [
@@ -46,7 +47,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
         "hooks": [
           {
             "type": "command",
