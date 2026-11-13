@@ -19,7 +19,7 @@ because the owner is in a hurry, is a step skipped. The goal behind every step: 
   the area's register entries, the gates' limits it will meet (`tools/gates/rules.json`), every document the owner names.
 - The Read tool from line 1 to the last line; a long file in chunks (`offset`/`limit`, about 400 lines) until it ends. Write
   `path: 1-N of N` in the memory file. Grep, cat and an agent's summary only point where to read.
-- Ask "why" down to the design decision that makes the symptom. `python tools/hunt/hunt.py` when the task is "find what is wrong".
+- Ask "why" down to the design decision that makes the symptom. `python tools/hunt/hunt.py` only on the owner's order.
 
 ## 2. Context7 before any code; never your own memory
 - Nothing you think you know about an API is a source. Every implementation and fix, the project's own code included:
@@ -87,8 +87,8 @@ Then the design: the behaviour sheet is the requirement, the code is this game's
 unlocked; the frame's budgets; values in `project/data` through `DataTables`; one owner per definition. The feature is built
 complete, every case of the sheet, measured against the budgets; never a slice of it and never the reference's shape.
 
-## 4. One look (optional, once, before the block)
-One run to see what the reading explained: `hunt.py`, one test, one measurement or one photo plan. Never repeated to try.
+## 4. Nothing runs before the code is written
+No test, measurement, photo, script or `hunt.py` before every fix of the block is written: a doubt is settled by reading.
 After it, nothing runs until the block's code is whole.
 
 ## 5. Plan

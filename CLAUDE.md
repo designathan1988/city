@@ -36,8 +36,8 @@ lists every file; nothing here is status.
    schema, its tests, the area's history and register entries, and the gates' limits it will meet (`tools/gates/rules.json`:
    file and function sizes, magic numbers, English, the reference's names, the map): with the Read tool, from the first line
    to the last, a long file in chunks (`offset` and `limit`, about 400 lines) until its end, each recorded as `path: 1-N of N`.
-   A file not read to its last line is not read; `grep`, `cat`, a search or an agent's summary only find where to read; a
-   search that finds nothing is a failed search. Ask "why" at each link until the design decision that produces the symptom.
+   A file not read to its last line is not read; `grep`, `cat`, a search, an agent's summary or a path cited in a document
+   only point to the file: the file itself is opened; a search that finds nothing is a failed search. Ask "why" at each link until the design decision that produces the symptom.
    A problem found on the way enters the register.
 2. **Research.** Context7 (`resolve-library-id`, then `query-docs`) before every implementation and fix, the project's own code
    included (each API it calls: Python, GDScript, Godot 4.7.2, godot-cpp, the C++ standard library, Terrain3D, mimalloc,
@@ -49,21 +49,21 @@ lists every file; nothing here is status.
    symptom cannot return, what else it fixes; whatever its size (a rewrite when the design asks for one).
 5. **Code the whole block with nothing run.** `python tools/tasks/cli.py block open <name>`. A block is every open problem the
    owner named (with none named, those of the area in hand), each fixed at its cause, one after another, without trial and
-   error. Until `block verify` no test, build, game run, measurement, photo, gate or script runs (the tools refuse); a doubt is
-   settled by reading. Before the block opens, one run may show what the reading explained (`hunt.py`, one test, one photo
-   plan); never a run to look for a cause, never one to try a fix.
-6. **Check once, at the block's end, fast.** `block verify`, then only what the block reaches, each check taking seconds:
+   error. From the task's start until `block verify` nothing runs: no test, build, game run, measurement, photo, gate or
+   script (the tools refuse inside a block); a doubt is settled by reading, never by a run.
+6. **Check once, at the block's end, fast.** `block verify`, then only what the block reaches, each check under a minute:
 
    | Changed | Check |
    |---|---|
    | Tool under `tools/` | its own tests and `python tools/gates/run_gates.py --file <each changed file>` |
-   | GDScript, scene or data | the test scenes it reaches (`python tools/tasks/cli.py run <task>`) and the gates of the changed files |
-   | C++ | both DLLs (`tools/build/build.sh core-windows`) and the test scenes it reaches |
+   | GDScript, scene or data | the test scenes it reaches, one by one (`python tools/tasks/cli.py run <task>`), and the gates of the changed files |
+   | C++ | first both DLLs (`timeout 1500 tools/build/build.sh core-windows`, a build, not a check), then the test scenes it reaches |
    | What the player sees | the photos of the change (the image protocol) |
 
-   A check that takes minutes is a defect of that tool, registered and fixed at its cause. The long runs (`quick.sh --ready`,
-   the whole gates, `tools/tasks/km24.py`, a whole-city capture) run only when the owner asks. Every output is read whole:
-   an engine error in a passing run is a failure; a slow, heavy or crashing result is a failure, said with its numbers.
+   Each runs in the foreground with a deadline; `cli.py run` prints its progress and each result, the task's own lines are
+   in `dist/tasks/<run>/<task>.log`, read whole when it ends. A check over a minute is not started: it is a defect of its tool,
+   registered. The long runs (`quick.sh --ready`, the whole gates, `km24.py`, `hunt.py`, a whole-city capture) run only when
+   the owner asks. An engine error in a passing log is a failure; a slow, heavy or crashing result is a failure, with numbers.
 7. **Stop and check.** A failure is read to its cause with `superpowers:systematic-debugging`, fixed in the code (`block open`
    again), and the checks of step 6 run once more; a pass is confirmed with `superpowers:verification-before-completion`.
 8. **Close** (`block close`): the area's history (problems, sources, reasoning, plan, files created, changed and deleted, the
@@ -82,7 +82,8 @@ hidden (`python tools/tasks/cli.py run <name>`), each shot after `{"until": "ren
 opened with Read, whole; a photo that missed its subject is retaken; then crops of the element at real size, each looked at for
 every kind of defect by name (missing or extra, broken, deformed, scale, orientation, bodies in one another, floating or sunk,
 holes, the street's seams, textures, colour, light, shadow, detail pops, artefacts, interface text); the analysis written per
-photo with pixel positions, sound and defective alike. A defect, or a photo not analysed, fails the block.
+photo with pixel positions, sound and defective alike, judged against what the change must show. A defect, or a photo not
+analysed, fails the block.
 
 ## Fixing the cause
 - The fix changes the design decision that produces the symptom. It is a patch, and forbidden: changing a timeout,
@@ -143,9 +144,8 @@ code read". The analysis is kept in `tools/tracer/.index` and read back in under
   PID; one engine process at a time; tests and captures run hidden through `tools/tasks`; the owner's open game is never closed
   (`tools/build/free_dll.sh` frees the DLL).
 - **Tools:** the project's tools (`doc/map.md`, the `tools` section) are used as they are; a new script or tool is written only
-  where none does the job, never for a one-off look; a tool that is slow, shows nothing or blocks is fixed at its cause. Known
-  today (read whole on 2026-11-13): the orchestrator's runs, `hunt.py`, `km24.py`, `deliver.sh`, `pgo.sh` and the whole gates
-  show nothing while they run, and several waits have no limit (Ptools-100 to Ptools-108): run them only on the owner's order.
+  where none does the job, never for a one-off look; a tool that is slow, shows nothing or blocks is fixed at its cause (its
+  known defects are in the register, area `tools`).
 - Direct work on `main`, no worktree or branch; repository files changed with the Edit and Write tools, never `sed` or a
   script; a file whose last commit had no carriage return gains none.
 - Every new or changed text in the repository is English; the texts the player sees live in `project/data/i18n`; the owner is
@@ -187,13 +187,12 @@ code read". The analysis is kept in `tools/tracer/.index` and read back in under
 | What | Command |
 |---|---|
 | A block | `python tools/tasks/cli.py block open <name>` · `block verify` · `block close` · `block status` |
-| Build both DLLs | `timeout 1500 tools/build/build.sh core-windows` in the foreground (its own script has no deadline: Ptools-101) |
+| Build both DLLs | `timeout 1500 tools/build/build.sh core-windows`, in the foreground |
 | One test or photo plan | `python tools/tasks/cli.py run <task>` (the names: `python tools/tasks/cli.py run tests --list`) |
 | Gates of a file | `python tools/gates/run_gates.py --file X` (`--selftest`; the whole tree with `--register doc/problems.jsonl`) |
 | The register | `python tools/atlas/cli.py problems [--area A --status S]`, `add`, `update`, `close`, `drop` |
-| The game's defects | `python tools/hunt/hunt.py` (each defect with where and its owning file; `dist/hunt/hunt.json`) |
-| Deliver | `tools/build/deliver.sh export` |
-| On the owner's order | `tools/build/quick.sh --ready`, the whole gates, `python tools/tasks/km24.py` (km24 on two builds) |
+| Deliver | `timeout 900 tools/build/deliver.sh export`, in the foreground |
+| On the owner's order | `tools/build/quick.sh --ready`, the whole gates, `python tools/tasks/km24.py` (km24 on two builds), `python tools/hunt/hunt.py` (the game's defects, `dist/hunt/hunt.json`) |
 
 The DLLs in `project/bin` are versioned (a clone opens the game without building; in a rebase they are rebuilt from the joined
 sources). A clone needs Godot 4.7.2, llvm-mingw `20261020-ucrt-x86_64`, CMake 4.4, Python 3.12, Node 23.6+ for the tracer's
