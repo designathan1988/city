@@ -118,7 +118,41 @@ building, and a second change channel of polled revisions.
 - SILENT: a refused speed change dropped (simulation.cpp:58-60, city_core.cpp:133).
 - Tunables in code: MAX_OWED 50 (city_growth.cpp:15), OCCUPIED_SHARE 0.8 (growth.cpp:18).
 
+## The render (native/src/render, project/render)
+
+Verdict: mostly yes: no render function takes a non-const CityState, no const_cast; RenderWorld::sync holds MapRead
+(render_world.cpp:268); road, prop, tree, cover, pool, water and building jobs copy under a short lock and build unlocked
+(mesh_queue.h:56-80, building_renderer.cpp:180); every render list of the ChangeLog drained (render_world.cpp:124-134,
+effect_world.cpp:171). Exceptions below.
+
+- DEFECT / LAYER: a data race: effect_bodies.cpp:107-108 reads `s.traffic.peds[id].age` under the shared map lock alone while the
+  traffic step holds traffic_mutex and may emplace_back on `peds` (simulation.cpp:84-86, ped_spawn.cpp:121); read too late as well
+  (lay_dead reset the slot, pedestrians.cpp:70): undefined behaviour, a dead child drawn as an adult.
+- DEFECT / STATE-OUTSIDE: a knocked-down body's time runs on frame time while the walker's `down_until` runs on simulation time
+  (body_renderer.cpp:255, traffic_system.cpp:156): at speed 2 or 4 the person shows twice, paused they vanish; a second knock cuts
+  the time down (body_blows.cpp:25 against pedestrians.cpp:104); vehicle occupants' corpses exist only in the render, forever,
+  filling the 64 rows and pushing out corpses the simulation keeps (effect_bodies.cpp:102, body_renderer.cpp:15,87,110).
+- PROPAGATION: lots on the zones overlay stale (lot commands mark only lot_cells, the overlay refreshes on road keys:
+  overlay_build.cpp:128, render_world.cpp:173); crater decals after terraforming laid again only on the next blast (marks.h:50-55);
+  F8 marks freeze once the undo stack reaches changes_shown (change_marks.gd:40); `set_lamp_night` dispatched as a city change every
+  frame through dusk and dawn (sky_view.gd:128, city_store.gd:98-99); revisions polled (transit_renderer.cpp:212,
+  effect_world.cpp:180-193, fog_field.cpp:245); with no render consumer, damage_events grow without bound (city_core.cpp:165).
+- LAYER: the zones overlay job builds under the lock (overlay_renderer.cpp:101); transit meshes built on the main thread under
+  MapRead (transit_renderer.cpp:219-223).
+- LIFECYCLE: the odometer and RowKeeper keyed by vehicle id, no generation (agent_renderer.cpp:173-178,253); a lying body keeps a
+  living walker's id (body_renderer.h:86).
+- STATE-OUTSIDE: the sign atlas never evicts (sign_atlas.cpp:30, sign_sheet.gd:25,35).
+- SILENT: overlay and burst/drip keys read with defaults (overlay_renderer.cpp:33-41, effect_params.cpp:48-68).
+- OWNER: the ragdoll step three times (body_renderer.cpp:17, ragdoll.cpp:32, rigid_step.h:15); widest_half recomputed
+  (road_cut.cpp:16-17); tunables in shader defaults (night_dim 0.4 against 0.35, marks.gdshader:21, puffs.gdshader:25); 37
+  uniforms never set; 533 constexpr floats in the render.
+
 ## The tools that could hold the architecture (tools/gates, tracer, atlas, tasks)
+
+Correction (checked 2026-11-13): the tracer does link GDScript to the C++ the core registers, by the text of the command's name:
+`trace.py CityCore.build_road_path --back 6 --text-only` with project/game/store and the road tool among the roots reaches
+city_store.dispatch and _route "[by text]" and on to road_tool.click and release, in 1.3 s (over-listing the commands a
+dispatch may name, Ptools-8). The agent's "it does not follow bind_method" was wrong.
 
 Verdict: only the gates enforce anything (layers by folder, forbidden constructs on syntax: one core owner, one data reader,
 render read-only, no Godot in sim, named map writers, central flow, text through tr; 10 owners; 9 state machines with one setter;
