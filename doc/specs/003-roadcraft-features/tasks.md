@@ -28,6 +28,33 @@ at its end its scenes, measure and photos; commit and push; next. A defect outsi
 
 - [X] T031 [US3] Make the block's close check the method in tools/tasks/block.py. **Removed** (2026-11-13, constitution 2.0.0): the close's record check, the item gates and the edit guard held rules the owner never gave; the block keeps only the order that nothing runs while a feature is coded.
 
+## Phase 2b: The backbone the port lands in (the owner, 2026-11-13: errors seen, records kept true, every block measured at scale)
+
+Three blocks before the port goes on, each fixing defects the architecture audit found (audit.md) and giving every later block
+what it is checked by. Each block ends with its checks; from T038 on, every block ends with the scale probe as well.
+
+- [ ] T036 [US6] Errors seen (backbone items 1, 2): an engine `ERROR:` or `WARNING:` line fails a test (tools/tasks/verdicts.py); every
+  command's refusal reaches the player in one place (CityStore's refusal channel with one formatter shared with the tools; the
+  inspector, road, approach, junction, connector, transit and land panels stop dropping results; the inspector stays open on a
+  refusal; road_blocks shows the core's reason; `hint.road.invalid` and a no-city key in the text tables; road_spec_make a command);
+  the city never lost on a failed save (write_atomic checks the write and the renames; quitting and a new map wait for the save's
+  outcome and stop on a failure, its reason shown); a gate: every refusal key a command can return is a row of project/data/i18n.
+  **Done when**: the gate refuses a key with no row (its fixture) and passes the tree; a test refuses a command from a panel and
+  reads the reason on the hint bar; a test makes the save fail and the city stays; the suites pass with the stricter verdict.
+- [ ] T037 [US6] Records kept true (backbone items 4, 5): invariants per feature in the core, run at every test's end (TestCase
+  .finish); a record's removal reaches every table referring to it: lane links and bans through remove, move and split; transit stops
+  through split and remove; the interior target; fires; parking lots, yards and lorries; flow statistics and the control advisor; a
+  refused command neither touches the city nor drops the furniture; toggle_lane_link checks its node; auto_signal's change told to
+  the furniture and the render; `network_changed` removed; the catalogue's road variants survive opening a save; growth never over
+  rubble. **Done when**: each invariant fails on its defect before the fix (a case per defect in edit_fuzz_test or its own scene) and
+  every test ends with none broken.
+- [ ] T038 [US5] Scale (backbone item 8): the 24 km city opens fast (research R4: a candidate's look from its massing, fill_all in a
+  2 x 2 checkerboard of 256 m cells over the job pool, settle_sites in parallel; the same city for any pool size) and the scale probe:
+  one scene on the 24 km map reporting memory by system (each CityState table's bytes, the render's buffers, video memory), CPU by
+  section of the frame and by tick, GPU time, draws and triangles, at fixed views, against doc/specification.md's budgets, naming
+  what weighs. **Done when**: the probe runs under 60 s on the debug DLL and prints its table; window_traffic_test under 60 s; the
+  digest written again with its cause.
+
 ## Phase 3: User Story 4 - The port, area by area (P1, first)
 
 **Goal**: every reference feature the player uses brought, by its behaviour, in this game's design, or justified. **Independent test**:
@@ -42,18 +69,22 @@ two tasks: first its features grouped and their sheets written from the tracer (
 
 - [X] T007 [US4] People [159]: group the unpaired entries into features, one sheet each in doc/specs/003-roadcraft-features/sheets/people-<feature>.md (state `read`: every file the trace reached read whole in both games), the area's index sheets/people.md. **Done when**: every unpaired entry belongs to a sheet or is justified there.
 - [ ] T008 [US4] People: build each feature of T007 (sheet `built` then `paired`). **Parked** (2026-11-13): walking off the expressways and the casualties are built (doc/history/people.md); the motions, held things, faces, cast and drawing wait on the people's own cook (Pbuildings-43), brought with the buildings' assets (T023); the casualties' remaining register problems are worked only when a later feature meets them. **Done when**: each feature of T007 built or justified in its sheet; the copy scan finds nothing.
-- [ ] T015 [US4] Roads [181]: as T007. **Done when**: as T007.
+All the areas' sheets were read on 2026-11-13 by reading agents against both games (sheets/<area>.md, each feature with its
+state here, what differs and its evidence on both sides, the translated files, the reference's faults); each feature's claims are
+checked in the files when it is built. The sheet tasks below are done by those sheets.
+
+- [X] T015 [US4] Roads [181]: as T007 (sheets/roads.md). **Done when**: as T007.
 - [ ] T016 [US4] Roads: as T008. **Done when**: as T008.
 - [ ] T017 [US4] Junctions [44] and signals [13]: as T007 then T008. **Done when**: as T008.
-- [ ] T009 [US4] Traffic [73]: as T007. **Done when**: as T007.
+- [X] T009 [US4] Traffic [73]: as T007 (sheets/traffic.md, sheets/junctions.md). **Done when**: as T007.
 - [ ] T010 [US4] Traffic: as T008. **Done when**: as T008.
-- [ ] T018 [US4] Zones [23] and transit [9]: as T007 then T008. **Done when**: as T008.
-- [ ] T013 [US4] Lots [36] and growth [9]: as T007. **Done when**: as T007.
+- [ ] T018 [US4] Zones [23] and transit [9]: as T008 (sheets/zones-lots-growth.md, sheets/transit.md). **Done when**: as T008.
+- [X] T013 [US4] Lots [36] and growth [9]: as T007 (sheets/zones-lots-growth.md). **Done when**: as T007.
 - [ ] T014 [US4] Lots and growth: as T008, with the 24 km opening (research R4): a candidate's look from its massing only (native/src/sim/simulation/growth.cpp, native/src/sim/buildings/b40, body_cache.cpp); `fill_all` in a 2 x 2 checkerboard of 256 m cells over the job pool, the same city for any pool size; `settle_sites` reusing the edges `record_for` read, its sites made in parallel and inserted in order (native/src/sim/commands/lot_sites.cpp). **Done when**: as T008; city_mass_test, lot_front_test, lot_overlap_test, edit_fuzz_test, save_undo_test, traffic_hash_test pass; window_traffic_test ends under 60 s with the same check; the digest written again with its cause in doc/history/game.md.
-- [ ] T022 [US4] Buildings [347]: as T007. **Done when**: as T007.
+- [X] T022 [US4] Buildings [347]: as T007 (sheets/buildings.md). **Done when**: as T007.
 - [ ] T023 [US4] Buildings: as T008, with the people's and landmarks' own cook (Pbuildings-43). **Done when**: as T008.
 - [ ] T020 [US4] Terrain [121]: as T007 then T008. **Done when**: as T008.
-- [ ] T011 [US4] Street furniture [138]: as T007. **Done when**: as T007.
+- [X] T011 [US4] Street furniture [138]: as T007 (sheets/street-furniture.md). **Done when**: as T007.
 - [ ] T012 [US4] Street furniture: as T008. **Done when**: as T008.
 - [ ] T019 [US4] Effects [32] and sky [34]: as T007 then T008. **Done when**: as T008.
 - [ ] T021 [US4] Saves [16]: as T007 then T008. **Done when**: as T008; edit_fuzz_test passes undo, redo, save and load through the same hashes.
@@ -80,7 +111,8 @@ two tasks: first its features grouped and their sheets written from the tracer (
 
 ## Dependencies & order
 
-- Phase 2 (T004-T006, T031) → Phase 3 in the order listed (roads T015-T016 first, the camera T026-T027 last; T033 before T009) → Phase 4 → Phase 5 as met → Phase 6 per block.
+- Phase 2 (T004-T006, T031) → Phase 2b (T036 errors seen, T037 records kept true, T038 scale) → Phase 3 in the order listed (roads
+  T016 first, the camera T026-T027 last; T033 before T010) → Phase 4 → Phase 5 as met → Phase 6 per block.
 - Within an area: its grouping and sheets (no code) before any of its features is built.
 
 ## Parallel opportunities

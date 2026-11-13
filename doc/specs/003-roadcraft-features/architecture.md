@@ -84,3 +84,59 @@ From the reference's own reports (read whole 2026-11-13: reports/why-10km-cities
   agent's extract below).
 
 The agents' area reports add each area's own (sheets/<area>.md, "Reference faults never brought").
+
+### From the reference's long audits (a reading agent, every item cited in its report; A = reports/audit-f7/AUDIT.md, G =
+### reports/polygon-geometry-audit.md, L = lab-reports/auditoria-2026-10-19.md)
+
+The rules they break, each a check of every ported feature: R1 whole-map work on an edit; R2 repeated work on unchanged inputs;
+R3 allocation in a hot loop; R4 quadratic proximity; R5 geometry heavier than it shows (no detail level, detail under a pixel);
+R6 hidden or overlapping faces drawn; R7 buffers never freed, memory tied to the area explored; R8 buffers wider than needed
+(32-bit indices under 65,536 vertices, floats where quantised fit); R9 many small draws; R10 degenerate or empty work submitted;
+R11 shadow casters finer than the shadow map's texel; R12 shaders compiled or uploaded on first view; R13 simulation cost, or the
+simulation tied to the camera.
+
+- Roads: straight lines sampled every metre (world/parkingLayout.ts:172-191, G:84); a roundabout disc as 18 overlapping rings
+  (world/markings.ts:452-464, G:3703); one 8 mm arc tolerance at every distance (core/scalar.ts:39, G:75); overlapping helper rings
+  (junction/polygon.ts:63-106, G:3640); one mesh per material per block, paint as polygons, ~320 of 448 draws (G:1563, G:2052);
+  flat ground meshed as finely as hills, 6 M triangles (roadSurfacePass.ts:26, G:2038).
+- Buildings: lot surfaces as instanced boxes, 4.44 ms and 2.30 M triangles (buildingMesh.ts:902-905, L:93, A:173); facade parts at
+  full model however small, 6.13 ms, 37.5 % of the GPU (kit.ts:64-84, L:105); no detail level for facade details (L:95-96); rounded
+  boxes for interior furniture, a bookshelf ~54,600 triangles (furnitureKit.ts:51, G:66); joined buildings kept whole, inner faces
+  drawn and casting (world/buildings.ts:805-860, G:273); the ghost rebuilt on every pointer move (editor/buildingTool.ts:1806,
+  G:248); landmarks unindexed, 20-40 draws each (signature.ts:377-1772, G:1283); wall batches widened to 32-bit (gpuBatchedMesh.ts:44,
+  G:1230); far parts one draw per kind over the town, the whole tail re-uploaded on one removal (farParts.ts:76, G:1039); rubble
+  kept forever (fracture.ts:68-417, G:1076); lot elements 1-10 M boxes with no level (G:3407).
+- Terrain: skirts drawn on four sides in both windings (terrainLod.ts:43, G:2430); unindexed ground (terrainLod.ts:35, G:2418); far
+  ground at the full grid on plains, 240,640 triangles where 1,568 serve (A:108, G:1501); water rebuilt whole when land moves
+  (terrain.ts:2580, G:2463); fog and scatter brushes scanning every dab (fogPaint.ts:68-88, elements.ts:78-101).
+- Traffic: vehicle levels never requested, 11-12 k triangles a car (render/agents.ts rung(), A:100); hubs under a pixel (A:107);
+  unused body levels kept on the GPU (agents.ts:1443, A:218); hidden far cars still submitted, up to 6.29 M triangles
+  (densityCars.ts, G:1460); signal heads with no level, closed cylinders (signals.ts:119-125, A:103); the simulation step ~10.5 ms
+  holding the city at 44 % of its population (sim/clock.ts:20-47, populationGovernor.ts, L:103); per-frame agent decode
+  (simClient.ts:509, L:108); the micro window following the view (meso/memory.ts:14-27, G:2785).
+- People: shadows at full detail, 734 k of 1.1 M triangles (riggedCitizens.ts:212-248, A:94); buffers sized to the caps and never
+  written (proceduralCrowd.ts:335-336, G:1740); closed skins double-sided (proceduralCrowd.ts:1231, G:1741); a 1.91 s stall on opening
+  (L:104); garments undecimated, 155,930 triangles (G:3981); a new texture object per row write (gpuRows.ts:144, G:1771).
+- Furniture, poles, vegetation: pole pieces and wires chosen per 1 km block (A:114); a pole behind the camera at the finest level
+  (poleLayer.ts, A:111); wires as 64-triangle tubes, ~3 M triangles (utilities.ts:500-503, A:112); lamp cones drawn past their fade
+  (scenery.ts:225-230, A:110); 46 empty shadow draws a frame (poleStores.ts, A:545); far blocks re-chosen four times a frame, 54.7 ms
+  (propCells.ts:582, A:577); plants casting their full model, 4.24 M triangles in the shadow maps (cellInstances.ts, A:97); props
+  without a far level, ~3.5 M triangles (streetFurnitureLayer.ts:96-98, G:2072); impostor mipmaps nothing reads (A:485); hidden caps
+  (signs.ts:460, structureCells.ts:41, G:2105); unindexed leaf cards (G:1542); dead slots drawn (G:2117, G:1511, G:1485); railings and
+  sleepers as dense casting boxes (barriers.ts:145, transit.ts:331); every debris matrix rewritten when one moves (blast.ts:670-706).
+- Render in general: the whole explored area kept (renderer.ts:2601-2613, L:72: geometry 121.6 to 340.1 MB, textures 252.3 to
+  539.8 MB); the whole document serialised on every autosave and undo (main.ts:798-812, L:102); draws over budget, 1,197
+  (L:100); a sky dome sphere for a full-screen pass (environment.ts:147, G:1467); one cascade redraw 8.62 M triangles, wind casters
+  redrawn every cascade every frame (wind.ts:103-125, A:144, G:2648); a whole-scene memory count every 60 frames (A:475); shader
+  programs never released, 232 to 541, compile bursts mid-session (A:80, A:517); allocation churn 50-82 MB a minute at rest (A:75);
+  the WebGPU path copying whole buffers on every edit (webgpuView.ts:131, G:1588). The GPU is bound by pixels more than by
+  triangles (GTAO 1.23 ms; 534 k fewer triangles left the scene pass unchanged: L:98-99, A:455).
+
+## This game's own performance faults known today
+
+- The 24 km city opens in 69.8 s on the debug DLL, 23.6 s on the release, 473,839 buildings: `fill_all` walks every lot serially
+  and builds four complete candidate bodies a lot to compare their looks (research.md R4, growth.cpp 110-198; task T014).
+- The grade solver keeps four float lines a segment for good, about 390 MiB of the 24 km city (Proads-8).
+- km24 on the median profile: GPU p95 up to 14.9 ms, 151 frames over 33 ms (doc/history/process.md, the mandatory pause).
+- The scale probe (backbone item 8) measures the rest at each block's end: memory by system, CPU by section of the frame and by
+  tick, GPU time, draws and triangles, on the 24 km map, in seconds.
