@@ -36,7 +36,7 @@ photos pass in seconds. Order: the player's gaps by area (inventory, 2026-11-13:
 
 For each area, two tasks: first the area's features grouped and their sheets written (no code); then each feature built as one item.
 
-- [ ] T007 [US4] People [159]: group the unpaired entries into features, one sheet each in doc/specs/003-roadcraft-features/sheets/people-<feature>.md (state `read`: every file the trace reached read whole in both games), the area's index sheets/people.md. **Done when**: every unpaired entry belongs to a sheet or is justified there.
+- [X] T007 [US4] People [159]: group the unpaired entries into features, one sheet each in doc/specs/003-roadcraft-features/sheets/people-<feature>.md (state `read`: every file the trace reached read whole in both games), the area's index sheets/people.md. **Done when**: every unpaired entry belongs to a sheet or is justified there.
 - [ ] T008 [US4] People: build each feature of T007 as one item (sheet `built` then `paired`). **Done when**: the area's unpaired list holds only justified entries; each feature's scene and photos pass; the copy scan finds nothing.
 - [ ] T009 [US4] Traffic [73]: as T007. **Done when**: as T007.
 - [ ] T010 [US4] Traffic: as T008. **Done when**: as T008.

@@ -858,3 +858,19 @@ and the reason is given for each.
   of frames struck walls; then eased with a margin grown with the view: jolts up to 14 views, 158 s). Research on the engines'
   documentation (specification 003 R1b) gives the design; the camera is the port's last area (T026-T027).
 - **Moved to specification 003**: the roofs plan and the frozen street view (T005), the 24 km opening (T014).
+
+## 2026-11-13: the people area read in both games (block `t007-people`, specification 003 T007)
+
+- **Done**: the area's 159 reference-only rows given to eight sheets (`doc/specs/003-roadcraft-features/sheets/people*.md`), each read
+  whole in both games with its differences, design and proof: where people walk, what they do, the cast, what they hold, faces, how
+  they are drawn, casualties, the person maker. PLATE/pedestrian goes to street furniture (T011); the lab's sheet of the bodies to
+  the lab (T025).
+- **Found and registered**: walkers on the expressway; parties of two at most; one gait and acts only at the kerb (Ptools-115, the
+  asset cook tools removed in 18782f55 and 56926e1b); riders drawn from any adult body; the face, far card and light shaders are
+  translations of the reference's, which the copy scan cannot see (it reads no shaders); the fallen (Prender-261 to 266, Pwalkers-11,
+  Pwalkers-12): flags sent and never drawn, bodies gone after 90 s, the idle pose, a shot meeting a straight capsule, a ragdoll with
+  no ankle, neck or bone collision, trips as crouches, pools at the blow, one get-up.
+- **Not brought**: the reference's person maker, a remnant (a tool slot, a hint and a saved list with no writer, no reader and no
+  panel).
+- **Next**: T008 builds each feature as one item, the cook tools restored first; the shaders rebuilt after T024 extends the copy
+  scan to them.
