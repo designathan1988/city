@@ -14,7 +14,9 @@ value holding a function has no answer: the flow follows what the value holds.
 Each link keeps what the call wrote: the functions and functions' names it gave, and the texts written as its
 arguments; a function that reads an entry of an object written in place by a key it was not written with keeps, for
 each function or name an entry holds, the entries' keys (`Result.tables`), for a trace to follow only what its
-caller's texts select.
+caller's texts select; a function value made from a text and kept in such an object under a key not written there is
+held under the keys of the entries whose value is that text. A call the language says makes a function value of an
+object's method named by a text (`Callable(object, "method")`) runs nothing: the value runs where it is invoked.
 """
 from __future__ import annotations
 
@@ -23,9 +25,9 @@ from dataclasses import dataclass
 
 from .model import named, unquoted, child_nodes
 from .solver import marked
-from .vocab import (AS_BUILT, AS_KEPT, AS_OBJECTS, BY_NAME, BY_TEXT, CALL, CHANGES, CLS, EXACT, EXPR, FIRES, FN,
-                    FUNCTION, HANDED, INST, KEPT, MODULE, NEW, OUT, OUTSIDE, PART, READS, RET, STORED, STRENGTH, TOLD,
-                    TXT, VALUE, VAR, WRITES, AMBIGUOUS)
+from .vocab import (AS_BUILT, AS_KEPT, AS_OBJECTS, BY_NAME, BY_TEXT, CALL, CHANGES, CLS, ELEM, EXACT, EXPR, FIRES, FN,
+                    FUNCTION, HANDED, INST, KEPT, MODULE, NEW, OUT, OUTSIDE, PART, READS, RET, SHAPE, STORED, STRENGTH,
+                    TOLD, TXT, VALUE, VAR, WRITES, AMBIGUOUS)
 
 SHOWN = 80                           # how much of a callee's text a report shows
 
@@ -385,8 +387,9 @@ class Calls:
         """The calls no definition with a body answers, read by the texts they are given (as the flow runs, before
         they are taken for unanswered): a text naming a method of an object it is given or called on runs it; one
         naming an entry of an object written in place reads it; one naming a class makes an object of it; a text the
-        object called on keeps runs the functions handed over together with that text somewhere. Each by text.
-        True when something new was found."""
+        object called on keeps runs the functions handed over together with that text somewhere. Each by text. A call
+        the language says makes a function value (`Language.makers`) runs nothing: its value is the function of the
+        method the text names (it runs where it is invoked). True when something new was found."""
         fl, p, sc, done = self.fl, self.fl.p, self.fl.sc, False
         known = defaultdict(set)
         for site in self.sites:
@@ -396,12 +399,18 @@ class Calls:
         for site in self.sites:
             if site.answered or not (site.texts or site.told):
                 continue
+            maker = site.shown in site.f.lang.makers
             for name in site.texts:
                 for c in list(site.objects):
                     for m in sc.members(c, name, True):
                         if (CALL, m) in site.texted or m in site.given:    # where it is handed, the text says no
                             continue                                        # more
-                        if p.defs[m].kind == FUNCTION:
+                        if maker and p.defs[m].kind == FUNCTION:            # a function value made: it runs nothing
+                            site.texted.add((CALL, m))
+                            fl.s.add(site.key, (FN, m, BY_TEXT))
+                            site.found = site.answered = True    # answered: its value is the function, not what
+                            done = True                          # it was given (`hand` gives that back otherwise)
+                        elif p.defs[m].kind == FUNCTION:
                             site.texted.add((CALL, m))
                             self.run(site, m, BY_TEXT, False)
                             done = True
@@ -476,6 +485,8 @@ class Calls:
             if site.receiver is not None:
                 fl.s.watch(site.receiver, lambda v, site=site: self.function_called_on(site, v))
                 fl.s.watch(site.receiver, lambda v, site=site: self.file_called_on(site, v))
+                if site.name in site.f.lang.text_ends:      # a text's end names what the whole names (`a/b`: b)
+                    fl.s.watch(site.receiver, lambda v, site=site: fl.s.add(site.key, v) if v[0] == TXT else None)
             if site.platform:
                 self.in_file[site.f.module].append(site)
                 self.platform_called_in_file(site)
@@ -646,8 +657,10 @@ class Calls:
 
     def tables(self) -> dict:
         """For each unit reading an entry of a shape by a key it was not written with: what each entry holds (a
-        function, or a function's name) and the entries' keys."""
-        fl, out = self.fl, {}
+        function, or a function's name) and the entries' keys; and what the shape holds under keys not written where
+        it was filled (its elements): a function value made from a text, under the keys of the entries whose value is
+        that text (the table the text was read from: `&"key": "method"`)."""
+        fl, out, chosen = self.fl, {}, None
         for unit, shapes in fl.tables.items():
             held = defaultdict(set)
             for c in shapes:
@@ -660,5 +673,21 @@ class Calls:
                             held[v[1]].add(d.name)
                         elif v[0] in (TXT, TOLD):
                             held[v[1]].add(d.name)
+                for v in fl.s.of((ELEM, c)):
+                    if v[0] == FN and v[2] == BY_TEXT:
+                        chosen = self.chosen() if chosen is None else chosen
+                        held[v[1]] |= chosen.get(fl.p.defs[v[1]].name, set())
             out[unit] = dict(held)
+        return out
+
+    def chosen(self) -> dict:
+        """Each text an entry of an object written in place holds as its value, and the names of the entries holding
+        it: the keys that choose the function a value made from that text is."""
+        fl, out = self.fl, defaultdict(set)
+        for d in fl.p.defs:
+            if d.kind == SHAPE:
+                for entry in fl.sc.entries(d.id):
+                    for v in fl.s.of((VAR, entry)):
+                        if v[0] == TXT:
+                            out[v[1]].add(fl.p.defs[entry].name)
         return out

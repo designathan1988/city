@@ -45,9 +45,9 @@ _DONE = {}
 def analysed(roots, base):
     key = (tuple(roots), base)
     if key not in _DONE:
-        began = time.monotonic()
+        began = time.process_time()
         _DONE[key] = analyse(roots, base)
-        print(f"  analysed {len(roots)} roots in {time.monotonic() - began:.1f} s", file=sys.stderr)
+        print(f"  analysed {len(roots)} roots in {time.process_time() - began:.1f} s", file=sys.stderr)
     return _DONE[key]
 
 

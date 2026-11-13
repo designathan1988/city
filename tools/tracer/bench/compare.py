@@ -41,9 +41,9 @@ def links_by_call(roots, base):
             seen[(f.index, node.end_point[0] + 1, node.end_point[1])].add((src, dst, kind, how))
     Calls.link = link
     try:
-        began = time.monotonic()
+        began = time.process_time()
         result = analyse(roots, base)
-        seconds = time.monotonic() - began
+        seconds = time.process_time() - began
     finally:
         Calls.link = original
     p = result.program

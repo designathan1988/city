@@ -7,7 +7,8 @@ tracer's backward traces with these.
 A call is a pair when it writes, as the first argument of one of the `--via` functions, a key a table maps to a
 method's name (`dispatch(&"key", ...)`, the table `const T := {&"key": "method"}` in `--table`), or calls a method on
 one of the `--direct` names (`_core.method(...)`). The caller is named as the tracer labels it: the script's class
-name, else its file's stem, then the function.
+name, else its file's stem, then the function (a property's getter or setter written in place: the property). A table's
+method written under an area of the core (`"area/method"`) is that method.
 """
 from __future__ import annotations
 
@@ -18,7 +19,8 @@ from pathlib import Path
 
 CLASS = re.compile(r"^class_name\s+(\w+)", re.M)
 FUNC = re.compile(r"^(?:static\s+)?func\s+(\w+)")
-PAIR = re.compile(r'&"(\w+)"\s*:\s*"(\w+)"')
+PROPERTY = re.compile(r"^var\s+(\w+)\b[^=]*:\s*(?:#.*)?$")      # `var x: T:` opens its getter and setter below
+PAIR = re.compile(r'&"(\w+)"\s*:\s*"(?:\w+/)?(\w+)"')
 
 
 def main(argv=None) -> int:
@@ -45,9 +47,11 @@ def main(argv=None) -> int:
         owner = named.group(1) if named else path.stem
         current = None
         for line in text.splitlines():
-            m = FUNC.match(line)
+            m = FUNC.match(line) or PROPERTY.match(line)
             if m:
                 current = m.group(1)
+            elif line[:1].isalpha():             # any other statement of the file's own level: no function's
+                current = None
             if current is None:
                 continue
             caller = f"{owner}.{current}"

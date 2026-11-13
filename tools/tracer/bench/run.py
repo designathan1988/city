@@ -7,14 +7,24 @@ A path a project names is from the repository, or `@name/...` where tools/tasks/
 reference's tree, the toolchain): no machine's path is written in projects.json.
 
 Exit 1 when a figure is worse than the baseline beyond the tolerance, or a golden trace fails, or no project is measured
-(a bench of nothing proves nothing); with --strict, also when a target is not met. --update records the figures as the new baseline. Not part of the tracer.
+(a bench of nothing proves nothing); with --strict, also when a target is not met. --update records the figures as the
+new baseline. Not part of the tracer.
+
+`seconds` is the analysis's own CPU time (`time.process_time`). Under other processes even that moves (50 to 62 s on
+one machine, the processor's clock and caches shared), so a time past the tolerance is judged against the version
+before: the last commit's tracer and this one, timed in turns under the same load (`against_before`), the least of each
+(Python docs, timeit: the higher values are other processes'); it is a regression only where this one is slower.
 """
 from __future__ import annotations
 
 import argparse
+import io
 import json
+import shutil
 import subprocess
 import sys
+import tarfile
+import tempfile
 import time
 from pathlib import Path
 
@@ -30,6 +40,9 @@ import golden  # noqa: E402
 # How much a figure may move against the baseline before it is a regression: the share for recall and precision
 # (down), the ratio for the noise and the time (up).
 TOLERANCE = {"recall": 0.005, "precision": 0.005, "links at platform calls (noise)": 0.10, "seconds": 0.25}
+RETIMES = 2      # a doubted time: each version timed this many times, in turns, the least of each compared
+KEPT_ANSWERS = ("compiled-units", "compiled-headers", "solver-answers")   # what the version before reuses of this one's
+#                                                                         index (the compiler's and solver's answers)
 
 
 def place(path: str) -> str:
@@ -79,6 +92,38 @@ def oracle(name: str, spec: dict) -> Path | None:
     print(f"{name}: making the oracle ...", file=sys.stderr)
     done = subprocess.run(command)
     return out if done.returncode == 0 and out.exists() else None
+
+
+def timed(folder: Path, spec: dict) -> float:
+    """A project's roots analysed in a process of its own with the tracer of `folder`, its CPU time."""
+    done = subprocess.run([sys.executable, str(HERE / "timed.py"), str(folder), spec.get("base") or "", *spec["roots"]],
+                          capture_output=True, text=True, check=True)
+    return float(done.stdout.strip().splitlines()[-1])
+
+
+def against_before(spec: dict) -> tuple:
+    """The analysis timed with the last commit's tracer and with this one, in turns, under the same load: the least
+    of each (before, now)."""
+    tracer_home = HERE.parent
+    with tempfile.TemporaryDirectory(prefix="bench-before-") as tmp:
+        archive = subprocess.run(["git", "archive", "HEAD", "tools/tracer/tracer"], cwd=REPO, capture_output=True,
+                                 check=True).stdout
+        with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
+            tar.extractall(tmp, filter="data")
+        before = Path(tmp) / "tools" / "tracer"
+        shutil.copytree(tracer_home / "tracer" / "tools", before / "tracer" / "tools", dirs_exist_ok=True)
+        (before / ".index").mkdir(exist_ok=True)
+        for name in KEPT_ANSWERS:
+            kept = tracer_home / ".index" / name
+            if kept.is_dir():
+                shutil.copytree(kept, before / ".index" / name, dirs_exist_ok=True)
+            elif kept.is_file():
+                shutil.copy2(kept, before / ".index" / name)
+        old, new = [], []
+        for _ in range(RETIMES):
+            old.append(timed(before, spec))
+            new.append(timed(tracer_home, spec))
+    return min(old), min(new)
 
 
 def callers_oracle(name: str, spec: dict) -> Path:
@@ -179,9 +224,9 @@ def main(argv=None) -> int:
                 figures["seconds"] = round(seconds, 1)
                 figures["links"] = sum(len(found) for found in result.out.values())
         if result is None:
-            began = time.monotonic()
+            began = time.process_time()
             result = golden.analysed(spec["roots"], spec.get("base"))
-            figures = {"seconds": round(time.monotonic() - began, 1),
+            figures = {"seconds": round(time.process_time() - began, 1),
                        "links": sum(len(found) for found in result.out.values())}
         golden._DONE[(tuple(spec["roots"]), spec.get("base"))] = result
         if "callers" in spec:
@@ -193,7 +238,15 @@ def main(argv=None) -> int:
         print("   " + summary(figures))
         baseline = HERE / "baseline" / f"{name}.json"
         if baseline.exists() and not args.update:
-            worse = regressions(figures, json.loads(baseline.read_text(encoding="utf-8")))
+            before = json.loads(baseline.read_text(encoding="utf-8"))
+            worse = regressions(figures, before)
+            if any(line.startswith("seconds") for line in worse):
+                old, new = against_before(spec)
+                print(f"   time doubted: the last commit's tracer {old} s, this one {new} s (the least of {RETIMES} "
+                      f"each, in turns)")
+                if new <= old * (1 + TOLERANCE["seconds"]) + 2:
+                    worse = [line for line in worse if not line.startswith("seconds")]
+                    figures["seconds against the last commit"] = [old, new]
             for line in worse:
                 print(f"   REGRESSION {line}")
             failed = failed or bool(worse)

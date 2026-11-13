@@ -50,6 +50,10 @@ class Language:
     called: str = ""                   # the operator an object of a class called runs (C++ [over.call]: `()`)
     invokes: tuple = ()                # the members of a function value that run it: (name, where its own arguments
     #                                    start among the call's; None: they come as one list)
+    makers: tuple = ()                 # the calls that make a function value of an object's method a text names, as
+    #                                    written (they run nothing: the value runs where it is invoked)
+    text_ends: tuple = ()              # the members of a text that give its end: a name written under its scopes
+    #                                    (`area/method`) names its last part (model.named), and so does that end
     aggregate: bool = False            # a class with no constructor made with values takes them as its fields, in
     #                                    the order they are declared (C++ [dcl.init.aggr])
     node_marks: str = ""               # what starts a node's path written in place, and a unique name ($, %)
@@ -186,14 +190,17 @@ SHADER_VECTOR_MATH = (("dot", DOT), ("length", LENGTH), ("distance", DISTANCE), 
 
 GDSCRIPT = Language("gdscript", "tree_sitter_gdscript", "language", ("gdscript.scm",), implicit_members=True,
                     file_is_class=True, implicit_base=True, duck_typed=True, super_names_method=True, beside=True,
-                    project="godot", invokes=(("call", 0), ("callv", None), ("call_deferred", 0)),
+                    project="godot", invokes=(("call", 0), ("callv", None), ("call_deferred", 0)), makers=("Callable",),
+                    text_ends=("substr", "right"),
                     node_marks="$%", node_lookup=("get_node", "get_node_or_null"),
                     spelled=(("and", ALL), ("or", ANY), ("not", NOT), ("**", POW)), numbers=DYNAMIC, divides_whole=True,
                     whole_types=("int",), math=GD_MATH, counts=True, nothing=("null",), real64_types=("float",))
 #                   GDScript reference, Operators: `and`, `or`, `not` are `&&`, `||`, `!`; `**` is the power; int / int is
 #                   an int (truncated); `for i in 3` goes over 0, 1, 2; float is 64 bits
 #                   GDScript reference: `$path` is short for get_node("path"), `%name` for a node unique in its scene
-#                   GDScript reference, Callable: call, callv, call_deferred run it (bind, bindv, unbind make another)
+#                   GDScript reference, Callable: call, callv, call_deferred run it (bind, bindv, unbind make another);
+#                   Callable(object, method) makes one of the object's method named by the text; String: substr(from)
+#                   and right(length) give the text's end
 CPP = Language("cpp", "tree_sitter_cpp", "language", ("cpp.scm",), implicit_members=True,
                class_named_constructor=True, ambiguous_declarations=True, beside=True, project="database",
                operators="operator", called="()", aggregate=True,

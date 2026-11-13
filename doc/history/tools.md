@@ -197,3 +197,30 @@ entry: when, the commit, the problems, the cause, the plan, the files created, c
   Measured: core recall 0.950, precision 0.9989 on 32222 calls (Ptools-126: the misses); reference 0.994/0.997; the scripts'
   callers of the core found 2% (the next block: a callable made from a text, and the keys that select it).
 - **Closed**: Ptools-122 to Ptools-125. **Checked**: atlas 42 tests OK (7 new); gates clean; the bench's baselines recorded.
+
+## 2026-11-13: block t041-callable-dispatch, the scripts' calls to the core traced through the store's table (spec 003)
+
+- **Goal** (the owner): a feature traced end to end, from the button to the state, across languages. The bench (t040) found
+  2% of the 687 real (core method, script caller) pairs, 90% of the callers it presented false.
+- **Causes, each read in the flow and fixed in the tracer's own terms**:
+  - `Callable(object, text)` was taken for a call of the method (calls.texts): `Language.makers` (GDScript `Callable`) make
+    a function value instead, which runs where it is invoked (`callv`).
+  - the store's `_routes = {}` filled by `_routes[name] = ...` was never an object of its own (flow.shaped waited for a named
+    entry holding a function): an element written by a key not written there activates it too, and a variable declared with
+    an object written in place receives in it what is written in it by key (stores.element/declared_shape).
+  - the dispatcher's table knew no keys for those values: a function value made from a text is held under the keys of the
+    entries whose value is that text (calls.tables/chosen: `&"key": "method"`).
+  - the backward walk went into a function once whatever it reached it for, so a dispatcher reached first for `shoot` was
+    not gone into again for `strike` (walk.backward: what the step reached is part of its context).
+  - a C++ class declared ahead (`class CityTransit;`) and defined in a header not included was a type of code not read: the
+    one class of that name in the namespace is it (scopes.inside, [basic.def.odr]); core recall 0.950 -> 0.955.
+  - the area routes (`"transit/transit_drop_line"`): GDScript String `substr`/`right` give the text's end, which names what
+    the whole names (`Language.text_ends`, model.named).
+- **The bench made trustworthy on the way**: the analyses timed by their own CPU time; a doubted time judged against the last
+  commit's tracer timed in turns under the same load (bench/timed.py, run.against_before; the wall clock of one run moved
+  33-50 s under two foreign processes of 1.3 cores each); the callers' oracle reads area routes and property getters.
+- **Measured**: callers found 0.992 of 1174 pairs (area routes now in the ruler), false 0.0; core recall 0.955 precision
+  0.9989; reference 0.994/0.997. Tracer 147 tests OK (CallableDispatch: key, a method run by another, an area; shown red
+  with the old walk). **Closed** Ptools-8. **Open**: Ptools-7 (a function handed with `.bind()` to a signal), Ptools-126.
+- **Slip**: two edits of the bench were made with the block in verify; the block was reopened and verified again, and the
+  checks run after them.

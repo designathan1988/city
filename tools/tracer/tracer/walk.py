@@ -156,7 +156,8 @@ def forward(result, starts: list, depth: int | None = None, keep=lambda link: Tr
 def backward(result, starts: list, depth: int | None = None, keep=lambda link: True, guesses: str = NEAR) -> list:
     """Backward, each step in the context of the way it was reached: a function received as an argument is followed
     back only to the callers that gave it, at any depth; by text, not to the callers that gave the name of another
-    function; from an entry read by a key, to the callers that wrote that key."""
+    function; from an entry read by a key, to the callers that wrote that key. Which callers those are depends on what
+    the step reached (its keys, its name), so a function reached for another one is gone into again for it."""
     name = lambda d: result.program.defs[d].name                                         # noqa: E731
     near = guessed(guesses)
 
@@ -167,7 +168,7 @@ def backward(result, starts: list, depth: int | None = None, keep=lambda link: T
         keys = keys_of(result, link.src, link, name)
         if keys:
             found = [one for one in found if (one.words | one.texts) & keys or not (one.words | one.texts)]
-        carried = ctx or frozenset()
+        carried = ctx[0] if ctx else frozenset()
         if carried:                              # functions it was given: only the callers that gave them
             found = [one for one in found if carried <= one.fns]
         if link.how != BY_TEXT:
@@ -176,7 +177,10 @@ def backward(result, starts: list, depth: int | None = None, keep=lambda link: T
         return [one for one in found if name(link.dst) in one.texts or not one.texts & others]
 
     def context(before, link):
-        """The functions carried back: the one reached, and the ones carried, where the caller was given them."""
+        """The functions carried back: the one reached, and the ones carried, where the caller was given them; and
+        what the step reached, where the callers kept depend on it (by text, or read out by a key)."""
         received = handed_to(result, link.src)
-        return frozenset(g for g in (before or frozenset()) | {link.dst} if g in received)
+        carried = frozenset(g for g in (before[0] if before else frozenset()) | {link.dst} if g in received)
+        chosen = link.dst if link.how == BY_TEXT or keys_of(result, link.src, link, name) else None
+        return carried, chosen
     return walk(starts, result.into, lambda link: link.src, depth, after, context=context)

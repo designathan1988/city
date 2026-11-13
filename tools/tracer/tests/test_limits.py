@@ -3,7 +3,8 @@ every language that writes it; what a start gives back reported and compared (`r
 said so; the unknown a choice waits on named; a property's getter and setter written in place read as functions (no
 link said to lead nowhere through them); a class's name read as a global not taken for state; a box of no variable
 with a term of no value said undecided, not impossible; a point's file matched at a folder's boundary, a file alone
-taken as a point; a feature's cost kept to its own functions.
+taken as a point; a feature's cost kept to its own functions; methods called through a table of keys to their names
+(function values made from texts, kept by key, run by a dispatcher given a key) traced back to the callers of their keys.
 """
 from __future__ import annotations
 
@@ -22,7 +23,7 @@ from tracer import compare, cost, feature, links
 from tracer.decide import BOUND, EQ, Literal, nonlinear
 from tracer.evaluate import evaluate, plain, run_data, run_text
 from tracer.vocab import TEXT, UNDECIDED
-from tracer.walk import find
+from tracer.walk import backward, find
 
 SEED = int(os.environ.get("TRACER_SEED") or random.SystemRandom().randrange(1 << 30))
 
@@ -227,6 +228,90 @@ class PortDriver(unittest.TestCase):
                 self.assertEqual([(ref / f"{rule}.ts", ref_line)], found["reference"])
                 self.assertEqual(["nowhere.cpp:4"], found["unresolved"])
                 self.assertEqual(("3", " x | y "), port.ROW.match("| 3 | x | y |").groups())
+
+
+class CallableDispatch(unittest.TestCase):
+    def test_a_method_run_by_key_is_traced_back_to_the_callers_of_its_key(self):
+        rng = random.Random(SEED + 9)
+        for _ in range(3):
+            n = Names(rng)
+            api, core, store, table, routes, route, dispatch = n(True), n(True), n(True), n().upper(), n(), n(), n()
+            methods = [n() for _ in range(rng.randint(2, 4))]
+            keys = [n() for _ in methods]
+            entries = ", ".join(f'&"{k}": "{m}"' for k, m in zip(keys, methods))
+            files = {
+                "api.gd": f"class_name {api}\nextends RefCounted\n\nconst {table} := {{{entries}}}\n",
+                "core.gd": f"class_name {core}\nextends Node\n\n\nfunc {methods[0]}(a):\n\treturn {methods[1]}(a)\n"
+                           + "".join(f"\nfunc {m}(a):\n\treturn a\n" for m in methods[1:]),
+                "store.gd": (f"class_name {store}\nextends Node\n\nvar _core := {core}.new()\nvar _{routes}: Dictionary = {{}}\n\n\n"
+                             f"func _ready() -> void:\n\tfor name: StringName in {api}.{table}:\n"
+                             f"\t\t_{routes}[name] = _{route}({api}.{table}[name])\n\n\n"
+                             f"func _{route}(spec: String) -> Callable:\n\treturn Callable(_core, spec)\n\n\n"
+                             f"func {dispatch}(command: StringName, args: Array = []) -> Variant:\n"
+                             f"\treturn _{routes}[command].callv(args)\n"),
+            }
+            callers = {}
+            for i, k in enumerate(keys):
+                who = n()
+                callers[k] = who
+                files[f"user{i}.gd"] = (f"extends Node\n\n\nfunc {who}(s: {store}) -> void:\n"
+                                        f"\ts.{dispatch}(&\"{k}\", [1])\n")
+            with Folder() as folder:
+                for name, text in files.items():
+                    (folder / name).write_text(text, encoding="utf-8")
+                r = analyse([folder], folder, keep=True)
+                p = r.program
+                for k, m in zip(keys, methods):         # the second is also run by the first: its dispatcher is
+                    target = [d.id for d in p.defs if d.kind == "function" and p.label(d.id) == f"{core}.{m}"]
+                    reached = {p.label(s.at) for s in backward(r, target)}   # reached for both keys
+                    mine = {k, keys[0]} if m == methods[1] else {k}
+                    with self.subTest(seed=SEED, method=m, key=k):
+                        self.assertIn(f"{store}.{dispatch}", reached)
+                        for key in mine:
+                            self.assertTrue(any(label.endswith("." + callers[key]) for label in reached), reached)
+                        others = [c for key, c in callers.items() if key not in mine]
+                        self.assertFalse(any(label.endswith("." + c) for label in reached for c in others), reached)
+                        self.assertFalse(any(label.endswith("._" + route) for label in reached), reached)
+
+
+    def test_a_method_of_an_area_run_by_key_is_traced_back_to_the_callers_of_its_key(self):
+        rng = random.Random(SEED + 10)
+        n = Names(rng)
+        api, core, part, store, table, area, dispatch = n(True), n(True), n(True), n(True), n().upper(), n(), n()
+        methods = [n() for _ in range(3)]
+        keys = [n() for _ in methods]
+        entries = ", ".join(f'&"{k}": "{area}/{m}"' for k, m in zip(keys, methods))
+        files = {
+            "api.gd": f"class_name {api}\nextends RefCounted\n\nconst {table} := {{{entries}}}\n",
+            "part.gd": f"class_name {part}\nextends RefCounted\n" + "".join(f"\n\nfunc {m}(a):\n\treturn a\n" for m in methods),
+            "core.gd": (f"class_name {core}\nextends Node\n\nvar _part := {part}.new()\n\n\n"
+                        f"func area(name: StringName) -> Object:\n\treturn _part if name == &\"{area}\" else null\n"),
+            "store.gd": (f"class_name {store}\nextends Node\n\nvar _core := {core}.new()\nvar _routes: Dictionary = {{}}\n\n\n"
+                         f"func _ready() -> void:\n\tfor name: StringName in {api}.{table}:\n"
+                         f"\t\t_routes[name] = _route({api}.{table}[name])\n\n\n"
+                         f"func _route(spec: String) -> Callable:\n\tvar cut := spec.find(\"/\")\n"
+                         f"\tvar owner: Object = _core.area(spec.left(cut))\n\treturn Callable(owner, spec.substr(cut + 1))\n\n\n"
+                         f"func {dispatch}(command: StringName, args: Array = []) -> Variant:\n"
+                         f"\treturn _routes[command].callv(args)\n"),
+        }
+        callers = {}
+        for i, k in enumerate(keys):
+            callers[k] = n()
+            files[f"user{i}.gd"] = (f"extends Node\n\n\nfunc {callers[k]}(s: {store}) -> void:\n"
+                                    f"\ts.{dispatch}(&\"{k}\", [1])\n")
+        with Folder() as folder:
+            for name, text in files.items():
+                (folder / name).write_text(text, encoding="utf-8")
+            r = analyse([folder], folder, keep=True)
+            p = r.program
+            for k, m in zip(keys, methods):
+                target = [d.id for d in p.defs if d.kind == "function" and p.label(d.id) == f"{part}.{m}"]
+                reached = {p.label(s.at) for s in backward(r, target)}
+                with self.subTest(seed=SEED, method=m, key=k):
+                    self.assertIn(f"{store}.{dispatch}", reached)
+                    self.assertTrue(any(label.endswith("." + callers[k]) for label in reached), reached)
+                    others = [c for key, c in callers.items() if key != k]
+                    self.assertFalse(any(label.endswith("." + c) for label in reached for c in others), reached)
 
 
 if __name__ == "__main__":

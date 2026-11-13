@@ -2,16 +2,16 @@
  "exact": {
   "calls through a function type (not compared)": 0,
   "calls into own code": 17567,
-  "recall": 0.9504,
-  "links at those calls": 16903,
+  "recall": 0.9547,
+  "links at those calls": 16979,
   "precision": 0.9989,
   "calls into the platform": 14655,
   "links at platform calls (noise)": 0,
-  "exact links at platform calls (an object of the code where a platform type is declared)": 80,
+  "exact links at platform calls (an object of the code where a platform type is declared)": 81,
   "most missed callees": [
    [
     "size",
-    134
+    109
    ],
    [
     "num",
@@ -96,16 +96,16 @@
  "all": {
   "calls through a function type (not compared)": 0,
   "calls into own code": 17567,
-  "recall": 0.954,
-  "links at those calls": 16989,
+  "recall": 0.9583,
+  "links at those calls": 17065,
   "precision": 0.9989,
   "calls into the platform": 14655,
   "links at platform calls (noise)": 557,
-  "exact links at platform calls (an object of the code where a platform type is declared)": 80,
+  "exact links at platform calls (an object of the code where a platform type is declared)": 81,
   "most missed callees": [
    [
     "size",
-    134
+    109
    ],
    [
     "num",
@@ -187,6 +187,6 @@
    ]
   ]
  },
- "seconds": 30.0,
- "links": 15785
+ "seconds": 36.2,
+ "links": 15842
 }

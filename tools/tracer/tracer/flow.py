@@ -214,7 +214,9 @@ class Flow:
                 self.s.follow(self.ev(f, child), key)
 
     def shaped(self, c: int, key) -> None:
-        """`key` holds an object of the shape `c` once the shape holds a function or a function's name."""
+        """`key` holds an object of the shape `c` once the shape holds a function or a function's name: in an entry
+        written there, or among its elements, written by a key not written there (a table of callables filled as the
+        program runs)."""
         if c in self.active:
             self.s.add(key, (INST, c, EXACT))
             return
@@ -226,6 +228,8 @@ class Flow:
             if self.p.defs[entry].kind == FUNCTION:
                 self.activate(c)
                 return
+        self.s.watch((ELEM, c), lambda v, c=c: self.activate(c)
+                     if v[0] in (FN, TXT) or (v[0] == INST and self.p.is_shape(v[1])) else None)
         for entry in self.sc.entries(c):
             self.s.watch((VAR, entry), lambda v, c=c: self.activate(c)          # a function, a function's name,
                          if v[0] in (FN, TXT) or (v[0] == INST and self.p.is_shape(v[1])) else None)  # or an object

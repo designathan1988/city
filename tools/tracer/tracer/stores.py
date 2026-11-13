@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from .model import text, unquoted, child_nodes
 from .solver import marked
 from .vocab import (ARGS, AS_NAME, CALL, CHAIN, CLS, CONSTRUCT, ELEM, EXPR, IDENT, INDEX, INST, KEY, MEMBER, OBJECT, OUT,
-                    PART, PROP, PROPERTY, STEP, STORED, VAR, WRITES, HANDED, FN)
+                    PART, PROP, PROPERTY, STEP, STORED, VALUE, VAR, WRITES, HANDED, FN)
 
 
 @dataclass(slots=True)
@@ -81,8 +81,14 @@ class Stores:
 
     def element(self, target, places: list, value, f, node, mark) -> None:
         """An element written by a key not written there: in a shape, among its elements; in anything else, in the
-        places the object is kept (a list holds what is put in it)."""
+        places the object is kept (a list holds what is put in it). A variable declared with an object written in place
+        holds that object: what is written in it by such a key is among the object's elements, before the object is
+        known to hold functions (a function written there is what makes it one: `Flow.shaped`)."""
         fl, done = self.fl, []
+        for place in places if value is not None else ():
+            c = self.declared_shape(place)
+            if c is not None:
+                fl.s.follow(value, (ELEM, c), mark)
 
         def seen(v: tuple) -> None:
             if value is None:
@@ -93,6 +99,15 @@ class Stores:
                 done.append(v)
                 self.store(places, value, f, node, mark)
         fl.s.watch(target, seen)
+
+    def declared_shape(self, place) -> int | None:
+        """The object written in place a variable is declared with, if it is one."""
+        if place[0] != VAR:
+            return None
+        d = self.fl.p.defs[place[1]]
+        written = d.parts.get(VALUE)
+        at = self.fl.p.at.get((d.file, written.id)) if written is not None else None
+        return at if at is not None and self.fl.p.is_shape(at) else None
 
     def write(self, target, name: str, value, f, node, mark) -> None:
         """A member written: in the member each class of the object declares (a setter runs); under its name where
