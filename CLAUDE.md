@@ -3,40 +3,44 @@
 This file is the project's orders, whole; nothing else adds a rule. The owner's words in the conversation come first. The owner
 is spoken to in Portuguese; repository text is English.
 
-## The work: port the reference game, feature by feature
+## The work: port the reference game, one whole functionality at a time
 
 - The reference: `C:\Users\Jonathan\Documents\Projects\lab\roadcraft\src` (TypeScript). It was abandoned because it could not
   make a medium or a large city: memory, CPU and GPU grew with the map. Its behaviour is mostly right; its performance,
   architecture and engineering are not. Every feature it has is brought here, complete, and judged at the large city's scale.
 - Porting is not copying: the tracer shows what the reference does; the feature is built in this game's architecture, with this
   game's own design and names. An order of the owner names a start, never the whole: what it implies is found and done.
-- **Where the port stands: `doc/port.md`.** One line a feature, in order; the first unchecked line is the next. The session's
+- A functionality is a whole system the player uses (the complete traffic, the complete roads, the complete buildings),
+  never one of its rows and never a button. It is ported whole, in one block.
+- **Where the port stands: `doc/port.md`.** One line a functionality, in order, its cases under it; the first unchecked line
+  is the next. The session's
   start prints it with the command that traces it (`python .claude/hooks/port_state.py` prints it again). Told to port, start
   there at once; never ask what to do next.
 
-## One feature, start to end
+## One functionality, start to end
 
 No table, sheet, plan or report is written on the way: the port tool's report and the code are the record. No step is added.
 
 1. **Load, before anything.** The skills the work needs (the Skill tool) and Context7's tools (ToolSearch,
    `select:mcp__plugin_context7_context7__resolve-library-id,mcp__plugin_context7_context7__query-docs`). The hook refuses an
    edit of the game's code until both were used in the session.
-2. **The feature.** The first unchecked line of `doc/port.md`; its area and row number are the port tool's arguments.
-3. **One look, once**: the one test or photo that shows the feature's state now (`python tools/tasks/cli.py run <task>`). It is
+2. **The functionality.** The first unchecked line of `doc/port.md` with every case under it; its area is the port tool's
+   argument.
+3. **One look, once**: the one test or photo that shows the functionality's state now (`python tools/tasks/cli.py run <task>`). It is
    the only run before the end.
-4. **Trace both games, then read.** `python tools/tracer/port.py sheet <area> --feature N` traces the feature in both games
-   in one run, under a minute (what each side holds that the other lacks; each side's loops; the files it reached, in
+4. **Trace both games, then read.** `python tools/tracer/port.py sheet <area>` traces the whole functionality in both games
+   in one run, about a minute (what each side holds that the other lacks; each side's loops; the files it reached, in
    `dist/port/<area>.json`). For a closer question: `python tools/tracer/trace.py <START> --depth N --state --root <files>`
-   (`--list` names the starts; `--feature <path:line>`, `--conditions`, `--cases`, `--cost`). Then the feature's code is read
+   (`--list` names the starts; `--feature <path:line>`, `--conditions`, `--cases`, `--cost`). Then its code is read
    whole, in both games, by the session itself (no agent reads for it), until what it does, when, with which values and cases
    is understood, and which of the reference's costs must not come.
 5. **Context7** (`resolve-library-id`, then `query-docs`) for each API the code will call; the internet for a design decision
    or a value of the real world (a norm or a published method, not the reference's number).
-6. **Code the whole feature.** `python tools/tasks/cli.py block open <feature>`, then every case of it, complete, in this
-   game's architecture and names. While it is coded nothing runs: no build, test, measurement, photo or gate.
-7. **Check at the end, once.** `python tools/tasks/cli.py block verify`; both DLLs (`tools/build/build.sh core-windows`); the
-   feature's tests (`python tools/tasks/cli.py run <tasks>`); `python tools/gates/run_gates.py --file X` on the changed files
-   and `python tools/gates/lab_scan.py` (nothing copied); photos aimed at the feature's elements (day and night when light
+6. **Code the whole functionality.** `python tools/tasks/cli.py block open <area>`, then every case of it, complete, in
+   this game's architecture and names. While it is coded nothing runs: no build, test, measurement, photo or gate.
+7. **Check at the end, once.** `python tools/tasks/cli.py block verify`; both DLLs (`tools/build/build.sh core-windows`); its
+   tests (`python tools/tasks/cli.py run <tasks>`); `python tools/gates/run_gates.py --file X` on the changed files
+   and `python tools/gates/lab_scan.py` (nothing copied); photos aimed at its elements (day and night when light
    changes), each one opened, looked at and analysed for errors. A failure: `superpowers:systematic-debugging`, the cause read
    in the code and fixed there, only the failed check run again; never a guess tried by running.
 8. **A pass.** The line checked in `doc/port.md`; commit (with `file:line`) and push to `origin/main`; `block close`; the next
@@ -48,9 +52,9 @@ document or stops to ask does not apply here: this file decides.
 
 ## Focus
 
-- A defect seen outside the feature goes to the register in one line (`python tools/atlas/cli.py problems add`) and is not worked
-  now. Register problems are worked only when they block the feature in hand or the owner names them.
-- A feature is done when its sheet's cases work and its checks pass; a done feature is not polished further.
+- A defect seen outside the functionality goes to the register in one line (`python tools/atlas/cli.py problems add`) and is not worked
+  now. Register problems are worked only when they block the functionality in hand or the owner names them.
+- A functionality is done when its cases work and its checks pass; a done one is not polished further.
 
 ## Never
 
@@ -101,7 +105,7 @@ document or stops to ask does not apply here: this file decides.
 | What | Command |
 |---|---|
 | Where the port stands | `python .claude/hooks/port_state.py` (the board: `doc/port.md`) |
-| Both games traced for a feature | `python tools/tracer/port.py sheet <area> [--feature N]` · `python tools/tracer/port.py check` |
+| Both games traced for a functionality | `python tools/tracer/port.py sheet <area> [--feature N]` · `python tools/tracer/port.py check` |
 | Trace | `python tools/tracer/trace.py <START> --depth N --state --root <feature files>` (`--list` names the starts) |
 | What each game has | `python tools/atlas/cli.py inventory [--area A] [--game reference\|city] [--unpaired]` |
 | A feature's block | `python tools/tasks/cli.py block open <name>` · `block verify` · `block close` · `block status` |

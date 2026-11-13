@@ -27,7 +27,7 @@ SHOWN = 400          # characters of a board line or a work file's step shown
 BRIEF = 160          # characters of the next line in the one-line state
 NEXT_LINES = 8      # lines of the work file's "Next" section shown
 GIT_SECONDS = 5
-FEATURE = re.compile(r"^([a-z-]+) (\d+):")   # a board line of an area's sheet: its area and row
+FEATURE = re.compile(r"^([a-z-]+), complete")   # a board line of an area's sheet: its area
 GAME_CODE = ("native/src/", "project/")      # what the edit gate holds
 CONTEXT7 = ("ToolSearch `select:mcp__plugin_context7_context7__resolve-library-id,"
             "mcp__plugin_context7_context7__query-docs`")
@@ -89,22 +89,23 @@ def one_line() -> str:
         return "Port: " + b["error"]
     held = "no block open" if k["state"] == "closed" else f"block {k.get('name')} is {k['state']}"
     return (f"Port ({b['done']} of {b['total']} done, doc/port.md): next = {b['next'][:BRIEF] or 'nothing left'}; {held}. "
-            "Skills and Context7 first; steps and commands: CLAUDE.md, 'One feature, start to end'.")
+            "Skills and Context7 first; steps and commands: CLAUDE.md, 'One functionality, start to end'.")
 
 
 def whole(source: str = "") -> str:
     b, k = board(), block()
     if "error" in b:
         return "City, the port: " + b["error"]
-    lines = [f"City, where the port stands ({b['done']} of {b['total']} features done; the board is doc/port.md):",
+    lines = [f"City, where the port stands ({b['done']} of {b['total']} functionalities done; the board is doc/port.md):",
              f"NEXT: {b['next'][:SHOWN] or 'nothing left on the board'}" + (f"  [{b['section']}]" if b["next"] else "")]
     lines.append(f"FIRST: invoke the skills the work needs (Skill tool) and load Context7 ({CONTEXT7}); the game's code "
                  "cannot be edited before both were used.")
     row = FEATURE.match(b["next"])
     if row:
-        lines.append(f"TRACE IT (both games, under a minute): python tools/tracer/port.py sheet {row.group(1)} "
-                     f"--feature {row.group(2)}; then read its code whole in both games, code it whole with nothing run, "
-                     "and at the end build, test, photograph and analyse (CLAUDE.md, 'One feature, start to end').")
+        lines.append(f"TRACE IT (both games, about a minute): python tools/tracer/port.py sheet {row.group(1)}; then read "
+                     "its code whole in both games, code the whole functionality with nothing run, and at the end build, "
+                     "test, photograph and analyse (CLAUDE.md, 'One functionality, start to end'). Its cases: the lines "
+                     "under it in doc/port.md.")
     if k["state"] == "closed":
         lines.append("Block: none open.")
     else:
