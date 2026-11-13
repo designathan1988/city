@@ -153,6 +153,87 @@ Appended by `python tools/tasks/cli.py block close` (FR-050: the time each step 
 | US2 | 2026-11-12T15:50 | 2026-11-12T16:47 | 2026-11-12T16:50 | 57 | 3 |
 | tracer | 2026-11-12T16:51 | 2026-11-12T17:00 | 2026-11-12T17:01 | 9 | 1 |
 
+## 2026-11-12: the audit of 2026-11-07 (log/review.md) folded into the register
+
+`log/review.md` (2,987 lines) was read whole and each finding judged against the tree of 2026-11-12. The file left the tree under
+`archive/2026-11-12/old-records`. Its findings entered the register with the origin `log/review.md:<line>`, each open with its
+cause unknown and the reading that would find it. Each symptom says either "still in the code on 2026-11-12" or "not re-checked".
+
+**What the audit held besides findings.**
+- §0-§1: the method and the reading coverage.
+- §5: the review's own execution errors, every one about a `cd` or a claim corrected before it was used.
+- §6: a plan in batches B0-B4 by twenty causes C1-C20.
+- §7: an index of the same findings.
+
+**The owner's decisions recorded there (2026-11-07).**
+- D1: the 4.0's assets stay until replacements exist, and the lot unit scale is fixed meanwhile.
+- D2: a new generic style of this game. Values come from international norms or stated design choices; the "roadcraft" blocks
+  are deleted and "brasil" is a regional option, not the default.
+- D3: a new automatic junction rule designed from published signal warrants, replacing the translated flow control.
+- D4: no compatibility with old saves. Names, extensions and format change with no migration reader.
+
+They are recorded here as history. An order that binds the work enters CLAUDE.md with its guard.
+
+**Fixed since 2026-11-07, so not registered.**
+
+| Area | What was fixed |
+|---|---|
+| Godot test scenes | Keyed by what each loads (`{loads}`, `tools/tasks/godot_deps.py`). |
+| Scheduler | `order.index` is gone. |
+| `build.sh` | Ships no `git archive` of the 4.0. |
+| `pgo.sh` | Asks `tools/tasks/locations.py`. |
+| Gate "render reads only" | Also forbids `CityState&`. |
+| Street furniture | Kept per segment (`sim/roads/furniture_kept.h`). |
+| Traffic | `roads_touched` is gone. A route retry collects lane moves after the loop. One `main_legs` serves both callers. One `count_entry`. |
+| Grade solver | The hidden `MAX_SOLVE_PASSES` cap is gone. |
+| Effects | Missing keys no longer default to 0. |
+| Trees | The far card tone mixes in linear. |
+| Levels of detail | People and props choose levels through `DetailView`. |
+| Data and translations | The mojibake in `strings_e.csv` is fixed. `toolbar.json` is gone. |
+| Tests | `transit_test` awaits its save checks. `ui_driver.drawn()` delegates to `CaptureWait`. |
+| Gates | Repeated JSON keys are refused (`gate_data.py` `_unique_pairs`). |
+| Captures | `project/dist` is gone. |
+| 4.0 copies | The 4.0 copies, converter, process records and port records left the tree (`archive/2026-11-12/before-cleanup`). |
+
+**Already held by the register, so not added again.**
+
+| Audit finding | Register row |
+|---|---|
+| Mesh jobs hold the lock (L1) | Prender-38, Prender-51 |
+| Transit meshing on the main thread (L3) | Prender-52 |
+| The chunk ground placed three times (L7) | Pperformance-18 |
+| Two result protocols (L4) | Prender-195 |
+| Previews take the exclusive lock (A2) | Prender-85 |
+| CityCore god class (A6) | Prender-84 |
+| EffectWorld god class | Prender-97 |
+| Translated runtime and code | Pproduct-2 |
+| Comments citing the 4.0 | Ptraffic-40 and the AUDIT [REF] rows |
+| Parity generators | Psimulation-18, Pbuildings-9, Pbuildings-11 |
+| Spatial hash | Psimulation-19 |
+| `record_mass` in parking | Pbuildings-3 |
+| Likeness bodies | Psimulation-12 |
+| Lot scans | Plots-4, Plots-7, Prender-102, Psimulation-13 |
+| `widest_half` | Prender-65 |
+| Pose publication | Ptraffic-23 |
+| Stop lookups | Ptransit-4 |
+| Shooting sweeps | Psimulation-26 |
+| Bleeding | Psimulation-27 |
+| Mounds | Prender-99 |
+| Wear field | Prender-54 |
+| Congestion re-uploads | Prender-53 |
+| Transit part names | Prender-106 |
+| Colour spaces | Prender-112 |
+| Shader copies of C++ constants | Ptools-25 |
+| Mirror and constant rules | Ptools-29 |
+| Whole-tree gate counts | Ptools-24, Ptools-36 |
+| Balcony age | Pbuildings (from the old pending list, line 130) |
+| Regional style | The register row from the old pending list, line 144 |
+
+**Symptoms of a registered cause, written under that cause.**
+- The camera, inspector, clearance probe and metro entrances that miss buildings fall under "BuildingStore files each building
+  as a point".
+- Portuguese texts belong to the translation of 2026-11-12.
+
 ## How the work was done before 2026-11-12 (history; the orders themselves live in CLAUDE.md)
 
 ### The tree taken back to 2026-11-07 (2026-11-10)
@@ -162,7 +243,7 @@ commit `dcfd4c7c` on main, no history rewritten. Main as it stood is the tag `an
 (map 4, seed 1) at five dates showed the city whole on 06/11 and 07/11 and broken after the lab ports begun 2026-11-08 21:30
 (`b56db4a3`). That base cost about twice the video and static memory of the later tree (centre view 5,454 MiB video, 1,351 MiB
 static). The day's uncommitted work (mimalloc hooks through `MI_WIN_USE_FLS`, a memory census by thread and by asker,
-`memory_test`) is the branch `wip/allocator-2026-11-10`. The repository's first commit is "Base antes do porte" (`bb58790e`).
+`memory_test`) is the branch `wip/allocator-2026-11-10`. The repository's first commit is "Base before the port" (`bb58790e`).
 
 ### The diagnosis of 2026-11-08
 
@@ -173,7 +254,7 @@ Since then the trace-fix skill's hooks and the scenes' declared inputs exist.
 
 ### The mandatory pause (2026-11-11, revoked by the owner on 2026-11-12)
 
-The owner stopped the work on 2026-11-11 ("Pausa obrigatória: levantar, pesquisar, provar e corrigir"): three phases (survey,
+The owner stopped the work on 2026-11-11 ("Mandatory pause: survey, research, prove and fix"): three phases (survey,
 research proven in isolated tests, fixes) before any new game code, with fourteen standing orders and the image protocol. Where it
 stood: Phase 1 recorded in `log/specification.md`, `log/pendencias.md` (50 structured items) and `log/research.md` (Q1, Q2, Q4,
 Q5, Q6, Q16 proven; Q3, Q7 to Q15, Q17 to Q20 open); km24 measured on the median profile (GPU p95 up to 14.9 ms, 151 frames over

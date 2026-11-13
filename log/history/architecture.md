@@ -1,465 +1,465 @@
-# Registro da linha de arquitetura (tools/analysis/arch)
+# Record of the architecture line (tools/analysis/arch)
 
-Ao retomar: leia este arquivo e rode `python tools/analysis/arch.py status`. Metodologia: os 7 passos do `CLAUDE.md`, registrados abaixo.
-Item fechado só com prova (saída, diff ou arquivo e linha) na seção "Provas". `[ ]` aberto, `[x]` feito.
-Contagem: `grep -c '^- \[x\]' log/arquitetura.md` e `grep -c '^- \[ \]' log/arquitetura.md`.
+On resuming: read this file and run `python tools/analysis/arch.py status`. Method: the 7 steps of `CLAUDE.md`, recorded below.
+An item is closed only with proof (output, diff, or file and line) in the "Proofs" section. `[ ]` open, `[x]` done.
+Count: `grep -c '^- \[x\]' log/arquitetura.md` and `grep -c '^- \[ \]' log/arquitetura.md`.
 
-Meta da sessão (o `/goal` do usuário, 2026-11-06): só está cumprido quando `python tools/analysis/arch.py selfcheck`, rodado no turno e sem
-cache, mostrar todas as verificações passando; `status` mostrar a tabela de cobertura sem categoria não coberta e o resíduo com seus itens;
-o gate completo mostrar Gates OK; a tag `arch-baseline` existir; e o push estiver feito. Nenhuma correção de causa nesta fase.
+Goal of the session (the user's `/goal`, 2026-11-06): it is met only when `python tools/analysis/arch.py selfcheck`, run in the turn and without
+cache, shows every check passing; `status` shows the coverage table with no uncovered category and the residue with its items;
+the whole gate shows Gates OK; the tag `arch-baseline` exists; and the push is done. No fix of a cause in this phase.
 
-Correções de leitura feitas ao gravar (2026-11-06):
-- `dist/arch-proto/meta.py` tem 115 linhas; o `".import"` fixo está em `meta.py:75`. O `meta.py:681` da confirmação era a linha na saída concatenada dos protótipos: erro meu.
-- A resposta R1 diz que o `build.sh` não usa `git archive`. Conferido: usa, em `tools/build/build.sh:72` (`build.sh package`). Não muda a decisão de R1 (sem `.gitattributes`), e está avisado ao usuário.
+Reading corrections made when recording (2026-11-06):
+- `dist/arch-proto/meta.py` has 115 lines; the fixed `".import"` is at `meta.py:75`. The `meta.py:681` of the confirmation was the line in the prototypes' concatenated output: my mistake.
+- Answer R1 says `build.sh` does not use `git archive`. Checked: it does, at `tools/build/build.sh:72` (`build.sh package`). It does not change R1's decision (no `.gitattributes`), and the user has been told.
 
-## Parte a: o PEDIDO, com as palavras do usuário
+## Part a: the REQUEST, in the user's words
 
-- [x] **A0.** A causa dos problemas de desempenho deste jogo é a arquitetura. Sombra, polígono e tempo de GPU são sintomas e mudam com a placa de vídeo. Crie o mecanismo que rastreia tudo, sem amarra nem limitação, e encontra na causa os problemas de arquitetura, otimização e desempenho. **Prova:** `python tools/analysis/arch.py scan` + fila em `dist/arch/queue.json`.
-- [x] **A1. O PROGRAMA.** tools/analysis/arch/ com entrada python tools/analysis/arch.py e comandos scan, explain <id>, next, predict <id>, done <id>, status e selfcheck. Recebe só o caminho de um repositório git. Não contém nome de funcionalidade, pasta, arquivo, classe, função ou API de nenhum projeto, nem lista de decisões, fluxo descrito à mão ou limite numérico escolhido à mão. Corte, peso e resolução saem do repositório analisado (distribuição do corpus ou previsão do histórico). Adaptador é por linguagem ou formato, nunca por projeto. features.cjs é exemplo do que não pode: regex com nomes de pasta. Se um resultado pedir um nome no código, o método está errado: troque o método. **Prova:** `tools/analysis/arch/cli.py:124` (comandos), Limpeza sem nome raro do projeto no programa.
-- [x] **A2. UNIDADE E EVIDÊNCIA.** A unidade não é o arquivo. É declaração, campo, ramo de função, chave de JSON, linha de CSV, função e uniform de shader, nó de cena. Uma funcionalidade pode ser um ramo dentro de uma função compartilhada. Toda aresta é tipada e traz origem da evidência e grau de confiança. Fontes: AST do compilador, tipos, servidores de linguagem, identificadores raros, commits, execução gravada. Pesquise o melhor para cada linguagem. Duas fontes independentes que concordam valem mais que uma. **Prova:** `tools/analysis/arch/graph.py` (aresta tipada, origem, confiança), `tools/analysis/arch/model.py`.
-- [x] **A3. RELAÇÃO DE POSSIBILIDADES.** Cubra todas as classes abaixo e amplie (a lista inteira está na parte b, item a item): **Prova:** injeção: todas as classes achadas, ver `status`.
-  Chamada: direta, virtual, ponteiro de função e de membro, std::function, lambda guardada, template instanciado, macro e X-macro expandidas, operador, construtor e destrutor (RAII, travas), conversão implícita, herança, sobrecarga, inline em header.
-  Por nome em tempo de execução: despacho por string (dispatch, query, set_tool, tabelas constantes), Callable, bind, call, callv, call_deferred, has_method, get e set por nome, Object::call do C++ ao script, ClassDB::bind, match e switch sobre enum, valor de dado que escolhe código.
-  Eventos: sinais, conexões em código e em cena, timers, callbacks do motor (extension_api traz is_virtual), entrada, autoloads, grupos, caminhos de nó.
-  Recursos: preload, load com caminho montado, cena, script, shader, include de shader, material por nome, uniform e global e instance uniform escritos por nome, chave de JSON, Dictionary lido por texto, chave de tr() montada, tabela em partes, chave de save e bloco etiquetado.
-  Dados e mutação: quem lê e quem escreve cada campo, com sensibilidade a campo; mutação por referência, ponteiro, alias, const_cast; estado compartilhado entre threads; atômicos, travas, buffers triplos; canais indiretos em que A escreve e B lê depois (ChangeLog, diário, undo e seu inverso, save e load); função como valor que muda em tempo de execução.
-  Tempo: boot, por quadro, por tick, por evento, adiado, em thread ou job, ao carregar save antigo, só em teste, só em debug, só em exportação, só num renderizador ou nível gráfico, só por dado ou opção, só por tecla ou argumento de linha de comando.
-  Fronteira: motor, Terrain3D, bibliotecas, processos externos, ferramentas que geram arquivos (tools/assets), código gerado pelo tradutor, build, export_presets, PGO.
-  Papel: funcionalidade própria, dependência de outras, dependente de outras, compartilhada, infraestrutura, código de teste, código morto, dado sem leitor, opção sem efeito.
-  Evolução: a mesma funcionalidade ao longo dos commits, por renames, movimentos e divisões, com identidade estável.
-  Se achar classe nova, ela entra. A relação nunca é considerada fechada por decisão sua: é a seção 5 que mede o que falta.
-- [x] **A4. SEM EXPLOSÃO.** Seguir todas as arestas alcançou 722 de 726 arquivos no 4.0: rastreio que devolve o programa inteiro reprova. Use dominância, sensibilidade a campo e fecho em camadas: núcleo (só ela usa), executado, dados (quem escreve o que ela lê e quem lê o que ela escreve), ligação (da raiz até ela) e alcançável (só listado). Aresta genérica por identificador nunca mantém um alvo vivo sozinha. Pesquise fatiamento de programas, inclusive thin slicing. **Prova:** verificação `closure` + `tools/analysis/arch/layers.py` (`rings`, `_thin_data`).
-- [x] **A5. TUDO É CONTADO.** Uma enumeração independente da que resolve lista todo ponto de ligação de cada arquivo. Cada um termina resolvido, com candidatos e confiança, ou no resíduo. O resíduo é um número em status e cada item tem arquivo e linha. O que a análise estática não decidir não some: fica com confiança e a IA lê o código. **Prova:** `tools/analysis/arch/points.py` (enumeração independente); `status` lista o resíduo com arquivo e linha.
-- [x] **A6. EXECUÇÃO GRAVADA, SEM RODAR.** native/pgo/citycore.profdata tem contagens e alvos de chamada indireta: use para resolver chamadas indiretas, achar o que é quente e medir o que a análise estática perdeu. Cuidado: nomes internos carregam o caminho de uma worktree antiga, o perfil é anterior a commits recentes e "não rodou no treino" não significa morto. Se o lado GDScript não fechar, use um registrador leve na suíte existente, cerca de um minuto, nunca sessão longa. **Prova:** `tools/analysis/arch/profile_data.py` (`read`, `rate`).
-- [x] **A7.1.** O QUE DESCOBRE. Tudo a partir das seções acima: funcionalidades, em níveis, nomeadas pelas próprias palavras, atravessando linguagens e dados. **Prova:** `tools/analysis/arch/groups.py`, `dist/arch/levels.json`; verificação `keys`.
-- [x] **A7.2.** espalhamento: mesma responsabilidade em vários lugares da mesma camada. Camada é descoberta pelo grafo condensado, nunca por nome de pasta. Passar por camadas é a arquitetura, não é defeito. **Prova:** `scattered` achado na injeção; camadas em `layers.py`.
-- [x] **A7.3.** deuses por responsabilidade, nunca por linhas: alcance, participação, grupos sem estado comum, fan-in, fan-out, rotatividade, inclusive em arquivo de dados. Coesão por campos sozinha falha, porque um campo comum faz fachada parecer coesa. **Prova:** `god` achado na injeção; `design.gods`.
-- [x] **A7.4.** dono que falta: classes respondendo às mesmas mensagens sem contrato comum, regra repetida, decisão tomada em vários lugares. **Prova:** `implicit_role`, `repeated_rule`, `repeated_decision` na injeção.
-- [x] **A7.5.** custos, por análise estática, a partir do que repete (quadro, tick, thread): trabalho que cresce com o estado, laços aninhados, alocação, trava e contenção, chamada à fronteira em laço, trabalho refeito sem mudança de entrada, cópia, busca linear em caminho quente, consulta por quadro, GPU (o que é enviado, passes, sombra, material, variantes, leitura de tela, custo de shader por análise offline sobre SPIR-V), memória, streaming, carregamento, configuração, opção cara ou sem efeito. Monte a tabela completa de categorias pela pesquisa. Categoria sem detector aparece como não coberta e impede concluir. **Prova:** tabela de categorias em `status`, todas cobertas.
-- [x] **A7.6.** raiz: achados formam um grafo. O achado explicado por outro vira filho dele. A causa é o nó que, removido, faz os outros sumirem. Só a raiz entra na fila. Todo achado traz o caminho de prova no grafo; achado sem caminho não existe. **Prova:** verificação `proofs`: nenhum achado sem caminho; `causes_graph.roots`.
-- [x] **A8. FILA.** dist/arch/queue.json, regenerável pelo scan. Cada unidade: a causa, o caminho de prova, todos os lugares (arquivo e linha), o dono candidato (dominador comum), o que deve sumir, os filhos que somem junto, quantos commits passados ela custou. Ordem: alcance causal vezes custo histórico. Esforço não é dado e não entra em nenhuma conta. **Prova:** `dist/arch/queue.json`, `causes_graph.build_queue`.
-- [x] **A9.0. SELFCHECK.** Cada verificação tem de poder reprovar, e cada uma tem um teste mostrando a reprovação. Conjunto vazio é reprovação. **Prova:** verificação `failures`: cada juiz reprova o que deve; conjunto vazio reprova.
-- [x] **A9.1.** Invariância: trocar todos os nomes e caminhos dá mapa, fila e raízes idênticos. **Prova:** verificação `invariance`.
-- [x] **A9.2.** Anti-maquiagem: dividir um arquivo sem separar responsabilidade, renomear, mover código ou criar função que só repassa não muda nenhuma nota. **Prova:** verificação `antimakeup`.
-- [x] **A9.3.** Injeção: numa cópia, com semente sorteada, injete casos de cada classe da seção 3 e de cada categoria de custo: funcionalidade nova, deus, regra repetida, chamada só por nome, trabalho por quadro. Todos têm de ser achados. **Prova:** verificação `injection`.
-- [x] **A9.4.** Ablação: desligar qualquer adaptador reprova um teste. A aresta genérica não pode esconder a falha. **Prova:** verificação `ablation`, sem depósito.
-- [x] **A9.5.** Estabilidade: tirar uma funcionalidade ou alguns commits mantém o resto. O protótipo deu 0,85 a 0,88: ache a causa e corrija. **Prova:** verificação `stability`.
-- [x] **A9.6.** Previsão: prevê commits seguintes melhor que a pasta e o acaso. **Prova:** verificação `prediction`.
-- [x] **A9.7.** Portabilidade: roda sem edição em C:\Users\Jonathan\Documents\Projects\city\roadcraft e em tools/converter, e o resultado faz sentido em cada um. **Prova:** verificação `portability`.
-- [x] **A9.8.** Limpeza: nenhum identificador raro do repositório analisado existe no código do programa, e o programa não abre nenhum arquivo de gabarito. **Prova:** verificação `cleanliness`.
-- [x] **A9.9.** Determinismo: duas rodadas em processos separados dão bytes iguais. **Prova:** verificação `determinism`.
-- [x] **A10. GABARITO DO PROJETO.** Use o projeto como referência sem pôr nada dele no programa. Os gabaritos ficam em tools/analysis/arch_eval/, que só o selfcheck lê: log/mapa.md (arquivos de mesma responsabilidade), cpp_layers de rules.json (camadas), owners.json (donos), tools/process/records/map40 (funcionalidades do 4.0), os defeitos com causa registrada em log/*.md e nos commits (rode o programa no commit anterior à correção: ele deve apontar o lugar). Separe uma parte para ajustar e outra guardada para a nota final, para não decorar a prova. O protótipo deu 0,69 de pares do mapa contra 0,12 ao acaso. Baixa concordância é investigada: pode ser erro do programa ou defeito real do mapa. Diga qual, com prova. **Prova:** `tools/analysis/arch_eval/`, verificações `keys` e `defects`.
-- [x] **A11.1.** CENÁRIOS JÁ PREVISTOS. compile_commands não está nas pastas de build: use ninja -t compdb em native/build-win-debug e filtre native/src. O índice do clangd leva cerca de 1 minuto; percorrer token por token é o lento: troque o método. tools/converter/out/game/cppgraph.json é velho, com 202 arquivos. **Prova:** `tools/analysis/arch/adapters/cpp_build.py` (`ninja -t compdb`), `cpp.py`.
-- [x] **A11.2.** Git Bash reescreve argumentos que parecem caminho e a saída pode vir com fim de linha do Windows. **Prova:** `tools/analysis/arch/repo.py` (git sem shell, `core.autocrlf=false`), `core.text_of`.
-- [x] **A11.3.** Reconheça sozinho arquivos gerados, vendorizados, cópias (tools/converter-slice, tools/oracle-4.0) e arquivos sem vocabulário próprio (.import, .uid). **Prova:** `tools/analysis/arch/roles.py`: gerado, estrangeiro, sidecar pelo comportamento.
-- [x] **A11.4.** Commits gigantes e renames distorcem o histórico: trate pelo comportamento, sem número fixo. **Prova:** `tools/analysis/arch/history.py` (`giant_cut`, linhagem por forma).
-- [x] **A11.5.** tools/converter tem git próprio: mudança nele vai no repositório dele. **Prova:** programa não altera `tools/converter`; roda nele sem edição.
-- [x] **A11.6.** Limites de tamanho, cabeçalho e clones valem para o programa. Arquivo novo entra em log/mapa.md. **Prova:** gate completo OK; `log/mapa.md` lista o programa.
-- [x] **A11.7.** Pode instalar dependências de desenvolvimento se a pesquisa mostrar que são o melhor caminho, e registre. **Prova:** dependências registradas em Passo 2.
-- [x] **A12. FALHAS DO GATE.** Corrija as 15 falhas do gate completo (schemas e rules.json), alinhando com o que o jogo lê. Tem minha autorização para alterar tools/gates e os schemas. **Prova:** commit `ad7ea03d`; gate completo OK.
-- [x] **A13. COMO TRABALHAR.** Siga os 7 passos do CLAUDE.md em log/arquitetura.md. Sem tentativa e erro: leia e pesquise antes. Sem medições longas e sem abrir o jogo para investigar. Não mexa em mudanças de outra sessão. O estado fica em disco, para continuar depois de uma compactação: ao retomar, leia log/arquitetura.md e rode status. **Prova:** Passos 1 a 7 neste registro.
-- [x] **A14. ENTREGA DESTA FASE.** selfcheck passando, regeneração completa do grafo C++, tabela de cobertura, resíduo, as 20 primeiras raízes com caminho de prova. Commit e push. Crie a tag arch-baseline no commit da ferramenta e dos gabaritos. Pare aí: não corrija nenhuma causa nesta fase. **Prova:** selfcheck 22 de 22 em 96 s; `dist/arch/queue.json`, `status`; tag `arch-baseline`; nenhuma causa do jogo corrigida nesta fase.
+- [x] **A0.** The cause of this game's performance problems is the architecture. Shadow, polygon and GPU time are symptoms and change with the video card. Create the mechanism that traces everything, with no tie or limitation, and finds at their cause the architecture, optimisation and performance problems. **Proof:** `python tools/analysis/arch.py scan` + queue in `dist/arch/queue.json`.
+- [x] **A1. THE PROGRAM.** tools/analysis/arch/ with entry python tools/analysis/arch.py and commands scan, explain <id>, next, predict <id>, done <id>, status and selfcheck. It receives only the path of a git repository. It contains no name of a feature, folder, file, class, function or API of any project, nor a list of decisions, a flow described by hand or a numeric limit chosen by hand. Cut, weight and resolution come from the analysed repository (the corpus's distribution or the history's prediction). An adapter is per language or format, never per project. features.cjs is an example of what is not allowed: a regex with folder names. If a result asks for a name in the code, the method is wrong: change the method. **Proof:** `tools/analysis/arch/cli.py:124` (commands), Cleanliness with no rare name of the project in the program.
+- [x] **A2. UNIT AND EVIDENCE.** The unit is not the file. It is a declaration, a field, a branch of a function, a JSON key, a CSV line, a shader function and uniform, a scene node. A feature can be a branch inside a shared function. Every edge is typed and carries the origin of its evidence and a degree of confidence. Sources: the compiler's AST, types, language servers, rare identifiers, commits, recorded execution. Research the best for each language. Two independent sources that agree are worth more than one. **Proof:** `tools/analysis/arch/graph.py` (typed edge, origin, confidence), `tools/analysis/arch/model.py`.
+- [x] **A3. LIST OF POSSIBILITIES.** Cover every class below and extend it (the whole list is in part b, item by item): **Proof:** injection: every class found, see `status`.
+  Call: direct, virtual, function and member pointer, std::function, stored lambda, instantiated template, expanded macro and X-macro, operator, constructor and destructor (RAII, locks), implicit conversion, inheritance, overload, inline in a header.
+  By name at run time: dispatch by string (dispatch, query, set_tool, constant tables), Callable, bind, call, callv, call_deferred, has_method, get and set by name, Object::call from C++ to script, ClassDB::bind, match and switch over an enum, a data value that chooses code.
+  Events: signals, connections in code and in a scene, timers, engine callbacks (extension_api carries is_virtual), input, autoloads, groups, node paths.
+  Resources: preload, load with an assembled path, scene, script, shader, shader include, material by name, uniform and global and instance uniform written by name, JSON key, Dictionary read by text, assembled tr() key, table in parts, save key and tagged block.
+  Data and mutation: who reads and who writes each field, field-sensitive; mutation by reference, pointer, alias, const_cast; state shared between threads; atomics, locks, triple buffers; indirect channels where A writes and B reads later (ChangeLog, journal, undo and its inverse, save and load); a function as a value that changes at run time.
+  Time: boot, per frame, per tick, per event, deferred, in a thread or job, on loading an old save, only in tests, only in debug, only in export, only in one renderer or graphics tier, only by data or option, only by key or command-line argument.
+  Boundary: engine, Terrain3D, libraries, external processes, tools that generate files (tools/assets), code generated by the translator, build, export_presets, PGO.
+  Role: own feature, dependency of others, dependent on others, shared, infrastructure, test code, dead code, data without a reader, option without effect.
+  Evolution: the same feature across commits, through renames, moves and splits, with a stable identity.
+  If a new class is found, it goes in. The list is never considered closed by your decision: section 5 measures what is missing.
+- [x] **A4. NO EXPLOSION.** Following every edge reached 722 of 726 files in the 4.0: a trace that returns the whole program fails. Use dominance, field sensitivity and a closure in layers: core (only it uses), executed, data (who writes what it reads and who reads what it writes), link (from the root to it) and reachable (only listed). A generic edge by identifier never keeps a target alive on its own. Research program slicing, thin slicing included. **Proof:** check `closure` + `tools/analysis/arch/layers.py` (`rings`, `_thin_data`).
+- [x] **A5. EVERYTHING IS COUNTED.** An enumeration independent of the one that resolves lists every link point of each file. Each one ends resolved, with candidates and confidence, or in the residue. The residue is a number in status and each item has a file and line. What the static analysis does not decide does not vanish: it stays with its confidence and the AI reads the code. **Proof:** `tools/analysis/arch/points.py` (independent enumeration); `status` lists the residue with file and line.
+- [x] **A6. RECORDED EXECUTION, WITHOUT RUNNING.** native/pgo/citycore.profdata has counts and indirect call targets: use it to resolve indirect calls, find what is hot and measure what the static analysis missed. Careful: internal names carry the path of an old worktree, the profile predates recent commits and "did not run in training" does not mean dead. If the GDScript side does not close, use a light recorder in the existing suite, about a minute, never a long session. **Proof:** `tools/analysis/arch/profile_data.py` (`read`, `rate`).
+- [x] **A7.1.** WHAT IT DISCOVERS. Everything from the sections above: features, in levels, named by their own words, across languages and data. **Proof:** `tools/analysis/arch/groups.py`, `dist/arch/levels.json`; check `keys`.
+- [x] **A7.2.** scattering: the same responsibility in several places of the same layer. A layer is discovered by the condensed graph, never by a folder name. Passing through layers is the architecture, not a defect. **Proof:** `scattered` found in the injection; layers in `layers.py`.
+- [x] **A7.3.** gods by responsibility, never by lines: reach, participation, groups without common state, fan-in, fan-out, churn, data files included. Cohesion by fields alone fails, because a common field makes a facade look cohesive. **Proof:** `god` found in the injection; `design.gods`.
+- [x] **A7.4.** missing owner: classes answering the same messages without a common contract, a repeated rule, a decision taken in several places. **Proof:** `implicit_role`, `repeated_rule`, `repeated_decision` in the injection.
+- [x] **A7.5.** costs, by static analysis, from what repeats (frame, tick, thread): work that grows with the state, nested loops, allocation, lock and contention, a call across the boundary in a loop, work redone without a change of input, copying, a linear search on a hot path, a query per frame, GPU (what is sent, passes, shadow, material, variants, screen reads, shader cost by offline analysis of SPIR-V), memory, streaming, loading, configuration, an expensive option or one without effect. Build the complete table of categories from research. A category without a detector shows as uncovered and prevents concluding. **Proof:** table of categories in `status`, all covered.
+- [x] **A7.6.** root: findings form a graph. A finding explained by another becomes its child. The cause is the node that, removed, makes the others vanish. Only the root enters the queue. Every finding carries its proof path in the graph; a finding without a path does not exist. **Proof:** check `proofs`: no finding without a path; `causes_graph.roots`.
+- [x] **A8. QUEUE.** dist/arch/queue.json, regenerable by the scan. Each unit: the cause, the proof path, every place (file and line), the candidate owner (common dominator), what must vanish, the children that vanish with it, how many past commits it cost. Order: causal reach times historical cost. Effort is not data and enters no sum. **Proof:** `dist/arch/queue.json`, `causes_graph.build_queue`.
+- [x] **A9.0. SELFCHECK.** Every check must be able to fail, and each has a test showing the failure. An empty set is a failure. **Proof:** check `failures`: each judge fails what it must; an empty set fails.
+- [x] **A9.1.** Invariance: changing every name and path gives an identical map, queue and roots. **Proof:** check `invariance`.
+- [x] **A9.2.** Anti-makeup: splitting a file without separating responsibility, renaming, moving code or creating a function that only passes through changes no score. **Proof:** check `antimakeup`.
+- [x] **A9.3.** Injection: in a copy, with a drawn seed, inject cases of each class of section 3 and each cost category: a new feature, a god, a repeated rule, a call by name only, per-frame work. All must be found. **Proof:** check `injection`.
+- [x] **A9.4.** Ablation: switching off any adapter fails a test. The generic edge cannot hide the failure. **Proof:** check `ablation`, without a deposit.
+- [x] **A9.5.** Stability: removing a feature or some commits keeps the rest. The prototype gave 0.85 to 0.88: find the cause and fix it. **Proof:** check `stability`.
+- [x] **A9.6.** Prediction: it predicts the following commits better than the folder and chance. **Proof:** check `prediction`.
+- [x] **A9.7.** Portability: it runs without editing on C:\Users\Jonathan\Documents\Projects\city\roadcraft and on tools/converter, and the result makes sense on each. **Proof:** check `portability`.
+- [x] **A9.8.** Cleanliness: no rare identifier of the analysed repository exists in the program's code, and the program opens no answer-key file. **Proof:** check `cleanliness`.
+- [x] **A9.9.** Determinism: two rounds in separate processes give equal bytes. **Proof:** check `determinism`.
+- [x] **A10. THE PROJECT'S ANSWER KEY.** Use the project as a reference without putting anything of it in the program. The answer keys live in tools/analysis/arch_eval/, which only the selfcheck reads: log/mapa.md (files of the same responsibility), cpp_layers of rules.json (layers), owners.json (owners), tools/process/records/map40 (features of the 4.0), the defects with a cause recorded in log/*.md and in the commits (run the program on the commit before the fix: it must point at the place). Keep one part for tuning and another set aside for the final score, so as not to memorise the test. The prototype gave 0.69 of the map's pairs against 0.12 by chance. Low agreement is investigated: it can be an error of the program or a real defect of the map. Say which, with proof. **Proof:** `tools/analysis/arch_eval/`, checks `keys` and `defects`.
+- [x] **A11.1.** SCENARIOS ALREADY FORESEEN. compile_commands is not in the build folders: use ninja -t compdb in native/build-win-debug and filter native/src. The clangd index takes about 1 minute; walking token by token is the slow part: change the method. tools/converter/out/game/cppgraph.json is old, with 202 files. **Proof:** `tools/analysis/arch/adapters/cpp_build.py` (`ninja -t compdb`), `cpp.py`.
+- [x] **A11.2.** Git Bash rewrites arguments that look like paths and the output can come with Windows line endings. **Proof:** `tools/analysis/arch/repo.py` (git without a shell, `core.autocrlf=false`), `core.text_of`.
+- [x] **A11.3.** Recognise on your own generated files, vendored files, copies (tools/converter-slice, tools/oracle-4.0) and files without a vocabulary of their own (.import, .uid). **Proof:** `tools/analysis/arch/roles.py`: generated, foreign, sidecar by behaviour.
+- [x] **A11.4.** Giant commits and renames distort the history: handle them by behaviour, with no fixed number. **Proof:** `tools/analysis/arch/history.py` (`giant_cut`, lineage by shape).
+- [x] **A11.5.** tools/converter has its own git: a change in it goes into its repository. **Proof:** the program does not change `tools/converter`; it runs on it without editing.
+- [x] **A11.6.** The size, header and clone limits apply to the program. A new file enters log/mapa.md. **Proof:** whole gate OK; `log/mapa.md` lists the program.
+- [x] **A11.7.** You may install development dependencies if research shows they are the best path, and record them. **Proof:** dependencies recorded in Step 2.
+- [x] **A12. GATE FAILURES.** Fix the 15 failures of the whole gate (schemas and rules.json), aligning with what the game reads. You have my authorisation to change tools/gates and the schemas. **Proof:** commit `ad7ea03d`; whole gate OK.
+- [x] **A13. HOW TO WORK.** Follow the 7 steps of CLAUDE.md in log/arquitetura.md. No trial and error: read and research first. No long measurements and no opening the game to investigate. Do not touch another session's changes. The state stays on disk, to continue after a compaction: on resuming, read log/arquitetura.md and run status. **Proof:** Steps 1 to 7 in this record.
+- [x] **A14. DELIVERY OF THIS PHASE.** selfcheck passing, a complete regeneration of the C++ graph, coverage table, residue, the first 20 roots with their proof path. Commit and push. Create the tag arch-baseline on the commit of the tool and the answer keys. Stop there: do not fix any cause in this phase. **Proof:** selfcheck 22 of 22 in 96 s; `dist/arch/queue.json`, `status`; tag `arch-baseline`; no cause of the game fixed in this phase.
 
-## Parte b: cada classe da seção 3, com o exemplo real (cada uma coberta por adaptador e injeção)
+## Part b: each class of section 3, with the real example (each covered by an adapter and by injection)
 
-Chamada
-- [x] **B1.** direta: `native/src/sim/simulation/simulation.cpp:101` **Prova:** classe achada na injeção (`status`).
-- [x] **B2.** virtual: `native/src/render/mesh_queue.h:76` **Prova:** classe achada na injeção (`status`).
-- [x] **B3.** ponteiro de função: `native/src/sim/traffic/reeds_shepp.cpp:24` **Prova:** classe achada na injeção (`status`).
-- [x] **B4.** ponteiro de membro: `native/src/render/chunk_jobs.h:105` **Prova:** classe achada na injeção (`status`).
-- [x] **B5.** std::function: `native/src/core/job_pool.cpp:31` **Prova:** classe achada na injeção (`status`).
-- [x] **B6.** lambda guardada: `native/src/render/buildings/building_renderer.cpp:198`, `native/src/render/buildings/facade.h:29` **Prova:** classe achada na injeção (`status`).
-- [x] **B7.** template instanciado: `native/src/sim/traffic/astar.h:28` **Prova:** classe achada na injeção (`status`).
-- [x] **B8.** macro e X-macro: `native/src/api/catalog_loader.cpp:59` **Prova:** classe achada na injeção (`status`).
-- [x] **B9.** operador: `native/src/core/math.h:25` **Prova:** classe achada na injeção (`status`).
-- [x] **B10.** construtor e destrutor (RAII): `native/src/sim/terrain/heightfield.h:157` **Prova:** classe achada na injeção (`status`).
-- [x] **B11.** trava por RAII: `native/src/api/city_core_query.cpp:118` **Prova:** classe achada na injeção (`status`).
-- [x] **B12.** conversão implícita: `native/src/api/city_core_query.cpp:132` **Prova:** classe achada na injeção (`status`).
-- [x] **B13.** herança: `native/src/api/city_core.h:29` **Prova:** classe achada na injeção (`status`).
-- [x] **B14.** sobrecarga: `native/src/sim/roads/road_network.h:137` **Prova:** classe achada na injeção (`status`).
-- [x] **B15.** inline em header: `native/src/core/grid.h:20` **Prova:** classe achada na injeção (`status`).
+Call
+- [x] **B1.** direct: `native/src/sim/simulation/simulation.cpp:101` **Proof:** class found in the injection (`status`).
+- [x] **B2.** virtual: `native/src/render/mesh_queue.h:76` **Proof:** class found in the injection (`status`).
+- [x] **B3.** function pointer: `native/src/sim/traffic/reeds_shepp.cpp:24` **Proof:** class found in the injection (`status`).
+- [x] **B4.** member pointer: `native/src/render/chunk_jobs.h:105` **Proof:** class found in the injection (`status`).
+- [x] **B5.** std::function: `native/src/core/job_pool.cpp:31` **Proof:** class found in the injection (`status`).
+- [x] **B6.** stored lambda: `native/src/render/buildings/building_renderer.cpp:198`, `native/src/render/buildings/facade.h:29` **Proof:** class found in the injection (`status`).
+- [x] **B7.** instantiated template: `native/src/sim/traffic/astar.h:28` **Proof:** class found in the injection (`status`).
+- [x] **B8.** macro and X-macro: `native/src/api/catalog_loader.cpp:59` **Proof:** class found in the injection (`status`).
+- [x] **B9.** operator: `native/src/core/math.h:25` **Proof:** class found in the injection (`status`).
+- [x] **B10.** constructor and destructor (RAII): `native/src/sim/terrain/heightfield.h:157` **Proof:** class found in the injection (`status`).
+- [x] **B11.** lock by RAII: `native/src/api/city_core_query.cpp:118` **Proof:** class found in the injection (`status`).
+- [x] **B12.** implicit conversion: `native/src/api/city_core_query.cpp:132` **Proof:** class found in the injection (`status`).
+- [x] **B13.** inheritance: `native/src/api/city_core.h:29` **Proof:** class found in the injection (`status`).
+- [x] **B14.** overload: `native/src/sim/roads/road_network.h:137` **Proof:** class found in the injection (`status`).
+- [x] **B15.** inline in a header: `native/src/core/grid.h:20` **Proof:** class found in the injection (`status`).
 
-Por nome em tempo de execução
-- [x] **B16.** dispatch: `project/game/flow/game_keys.gd:97` → `project/game/store/store_api.gd:8` → `project/game/store/city_store.gd:83` **Prova:** classe achada na injeção (`status`).
-- [x] **B17.** query: `project/game/camera/camera_pull.gd:29` → `project/game/store/store_api.gd:47` → `project/game/store/city_store.gd:93` **Prova:** classe achada na injeção (`status`).
-- [x] **B18.** set_tool: `project/ui/roadcraft_hud.gd:226` **Prova:** classe achada na injeção (`status`).
-- [x] **B19.** tabela constante: `project/game/tools/tool_controller.gd:26`, `project/game/flow/game_flow.gd:11` **Prova:** classe achada na injeção (`status`).
-- [x] **B20.** Callable: `project/game/store/city_store.gd:44` **Prova:** classe achada na injeção (`status`).
-- [x] **B21.** bind: `project/ui/effects_panel.gd:158` **Prova:** classe achada na injeção (`status`).
-- [x] **B22.** call: `project/game/health/health_log.gd:35` **Prova:** classe achada na injeção (`status`).
-- [x] **B23.** callv: `project/game/store/city_store.gd:83` **Prova:** classe achada na injeção (`status`).
-- [x] **B24.** call_deferred: `project/render/model_studio.gd:65` **Prova:** classe achada na injeção (`status`).
-- [x] **B25.** has_method: `project/ui/builder_strip.gd:32` **Prova:** classe achada na injeção (`status`).
-- [x] **B26.** get e set por nome: `project/game/settings/quality.gd:69` **Prova:** classe achada na injeção (`status`).
-- [x] **B27.** Object::call do C++: `native/src/render/terrain_bridge.cpp:36` **Prova:** classe achada na injeção (`status`).
-- [x] **B28.** ClassDB::bind: `native/src/api/city_core_bind.cpp:17`, `native/src/api/city_core_models.cpp:210` **Prova:** classe achada na injeção (`status`).
-- [x] **B29.** match e switch: `project/game/flow/game_keys.gd:72`, `native/src/render/buildings/facade_bay.cpp:46` **Prova:** classe achada na injeção (`status`).
-- [x] **B30.** dado que escolhe código: `project/data/ui/land_panels.json:140`, `project/game/tools/body_edits.gd:11` **Prova:** classe achada na injeção (`status`).
+By name at run time
+- [x] **B16.** dispatch: `project/game/flow/game_keys.gd:97` → `project/game/store/store_api.gd:8` → `project/game/store/city_store.gd:83` **Proof:** class found in the injection (`status`).
+- [x] **B17.** query: `project/game/camera/camera_pull.gd:29` → `project/game/store/store_api.gd:47` → `project/game/store/city_store.gd:93` **Proof:** class found in the injection (`status`).
+- [x] **B18.** set_tool: `project/ui/roadcraft_hud.gd:226` **Proof:** class found in the injection (`status`).
+- [x] **B19.** constant table: `project/game/tools/tool_controller.gd:26`, `project/game/flow/game_flow.gd:11` **Proof:** class found in the injection (`status`).
+- [x] **B20.** Callable: `project/game/store/city_store.gd:44` **Proof:** class found in the injection (`status`).
+- [x] **B21.** bind: `project/ui/effects_panel.gd:158` **Proof:** class found in the injection (`status`).
+- [x] **B22.** call: `project/game/health/health_log.gd:35` **Proof:** class found in the injection (`status`).
+- [x] **B23.** callv: `project/game/store/city_store.gd:83` **Proof:** class found in the injection (`status`).
+- [x] **B24.** call_deferred: `project/render/model_studio.gd:65` **Proof:** class found in the injection (`status`).
+- [x] **B25.** has_method: `project/ui/builder_strip.gd:32` **Proof:** class found in the injection (`status`).
+- [x] **B26.** get and set by name: `project/game/settings/quality.gd:69` **Proof:** class found in the injection (`status`).
+- [x] **B27.** Object::call from C++: `native/src/render/terrain_bridge.cpp:36` **Proof:** class found in the injection (`status`).
+- [x] **B28.** ClassDB::bind: `native/src/api/city_core_bind.cpp:17`, `native/src/api/city_core_models.cpp:210` **Proof:** class found in the injection (`status`).
+- [x] **B29.** match and switch: `project/game/flow/game_keys.gd:72`, `native/src/render/buildings/facade_bay.cpp:46` **Proof:** class found in the injection (`status`).
+- [x] **B30.** data that chooses code: `project/data/ui/land_panels.json:140`, `project/game/tools/body_edits.gd:11` **Proof:** class found in the injection (`status`).
 
-Eventos
-- [x] **B31.** sinal: `project/game/flow/game_flow.gd:7` **Prova:** classe achada na injeção (`status`).
-- [x] **B32.** conexão em código: `project/game/lab/lab_recorder.gd:32` **Prova:** classe achada na injeção (`status`).
-- [x] **B33.** conexão em cena: nenhuma no projeto; a única é vendorizada, `native/godot-cpp/test/project/main.tscn:29` (prova por injeção, P1) **Prova:** classe achada na injeção (`status`).
-- [x] **B34.** timer: `project/render/thunder.gd:62` **Prova:** classe achada na injeção (`status`).
-- [x] **B35.** callback do motor: `project/game/camera/city_camera.gd:99`, `native/src/api/city_core.h:58` **Prova:** classe achada na injeção (`status`).
-- [x] **B36.** entrada: `project/game/tools/tool_controller.gd:144` **Prova:** classe achada na injeção (`status`).
-- [x] **B37.** autoload: `project/project.godot:12` **Prova:** classe achada na injeção (`status`).
-- [x] **B38.** grupo: `project/game/tools/tool_controller.gd:68` **Prova:** classe achada na injeção (`status`).
-- [x] **B39.** caminho de nó: `project/ui/model_shelf.gd:77` **Prova:** classe achada na injeção (`status`).
+Events
+- [x] **B31.** signal: `project/game/flow/game_flow.gd:7` **Proof:** class found in the injection (`status`).
+- [x] **B32.** connection in code: `project/game/lab/lab_recorder.gd:32` **Proof:** class found in the injection (`status`).
+- [x] **B33.** connection in a scene: none in the project; the only one is vendored, `native/godot-cpp/test/project/main.tscn:29` (proof by injection, P1) **Proof:** class found in the injection (`status`).
+- [x] **B34.** timer: `project/render/thunder.gd:62` **Proof:** class found in the injection (`status`).
+- [x] **B35.** engine callback: `project/game/camera/city_camera.gd:99`, `native/src/api/city_core.h:58` **Proof:** class found in the injection (`status`).
+- [x] **B36.** input: `project/game/tools/tool_controller.gd:144` **Proof:** class found in the injection (`status`).
+- [x] **B37.** autoload: `project/project.godot:12` **Proof:** class found in the injection (`status`).
+- [x] **B38.** group: `project/game/tools/tool_controller.gd:68` **Proof:** class found in the injection (`status`).
+- [x] **B39.** node path: `project/ui/model_shelf.gd:77` **Proof:** class found in the injection (`status`).
 
-Recursos
-- [x] **B40.** preload: `project/game/tools/tool_controller.gd:26` **Prova:** classe achada na injeção (`status`).
-- [x] **B41.** load com caminho montado: `native/src/render/agents/people_renderer.cpp:109`, `project/render/city_water.gd:30` **Prova:** classe achada na injeção (`status`).
-- [x] **B42.** cena: `project/tests/visual/capture_clock.gd:25` **Prova:** classe achada na injeção (`status`).
-- [x] **B43.** script: `project/game/play.tscn:3` **Prova:** classe achada na injeção (`status`).
-- [x] **B44.** shader: `project/render/city_water.gd:6`, `native/src/render/buildings/signature_bodies.cpp:27` **Prova:** classe achada na injeção (`status`).
-- [x] **B45.** include de shader: `project/render/shaders/building.gdshader:3` **Prova:** classe achada na injeção (`status`).
-- [x] **B46.** material por nome: `native/src/render/agents/agent_renderer.cpp:42` **Prova:** classe achada na injeção (`status`).
-- [x] **B47.** uniform por nome: `native/src/render/agents/agent_looks.cpp:53` **Prova:** classe achada na injeção (`status`).
-- [x] **B48.** global uniform: `project/render/shaders/agents.gdshader:12`, `project/project.godot:32` **Prova:** classe achada na injeção (`status`).
-- [x] **B49.** instance uniform: `project/render/shaders/building_level.gdshaderinc:11` **Prova:** classe achada na injeção (`status`).
-- [x] **B50.** chave de JSON: `project/data/catalog/tuning.json:46` → `native/src/render/buildings/building_renderer_reach.cpp:42` **Prova:** classe achada na injeção (`status`).
-- [x] **B51.** Dictionary lido por texto: `native/src/api/traffic_loader.cpp:38` **Prova:** classe achada na injeção (`status`).
-- [x] **B52.** chave de tr() montada: `project/game/tools/build_hands.gd:76`, `project/ui/approach_panel.gd:19` **Prova:** classe achada na injeção (`status`).
-- [x] **B53.** tabela em partes: `project/game/data/data_tables.gd:19` **Prova:** classe achada na injeção (`status`).
-- [x] **B54.** chave de save: `project/game/settings/settings.gd:41` **Prova:** classe achada na injeção (`status`).
-- [x] **B55.** bloco etiquetado: `native/src/sim/persistence/save_blocks.cpp:28` **Prova:** classe achada na injeção (`status`).
+Resources
+- [x] **B40.** preload: `project/game/tools/tool_controller.gd:26` **Proof:** class found in the injection (`status`).
+- [x] **B41.** load with an assembled path: `native/src/render/agents/people_renderer.cpp:109`, `project/render/city_water.gd:30` **Proof:** class found in the injection (`status`).
+- [x] **B42.** scene: `project/tests/visual/capture_clock.gd:25` **Proof:** class found in the injection (`status`).
+- [x] **B43.** script: `project/game/play.tscn:3` **Proof:** class found in the injection (`status`).
+- [x] **B44.** shader: `project/render/city_water.gd:6`, `native/src/render/buildings/signature_bodies.cpp:27` **Proof:** class found in the injection (`status`).
+- [x] **B45.** shader include: `project/render/shaders/building.gdshader:3` **Proof:** class found in the injection (`status`).
+- [x] **B46.** material by name: `native/src/render/agents/agent_renderer.cpp:42` **Proof:** class found in the injection (`status`).
+- [x] **B47.** uniform by name: `native/src/render/agents/agent_looks.cpp:53` **Proof:** class found in the injection (`status`).
+- [x] **B48.** global uniform: `project/render/shaders/agents.gdshader:12`, `project/project.godot:32` **Proof:** class found in the injection (`status`).
+- [x] **B49.** instance uniform: `project/render/shaders/building_level.gdshaderinc:11` **Proof:** class found in the injection (`status`).
+- [x] **B50.** JSON key: `project/data/catalog/tuning.json:46` → `native/src/render/buildings/building_renderer_reach.cpp:42` **Proof:** class found in the injection (`status`).
+- [x] **B51.** Dictionary read by text: `native/src/api/traffic_loader.cpp:38` **Proof:** class found in the injection (`status`).
+- [x] **B52.** assembled tr() key: `project/game/tools/build_hands.gd:76`, `project/ui/approach_panel.gd:19` **Proof:** class found in the injection (`status`).
+- [x] **B53.** table in parts: `project/game/data/data_tables.gd:19` **Proof:** class found in the injection (`status`).
+- [x] **B54.** save key: `project/game/settings/settings.gd:41` **Proof:** class found in the injection (`status`).
+- [x] **B55.** tagged block: `native/src/sim/persistence/save_blocks.cpp:28` **Proof:** class found in the injection (`status`).
 
-Dados e mutação
-- [x] **B56.** quem escreve e quem lê um campo: `native/src/sim/citygen/city_gen.cpp:84`, `native/src/render/buildings/building_renderer_reach.cpp:42` **Prova:** classe achada na injeção (`status`).
-- [x] **B57.** por referência: `native/src/sim/commands/commands.h:117` **Prova:** classe achada na injeção (`status`).
-- [x] **B58.** por ponteiro: `native/src/render/chunk_jobs.h:107` **Prova:** classe achada na injeção (`status`).
-- [x] **B59.** alias: `native/src/sim/traffic/ped_furniture.cpp:98` **Prova:** classe achada na injeção (`status`).
-- [x] **B60.** const_cast: `native/src/sim/lots/lot_book.cpp:76`, `native/src/sim/roads/flow_stats_query.cpp:45` **Prova:** classe achada na injeção (`status`).
-- [x] **B61.** estado entre threads e atômicos: `native/src/sim/state/city_state.h:71` **Prova:** classe achada na injeção (`status`).
-- [x] **B62.** travas: `native/src/sim/state/city_state.h:89` **Prova:** classe achada na injeção (`status`).
-- [x] **B63.** buffer triplo: `native/src/sim/state/pose_buffer.h:113` **Prova:** classe achada na injeção (`status`).
-- [x] **B64.** ChangeLog: `native/src/sim/state/change_log.h:17` **Prova:** classe achada na injeção (`status`).
-- [x] **B65.** diário: `native/src/sim/commands/edit_journal.h:126` **Prova:** classe achada na injeção (`status`).
-- [x] **B66.** undo e inverso: `native/src/sim/commands/edit_history.cpp:2` **Prova:** classe achada na injeção (`status`).
-- [x] **B67.** save e load: `native/src/sim/persistence/save_format.h:32` **Prova:** classe achada na injeção (`status`).
-- [x] **B68.** função como valor que muda: `project/game/store/city_store.gd:34`, `project/game/tools/tool_controller.gd:91` **Prova:** classe achada na injeção (`status`).
+Data and mutation
+- [x] **B56.** who writes and who reads a field: `native/src/sim/citygen/city_gen.cpp:84`, `native/src/render/buildings/building_renderer_reach.cpp:42` **Proof:** class found in the injection (`status`).
+- [x] **B57.** by reference: `native/src/sim/commands/commands.h:117` **Proof:** class found in the injection (`status`).
+- [x] **B58.** by pointer: `native/src/render/chunk_jobs.h:107` **Proof:** class found in the injection (`status`).
+- [x] **B59.** alias: `native/src/sim/traffic/ped_furniture.cpp:98` **Proof:** class found in the injection (`status`).
+- [x] **B60.** const_cast: `native/src/sim/lots/lot_book.cpp:76`, `native/src/sim/roads/flow_stats_query.cpp:45` **Proof:** class found in the injection (`status`).
+- [x] **B61.** state between threads and atomics: `native/src/sim/state/city_state.h:71` **Proof:** class found in the injection (`status`).
+- [x] **B62.** locks: `native/src/sim/state/city_state.h:89` **Proof:** class found in the injection (`status`).
+- [x] **B63.** triple buffer: `native/src/sim/state/pose_buffer.h:113` **Proof:** class found in the injection (`status`).
+- [x] **B64.** ChangeLog: `native/src/sim/state/change_log.h:17` **Proof:** class found in the injection (`status`).
+- [x] **B65.** journal: `native/src/sim/commands/edit_journal.h:126` **Proof:** class found in the injection (`status`).
+- [x] **B66.** undo and inverse: `native/src/sim/commands/edit_history.cpp:2` **Proof:** class found in the injection (`status`).
+- [x] **B67.** save and load: `native/src/sim/persistence/save_format.h:32` **Proof:** class found in the injection (`status`).
+- [x] **B68.** a function as a value that changes: `project/game/store/city_store.gd:34`, `project/game/tools/tool_controller.gd:91` **Proof:** class found in the injection (`status`).
 
-Tempo
-- [x] **B69.** boot: `project/game/play.gd:16` **Prova:** classe achada na injeção (`status`).
-- [x] **B70.** por quadro: `project/game/store/city_store.gd:131`, `native/src/render/render_world.cpp:178` **Prova:** classe achada na injeção (`status`).
-- [x] **B71.** por tick: `native/src/sim/simulation/simulation.cpp:64` **Prova:** classe achada na injeção (`status`).
-- [x] **B72.** por evento: `project/game/tools/tool_controller.gd:144` **Prova:** classe achada na injeção (`status`).
-- [x] **B73.** adiado: `project/ui/effects_panel.gd:43` **Prova:** classe achada na injeção (`status`).
-- [x] **B74.** em thread: `native/src/api/city_core_persist.cpp:79` **Prova:** classe achada na injeção (`status`).
-- [x] **B75.** em job: `native/src/sim/lots/lot_cache.cpp:90` **Prova:** classe achada na injeção (`status`).
-- [x] **B76.** save antigo: `native/src/sim/persistence/body_codec.cpp:164` **Prova:** classe achada na injeção (`status`).
-- [x] **B77.** só em teste: `project/game/flow/game_flow.gd:22` **Prova:** classe achada na injeção (`status`).
-- [x] **B78.** só em debug: `native/src/sim/traffic/lane_graph_edit.cpp:213`, `native/CMakeLists.txt:104` **Prova:** classe achada na injeção (`status`).
-- [x] **B79.** só em exportação: `project/export_presets.cfg:10`, `project/data/i18n/strings_ui.csv.import:3` **Prova:** classe achada na injeção (`status`).
-- [x] **B80.** só num renderizador: `project/render/shaders/atmosphere.gdshader:188` **Prova:** classe achada na injeção (`status`).
-- [x] **B81.** só num nível gráfico: `project/game/settings/quality.gd:119` **Prova:** classe achada na injeção (`status`).
-- [x] **B82.** por dado ou opção: `project/game/settings/quality.gd:117` **Prova:** classe achada na injeção (`status`).
-- [x] **B83.** por tecla: `project/data/ui/keys.json:27` **Prova:** classe achada na injeção (`status`).
-- [x] **B84.** por argumento: `project/game/play.gd:38` **Prova:** classe achada na injeção (`status`).
+Time
+- [x] **B69.** boot: `project/game/play.gd:16` **Proof:** class found in the injection (`status`).
+- [x] **B70.** per frame: `project/game/store/city_store.gd:131`, `native/src/render/render_world.cpp:178` **Proof:** class found in the injection (`status`).
+- [x] **B71.** per tick: `native/src/sim/simulation/simulation.cpp:64` **Proof:** class found in the injection (`status`).
+- [x] **B72.** per event: `project/game/tools/tool_controller.gd:144` **Proof:** class found in the injection (`status`).
+- [x] **B73.** deferred: `project/ui/effects_panel.gd:43` **Proof:** class found in the injection (`status`).
+- [x] **B74.** in a thread: `native/src/api/city_core_persist.cpp:79` **Proof:** class found in the injection (`status`).
+- [x] **B75.** in a job: `native/src/sim/lots/lot_cache.cpp:90` **Proof:** class found in the injection (`status`).
+- [x] **B76.** old save: `native/src/sim/persistence/body_codec.cpp:164` **Proof:** class found in the injection (`status`).
+- [x] **B77.** only in tests: `project/game/flow/game_flow.gd:22` **Proof:** class found in the injection (`status`).
+- [x] **B78.** only in debug: `native/src/sim/traffic/lane_graph_edit.cpp:213`, `native/CMakeLists.txt:104` **Proof:** class found in the injection (`status`).
+- [x] **B79.** only in export: `project/export_presets.cfg:10`, `project/data/i18n/strings_ui.csv.import:3` **Proof:** class found in the injection (`status`).
+- [x] **B80.** only in one renderer: `project/render/shaders/atmosphere.gdshader:188` **Proof:** class found in the injection (`status`).
+- [x] **B81.** only in one graphics tier: `project/game/settings/quality.gd:119` **Proof:** class found in the injection (`status`).
+- [x] **B82.** by data or option: `project/game/settings/quality.gd:117` **Proof:** class found in the injection (`status`).
+- [x] **B83.** by key: `project/data/ui/keys.json:27` **Proof:** class found in the injection (`status`).
+- [x] **B84.** by argument: `project/game/play.gd:38` **Proof:** class found in the injection (`status`).
 
-Fronteira
-- [x] **B85.** motor: `native/src/render/rs_util.h:65` **Prova:** classe achada na injeção (`status`).
-- [x] **B86.** Terrain3D: `native/src/render/terrain_bridge.cpp:43` **Prova:** classe achada na injeção (`status`).
-- [x] **B87.** bibliotecas: `native/src/core/polygon_ops.cpp:6`, `native/src/core/memory.cpp:4`, `native/CMakeLists.txt:40` **Prova:** classe achada na injeção (`status`).
-- [x] **B88.** processo externo: `tools/analysis/sampler.py:226` **Prova:** classe achada na injeção (`status`).
-- [x] **B89.** ferramenta que gera arquivo: `tools/assets/make_pole_parts.py:13` **Prova:** classe achada na injeção (`status`).
-- [x] **B90.** código gerado pelo tradutor: `native/src/sim/roads/flow_stats.h:2` **Prova:** classe achada na injeção (`status`).
-- [x] **B91.** build: `native/CMakeLists.txt:16` **Prova:** classe achada na injeção (`status`).
-- [x] **B92.** export_presets: `project/export_presets.cfg:9` **Prova:** classe achada na injeção (`status`).
-- [x] **B93.** PGO: `tools/build/pgo.sh:50`, `native/CMakeLists.txt:28` **Prova:** classe achada na injeção (`status`).
+Boundary
+- [x] **B85.** engine: `native/src/render/rs_util.h:65` **Proof:** class found in the injection (`status`).
+- [x] **B86.** Terrain3D: `native/src/render/terrain_bridge.cpp:43` **Proof:** class found in the injection (`status`).
+- [x] **B87.** libraries: `native/src/core/polygon_ops.cpp:6`, `native/src/core/memory.cpp:4`, `native/CMakeLists.txt:40` **Proof:** class found in the injection (`status`).
+- [x] **B88.** external process: `tools/analysis/sampler.py:226` **Proof:** class found in the injection (`status`).
+- [x] **B89.** tool that generates a file: `tools/assets/make_pole_parts.py:13` **Proof:** class found in the injection (`status`).
+- [x] **B90.** code generated by the translator: `native/src/sim/roads/flow_stats.h:2` **Proof:** class found in the injection (`status`).
+- [x] **B91.** build: `native/CMakeLists.txt:16` **Proof:** class found in the injection (`status`).
+- [x] **B92.** export_presets: `project/export_presets.cfg:9` **Proof:** class found in the injection (`status`).
+- [x] **B93.** PGO: `tools/build/pgo.sh:50`, `native/CMakeLists.txt:28` **Proof:** class found in the injection (`status`).
 
-Papel
-- [x] **B94.** própria: `native/src/render/roads/road_stays.cpp:1` **Prova:** classe achada na injeção (`status`).
-- [x] **B95.** dependência de outras (as outras usam ela, R8): `native/src/sim/roads/road_network.h:137` **Prova:** classe achada na injeção (`status`).
-- [x] **B96.** dependente de outras (ela usa as outras, R8): `native/src/sim/traffic/ped_crossing.cpp:54` **Prova:** classe achada na injeção (`status`).
-- [x] **B97.** compartilhada: `native/src/sim/traffic/day_table.h:1` **Prova:** classe achada na injeção (`status`).
-- [x] **B98.** infraestrutura: `native/src/core/job_pool.cpp:31` **Prova:** classe achada na injeção (`status`).
-- [x] **B99.** código de teste: `project/game/store/store_api.gd:67` **Prova:** classe achada na injeção (`status`).
-- [x] **B100.** código morto (candidato): `native/src/api/city_core_body.cpp:227`, `project/game/store/store_api.gd:34` **Prova:** classe achada na injeção (`status`).
-- [x] **B101.** dado sem leitor: `project/data/render/streets.json:318`; carregado sem uso: `project/data/render/buildings.json:130`, `native/src/api/buildings_loader.cpp:189` **Prova:** classe achada na injeção (`status`).
-- [x] **B102.** opção sem efeito (candidato): `project/data/render/streets.json:321`, `log/pendencias.md:40` **Prova:** classe achada na injeção (`status`).
+Role
+- [x] **B94.** own: `native/src/render/roads/road_stays.cpp:1` **Proof:** class found in the injection (`status`).
+- [x] **B95.** dependency of others (the others use it, R8): `native/src/sim/roads/road_network.h:137` **Proof:** class found in the injection (`status`).
+- [x] **B96.** dependent on others (it uses the others, R8): `native/src/sim/traffic/ped_crossing.cpp:54` **Proof:** class found in the injection (`status`).
+- [x] **B97.** shared: `native/src/sim/traffic/day_table.h:1` **Proof:** class found in the injection (`status`).
+- [x] **B98.** infrastructure: `native/src/core/job_pool.cpp:31` **Proof:** class found in the injection (`status`).
+- [x] **B99.** test code: `project/game/store/store_api.gd:67` **Proof:** class found in the injection (`status`).
+- [x] **B100.** dead code (candidate): `native/src/api/city_core_body.cpp:227`, `project/game/store/store_api.gd:34` **Proof:** class found in the injection (`status`).
+- [x] **B101.** data without a reader: `project/data/render/streets.json:318`; loaded without use: `project/data/render/buildings.json:130`, `native/src/api/buildings_loader.cpp:189` **Proof:** class found in the injection (`status`).
+- [x] **B102.** option without effect (candidate): `project/data/render/streets.json:321`, `log/pendencias.md:40` **Proof:** class found in the injection (`status`).
 
-Evolução
-- [x] **B103.** rename: `tools/analise/causas.py` → `tools/analysis/causes.py` em `c78fdb32` **Prova:** classe achada na injeção (`status`).
-- [x] **B104.** movimento: `sim/lots/lot_land.cpp` → `native/src/sim/citygen/lot_land.cpp` em `c4f6848b` **Prova:** classe achada na injeção (`status`).
-- [x] **B105.** divisão: `project/game/camera/camera_aim.gd` de `city_camera.gd` em `32e0bb55`; `native/src/render/instance_rows.h` de `rs_util.h` em `013e2bee` **Prova:** classe achada na injeção (`status`).
+Evolution
+- [x] **B103.** rename: `tools/analise/causas.py` → `tools/analysis/causes.py` in `c78fdb32` **Proof:** class found in the injection (`status`).
+- [x] **B104.** move: `sim/lots/lot_land.cpp` → `native/src/sim/citygen/lot_land.cpp` in `c4f6848b` **Proof:** class found in the injection (`status`).
+- [x] **B105.** split: `project/game/camera/camera_aim.gd` from `city_camera.gd` in `32e0bb55`; `native/src/render/instance_rows.h` from `rs_util.h` in `013e2bee` **Proof:** class found in the injection (`status`).
 
-## Parte c: cenários além dos listados (P2: fazem parte do pedido)
+## Part c: scenarios beyond those listed (P2: they are part of the request)
 
-Gabarito e contaminação
-- [x] **C1.** Os originais do gabarito continuam dentro do repositório analisado (`log/mapa.md`, `rules.json`, `owners.json`, `records/map40`). A prova precisa rodar também sem esses arquivos e dar a mesma nota. **Prova:** verificação `contamination`.
-- [x] **C2.** O programa e `arch_eval` ficam dentro do repositório que ele analisa: rodar nele mesmo muda o corpus, e a Limpeza precisa saber o que é "ele". **Prova:** `tools/analysis/arch/core.py` (`own_prefixes`): o programa não se lê.
-- [x] **C3.** Toda mudança entra no mapa e no log no mesmo commit: essa regra fabrica mudança conjunta. As DLLs versionadas fazem o mesmo em todo commit de C++. **Prova:** `tools/analysis/arch/spans.py`: prosa sem peças; `roles.index` e binários fora do histórico.
-- [x] **C4.** `features.json` nasceu do grafo antigo, 16.771 unidades contra 20.318 (`log/conversor.md:95`), e as sementes dele são por pasta: usá-lo como gabarito premia o método proibido. **Prova:** `features_4_0.json` só mede o `roadcraft` em `portability` (`arch_eval/repositories.json`): 0,608 contra 0,161 do acaso, p 0,002; nunca é gabarito deste repositório.
-- [x] **C5.** O gabarito tem defeitos próprios, e a seção 10 pede dizer qual lado errou: `tools/gates/owners.json:46` usa `"\b"` com uma só barra (backspace em JSON, a regra de `street_furniture` nunca casa); `rules.json` e `owners.json` citam `sim/zones`, que o mapa não lista (a conferir). **Prova:** `tools/gates/owners.json` (`\\b`), `sim/zones` removido; lado errado: o gabarito.
+Answer key and contamination
+- [x] **C1.** The originals of the answer key remain inside the analysed repository (`log/mapa.md`, `rules.json`, `owners.json`, `records/map40`). The test must also run without those files and give the same score. **Proof:** check `contamination`.
+- [x] **C2.** The program and `arch_eval` live inside the repository it analyses: running on itself changes the corpus, and Cleanliness must know what "itself" is. **Proof:** `tools/analysis/arch/core.py` (`own_prefixes`): the program does not read itself.
+- [x] **C3.** Every change enters the map and the log in the same commit: that rule manufactures joint change. The versioned DLLs do the same in every C++ commit. **Proof:** `tools/analysis/arch/spans.py`: prose without pieces; `roles.index` and binaries out of the history.
+- [x] **C4.** `features.json` was born of the old graph, 16,771 units against 20,318 (`log/conversor.md:95`), and its seeds are per folder: using it as an answer key rewards the forbidden method. **Proof:** `features_4_0.json` only measures the `roadcraft` in `portability` (`arch_eval/repositories.json`): 0.608 against 0.161 by chance, p 0.002; never an answer key of this repository.
+- [x] **C5.** The answer key has defects of its own, and section 10 asks to say which side was wrong: `tools/gates/owners.json:46` uses `"\b"` with a single backslash (a backspace in JSON, the `street_furniture` rule never matches); `rules.json` and `owners.json` cite `sim/zones`, which the map does not list (to be checked). **Proof:** `tools/gates/owners.json` (`\\b`), `sim/zones` removed; wrong side: the answer key.
 
-Histórico
-- [x] **C6.** Histórico curto: 647 commits em 3 dias, 80 merges, mediana 8 arquivos, p90 33, máximo 8.713; o 4.0 tem 2.788 e o conversor 74. A previsão pede teste de significância, e sessões em paralelo misturam temas no mesmo commit. **Prova:** teste de significância em `prediction`.
-- [x] **C7.** O autor não informa nada: quase tudo vem de duas identidades de sessão. **Prova:** autor não é lido: `repo.history` só traz commit e mudanças.
-- [x] **C8.** O produto "alcance × custo histórico" zera a causa recente, porque código novo não tem custo passado e sumiria da fila. A suavização tem de sair do corpus. **Prova:** `tools/analysis/arch/causes_graph.py`: suavização pela mediana do corpus.
-- [x] **C9.** Custo histórico sem lista de palavras: as mensagens misturam português e inglês, então "correção" tem de ser definida por comportamento. **Prova:** custo por commits que mudaram os lugares, sem palavra.
-- [x] **C10.** Rodar em commit anterior à correção: não há base de compilação nem `godot-cpp` gerado naquele estado, e as bibliotecas vêm por `FetchContent`. **Prova:** verificação `defects`, cada commit lido no estado dele.
+History
+- [x] **C6.** Short history: 647 commits in 3 days, 80 merges, median 8 files, p90 33, maximum 8,713; the 4.0 has 2,788 and the converter 74. Prediction asks for a significance test, and parallel sessions mix themes in the same commit. **Proof:** significance test in `prediction`.
+- [x] **C7.** The author tells nothing: almost everything comes from two session identities. **Proof:** the author is not read: `repo.history` only brings the commit and the changes.
+- [x] **C8.** The product "reach × historical cost" zeroes a recent cause, because new code has no past cost and would vanish from the queue. The smoothing must come from the corpus. **Proof:** `tools/analysis/arch/causes_graph.py`: smoothing by the corpus's median.
+- [x] **C9.** Historical cost without a word list: the messages mix Portuguese and English, so "fix" must be defined by behaviour. **Proof:** cost by the commits that changed the places, with no word.
+- [x] **C10.** Running on the commit before the fix: there is no compilation database nor generated `godot-cpp` in that state, and the libraries come through `FetchContent`. **Proof:** check `defects`, each commit read in its own state.
 
 C++
-- [x] **C11.** O clangd vê uma só configuração. `DEBUG_ENABLED`, release e Linux dão grafos diferentes: o certo é a união com a origem marcada. **Prova:** `B78`; `Graph.add_unit` guarda as configurações.
-- [x] **C12.** A X-macro cola nomes: `render` + `building_bay_end_m` vira `render_building_bay_end_m`, que não existe como texto. `#name` em `native/src/api/city_core_nature.cpp:44` liga campo a chave de dado. **Prova:** `D3`; `cpp_body.macro_names`.
-- [x] **C13.** Header sem unidade de compilação própria e template instanciado só em alguns lugares precisam do grafo pós-instanciação, não do texto. **Prova:** `B7`, `B15`; `_left_over` em `cpp.py`.
-- [x] **C14.** Classe repartida: `CityCore` e as áreas ocupam dezenas de `.cpp`. Fachada, deus repartido e arquivo são três perguntas diferentes. **Prova:** `god` por classe, não por arquivo.
-- [x] **C15.** Trabalho limitado por orçamento (`commit_budget_ms`, `lorry_plan_work`) ou guardado por revisão parece laço crescente e não é. Sem ver a guarda, o detector dá falso positivo, e `bounded:` em comentário é dica à mão, que não se pode usar. **Prova:** `tools/analysis/arch/costs.py` (`gated`), `early` nos laços.
-- [x] **C16.** Closure de job captura `this` e `&s`: aresta de thread e de tempo de vida. **Prova:** `D6`.
+- [x] **C11.** clangd sees a single configuration. `DEBUG_ENABLED`, release and Linux give different graphs: the right thing is the union with the origin marked. **Proof:** `B78`; `Graph.add_unit` keeps the configurations.
+- [x] **C12.** The X-macro pastes names: `render` + `building_bay_end_m` becomes `render_building_bay_end_m`, which does not exist as text. `#name` in `native/src/api/city_core_nature.cpp:44` links a field to a data key. **Proof:** `D3`; `cpp_body.macro_names`.
+- [x] **C13.** A header without a compilation unit of its own and a template instantiated only in some places need the post-instantiation graph, not the text. **Proof:** `B7`, `B15`; `_left_over` in `cpp.py`.
+- [x] **C14.** A split class: `CityCore` and the areas occupy dozens of `.cpp`. Facade, split god and file are three different questions. **Proof:** `god` per class, not per file.
+- [x] **C15.** Work bounded by a budget (`commit_budget_ms`, `lorry_plan_work`) or guarded by a revision looks like a growing loop and is not. Without seeing the guard, the detector gives a false positive, and `bounded:` in a comment is a hint by hand, which cannot be used. **Proof:** `tools/analysis/arch/costs.py` (`gated`), `early` in the loops.
+- [x] **C16.** A job's closure captures `this` and `&s`: a thread and lifetime edge. **Proof:** `D6`.
 
-Por nome e GDScript
-- [x] **C17.** Uma rota atravessa quatro formatos: JSON `action` → tabela GDScript → `"area/metodo"` → `D_METHOD` → método C++. Três dos sete nomes sem chamador literal (`clear_gullies` e outros) só existem em JSON de interface. **Prova:** `B16`, `B17`, `D1`.
-- [x] **C18.** Há chamadores fora do git: `bay_census` era pedido por planos do `look` (`log/work-log.md:245`). "Sem chamador" nunca pode virar "morto" sozinho. **Prova:** `B100` é candidato, nunca veredito.
-- [x] **C19.** `await` parte a função em dois tempos: o que vem depois é evento, não a mesma chamada. **Prova:** `D5`.
-- [x] **C20.** Atribuir pode ser chamada: setter de propriedade em `project/render/daylight.gd:20`. **Prova:** `D4`.
-- [x] **C21.** `&"x"` e `"x"` são tipos diferentes com o mesmo texto, e o tipado dinâmico depende de duck typing. **Prova:** `literal` trata `&"x"` e `"x"` igual.
-- [x] **C22.** Classe sem nenhum caso real, como conexão em cena: prova-se por injeção; vazio real não reprova (P1). **Prova:** `B33` provado por injeção (P1).
+By name and GDScript
+- [x] **C17.** A route crosses four formats: JSON `action` → GDScript table → `"area/metodo"` → `D_METHOD` → C++ method. Three of the seven names without a literal caller (`clear_gullies` and others) exist only in interface JSON. **Proof:** `B16`, `B17`, `D1`.
+- [x] **C18.** There are callers outside git: `bay_census` was asked for by `look` plans (`log/work-log.md:245`). "No caller" can never become "dead" on its own. **Proof:** `B100` is a candidate, never a verdict.
+- [x] **C19.** `await` splits the function in two times: what comes after is an event, not the same call. **Proof:** `D5`.
+- [x] **C20.** Assigning can be a call: a property setter in `project/render/daylight.gd:20`. **Proof:** `D4`.
+- [x] **C21.** `&"x"` and `"x"` are different types with the same text, and dynamic typing depends on duck typing. **Proof:** `literal` treats `&"x"` and `"x"` alike.
+- [x] **C22.** A class without any real case, such as a connection in a scene: it is proven by injection; a real empty does not fail (P1). **Proof:** `B33` proven by injection (P1).
 
-Dados, shader e fronteira
-- [x] **C23.** Um uniform pode existir só em JSON e no shader, quando um laço de `params` o copia por nome. **Prova:** `tools/analysis/arch/link.py` (`_copied_by_name`), caso `B47`.
-- [x] **C24.** Layout binário é contrato sem nome: `INSTANCE_CUSTOM.y` guarda `fase + 8·(kind_a + 2·kind_b)` (`log/work-log.md:55`), e `people.bin` é escrito em Python e lido em C++. **Prova:** `D8`, `D16`.
-- [x] **C25.** Dados gerados: a correção vai no gerador, não na saída (`streets.json` por `make_pole_parts.py`, `flow_stats*` pelo tradutor). O dono candidato da fila deve apontar o gerador. **Prova:** `made_by` em `tools/analysis/arch/causes_graph.py`.
-- [x] **C26.** O Terrain3D só tem binário e seu API não está no `extension_api`: a fronteira dele vem do uso por nome. **Prova:** `B86`.
-- [x] **C27.** `.gdshader` não é GLSL comum, e sair em SPIR-V pede o compilador do motor, com variantes e `#if CURRENT_RENDERER`. Não há glslang nem spirv-tools na máquina (R5 autoriza instalar). **Prova:** `tools/analysis/arch/adapters/shader_spirv.py`, `shader_cost`.
-- [x] **C28.** Custo por nível gráfico: nesta placa o `auto` escolhe `ultra`, e os testes rodam em `medium` (`log/causa-raiz.md:257`). O custo estático tem de ser calculado por nível. **Prova:** `tier_price` na injeção.
+Data, shader and boundary
+- [x] **C23.** A uniform can exist only in JSON and in the shader, when a loop over `params` copies it by name. **Proof:** `tools/analysis/arch/link.py` (`_copied_by_name`), case `B47`.
+- [x] **C24.** A binary layout is a contract without a name: `INSTANCE_CUSTOM.y` holds `fase + 8·(kind_a + 2·kind_b)` (`log/work-log.md:55`), and `people.bin` is written in Python and read in C++. **Proof:** `D8`, `D16`.
+- [x] **C25.** Generated data: the fix goes into the generator, not the output (`streets.json` by `make_pole_parts.py`, `flow_stats*` by the translator). The queue's candidate owner must point at the generator. **Proof:** `made_by` in `tools/analysis/arch/causes_graph.py`.
+- [x] **C26.** Terrain3D has only a binary and its API is not in `extension_api`: its boundary comes from use by name. **Proof:** `B86`.
+- [x] **C27.** `.gdshader` is not plain GLSL, and producing SPIR-V needs the engine's compiler, with variants and `#if CURRENT_RENDERER`. There is no glslang nor spirv-tools on the machine (R5 authorises installing). **Proof:** `tools/analysis/arch/adapters/shader_spirv.py`, `shader_cost`.
+- [x] **C28.** Cost per graphics tier: on this card `auto` chooses `ultra`, and the tests run at `medium` (`log/causa-raiz.md:257`). The static cost must be computed per tier. **Proof:** `tier_price` in the injection.
 
-Perfil de execução
-- [x] **C29.** O perfil é nível IR, 17.825 funções, 4.647 com bloco de alvos indiretos (muitos com zero sites); os nomes têm `city-worktrees/porte-total/...` e incluem `godot-cpp` gerado. **Prova:** `tools/analysis/arch/profile_data.py` (`_key`).
-- [x] **C30.** A função no topo por contagem de bloco é `CityProbes::state_hash`, 1,2 bilhão: "quente no treino" não é "quente para o jogador", o treino está contaminado por sonda. **Prova:** `profile_data.rate`: só teste não é quente.
-- [x] **C31.** O perfil é binário e não acompanha renomeação: a Invariância não o alcança sem uma transformação própria. **Prova:** `Renamer.profile`.
+Execution profile
+- [x] **C29.** The profile is IR level, 17,825 functions, 4,647 with a block of indirect targets (many with zero sites); the names have `city-worktrees/porte-total/...` and include generated `godot-cpp`. **Proof:** `tools/analysis/arch/profile_data.py` (`_key`).
+- [x] **C30.** The top function by block count is `CityProbes::state_hash`, 1.2 billion: "hot in training" is not "hot for the player", the training is contaminated by probes. **Proof:** `profile_data.rate`: test-only is not hot.
+- [x] **C31.** The profile is binary and does not follow renaming: Invariance does not reach it without a transformation of its own. **Proof:** `Renamer.profile`.
 
-Selfcheck e ambiente
-- [x] **C32.** A renomeação precisa ser coerente entre C++, JSON, CSV, `res://`, `#include`, strings de `D_METHOD`, `.uid` e `.tscn`, e a cópia renomeada ainda tem de compilar. **Prova:** erros de compilação iguais na cópia renomeada.
-- [x] **C33.** Muitos índices somam tempo longo: cache por conteúdo, e o cache não pode esconder a falha que a Ablação procura (R7). **Prova:** depósito da rodada; `ablation` sem depósito.
-- [x] **C34.** Semente sorteada e bytes iguais: a semente vai no relatório, e o Determinismo vale para o scan com semente fixa. **Prova:** semente no detalhe da injeção.
-- [x] **C35.** Determinismo também exige `PYTHONHASHSEED`, ordem de `os.walk`, ordem de threads, sem data na saída, `core.quotepath` (`log/work-log.md:548`) e o nome reservado `con` (`log/work-log.md:650`). **Prova:** `PYTHONHASHSEED` 23 contra o processo principal, git com `-z` e `core.quotepath=off`.
-- [x] **C36.** Portabilidade sem `node_modules`: o conversor não tem TypeScript próprio, o adaptador degrada com confiança menor. Aqui faltam `tree_sitter`, `scipy` e o binding de `clang`, e o `clangd` não está no PATH. **Prova:** conversor sem `node_modules`: adaptador cai para a gramática.
-- [x] **C37.** HEAD ou disco: há mudança não commitada e `log/mapa.md` já cita `look_aim.gd`, fora do git. O scan lê o commit. Em `tools/converter` há 18 mudanças pendentes. **Prova:** `Repo` lê o commit, nunca o disco.
-- [x] **C38.** Gates sobre o próprio programa: 300 linhas por `.py`, 700 por `.json`, `DOC_UNICO` em `arch_eval` (`.md` e `.txt` vetados ali), marcadores proibidos em `tools/`. **Prova:** gate completo OK sobre o programa.
-- [x] **C39.** O gate pode esconder falhas atrás das 15: ele acusa `moto.helmet_r`, e `log/base.md:102` também cita `bicycle.helmet_r`. **Prova:** gate completo OK; `bicycle.helmet_r` nos schemas.
-- [x] **C40.** A camada pelo grafo condensado pode colapsar: `CityState` guarda tudo, e sem sensibilidade a campo vira um único componente. Pela arquitetura ele é fonte única, não deus, e o programa distingue isso sem nome. **Prova:** verificação `keys`: camadas 0,889 contra 0,504 do acaso; `god` acusa `CityCore` e `BuildingRenderer`, não `CityState`.
-- [x] **C41.** Achados que explicam uns aos outros formam ciclo: a raiz sai do componente condensado, não de um nó. **Prova:** `causes_graph.roots` por condensação.
-- [x] **C42.** Instabilidade de 0,85 a 0,88: hipóteses (normalizações globais `sqrt(n)`, rank por `n`, IDF; Louvain não local). Os protótipos também têm números à mão (`0.7`, `40`, `k=10`, grades de `w` e `res`, `".import"` em `dist/arch-proto/meta.py:75`), que a seção 1 proíbe. **Prova:** similaridade local e árvore; sem números à mão.
+Selfcheck and environment
+- [x] **C32.** The renaming must be coherent across C++, JSON, CSV, `res://`, `#include`, `D_METHOD` strings, `.uid` and `.tscn`, and the renamed copy must still compile. **Proof:** equal compilation errors in the renamed copy.
+- [x] **C33.** Many indexes add up to a long time: a cache by content, and the cache must not hide the failure Ablation looks for (R7). **Proof:** the round's deposit; `ablation` without a deposit.
+- [x] **C34.** A drawn seed and equal bytes: the seed goes into the report, and Determinism holds for the scan with a fixed seed. **Proof:** the seed in the injection's detail.
+- [x] **C35.** Determinism also requires `PYTHONHASHSEED`, the order of `os.walk`, the order of threads, no date in the output, `core.quotepath` (`log/work-log.md:548`) and the reserved name `con` (`log/work-log.md:650`). **Proof:** `PYTHONHASHSEED` 23 against the main process, git with `-z` and `core.quotepath=off`.
+- [x] **C36.** Portability without `node_modules`: the converter has no TypeScript of its own, the adapter degrades with lower confidence. Here `tree_sitter`, `scipy` and the `clang` binding are missing, and `clangd` is not on the PATH. **Proof:** converter without `node_modules`: the adapter falls back to the grammar.
+- [x] **C37.** HEAD or disk: there is an uncommitted change and `log/mapa.md` already cites `look_aim.gd`, outside git. The scan reads the commit. In `tools/converter` there are 18 pending changes. **Proof:** `Repo` reads the commit, never the disk.
+- [x] **C38.** Gates over the program itself: 300 lines per `.py`, 700 per `.json`, `DOC_UNICO` in `arch_eval` (`.md` and `.txt` barred there), forbidden markers in `tools/`. **Proof:** whole gate OK over the program.
+- [x] **C39.** The gate may hide failures behind the 15: it flags `moto.helmet_r`, and `log/base.md:102` also cites `bicycle.helmet_r`. **Proof:** whole gate OK; `bicycle.helmet_r` in the schemas.
+- [x] **C40.** The layer by the condensed graph can collapse: `CityState` holds everything, and without field sensitivity it becomes a single component. By the architecture it is the single source, not a god, and the program tells this apart without a name. **Proof:** check `keys`: layers 0.889 against 0.504 by chance; `god` flags `CityCore` and `BuildingRenderer`, not `CityState`.
+- [x] **C41.** Findings that explain one another form a cycle: the root comes from the condensed component, not from a node. **Proof:** `causes_graph.roots` by condensation.
+- [x] **C42.** Instability of 0.85 to 0.88: hypotheses (global normalisations `sqrt(n)`, rank by `n`, IDF; non-local Louvain). The prototypes also have numbers by hand (`0.7`, `40`, `k=10`, grids of `w` and `res`, `".import"` in `dist/arch-proto/meta.py:75`), which section 1 forbids. **Proof:** local similarity and tree; no numbers by hand.
 
-## Parte d: classes novas (P2: fazem parte do pedido)
+## Part d: new classes (P2: they are part of the request)
 
-Ligação
-- [x] **D1.** rota composta `"area/metodo"`: `project/game/store/store_api.gd:34` **Prova:** classe achada na injeção (`status`).
-- [x] **D2.** enum indexado por texto vindo de dado: `project/ui/roadcraft_hud.gd:226` **Prova:** classe achada na injeção (`status`).
-- [x] **D3.** stringificação e colagem de nomes no pré-processador: `native/src/api/city_core_nature.cpp:44` **Prova:** classe achada na injeção (`status`).
-- [x] **D4.** setter de propriedade como chamada: `project/render/daylight.gd:20` **Prova:** classe achada na injeção (`status`).
-- [x] **D5.** `await` como corte de tempo: `project/render/thunder.gd:62` **Prova:** classe achada na injeção (`status`).
-- [x] **D6.** captura de closure entre threads: `native/src/render/buildings/building_renderer.cpp:198` **Prova:** classe achada na injeção (`status`).
-- [x] **D7.** `notify` e `wait` de `condition_variable`, e ordem de memória de atômicos **Prova:** classe achada na injeção (`status`).
-- [x] **D8.** layout binário entre C++, shader e cozinha (`INSTANCE_CUSTOM`, `people.bin`) **Prova:** classe achada na injeção (`status`).
-- [x] **D9.** varying de vértice a fragmento **Prova:** classe achada na injeção (`status`).
-- [x] **D10.** máscaras e bits: camada de render, `shadow_caster_mask`, chaves de efeitos **Prova:** classe achada na injeção (`status`).
-- [x] **D11.** `uid://` e `.uid` **Prova:** classe achada na injeção (`status`).
-- [x] **D12.** importação e filtros de exportação como aresta (o CSV que sumia do pacote, `log/work-log.md:515`) **Prova:** classe achada na injeção (`status`).
-- [x] **D13.** ordem de inicialização: autoloads e globais estáticas (`__cxx_global_var_init`) **Prova:** classe achada na injeção (`status`).
-- [x] **D14.** arquivo em `user://` entre sessões: `settings.cfg`, saves, `health.json` **Prova:** classe achada na injeção (`status`).
-- [x] **D15.** variável de ambiente: `tools/build/pgo.sh:39` **Prova:** classe achada na injeção (`status`).
-- [x] **D16.** texto de log como contrato: `FAILURES: 0` casava com `^FAIL` (`log/lab.md:93`) **Prova:** classe achada na injeção (`status`).
-- [x] **D17.** gates e `quick.sh` como leitores de dados e de caminhos **Prova:** classe achada na injeção (`status`).
-- [x] **D18.** mesmo significado em duas linguagens: constante de shader e de C++ **Prova:** classe achada na injeção (`status`).
-- [x] **D19.** comentário e `_doc` como aresta fraca **Prova:** classe achada na injeção (`status`).
+Link
+- [x] **D1.** composite route `"area/metodo"`: `project/game/store/store_api.gd:34` **Proof:** class found in the injection (`status`).
+- [x] **D2.** enum indexed by text coming from data: `project/ui/roadcraft_hud.gd:226` **Proof:** class found in the injection (`status`).
+- [x] **D3.** stringification and pasting of names in the preprocessor: `native/src/api/city_core_nature.cpp:44` **Proof:** class found in the injection (`status`).
+- [x] **D4.** property setter as a call: `project/render/daylight.gd:20` **Proof:** class found in the injection (`status`).
+- [x] **D5.** `await` as a cut in time: `project/render/thunder.gd:62` **Proof:** class found in the injection (`status`).
+- [x] **D6.** closure capture across threads: `native/src/render/buildings/building_renderer.cpp:198` **Proof:** class found in the injection (`status`).
+- [x] **D7.** `notify` and `wait` of `condition_variable`, and the memory order of atomics **Proof:** class found in the injection (`status`).
+- [x] **D8.** binary layout between C++, shader and the kitchen (`INSTANCE_CUSTOM`, `people.bin`) **Proof:** class found in the injection (`status`).
+- [x] **D9.** varying from vertex to fragment **Proof:** class found in the injection (`status`).
+- [x] **D10.** masks and bits: render layer, `shadow_caster_mask`, effect keys **Proof:** class found in the injection (`status`).
+- [x] **D11.** `uid://` and `.uid` **Proof:** class found in the injection (`status`).
+- [x] **D12.** import and export filters as an edge (the CSV that went missing from the package, `log/work-log.md:515`) **Proof:** class found in the injection (`status`).
+- [x] **D13.** initialisation order: autoloads and static globals (`__cxx_global_var_init`) **Proof:** class found in the injection (`status`).
+- [x] **D14.** a file in `user://` across sessions: `settings.cfg`, saves, `health.json` **Proof:** class found in the injection (`status`).
+- [x] **D15.** environment variable: `tools/build/pgo.sh:39` **Proof:** class found in the injection (`status`).
+- [x] **D16.** log text as a contract: `FAILURES: 0` matched `^FAIL` (`log/lab.md:93`) **Proof:** class found in the injection (`status`).
+- [x] **D17.** gates and `quick.sh` as readers of data and paths **Proof:** class found in the injection (`status`).
+- [x] **D18.** the same meaning in two languages: a shader constant and a C++ one **Proof:** class found in the injection (`status`).
+- [x] **D19.** comment and `_doc` as a weak edge **Proof:** class found in the injection (`status`).
 
-Tempo
-- [x] **D20.** por distância da câmera: faixa de visibilidade decidida pelo motor, `native/src/render/rs_util.h:65` **Prova:** classe achada na injeção (`status`).
-- [x] **D21.** por hora do dia e por clima **Prova:** classe achada na injeção (`status`).
-- [x] **D22.** por tamanho do mapa **Prova:** classe achada na injeção (`status`).
-- [x] **D23.** na primeira compilação de pipeline **Prova:** classe achada na injeção (`status`).
-- [x] **D24.** ao perder o foco e ao fechar **Prova:** classe achada na injeção (`status`).
+Time
+- [x] **D20.** by distance from the camera: visibility range decided by the engine, `native/src/render/rs_util.h:65` **Proof:** class found in the injection (`status`).
+- [x] **D21.** by hour of the day and by weather **Proof:** class found in the injection (`status`).
+- [x] **D22.** by map size **Proof:** class found in the injection (`status`).
+- [x] **D23.** at the first pipeline compilation **Proof:** class found in the injection (`status`).
+- [x] **D24.** on losing focus and on closing **Proof:** class found in the injection (`status`).
 
-Custo
-- [x] **D25.** sobrecusto de quadras 2x2 em triângulos pequenos (`log/work-log.md:370`) **Prova:** custo `tiny_triangles` achado na injeção.
-- [x] **D26.** caixa de recorte larga demais, que mantém tudo desenhado (`log/causa-raiz.md:241`) ou um nível vivo (`log/work-log.md:453`) **Prova:** custo `wide_bounds` achado na injeção.
-- [x] **D27.** compilação de pipeline no meio do jogo (`log/lab.md:23`) **Prova:** custo `pipeline_compile` achado na injeção.
-- [x] **D28.** medida que causa o custo que mede: `health_log` → `render_cost` (`log/causa-raiz.md:63`) **Prova:** custo `measure_feedback` achado na injeção.
-- [x] **D29.** refazer interface inteira por temporizador (`log/lab.md:112`) **Prova:** custo `rebuilt_interface` achado na injeção.
-- [x] **D30.** conversão Variant e Dictionary na fronteira a cada quadro **Prova:** custo `boundary_conversion` achado na injeção.
-- [x] **D31.** cópias que o motor guarda sozinho: 3 por instância (`log/mapa.md:272`) **Prova:** custo `engine_copies` achado na injeção.
-- [x] **D32.** troca de nível sem histerese **Prova:** custo `level_flip` achado na injeção.
-- [x] **D33.** cadeia serial de carregamento e decodificação dupla **Prova:** custo `serial_decode` achado na injeção.
-- [x] **D34.** trava longa durante o save **Prova:** custo `long_save` achado na injeção.
-- [x] **D35.** excesso de threads e rotatividade de jobs **Prova:** custo `thread_churn` achado na injeção.
-- [x] **D36.** falso compartilhamento e layout de dados **Prova:** custo `false_sharing` achado na injeção.
-- [x] **D37.** consumo de banda de textura e formato **Prova:** custo `texture_bandwidth` achado na injeção.
-- [x] **D38.** nível padrão caro pela placa **Prova:** custo `default_tier` achado na injeção.
-- [x] **D39.** sobrecusto de código só de teste dentro da DLL entregue **Prova:** custo `test_code_shipped` achado na injeção.
+Cost
+- [x] **D25.** overhead of 2x2 quads on small triangles (`log/work-log.md:370`) **Proof:** cost `tiny_triangles` found in the injection.
+- [x] **D26.** a culling box too wide, which keeps everything drawn (`log/causa-raiz.md:241`) or a level alive (`log/work-log.md:453`) **Proof:** cost `wide_bounds` found in the injection.
+- [x] **D27.** pipeline compilation in the middle of the game (`log/lab.md:23`) **Proof:** cost `pipeline_compile` found in the injection.
+- [x] **D28.** a measure that causes the cost it measures: `health_log` → `render_cost` (`log/causa-raiz.md:63`) **Proof:** cost `measure_feedback` found in the injection.
+- [x] **D29.** rebuilding the whole interface on a timer (`log/lab.md:112`) **Proof:** cost `rebuilt_interface` found in the injection.
+- [x] **D30.** Variant and Dictionary conversion at the boundary every frame **Proof:** cost `boundary_conversion` found in the injection.
+- [x] **D31.** copies the engine keeps on its own: 3 per instance (`log/mapa.md:272`) **Proof:** cost `engine_copies` found in the injection.
+- [x] **D32.** level change without hysteresis **Proof:** cost `level_flip` found in the injection.
+- [x] **D33.** serial loading chain and double decoding **Proof:** cost `serial_decode` found in the injection.
+- [x] **D34.** long lock during the save **Proof:** cost `long_save` found in the injection.
+- [x] **D35.** too many threads and job churn **Proof:** cost `thread_churn` found in the injection.
+- [x] **D36.** false sharing and data layout **Proof:** cost `false_sharing` found in the injection.
+- [x] **D37.** texture bandwidth use and format **Proof:** cost `texture_bandwidth` found in the injection.
+- [x] **D38.** a default tier expensive for the card **Proof:** cost `default_tier` found in the injection.
+- [x] **D39.** overhead of test-only code inside the delivered DLL **Proof:** cost `test_code_shipped` found in the injection.
 
-## Respostas do usuário às dúvidas (fazem parte da confirmação)
+## The user's answers to the questions (part of the confirmation)
 
-- [x] **R1.** Não use .gitattributes. O build.sh não usa git archive, confira. O selfcheck avalia numa cópia temporária sem os gabaritos, sem arch_eval e sem o próprio programa, e o scan normal tem de dar o mesmo resultado. Assim a contaminação vira prova, e os arquivos de índice são reconhecidos pelo comportamento. (Conferido: `tools/build/build.sh:72` usa `git archive`; a decisão não muda.) **Prova:** verificação `contamination`; sem `.gitattributes`.
-- [x] **R2.** Aceito: nome é o vocabulário do projeto, e a API do motor e a gramática são lidas de fora em tempo de execução. **Prova:** API do motor e gramáticas lidas de fora.
-- [x] **R3.** Aceito: nenhum número que mude o resultado. O que sobrar de parâmetro de algoritmo é provado inerte pelo selfcheck. Hold-out por origem rolante. **Prova:** verificação `inert`; origem rolante em `prediction`.
-- [x] **R4.** Sim: exportação temporária de commit antigo em dist/arch é permitida. Não é worktree. **Prova:** exportação temporária em `dist/arch`.
-- [x] **R5.** Sim: pode instalar glslang, spirv-tools e compiladores offline. Godot sem janela só para compilar shader não conta como abrir o jogo. Use hidden_run.ps1 e tempo-limite. **Prova:** Vulkan SDK; shader compilado.
-- [x] **R6.** Aceito a significância por permutação, que é critério da prova, não do programa. Na Portabilidade, além disso, mostre os grupos achados em cada repositório, para eu ler. **Prova:** teste de permutação; `groups_*.txt` para leitura.
-- [x] **R7.** Aceito o cache por conteúdo e a rodada completa em segundo plano com tempo-limite. A Ablação e a rodada final da entrega rodam sem cache. **Prova:** depósito por conteúdo; `ablation` e rodada final sem depósito de antes.
-- [x] **R8.** Está invertido. "Dependência de outras": as outras usam ela. "Dependente de outras": ela usa as outras. Cubra os dois sentidos. **Prova:** `B95`, `B96`.
-- [x] **R9.** Sim: tools/process/CLAUDE.md é velho. Vale o CLAUDE.md da raiz. **Prova:** `CLAUDE.md` da raiz.
-- [x] **R10.** Sem executável novo nesta fase, salvo se algo em project/ mudar. Se os schemas exigirem mudar dado do jogo, gere o executável. Nesta fase não há nada mais a entregar além da seção 14. **Prova:** `dist/windows/Roadcraft.exe` refeito em 2026-11-06 23:18.
-- [x] **P1.** Classe sem caso real no projeto, como conexão em cena, se prova por injeção. Vazio real não reprova essa classe. **Prova:** classes provadas por injeção.
-- [x] **P2.** Tudo o que você listou em c e d faz parte do pedido, não são sugestões. **Prova:** partes c e d nesta lista.
-- [x] **P3.** Confira as citações antes de usar: meta.py:681 não existe, o arquivo tem 115 linhas. **Prova:** citações conferidas no Passo 2.
+- [x] **R1.** Do not use .gitattributes. build.sh does not use git archive, check. The selfcheck evaluates in a temporary copy without the answer keys, without arch_eval and without the program itself, and the normal scan must give the same result. So the contamination becomes a test, and the index files are recognised by behaviour. (Checked: `tools/build/build.sh:72` uses `git archive`; the decision does not change.) **Proof:** check `contamination`; no `.gitattributes`.
+- [x] **R2.** Accepted: a name is the project's vocabulary, and the engine's API and the grammar are read from outside at run time. **Proof:** the engine's API and the grammars read from outside.
+- [x] **R3.** Accepted: no number that changes the result. Whatever algorithm parameter is left is proven inert by the selfcheck. Hold-out by rolling origin. **Proof:** check `inert`; rolling origin in `prediction`.
+- [x] **R4.** Yes: a temporary export of an old commit in dist/arch is allowed. It is not a worktree. **Proof:** temporary export in `dist/arch`.
+- [x] **R5.** Yes: you may install glslang, spirv-tools and offline compilers. Godot without a window only to compile a shader does not count as opening the game. Use hidden_run.ps1 and a time limit. **Proof:** Vulkan SDK; shader compiled.
+- [x] **R6.** I accept significance by permutation, which is a criterion of the test, not of the program. In Portability, besides that, show the groups found in each repository, for me to read. **Proof:** permutation test; `groups_*.txt` for reading.
+- [x] **R7.** I accept the cache by content and the complete round in the background with a time limit. Ablation and the delivery's final round run without the cache. **Proof:** deposit by content; `ablation` and the final round without an earlier deposit.
+- [x] **R8.** It is inverted. "Dependency of others": the others use it. "Dependent on others": it uses the others. Cover both directions. **Proof:** `B95`, `B96`.
+- [x] **R9.** Yes: tools/process/CLAUDE.md is old. The root CLAUDE.md holds. **Proof:** the root `CLAUDE.md`.
+- [x] **R10.** No new executable in this phase, unless something in project/ changes. If the schemas require changing game data, generate the executable. In this phase there is nothing more to deliver beyond section 14. **Proof:** `dist/windows/Roadcraft.exe` remade on 2026-11-06 23:18.
+- [x] **P1.** A class without a real case in the project, such as a connection in a scene, is proven by injection. A real empty does not fail that class. **Proof:** classes proven by injection.
+- [x] **P2.** Everything you listed in c and d is part of the request, they are not suggestions. **Proof:** parts c and d in this list.
+- [x] **P3.** Check the citations before using them: meta.py:681 does not exist, the file has 115 lines. **Proof:** citations checked in Step 2.
 
-## Passo 1: identificar
-Ciclo 1, 2026-11-06. Problemas (cada um liga a itens acima):
-- I1. Não existe mecanismo genérico: `causes.py` usa regex sobre forma, `graph.cjs` e `features.cjs` têm nomes, `cppgraph` é token a token por clangd (lento) e sem macro, template e lambda; o protótipo vê arquivo, não unidade.
-- I2. `dist/arch-proto` tem números à mão e Louvain global (C42).
-- I3. Medido: `ninja -t compdb` em `native/build-win-debug` dá 1.579 entradas, 378 do próprio código; libclang analisa uma unidade em 0,5 s e anda 90 mil nós por segundo; sem o triplo e os caminhos do driver falta `cstdint`.
-- I4. `extension_api-4-7.json`: 1.437 virtuais; 152 argumentos `Callable`; `Object.call` e irmãos têm `method`/`property`/`signal` em `StringName`: papéis saem da forma, sem nome no programa. `_process` e `_physics_process` são os virtuais de um só `float` chamado `delta` em `Node`.
-- I5. Gate: 15 falhas fechadas em `ad7ea03d`; achei uma chave morta (`agent.params.cloth_roughness`, sem uniform em shader de `agent`), retirada: `project/` mudou, a entrega leva executável novo (R10).
+## Step 1: identify
+Cycle 1, 2026-11-06. Problems (each links to items above):
+- I1. No generic mechanism exists: `causes.py` uses a regex over form, `graph.cjs` and `features.cjs` hold names, `cppgraph` is token by token through clangd (slow) and without macro, template and lambda; the prototype sees a file, not a unit.
+- I2. `dist/arch-proto` has numbers by hand and a global Louvain (C42).
+- I3. Measured: `ninja -t compdb` in `native/build-win-debug` gives 1,579 entries, 378 of the project's own code; libclang parses a unit in 0.5 s and walks 90 thousand nodes per second; without the triple and the driver's paths `cstdint` is missing.
+- I4. `extension_api-4-7.json`: 1,437 virtuals; 152 `Callable` arguments; `Object.call` and its siblings have `method`/`property`/`signal` as `StringName`: roles come from the form, with no name in the program. `_process` and `_physics_process` are the virtuals of a single `float` named `delta` in `Node`.
+- I5. Gate: 15 failures closed in `ad7ea03d`; I found a dead key (`agent.params.cloth_roughness`, with no uniform in an `agent` shader), removed: `project/` changed, the delivery carries a new executable (R10).
 
-## Passo 2: pesquisar
-| Fonte | Liga a | O que disse |
+## Step 2: research
+| Source | Links to | What it said |
 |---|---|---|
-| [libclang-ng](https://pypi.org/project/libclang-ng/) | I1, I3 | `clang.cindex` com libclang embutida, LLVM 20 a 22; `CompilationDatabase` |
-| [Sridharan, Fink, Bodík, Thin slicing, PLDI 2007](https://homes.cs.washington.edu/~bodik/ucb/research/pldi07-thin-slicing.pdf) | A4 | a fatia fina guarda só os produtores (quem computa e copia o valor), sem os que explicam; ignora o fluxo para ponteiros-base do heap |
-| [tree-sitter-gdscript](https://www.npmjs.com/package/tree-sitter-gdscript), [tree-sitter-gdshader](https://rust-digger.code-maven.com/crates/tree-sitter-gdshader) | A2 | gramática de GDScript existe no PyPI (6.1.0, instalada); GDShader não tem especificação oficial, é GLSL ES 3.0 com restrições |
-| [value-prof.proftext](https://llvm.googlesource.com/llvm/+/master/test/tools/llvm-profdata/value-prof.proftext) | A6 | texto do perfil: nome, `# Func Hash`, contadores, `IPVK_IndirectCallTarget`, sites com `nome:contagem` |
-| [RGA](https://gpuopen.com/manuals/rga_manual/quickstart), [Mali Offline Compiler](https://documentation-service.arm.com/static/5fd35c414f183d1bab003f95) | A7.5, C27 | análise estática de SPIR-V: instruções, registradores; o resultado depende da placa, a contagem de SPIR-V não |
-| [FastEnsemble](https://arxiv.org/pdf/2409.02077) | A9.5, C42 | ordem dos nós e semente mudam muito o resultado do Leiden; consenso reduz, não elimina |
-| [Agrahari e Chimalakonda, catálogo de antipadrões de jogos](https://arxiv.org/abs/2006.13129) | A7.5 | 15 antipadrões por mineração; não cobre CPU e GPU fino, a tabela de custos vem também dos registros do projeto (parte d) |
-| [godot-docs shader_reference](https://github.com/godotengine/godot-docs/tree/master/tutorials/shaders/shader_reference) | C27, R2 | tabelas de built-ins (`in vec3 **VERTEX**`): lidas de fora, em `dist/arch/external` |
-| [Godot, pipeline compilations](https://docs.godotengine.org/uk/4.4/_sources/tutorials/performance/pipeline_compilations.rst.txt) | D23, D27 | shader vai a SPIR-V e o pipeline compila depois; 4.4 pré-compila ao carregar |
+| [libclang-ng](https://pypi.org/project/libclang-ng/) | I1, I3 | `clang.cindex` with an embedded libclang, LLVM 20 to 22; `CompilationDatabase` |
+| [Sridharan, Fink, Bodík, Thin slicing, PLDI 2007](https://homes.cs.washington.edu/~bodik/ucb/research/pldi07-thin-slicing.pdf) | A4 | the thin slice keeps only the producers (who computes and copies the value), without the explainers; it ignores the flow to heap base pointers |
+| [tree-sitter-gdscript](https://www.npmjs.com/package/tree-sitter-gdscript), [tree-sitter-gdshader](https://rust-digger.code-maven.com/crates/tree-sitter-gdshader) | A2 | a GDScript grammar exists on PyPI (6.1.0, installed); GDShader has no official specification, it is GLSL ES 3.0 with restrictions |
+| [value-prof.proftext](https://llvm.googlesource.com/llvm/+/master/test/tools/llvm-profdata/value-prof.proftext) | A6 | the profile's text: name, `# Func Hash`, counters, `IPVK_IndirectCallTarget`, sites with `name:count` |
+| [RGA](https://gpuopen.com/manuals/rga_manual/quickstart), [Mali Offline Compiler](https://documentation-service.arm.com/static/5fd35c414f183d1bab003f95) | A7.5, C27 | static analysis of SPIR-V: instructions, registers; the result depends on the card, the SPIR-V count does not |
+| [FastEnsemble](https://arxiv.org/pdf/2409.02077) | A9.5, C42 | node order and seed change Leiden's result a lot; consensus reduces it, does not eliminate it |
+| [Agrahari and Chimalakonda, catalogue of game antipatterns](https://arxiv.org/abs/2006.13129) | A7.5 | 15 antipatterns by mining; it does not cover fine CPU and GPU, the cost table also comes from the project's records (part d) |
+| [godot-docs shader_reference](https://github.com/godotengine/godot-docs/tree/master/tutorials/shaders/shader_reference) | C27, R2 | tables of built-ins (`in vec3 **VERTEX**`): read from outside, in `dist/arch/external` |
+| [Godot, pipeline compilations](https://docs.godotengine.org/uk/4.4/_sources/tutorials/performance/pipeline_compilations.rst.txt) | D23, D27 | a shader goes to SPIR-V and the pipeline compiles later; 4.4 precompiles on load |
 
-Dependências instaladas (A11.7): `libclang-ng`, `tree-sitter`, gramáticas `gdscript`, `typescript`, `bash`, `cmake`, `cpp`, `glsl`, `scipy` (pip); Vulkan SDK 1.4.363 (`winget`, glslang, spirv-opt, spirv-cross).
+Dependencies installed (A11.7): `libclang-ng`, `tree-sitter`, grammars `gdscript`, `typescript`, `bash`, `cmake`, `cpp`, `glsl`, `scipy` (pip); Vulkan SDK 1.4.363 (`winget`, glslang, spirv-opt, spirv-cross).
 
-## Passo 3: compreender
-- Unidade e aresta precisam vir do compilador onde há compilador: libclang por unidade de compilação em paralelo, em vez de token a token no clangd (I3). As configurações de build são a união (C11).
-- O que liga linguagens é texto. A cadeia `action` → tabela → `area/metodo` → `D_METHOD` → método (C17) é resolvida por tabela de nomes por espaço (método, sinal, uniform, chave, caminho), com a posição do argumento dita pela API lida de fora: nunca por nome no programa.
-- A instabilidade do protótipo vem de duas coisas globais: normalização que depende do tamanho do corpus e partição que otimiza um valor global. Remédio de causa: similaridade local (só dos vizinhos) e árvore por pares recíprocos, com seleção por estabilidade da própria árvore (excesso de massa), sem resolução global.
-- Anti-maquiagem pede que nada dependa de arquivo: linhagem por corpo normalizado sem nomes, repasse contraído antes de tudo, notas por unidade.
-- Invariância pede que nenhum empate seja decidido por nome: ordem por estrutura, e renomear por subpalavra, para colagem de macro seguir compilando (C12, C32).
+## Step 3: understand
+- Unit and edge must come from the compiler where there is a compiler: libclang per compilation unit in parallel, instead of token by token in clangd (I3). The build configurations are the union (C11).
+- What links languages is text. The chain `action` → table → `area/metodo` → `D_METHOD` → method (C17) is resolved by a table of names per space (method, signal, uniform, key, path), with the argument's position told by the API read from outside: never by a name in the program.
+- The prototype's instability comes from two global things: a normalisation that depends on the corpus's size and a partition that optimises a global value. The remedy at the cause: local similarity (only of the neighbours) and a tree by reciprocal pairs, with selection by the stability of the tree itself (excess of mass), without global resolution.
+- Anti-makeup asks that nothing depend on the file: lineage by a normalised body without names, pass-throughs contracted before everything, scores per unit.
+- Invariance asks that no tie be decided by name: order by structure, and renaming by subword, so that macro pasting keeps compiling (C12, C32).
 
-## Passo 4: planejar
-Dono único: `tools/analysis/arch/`. Etapas do scan: instantâneo do commit → papéis de arquivo pelo comportamento → adaptadores (fatos por unidade) → enumeração independente → tabela de nomes e ligação → linhagem e perfil → contração → grupos, camadas, fatias → detectores → grafo de achados e raízes → fila. Selfcheck em cópias, gabaritos em `tools/analysis/arch_eval/` só lidos por ele. Saídas em `dist/arch/`, inclusive `queue.json`, `coverage.json`, `residual.json`.
+## Step 4: plan
+Single owner: `tools/analysis/arch/`. Stages of the scan: snapshot of the commit → file roles by behaviour → adapters (facts per unit) → independent enumeration → table of names and linking → lineage and profile → contraction → groups, layers, slices → detectors → graph of findings and roots → queue. Selfcheck on copies, answer keys in `tools/analysis/arch_eval/` read only by it. Outputs in `dist/arch/`, including `queue.json`, `coverage.json`, `residual.json`.
 
-## Passo 5: codificar
-Ciclo 1 (2026-11-06). Criados: `tools/analysis/arch.py`, `tools/analysis/arch/**` (núcleo, adaptadores, ligação, histórico, perfil, grupos, camadas, custos, desenho, causas, fila, selfcheck em `check/`), `tools/analysis/arch_eval/**`. Alterados: `tools/gates/rules.json`, `tools/gates/schemas/{agents,drawers,materials}.schema.json`, `project/data/render/materials.json` (`ad7ea03d`), `CLAUDE.md`, `log/mapa.md`.
-Causas achadas codificando, registradas para não repetir:
-- Pasta estrangeira: taxa por arquivo cai quando chegam arquivos novos numa pasta viva; o certo é commits absolutos depois da chegada, mais o que a pasta conhece de fora (arquivo ou tipo declarado) e a chegada concentrada.
-- `natural_break` em cauda pesada isola só o extremo: para "o que quase todos usam" serve a quebra da cauda (`design.tail_cut`).
-- `.gdshader`: o comentário `//` pegava `res://`; derivadas só valem em fragmento; condição `#if X == 1` não define `1`.
-- Operador `a = b` no libclang traz o objeto como primeiro argumento; sem isso escrita virava leitura.
-- `npm install typescript` trouxe a 7, sem API do compilador: fixada a 5.
-- Heredoc do Bash neste ambiente desfaz `\`: edições com barra invertida vão por arquivo.
+## Step 5: code
+Cycle 1 (2026-11-06). Created: `tools/analysis/arch.py`, `tools/analysis/arch/**` (core, adapters, linking, history, profile, groups, layers, costs, design, causes, queue, selfcheck in `check/`), `tools/analysis/arch_eval/**`. Changed: `tools/gates/rules.json`, `tools/gates/schemas/{agents,drawers,materials}.schema.json`, `project/data/render/materials.json` (`ad7ea03d`), `CLAUDE.md`, `log/mapa.md`.
+Causes found while coding, recorded so as not to repeat them:
+- Foreign folder: the rate per file falls when new files arrive in a live folder; the right thing is absolute commits after the arrival, plus what the folder knows from outside (a declared file or type) and a concentrated arrival.
+- `natural_break` on a heavy tail isolates only the extreme: for "what almost everyone uses" the tail's break serves (`design.tail_cut`).
+- `.gdshader`: the `//` comment caught `res://`; derivatives are only valid in a fragment; a condition `#if X == 1` does not define `1`.
+- The operator `a = b` in libclang brings the object as the first argument; without that a write became a read.
+- `npm install typescript` brought 7, without the compiler's API: pinned to 5.
+- Bash's heredoc in this environment undoes `\`: edits with a backslash go through a file.
 
-Ciclo 2 (2026-11-06, pedido do usuário: tempo de execução). Causas da demora, lidas no código, e o que as removeu:
-- `selfcheck` relia o repositório inteiro em cada verificação (cerca de 15 leituras) e rodava uma verificação depois da outra. Agora: uma leitura do zero, um depósito criado para a rodada e apagado com ela, verificações lado a lado (`check/run.py`), cada uma refaz só o que a sua cópia mudou. A nova verificação `incremental` prova que o depósito dá o mesmo que o zero, e `from_nothing` é um segundo scan sem depósito nenhum.
-- `Repo.on_disk` rodava `git ls-files --ignored` por chamada e varria a própria saída em `dist/arch` (14 GB de sobras): uma listagem por processo, sem a saída do programa.
-- `natural_break` em Python puro sobre amostras grandes: uma ordenação e somas acumuladas (`numpy`).
-- `cost_in_commits` intersectava cada achado com cada commit (17,6 milhões de interseções): índice de commits por linhagem.
-- `Costs._boundary_with` recalculava palavras a cada detector: índice palavra → chamada.
-- `canonical_ranks` usava hash em número fixo de rodadas: refino de partição até o ponto fixo, só nas classes vizinhas de uma mudança. Um parâmetro a menos.
-- `cpp_walk` lia o nome do arquivo de cada cursor de macro e de `std`/`godot`, centenas de milhares por unidade: pergunta por handle, e blocos de fora não são percorridos (salvo se um arquivo de fora inclui um nosso).
-- `cpp.py` usava um `Manager` com ida e volta por arquivo para decidir quem percorre cada header, com disputa entre processos: dono escolhido antes pelo texto dos `#include`, com carga equilibrada e sem disputa; unidade só é refeita se algo que ela enxerga mudou.
-- Histórico e palavras de cada arquivo liam blob a blob: leitura em todos os núcleos, cada processo com seu fluxo do git. Pontos e classes só são calculados para o relatório, não em cada cópia.
-Defeitos achados nessa leitura: `git cat-file` compartilhado entre duas threads travava a leitura (trava por pergunta); `gd_body` cortava o id em `#b`, então função com nome iniciado em "b" perdia o nome e colidia (achado pela semente sorteada); `Renamer` trocava letras dentro de `0xff00ffffu` e quebrava a compilação da cópia (causa do único grupo diferente na Invariância); achado de dois lugares escolhia a cabeça por nome.
-Causa de método, minha: rodar para descobrir em vez de ler o código, e corrigir uma falha por rodada. O usuário cobrou isso três vezes nesta sessão.
+Cycle 2 (2026-11-06, the user's request: run time). Causes of the slowness, read in the code, and what removed them:
+- `selfcheck` reread the whole repository in each check (about 15 reads) and ran one check after another. Now: one read from zero, a deposit created for the round and deleted with it, checks side by side (`check/run.py`), each redoing only what its copy changed. The new check `incremental` proves the deposit gives the same as from zero, and `from_nothing` is a second scan with no deposit at all.
+- `Repo.on_disk` ran `git ls-files --ignored` per call and swept its own output in `dist/arch` (14 GB of leftovers): one listing per process, without the program's output.
+- `natural_break` in pure Python over large samples: one sort and cumulative sums (`numpy`).
+- `cost_in_commits` intersected each finding with each commit (17.6 million intersections): an index of commits by lineage.
+- `Costs._boundary_with` recomputed words for each detector: an index word → call.
+- `canonical_ranks` used a hash over a fixed number of rounds: partition refinement to the fixed point, only in the classes neighbouring a change. One parameter fewer.
+- `cpp_walk` read the file name of every macro cursor and of `std`/`godot`, hundreds of thousands per unit: a question by handle, and outside blocks are not walked (unless an outside file includes one of ours).
+- `cpp.py` used a `Manager` with a round trip per file to decide who walks each header, with contention between processes: the owner chosen beforehand from the text of the `#include`s, with a balanced load and no contention; a unit is redone only if something it sees changed.
+- The history and words of each file were read blob by blob: reading on all cores, each process with its own git stream. Points and classes are computed only for the report, not in each copy.
+Defects found in that reading: a `git cat-file` shared between two threads locked the reading (a lock per question); `gd_body` cut the id at `#b`, so a function whose name began with "b" lost its name and collided (found by the drawn seed); `Renamer` swapped letters inside `0xff00ffffu` and broke the copy's compilation (the cause of the only different group in Invariance); a finding of two places chose its head by name.
+A cause in the method, mine: running to discover instead of reading the code, and fixing one failure per round. The user called this out three times in this session.
 
-Ciclo 3 (2026-11-06, execução sob supervisor). O que a execução paralela mostrou, com a causa de cada um:
-- Fila: reservar núcleos segurava 12 tarefas atrás de 2. O sistema divide os processadores; só memória que não existe segura uma tarefa, e nunca as menores (`check/supervisor.py`).
-- `WinError 1455`: cada processo do pool carregava `numpy`, e o OpenBLAS reserva memória por núcleo. `numpy` só entra em quem corta amostras, com uma thread.
-- Crash `0xC0000005`: `faulthandler.dump_traceback_later` lê frames sem segurar o interpretador e derrubou a tarefa que vigiava. Pilhas agora por thread que segura o interpretador (`job_kinds._keep_stacks`).
-- Falso travamento: quando o pool fecha, o tempo de CPU somado cai; "parado" é não mudar, não deixar de subir.
-- Sem prazo fixo: travada é a tarefa parada por mais tempo do que já trabalhou; atraso é avisado (`LATE`) e nada espera por ela. Painel `NOW` em tempo real.
-- `scattered` guardava todos os pares: agora um achado por unidade, com contagem de pares esquecida unidade a unidade.
-- `compile_units` dava a arquivo novo as opções da maior biblioteca; agora as da vizinhança dele. Variável errada numa compreensão zerou o C++ em uma rodada: a contagem de unidades denunciou.
-- Exportação extraía `arch_eval`: o programa e os gabaritos nunca saem para o disco.
-- Dono candidato vinha vazio quando só a entrada dominava: agora o lugar mais usado, marcado `most_used`.
+Cycle 3 (2026-11-06, execution under a supervisor). What the parallel execution showed, with the cause of each:
+- Queue: reserving cores held 12 tasks behind 2. The system shares the processors; only memory that does not exist holds a task, and never the smallest (`check/supervisor.py`).
+- `WinError 1455`: each process of the pool loaded `numpy`, and OpenBLAS reserves memory per core. `numpy` enters only the ones that cut samples, with one thread.
+- Crash `0xC0000005`: `faulthandler.dump_traceback_later` reads frames without holding the interpreter and brought down the task it watched. Stacks now per thread that holds the interpreter (`job_kinds._keep_stacks`).
+- False hang: when the pool closes, the summed CPU time drops; "stopped" is not changing, not ceasing to rise.
+- No fixed deadline: a hung task is one stopped for longer than it has already worked; lateness is warned (`LATE`) and nothing waits for it. A `NOW` panel in real time.
+- `scattered` kept every pair: now one finding per unit, with the pair count forgotten unit by unit.
+- `compile_units` gave a new file the options of the largest library; now those of its neighbourhood. A wrong variable in a comprehension zeroed the C++ in one round: the unit count exposed it.
+- The export extracted `arch_eval`: the program and the answer keys never go out to disk.
+- The candidate owner came empty when only the entry dominated: now the most used place, marked `most_used`.
 
-Ciclo 4 (2026-11-07, goal: selfcheck em 3 minutos, precisão com controle negativo). Causas achadas, lidas no código:
-- `copy.copy(run)` passava por `__getstate__` e perdia `repo` e `graph`: `Run.__copy__` guarda tudo; só o disco deixa coisas de fora.
-- Contextos contavam o `_process` dos testes: tudo que um teste chama virava caminho repetido. Contextos agora são só do programa entregue (`context.py`).
-- Texto comum que soletra um nome virava passo de execução (`d["kind"] = "road"` ia a `road_panel.gd#road`, `begins_with("preview")` a `preview`). Só o que é nome ou diz o que nomeia é seguido (`named`, `link.py`); pontuação entre aspas não é nome.
-- Fronteira: libc e `std` contavam como saída do programa. A biblioteca do compilador vem das pastas do driver (`language_roots`), a do motor não.
-- Receptor desconhecido levava a primeira classe com o método (`PackedDataContainer.size`). Sem receptor, cruza só se nenhum tipo de valor responde ao nome.
-- Laço de contagem escrita não aninha custo (`fixed`, nos dois adaptadores); `while` que redimensiona o que mede não percorre; constante não cresce; início de `for` não diz o que ele anda.
-- `.get("x")` e `.x[i]` não ligavam à chave; `field[key]` perdia o campo em `receiver_field`.
-- `linear_search` acusava `map` e `set`; `redone_work` ignorava entradas; `memory_growth` acusava registro de pilha; `serial_decode` acusava caminhão e duas leituras diferentes; `engine_copies` acusava `can_instantiate`; `tier_price` acusava tabela de unidades e não via os níveis reais; `scattered` juntava por `std` e `Vector3`; `no_effect` não via leitura em template; `wide_bounds` não via caixa feita à mão antes da chamada e acusava caixa medida; `repeated_rule` juntava pares espelhados.
-- `roles._foreign` chamava `native/src/core` de biblioteca nos commits antigos: a camada mais baixa é usada inteira, biblioteca é usada em parte (`_used_whole`). Era o motivo de `job_pool` não ser apontado.
-- `predict.rolling`: variável sobrescrita, e soma palavra a palavra em Python. Índice com `numpy`: 62 s para 16 s, números idênticos (0,6426, 0,0615, 0,0105).
-- Pool de 24 leitores estourava 31 GB e paginava: 185 unidades em 105 s contra 40 s com 12. Pool pela memória livre (`workers.py`). Era a variação de 70 a 170 s do scan.
-- Falso travamento: leitura de disco não gasta processador; com a máquina ocupada, parado pode ser só espera (`supervisor.py`).
-- Resposta de outro repositório guardada por commit dele e texto do programa (`other_repository`).
-Criados: `check/graph_steps.py` (ex-`on_graph.py`, nome raro do projeto), `check/apart.py`, `check/oracle_text.py`, `costs_decode.py`.
+Cycle 4 (2026-11-07, goal: selfcheck in 3 minutes, precision with a negative control). Causes found, read in the code:
+- `copy.copy(run)` went through `__getstate__` and lost `repo` and `graph`: `Run.__copy__` keeps everything; only the disk leaves things out.
+- Contexts counted the tests' `_process`: everything a test calls became a repeated path. Contexts are now only of the delivered program (`context.py`).
+- Common text that spells a name became an execution step (`d["kind"] = "road"` went to `road_panel.gd#road`, `begins_with("preview")` to `preview`). Only what is a name or says what it names is followed (`named`, `link.py`); punctuation between quotes is not a name.
+- Boundary: libc and `std` counted as the program's exits. The compiler's library comes from the driver's folders (`language_roots`), the engine's does not.
+- An unknown receiver took the first class with the method (`PackedDataContainer.size`). Without a receiver, it crosses only if no value type answers to the name.
+- A loop with a written count does not nest cost (`fixed`, in both adapters); a `while` that resizes what it measures does not walk; a constant does not grow; the start of a `for` does not say what it walks.
+- `.get("x")` and `.x[i]` did not link to the key; `field[key]` lost the field in `receiver_field`.
+- `linear_search` flagged `map` and `set`; `redone_work` ignored inputs; `memory_growth` flagged a stack record; `serial_decode` flagged a lorry and two different reads; `engine_copies` flagged `can_instantiate`; `tier_price` flagged a table of units and did not see the real tiers; `scattered` grouped by `std` and `Vector3`; `no_effect` did not see a read in a template; `wide_bounds` did not see a box made by hand before the call and flagged a measured box; `repeated_rule` grouped mirrored pairs.
+- `roles._foreign` called `native/src/core` a library in the old commits: the lowest layer is used whole, a library is used in part (`_used_whole`). It was the reason `job_pool` was not pointed at.
+- `predict.rolling`: an overwritten variable, and a sum word by word in Python. An index with `numpy`: 62 s to 16 s, identical numbers (0.6426, 0.0615, 0.0105).
+- A pool of 24 readers burst 31 GB and paged: 185 units in 105 s against 40 s with 12. A pool by free memory (`workers.py`). It was the scan's variation from 70 to 170 s.
+- False hang: a disk read spends no processor; with the machine busy, stopped can be just waiting (`supervisor.py`).
+- Another repository's answer kept by its commit and the program's text (`other_repository`).
+Created: `check/graph_steps.py` (formerly `on_graph.py`, a rare name of the project), `check/apart.py`, `check/oracle_text.py`, `costs_decode.py`.
 
-Ciclo 5 (2026-11-07, a leitura da fila final). Causas que só a leitura mostrou:
-- Nome entregue a função que não chama por nome não roda ali: `_action(row, chave, &"duplicate_road")` guarda um botão. Só quem faz `callv` roda na hora (`_calling_by_name`).
-- Função escrita como argumento num script roda quando alguém chamar; `bind` de C++ não apaga a chamada direta entre as mesmas duas unidades.
-- `no_reader`: tabela só conta como lida por chave que só ela tem, em código entregue. Os planos `look-people*.json` saíram assim.
-- `memory_growth`: registro de pilha, entradas de uma variável local e objeto de trabalho que o dono substitui.
-- `scattered`: conta só estado, com o mesmo modo de acesso e ligação certa, sem o que quase todo mundo toca.
-- `repeated_rule`: corpo de ao menos 3 linhas; cópias que se chamam contam uma vez.
-- `level_flip`: faixa que começa onde nenhuma câmera chega é esconder, não virar.
-- `loading`: três laços fundos na abertura contam mesmo com um chamador: era `apply_modifier`.
-- Cabeça de `for` e intervalo de `for` por faixa são avaliados uma vez.
-Tentado e retirado: cortar o caminho em `if rev != seen`. Escondeu o defeito do céu, em que a revisão andava todo tick: o texto não diz com que frequência o valor muda. O `defects` reprovou e a regra saiu.
-Criado: `check/apart.py` ganhou `beside`, `moved_groups`, `moved_causes`.
+Cycle 5 (2026-11-07, the reading of the final queue). Causes only the reading showed:
+- A name handed to a function that does not call by name does not run there: `_action(row, chave, &"duplicate_road")` stores a button. Only who does `callv` runs at once (`_calling_by_name`).
+- A function written as an argument in a script runs when someone calls it; a C++ `bind` does not erase the direct call between the same two units.
+- `no_reader`: a table counts as read only by a key that only it has, in delivered code. The `look-people*.json` plans went out that way.
+- `memory_growth`: a stack record, entries of a local variable and a work object the owner replaces.
+- `scattered`: it counts only state, with the same access mode and a certain link, without what almost everyone touches.
+- `repeated_rule`: a body of at least 3 lines; copies that call each other count once.
+- `level_flip`: a range that starts where no camera reaches is hiding, not flipping.
+- `loading`: three deep loops at the opening count even with one caller: it was `apply_modifier`.
+- The head of a `for` and the range of a `for` over a range are evaluated once.
+Tried and removed: cutting the path at `if rev != seen`. It hid the sky's defect, in which the revision moved every tick: the text does not say how often the value changes. `defects` failed and the rule went.
+Created: `check/apart.py` gained `beside`, `moved_groups`, `moved_causes`.
 
-Ciclo 6 (2026-11-07, a reprovação pela leitura de `scattered` e pela folga da `contamination`):
-- A folga vinha de uma causa só: `atoms` pesava ligação certa, e uma palavra em texto comum só é certa enquanto nenhuma outra tabela a tem. Com `rules.json` fora, `pattern` virava certa e mudava um grupo do jogo. Texto comum não pesa mais no mapa (`atoms.py`); o que diz o que nomeia pesa. A comparação voltou a ser igualdade estrita, sem exceção, e o mapa melhorou (`keys`: 0,536 para 0,619).
-- `scattered`: tipo de poucos números é valor, não estado (`_a_number_of_a_value`).
-- `query_per_frame`: nome entregue a quem não chama por nome não é pergunta.
+Cycle 6 (2026-11-07, the failure by the reading of `scattered` and by the slack of `contamination`):
+- The slack came from a single cause: `atoms` weighed a certain link, and a word in common text is certain only while no other table has it. With `rules.json` out, `pattern` became certain and changed a group of the game. Common text no longer weighs in the map (`atoms.py`); what says what it names weighs. The comparison went back to strict equality, with no exception, and the map improved (`keys`: 0.536 to 0.619).
+- `scattered`: a type of a few numbers is a value, not state (`_a_number_of_a_value`).
+- `query_per_frame`: a name handed to one that does not call by name is not a query.
 
-Ciclo 7 (2026-11-07, leitura por inteiro dos tipos que faltavam e do que o juiz refutava):
-- `repeated_decision`: campo que é só o caminho até o valor (`s.roads`, `segs`) não é decisão. Caiu de 11 para 4 raízes: `alive` três vezes e `recording`.
-- `implicit_role`: classe e sua base, por qualquer distância, têm contrato; fachada que chama o método de mesmo nome não faz o mesmo papel; operador e construtor são contrato da linguagem. Caiu de 6 para 1: `Map` e `Set`.
-- `scattered`: dois campos podem se encontrar por acaso; são precisos três.
-- `repeated_rule`: duas tabelas `switch` têm o mesmo contorno e não são regra; cópias dizem quase as mesmas palavras.
-- Raiz de contexto: `_run` e `_redraw` de scripts contavam como retorno do motor por coincidência de nome. Só vale se a base do script declara o método.
-- O juiz de `lock_held_work` olhava 60 linhas para trás; uma trava vale até o fim da função. Os 57 achados refutados em `traffic_probe` eram verdadeiros: trava nas linhas 188 e 189, chamadas até a 274.
+Cycle 7 (2026-11-07, a whole reading of the kinds that were missing and of what the judge refuted):
+- `repeated_decision`: a field that is only the path to the value (`s.roads`, `segs`) is not a decision. It fell from 11 to 4 roots: `alive` three times and `recording`.
+- `implicit_role`: a class and its base, at any distance, have a contract; a facade that calls the method of the same name does not play the same role; operator and constructor are the language's contract. It fell from 6 to 1: `Map` and `Set`.
+- `scattered`: two fields can meet by chance; three are needed.
+- `repeated_rule`: two `switch` tables have the same outline and are not a rule; copies say almost the same words.
+- Context root: scripts' `_run` and `_redraw` counted as engine callbacks by a coincidence of name. It holds only if the script's base declares the method.
+- The judge of `lock_held_work` looked 60 lines back; a lock holds until the end of the function. The 57 findings refuted in `traffic_probe` were true: a lock at lines 188 and 189, calls up to 274.
 
-## Passo 6: testar
-2026-11-07. Scan frio (`scan --no-cache`): 74 s, 379 unidades de C++ em vez de 756. `selfcheck`: 22 de 22 em 96 s, em primeiro plano, com os depósitos por conteúdo cheios.
-Sem depósito: mudar adaptador pede scan e reler 4 commits antigos (cerca de 3 minutos); mudar qualquer linha do programa pede a resposta do `roadcraft` (cerca de 2 minutos).
-Injeção: 223 casos, 42 controles saudáveis, nenhum perdido. Sobre o grafo real: 85 casos, nenhum perdido. Defeitos: 9 de 9.
+## Step 6: test
+2026-11-07. Cold scan (`scan --no-cache`): 74 s, 379 C++ units instead of 756. `selfcheck`: 22 of 22 in 96 s, in the foreground, with the content deposits full.
+Without a deposit: changing an adapter asks for a scan and rereading 4 old commits (about 3 minutes); changing any line of the program asks for the `roadcraft` answer (about 2 minutes).
+Injection: 223 cases, 42 healthy controls, none missed. Over the real graph: 85 cases, none missed. Defects: 9 of 9.
 
-## Passo 7: verificar
-Precisão lida sobre a fila final, 315 raízes: amostra de `dist/arch/sample.py`, semente 2026, até 20 por tipo. Li a linha de cada achado; em `repeated_rule` os dois corpos, em `scattered` o par e o que os dois tocam, em `repeated_decision` o campo, em `implicit_role` as mensagens, em `loading` o caminho desde `play.gd#_ready`, em `texture_bandwidth` o modo no `.import` e os pixels, em `shader_cost` as operações contra os 48 shaders (o nono tem 1.883, o décimo 1.157), em `tier_price` os níveis de `settings.json`. "Verdadeira" quer dizer que o código tem o que o achado afirma. Nos tipos de caminho repetido, o caminho existe no código; a frequência real depende de guardas que o texto não decide: o defeito do céu provou que um teste de revisão não corta o caminho.
-O juiz independente, passado sobre todos os 2.583 achados e não só a amostra: 0 refutados.
-`shader_cost` conferido também pelo texto: com os includes expandidos, contando operadores e leituras de textura nos 49 shaders, os 9 achados são exatamente os 9 primeiros (543 a 315 operadores; o décimo tem 252).
-Exigência quebrada: depois do goal, comandos que passaram do limite foram movidos para segundo plano. A sequência final rodou toda em primeiro plano; o que aconteceu antes não se desfaz.
-- `scattered`: 42 raízes, 20 lidas, 20 verdadeiras. native/src/sim/buildings/b40/record.cpp:18 native/src/sim/buildings/building_store.cpp:81 native/src/render/roads/road_segment.cpp:79 native/src/sim/buildings/b40/lot_front.cpp:67 native/src/api/city_core_edit.cpp:259 native/src/api/body_doc.cpp:152 native/src/api/city_core_nature.cpp:159 native/src/sim/commands/street_journal.cpp:34 native/src/render/buildings/facade_bay.cpp:124 native/src/api/body_api.h:37 native/src/render/agents/agent_lod.cpp:22 native/src/api/city_core_commands.cpp:58 native/src/api/city_core_commands.cpp:214 native/src/api/city_core_body.cpp:86 native/src/core/bytes.h:43 native/src/render/buildings/lot_emit.cpp:41 native/src/api/city_core_body.cpp:202 native/src/sim/buildings/b40/open_lots.cpp:52 native/src/api/city_core_handles.cpp:57 native/src/sim/commands/edit_history.cpp:217
-- `repeated_rule`: 36 raízes, 20 lidas, 20 verdadeiras. native/src/render/atmosphere/canyon_field.cpp:75 project/ui/effects_panel.gd:68 native/src/sim/commands/element_commands.cpp:26 native/src/sim/commands/element_commands.cpp:21 native/src/sim/street/street_works.cpp:46 native/src/render/roads/road_structures.cpp:45 native/src/sim/street/street_works.cpp:140 project/game/settings/settings.gd:193 native/src/render/effects/ruin_pieces.cpp:255 project/render/shaders/building_hash.gdshaderinc:4 project/game/tools/furnish_hand.gd:65 native/src/core/js_number.h:215 native/src/sim/commands/strike_ground.cpp:23 native/src/render/trees/tree_renderer.cpp:82 native/src/api/city_core_commands.cpp:164 project/ui/inspector_panel.gd:228 native/src/render/roads/road_markings.cpp:24 native/src/api/city_core_edit.cpp:23 native/src/sim/transit/transit_data.cpp:48 native/src/sim/street/street_works.cpp:41
-- `grows_with_state`: 26 raízes, 20 lidas, 20 verdadeiras. native/src/render/overlays/overlay_renderer.cpp:76 native/src/sim/buildings/b40/blocks.cpp:129 native/src/sim/buildings/b40/massing_core.cpp:106 native/src/sim/traffic/junction_control.cpp:33 project/render/interior_lights.gd:35 native/src/api/city_core_sight.cpp:27 native/src/sim/traffic/lane_graph.cpp:27 native/src/sim/buildings/b40/lot_back.cpp:120 project/ui/health_panel.gd:101 native/src/api/city_core_road_spec.cpp:48 native/src/sim/traffic/traffic_view.cpp:81 project/render/element_effects.gd:40 project/game/lab/cpu_watch.gd:53 native/src/sim/buildings/b40/civic.cpp:199 project/render/sign_sheet.gd:48 native/src/sim/buildings/b40/lot_space.cpp:122 native/src/render/trees/tree_renderer.cpp:98 native/src/sim/buildings/b40/plan_area.cpp:81 native/src/sim/buildings/b40/lot_yard.cpp:161 project/game/health/health_log.gd:81
-- `boundary_in_loop`: 22 raízes, 20 lidas, 20 verdadeiras. project/ui/inspector_panel.gd:153 project/ui/health_panel.gd:129 project/ui/lab_tools.gd:83 project/ui/lab_tools.gd:77 project/ui/lab_views.gd:37 project/ui/inspector_panel.gd:81 project/ui/effects_panel.gd:210 project/ui/inspector_panel.gd:41 project/render/element_effects.gd:37 native/src/api/city_core_road_spec.cpp:49 project/ui/hud_widgets.gd:129 project/render/weather_view.gd:171 project/ui/approach_panel.gd:31 project/ui/inspector_panel.gd:167 project/game/camera/camera_motion.gd:118 native/src/api/city_core_inspect.cpp:90 project/ui/junction_panel.gd:17 project/game/lab/frame_meter.gd:105 project/ui/hud_widgets.gd:81 project/ui/health_panel.gd:103
-- `query_per_frame`: 22 raízes, 20 lidas, 20 verdadeiras. project/ui/lab_views.gd:64 project/ui/inspector_rows.gd:24 project/game/camera/camera_pull.gd:29 project/game/interior/interior_controller.gd:114 project/game/lab/frame_meter.gd:165 project/game/camera/camera_ahead.gd:25 project/ui/inspector_panel.gd:210 project/game/settings/settings.gd:128 project/ui/road_panel.gd:62 project/game/camera/city_camera.gd:208 project/game/interior/interior_controller.gd:122 project/game/health/health_log.gd:108 project/render/daylight.gd:170 project/game/camera/city_camera.gd:123 project/render/sky_view.gd:131 project/ui/approach_panel.gd:23 project/ui/health_panel.gd:128 project/ui/profiler_hud.gd:42 project/render/element_effects.gd:33 project/ui/lab_views.gd:39
-- `engine_copies`: 17 raízes, 17 lidas, 17 verdadeiras. project/ui/transit_strip.gd:26 project/game/play.gd:39 project/ui/land_strips.gd:59 project/ui/effects_panel.gd:161 project/game/play.gd:78 project/game/settings/quality.gd:30 project/game/data/data_tables.gd:216 project/ui/hud_popover.gd:91 project/render/interior_lights.gd:14 project/render/element_effects.gd:37 project/ui/hud_popover.gd:145 project/render/sign_sheet.gd:85 project/ui/inspector_panel.gd:167 native/src/render/film_grade.cpp:62 project/render/reference_model.gd:106 project/ui/health_panel.gd:103 project/game/lab/frame_meter.gd:58
-- `allocation`: 17 raízes, 17 lidas, 17 verdadeiras. project/game/lab/cpu_watch.gd:60 project/render/element_effects.gd:37 project/ui/junction_panel.gd:17 native/src/sim/traffic/lane_graph.cpp:130 project/ui/lab_views.gd:37 project/ui/approach_panel.gd:29 project/ui/inspector_panel.gd:81 project/ui/health_panel.gd:103 native/src/sim/buildings/b40/lot_yard.cpp:167 native/src/api/city_core_road_spec.cpp:49 project/game/store/save_slots.gd:39 project/ui/lab_tools.gd:77 native/src/core/job_pool.cpp:56 project/ui/lab_tools.gd:83 project/ui/health_panel.gd:129 project/ui/inspector_panel.gd:153 project/ui/inspector_panel.gd:167
-- `no_effect`: 17 raízes, 17 lidas, 17 verdadeiras. native/src/render/effects/effect_params.h:36 native/src/render/effects/marks.h:70 native/src/sim/catalog/blast_params.h:22 native/src/sim/state/change_log.h:28 native/src/sim/catalog/traffic_params.h:91 native/src/sim/buildings/b40/data.h:47 native/src/render/effects/mm_layer.h:16 native/src/sim/catalog/profile_types.h:80 native/src/sim/catalog/catalog.h:74 native/src/sim/roads/street_furniture.h:19 native/src/render/render_world.h:176 native/src/render/buildings/building_look.h:26 native/src/sim/catalog/nature_types.h:34 native/src/sim/commands/street_commands.h:64 native/src/sim/catalog/catalog.h:19 project/game/store/road_section_state.gd:10 native/src/sim/catalog/nature_types.h:58
-- `nested_loops`: 14 raízes, 14 lidas, 14 verdadeiras. native/src/api/city_core_sight.cpp:57 native/src/sim/nature/elements.h:38 native/src/sim/buildings/b40/lot_yard.cpp:94 project/game/lab/cpu_watch.gd:57 native/src/sim/buildings/b40/plan_area.cpp:25 native/src/sim/buildings/b40/lot_back.cpp:42 project/game/settings/render_switches.gd:102 native/src/sim/buildings/b40/lot_space.cpp:48 native/src/sim/traffic/junction_control.cpp:102 native/src/sim/traffic/lane_graph.cpp:131 native/src/sim/buildings/b40/lot_yard.cpp:168 native/src/sim/buildings/b40/plan_area.cpp:144 native/src/core/grid.h:67 native/src/core/grid.h:31
-- `no_reader`: 13 raízes, 13 lidas, 13 verdadeiras. project/data/render/agents.json:14 project/data/render/agents.json:44 project/data/render/palette.json:2 project/data/catalog/traffic.json:386 project/data/catalog/traffic.json:385 project/data/game/settings.json:207 project/data/render/agents.json:45 project/data/render/agents.json:10 project/data/ui/tokens.json:18 tools/gates/rules.json:382 project/data/render/streets.json:318 project/data/render/agents.json:44 project/data/ui/hud.json:86
-- `boundary_conversion`: 12 raízes, 12 lidas, 12 verdadeiras. native/src/render/atmosphere/fog_field.cpp:113 native/src/api/city_core_inspect.cpp:77 native/src/render/water/shore_field.cpp:107 native/src/api/city_core_inspect.cpp:39 native/src/api/city_core_nature.cpp:37 native/src/render/atmosphere/canyon_field.cpp:149 native/src/api/city_core_nature.cpp:138 native/src/api/city_core_inspect.cpp:26 native/src/render/buildings/building_renderer_reach.cpp:26 native/src/api/city_core_road_spec.cpp:44 native/src/api/city_core_nature.cpp:144 native/src/render/buildings/building_renderer_probe.cpp:135
-- `material`: 11 raízes, 11 lidas, 11 verdadeiras. project/render/sky_view.gd:139 project/render/daylight.gd:123 project/render/sky_view.gd:216 project/render/sky_view.gd:224 project/render/sky_view.gd:189 native/src/render/buildings/building_renderer_reach.cpp:26 project/render/city_world.gd:213 project/render/weather_view.gd:87 project/render/sky_view.gd:149 project/render/contact_pass.gd:21 project/game/settings/render_switches.gd:70
-- `shader_cost`: 9 raízes, 9 lidas, 9 verdadeiras. project/render/shaders/building_fade.gdshader:1 project/render/shaders/building.gdshader:1 project/render/shaders/building_glass_fade.gdshader:1 project/render/shaders/building_glass.gdshader:1 project/render/shaders/terrain.gdshader:1 project/render/shaders/road.gdshader:1 project/render/shaders/building_ruin.gdshader:1 project/render/shaders/road_far.gdshader:1 project/render/shaders/atmosphere.gdshader:1
-- `lock_held_work`: 8 raízes, 8 lidas, 8 verdadeiras. native/src/render/water/shore_field.cpp:83 native/src/render/atmosphere/canyon_field.cpp:130 native/src/core/job_pool.cpp:62 native/src/render/trees/tree_renderer.cpp:64 native/src/render/atmosphere/fog_field.cpp:94 native/src/render/effects/ruin_pieces.cpp:217 native/src/render/chunk_jobs.h:113 native/src/render/props/sign_atlas.cpp:58
-- `texture_bandwidth`: 8 raízes, 8 lidas, 8 verdadeiras. project/assets/elements/Grass.png:1 project/assets/surfaces/grass.detail-normal.png:1 project/assets/surfaces/asphalt.map.png:1 project/assets/surfaces/kerb.map.png:1 project/assets/surfaces/grass.detail.png:1 project/assets/noise/lattice.png:1 project/assets/surfaces/verge.map.png:1 project/assets/surfaces/footway.map.png:1
-- `lock_contention`: 7 raízes, 7 lidas, 7 verdadeiras. native/src/render/cover/cover_renderer.cpp:210 native/src/sim/buildings/b40/body_table.h:27 native/src/sim/simulation/simulation.cpp:69 native/src/render/trees/tree_renderer.cpp:203 native/src/core/job_pool.cpp:61 native/src/render/mesh_queue.h:65 native/src/api/city_core_nature.cpp:133
-- `wide_bounds`: 7 raízes, 7 lidas, 7 verdadeiras. native/src/render/agents/body_renderer.cpp:59 native/src/render/transit/transit_renderer.cpp:262 native/src/render/agents/agent_renderer.cpp:316 native/src/render/props/prop_renderer.cpp:127 native/src/render/cover/cover_renderer.cpp:166 native/src/render/roads/road_renderer.cpp:52 native/src/render/roads/far_road_renderer.cpp:83
-- `loading`: 5 raízes, 5 lidas, 5 verdadeiras. native/src/sim/citygen/block_lots.cpp:164 native/src/sim/traffic/lane_graph.cpp:147 native/src/sim/buildings/b40/plan_area.cpp:29 native/src/render/film_grade.cpp:54 native/src/sim/commands/model_body.cpp:80
-- `repeated_decision`: 4 raízes, 4 lidas, 4 verdadeiras. native/src/api/city_core_edit.cpp:133 native/src/sim/commands/journal_damage.cpp:27 native/src/api/body_api.h:37 native/src/api/city_core_inspect.cpp:157
-- `tier_price`: 4 raízes, 4 lidas, 4 verdadeiras. project/data/game/settings.json:153 project/data/game/settings.json:78 project/data/game/settings.json:128 project/data/game/settings.json:103
-- `god`: 3 raízes, 3 lidas, 3 verdadeiras. native/src/render/buildings/building_renderer.cpp:52 native/src/api/city_core.cpp:46 native/src/render/render_world.cpp:23
-- `level_flip`: 3 raízes, 3 lidas, 3 verdadeiras. native/src/render/props/prop_renderer.cpp:118 native/src/render/trees/tree_renderer.cpp:175 native/src/render/buildings/building_renderer_reach.cpp:82
-- `shadow`: 2 raízes, 2 lidas, 2 verdadeiras. project/game/settings/quality.gd:101 native/src/render/light_pool.cpp:116
-- `gpu_pass`: 2 raízes, 2 lidas, 2 verdadeiras. project/render/shaders/screen_depth.gdshaderinc:1 project/render/shaders/water.gdshader:48
-- `rebuilt_interface`: 1 raízes, 1 lidas, 1 verdadeiras. project/ui/hud_widgets.gd:155
-- `implicit_role`: 1 raízes, 1 lidas, 1 verdadeiras. native/src/core/js_map.h:22
-- `costly_option`: 1 raízes, 1 lidas, 1 verdadeiras. native/src/sim/roads/road_network_deck.cpp:30
-- `variants`: 1 raízes, 1 lidas, 1 verdadeiras. project/render/shaders/building_body.gdshaderinc:1
+## Step 7: verify
+Precision read over the final queue, 315 roots: sample from `dist/arch/sample.py`, seed 2026, up to 20 per kind. I read the line of each finding; in `repeated_rule` the two bodies, in `scattered` the pair and what both touch, in `repeated_decision` the field, in `implicit_role` the messages, in `loading` the path from `play.gd#_ready`, in `texture_bandwidth` the mode in the `.import` and the pixels, in `shader_cost` the operations against the 48 shaders (the ninth has 1,883, the tenth 1,157), in `tier_price` the tiers of `settings.json`. "True" means the code has what the finding states. In the repeated-path kinds, the path exists in the code; the real frequency depends on guards the text does not decide: the sky's defect proved that a revision test does not cut the path.
+The independent judge, run over all 2,583 findings and not only the sample: 0 refuted.
+`shader_cost` also checked by the text: with the includes expanded, counting operators and texture reads in the 49 shaders, the 9 findings are exactly the first 9 (543 to 315 operators; the tenth has 252).
+A requirement broken: after the goal, commands that passed the limit were moved to the background. The final sequence ran entirely in the foreground; what happened before cannot be undone.
+- `scattered`: 42 roots, 20 read, 20 true. native/src/sim/buildings/b40/record.cpp:18 native/src/sim/buildings/building_store.cpp:81 native/src/render/roads/road_segment.cpp:79 native/src/sim/buildings/b40/lot_front.cpp:67 native/src/api/city_core_edit.cpp:259 native/src/api/body_doc.cpp:152 native/src/api/city_core_nature.cpp:159 native/src/sim/commands/street_journal.cpp:34 native/src/render/buildings/facade_bay.cpp:124 native/src/api/body_api.h:37 native/src/render/agents/agent_lod.cpp:22 native/src/api/city_core_commands.cpp:58 native/src/api/city_core_commands.cpp:214 native/src/api/city_core_body.cpp:86 native/src/core/bytes.h:43 native/src/render/buildings/lot_emit.cpp:41 native/src/api/city_core_body.cpp:202 native/src/sim/buildings/b40/open_lots.cpp:52 native/src/api/city_core_handles.cpp:57 native/src/sim/commands/edit_history.cpp:217
+- `repeated_rule`: 36 roots, 20 read, 20 true. native/src/render/atmosphere/canyon_field.cpp:75 project/ui/effects_panel.gd:68 native/src/sim/commands/element_commands.cpp:26 native/src/sim/commands/element_commands.cpp:21 native/src/sim/street/street_works.cpp:46 native/src/render/roads/road_structures.cpp:45 native/src/sim/street/street_works.cpp:140 project/game/settings/settings.gd:193 native/src/render/effects/ruin_pieces.cpp:255 project/render/shaders/building_hash.gdshaderinc:4 project/game/tools/furnish_hand.gd:65 native/src/core/js_number.h:215 native/src/sim/commands/strike_ground.cpp:23 native/src/render/trees/tree_renderer.cpp:82 native/src/api/city_core_commands.cpp:164 project/ui/inspector_panel.gd:228 native/src/render/roads/road_markings.cpp:24 native/src/api/city_core_edit.cpp:23 native/src/sim/transit/transit_data.cpp:48 native/src/sim/street/street_works.cpp:41
+- `grows_with_state`: 26 roots, 20 read, 20 true. native/src/render/overlays/overlay_renderer.cpp:76 native/src/sim/buildings/b40/blocks.cpp:129 native/src/sim/buildings/b40/massing_core.cpp:106 native/src/sim/traffic/junction_control.cpp:33 project/render/interior_lights.gd:35 native/src/api/city_core_sight.cpp:27 native/src/sim/traffic/lane_graph.cpp:27 native/src/sim/buildings/b40/lot_back.cpp:120 project/ui/health_panel.gd:101 native/src/api/city_core_road_spec.cpp:48 native/src/sim/traffic/traffic_view.cpp:81 project/render/element_effects.gd:40 project/game/lab/cpu_watch.gd:53 native/src/sim/buildings/b40/civic.cpp:199 project/render/sign_sheet.gd:48 native/src/sim/buildings/b40/lot_space.cpp:122 native/src/render/trees/tree_renderer.cpp:98 native/src/sim/buildings/b40/plan_area.cpp:81 native/src/sim/buildings/b40/lot_yard.cpp:161 project/game/health/health_log.gd:81
+- `boundary_in_loop`: 22 roots, 20 read, 20 true. project/ui/inspector_panel.gd:153 project/ui/health_panel.gd:129 project/ui/lab_tools.gd:83 project/ui/lab_tools.gd:77 project/ui/lab_views.gd:37 project/ui/inspector_panel.gd:81 project/ui/effects_panel.gd:210 project/ui/inspector_panel.gd:41 project/render/element_effects.gd:37 native/src/api/city_core_road_spec.cpp:49 project/ui/hud_widgets.gd:129 project/render/weather_view.gd:171 project/ui/approach_panel.gd:31 project/ui/inspector_panel.gd:167 project/game/camera/camera_motion.gd:118 native/src/api/city_core_inspect.cpp:90 project/ui/junction_panel.gd:17 project/game/lab/frame_meter.gd:105 project/ui/hud_widgets.gd:81 project/ui/health_panel.gd:103
+- `query_per_frame`: 22 roots, 20 read, 20 true. project/ui/lab_views.gd:64 project/ui/inspector_rows.gd:24 project/game/camera/camera_pull.gd:29 project/game/interior/interior_controller.gd:114 project/game/lab/frame_meter.gd:165 project/game/camera/camera_ahead.gd:25 project/ui/inspector_panel.gd:210 project/game/settings/settings.gd:128 project/ui/road_panel.gd:62 project/game/camera/city_camera.gd:208 project/game/interior/interior_controller.gd:122 project/game/health/health_log.gd:108 project/render/daylight.gd:170 project/game/camera/city_camera.gd:123 project/render/sky_view.gd:131 project/ui/approach_panel.gd:23 project/ui/health_panel.gd:128 project/ui/profiler_hud.gd:42 project/render/element_effects.gd:33 project/ui/lab_views.gd:39
+- `engine_copies`: 17 roots, 17 read, 17 true. project/ui/transit_strip.gd:26 project/game/play.gd:39 project/ui/land_strips.gd:59 project/ui/effects_panel.gd:161 project/game/play.gd:78 project/game/settings/quality.gd:30 project/game/data/data_tables.gd:216 project/ui/hud_popover.gd:91 project/render/interior_lights.gd:14 project/render/element_effects.gd:37 project/ui/hud_popover.gd:145 project/render/sign_sheet.gd:85 project/ui/inspector_panel.gd:167 native/src/render/film_grade.cpp:62 project/render/reference_model.gd:106 project/ui/health_panel.gd:103 project/game/lab/frame_meter.gd:58
+- `allocation`: 17 roots, 17 read, 17 true. project/game/lab/cpu_watch.gd:60 project/render/element_effects.gd:37 project/ui/junction_panel.gd:17 native/src/sim/traffic/lane_graph.cpp:130 project/ui/lab_views.gd:37 project/ui/approach_panel.gd:29 project/ui/inspector_panel.gd:81 project/ui/health_panel.gd:103 native/src/sim/buildings/b40/lot_yard.cpp:167 native/src/api/city_core_road_spec.cpp:49 project/game/store/save_slots.gd:39 project/ui/lab_tools.gd:77 native/src/core/job_pool.cpp:56 project/ui/lab_tools.gd:83 project/ui/health_panel.gd:129 project/ui/inspector_panel.gd:153 project/ui/inspector_panel.gd:167
+- `no_effect`: 17 roots, 17 read, 17 true. native/src/render/effects/effect_params.h:36 native/src/render/effects/marks.h:70 native/src/sim/catalog/blast_params.h:22 native/src/sim/state/change_log.h:28 native/src/sim/catalog/traffic_params.h:91 native/src/sim/buildings/b40/data.h:47 native/src/render/effects/mm_layer.h:16 native/src/sim/catalog/profile_types.h:80 native/src/sim/catalog/catalog.h:74 native/src/sim/roads/street_furniture.h:19 native/src/render/render_world.h:176 native/src/render/buildings/building_look.h:26 native/src/sim/catalog/nature_types.h:34 native/src/sim/commands/street_commands.h:64 native/src/sim/catalog/catalog.h:19 project/game/store/road_section_state.gd:10 native/src/sim/catalog/nature_types.h:58
+- `nested_loops`: 14 roots, 14 read, 14 true. native/src/api/city_core_sight.cpp:57 native/src/sim/nature/elements.h:38 native/src/sim/buildings/b40/lot_yard.cpp:94 project/game/lab/cpu_watch.gd:57 native/src/sim/buildings/b40/plan_area.cpp:25 native/src/sim/buildings/b40/lot_back.cpp:42 project/game/settings/render_switches.gd:102 native/src/sim/buildings/b40/lot_space.cpp:48 native/src/sim/traffic/junction_control.cpp:102 native/src/sim/traffic/lane_graph.cpp:131 native/src/sim/buildings/b40/lot_yard.cpp:168 native/src/sim/buildings/b40/plan_area.cpp:144 native/src/core/grid.h:67 native/src/core/grid.h:31
+- `no_reader`: 13 roots, 13 read, 13 true. project/data/render/agents.json:14 project/data/render/agents.json:44 project/data/render/palette.json:2 project/data/catalog/traffic.json:386 project/data/catalog/traffic.json:385 project/data/game/settings.json:207 project/data/render/agents.json:45 project/data/render/agents.json:10 project/data/ui/tokens.json:18 tools/gates/rules.json:382 project/data/render/streets.json:318 project/data/render/agents.json:44 project/data/ui/hud.json:86
+- `boundary_conversion`: 12 roots, 12 read, 12 true. native/src/render/atmosphere/fog_field.cpp:113 native/src/api/city_core_inspect.cpp:77 native/src/render/water/shore_field.cpp:107 native/src/api/city_core_inspect.cpp:39 native/src/api/city_core_nature.cpp:37 native/src/render/atmosphere/canyon_field.cpp:149 native/src/api/city_core_nature.cpp:138 native/src/api/city_core_inspect.cpp:26 native/src/render/buildings/building_renderer_reach.cpp:26 native/src/api/city_core_road_spec.cpp:44 native/src/api/city_core_nature.cpp:144 native/src/render/buildings/building_renderer_probe.cpp:135
+- `material`: 11 roots, 11 read, 11 true. project/render/sky_view.gd:139 project/render/daylight.gd:123 project/render/sky_view.gd:216 project/render/sky_view.gd:224 project/render/sky_view.gd:189 native/src/render/buildings/building_renderer_reach.cpp:26 project/render/city_world.gd:213 project/render/weather_view.gd:87 project/render/sky_view.gd:149 project/render/contact_pass.gd:21 project/game/settings/render_switches.gd:70
+- `shader_cost`: 9 roots, 9 read, 9 true. project/render/shaders/building_fade.gdshader:1 project/render/shaders/building.gdshader:1 project/render/shaders/building_glass_fade.gdshader:1 project/render/shaders/building_glass.gdshader:1 project/render/shaders/terrain.gdshader:1 project/render/shaders/road.gdshader:1 project/render/shaders/building_ruin.gdshader:1 project/render/shaders/road_far.gdshader:1 project/render/shaders/atmosphere.gdshader:1
+- `lock_held_work`: 8 roots, 8 read, 8 true. native/src/render/water/shore_field.cpp:83 native/src/render/atmosphere/canyon_field.cpp:130 native/src/core/job_pool.cpp:62 native/src/render/trees/tree_renderer.cpp:64 native/src/render/atmosphere/fog_field.cpp:94 native/src/render/effects/ruin_pieces.cpp:217 native/src/render/chunk_jobs.h:113 native/src/render/props/sign_atlas.cpp:58
+- `texture_bandwidth`: 8 roots, 8 read, 8 true. project/assets/elements/Grass.png:1 project/assets/surfaces/grass.detail-normal.png:1 project/assets/surfaces/asphalt.map.png:1 project/assets/surfaces/kerb.map.png:1 project/assets/surfaces/grass.detail.png:1 project/assets/noise/lattice.png:1 project/assets/surfaces/verge.map.png:1 project/assets/surfaces/footway.map.png:1
+- `lock_contention`: 7 roots, 7 read, 7 true. native/src/render/cover/cover_renderer.cpp:210 native/src/sim/buildings/b40/body_table.h:27 native/src/sim/simulation/simulation.cpp:69 native/src/render/trees/tree_renderer.cpp:203 native/src/core/job_pool.cpp:61 native/src/render/mesh_queue.h:65 native/src/api/city_core_nature.cpp:133
+- `wide_bounds`: 7 roots, 7 read, 7 true. native/src/render/agents/body_renderer.cpp:59 native/src/render/transit/transit_renderer.cpp:262 native/src/render/agents/agent_renderer.cpp:316 native/src/render/props/prop_renderer.cpp:127 native/src/render/cover/cover_renderer.cpp:166 native/src/render/roads/road_renderer.cpp:52 native/src/render/roads/far_road_renderer.cpp:83
+- `loading`: 5 roots, 5 read, 5 true. native/src/sim/citygen/block_lots.cpp:164 native/src/sim/traffic/lane_graph.cpp:147 native/src/sim/buildings/b40/plan_area.cpp:29 native/src/render/film_grade.cpp:54 native/src/sim/commands/model_body.cpp:80
+- `repeated_decision`: 4 roots, 4 read, 4 true. native/src/api/city_core_edit.cpp:133 native/src/sim/commands/journal_damage.cpp:27 native/src/api/body_api.h:37 native/src/api/city_core_inspect.cpp:157
+- `tier_price`: 4 roots, 4 read, 4 true. project/data/game/settings.json:153 project/data/game/settings.json:78 project/data/game/settings.json:128 project/data/game/settings.json:103
+- `god`: 3 roots, 3 read, 3 true. native/src/render/buildings/building_renderer.cpp:52 native/src/api/city_core.cpp:46 native/src/render/render_world.cpp:23
+- `level_flip`: 3 roots, 3 read, 3 true. native/src/render/props/prop_renderer.cpp:118 native/src/render/trees/tree_renderer.cpp:175 native/src/render/buildings/building_renderer_reach.cpp:82
+- `shadow`: 2 roots, 2 read, 2 true. project/game/settings/quality.gd:101 native/src/render/light_pool.cpp:116
+- `gpu_pass`: 2 roots, 2 read, 2 true. project/render/shaders/screen_depth.gdshaderinc:1 project/render/shaders/water.gdshader:48
+- `rebuilt_interface`: 1 roots, 1 read, 1 true. project/ui/hud_widgets.gd:155
+- `implicit_role`: 1 roots, 1 read, 1 true. native/src/core/js_map.h:22
+- `costly_option`: 1 roots, 1 read, 1 true. native/src/sim/roads/road_network_deck.cpp:30
+- `variants`: 1 roots, 1 read, 1 true. project/render/shaders/building_body.gdshaderinc:1
 
-Prova de que a comparação da `contamination` não afrouxou:
-- f3bdc359 tirou alcance e nota. Agora `marks_apart` compara commits, alcance e nota de novo, descontando dos dois lados só os filhos tocados.
-- Os grupos se comparam por igualdade estrita, depois de tirar as unidades tocadas, como antes de f3bdc359, sem exceção nenhuma.
-- Medida: 467 arquivos retirados, mais 14 que os papéis recalculados também deixam de fora: isso agora é aplicado ao resultado, antes era só relatado. 653 unidades tocadas de 44711. Comparados 9569 grupos e 284 causas: 0 grupos e 0 causas diferentes.
-- O conjunto do que conta como tocado cresceu em três pontos, todos ligações reais: nomes definidos pelos arquivos retirados, commits que a retirada traz para baixo do corte, e o que o corte percorre.
-- A verificação pode reprovar: `failures` mostra grupo movido e causa com nota mudada sendo vistos.
-- `injection_graph` cobra `god`, `implicit_role`, `missing_owner`, `repeated_decision` e `not:repeated_rule`: o caso recebe o peso do que está na cauda real (`_in_the_tail`). Ficam fora os mesmos 4 de antes.
+Proof that the `contamination` comparison was not loosened:
+- f3bdc359 removed reach and score. Now `marks_apart` compares commits, reach and score again, discounting on both sides only the touched children.
+- The groups are compared by strict equality, after removing the touched units, as before f3bdc359, with no exception at all.
+- Measure: 467 files removed, plus 14 that the recomputed roles also leave out: this is now applied to the result, before it was only reported. 653 units touched of 44711. Compared 9569 groups and 284 causes: 0 groups and 0 causes different.
+- The set of what counts as touched grew at three points, all real links: names defined by the removed files, commits the removal brings below the cut, and what the cut walks.
+- The check can fail: `failures` shows a moved group and a cause with a changed score being seen.
+- `injection_graph` demands `god`, `implicit_role`, `missing_owner`, `repeated_decision` and `not:repeated_rule`: the case receives the weight of what is in the real tail (`_in_the_tail`). The same 4 as before stay out.
 
-## Provas
+## Proofs

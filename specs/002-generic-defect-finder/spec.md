@@ -6,10 +6,10 @@
 
 **Status**: Draft
 
-**Input**: User description: "uma ferramenta genérica que identifica os problemas todos, sem travar caso a caso; não só os que já se
-sabe, mas os que ainda não foram identificados; mostrar onde está o problema no código, o motivo, cruzar o que está causando; o
-trabalho humano tem que ser mínimo; rápida, precisa, leve; resolver causas e não efeitos; como o rastreador de fluxo, genérico, sem
-engessamento, sem cenário fechado" (the owner, 2026-11-12). The tool observes the running game generically, judges what it sees
+**Input**: User description: "a generic tool that identifies all the problems, without locking into case by case; not only the ones
+already known, but the ones not yet identified; show where the problem is in the code, the reason, cross-check what is causing it;
+the human work has to be minimal; fast, precise, light; solve causes and not effects; like the flow tracer, generic, not rigid, no
+closed scenario" (the owner, 2026-11-12). The tool observes the running game generically, judges what it sees
 against universal rules of a physical, playable world, traces every violation back to the code that caused it, groups violations by
 cause, flags what a change broke, and hands over a ranked list ready for a fix.
 

@@ -1,7 +1,7 @@
 # Specification: what the game must reach, what constrains it, and what is still not true
 
-Opened 2026-11-11 (night) at the owner's order "Pausa obrigatória: levantar, pesquisar, provar e corrigir". CLAUDE.md holds the
-rules, the structure and the commands and is not repeated here; `log/pendencias.md` holds every open item; `log/research.md`
+Opened 2026-11-11 (night) at the owner's order "Mandatory pause: survey, research, prove and fix". CLAUDE.md holds the
+rules, the structure and the commands and is not repeated here; the register `log/problems.jsonl` holds every open item; `log/research.md`
 holds every research with its proof. This page is written as things are found: an entry without evidence says so.
 
 ## Where the three phases stand
@@ -13,9 +13,9 @@ holds every research with its proof. This page is written as things are found: a
 | 3. Fixes, one theme each | not started (no new game code before phases 1 and 2); the first trace is open with its cause found: `pole-no-wires` (V1) | 2026-11-12 |
 
 The owner's decisions of 2026-11-12 (his words, answering the three questions of session 2's report):
-1. Economy, growth, weather and ecology: "Sim, tudo deve virar simulação. Mas primeiro garanta resolver os problemas que já
-   existem no jogo": each becomes a real simulation (S4, Q9), after the problems the game already has are solved.
-2. The trace-fix hook's cost (L1, L2, S6): "Pode! Pense bem no que vai fazer": a change is proposed in a copy, tested whole,
+1. Economy, growth, weather and ecology: "Yes, everything must become a simulation. But first make sure the problems that already
+   exist in the game are solved": each becomes a real simulation (S4, Q9), after the problems the game already has are solved.
+2. The trace-fix hook's cost (L1, L2, S6): "Go ahead! Think hard about what you are going to do": a change is proposed in a copy, tested whole,
    deployed only on his word (memory `stage-skill-changes`).
 3. The other session committing `tools/analysis/**` in this tree stays as it is; its files are never touched by this line.
 
@@ -116,9 +116,9 @@ with the reference (386 names in `project/data/ui`, the Build drawer).
   (100 %), `swaths.cpp:98` (94 %), `atmosphere.gdshader:89` (98 %), `building_lamps.gdshaderinc:57`, `building_props.gdshader:27`,
   `marks.gdshader:47` (100 %); `reeds_shepp.cpp` has nine functions between 33 and 71 %.
 - What the scan cannot say: it compares with `lab/roadcraft` only, by names and fingerprints. The history says more: the game
-  was built by eight "Porte" lines (roads, build, landscape, interface, traffic/transit, people, demolition, interior; commits
+  was built by eight "Port" lines (roads, build, landscape, interface, traffic/transit, people, demolition, interior; commits
   `Integra a Porte N` of 2026-11-04/05, records in `tools/ports/*`) that ported the older 4.0 of the same game, and `log/pendencias.md`
-  describes most areas as "como no 4.0". So the question "what of the roadcraft still stands" is answered per area by reading its
+  describes most areas as "as in the 4.0". So the question "what of the roadcraft still stands" is answered per area by reading its
   port record and its code, not by the scan: see the pending items R1 onward in `log/pendencias.md`.
 
 ## Documents: every record and loose file, and its state (inventory 2026-11-11, session 2)
@@ -154,7 +154,7 @@ transit 12 / 1,416, nature 12 / 1,202, demolition 6 / 510, economy 2 / 161, simu
 | Clock and speeds | `Simulation` (`simulation.cpp`) | fixed `1/sim_tick_hz`, own thread, sleeps to a deadline; behind by more than 2 periods the debt is dropped | at speed N a tick runs N steps back to back | own thread; `wake_mutex_` for the speed | none | sound (fixed step, one setter with `SPEED_MOVES`); FAST/FASTEST multiply the cost of a tick by N with no budget: a tick over its period is silently dropped time (no probe counts it) |
 | Traffic (vehicles, lanes, junctions, signals, kerb stops, lots' cars, lorries, yard) | `traffic::step` (`traffic_system.cpp:184`) | the tick's dt | network changes, route compaction, lights, window, parking sources, governor, spawn, meso, lane changes, vehicles, flow control, kerb stops, lots | sim thread, `map_mutex` shared + `traffic_mutex`; routes synchronous in the tick | a "micro window" round the **camera** (`window.cpp`): inside it vehicles are bodies (IDM, MOBIL), outside they are queue events (meso) kept only to `meso_window_out_m`; a car leaving the window is despawned, the demand refills what enters | the population follows the camera, not the city: `camera_x/z` is read in `window.cpp`, `demand.cpp`, `parking_sources.cpp`, `pedestrians.cpp`, `traffic_system.cpp`, `rail_run.cpp`. Two runs of one city with two camera paths give two traffic states (not deterministic in the state; the state hash cannot cover it); no trip has an origin and a destination in the city beyond the window; `publish_poses` walks every slot of `vehicles` and `peds` each tick |
 | Walkers | `step_pedestrians` (`pedestrians.cpp`), 30 `ped_*.cpp` | the tick's dt | after transit, last | same locks | exist only within `ped_window_m` of the camera | same camera dependence; bodies kept apart only as on one shared way (ledger C45, P489: a pair 3 mm inside each other); a failing whole-town test is not reproducible (S3) |
-| Transit (buses, trains, metro, level crossings) | `transit::step` (`transit_sim.cpp:144`), `step_bus`, `step_train` | the tick's dt | after the lots, before walkers | same locks | buses near the camera are vehicles, away are on their timetable | riders are not counted (pendencias: "sem contar quem entrou"); stops and rails searched in a list, no index |
+| Transit (buses, trains, metro, level crossings) | `transit::step` (`transit_sim.cpp:144`), `step_bus`, `step_train` | the tick's dt | after the lots, before walkers | same locks | buses near the camera are vehicles, away are on their timetable | riders are not counted (pendencias: "without counting who got on"); stops and rails searched in a list, no index |
 | Growth | `grow_step` (`city_growth.cpp:82`), `growth.cpp` | per step, `sim_growth_per_s` | after the clock | decides under the shared map lock, exclusive only to add | only cells whose lots changed | fills free lots nearest the last grown: no demand, population, jobs or land value drives it |
 | Damage, fire, wounds | `damage_step` (`damage_state.cpp:79`), `bleed_step` (`wounds.cpp:12`) | `owed_ + dt` | last in a step | exclusive map lock by **try_to_lock**; when a mesh job holds it the time is owed to a later tick | none | the partition of time into steps depends on the mesh jobs' timing: not deterministic unless every rule is linear in dt (to check in its trace) |
 | Economy | `road_economy.cpp` (161 lines) | none | none | inside commands | none | not a simulation: a price per road edit and a refund on demolition; no income, upkeep, budget or taxes |
@@ -181,7 +181,7 @@ Positions are pixels of the whole photo. The earlier verdicts are in that folder
 ### `00-tjoint_near_a_day.png` (proof photo of commit 149e5767, P471-P473 "the straight side of a T"; earlier verdict: "right")
 Expected by the change: line poles past the crosswalks, wires strung pole to pole over the T, signal posts apart from line poles.
 - Whole: a signalled T, an avenue with a median, a park (top), lots; four timber line poles at (715,215-420), (1420,330-550),
-  (1890,180-400), (640,580-870); two grey lighting columns; three signal masts; HUD "0 veículos · 0 pessoas".
+  (1890,180-400), (640,580-870); two grey lighting columns; three signal masts; HUD "0 vehicles · 0 people".
 - **DEFECT, wires missing** (regions (450-1100,150-470), (1280-1920,280-600), (540-960,540-900) at 2x): every one of the four
   line poles carries its cross-arm and three white insulators and **no conductor leaves any of them**; no wire is drawn
   anywhere in the frame. The thin dark lines on the road are the poles' and columns' own shadows (each starts at a pole's foot).
@@ -219,18 +219,18 @@ Expected by the change: line poles past the crosswalks, wires strung pole to pol
 
 ### `00-traffic_km24_street_day_a.png`, `02-traffic_km24_near_day.png` (2026-11-11 00:58, proof of b994917f "the streets round the view carry their traffic in the 24 km city")
 - `00`: a view over the towers' roofs; the streets are slivers between towers ((230-420,180-470), (540-720,700-980)); the HUD
-  reads "2.784 veículos · 2.050 pessoas" but no vehicle or person is large enough to judge (a car is 3 to 6 pixels). It proves
+  reads "2,784 vehicles · 2,050 people" but no vehicle or person is large enough to judge (a car is 3 to 6 pixels). It proves
   the counters, not the traffic.
 - `02` ("near"): the camera stands against a tower's facade: the frame is window mullions and one room's floor seen through
   the glass; the street is a strip 130 px wide at the left edge. **The photo missed its subject**; nothing of the fix is in it.
 - After 2026-11-11 00:58 there is **no photo with a vehicle or a person at judging size**, though eleven later commits change
   movers (76551040, 527a5a4a, 8a358b3a, 0008178d, e8610ea1, a23ac3c3, 2896366f, 865f1321, 2cdf6a76, ee1d5aa8, 7ccee67b); every
-  later photo's HUD reads "0 veículos · 0 pessoas" (the clock is paused and the town empty when the shot is made).
+  later photo's HUD reads "0 vehicles · 0 people" (the clock is paused and the town empty when the shot is made).
 
 ### `dist/research/q12/shots/00-low_neighbourhood_day.png` (2026-11-12, the town's centre drawn by the Intel UHD 770 at the look plan's tier; a by-product of Q12, taken with no expectation written first: a breach of the protocol's step 1, said here)
 - What it can prove: whether the integrated GPU draws the game whole. Whole photo opened: towers, facades with their windows
   and the rooms behind the near panes, roofs and roof gear, the sun's shadows across the facades, street trees, crosswalks at
-  the left edge ((0-150,480-600)), the HUD (clock 16:00, "0 veículos · 0 pessoas", the dock) all drawn; no missing texture,
+  the left edge ((0-150,480-600)), the HUD (clock 16:00, "0 vehicles · 0 people", the dock) all drawn; no missing texture,
   no black or magenta surface, no torn geometry, no driver artefact at this scale. The frame cost 209 ms of GPU time.
 - Not done: its regions at real size, and the other two shots (`01-low_street_day.png`, `02-low_city_day.png`): owed.
 

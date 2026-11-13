@@ -9,7 +9,7 @@ were moved on 2026-11-12 from `dist/research/` to `dist/evidence/research/` (spe
 
 ## Entry format
 
-- **Question** (and the pending item of `log/pendencias.md` it serves)
+- **Question** (and the problem of the register `log/problems.jsonl` it serves)
 - **Searches** (the queries, context7 libraries and pages read, whole)
 - **Sources** (links)
 - **Found**

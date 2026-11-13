@@ -409,7 +409,7 @@ Defects, recorded here with the line's other closes; no measure of the 24 km cit
 
 ## P46 (2026-11-10, night): a person far off is a figure, not a black card
 
-A defect the owner pointed at ("a face preta são as pessoas"); recorded here with the line's other closes.
+A defect the owner pointed at ("the black face is the people"); recorded here with the line's other closes.
 
 - Problem: every walker more than 90 m from the eye was drawn as an upright black rectangle. Two decisions:
   1. `render/agents/people_renderer.cpp` gave a person the card of its pictures from `people.blob.from_m` (90 m), the
@@ -437,8 +437,8 @@ A defect the owner pointed at ("a face preta são as pessoas"); recorded here wi
 
 ## P47, P53 to P67, P75 (2026-11-10, night): the vehicles drive as bodies on their paths; the junctions' sweeps cost what meets
 
-A defect the owner reported ("ficam dando solavancos indo para frente com tudo, sobem em calçadas, ficam um em cima dos outros
-... param no meio das vias"); the reference game read for its behaviour alone (`lab/roadcraft`), every piece written for this tree.
+A defect the owner reported ("they keep lurching forward full tilt, they climb onto footways, they end up on top of one another
+... they stop in the middle of the roads"); the reference game read for its behaviour alone (`lab/roadcraft`), every piece written for this tree.
 
 - Lurches and erratic jumps: a drawn body hung between its two bumpers placed on the piece of path it was on, so it jumped and
   turned where a piece changed (P53); the lane change's offset was dropped on a connector (P54); a vehicle over its lane's end
