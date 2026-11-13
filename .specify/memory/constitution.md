@@ -73,11 +73,13 @@ Rationale: the owner judges the game; every wrong turn of this project came from
   settled by reading; never trial and error.
 - The method is held by force, not by memory (the owner, 2026-11-13: 80 builds, 172 runs and 40 failures in one session from
   coding before reading). The edit guard (`tools/tasks/edit_guard.py`, a PreToolUse hook of `.claude/settings.json`) reads the
-  session's own transcript and refuses an edit of code unless the block is open and the session shows each step above done for
-  the item (the file edited read to its last line; for the game's code the tracer run), and systematic-debugging loaded after a
-  failure; it refuses a commit without verification-before-completion loaded and a photo of the change opened. A check that
-  failed runs again only once its cause (`- Cause: ... file:line`) is written, after two failures only with a new source
-  (`block_item.py`). The guard is changed only by writing it whole, its tests passing.
+  session's own transcript and refuses an edit of code unless the block is open and the session shows each step above done since
+  the last commit (the file edited read to its last line; for the game's code the tracer run), and systematic-debugging loaded
+  after a failure. It refuses a commit without verification-before-completion loaded and, when the commit carries the game's code,
+  a photo of the change opened; a command that opens and verifies the block at once (a run again in disguise); and a build or check
+  whose output is piped or sent to a file (VII). A check that failed runs again only once its cause (`- Cause: ... file:line`) is
+  written, after two failures only with a new source (`block_item.py`). The guard is changed only by writing it whole, its tests
+  passing.
 - Then, at the end, `block verify` and the item's own checks, each in seconds: the test scenes it reaches (`python tools/tasks/cli.py run
   <task>`) and its photos (a `looks` plan aimed at what it changed), analysed in depth (X). A failure is read to its cause with
   `superpowers:systematic-debugging`, fixed in the code (`block open` again) and checked again; a pass is confirmed with
@@ -248,4 +250,4 @@ The DLLs in `project/bin` are versioned (rebuilt from the joined sources in a re
   work goes (IV); the block's close refuses an item without its reading, research and skills; the gates hold what they can check
   (`tools/gates/rules.json`).
 
-**Version**: 1.3.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13
+**Version**: 1.4.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13

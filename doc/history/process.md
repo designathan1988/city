@@ -450,3 +450,14 @@ the residential ring (r > 350 m on the town map).
   guard broke itself once while being edited in two steps (a name used before it existed, the second edit refused by the broken
   guard): it was mended by a script, and is changed only whole since.
 
+## 2026-11-13: the guard's three holes closed (constitution 1.4.0)
+
+- **Why** (the same diagnosis): the session reran tests 31 times by opening and verifying the block in one command; 159 runs had
+  their output piped through `grep`, `tail` or `Select-String`, or redirected to `$TEMP`; and the guard's item window began at the
+  last `block verify`, so a re-verify restarted it and research done before it no longer counted.
+- **Done**: the item window now begins at the last commit (`git log -1 --format=%cI`, Context7 /git/htmldocs) or the last
+  compaction if later. The guard refuses a command naming both `block open` and `block verify`, and a `cli.py run` or `build.sh`
+  with a pipe or a redirection to a file. A commit asks for a photo only when it carries the game's code (the staged files, and
+  with `-a` the tracked files modified: `git diff --cached`, `git diff HEAD`). Its tests moved to `test_edit_guard.py`
+  (`test_block_item.py` keeps the item gates); 36 tests pass.
+

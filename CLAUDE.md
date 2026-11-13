@@ -1,6 +1,6 @@
 # City: a city builder in Godot 4.7 with a C++ core (GDExtension), to be sold on Steam
 
-Generated from the constitution, `.specify/memory/constitution.md` (version 1.3.0), the project's only source of orders: the same
+Generated from the constitution, `.specify/memory/constitution.md` (version 1.4.0), the project's only source of orders: the same
 orders in its words. Read this file whole at the start of every session and after every compaction; an amendment changes the
 constitution first, then this file is generated again in the same commit. `doc/map.md` lists every file; nothing here is status.
 
@@ -61,10 +61,12 @@ constitution first, then this file is generated again in the same commit. `doc/m
   (refused while the item's `## Item` section lacks its reading, trace and research) and the item coded whole with nothing run: no
   test, measure or build while it is written; doubts settled by reading; never trial and error.
 - The method is held by force: the edit guard (`tools/tasks/edit_guard.py`, a PreToolUse hook) reads the session's transcript and
-  refuses an edit of code unless the block is open and each step above was done for the item (the file read to its last line; the
-  tracer for the game's code), and systematic-debugging after a failure; it refuses a commit without verification-before-completion
-  and a photo opened. A failed check runs again only with its cause written (`- Cause: ... file:line`), after two failures with a
-  new source (`block_item.py`). The guard is changed only by writing it whole, its tests passing.
+  refuses an edit of code unless the block is open and each step above was done since the last commit (the file read to its last
+  line; the tracer for the game's code), and systematic-debugging after a failure. It refuses a commit without
+  verification-before-completion and, when the commit carries the game's code, a photo opened; a command that opens and verifies
+  the block at once; a build or check whose output is piped or sent to a file. A failed check runs again only with its cause
+  written (`- Cause: ... file:line`), after two failures with a new source (`block_item.py`). The guard is changed only by writing
+  it whole, its tests passing.
 - Then, at the end, `block verify` and the item's own checks, each in seconds: the test scenes it reaches (`python tools/tasks/cli.py run
   <task>`) and its photos (a `looks` plan aimed at what it changed), analysed in depth (X). A failure is read to its cause with
   `superpowers:systematic-debugging`, fixed in the code (`block open` again) and checked again; a pass is confirmed with
