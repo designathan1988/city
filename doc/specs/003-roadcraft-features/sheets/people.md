@@ -7,7 +7,7 @@ source file; each sheet then reads every file its trace reaches, in both games (
 | Feature | Sheet | Rows (reference source) | State |
 |---|---|---|---|
 | The person maker: make anybody, turn and look closer, save them in the cast | people-maker.md | r124 `hint.person` (src/ui/i18n/en.ts:130); r2060 `TOOLS/person`, r2076 `Tool.person` (src/editor/toolMachine.ts:20-23); r2227 `people/spec` (src/people/spec.ts); r2125 `lab/catalog/people` (src/lab/catalog/people.ts) | drafted |
-| The cast: who the town's people are, by sex, age and dress | people-cast.md | r2211-r2226 `cast/*` (src/people/cast.json:3-123: female and male; adult, young, senior, child; casual, sport casual, smart casual, business) | drafted |
+| The cast: who the town's people are, by sex, age and dress | people-cast.md | r2211-r2226 `cast/*` (src/people/cast.json:3-123: female and male; adult, young, senior, child; casual, sport casual, smart casual, business) | read |
 | What people do: the motions and activities | people-motions.md | r2705-r2756 `rocketboxFemale/clips/*`, r2757-r2808 `rocketboxMale/clips/*` (src/render/motion/*.json: walks of five paces, run, turns, idle, look, phone, talk, listen, sit, read, carry a bag or trolley, umbrella, cheer, dance, wave, drink, photo, crouch, laugh, angry, argue, knock, headphones, eat, work at a table, drunk, injured, nervous); r2817 `render/people/crowdAnimation`; r2474 `RIDER_CLIPS/bikePedal` (src/render/riderPoses.ts:307) | read |
 | What people hold | people-held.md | r2819 `render/people/heldProps`; r2820-r2825 `HELD/read, drink, phone, photo, bag, umbrella` (src/render/people/heldProps.ts:15-20) | drafted |
 | Faces and their expressions | people-faces.md | r2818 `render/people/faceExpression` | drafted |
