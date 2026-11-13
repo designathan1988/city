@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """The atlas, the project's one traceability tool: python tools/atlas/cli.py <command> [args] [--json]
 Exit 0 on an answer, 1 when the answer is a failure (a check that found something, a change the rules refuse), 2 on a usage
-error. Commands: `problems` (the register: tools/atlas/problems_cli.py)."""
+error. Commands: `problems` (the register: tools/atlas/problems_cli.py); `inventory` (the features of the reference and of this
+game, paired by evidence: tools/atlas/inventory.py)."""
 import argparse
 import os
 import sys
@@ -9,6 +10,7 @@ import sys
 TOOLS_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 if TOOLS_DIR not in sys.path:
     sys.path.insert(0, TOOLS_DIR)
+from atlas import inventory  # noqa: E402
 from atlas import problems as register  # noqa: E402
 from atlas import problems_cli  # noqa: E402
 
@@ -25,6 +27,7 @@ def parser():
     ap.set_defaults(json=False, root=register.ROOT)
     commands = ap.add_subparsers(dest="command", required=True)
     problems_cli.add_parser(commands, common)
+    inventory.add_parser(commands, common)
     return ap
 
 
@@ -43,6 +46,8 @@ def main(argv=None):
     try:
         if args.command == "problems":
             return problems_cli.run(args, root=args.root)
+        if args.command == "inventory":
+            return inventory.run(args, root=args.root)
     except register.RegisterError as e:  # a register that cannot be read
         print(f"atlas: {e}")
         return 1

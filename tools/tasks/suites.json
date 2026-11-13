@@ -40,6 +40,7 @@
    {"path": "dist/build-pgo", "owner": "tools/build/pgo.sh", "whole_mb": 2048},
    {"path": "dist/lab_scan.json", "owner": "tools/gates/lab_scan.py", "whole_mb": 16},
    {"path": "dist/hunt", "owner": "tools/hunt/hunt.py", "whole_mb": 64},
+   {"path": "dist/inventory", "owner": "tools/atlas/inventory.py", "whole_mb": 64},
    {"path": "dist/km24", "owner": "tools/tasks/km24.py", "whole_mb": 8192},
    {"path": "dist/promo", "owner": "the promo recording (doc/history/process.md)", "keep": 2}  ]
  },
