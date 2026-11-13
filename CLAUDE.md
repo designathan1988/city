@@ -1,12 +1,20 @@
 # City: a city builder in Godot 4.7.2 with a C++ core (GDExtension), to be sold on Steam
 
-Generated from `.specify/memory/constitution.md` (version 2.0.0): the owner's orders, nothing else. `doc/map.md` lists every file.
+Generated from `.specify/memory/constitution.md` (version 2.1.0): the owner's orders, nothing else. `doc/map.md` lists every file.
 
 ## What the work is
 
-Port the reference game's features (`C:\Users\Jonathan\Documents\Projects\lab\roadcraft\src`, TypeScript) into this game, the main
-systems first, in the order of `doc/specs/003-roadcraft-features/tasks.md`. Porting is not copying: the tracer shows what the
-reference does, and the feature is built in this game's architecture with this game's own design and names.
+Port every feature of the reference game (`C:\Users\Jonathan\Documents\Projects\lab\roadcraft\src`, TypeScript) into this game,
+complete, the main systems first, in the order of `doc/specs/003-roadcraft-features/tasks.md`. Porting is not copying: the tracer
+shows what the reference does, and the feature is built in this game's architecture with this game's own design and names. An
+order of the owner names a start, never the whole: what it implies is found and done.
+
+Why this game exists: the reference was abandoned because it could not make a medium or a large city (memory, CPU and GPU grew
+with the map until it was too heavy and slow to play). Its behaviour is mostly right; its performance, architecture and
+engineering are not, and their faults are never brought (`doc/specs/003-roadcraft-features/architecture.md`). Every feature is
+judged at the large city's scale: its own probe on the 24 km map (memory per record, time per edit, per tick, per frame) at its
+end. How every feature is built here (the error channel, outcomes, handles, removal, invariants, the feature map, declared
+propagation, cost): `doc/specs/003-roadcraft-features/architecture.md`.
 
 ## One feature, in this order
 
@@ -20,7 +28,7 @@ reference does, and the feature is built in this game's architecture with this g
 5. `python tools/tasks/cli.py block open <feature>`, then code the whole feature, every case of its sheet, with nothing run: no
    build, test, measurement or photo until the feature is written.
 6. `python tools/tasks/cli.py block verify`, then the checks: both DLLs (`tools/build/build.sh core-windows`), the feature's test
-   scenes and the suites it reaches, its measure against the budgets, photos aimed at its elements (day and night when light
+   scenes and the suites it reaches, its scale probe on the 24 km map against the budgets, photos aimed at its elements (day and night when light
    changes), each photo opened and looked at. A failure: `superpowers:systematic-debugging`, the cause fixed in the code, only the
    failed check run again.
 7. A pass: commit (the cause or the feature, with `file:line`) and push to `origin/main`; `block close`; the next feature.
@@ -72,7 +80,8 @@ reference does, and the feature is built in this game's architecture with this g
 - Records: the register through `python tools/atlas/cli.py problems`; `doc/map.md` (a file created or deleted enters it in the same
   commit); the work's memory `doc/work/<block>.md`, short (goal, sheet, plan, state, next), folded into `doc/history/<area>.md` at
   the close. The work stays in this folder; outside it only the reference is read.
-- Only on the owner's order: `tools/build/quick.sh --ready`, the whole gates, `python tools/tasks/km24.py`, `python tools/hunt/hunt.py`.
+- A feature's scale: its own probe on the 24 km map, under a minute. Only on the owner's order: `tools/build/quick.sh --ready`, the
+  whole gates, `python tools/tasks/km24.py` (two builds compared), `python tools/hunt/hunt.py`.
 
 ## Commands
 

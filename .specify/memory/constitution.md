@@ -21,12 +21,18 @@ Rationale: the work stalled for days under rules the owner never gave (constitut
 
 ### II. Port the reference's features by the tracer, never its code
 
-- The priority: bring the reference game's features (`C:\Users\Jonathan\Documents\Projects\lab\roadcraft\src`) into this game,
-  the main systems first, in the order of `doc/specs/003-roadcraft-features/tasks.md`.
-- The reference works but is slow and heavy. Nothing of it is copied: no line, translation, structure, name or data key (the gate
-  LAB_COPY and `tools/gates/lab_scan.py` find them). Its costs are not brought: whole-map work on an edit or a frame, per-frame work
-  on unchanged inputs, allocation or search in a hot loop, quadratic proximity, heavy or hidden geometry, a simulation tied to the
-  camera.
+- The priority: bring every feature of the reference game (`C:\Users\Jonathan\Documents\Projects\lab\roadcraft\src`) into this
+  game, complete, the main systems first, in the order of `doc/specs/003-roadcraft-features/tasks.md`. An order of the owner names
+  a start, never the whole: what it implies (the neighbouring features, the causes, the rest of the area) is found and done.
+- Why this game exists: the reference was abandoned because it could not make a medium or a large city: memory, CPU and GPU grew
+  with the map until it was too heavy and too slow to play. Its behaviour is mostly right; its performance, architecture and
+  engineering are not. Every feature here is judged at the large city's scale (the 24 km map): what it holds per record, what an
+  edit, a tick and a frame cost there, measured at the feature's end.
+- Nothing of the reference is copied: no line, translation, structure, name or data key (the gate LAB_COPY and
+  `tools/gates/lab_scan.py` find them). Its faults are identified and never brought: whole-map work on an edit or a frame,
+  per-frame work on unchanged inputs, allocation or search in a hot loop, quadratic proximity, heavy or hidden geometry, a
+  simulation tied to the camera, swallowed errors, diagnostics left running (the full list:
+  `doc/specs/003-roadcraft-features/architecture.md`).
 - The tracer (`tools/tracer/trace.py`) is how a feature is understood, in both games: `--feature <path:line>` from where it shows,
   `START --depth N --state`, `--conditions`, `--cases`, `--cost` on the reference, `--wrong` and `--broken` here. The files it
   reaches are read. What it finds goes to the feature's sheet: what the feature does, when, with which values and cases, and the
@@ -42,7 +48,8 @@ Rationale: the work stalled for days under rules the owner never gave (constitut
   to the player.
 - Then the whole feature is coded, every case of its sheet, with nothing run: no build, test, measurement or photo while coding
   (`block open` makes the tools refuse).
-- At the end (`block verify`): both DLLs, the feature's test scenes and the suites it reaches, its measure against the budgets,
+- At the end (`block verify`): both DLLs, the feature's test scenes and the suites it reaches, its scale probe on the 24 km map
+  against the budgets,
   photos aimed at its elements (day and night when light changes), each photo looked at. A failure is read to its cause
   (`superpowers:systematic-debugging`) and fixed in the code; only the failed check runs again.
 - A pass: commit and push to `origin/main`, then the next feature.
@@ -91,8 +98,9 @@ Rationale: the people area spent a day on the fallen bodies' details while the m
   DLL). A check over a minute is a defect of its tool.
 - Agents may read, trace and research beside the work; what one brings is checked in the files before it is used.
 - Work on `main`; commit and push per feature. Repository text in English; the owner is spoken to in Portuguese.
-- Only on the owner's order: `tools/build/quick.sh --ready`, the whole gates, `python tools/tasks/km24.py`,
-  `python tools/hunt/hunt.py`.
+- A feature's scale is measured by its own probe on the 24 km map (memory per record, time per edit, per tick, per frame), a
+  check under a minute. Only on the owner's order: `tools/build/quick.sh --ready`, the whole gates, `python tools/tasks/km24.py`
+  (two builds compared), `python tools/hunt/hunt.py`.
 - Records: the register `doc/problems.jsonl` through `python tools/atlas/cli.py problems`; `doc/map.md` lists every file (a file
   created or deleted enters it in the same commit); each feature's sheet in `doc/specs/003-roadcraft-features/sheets/`; the work's
   memory `doc/work/<block>.md`, short (goal, sheet, plan, state, next), folded into `doc/history/<area>.md` at the close.
@@ -105,4 +113,4 @@ Rationale: the people area spent a day on the fallen bodies' details while the m
 - Versions: MAJOR when a principle is removed or redefined, MINOR when one is added or widened, PATCH for wording.
 - `CLAUDE.md` names the version it carries (the gate CLAUDE_MD).
 
-**Version**: 2.0.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13
+**Version**: 2.1.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13
