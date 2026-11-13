@@ -1,9 +1,14 @@
-// What a blast leaves on the ground, as flat quads just over it (one MultiMesh): craters (a hole, its broken lip,
-// cracks in the paving), soot and ash, blood (a pool that spreads, a splat, drops), and the shock ring. Everything
-// is worked out here from the instance: INSTANCE_CUSTOM = kind, seed, born (seconds of the effects clock), life (the ring's).
-// Kinds: 0 crater in paving, 1 crater in earth, 2 soot, 3 blood pool, 4 blood splat, 5 blood drops, 6 shock ring.
+// What a blast leaves on the ground (one MultiMesh): craters (a hole, its broken lip, cracks in the paving), soot and ash, blood (a pool
+// that spreads, a splat, drops), and the shock ring. Each is a decal on the depth buffer (Kim, "Screen Space Decals in Warhammer 40,000:
+// Space Marine", SIGGRAPH 2012): a unit box, its basis the mark's size across, along and up, its origin the middle of the mark's plane,
+// drawn from inside with no depth test so every pixel whose surface may lie in it is reached; each pixel's surface is read back from the
+// depth (screen_depth.gdshaderinc) and the mark painted where that surface lies in the mark's square, on its ground: no higher than
+// lie_above_m over its plane (a body lying on it, a car over it, a wall's top stand higher and are left as they are), and a pool only
+// where the surface faces up (a wall's or a kerb's face is left). Everything is worked out here from the instance: INSTANCE_CUSTOM = kind, seed, born (seconds of the
+// effects clock), life (the ring's). Kinds: 0 crater in paving, 1 crater in earth, 2 soot, 3 blood pool, 4 blood splat, 5 blood drops,
+// 6 shock ring.
 shader_type spatial;
-render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
+render_mode unshaded, blend_mix, depth_draw_never, depth_test_disabled, cull_front, shadows_disabled, fog_disabled;
 
 global uniform float night;
 // The crater's four stops, as scene radiance (what the Environment's tone mapping shows as the reference game's crater colours,
@@ -16,12 +21,20 @@ uniform vec3 ring_color = vec3(1.0, 0.945, 0.816);
 uniform float night_dim = 0.4;
 uniform float now = 0.0; // the effects clock, seconds
 uniform float pool_spread_s = 6.0; // seconds a blood pool takes to reach its size
-uniform float eye_pull_m = 0.5; // every mark is drawn this far nearer the eye along its ray (no change on screen): the ground's small bumps do not bury it
+uniform float lie_above_m = 0.05; // data/render/materials.json marks.params: a surface higher than this over the mark's plane is not its ground
+uniform float flat_least = 0.5; // the least upward share of a surface's normal a pool lies on: steeper is a face
+
+const float WOB_HALF = 0.11; // how far a mark's outline wobbles either way of a circle, a share of its radius
 
 varying flat float v_kind;
 varying flat float v_seed;
 varying flat float v_spread;
 varying flat float v_fade;
+varying flat vec3 v_centre; // the middle of the mark's plane
+varying flat float v_half; // half the mark's side as it stands now (the ring's grows)
+varying flat float v_deep; // how far under its plane the box reaches: ground lower than that is another (a road under a bridge)
+
+#include "res://render/shaders/screen_depth.gdshaderinc"
 
 void vertex() {
 	v_kind = INSTANCE_CUSTOM.x;
@@ -29,13 +42,16 @@ void vertex() {
 	float age = now - INSTANCE_CUSTOM.z;
 	v_spread = clamp(0.2 + age / max(pool_spread_s, 0.001), 0.2, 1.0);
 	v_fade = 1.0;
+	float grown = 1.0;
 	if (v_kind > 5.5) { // the shock ring races out and fades
 		float k = clamp(age / max(INSTANCE_CUSTOM.w, 0.001), 0.0, 1.0);
-		VERTEX.xz *= 1.0 - (1.0 - k) * (1.0 - k);
+		grown = 1.0 - (1.0 - k) * (1.0 - k);
+		VERTEX.xz *= grown;
 		v_fade = 1.0 - k;
 	}
-	vec3 world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	VERTEX += (inverse(MODEL_MATRIX) * vec4(normalize(CAMERA_POSITION_WORLD - world) * eye_pull_m, 0.0)).xyz;
+	v_centre = MODEL_MATRIX[3].xyz;
+	v_half = 0.5 * length(MODEL_MATRIX[0].xyz) * grown;
+	v_deep = 0.5 * length(MODEL_MATRIX[1].xyz);
 }
 
 float hash21(vec2 p) {
@@ -51,13 +67,23 @@ float vnoise(vec2 p) {
 }
 
 void fragment() {
-	vec2 q = (UV - 0.5) * 2.0;
+	vec3 seen = view_at(SCREEN_UV, INV_PROJECTION_MATRIX);
+	vec3 world = (INV_VIEW_MATRIX * vec4(seen, 1.0)).xyz;
+	vec2 q = (world.xz - v_centre.xz) / v_half; // the surface's place in the mark, -1 to 1 across and along
+	float above = world.y - v_centre.y;
+	if (max(abs(q.x), abs(q.y)) >= 1.0 || above > lie_above_m || above < -v_deep) {
+		discard;
+	}
+	// a pool lies only on what is flat enough to hold it; a crater, its scorch, a splat or the ring mark its own pit's walls and a face too
+	if (abs(v_kind - 3.0) < 0.5 && (INV_VIEW_MATRIX * vec4(view_normal(seen, SCREEN_UV, 1.0 / VIEWPORT_SIZE, INV_PROJECTION_MATRIX), 0.0)).y < flat_least) {
+		discard;
+	}
 	float r = length(q);
 	float k = v_kind;
 	vec3 c = vec3(0.0);
 	float a = 0.0;
-	float wob = 1.0 + 0.22 * (vnoise(q * 3.0 + v_seed * 17.0) - 0.5);
-	float rn = r / wob;
+	float wob = 1.0 + 2.0 * WOB_HALF * (vnoise(q * 3.0 + v_seed * 17.0) - 0.5);
+	float rn = r * (1.0 + WOB_HALF) / wob; // the outline wobbles inwards only: at its farthest it meets the square's edge, never cut by it
 	if (k < 1.5) { // crater: scorch spreading out, the hole, its lip, grit and (in paving) cracks
 		bool hard = k < 0.5;
 		int base = hard ? 0 : 4;

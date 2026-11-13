@@ -308,7 +308,8 @@
  "marks": {
   "shader": "res://render/shaders/marks.gdshader",
   "display_colors": { "crater": ["#231C15", "#493A2D", "#736C64", "#96918A", "#2A1F15", "#58412B", "#785C3E", "#8A6C4B"] },
-  "params": { "eye_pull_m": 0.5, "blood_deep": "#600609", "blood_thin": "#850C10" }
+  "_doc": "Decals on the depth buffer (marks.gdshader): lie_above_m, the most a surface may stand over a mark's plane and still be its ground (the paving's relief; a limb lying on it stands 0.12 m, ragdoll.cpp LIMB_HALF_M twice); flat_least, the least upward share of the surface's normal a blood pool lies on (0.5: no steeper than 60 degrees, so a wall's or kerb's face is left; a crater marks its own pit's walls).",
+  "params": { "lie_above_m": 0.05, "flat_least": 0.5, "blood_deep": "#600609", "blood_thin": "#850C10" }
  },
  "lamp_glow": {
   "shader": "res://render/shaders/lamp_glow.gdshader",

@@ -1,0 +1,19 @@
+{
+ "_doc": "Ground marks as decals on the depth (Prender-272, marks.gdshader): a blow of force 20 on bare earth outside the town (900, 900) ({at: [x, z]}; setView's y is the map's north, -z, so the crater stands at setView (900, -900)); a blow on a street digs none (Psimulation-106). Two seconds after it, the crater near (20 px a metre) from 45 degrees at four azimuths, at street level (10 degrees), from above (85) and mid (8): the hole, its lip and the scorch lie on the ground, following its rise and fall.",
+ "city": {"map": 0, "seed": 1, "generate": true},
+ "steps": [
+  {"hour": 16}, {"frames": 60},
+  {"query": "city_bounds"}, {"query": "height_at", "args": [900, 900]},
+  {"setView": [900, -900, 20, 0, 50]}, {"until": "render_pending", "equals": 0},
+  {"dispatch": "strike", "args": [{"at": [900, 900]}, 20]},
+  {"frames": 120},
+  {"query": "damage_probe"},
+  {"setView": [900, -900, 20, 0, 45]}, {"until": "render_pending", "equals": 0}, {"shot": "crater_0"},
+  {"setView": [900, -900, 20, 90, 45]}, {"until": "render_pending", "equals": 0}, {"shot": "crater_90"},
+  {"setView": [900, -900, 20, 180, 45]}, {"until": "render_pending", "equals": 0}, {"shot": "crater_180"},
+  {"setView": [900, -900, 20, 270, 45]}, {"until": "render_pending", "equals": 0}, {"shot": "crater_270"},
+  {"setView": [900, -900, 20, 45, 10]}, {"until": "render_pending", "equals": 0}, {"shot": "crater_street"},
+  {"setView": [900, -900, 20, 0, 85]}, {"until": "render_pending", "equals": 0}, {"shot": "crater_above"},
+  {"setView": [900, -900, 8, 30, 60]}, {"until": "render_pending", "equals": 0}, {"shot": "crater_mid"}
+ ]
+}

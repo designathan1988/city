@@ -1,5 +1,5 @@
-// What a blast leaves on the ground, flat quads just over it in one MultiMesh (render/shaders/marks.gdshader draws each
-// from its kind): the craters of the damage state (drawn again whenever the state changes: undo, redo, open; a blow only adds
+// What a blast leaves on the ground, decals on the depth buffer in one MultiMesh (render/shaders/marks.gdshader draws each from its
+// kind, on the ground under its box and nothing standing on it): the craters of the damage state (drawn again whenever the state changes: undo, redo, open; a blow only adds
 // its own), soot and blood kept (the oldest go first), and the shock rings while they race out. Every one of them is drawn: the
 // layer holds what these lists hold (the state's craters, soot_kept and blood_kept), it keeps no count of its own.
 #pragma once
@@ -61,7 +61,8 @@ public:
 		m.y = top_ground(c.x, c.z, m.size * 0.5f, ground_of) + SURFACE_LIFT_M; // the pit the dig leaves lies below it
 		return m;
 	}
-	// One flat quad over rolling ground is laid at the highest ground under it (`half` metres out each way), so no part of it is buried.
+	// A mark's plane over rolling ground is laid at the highest ground under it (`half` metres out each way): all its ground lies under
+	// the plane, and what stands over it is not ground (marks.gdshader lie_above_m).
 	template <typename F>
 	static float top_ground(float x, float z, float half, F &&ground_of) {
 		float top = ground_of(x, z);

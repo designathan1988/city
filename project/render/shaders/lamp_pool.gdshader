@@ -11,7 +11,6 @@ render_mode blend_add, unshaded, cull_front, depth_test_disabled, depth_draw_nev
 global uniform float night;
 global uniform vec2 lamp_lit; // where the lamps with a light of their own start giving way to the pools, and where they end
 
-uniform sampler2D depth_texture : hint_depth_texture, filter_nearest;
 uniform vec3 display_colour = vec3(1.0); // as the screen shows it: read through source_display (color_space.gdshaderinc)
 uniform float opacity = 0.0;
 
@@ -25,6 +24,7 @@ varying flat vec3 v_along;
 #include "res://render/shaders/color_space.gdshaderinc"
 #include "res://render/shaders/tone_inverse.gdshaderinc"
 #include "res://render/shaders/lamp_pool.gdshaderinc"
+#include "res://render/shaders/screen_depth.gdshaderinc"
 
 void vertex() {
 	v_centre = MODEL_MATRIX[3].xyz;
@@ -43,14 +43,7 @@ float share_of(vec3 p, vec3 axis) {
 }
 
 void fragment() {
-	float depth = texture(depth_texture, SCREEN_UV).x;
-#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
-	vec3 ndc = vec3(SCREEN_UV, depth) * 2.0 - 1.0;
-#else
-	vec3 ndc = vec3(SCREEN_UV * 2.0 - 1.0, depth);
-#endif
-	vec4 seen = INV_VIEW_MATRIX * INV_PROJECTION_MATRIX * vec4(ndc, 1.0);
-	vec3 world = seen.xyz / seen.w;
+	vec3 world = (INV_VIEW_MATRIX * vec4(view_at(SCREEN_UV, INV_PROJECTION_MATRIX), 1.0)).xyz;
 	vec3 p = world - v_centre;
 	float r = length(vec2(share_of(p, v_across), share_of(p, v_along)));
 	float h = abs(share_of(p, v_up));

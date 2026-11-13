@@ -1,5 +1,5 @@
-// What a full-screen pass reads of the depth: a pixel's place in view space and the normal of the surface there. One owner for
-// the passes that read it (occlusion, contact, atmosphere).
+// What a pass reads of the depth: a pixel's place in view space and the normal of the surface there. One owner for the passes that
+// read it (occlusion, contact, atmosphere) and the decals laid on it (the lamps' pools, the ground marks).
 
 uniform sampler2D depth_texture : hint_depth_texture, repeat_disable, filter_nearest;
 

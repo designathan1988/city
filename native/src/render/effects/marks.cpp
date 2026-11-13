@@ -1,7 +1,7 @@
 // The ground marks (marks.h).
 #include "render/effects/marks.h"
 
-#include <godot_cpp/classes/plane_mesh.hpp>
+#include <godot_cpp/classes/box_mesh.hpp>
 
 #include <algorithm>
 
@@ -13,10 +13,10 @@ void Marks::init(const RID &scenario, const RID &material, int room, int soot_ke
 	material_ = material;
 	soot_kept_ = size_t(soot_kept);
 	blood_kept_ = size_t(blood_kept);
-	Ref<PlaneMesh> plane;
-	plane.instantiate();
-	plane->set_size(Vector2(1, 1));
-	layer_.init(scenario, plane, material, room, false, world_box()); // see-through: the map's box keeps its place in the sort (mm_layer.h)
+	Ref<BoxMesh> box; // the decal's volume (marks.gdshader), drawn from inside
+	box.instantiate();
+	box->set_size(Vector3(1, 1, 1));
+	layer_.init(scenario, box, material, room, false, world_box()); // see-through: the map's box keeps its place in the sort (mm_layer.h)
 	layer_.count(0);
 }
 
@@ -49,7 +49,8 @@ void Marks::ring(const Mark &m) {
 }
 
 void Marks::write(const Mark &m, int slot) {
-	layer_.put(slot, Vector3(m.size, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, m.size), Vector3(m.x, m.y, m.z), float(m.kind), m.seed, float(m.born), float(m.life));
+	// as tall as it is wide, its middle on the mark's plane: the ground it lies on, as far under the plane as the mark is wide
+	layer_.put(slot, Vector3(m.size, 0, 0), Vector3(0, m.size, 0), Vector3(0, 0, m.size), Vector3(m.x, m.y, m.z), float(m.kind), m.seed, float(m.born), float(m.life));
 }
 
 void Marks::update(double now) {
