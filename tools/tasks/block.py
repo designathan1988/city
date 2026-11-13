@@ -2,10 +2,13 @@
 # checked at its end, and never by trial and error. Its state is one file, dist/block/state.json, moved only by `enter` through MOVES:
 # closed -> open (the code being written, nothing run) -> verify (its checks run) -> open again (a failure fixed in the code) or
 # closed. `refusal` is the one answer every gatekeeper asks (the orchestrator's `run` and `serve`, build.sh, deliver.sh, km24.py).
+# Before the checks: `review`, the static reading (the gates of every changed file against the register, no build and no engine);
+# `verify` is refused until the code as it stands passed it, so nothing a reading shows is left for a build and a test to find.
 # While the checks run: the game's code does not change (a fix is made with the block open again); a check that failed is not run
-# again; the block opens again only with the cause of each failed check named at a `file:line` that exists; and after MAX_ROUNDS
-# verifications that failed the tool stops until the owner's word is given. `close` appends the block's times to the process
-# history, so the time each functionality takes shows. Run as a script by the build scripts, so it finds its package itself.
+# again; the block opens again only with a cause named at a `file:line` that exists (each failed check's, or what was found); a
+# block is verified MAX_VERIFIES times at most, failed or not, and after MAX_ROUNDS verifications that failed the tool stops until
+# the owner's word is given. `close` appends the block's times to the process history, so the time each functionality takes
+# shows. Run as a script by the build scripts, so it finds its package itself.
 from __future__ import annotations
 
 import argparse
@@ -28,6 +31,7 @@ WHAT = ("run", "build", "export", "commit")  # what the tools ask before they ac
 STAMP = "%Y-%m-%dT%H:%M"
 SECONDS_PER_MINUTE = 60
 MAX_ROUNDS = 2  # verifications that may fail before the tool stops: a third failure is a wrong design, the owner's to hear
+MAX_VERIFIES = 3  # verifications a block may have at all: the first, and one for each round; more is trial and error by another name
 CODE = ("native/src", "project/game", "project/ui", "project/render", "project/data", "project/tests")  # the game's code
 MADE = (".uid", ".import", ".translation")  # what the engine writes beside a source: no change of the code
 PASSED = ("PASS", "CACHED_PASS")
@@ -107,18 +111,39 @@ def failed(doc: dict, root: Path = ROOT) -> list[str]:
     return sorted(n for n, status in (doc.get("runs") or {}).items() if status not in PASSED and n not in BUILDS and n not in known)
 
 
+def reviewed(root: Path = ROOT) -> None:
+    """The code as it stands passed the static review (block_review.py): `verify` may follow while it does not change."""
+    doc = load(root)
+    doc["review"] = tree(root) or "unread"
+    _save(doc, root)
+
+
+def _review():
+    """The static side of the rule, its own module (it imports this one)."""
+    try:
+        from tasks import block_review
+    except ImportError:  # run as a script by the build scripts
+        import block_review
+    return block_review
+
+
 def _cause(doc: dict, cause: str | None, owner: str | None, root: Path) -> None:
-    """A verification that failed opens again only with its cause: every failed check named, and a `file:line` that exists;
-    past MAX_ROUNDS failed verifications only with the owner's word."""
+    """A block in verification opens again only with a cause: every failed check named, and a `file:line` that exists (with no
+    failed check, where what was found stands); past MAX_ROUNDS failed verifications only with the owner's word."""
     known = registered(root)
     broke = [n for n, status in (doc.get("runs") or {}).items() if status not in PASSED and n not in known]
-    if not broke:
-        return
     said = cause or ""
     missing = [n for n in broke if n not in said]
     places = [(p, int(line)) for p, line in PLACE.findall(said)]
     real = [p for p, line in places if (Path(root) / p).is_file()
             and line <= len((Path(root) / p).read_bytes().splitlines())]
+    if not broke and not real:
+        raise BlockError("the block opens again only for something found, named where it stands: `block open --cause "
+                         "\"<what>: <file:line>: <why>\"`. Everything found is fixed in this one opening: a second verification "
+                         f"is the last but one ({MAX_VERIFIES} at most)")
+    if not broke:
+        doc.setdefault("causes", []).append(f"{_now()} found: {said}")
+        return
     if missing or not real:
         raise BlockError(f"this verification failed ({', '.join(broke)}): the block opens again with the cause read in the code, "
                          f"`block open --cause \"<check>: <file:line>: <what is wrong there and why>\"`, every failed check named "
@@ -138,12 +163,18 @@ def _cause(doc: dict, cause: str | None, owner: str | None, root: Path) -> None:
 
 
 def record(statuses: dict, root: Path = ROOT) -> None:
-    """What the checks of a verification answered, kept with the block: a run tells its tasks' verdicts here."""
+    """What the checks of a verification answered, kept with the block: a run tells its tasks' verdicts here, and that the
+    verification had its run of that kind."""
     doc = load(root)
     if doc["state"] != VERIFY:
         return
     doc.setdefault("runs", {}).update(statuses)
+    kind = _review().kind_of(statuses)
+    if kind:
+        doc.setdefault("ran", {})[kind] = True
     _save(doc, root)
+
+
 
 
 def enter(target: str, name: str | None = None, root: Path = ROOT, cause: str | None = None, owner: str | None = None) -> dict:
@@ -158,7 +189,14 @@ def enter(target: str, name: str | None = None, root: Path = ROOT, cause: str | 
             raise BlockError("a block is opened with its name")
         doc = {"state": OPEN, "name": name, "opened": _now(), "verified": None, "round": 0, "runs": {}, "causes": []}
     elif target == VERIFY:
-        doc.update(state=VERIFY, verified=_now(), runs={}, tree=tree(root))
+        if doc.get("review") != (tree(root) or "unread"):
+            raise BlockError("the code as it stands has not passed the static review: `python tools/tasks/cli.py block review` "
+                             "first (the gates of every changed file, no build), every finding fixed in the code; then verify")
+        if int(doc.get("verifies") or 0) >= MAX_VERIFIES and not owner:
+            raise BlockError(f"'{doc['name']}' was verified {doc['verifies']} times: {MAX_VERIFIES} is the most. Stop, tell the "
+                             f"owner what each verification found, and verify again only with the owner's word (--owner)")
+        doc.update(state=VERIFY, verified=_now(), runs={}, ran={}, tree=tree(root), verifies=int(doc.get("verifies") or 0) + 1,
+                   suite_by_owner=bool(owner))
     elif target == OPEN:
         _cause(doc, cause, owner, root)
         doc.update(state=OPEN, runs={})
@@ -210,6 +248,9 @@ def refusal(what: str, root: Path = ROOT, tasks: list[str] | None = None) -> str
         return (f"refused: {', '.join(again)} failed in this verification of '{doc['name']}' and is not run again as it is. "
                 f"Read its failing lines and the code they name, then `python tools/tasks/cli.py block open --cause "
                 f"\"<check>: <file:line>: <why>\"`, fix it in the code, `block verify`, and run it once. Asked: {what}")
+    bound = _review().run_bounds(doc, what, tasks)
+    if bound:
+        return bound
     now = tree(root)
     if doc.get("tree") and now and now != doc["tree"]:
         return (f"refused: the game's code changed since `block verify` of '{doc['name']}' ({', '.join(CODE)}): nothing is built "
@@ -219,14 +260,16 @@ def refusal(what: str, root: Path = ROOT, tasks: list[str] | None = None) -> str
 
 
 def main(argv: list[str]) -> int:
-    ap = argparse.ArgumentParser(prog="cli.py block", description="the block rule: open, verify, close, status, check")
-    ap.add_argument("action", choices=(OPEN, VERIFY, "close", "status", "check"))
+    ap = argparse.ArgumentParser(prog="cli.py block", description="the block rule: open, review, verify, close, status, check")
+    ap.add_argument("action", choices=(OPEN, "review", VERIFY, "close", "status", "check"))
     ap.add_argument("name", nargs="?", help="the block's name (open); what is asked (check: run, build, export, commit)")
     ap.add_argument("--cause", help="open, after a verification that failed: each failed check, a file:line and why")
     ap.add_argument("--owner", help=f"open, past {MAX_ROUNDS} failed verifications: the owner's words to go on")
     ap.add_argument("--root", default=str(ROOT), help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
     root = Path(a.root)
+    if a.action == "review":
+        return _review().review(root)
     if a.action == "check":
         why = refusal(a.name or "run", root)
         if why:
@@ -235,7 +278,8 @@ def main(argv: list[str]) -> int:
     if a.action == "status":
         doc = load(root)
         print(f"block {doc['state']}" + (f": {doc['name']} (opened {doc['opened']}, verified {doc['verified'] or '-'}; "
-                                         f"failed verifications {doc.get('round') or 0} of {MAX_ROUNDS}; failed now: "
+                                         f"verifications {doc.get('verifies') or 0} of {MAX_VERIFIES}, failed "
+                                         f"{doc.get('round') or 0} of {MAX_ROUNDS}; failed now: "
                                          f"{', '.join(failed(doc, root)) or 'none'})" if doc["state"] != CLOSED else ""))
         return 0
     try:
@@ -244,6 +288,8 @@ def main(argv: list[str]) -> int:
         print(f"refused: {e}", file=sys.stderr)
         return 1
     print(f"block {doc['state']}" + (f": {doc['name']}" if doc.get("name") else f" ({doc.get('last')})"))
+    if doc["state"] == OPEN:
+        print(_review().limits(root))
     return 0
 
 

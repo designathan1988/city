@@ -22,11 +22,17 @@ is spoken to in Portuguese; repository text is English.
 The procedure is the project's skill **`port`** (`.claude/skills/port/SKILL.md`): invoke it with the Skill tool before the first
 tool call of any port work, and again after every compaction. What it says in steps, the tools hold by force; these hold always:
 
-- **Nothing runs while code is written.** Between `block open` and `block verify` no build, test, measurement, photo, gate or
-  engine. The tools refuse; no way round them is looked for.
-- **A failed check is never run again as it is.** Its cause is read in the code (`superpowers:systematic-debugging`) to a
-  `file:line`, then `block open --cause "<check>: <file:line>: <why>"`, the fix, `block verify`, that check once. A guess is no
-  cause. Two verifications may fail; a third stops the work and the owner is told.
+- **Defects are found by reading, never by running.** The limits the code must hold are printed at `block open`
+  (`tools/gates/rules.json`); the hook reads each file's gates after every edit and they are fixed there. Between `block open`
+  and `block verify` no build, test, measurement, photo or engine. The coding ends with the whole diff read and
+  `block review` (the gates of every changed file): `block verify` is refused before it passes.
+- **A verification is small and takes seconds**: one run of a few checks (the functionality's own test, its photo plan, `e2e`:
+  six tasks at most, named in one command) and one measure (`lab_test`). No whole suite, no second run: the tools refuse them.
+  The whole suite, `km24`, `hunt` and `quick --ready` run only on the owner's order.
+- **A block is verified three times at most**, failed or not. It opens again only with a cause at a `file:line`
+  (`block open --cause "<check or what was found>: <file:line>: <why>"`), read in the code (`superpowers:systematic-debugging`),
+  never guessed, and everything found is fixed in that one opening. Two verifications may fail; a third stops the work and
+  the owner is told.
 - **Memory is no source.** Context7 for every API the code calls; the internet for every design decision and every value of
   the real world, the source's own words cited in the data.
 - **Skills are used, not named**: `port` for the procedure, `superpowers:systematic-debugging` on a failure,
@@ -100,13 +106,13 @@ tool call of any port work, and again after every compaction. What it says in st
 | Both games traced for a functionality | `python tools/tracer/port.py sheet <area> [--feature N]` · `python tools/tracer/port.py check` |
 | Trace | `python tools/tracer/trace.py <START> --depth N --state --root <feature files>` (`--list` names the starts) |
 | What each game has | `python tools/atlas/cli.py inventory [--area A] [--game reference\|city] [--unpaired]` |
-| A block | `python tools/tasks/cli.py block open <name>` · `block verify` · `block open --cause "<check>: <file:line>: <why>"` · `block close` · `block status` |
+| A block | `python tools/tasks/cli.py block open <name>` · `block review` · `block verify` · `block open --cause "<check>: <file:line>: <why>"` · `block close` · `block status` |
 | Build both DLLs | `tools/build/build.sh core-windows` |
 | One test or photo plan | `python tools/tasks/cli.py run <task>` (names: `python tools/tasks/cli.py run tests --list`) |
 | Gates of a file · nothing copied | `python tools/gates/run_gates.py --file X` · `python tools/gates/lab_scan.py` |
 | The register | `python tools/atlas/cli.py problems [--area A --status S]`, `add`, `update`, `close`, `drop` |
 | Deliver | `tools/build/deliver.sh export` (`dist/builds/<date>_<time>_<commit>/Roadcraft.exe`) |
-| Only on the owner's order | measurements at scale (`python tools/tasks/km24.py`), `tools/build/quick.sh --ready`, the whole gates, `python tools/hunt/hunt.py` |
+| Only on the owner's order | the whole suite (`python tools/tasks/cli.py run tests`), measurements at scale (`python tools/tasks/km24.py`), `tools/build/quick.sh --ready`, the whole gates, `python tools/hunt/hunt.py` |
 
 The DLLs in `project/bin` are versioned. A clone needs Godot 4.7.2, llvm-mingw `20261020-ucrt-x86_64`, CMake 4.4, Python 3.12, Node
 23.6+ (`npm ci` in `tools/tracer/tracer/tools`), an x86-64-v3 processor.

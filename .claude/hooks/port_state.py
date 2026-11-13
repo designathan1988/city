@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 try:
-    from port_gate import CONTEXT7, block, gate  # noqa: E402  the hook's refusals (PreToolUse)
+    from port_gate import CONTEXT7, after_edit, block, gate  # noqa: E402  the hook's refusals, and the gates after an edit
     FAULT = ""
 except Exception as fault:  # noqa: BLE001  a gate that does not load, whatever the reason, refuses all but its own repair
     FAULT = f"{type(fault).__name__}: {fault}"
@@ -249,7 +249,7 @@ def main() -> int:
         sys.stdout.write(summary_orders())
         return 0
     if event == "PostToolUse":
-        asked = checkpoint()
+        asked = "\n".join(said for said in (after_edit(payload), checkpoint()) if said)
         if asked:
             sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": event, "additionalContext": asked}}))
         return 0

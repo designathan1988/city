@@ -14,12 +14,17 @@ when_to_use: Invoke it before the first tool call of any port work and again aft
 
 1. **A functionality is a whole system** (the complete traffic, the complete roads): the first unchecked line of `doc/port.md`
    with every case under it. Never one row, never a button.
-2. **Nothing runs while code is written.** No build, test, measurement, photo, gate or engine between `block open` and
-   `block verify`. The tools refuse it; do not look for a way round them.
-3. **A failed check is never run again as it is.** Read its failing lines and the code they name, with
-   `superpowers:systematic-debugging`, until the cause is a `file:line` you can state. Then
-   `block open --cause "<check>: <file:line>: <why>"`, fix it in the code, `block verify`, run that check once.
-   A guess, a "let me try", an added print "to see" is trial and error: it is what the owner forbids.
+2. **Defects are found by reading, never by running.** Read `tools/gates/rules.json`'s limits when the block opens (they are
+   printed). The hook reads each file's gates after every edit: fix what it says there and then. No build, test,
+   measurement, photo or engine between `block open` and `block verify`. Before `block verify`: read your whole diff, file
+   by file, against the design in the note, fix what you find, then `block review` (the gates of every changed file).
+   `block verify` is refused before the review passes.
+3. **A verification is small and takes seconds.** One run of a few checks, named in one command: the functionality's own
+   test, its photo plan (the town, never the 24 km city), `e2e`: six tasks at most. Then one measure (`lab_test`). The whole
+   suite, a second run, a run "to see": refused by the tools, and only the owner orders them. A block is verified three
+   times at most. A failed check: read its failing lines and the code they name, with `superpowers:systematic-debugging`,
+   until the cause is a `file:line`; `block open --cause "<check>: <file:line>: <why>"`; fix everything found in that one
+   opening; review; verify. A guess, a "let me try", an added print "to see" is trial and error.
 4. **A process is seen as it runs.** A run of the project's tools is one command of its own, started with
    `run_in_background: true`, never piped through grep, tail or head, never redirected, never joined to another command
    (`&&`, `;`); watched with `python tools/tasks/cli.py status`; its output read when it ends. A file is changed with Edit or
@@ -45,7 +50,8 @@ when_to_use: Invoke it before the first tool call of any port work and again aft
 | 5 | Context7 for each API; the internet for each design decision and real value | `resolve-library-id`, `query-docs`, WebSearch, WebFetch |
 | 6 | The note written | `doc/work/<area>.md` |
 | 7 | The whole functionality coded, every case | `python tools/tasks/cli.py block open <area>` |
-| 8 | Checked once, at the end | `python tools/tasks/cli.py block verify`; `tools/build/build.sh core-windows`; `python tools/tasks/cli.py run <its tests>`; photos (day and night), each opened and analysed; `python tools/tasks/cli.py run lab_test --jobs 1` alone for CPU, GPU and memory; `python tools/gates/run_gates.py --file X`; `python tools/gates/lab_scan.py` |
+| 8 | Read, then reviewed | the whole diff read by you; `python tools/tasks/cli.py block review` |
+| 8b | Checked once, in seconds | `python tools/tasks/cli.py block verify`; `tools/build/build.sh core-windows`; one run: `python tools/tasks/cli.py run <its test>,<its photo plan>,e2e`; each photo opened; one measure: `python tools/tasks/cli.py run lab_test --all --jobs 1` |
 | 9 | A pass | `superpowers:verification-before-completion`; the line checked in `doc/port.md`; commit and push; `python tools/tasks/cli.py block close`; the next line at once |
 
 ## What the design must hold (CLAUDE.md, Architecture and Never)
@@ -74,3 +80,6 @@ when_to_use: Invoke it before the first tool call of any port work and again aft
 | "Verify and run in one command" | Joined commands: one waits on the other and one result hides the other. One each. |
 | "The hook refused; another tool does the same" | A way round. The refusal is the owner's order: do what it says. |
 | "This is a good place to stop and report" | The block is not closed. Go on with the note's next step. |
+| "The build and the tests will tell me what is wrong" | The reading tells you. The gates after each edit, your diff read whole, `block review`. |
+| "Run the whole suite to be sure" | Minutes, and the owner forbade it. Its own test, its photo, `e2e`: seconds. |
+| "A small fix, verify again" | Three verifications a block. Find everything in one reading, fix it in one opening. |

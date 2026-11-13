@@ -7,13 +7,18 @@ cause named before the debugging skill was followed; a block's work committed be
 An edit (Edit, Write): a Python or JSON file left unreadable by it; the game's code with no block open, or before the skill
 `port`, Context7 and the internet were used in the session.
 An agent: started while the port is in hand.
+After an edit (after_edit): the gates of the file just written, so a defect a reading shows is fixed where it was written.
 What the session did is read from its transcript's own records."""
 
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+GATE_SECONDS = 15   # the gates of one file answer in about three
+GATE_SHOWN = 12     # findings of a file shown after an edit
 BLOCK = ROOT / "dist" / "block" / "state.json"
 GAME_CODE = ("native/src/", "project/")      # what the edit gate holds
 SHELLS = ("Bash", "PowerShell")
@@ -166,6 +171,33 @@ def left_broken(tool: str, data: dict, path: str) -> str:
     if before is not None and unreadable(path, before):
         return ""
     return unreadable(path, after)
+
+
+def after_edit(payload: dict) -> str:
+    """What the gates say of a file of the project right after an edit of it (PostToolUse of Edit and Write): the findings no
+    open problem of the register names, to be fixed at once, in the code, where they were just written. A defect a reading
+    shows is never left for a build or a test to find. Nothing for a file outside the project, a clean one, or gates that
+    do not answer in time."""
+    if payload.get("tool_name") not in ("Edit", "Write", "MultiEdit"):
+        return ""
+    written = str((payload.get("tool_input") or {}).get("file_path", "")).replace("\\", "/")
+    root = ROOT.as_posix()
+    if not written.lower().startswith(root.lower() + "/") or not Path(written).is_file():
+        return ""
+    inside = written[len(root) + 1:]
+    if inside.startswith(("dist/", ".git/")):
+        return ""
+    try:
+        done = subprocess.run([sys.executable, str(ROOT / "tools" / "gates" / "run_gates.py"), "--file", inside, "--register",
+                               str(ROOT / "doc" / "problems.jsonl")], cwd=str(ROOT), capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", timeout=GATE_SECONDS)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    found = [line for line in done.stdout.splitlines() if line.startswith("NEW ")]
+    if done.returncode == 0 or not found:
+        return ""
+    return (f"The gates of {inside}, read right after this edit ({len(found)} finding(s) no open problem names). Fix each one "
+            "now, in the code, before the next file: nothing is built or run to find what a reading shows.\n" + "\n".join(found[:GATE_SHOWN]))
 
 
 def gate(payload: dict) -> dict | None:

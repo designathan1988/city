@@ -23,7 +23,9 @@ class BlockCase(RepoCase):
         (self.root / block.HISTORY).parent.mkdir(parents=True)
         (self.root / block.HISTORY).write_bytes(HISTORY.encode("utf-8"))
 
-    def block(self, *args) -> int:
+    def block(self, *args, reviewed: bool = True) -> int:
+        if args[0] == "verify" and reviewed:
+            block.reviewed(self.root)  # the static review passed on the code as it stands (the gates themselves have their tests)
         with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
             return cli.main(["block", *args, "--root", str(self.root)])
 
@@ -33,7 +35,8 @@ class Moves(BlockCase):
         self.assertEqual(block.load(self.root)["state"], block.CLOSED)
         self.assertEqual(self.block("open", "roads"), 0)
         self.assertEqual(self.block("verify"), 0)
-        self.assertEqual(self.block("open"), 0, "a failed check goes back to the code")
+        self.assertEqual(self.block("open"), 1, "never opened again for nothing")
+        self.assertEqual(self.block("open", "--cause", "a photo shows nothing: a.txt:1: the view is too far"), 0, "what was found, where it stands")
         self.assertEqual(block.load(self.root)["name"], "roads", "opened again under its own name")
         self.assertEqual(self.block("verify"), 0)
         self.assertEqual(self.block("close"), 0)
@@ -45,6 +48,37 @@ class Moves(BlockCase):
         self.assertEqual(self.block("open", "roads"), 0)
         self.assertEqual(self.block("close"), 1, "a block closes only after its checks")
         self.assertEqual(self.block("open", "traffic"), 1, "one block at a time")
+        self.assertEqual(self.block("verify", reviewed=False), 1, "no verification before the static review")
+
+    def test_a_block_is_verified_a_few_times_at_most(self):
+        self.block("open", "roads")
+        for _ in range(block.MAX_VERIFIES):
+            self.assertEqual(self.block("verify"), 0)
+            self.assertEqual(self.block("open", "--cause", "found: a.txt:1: why"), 0)
+        self.assertEqual(self.block("verify"), 1, "more verifications are trial and error by another name")
+        self.assertEqual(self.block("verify", "--owner", "go on"), 0)
+
+    def test_a_verification_has_one_run_of_checks_and_one_measure(self):
+        self.block("open", "roads")
+        self.block("verify")
+        self.assertIsNone(block.refusal("run tests", self.root, ["build_debug", "lane_test", "near"]))
+        block.record({"build_debug": "PASS", "lane_test": "PASS", "near": "PASS"}, self.root)
+        self.assertIn("already had its run of checks", block.refusal("run near", self.root, ["near"]))
+        self.assertIsNone(block.refusal("build", self.root, ["build_debug", "build_release"]), "a build is no check")
+        self.assertIsNone(block.refusal("run lab_test", self.root, ["lab_test"]), "the measure is the second run")
+        block.record({"lab_test": "PASS"}, self.root)
+        self.assertIn("already had its run of measure", block.refusal("run lab_test", self.root, ["lab_test"]))
+        self.block("open", "--cause", "found: a.txt:1: why")
+        self.block("verify")
+        self.assertIsNone(block.refusal("run tests", self.root, ["lane_test"]), "a new verification, its own run")
+
+    def test_code_changed_after_the_review_is_reviewed_again(self):
+        self.block("open", "roads")
+        block.reviewed(self.root)
+        code = self.root / "native" / "src" / "x.cpp"
+        code.parent.mkdir(parents=True)
+        code.write_text("int x;\n", encoding="utf-8")
+        self.assertEqual(self.block("verify", reviewed=False), 1, "the review was of other code")
 
     def test_close_appends_the_times_to_the_history(self):
         self.block("open", "signals")
@@ -99,7 +133,7 @@ class Brake(BlockCase):
         self.block("open", "traffic")
         self.verify()
         self.assertIn("is not run again", block.refusal("run lane_test", self.root, ["lane_test"]))
-        self.assertIsNone(block.refusal("run other_test", self.root, ["other_test"]), "what passed may run")
+        self.assertIn("already had its run", block.refusal("run other_test", self.root, ["other_test"]), "one run a verification")
         self.assertEqual(self.block("close"), 1, "a block closes on checks that pass")
 
     def test_the_block_opens_again_only_with_the_cause(self):
@@ -154,7 +188,7 @@ class Brake(BlockCase):
         code.write_text("int x;\n", encoding="utf-8")
         self.assertIn("changed since", block.refusal("build", self.root))
         (code.parent / "x.gd.uid").write_text("uid\n", encoding="utf-8")  # what the engine writes is no change
-        self.block("open")
+        self.block("open", "--cause", "found: a.txt:1: why")
         self.block("verify")
         self.assertIsNone(block.refusal("build", self.root), "verified again: the code as it stands is what is checked")
 
