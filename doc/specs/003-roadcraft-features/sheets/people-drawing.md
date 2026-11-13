@@ -1,7 +1,7 @@
 # people: how people are drawn (the body, its levels, the far card)
 
-- State: drafted (to read whole: the reference's src/render/people/paletteTargets.ts and personMaterial.ts; this game's
-  native/src/render/agents/people_asset.cpp and body_renderer.cpp)
+- State: drafted (the reference read whole; to read whole here: native/src/render/agents/people_asset.cpp, body_renderer.cpp,
+  project/render/shaders/people_look.gdshaderinc, people_skin.gdshaderinc)
 - Inventory rows: r2809 `cookedLoad`, r2810 `cookedPerson`, r2811-r2816 `VERTEX_LAYOUT/*`, r2826 `lodPool`, r2827 `lodWorker`, r2828
   `paletteTargets`, r2829 `personImpostor`, r2830 `personMaterial` | this game: people_asset.h/.cpp, people_renderer.cpp,
   people_levels.cpp, body_renderer.cpp, people.gdshader, people_far.gdshader, people_blob.gdshader
@@ -12,7 +12,11 @@
   chosen by its error as a share of the body's height, sparse face moves, an impostor strip of yaw views); cookedLoad.ts 1-39 of 39
   (read in a worker, the atlas a KTX2); personImpostor.ts 1-132 of 132 (past the coarse mesh a card turned to the eye showing the
   nearest yaw view, lit as a cylinder, casting nothing, under 8 device pixels); lodPool.ts 1-60 of 60 and lodWorker.ts 1-23 of 23 (the
-  simplifier's lanes for vehicle parts: "nothing of a person is simplified in play").
+  simplifier's lanes for vehicle parts: "nothing of a person is simplified in play"); personMaterial.ts 1-160 of 160 (one material
+  for every body: skin wrapped past the terminator with a scattering tint, hair lit along its strands in two lobes, skin and hair dull
+  to the sky, the mouth's inside dark, roughness from the vertex); paletteTargets.ts 1-103 of 103 (the palette passes' float targets
+  shared by width: WebGL's own mechanism; this game samples the cooked palette in the vertex shader: justified, not brought).
+- Copies found here (registered): people_look.gdshaderinc keeps personMaterial.ts's values and names it as its source.
 
 ## This game
 - Read whole: native/src/render/agents/people_asset.h 1-78 of 78, people_renderer.cpp 1-336 of 336, people_levels.cpp 1-42 of 42,
