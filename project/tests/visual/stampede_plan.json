@@ -1,17 +1,15 @@
 {
- "_doc": "A stampede's falls (specification 003 T008, Pwalkers-12, Prender-270): a blow of force 2 on the street corner at (60, 8), where people walk, with the clock running; it knocks nobody down, so who lies on the ground tripped (trips.cpp), fell forwards and put their hands out (Ragdoll::begin brace). Two and a half and five seconds after it, near (40 px a metre) from 50 degrees at four azimuths and from above (80); by day.",
+ "_doc": "A stampede's falls (specification 003 T008, Pwalkers-12, Prender-270): a blow of force 2 on the street corner at (60, 8), where people walk, with the clock running; who lies on the ground tripped (trips.cpp), fell forwards and put their hands out (Ragdoll::begin brace). Two and a half seconds after it, the fallen walker nearest the blow (setViewNear fallen) near (60 px a metre) from 40 degrees at four azimuths, mid (25) from above (80); by day. The first take, aimed at the corner itself, caught the fallen too small to see the hands.",
  "city": {"map": 0, "seed": 1, "generate": true},
  "steps": [
   {"hour": 16}, {"dispatch": "set_speed", "args": [1]}, {"frames": 300},
   {"dispatch": "strike", "args": [{"at": [60, 8]}, 2]},
   {"frames": 150},
-  {"setView": [60, 8, 40, 0, 50]}, {"until": "render_pending", "equals": 0}, {"shot": "falls_0"},
-  {"setView": [60, 8, 40, 90, 50]}, {"until": "render_pending", "equals": 0}, {"shot": "falls_90"},
-  {"query": "effects_bodies"},
-  {"frames": 150},
-  {"setView": [60, 8, 40, 180, 50]}, {"until": "render_pending", "equals": 0}, {"shot": "falls_180"},
-  {"setView": [60, 8, 40, 270, 50]}, {"until": "render_pending", "equals": 0}, {"shot": "falls_270"},
-  {"setView": [60, 8, 20, 0, 80]}, {"until": "render_pending", "equals": 0}, {"shot": "falls_above"},
+  {"setViewNear": ["fallen", 60, 8, 60, 0, 40]}, {"until": "render_pending", "equals": 0}, {"shot": "fallen_0"},
+  {"setViewNear": ["fallen", 60, 8, 60, 90, 40]}, {"until": "render_pending", "equals": 0}, {"shot": "fallen_90"},
+  {"setViewNear": ["fallen", 60, 8, 60, 180, 40]}, {"until": "render_pending", "equals": 0}, {"shot": "fallen_180"},
+  {"setViewNear": ["fallen", 60, 8, 60, 270, 40]}, {"until": "render_pending", "equals": 0}, {"shot": "fallen_270"},
+  {"setViewNear": ["fallen", 60, 8, 25, 0, 80]}, {"until": "render_pending", "equals": 0}, {"shot": "fallen_above"},
   {"query": "effects_bodies"}
  ]
 }

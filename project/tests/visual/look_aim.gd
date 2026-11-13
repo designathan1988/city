@@ -20,7 +20,8 @@ static func stand_on_walker(rig: CityCamera, ui: UiDriver, view: Array) -> void:
 
 
 ## setViewNear [kind, x, y, zoom, azimuth, elevation]: the plan's view of the element of `kind` nearest (x, y) (y is the map's north, -z),
-## found by the core: "walker" or "vehicle" (shot_targets, the clock stopped so it stays in the frame, a fallen walker skipped);
+## found by the core: "walker" or "vehicle" (shot_targets, the clock stopped so it stays in the frame, a fallen walker skipped); "fallen"
+## (a walker on the ground, tripped or knocked down: its body is drawn where it fell);
 ## "lamp", "pole" or "sign" (the street furniture of the street under the vehicle nearest the point: furniture_spots of segment_at, the
 ## player's own pole runs too for "pole"; a plan runs the clock first so traffic is out); "building" (the tallest within
 ## BUILDING_REACH_M, CityCore.highest_roof, aimed at its foot). False, said, with none of that kind there.
@@ -46,6 +47,11 @@ static func _nearest(kind: String, from: Vector2) -> Vector3:
 			CityStore.dispatch(&"set_speed", [0])
 			for t: Dictionary in CityStore.query(&"shot_targets", [WALKERS_READ])[kind + "s"]:
 				if not t.get("fallen", false):
+					points.push_back(t.position)
+		"fallen":
+			CityStore.dispatch(&"set_speed", [0])
+			for t: Dictionary in CityStore.query(&"shot_targets", [WALKERS_READ]).walkers:
+				if t.get("fallen", false):
 					points.push_back(t.position)
 		"building":
 			var roof: Dictionary = CityStore.query(&"highest_roof", [from.x, from.y, BUILDING_REACH_M])
