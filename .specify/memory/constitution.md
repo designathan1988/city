@@ -9,8 +9,7 @@ City is a city builder in Godot 4.7.2 with a C++ core (GDExtension), to be sold 
 
 - This constitution and the owner's words in the conversation are the orders; no other text adds rules. An order of the owner that
   changes how the work is done enters this file and `CLAUDE.md` in the same commit.
-- Skills are loaded whenever they help; no rule here forbids one. The one order a skill cannot change: nothing runs while a
-  feature is coded (III).
+- Skills and Context7 are used at every step, while coding too.
 - Routine doubts are settled by the standard games' practice and the project's documents; the work does not stop to ask.
 - Never: a force push, a rewritten history, `rm -rf` or a deletion by a relative path, a deletion outside the project, the owner's
   open game closed.
@@ -46,8 +45,8 @@ Rationale: the work stalled for days under rules the owner never gave (constitut
 - Before the code: one look, once (the test, measurement or photo that shows the feature's state now), the trace and the sheet,
   and the research: Context7 for each API the code calls, the internet for the design decisions, as deep as the feature matters
   to the player.
-- Then the whole feature is coded, every case of its sheet, with nothing run: no build, test, measurement or photo while coding
-  (`block open` makes the tools refuse).
+- Then the whole feature is coded, every case of its sheet, with no build, test, measurement or photo while coding (`block open`
+  makes the tools refuse them); Context7 and the skills go on being used while coding.
 - At the end (`block verify`): both DLLs, the feature's test scenes and the suites it reaches, its scale probe on the 24 km map
   against the budgets,
   photos aimed at its elements (day and night when light changes), each photo looked at. A failure is read to its cause
@@ -113,4 +112,4 @@ Rationale: the people area spent a day on the fallen bodies' details while the m
 - Versions: MAJOR when a principle is removed or redefined, MINOR when one is added or widened, PATCH for wording.
 - `CLAUDE.md` names the version it carries (the gate CLAUDE_MD).
 
-**Version**: 2.1.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13
+**Version**: 2.1.1 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13

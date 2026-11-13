@@ -1,6 +1,6 @@
 # City: a city builder in Godot 4.7.2 with a C++ core (GDExtension), to be sold on Steam
 
-Generated from `.specify/memory/constitution.md` (version 2.1.0): the owner's orders, nothing else. `doc/map.md` lists every file.
+Generated from `.specify/memory/constitution.md` (version 2.1.1): the owner's orders, nothing else. `doc/map.md` lists every file.
 
 ## What the work is
 
@@ -25,8 +25,8 @@ propagation, cost): `doc/specs/003-roadcraft-features/architecture.md`.
    `doc/specs/003-roadcraft-features/sheets/`: what it does, when, values and cases, the reference's faults not to bring.
 4. Research: Context7 for each API the code calls; the internet for the design decisions; as deep as the feature matters to the
    player. Values of the real world from a norm or a published method, not the reference's numbers.
-5. `python tools/tasks/cli.py block open <feature>`, then code the whole feature, every case of its sheet, with nothing run: no
-   build, test, measurement or photo until the feature is written.
+5. `python tools/tasks/cli.py block open <feature>`, then code the whole feature, every case of its sheet, with no build, test,
+   measurement or photo until the feature is written; Context7 and the skills go on being used while coding.
 6. `python tools/tasks/cli.py block verify`, then the checks: both DLLs (`tools/build/build.sh core-windows`), the feature's test
    scenes and the suites it reaches, its scale probe on the 24 km map against the budgets, photos aimed at its elements (day and night when light
    changes), each photo opened and looked at. A failure: `superpowers:systematic-debugging`, the cause fixed in the code, only the
@@ -69,8 +69,7 @@ propagation, cost): `doc/specs/003-roadcraft-features/architecture.md`.
 
 ## Working
 
-- Skills are loaded whenever they help; none is forbidden. The one order a skill cannot change: nothing runs while a feature is
-  coded.
+- Skills and Context7 are used at every step, while coding too.
 - Routine doubts are settled by the standard games' practice and the project's documents; the work does not stop to ask.
 - Processes show their output as they run and have a deadline; tests and captures run hidden through `tools/tasks`; one engine
   at a time; only your own processes stopped, by PID; `tools/build/free_dll.sh` frees the DLL the owner's open game holds.

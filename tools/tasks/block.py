@@ -98,9 +98,9 @@ def refusal(what: str, root: Path = ROOT) -> str | None:
     doc = load(root)
     if doc["state"] != OPEN:
         return None
-    return (f"refused: the block '{doc['name']}' is open (since {doc['opened']}): nothing is run, built, exported or committed "
-            f"while the feature is coded (the constitution, principle III). `python tools/tasks/cli.py block verify` starts its "
-            f"checks. Asked: {what}")
+    return (f"refused: the block '{doc['name']}' is open (since {doc['opened']}): no test, build, measurement, photo or export "
+            f"runs and nothing is committed while the feature is coded (the constitution, principle III; skills and Context7 "
+            f"go on being used). `python tools/tasks/cli.py block verify` starts its checks. Asked: {what}")
 
 
 def main(argv: list[str]) -> int:
