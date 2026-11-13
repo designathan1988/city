@@ -84,6 +84,12 @@ void despawn_party(CityState &s, int id, bool arrived) {
 	if (other >= 0) despawn(t, other, arrived);
 }
 
+// A casualty belongs to what happened, not to the crowd round the camera: whoever lies down (a trip, a blow) or bleeds is not taken
+// away by the walking window, by distance alone, nor by the one they walked with (ped_party.cpp company_near), but stays until they
+// rise (then the window takes them as anybody) or die (wounds.cpp lays them dead); a body lying there with nobody to die in it never
+// comes about (Pwalkers-14). Bounded: who bleeds always dies.
+bool casualty(const TrafficState &t, const Pedestrian &w) { return t.time < w.down_until || w.bleed > 0.f; }
+
 namespace {
 
 constexpr float CROSS_RETRY_S = 0.2f; // a walker waiting at the kerb tries the crosswalk 5 times a second
@@ -236,7 +242,7 @@ void step_pedestrians(CityState &s, float dt) {
 		Pedestrian &w = t.peds[size_t(id)];
 		if (!w.alive) continue;
 		const float dx = w.cur.x - cx, dz = w.cur.z - cz;
-		if (dx * dx + dz * dz > out2 && w.mode != PedMode::KERB) { // out of the walking window: gone, not lost
+		if (dx * dx + dz * dz > out2 && w.mode != PedMode::KERB && !casualty(t, w)) { // out of the walking window: gone, not lost
 			despawn_party(s, id, false);
 			continue;
 		}

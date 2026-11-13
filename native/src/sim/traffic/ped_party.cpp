@@ -160,9 +160,10 @@ bool crossing_with(const TrafficState &t, const Pedestrian &w, int arm) {
 	return o && o->way_node == w.way_node && o->cross_seg == arm; // the pair's leave, however long the crosswalk
 }
 
+// Who lies down or bleeds is left where they are (pedestrians.cpp casualty): the other leaves the street or goes in at a door alone.
 int company_near(const TrafficState &t, const TrafficParams &p, const Pedestrian &w) {
 	const Pedestrian *o = partner_of(t, w);
-	if (!o || V2(o->cur.x - w.cur.x, o->cur.z - w.cur.z).len() > p.ped_company_reach_m) return -1;
+	if (!o || casualty(t, *o) || V2(o->cur.x - w.cur.x, o->cur.z - w.cur.z).len() > p.ped_company_reach_m) return -1;
 	return int(o - t.peds.data());
 }
 

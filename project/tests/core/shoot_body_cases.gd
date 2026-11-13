@@ -20,6 +20,9 @@ const UNDER_GROUND_M := 0.02 # a limb's middle under the surface by more than th
 const CONTACT_SLACK_M := 0.02 # two limbs nearer than they touch by more than this: one sunk in the other (each stands 6 cm from its middle)
 const SIDE_BLOW_M := 4.0 # how far to one side of two walkers together a blow throws both the same way
 const TOGETHER_FORCE := 3
+const AWAY_M := 2000.0 # well past where the walking window takes walkers away (traffic.json: 600 m x 1.2)
+const AWAY_TICKS := 60 # three seconds (tuning.json tick_hz 20): the window has passed over everybody, and a leg's wound (3 hp a second) leaves them alive
+const SAME_SPOT_M := 0.5
 
 var t: Node # the shoot_test (TestCase): its check, ticks and aim
 var _shoot: Callable
@@ -66,12 +69,13 @@ func fallen() -> void:
 	t.check(marks > marks_before, "a pool spreads under the body where it came to rest (blood marks %d -> %d)" % [marks_before, marks])
 	var kept: int = _census().kept
 	t.check(kill.get("killed", false) and kept > 0, "the dead stay where they fell, for good till the bodies' cap: %d kept of %d" % [kept, _census().bodies])
-	await _bled(walkers.slice(1))
+	var down: Dictionary = await _bled(walkers.slice(1))
 	var deep: float = _census().deepest
 	t.check(deep <= UNDER_GROUND_M, "no body at rest lies in the ground, its bones held out as its joints are (deepest %.3f m)" % deep)
 	await _rises()
 	await _together()
 	await _lots_toggled()
+	await _bleeds_out_away(down)
 
 
 ## Showing the lots and hiding them again redraws the buildings' lots only: the bodies lying and the blood they left stay (Prender-275:
@@ -118,12 +122,11 @@ func _together() -> void:
 	t.check(census.in_walls <= CONTACT_SLACK_M, "no body at rest lies through a wall, a pole or a post (deepest %.3f m in)" % census.in_walls)
 
 
-## Somebody shot down for good who bleeds to death where they lie: their body stays, a dead one (BodyRenderer::die); frames between the
-## steps, so the effects play each event as it comes.
-func _bled(walkers: Array) -> void:
+## Somebody shot down for good, a limb off, bleeding where they lie (their death: _bleeds_out_away); frames between the steps, so the
+## effects play each event as it comes. Returns them as they lie ({} if nobody was wounded so).
+func _bled(walkers: Array) -> Dictionary:
 	if not t.check(not walkers.is_empty(), "someone to wound gravely"):
-		return
-	var kept: int = _census().kept
+		return {}
 	var pieces: int = _census().pieces
 	var marks: int = CityStore.query(&"damage_probe").blood_marks
 	var hurt: Dictionary = walkers[0]
@@ -154,9 +157,29 @@ func _bled(walkers: Array) -> void:
 	await _frames(BODY_SETTLE_FRAMES)
 	var pooled: int = CityStore.query(&"damage_probe").blood_marks
 	t.check(pooled > marks, "the wounded lying for good bleed where they lie (blood marks %d -> %d)" % [marks, pooled])
+	return down
+
+
+## The camera far off, the walking window round it leaves the wounded `down` lying there: they stay till they bleed out, and their body
+## stays, dead (Pwalkers-14: the window, or the one they walked with leaving it, once took them away, their body left lying with nobody
+## to die in it). A level camera's ground is its own place (city_core.cpp ground_seen), which the core makes the window's middle each
+## frame. The last case: the town's crowd and traffic go with the window.
+func _bleeds_out_away(down: Dictionary) -> void:
+	if down.is_empty():
+		return
+	var kept: int = _census().kept
+	var cam := Camera3D.new()
+	t.add_child(cam)
+	cam.make_current()
+	cam.global_position = down.position + Vector3(AWAY_M, 0, 0)
+	await _frames(1)
+	t.ticks(AWAY_TICKS)
+	var away: Dictionary = _walker_of.call(down.id)
+	t.check(not away.is_empty() and away.position.distance_to(down.position) <= SAME_SPOT_M and away.bleed > 0.0, "the walking window gone from them, the wounded still lie there bleeding (%s)" % [away])
 	t.ticks(BLEED_TICKS)
 	await _frames(BODY_SETTLE_FRAMES)
 	t.check(_census().kept > kept, "who bled out stays where they lay, dead (%d kept, %d before)" % [_census().kept, kept])
+	cam.global_position = Vector3.ZERO # the window back at the town's middle; the camera kept, which the terrain now follows
 
 
 ## Somebody knocked over by a small blast gets up: their body goes and they are walking again, and it is not kept as a dead one. Far
@@ -167,7 +190,7 @@ func _rises() -> void:
 		off += 0.5
 	var risen := 0
 	var kept_before: int = _census().kept
-	var found: Array = _alone.call(CityStore.query(&"shot_targets", [LIMIT]).walkers)
+	var found: Array = _alone.call(CityStore.query(&"shot_targets", [LIMIT]).walkers).filter(func(w: Dictionary) -> bool: return not w.fallen) # standing: the wounded lying stay as they are
 	for who: Dictionary in found.slice(0, RISE_TRIES):
 		var before: int = _census().bodies
 		CityStore.dispatch(&"strike", [who.position + Vector3(off, 0, 0), RISE_FORCE])

@@ -43,8 +43,8 @@ func _ready() -> void:
 	fright.reactions()
 	fright.stampede()
 	_walkers()
-	await ShootBodyCases.new(self, _shoot, _shoot_level, _walker_of, _alone).fallen()
 	_vehicles()
+	await ShootBodyCases.new(self, _shoot, _shoot_level, _walker_of, _alone).fallen() # its last case takes the window from the town
 	_demolish()
 	await _save_marks()
 	finish()

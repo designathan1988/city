@@ -131,7 +131,9 @@ void EffectWorld::tracer(const DamageEvent &e) {
 	PieceSpec t;
 	t.size = Vector3(params_.tracer_m, params_.tracer_m, TRACER_REACH_M);
 	t.at = (start + end) * 0.5f;
-	t.turn = Basis::looking_at(dir, Vector3(0, 1, 0)).get_rotation_quaternion();
+	// the streak's long axis (z) along the round: the shortest arc, defined for any direction; looking_at with the world's up has no
+	// frame for a round fired straight up or down (its target and up colinear), and its roll about a thin box shows nothing
+	t.turn = Quaternion(Vector3(0, 0, -1), dir);
 	t.tint = TRACER_HOT;
 	t.still = true;
 	t.life_s = params_.tracer_life;

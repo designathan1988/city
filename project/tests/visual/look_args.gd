@@ -2,7 +2,8 @@
 ## ground there (what the player's pointer would hit), {"pair": [x, z], "off": [dx, dz], "reach": m} the ground between the two walkers on
 ## their feet that walk nearest one another within `reach` metres of there (LookAim.nearest_pair; PAIR_REACH_M when left out), moved by
 ## `off` (metres; none when left out): a blow to one side of them throws both the same way, together, {"crowd": m, "off": [dx, dz]} the
-## ground at the walker with the most others within m metres (LookAim.busiest), moved by `off`, {"profile": id} the index of that road
+## ground at the walker with the most others within m metres (LookAim.busiest), moved by `off`, {"roundAt"}, {"poleRound"} and
+## {"legRound": [x, z]} a round's origin and direction (at a head; at a head by a post; level at the legs), {"profile": id} the index of that road
 ## class, {"v3": [x, y, z]} a vector, {"path": [[x, z], ...]} the ground's points, the rest as the JSON gives it. What cannot be found
 ## is said and counted in `failures`.
 class_name LookArgs
@@ -10,6 +11,10 @@ extends RefCounted
 
 const HEAD_M := 1.7 # a walker's head over its feet: where a round that kills is aimed
 const ROUND_FROM := Vector3(0.0, 6.0, 12.0) # where the round comes from, off the head (shoot_test.gd STANDOFF)
+const LEG_STAND_M := 0.5 # a standing walker's legs, a share of a metre by their scale (shoot_body_cases.gd)
+const LIE_AIM_M := 0.15 # somebody lying: the round at the body on the ground
+const LEGS_LIE_M := 0.6 # from the middle of somebody lying towards the feet
+const LEVEL_STANDOFF_M := 4.0 # a level round's origin east of its mark (shoot_test.gd)
 
 var ui: UiDriver
 var failures := 0
@@ -32,6 +37,8 @@ func decode(raw: Array) -> Array:
 			out.append_array(_round_at(a.roundAt))
 		elif a is Dictionary and a.has("poleRound"):
 			out.append_array(_pole_round(a.poleRound))
+		elif a is Dictionary and a.has("legRound"):
+			out.append_array(_leg_round(a.legRound))
 		elif a is Dictionary and a.has("profile"):
 			out.push_back(_profile(a.profile))
 		elif a is Dictionary and a.has("v3"):
@@ -110,6 +117,28 @@ func _pole_round(xz: Array) -> Array:
 	var origin := head + Vector3(away.x, 0.0, away.y) * ROUND_FROM.z + Vector3(0, ROUND_FROM.y, 0)
 	print("round at the walker at %s, %.1f m from the post at %s" % [walker, best, pole])
 	return [origin, (head - origin).normalized()]
+
+
+## A level round from the east at the legs of the walker nearest `xz`, on their feet or lying (shoot_body_cases.gd _bled): the first knocks
+## them down, a second at the legs of somebody lying takes a leg off, a grave wound, down for good and bleeding. The shoot command's
+## origin and direction, two arguments; nobody found: said, counted, a round at the sky from the point.
+func _leg_round(xz: Array) -> Array:
+	var best := INF
+	var who := {}
+	for w: Dictionary in CityStore.query(&"shot_targets", [LookAim.WALKERS_READ]).walkers:
+		var d := Vector2(w.position.x, w.position.z).distance_to(Vector2(xz[0], xz[1]))
+		if d < best:
+			best = d
+			who = w
+	if who.is_empty():
+		failures += 1
+		print("FAIL no walker near ", xz)
+		return [point(xz), Vector3.UP]
+	var legs: Vector3 = who.position + Vector3(0, LEG_STAND_M * who.scale, 0)
+	if who.fallen: # the legs lie behind the middle, the head ahead the way they faced (shoot_commands.cpp)
+		legs = who.position + Vector3(0, LIE_AIM_M, 0) - Vector3(who.facing.x, 0.0, who.facing.y) * LEGS_LIE_M
+	print("round at the legs of walker %d at %s (fallen %s)" % [who.id, who.position, who.fallen])
+	return [legs + Vector3(LEVEL_STANDOFF_M, 0, 0), Vector3.LEFT]
 
 
 func _pair(xz: Array, off: Array, reach: float) -> Vector3:

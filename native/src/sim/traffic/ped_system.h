@@ -30,6 +30,7 @@ void turn_round(Pedestrian &w); // it walks the other way along its sidewalk, on
 void stand_on_sidewalk(const CityState &s, Pedestrian &w); // its pose at (seg, side, s, u), body and way heading the way it walks
 void despawn(TrafficState &t, int id, bool arrived);
 void despawn_party(CityState &s, int id, bool arrived); // with the one it walks with, when that one is within reach
+bool casualty(const TrafficState &t, const Pedestrian &w); // down or bleeding: kept until it rises or dies, nobody's company to leave with
 
 // ped_ways.cpp: the ways off the sidewalk
 void at_node(CityState &s, int id); // at the end of a sidewalk: arrived, or the way round the node onto the next street's sidewalk
@@ -122,7 +123,7 @@ bool crossing_with(const TrafficState &t, const Pedestrian &w, int arm);
 // Just stepped onto a crosswalk: the one it walks with that steps off with it on the same leave (waiting at the same kerb, or in the
 // queue right behind it with nobody between), or -1.
 int company_steps_off(const TrafficState &t, const TrafficParams &p, const Pedestrian &w);
-int company_near(const TrafficState &t, const TrafficParams &p, const Pedestrian &w); // the one it walks with, when within reach; else -1
+int company_near(const TrafficState &t, const TrafficParams &p, const Pedestrian &w); // the one it walks with, within reach and no casualty; else -1
 uint32_t party_look(const TrafficState &t, const Pedestrian &w); // the hash the party's choices are drawn by: its first walker's
 bool company_door(const TrafficState &t, Pedestrian &w); // the door the one it walks with goes in at, ahead on its sidewalk: its own too
 void step_act(const TrafficState &t, const TrafficParams &p, Pedestrian &w, float dt); // what it does while it stands
