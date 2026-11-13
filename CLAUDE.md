@@ -19,7 +19,9 @@ is spoken to in Portuguese; repository text is English.
 
 ## One functionality, start to end
 
-No table, sheet, plan or report is written on the way: the port tool's report and the code are the record. No step is added.
+One note is kept, and no other document: `doc/work/<area>.md`. What the reading found (facts with `file:line`), the design
+of each case, what is coded and what is left go into it before the first line of code and as each case is coded, because a
+compaction keeps nothing of what was read: after one, the hook gives the note back whole and the work goes on from it.
 
 1. **Load, before anything.** The skills the work needs (the Skill tool) and Context7's tools (ToolSearch,
    `select:mcp__plugin_context7_context7__resolve-library-id,mcp__plugin_context7_context7__query-docs`). The hook refuses an
@@ -36,12 +38,13 @@ No table, sheet, plan or report is written on the way: the port tool's report an
    is understood, and which of the reference's costs must not come.
 5. **Context7** (`resolve-library-id`, then `query-docs`) for each API the code will call; the internet for a design decision
    or a value of the real world (a norm or a published method, not the reference's number).
-6. **Code the whole functionality.** `python tools/tasks/cli.py block open <area>`, then every case of it, complete, in
-   this game's architecture and names. While it is coded nothing runs: no build, test, measurement, photo or gate.
+6. **Code the whole functionality.** `python tools/tasks/cli.py block open <area>`, the note `doc/work/<area>.md` written,
+   then every case of it, complete, in this game's architecture and names. While it is coded nothing runs: no build, test, measurement, photo or gate.
 7. **Check at the end, once.** `python tools/tasks/cli.py block verify`; both DLLs (`tools/build/build.sh core-windows`); its
    tests (`python tools/tasks/cli.py run <tasks>`); `python tools/gates/run_gates.py --file X` on the changed files
    and `python tools/gates/lab_scan.py` (nothing copied); photos aimed at its elements (day and night when light
-   changes), each one opened, looked at and analysed for errors. A failure: `superpowers:systematic-debugging`, the cause read
+   changes), each one opened, looked at and analysed for errors; a quick measure of CPU, GPU and memory (`lab_test`, the
+   frame and the step in the tests' lines) against `doc/specification.md`. A failure: `superpowers:systematic-debugging`, the cause read
    in the code and fixed there, only the failed check run again; never a guess tried by running.
 8. **A pass.** The line checked in `doc/port.md`; commit (with `file:line`) and push to `origin/main`; `block close`; the next
    line at once.
@@ -95,8 +98,8 @@ document or stops to ask does not apply here: this file decides.
 - Work on `main`; commit and push per feature. The owner hears, in Portuguese, once the work is done: what was done, what
   failed, what is open, with proof.
 - Records, and no other: the board `doc/port.md`; `doc/map.md` (a file created or deleted enters it in the same commit, the
-  gate MAP_OUTDATED asks it); the register (`python tools/atlas/cli.py problems`). A feature too long for one session leaves
-  what is done and what is left in `doc/work/<block>.md`, a few lines. Claude Code's auto memory is on: an owner's correction
+  gate MAP_OUTDATED asks it); the register (`python tools/atlas/cli.py problems`); the functionality's note
+  `doc/work/<area>.md` (above). Claude Code's auto memory is on: an owner's correction
   or preference is saved there.
 - The work stays in this folder; outside it only the reference is read.
 

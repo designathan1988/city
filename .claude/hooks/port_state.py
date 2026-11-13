@@ -25,6 +25,7 @@ LINE = re.compile(r"^- \[( |x|-)\] (.+)$")
 NEXT_HEADING = re.compile(r"^## +Next\b", re.IGNORECASE)
 SHOWN = 400          # characters of a board line or a work file's step shown
 BRIEF = 160          # characters of the next line in the one-line state
+WORK_WHOLE = 9000    # characters of the work file given back whole after a compaction (a hook's text holds 10,000)
 NEXT_LINES = 8      # lines of the work file's "Next" section shown
 GIT_SECONDS = 5
 FEATURE = re.compile(r"^([a-z-]+), complete")   # a board line of an area's sheet: its area
@@ -111,14 +112,22 @@ def whole(source: str = "") -> str:
     else:
         note = {"open": "being coded, nothing runs until `block verify`", "verify": "its checks are running"}.get(k["state"], "")
         lines.append(f"Block: {k.get('name')} is {k['state']}" + (f" ({note})" if note else "") + ".")
-        if (WORK / f"{k.get('name')}.md").is_file():
-            lines.append(f"Its work file doc/work/{k.get('name')}.md says next:")
+        note = WORK / f"{k.get('name')}.md"
+        if note.is_file() and source == "compact":
+            text = note.read_text(encoding="utf-8")
+            lines.append(f"Its note doc/work/{k.get('name')}.md, what was read and decided before the compaction"
+                         + (f" (its first {WORK_WHOLE} characters; Read the file for the rest)" if len(text) > WORK_WHOLE else "") + ":")
+            lines.append(text[:WORK_WHOLE])
+        elif note.is_file():
+            lines.append(f"Its note doc/work/{k.get('name')}.md says next:")
             lines += ["  " + step for step in work_next(str(k.get("name")))]
+        else:
+            lines.append(f"It has no note doc/work/{k.get('name')}.md: a compaction would lose what was read. Write it now.")
     changed = git("status", "--short")
     lines.append(f"Uncommitted: {len(changed)} file(s)" + (": " + ", ".join(c[3:] for c in changed[:6]) if changed else ""))
     lines.append("Last commits: " + " | ".join(c[:110] for c in git("log", "-3", "--format=%h %s")))
     if source == "compact":
-        lines.append("The conversation was just compacted: read CLAUDE.md's steps and the work file above again before going on.")
+        lines.append("The conversation was just compacted: go on from the note above (Read it whole if it was cut), never from memory.")
     return "\n".join(lines)
 
 
