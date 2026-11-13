@@ -1,12 +1,11 @@
 ## The F7 recorder (the 4.0's lab/recorder): the frames of a session, cut at every change of a switch or an option, so each stretch is measured on its
-## own; the moment after a change compiles and loads, and stays out of the figures. The report goes to user://lab as JSON.
+## own; the moment after a change compiles and loads, and stays out of the figures. The report goes to the lab's folder as JSON, kept by LabFiles.
 class_name LabRecorder
 extends Node
 
 signal changed
 
 const MS_PER_S := 1000.0
-const FOLDER := "user://lab"
 const FILE := "%s/recording_%d.json"
 
 var recording := false
@@ -83,10 +82,13 @@ func _close() -> void:
 func _write() -> String:
 	if stretches.is_empty():
 		return ""
-	DirAccess.make_dir_recursive_absolute(FOLDER)
-	var path := FILE % [FOLDER, int(Time.get_unix_time_from_system())]
+	var folder := LabFiles.dir()
+	DirAccess.make_dir_recursive_absolute(folder)
+	var path := FILE % [folder, int(Time.get_unix_time_from_system())]
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		return ""
 	f.store_string(JSON.stringify({"adapter": RenderingServer.get_video_adapter_name(), "method": RenderingServer.get_current_rendering_method(), "stretches": stretches}, " "))
+	f.close()
+	LabFiles.keep("reports", path)
 	return path

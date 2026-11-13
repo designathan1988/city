@@ -1,5 +1,6 @@
 ## The lights of the street as the screen shows them, through the game's own Environment and "prop" and "road" materials
-## (CityWorld), on each renderer (tools/build/run_tests.sh runs it on Forward+ and on Compatibility):
+## (CityWorld), on each renderer (tools/tasks/suites.json runs it on Forward+ and on Compatibility (its `@forward_plus`
+## sibling)):
 ## - by day, each signal lens lit must show the lens colour of data/render/streets.json props.signal (render/tone_map.gd
 ##   mirrors Godot's ACES by hand; this checks the mirror against the engine);
 ## - by night, with the ambient, the moon and the glow (a screen effect added after) off so only the part's own light

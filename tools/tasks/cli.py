@@ -1,14 +1,14 @@
-# The command line of tools/tasks: run suites or tasks (suites.json), serve tasks to other tools (JSON lines), status, the
-# block rule (block.py), the worktrees, the bounds of dist/ (clean) and the DLLs an open game holds set aside (free-dll).
-# Exit codes of `run`: 0 only when the selection is non-empty and every task passed; 1 for any FAIL, TIMEOUT, BROKEN or
-# SKIPPED, and for a run refused while a block is open; 2 for a usage error, an unknown name or an empty selection.
-# While tasks run, `run` prints each running task's lines as it writes them ("  [task] line") and a line of what the run is
-# doing every few seconds; `serve` writes both to stderr (its stdout is the JSON results alone); `status` shows every run
-# that lives. print_line and print_progress are the one way the tools print a run (km24.py, hunt.py import them).
-# Use: python tools/tasks/cli.py run <suite|task ...> [--all] [--<variant>] [--list] [--json OUT] [--jobs N]
-#      python tools/tasks/cli.py serve [--jobs N]      python tools/tasks/cli.py status [--watch]      python tools/tasks/cli.py --list
-#      python tools/tasks/cli.py block open <name>|verify|close|status      python tools/tasks/cli.py free-dll
-#      python tools/tasks/cli.py worktrees [--all]      python tools/tasks/cli.py clean [--dry-run] [--unowned] [--only DIR]
+"""The command line of tools/tasks: run suites or tasks (suites.json), serve tasks to other tools (JSON lines), status, the
+block rule (block.py), the worktrees, the bounds of dist/ (clean) and the DLLs an open game holds set aside (free-dll).
+Exit codes of `run`: 0 only when the selection is non-empty and every task passed; 1 for any FAIL, TIMEOUT, BROKEN or
+SKIPPED, and for a run refused while a block is open; 2 for a usage error, an unknown name or an empty selection.
+While tasks run, `run` prints each running task's lines as it writes them ("  [task] line") and a line of what the run is
+doing every few seconds; `serve` writes both to stderr (its stdout is the JSON results alone); `status` shows every run
+that lives. print_line and print_progress are the one way the tools print a run (km24.py, hunt.py import them).
+Use: python tools/tasks/cli.py run <suite|task ...> [--all] [--<variant>] [--list] [--json OUT] [--jobs N]
+     python tools/tasks/cli.py serve [--jobs N]      python tools/tasks/cli.py status [--watch]      python tools/tasks/cli.py --list
+     python tools/tasks/cli.py block open <name>|verify|close|status      python tools/tasks/cli.py free-dll
+     python tools/tasks/cli.py worktrees [--all]      python tools/tasks/cli.py clean [--dry-run] [--unowned] [--only DIR]"""
 from __future__ import annotations
 
 import argparse
@@ -33,6 +33,7 @@ MB_PER_GB = 1024.0
 WATCH_S = 2.0  # status --watch: the state printed again this often, until no run lives
 STATUS_LINE = 100  # characters of that line shown
 LOADING = "Loading resource: "  # Godot's --verbose trace of each resource it loads: kept in the log, never printed live
+HELP = f"{__doc__ or ''}\nusage: cli.py run|serve|status|block|free-dll|worktrees|clean ... (or --list, -h, --help)"
 _out = threading.Lock()  # the lines of a run come from several threads (followers, delivery, scheduler): one at a time
 
 
@@ -50,14 +51,14 @@ def print_line(ident: str, line: str, out=None) -> None:
         _emit(f"  [{ident}] {line}", out)
 
 
-def _print_result(r) -> None:
+def _print_result(r, expected=()) -> None:
     line = f"{r.status:<12} {r.name}  {r.seconds:.1f} s"
     if r.message and r.status not in PASSED:
         first, *rest = r.message.splitlines() or [""]
         line += f"  {first}"
         line += "".join(f"\n    {x}" for x in rest[:verdicts.SHOWN_LINES])
     if r.status not in PASSED and r.log:
-        line += "".join(f"\n    | {x}" for x in verdicts.failure_lines(r.log)) + f"\n    log: {r.log}"
+        line += "".join(f"\n    | {x}" for x in verdicts.failure_lines(r.log, expected=expected)) + f"\n    log: {r.log}"
     _emit(line)
 
 
@@ -148,8 +149,10 @@ def cmd_run(argv: list[str]) -> int:
         remove(root / stamp)  # no approval outlives the check that follows
     capacity = s.doc.get("capacity", {})
     t0 = time.monotonic()
-    results = run(sel.tasks, jobs=a.jobs, on_result=_print_result, root=root, use_cache=not sel.no_cache,
-                  capacity=capacity, label="-".join(names)[:40], on_progress=print_progress, on_line=print_line)
+    expected = {t.name: t.params.get("expected_errors", ()) for t in sel.tasks}  # by name: sel.tasks is every task run
+    results = run(sel.tasks, jobs=a.jobs, on_result=lambda r: _print_result(r, expected.get(r.name, ())), root=root,
+                  use_cache=not sel.no_cache, capacity=capacity, label="-".join(names)[:40], on_progress=print_progress,
+                  on_line=print_line)
     passed = sum(r.status in PASSED for r in results)
     counts = {}
     for r in results:
@@ -279,9 +282,9 @@ def main(argv: list[str]) -> int:
     commands = {"run": cmd_run, "serve": cmd_serve, "status": cmd_status, "block": block.main, "free-dll": cmd_free_dll,
                 "worktrees": lifecycle.cmd_worktrees, "clean": clean.cmd_clean}
     if not argv or argv[0] not in commands:
-        print(__doc__ if __doc__ else "", "usage: cli.py run|serve|status|block|free-dll|worktrees|clean ... (or --list)",
-              file=sys.stderr)
-        return USAGE
+        asked = argv[:1] in (["-h"], ["--help"])  # help asked is an answer (stdout, OK); anything else a usage error
+        print(HELP, file=sys.stdout if asked else sys.stderr)
+        return OK if asked else USAGE
     try:
         return commands[argv[0]](argv[1:])
     except UsageError as e:

@@ -1,5 +1,6 @@
 # cli: exit 2 for an empty selection, an unknown name or a task with nothing to do; 1 for a failure; 0 only when all pass;
-# a run prints each task's lines as they come; serve answers each JSON line as its task finishes, its stdout the answers alone.
+# a run prints each task's lines as they come; serve answers each JSON line as its task finishes, its stdout the answers alone;
+# -h and --help print the usage and exit 0.
 import json
 import subprocess
 import sys
@@ -83,6 +84,22 @@ class CliTest(RepoCase):
         self.assertIn("  [talks] working", said)
         self.assertNotIn("Loading resource", said, "Godot's resource trace stays in the log")
 
+    def test_a_failed_task_shows_its_failure_lines_but_the_errors_it_declares(self):
+        """The lines printed under a failed task ("    | line") are its failure lines without the engine errors its params
+        `expected_errors` declare: a declared error shown there would read as the failure."""
+        doc = json.loads(self.suites.read_text(encoding="utf-8"))
+        doc["tasks"]["provokes"] = {"argv": ["{python}", "-u", "-c", "print('ERROR: provoked on purpose'); "
+                                             "print('ERROR: the real fault'); raise SystemExit(1)"],
+                                    "timeout_s": 60, "params": {"expected_errors": ["provoked on purpose"]}}
+        self.suites.write_text(json.dumps(doc), encoding="utf-8")
+        out = StringIO()
+        with redirect_stdout(out), redirect_stderr(StringIO()):
+            code = cli.main(["run", "--suites", str(self.suites), "--root", str(self.root), "provokes"])
+        said = out.getvalue()
+        self.assertEqual(code, 1)
+        self.assertIn("    | ERROR: the real fault", said)
+        self.assertNotIn("    | ERROR: provoked on purpose", said, "a declared engine error is no failure line")
+
     def test_status_shows_a_running_task_with_its_time_and_what_it_last_said(self):
         pool = Pool(root=self.root, machine=Machine(self.root / "machine"), label="live")
         pool.submit(Task("slow", [PY, "-u", "-c", "import time; print('half way there', flush=True); time.sleep(4)"], timeout_s=60))
@@ -145,6 +162,22 @@ class CliTest(RepoCase):
             except subprocess.TimeoutExpired:
                 p.kill()
                 p.wait(SERVE_TIMEOUT_S)
+            p.stdout.close()  # its pipe is the test's to close, once the process is gone
+
+
+class HelpTest(unittest.TestCase):
+    def test_help_prints_the_usage_and_succeeds(self):
+        """Help asked is an answer: the module's docstring and the usage line on stdout, exit 0 (it was a usage error, exit
+        2, with the docstring None when the header was a comment); no command at all stays a usage error."""
+        for flag in ("--help", "-h"):
+            out = StringIO()
+            with redirect_stdout(out), redirect_stderr(StringIO()):
+                code = cli.main([flag])
+            self.assertEqual(code, 0, flag)
+            self.assertIn("usage:", out.getvalue(), flag)
+            self.assertIn("The command line of tools/tasks", out.getvalue(), f"{flag}: the docstring is printed")
+        with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+            self.assertEqual(cli.main([]), 2)
 
 
 if __name__ == "__main__":

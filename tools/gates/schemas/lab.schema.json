@@ -1,7 +1,7 @@
 {
  "type": "object",
  "strict": true,
- "required": ["_doc", "views", "recorder", "resources", "cpu"],
+ "required": ["_doc", "views", "recorder", "resources", "cpu", "kept"],
  "properties": {
   "_doc": {"type": "string", "minLength": 1},
   "views": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^[A-Z][A-Z_]*$", "description": "a Viewport.DebugDraw name"}},
@@ -11,6 +11,9 @@
   "resources": {"type": "object", "strict": true, "required": ["window_s", "least_s", "grow_mib_min", "grow_count_min", "best_method"],
                 "properties": {"window_s": {"type": "number", "exclusiveMinimum": 0}, "least_s": {"type": "number", "exclusiveMinimum": 0},
                                "grow_mib_min": {"type": "number", "minimum": 0}, "grow_count_min": {"type": "integer", "minimum": 0},
-                               "best_method": {"type": "string", "enum": ["forward_plus", "mobile", "gl_compatibility"]}}}
+                               "best_method": {"type": "string", "enum": ["forward_plus", "mobile", "gl_compatibility"]}}},
+  "kept": {"type": "object", "strict": true, "required": ["captures", "reports"],
+           "properties": {"captures": {"type": "integer", "minimum": 1, "description": "Frame tab reports (each with its picture) kept in user://lab"},
+                          "reports": {"type": "integer", "minimum": 1, "description": "recorder reports kept in user://lab"}}}
  }
 }

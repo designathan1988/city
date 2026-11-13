@@ -125,6 +125,9 @@ cmd.demolish.line,apagar linha,delete line
 cmd.demolish.lot,apagar lote,delete lot
 cmd.demolish.lots,apagar lotes,delete lots
 cmd.demolish.road,demolir via,demolish road
+cmd.duplicate,duplicar via,duplicate road
+cmd.paint,trocar as marcações,change the markings
+cmd.reverse,inverter mão,reverse direction
 cmd.strike,bomba,bomb
 cmd.demolish.box,demolir na caixa,demolish in a box
 hint.strike.done,"Bomba de força {force} lançada.","Bomb of force {force} dropped."

@@ -1,11 +1,10 @@
 ## The frame the player is looking at taken apart (the 4.0's Frame tab, by layer: the engine does not list its draw calls, so each render layer is taken out of the camera for a few
-## frames and what the frame loses is what the layer draws, its shadows with it, because the sun's casters follow the camera's mask). Written to a file with a picture of the frame.
+## frames and what the frame loses is what the layer draws, its shadows with it, because the sun's casters follow the camera's mask). Written to a file with a picture of the frame, kept by LabFiles.
 class_name FrameCapture
 extends Node
 
 signal changed
 
-const FOLDER := "user://lab"
 const SETTLE_FRAMES := 4 # what the engine counts lags the frame it drew
 const TIMED_FRAMES := 16 # the GPU's time, the median of these
 const BYTES_PER_MIB := 1048576.0
@@ -82,13 +81,16 @@ func _drawn() -> Dictionary:
 
 
 func _keep(picture: Image) -> void:
-	DirAccess.make_dir_recursive_absolute(FOLDER)
+	var folder := LabFiles.dir()
+	DirAccess.make_dir_recursive_absolute(folder)
 	var stamp := Time.get_datetime_string_from_system().replace(":", "-")
-	file = "%s/frame_%s.json" % [FOLDER, stamp]
+	file = "%s/frame_%s%s" % [folder, stamp, LabFiles.OWN]
 	var report := {"whole": whole, "layers": rows, "video_mib": RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED) / BYTES_PER_MIB}
 	var out := FileAccess.open(file, FileAccess.WRITE)
 	if out == null:
 		file = ""
 		return
 	out.store_string(JSON.stringify(report, "\t"))
-	picture.save_png(file.trim_suffix(".json") + ".png")
+	out.close()
+	picture.save_png(LabFiles.beside("captures", file))
+	LabFiles.keep("captures", file)

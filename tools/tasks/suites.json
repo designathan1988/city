@@ -28,7 +28,8 @@
   "stale_days": 7,
   "outputs": [
    {"path": "dist/cache/tasks", "owner": "tools/tasks/cache.py", "max_mb": 4096},
-   {"path": "dist/tasks", "owner": "tools/tasks/runs.py", "keep": 30},
+   {"path": "dist/tasks", "owner": "tools/tasks/runs.py", "keep": 30, "index": ["locks", "specs"]},
+   {"path": "dist/tasks/lists", "owner": "tools/tasks/suites.py (_changed_list; it never prunes: cli.py clean alone holds this bound)", "keep": 64},
    {"path": "dist/builds", "owner": "tools/build/deliver.sh", "keep": 2, "index": ["latest.txt"]},
    {"path": "dist/evidence", "owner": "tools/atlas/problems.py", "while_open": true},
    {"path": "dist/evidence/research", "owner": "doc/research.md (the proofs it cites)", "whole_mb": 1024},

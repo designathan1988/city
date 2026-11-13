@@ -11,6 +11,7 @@ import gate_docs
 import gate_files
 import gate_forbidden
 import gate_generated
+import gate_keys
 import gate_lab
 import gate_language
 import gate_materials
@@ -115,6 +116,7 @@ def whole_rules(rules):
               lambda ctx: sorted(c["owner"] in ctx.listed_set for c in ctx.owners["concepts"])),
         Whole("clones", ["DUPLICATED_CODE"], _in_scope(gate_clones.applies), gate_clones.check_clones),
         Whole("tuning", ["TUNING", "TUNING_UNUSED"], _in_scope(gate_tuning.inputs), gate_tuning.check_tuning),
+        Whole("keys", [gate_keys.ID], _in_scope(gate_keys.inputs), gate_keys.check_keys),
         Whole("mirrors", ["MIRROR"], gate_tuning.mirror_inputs, gate_tuning.check_mirrors),
         Whole("generated", ["GENERATED_DRIFT"], gate_generated.inputs, gate_generated.check_generated,
               lambda ctx: ctx.rules.get("generated", [])),

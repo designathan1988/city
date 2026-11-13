@@ -372,6 +372,7 @@ building.problem.noMast,Não há mastro aí: clique numa agulha ou num farol,No 
 hint.builder.flag,Clique numa agulha ou num farol para trocar a bandeira,Click a spire or a lantern to change its flag
 cmd.build.curve,curva da via,road curve
 hint.road.join,Só vias iguais em linha podem ser unidas.,Only like roads in line can be joined.
+hint.road.invalid,Nenhuma via da grade pôde ser construída aqui.,No road of the grid could be built here.
 inspector.toStreet,Rua inteira,Whole street
 profile.cityLocal,Rua de bairro,Neighbourhood street
 profile.cityUrban,Rua larga,Wide street

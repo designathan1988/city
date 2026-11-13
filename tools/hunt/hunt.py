@@ -5,6 +5,7 @@ generated town, most frequent first, each with how many, where, why and the code
 errors in the run's log are defects too. The full list, with the first cases of each class whole, is dist/hunt/hunt.json, the
 task's declared output: when nothing the run reads changed, the result is the cache's and the list is restored from it.
 Refused while a block is open (tools/tasks/block.py). Exit 1 when a defect is found or the hunt task did not pass, 0 when none is."""
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -33,7 +34,10 @@ def log_lines(path: str) -> list[str]:
     return log.read_text(encoding="utf-8", errors="replace").splitlines() if log and log.is_file() else []
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    # the arguments first: --help prints this module's docstring and exits 0 before the block rule or a run
+    argparse.ArgumentParser(prog="hunt.py", description=__doc__,
+                            formatter_class=argparse.RawDescriptionHelpFormatter).parse_args(argv)
     why = block.refusal("hunt", ROOT)
     if why:
         print(why, file=sys.stderr)
@@ -73,4 +77,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

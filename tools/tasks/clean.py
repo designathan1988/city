@@ -3,6 +3,7 @@
 # open problem's evidence names; while_open, an entry goes when the problem it is named after is no longer open; whole_mb, a folder or file written as one piece goes whole past its size. A folder under dist/ that no one declared is listed, and removed with --unowned. What each
 # step frees is printed folder by folder as it goes; --dry-run removes nothing. The bounds are outputs.py's. A register that
 # cannot be read stops it before anything goes (what it keeps is unknown); a file a running process holds is kept and said.
+# An --only folder no one declared is a usage error (exit 2, the folder named), never a traceback.
 from __future__ import annotations
 
 import argparse
@@ -15,7 +16,7 @@ from tasks import cache, outputs  # noqa: E402
 from tasks.task import ROOT  # noqa: E402
 
 DIST = "dist"
-OK, FAILED = 0, 1
+OK, FAILED, USAGE = 0, 1, 2  # USAGE: the call itself is wrong (an --only folder no one declared)
 
 
 def _open_problems(root: Path) -> list[dict]:
@@ -137,7 +138,11 @@ def cmd_clean(argv: list[str]) -> int:
     ap.add_argument("--suites", help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
     if a.only:
-        outputs.bound(a.only, a.suites)  # a folder no one declared is an error, never cleaned by a guess
+        try:
+            outputs.bound(a.only, a.suites)  # a folder no one declared is an error, never cleaned by a guess
+        except KeyError as e:  # only the lookup: a KeyError inside clean() is a fault of the tool, never a usage error
+            print(f"clean: {e.args[0]}", file=sys.stderr)
+            return USAGE
     try:
         clean(Path(a.root), a.dry_run, a.unowned, a.only, a.suites)
     except register.RegisterError as e:

@@ -151,3 +151,28 @@ a whole key `^(cmd|hint)\.[A-Za-z0-9_.]+$` has a row in some `project/data/i18n/
 - Tasks 2 to 5 set aside so the port goes on (the owner, 2026-11-13: no more tool detours): Ptools-127, Ptools-128,
   Pinterface-143, Ptools-129.
 - Task 6 (every key the core shows has its text) is part of T036 (its refusal-key gate) and is built there.
+
+## Outcome of the leftovers (2026-11-13, reopened: "finish what is pending")
+
+Tasks 2 to 6 built by one implementer each (nothing run while coded), each reviewed for its brief and its quality, one fix round
+for Tasks 2-4, then checked once:
+
+- Task 2 (Ptools-127): `dist/tasks` keeps `locks` and `specs` out of its runs (tools/tasks/suites.json:31), the changed-file
+  lists bounded (`dist/tasks/lists`, keep 64, :32), `clean --only` an unknown folder exits 2 (tools/tasks/clean.py `USAGE`).
+  `dist/tasks/specs` now has no bound of its own: Ptools-130.
+- Task 3 (Ptools-128): `cli.py --help`/`-h` print the usage and exit 0 (tools/tasks/cli.py, its docstring the header);
+  tools/hunt/hunt.py reads its arguments by argparse before anything runs; pgo.sh and free_dll.sh answer help first and refuse
+  an unknown argument with exit 2; a failed task's lines leave out the errors it declares; tools/tasks/tests/test_help.py.
+- Task 4 (Pinterface-143): project/game/lab/lab_files.gd keeps the lab's own files to `kept` (data/game/lab.json): only files
+  listed in `<folder>/kept.json` are ever removed; tests write to `user://lab_tests` (GameFlow.tests_drive), never the player's
+  folder; lab_test fills the list past its bound and sees the oldest listed removed and a file it did not make kept.
+- Task 5 (Ptools-129): tools/gates/gate_files.py skips a listed file removed before it is read; tools/gates/tests/test_line_endings.py.
+- Task 6: tools/gates/gate_keys.py (TEXT_KEY_MISSING) and its fixtures; rows `cmd.duplicate`, `cmd.paint`, `cmd.reverse`
+  (strings.csv, its text matched to the tool's `cmd.place.reverseRoad`) and `hint.road.invalid` (strings_e.csv). T036 widens
+  the key prefixes to the refusal keys.
+- Also: a test's pipe left open (tools/tasks/tests/test_cli.py, serve with its input open) closed, so the suite's output is clean.
+
+Checks (fresh, 2026-11-13): tools/tasks/tests 114 OK (no warning); tools/gates/tests 33 OK; gates self-test 97 cases OK; the
+gates of every changed file pass but CLAUDE_MD, which judges the owner's own uncommitted CLAUDE.md (not part of this block);
+`run scripts lab_test lab_test@forward_plus reference_test`: 6/6 PASS. Tasks 2, 5 and 6's tests seen failing with their fix
+reverted (test_the_locks_of_runs_stay; both line-endings tests; TEXT_KEY_MISSING on road_blocks.cpp:25 without its row).

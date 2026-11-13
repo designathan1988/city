@@ -3,6 +3,8 @@
 # the game hidden: the camera over a running city, edits, roads, people, yards. The counts are merged and committed; a build then
 # needs no training. Stale functions only lose their counts, so a new profile is a choice, not a duty: after a change of the hot paths.
 # Every step has a deadline and shows its lines as they come (the configure and the build are also kept under dist/pgo/logs).
+usage() { awk 'NR > 1 && !/^#/ { exit } NR > 1 { sub(/^# ?/, ""); print }' "$0"; echo "usage: bash tools/build/pgo.sh [-h|--help]"; }
+case "${1:-}" in "") ;; -h|--help) usage; exit 0;; *) usage >&2; exit 2;; esac # help, or a wrong argument, never trains
 set -o pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT" || exit 2
@@ -72,7 +74,8 @@ with open(out, "w", encoding="utf-8") as f:
     for scene in scenes:
         name = scene.rsplit("/", 1)[-1]
         f.write(json.dumps({"id": name, "name": f"pgo-{name}", "timeout_s": float(deadline), "hidden": True,
-                            "argv": [godot, "--path", mirror, "--resolution", "1600x900", f"res://{scene}.tscn", "--", "--no-flow"],
+                            "argv": [godot, "--audio-driver", "Dummy", "--path", mirror, "--resolution", "1600x900",
+                                     f"res://{scene}.tscn", "--", "--no-flow"],
                             "env": {"LLVM_PROFILE_FILE": f"{raw}/{name}/%p.profraw"},
                             "inputs": ["project/**", "!project/bin/**", dll], "outputs": [f"{raw}/{name}"]}) + "\n")
 PY

@@ -1,7 +1,8 @@
 {
- "_doc": "The F7 tools (ui/lab_tools.gd, game/lab/lab_recorder.gd, game/lab/resource_watch.gd). views: names of Viewport.DEBUG_DRAW_*, the engine's own debug draws. recorder.settle_ms: the frames after a change left out of its stretch (lab/recorder/analysis.ts SETTLE_MS). resources: window_s the readings kept, least_s before a slope is judged, grow_mib_min and grow_count_min the climb a minute that reads as a leak, best_method the renderer nothing is missing on.",
+ "_doc": "The F7 tools (ui/lab_tools.gd, game/lab/lab_recorder.gd, game/lab/resource_watch.gd). views: names of Viewport.DEBUG_DRAW_*, the engine's own debug draws. recorder.settle_ms: the frames after a change left out of its stretch (lab/recorder/analysis.ts SETTLE_MS). resources: window_s the readings kept, least_s before a slope is judged, grow_mib_min and grow_count_min the climb a minute that reads as a leak, best_method the renderer nothing is missing on. kept: how many files of each kind the lab keeps in user://lab (captures: the Frame tab's report with its picture; reports: the recorder's), listed in user://lab/kept.json (user://lab_tests when tests drive); past it the oldest listed goes, and files not in that list are never removed (game/lab/lab_files.gd).",
  "views": ["DISABLED", "UNSHADED", "LIGHTING", "OVERDRAW", "WIREFRAME", "NORMAL_BUFFER", "SHADOW_ATLAS", "PSSM_SPLITS", "OCCLUDERS", "DISABLE_LOD"],
  "recorder": {"settle_ms": 750},
  "cpu": {"window_frames": 600, "tail": 0.95},
- "resources": {"window_s": 60, "least_s": 20, "grow_mib_min": 4, "grow_count_min": 30, "best_method": "forward_plus"}
+ "resources": {"window_s": 60, "least_s": 20, "grow_mib_min": 4, "grow_count_min": 30, "best_method": "forward_plus"},
+ "kept": {"captures": 8, "reports": 16}
 }

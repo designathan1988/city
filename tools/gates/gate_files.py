@@ -94,10 +94,15 @@ def line_ending_inputs(ctx, path):
 
 def check_line_endings(ctx, err):
     """LINE_ENDINGS (CLAUDE.md, files written as bytes): a file whose committed version had no carriage return gains none, and a
-    new file has none. A file that was already CRLF keeps its form (the repository mixes them; the form is the file's own)."""
+    new file has none. A file that was already CRLF keeps its form (the repository mixes them; the form is the file's own).
+    A listed file removed before it is read (the listing drops what the disk lacks, but a run, such as the tracer tests'
+    temporary folders, can remove a file after it) is no longer the work's: it has no bytes to judge."""
     for path in sorted(p for p in ctx.listed if line_ending_inputs(ctx, p)):
-        with open(os.path.join(ctx.root, path), "rb") as fh:
-            data = fh.read()
+        try:
+            with open(os.path.join(ctx.root, path), "rb") as fh:
+                data = fh.read()
+        except FileNotFoundError:
+            continue
         if b"\r" not in data or b"\0" in data[:BINARY_PROBE]:
             continue
         before = ctx.before_bytes(path)

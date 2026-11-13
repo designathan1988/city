@@ -14,6 +14,8 @@ const GPU_ROWS := [[20.0, 5.0, 18.0, "gpu"], [20.0, 18.0, 5.0, "cpu"], [10.0, 5.
 const STRETCH_FRAMES := 10 # frames in a stretch once it measures
 const SETTLE_FRAMES_MOST := 3000 # the recorder's settle runs on a real timer: past this many frames the wait is a failure
 const CHECKS_LEAST := 8
+const STRAY_NAME := "frame_0000-00-00T00-00-00" # a capture from before the list, which the lab did not list: it must stay
+const SEED_FILE := "%s/frame_seed_%d%s" # the captures the test lists to fill kept.json to its bound
 
 
 func _ready() -> void:
@@ -116,17 +118,67 @@ func _stretch(rec: LabRecorder) -> void:
 
 ## As the player: F7, the tab, the button.
 ## The frame taken apart by layer: buildings and terrain draw something, the camera ends as it began, and the file is there.
+## The lab keeps a bounded list of what it wrote (<folder>/kept.json), in a folder apart from the player's when tests drive: with
+## the list already at its bound, the capture removes the oldest listed file and its picture, and leaves a file it did not make
+## (named like a capture from before the list, written first and sorting first) where it was.
 func _capture(hud: RoadcraftHud) -> void:
 	var camera := get_viewport().get_camera_3d()
 	if camera == null:
 		check(false, "there is a camera for the capture")
 		return
 	var mask := camera.cull_mask
+	var folder := LabFiles.dir()
+	if not check(folder != LabFiles.FOLDER, "the test's captures stay apart from the player's: %s" % folder):
+		return # never write or remove anything in the player's own folder
+	DirAccess.make_dir_recursive_absolute(folder)
+	var stray := "%s/%s%s" % [folder, STRAY_NAME, LabFiles.OWN]
+	_write_file(stray)
+	_write_file(LabFiles.beside("captures", stray))
+	var most := int(DataTables.game("lab").kept.captures)
+	var seeded: Array[String] = []
+	for i in most:
+		var p := SEED_FILE % [folder, i, LabFiles.OWN]
+		_write_file(p)
+		_write_file(LabFiles.beside("captures", p))
+		seeded.append(p)
+	_write_file(LabFiles.list_path(), JSON.stringify({"captures": seeded}))
 	await hud.effects.frame.take()
 	print("frame: ", hud.effects.frame.whole, " layers: ", hud.effects.frame.rows)
 	check(camera.cull_mask == mask, "the capture gives the camera back as it was")
 	check(not hud.effects.frame.rows.is_empty() and hud.effects.frame.rows[0].primitives > 0, "some layer draws")
-	check(FileAccess.file_exists(hud.effects.frame.file), "the capture stayed in a file")
+	var file := hud.effects.frame.file
+	check(FileAccess.file_exists(file), "the capture stayed in a file")
+	var kept: Variant = JSON.parse_string(FileAccess.get_file_as_string(LabFiles.list_path()))
+	var captures: Array = kept.get("captures", []) if kept is Dictionary else []
+	check(captures.size() == most and captures.back() == file, "kept.json lists %d captures, the new one last: %s" % [most, captures])
+	check(not _either(seeded[0]), "the oldest listed capture and its picture were removed: %s" % seeded[0])
+	var stayed := true
+	for p: String in seeded.slice(1):
+		stayed = stayed and FileAccess.file_exists(p) and FileAccess.file_exists(LabFiles.beside("captures", p))
+	check(stayed, "the other listed captures stay with their pictures")
+	check(FileAccess.file_exists(stray) and FileAccess.file_exists(LabFiles.beside("captures", stray)),
+		"a file the lab did not make is still there with its picture")
+	var written: Array[String] = [file, stray]
+	written.append_array(seeded)
+	for p: String in written:
+		for target: String in [p, LabFiles.beside("captures", p)]:
+			if FileAccess.file_exists(target):
+				DirAccess.remove_absolute(target)
+	DirAccess.remove_absolute(LabFiles.list_path())
+
+
+## A file the test makes in the lab's folder.
+func _write_file(path: String, text := "{}") -> void:
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	check(f != null, "the test wrote %s" % path)
+	if f != null:
+		f.store_string(text)
+		f.close()
+
+
+## A capture or its picture is still on disk.
+func _either(path: String) -> bool:
+	return FileAccess.file_exists(path) or FileAccess.file_exists(LabFiles.beside("captures", path))
 
 
 ## The CPU tab reads a window of frames, the heaviest zone first.

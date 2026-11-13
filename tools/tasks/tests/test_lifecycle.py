@@ -1,7 +1,9 @@
 # lifecycle: every worktree, copy, branch and stash classed, the ones older than their work failing the listing; clean holding
 # each output folder to its bound (keep with the builds an open problem names kept, while_open, max_mb, whole_mb), listing and removing
 # what no one declared, a dry run removing nothing, nothing removed while the register cannot be read; the task cache's ledger
-# evicting the least recently used past its bound; dist/held (free_dlls) holding what an open game runs from, to its bound.
+# evicting the least recently used past its bound; dist/held (free_dlls) holding what an open game runs from, to its bound;
+# the run folders' locks kept and the changed lists bounded by the bounds tools/tasks/suites.json declares; an --only folder no
+# one declared a usage error.
 import json
 import os
 import shutil
@@ -19,9 +21,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))  # tools:
 
 from support import RepoCase, git  # noqa: E402
 
-from tasks import cache, clean, cli, ledger, lifecycle, outputs  # noqa: E402
+from tasks import admission, cache, clean, cli, ledger, lifecycle, outputs, runs, task  # noqa: E402
 
 OLD = "2026-01-01T00:00:00+00:00"
+LISTS = "dist/tasks/lists"  # the changed lists suites.py (_changed_list) writes, one per distinct list
+EXTRA_LISTS = 6  # lists written past the bound of their folder
+USAGE_EXIT = 2  # the contract pinned by value: a wrong call exits 2 whatever clean.USAGE says, so a drift of it fails here
+AGE_STEP_S = 10  # seconds between two entries made one after another, so their order by time is certain
 LIFECYCLE = {"lifecycle": {"stale_days": 7, "outputs": [
     {"path": "dist/builds", "owner": "deliver.sh", "keep": 2, "index": ["latest.txt"]},
     {"path": "dist/evidence", "owner": "atlas", "while_open": True},
@@ -109,6 +115,48 @@ class Clean(LifecycleCase):
 
     def run_clean(self, *flags):
         return quiet(clean.cmd_clean, ["--root", str(self.root), "--suites", str(self.suites), *flags])[1]
+
+    def declare(self, *paths):
+        """The entries of `paths` as tools/tasks/suites.json declares them, added to this case's suites: the bound tested is
+        the one the work runs with (a missing entry raises KeyError here)."""
+        entries = [outputs.bound(p) for p in paths]
+        data = json.loads(self.suites.read_text(encoding="utf-8"))
+        data["lifecycle"]["outputs"] += entries
+        self.suites.write_text(json.dumps(data), encoding="utf-8")
+        return entries
+
+    def test_the_locks_of_runs_stay(self):
+        """The locks and specs folders, older than every run folder, are no run folders (the index; a lock held open is
+        kept by cache.remove_unless_held anyway, so this checks the index, not a held lock)."""
+        keep = self.declare(runs.RUNS, LISTS)[0]["keep"]
+        made = [f"{runs.RUNS}/{k:04d}-1-run" for k in range(keep + 1)]
+        self.make(f"{admission.LOCKS}/dll.lock", age=AGE_STEP_S * (len(made) + 2))  # older than every run folder
+        self.make(f"{task.SPECS}/spec.json", age=AGE_STEP_S * (len(made) + 1))  # a reused spec never refreshes its folder
+        for k, rel in enumerate(made):
+            self.make(f"{rel}/events.jsonl", age=AGE_STEP_S * (len(made) - k))
+        self.run_clean()
+        self.assertTrue((self.root / admission.LOCKS / "dll.lock").exists(), "the locks folder is no run folder")
+        self.assertTrue((self.root / task.SPECS / "spec.json").exists(), "the specs folder is no run folder")
+        self.assertFalse((self.root / made[0]).exists(), "the oldest run folder past the bound went")
+        left = [p for p in (self.root / runs.RUNS).iterdir() if p.name[:1].isdigit()]
+        self.assertEqual(len(left), keep)
+
+    def test_the_lists_are_bounded(self):
+        keep = self.declare(runs.RUNS, LISTS)[1]["keep"]
+        made = [f"{LISTS}/changed-{k:016d}.txt" for k in range(keep + EXTRA_LISTS)]
+        for k, rel in enumerate(made):
+            self.make(rel, age=AGE_STEP_S * (len(made) - k))
+        self.run_clean()
+        left = sorted(p.name for p in (self.root / LISTS).iterdir())
+        self.assertEqual(left, sorted(Path(rel).name for rel in made[-keep:]), "the newest lists kept, the rest gone")
+
+    def test_an_unknown_folder_is_a_usage_error(self):
+        err = StringIO()
+        with redirect_stdout(StringIO()), redirect_stderr(err):
+            code = clean.cmd_clean(["--root", str(self.root), "--suites", str(self.suites), "--only", "dist/nosuch"])
+        self.assertEqual(code, USAGE_EXIT)
+        self.assertIn("clean: dist/nosuch", err.getvalue())
+        self.assertNotIn("Traceback", err.getvalue())
 
     def test_dry_run_removes_nothing(self):
         said = self.run_clean("--dry-run")

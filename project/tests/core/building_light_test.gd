@@ -1,5 +1,6 @@
 ## The buildings as the screen shows them, through the game's own Environment and its "building" and "building_far"
-## materials (CityWorld), on each renderer (tools/build/run_tests.sh runs it on Forward+ and on Compatibility):
+## materials (CityWorld), on each renderer (tools/tasks/suites.json runs it on Forward+ and on Compatibility (its
+## `@forward_plus` sibling)):
 ## - by night, with the ambient and the moon off so only a surface's own light is left, a lamp face of the near level
 ##   (shell.h SK_LAMP) must show its colour x night x lamp_glow, and a lamp face of the far level its colour x
 ##   wall_gain x night, tone mapped as render/tone_map.gd does (its colour a mid grey: inside ACES's range);
