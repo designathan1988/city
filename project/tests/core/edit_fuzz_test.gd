@@ -4,6 +4,7 @@
 extends TestCase
 
 const BodyEdits := preload("res://tests/core/fuzz_body_edits.gd")
+const RoadShapes := preload("res://tests/core/fuzz_road_shapes.gd")
 const LOT_M := 30.0
 const MAP := 0
 const CITY_SEED := 7
@@ -34,11 +35,9 @@ var roads: Array[Vector3] = [] # the middles of what was laid, for the edits tha
 
 
 var last_kind := 0
+var shaped := {} # the Inspector's road edits dispatched, by name: the fuzz's report shows which ran
 
 
-const BEND_M := 30.0
-const BEND_AT_LEAST := 0.2
-const BEND_LIFT_M := 4.0
 const PATH_KIND := 25 # a held brush's pointer move: the dabs of one move as one command
 const PATH_DABS := 3
 const PATH_BRUSHES := 4
@@ -78,7 +77,7 @@ func _same(a: Dictionary, b: Dictionary, what: String, ignoring := "") -> void:
 
 func _run(seed: int, steps: int) -> void:
 	var trail := _walk(seed, steps)
-	print("seed %d: %d edits kept of %d" % [seed, trail.size() - 1, steps])
+	print("seed %d: %d edits kept of %d; road edits %s" % [seed, trail.size() - 1, steps, shaped])
 	var last := trail.size() - 1
 	for i in range(last, 0, -1):
 		CityStore.dispatch(&"undo")
@@ -109,6 +108,7 @@ func _walk(seed: int, steps: int) -> Array:
 	new_map(MAP, CITY_SEED, false)
 	rng.seed = seed
 	roads.clear()
+	shaped.clear()
 	drawn = -1
 	var trail := [_hash()]
 	for i in steps:
@@ -136,8 +136,10 @@ func _edit() -> void:
 		_lay()
 	elif kind == PATH_KIND:
 		_brush_path(road)
-	elif kind >= 18:
-		_shape(kind, road)
+	elif kind >= RoadShapes.BEND or kind == RoadShapes.REVERSE:
+		var done: String = RoadShapes.run(rng, kind, road, PX)
+		if done != "":
+			shaped[done] = int(shaped.get(done, 0)) + 1
 	elif kind >= 10:
 		_other(kind, road)
 	elif kind == 5:
@@ -150,32 +152,6 @@ func _edit() -> void:
 		CityStore.dispatch(&"begin_stroke", ["cmd.place.zone"])
 		CityStore.dispatch(&"paint_zone", [road, ZONE_RADIUS, ZONE_KIND])
 		CityStore.dispatch(&"end_stroke")
-	else:
-		var seg: Dictionary = CityStore.query(&"segment_at", [road])
-		if seg.get("id", -1) >= 0:
-			CityStore.dispatch(&"reverse_road", [seg.id])
-
-
-## What the Inspector does to a road's shape.
-func _shape(kind: int, road: Vector3) -> void:
-	var seg: Dictionary = CityStore.query(&"segment_at", [road])
-	var node: int = CityStore.query(&"node_at", [road, PX]).get("node", -1)
-	if kind == 18 and seg.get("id", -1) >= 0:
-		CityStore.dispatch(&"bend_road", [seg.id, rng.randf_range(-BEND_M, BEND_M), rng.randf_range(BEND_AT_LEAST, 1.0 - BEND_AT_LEAST)])
-	elif kind == 19 and node >= 0:
-		CityStore.dispatch(&"set_node_height", [node, rng.randf_range(-BEND_LIFT_M, BEND_LIFT_M)])
-	elif kind == 20 and node >= 0:
-		CityStore.dispatch(&"join_roads", [node])
-	elif kind == 21:
-		CityStore.dispatch(&"add_crossing", [road, rng.randi_range(1, 2)])
-	elif kind == 22:
-		CityStore.dispatch(&"add_uturn", [road, rng.randf() < 0.5])
-	elif kind == 23 and node >= 0:
-		var legs: Array = CityStore.query(&"node_legs", [node])
-		if legs.size() >= 2:
-			CityStore.dispatch(&"set_movement_banned", [node, legs[0].seg, legs[1].seg, legs[0].banned.is_empty()])
-	elif kind == 24 and node >= 0:
-		CityStore.dispatch(&"remove_node", [node])
 
 
 ## What is not a road: relief, street pieces, a barrier, a drawn building, a stop, a bomb, the demolish box.
