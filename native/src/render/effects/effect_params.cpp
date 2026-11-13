@@ -173,6 +173,10 @@ void EffectParams::load_things(const Dictionary &t, PackedStringArray &errors) {
 	body_lead = down.num("body_lead_s");
 	brace_ms = down.num("brace_ms");
 	brace_down = down.num("brace_down");
+	round_ns = down.num("round_ns");
+	head_kg = down.num("head_kg");
+	forearm_kg = down.num("forearm_kg");
+	calf_kg = down.num("calf_kg");
 	Reader tints(errors, t, "tints");
 	tint_wood = tints.color("wood");
 	tint_metal = tints.color("metal");

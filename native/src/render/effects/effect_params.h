@@ -50,6 +50,7 @@ struct EffectParams {
 	int down_dust_count = 0;
 	float down_dust_size = 0, down_dust_life = 0, down_dust_spread = 0;
 	float push_ms = 0, lift_ms = 0, limb_push_ms = 0, tracer_life = 0, tracer_m = 0, flash_m = 0, body_lead = 0, brace_ms = 0, brace_down = 0; // bodies, tracers and the muzzle
+	float round_ns = 0, head_kg = 0, forearm_kg = 0, calf_kg = 0; // a round's momentum, and what a limb it takes off weighs
 	godot::Color tint_wood, tint_metal, tint_leaf, tint_char, tint_flesh, tint_paint; // what is thrown: wood, metal, leaves, charred, flesh, a wreck's paint (sRGB)
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);

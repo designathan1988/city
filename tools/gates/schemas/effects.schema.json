@@ -532,7 +532,11 @@
     "flash_m",
     "body_lead_s",
     "brace_ms",
-    "brace_down"
+    "brace_down",
+    "round_ns",
+    "head_kg",
+    "forearm_kg",
+    "calf_kg"
    ],
    "properties": {
     "dust_count": {
@@ -575,6 +579,22 @@
     "brace_down": {
      "type": "number",
      "description": "how far down, against the way it falls (1), the hands go: toward the ground ahead"
+    },
+    "round_ns": {
+     "type": "number",
+     "description": "a round's momentum, N s: a 5.56x45 NATO 4 g at 945 m/s, 3.78 (https://handwiki.org/wiki/Engineering:Power_factor_(shooting_sports)); a limb it takes off leaves at it over the limb's mass"
+    },
+    "head_kg": {
+     "type": "number",
+     "description": "an adult's head, kg: 0.081 of 75 kg (Dempster's segment shares, https://wiki.has-motion.com/Segment_Mass; Winter 2005)"
+    },
+    "forearm_kg": {
+     "type": "number",
+     "description": "an adult's forearm and hand, kg: 0.016 + 0.006 of 75 kg (Dempster)"
+    },
+    "calf_kg": {
+     "type": "number",
+     "description": "an adult's calf and foot, kg: 0.0465 + 0.0145 of 75 kg (Dempster)"
     }
    }
   },

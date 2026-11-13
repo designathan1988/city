@@ -41,6 +41,11 @@ uint32_t parts_gone(uint32_t limbs) {
 			((limbs & CAS_LIMB_LEG_L) != 0 ? CALF_L : 0) | ((limbs & CAS_LIMB_LEG_R) != 0 ? CALF_R : 0);
 }
 
+// What a limb that comes off weighs: the head, the forearm and hand, or the calf and foot of an adult (effects.json down).
+float limb_kg(const EffectParams &p, uint32_t limb) {
+	return limb == CAS_LIMB_HEAD ? p.head_kg : (limb & (CAS_LIMB_ARM_L | CAS_LIMB_ARM_R)) != 0 ? p.forearm_kg : p.calf_kg;
+}
+
 constexpr uint32_t bit(ragdoll::Joint j) { return 1u << j; }
 constexpr int STRUCK_KINDS = 7; // none, head, trunk, left arm, right arm, left leg, right leg (CAS_STRUCK_SHIFT)
 constexpr uint32_t STRUCK_MASK = 7;
@@ -111,8 +116,12 @@ void EffectWorld::body(const DamageEvent &e, const CityState &s) {
 			BodySpec &piece = pieces.emplace_back(b);
 			piece.piece = parts_gone(limb);
 			piece.lost = ALL_PARTS & ~piece.piece;
-			piece.velocity = Vector3(px * params_.limb_push_ms + (rng_.f() - 0.5f) * LIMB_SCATTER_MS, params_.lift_ms * (0.5f + rng_.f()),
-					pz * params_.limb_push_ms + (rng_.f() - 0.5f) * LIMB_SCATTER_MS);
+			// a blast throws it by its power, as it throws the body; a round's push is its momentum over what it took off, which drops by
+			// its stump the way the body goes down (a bullet drops a limb near, a blast throws it: the reference's rule)
+			piece.velocity = power > 0.f
+					? Vector3(px * params_.limb_push_ms * power + (rng_.f() - 0.5f) * LIMB_SCATTER_MS, params_.lift_ms * (0.5f + rng_.f()),
+							  pz * params_.limb_push_ms * power + (rng_.f() - 0.5f) * LIMB_SCATTER_MS)
+					: Vector3(px, 0, pz) * (params_.round_ns / limb_kg(params_, limb));
 			piece.tip = piece.brace = Vector3();
 			piece.life_s = 0.f;
 			piece.rises = false;
