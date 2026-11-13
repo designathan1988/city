@@ -1,0 +1,16 @@
+{
+ "_doc": "What tools/tasks/km24.py measures and against what. map: the index of km24 in project/data/catalog/maps.json; scene: the measuring scene (tests/perf/camera_pan.gd, its movements); profile: the median profile as this machine runs it (doc/specification.md, Reference hardware: --gpu-index 0, logical processors 0-11); budgets: the median profile's at medium (doc/specification.md, Budgets: frame p90 16.7 ms, no frame over 33 ms on a camera path, GPU p90 13 ms, main thread CPU 8 ms a frame, video memory 4 GB in km24), each judged per movement.",
+ "map": 4,
+ "scene": "res://tests/perf/camera_pan.tscn",
+ "resolution": "1920x1080",
+ "import_timeout_s": 900,
+ "run_timeout_s": 1500,
+ "profile": {"name": "median", "gpu_index": 0, "cores": 12},
+ "budgets": {
+  "frame_p90_ms": 16.7,
+  "over_33_ms": 0,
+  "gpu_p90_ms": 13.0,
+  "core_p90_ms": 8.0,
+  "video_mb": 4096
+ }
+}

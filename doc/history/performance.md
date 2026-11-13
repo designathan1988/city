@@ -551,3 +551,17 @@ that fix showed wrong; the reference game read for its behaviour alone, every pi
   sessions' processes were running through both runs (P470: to read at its cause on an idle machine, against `9bf7c372`). The
   orphan gate takes no data table as a referrer, so a native shader is also written into `CityWorld.NATIVE_SHADERS` (P469).
 - Gates on the changed files: none of this batch left; `tools/analysis/engine/src/flat.h` (another session's) is not in the map.
+
+## 2026-11-13: km24 measured by one command on two builds (block `fix-all`, Ptools-99)
+
+- **Problem**: CLAUDE.md asked every change to the game to be measured in km24 on the previous build and this one, and no
+  command did it: `project/tests/perf/camera_pan.gd --map=4` measured one build, by hand, its percentiles p50, p95 and p99
+  where the budgets of `doc/specification.md` are p90.
+- **Fix**: `tools/tasks/km24.py` (its budgets in `tools/tasks/km24.json`, its tests `tools/tasks/tests/test_km24.py`): a clean
+  copy of a commit's `project/` (git archive, the versioned DLLs with it, imported under `dist/km24/previous`) and the working
+  tree, each run hidden on the median profile's GPU and twelve processors with a deadline, every movement judged against the
+  median budgets (frame p90 16.7 ms, no frame over 33 ms, GPU p90 13 ms, core p90 8 ms, video 4096 MiB); exit 1 on a failed run,
+  a movement missing, or a budget this build breaks where the previous kept it.
+- **A number moved, and why**: `project/tests/perf/camera_pan.gd` PERCENTILES gains p90: its [1] goes from 0.95 to 0.9, its
+  [2] from 0.99 to 0.95 and p99 moves to [3]; the frame line and the GPU, render CPU and core statistics print p90 because the
+  budgets are p90 and `km24.py` reads them. Nothing is judged by these numbers inside the scene: no check moved.

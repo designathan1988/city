@@ -38,7 +38,7 @@ const CYCLE_FRAMES := 12
 const CYCLE_SKIP := 4
 const ALL_LAYERS := 0xFFFFFFFF
 const US_PER_MS := 1000.0
-const PERCENTILES := [0.5, 0.95, 0.99]
+const PERCENTILES := [0.5, 0.9, 0.95, 0.99] # p90: the budgets' (doc/specification.md), read by tools/tasks/km24.py
 const BROKEN_DOWN := 3
 ## render_cost sections, in the order of the core's frame.
 const COST_PARTS := [&"agents", &"lock", &"stream", &"levels", &"flush", &"roads", &"props", &"buildings", &"chunk_max",
@@ -236,7 +236,7 @@ func _report(name: String) -> void:
 	print("  vehicles: ", JSON.stringify(CityStore.query(&"agent_cost")))
 
 
-## Mean, 95th percentile and maximum of per-frame milliseconds.
+## Mean, 90th and 95th percentiles and maximum of per-frame milliseconds.
 func _stats(values: Array[float]) -> String:
 	if values.is_empty():
 		return "-"
@@ -246,4 +246,5 @@ func _stats(values: Array[float]) -> String:
 	for v in sorted:
 		mean += v
 	mean /= sorted.size()
-	return "mean %.1f ms, p95 %.1f ms, max %.1f ms" % [mean, sorted[mini(int(0.95 * sorted.size()), sorted.size() - 1)], sorted.back()]
+	var at := func(share: float) -> float: return sorted[mini(int(share * sorted.size()), sorted.size() - 1)]
+	return "mean %.1f ms, p90 %.1f ms, p95 %.1f ms, max %.1f ms" % [mean, at.call(PERCENTILES[1]), at.call(PERCENTILES[2]), sorted.back()]

@@ -40,6 +40,7 @@
    {"path": "dist/build-pgo", "owner": "tools/build/pgo.sh", "whole_mb": 2048},
    {"path": "dist/lab_scan.json", "owner": "tools/gates/lab_scan.py", "whole_mb": 16},
    {"path": "dist/hunt", "owner": "tools/hunt/hunt.py", "whole_mb": 64},
+   {"path": "dist/km24", "owner": "tools/tasks/km24.py", "whole_mb": 8192},
    {"path": "dist/promo", "owner": "the promo recording (doc/history/process.md)", "keep": 2},
    {"path": "dist/trace", "owner": "tools/atlas/migrate.py (the trace-fix skill that wrote it was removed on 2026-11-12)", "migrating": "specification 001 US3 (T050) moves what open problems name to dist/evidence and removes the folder"}
   ]
@@ -398,7 +399,10 @@
   "looks": {
    "doc": "the look plans the capture suite photographs",
    "template": "look",
-   "items": [{"name": "frozen", "plan": "res://tests/visual/frozen_plan.json", "resolution": "1280x720", "timeout_s": 90}]
+   "items": [
+    {"name": "frozen", "plan": "res://tests/visual/frozen_plan.json", "resolution": "1280x720", "timeout_s": 90},
+    {"name": "roofs", "plan": "res://tests/visual/roofs_plan.json", "resolution": "1920x1080", "timeout_s": 300}
+   ]
   },
   "capture_scenes": {
    "doc": "the reference views (capture.tscn: street from above, neighbourhood, whole town)",
