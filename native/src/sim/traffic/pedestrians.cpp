@@ -93,7 +93,7 @@ void walk(CityState &s, int id, float dt) {
 	Pedestrian &w = t.peds[id];
 	if (w.mode == PedMode::KERB) return; // a kerb stop moves it
 	if (!walkable(s, w.seg)) { despawn(t, id, false); return; }
-	if (t.time < w.down_until || t.time < w.flinch_until) return; // knocked down by a blow (the render shows the body) or bent over a wound
+	if (t.time < w.down_until || t.time < w.flinch_until) return; // down (a trip, trips.cpp, or a blow: the render shows the body) or bent over a wound
 	if (held_by_fright(t, w)) return;
 	turn_from_bang(s, w);
 	if (w.mode == PedMode::LOT) {

@@ -178,5 +178,6 @@ private:
 struct CityState;
 void damage_step(CityState &s, double dt);
 void bleed_step(CityState &s, double dt); // wounds.cpp: the wounded bleed, and die of it
+void trip_step(CityState &s); // trips.cpp: who a fright tripped goes down when the trip comes
 
 } // namespace city

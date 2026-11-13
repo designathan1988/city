@@ -23,7 +23,6 @@ constexpr int CROUCH_SPREAD = 4, FILM_SPREAD = 5, STAMPEDE_CROUCH_SPREAD = 9, FA
 constexpr int LOOK_STEPS = 6, TRIP_STEPS = 10;
 constexpr float LOOK_STEP_S = 0.1f, TRIP_STEP_S = 0.2f;
 constexpr float ALIGNED_RAD = 1e-3f;
-
 V2 node_at(const CityState &s, int n) { return V2(float(s.roads.nodes[size_t(n)].x), float(s.roads.nodes[size_t(n)].z)); }
 
 uint32_t roll_of(const Pedestrian &w, uint32_t salt) { return hash_combine(w.look, salt) & BYTE; }
@@ -165,10 +164,6 @@ void mourn_pedestrian(CityState &s, int id) {
 
 bool held_by_fright(const TrafficState &t, Pedestrian &w) {
 	const float now = float(t.time);
-	if (w.trip_at > 0 && now >= w.trip_at) {
-		w.trip_at = 0;
-		hold(w, PedAct::CROUCH, now, w.trip_s, w.cur.x + w.cur.fx, w.cur.z + w.cur.fz); // down where it ran, not turned round
-	}
 	if (now >= w.held_until) w.mourning = false;
 	return now < w.held_until || w.act == PedAct::CROUCH; // up again before it walks: the crouch's clip is the whole of the pose
 }

@@ -111,6 +111,7 @@
   "ped_react_look_s": 0.5,
   "ped_trip_after_s": 0.8,
   "ped_trip_s": 3,
+  "ped_trip_throw": 0.3,
   "ped_stampede_trip_roll": 60,
   "ped_stampede_trip_m": 30,
   "ped_stampede_trip_span_s": 4,

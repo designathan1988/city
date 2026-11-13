@@ -2,7 +2,8 @@
 class_name ShootFrightCases
 extends RefCounted
 
-const BLAST_OFF_M := 30.0
+const BLAST_OFF_M := 5.0
+const CROWD_M := 25.0 # a crowd round a walker: those this near
 const BLAST_FORCE := 2
 const BLAST_LOOKS := 12
 const BLAST_TICKS := 40
@@ -62,12 +63,24 @@ func stampede() -> void:
 	if found.is_empty():
 		t.check(false, "there are pedestrians for the blast")
 		return
-	var at: Vector3 = found[0].position + Vector3(BLAST_OFF_M, 0, BLAST_OFF_M)
+	# by the busiest walker, within the stampede's trip reach (traffic.json ped_stampede_trip_m 30 m) of those round it; force 2 knocks
+	# nobody down there (its eardrum odds are nil): who is on the ground after it has tripped
+	var busiest: Dictionary = found[0]
+	var most := -1
+	for w: Dictionary in found:
+		var round_it := found.filter(func(o: Dictionary) -> bool: return o.position.distance_to(w.position) < CROWD_M).size()
+		if round_it > most:
+			most = round_it
+			busiest = w
+	var at: Vector3 = busiest.position + Vector3(BLAST_OFF_M, 0, BLAST_OFF_M)
 	CityStore.dispatch(&"strike", [at, BLAST_FORCE])
 	var down := 0
+	var fell := 0 # tripped in the stampede: on the ground, a body of their own (ped_fright.cpp trip_now), not crouched
 	for i in BLAST_LOOKS:
 		t.ticks(BLAST_TICKS)
 		down = maxi(down, int(CityStore.query(&"people_census", [Vector3.ZERO, 0.0]).acts.get("crouch", 0)))
-	print("in the blast, crouching at most: ", down)
-	t.check(down > 0, "in the blast someone falls or crouches")
+		fell = maxi(fell, CityStore.query(&"shot_targets", [CROWD]).walkers.filter(func(w: Dictionary) -> bool: return w.fallen).size())
+	print("in the blast, crouching at most: ", down, ", on the ground at most: ", fell)
+	t.check(down > 0, "in the blast someone crouches")
+	t.check(fell > 0, "in the stampede someone trips and falls to the ground (%d at most)" % fell)
 	CityStore.dispatch(&"undo")

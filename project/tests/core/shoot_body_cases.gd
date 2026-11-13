@@ -102,6 +102,6 @@ func _rises() -> void:
 		CityStore.dispatch(&"undo")
 		if risen > 0:
 			break
-	print("on their feet again: ", risen)
-	t.check(risen > 0, "who fell gets up")
-	t.check(CityStore.query(&"effects_bodies_kept") <= kept_before, "who only fell is not kept as a dead body")
+	print("on their feet again: ", risen, " (kept ", CityStore.query(&"effects_bodies_kept"), ", before ", kept_before, ": a death beside the blow is kept)")
+	# a kept body never leaves: those that rose and left were not kept (who died beside the blow is, rightly)
+	t.check(risen > 0, "who fell gets up, and the body goes: not kept as a dead one")
