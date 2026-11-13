@@ -53,7 +53,7 @@ struct Heap {
 	size_t operator()(const Gone &) const { return 0; }
 	size_t operator()(const HurtChange &) const { return 0; }
 	size_t operator()(const NatureChange &c) const { return sizeof(NatureEdit) + c.bytes; }
-	size_t operator()(const StreetItem &i) const { return i.text.capacity(); }
+	size_t operator()(const StreetItem &i) const { return i.text.capacity() + i.given.form.capacity() + i.given.name.capacity(); }
 	size_t operator()(const UtilityPole &p) const { return p.spans.capacity() * sizeof(int); }
 	size_t operator()(const UtilitySpan &) const { return 0; }
 	size_t operator()(const Barrier &b) const { return b.pts.capacity() * sizeof(float); }

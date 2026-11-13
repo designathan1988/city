@@ -197,6 +197,13 @@ func _styles() -> void:
 		check(signs.plates.size() == signs.drawings.size(), "style %s: one figure a sign" % id)
 		for d: Dictionary in signs.drawings:
 			check(signs.plates.has(d.plate), "style %s: plate %s" % [id, d.plate])
+			if d.has("words"):
+				check(tr(d.words) != d.words, "style %s: plate %s reads a translation (%s)" % [id, d.plate, d.words])
+		var names: Dictionary = DataTables.style_of(DataTables.CATALOG.street_furniture, id).street_names
+		for form: String in [names.form] + names.forms.values():
+			check(tr(form) != form and tr(form).count("%s") == 1, "style %s: the form %s is a translation with one place" % [id, form])
+		for given: String in names.names:
+			check(tr(given) != given, "style %s: the street name %s is a translation" % [id, given])
 		var kerb: Dictionary = DataTables.style_of(DataTables.CATALOG.street_furniture, id).signs
 		check(kerb.plate_kerb_curve_m >= kerb.plate_kerb_m, "style %s: a sign on a curve no nearer the carriageway" % id)
 		var c: Dictionary = DataTables.style_of(DataTables.CATALOG.street_furniture, id).crossing

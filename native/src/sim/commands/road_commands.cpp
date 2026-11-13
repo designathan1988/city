@@ -84,7 +84,7 @@ void name_streets(CityState &s, const std::vector<int> &laid) {
 		it.kind = ItemKind::STREETNAME;
 		it.x = n.x;
 		it.z = n.z;
-		it.text = n.text;
+		it.given = n.given;
 		j_add_item(s, it);
 	}
 }

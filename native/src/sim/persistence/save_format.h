@@ -18,8 +18,9 @@ constexpr uint32_t SAVE_MAGIC = 0x31534443U; // 'CDS1'
 constexpr uint32_t SAVE_END = 0x444E4523U; // '#END'
 constexpr uint32_t SAVE_BODIES = 0x53594442U; // 'BDYS': the section of edited bodies; a file without it has none
 constexpr uint32_t SPEC_SAVE_VERSION = 7; // the roads the player composed, among the variants
-constexpr uint32_t SAVE_VERSION = 9; // 2: the landscape after the buildings; 3: the road variants, before the roads that use them; 4: the junctions' signal settings; 5: public transport after the growth queue; 6: a node's authored height (lift) in place of its height, solved again on load; 8: the land's side in the header; 9: a building record's cap (what its body was made under) after its storeys
+constexpr uint32_t SAVE_VERSION = 10; // 2: the landscape after the buildings; 3: the road variants, before the roads that use them; 4: the junctions' signal settings; 5: public transport after the growth queue; 6: a node's authored height (lift) in place of its height, solved again on load; 8: the land's side in the header; 9: a building record's cap (what its body was made under) after its storeys; 10: a street item's given name (translation keys) after its text
 constexpr uint32_t SIGNAL_SAVE_VERSION = 4, TRANSIT_SAVE_VERSION = 5, GRADE_SAVE_VERSION = 6, LAND_SAVE_VERSION = 8, CAP_SAVE_VERSION = 9;
+constexpr uint32_t GIVEN_NAME_SAVE_VERSION = 10;
 
 // The line between a composed road's two directions, as saved.
 inline const char *const CENTRE_LINES[] = { "auto", "none", "dashed", "solid", "double" };

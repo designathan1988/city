@@ -9,7 +9,7 @@ namespace city {
 
 namespace {
 bool same(const StreetItem &a, const StreetItem &b) {
-	return a.kind == b.kind && a.sign == b.sign && a.x == b.x && a.z == b.z && a.text == b.text;
+	return a.kind == b.kind && a.sign == b.sign && a.x == b.x && a.z == b.z && a.text == b.text && a.given == b.given;
 }
 bool same(const UtilityPole &a, const UtilityPole &b) {
 	return a.x == b.x && a.z == b.z && a.lamp == b.lamp && a.kind == b.kind && a.spans == b.spans;

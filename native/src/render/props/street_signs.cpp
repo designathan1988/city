@@ -55,7 +55,7 @@ void stand(MeshBuilder &mb, const SignLook &K, SignAtlas &atlas, const StreetLoo
 	const Vector3 foot(s.x, s.y + L.h_sidewalk, s.z), face(s.face_x, 0, s.face_z), side(s.face_z, 0, -s.face_x);
 	const bool blades = s.type == SignType::STREET; // a street's name stands on top of its post, read from both sides
 	mb.cylinder(foot, K.post_radius, blades ? p.z - p.h * 0.5f : p.z + p.h * 0.5f, K.post_sides, K.post, true, TAG_POST);
-	const SignCell cell = atlas.cell(s.type, s.text);
+	const SignCell cell = atlas.cell(s.type, s.text, s.given);
 	const Vector3 centre = foot + UP * p.z;
 	if (blades) {
 		plate(mb, p, K, centre + face * K.blade_half, side, face, cell, true);

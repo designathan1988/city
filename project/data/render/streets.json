@@ -312,7 +312,7 @@
   "pool_slab_m": 1.0
  },
  "signs": {
-  "_doc": "The plates (render/props/street_signs.cpp, project/render/sign_sheet.gd). sheet_*, plate_cell_px: a layer of the pictures; the layers grow with what a city uses, 45 name plates or 32 plates each. sheet_round_s: the least time between two pictures read back from the viewport. A 0.5 m plate gets 256 px per metre, and the camera at its closest (view_half_min 0.8) shows 562 per metre on 900 lines. plates and drawings: by style. The round plates, the warnings and the name plates, and the picture of every plate (rims, words, the walker, the arrow), follow the Roadcraft 4.0 look: no norm was read for them. outline_points 0 is a rectangle; rotation the first corner, in turns. drawings: the picture of each type, in SignType order, in shares of the plate: rim a colour round the field, inner_share how far the field comes out, word_height and word_width the lettering's height and room, bar, slash and the walker in shares of its radius, arrow its tip, its base and its half height. word_bold: FontVariation.variation_embolden of the lettering.",
+  "_doc": "The plates (render/props/street_signs.cpp, project/render/sign_sheet.gd). sheet_*, plate_cell_px: a layer of the pictures; the layers grow with what a city uses, 45 name plates or 32 plates each. sheet_round_s: the least time between two pictures read back from the viewport. A 0.5 m plate gets 256 px per metre, and the camera at its closest (view_half_min 0.8) shows 562 per metre on 900 lines. plates and drawings: by style. The round plates, the warnings and the name plates, and the picture of every plate (rims, words, the walker, the arrow), follow the Roadcraft 4.0 look: no norm was read for them. outline_points 0 is a rectangle; rotation the first corner, in turns. drawings: the picture of each type, in SignType order, in shares of the plate: words the key of the player's translation it reads when the player wrote none (project/data/i18n), number the figure it reads instead (a speed), rim a colour round the field, inner_share how far the field comes out, word_height and word_width the lettering's height and room, bar, slash and the walker in shares of its radius, arrow its tip, its base and its half height. word_bold: FontVariation.variation_embolden of the lettering.",
   "sheet_w_px": 1024,
   "sheet_h_px": 512,
   "sheet_round_s": 0.25,
@@ -330,7 +330,7 @@
  "styles": {
   "_doc": "What changes with a city's regional style (session-rules.md, section 10), laid over this table by DataTables: a block here replaces the same keys above, a list replaces the list. The drawings are the Roadcraft 4.0 look in both for now.",
   "roadcraft": {
-   "_doc": "What the Roadcraft 4.0 draws (src/render/signs.ts PLATE; src/world/utilities.ts and src/render/utilities.ts placePole: the urban and the rural pole, 8.5 m, made by tools/assets/make_pole_parts.py). The look of this style, not a norm.",
+   "_doc": "What the Roadcraft 4.0 draws (src/render/signs.ts PLATE; src/world/utilities.ts and src/render/utilities.ts placePole: the urban and the rural pole, 8.5 m, after CELESC E-313.0002 structures B1 with S1 and N1). The look of this style, not a norm.",
    "props": {
     "pole_cast": {"_doc": "What a pole casts, by the distance from the eye to the nearest point of its chunk: nearer than from_m the whole pole (an insulator shows there); from there only its parts of least_m or longer, round ones of `segments` sides; nothing from end_m, where a pole or a bin is thinner than a texel of the far cascades, and the chunk's other furniture stops casting there too. One level at a time, picked each frame (render/props/prop_renderer.cpp pick).", "from_m": 140, "end_m": 220, "least_m": 0.3, "segments": 5},
     "pole": [
@@ -377,10 +377,10 @@
      "info": {"w_m": 1.0, "h_m": 0.6, "z_m": 2.2, "rotation": 0.0, "outline_points": 0}
     },
     "drawings": [
-     {"plate": "stop", "field": "#c8102e", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "PARE", "word_height": 0.3, "word_width": 0.74},
+     {"plate": "stop", "field": "#c8102e", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "sign.words.stop", "word_height": 0.3, "word_width": 0.74},
      {"plate": "yield", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.72},
-     {"plate": "speed", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.8, "ink": "#111111", "words": "40", "word_height": 0.42, "word_width": 0.6},
-     {"plate": "noParking", "field": "#1f4fa0", "rim": "#c8102e", "inner_share": 0.8, "ink": "#ffffff", "words": "E", "word_height": 0.54, "word_width": 0.6, "slash": "#c8102e", "slash_reach": 0.6, "slash_width": 0.16},
+     {"plate": "speed", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.8, "ink": "#111111", "number": 40, "word_height": 0.42, "word_width": 0.6},
+     {"plate": "noParking", "field": "#1f4fa0", "rim": "#c8102e", "inner_share": 0.8, "ink": "#ffffff", "words": "sign.words.noParking", "word_height": 0.54, "word_width": 0.6, "slash": "#c8102e", "slash_reach": 0.6, "slash_width": 0.16},
      {"plate": "noEntry", "field": "#c8102e", "ink": "#ffffff", "bar": [1.3, 0.32]},
      {
       "plate": "pedestrian",
@@ -390,10 +390,10 @@
       "ink": "#111111",
       "figure": {"head": [0, -0.35, 0.11], "width": 0.09, "strokes": [[[0, -0.2], [-0.05, 0.12], [-0.22, 0.4]], [[-0.05, 0.12], [0.15, 0.4]], [[-0.2, -0.02], [0, -0.15], [0.2, 0]]]}
      },
-     {"plate": "school", "field": "#f2c500", "rim": "#111111", "inner_share": 0.94, "ink": "#111111", "words": "ESCOLA", "word_height": 0.17, "word_width": 0.56},
-     {"plate": "direction", "field": "#1b6e3a", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "Centro", "word_height": 0.5, "word_width": 0.72, "arrow": [0.945, 0.828, 0.3]},
-     {"plate": "street", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.89, "ink": "#ffffff", "words": "Rua", "word_height": 0.55, "word_width": 0.92},
-     {"plate": "info", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.95, "ink": "#ffffff", "words": "Informação", "word_height": 0.3, "word_width": 0.9}
+     {"plate": "school", "field": "#f2c500", "rim": "#111111", "inner_share": 0.94, "ink": "#111111", "words": "sign.words.school", "word_height": 0.17, "word_width": 0.56},
+     {"plate": "direction", "field": "#1b6e3a", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "sign.words.direction", "word_height": 0.5, "word_width": 0.72, "arrow": [0.945, 0.828, 0.3]},
+     {"plate": "street", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.89, "ink": "#ffffff", "words": "sign.words.street", "word_height": 0.55, "word_width": 0.92},
+     {"plate": "info", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.95, "ink": "#ffffff", "words": "sign.words.info", "word_height": 0.3, "word_width": 0.9}
     ]
    }
   },
@@ -445,10 +445,10 @@
      "info": {"w_m": 1.0, "h_m": 0.6, "z_m": 2.4, "rotation": 0.0, "outline_points": 0}
     },
     "drawings": [
-     {"plate": "stop", "field": "#c8102e", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "PARE", "word_height": 0.3, "word_width": 0.74},
+     {"plate": "stop", "field": "#c8102e", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "sign.words.stop", "word_height": 0.3, "word_width": 0.74},
      {"plate": "yield", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.72},
-     {"plate": "speed", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.8, "ink": "#111111", "words": "40", "word_height": 0.42, "word_width": 0.6},
-     {"plate": "noParking", "field": "#1f4fa0", "rim": "#c8102e", "inner_share": 0.8, "ink": "#ffffff", "words": "E", "word_height": 0.54, "word_width": 0.6, "slash": "#c8102e", "slash_reach": 0.6, "slash_width": 0.16},
+     {"plate": "speed", "field": "#ffffff", "rim": "#c8102e", "inner_share": 0.8, "ink": "#111111", "number": 40, "word_height": 0.42, "word_width": 0.6},
+     {"plate": "noParking", "field": "#1f4fa0", "rim": "#c8102e", "inner_share": 0.8, "ink": "#ffffff", "words": "sign.words.noParking", "word_height": 0.54, "word_width": 0.6, "slash": "#c8102e", "slash_reach": 0.6, "slash_width": 0.16},
      {"plate": "noEntry", "field": "#c8102e", "ink": "#ffffff", "bar": [1.3, 0.32]},
      {
       "plate": "pedestrian",
@@ -458,10 +458,10 @@
       "ink": "#111111",
       "figure": {"head": [0, -0.35, 0.11], "width": 0.09, "strokes": [[[0, -0.2], [-0.05, 0.12], [-0.22, 0.4]], [[-0.05, 0.12], [0.15, 0.4]], [[-0.2, -0.02], [0, -0.15], [0.2, 0]]]}
      },
-     {"plate": "school", "field": "#f2c500", "rim": "#111111", "inner_share": 0.94, "ink": "#111111", "words": "ESCOLA", "word_height": 0.17, "word_width": 0.56},
-     {"plate": "direction", "field": "#1b6e3a", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "Centro", "word_height": 0.5, "word_width": 0.72, "arrow": [0.945, 0.828, 0.3]},
-     {"plate": "street", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.89, "ink": "#ffffff", "words": "Rua", "word_height": 0.55, "word_width": 0.92},
-     {"plate": "info", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.95, "ink": "#ffffff", "words": "Informação", "word_height": 0.3, "word_width": 0.9}
+     {"plate": "school", "field": "#f2c500", "rim": "#111111", "inner_share": 0.94, "ink": "#111111", "words": "sign.words.school", "word_height": 0.17, "word_width": 0.56},
+     {"plate": "direction", "field": "#1b6e3a", "rim": "#ffffff", "inner_share": 0.9, "ink": "#ffffff", "words": "sign.words.direction", "word_height": 0.5, "word_width": 0.72, "arrow": [0.945, 0.828, 0.3]},
+     {"plate": "street", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.89, "ink": "#ffffff", "words": "sign.words.street", "word_height": 0.55, "word_width": 0.92},
+     {"plate": "info", "field": "#1f4fa0", "rim": "#ffffff", "inner_share": 0.95, "ink": "#ffffff", "words": "sign.words.info", "word_height": 0.3, "word_width": 0.9}
     ]
    }
   },

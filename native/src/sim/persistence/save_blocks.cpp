@@ -53,7 +53,7 @@ bool read_extra_blocks(ByteReader &r, CityState &s, uint32_t version) {
 		if (!r.ok || r.o + size > r.n) return false;
 		ByteReader block{ r.p + r.o, size };
 		if (tag == SAVE_TAG_DEMOLITION && !read_damage_block(block, s.damage, version)) return false;
-		if (tag == SAVE_TAG_STREET && !read_street_block(block, s.street)) return false;
+		if (tag == SAVE_TAG_STREET && !read_street_block(block, s.street, version)) return false;
 		if (tag == SAVE_TAG_LOTS && !read_lots_block(block, s.lot_book)) return false;
 		if (tag == SAVE_TAG_LINKS && !read_links_block(block, s.roads)) return false;
 		if (tag == SAVE_TAG_CROSSINGS && !read_crossings_block(block, s.roads)) return false;

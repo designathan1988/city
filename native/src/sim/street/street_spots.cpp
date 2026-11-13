@@ -165,6 +165,7 @@ void name_plates(const RoadNetwork &net, const StreetItem &item, const std::vect
 			s.z = float(z);
 			s.type = SignType::STREET;
 			s.text = item.text;
+			s.given = item.given;
 			s.face_x = float(lx); // along the street, read from both sides
 			s.face_z = float(lz);
 			out.push_back(s);

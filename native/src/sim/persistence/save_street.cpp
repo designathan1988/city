@@ -13,7 +13,7 @@ namespace {
 // A pole's flags byte: its lamp, and its kind (a save from before the kinds holds 0 or 1: every pole urban).
 constexpr uint8_t POLE_LAMP_BIT = 1, POLE_RURAL_BIT = 2;
 
-void write_records(ByteWriter &w, const StreetWorks &k) {
+void write_street_records(ByteWriter &w, const StreetWorks &k) {
 	w.put_slots(k.items.items.size());
 	for (const StreetItem &i : k.items.items) {
 		if (!w.put_alive(i.alive)) continue;
@@ -22,6 +22,9 @@ void write_records(ByteWriter &w, const StreetWorks &k) {
 		w.put<float>(i.x);
 		w.put<float>(i.z);
 		w.put_string(i.text);
+		w.put_string(i.given.form);
+		w.put_string(i.given.name);
+		w.put<uint32_t>(i.given.ordinal);
 	}
 	w.put_slots(k.poles.items.size());
 	for (const UtilityPole &p : k.poles.items) {
@@ -50,7 +53,7 @@ void write_records(ByteWriter &w, const StreetWorks &k) {
 	}
 }
 
-bool read_records(ByteReader &r, StreetWorks &k) {
+bool read_street_records(ByteReader &r, StreetWorks &k, uint32_t version) {
 	uint32_t count = r.get_count(SLOT_MIN_BYTES);
 	if (!r.ok) return false;
 	for (uint32_t i = 0; i < count && r.ok; i++) {
@@ -61,6 +64,11 @@ bool read_records(ByteReader &r, StreetWorks &k) {
 		it.x = r.get<float>();
 		it.z = r.get<float>();
 		it.text = r.get_string();
+		if (version >= GIVEN_NAME_SAVE_VERSION) { // before, a given name was written out as text in the language of its day
+			it.given.form = r.get_string();
+			it.given.name = r.get_string();
+			it.given.ordinal = r.get<uint32_t>();
+		}
 		if (int(it.kind) >= ITEM_KINDS || int(it.sign) >= SIGN_TYPES) return false;
 		if (r.ok) k.put_item(int(i), it);
 	}
@@ -113,10 +121,10 @@ bool read_records(ByteReader &r, StreetWorks &k) {
 
 bool write_street_block(ByteWriter &w, const StreetWorks &k) {
 	if (k.items.alive == 0 && k.poles.alive == 0 && k.spans.alive == 0 && k.barriers.alive == 0 && k.cuts.alive == 0) return false;
-	write_records(w, k);
+	write_street_records(w, k);
 	return true;
 }
 
-bool read_street_block(ByteReader &r, StreetWorks &k) { return read_records(r, k); }
+bool read_street_block(ByteReader &r, StreetWorks &k, uint32_t version) { return read_street_records(r, k, version); }
 
 } // namespace city

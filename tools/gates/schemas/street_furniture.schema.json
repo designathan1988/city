@@ -559,11 +559,11 @@
    "properties": {
     "_doc": {"type": "string"},
     "reach_m": {"type": "number"},
-    "prefix": {"type": "string"},
-    "prefixes": {"type": "object", "additional": {"type": "string", "minLength": 1}, "description": "a road category or profile id and the word that takes the prefix's place"},
-    "names": {"type": "array", "items": {"type": "string", "minLength": 1}}
+    "form": {"type": "string", "pattern": "^street\\.form\\.[a-z][A-Za-z]*$", "description": "a key of the player's translations: the form of a street's name, one place (%s) for the name"},
+    "forms": {"type": "object", "additional": {"type": "string", "pattern": "^street\\.form\\.[a-z][A-Za-z]*$"}, "description": "a road category or profile id and the form (a translation's key) that takes the form's place"},
+    "names": {"type": "array", "items": {"type": "string", "pattern": "^street\\.name\\.[a-z][a-z0-9_]*$"}, "description": "keys of the player's translations"}
    },
-   "required": ["_doc", "reach_m", "prefix", "prefixes", "names"],
+   "required": ["_doc", "reach_m", "form", "forms", "names"],
    "strict": true
   },
   "signs": {

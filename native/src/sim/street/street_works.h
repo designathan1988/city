@@ -26,12 +26,24 @@ constexpr bool street_kit_piece(ItemKind k) {
 }
 constexpr int ITEM_KINDS = int(ItemKind::COUNT);
 
+// The name the city gives a street (sim/street/street_names.h), as keys of the player's translations: shown in the player's
+// language when a plate is painted, never written out in one. `ordinal`, when not 0: the number after the name, once every name
+// of the list is taken.
+struct GivenName {
+	std::string form, name;
+	uint32_t ordinal = 0;
+	bool empty() const { return name.empty(); }
+	bool operator==(const GivenName &o) const { return form == o.form && name == o.name && ordinal == o.ordinal; }
+	bool operator!=(const GivenName &o) const { return !(*this == o); }
+};
+
 struct StreetItem {
 	bool alive = false;
 	ItemKind kind = ItemKind::BENCH;
 	SignType sign = SignType::STOP; // a SIGN
 	float x = 0, z = 0;
-	std::string text; // a SIGN's words, a STREETNAME's name
+	std::string text; // the words the player wrote: a SIGN's, a STREETNAME's name
+	GivenName given; // a STREETNAME the city named (text empty)
 	float box(int axis) const { return axis == 0 ? x : z; }
 };
 
@@ -62,7 +74,8 @@ struct Barrier {
 struct SignStand {
 	float x = 0, y = 0, z = 0;
 	SignType type = SignType::STOP;
-	std::string text;
+	std::string text; // the player's words; empty: the given name, else the plate's own words (streets.json drawings)
+	GivenName given;
 	float face_x = 0, face_z = 1;
 };
 

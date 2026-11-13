@@ -1,5 +1,6 @@
 // The names streets are given (Roadcraft world/roads/streetNames.ts nameFor): a street without a name plate takes one from
-// the style's list, the prefix by its kind of road, none repeated. The plates stand at its corners (street_spots.h).
+// the style's list, the form of the name by its kind of road, none repeated. A given name is kept as keys of the player's
+// translations (GivenName), so a plate reads in the player's language. The plates stand at its corners (street_spots.h).
 #pragma once
 
 #include "sim/street/street_works.h"
@@ -15,7 +16,7 @@ struct ChangeLog;
 // Where a street's name goes and what it says, as a STREETNAME item.
 struct StreetName {
 	float x = 0, z = 0;
-	std::string text;
+	GivenName given;
 };
 
 // The segment a name item names, or -1: the nearest within the reach of a name (street_names.reach_m).

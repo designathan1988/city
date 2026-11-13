@@ -72,6 +72,7 @@ const STRINGS := [
 	"res://data/i18n/strings_ui.csv",
 	"res://data/i18n/strings_d.csv",
 	"res://data/i18n/strings_e.csv",
+	"res://data/i18n/strings_world.csv", # the words the world shows: the plates' own words, the streets' given names
 ]
 
 static var _cache: Dictionary = {}

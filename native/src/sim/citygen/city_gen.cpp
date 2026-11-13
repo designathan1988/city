@@ -106,7 +106,7 @@ void name_streets(CityState &s) {
 		it.kind = ItemKind::STREETNAME;
 		it.x = n.x;
 		it.z = n.z;
-		it.text = n.text;
+		it.given = n.given;
 		s.street.add_item(it);
 	}
 }

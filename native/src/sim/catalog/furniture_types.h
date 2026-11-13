@@ -88,7 +88,7 @@ struct Footprint {
 // 0 when it is always there.
 // The sets of parts of the pole's list (props.pole "part"): a piece shows those of its mask. ARM and CAN are an urban pole's (the
 // arm over the street with its rack, the transformer away from it); ARM_RURAL and CAN_RURAL a rural pole's (the arm across the
-// crown, the transformer toward the street): tools/assets/make_pole_parts.py.
+// crown, the transformer toward the street), after CELESC E-313.0002 structures B1 with S1 (urban) and N1 (rural).
 enum class PoleSet : int { MAST = 1, ARM = MAST << 1, CAN = ARM << 1, LAMP = CAN << 1, COLUMN = LAMP << 1, ARM_RURAL = COLUMN << 1, CAN_RURAL = ARM_RURAL << 1 };
 
 struct PartBox {
@@ -121,12 +121,14 @@ struct ItemDef {
 	CITY_ITEM_FIELDS(CITY_FURNITURE_DECLARE)
 };
 
-// How a street without a name gets one (data/catalog/street_furniture.json "street_names").
+// How a street without a name gets one (data/catalog/street_furniture.json "street_names"). Every text here is a key of the
+// player's translations (project/data/i18n): the core keeps keys, the plate painter (project/render/sign_sheet.gd) shows them in
+// the player's language, so the order of a name's words is the language's own (the word for a street before the name or after it).
 struct StreetNamesDef {
 	float reach_m = 0;
-	std::string prefix;
-	std::unordered_map<std::string, std::string> prefixes; // by profile id or road category
-	std::vector<std::string> names;
+	std::string form; // the form of a street's name: a translation with one place for the name
+	std::unordered_map<std::string, std::string> forms; // by profile id or road category, the form that takes its place
+	std::vector<std::string> names; // the names a street is given, as keys
 };
 
 struct StreetFurnitureDef {

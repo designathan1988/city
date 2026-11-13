@@ -17,20 +17,27 @@ namespace {
 
 constexpr uint32_t NAME_HASH = 2654435761u; // Knuth's multiplicative hash: a street's first try in the list
 
-const std::string &prefix_of(const StreetNamesDef &d, const Profile &p) {
-	auto by_id = d.prefixes.find(p.id);
-	if (by_id != d.prefixes.end()) return by_id->second;
-	auto by_category = d.prefixes.find(p.category);
-	return by_category != d.prefixes.end() ? by_category->second : d.prefix;
+const std::string &form_of(const StreetNamesDef &d, const Profile &p) {
+	auto by_id = d.forms.find(p.id);
+	if (by_id != d.forms.end()) return by_id->second;
+	auto by_category = d.forms.find(p.category);
+	return by_category != d.forms.end() ? by_category->second : d.form;
 }
 
-std::string pick(const StreetNamesDef &d, const std::string &prefix, uint32_t k, const std::unordered_set<std::string> &used) {
+// A given name as one text, to tell two apart: its keys and its number (no language's words).
+std::string given_key(const GivenName &g) { return g.form + '\n' + g.name + '\n' + std::to_string(g.ordinal); }
+
+GivenName pick_name(const StreetNamesDef &d, const std::string &form, uint32_t k, const std::unordered_set<std::string> &used) {
 	const size_t n = d.names.size();
+	GivenName out;
+	out.form = form;
 	for (size_t tries = 0; tries < n; tries++, k++) {
-		std::string candidate = prefix + " " + d.names[k % n];
-		if (!used.count(candidate)) return candidate;
+		out.name = d.names[k % n];
+		if (!used.count(given_key(out))) return out;
 	}
-	return prefix + " " + d.names[k % n] + " " + std::to_string(used.size() + 1);
+	out.name = d.names[k % n];
+	out.ordinal = uint32_t(used.size() + 1);
+	return out;
 }
 
 } // namespace
@@ -47,7 +54,7 @@ std::vector<StreetName> names_for(const RoadNetwork &net, const StreetWorks &wor
 	std::unordered_set<std::string> used;
 	std::unordered_set<int> named; // segments whose street holds a name, one given before or one given here
 	for (const StreetItem &it : works.items.items)
-		if (it.alive && it.kind == ItemKind::STREETNAME) used.insert(it.text);
+		if (it.alive && it.kind == ItemKind::STREETNAME && !it.given.empty()) used.insert(given_key(it.given));
 	for (const auto &kv : works.names.by_item) named.insert(kv.second.chain.begin(), kv.second.chain.end());
 	std::sort(segs.begin(), segs.end());
 	for (int id : segs) {
@@ -56,8 +63,8 @@ std::vector<StreetName> names_for(const RoadNetwork &net, const StreetWorks &wor
 		if (named.count(id) || !g.alive || p.rail) continue;
 		for (int s : street_chain(net, id)) named.insert(s);
 		StreetName name;
-		name.text = pick(d, prefix_of(d, p), uint32_t(id) * NAME_HASH, used);
-		used.insert(name.text);
+		name.given = pick_name(d, form_of(d, p), uint32_t(id) * NAME_HASH, used);
+		used.insert(given_key(name.given));
 		double x, z, y;
 		footway_point(net, id, g.len / 2, 0.f, x, z, y);
 		name.x = float(x);
