@@ -3,6 +3,8 @@
 // driver sees the signals down the street.
 #include "sim/traffic/light_rule.h"
 
+#include "sim/traffic/motion_law.h"
+
 #include <algorithm>
 #include <cmath>
 

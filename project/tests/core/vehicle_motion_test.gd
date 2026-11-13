@@ -60,7 +60,7 @@ func _ready() -> void:
 		_compare(before, now)
 		_bodies_met(watch)
 		before = now
-	print("rows: id, x, z, speed, off, type, on a connector, ds, lane, s, cs, came, lane change offset, conn, route steps left, stop_at, lot car, its phase, along its way, closing its lane, lorry")
+	print("rows: id, x, z, speed, off, type, on a connector, ds, lane, s, cs, came, lane change offset, conn, route steps left, stop_at, lot car, its phase, along its way, closing its lane, lorry, lane changed out of, clear of it at, lane wanted, waited")
 	check(_seen.size() >= LEAST_SEEN, "the town drives round the camera: %d vehicles seen" % _seen.size())
 	check(_lurch == 0, "no body jumps farther than its speed carries it in a tick: %d jumps, the worst (metres, before, after) %s" % [_lurch, _lurch_worst])
 	check(_stalled == 0, "no body stands still a tick while it drives: %d, the first (before, after) %s" % [_stalled, _stall_case])

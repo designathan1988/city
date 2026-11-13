@@ -41,6 +41,8 @@ bool lane_allows(int lane, int n, Turn t) {
 	return t == Turn::RIGHT ? lane == 0 : lane == n - 1;
 }
 
+constexpr float FLAT_CURVE = 1e-6f; // a tangent shorter than this has no curvature to read
+
 void make_curve(const CityState &s, Conn &c, const TrafficParams &tp) {
 	Pose a, b;
 	lane_pose(s, c.from_ds, c.from_lane, s.traffic.g.ds[c.from_ds].len, a);
@@ -67,6 +69,46 @@ void make_curve(const CityState &s, Conn &c, const TrafficParams &tp) {
 		prev = q;
 	}
 	c.len = c.table[CONN_STEPS]; // its curve's own: a vehicle never drives length the curve does not have (a road joint's is short)
+	const V2 second = (p0 - ctrl * 2.f + p1) * 2.f; // the curve's second derivative, the same all along it
+	c.bend = 0;
+	for (int i = 0; i <= CONN_STEPS; i++) {
+		const float t = float(i) / CONN_STEPS;
+		const V2 first = (ctrl - p0) * (2 * (1 - t)) + (p1 - ctrl) * (2 * t);
+		const float l = first.len();
+		if (l > FLAT_CURVE) c.bend = std::max(c.bend, std::fabs(first.x * second.y - first.y * second.x) / (l * l * l));
+	}
+}
+
+// Where the segment's curve bends, for directed segment `d` of it (DirSeg::bend): the centre line's greatest curvature, signed
+// left of `d`'s travel, and the stretch of `d` at or over the kept share of it; none under the least a driver slows for.
+void set_bend(const RoadSegment &sg, const TrafficParams &tp, DirSeg &d) {
+	const int n = int(sg.table.size()) - 1;
+	if (n < 1) return;
+	const double ax = 2 * (sg.q.x1 - 2 * sg.q.cx + sg.q.x0), az = 2 * (sg.q.z1 - 2 * sg.q.cz + sg.q.z0);
+	static thread_local std::vector<float> k;
+	k.assign(size_t(n) + 1, 0.f);
+	float peak = 0;
+	for (int i = 0; i <= n; i++) {
+		double dx, dz;
+		sg.q.deriv(double(i) / n, dx, dz);
+		const double l = std::hypot(dx, dz);
+		if (l < FLAT_CURVE) continue;
+		k[size_t(i)] = float((dz * ax - dx * az) / (l * l * l)); // left of a -> b is (dz, -dx): positive turning left
+		peak = std::max(peak, std::fabs(k[size_t(i)]));
+	}
+	if (peak < tp.bend_least) return;
+	int first = -1, last = -1, at = 0;
+	for (int i = 0; i <= n; i++) {
+		if (std::fabs(k[size_t(i)]) < tp.bend_keep_share * peak) continue;
+		if (first < 0) first = i;
+		last = i;
+		if (std::fabs(k[size_t(i)]) >= std::fabs(k[size_t(at)])) at = i;
+	}
+	// this direction's s runs from at0 along `sign`
+	const float one = (float(sg.table[size_t(first)]) - d.at0) * d.sign, two = (float(sg.table[size_t(last)]) - d.at0) * d.sign;
+	d.bend = k[size_t(at)] * d.sign;
+	d.bend_from = clampf(std::min(one, two), 0.f, d.len);
+	d.bend_to = clampf(std::max(one, two), 0.f, d.len);
 }
 
 // One connection, allocated from the pool and threaded onto the node and lane lists.
@@ -174,6 +216,7 @@ void build_dir(CityState &s, int seg) {
 		d.speed = p.speed / KMH_PER_MS;
 		d.at0 = float(dir == 0 ? sg.retreat_a : sg.len - sg.retreat_b);
 		d.sign = dir == 0 ? 1.f : -1.f;
+		set_bend(sg, s.catalog.traffic, d);
 		Pose end;
 		lane_pose(s, seg * 2 + dir, 0, len, end);
 		d.ex = end.x;

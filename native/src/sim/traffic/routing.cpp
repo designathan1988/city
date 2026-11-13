@@ -1,8 +1,9 @@
-// Car routing (Roadcraft src/sim/routing.ts, traffic/micro.ts detour/reconsider): A* over directed segments, so lane
-// connectors and one-way streets are respected. Edge time = (length / limit + a fixed extra) x (1 + gain r^2) with
-// r = vehicles / slots on the segment (BPR); junction cost by turn (right, left, U) and signals; heuristic =
-// straight distance at GUESS_SPEED (astar.h). Detours and
-// reconsiderations are short searches that rejoin the old route a few segments on.
+// Car routing: A* over (directed segment, lane it is entered on), so lane connectors, one-way streets and the lanes a turn
+// leaves from are respected: a turn costs the lane changes that reach its lane (lc_duration_s each, and the slowing where the
+// segment is short for them) and is no way where even a crawl leaves no room for them. Edge time = (length / limit + a fixed
+// extra) x (1 + gain r^2) with r = vehicles / slots on the segment (BPR); junction cost by turn (right, left, U) and signals;
+// heuristic = straight distance at GUESS_SPEED (astar.h). One search a route. Detours and reconsiderations are short searches
+// that rejoin the old route a few segments on.
 #include "sim/traffic/traffic_system.h"
 
 #include "core/units.h"
@@ -10,6 +11,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 
 namespace city {
 namespace traffic {
@@ -44,31 +46,6 @@ void end_point(const CityState &s, int ds, V2 &p) {
 	p = V2(d.ex, d.ez);
 }
 
-// The connectors the router relaxes from `ds`: of those leaving it, to each segment they reach the one the largest body fits.
-// Every connector from `ds` to one segment costs the same (the segment's time and load, the turn the two segments make, the node
-// they share), so the others only relaxed it again to no effect; the targets keep the order each_conn_from walks them in.
-const std::vector<int> &next_of(CityState &s, int ds) {
-	TrafficState &t = s.traffic;
-	const LaneGraph &g = t.g;
-	if (t.route_next.size() < g.ds.size()) {
-		t.route_next.resize(g.ds.size());
-		t.route_next_stamp.resize(g.ds.size(), 0);
-	}
-	std::vector<int> &next = t.route_next[size_t(ds)];
-	if (t.route_next_stamp[size_t(ds)] == s.lane_graph_serial + 1) return next;
-	t.route_next_stamp[size_t(ds)] = s.lane_graph_serial + 1;
-	next.clear();
-	each_conn_from(g, ds, [&](int ci) {
-		for (int &k : next)
-			if (g.conns[size_t(k)].to_ds == g.conns[size_t(ci)].to_ds) {
-				if (g.conns[size_t(ci)].max_class > g.conns[size_t(k)].max_class) k = ci;
-				return;
-			}
-		next.push_back(ci);
-	});
-	return next;
-}
-
 } // namespace
 
 float junction_cost(const CityState &s, const Conn &c) {
@@ -95,18 +72,32 @@ bool find_route(CityState &s, int from_ds, int goal_ds, std::vector<int> &out, V
 	V2 goal;
 	end_point(s, goal_ds, goal);
 	const float guess = tp.guess_speed_kmh / KMH_PER_MS;
-	auto h = [&](int ds) { V2 p; end_point(s, ds, p); return (p - goal).len() / guess; };
-	auto expand = [&](int ds, auto relax) {
-		for (int ci : next_of(s, ds)) {
+	// a state is a segment and the lane it was entered on (the start's lane is its caller's to check: any turn out of it is free)
+	auto h = [&](int k) { V2 p; end_point(s, k / MAX_LANES, p); return (p - goal).len() / guess; };
+	auto expand = [&](int k, auto relax) {
+		const int ds = k / MAX_LANES, in = k % MAX_LANES;
+		const DirSeg &here = g.ds[size_t(ds)];
+		const float room = std::max(0.f, here.len - tp.mouth_clear_m);
+		each_conn_from(g, ds, [&](int ci) {
 			const Conn &c = g.conns[size_t(ci)];
-			if (c.to_ds == banned_ds || c.max_class < cls) continue;
+			if (c.to_ds == banned_ds || c.max_class < cls) return;
 			const DirSeg &d = g.ds[size_t(c.to_ds)];
-			if (by_bike && !d.bikes) continue;
-			relax(c.to_ds, (d.len / std::max(d.speed, 1.f) + tp.edge_extra_s) * load_factor(s, c.to_ds) + junction_cost(s, c));
-		}
+			if (by_bike && !d.bikes) return;
+			float changing = 0; // seconds the lane changes to this turn's lane add
+			if (const int across = ds == from_ds ? 0 : std::abs(c.from_lane - in); across > 0) {
+				const float needs = float(across) * tp.lc_duration_s; // the time the changes take
+				if (room < needs * tp.lc_crawl_ms) return; // not even at a crawl
+				const float fits = room / needs; // the fastest the segment is driven with the changes in it
+				changing = needs + (fits < here.speed ? here.len / fits - here.len / std::max(here.speed, 1.f) : 0.f);
+			}
+			relax(c.to_ds * MAX_LANES + c.to_lane,
+					(d.len / std::max(d.speed, 1.f) + tp.edge_extra_s) * load_factor(s, c.to_ds) + junction_cost(s, c) + changing);
+		});
 	};
 	const int limit = max_expanded < 0 ? int(tp.route_max_expanded) : max_expanded;
-	return astar(sc, g.ds.size(), from_ds, goal_ds, limit, h, expand, out);
+	const bool found = astar_to(sc, g.ds.size() * MAX_LANES, from_ds * MAX_LANES, [&](int k) { return k / MAX_LANES == goal_ds; }, limit, h, expand, out);
+	for (int &k : out) k /= MAX_LANES;
+	return found;
 }
 
 bool detour(CityState &s, int id, int blocked, bool need_room) {

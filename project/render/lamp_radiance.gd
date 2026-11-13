@@ -31,5 +31,5 @@ static func lenses(m: ShaderMaterial, environment: Environment) -> void:
 ## A vehicle's lamps burning by day (data/render/agents.json trim): shown as their colour, like the signal lenses.
 static func vehicles(m: ShaderMaterial, environment: Environment) -> void:
 	var trim: Dictionary = DataTables.render_table("agents").trim
-	for name: String in ["head_lit", "tail_lit", "brake_lit"]:
+	for name: String in ["head_lit", "tail_lit", "brake_lit", "signal_lit"]:
 		m.set_shader_parameter(name, ToneMap.radiance(Color.html(trim[name]), environment.tonemap_exposure, environment.tonemap_white))

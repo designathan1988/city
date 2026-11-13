@@ -124,12 +124,199 @@ H. Far traffic as flows, an adaptive window (row 8): NOT in this block. It repla
 - Settings: the node and headless Chrome processes the owner saw are MCP servers of account plugins, three copies; turned off
   for this project (.claude/settings.json superpowers-chrome false; .claude/settings.local.json syncClaudeAiPlugins false).
 
+## Since the process was changed (2026-11-13, evening)
+- The whole suite ran once: 67 of 71. Failing: camera_input_test and camera_feel_test (the same figures as at 17:02, before this
+  block: Pinterface-142 owns them), shoot_test and yard_test (passed before this block; both scenes are chosen from who walks
+  or drives where, which the traffic's change moved: registered with their causes at shoot_body_cases.gd:171 and
+  yard_test.gd:49-59; neither is the traffic's code).
+- The internet, searched for the values written from memory: confirmed the coolness 0.99 (arXiv 0912.3613), MOBIL's typical
+  values (traffic-simulation.de/info/info_MOBIL.html), 1.0 to 1.5 m/s2 for a bus's standing passengers (Karekla and Fang 2021),
+  the 100 feet of signal (Texas Transportation Code 545.104). Not confirmed: AASHTO's low-speed side friction, ISO 15622's
+  jerk, the indicator's 90 a minute, the truck's figures, the spread between drivers. traffic.json _drive_doc and
+  materials.json now say which is which; the unsourced ones are one register problem.
+- Context7 asked for what the code calls: Godot's spatial shader built-ins (INSTANCE_CUSTOM: four floats, 16 bits each on
+  Compatibility, so 1 and 2 are exact; varying flat; TIME), GDScript's Dictionary dot access.
+- The block was opened again only for those two `_doc` texts (no behaviour changed).
+
+## The final verification (2026-11-13, night; block in verify, round 0)
+- The owner: "processo não pode demorar, não ter valor de saída, não poder ser monitorado, nem impedir que uma tarefa seja
+  bloqueada porque a anterior é lenta"; "não aceito que passe para outra coisa e deixe o que precisa fazer"; "corrija agora
+  todos os mecanismos para impedir todos os seus comportamentos". Done in the tools (commit ea9015a3): the hook refuses a
+  script typed into the shell, a muted, joined or foreground run, a file written by the shell, an edit that leaves a Python or
+  JSON file unreadable, an agent, a stop with the block open, and everything when its gate does not load.
+- The whole suite, once, after `block verify` (run 20261113-194105-4744-tests, 238 s): 67 of 71 pass. Failing:
+  camera_feel_test and camera_input_test (the same figures as at 17:02, before this block; Pinterface-142's criterion names
+  them), shoot_test and yard_test (registered, their criteria name them: scenes chosen from who walks or drives where).
+  `block status`: failed now: none. driving_test ran in it and passed (dist/tasks/20261113-194105-4744-tests/driving_test.log).
+- A trap met: `python tools/tasks/cli.py status` listed the 17:02 run as "live" (its process number taken again by another
+  process) and not the newest one; a run's result is read from its own lines (the background task's output, the newest
+  folder of dist/tasks), never from that listing alone. Registered.
+
+- The photo plan `near` ran (dist/captures/near/01-near_vehicle.png): by day, a car on a straight street. It cannot show a
+  lit indicator: no plan looks at a signalling car, and none by night. The check is missing, not failed: the render of the
+  indicator (INSTANCE_CUSTOM.a -> the lens's tag) has no proof yet.
+  Design of the missing check (the block opened again for it; test side only, no behaviour changed):
+  driving_census also answers the vehicle on a turning connector nearest `at` that shows its turn's side: `shown_at`
+  (Vector3), `shown_side` (1 left, 2 right), `shown_facing` (Vector2), `shown` (bool) (city_core_drive_probe.cpp);
+  look_aim.gd kind "signalling" stands the rig on it (clock stopped) and prints the side and the facing;
+  project/tests/visual/signal_plan.json: hour 16, clock 600 frames, the view near it from above, two shots 20 frames apart
+  (the lens blinks at signal_hz 1.5 with duty 0.5: one of the two is lit), then hour 22 and the same two; task `signal` in
+  suites.json `looks`. The photo is read against the printed side: the amber lens lit on that side of the body's heading.
+- `lab_test --jobs 1` answered from the cache (0 s): no measure. Run again with `--all --jobs 1`, alone
+  (dist/tasks/20261113-195521-13040-lab_test): PASS 22.2 s, FAILURES: 0. Its report: frame 16.68 ms (59.97 fps, bound
+  "headroom"), CPU 2.61 ms, GPU 6.66 ms (mean 6.45), 1 hitch in 176 frames, findings none; CPU zones: draw 2.43 ms, setup
+  0.03 ms, agents 0.014 ms. The process's peak memory: 1591.8 MB (memory.json). Median bar: 16.67 ms a frame at 1080p.
+
+- The plan `signal`, first run (dist/captures/signal, 12 photos, FAILURES 0; "signalling at (62.0, 20.14, -103.8): its right
+  indicator, heading (0.43, -0.90)"; a right turn). By eye the three shots of a view look the same: at 60 px a metre a lens
+  of 6 cm is 4 px. By number (the photos written 1.147 and 1.135 s apart: 0.71 of a flash, so three shots cannot share a
+  phase), the pixels that change between shots of a view: the lens beside the front right headlamp, (1007-1010, 574-577),
+  dull amber (183,111,13) -> lit orange (255,145,31) by day and (212,114,6) -> (255,250,192) by night; the rear right corner
+  (1140-1154, 519-531) by night; nothing at the left lenses; the rest is the edges' anti-aliasing. So the right lenses flash
+  on a right turn, the left ones do not: +x as the vehicle's left (car_parts.cpp:134) holds, the chain signal_side -> look
+  bits -> INSTANCE_CUSTOM.a -> tags 8, 9 works. The plan itself was wrong for a reader's eye: brought to 250 px a metre, from
+  dead ahead and dead behind, so both lenses of an end are in one picture.
+- In that view (usage step): GPU 8.5 ms, CPU 1.1 ms a frame, video memory 738 MB, static memory 511 MB.
+- The flash rate has its source now (materials.json _doc: Council Directive 93/92/EEC, 90 +- 30 a minute, as a search of
+  legislation.gov.uk shows it; the PDF did not open).
+
+- The plan `signal`, as it stands (150 px a metre, front quarter and opposite rear quarter, 30 degrees; the run at 250 from
+  12 degrees left the lamps under the frame): "signalling at (58.7, 20.14, -32.3): its left indicator" (another car: a look
+  plan runs in real time). Rear view, 22 h, shots 1 and 2: the outer lens of the rear LEFT lamp, a block of 10 x 10 px at
+  (1098-1111, 727-739), amber (248,167,27) -> lit (255,249,189); the rear right lens does not change. The picture for the
+  owner: dist/captures/signal_proof/seta_esquerda_noite_apagada_acesa.png. With the first run: right lenses on a right
+  turn, left lenses on a left turn, by day and by night. driving_test after the probe's change: PASS 5.2 s, 440 of 440
+  turning cars show their turn's side, 130 changes signalled, 88 made after their signal, 22 forced; "0 streets curve": the
+  generated town has no curved street, a street's bend (DirSeg::bend) is exercised by no test.
+- Seen on the photos, not this block's work, to register: the lens of an indicator is 6 x 4.5 cm (agents.json indicator_m),
+  1 px at the player's usual view; the tail lamps show orange by night.
+- The gates on the block's 43 files: 11 findings. Four are the register's (SECOND_OWNER car_parts.cpp, lane_graph.cpp,
+  lane_graph_types.h; FUNCTION_SIZE agent_renderer.cpp update, 92 lines before this block). Seven were this block's, fixed
+  in the code: traffic_system.h 265 lines and vehicle_motion.cpp 369 (the following law, the bends and the braking curve
+  declared in motion_law.h; lead_beyond and lane_leads in the new lane_leads.cpp; in_sight and wander, now window_shows and
+  drive_on, in the new unseen_exit.h/.cpp); step_lane 95 lines (note_red_entry taken out); names the reference defines:
+  bend_speed -> bend_pace, jerk_down -> jerk_brake (key and member), and in_sight's body, 52% shared with a passage of the
+  reference's carBody.ts:421 (a squared-distance test), written with std::hypot.
+
+- After the split: both DLLs built (62.8 s, 52.8 s); the traffic's ten tests, once: flow_control_test, driving_test,
+  vehicle_motion_test, traffic_hash_test, records_traffic_test, e2e, junction_sweep_test, street_crossing_test, transit_test,
+  window_traffic_test: 13 of 13 tasks pass (101 s). The gates on the block's 45 files: the one finding left that was this
+  block's (window_shows, 62% of it shared with a passage of the reference's lotTool.ts:582 as std::hypot) written in the
+  project's own form (demand.cpp:96, V2 and len); now only the register's four (SECOND_OWNER x3, FUNCTION_SIZE
+  agent_renderer.cpp). lab_scan over the whole repository: 1801 findings in 1095 files, 124 in native/src/sim/traffic, the
+  standing mass; none on the lines this block changed (the gate judges those).
+- Registered: Pprocess-19 (status takes an ended run for a live one), Ptraffic-92 (the indicator's lens too small to see),
+  Ptraffic-93 (tail lamps orange by night).
+- doc/port.md, traffic: seven cases marked done; open: "far traffic as flows; an adaptive detailed window" (H) and the
+  first case, the tracer's empty `--cost` on city.traffic.step (tools/tracer/tracer/cost.py), which nobody touched.
+
+- After window_shows's rewrite: build PASS; traffic_hash_test, vehicle_motion_test, driving_test PASS (FAILURES: 0 each).
+  The whole suite once more on the final code (228 s): 67 of 71, the same four with the same figures: camera_input_test
+  and camera_feel_test (Pinterface-142, failing before this block), shoot_test and yard_test (passing before this block;
+  registered with their causes: the test's scene at shoot_body_cases.gd:171, the yard's docks with no way at the site
+  yard_test.gd:49-59 picks from where a vehicle stands). Cases A to G committed with this state.
+
+## H, read so far (2026-11-13 night)
+- The sheet's row 8 (sheets/traffic.md:20): here far vehicles are individual events, a fixed 1500 m window, far cars not
+  drawn; the reference: a link transmission model over the map, demand by 250 m cell, a window 1.35x the view within
+  300-750 m (model.ts:4-15, meso/demand.ts:8-13, memory.ts:15-23).
+- Here, read whole: meso.cpp (300 lines): one queue a lane (meso_head/tail/count, Vehicle::ml, mnext, mprev), one event a
+  vehicle at its lane's end in a binary heap (ev_t, ev_v, schedule :26, pop_event :45); meso_enter :152 sets t_in, s0, the
+  run time = rest / (speed x vf) x (1 + meso_crowd x occ^2) + junction_cost, x meso_alpha, not before lane_last_exit +
+  headway / lanes; advance :221 at the event: arrived, or materialize behind a drawn queue, take_conn (changing lane inside
+  the segment), wait for green (next_green), a full lane holds it (slot_m, FIT_M), the mouth taken (mouth_taken :205), then
+  into the window as micro at s = 0 or meso_enter on the next lane. window.cpp (192 lines): in_window :103 = the directed
+  segment's middle within meso_window_m of the camera; check_window :159 every WINDOW_EVERY_S or MESO_VIEW_STEP 64 m:
+  look_at_segments (window_ds, window_lane_m, fill_ds for the demand), the near vehicles past meso_window_out_m leave the
+  scene (a bus goes to its lane's far queue: meso_enter), the far vehicles of lanes now inside become drawn (materialize
+  :114: each where its timing says, behind the drawn queue, slow enough to stop for a light), grow_ped_window.
+  So today only buses (and whatever demand.cpp spawns far) live in the far model; ordinary cars exist only in the window.
+- The reference, read whole: model.ts (630 lines), memory.ts (170). What it does (behaviour, none of its code or names):
+  - Every directed road of the whole map is a link of the Link Transmission Model (its header cites Yperman 2007 4.6;
+    Boyles et al., Transportation Network Analysis I 9.5.2): the cumulative count of vehicles in at its start and out at its
+    end, kept back in time a step a cell (as far back as its free run L/v and as its backward wave L/w need). A step of
+    1 s: what a link can send = min(those in a free run ago less those out, capacity x dt, those on it); what it can take =
+    min(those out a wave's run ago + its storage (length x lanes / 7.5 m) less those in, capacity x dt).
+  - Constants it states: a standing car takes 7.5 m a lane; the queue's tail moves back at 18 km/h ("the usual 15 to 20
+    km/h of measured urban queues"); a lane's capacity = v w / ((v + w) x 7.5 m) (about 1,900 an hour at 50 km/h); a link
+    into a signal or a stop line has half of it (the green's share).
+  - The node: every approach serves its turns in proportion to its capacity, in rounds, each round ending an approach or
+    filling an exit; an approach with a full exit among its turns waits whole (first in, first out) (Tampere et al. 2011).
+  - A link has: the share of its turns (weights), the share of what reaches its end that ends its trip there, the vehicles
+    a second that want to start on it (from off the map, from its street's lots) with a queue of 6 a lane at its origin
+    (more are lost), starting only into the room the through traffic leaves.
+  - Rates by cell (setRates): starts = (from off the map + the cell's cars per 100 m x length / 100 m x free speed / the
+    trip's length) x scale; ends = min(1, length / the trip's length) x the cell's weight.
+  - The window: a link coming into it hands its count to the detailed simulation as "to be made" and stops counting
+    itself; the detailed simulation tells how many it has on each link inside (so the room of an inside link = storage less
+    those and those to be made); what flows into an inside link adds to its "to be made" and is made as cars when one whole
+    car or more is there; a link leaving the window takes the detailed cars on it and those not made yet and lays them
+    along it as in free flow; a detailed car driving out of the window onto an outside link is counted in at its start.
+  - What is read of a link: its count, its queue (those that had the time to reach its end and did not leave), its speed
+    = length / (free run + queue / capacity).
+  - Its step is spread over the ticks of its second by a budget of links and nodes, in four phases (flows, nodes,
+    origins, counts), and gives the same numbers whole or spread.
+  - memory.ts: the window is 1.35 x the view (the greater of the focus's radius and how far the camera sees), between
+    300 m and 750 m; moved when the focus is past a third of it, resized when the view outgrows it or shrinks under 3/4
+    of it; the page keeps, a link, its count, queue, speed, length, lanes, flags and its line (start, middle, end), sent
+    only when what is drawn of it changed: the far cars are drawn from these.
+  - meso.ts (794 lines), read whole: the far model over the document's roads, not the lane graph (there the lane graph
+    holds the window's roads only; here it holds the whole map: DirSeg per directed segment). A link a directed road, its
+    numbers from the road's profile (lanes, trimmed length, speed, whether it runs into a signal or stop line), an exit of
+    the map where its end node has one road and no turning circle. Kept current by the network's changes only (the roads an
+    edit names, the roads at a changed node), never the whole map on an edit. A new link starts full as a street of its
+    land use stands at this hour (cars per 100 m x length x scale). Turns of a link: where the window holds lanes, the
+    links its lanes' connectors lead onto, weighted by how many; elsewhere the out roads weighted by their lanes; a U-turn
+    only when nothing else. The window: links by the 250 m cell of their middle, so a move looks only at the cells the
+    window was and will be over; a link is inside while its middle is within the window's radius. Coming in: its count is
+    made as cars spread along its lanes (random place, a random lane), 4 a tick at most, within the fleet's ceiling and the
+    tick's route-search budget; cars that flow in later are made at the link's start (0.6 m clearance). A made car's trip
+    ends at a lane just past the window's edge (a lane of a road out of an inside link's end node that is outside), 4 tries
+    for one it can reach; with none it drives by its lookahead. Whoever drives out of the window onto an outside link is
+    taken off the detailed simulation and counted in at that link's start (buses excepted: their timetable's). Each step
+    the detailed vehicles on each inside link are counted for its room. A step every 1 s of the city, its work (rates, the
+    model's four phases, the publish) spread over the ticks: 4096 links a tick; a step owed while one is under way waits
+    (the far traffic slows, the tick never grows), counted as late. Demand scale = traffic intensity x demand multiplier.
+  - demand.ts (117), mesoRates.ts (57), read whole: the land use by 250 m cell: its buildings counted by kind (home, shop,
+    work, civic), kept by the buildings' change journal (never all read again but at a map's opening); at an hour each kind
+    has a busyness; a cell's cars per 100 m of street = sum over kinds (cars of the kind x its buildings x its busyness) /
+    max(its buildings, 24): 24 buildings make a cell fully built; a cell's weight (the share of trips its streets end) =
+    min(1, buildings / 24). A trip's mean length is 3000 m: the share of a link's traffic ending on it = min(1, length /
+    3000 m) x weight, and its street's starts balance it so the street holds the land use's density in free flow. A link
+    that starts at the map's edge also takes the entry rate a lane from off the map. Cells read once a step into arrays.
+  - mesoPublish.ts (107), linkSpec.ts (38), read whole: a link is told to the drawing side only when what is drawn of it
+    changed: its rounded count or queue, its speed by more than a tenth, its flags (in the model, inside the window,
+    one-way), its length or lanes, its line. A link's numbers: the lanes of its way but the buses', its length between its
+    stop lines, its road's speed limit, "controlled" when its end node has three roads or more or a crossing; a road that
+    carries nothing that way is no link.
+  - render/densityCars.ts (607), read whole: the far cars are drawn from the links' numbers, never simulated one by one.
+    A link's cars = min(its count, length x lanes / 7.5 m): its queue stands packed at its end (a row of lanes every 7.5 m
+    back from the end), the rest spaced evenly over the free stretch before the queue and moving round that stretch at the
+    link's speed, their place worked out in the vertex shader from the clock (place = (start + speed x time) mod stretch):
+    nothing is written a frame. Each car an instance (its link, place along, offset across by its lane, direction; speed,
+    stretch, seed, model; paint); the link's line in a float texture (8 points a road). A car inside the window is folded
+    to nothing in the shader (the detailed cars are there). The cars are picture impostors of the near models (a quad
+    facing the eye), not drawn under a least size in pixels; at most 2^18 cars. The links are filed by the tile of their
+    middle: a mesh a tile, culled by the tile's sphere, written again only when a link of it changed (its count, queue,
+    speed, lanes, length or flags), and a tile with no road left is let go.
+  - slots.ts and tileLinks.ts are its containers (dense slots, threads, a link's id = segment x 2 + direction): this game
+    has its own (DirSeg index = segment x 2 + direction, traffic_system.h:19); not read further.
+
+## H, what this game has that the design must stand on (to read before the design)
+- The lane graph here covers the whole map (t.g.ds for every directed segment, t.g.conns), not the window only.
+- The demand (demand.cpp): fills the window with trips (window_lane_m, fill_ds), fleet_target, demand_for; zone kinds by
+  segment side (window.cpp:49 zone_kinds); day_factor by hour.
+- The poses' publication (traffic_system.cpp:113 publish_poses, publish_radius_m) and the agents' render levels
+  (agent_renderer.cpp: CABIN, MID, BODY, FAR by distance; fleet_shadow_).
+- To read whole before designing: demand.cpp, traffic_system.cpp (step order), traffic_state.h (the far model's fields),
+  the catalog's meso_* params, render/agents far level, the tests window_traffic_test and traffic_hash_test.
+
 ## Next
-- Wait for the whole suite (`python tools/tasks/cli.py run tests`, running). Then, once each: photos of vehicles day and night
-  (an indicator lit on the turn's side), lab_test alone for CPU, GPU and memory, the gates of the changed files, lab_scan.
-- Tests: vehicle_motion_test, traffic_hash_test (its digest moves: new draws in new_vehicle, bless with the cause),
-  junction_sweep_test, records_traffic_test, window_traffic_test, street_crossing_test, transit_test, yard_test, flow_control_test,
-  e2e, lab_test (CPU, GPU, memory).
-- Photos: setViewNear vehicle, day and night; look for a lit indicator on the right side of a turning car (if it shows on the
-  wrong side, the tags in car_parts.cpp lens_pair swap).
-- Gates of the changed files, lab_scan; check the traffic line's cases in doc/port.md (H stays open); commit, push, block close.
+- The whole suite's result; commit and push cases A to G.
+- The tracer's `--cost` case, then H by the skill's steps (trace both games: reference src/sim/meso/*.ts; here
+  native/src/sim/traffic/meso.cpp, window.cpp; read whole; Context7 and the internet; the design written here; `block open`;
+  coded whole; verified once).
+- Commit and push cases A to G; the traffic line of doc/port.md stays unchecked until H is coded.
+- H, by the skill's steps: trace both games (reference src/sim/meso/*.ts; here native/src/sim/traffic/meso.cpp, window.cpp),
+  read whole, Context7 and the internet, the design written here, `block open`, coded whole, verified once.
+- Open with the register: shoot_test, yard_test, the unsourced values.

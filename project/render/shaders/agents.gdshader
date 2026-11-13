@@ -1,7 +1,7 @@
 // Vehicles (native/src/render/agents). UV2.x tags each part (AgentTag in agent_meshes.h): 0 fixed colour, 1 paint,
 // 2 headlamp, 3 tail lamp (brake), 4 glass (opaque: the far level; the near one's is agent_glass.gdshader),
 // 5 a lit sign (the bus's destination, day and night), 6 a roof (the paint, or black on a share of the cars), 7 the gloss black round
-// the glass. The lenses of a vehicle standing with nobody aboard are off, their vertex colours; on anything else they burn, day and
+// the glass, 8 and 9 the left and the right indicator (lit on the side INSTANCE_CUSTOM.a names: 1 left, 2 right). The lenses of a vehicle standing with nobody aboard are off, their vertex colours; on anything else they burn, day and
 // night. UV2.y = 1 marks wheel vertices: they turn about X round their hub (UV = hub y, z). INSTANCE_CUSTOM = (paint index, wheel roll
 // angle + 8 when braking, passengers, 0); COLOR.a is the vehicle's seed. The Compatibility renderer stores instance custom data as half
 // floats: whole numbers below 2048 exactly. Who rides is drawn by PeopleRenderer.
@@ -18,6 +18,9 @@ uniform float brake_ratio; // a stop lamp's light against its rear position lamp
 uniform vec3 head_lit; // a lens burning, by day: the radiance the tone mapping shows as its colour (render/tone_map.gd)
 uniform vec3 tail_lit;
 uniform vec3 brake_lit;
+uniform vec3 signal_lit; // an indicator flashing, by day
+uniform float signal_hz; // flashes a second
+uniform float signal_duty; // the share of a flash it is lit
 uniform vec3 black_roof : source_color;
 uniform float black_roof_share;
 uniform vec3 sign_glow : source_color;
@@ -93,6 +96,12 @@ void fragment() {
 		bool on = v_custom.b > -0.5;
 		bool braking = mod(v_custom.g, DOOR_FLAG) >= BRAKE_FLAG; // by day each shows as its colour: more red than that, and ACES turns it cream
 		emit = on ? (braking ? brake_lit : tail_lit) + source_linear(tail_glow) * tail_power * night * (braking ? brake_ratio : 1.0) : vec3(0.0);
+		c = on ? vec3(0.0) : c;
+		rough = lens_roughness;
+	} else if (tag == 8 || tag == 9) {
+		// the indicator of the side the vehicle signals, flashing, each vehicle on its own beat
+		bool on = v_custom.b > -0.5 && int(v_custom.a + 0.5) == tag - 7 && fract(TIME * signal_hz + v_seed) < signal_duty;
+		emit = on ? signal_lit + source_linear(sign_glow) * tail_power * night * brake_ratio : vec3(0.0);
 		c = on ? vec3(0.0) : c;
 		rough = lens_roughness;
 	} else if (tag == 4) {

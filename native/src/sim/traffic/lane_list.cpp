@@ -146,16 +146,21 @@ void move_vehicle_lane(CityState &s, int id, int target) {
 	if (v.ds < 0 || target < 0 || target >= t.g.ds[size_t(v.ds)].lanes || target == v.lane) return;
 	const DirSeg &d = t.g.ds[size_t(v.ds)];
 	lane_del(s, v.ds * MAX_LANES + v.lane, id);
-	// the body keeps its place: the old lane's line from the new one, left of its travel (u is left of a -> b), slid away in lc_duration_s
+	// the body keeps its place: the old lane's line from the new one, left of its travel (u is left of a -> b), slid away in
+	// lc_duration_s; a bicycle's band is its lane 0's alone (cycling.cpp), so what it rode across there goes with it and slides away too
 	const float across = std::fabs(d.u[v.lane] - d.u[target]);
+	const float band = cycle_shift(s, v, v.ds, v.s);
 	v.lc_off += (d.u[v.lane] - d.u[target]) * d.sign;
-	const float slide = s.catalog.traffic.lc_duration_s;
-	v.lc_rate = slide > 0 ? std::fabs(v.lc_off) / slide : NO_LEADER;
 	// over the old lane until it is a body's width (its own, for whoever follows there) off that lane's line
 	if (v.slid_from < 0) t.sliders.push_back(id);
 	v.slid_from = v.ds * MAX_LANES + v.lane;
 	v.lc_clear = std::max(0.f, across - 2 * s.catalog.traffic.classes[int(v.type)].half_width);
 	v.lane = target;
+	v.lc_off += (band - cycle_shift(s, v, v.ds, v.s)) * d.sign;
+	// a change is a path, not a slide: it is driven over lc_duration_s of travel at its speed now, never steeper than lc_slope
+	const TrafficParams &tp = s.catalog.traffic;
+	const float way = std::max(v.v * tp.lc_duration_s, std::fabs(v.lc_off) / tp.lc_slope);
+	v.lc_rate = way > 0 ? std::fabs(v.lc_off) / way : 0.f;
 	const int came = v.came; // the same body, the same connector behind it
 	lane_add(s, v.ds * MAX_LANES + target, id);
 	v.came = came;

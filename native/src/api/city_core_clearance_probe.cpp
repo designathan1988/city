@@ -71,14 +71,16 @@ Ring car_box(const OffPose &q, float half_len, float half_w) { return box_of(V2(
 // A drawn body as vehicle_bodies gives it: id, middle x and z, speed, off the lanes, type, on a connector, and where it is on
 // its way (directed segment, lane, metres along it and along its connector, the connector it came off, the lane change's
 // offset, the connector it is on, its route's steps left, where it is called to stop, its lot car, that car's phase, metres along
-// its way and whether it keeps its lane closed, its lorry).
+// its way and whether it keeps its lane closed, its lorry, the lane key it changed out of while its body still stands over it, the
+// offset at which it is clear of that lane, the lane it signals a change to, the seconds it has waited).
 Array body_row(const TrafficState &t, const Vehicle &v, int id) {
 	Array b;
 	const LotCar *car = v.car >= 0 && size_t(v.car) < t.park.cars.size() ? &t.park.cars[size_t(v.car)] : nullptr;
 	for (const Variant &x : { Variant(id), Variant(v.cur.x), Variant(v.cur.z), Variant(v.v), Variant(v.off), Variant(int(v.type)),
 			 Variant(v.conn >= 0), Variant(v.ds), Variant(v.lane), Variant(v.s), Variant(v.cs), Variant(v.came), Variant(v.lc_off),
 			 Variant(v.conn), Variant(v.route.len - v.ri), Variant(v.stop_at), Variant(v.car), Variant(car ? int(car->phase) : -1),
-			 Variant(car ? car->path.s : 0.f), Variant(car ? car->closing : false), Variant(v.lorry) })
+			 Variant(car ? car->path.s : 0.f), Variant(car ? car->closing : false), Variant(v.lorry), Variant(v.slid_from),
+			 Variant(v.lc_clear), Variant(int(v.lc_want)), Variant(v.wait) })
 		b.push_back(x);
 	return b;
 }

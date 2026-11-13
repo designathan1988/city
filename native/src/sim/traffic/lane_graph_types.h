@@ -37,6 +37,9 @@ struct DirSeg {
 	float edge_shift = 0; // no strip: how far across a bicycle rides within lane 0, on the kerb edge of the carriageway
 	bool bikes = true; // bicycles may ride it (the street has a footway)
 	float detector = 0, extension = 0; // a signalled approach: its detection section before the line, green per call
+	// Where the street curves: its centre line's greatest curvature (1/m, positive turning left of this direction's travel, 0: none a
+	// driver slows for) and the stretch of s at or over the kept share of it (lane_graph.cpp set_bend, vehicle_speed.cpp bend_ahead).
+	float bend = 0, bend_from = 0, bend_to = 0;
 };
 
 // A lane connector through a node: quadratic Bézier from the end of an in-lane to the start of an out-lane.
@@ -48,6 +51,7 @@ struct Conn {
 	float x0 = 0, z0 = 0, cx = 0, cz = 0, x1 = 0, z1 = 0, y0 = 0, y1 = 0;
 	float table[CONN_STEPS + 1] = {};
 	float len = 0;
+	float bend = 0; // its curve's greatest curvature, 1/m: where a driver slows most (vehicle_speed.cpp bend_pace)
 	int next_at_node = -1, next_from = -1; // next connection of the same node / of the same lane of origin
 	bool alive = false;
 	int8_t max_class = BODY_CLASSES - 1; // the largest body class whose sweep keeps off the footways (-1: none)

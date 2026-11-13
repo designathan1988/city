@@ -21,7 +21,10 @@ namespace city {
 	X(amber_min_s) X(amber_min_mid_s) X(amber_min_high_s) X(amber_max_s) X(signal_ped_red_s) X(ped_reaction_s) \
 	X(ped_clear_speed) X(ped_all_red_s) X(ped_safety_green_s) X(stage_opposite_dot) \
 	X(through_pair_dot) X(signal_arms) X(signal_lanes) X(yield_look_s) X(yield_near_m) X(stop_sign_ms) X(claim_after_s) X(exit_room_pad_m) X(stop_margin_m) \
-	X(look_ahead_m) X(turn_speed_kmh) X(jerk_up) X(speed_drift) X(stuck_despawn_s) \
+	X(look_ahead_m) X(jerk_up) X(jerk_brake) X(follow_coolness) X(follow_crawl_ms) X(speed_drift) X(stuck_despawn_s) \
+	X(temper_accel) X(temper_brake) X(temper_headway) X(temper_gap) X(temper_patience) X(temper_polite) X(temper_threshold) \
+	X(bend_lat_max) X(bend_lat_fall) X(bend_lat_min) X(bend_heavy_share) X(bend_temper) X(bend_keep_share) X(bend_least) \
+	X(lc_politeness) X(lc_signal_s) X(lc_crawl_ms) X(lc_slope) X(signal_ahead_s) X(signal_ahead_m) \
 	X(lc_safe_brake) X(lc_threshold) X(lc_bias_right) X(lc_mandatory_bias) X(lc_free_m) X(lc_gap_front_m) \
 	X(lc_gap_back_m) X(mouth_clear_m) X(lc_duration_s) X(lc_cooldown_s) X(lc_every_ticks) \
 	X(brake_light_accel) X(brake_light_speed) X(body_lift_m) X(heading_chord_m) \

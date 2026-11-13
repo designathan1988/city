@@ -158,6 +158,7 @@ int new_vehicle(CityState &s, VehicleType type, uint8_t paint) {
 	v.paint = paint;
 	v.vf = s.catalog.traffic.classes[int(type)].speed_share * (VF_BASE + (VF_FASTEST - VF_BASE) * t.rng.f());
 	v.drift = t.rng.range(0.f, TAU_F);
+	v.temper = t.rng.f() + t.rng.f() - 1; // two draws: most drivers ordinary, the timid and the pushy rare
 	t.vehicle_count++;
 	return id;
 }

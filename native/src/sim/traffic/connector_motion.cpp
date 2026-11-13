@@ -5,6 +5,7 @@
 // its length, vehicle_pose.cpp). box_hold says what holds one.
 #include "sim/traffic/motion_law.h"
 
+#include "sim/traffic/driver.h"
 #include "sim/traffic/fork_bodies.h"
 #include "sim/traffic/lane_closures.h"
 #include "sim/traffic/light_rule.h"
@@ -26,12 +27,12 @@ void connector_leads(const CityState &s, int ci, size_t k, float top, Lead &car,
 	const Vehicle &v = t.vehicles[list[k]];
 	if (k > 0) {
 		const Vehicle &o = t.vehicles[list[k - 1]];
-		car.take(o.cs - body_length(s, o) - v.cs, o.v);
+		car.take(o.cs - body_length(s, o) - v.cs, o.v, o.acc);
 	} else {
 		const auto &lane = t.lane_vehicles[size_t(c.to_ds) * MAX_LANES + c.to_lane];
 		if (!lane.empty()) {
 			const Vehicle &o = t.vehicles[lane.front()];
-			car.take(c.len - v.cs + o.s - body_length(s, o), o.v);
+			car.take(c.len - v.cs + o.s - body_length(s, o), o.v, o.acc);
 		}
 	}
 	fork_leads(s, ci, v, v.cs, car);
@@ -44,7 +45,7 @@ void connector_leads(const CityState &s, int ci, size_t k, float top, Lead &car,
 void fork_leads(const CityState &s, int ci, const Vehicle &v, float along, Lead &l) {
 	const Conn &c = s.traffic.g.conns[size_t(ci)];
 	fork_bodies(s, c, body_class(s.catalog.traffic, v.type), [&](const Vehicle &u, float front) {
-		if (front > along) l.take(front - body_length(s, u) - along, u.v); // further along than `v`: followed as on one path
+		if (front > along) l.take(front - body_length(s, u) - along, u.v, u.acc); // further along than `v`: followed as on one path
 	});
 }
 
@@ -53,18 +54,19 @@ void step_connector(CityState &s, int ci, float dt) {
 	const TrafficParams &p = s.catalog.traffic;
 	auto &list = t.conn_vehicles[ci];
 	const Conn &c = t.g.conns[ci];
-	const float vt = conn_speed(s, c);
 	for (size_t k = 0; k < list.size(); k++) {
 		Vehicle &v = t.vehicles[list[k]];
 		if (v.moved_tick == t.tick) continue; // came over its lane's end this tick, already moved by the lane's step
 		Lead l, walkers;
-		const float top = top_speed(s, v, vt);
+		// its own speed through this curve, and no faster than still takes the bend of the street it comes out onto
+		const float top = std::min(conn_top(s, v, c), bend_ahead(s, v, c.to_ds, c.to_lane, v.cs - c.len));
 		connector_leads(s, ci, k, top, l, walkers);
 		l.take(walkers.gap, walkers.v);
 		const LightStop lights = lights_ahead(s, v, v.ri + 1, c.to_lane, c.len - v.cs);
 		v.amber_hold = lights.amber_hold;
 		l.take(lights.gap, 0.f);
-		float acc = finish_accel(s, v, idm_accel(p.classes[int(v.type)], v.v, top, l.gap, l.v), l, dt);
+		const VehicleClass drv = driver_of(p, v);
+		float acc = held_to(finish_accel(s, v, follow_accel(drv, p.follow_coolness, v.v, top, l.gap, l.v, l.a), l, dt), v.v, top, drv.b, dt);
 		integrate(s, v, acc, dt, v.cs);
 	}
 	while (!list.empty() && t.vehicles[size_t(list.front())].cs >= c.len) {
@@ -87,9 +89,9 @@ BoxHold box_hold(const CityState &s, int id) {
 	const auto &on = t.conn_vehicles[size_t(v.conn)];
 	const size_t k = size_t(std::find(on.begin(), on.end(), id) - on.begin());
 	if (k >= on.size()) return BoxHold::STARTING;
-	const VehicleClass &vc = s.catalog.traffic.classes[int(v.type)];
+	const VehicleClass vc = driver_of(s.catalog.traffic, v);
 	const Conn &c = t.g.conns[size_t(v.conn)];
-	const float top = top_speed(s, v, conn_speed(s, c));
+	const float top = conn_top(s, v, c);
 	Lead car, walkers;
 	connector_leads(s, v.conn, k, top, car, walkers);
 	const float light = lights_ahead(s, v, v.ri + 1, c.to_lane, c.len - v.cs).gap;

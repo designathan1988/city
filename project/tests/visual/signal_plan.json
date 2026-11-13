@@ -1,0 +1,16 @@
+{
+ "_doc": "A lit indicator, by day and by night (the traffic's lane changes and turns: doc/port.md, traffic): the clock run 10 s so traffic is out, then the vehicle on a turn nearest the town's centre that shows its turn's indicator (setViewNear signalling: the clock stopped, the side to be lit and the heading printed), from 30 degrees up, from its front quarter (40 degrees from its heading: its front and its right side, both headlamps in view) and from the opposite rear quarter (220: its rear and its left side, both tail lamps in view), so the lens that flashes and the one that does not are in the same picture. At 150 px a metre a lens of 6 cm is 9 px and the whole vehicle is in the frame (at 60 it was 250 px long round the middle; at 250 from 12 degrees the rig, which looks at the vehicle's middle, left its lamps under the frame). The lens flashes (render/materials.json agents signal_hz 1.5, signal_duty 0.5: 0.667 s a flash, lit half of it): each view is shot three times, a shot 1.14 s after the other as measured (0.71 of a flash), so of the three at least one has it lit and one dark. The same at 22 h.",
+ "city": {"map": 0, "seed": 1, "generate": true},
+ "steps": [
+  {"hour": 16}, {"dispatch": "set_speed", "args": [1]}, {"frames": 600},
+  {"setViewNear": ["signalling", 0, 0, 150, 40, 30]}, {"until": "render_pending", "equals": 0},
+  {"shot": "day_front_1"}, {"usage": 0.22}, {"shot": "day_front_2"}, {"usage": 0.22}, {"shot": "day_front_3"},
+  {"setViewNear": ["signalling", 0, 0, 150, 220, 30]}, {"until": "render_pending", "equals": 0},
+  {"shot": "day_rear_1"}, {"usage": 0.22}, {"shot": "day_rear_2"}, {"usage": 0.22}, {"shot": "day_rear_3"},
+  {"hour": 22},
+  {"setViewNear": ["signalling", 0, 0, 150, 40, 30]}, {"until": "render_pending", "equals": 0},
+  {"shot": "night_front_1"}, {"usage": 0.22}, {"shot": "night_front_2"}, {"usage": 0.22}, {"shot": "night_front_3"},
+  {"setViewNear": ["signalling", 0, 0, 150, 220, 30]}, {"until": "render_pending", "equals": 0},
+  {"shot": "night_rear_1"}, {"usage": 0.22}, {"shot": "night_rear_2"}, {"usage": 0.22}, {"shot": "night_rear_3"}
+ ]
+}

@@ -26,16 +26,36 @@ static func stand_on_walker(rig: CityCamera, ui: UiDriver, view: Array) -> void:
 ## effects_body_places); "pair" (the two bodies lying nearest one another, wherever they lie: the middle between them; the point is not read);
 ## "lamp", "pole" or "sign" (the street furniture of the street under the vehicle nearest the point: furniture_spots of segment_at, the
 ## player's own pole runs too for "pole"; a plan runs the clock first so traffic is out); "building" (the tallest within
-## BUILDING_REACH_M, CityCore.highest_roof, aimed at its foot). False, said, with none of that kind there.
+## BUILDING_REACH_M, CityCore.highest_roof, aimed at its foot); "signalling" (the vehicle on a turn nearest the point that shows
+## its indicator, the clock stopped: stand_on_signalling, the azimuth then counted from the vehicle's own heading). False, said,
+## with none of that kind there.
 static func stand_near(rig: CityCamera, ui: UiDriver, args: Array) -> bool:
 	var kind := str(args[0])
 	var from := Vector2(float(args[1]), -float(args[2]))
+	if kind == "signalling":
+		return await stand_on_signalling(rig, ui, from, [args[3], args[4], args[5]])
 	var found := _nearest(kind, from)
 	if found == Vector3.INF:
 		print("FAIL no %s near %s" % [kind, [args[1], args[2]]])
 		return false
 	print("%s at %s" % [kind, found])
 	await stand(rig, ui, found, [args[3], args[4], args[5]])
+	return true
+
+
+## The view of the vehicle on a turn nearest `from` (x, z) that shows its turn's indicator (probe driving_census, the whole map),
+## the clock stopped so it stays on its turn. `view` is the zoom, the azimuth counted from the vehicle's heading (so the same plan
+## sees the same corner of any vehicle) and the elevation. It says the side that must be lit (of the heading) and the heading, which
+## the photo is read against. False, said, with nobody signalling on a turn.
+static func stand_on_signalling(rig: CityCamera, ui: UiDriver, from: Vector2, view: Array) -> bool:
+	CityStore.dispatch(&"set_speed", [0])
+	var c: Dictionary = CityStore.query(&"driving_census", [Vector3(from.x, 0.0, from.y), INF])
+	if not c.get("shown", false):
+		print("FAIL no vehicle shows an indicator on a turn (%d turning)" % int(c.get("turning", 0)))
+		return false
+	var facing: Vector2 = c.shown_facing
+	print("signalling at %s: its %s indicator, heading %s" % [c.shown_at, "left" if int(c.shown_side) == 1 else "right", facing])
+	await stand(rig, ui, c.shown_at, [view[0], float(view[1]) + rad_to_deg(facing.angle()), view[2]])
 	return true
 
 

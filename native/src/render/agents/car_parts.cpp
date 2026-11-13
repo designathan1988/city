@@ -130,7 +130,9 @@ static void lens_pair(MeshBuilder &mb, const CarStyle &s, float half, float y, f
 	const float z = end_surface(s, half, dir) - dir * sink;
 	for (int side : { -1, 1 }) {
 		const float x = side * half;
-		agent_box(mb, Vector3(x - w * 0.5f, y - h * 0.5f, z - LAMP_DEPTH_M * 0.5f), Vector3(x + w * 0.5f, y + h * 0.5f, z + LAMP_DEPTH_M * 0.5f), c, tag);
+		// an indicator's lens is tagged by its side: +x is the vehicle's left, its front looking along +z
+		const AgentTag own = tag == AgentTag::SIGNAL_LEFT ? (side > 0 ? AgentTag::SIGNAL_LEFT : AgentTag::SIGNAL_RIGHT) : tag;
+		agent_box(mb, Vector3(x - w * 0.5f, y - h * 0.5f, z - LAMP_DEPTH_M * 0.5f), Vector3(x + w * 0.5f, y + h * 0.5f, z + LAMP_DEPTH_M * 0.5f), c, own);
 	}
 }
 
@@ -142,8 +144,8 @@ void car_details(MeshBuilder &mb, const CarStyle &s, const Dictionary &body, boo
 	const Vector2 tail = agent_v2(body["rear_lens_m"]);
 	lens_pair(mb, s, s.W * 0.5f - head.x, lamp_y, head.z, head.y, 1.f, LAMP_SINK_M, trim.headlamp, AgentTag::HEAD);
 	lens_pair(mb, s, s.W * 0.5f - tail.x, tail_y, tail.y, s.tail_lamp_h, -1.f, LAMP_SINK_M, trim.tail, AgentTag::TAIL);
-	lens_pair(mb, s, s.W * 0.5f - ind.x, lamp_y - INDICATOR_DROP_M, ind.z, ind.y, 1.f, INDICATOR_SINK_M, trim.indicator, AgentTag::FIXED);
-	lens_pair(mb, s, s.W * 0.5f - ind.x, tail_y + INDICATOR_RISE_M, ind.z, ind.y, -1.f, INDICATOR_SINK_M, trim.indicator, AgentTag::FIXED);
+	lens_pair(mb, s, s.W * 0.5f - ind.x, lamp_y - INDICATOR_DROP_M, ind.z, ind.y, 1.f, INDICATOR_SINK_M, trim.indicator, AgentTag::SIGNAL_LEFT);
+	lens_pair(mb, s, s.W * 0.5f - ind.x, tail_y + INDICATOR_RISE_M, ind.z, ind.y, -1.f, INDICATOR_SINK_M, trim.indicator, AgentTag::SIGNAL_LEFT);
 	const Vector3 g = agent_v3(body["grille_m"]); // the share of the nose's half width across, high, deep
 	const float gy = low_f + (nose_y - low_f) * GRILLE_LOW + GRILLE_RISE_M, gw = car_half_w(s, 0.5f - NOSE_BACK_M / s.L) * g.x * 0.5f;
 	agent_box(mb, Vector3(-gw, gy - g.y * 0.5f, zf - GRILLE_SINK_M - g.z * 0.5f), Vector3(gw, gy + g.y * 0.5f, zf - GRILLE_SINK_M + g.z * 0.5f), trim.grille, AgentTag::FIXED);

@@ -53,9 +53,14 @@ struct Vehicle {
 	uint64_t moved_tick = UINT64_MAX; // the tick it last moved: a vehicle moves once a tick (vehicle_motion.cpp integrate)
 	float s = 0, v = 0, acc = 0, cs = 0; // lane position, speed, acceleration, metres along the connector
 	float vf = 1, drift = 0; // share of the speed limit, phase of the speed drift
-	// A lane change's sideways offset, left of its travel: the body keeps its place and slides to its new lane at lc_rate (m/s),
-	// reaching it exactly in lc_duration_s; on its lane and on the connector it goes on to alike. lc_cool: no change before 0.
+	float temper = 0; // its driver: -1 timid .. +1 pushy, drawn once (driver.h)
+	// A lane change's sideways offset, left of its travel: the body keeps its place and works across to its new lane by lc_rate
+	// (metres sideways per metre driven: a path, so a standing body does not slide), on its lane and on the connector it goes on to
+	// alike. lc_cool: no change before 0.
 	float lc_off = 0, lc_rate = 0, lc_cool = 0;
+	// The lane it signals a change to (-1: none) and the seconds of signal still to run before it moves (lane_change.cpp).
+	int8_t lc_want = -1;
+	float lc_lead = 0;
 	// The lane key it changed out of while its body still stands over that lane (until |lc_off| is down to lc_clear): the traffic
 	// behind it there still follows it (TrafficState::sliders).
 	int slid_from = -1;
@@ -187,12 +192,9 @@ struct TrafficState {
 	std::vector<int> pass_count; // per node: vehicles let in (pedestrian courtesy, tests)
 	int stop_entries = 0, stop_skipped = 0; // vehicles let in past a Stop, and those that had not stood at it (tests)
 	SearchBudget search_budget; // the route searches of this tick, every one counted (route_admission.cpp)
-	// Per directed segment: one connector leaving it for each segment its connectors reach, the first each_conn_from walks to it, made
-	// again when CityState::lane_graph_serial moves (stamped serial + 1): the router relaxes each segment it can reach once (routing.cpp).
-	std::vector<std::vector<int>> route_next;
-	std::vector<uint64_t> route_next_stamp;
 	float gov = 1, gov_clock = 0; // fleet governor (traffic/regions.ts)
 	int reroutes = 0, released = 0, jams = 0;
+	int lane_signals = 0, lane_changes = 0, lane_forced = 0; // lane changes signalled, made after their signal, and forced at a line (lane_change.cpp)
 	float red_last[TIMED_STAGES] = {}; // the last red entry: type, speed, ds, time (traffic_probe)
 	int red_entries = 0, red_from_stop = 0; // over the stop line on red (probe): all, and after standing at it (a violation)
 	int vehicle_count = 0, ped_count = 0, arrived = 0, lost = 0, ped_arrived = 0, ped_waiting = 0, stuck_lost = 0;

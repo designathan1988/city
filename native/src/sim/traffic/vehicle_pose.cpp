@@ -1,17 +1,19 @@
 // Where a drawn vehicle's body stands (publish_poses): its middle on its path half its length behind its front, measured back
 // along the pieces it drove (its lane, the connector it came off, the lane before that one), its heading the chord of the path
 // heading_chord_m either side of that middle, and the sideways offset of a lane change (a bicycle's band too) across that
-// heading on lanes and connectors alike. The body hangs from its path as a vehicle from its wheels: it keeps its place coming
+// heading on lanes and connectors alike; and the indicator it shows (signal_side). The body hangs from its path as a vehicle from its wheels: it keeps its place coming
 // out of a junction, it does not cut the inside of a curve, and a lane change ends where it began, never in one tick.
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace city {
 namespace traffic {
 
 namespace {
 constexpr float LEAST_CHORD_M = 1e-3f; // the chord's ends closer than this: the path's own direction
+constexpr float SLIDING_M = 0.15f; // a lane change's offset under this is over: its indicator goes out
 
 // Whether the connector a vehicle came off still leads into the lane it is on.
 bool came_in(const TrafficState &t, const Vehicle &v) {
@@ -49,6 +51,21 @@ void path_point(const CityState &s, const Vehicle &v, float back, float off, Pos
 	o.z -= o.fx * across;
 }
 } // namespace
+
+int signal_side(const CityState &s, const Vehicle &v) {
+	const TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
+	const auto of_turn = [](Turn turn) { return turn == Turn::LEFT || turn == Turn::UTURN ? SIGNAL_LEFT : turn == Turn::RIGHT ? SIGNAL_RIGHT : SIGNAL_NONE; };
+	if (v.off) return SIGNAL_NONE;
+	// sliding to its new lane: the body stands left of that lane's line while it moves right
+	if (std::fabs(v.lc_off) > SLIDING_M) return v.lc_off > 0 ? SIGNAL_RIGHT : SIGNAL_LEFT;
+	if (v.conn >= 0) return of_turn(t.g.conns[size_t(v.conn)].turn);
+	if (v.ds < 0) return SIGNAL_NONE;
+	if (v.lc_want >= 0 && v.lc_want != v.lane) return v.lc_want > v.lane ? SIGNAL_LEFT : SIGNAL_RIGHT; // lane 0 is the rightmost
+	if (v.ri + 1 >= v.route.len || t.g.ds[size_t(v.ds)].len - v.s > std::max(p.signal_ahead_m, v.v * p.signal_ahead_s)) return SIGNAL_NONE;
+	const int ci = pick_connector(s, v);
+	return ci < 0 ? SIGNAL_NONE : of_turn(t.g.conns[size_t(ci)].turn);
+}
 
 void vehicle_pose(const CityState &s, const Vehicle &v, Pose &out) {
 	const TrafficParams &p = s.catalog.traffic;

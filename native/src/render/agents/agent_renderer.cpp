@@ -256,7 +256,7 @@ void AgentRenderer::update(const PoseFrame &f, const Vector3 &cam, const ViewCul
 		if (level == FAR_LEVEL) fleet_shadow_.add(model, p);
 		if (!shown && level == FAR_LEVEL) continue;
 		placed += shown ? 1 : 0;
-		agent_row(shown ? keeper_.place(key, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f) + door, passengers, 0.f, hash_float(rec.id * SEED_SALT));
+		agent_row(shown ? keeper_.place(key, model * DRAWS + level, bufs[model][level]) : casts[model][level].add(), p, 1.f, float(paint >= LINE_PAINT ? paints_ + paint - LINE_PAINT : paint % paints_), spin + (brake ? BRAKE_FLAG : 0.f) + door, passengers, float((rec.look >> LOOK_SIGNAL_SHIFT) & LOOK_SIGNAL_MASK), hash_float(rec.id * SEED_SALT));
 		if (shown && d2 <= people_r2 && (astride_[model] || level == CABIN_LEVEL || level == MID_DRAW)) seat_people(rec.id, type, model, p, std::sqrt(d2), passengers, order, spin);
 		drawn_vehicles_++;
 	}

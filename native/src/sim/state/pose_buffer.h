@@ -36,7 +36,9 @@ struct PoseTrail {
 };
 
 // AgentRecord::look of a vehicle: type in the low byte, then its paint, the brake light and whether anybody is in it.
-constexpr uint32_t LOOK_TYPE_MASK = 0xFFu, LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16, LOOK_EMPTY_SHIFT = 17, LOOK_ABOARD_SHIFT = 18, LOOK_ABOARD_MASK = 3u, LOOK_DOOR_SHIFT = 20, LOOK_DOOR_MASK = 31u; // how far its kerb door stands open
+constexpr uint32_t LOOK_TYPE_MASK = 0xFFu, LOOK_PAINT_SHIFT = 8, LOOK_BRAKE_SHIFT = 16, LOOK_EMPTY_SHIFT = 17, LOOK_ABOARD_SHIFT = 18, LOOK_ABOARD_MASK = 3u, LOOK_DOOR_SHIFT = 20, LOOK_DOOR_MASK = 31u, // how far its kerb door stands open
+		LOOK_SIGNAL_SHIFT = 25, LOOK_SIGNAL_MASK = 3u; // the indicator it shows (SIGNAL_*)
+constexpr int SIGNAL_NONE = 0, SIGNAL_LEFT = 1, SIGNAL_RIGHT = 2;
 // How old a walker is: its pace and its body.
 enum class PedAge : uint8_t { ADULT = 0, CHILD, ELDER, COUNT };
 constexpr int PED_AGES = int(PedAge::COUNT);

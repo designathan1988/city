@@ -147,7 +147,7 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 		for (int i = 0; i < POSE_TRAIL; i++) rec.at[i] = v.trail.at[i];
 		rec.id = uint32_t(&v - s.traffic.vehicles.data());
 		const bool empty = v.off && lot_car_at_rest(s, int(&v - t.vehicles.data())); // nobody in a car standing in its bay
-		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << LOOK_PAINT_SHIFT) | (v.brake ? 1u << LOOK_BRAKE_SHIFT : 0u) | (empty ? 1u << LOOK_EMPTY_SHIFT : 0u) | (uint32_t(v.aboard) << LOOK_ABOARD_SHIFT) | (kerb_door_level(s, v) << LOOK_DOOR_SHIFT);
+		rec.look = uint32_t(v.type) | (uint32_t(v.paint) << LOOK_PAINT_SHIFT) | (v.brake ? 1u << LOOK_BRAKE_SHIFT : 0u) | (uint32_t(signal_side(s, v)) << LOOK_SIGNAL_SHIFT) | (empty ? 1u << LOOK_EMPTY_SHIFT : 0u) | (uint32_t(v.aboard) << LOOK_ABOARD_SHIFT) | (kerb_door_level(s, v) << LOOK_DOOR_SHIFT);
 		f.vehicles.push_back(rec);
 	}
 	for (Pedestrian &w : s.traffic.peds) {

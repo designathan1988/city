@@ -25,6 +25,9 @@ void step(CityState &s, float dt); // applies the network changes, then advances
 void publish_poses(CityState &s, int64_t stamp_ns);
 // vehicle_pose.cpp: where a vehicle on the lanes is drawn (its middle, heading and pitch into `out`), from its path.
 void vehicle_pose(const CityState &s, const Vehicle &v, Pose &out);
+// The indicator a vehicle on the lanes shows (pose_buffer.h SIGNAL_*): the side it slides or means to change to, the turn it is in
+// or about to make.
+int signal_side(const CityState &s, const Vehicle &v);
 float day_factor(const TrafficParams &p, float hour);
 // Gone from the scene: its trip `arrived` or lost; not `counted` as either when it only drove out of the window.
 void despawn_vehicle(CityState &s, int id, bool arrived, bool counted = true);
@@ -195,6 +198,7 @@ int vehicle_on_lane(CityState &s, VehicleType type, int ds, int lane, float at, 
 
 // vehicle_motion.cpp
 float idm_accel(const VehicleClass &c, float v, float v0, float gap, float vl);
+// The following law that anticipates, the bends a vehicle slows for and its braking curve: sim/traffic/motion_law.h.
 // What a vehicle standing on a connector stands for (traffic_probe), from the very obstacles it drives against: the one
 // ahead, walkers on its exit crosswalk, a light down the street, or none of them holds it back (it is moving off).
 enum class BoxHold : uint8_t { LEADER = 0, WALKERS, LIGHT, STARTING, COUNT };
@@ -241,9 +245,6 @@ constexpr float FRONT_PAST = BIG; // peds_in_way front time of a crosswalk the v
 // vehicles in that then stood in the box for walkers (4x the box stops, 6x the hard brakes for walkers, the same for
 // walkers). What it leaves out (the jerk ramp from rest, slowing to the turn speed) only makes it early, the safe side.
 float front_time(const CityState &s, const Vehicle &v, float metres, float top);
-float conn_speed(const CityState &s, const Conn &c); // driven over a connector: the exit's limit straight on, else the turn speed
-// The fastest `v` goes `dist` before its lane's end on the way onto `c`: braking down to the turn speed (no limit straight on).
-float turn_limit(const CityState &s, const Vehicle &v, const Conn &c, float dist);
 
 } // namespace traffic
 } // namespace city

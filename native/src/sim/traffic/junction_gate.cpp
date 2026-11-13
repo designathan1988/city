@@ -2,7 +2,7 @@
 // a Stop taken from a stand, room past the junction, walkers in its way, the conflicting movements by rank, movement and the right, a
 // claim after waiting its share), why a head is held, and the connector a vehicle takes off its lane. A blocked entry acts as a stopped
 // obstacle at the stop line (vehicle_motion.cpp).
-#include "sim/traffic/traffic_system.h"
+#include "sim/traffic/motion_law.h"
 
 #include "sim/traffic/light_rule.h"
 
@@ -47,7 +47,7 @@ bool may_enter(const CityState &s, int vid, int ci, float dist) {
 	if (light_stops(s, me, c.from_ds, line, ci)) return false;
 	if (t.g.ds[c.from_ds].must_stop && me.stood_at != c.from_ds) return false; // a Stop is more than a lower rank: it is taken from a stand
 	if (!has_exit(s, c, vid)) return false;
-	const float top = top_speed(s, me, conn_speed(s, c));
+	const float top = conn_top(s, me, c);
 	if (peds_in_way(s, ci, front_time(s, me, line, top), front_time(s, me, dist + c.len, top))) return false;
 	bool claim = me.wait > tp.claim_after_s;
 	// whoever has waited its share claims the turn: those who can still stop comfortably let it through
