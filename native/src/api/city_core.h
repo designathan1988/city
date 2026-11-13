@@ -50,7 +50,7 @@ public:
 	void set_agent_detail(float cabin_m, int cabin_cap, int people_floor); // the tier's reach and cap of the cabins, the people's nearest level
 	void set_population(float share); // the Optimisations tab: the share of the fleet and the walkers allowed
 	void set_upload_every(int frames); // the Optimisations tab: mesh uploads only every N frames
-	void set_lots_drawn(bool on); // the Effects panel: buildings without their lots (a full redraw)
+	void set_lots_drawn(bool on); // the Effects panel: buildings without their lots (their near and mid levels drawn again)
 	godot::Dictionary traffic_metrics(); // the Simulation panel: mean speed, vehicles standing
 	void set_day_hour(double hour);
 	int get_speed() const;

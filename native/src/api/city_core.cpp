@@ -230,10 +230,7 @@ void CityCore::set_population(float share) {
 
 void CityCore::set_upload_every(int frames) { render_.set_upload_every(frames); }
 
-void CityCore::set_lots_drawn(bool on) {
-	render_.set_lots_drawn(on);
-	need_full_rebuild_ = true;
-}
+void CityCore::set_lots_drawn(bool on) { render_.set_lots_drawn(on); } // the buildings' levels that draw lots, nothing else
 
 void CityCore::set_overlay(const String &name, bool on) {
 	for (int i = 0; i < int(Overlay::COUNT); i++)

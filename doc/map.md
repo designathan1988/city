@@ -531,6 +531,7 @@ threads and the whole command list follow the map; the rules are the constitutio
 - `project/tests/visual/roofs_plan.json` — the roofs of the town's centre near, mid and far from four sides (the `roofs` item of the `looks` group): a covered roof painted alike at every distance, its plant and machine rooms off the block above
 - `project/tests/visual/fallen_plan.json` — the fallen after a small blow (the `fallen` item of `looks`): the bodies where they lie and the thrown pieces in their tints, four azimuths and from above, the bodies counted
 - `project/tests/visual/torn_plan.json` — limbs torn off by a blow (the `torn` item of `looks`): each a piece of the same body, four azimuths and from above, the pieces counted
+- `project/tests/visual/lots_plan.json` — the lots shown, hidden and shown again (the `lots` item of `looks`): only the buildings' levels that draw them redrawn
 - `project/tests/visual/pole_plan.json` — a walker thrown into a pole of the street (the `pole` item of `looks`): the body against it, four azimuths and from above
 - `project/tests/visual/falling_plan.json` — a body falling after a blow, its joints damped (the `falling` item of `looks`): shots a few frames apart with the clock running, then at rest from above
 - `project/tests/visual/crater_plan.json` — the ground marks as decals (the `crater` item of `looks`): a blow's crater on the paving, four azimuths, street level, from above and mid

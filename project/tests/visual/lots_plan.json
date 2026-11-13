@@ -1,0 +1,10 @@
+{
+ "_doc": "The Effects panel's lots shown, hidden and shown again (Prender-275, BuildingRenderer::set_lots_drawn): a town block near the corner (60, 8) mid (12 px a metre, 45 degrees) with the lots drawn, then without them (their paving, walls, fences, gardens gone, the buildings standing), then with them again as at first; nothing else of the city redrawn, so the effects of a blow stay.",
+ "city": {"map": 0, "seed": 1, "generate": true},
+ "steps": [
+  {"hour": 16}, {"frames": 60},
+  {"setView": [60, -8, 12, 30, 45]}, {"until": "render_pending", "equals": 0}, {"shot": "lots_on"},
+  {"dispatch": "set_lots_drawn", "args": [false]}, {"frames": 4}, {"until": "render_pending", "equals": 0}, {"shot": "lots_off"},
+  {"dispatch": "set_lots_drawn", "args": [true]}, {"frames": 4}, {"until": "render_pending", "equals": 0}, {"shot": "lots_back"}
+ ]
+}

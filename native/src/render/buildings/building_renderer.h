@@ -39,7 +39,7 @@ namespace city {
 class BuildingRenderer {
 public:
 	void set_detail_scale(float scale); // the graphics tier's share of the near level's reach
-	void set_lots_drawn(bool on) { lots_drawn_.store(on); } // the Effects panel; the caller redraws everything
+	void set_lots_drawn(bool on); // the Effects panel: the levels that draw lots remeshed (building_renderer_commit.cpp)
 	const b40::BuildingLook &look() const { return look_; }
 	bool init(const RenderContext &ctx, godot::PackedStringArray &errors);
 	void reset();

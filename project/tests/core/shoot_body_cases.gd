@@ -71,6 +71,21 @@ func fallen() -> void:
 	t.check(deep <= UNDER_GROUND_M, "no body at rest lies in the ground, its bones held out as its joints are (deepest %.3f m)" % deep)
 	await _rises()
 	await _together()
+	await _lots_toggled()
+
+
+## Showing the lots and hiding them again redraws the buildings' lots only: the bodies lying and the blood they left stay (Prender-275:
+## the toggle once redrew the whole city, every effect gone with it).
+func _lots_toggled() -> void:
+	var before := _census()
+	var marks: int = CityStore.query(&"damage_probe").blood_marks
+	CityStore.dispatch(&"set_lots_drawn", [false])
+	await _frames(BODY_SETTLE_FRAMES)
+	CityStore.dispatch(&"set_lots_drawn", [true])
+	await _frames(BODY_SETTLE_FRAMES)
+	var after := _census()
+	var marks_after: int = CityStore.query(&"damage_probe").blood_marks
+	t.check(after.bodies == before.bodies and marks_after == marks, "the lots hidden and shown again, the bodies and their blood stay (%d bodies, %d before; %d marks, %d before)" % [after.bodies, before.bodies, marks_after, marks])
 
 
 func _census() -> Dictionary:
