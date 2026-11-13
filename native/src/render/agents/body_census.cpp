@@ -2,6 +2,7 @@
 #include "render/agents/body_renderer.h"
 
 #include <algorithm>
+#include <cmath>
 
 using namespace godot;
 
@@ -15,11 +16,23 @@ PackedVector3Array BodyRenderer::places() const {
 }
 
 Dictionary BodyRenderer::census() const {
-	int moving = 0, kept = 0, from_drawn = 0, pieces = 0, street_walls = 0;
-	float overlap = 0.f, in_walls = 0.f;
+	int moving = 0, kept = 0, from_drawn = 0, pieces = 0, street_walls = 0, unfinite = 0;
+	float overlap = 0.f, in_walls = 0.f, widest_m = 0.f;
 	PackedInt32Array who;
+	Dictionary widest; // the body whose skin spreads widest: a body is no wider than it is tall, a limb torn off less
 	for (const Body &b : bodies_) {
 		if (!b.piece && b.who >= 0) who.push_back(b.who);
+		const float wide = b.box.get_longest_axis_size();
+		if (!std::isfinite(wide) || !b.box.position.is_finite()) unfinite++;
+		else if (wide > widest_m) {
+			widest_m = wide;
+			widest["who"] = b.who;
+			widest["piece"] = b.piece;
+			widest["lost"] = int(b.lost);
+			widest["rising"] = b.rise_s > 0.f && b.left <= b.rise_s;
+			widest["asleep"] = b.doll.asleep();
+			widest["at"] = b.box.get_center();
+		}
 		moving += b.doll.asleep() ? 0 : 1;
 		kept += b.left == FOR_GOOD_S ? 1 : 0;
 		from_drawn += b.from_drawn ? 1 : 0;
@@ -42,6 +55,9 @@ Dictionary BodyRenderer::census() const {
 	out["in_walls"] = in_walls;
 	out["street_walls"] = street_walls;
 	out["who"] = who;
+	out["widest_m"] = widest_m;
+	out["widest"] = widest;
+	out["unfinite"] = unfinite;
 	return out;
 }
 

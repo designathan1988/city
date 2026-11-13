@@ -65,7 +65,8 @@ public:
 	// deepest joint of a body at rest lies within another's (its own torn limbs aside), nearer than they touch; in_walls, the metres the
 	// deepest joint of a body at rest lies inside a wall it meets; street_walls, how many of the bodies' walls are the street's pieces
 	// (those with a bottom); who, the ids (DamageEvent::id) of the whole bodies lying there: a walker's while they live, the dead body's
-	// once dead (DEAD_BODY_ID_BASE + n, ped_dead.cpp)}.
+	// once dead (DEAD_BODY_ID_BASE + n, ped_dead.cpp); widest_m, the longest side of the widest body's skin box, and widest, that body
+	// {who, piece, lost, rising, asleep, at}; unfinite, the bodies whose box is not finite (a body stretched or broken shows there)}.
 	godot::Dictionary census() const;
 	godot::PackedVector3Array places() const; // each whole body's pelvis, where it lies, its torn limbs by it (a look plan aims at one)
 
