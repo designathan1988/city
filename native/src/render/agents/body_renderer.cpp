@@ -126,6 +126,8 @@ void BodyRenderer::add(const BodySpec &spec) {
 	if (spec.rises) b.rise_s = std::min(GET_UP_S, spec.life_s * RISE_SHARE_MOST);
 	b.doll.frames(b.stood);
 	for (Transform3D &t : b.stood) t = t.affine_inverse();
+	if (spec.piece != 0) b.doll.keep_parts(spec.piece); // a limb torn off: the rest of the body stays closed on its joint (lost)
+	b.piece = spec.piece != 0;
 	pose(b);
 	layers_dirty_ = true;
 }
@@ -270,6 +272,10 @@ PackedVector3Array BodyRenderer::places() const {
 	PackedVector3Array out;
 	for (const Body &b : bodies_) out.push_back(b.doll.pelvis());
 	return out;
+}
+
+int BodyRenderer::pieces() const {
+	return int(std::count_if(bodies_.begin(), bodies_.end(), [](const Body &b) { return b.piece; }));
 }
 
 int BodyRenderer::from_drawn() const {

@@ -46,6 +46,7 @@ public:
 	int bodies_moving() const { return people_ ? people_->bodies().moving() : 0; }
 	int bodies_kept() const { return people_ ? people_->bodies().kept() : 0; }
 	int bodies_from_drawn() const { return people_ ? people_->bodies().from_drawn() : 0; }
+	int body_pieces() const { return people_ ? people_->bodies().pieces() : 0; }
 	godot::PackedVector3Array body_places() const { return people_ ? people_->bodies().places() : godot::PackedVector3Array(); }
 	int ruin_pieces_flying() const { return ruins_.flying(); }
 	uint32_t ruin_digest(uint32_t seed) const { return ruins_.digest(seed); }
@@ -67,7 +68,6 @@ private:
 	void rebuild_ruins(const CityState &s); // every ruin of the state as a heap lying (open, undo, redo)
 	static float heap_of(const Ruin &r); // how high its mound stands
 	void furniture(const DamageEvent &e, const CityState &s);
-	bool load_looks(const RenderContext &ctx, godot::PackedStringArray &errors); // skin and clothes tints of the bodies (effect_bodies.cpp)
 	void body(const DamageEvent &e, const CityState &s); // the pieces of someone struck
 	void tracer(const DamageEvent &e); // a bullet's line and where it ends
 	void wound(const DamageEvent &e);
@@ -103,7 +103,6 @@ private:
 	};
 	std::vector<Source> sources_;
 	std::vector<Geyser> geysers_;
-	std::vector<godot::Color> skins_, clothes_;
 	std::unordered_map<int, float> fire_carry_;
 	double now_ = 0, blast_at_ = -1;
 	float shake_ = 0, flash_left_ = 0, flash_energy_ = 0, flash_range_ = 0;

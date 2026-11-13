@@ -11,6 +11,6 @@
   {"setViewNear": ["body", 60, 8, 60, 180, 45]}, {"until": "render_pending", "equals": 0}, {"shot": "body_180"},
   {"setViewNear": ["body", 60, 8, 60, 270, 45]}, {"until": "render_pending", "equals": 0}, {"shot": "body_270"},
   {"setView": [60, 8, 15, 0, 80]}, {"until": "render_pending", "equals": 0}, {"shot": "fallen_above"},
-  {"query": "effects_bodies"}, {"query": "effects_bodies_kept"}
+  {"query": "effects_bodies"}, {"query": "effects_bodies_kept"}, {"query": "effects_body_pieces"}
  ]
 }

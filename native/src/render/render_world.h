@@ -120,6 +120,7 @@ public:
 	int bodies_moving() const { return effects_.bodies_moving(); }
 	int bodies_kept() const { return effects_.bodies_kept(); }
 	int bodies_from_drawn() const { return effects_.bodies_from_drawn(); }
+	int body_pieces() const { return effects_.body_pieces(); }
 	godot::PackedVector3Array body_places() const { return effects_.body_places(); }
 	int effect_pieces() const { return effects_.pieces(); }
 	int broken_buildings() const { return int(effects_.broken().size()); }

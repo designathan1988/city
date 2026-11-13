@@ -39,6 +39,9 @@ public:
 	// One step; where particles struck the ground faster than `hard_ms` (a body landing hard) go into `hits`, how many returned.
 	int step(float dt, const Ground &ground, float hard_ms, godot::Vector3 hits[RAGDOLL_HITS]);
 	void set_walls(std::vector<BodyWall> walls) { walls_ = std::move(walls); }
+	// After begin: only these parts (a bit each, RAGDOLL_PARTS order) are a body of their own, a limb torn off: the sticks among their
+	// particles hold, every other particle stays on the piece's root (the joint it came off at).
+	void keep_parts(uint32_t parts);
 	bool asleep() const { return asleep_; }
 	// Each part's frame now: its origin on its joint, its axes along it. The frames only: what a bone does with them is the caller's.
 	void frames(godot::Transform3D out[RAGDOLL_PARTS]);
@@ -61,6 +64,8 @@ private:
 	static constexpr int MOST_STICKS = 48;
 	Stick sticks_[MOST_STICKS];
 	int sticks_used_ = 0;
+	uint32_t kept_ = ~0u; // the particles that move of themselves (a bit each); all for a whole body
+	int root_ = 0; // where the others stay, for a piece
 	float still_ = 0;
 	bool asleep_ = false;
 };

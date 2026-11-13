@@ -66,8 +66,31 @@ void Ragdoll::begin(const Vector3 joints[RAGDOLL_JOINTS], const Vector3 &velocit
 		was_[i] = now_[i] - own * ONE_STEP_S;
 	}
 	for (Vector3 &s : last_side_) s = side;
+	kept_ = ~0u;
 	still_ = 0;
 	asleep_ = false;
+}
+
+void Ragdoll::keep_parts(uint32_t parts) {
+	uint32_t keep = 0;
+	int root = -1;
+	for (int p = 0; p < RAGDOLL_PARTS; p++) {
+		if ((parts >> p & 1u) == 0) continue;
+		keep |= 1u << PART_FRAMES[p].origin | 1u << PART_FRAMES[p].to;
+		if (root < 0) root = PART_FRAMES[p].origin;
+	}
+	if (root < 0) return;
+	kept_ = keep;
+	root_ = root;
+	int n = 0; // the sticks with both ends on the piece, the rest let go
+	for (int i = 0; i < sticks_used_; i++)
+		if ((kept_ >> sticks_[i].a & 1u) != 0 && (kept_ >> sticks_[i].b & 1u) != 0) sticks_[n++] = sticks_[i];
+	sticks_used_ = n;
+	for (int i = 0; i < PARTICLES; i++)
+		if ((kept_ >> i & 1u) == 0) {
+			was_[i] = was_[root_];
+			now_[i] = now_[root_];
+		}
 }
 
 // Holds a limb's middle joint to the side it bends to, `way` the front of the pelvis or its back.
@@ -87,6 +110,7 @@ void Ragdoll::relax() {
 		now_[s.a] += move;
 		now_[s.b] -= move;
 	}
+	if (kept_ != ~0u) return; // a piece has no pelvis to bend its joints by
 	hinge(LH, LK, LA, 1.f);
 	hinge(RH, RK, RA, 1.f);
 	hinge(LS, LE, LW, -1.f);
@@ -135,6 +159,12 @@ int Ragdoll::step(float dt, const Ground &ground, float hard_ms, Vector3 hits[RA
 			was_[i].z = now_[i].z + (was_[i].z - now_[i].z) * SLIDE_KEEP;
 		}
 	}
+	if (kept_ != ~0u) // a piece: what is not on it stays at its root
+		for (int i = 0; i < PARTICLES; i++)
+			if ((kept_ >> i & 1u) == 0) {
+				now_[i] = now_[root_];
+				was_[i] = was_[root_];
+			}
 	still_ = fastest < RESTING_MS ? still_ + dt : 0.f;
 	asleep_ = still_ > RESTING_S;
 	return hit;

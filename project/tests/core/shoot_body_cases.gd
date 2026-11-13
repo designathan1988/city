@@ -71,6 +71,7 @@ func _bled(walkers: Array) -> void:
 		return
 	var kept: int = CityStore.query(&"effects_bodies_kept")
 	var bodies: int = CityStore.query(&"effects_bodies")
+	var pieces: int = CityStore.query(&"effects_body_pieces")
 	var hurt: Dictionary = walkers[0]
 	for k in 2:
 		var w: Dictionary = _walker_of.call(hurt.id)
@@ -79,6 +80,9 @@ func _bled(walkers: Array) -> void:
 		await _frames(BODY_SETTLE_FRAMES)
 	var down: Dictionary = _walker_of.call(hurt.id)
 	t.check(not down.is_empty() and down.fallen and down.bleed > 0.0 and CityStore.query(&"effects_bodies") > bodies, "wounded for good: down, bleeding, a body (%s)" % [down])
+	# the second round, in a limb of somebody lying, takes it off (shoot_people.cpp): a piece of the same body on a ragdoll of its own
+	if int(down.get("lost", 0)) != 0:
+		t.check(CityStore.query(&"effects_body_pieces") > pieces, "the limb shot off is a piece of the body (%d pieces, %d before)" % [CityStore.query(&"effects_body_pieces"), pieces])
 	t.ticks(BLEED_TICKS)
 	await _frames(BODY_SETTLE_FRAMES)
 	t.check(CityStore.query(&"effects_bodies_kept") > kept, "who bled out stays where they lay, dead (%d kept, %d before)" % [CityStore.query(&"effects_bodies_kept"), kept])

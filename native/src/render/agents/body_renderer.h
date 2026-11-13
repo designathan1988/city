@@ -24,6 +24,7 @@ struct BodySpec {
 	uint32_t lost = 0; // parts gone, a bit each (ragdoll.h order)
 	bool charred = false;
 	float pool = 0; // the blood it leaves where it comes to rest, a share of a pool's size; 0 none (the living)
+	uint32_t piece = 0; // a limb torn off: its parts (ragdoll.h order), the body of its own; `lost` then every other part. 0: a whole body
 	int clip = -1; // the clip it was drawn in at the blow (PeopleRenderer::drawn_pose), -1 the idle
 	float phase = 0; // and how far into it
 };
@@ -49,6 +50,7 @@ public:
 	int moving() const;
 	int kept() const; // those who stay where they fell: the dead
 	int from_drawn() const; // those that fell from the pose their walker was drawn in
+	int pieces() const; // limbs torn off, each a body of its own
 	godot::PackedVector3Array places() const; // each body's pelvis, where it lies (a look plan aims at one)
 
 private:
@@ -64,6 +66,7 @@ private:
 		float pool = 0;
 		bool pooled = false; // its pool laid
 		bool from_drawn = false; // fell from its walker's drawn pose, not the idle
+		bool piece = false; // a limb torn off
 		uint32_t lost = 0;
 		bool charred = false;
 		godot::AABB box; // where its skin lies now: each bone's place, out by the variation's reach along the bone's axes
