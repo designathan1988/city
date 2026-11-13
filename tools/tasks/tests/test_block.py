@@ -22,6 +22,8 @@ SECTIONS = {
     "Checks": "- the scene: PASS, 3 s\n",
     "Skills": "- city-method; superpowers:verification-before-completion\n",
 }
+ITEM_READY = ("- Read: tools/x.py: 1-40 of 40\n- Trace: python tools/tracer/trace.py --feature tools/x.py:3 --root tools\n"
+              "- Research: Context7 /websites/python_library, q, a; https://example.org/a-page\n")
 
 
 class BlockCase(RepoCase):
@@ -31,6 +33,12 @@ class BlockCase(RepoCase):
         (self.root / block.HISTORY).write_bytes(HISTORY.encode("utf-8"))
 
     def block(self, *args) -> int:
+        """The block command; a block's opening is for an item (block_item.py), whose section it writes first."""
+        if args[:1] == ("open",) and len(args) == 2:
+            path = self.root / block_method.WORK / f"{args[1]}.md"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"# {args[1]}: a goal\n\n## Item 1: a problem (I-1)\n{ITEM_READY}\n", encoding="utf-8")
+            args = (*args, "--item", "I-1")
         with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
             return cli.main(["block", *args, "--root", str(self.root)])
 

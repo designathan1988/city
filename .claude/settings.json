@@ -2,5 +2,21 @@
   "autoMemoryEnabled": false,
   "claudeMdExcludes": [
     "**/tools/gates/tests/fixtures/**/CLAUDE.md"
-  ]
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/tools/tasks/edit_guard.py\"",
+            "timeout": 30,
+            "onFailure": "block",
+            "statusMessage": "The method's guard"
+          }
+        ]
+      }
+    ]
+  }
 }

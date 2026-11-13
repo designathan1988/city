@@ -432,3 +432,21 @@ the residential ring (r > 350 m on the town map).
   the work back to research. Specification 003 reordered: the port first, the camera last (its research R1b from the engines'
   documentation, cited).
 
+## 2026-11-13: the method held by force (constitution 1.3.0)
+
+- **Why** (superpowers:diagnosing-superpowers on session c60959d8, its analysts citing the transcript line by line): in 10 h 38 min,
+  80 builds, about 175 test and photo runs, at least 30 failed runs, 119 `block open` of one block and 52 commits in its last 6 h, 94
+  of its build/run events after 2 edits or fewer; 1,123 code edits against 589 reads; the tracer run 12 times, city-method loaded
+  twice through five compactions, systematic-debugging 5 times; red checks done backwards (pass, revert, fail, restore: two cycles
+  more a fix); photo plans re-aimed by re-running. The orders said all of it was forbidden; nothing but "no run while open"
+  enforced them, so a failing run was the only feedback, and the cycle followed.
+- **The orders**: "Faça um mecanismo que impeça de você ficar nesse ciclo idiota de tentativa e erro"; the hook to make the skills,
+  Context7, CLAUDE.md, the research, the trace and the whole reading obligatory, the code solved first, the tests at the end with
+  photos and their analysis; "quanto a usar skill constituição alguma deve prevalecer".
+- **Done**: `tools/tasks/edit_guard.py`, a PreToolUse hook (`.claude/settings.json`), reads the session's transcript and refuses an
+  edit of code without each step done for the item, and a commit without verification-before-completion and a photo opened;
+  `tools/tasks/block_item.py`: `block open --item`, a failed check run again only with its cause, after two failures a new source.
+  31 tests (test_block_item.py, test_block.py). The constitution's principles I, IV and VII amended; CLAUDE.md regenerated. The
+  guard broke itself once while being edited in two steps (a name used before it existed, the second edit refused by the broken
+  guard): it was mended by a script, and is changed only whole since.
+

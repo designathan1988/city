@@ -16,7 +16,7 @@ from pathlib import Path
 
 if str(Path(__file__).resolve().parents[1]) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from tasks import block_method, proc  # noqa: E402
+from tasks import block_item, block_method, proc  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 STATE = Path("dist/block/state.json")
@@ -54,18 +54,31 @@ def _save(doc: dict, root: Path) -> None:
     os.replace(part, path)
 
 
-def enter(target: str, name: str | None = None, root: Path = ROOT) -> dict:
-    """The one setter of the block's state: refused unless MOVES allows the move."""
+def enter(target: str, name: str | None = None, root: Path = ROOT, item: str | None = None) -> dict:
+    """The one setter of the block's state: refused unless MOVES allows the move. The code of an item is opened (`item`: the block's
+    first, or the next after a verification) only when the item holds its reading, trace, research and failing red check
+    (block_item.py); opened again with no item, it is the same item's code after a failure."""
     doc = load(root)
     if target not in MOVES.get(doc["state"], ()):
         raise BlockError(f"the block is {doc['state']}: it may move to {', '.join(MOVES.get(doc['state'], ())) or 'nothing'}, "
                          f"not to {target}")
-    if target == OPEN and doc["state"] == CLOSED:
-        if not name:
+    if target == OPEN and (doc["state"] == CLOSED or item):
+        block_name = name if doc["state"] == CLOSED else doc["name"]
+        if not block_name:
             raise BlockError("a block is opened with its name")
-        doc = {"state": OPEN, "name": name, "opened": _now(), "verified": None, "head": _head(root)}
+        if not item:
+            raise BlockError("a block's code is opened for an item: --item <ID>, its `## Item` section in the work file")
+        missing = block_item.opening_gaps(Path(root), block_name, item)
+        if missing:
+            raise BlockError(f"item {item} is not ready for its code:\n  " + "\n  ".join(missing))
+        # the item's preparation began when the one before it went to its verification (the block's first: at the session's last
+        # compaction, the guard's own default); its code from now (edit_guard.py reads both)
+        prepared_from = doc.get("verified_utc") if doc["state"] == VERIFY else None
+        if doc["state"] == CLOSED:
+            doc = {"state": OPEN, "name": block_name, "opened": _now(), "verified": None, "head": _head(root)}
+        doc.update(state=OPEN, item=item, fails={}, item_from=prepared_from, item_opened=block_item.utc_now())
     elif target == VERIFY:
-        doc.update(state=VERIFY, verified=_now())
+        doc.update(state=VERIFY, verified=_now(), verified_utc=block_item.utc_now())
     else:
         doc["state"] = target
     if target == CLOSED:
@@ -118,10 +131,24 @@ def refusal(what: str, root: Path = ROOT) -> str | None:
             f"verification. Asked: {what}")
 
 
+def check_refusal(tasks: list[str], root: Path = ROOT) -> str | None:
+    """Why the checks `tasks` may not run again for the item under verification (block_item.run_refusal); None when they may."""
+    doc = load(root)
+    return block_item.run_refusal(Path(root), doc, tasks) if doc["state"] == VERIFY else None
+
+
+def record(results: dict[str, str], root: Path = ROOT) -> None:
+    """A verification's results (task: status) remembered for its item: what failed, with the causes and sources written then."""
+    doc = load(root)
+    if doc["state"] == VERIFY:
+        _save(block_item.remember(Path(root), doc, results), root)
+
+
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="cli.py block", description="the block rule: open, verify, close, status, check")
     ap.add_argument("action", choices=(OPEN, VERIFY, "close", "status", "check"))
     ap.add_argument("name", nargs="?", help="the block's name (open); what is asked (check: run, build, export, commit)")
+    ap.add_argument("--item", help="open: the item whose code is opened (its `## Item` section in the work file)")
     ap.add_argument("--root", default=str(ROOT), help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
     root = Path(a.root)
@@ -132,11 +159,12 @@ def main(argv: list[str]) -> int:
         return 1 if why else 0
     if a.action == "status":
         doc = load(root)
-        print(f"block {doc['state']}" + (f": {doc['name']} (opened {doc['opened']}, verified {doc['verified'] or '-'})"
+        print(f"block {doc['state']}" + (f": {doc['name']} (opened {doc['opened']}, verified {doc['verified'] or '-'}, item "
+                                         f"{doc.get('item') or '-'}, failing {sorted(doc.get('fails', {})) or '-'})"
                                          if doc["state"] != CLOSED else ""))
         return 0
     try:
-        doc = enter(CLOSED if a.action == "close" else a.action, a.name, root)
+        doc = enter(CLOSED if a.action == "close" else a.action, a.name, root, a.item)
     except BlockError as e:
         print(f"refused: {e}", file=sys.stderr)
         return 1

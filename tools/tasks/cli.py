@@ -140,7 +140,7 @@ def cmd_run(argv: list[str]) -> int:
     if not sel.tasks:
         print("empty selection: no task to run", file=sys.stderr)
         return USAGE
-    why = block.refusal("run " + " ".join(names), root)
+    why = block.refusal("run " + " ".join(names), root) or block.check_refusal([t.name for t in sel.tasks], root)
     if why:
         print(why, file=sys.stderr)
         return FAILED
@@ -156,6 +156,7 @@ def cmd_run(argv: list[str]) -> int:
         counts[r.status] = counts.get(r.status, 0) + 1
     summary = ", ".join(f"{v} {k}" for k, v in sorted(counts.items()))
     print(f"{passed}/{len(results)} passed ({summary}) in {time.monotonic() - t0:.0f} s; logs in {root / RUNS}")
+    block.record({r.name: r.status for r in results}, root)  # the item's failures, for the next run's refusal
     if a.json:
         write_atomic(Path(a.json), json.dumps([r.to_json() for r in results], indent=1))
     ok = bool(results) and passed == len(results)
