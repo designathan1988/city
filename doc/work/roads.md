@@ -200,8 +200,23 @@
   enters the exclusive lane on the right to turn right or to reach a property beside it, on the stretch marked
   with the continuity line; which is what MBST 5.5.1 above says of the marking itself.
 - P. H. C. Eilers, "A Perfect Smoother", Analytical Chemistry 75 (14), 2003, 3631-3636, doi 10.1021/ac034173t:
-  a smoother by penalised least squares after Whittaker (1923), its system sparse and banded, solved by a
-  Cholesky decomposition (the paper's full text still to be read for the equations and the choice of lambda).
+  a smoother by penalised least squares after Whittaker, its system sparse, solved by a Cholesky decomposition (the
+  paper itself is behind its publisher's door; what was read of it: its abstract and two implementations' notes).
+  The problem in the words of Wikipedia, "Whittaker–Henderson smoothing": the smoother "is the solution to the
+  following penalized least squares problem": the x minimising sum (y_i - x_i)^2 + lambda sum (Delta^p x_i)^2;
+  "For lambda -> infinity, the solution converges to a polynomial of degree p-1"; "For lambda -> 0, the solution
+  converges to the observations y". With a weight a station, setting the gradient to nothing gives
+  (W + lambda D'D) z = W y (derived here, p = 2: D the second differences; the matrix has five bands).
+- P. Felzenszwalb and D. Huttenlocher, "Distance Transforms of Sampled Functions", Theory of Computing 8 (2012),
+  415-428, section 3 (read from the authors' PDF): "the distance transform under the l1 norm can be computed using
+  a simple two-pass algorithm ... Essentially the same algorithm can be used to compute the distance transform of
+  a one-dimensional sampled function under the l1 norm."; "In the forward pass, each successive element of Df(q)
+  is set to the minimum of its own value and one plus the value of the previous element ... In the backward pass
+  each item is analogously set to the minimum of its own value and one plus the value of the next element.";
+  "Theorem 2. Algorithm 2 correctly computes the distance transform of f under the l1 norm"; "both the forward and
+  backward passes take a constant number of operations per grid position, yielding a O(n) algorithm overall." With
+  the grade times the station's step in place of one, the transform is the greatest line under f within the
+  grade; of -f, the least line over it.
 
 ## Read (facts with file:line)
 - native/src/sim/roads/road_grade.h:1-114: GradeProfile keeps four float lines a segment for good (h, ceil, base,
