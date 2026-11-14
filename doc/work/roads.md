@@ -395,6 +395,23 @@
   ({ok, error, index}: "hint.road.specInvalid", "hint.road.variantsFull" when the catalogue holds no room);
   project/game/store/road_models.gd (32 lines): list, save (:20-27: any spec, problems or not), remove(key) :30-31
   (it exists: no button of the catalogue calls it; project/ui/road_catalog.gd to read).
+- Case 2, the preview here (read): native/src/api/city_core_commands.cpp:65-88 plan_dict: the points of the preview
+  are the ground's height plus the authored lift along the pieces (lift_along), never a solved line; it gives ok,
+  error, price, length, crossings, half_width, asphalt_half, affordable (charge_of(price)), points, start, end;
+  :60-62: the two ends are found by find_anchor with the lift in hand. native/src/sim/commands/road_snap.cpp
+  find_anchor (:119-): a node is taken only when its lift is within grade.join_m of the lift given (`level`), so a
+  start over a raised road with another height in hand snaps to nothing of it: the start must take the node's or
+  the road's own height (the lift given left out for the first end, the anchor's lift read back).
+- Case 6, a street's order: native/src/sim/street/street_spots.cpp:33-61 street_chain: the segment, then the ones
+  on from its b end, then the ones back from its a end, each the straightest continuation of the same profile past
+  edit.street_cos (one-way kept); the list is not end to end and does not say which way each piece runs: the
+  numbers need the same walk giving each piece's start along the street and its direction (a function of
+  sim/street beside it).
+- Case 6, the demand here: native/src/sim/traffic/lot_demand.cpp (164 lines; :1-60 read): the trips follow each
+  kind of place's hours (traffic.json people_working, people_purchasing; flows(kind, hour) :16-31), a bay drawn by
+  those shares, then the nearest passing car; take_row :50- sends a parked car out. Nothing brings a car in at a
+  road's end on the map's edge. To read whole before the design: lot_demand.cpp, lot_traffic.cpp (337),
+  street_flows.h (106), flow_step.cpp (261).
 - What reads the grade (read): RoadNetwork::seg_y (road_network.cpp:240-245: grade.at(s, arc), else the straight
   line between the nodes' y); set_lift :247-252 marks the node and its roads; ray_deck
   (road_network_deck.cpp:28-32: prof.ylo, prof.yhi); RoadNetwork::cut (road_network_cut.cpp:14-31 heights_of: a
