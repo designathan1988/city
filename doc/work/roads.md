@@ -42,9 +42,10 @@
   The measure passed (`run lab_test --all --jobs 1`: 4/4, lab_test FAILURES 0). The board's line is checked;
   the register: Proads-6, -35, -37, -38 fixed, Proads-39 added (the ramp's grade across a joint, not
   understood), Proads-28 left open (its voids, widths by style and stair zebra are not this block's).
-  IN HAND: the commit, the push, `block close`. Done before them: superpowers:verification-before-completion; the board's line; the register (Proads-35, -37,
-  -38, -6, -28 closed; the ramp's grade at a joint, not understood, added); commit; push; `block close`. Then, by the addendum: doc/work/traffic.md and the notes of T036
-  and T037 re-read for what was left out; then junctions (doc/work/junctions.md keeps its reading so far).
+  COMMITTED AND PUSHED (391e7306); THE BLOCK IS CLOSED (2026-11-14). Roads is done: nothing of it is in hand.
+  NEXT, by the addendum ("APLIQUE AO QUE JÁ FOI FECHADO, antes de seguir adiante"): the traffic's leftovers, in a
+  block of their own (their list and state: the `## Now` of doc/work/traffic.md; the notes of T036 and T037 were
+  re-read: nothing left out there); then junctions (doc/work/junctions.md keeps its reading so far).
 - The cases (doc/port.md; doc/specs/003-roadcraft-features/sheets/roads.md has each with its evidence):
   1. the heights of the roads, solved in this game's design (Proads-8, -10, -15, -33, -35; read and researched before:
      doc/work/t015-roads.md: Whittaker-Eilers smoothing, Eilers 2003; exact two-pass envelopes, Felzenszwalb and

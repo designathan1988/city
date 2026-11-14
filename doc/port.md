@@ -42,7 +42,7 @@ with `file:line` on both sides), which the port tool reads: `python tools/tracer
 
 ## 3. Traffic (sheets/traffic.md)
 
-- [x] traffic, complete: every case below, in one block (`python tools/tracer/port.py sheet traffic`)
+- [ ] traffic, complete: every case below, in one block (`python tools/tracer/port.py sheet traffic`). Its blocks closed a761fe0a; by the owner's addendum of 2026-11-14 (nothing is left out for cost) the line is unchecked until what they left out or reduced is in the game, in a block of its own (the note: doc/work/traffic.md, `## Now`, T1 to T4): a check of a curved street's bend; the detailed window following the view down to it (the bays', the walkers' and the published reaches with it); the driving values' sources (Ptraffic-91); an indicator the player can see (Ptraffic-92)
   - the tracer's empty `--cost` on `city.traffic.step` (tools/tracer/tracer/cost.py), needed by this area's sheets (done: `python tools/tracer/trace.py --cost city.traffic.step --root native/src/sim/traffic` prints the loops; the tracer's 20 test files pass)
   - slowing for bends (done; the note: doc/work/traffic.md)
   - lane changes (politeness, indicators, positioning) (done)

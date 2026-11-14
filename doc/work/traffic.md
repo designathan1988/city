@@ -1,6 +1,45 @@
 # traffic: the complete traffic, ported in one block (doc/port.md, section 3)
 
 ## Now
+- The owner's standing orders (their words): the /goal of 2026-11-14: "termine o bloco `roads` ... siga na hora para
+  a próxima linha desmarcada de doc/port.md ... NÃO PARE PARA ME PERGUNTAR NADA NEM PARA PEDIR AUTORIZAÇÃO ... Só
+  pare se uma terceira verificação de um bloco falhar"; THE ADDENDUM of 2026-11-14: "NADA FICA DE FORA POR CUSTO; O
+  MELHOR VENCE; TUDO SE DECIDE PELO CÓDIGO ... QUAL É MELHOR SE DECIDE LENDO O CÓDIGO DOS DOIS, NUNCA RODANDO ...
+  Escreva na nota a comparação com file:line dos dois lados e o porquê da escolha ... Custo, tamanho, risco ou
+  "exigiria mudar X" ... NUNCA é motivo para deixar um caso, ou parte dele, de fora ... ANTES de `block review`,
+  em todo bloco: releia cada caso, item por item, e escreva na nota o file:line onde cada item está feito ...
+  APLIQUE AO QUE JÁ FOI FECHADO, antes de seguir adiante. Releia as notas de doc/work das funcionalidades
+  marcadas em doc/port.md, liste o que ficou de fora ou reduzido, e conclua em bloco próprio." Portuguese to the
+  owner; no agents; defects found by reading; one small verification a block, three at most; whole photos.
+- State (2026-11-14): roads is closed (391e7306, the board's line checked). NO BLOCK IS OPEN. This note and the
+  sheet (doc/specs/003-roadcraft-features/sheets/traffic.md) were re-read whole for the addendum; the notes of
+  T036 and T037 too (nothing left out there). WHAT THE TRAFFIC'S BLOCKS LEFT OUT OR REDUCED, to finish in a block
+  `traffic` of its own (the board's line is unchecked until then):
+  T1. row 1, bends: "0 streets curve: ... a street's bend (DirSeg::bend) is exercised by no test" (this note, the
+      plan `signal`'s paragraph): a check on a curved street (driving_test: a car slows for the bend of a street).
+  T2. row 8, the adaptive window: the reference's is 1.35 x the view within 300 to 750 m; here it "moves between
+      1100 and 1500 m only: the bays', the walkers' and the published windows are fixed sizes and bound it" (H, the
+      owner's orders, item 4): reduced because other windows would have to change. To decide by the code of both
+      which is better, and build it (the bays', the walkers' and the published reaches following the window).
+  T3. the values with no source opened (Ptraffic-91): the spread between drivers (temper_*), jerk_up and
+      jerk_brake, the bend's lateral acceleration (bend_lat_max, bend_lat_fall, bend_lat_min), bend_heavy_share,
+      the truck's acceleration and brake: each searched, its source's words in traffic.json `_drive_doc`.
+  T4. row 2, indicators: built, and "the lens of an indicator is 6 x 4.5 cm ... 1 px at the player's usual view"
+      (Ptraffic-92, traced): an indicator the player cannot see is not delivered; its size by a real lamp's (a
+      source), seen in the plan `signal`.
+  Not leftovers (read against the sheet): "bicycles never change" is this game's own cyclist at the kerb's edge
+  (the reference's laneChange.ts has no bicycle); the buses with no line are transit's first case (the board,
+  section 5); demand by the zones beside a street instead of 250 m cells is this game's one owner of the demand.
+  Seen beside it and registered, not this functionality's: Ptraffic-90, -93, -94.
+- NEXT, in order: the board's traffic line unchecked with T1 to T4; both games read for T2 (window.cpp,
+  parking_sources.cpp, pedestrians.cpp's window, traffic_system.cpp publish_poses; the reference's
+  meso/memory.ts:14-27) and T4 (agents.json indicator_m, car_parts.cpp:134-146; the reference's lens); the
+  sources for T3 and T4; each item's comparison and design written here; `block open traffic`; code all; the
+  item-by-item file:line; the diff read; `block review`; `block verify`; build; ONE run (driving_test,
+  flows_test, window_traffic_test or records_traffic_test, signal, zoom_ladder, e2e); photos; lab_test; commit;
+  push; `block close`. Then junctions.
+
+## Now, as it stood when the first traffic blocks closed (2026-11-13; history)
 (The state at this moment, rewritten at each step; everything below it is the history: what was read, designed, done.)
 - The owner's standing orders, their words: "acha no código os defeitos e corrige de uma vez, revisa"; "não aceito mais
   teste, medição, antes de corrigir o código completo, verificar, reverificar, corrigir de novo"; "um pequeno teste de
