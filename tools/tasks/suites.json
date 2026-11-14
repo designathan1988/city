@@ -429,6 +429,7 @@
     {"name": "near", "plan": "res://tests/visual/near_plan.json", "resolution": "1920x1080", "timeout_s": 300},
     {"name": "signal", "plan": "res://tests/visual/signal_plan.json", "resolution": "1920x1080", "timeout_s": 300},
     {"name": "far_cars", "plan": "res://tests/visual/far_cars_plan.json", "resolution": "1920x1080", "timeout_s": 120},
+    {"name": "zoom_ladder", "plan": "res://tests/visual/zoom_ladder_plan.json", "resolution": "1920x1080", "timeout_s": 120},
     {"name": "highway", "plan": "res://tests/visual/highway_plan.json", "resolution": "1920x1080", "timeout_s": 300},
     {"name": "fallen", "plan": "res://tests/visual/fallen_plan.json", "resolution": "1920x1080", "timeout_s": 300},
     {"name": "stampede", "plan": "res://tests/visual/stampede_plan.json", "resolution": "1920x1080", "timeout_s": 300},
