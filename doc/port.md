@@ -16,7 +16,7 @@ with `file:line` on both sides), which the port tool reads: `python tools/tracer
 
 ## 1. Roads (sheets/roads.md; work so far: doc/work/t015-roads.md)
 
-- [x] roads, complete: every case below, in one block (`python tools/tracer/port.py sheet roads`; the note: doc/work/roads.md)
+- [ ] roads, complete: every case below (`python tools/tracer/port.py sheet roads`; the note: doc/work/roads.md). The first block closed 4e38bad2 with parts left out; by the owner's addendum of 2026-11-14 (nothing is left out for cost) the line is unchecked until each is in the game, in a block of its own: the carriageway's surface in the profile editor (a versioned save) and drawn; the fill, cutting, piers and buried stretch drawn over the draft; the paint of a width transition and of a mini-roundabout's island; the stop word and the triangle on automatic priorities; the start over a raised road (the better rule, decided by the code); one owner of the arc conversion with its test (Proads-35); a near photo of the legends (Proads-38)
   - the heights of the roads, solved in this game's design (done: road_grade_test with its seam cases passes)
   - laying a road, what it will be and cost (done: the draft's price is the build's, its stretches named, the limited end told; the fill and cut are named in words, not painted along the draft)
   - the network's links and bans kept through edits (T037, 90b67e27) (done)

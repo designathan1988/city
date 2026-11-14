@@ -10,20 +10,38 @@
 - The owner's /goal of this session (2026-11-14, their words): "termine o bloco `roads` ... leia o diff inteiro e os
   diagnósticos do editor antes de `block review` ... Depois de fechar, commit e push, siga na hora para a próxima
   linha desmarcada de doc/port.md ... Só pare se uma terceira verificação de um bloco falhar".
+- THE OWNER'S ADDENDUM (2026-11-14, after the first block closed; their words): "NADA FICA DE FORA POR CUSTO; O
+  MELHOR VENCE; TUDO SE DECIDE PELO CÓDIGO ... Onde a referência e este jogo fazem algo de modos diferentes, o
+  melhor vence sempre. QUAL É MELHOR SE DECIDE LENDO O CÓDIGO DOS DOIS, NUNCA RODANDO ... Escreva na nota a
+  comparação com file:line dos dois lados e o porquê da escolha ... Custo, tamanho, risco ou "exigiria mudar X"
+  ... NUNCA é motivo para deixar um caso, ou parte dele, de fora. Mude o formato do save com versão e leitura dos
+  saves antigos ... Um caso só é marcado feito quando cada item da linha dele em doc/port.md e da folha ... existe
+  no jogo ... ANTES de `block review`, em todo bloco: releia cada caso, item por item, e escreva na nota o
+  file:line onde cada item está feito. Item sem file:line não está feito ... APLIQUE AO QUE JÁ FOI FECHADO, antes
+  de seguir adiante ... Em roads, pelo menos: o material da pista no editor de perfil (save versionado); o desenho
+  de aterro, corte, pilares e trecho enterrado sobre o rascunho; a pintura de transição de largura e da ilha da
+  mini-rotatória; a palavra de parada e o triângulo nas preferenciais automáticas; o início sobre via elevada
+  (decidir pelo código qual regra é melhor)."
 - Before it: the block `look` closed (9989db18). The domain skills the owner asked for are wired in (f4e95619;
   "On the way" below).
-- State (2026-11-14, 02:20): VERIFICATION 2 OF 3 PASSED. Verification 1 failed at its build (one error:
-  street_spots.h:19 took the name `StreetPiece` of street_volumes.h:16); the whole diff was then read and four
-  things fixed in one opening ("Read at the first verification" and "Coded in the block" below: StreetLeg; a bus by
-  its type; a bus takes its lane; the guard's spans taken). Then: `block review` 66 files, 0 new findings; the build
-  of both DLLs exit 0; the run dist/tasks/20261114-011043-23512-...: 9/9 passed (road_grade_test,
-  road_commands_test, road_edit_test, city, zoom_ladder, e2e; build, import, scripts); the six photos of zoom_ladder
-  and the eight pictures of doc/look opened and held part by part (buildings, roads, vehicles, ground: the same;
-  no part lost detail); lab_test 4/4. The register: Proads-3, -4, -5, -8, -10, -33 fixed; added Proads-37 (the
-  carriageway's surface is drawn by no renderer) and Proads-38 (no near photo shows a lane legend: the plan city
-  frames none); Proads-35 stays (its six readers are by arc; its criterion also asks one owner of the conversion and
-  a test on a curved graded road); Proads-6 and -28 stay until a photo shows the legends.
-  NEXT: commit; push; `block close`; then the board's next line: junctions (`port.py sheet junctions`).
+- The first block closed 4e38bad2 (pushed): verification 2 of 3 passed, 9/9 and lab_test 4/4 ("Read at the first
+  verification" and "Coded in the block" below); the register: Proads-3, -4, -5, -8, -10, -33 fixed, Proads-37
+  and -38 added, Proads-35, -6, -28 open.
+- State (2026-11-14, 03:20): NO BLOCK OPEN. The board's line of roads is UNCHECKED again (the addendum). THE SECOND
+  BLOCK of roads finishes what the first left out, each read in both games first and compared with file:line
+  under "The second block" below, the better one built, none left for cost:
+  a. the carriageway's surface (asphalt, concrete, cobble) in the profile editor, saved (a save version with a
+     reader of the old ones) and DRAWN (Profile::surface is read by no renderer today: Proads-37);
+  b. the fill, the cutting, the piers and the buried stretch drawn over the draft;
+  c. the paint of a width transition (a taper) and of a mini-roundabout's island;
+  d. the stop word and the triangle on automatic priorities (the legends read the player's signs only);
+  e. the start over a raised road: which rule is better, by the code of both;
+  f. Proads-35 whole: one owner of the arc conversion (arc_at, arc_of, arc_of_t) and a test on a curved graded road;
+  g. a near photo of each legend in the block's photo plan (Proads-38), Proads-6 and -28 closed by it.
+  Also to re-read for what was left out: doc/work/traffic.md (the board's line 3) and the notes of T036 and T037.
+  NEXT: read both games for a to e; sources; the design; `block open roads`; code all; each item's file:line
+  written here; the whole diff read; `block review`; `block verify`; build; ONE run with zoom_ladder; photos;
+  lab_test; commit; push; `block close`. Then junctions (doc/work/junctions.md keeps its reading so far).
 - The cases (doc/port.md; doc/specs/003-roadcraft-features/sheets/roads.md has each with its evidence):
   1. the heights of the roads, solved in this game's design (Proads-8, -10, -15, -33, -35; read and researched before:
      doc/work/t015-roads.md: Whittaker-Eilers smoothing, Eilers 2003; exact two-pass envelopes, Felzenszwalb and
