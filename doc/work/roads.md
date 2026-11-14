@@ -281,6 +281,13 @@
   benches rows, hydrants by 300 m, trees in the generated city); the code: native/src/sim/roads/street_furniture.cpp
   (345 lines), street_furniture_places.cpp (95), street_furniture_posts.cpp (134): to read, with whether the road
   tool offers a set (project/ui/road_options.gd).
+- Case 6, this game's furniture levels (read): native/src/sim/roads/street_furniture.h:18-20 (a segment's level in
+  its flags: 0 the full kit, 1 basic, 2 none); street_furniture.cpp:322-333: any level but none gets its lamps and,
+  with the later kinds asked, its hydrants and trees; only the full kit gets bins and benches (:332). The
+  reference's basic is lamps and bins, and hydrants, benches and trees come with the complete set alone: so here a
+  basic road gets hydrants and trees it should not and no bin it should. The fix is in that one place: the hydrants
+  and the trees with the full kit, the bins with basic and full, the benches with full (bins_and_benches :240-259
+  split in two). The road tool already offers the level (project/ui/road_options.gd:153-160, set_road_furniture).
 - What reads the grade (read): RoadNetwork::seg_y (road_network.cpp:240-245: grade.at(s, arc), else the straight
   line between the nodes' y); set_lift :247-252 marks the node and its roads; ray_deck
   (road_network_deck.cpp:28-32: prof.ylo, prof.yhi); RoadNetwork::cut (road_network_cut.cpp:14-31 heights_of: a
