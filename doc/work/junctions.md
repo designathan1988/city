@@ -137,6 +137,23 @@
 - A rebuilt plan (replan_signal :241-254) keeps running the stage that holds most of the approaches that were
   green, at least its least green and its intergreen; with none, the junction goes through an all-red.
 
+- Who waits at a kerb (cases 4, 6), decided with pedestrians.cpp :107-135, ped_ways.cpp :64-91 and
+  ped_crossing.cpp read whole: a walker held at a crossing asks again 5 times a second (CROSS_RETRY_S, begin_line)
+  and its own w.wait counts its seconds. So no enter / leave bookkeeping (a despawn, a fright would leak): a cell
+  a (node, arm slot), beside cross_stamp's layout: `KerbWait {seen (the time of the last held ask), longest (the
+  longest wait told since the cell was fresh)}`, written by begin_line where it holds a walker at a crossing
+  (ped_ways.cpp :76), read as "somebody waits there, the longest for N seconds" while `seen` is within two
+  retries. The signal reads it for a stage's walkers' demand and their wait; the gate (peds_in_way) for case 6.
+- Case 6 in peds_in_way (ped_crossing.cpp :138-157): beside the walkers on the crossing, a vehicle gives way to
+  somebody waiting at the kerb of a crossing its movement drives over (the arm it leaves by or enters by) when it
+  can still stop comfortably before its line and has not waited ped_courtesy_s itself (courtesy_owed :28-31), at
+  an uncontrolled crossing; at a signal only while that arm's lamp says walk (a turning movement and the walkers
+  it must give way to). The walker's own check (approaching :34-47) lets it step off once the vehicle stands.
+  A driver's temper decides who gives way (data ped_yield_temper: the pushiest do not): the reference's is a
+  chance of 0.35 a request (params.ts:93-112), which flickers; a driver's own nature does not.
+- The published walkers' lamp is two-state (pose_buffer.h:74 SignalRecord::walk, signal_lamps.cpp:48): it
+  becomes walk / flash / don't walk (a byte), the render's lens flashing on `flash` (props.gdshader: to read).
+
 ## Sources (opened 2026-11-14; each value's words go to the data's `_doc`)
 - Critical gaps by turn (case 1): HCM's base critical headways at a two-way stop, as the PTOE study guide's table
   gives them (open-exam-prep.com/study-guides/ptoe/managed-lanes-tsmo-its/unsignalized-intersections-roundabouts):
@@ -379,5 +396,15 @@
   least, approaches a stage, cycle, run, run_start, run_green, fixed, offset, settle, degree (:80-94);
   LaneGraph signal_nodes, signal_at (:104-107). The area's tests (run tests --list): flow_control_test,
   junction_sweep_test, street_crossing_test; e2e's amber and red checks.
+- Who reads the signal's walk and calls (grep, 2026-11-14): walk_signal's one caller is walk_ok
+  (ped_crossing.cpp:89); walk_ok is asked by ped_ways.cpp:74 and by the publication of the lamps
+  (traffic_system.cpp:74: {ds, light, walk_ok}: a yes or no to the render: the walkers' lamp is two-state);
+  node_crossers (traffic_state.h:124; filled ped_ways.cpp:37, :88, emptied :45; sized lane_graph_edit.cpp:132,
+  pedestrians.cpp:208); green_wanted (traffic_state.h:118); a far bus waits by next_green and calls by
+  signal_call_far (meso.cpp:250-253). Profile::ring marks a roundabout's segments, Profile::priority 0 local to
+  5 highway (profile_types.h:92-94); the roundabout tool: commands/roundabout.cpp (215 lines, to read for case
+  7). traffic.json's junction keys: signal_* :40-62, yield_look_s 3, yield_near_m 6, claim_after_s 8,
+  jam_seconds 20, starve_seconds 30, tail_credit_s 1.5, tail_credit_cap_ms 6, ped_courtesy_s 8,
+  ped_critical_gap_s 4, claim_hold_s 0.6, claim_brake 3, signal_extension_s (:450).
 - native/src/sim/traffic/light_rule.cpp (read whole, 111 lines; this game's own): amber_stops :43-48,
   light_recalls :50-63, light_stops :65-67, lights_ahead :69-108 (the stop a vehicle sees down its route).
