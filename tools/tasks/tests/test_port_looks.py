@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # support, the gate's own cases
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))  # tools: the tasks package
 
-from support import RepoCase  # noqa: E402
+from support import RepoCase, git  # noqa: E402
 from test_block import HISTORY  # noqa: E402
 from test_port_gate import COMPACTED, DEADLINE, HOOKS, RUN, GateCase, transcript  # noqa: E402
 
@@ -209,6 +209,10 @@ class WholeLife(RepoCase):
         self.assertIn("verification-before-completion", self.refusal("Bash", commit))
         self.did(call("Skill", {"skill": "superpowers:verification-before-completion"}))
         self.assertEqual(self.refusal("Bash", commit), "")
+        # the block's first commit made: its plan, committed since the block was opened, stays its own for a second one
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-q", "-m", "roads")
+        self.assertEqual(self.refusal("Bash", commit), "", "a second commit of the same block")
         # a compaction: nothing before the skill and the note again
         self.did(BOUNDARY)
         self.assertIn("has not stood on its records", self.refusal("Bash", {"command": "git status"}))

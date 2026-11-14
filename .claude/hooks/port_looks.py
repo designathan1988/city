@@ -193,22 +193,28 @@ def plans() -> dict:
     return module.photo_plans(SUITES)
 
 
-def written(file: str) -> bool:
-    """Whether a file of the project is new or changed in the work tree (written in the work in hand), by git's own word."""
-    try:
-        done = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain", "--", file], capture_output=True, text=True,
-                              encoding="utf-8", errors="replace", timeout=GIT_SECONDS)
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return done.returncode == 0 and bool(done.stdout.strip())
+def written(file: str, since: str = "") -> bool:
+    """Whether a file of the project was written in the work in hand, by git's own word: new or changed in the work tree, or
+    committed since the block was opened (`since`, its time as the block's state keeps it). A block's own plan stays its
+    own after the block's first commit: a second commit of the same block is no other work."""
+    def said(*args: str) -> str:
+        try:
+            done = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True, encoding="utf-8",
+                                  errors="replace", timeout=GIT_SECONDS)
+        except (OSError, subprocess.TimeoutExpired):
+            return ""
+        return done.stdout.strip() if done.returncode == 0 else ""
+    return bool(said("status", "--porcelain", "--", file) or (since and said("log", "-1", f"--since={since}", "--format=%H", "--", file)))
 
 
-def own_plans(runs: dict, passed: tuple) -> list:
+def own_plans(runs: dict, passed: tuple, since: str = "") -> list:
     """The photo plans of the functionality in hand that this verification ran and that passed: a plan other than the far
-    views (FAR) whose file was written or changed in this block's work. The same far views of the generated town show nothing
-    of what a block built: each functionality is photographed by a plan of its own, written for its cases."""
+    views (FAR) whose file was written or changed in this block's work (`since`: when the block was opened). The same far
+    views of the generated town show nothing of what a block built: each functionality is photographed by a plan of its own,
+    written for its cases."""
     known = plans()
-    return sorted(n for n, verdict in (runs or {}).items() if n in known and n != FAR and verdict in passed and written(known[n]))
+    return sorted(n for n, verdict in (runs or {}).items()
+                  if n in known and n != FAR and verdict in passed and written(known[n], since))
 
 
 def unseen(read: dict, plan: str, references: bool = True) -> list:

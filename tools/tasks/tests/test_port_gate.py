@@ -91,7 +91,7 @@ class GateCase(unittest.TestCase):
             {"name": PLAN, "plan": "res://tests/visual/flows_plan.json"},
             {"name": port_looks.FAR, "plan": "res://tests/visual/zoom_ladder_plan.json"}]}), encoding="utf-8")
         self.written = port_looks.written
-        port_looks.written = lambda file: "flows_plan" in file or "zoom_ladder" in file   # both written in the block's work
+        port_looks.written = lambda file, since="": "flows_plan" in file or "zoom_ladder" in file   # both written in the block's work
         # no domain skill on this machine (test_port_skills.py has its own)
         self.skills = port_skills.ROOT, os.environ.get(port_skills.CACHE)
         port_skills.ROOT = self.folder / "none"
@@ -181,7 +181,7 @@ class Shell(GateCase):
                          ("SendUserFile", {"files": [str(self.far)], "status": "normal"}), *skills)
         self.assertTrue(self.refused("Bash", commit, far), "the far views of the town are no functionality's own photos")
         self.state("verify")
-        port_looks.written = lambda file: False
+        port_looks.written = lambda file, since="": False
         self.assertTrue(self.refused("Bash", commit, both), "a plan the block did not write or change is not its own")
 
 

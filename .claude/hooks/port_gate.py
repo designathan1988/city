@@ -167,7 +167,7 @@ def shell(command: str, background: bool, did: dict, powershell: bool = False) -
                     "with the Skill tool and follow it: read the failing lines, the code they name, the evidence) before "
                     "it is named at `block open --cause`. A guess is no cause.")
     committing = bool(COMMIT.search(command)) and block()["state"] == "verify"
-    own = port_looks.own_plans(block().get("runs"), LOOKED) if committing else []
+    own = port_looks.own_plans(block().get("runs"), LOOKED, str(block().get("opened") or "")) if committing else []
     if committing and not own:
         return deny("CLAUDE.md: a block's work is committed only after the functionality itself was photographed. Its own "
                     "photo plan: a plan of project/tests/visual written or changed in this block (a task of suites.json), that "
