@@ -288,6 +288,14 @@
   basic road gets hydrants and trees it should not and no bin it should. The fix is in that one place: the hydrants
   and the trees with the full kit, the bins with basic and full, the benches with full (bins_and_benches :240-259
   split in two). The road tool already offers the level (project/ui/road_options.gd:153-160, set_road_furniture).
+- Case 4, the far lines here (read whole): project/render/shaders/road_body.gdshaderinc (217 lines; road.gdshader
+  and road_far.gdshader include it): the paint is geometry (M_PAINT), dropped whole when the tier's detail cut-off
+  sets `road_paint` 0 (:11, :123); at the far level alone (ROAD_FAR, far_pull > 0, :141-149) each lane strip paints
+  a line along each of its own edges, box-filtered across the pixel (fwidth of the wear's across), in ONE grey
+  (FAR_LINE_TONE 0.78 :54: a yellow centre line turns grey from afar) at ONE duty for dashed and solid alike
+  (FAR_LINE_DUTY 0.6 :53), none along the carriageway's edge (:146); FAR_LINE_M 0.12 :52: three numbers in the
+  shader. Between the near paint's end and the far level the dashes are quads with no filter (road_markings.cpp
+  lines :59-62: a quad a dash).
 - What reads the grade (read): RoadNetwork::seg_y (road_network.cpp:240-245: grade.at(s, arc), else the straight
   line between the nodes' y); set_lift :247-252 marks the node and its roads; ray_deck
   (road_network_deck.cpp:28-32: prof.ylo, prof.yhi); RoadNetwork::cut (road_network_cut.cpp:14-31 heights_of: a
