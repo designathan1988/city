@@ -13,18 +13,26 @@
 - Answered, from the runs' own logs: the photos were NOT taken before the game loaded: at every shot `pending=0 want=0
   unmet=0 asked=0 done=0` (zoom_ladder: ...\tasks\baw48367z.output:2119-2148; capture `city`: ...\tasks\be9itmde0.output
   :2059-2171: the town drawn in 1133 ms at the opening, each view in 33 ms). No slow loading in those runs.
-- A hole found on the way, NOT fixed yet: the capture `city` marked "12_square came out without the building's near
-  level" (project/tests/visual/capture.gd:216) with pending at 0: the game says done and a photo lacks the level it
-  should show. To read: capture.gd:160-220 (JUMP_FRAMES, the civic shots), capture_wait.gd until_drawn (settle frames,
-  then render_pending 0), near_reach() (building_renderer_reach.cpp) against where those shots stand; then the fix in
-  the photos' wait (and in look.gd's shot), so no photo leaves with a level of its view missing.
+- "12_square came out without the building's near level" (capture `city`), read: no photo left early there either.
+  Its chunk's flags were 62: mid built, shown, in detail, far mesh there, near not built (building_renderer_probe.cpp
+  :78-88); a near level is asked only within near_reach() of the chunk's middle (building_renderer_view.cpp:54;
+  building_renderer_reach.cpp:127: near_end x the tier's detail scale + a pad), and the civic shot stands at 1.1 lot
+  sizes from the lot's middle (capture.gd:29, :211): for the square's big lot that is past the near reach, so the game
+  rightly draws its mid level and the capture's check (capture.gd:215) asks a level that view never gets. The check's
+  premise is wrong for a big lot: registered, not worked.
 - The far look, open, registered (the register's newest render problem: "from far the buildings are pale flat blocks"):
   past building_mid_end_m (1100 m, measured with the eye's height: building_renderer_view.cpp:51-52) the whole town is
   drawn by the far level: towers with no window grid, washed colours. Same switch, same distances, same far shader and
   window filter (building_lamps.gdshaderinc:62-71 pulse) as at the revert dcfd4c7c. After the revert the far level was
   changed by 71b78d05 (its message: no coping, a pitched roof as its planes, a roof's pieces as boxes kept by size, no
   small four-cornered face; "far 31.9 M -> 15.7 M triangles"), then 2ca388ac, fe8811b7, eca6c6de, e8174734. Which took
-  the look: not found by reading. References kept: doc/look/far_town_2026-11-07.png, mid_town_2026-11-07.png,
+  the look: not found by reading. Also the same at the revert and now: the far material's values (materials.json
+  building_far: glass_sky, glass_floor 0.18, window_glow 0.42, wall_gain 1) and the far tones (buildings.json
+  finish_far). Other things that changed since and touch the whole picture, not read yet: project/render/daylight.gd
+  (122 lines), sent_params.gd (new, a9ebda4c: a value sent only when it moved), sun_cascades.gd (new, 4968c9b0: the
+  sun's shadows reach what the view shows), sky.gdshader, sky_view.gd, render_method.gd (new, ea76da80),
+  project/data/render/palette.json; and the town's generation (the buildings on the lots are not the same ones).
+  References kept: doc/look/far_town_2026-11-07.png, mid_town_2026-11-07.png,
   doc/look/zoom_ladder/00..02 (near and middle as they are now, good).
 - The guard, written, tests pass (12), NOT committed yet: .claude/hooks/port_gate.py refuses a block's commit unless the
   verification's run photographed the plan `zoom_ladder` (LOOK, LOOKED), and says to open its six photos whole and tell
