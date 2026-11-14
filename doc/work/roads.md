@@ -136,6 +136,33 @@
   (road_plan.cpp:213) while the commit prices the recorded structure (road_economy.cpp:21-27): a bridge shown
   affordable is refused at the click; no stretch is shown; a grade-limited free end is not told and a held
   connection is told "too short".
+- Case 4, this game (read whole): native/src/render/roads/road_markings.cpp (176 lines): lines :42-69 (each
+  MarkLine of the profile: colour, width by fast/centre/exclusive, the dash by the speed band, a solid centre drawn
+  double on a multi-lane road by the style), crossings :96-133 (the zebra's bars centred on each carriageway, their
+  mean colour at the far level, the stop line across the arriving lanes at stop_line_back), parking_paint :142-160
+  (bay divisions, the band's dashed edge, the yellow no-parking line), emit_markings :163-174 (no lines at the far
+  level: "filtered by the road's shader there"). No turn arrow, no legend, no word, no symbol anywhere in it.
+- Case 4, the reference, world/markings.ts (547 lines; :1-280 read): the lines along a road are drawn by the
+  carriageway's shader, not as polygons (AlongPaint :83-151: each line's offset, width, colour, dashed or not, the
+  dash's frame so a split does not reflow it); a divider between two lanes of one way is solid, and wider (0.248
+  against 0.128), where the lanes' uses differ (a bus lane) or the section says solid (:121-126); the centre line
+  dashed, solid or double as the section says (:110-118); segmentMarkings :154-164 = the lanes' turn arrows and the
+  bus lanes' legends; busLegends :166-189 (the word of the style along each bus lane, first 12 m from each end of
+  the painted stretch, then every 70 m, letter = min(0.78 of the lane over the word's width, half the height));
+  paintInLane :192-208 (strokes placed along the lane as the arriving driver reads them); approachLegends :213-254
+  (at a junction of three legs or more, on each leg that arrives with a stop or a yield rule, except highways and
+  ramps: the style's stop word or the yield symbol in every lane, 1.5 m clear of the stop line, its foot at least
+  2 m into the road; the yield symbol 3 m long); laneArrowMarkings :257-299 (only on a road of 19.2 m or more, for
+  each lane whose turn rule is not "all", its station 8.8 m before the end; a shaft 2 m back, the straight-on
+  arrow 2 m ahead with its head, a hook to each side the rule allows, strokes 0.12 m wide following the curve);
+  stopBar :313-335 (across the arriving half only); zebraBars :369-401 (bars 0.5 on a pitch of 1, 0.3 clear of each
+  kerb, each side of a median; one quad a stretch whose bars the shader cuts); junctionDetailAt :416-437 (no paint
+  at a junction with a highway or a ramp; a stop bar only where three legs or more meet and the leg arrives);
+  midBlockDetailAt :440-469; transitionMarkings :472-522 (across a taper: the two directions parting round a
+  median's nose, or one solid line in each road's colour on its half, and the lanes both roads have run on dashed);
+  miniRoundaboutIsland :537-546 (one painted disc of 40 sides, radius 2 to 4 m, 0.4 of the nearest mouth). Not read
+  yet: world/roads/markingStyle.ts (the words' strokes, the yield symbol, the styles), render/roadPaint.ts (the far
+  filter of the lines).
 - What reads the grade (from doc/work/t015-roads.md, to be read again): at(), ylo/yhi, structure, plates,
   len/step/half: road_network.cpp:245, road_network_deck.cpp:30, road_network_cut.cpp:14, road_grade_sync.cpp:29,
   city_core_state_probe.cpp:101, city_core_grade_probe.cpp.
