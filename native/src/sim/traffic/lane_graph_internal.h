@@ -27,6 +27,11 @@ struct SweepWork {
 };
 SweepWork find_conflicts(CityState &s, const std::vector<int> &ids);
 
+// turn_classes.cpp: how a movement turns, from the heading `h` it arrives with to the heading `o` it leaves with (`same`: back down
+// its own segment; `carried`: along the road the junction is on; `degree`: the node's arms), and whether lane `lane` of `n` takes it.
+Turn turn_class(const V2 &h, const V2 &o, bool same, bool carried, int degree, const TrafficParams &tp);
+bool lane_allows(int lane, int n, Turn t);
+
 // lane_graph_edit.cpp
 int alloc_conn(CityState &s); // a free pool entry (or a new one), with its per-connection state cleared
 void ensure_conn_state(TrafficState &t); // sizes conn_vehicles/conn_pass/... to LaneGraph::conns

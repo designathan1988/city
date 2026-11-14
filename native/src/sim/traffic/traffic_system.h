@@ -165,7 +165,7 @@ void commit(CityState &s, int vehicle, int conn);
 void release(CityState &s, int vehicle, int conn); // takes a commitment back before the vehicle used it
 void claim_exit(CityState &s, const Conn &c, int vehicle);
 bool jam_release(CityState &s, int conn, int vehicle);
-void admit(CityState &s, int node, bool released);
+void admit(CityState &s, int ci, bool released); // a head let onto connector `ci`: its node's count, whose turn its merge is
 void reset_admission(CityState &s);
 void step_governor(CityState &s, float dt);
 
@@ -226,10 +226,7 @@ float detection(CityState &s, int ds);
 // A vehicle on approach `ds` moved from arc `from` to `to`: over the detection section it wants the green until it
 // reaches the line. A far (meso) vehicle asks as it leaves at the line, one saturation headway on.
 void signal_call(CityState &s, int ds, float from, float to);
-void signal_call_far(CityState &s, int ds);
-// Walkers at signalled node `node` may step onto the crosswalk over arm `arm_seg` (its traffic in `arm_stage`) now: while
-// another stage runs and their flashing red and all-red still fit before it ends (CONTRAN MBST vol. V 5.7.2).
-bool walk_signal(const CityState &s, int node, int arm_seg, int arm_stage);
+void signal_call_far(CityState &s, int ds, bool held);
 // The flashing red a crosswalk over arm `arm_seg` needs: reaction and its length at the walkers' design speed.
 float ped_clearance(const CityState &s, int arm_seg);
 bool walk_ok(CityState &s, int node, int arm_seg); // a walker may step onto the crosswalk over this arm

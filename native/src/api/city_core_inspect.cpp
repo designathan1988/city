@@ -95,6 +95,11 @@ void put_node(const CityState &s, const TrafficView &view, Dictionary &d, int no
 	d["arms"] = int(s.roads.nodes[size_t(node)].segs.size());
 	d["crossing"] = int(s.roads.nodes[size_t(node)].crossing);
 	d["uturn"] = int(s.roads.nodes[size_t(node)].uturn);
+	// what the player set on it (NodeControl; 0 automatic) and what rules it now (Control: 0 none, 1 by rank, 2 a signal; with the
+	// flows' stop on every leg told apart): the panel's buttons and its note of the automatic choice
+	d["ctl"] = int(s.roads.nodes[size_t(node)].ctl);
+	d["ruled_by"] = int(traffic::control_of(s, node));
+	d["all_stop"] = s.roads.nodes[size_t(node)].ctl == CTL_AUTO && s.roads.nodes[size_t(node)].auto_signal == AUTO_ALL_STOP;
 	if (size_t(node) >= view.junction.size() || !view.junction[size_t(node)].signal) return;
 	const JunctionView &j = view.junction[size_t(node)];
 	if (j.stages == 0 || size_t(j.least_from + j.stages) > view.least.size()) return;
@@ -105,6 +110,7 @@ void put_node(const CityState &s, const TrafficView &view, Dictionary &d, int no
 		greens.push_back(set.fixed && k < set.greens.size() ? std::max(least, set.greens[k]) : least);
 	}
 	d["fixed"] = set.fixed;
+	d["buses_first"] = set.buses_first;
 	d["offset"] = set.offset;
 	d["greens"] = greens;
 }

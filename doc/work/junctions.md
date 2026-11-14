@@ -17,27 +17,163 @@
   item por item, e escreva na nota o file:line onde cada item está feito ... APLIQUE AO QUE JÁ FOI FECHADO, antes
   de seguir adiante". Applied: roads' second block closed (391e7306) and the traffic's leftovers' block closed
   (03e3a9e7, pushed; doc/work/traffic.md); T036 and T037 had nothing left out.
-- State (2026-11-14, after the traffic block closed): JUNCTIONS IS IN HAND, NO BLOCK OPEN. The one look with no
-  block open is not spent. Read so far, both games: everything under "Read" below (this game's gate, control,
-  timing, admission, crossings, signs, panels, flows' control; the reference's params, plan, fsm, admission,
-  cycles, spillback, query, panel). Still to read: the list at the end of "Read". No design is written yet.
-  Since the traffic block: the window of detailed traffic follows the view down to 350 m (window.cpp), a
-  junction's flows are judged only inside it (flow_control.cpp look_at).
+- State (2026-11-14): THE BLOCK `junctions` IS OPEN (verifications used: 0 of 3; nothing is built or run until
+  `block verify`). The designs: "Designs", "The signal's controller as it will be coded" and the paragraphs after
+  it; the sources: "Sources"; what is written so far, file by file: "Coded in the block", all below.
+  ALL ELEVEN CASES ARE CODED (nothing run): the simulation, the save (version 12), the commands, the panel, the
+  data's `_junction_doc`, the probe and the test junctions_test.
 - The cases (doc/port.md; doc/specs/003-roadcraft-features/sheets/junctions.md has each with its evidence):
   1. gap acceptance by turn; 2. signal stages from conflicts, protected turns; 3. demand-driven signals;
   4. walkers' calls at signals; 5. bus priority at signals; 6. drivers give way to people waiting at a zebra;
   7. ring metering and the zipper merge; 8. mini-roundabout and "none" control priority; 9. spillback and deadlock;
   10. the junction panel; 11. turn classes, walkers-only stages, replanning after an edit.
-- NEXT, in order: the tracer's report read; this game's files read whole (junction_admission.cpp, ped_crossing.cpp,
-  light_rule.cpp, junction_sweeps.cpp, street_signs.cpp, green_wave.cpp, flow_control.cpp, lane_graph_types.h's
-  Junction, road_network.h SignalSettings, inspector_rows.gd and inspector_panel.gd's junction part, traffic.json's
-  junction keys); the reference read at the sheet's places (sim/junctions: params.ts, admission.ts, plan.ts, fsm.ts,
-  query.ts, cycles.ts, spillback.ts; ui/junctionPanel.ts); facts written here with file:line; Context7 for each API
-  and the internet for each value (critical gaps by turn: HCM / MBST; actuated control: MBST vol. V; pedestrian
-  calls; bus priority; roundabout entry rules: CTB art. 29); each case's design written here; then
-  `block open junctions`, every case coded with nothing run; the whole diff read; `block review`; `block verify`;
-  the build; ONE run (the junctions' own tests named by `run tests --list`, a photo plan, zoom_ladder, e2e);
-  lab_test; commit; push; `block close`.
+- DONE since: the standing tests read against the new rules (flow_control_test, street_crossing_test,
+  signal_cases.gd, e2e's light checks: nothing to change, see "The standing tests, read"); the photo plan is
+  the existing look plan `road_paint` (signalled crossings, the stop lines, a mini-roundabout, on bare land);
+  "Every item, where it is done" written below.
+- The whole diff was read and VERIFICATION 1 ran (2026-11-14; "The diff read and verification 1", below): the
+  review, the build, the one run 9/9 and the photos are right; the measure `run lab_test --all --jobs 1`:
+  "4/4 passed (4 PASS) in 32 s", frame 16.66 ms (60.0 fps, bound "headroom"), CPU 2.62 ms, GPU 6.40 ms, 1 hitch
+  in 176 frames. The board's line is checked.
+- LEFT, in order: commit; push; `block close`; then the board's next line (section 4, zones-lots-growth).
+  NOT COVERED BY A CHECK and to be said to the owner: the ring's metering and the zipper under real traffic (the
+  test reads no ring), buses first in time (the test reads the setting kept, not a bus holding a green), the
+  tests with a camera not in the run (the window follows the view), traffic_hash_test's digest.
+
+## The diff read and verification 1 (2026-11-14)
+- Found and fixed in the diff's reading: a far (meso) vehicle held at a red never called the signal
+  (meso.cpp:249-253 called only on green), and a signal now rests with no demand: it would wait for ever.
+  signal_call_far(s, ds, held): held at a red its call is kept until its green ran (a cycle at most; the practice
+  of a locking detector memory: "the first actuation received ... during the red interval is used to trigger a
+  continuous call for service", TDOT Traffic Design Manual ch. 8, as the search gives it), on green a discharge
+  headway as before; a signal with no stage at all (nobody arrives, nobody crosses) is skipped
+  (signal_plan.cpp plan_stages, signal_timing.cpp update_lights). Confirmed by reading: conflicts exist before
+  plan_stages (lane_graph.cpp:331-339; lane_graph_edit.cpp:230-231); conflict_clear's side in clearing_time
+  (junction_sweeps.cpp:245-254, junction_admission.cpp:133); the zipper is the reference's at any node
+  (admission.ts:350-361); main_legs is one pair (junction_control.cpp:194), so `carried` is one road.
+- `block review`: "51 changed file(s) pass the gates" (0 NEW, 9 registered); `block verify`; build "2/2 passed
+  (2 PASS) in 133 s"; the ONE run `run junctions_test,flow_control_test,street_crossing_test,road_paint,
+  zoom_ladder,e2e`: "9/9 passed (1 CACHED_PASS, 8 PASS) in 98 s".
+- junctions_test FAILURES 0: gaps "right 6.2, straight 6.5, left 7.1, left off the main road 4.1 s", after a
+  long wait "left 5.6 s, left off the main road 3.0 s"; "6 stages, 4 of them for turns"; "every crossing walks
+  in some stage (0 of the walkers' own)"; "the signal rests on its stage: stage 0, then 0"; "car 0 on road 441
+  got its green"; "a walker who waited long at the kerb gets the walk over road 441"; buses first read back;
+  "4 legs, 2 main"; mini-roundabout "ranks [1]"; no control "ranks [2]", no plate. flow_control_test: "the stem
+  gives way ... 1 arms give way", "vehicles went through the Stop: 715", "0 passed without stopping".
+  street_crossing_test: "held at its line by the crossing, slowed from 8 to 1.1 m/s", 10.14 m at the nearest.
+- PHOTOS opened whole: zoom_ladder 00-05 against doc/look/zoom_ladder 00-05 (buildings, roads, vehicles,
+  ground, trees: the same part by part) and far_town, mid_town; road_paint 00-10 (signalled crossings with
+  their stop lines, posts and vehicles held at the lines; the Stop words; the give-way triangles; the
+  mini-roundabout's circle; the bus word; the width change): nothing lost.
+
+## Every item, where it is done (file:line, read 2026-11-14 before `block review`)
+- 1 gap by turn: junction_gate.cpp:83 turn_gap (the turn's gap x temper less the wait's impatience, the floor),
+  :46 clearing_time, :89 may_enter, :128 `arrives < max(gap, clear)`; the data traffic.json gap_* (`_junction_doc`
+  :459).
+- 2 stages from conflicts, protected turns: signal_plan.cpp:44 pair_opposite, :62 join_free, :90 turn_stages
+  (Conn::gives_way, DirSeg::turn_stage), :142 time_stages, :179 plan_stages; junction_control.cpp:177 calls it;
+  signal_timing.cpp:166 lights a turn stage's approach.
+- 3 demand-driven: signal_timing.cpp:75 green_ends (gap out, the most, the rest in green), :95 next_stage (the
+  starved, the walkers' limit, the weighted age, no demand skipped), :121 advance; signal_demand.cpp:60
+  stage_asked (a call standing or a vehicle in the detection reach: the lane's own list).
+- 4 walkers' calls: ped_ways.cpp:79 kerb_word (the kerb's cell, junction_state.h KerbAsking), signal_demand.cpp
+  :90 walkers_wait, :82 people_on (the hold), :99 walk_lamp (walk / flash / stop), :110 / :120 the cell;
+  ped_crossing.cpp:88 a walker starts only on walk; traffic_system.cpp:81 the published lamp, signal_lamps.cpp
+  :48 the lens (a flashing stop).
+- 5 bus priority: road_network.h SignalSettings::buses_first, save_write.cpp:71 / save_read.cpp:78 (version
+  12), signal_demand.cpp:76 bus_near, signal_timing.cpp green_ends / next_stage (the hold, the cut, its stage
+  next), city_core_edit.cpp:43 set_signal_plan, junction_panel.gd:15 the switch, city_core_inspect.cpp:113.
+- 6 people waiting at a zebra: ped_crossing.cpp:162 waiting_walkers (the kerb's cell, a comfortable stop, the
+  driver's temper, courtesy owed; at a signal only on walk), asked in junction_gate.cpp may_enter :89-.
+- 7 ring metering and the zipper: junction_admission.cpp:90 ring_load, :114 ring_full, vehicle_motion.cpp:104
+  (the gate); junction_gate.cpp:59 gives_its_turn, junction_admission.cpp:207 merge_last written by admit.
+- 8 mini-roundabout and "none": junction_gate.cpp:33 outranks (Junction::circle: from the left),
+  junction_control.cpp:181 j.circle, :115 highway_segs, :126 ranked_main (a highway first, else nobody).
+- 9 spillback and deadlock: junction_admission.cpp:37 exit_room (where the tail rests), has_exit; jam_release
+  stands as the last resort.
+- 10 the panel: control_panel.gd:19 fill (the seven controls, the automatic choice's note, lock and unlock),
+  approach_panel.gd:31 the flow an hour and the main-road tag, :42 the rules' reset, junction_panel.gd:15;
+  city_core_inspect.cpp:101 ruled_by, city_core_lanes.cpp:65 node_legs flow_h and main.
+- 11 turn classes, walkers-only stages, replanning: turn_classes.cpp:10 turn_class (30 and 150 degrees, the
+  carried road: lane_graph.cpp:271), signal_plan.cpp:116 walking_stages (a stage of the walkers' own for a
+  crossing no stage walks), junction_control.cpp:217 replan_signal (keeps the stage with most of what was
+  green, else an all-red).
+- The check: project/tests/core/junctions_test.gd (_gaps :74, _plan :85, _rests_and_turns :96, _walkers_call
+  :119, _settings :139, _other_controls :156).
+
+## The standing tests, read (2026-11-14)
+- flow_control_test.gd: `giving_way` (city_core_flow_probe.cpp:104-107) counts approach_rule != RULE_NONE: a T
+  on automatic is PRIORITY, the stem alone gives way: unchanged (RULE_NONE is new only under the player's
+  "none"). _stop_sign :128-136: under a Stop on every leg all rank alike; a head from the right that still
+  rolls holds me for the turn's gap (6.2 to 7.1 s against the old 3 s look), then it stands at its Stop and
+  first come decides (FIRST_COME_S): slower, never stuck; claim_after_s stands.
+- street_crossing_test.gd: its car is held by somebody ON the zebra (Hold::CROSSING), as before;
+  waiting_walkers only adds holds; the walker steps off alone (no car) first.
+- signal_cases.gd :51 presses the panel's first button: still the mode (junction_panel.gd:11-13, the buses'
+  switch comes after it); set_signal_plan with four arguments (the fifth defaults: DEFVAL false).
+- e2e (light checks :55-84): light_holds and amber_wanted untouched; red_entries: a turn stage lights its
+  whole approach alone (signal_timing.cpp:166), so no movement enters on red by the plan.
+
+## Coded in the block (as each part is written; nothing built or run)
+- The data: traffic.json gap_right_s 6.2, gap_straight_s 6.5, gap_left_s 7.1, gap_main_left_s 4.1 (HCM), gap_temper,
+  gap_impatience, gap_impatience_most_s, gap_floor_s, gap_slow_ms, gap_clear_share, gap_clear_least_ms,
+  gap_clear_margin_s, zip_ready_m, zip_patience_s, ring_meter_share, ped_wait_limit_s, ped_hold_limit_s,
+  ped_yield_temper, bus_extension_s, signal_starve_cycles, signal_queue_weight, turn_stage_green_s,
+  turn_stage_most_s; yield_look_s and yield_near_m gone; traffic_params.h's list. Their `_doc` is still owed.
+- junction_state.h (new, in doc/map.md): JunctionState {merge_last, kerb (KerbAsking), ring (RingLoad)};
+  TrafficState::junction (traffic_state.h); sized in reset_admission and lane_graph_edit.cpp graph_grow.
+- Cases 1 and 8 and the zipper, junction_gate.cpp: outranks (on a mini-roundabout, Junction::circle, the
+  movement does not rank and who comes from the left goes first), gap_asked, clearing_time, gives_its_turn;
+  may_enter: the head that goes first must arrive no sooner than max(the gap asked, this vehicle's clearing
+  time + gap_clear_margin_s): HCM's critical headway already holds the manoeuvre, so the two are not added.
+- junction_admission.cpp: admit(s, connector, released) writes merge_last (called from vehicle_motion.cpp);
+  exit_room (case 9: a standing tail leaves its rear; a lane discharging, its light green and its head moving,
+  the credit; a tail rolling up to a queue, where it will rest: the stop line less the lane's vehicles x
+  slot_m); ring_load / ring_full (case 7: the ring walked once a tick from the segment entered, metered at
+  ring_meter_share; asked in vehicle_motion.cpp's gate before may_enter; declared in motion_law.h).
+- junction_control.cpp: Junction::circle set; highway_segs / ranked_main (the "none" control: a highway's flow
+  first, nobody else ranked: RANK_FREE); approach_rule gives no rule under "none".
+- The signal's plan: lane_graph_types.h (DirSeg::turn_stage, Conn::gives_way, Junction::turn_of,
+  walks, served, hold_from, buses_first), road_network.h SignalSettings::buses_first, signal_plan.h (StageArm,
+  WalkLamp), signal_plan.cpp (plan_stages: pair_opposite, join_free, turn_stages, walking_stages, time_stages),
+  signal_demand.cpp (stage_asked, stage_queue, bus_near, people_on, walkers_wait, walk_lamp, kerb_word,
+  kerb_waited); the three files in doc/map.md.
+
+- The signal wired in: junction_control.cpp build_junction calls plan_stages (make_stages gone, stage_arms),
+  replan_signal keeps the stage holding most of what was green, else starts in an all-red; signal_timing.cpp:
+  green_ends, next_stage, advance (the calls a green answered end with it), compute_light with turn_stage,
+  walk_signal gone, signal_call_far's call standing a cycle; ped_crossing.cpp walk_ok = walk_lamp == WALK,
+  waiting_walkers (case 6, asked in junction_gate.cpp may_enter); ped_ways.cpp begin_line says kerb_word;
+  pose_buffer.h SignalRecord::walk a byte (LAMP_STOP, LAMP_WALK, LAMP_DARK), traffic_system.cpp publish_signals
+  (a flashing stop: lit half of each ped_flash_s), signal_lamps.cpp showing; traffic.json ped_flash_s.
+
+- The save, the commands, the panel: save_format.h SAVE_VERSION 12 (BUSES_FIRST_SAVE_VERSION), save_write.cpp
+  and save_read.cpp (a signal's buses_first after its greens; an older file: off); the api's set_signal became
+  set_signal_plan(node, fixed, greens, offset, buses_first = false) (city_core.h, city_core_edit.cpp,
+  city_core_bind.cpp with DEFVAL, store_api.gd, save_undo_test.gd, signal_cases.gd, junction_panel.gd: the gate
+  refused the old name on the changed line); green_wave.cpp keeps buses_first; city_core_inspect.cpp put_node:
+  ctl, ruled_by, all_stop, buses_first; city_core_lanes.cpp node_legs: flow_h (FlowStats::rate), main
+  (main_legs); project/ui/control_panel.gd (new, in doc/map.md: the seven controls by set_node_control, the
+  automatic choice's note, the lock and unlock), inspector_panel.gd calls it, approach_panel.gd (each leg's flow
+  and main-road tag, the rules' reset), junction_panel.gd (the buses-first switch). Every text is a key the
+  tables already had (strings_b.csv:82-113): no new key.
+
+- Case 11's turn classes: turn_classes.cpp (new, in doc/map.md: turn_class and lane_allows, out of
+  lane_graph.cpp, which passed its size): straight along the road the junction is on (main_legs: carried), at a
+  joint, or within straight_dot (now cos 30: 0.866, was 0.7); a turn back also onto another segment past
+  turn_back_dot (cos 150: -0.866, new). THE REFERENCE: world/junctionBuild.ts:313-320 classifyTurn (30 and 150
+  degrees) and :173-175 "the road the node is ON carries its lanes across, however it bends"; THIS GAME had 45
+  degrees, no carried road, a turn back only down the same segment. The reference's is the better (a 40 degree
+  branch is a turn that gives way; a main road that bends keeps its lanes): brought whole.
+- traffic.json `_junction_doc` (every new key with its source's words in English or "a choice"; the schema's
+  property); turn_gap public (junction_gate.cpp, motion_law.h) for the probe.
+- The probe and the test: native/src/api/city_core_junction_probe.cpp (junction_facts, kerb_call; city_probes.h,
+  city_core_jobs.cpp, store_api.gd), project/tests/core/junctions_test.gd + .tscn (suites.json; doc/map.md): a
+  crossing of two avenues on free ground, the view over it: the gap by turn and after a long wait; the plan
+  (turn stages, every crossing walked); the signal rests with nobody asking; a car set on a red approach
+  (drive_from) gets its green; a walker's long wait said at a kerb (kerb_call) gets the walk; buses first set
+  and read back; the panel's data (ctl, ruled_by, each leg's flow and main); a mini-roundabout's circle and
+  ranks; no control: nobody ranked, no plate.
 
 ## Designs (a draft written 2026-11-14 after the traffic block; each is finished, with its sources, before its code)
 - 1 gap by turn (junction_gate.cpp may_enter :63-72, in place of the one look-ahead max(yield_near_m, v x

@@ -145,7 +145,7 @@ void CityCore::bind_queries() {
 	ClassDB::bind_method(D_METHOD("film_grade", "grade"), &CityCore::film_grade);
 	ClassDB::bind_method(D_METHOD("film_graded", "grade", "colour"), &CityCore::film_graded);
 	ClassDB::bind_method(D_METHOD("traffic_probe", "sample"), &CityCore::traffic_probe);
-	ClassDB::bind_method(D_METHOD("set_signal", "node", "fixed", "greens", "offset"), &CityCore::set_signal);
+	ClassDB::bind_method(D_METHOD("set_signal_plan", "node", "fixed", "greens", "offset", "buses_first"), &CityCore::set_signal_plan, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("green_wave", "node"), &CityCore::green_wave);
 	ClassDB::bind_method(D_METHOD("set_overlay", "name", "on"), &CityCore::set_overlay);
 	ClassDB::bind_method(D_METHOD("show_every_zone", "on"), &CityCore::show_every_zone);

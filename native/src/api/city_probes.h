@@ -32,6 +32,8 @@ public:
 	godot::Dictionary vehicle_bodies(const godot::Vector3 &at, float radius); // the drawn bodies: in one another, over a footway
 	godot::Dictionary driving_census(const godot::Vector3 &at, float radius); // how they drive: bends, tempers, indicators (city_core_drive_probe.cpp)
 	int drive_from(int seg, int dir, int hops); // a car set at a street's mouth with a way `hops` streets on (city_core_drive_probe.cpp)
+	godot::Dictionary junction_facts(int node); // a junction as the traffic rules it now (city_core_junction_probe.cpp)
+	void kerb_call(int node, int seg, float waited); // a walker waits at that crossing's kerb, as a held walker says it
 	godot::Dictionary far_traffic(const godot::Vector3 &at, float reach); // the far traffic's flows and the window (city_core_far_probe.cpp)
 	bool footway_under(const godot::Vector3 &at); // the footway rule vehicle_bodies judges by (sim/street/footway.h on_footway)
 	// Who is on foot within `radius` of `at` (0: everywhere): ages, parties, modes, doors, and the nearest of each to look at.

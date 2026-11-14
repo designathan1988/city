@@ -1,9 +1,10 @@
 // Junction control: the control a node gets (signals, priority or none), the road it is on (its main arms) and each approach's
-// rank and rule, its signal stages (opposite approaches together, the intergreens and greens of signal_timing.cpp). Who may enter a
-// connector now is junction_gate.cpp.
+// rank and rule (an unsigned junction's highway first, a mini-roundabout's circle), its signal plan asked of signal_plan.cpp and
+// kept running through an edit. Who may enter a connector now is junction_gate.cpp.
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/roads/junction.h"
+#include "sim/traffic/signal_plan.h"
 
 #include <algorithm>
 
@@ -12,9 +13,8 @@ namespace traffic {
 
 namespace {
 
-constexpr int RANK_MAIN = 3, RANK_YIELD = 1; // free arms keep DirSeg::rank's default
+constexpr int RANK_MAIN = 3, RANK_FREE = 2, RANK_YIELD = 1; // RANK_FREE is DirSeg::rank's default
 constexpr int RING_PRIORITY = 100; // over every class of road: whoever circulates has the way, whatever comes in
-constexpr uint32_t OFFSET_HASH = 2654435761u, OFFSET_STEPS = 1000; // where in its first green each junction starts
 
 struct Arm {
 	int seg = -1, in = -1, priority = 0;
@@ -108,6 +108,24 @@ std::vector<int> main_segs(const CityState &s, int n, bool straightest) {
 // (every road of the highest rank going on through it).
 bool signed_main(const RoadNode &node) { return node.ctl != CTL_AUTO; }
 
+// A junction with no control at all (the player's "none"): nobody has the way but a highway's flow over the roads that meet it
+// (CTB art. 29 III a: where only one flow comes off a highway, whoever travels on it; the article's words are in traffic.json's
+// `_junction_doc`); with no highway, or nothing but highways, none (art. 29 III c: who comes by the driver's right,
+// junction_gate.cpp outranks).
+std::vector<int> highway_segs(const CityState &s, int n) {
+	const std::vector<Arm> arms = network_arms(s, n);
+	std::vector<int> out;
+	for (const Arm &a : arms)
+		if (s.roads.profile_of(a.seg).road_class == RoadClass::HIGHWAY) out.push_back(a.seg);
+	if (out.size() == arms.size()) out.clear();
+	return out;
+}
+
+// The arms that have the way at a junction that goes by rank: the unsigned junction's highways, else the road it is on.
+std::vector<int> ranked_main(const CityState &s, int n, const RoadNode &node) {
+	return node.ctl == CTL_NONE ? highway_segs(s, n) : main_segs(s, n, signed_main(node));
+}
+
 Control decide(const RoadNode &node, const std::vector<Arm> &arms, const TrafficParams &tp) {
 	if (node.crossing != CROSSING_NONE && arms.size() == 2) return node.crossing == CROSSING_SIGNAL ? Control::SIGNAL : Control::PRIORITY;
 	if (node.uturn != UTURN_NONE && arms.size() == 2) return Control::PRIORITY; // who turns back gives way to who goes on (outranks)
@@ -132,66 +150,11 @@ Control decide(const RoadNode &node, const std::vector<Arm> &arms, const Traffic
 	return by_rank;
 }
 
-void make_stages(CityState &s, int n, const std::vector<Arm> &arms, Junction &j) {
-	const TrafficParams &tp = s.catalog.traffic;
-	std::vector<int> stage(arms.size(), -1);
-	int count = 0;
-	for (size_t i = 0; i < arms.size(); i++) {
-		if (stage[i] >= 0) continue;
-		stage[i] = count;
-		int best = -1;
-		float bd = tp.stage_opposite_dot;
-		for (size_t k = 0; k < arms.size(); k++) {
-			float d = arms[i].out.dot(arms[k].out);
-			if (stage[k] < 0 && d < bd) { bd = d; best = int(k); }
-		}
-		if (best >= 0) stage[best] = count;
-		count++;
-	}
-	if (s.roads.mid_block(n)) count++; // the road's two ways go together: the walkers' stage is one with nobody driving
-	j.green.assign(count, tp.signal_safety_green_s);
-	j.amber.assign(count, 0.f);
-	j.all_red.assign(count, 0.f);
-	j.approaches.assign(count, {});
-	const bool walkers = s.roads.has_crosswalks(n);
-	for (size_t i = 0; i < arms.size(); i++) {
-		if (arms[i].in < 0) continue;
-		DirSeg &d = s.traffic.g.ds[arms[i].in];
-		d.stage = stage[i];
-		j.approaches[stage[i]].push_back(arms[i].in);
-		float amber = 0, all_red = 0;
-		intergreen(s, n, arms[i].in, walkers, amber, all_red);
-		j.amber[stage[i]] = std::max(j.amber[stage[i]], amber);
-		j.all_red[stage[i]] = std::max(j.all_red[stage[i]], all_red);
-		j.green[stage[i]] = std::max(j.green[stage[i]], detection(s, arms[i].in));
-	}
-	// MBST vol. V 5.14: a stage's green lets the walkers it lets cross have their own safety green and still clear
-	for (size_t i = 0; walkers && i < arms.size(); i++)
-		for (int k = 0; k < count; k++) {
-			if (arms[i].in >= 0 && stage[i] == k) continue; // its own traffic runs: nobody crosses it now
-			const float need = tp.ped_safety_green_s + ped_clearance(s, arms[i].seg) + tp.ped_all_red_s;
-			j.green[k] = std::max(j.green[k], need - j.amber[k] - j.all_red[k]);
-		}
-	// MBST vol. V 7.3.3 and 5.9: the longest cycle less the intergreens, in equal shares (no fixed plan's flows to weigh)
-	float lost = 0;
-	for (int k = 0; k < count; k++) lost += j.amber[k] + j.all_red[k];
-	j.green_max.assign(count, 0.f);
-	j.cycle = lost;
-	for (int k = 0; k < count; k++) {
-		j.green_max[k] = std::max(j.green[k], (tp.signal_cycle_max_s - lost) / float(count));
-		j.cycle += j.green[k];
-	}
-	j.least = j.green;
-	const SignalSettings &set = s.roads.nodes[size_t(n)].signal;
-	j.fixed = set.fixed;
-	j.offset = set.offset;
-	for (int k = 0; set.fixed && k < count; k++) {
-		if (size_t(k) < set.greens.size()) { j.cycle += std::max(0.f, set.greens[size_t(k)] - j.green[size_t(k)]); j.green[size_t(k)] = std::max(j.green[size_t(k)], set.greens[size_t(k)]); }
-		j.green_max[size_t(k)] = j.green[size_t(k)];
-	}
-	j.run = 0;
-	j.run_green = -1;
-	j.run_start = s.traffic.time - double((uint32_t(n) * OFFSET_HASH) % OFFSET_STEPS) / OFFSET_STEPS * j.green[0];
+// The junction's arms as its signal plan reads them (signal_plan.h).
+std::vector<StageArm> stage_arms(const std::vector<Arm> &arms) {
+	std::vector<StageArm> out;
+	for (const Arm &a : arms) out.push_back({ a.seg, a.in, a.out });
+	return out;
 }
 
 } // namespace
@@ -206,22 +169,24 @@ void build_junction(CityState &s, int n) {
 	std::vector<Arm> arms = arms_of(s, n);
 	// the approaches start clean: an old stage, rank or stop line must not outlive the rebuild
 	for (const Arm &a : arms)
-		if (a.in >= 0) { g.ds[a.in].stage = -1; g.ds[a.in].rank = 2; g.ds[a.in].must_stop = false; g.ds[a.in].stop_back = 0; g.ds[a.in].detector = g.ds[a.in].extension = 0; }
+		if (a.in >= 0) { g.ds[a.in].stage = g.ds[a.in].turn_stage = -1; g.ds[a.in].rank = RANK_FREE; g.ds[a.in].must_stop = false; g.ds[a.in].stop_back = 0; g.ds[a.in].detector = g.ds[a.in].extension = 0; }
 	j.degree = int(arms.size());
 	for (const Arm &a : arms)
 		if (a.in >= 0) g.ds[a.in].stop_back = float(s.roads.stop_line_back(n, a.seg));
 	j.ctl = control_of(s, n);
-	if (j.ctl == Control::SIGNAL) make_stages(s, n, arms, j);
+	if (j.ctl == Control::SIGNAL) plan_stages(s, n, stage_arms(arms), j);
 	file_signal(g, n);
 	if (j.ctl != Control::PRIORITY) return;
 	const RoadNode &node = s.roads.nodes[size_t(n)];
-	const std::vector<int> main = main_segs(s, n, signed_main(node)); // the arms the signs read (approach_rule), from the same network
+	j.circle = node.ctl == CTL_MINI; // every leg gives way and whoever is on the circle goes first (junction_gate.cpp outranks)
+	const std::vector<int> main = ranked_main(s, n, node); // the arms the signs read (approach_rule), from the same network
 	const int everyone = leg_rule(node);
+	const int lesser = node.ctl == CTL_NONE ? RANK_FREE : RANK_YIELD; // unsigned: nobody gives way by a rule
 	for (const Arm &a : arms) {
 		if (a.in < 0) continue;
 		const int plate = plate_rule(s.roads, a.seg, n);
 		const bool on = std::find(main.begin(), main.end(), a.seg) != main.end();
-		g.ds[a.in].rank = on && !plate && !everyone ? RANK_MAIN : RANK_YIELD;
+		g.ds[a.in].rank = on && !plate && !everyone ? RANK_MAIN : (plate ? RANK_YIELD : lesser);
 		g.ds[a.in].must_stop = everyone == RULE_STOP || plate == RULE_STOP;
 	}
 }
@@ -234,6 +199,7 @@ int approach_rule(const CityState &s, int n, int seg) {
 	if (plate) return plate;
 	const RoadNode &node = s.roads.nodes[size_t(n)];
 	if (const int everyone = leg_rule(node)) return everyone;
+	if (node.ctl == CTL_NONE) return RULE_NONE; // no control: no plate, no paint (who has the way: ranked_main, outranks)
 	const std::vector<int> main = main_segs(s, n, signed_main(node));
 	return std::find(main.begin(), main.end(), seg) != main.end() ? RULE_NONE : RULE_YIELD;
 }
@@ -244,13 +210,28 @@ void replan_signal(CityState &s, int n) {
 	const Junction was = g.junctions[size_t(n)];
 	build_junction(s, n);
 	Junction &j = g.junctions[size_t(n)];
-	if (j.ctl != Control::SIGNAL || was.ctl != Control::SIGNAL || was.green.empty() || j.green.size() != was.green.size()) return;
-	// no jump from one green to another: the stage running keeps at least its minimum green (walkers started on it) and its intergreen
-	const size_t k = size_t(was.run);
-	j.run = was.run;
+	if (j.ctl != Control::SIGNAL || was.ctl != Control::SIGNAL || was.green.empty() || j.green.empty()) return;
+	// no jump from one green to another: the new plan goes on from the stage that holds most of the approaches that were green, as
+	// that green began (walkers started on it), its intergreen after it; with none of them left it starts in an all-red
+	const std::vector<int> &green = was.approaches[size_t(was.run)];
+	int keep = -1, most = 0;
+	for (size_t k = 0; k < j.approaches.size(); k++) {
+		int shared = 0;
+		for (int ds : j.approaches[k]) shared += std::find(green.begin(), green.end(), ds) != green.end() ? 1 : 0;
+		if (shared > most) { most = shared; keep = int(k); }
+	}
+	if (keep < 0) {
+		j.run = 0;
+		j.run_green = 0;
+		j.run_start = s.traffic.time - double(j.amber[0]);
+		j.settle = j.run_start + double(j.amber[0]) + double(j.all_red[0]);
+		return;
+	}
+	j.run = keep;
 	j.run_start = was.run_start;
-	j.run_green = was.run_green >= 0 ? was.run_green : float(std::max(s.traffic.time - was.run_start, double(was.green[k])));
-	j.settle = j.run_start + double(j.run_green) + j.amber[k] + j.all_red[k];
+	j.run_green = was.run_green;
+	const double green_end = j.run_green >= 0 ? double(j.run_green) : std::max(s.traffic.time - j.run_start, double(j.green[size_t(keep)]));
+	j.settle = j.run_start + green_end + j.amber[size_t(keep)] + j.all_red[size_t(keep)];
 }
 
 Control control_of(const CityState &s, int n) {

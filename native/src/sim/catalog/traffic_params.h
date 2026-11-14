@@ -13,14 +13,18 @@ namespace city {
 	X(route_budget_per_step) X(route_max_expanded) \
 	X(trip_min_m) X(trip_max_m) X(trip_decay_m) X(edge_reach_m) X(edge_through_share) X(slot_m) X(car_share) X(bus_share) \
 	X(turn_cost_right_s) X(turn_cost_left_s) X(turn_cost_uturn_s) X(signal_cost_s) X(edge_extra_s) X(guess_speed_kmh) \
-	X(straight_dot) X(control_max_m) X(uturn_push_m) \
+	X(straight_dot) X(turn_back_dot) X(control_max_m) X(uturn_push_m) \
 	X(body_small_length_m) X(body_small_width_m) X(body_car_length_m) X(body_car_width_m) X(body_heavy_length_m) X(body_heavy_width_m) \
 	X(sweep_step_m) X(sweep_margin_m) X(sweep_queue_back_m) \
 	X(signal_safety_green_s) X(signal_lost_start_s) X(signal_queue_spacing_m) \
 	X(signal_sat_flow_lane_h) X(signal_cycle_max_s) X(signal_reaction_s) X(signal_decel) X(signal_vehicle_m) X(amber_low_kmh) X(amber_mid_kmh) \
 	X(amber_min_s) X(amber_min_mid_s) X(amber_min_high_s) X(amber_max_s) X(signal_ped_red_s) X(ped_reaction_s) \
 	X(ped_clear_speed) X(ped_all_red_s) X(ped_safety_green_s) X(stage_opposite_dot) \
-	X(through_pair_dot) X(signal_arms) X(signal_lanes) X(yield_look_s) X(yield_near_m) X(stop_sign_ms) X(claim_after_s) X(exit_room_pad_m) X(stop_margin_m) \
+	X(through_pair_dot) X(signal_arms) X(signal_lanes) X(stop_sign_ms) \
+	X(gap_right_s) X(gap_straight_s) X(gap_left_s) X(gap_main_left_s) X(gap_temper) X(gap_impatience) X(gap_impatience_most_s) X(gap_floor_s) \
+	X(gap_slow_ms) X(gap_clear_share) X(gap_clear_least_ms) X(gap_clear_margin_s) X(zip_ready_m) X(zip_patience_s) X(ring_meter_share) \
+	X(ped_wait_limit_s) X(ped_hold_limit_s) X(ped_flash_s) X(ped_yield_temper) X(bus_extension_s) X(signal_starve_cycles) X(signal_queue_weight) \
+	X(turn_stage_green_s) X(turn_stage_most_s) X(claim_after_s) X(exit_room_pad_m) X(stop_margin_m) \
 	X(look_ahead_m) X(jerk_up) X(jerk_brake) X(follow_coolness) X(follow_crawl_ms) X(speed_drift) X(stuck_despawn_s) \
 	X(temper_accel) X(temper_brake) X(temper_headway) X(temper_gap) X(temper_patience) X(temper_polite) X(temper_threshold) \
 	X(bend_lat_max) X(bend_lat_fall) X(bend_lat_min) X(bend_heavy_share) X(bend_temper) X(bend_keep_share) X(bend_least) \

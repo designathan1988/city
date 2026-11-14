@@ -10,6 +10,7 @@
 
 #include "core/units.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace city {
@@ -27,18 +28,6 @@ void drop_one_lane_state(CityState &s, int key) {
 	while (!t.lane_vehicles[size_t(key)].empty()) despawn_vehicle(s, t.lane_vehicles[size_t(key)].back(), false);
 	while (size_t(key) < t.meso_head.size() && t.meso_head[size_t(key)] >= 0) despawn_vehicle(s, t.meso_head[size_t(key)], false);
 	if (size_t(key) < t.g.lane_conn.size()) t.g.lane_conn[size_t(key)] = -1;
-}
-
-Turn classify(const V2 &h, const V2 &o, bool same, int degree, float straight_dot) {
-	if (same) return Turn::UTURN;
-	if (degree == 2 || h.dot(o) > straight_dot) return Turn::STRAIGHT;
-	return o.dot(V2(h.y, -h.x)) > 0 ? Turn::LEFT : Turn::RIGHT;
-}
-
-bool lane_allows(int lane, int n, Turn t) {
-	if (t == Turn::UTURN) return lane == n - 1;
-	if (n == 1 || t == Turn::STRAIGHT) return true;
-	return t == Turn::RIGHT ? lane == 0 : lane == n - 1;
 }
 
 constexpr float FLAT_CURVE = 1e-6f; // a tangent shorter than this has no curvature to read
@@ -278,6 +267,10 @@ static bool link_node(CityState &s, int n, std::vector<int> &made) {
 	for (int si : net.nodes[n].segs)
 		if (si * 2 + 1 < int(g.ds.size()) && (g.ds[si * 2].ok || g.ds[si * 2 + 1].ok)) arms.push_back(si);
 	const int degree = int(arms.size());
+	const std::vector<int> main = main_legs(s, n); // the road the junction is on: it goes straight on through it
+	const auto carried = [&](int from, int to) {
+		return from != to && std::find(main.begin(), main.end(), from) != main.end() && std::find(main.begin(), main.end(), to) != main.end();
+	};
 	for (int si : arms) {
 		int din = in_ds(net, si, n);
 		if (!g.ds[din].ok) continue;
@@ -296,7 +289,7 @@ static bool link_node(CityState &s, int n, std::vector<int> &made) {
 			if (!g.ds[dout].ok) continue;
 			Pose po;
 			lane_pose(s, dout, 0, 0.f, po);
-			Turn t = classify(V2(ph.fx, ph.fz), V2(po.fx, po.fz), so == si, degree, s.catalog.traffic.straight_dot);
+			Turn t = turn_class(V2(ph.fx, ph.fz), V2(po.fx, po.fz), so == si, carried(si, so), degree, s.catalog.traffic);
 			movements.push_back({ dout, t });
 			offered |= painted_bit(t);
 		}
@@ -309,7 +302,7 @@ static bool link_node(CityState &s, int n, std::vector<int> &made) {
 		Pose ph, po;
 		lane_pose(s, din, 0, g.ds[din].len, ph);
 		lane_pose(s, dout, 0, 0.f, po);
-		add_conn(s, n, din, l.from_lane, dout, l.to_lane, classify(V2(ph.fx, ph.fz), V2(po.fx, po.fz), l.from == l.to, degree, s.catalog.traffic.straight_dot), made);
+		add_conn(s, n, din, l.from_lane, dout, l.to_lane, turn_class(V2(ph.fx, ph.fz), V2(po.fx, po.fz), l.from == l.to, carried(l.from, l.to), degree, s.catalog.traffic), made);
 	}
 	return degree >= 2;
 }

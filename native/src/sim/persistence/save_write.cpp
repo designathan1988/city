@@ -68,6 +68,7 @@ void write_roads(ByteWriter &w, const RoadNetwork &net) {
 		w.put<uint8_t>(n.signal.fixed ? 1 : 0);
 		w.put<float>(n.signal.offset);
 		w.put_vec(n.signal.greens);
+		w.put<uint8_t>(n.signal.buses_first ? 1 : 0);
 		w.put<uint8_t>(n.plain ? 1 : 0);
 	}
 	w.put_slots(net.segs.size());

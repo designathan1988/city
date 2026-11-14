@@ -58,6 +58,12 @@ float turn_limit(const CityState &s, const Vehicle &v, const Conn &c, float dist
 // The acceleration `acc` held to a braking curve: no faster next tick than `cap` (what a bend ahead allows here), braking for it no
 // harder than the comfortable `b`. The following law only leans toward a falling target; the curve keeps a vehicle to its bend.
 float held_to(float acc, float v, float cap, float b, float dt);
+// The gap, seconds, driver `me` asks before a movement that goes first, by its own turn (junction_gate.cpp; `on_main`: it turns
+// off the road that has the way).
+float turn_gap(const TrafficParams &tp, const Vehicle &me, Turn turn, bool on_main);
+// A ring's metering (junction_admission.cpp): connector `c` comes onto a ring from a road outside it and the ring's vehicles, with
+// one more, would pass ring_meter_share of its room: nobody from outside goes on, so those on it can leave.
+bool ring_full(CityState &s, const Conn &c);
 
 } // namespace traffic
 } // namespace city

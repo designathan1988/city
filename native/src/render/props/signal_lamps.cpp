@@ -45,7 +45,7 @@ void SignalLamps::reset() {
 uint8_t SignalLamps::showing(const SignalHead &h) const {
 	const SignalRecord *r = h.ds >= 0 ? find_signal(signals_, uint32_t(h.ds)) : nullptr;
 	if (!r) return DARK;
-	const Lens walker = r->walk ? Lens::WALK : Lens::STOP;
+	const Lens walker = r->walk == LAMP_WALK ? Lens::WALK : (r->walk == LAMP_DARK ? Lens::COUNT : Lens::STOP); // COUNT: no lens lit
 	return uint8_t(int(car_lens(r->light)) | int(walker) << WALKER_SHIFT);
 }
 

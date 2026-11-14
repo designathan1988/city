@@ -128,6 +128,9 @@ void graph_grow(CityState &s, int segs, int nodes) {
 	if (t.lane_last_exit.size() < lanes) t.lane_last_exit.resize(lanes, 0.0);
 	if (t.exit_claim.size() < lanes) t.exit_claim.resize(lanes, -1);
 	if (t.exit_claim_t.size() < lanes) t.exit_claim_t.resize(lanes, 0.0);
+	if (t.junction.merge_last.size() < lanes) t.junction.merge_last.resize(lanes, -1);
+	if (t.junction.kerb.size() < nn * NODE_ARMS_MAX) t.junction.kerb.resize(nn * NODE_ARMS_MAX);
+	if (t.junction.ring.size() < ds / 2) t.junction.ring.resize(ds / 2);
 	if (t.light_now.size() < ds) t.light_now.resize(ds, uint8_t(Light::GREEN));
 	if (t.node_crossers.size() < nn) t.node_crossers.resize(nn);
 	if (t.last_admit.size() < nn) t.last_admit.resize(nn, t.time);

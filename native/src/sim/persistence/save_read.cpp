@@ -75,6 +75,7 @@ bool read_roads(ByteReader &r, RoadNetwork &net, uint32_t version) {
 			n.signal.fixed = r.get<uint8_t>() != 0;
 			n.signal.offset = r.get<float>();
 			r.get_vec(n.signal.greens);
+			if (version >= BUSES_FIRST_SAVE_VERSION) n.signal.buses_first = r.get<uint8_t>() != 0;
 		}
 		n.plain = r.get<uint8_t>() != 0;
 		if (r.ok) net.put_node(int(i), n);

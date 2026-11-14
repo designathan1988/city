@@ -27,7 +27,7 @@ with `file:line` on both sides), which the port tool reads: `python tools/tracer
 
 ## 2. Junctions and signals (sheets/junctions.md)
 
-- [ ] junctions, complete: every case below, in one block (`python tools/tracer/port.py sheet junctions`)
+- [x] junctions, complete: every case below (`python tools/tracer/port.py sheet junctions`; the note: doc/work/junctions.md, "Every item, where it is done"; the check: junctions_test). Read in the code and not driven by a check: the ring's metering and the zipper under traffic, a bus holding a green, a driver giving way to who waits at a kerb
   - gap acceptance by turn
   - signal stages from conflicts, protected turns
   - demand-driven signals

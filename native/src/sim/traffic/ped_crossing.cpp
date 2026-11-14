@@ -5,6 +5,8 @@
 // walkers on, or about to be on, the stretch of a crosswalk their lane drives over.
 #include "sim/traffic/traffic_system.h"
 
+#include "sim/traffic/signal_plan.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -16,7 +18,6 @@ namespace {
 constexpr float MOVING_MS = 0.5f, NEAR_LINE_M = 3.f, COURTESY_NEAR_M = 4.f, MIN_BRAKE = 0.5f, MIN_FRONT_MS = 2.f; // MIN_FRONT_MS: the slowest top front_time assumes
 
 float body(const CityState &s, const Vehicle &v) { return s.catalog.traffic.classes[int(v.type)].length; }
-int in_ds(const CityState &s, int seg, int node) { return seg * 2 + (s.roads.segs[seg].b == node ? 0 : 1); }
 
 // Metres to the stop line of the head of lane `key` (negative: over it).
 float to_line(const CityState &s, int ds, const Vehicle &v) {
@@ -84,10 +85,7 @@ bool walk_ok(CityState &s, int node, int arm_seg) {
 	if (cached(s, key, 0, cached_ok)) return cached_ok;
 	const Junction &j = s.traffic.g.junctions[size_t(node)];
 	bool ok = true;
-	if (j.ctl == Control::SIGNAL) {
-		const DirSeg &d = s.traffic.g.ds[size_t(in_ds(s, arm_seg, node))];
-		ok = walk_signal(s, node, arm_seg, d.ok ? d.stage : -1);
-	}
+	if (j.ctl == Control::SIGNAL) ok = walk_lamp(s, node, arm_seg) == WalkLamp::WALK; // nobody starts on a flash or a stop
 	store(s, key, 0, ok);
 	return ok;
 }
@@ -152,6 +150,26 @@ bool peds_in_way(const CityState &s, int ci, float front_in, float front_out) {
 		float clears = (at + tp.ped_span_reach_m - w.ls) / pace, reaches = (at - tp.ped_span_reach_m - w.ls) / pace;
 		float front = entry ? front_in : front_out;
 		if (clears > front && reaches < front + tp.ped_critical_gap_s) return true;
+	}
+	return false;
+}
+
+// Somebody waits at the kerb of a crossing connector `ci`'s movement drives over (the arm it leaves by, the arm it enters by): at
+// a crossing with no signal, or at a signal while that arm's lamp says walk (a turning movement and the walkers it gives way to).
+// The driver gives way when it can still stop comfortably before its line, has not stood its own courtesy time there, and is no
+// pushy one (CTB art. 70: the walker on the crossing has the way; who waits at the kerb is given it by a driver's courtesy, which
+// the pushiest lack: traffic.json ped_yield_temper).
+bool waiting_walkers(const CityState &s, const Vehicle &v, int ci, float line) {
+	const TrafficState &t = s.traffic;
+	const TrafficParams &tp = s.catalog.traffic;
+	const Conn &c = t.g.conns[size_t(ci)];
+	if (v.temper > tp.ped_yield_temper || courtesy_owed(s, v)) return false;
+	const float b = std::max(MIN_BRAKE, tp.classes[int(v.type)].b);
+	if (line < v.v * v.v / (2 * b) + 1) return false; // too near to stop for them comfortably: it goes, they wait (approaching)
+	const bool signalled = t.g.junctions[size_t(c.node)].ctl == Control::SIGNAL;
+	for (int seg : { t.g.ds[size_t(c.from_ds)].seg, t.g.ds[size_t(c.to_ds)].seg }) {
+		if (!s.roads.crosswalk_on(c.node, seg) || kerb_waited(s, c.node, seg) < 0) continue;
+		if (!signalled || walk_lamp(s, c.node, seg) == WalkLamp::WALK) return true;
 	}
 	return false;
 }

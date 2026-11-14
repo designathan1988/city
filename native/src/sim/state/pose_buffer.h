@@ -68,10 +68,11 @@ struct ParkedRecord {
 
 // A signalled approach (directed segment `ds` into its junction): the light its cars see (traffic Light) and whether
 // the walkers over its crosswalk may cross.
+constexpr uint8_t LAMP_STOP = 0, LAMP_WALK = 1, LAMP_DARK = 2;
 struct SignalRecord {
 	uint32_t ds = 0;
 	uint8_t light = 0;
-	bool walk = false;
+	uint8_t walk = LAMP_STOP; // the walkers' lens: stop, walk, or dark (a flashing stop between two flashes: who is on the crossing finishes)
 };
 
 // The record of approach `ds` in `signals` (sorted by ds), or none.

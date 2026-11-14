@@ -21,7 +21,7 @@ func run() -> void:
 	t.check(was.get("kind", "") == "node" and was.has("greens"), "signal inspected %s" % [was])
 	if not was.has("greens"):
 		return
-	var r: Dictionary = CityStore.dispatch(&"set_signal", [was.id, true, was.greens, SIGNAL_OFFSET])
+	var r: Dictionary = CityStore.dispatch(&"set_signal_plan", [was.id, true, was.greens, SIGNAL_OFFSET])
 	var fixed_plan: Dictionary = CityStore.query(&"inspect", [at])
 	t.check(r.ok and fixed_plan.fixed and fixed_plan.offset == SIGNAL_OFFSET, "fixed time %s" % [fixed_plan])
 	t.ticks(SIGNAL_TICKS)

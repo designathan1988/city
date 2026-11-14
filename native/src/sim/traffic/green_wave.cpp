@@ -101,6 +101,7 @@ std::vector<std::pair<int, SignalSettings>> green_wave_plans(const CityState &s,
 		const Junction &j = g.junctions[size_t(c.node)];
 		SignalSettings set;
 		set.fixed = true;
+		set.buses_first = s.roads.nodes[size_t(c.node)].signal.buses_first; // the player's other setting stays
 		set.greens = j.green;
 		const size_t main = std::min(main_stage(s, c), set.greens.size() - 1);
 		set.greens[main] += cycle - plan_cycle(j); // the common cycle's spare goes to the road the wave runs on

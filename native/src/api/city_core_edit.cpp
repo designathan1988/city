@@ -40,9 +40,10 @@ void CityCore::end_stroke() {
 	state_->history.end_group(*state_);
 }
 
-Dictionary CityCore::set_signal(int node, bool fixed, const PackedFloat32Array &greens, float offset) {
+Dictionary CityCore::set_signal_plan(int node, bool fixed, const PackedFloat32Array &greens, float offset, bool buses_first) {
 	SignalSettings to;
 	to.fixed = fixed;
+	to.buses_first = buses_first;
 	to.offset = offset;
 	for (int i = 0; i < greens.size(); i++) to.greens.push_back(greens[i]);
 	return run_edit(*state_, "cmd.place.signalTimes", [&](CityState &s) { return city::set_signal(s, node, to); });

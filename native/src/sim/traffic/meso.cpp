@@ -246,11 +246,12 @@ void advance(CityState &s, int id) {
 	}
 	if (ci < 0) { despawn_vehicle(s, id, false); return; }
 	ds = v.ds;
-	if (light_for(s, ds) != Light::GREEN) { // the far model obeys the lights: wait for its next green
+	if (light_for(s, ds) != Light::GREEN) { // the far model obeys the lights: it calls its green and waits for it
+		signal_call_far(s, ds, true);
 		schedule(t, id, std::max(t.time + double(MIN_WAIT_S), next_green(s, ds, t.time)));
 		return;
 	}
-	signal_call_far(s, ds);
+	signal_call_far(s, ds, false);
 	const Conn &c = g.conns[size_t(ci)];
 	const int to = c.to_ds;
 	if (to < 0 || to >= int(g.ds.size()) || !g.ds[size_t(to)].ok) { despawn_vehicle(s, id, false); return; }

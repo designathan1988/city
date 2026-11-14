@@ -2,6 +2,7 @@
 // (ped_routes.cpp plan_corner), each straight line of it begun and ended, a crosswalk waited for (the walk phase and a gap, ped_crossing.cpp)
 // and gone over, the one it walks with taken over on the same leave (ped_party.cpp).
 #include "core/random.h"
+#include "sim/traffic/signal_plan.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <algorithm>
@@ -74,6 +75,8 @@ void begin_line(CityState &s, int id) {
 	const bool held = asks && ((!frightened && !with && !walk_ok(s, w.way_node, to.cross)) || cars_on_crossing(s, w.way_node, to.cross));
 	const bool waits = asks && !frightened && !company_ready(t, s.catalog.traffic, w);
 	if (waits || held) {
+		// somebody waits at this kerb: the signal's call and the drivers' courtesy read it there (signal_plan.h kerb_word)
+		if (asks) kerb_word(s, w.way_node, to.cross, w.wait);
 		enter_mode(w, PedMode::WAIT);
 		return;
 	}

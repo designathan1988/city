@@ -8,6 +8,7 @@
 #include "sim/state/city_state.h"
 #include "sim/traffic/traffic_system.h"
 
+#include <algorithm>
 #include <mutex>
 
 using namespace godot;
@@ -61,13 +62,17 @@ Dictionary CityCore::junction_lane_map(int node) {
 	return out;
 }
 
-// The roads of a junction: {seg, rule, dx, dz}, the way each leaves it and the plate it carries there.
+// The roads of a junction: {seg, rule, dx, dz, banned, flow_h, main}: the way each leaves it and the plate it carries there, the
+// movements banned from it, the vehicles an hour that come in by it (the flows' measure) and whether it is the road the junction is on.
 Array CityCore::node_legs(int node) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+	std::lock_guard<std::mutex> tr(state_->traffic_mutex);
 	const RoadNetwork &net = state_->roads;
 	Array out;
 	if (node < 0 || node >= int(net.nodes.size()) || !net.nodes[size_t(node)].alive) return out;
 	const RoadNode &n = net.nodes[size_t(node)];
+	const std::vector<int> main = traffic::main_legs(*state_, node);
+	FlowStats &flow = *state_->traffic.flow_control.flow;
 	for (int seg : n.segs) {
 		const RoadSegment &g = net.segs[size_t(seg)];
 		const RoadNode &there = net.nodes[size_t(g.a == node ? g.b : g.a)];
@@ -81,6 +86,8 @@ Array CityCore::node_legs(int node) {
 		for (int to : n.segs)
 			if (net.movement_banned(node, seg, to)) banned.push_back(to);
 		d["banned"] = banned;
+		d["flow_h"] = flow.rate(node, seg, state_->catalog.tune);
+		d["main"] = std::find(main.begin(), main.end(), seg) != main.end();
 		out.push_back(d);
 	}
 	return out;

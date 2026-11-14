@@ -64,10 +64,10 @@ enum NodeControl : uint8_t { CTL_AUTO, CTL_SIGNAL, CTL_PRIORITY, CTL_STOP, CTL_Y
 // What the player sets on a junction's signal (the plan itself is the traffic's: junction_control.cpp). Fixed time: every
 // stage its own green in order, every cycle, `offset` seconds after the common clock's zero (CONTRAN MBST vol. V).
 struct SignalSettings {
-	bool fixed = false;
+	bool fixed = false, buses_first = false; // buses_first: a bus near its line holds its green, a bus waiting calls its stage
 	float offset = 0;
 	std::vector<float> greens; // per stage; a stage's minimum green still stands under them
-	bool operator==(const SignalSettings &o) const { return fixed == o.fixed && offset == o.offset && greens == o.greens; }
+	bool operator==(const SignalSettings &o) const { return fixed == o.fixed && buses_first == o.buses_first && offset == o.offset && greens == o.greens; }
 };
 
 // A connection through a junction the player made by hand (Roadcraft world/roads/connectors.ts): the arriving road and lane, the leaving ones.

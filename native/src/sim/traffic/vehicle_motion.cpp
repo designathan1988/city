@@ -101,7 +101,7 @@ bool gate(CityState &s, int id, int &ci, float dist, bool head, bool held, bool 
 		commit(s, id, ci); // the box is its own until it is through
 		return true;
 	}
-	if (!may_enter(s, id, ci, dist)) return false;
+	if (ring_full(s, t.g.conns[size_t(ci)]) || !may_enter(s, id, ci, dist)) return false;
 	const float b = driver_of(p, v).b, commit_at = std::max(p.commit_min_m, v.v * v.v / (2 * b));
 	if (line >= commit_at) return true;
 	if (!box_clear(s, ci, id)) return false; // it commits only into a clear box
@@ -205,7 +205,7 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 		signal_call(s, ds, was, std::min(v.s, L));
 		if (through && line_was > 0 && L - v.s - t.g.ds[ds].stop_back <= 0 && light_for(s, ds) == Light::RED) note_red_entry(t, v, ds);
 		if (out) {
-			admit(s, t.g.conns[size_t(onto)].node, released);
+			admit(s, onto, released);
 			leaving.push_back(id);
 		}
 	}

@@ -30,6 +30,7 @@ struct DirSeg {
 	float at0 = 0, sign = 1; // arc length along the segment at s = 0 and its direction
 	float ex = 0, ez = 0; // endpoint (s = len) in world XZ, computed once at graph build (A* heuristic)
 	int stage = -1; // signal stage serving this approach at node `to`
+	int turn_stage = -1; // and the stage of its own, if any, for its turns that give way all through `stage` (signal_plan.cpp)
 	int rank = 2; // right of way at node `to`: 3 main, 2 free, 1 yield
 	bool must_stop = false; // a Stop at node `to`: nobody goes over the line still rolling
 	float stop_back = 0; // the stop line is this far before s = len (behind the crosswalk at node `to`)
@@ -64,6 +65,7 @@ struct Conn {
 	int next_at_node = -1, next_from = -1; // next connection of the same node / of the same lane of origin
 	bool alive = false;
 	int8_t max_class = BODY_CLASSES - 1; // the largest body class whose sweep keeps off the footways (-1: none)
+	bool gives_way = false; // at a signal: a turn that a green movement of another approach of its stage goes before (signal_plan.cpp)
 	// The connectors out of other lanes whose bodies meet this one's (junction_sweeps.cpp), and per conflict, by [theirs *
 	// BODY_CLASSES + mine], the body-centre arc along THAT connector's way (negative on the lane before it, past its length on the
 	// lane after) past which a body of class `theirs` on it is clear of one of class `mine` on this one; NO_LEADER below zero: those
@@ -83,7 +85,14 @@ struct Junction {
 	std::vector<float> green, green_max, amber, all_red;
 	std::vector<float> least; // the minimum greens, under any fixed plan
 	std::vector<std::vector<int>> approaches;
-	float cycle = 0; // with the minimum greens
+	// per stage (signal_plan.cpp): the approach a turn stage serves alone, on the demand of its turns that give way (-1: an ordinary
+	// stage, or the walkers' own); the arms (segments) whose crossing walks in it; when its green last ended
+	std::vector<int> turn_of;
+	std::vector<std::vector<int>> walks;
+	std::vector<double> served;
+	double hold_from = -1; // people still on the running stage's crossings when its green would end: since when (-1: not held)
+	bool buses_first = false; // the player's setting: a bus holds its green and calls its stage
+	float cycle = 0; // with the minimum greens, the turn stages apart
 	int run = 0; // the stage running, since `run_start` (its green); its green once ended (-1 while the green lasts)
 	double run_start = 0;
 	float run_green = -1;
@@ -91,6 +100,7 @@ struct Junction {
 	float offset = 0;
 	double settle = 0; // a new plan takes over only then: the stage running ends its intergreen first
 	int degree = 0; // arms with lanes
+	bool circle = false; // a mini-roundabout: whoever is on the circle (who comes from the left) has the way (junction_gate.cpp)
 };
 
 struct LaneGraph {

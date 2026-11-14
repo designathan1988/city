@@ -1,4 +1,4 @@
-## A signal in the inspector: adaptive or fixed time, each stage's green, the offset and the green wave along the main road.
+## A signal in the inspector: adaptive or fixed time, buses first, each stage's green, the offset and the green wave along the main road.
 ## It keeps nothing: every press goes to the store and the panel is drawn again from what the core reports.
 class_name JunctionPanel
 extends RefCounted
@@ -11,6 +11,14 @@ static func fill(col: Control, info: Dictionary, redraw: Callable) -> void:
 	var mode := HudWidgets.button(&"SegButton", "", col.tr("junction.mode.fixed" if info.fixed else "junction.mode.adaptive"), "junction.signalMode", "", "")
 	mode.pressed.connect(_send.bind(info, not info.fixed, info.greens, info.offset, redraw))
 	col.add_child(mode)
+	# buses first: a bus near its line holds its green a little, a bus waiting calls its stage (the core's signal_timing.cpp)
+	var buses := HudWidgets.button(&"Ghost", "", col.tr("junction.busPriority"), "junction.busPriority", "", "opt_row_h")
+	buses.toggle_mode = true
+	buses.set_pressed_no_signal(info.buses_first)
+	buses.pressed.connect(func() -> void:
+		CityStore.dispatch(&"set_signal_plan", [info.id, info.fixed, info.greens, info.offset, not info.buses_first])
+		redraw.call())
+	col.add_child(buses)
 	if info.fixed:
 		var greens: PackedFloat32Array = info.greens
 		for i in greens.size():
@@ -49,5 +57,5 @@ static func _with(greens: PackedFloat32Array, i: int, by: float) -> PackedFloat3
 
 
 static func _send(info: Dictionary, fixed: bool, greens: PackedFloat32Array, offset: float, redraw: Callable) -> void:
-	CityStore.dispatch(&"set_signal", [info.id, fixed, greens, offset])
+	CityStore.dispatch(&"set_signal_plan", [info.id, fixed, greens, offset, info.buses_first])
 	redraw.call()

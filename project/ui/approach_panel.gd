@@ -24,8 +24,13 @@ static func fill(col: Control, node: int, redraw: Callable) -> void:
 	if legs.size() < 3:
 		return
 	HudWidgets.label(col, &"TitleLabel", col.tr("junction.legs"))
+	var signed := false
 	for leg: Dictionary in legs:
-		var row := HudWidgets.option_row(col, _named(col, leg))
+		signed = signed or leg.rule != 0
+		# the leg as the player sees it, the vehicles an hour that come in by it and, on the road the junction is on, its tag
+		var flow := col.tr("junction.perHour").format({"n": Formatters.format_int(roundi(leg.flow_h))})
+		var named := "%s · %s" % [_named(col, leg), flow]
+		var row := HudWidgets.option_row(col, "%s · %s" % [named, col.tr("junction.mainRoad")] if leg.main else named)
 		var items := []
 		for r: Array in RULES:
 			items.push_back([r[1], col.tr(r[0])])
@@ -33,6 +38,14 @@ static func fill(col: Control, node: int, redraw: Callable) -> void:
 			var answer: Dictionary = CityStore.dispatch(&"set_approach_rule", [node, leg.seg, rule])
 			redraw.call()
 			return answer)
+	if signed: # a rule set by hand on some leg: one press takes every leg back to what the junction's control gives it
+		var reset := HudWidgets.button(&"SegButton", "", col.tr("junction.rulesReset"), "junction.rulesReset", "", "")
+		reset.pressed.connect(func() -> void:
+			for leg: Dictionary in legs:
+				if leg.rule != 0:
+					CityStore.dispatch(&"set_approach_rule", [node, leg.seg, 0])
+			redraw.call())
+		col.add_child(reset)
 	_movements(col, node, legs, redraw)
 
 

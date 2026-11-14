@@ -345,6 +345,7 @@
     {"name": "driving_test", "scene": "tests/core/driving_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "flows_test", "scene": "tests/core/flows_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "junction_sweep_test", "scene": "tests/core/junction_sweep_test", "renderer": "gl_compatibility", "timeout_s": 600},
+    {"name": "junctions_test", "scene": "tests/core/junctions_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "walker_motion_test", "scene": "tests/core/walker_motion_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "walker_apart_test", "scene": "tests/core/walker_apart_test", "renderer": "gl_compatibility", "timeout_s": 600},
     {"name": "bodies_audit_test", "scene": "tests/core/bodies_audit_test", "renderer": "gl_compatibility", "timeout_s": 600},

@@ -149,6 +149,7 @@ func _node(col: Control) -> void:
 	_fill_node(_stats, InspectorRows.node_traffic(_info.id))
 	RoadPanel.point(col, _info, _redraw, close)
 	_impossible(col)
+	ControlPanel.fill(col, _info, _redraw)
 	ApproachPanel.fill(col, _info.id, _redraw)
 	ConnectorPanel.fill(col, _info.id)
 	if _info.has("greens"): # a signal: what the player sets on it (JunctionPanel), drawn again from what the core reports

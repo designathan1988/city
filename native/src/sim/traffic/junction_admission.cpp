@@ -8,6 +8,7 @@
 
 #include "sim/traffic/fork_bodies.h"
 #include "sim/traffic/lane_closures.h"
+#include "sim/traffic/motion_law.h"
 
 #include <algorithm>
 
@@ -29,6 +30,22 @@ bool fork_busy(const CityState &s, const Conn &c, int mine) {
 	return busy;
 }
 
+// The room behind the last vehicle of the lane connector `c` runs into. A tail that stands leaves what is behind its rear. A
+// tail rolling on a lane that is discharging (its light green, its head moving) frees more in the time it takes to cross. A tail
+// rolling up to a queue (the lane's light not green, or its head standing) is no such credit: the room is where its rear will come
+// to rest, the stop line less the lane's vehicles each in its standing room (a count, never a walk of the lane).
+float exit_room(const CityState &s, const Conn &c, const Vehicle &tail, float tail_body) {
+	const TrafficState &t = s.traffic;
+	const TrafficParams &tp = s.catalog.traffic;
+	const auto &lane = t.lane_vehicles[key(c.to_ds, c.to_lane)];
+	const float rear = tail.s - tail_body;
+	if (tail.v <= tp.tail_moving_ms) return rear;
+	const DirSeg &d = t.g.ds[size_t(c.to_ds)];
+	const bool discharging = light_for(s, c.to_ds) == Light::GREEN && t.vehicles[size_t(lane.back())].v > tp.tail_moving_ms;
+	if (discharging) return rear + std::min(tail.v, tp.tail_credit_cap_ms) * tp.tail_credit_s;
+	return std::max(rear, d.len - d.stop_back - float(lane.size()) * tp.slot_m);
+}
+
 } // namespace
 
 bool is_splice(const CityState &s, int node) {
@@ -45,8 +62,7 @@ bool has_exit(const CityState &s, const Conn &c, int vid) {
 	const float L = t.g.ds[c.to_ds].len;
 	const auto &lane = t.lane_vehicles[to];
 	const Vehicle *tail = lane.empty() ? nullptr : &t.vehicles[lane.front()];
-	// the last one on the lane, moving, frees room in the time it takes to cross
-	float room = tail ? tail->s - body(s, lane.front()) + std::min(tail->v, tp.tail_credit_cap_ms) * tp.tail_credit_s : L;
+	float room = tail ? exit_room(s, c, *tail, body(s, lane.front())) : L;
 	int inbound = 0;
 	for (int x = t.g.node_conn[c.node]; x >= 0; x = t.g.conns[size_t(x)].next_at_node) {
 		const Conn &o = t.g.conns[size_t(x)];
@@ -64,6 +80,42 @@ bool has_exit(const CityState &s, const Conn &c, int vid) {
 	if (L < tp.short_exit_m && tail && tail->v > tp.tail_moving_ms && inbound == 0 && shut < 0) return true;
 	if (float(lane.size()) >= std::max(1.f, L / tp.slot_m)) return false;
 	return room > std::min(body(s, vid) + tp.exit_room_pad_m, L * tp.reconsider_full_share);
+}
+
+namespace {
+constexpr int RING_SEGS_MOST = 64; // a ring's walk ends there whatever the map says
+
+// The ring segment `seg` is part of, walked once a tick from that segment (JunctionState::ring): its lanes' metres and the
+// standing room its vehicles take. A ring is a handful of segments joined end to end (commands/roundabout.cpp).
+const RingLoad &ring_load(CityState &s, int seg) {
+	TrafficState &t = s.traffic;
+	RingLoad &load = t.junction.ring[size_t(seg)];
+	if (load.tick == uint32_t(t.tick)) return load;
+	load = RingLoad{ uint32_t(t.tick), 0.f, 0.f };
+	int at = seg, node = s.roads.segs[size_t(seg)].b;
+	for (int walked = 0; walked < RING_SEGS_MOST; walked++) {
+		for (int dir = 0; dir < 2; dir++) {
+			const DirSeg &d = t.g.ds[size_t(at) * 2 + size_t(dir)];
+			if (!d.ok) continue;
+			load.room += d.len * float(d.lanes);
+			for (int lane = 0; lane < d.lanes; lane++) load.bodies += float(t.lane_vehicles[key(at * 2 + dir, lane)].size()) * s.catalog.traffic.slot_m;
+		}
+		int next = -1;
+		for (int other : s.roads.nodes[size_t(node)].segs)
+			if (other != at && s.roads.profile_of(other).ring) next = other;
+		if (next < 0 || next == seg) break;
+		node = s.roads.segs[size_t(next)].a == node ? s.roads.segs[size_t(next)].b : s.roads.segs[size_t(next)].a;
+		at = next;
+	}
+	return load;
+}
+} // namespace
+
+bool ring_full(CityState &s, const Conn &c) {
+	const int to = s.traffic.g.ds[size_t(c.to_ds)].seg, from = s.traffic.g.ds[size_t(c.from_ds)].seg;
+	if (!s.roads.profile_of(to).ring || s.roads.profile_of(from).ring) return false; // only who comes in from outside is metered
+	const RingLoad &load = ring_load(s, to);
+	return load.bodies + s.catalog.traffic.slot_m > s.catalog.traffic.ring_meter_share * load.room;
 }
 
 int pass_holder(const CityState &s, int ci) {
@@ -147,8 +199,12 @@ bool jam_release(CityState &s, int ci, int vid) {
 	return true;
 }
 
-void admit(CityState &s, int node, bool released) {
+void admit(CityState &s, int ci, bool released) {
 	TrafficState &t = s.traffic;
+	const Conn &c = t.g.conns[size_t(ci)];
+	const int node = c.node;
+	// whose turn a merge is (junction_gate.cpp gives_its_turn): the lane that went into that exit lane last
+	if (const size_t to = key(c.to_ds, c.to_lane); to < t.junction.merge_last.size()) t.junction.merge_last[to] = int(key(c.from_ds, c.from_lane));
 	t.last_admit[node] = t.time;
 	t.pass_count[node]++;
 	if (!released) return;
@@ -164,6 +220,9 @@ void reset_admission(CityState &s) {
 	t.conn_claim_t.assign(conns, -double(BIG));
 	t.exit_claim.assign(lanes, -1);
 	t.exit_claim_t.assign(lanes, 0.0);
+	t.junction.merge_last.assign(lanes, -1);
+	t.junction.kerb.assign(nodes * NODE_ARMS_MAX, KerbAsking());
+	t.junction.ring.assign(t.g.ds.size() / 2, RingLoad());
 	t.last_admit.assign(nodes, t.time);
 	t.release_at.assign(nodes, 0.0);
 	t.pass_count.assign(nodes, 0);

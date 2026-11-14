@@ -8,6 +8,7 @@
 #include "sim/traffic/flow_control.h"
 #include "sim/catalog/traffic_params.h"
 #include "sim/state/pose_buffer.h"
+#include "sim/traffic/junction_state.h"
 #include "sim/traffic/kerb_state.h"
 #include "sim/traffic/lane_graph_types.h"
 #include "sim/traffic/parking_state.h"
@@ -184,11 +185,10 @@ struct TrafficState {
 	// Anti-gridlock bookkeeping (Roadcraft traffic/junctions.ts, micro.ts): who committed to each connector and when,
 	// who holds the next free spot of a full lane (and when it last asked), when each node last let someone in and
 	// when it may release the next vehicle of a jam.
-	std::vector<int> conn_pass;
-	std::vector<double> conn_pass_t;
-	std::vector<double> conn_claim_t; // last time a vehicle that waited its share at its line claimed the connector
-	std::vector<int> exit_claim; // per lane key
+	std::vector<int> conn_pass, exit_claim; // per connector; per lane key
+	std::vector<double> conn_pass_t, conn_claim_t; // conn_claim_t: when a vehicle that waited its share at its line last claimed the connector
 	std::vector<double> exit_claim_t;
+	JunctionState junction; // whose turn a merge is, who waits at a kerb, a ring's load (junction_state.h)
 	std::vector<double> last_admit, release_at; // per node
 	std::vector<int> pass_count; // per node: vehicles let in (pedestrian courtesy, tests)
 	int stop_entries = 0, stop_skipped = 0; // vehicles let in past a Stop, and those that had not stood at it (tests)

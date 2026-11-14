@@ -171,7 +171,7 @@ func _save_round_trip(a: Vector3, e: Vector3) -> void:
 	var signal_at: Vector3 = CityStore.query(&"traffic_probe", [0]).get("busy_crossing", Vector3.ZERO)
 	var plan: Dictionary = CityStore.query(&"inspect", [signal_at])
 	if plan.get("kind", "") == "node" and plan.has("greens"):
-		CityStore.dispatch(&"set_signal", [plan.id, true, plan.greens, SignalCases.SIGNAL_OFFSET])
+		CityStore.dispatch(&"set_signal_plan", [plan.id, true, plan.greens, SignalCases.SIGNAL_OFFSET, true])
 		plan = CityStore.query(&"inspect", [signal_at])
 	var landscape := _landscape()
 	check(landscape.planted > 0 and landscape.tiles > 0, "there is landscape to save %s" % landscape)

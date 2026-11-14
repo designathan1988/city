@@ -172,7 +172,7 @@ public:
 	godot::Dictionary probe_building(int id);
 	godot::Array list_buildings();
 	godot::Dictionary traffic_probe(int sample); // counts, instances drawn last frame and `sample` vehicle poses
-	godot::Dictionary set_signal(int node, bool fixed, const godot::PackedFloat32Array &greens, float offset);
+	godot::Dictionary set_signal_plan(int node, bool fixed, const godot::PackedFloat32Array &greens, float offset, bool buses_first = false);
 	godot::Dictionary green_wave(int node);
 	godot::Dictionary city_bounds() const; // the built area (for cameras and tests)
 	godot::TypedArray<godot::Image> film_grade(const godot::Dictionary &grade) const; // slices of the screen's lookup table

@@ -1,10 +1,13 @@
 // The signal plan in time (CONTRAN MBST vol. V, 2022): the intergreen after each green (amber, then all-red,
 // item 5.7), the detection that actuates each green (cap. 7: minimum green, extension per vehicle over the detection
-// section, maximum green), the stage running now and the light each approach shows, when an approach next turns green,
-// and when walkers may still start over a crosswalk (their flashing red and all-red must fit before the stage ends).
+// section, maximum green), the stage running now and the light each approach shows, when an approach next turns green.
+// An actuated plan follows its demand (signal_plan.h): a green rests while nobody else asks, ends when its own calls stop or at
+// its most, never over people on its crossings; the next stage is the one asked for that waited most, a stage nobody asks for
+// skipped; buses first where the player set it. A fixed plan follows the clock.
 #include "sim/traffic/traffic_system.h"
 
 #include "core/units.h"
+#include "sim/traffic/signal_plan.h"
 
 #include <algorithm>
 #include <cmath>
@@ -56,35 +59,84 @@ void signal_call(CityState &s, int ds, float from, float to) {
 	if (from < at && to >= at) t.green_wanted[size_t(ds)] = std::max(t.green_wanted[size_t(ds)], t.time + double(d.extension));
 }
 
-void signal_call_far(CityState &s, int ds) {
+void signal_call_far(CityState &s, int ds, bool held) {
 	TrafficState &t = s.traffic;
 	if (t.g.ds[size_t(ds)].extension <= 0 || size_t(ds) >= t.green_wanted.size()) return;
+	// a far vehicle is no body in the detection reach. Held at a red, its call is kept until its approach's green has run (advance
+	// ends it), a cycle at most, so a signal resting on another stage turns for it; going through on green, a discharge headway
 	const double headway = SECONDS_PER_HOUR / double(s.catalog.traffic.signal_sat_flow_lane_h);
-	t.green_wanted[size_t(ds)] = std::max(t.green_wanted[size_t(ds)], t.time + headway);
+	const double stands = held ? double(s.catalog.traffic.signal_cycle_max_s) : headway;
+	t.green_wanted[size_t(ds)] = std::max(t.green_wanted[size_t(ds)], t.time + stands);
 }
 
 namespace {
-// Runs junction `j`'s actuated plan up to now (MBST vol. V cap. 7): a green lasts its minimum, then as long as calls
-// want it (each until its vehicle reaches the line), never past its maximum; then the amber, the all-red, the next stage.
-void advance(const TrafficState &t, Junction &j) {
-	const size_t stages = j.green.size();
-	for (size_t guard = 0; guard <= stages; guard++) {
-		const size_t k = size_t(j.run);
-		const double since = t.time - j.run_start;
-		if (j.run_green < 0) {
-			double want = j.green[k];
-			for (int ds : j.approaches[k])
-				if (size_t(ds) < t.green_wanted.size()) want = std::max(want, t.green_wanted[size_t(ds)] - j.run_start);
-			want = std::min(want, double(j.green_max[k]));
-			if (since < want) return;
-			j.run_green = float(want);
-		}
-		const double span = double(j.run_green) + j.amber[k] + j.all_red[k];
-		if (since < span) return;
-		j.run_start += span;
-		j.run = int((k + 1) % stages);
-		j.run_green = -1;
+// Whether the running stage's green, past its least, ends now (MBST vol. V cap. 7, actuated): only when another stage is asked
+// for; then once nobody asks for its own (the gap after the last call) or it reached its most. Never over people still on its
+// crossings, for ped_hold_limit_s from the moment it would have ended. Where the player put buses first: a bus inside the reach of
+// one of its approaches holds it bus_extension_s past its most, and a bus standing on another stage ends it at once.
+bool green_ends(const CityState &s, int n, Junction &j, double since) {
+	const TrafficParams &tp = s.catalog.traffic;
+	const int k = j.run, stages = int(j.green.size());
+	bool others = false, bus_waits = false;
+	for (int i = 0; i < stages && !others; i++) others = i != k && stage_asked(s, n, j, i);
+	if (!others) return false; // nobody else asks: it rests in green
+	const double most = double(j.green_max[size_t(k)]);
+	if (j.buses_first) {
+		if (j.turn_of[size_t(k)] < 0 && since < most + tp.bus_extension_s && bus_near(s, j, k)) return false;
+		for (int i = 0; i < stages && !bus_waits; i++) bus_waits = i != k && j.turn_of[size_t(i)] < 0 && bus_near(s, j, i);
 	}
+	if (!bus_waits && since < most && stage_asked(s, n, j, k)) return false;
+	if (!people_on(s, n, j, k)) return true;
+	if (j.hold_from < 0) j.hold_from = s.traffic.time;
+	return s.traffic.time - j.hold_from >= tp.ped_hold_limit_s;
+}
+
+// The stage that runs next: where buses go first, a bus's; a stage asked for and unserved for signal_starve_cycles cycles; the
+// stage whose walkers have waited ped_wait_limit_s, the longest wait first; the stage asked for whose wait, weighted by its queue,
+// is the longest. A stage nobody asks for is skipped; with nobody asking at all, the next ordinary stage in order.
+int next_stage(const CityState &s, int n, const Junction &j) {
+	const TrafficParams &tp = s.catalog.traffic;
+	const int stages = int(j.green.size()), k = j.run;
+	const double starved = double(j.cycle) * tp.signal_starve_cycles;
+	int bus = -1, overdue = -1, asked = -1, walkers = -1, plain = -1;
+	double overdue_age = 0, asked_age = 0;
+	float longest = tp.ped_wait_limit_s;
+	for (int step = 1; step < stages; step++) {
+		const int i = (k + step) % stages;
+		const bool vehicles = !j.approaches[size_t(i)].empty();
+		if (plain < 0 && vehicles && j.turn_of[size_t(i)] < 0) plain = i;
+		if (const float wait = walkers_wait(s, n, j, i); wait >= longest) { longest = wait; walkers = i; }
+		if (!stage_asked(s, n, j, i)) continue;
+		if (bus < 0 && j.buses_first && j.turn_of[size_t(i)] < 0 && bus_near(s, j, i)) bus = i;
+		const double waited = s.traffic.time - j.served[size_t(i)];
+		const double age = waited * (1 + double(stage_queue(s, j, i)) / tp.signal_queue_weight);
+		if (vehicles && waited >= starved && age > overdue_age) { overdue_age = age; overdue = i; }
+		if (age > asked_age) { asked_age = age; asked = i; }
+	}
+	for (int pick : { bus, overdue, walkers, asked, plain })
+		if (pick >= 0) return pick;
+	return (k + 1) % stages;
+}
+
+// Runs junction `n`'s actuated plan up to now: the running stage's least green, its end (green_ends), its amber and all-red, then
+// the next stage (next_stage).
+void advance(CityState &s, int n, Junction &j) {
+	TrafficState &t = s.traffic;
+	const size_t k = size_t(j.run);
+	const double since = t.time - j.run_start;
+	if (j.run_green < 0) {
+		if (since < j.green[k] || !green_ends(s, n, j, since)) return;
+		j.run_green = float(since);
+		j.served[k] = t.time;
+		for (int ds : j.approaches[k]) // the calls its green answered are over (a far vehicle's stands a cycle: signal_call_far)
+			if (size_t(ds) < t.green_wanted.size()) t.green_wanted[size_t(ds)] = std::min(t.green_wanted[size_t(ds)], t.time);
+	}
+	const double span = double(j.run_green) + j.amber[k] + j.all_red[k];
+	if (since < span) return;
+	j.run_start += span;
+	j.run = next_stage(s, n, j);
+	j.run_green = -1;
+	j.hold_from = -1;
 }
 
 // Where a fixed plan stands now on the common clock, less the junction's offset: the same stage on every run, so two
@@ -113,7 +165,7 @@ Light compute_light(const CityState &s, int ds) {
 	const DirSeg &d = g.ds[ds];
 	const Junction &j = g.junctions[d.to];
 	if (j.ctl != Control::SIGNAL || d.stage < 0 || j.green.empty()) return Light::GREEN;
-	if (d.stage != j.run) return Light::RED;
+	if (d.stage != j.run && d.turn_stage != j.run) return Light::RED; // its own stage, or the stage of its turns
 	const double since = s.traffic.time - j.run_start;
 	if (j.run_green < 0 || since < j.run_green) return Light::GREEN;
 	return since < j.run_green + j.amber[size_t(j.run)] ? Light::AMBER : Light::RED;
@@ -124,15 +176,6 @@ float ped_clearance(const CityState &s, int arm_seg) {
 	const TrafficParams &tp = s.catalog.traffic;
 	const Profile &p = s.roads.profile_of(arm_seg);
 	return tp.ped_reaction_s + (p.asph_left + p.asph_right) / tp.ped_clear_speed;
-}
-
-bool walk_signal(const CityState &s, int node, int arm_seg, int arm_stage) {
-	const Junction &j = s.traffic.g.junctions[size_t(node)];
-	if (j.green.empty() || j.run == arm_stage) return false;
-	// the running stage lasts at least its minimum green and its intergreen: walkers start while their clearance fits
-	const size_t k = size_t(j.run);
-	const float least = j.green[k] + j.amber[k] + j.all_red[k];
-	return s.traffic.time - j.run_start < least - ped_clearance(s, arm_seg) - s.catalog.traffic.ped_all_red_s;
 }
 
 void file_signal(LaneGraph &g, int n) {
@@ -162,8 +205,9 @@ void update_lights(CityState &s) {
 	if (t.green_wanted.size() != g.ds.size()) t.green_wanted.resize(g.ds.size(), 0.0);
 	for (int n : g.signal_nodes) {
 		Junction &j = g.junctions[size_t(n)];
+		if (j.green.empty()) continue; // nobody arrives and nobody crosses: no stage to run
 		if (j.fixed) run_fixed(t, j);
-		else advance(t, j);
+		else advance(s, n, j);
 	}
 	if (t.light_now.size() != g.ds.size()) t.light_now.resize(g.ds.size(), uint8_t(Light::GREEN));
 	for (int ds : t.lit_ds)

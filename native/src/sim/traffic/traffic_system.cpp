@@ -8,9 +8,11 @@
 #include "core/laps.h"
 #include "core/units.h"
 #include "sim/traffic/lane_graph_internal.h"
+#include "sim/traffic/signal_plan.h"
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 
 namespace city {
 namespace traffic {
@@ -62,6 +64,8 @@ void reset_traffic(CityState &s) {
 }
 
 namespace {
+constexpr double FLASH_LIT = 0.5; // the share of a flash the walkers' stop lens is lit
+
 // What the signalled approaches within `radius` of (cx, cz) show now, sorted by ds (PoseFrame::signal).
 void publish_signals(CityState &s, float cx, float cz, float radius, std::vector<SignalRecord> &out) {
 	out.clear();
@@ -71,7 +75,11 @@ void publish_signals(CityState &s, float cx, float cz, float radius, std::vector
 		for (int seg : s.roads.nodes[size_t(n)].segs) {
 			const int ds = in_ds(s.roads, seg, n);
 			if (size_t(ds) >= g.ds.size() || !g.ds[size_t(ds)].ok || g.ds[size_t(ds)].stage < 0) continue;
-			out.push_back({ uint32_t(ds), uint8_t(light_for(s, ds)), walk_ok(s, n, seg) });
+			// the walkers' lens: a flashing stop is the stop lens lit for half of each ped_flash_s
+			const WalkLamp lamp = walk_lamp(s, n, seg);
+			const bool between = std::fmod(s.traffic.time, double(s.catalog.traffic.ped_flash_s)) >= double(s.catalog.traffic.ped_flash_s) * FLASH_LIT;
+			const uint8_t walk = lamp == WalkLamp::WALK ? LAMP_WALK : (lamp == WalkLamp::FLASH && between ? LAMP_DARK : LAMP_STOP);
+			out.push_back({ uint32_t(ds), uint8_t(light_for(s, ds)), walk });
 		}
 	});
 	std::sort(out.begin(), out.end(), [](const SignalRecord &a, const SignalRecord &b) { return a.ds < b.ds; });
