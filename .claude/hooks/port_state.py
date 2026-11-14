@@ -29,7 +29,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 try:
     import port_note  # noqa: E402  the work's note: its state, its age, what a compaction keeps
-    from port_gate import CONTEXT7, after_edit, block, gate  # noqa: E402  the hook's refusals, and the gates after an edit
+    from port_edits import after_edit  # noqa: E402  the gates of a file right after an edit
+    from port_gate import CONTEXT7, block, gate  # noqa: E402  the hook's refusals
     FAULT = ""
 except Exception as fault:  # noqa: BLE001  a gate that does not load, whatever the reason, refuses all but its own repair
     FAULT = f"{type(fault).__name__}: {fault}"
@@ -80,8 +81,10 @@ def one_line() -> str:
         return (f"Port ({b['done']} of {b['total']} done, doc/port.md): IN HAND = the block {k.get('name')} ({k['state']}), by "
                 f"the `## Now` of doc/work/{k.get('name')}.md; no other work before it is closed. The skill `port`, Context7 "
                 "and the internet first; steps and commands: CLAUDE.md, 'One functionality, start to end'.")
-    return (f"Port ({b['done']} of {b['total']} done, doc/port.md): next = {b['next'][:BRIEF] or 'nothing left'}; no block open. "
-            "Skills and Context7 first; steps and commands: CLAUDE.md, 'One functionality, start to end'.")
+    note = port_note.note_file(k)
+    last = f" The owner's latest orders and the work in hand: the `## Now` of {port_note.rel(note)}." if note else ""
+    return (f"Port ({b['done']} of {b['total']} done, doc/port.md): next = {b['next'][:BRIEF] or 'nothing left'}; no block open."
+            f"{last} Skills and Context7 first; steps and commands: CLAUDE.md, 'One functionality, start to end'.")
 
 
 def whole(source: str = "") -> str:

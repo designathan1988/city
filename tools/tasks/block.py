@@ -175,8 +175,6 @@ def record(statuses: dict, root: Path = ROOT) -> None:
     _save(doc, root)
 
 
-
-
 def enter(target: str, name: str | None = None, root: Path = ROOT, cause: str | None = None, owner: str | None = None) -> dict:
     """The one setter of the block's state: refused unless MOVES allows the move. A closed block opens with its name; a block in
     verification opens again (a failure fixed in the code) under the name it has, its failed checks' cause named."""
@@ -203,6 +201,9 @@ def enter(target: str, name: str | None = None, root: Path = ROOT, cause: str | 
     else:
         if failed(doc, root):
             raise BlockError(f"checks of this verification failed ({', '.join(failed(doc, root))}): a block closes on checks that pass")
+        if not (doc.get("ran") or {}).get("checks"):
+            raise BlockError("this verification ran no check: a block closes on checks that pass, its one run named in one "
+                             "command (`python tools/tasks/cli.py run <its test>,<its photo plan>,zoom_ladder,e2e`)")
         doc["state"] = target
     if target == CLOSED:
         _append_times(doc, root)
@@ -261,8 +262,8 @@ def refusal(what: str, root: Path = ROOT, tasks: list[str] | None = None) -> str
 
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="cli.py block", description="the block rule: open, review, verify, close, status, check")
-    ap.add_argument("action", choices=(OPEN, "review", VERIFY, "close", "status", "check"))
-    ap.add_argument("name", nargs="?", help="the block's name (open); what is asked (check: run, build, export, commit)")
+    ap.add_argument("action", choices=(OPEN, "review", VERIFY, "close", "status", "check", "order"))
+    ap.add_argument("name", nargs="?", help="the block's name (open); what is asked (check); the owner's own words (order)")
     ap.add_argument("--cause", help="open, after a verification that failed: each failed check, a file:line and why")
     ap.add_argument("--owner", help=f"open, past {MAX_ROUNDS} failed verifications: the owner's words to go on")
     ap.add_argument("--root", default=str(ROOT), help=argparse.SUPPRESS)
@@ -270,6 +271,8 @@ def main(argv: list[str]) -> int:
     root = Path(a.root)
     if a.action == "review":
         return _review().review(root)
+    if a.action == "order":
+        return _review().order(a.name, root)
     if a.action == "check":
         why = refusal(a.name or "run", root)
         if why:

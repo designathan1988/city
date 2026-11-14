@@ -39,6 +39,10 @@ class Moves(BlockCase):
         self.assertEqual(self.block("open", "--cause", "a photo shows nothing: a.txt:1: the view is too far"), 0, "what was found, where it stands")
         self.assertEqual(block.load(self.root)["name"], "roads", "opened again under its own name")
         self.assertEqual(self.block("verify"), 0)
+        self.assertEqual(self.block("close"), 1, "a block closes on checks that ran")
+        block.record({"build_debug": "PASS"}, self.root)
+        self.assertEqual(self.block("close"), 1, "a build is no check")
+        block.record({"lane_test": "PASS"}, self.root)
         self.assertEqual(self.block("close"), 0)
         self.assertEqual(block.load(self.root)["state"], block.CLOSED)
 
@@ -83,6 +87,7 @@ class Moves(BlockCase):
     def test_close_appends_the_times_to_the_history(self):
         self.block("open", "signals")
         self.block("verify")
+        block.record({"signals_test": "PASS"}, self.root)
         self.block("close")
         text = (self.root / block.HISTORY).read_bytes().decode("utf-8")
         rows = [line for line in text.split("\n") if line.startswith("| signals |")]

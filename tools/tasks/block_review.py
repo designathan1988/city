@@ -1,7 +1,7 @@
 # The static side of the block rule (block.py): what the code must hold as it is written, said when a block opens (`limits`), and
 # the review that closes the coding (`review`: the gates of every changed file against the register, no build and no engine).
 # `block verify` is refused until the code as it stands passed the review, so nothing a reading shows is left for a build or a
-# test to find.
+# test to find. And what a verification may run (`run_bounds`), with the owner's order for a run past a session's own (`order`).
 from __future__ import annotations
 
 import json
@@ -15,6 +15,7 @@ except ImportError:  # run beside block.py as a script (the build scripts)
     import block
 
 REVIEW_FILES = Path("dist/block/review_files.txt")  # the changed files the review judged
+ORDER = Path("dist/block/order.json")  # the owner's order standing for one run (written by `order`, spent by the hook)
 GATES = ("tools/gates/run_gates.py", "--register", "doc/problems.jsonl")
 GATES_SECONDS = 900
 MEASURES = ("lab_test",)  # the quick CPU, GPU and memory measure, run alone: a verification's second and last run
@@ -45,6 +46,20 @@ def run_bounds(doc: dict, what: str, tasks) -> str | None:
                 f"answered; everything found is fixed in the code in one opening (`block open --cause`), reviewed (`block "
                 f"review`), and verified again ({doc.get('verifies') or 0} of {block.MAX_VERIFIES} used). Asked: {what}")
     return None
+
+
+def order(words: str | None, root: Path = block.ROOT) -> int:
+    """The owner's order for one run past what a session may run by itself (a second look with no block open, a whole suite,
+    the 24 km measures, the hunt), written down in the owner's own words: the hook (.claude/hooks/port_looks.py) lets this
+    command pass only when the owner wrote them in the session, and the run that follows spends the order."""
+    if not words:
+        print("refused: an order is given in the owner's own words: `block order \"<the owner's sentence>\"`", file=sys.stderr)
+        return 1
+    path = Path(root) / ORDER
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"words": words, "at": block._now()}, indent=1) + "\n", encoding="utf-8")
+    print(f"the owner's order stands for one run: {words}")
+    return 0
 
 
 def changed_files(root: Path) -> list[str]:

@@ -49,14 +49,14 @@ when_to_use: Invoke it before the first tool call of any port work and again aft
 | # | Step | Command |
 |---|---|---|
 | 1 | Skills and tools loaded | Skill tool; ToolSearch `select:mcp__plugin_context7_context7__resolve-library-id,mcp__plugin_context7_context7__query-docs,WebSearch,WebFetch` |
-| 2 | One look, once: the functionality's state now | `python tools/tasks/cli.py run <task>` |
+| 2 | One look, once: the functionality's state now (the hook refuses a second run with no block open; more only on the owner's order: `block order "<the owner's own words>"`) | `python tools/tasks/cli.py run <task>` |
 | 3 | Both games traced | `python tools/tracer/port.py sheet <area>` (report: `dist/port/<area>.json`); closer: `python tools/tracer/trace.py <START> --depth N --state --root <files>` |
 | 4 | Its code read whole, in both games, by you | Read; the reference: `C:\Users\Jonathan\Documents\Projects\lab\roadcraft\src` |
 | 5 | Context7 for each API; the internet for each design decision and real value | `resolve-library-id`, `query-docs`, WebSearch, WebFetch |
 | 6 | The note written | `doc/work/<area>.md` |
 | 7 | The whole functionality coded, every case | `python tools/tasks/cli.py block open <area>` |
 | 8 | Read, then reviewed | the whole diff read by you; `python tools/tasks/cli.py block review` |
-| 8b | Checked once, in seconds | `python tools/tasks/cli.py block verify`; `tools/build/build.sh core-windows`; one run: `python tools/tasks/cli.py run <its test>,<its photo plan>,zoom_ladder,e2e`; each photo opened whole and looked at, part by part (buildings, roads, vehicles, ground, sky), against `doc/look`: a part that lost detail is a failed check (the hook refuses the commit without `zoom_ladder`); one measure: `python tools/tasks/cli.py run lab_test --all --jobs 1` |
+| 8b | Checked once, in seconds | `python tools/tasks/cli.py block verify`; `tools/build/build.sh core-windows`; one run: `python tools/tasks/cli.py run <its test>,<its photo plan>,zoom_ladder,e2e`; each photo opened whole and looked at, part by part (buildings, roads, vehicles, ground, sky), against `doc/look`: a part that lost detail is a failed check (the hook refuses the commit without `zoom_ladder` passed and before each of its photos and each reference of `doc/look` was opened with Read after the run); one measure: `python tools/tasks/cli.py run lab_test --all --jobs 1` |
 | 9 | A pass | `superpowers:verification-before-completion`; the line checked in `doc/port.md`; commit and push; `python tools/tasks/cli.py block close`; the next line at once |
 
 ## What the design must hold (CLAUDE.md, Architecture and Never)

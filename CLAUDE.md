@@ -30,8 +30,15 @@ tool call of any port work, and again after every compaction. What it says in st
   six tasks at most, named in one command) and one measure (`lab_test`). No whole suite, no second run: the tools refuse them.
   The run always names the plan `zoom_ladder` (the game's look at six distances): its photos are opened whole and each is
   looked at, part by part (buildings, roads, vehicles, ground, sky), against the references in `doc/look`; a part that lost
-  detail is a failed check. The hook refuses a block's commit without it. The owner is shown whole photos, never a crop alone.
+  detail is a failed check. The hook refuses a block's commit without it, and before each of its photos and each reference
+  was opened after the run. The owner is shown whole photos, never a crop alone.
   The whole suite, `km24`, `hunt` and `quick --ready` run only on the owner's order.
+- **With no block open the game is looked at once**: one run of six tasks at most and one measure, between a block's close
+  and the next one's opening. A second run to see is trial and error: what is wrong is read in the code and a fix is
+  checked in its block. A run past that is had only on the owner's order, given to the tools in the owner's own words
+  (`python tools/tasks/cli.py block order "<the owner's sentence>"`, a tool's `--owner "<...>"`): the hook looks for them
+  in what the owner wrote in the session and refuses words the owner did not write. A block closes on a verification
+  that ran its checks.
 - **A block is verified three times at most**, failed or not. It opens again only with a cause at a `file:line`
   (`block open --cause "<check or what was found>: <file:line>: <why>"`), read in the code (`superpowers:systematic-debugging`),
   never guessed, and everything found is fixed in that one opening. Two verifications may fail; a third stops the work and
@@ -113,7 +120,7 @@ tool call of any port work, and again after every compaction. What it says in st
 | Both games traced for a functionality | `python tools/tracer/port.py sheet <area> [--feature N]` · `python tools/tracer/port.py check` |
 | Trace | `python tools/tracer/trace.py <START> --depth N --state --root <feature files>` (`--list` names the starts) |
 | What each game has | `python tools/atlas/cli.py inventory [--area A] [--game reference\|city] [--unpaired]` |
-| A block | `python tools/tasks/cli.py block open <name>` · `block review` · `block verify` · `block open --cause "<check>: <file:line>: <why>"` · `block close` · `block status` |
+| A block | `python tools/tasks/cli.py block open <name>` · `block review` · `block verify` · `block open --cause "<check>: <file:line>: <why>"` · `block close` · `block status` · `block order "<the owner's own words>"` |
 | Build both DLLs | `tools/build/build.sh core-windows` |
 | One test or photo plan | `python tools/tasks/cli.py run <task>` (names: `python tools/tasks/cli.py run tests --list`) |
 | Gates of a file · nothing copied | `python tools/gates/run_gates.py --file X` · `python tools/gates/lab_scan.py` |

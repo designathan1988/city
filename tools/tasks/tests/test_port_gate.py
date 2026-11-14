@@ -15,6 +15,7 @@ HOOKS = ROOT / ".claude" / "hooks"
 sys.path.insert(0, str(HOOKS))
 
 import port_gate  # noqa: E402
+import port_looks  # noqa: E402
 import port_note  # noqa: E402
 
 RUN = "python tools/tasks/cli.py run"
@@ -67,16 +68,30 @@ class GateCase(unittest.TestCase):
     def setUp(self):
         self.folder = Path(tempfile.mkdtemp())
         self.held = port_gate.BLOCK, port_note.WORK
-        port_gate.BLOCK = self.folder / "state.json"
+        self.looks = {name: getattr(port_looks, name) for name in ("STATE", "LOOKS", "ORDER", "SHOTS", "REFS", "SUITES")}
+        port_gate.BLOCK = port_looks.STATE = self.folder / "state.json"
+        port_looks.LOOKS, port_looks.ORDER = self.folder / "looks.json", self.folder / "order.json"
+        port_looks.SHOTS, port_looks.REFS = self.folder / "captures", self.folder / "look"
+        port_looks.SUITES = self.folder / "suites.json"
+        port_looks.SUITES.write_text(json.dumps({"suites": {"tests": {}}, "groups": {"looks": {}}}), encoding="utf-8")
         port_note.WORK = self.folder / "work"
         port_note.WORK.mkdir()
         self.note = port_note.WORK / "traffic.md"
         self.note.write_text(NOTE, encoding="utf-8")
+        self.shot = port_looks.SHOTS / port_gate.LOOK / "00-near.png"
+        self.reference = port_looks.REFS / "far_town.png"
+        for picture in (self.shot, self.reference):
+            picture.parent.mkdir(parents=True)
+            picture.write_bytes(b"png")
         # the session stood on its records: the skill invoked, the block's note Read
         self.stood = (("Skill", {"skill": "port"}), ("Read", {"file_path": str(self.note)}))
+        # and looked at the game: each photo of the look and each reference opened
+        self.seen = (("Read", {"file_path": str(self.shot)}), ("Read", {"file_path": str(self.reference)}))
 
     def tearDown(self):
         port_gate.BLOCK, port_note.WORK = self.held
+        for name, value in self.looks.items():
+            setattr(port_looks, name, value)
 
     def state(self, state: str, runs: dict | None = None) -> None:
         """The block in `state`; in verify its run photographed the look, unless `runs` says what ran."""
@@ -101,8 +116,10 @@ class Shell(GateCase):
         commit = {"command": 'git commit -m "traffic"'}
         self.assertTrue(self.refused("Bash", cause, bare))
         self.assertTrue(self.refused("Bash", commit, bare))
-        both = transcript(self.folder, *self.stood, ("Skill", {"skill": "superpowers:systematic-debugging"}),
-                          ("Skill", {"skill": "superpowers:verification-before-completion"}))
+        skills = (("Skill", {"skill": "superpowers:systematic-debugging"}),
+                  ("Skill", {"skill": "superpowers:verification-before-completion"}))
+        self.assertTrue(self.refused("Bash", commit, transcript(self.folder, *self.stood, *skills)), "the photos not opened")
+        both = transcript(self.folder, *self.stood, *self.seen, *skills)
         self.assertFalse(self.refused("Bash", cause, both))
         self.assertFalse(self.refused("Bash", commit, both))
         self.state("verify", {"flows_test": "PASS"})
@@ -150,7 +167,12 @@ class Compaction(GateCase):
                 self.assertEqual(self.refused("Bash", look, made), refused)
                 self.assertEqual(self.refused("Write", other, made), refused)
         self.state("closed")
-        self.assertFalse(self.refused("Bash", look, transcript(self.folder, COMPACTED)), "no block: nothing to stand on")
+        self.assertFalse(self.refused("Bash", look, transcript(self.folder, skill)), "no block and no compaction")
+        self.assertTrue(self.refused("Bash", look, transcript(self.folder, COMPACTED)), "a compaction, whatever the block")
+        self.assertTrue(self.refused("Bash", look, transcript(self.folder, COMPACTED, skill)))
+        part = ("Read", {"file_path": str(self.note), "limit": 40})
+        self.assertTrue(self.refused("Bash", look, transcript(self.folder, COMPACTED, skill, part)), "the note Read in part")
+        self.assertFalse(self.refused("Bash", look, transcript(self.folder, COMPACTED, skill, read)))
 
     def test_the_note_is_never_far_behind_the_work(self):
         self.state("open")
@@ -225,8 +247,8 @@ class Entry(unittest.TestCase):
     def test_a_gate_that_does_not_load_refuses_all_but_its_repair(self):
         hooks = Path(tempfile.mkdtemp()) / ".claude" / "hooks"
         hooks.mkdir(parents=True)
-        (hooks / "port_state.py").write_bytes((HOOKS / "port_state.py").read_bytes())
-        (hooks / "port_note.py").write_bytes((HOOKS / "port_note.py").read_bytes())
+        for name in ("port_state.py", "port_note.py", "port_looks.py", "port_edits.py"):
+            (hooks / name).write_bytes((HOOKS / name).read_bytes())
         (hooks / "port_gate.py").write_text('A = "cut\n', encoding="utf-8")
         said = self.ask(hooks, {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ls"}})
         self.assertEqual(said["hookSpecificOutput"]["permissionDecision"], "deny")
