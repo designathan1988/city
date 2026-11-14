@@ -1,6 +1,6 @@
 """An edit as the hooks judge it (called by port_gate.py and port_state.py): what it may not leave (a Python or JSON file
-unreadable, a work's note with no `## Now` or one too long to be given back whole), read before it is written; and, after it,
-the gates of the file just written, so a defect a reading shows is fixed where it was written."""
+unreadable, a work's note with no `## Now`), read before it is written; and, after it, the gates of the file just written, so
+a defect a reading shows is fixed where it was written."""
 
 import json
 import subprocess

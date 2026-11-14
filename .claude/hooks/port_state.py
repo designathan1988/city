@@ -3,6 +3,9 @@
 note holds (the `## Now` of doc/work/<block>.md), what is uncommitted and the last commits.
 
     python .claude/hooks/port_state.py            the state, as text (any time, by hand)
+    python .claude/hooks/port_state.py hook memory  SessionStart of the compact source, its second text: the owner's
+                                                  words of the session, the files changed and the commands run since
+                                                  `## Now` was rewritten, read back from the transcript (port_memory.py)
     python .claude/hooks/port_state.py hook       Claude Code's hook: the event's JSON on stdin, the state as
                                                   hookSpecificOutput.additionalContext on stdout (SessionStart: whole;
                                                   UserPromptSubmit and SubagentStart: one line; PreToolUse: the
@@ -12,10 +15,11 @@ note holds (the `## Now` of doc/work/<block>.md), what is uncommitted and the la
                                                   for when it is old; PreCompact: what the summary of a compaction
                                                   must keep; Stop: refused once while a block is not closed and no
                                                   run of its own is going)
-Nothing read may be lost to a compaction: the note doc/work/<name>.md is what survives one (CLAUDE.md). The gate keeps it no
-more than port_note.NOTE_SECONDS behind the work, the summary is told to keep what is not in it yet, its `## Now` comes back
-whole after (every answer here fits what Claude Code gives a session whole: port_note.fit), and nothing is edited or run
-after a compaction before the skill `port` is invoked and the note Read again (port_gate.ungrounded).
+Nothing read may be lost to a compaction: the note doc/work/<name>.md is what survives one (CLAUDE.md). The gate keeps its
+`## Now` no more than port_note.NOTE_SECONDS behind the work and rewritten whenever the block moves, the summary is told to
+keep what is not in it yet, its `## Now` comes back after (every answer here fits what Claude Code gives a session whole:
+port_note.fit), the owner's words come back from the transcript itself (port_memory), and nothing is edited or run after a
+compaction before the skill `port` is invoked and the note Read again (port_gate.ungrounded).
 """
 
 import json
@@ -28,6 +32,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 try:
+    import port_memory  # noqa: E402  what a compaction gives back from the transcript: the owner's words, the work since
     import port_note  # noqa: E402  the work's note: its state, its age, what a compaction keeps
     from port_edits import after_edit  # noqa: E402  the gates of a file right after an edit
     from port_gate import CONTEXT7, block, gate  # noqa: E402  the hook's refusals
@@ -39,7 +44,6 @@ BOARD = ROOT / "doc" / "port.md"
 LINE = re.compile(r"^- \[( |x|-)\] (.+)$")
 SHOWN = 400          # characters of a board line shown
 BRIEF = 160          # characters of the next line in the one-line state
-STOP_SHOWN = 1500    # characters of the note's state shown when a stop is refused
 GIT_SECONDS = 5
 FEATURE = re.compile(r"^([a-z-]+), complete")   # a board line of an area's sheet: its area
 
@@ -143,10 +147,11 @@ def unfinished(payload: dict) -> str:
     if payload.get("stop_hook_active") or k["state"] not in ("open", "verify") or runs_live():
         return ""
     name = str(k.get("name"))
-    return (f"The block {name} is {k['state']}: its functionality is not delivered, and the owner does not accept work left on "
-            "the way nor a question about what to do next. Stop only when a third verification failed or when the owner "
-            "alone can decide; then the first line of the answer says which, with the proof. Else go on now with the next "
-            "step of its note. " + "\n".join(port_note.note_back(k))[:STOP_SHOWN])
+    return port_note.fit(
+        f"The block {name} is {k['state']}: its functionality is not delivered, and the owner does not accept work left on "
+        "the way nor a question about what to do next. Stop only when a third verification failed or when the owner "
+        "alone can decide; then the first line of the answer says which, with the proof. Else go on now with the next "
+        "step of its note. " + "\n".join(port_note.note_back(k)))
 
 
 def broken(event: str, payload: dict) -> int:
@@ -188,7 +193,14 @@ def main() -> int:
             sys.stdout.write(json.dumps(refusal))
         return 0
     if event == "PreCompact":
-        sys.stdout.write(port_note.summary_orders(block()))
+        sys.stdout.write(port_note.fit(port_note.summary_orders(block())))
+        return 0
+    if sys.argv[2:] == ["memory"]:
+        if event != "SessionStart":
+            return 0
+        changed = [c[3:] for c in git("status", "--short")]
+        context = port_memory.given_back(str(payload.get("transcript_path", "")), block(), changed)
+        sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": event, "additionalContext": context}}))
         return 0
     if event == "PostToolUse":
         asked = "\n".join(said for said in (after_edit(payload), port_note.checkpoint(block())) if said)

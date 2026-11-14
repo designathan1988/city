@@ -182,6 +182,8 @@ class WholeLife(RepoCase):
         self.assertIn("only with its block open", self.refusal("Edit", self.code))
         self.assertEqual(self.tool("close"), 1, "a block closes on checks that ran")
         commit = {"command": 'git commit -m "roads"'}
+        self.assertIn("written when it was open", self.refusal("Bash", commit), "`## Now` rewritten when the block moves")
+        self.note.write_text("# roads\n\n## Now\n- in verify; next: its one run.\n", encoding="utf-8")
         self.assertIn("photographed", self.refusal("Bash", commit))
         block.record({"near": "PASS", "zoom_ladder": "PASS"}, self.root)
         shot = self.root / "dist" / "captures" / "zoom_ladder" / "00-near.png"

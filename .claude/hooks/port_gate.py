@@ -9,7 +9,9 @@ given back whole; the game's code with no block open, or before the skill `port`
 session, or before the domain skill of the file's kind was (port_skills.py: a shader, the interface, the renderer, ...).
 Any edit or command, while a block is not closed, before the session stood on its records again: since its start or its last
 compaction the skill `port` was not invoked or the block's note was not Read (a compaction keeps a summary; the note is what
-was read and decided). The game's code, a run of the project's tools and a commit, while the note is older than the work.
+was read and decided), or, after a compaction, the owner's words the hook's text could not hold were not Read
+(port_memory.WORDS). The game's code, a run of the project's tools and a commit, while the note's `## Now` is older than
+the work or was written before the block last moved.
 An agent: started while the port is in hand.
 After an edit (after_edit): the gates of the file just written, so a defect a reading shows is fixed where it was written.
 What the session did is read from its transcript's own records."""
@@ -20,6 +22,7 @@ from pathlib import Path
 
 import port_edits
 import port_looks
+import port_memory
 import port_note
 import port_skills
 
@@ -181,11 +184,15 @@ def ungrounded(did: dict, k: dict) -> str:
     note = port_note.note_file(k)
     work = port_note.key(port_note.WORK) + "/"
     stood = note is None or port_note.key(note) in did["read"] or (closed and any(f.startswith(work) for f in did["read"]))
+    words = port_memory.WORDS
     owed = [what for what, done in (
         ("invoke the project's skill `port` with the Skill tool (the procedure and its rules)",
          any(s == "port" or s.endswith(":port") for s in did["skills"])),
         (f"Read the note {port_note.rel(note) if note else ''} whole with the Read tool, no offset and no limit (what was "
-         "read, designed, done and left: a compaction's summary is no source)", stood)) if not done]
+         "read, designed, done and left: a compaction's summary is no source)", stood),
+        (f"Read {port_note.rel(words)} whole with the Read tool (the owner's words of this session that the hook's text "
+         "could not hold after the compaction)",
+         not (did["compacted"] and words.is_file()) or port_note.key(words) in did["read"])) if not done]
     if not owed:
         return ""
     hand = "no block is open, the conversation was compacted" if closed else f"the block {k.get('name')} is {k.get('state')}"

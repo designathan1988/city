@@ -16,6 +16,16 @@
             "timeout": 20
           }
         ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/port_state.py\" hook memory",
+            "timeout": 20
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
