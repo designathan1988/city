@@ -384,6 +384,17 @@
   through joints only). So the street's name of a segment = the first name item (by id) of works.names.by_seg[seg],
   and its numbers come from where the segment lies along street_chain (to read: sim/street/street_spots.h
   street_chain: its order and whether it crosses junctions).
+- Case 5, the editor's core (read whole): native/src/sim/roads/road_spec.cpp (175 lines): spec_issues :67-94 and
+  its problems' names (noLanes, laneWidths, laneBalance, busOnly, median, order, width, footways, noFootways,
+  parkingSide, class), spec_of :96-127 (a profile as elements; a kerb counted in what it borders), spec_strips
+  :129-161, spec_centre :163-173 (the spec's own centre unless "auto": none with a median or one way, dashed for two
+  lanes, solid for more); RoadSpec already carries `centre` and each element's `pave` (profile_types.h:50-66), not
+  the carriageway's surface nor the class (the class is the base profile's); native/src/api/city_core_road_spec.cpp
+  (120 lines): read_spec / write_spec :20-62 (kind, width, dir, bus, solid, flush, pave; speed, priority, centre),
+  road_spec_limits :66-73 (lane, footway, median, band: no speed), road_spec_issues :80-92, road_spec_make :96-118
+  ({ok, error, index}: "hint.road.specInvalid", "hint.road.variantsFull" when the catalogue holds no room);
+  project/game/store/road_models.gd (32 lines): list, save (:20-27: any spec, problems or not), remove(key) :30-31
+  (it exists: no button of the catalogue calls it; project/ui/road_catalog.gd to read).
 - What reads the grade (read): RoadNetwork::seg_y (road_network.cpp:240-245: grade.at(s, arc), else the straight
   line between the nodes' y); set_lift :247-252 marks the node and its roads; ray_deck
   (road_network_deck.cpp:28-32: prof.ylo, prof.yhi); RoadNetwork::cut (road_network_cut.cpp:14-31 heights_of: a
