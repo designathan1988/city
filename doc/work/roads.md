@@ -107,8 +107,15 @@
   (b) the inspector: put_road adds the street's name (the first name item of works.names.by_seg[seg]: its given
   keys or its own text) and its numbers (metres from the street's end nearest the map's origin to the segment's
   two ends along street_chain, and which side is even); inspector_panel.gd shows "<the street's name> · <the
-  class>" and a line of the numbers (new i18n keys); (c) traffic from the map's edge: to be designed after
-  lot_demand.cpp, street_flows.h and flow_step.cpp are read again for where a flow enters a street.
+  class>" and a line of the numbers (new i18n keys); (c) traffic from the map's edge, in this game's own way (the
+  far traffic is flows a street: no entry queue of cars as the reference's): a road's end is on the map's edge when
+  its node has one arm and stands within traffic.json edge_reach_m of the map's side (CityState::map_half,
+  city_state.h:84); in flow_rates (flow_rates.cpp:17-29) the directed segment leaving such a node starts, besides
+  what its sides start, the flow a street of its lanes and speed carries at the demand's density of the hour
+  (per_lane_m x lanes x speed) times edge_share, and the one arriving at it ends every trip that reaches its end
+  (end_share 1); the detailed vehicles the window makes take such an end as a place to go by the same weight
+  (demand.cpp side_weight and what make_vehicle draws a goal from: to read at :118-233); the two values and their
+  source (a share of through traffic at a town's edge) in the data with its schema.
 - Case 7, the design's direction (sources to be searched before the block: what a general vehicle may do on a bus
   lane to reach a turn or a lot, by the traffic code): native/src/sim/traffic/lane_graph_types.h DirSeg gains, a
   lane: its bus-only flag, whether the line to the next lane bars a change, its turn mask; LaneInfo
@@ -412,6 +419,13 @@
   those shares, then the nearest passing car; take_row :50- sends a parked car out. Nothing brings a car in at a
   road's end on the map's edge. To read whole before the design: lot_demand.cpp, lot_traffic.cpp (337),
   street_flows.h (106), flow_step.cpp (261).
+- Case 6, where a flow starts and ends here (read whole): native/src/sim/traffic/street_flows.h (106 lines):
+  StreetFlows by directed segment: start_rate (vehicles a second that want to start a trip on it), end_share (of
+  what reaches its end, the share ending there), origin, send, room, owed, turns, curves; flow_rates.cpp (32 lines):
+  start_rate = the demand's vehicles a lane metre x length x lanes x speed / trip_decay_m x side_weight(origin),
+  end_share = min(1, length / trip_decay_m) x side_weight(end) (:27-28); lot_demand.cpp :97-161: lot_depart sends
+  parked cars out while fewer drive than the target, lot_call sends the nearest passing car to a free bay;
+  demand.cpp:114-116 side_weight, :118- make_vehicle (a detailed vehicle of the window with a trip of its own).
 - What reads the grade (read): RoadNetwork::seg_y (road_network.cpp:240-245: grade.at(s, arc), else the straight
   line between the nodes' y); set_lift :247-252 marks the node and its roads; ray_deck
   (road_network_deck.cpp:28-32: prof.ylo, prof.yhi); RoadNetwork::cut (road_network_cut.cpp:14-31 heights_of: a
