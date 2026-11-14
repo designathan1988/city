@@ -163,6 +163,23 @@
   miniRoundaboutIsland :537-546 (one painted disc of 40 sides, radius 2 to 4 m, 0.4 of the nearest mouth). Not read
   yet: world/roads/markingStyle.ts (the words' strokes, the yield symbol, the styles), render/roadPaint.ts (the far
   filter of the lines).
+- Case 4, the reference's styles, world/roads/markingStyle.ts (read whole, 86 lines): four regional standards
+  (classic, br, us, eu): the centre line's colour (yellow, or white in eu; classic the class's own), the dash and gap
+  by speed (br: 3+6 under 60 km/h, 3+9 under 80, 4+12 from 80; us and eu 3+9; classic 3.2+3.2), the bus lane's word
+  ("ÔNIBUS" or "BUS"), the stop word ("PARE" or "STOP"), the legend's height (1.6 m, 2.4 m over 80 km/h); the
+  letters are polylines in a unit box (its own drawings: not to be brought; this game draws its own letters), a
+  gap of 0.35 of a letter between letters; the give-way symbol a triangle in a triangle.
+- Case 6, the reference's names and numbers, world/roads/streetNames.ts (read whole, 141 lines): a street is a chain
+  of roads (streetChain); its name is the text of the first name plate (by id) within 30 m of one of its roads
+  (:57-66); a street with no plate is given "Rua", "Avenida" (avenue, boulevard) or "Rodovia" (highway, ramp) and a
+  name from a list of 57 Brazilian street names picked by a hash of its id, one not in use (:69-96), the plate set at
+  the middle of the road; numbers (:107-140): metres from the street's end nearest the map's zero, a segment's from
+  and to, even on its right when it runs away from the start. Its quadratic walks (:131) are not brought.
+- The reference's tuning, world/roads/tuning.ts (read whole, 85 lines): grade ground 0.12, authored 0.12, ramp 0.16,
+  deck 0.05, deckTie 0.05, tunnel 0.13, refuse 0.35; clearance elevated 5.6, bridge 3; structure liftOn 0.6,
+  pierFrom 2.8; tunnel autoCover 18; piers every 29.6 (elevated) and 38.4 (bridge); economy: start 20,000,000,
+  per m2 carriageway 150, median 40, footway 80, structure x1 / 1.4 / 1.8 / 2.5 / 6, fillFrom 1 m, refund 0.25
+  (this game's tuning.json holds its own of these already: to be compared key by key before the block).
 - What reads the grade (from doc/work/t015-roads.md, to be read again): at(), ylo/yhi, structure, plates,
   len/step/half: road_network.cpp:245, road_network_deck.cpp:30, road_network_cut.cpp:14, road_grade_sync.cpp:29,
   city_core_state_probe.cpp:101, city_core_grade_probe.cpp.
