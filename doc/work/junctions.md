@@ -154,6 +154,23 @@
 - The published walkers' lamp is two-state (pose_buffer.h:74 SignalRecord::walk, signal_lamps.cpp:48): it
   becomes walk / flash / don't walk (a byte), the render's lens flashing on `flash` (props.gdshader: to read).
 
+- Cases 7 and 9, decided with junction_admission.cpp (read whole again) and admission.ts :340-408:
+  THE ZIPPER: the lane that entered an exit lane last is remembered a lane (TrafficState::merge_last[exit lane
+  key] = the lane of origin, written where a head's entry is admitted); in may_enter a head whose lane went last
+  leaves the next place to the head of another lane bound for the same exit lane (rank not under its own) that
+  is ready (within zip_ready_m of its line, or standing), while it has waited under zip_patience_s; the node's
+  own connectors are walked (node_conn), nothing else. THE ROOM (has_exit :49): the rolling tail's credit only
+  where the exit lane is discharging (its light green or no signal, its head moving); where it runs into a red
+  or its head stands, the room is the lesser of the tail's rear and where the tail will rest: the stop line
+  less the lane's vehicles x slot_m (a count, no walk). THE RING: each ring (the connected segments of
+  Profile::ring) has a canonical segment kept a directed segment when its graph is built; its load a tick is
+  read once (a stamp a ring): the bodies' lengths and gaps on its lanes against its lanes' length; a head
+  entering from a road that is no ring is held while load + its own body pass ring_meter_share of it.
+- CODING ORDER: the data and the params; the gate (1, 8, the zipper); the admission (9, the ring); the signal
+  (2, 3, 4, 5, 11) with the kerb's cell and the lamp; case 6; the save and the commands (5, 10); the panel (10);
+  the tests (a junctions test of its own: gaps, stages, calls, the lamp, the ring; the panel's rows) and the
+  photo plan; doc/map.md.
+
 ## Sources (opened 2026-11-14; each value's words go to the data's `_doc`)
 - Critical gaps by turn (case 1): HCM's base critical headways at a two-way stop, as the PTOE study guide's table
   gives them (open-exam-prep.com/study-guides/ptoe/managed-lanes-tsmo-its/unsignalized-intersections-roundabouts):
