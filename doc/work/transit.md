@@ -44,17 +44,88 @@
   out of sight (traffic_params.h:63, transit_sim.cpp:96); 6. a save's lines clamped on load, trains kept through
   an edit only when their track is the same (transit_data.cpp:107-117, rail_run.cpp:132); 7. transit vehicles
   culled by the view (transit.json:3); 8. bus lanes (done with roads 7: to confirm in the code).
-- READ SO FAR (below, "Read"): sim/transit/transit_data.h/.cpp, rail_run.cpp, transit_sim.h/.cpp,
-  commands/transit_commands.cpp, project/game/tools/transit_tool.gd, render/transit/transit_renderer.cpp.
-  STILL TO READ: sim/traffic/kerb_stops.cpp and demand.cpp:63 (case 1), transit_plan.cpp, rail_net.*,
-  render/transit/transit_parts.cpp, transit_overlay.gd, the texts (strings.csv:361, strings_c.csv:344-349),
-  transit.json; the reference's sim/vehicles/kerbStops.ts:59-141,365-398, sim/transit/transit.ts,
-  world/transit.ts, editor/transitTools.ts.
-- NEXT, in order: the rest of this game's code read whole (sim/transit/*, sim/traffic/kerb_stops.cpp, demand.cpp,
-  commands/transit_commands.cpp, render/transit/*, project/game/tools/transit_tool.gd, project/data transit.json
-  and the texts); the reference's (sim/transit/transit.ts, sim/vehicles/kerbStops.ts, world/transit.ts); each
-  case's design here with both sides by file:line; `block open transit`; the coding; a test and a photo of
-  seconds.
+- READ (below, "Read"): this game's sim/transit/* (all), sim/traffic/kerb_stops.cpp, commands/transit_commands.cpp,
+  project/game/tools/transit_tool.gd, project/ui/transit_strip.gd, render/transit/transit_renderer.cpp and the two
+  headers, the texts, transit.json's head; the reference's sim/transit/transit.ts, sim/vehicles/kerbStops.ts,
+  world/transit.ts, editor/transitTools.ts. EACH CASE IS DESIGNED (below, "Design"). Not read whole yet, to read at
+  the coding: sim/traffic/bus_calls.cpp, render/transit/transit_parts.cpp, sim/persistence's reading of the plan.
+- NEXT, in order: the internet for case 1's value (the spacing of urban bus stops, for `bus_headway_s`) and Context7
+  for each API the code calls; the domain skills (cpp-pro, godot-performance for native/src/render, gdextension for
+  native/src/api, godot-ui for project/ui, godot-headless-testing for project/tests); `python tools/tasks/cli.py
+  block open transit`; the eight cases coded with the test and the photo plan, nothing run; `timeout 200 python
+  tools/tasks/cli.py block review`; `block verify`; `tools/build/build.sh core-windows --seconds 300`; ONE run
+  `python tools/tasks/cli.py run transit_test,transit,e2e --seconds 180`; each photo opened, judged, sent;
+  `python tools/tasks/cli.py run lab_test --all --jobs 1 --seconds 120`; commit; push; `block close`.
+
+## Design (2026-11-14; each case: the reference, this game, which is better and why, what is built; nothing coded)
+- CASE 1, a city bus of the traffic's own mix stops to board. Reference: kerbStops.ts:137-142 (always in service),
+  :365-397 (a stop no sooner than BUS_HEADWAY 35 s after the last, 0.3 along the free stretch, by a footway, no queue
+  ahead; one or two get off by the middle door, up to two walkers alone within 0.7 x 45 m get on). Here:
+  kerb_stops.cpp:323-329 gives a bus no errand (it never stops); a LINE's bus already boards by `traffic::bus_call`
+  (bus_call.h `BusCall`: who gets off, the boarders walked to the door; transit_sim.cpp:109), with the data
+  `bus_fetch_m` 45 and `bus_fetch_share` 0.7 (traffic.json:283-284). The reference's behaviour is the better (a bus
+  that never stops is no bus); this game's `BusCall` is the better machinery (one path for both kinds of bus, the
+  walkers' way in already drawn). Built: an errand SERVICE for a bus of the mix, in a file of its own
+  (sim/traffic/kerb_bus.cpp: kerb_stops.cpp stands at its 350 lines), planned by kerb_stops' own `plan` (the kerb
+  lane, clear of the ends, with a footway) when the bus's seconds since its last stop pass `bus_headway_s` (new,
+  traffic.json, its source found on the internet before the value is written: the spacing of urban stops), served by
+  `bus_call`; kept for the next stretch when a stop cannot be planned. No search a tick: the plan is asked once when
+  the headway passes and again only after the bus changes lane segment.
+- CASE 2, the tool's help. Reference: transitTools.ts:86-137 tells each refusal by its own text, :142-149 Backspace
+  redraws at once, :209-225 keeps the stops marked. Here: transit_tool.gd:18-25 one hint whatever the kind,
+  `game.hint.transit` (strings.csv:364) describing what the tool does not do; the six helps of strings_c.csv:344-349
+  never shown; :100-109 Backspace shows nothing until the pointer moves. The reference's is the better. Built: on
+  `enter` and on each change of kind the kind's own help (`ui.transit.help.<kind>`, a new one for `line`); the texts
+  made true (Shift+click removes; a terminal is its own kind); Backspace and Escape show the run or the line at once
+  (`_show_run`). The stops here are bodies in the scene, always drawn (transit_parts.h `transit_stop_parts`), which
+  is more than the reference's marks: the letters stay the tool's.
+- CASE 3, picking and previewing with no walk of the whole plan. Reference: world/transit.ts:209-299 files the
+  stretches and the stops by 25 m cell, once a version of the data. Here: transit_data.cpp:220-247 and :48-58 walk
+  every point, stop and line; transit_commands.cpp:193-202 walks every track on each pointer move;
+  transit_ground.cpp:42-55 walks every track for a stop's frame; transit_renderer.cpp:235-248 makes the whole preview
+  again on each move and :45-60 walks every line for a stop's colour. The reference's filing is the better. Built: a
+  `TransitIndex` kept beside the plan and made again only when the plan changes (its revision): stops and lines by
+  id, stops and track stretches by cell (the cell from data: `transit_cell_m`), the lines calling at each stop;
+  `nearest_track`, `stop_near`, `TransitData::stop` / `line`, `transit_snap_track` and `transit_stop_frame` read it;
+  the preview keeps the mesh of the points already laid and makes again only the last stretch, to the pointer, and
+  nothing when the pointer's snapped point did not move.
+- CASE 4, the trains off the costs of both games. Costs read: the reference's railPath walks every edge for each
+  end of a leg (world/transit.ts:303-314) and so does transit_data.cpp:32-45; both walk every train of a line for
+  the gap ahead (transit.ts:487; rail_run.cpp:200-205); this game walks every train of the rail for each lane asked
+  at a crossing (rail_run.cpp:214-236) and clears and makes the walkers' zones every tick (rail_run.cpp:250-282;
+  the reference at least leaves out the trains that cannot reach the walkers' box, transit.ts:551-555); this game
+  files one crossing arc for every lane at the road's middle (rail_run.cpp:55-83) where the reference crosses each
+  lane's own centre line (transit.ts:614-634: the better). Built, a third design where neither is good: the graph's
+  edges filed by cell (an end of a leg asks the cells round it); a line's trains kept in their order along the loop
+  (the train ahead is the next one: no walk); a crossing asks the nearest train by a binary search of that order; a
+  crossing a lane at the lane's own arc, from the lanes of the roads a leg's box meets (the roads' own filing, no
+  walk of the map); the walkers' zones kept in a buffer reused (no allocation a tick) and made only for the trains
+  whose reach meets the window where walkers are detailed.
+- CASE 5, a bus leaves the road only out of sight. Reference: transit.ts:357, :373-382 (dwell 0, no kerb stop, doors
+  shut, and its pose outside the focus reach by AWAY_MARGIN). Here: transit_sim.cpp:96-99 takes it off as it leaves
+  the near window, in sight; `bus_away_margin_m` 200 (traffic.json:293, traffic_params.h:63) is read by nothing.
+  The reference's is the better. Built: a bus on the road goes back to the timetable only when it is no longer of
+  the near window AND farther from the view's point on the ground than `camera_reach` (city_state.h:127) plus
+  `bus_away_margin_m`, with no dwell and no call in hand.
+- CASE 6, a save's lines clamped; trains kept only on the same track. Reference: world/transit.ts:95 (vehicles
+  clamped 1 to 20, 2 when absent), transit.ts:223-224 (trains kept only when the loop's points and every station's
+  stop and distance are the same). Here: transit_data.cpp:107-117 leaves `vehicles` as read; rail_run.cpp:132 keeps
+  the trains when the count of points and the length are the same. The reference's is the better in both. Built:
+  `transit_normalize` clamps a line's vehicles to 1..`transit_most_vehicles` (traffic.json:277) and gives a line with
+  none its mode's start (the values `add_line` uses); `place_rails` keeps a line's trains only when the loop's points
+  are the same, point for point (as rail_net.cpp:12-23 compares tracks), and its stations' stops and arcs.
+- CASE 7, the transit's vehicles culled by the view. Reference: transit.ts:588-600 hands every train to the drawing
+  (its cost). Here: transit_renderer.cpp:250-266 draws the cars within `radius_m` 900 of the camera's point, a
+  circle, behind the camera too. Neither is good. Built: the cars kept by the circle AND by the view (the frame's
+  `ViewCull`, as the agents' renderer takes it: api/city_core.cpp `render_.update_agents(poses, cam_, view, at)`),
+  each car a sphere of half its length; `drawn_cars()` says what was drawn (its probe is the test's).
+- CASE 8, bus lanes: done with roads' case 7. To confirm in the code at the opening, with its file:line here.
+- THE TEST (project/tests/core/transit_test.gd, a task `transit_test` of seconds): a bus stop and a line placed by
+  the commands and picked back (the index); a save's line with 99 vehicles and one with none read as 20 and its
+  mode's start; a rail loop with two trains kept through an edit elsewhere and made again when its track moves; a
+  city bus of the mix with a stop planned after its headway; a line's bus still on the road while in sight.
+- THE PHOTOS (project/tests/visual/transit_plan.json, a task `transit`): the list of `## Now`, each with the tool in
+  hand where a tool is the case.
 
 ## Read (facts with file:line)
 - native/src/sim/transit/transit_data.h (116) and .cpp (249), whole: the header says "the stops and stretches are
