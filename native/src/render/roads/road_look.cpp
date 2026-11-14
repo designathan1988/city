@@ -5,6 +5,8 @@
 #include "render/mesh_builder.h"
 
 #include <godot_cpp/variant/array.hpp>
+
+#include <algorithm>
 #include <godot_cpp/variant/string.hpp>
 
 using namespace godot;
@@ -13,6 +15,7 @@ namespace city {
 
 namespace {
 constexpr int PALETTE = 4;
+constexpr int MINI_ISLAND_SIDES_LEAST = 3; // fewer sides are no disc
 
 Color hexc(const Variant &v) { return rgba8_to_color(parse_hex_color(String(v).utf8().get_data())); }
 
@@ -166,6 +169,11 @@ void load_marks(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.no_parking_w = float(m["lpp_line_m"]);
 	L.no_parking_min = float(m["lpp_run_min_m"]);
 	load_legends(L.legends, sub(m, "legends", errors), errors);
+	const Dictionary island = sub(m, "mini_island", errors);
+	L.mini_island.least_m = float(island["least_m"]);
+	L.mini_island.most_m = float(island["most_m"]);
+	L.mini_island.mouth_share = float(island["mouth_share"]);
+	L.mini_island.sides = std::max(MINI_ISLAND_SIDES_LEAST, int(island["sides"]));
 }
 } // namespace
 

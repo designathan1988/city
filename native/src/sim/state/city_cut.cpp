@@ -70,6 +70,27 @@ void keep_gates(CityCut &cut, const CityState &live, int sid) {
 	if (at.second) street_gates(live.roads, live.buildings, sid, 0.0, at.first->second.data());
 }
 
+namespace {
+// A segment's end as one key: twice its id, one more at its b end.
+int64_t leg_key(int sid, bool at_b) { return int64_t(sid) * 2 + (at_b ? 1 : 0); }
+} // namespace
+
+void keep_leg_rules(CityCut &cut, const CityState &live, int sid) {
+	const RoadSegment &g = live.roads.segs[size_t(sid)];
+	cut.facts.leg_rules[leg_key(sid, false)] = traffic::approach_rule(live, g.a, sid);
+	cut.facts.leg_rules[leg_key(sid, true)] = traffic::approach_rule(live, g.b, sid);
+}
+
+int leg_rule_of(const CityView &s, int node, int sid) {
+	if (s.live) return traffic::approach_rule(*s.live, node, sid);
+	const auto at = s.facts->leg_rules.find(leg_key(sid, s.roads.segs[size_t(sid)].b == node));
+	if (at == s.facts->leg_rules.end()) {
+		if (CHECKS) city_stop("the rule of an approach the job's cut did not keep");
+		return RULE_NONE;
+	}
+	return at->second;
+}
+
 void kerb_gates_of(const CityView &s, int sid, std::vector<ArcSpan> out[2]) {
 	if (s.live) {
 		street_gates(s.roads, s.buildings, s.designs, sid, 0.0, out);

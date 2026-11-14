@@ -82,6 +82,7 @@ void forget_node_keys(FlowControl &c, int64_t n) {
 void tell_arms(CityState &s, const RoadNode &node) {
 	for (int seg : node.segs) {
 		s.furniture_kept.forget_seg(seg);
+		s.roads.mark_surface(seg); // what is written on its lanes follows the rule (render/roads/road_legends.cpp)
 		const RoadSegment &g = s.roads.segs[size_t(seg)];
 		for_chunks(g.minx, g.minz, g.maxx, g.maxz, [&](int64_t k) { s.log.prop_chunks.push_back(k); });
 	}

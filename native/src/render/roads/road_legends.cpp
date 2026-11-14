@@ -2,12 +2,12 @@
 // data/render/streets.json markings.legends (CONTRAN's manual of horizontal marking, vol. IV): before a junction, an arrow
 // on each lane where the lanes of the approach differ in the movements they take (a lane's painted turns where they bind,
 // else its place among the lanes: the same rule the traffic's connections follow, sim/traffic/lane_graph.cpp), two rows of
-// them; the stop word or the give-way triangle on every arriving lane of an approach ruled by a stop or a yield the
-// player set; and along a bus lane its word. A legend is drawn for the driver who arrives: its top away from him.
+// them; the stop word or the give-way triangle on every arriving lane of an approach that stops or gives way, wherever
+// its plate stands (a sign of the player's or the junction's own priority); and along a bus lane its word. A legend is drawn for the driver who arrives: its top away from him.
 #include "render/roads/road_mesh.h"
 
 #include "sim/roads/junction.h"
-#include "sim/traffic/traffic_system.h"
+#include "sim/state/city_cut.h"
 
 #include <algorithm>
 #include <string>
@@ -132,20 +132,11 @@ uint8_t lane_turns(const LaneInfo &l, int k, int n, uint8_t offered) {
 	return out;
 }
 
-// The rule the player set on the approach of `sid` to `node`, when signs rule the junction: a stop or a yield on every
-// leg (the node's control), else the leg's own plate. None at a junction under a signal or with no control.
-int signed_rule(const RoadNetwork &net, int node, int sid) {
-	const RoadNode &n = net.nodes[size_t(node)];
-	if (n.ctl == CTL_SIGNAL || n.ctl == CTL_NONE || (n.ctl == CTL_AUTO && n.auto_signal == AUTO_SIGNAL)) return RULE_NONE;
-	if (n.ctl == CTL_STOP) return RULE_STOP;
-	if (n.ctl == CTL_YIELD || n.ctl == CTL_MINI) return RULE_YIELD;
-	return traffic::plate_rule(net, sid, node);
-}
-
 // What an approach's lanes are told before the junction they arrive at: the rule's legend, then the rows of arrows.
 void approach(const RoadEmit &e, int sid, const Profile &p, const std::vector<Bed> &beds, const std::vector<LaneInfo> &lanes, int node) {
 	const StreetLook::Legends &g = e.L.legends;
-	const int rule = signed_rule(e.s.roads, node, sid), n = int(beds.size());
+	// the rule its plate says, the player's sign or the junction's own priority alike (city_cut.h leg_rule_of)
+	const int rule = leg_rule_of(e.s, node, sid), n = int(beds.size());
 	for (const Bed &b : beds) {
 		if (rule == RULE_STOP) word(b, g.stop, p.speed > g.word_fast_kmh ? g.word_fast_m : g.word_m, g.word_clear);
 		if (rule == RULE_YIELD) give_way(b, p.speed);

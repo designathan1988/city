@@ -174,6 +174,7 @@ Appended by `python tools/tasks/cli.py block close` (FR-050: the time each step 
 | traffic | 2026-11-13T22:01 | 2026-11-13T22:13 | 2026-11-13T22:17 | 12 | 4 |
 | look | 2026-11-13T22:22 | 2026-11-13T22:22 | 2026-11-13T22:24 | 0 | 2 |
 | look | 2026-11-13T23:06 | 2026-11-13T23:15 | 2026-11-13T23:20 | 9 | 5 |
+| roads | 2026-11-13T23:45 | 2026-11-14T01:09 | 2026-11-14T01:16 | 84 | 7 |
 
 ## 2026-11-12: the audit of 2026-11-07 (log/review.md) folded into the register
 

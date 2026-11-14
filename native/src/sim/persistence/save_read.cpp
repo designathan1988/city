@@ -154,7 +154,7 @@ namespace {
 constexpr uint32_t NATURE_VERSION = 2, VARIANTS_VERSION = 3;
 
 // Made again in the saved order, so each keeps the index the roads hold.
-void read_spec(ByteReader &r, RoadSpec &spec) {
+void read_spec(ByteReader &r, RoadSpec &spec, uint32_t version) {
 	const uint32_t n = r.get_count(SPEC_ELEMENT_BYTES);
 	for (uint32_t i = 0; i < n && r.ok; i++) {
 		SpecElement e;
@@ -173,6 +173,9 @@ void read_spec(ByteReader &r, RoadSpec &spec) {
 	spec.priority = r.get<int32_t>();
 	const uint8_t centre = r.get<uint8_t>();
 	spec.centre = CENTRE_LINES[centre < CENTRE_LINE_COUNT ? centre : 0];
+	// an older file's composed road has its class's carriageway: the one it was drawn with
+	const int8_t surface = version >= BUILT_SAVE_VERSION ? r.get<int8_t>() : SURFACE_OF_CLASS;
+	spec.surface = surface >= 0 && surface <= int8_t(Surface::BALLAST) ? surface : SURFACE_OF_CLASS;
 }
 
 bool read_variants(ByteReader &r, Catalog &c, uint32_t version) {
@@ -183,7 +186,7 @@ bool read_variants(ByteReader &r, Catalog &c, uint32_t version) {
 		v.lanes = r.get<int32_t>();
 		v.parking = r.get<int32_t>();
 		v.width = r.get<float>();
-		if (version >= SPEC_SAVE_VERSION) read_spec(r, v.spec);
+		if (version >= SPEC_SAVE_VERSION) read_spec(r, v.spec, version);
 		if (road_variant(c, v) < 0) return false;
 	}
 	return r.ok;

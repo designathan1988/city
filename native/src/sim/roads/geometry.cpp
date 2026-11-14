@@ -39,6 +39,7 @@ std::vector<double> arc_table(const Quad &q, int steps) {
 
 double arc_at(const std::vector<double> &table, double t) {
 	int n = int(table.size()) - 1;
+	if (n < 1) return 0; // a record with no table yet has no length to read
 	double f = std::max(0.0, std::min(1.0, t)) * n;
 	int i = std::min(n - 1, int(std::floor(f)));
 	return table[i] + (table[i + 1] - table[i]) * (f - i);

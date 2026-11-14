@@ -36,7 +36,9 @@ CityCut cut_for_roads(const CityState &s, const StreetLook &look, int64_t key, f
 	const auto keep = [&](CityCut &cut, const CityState &live) {
 		if (!(parts & CUT_GATES)) return;
 		live.roads.for_segments_near(x0, z0, x0 + size, z0 + size, [&](int sid) {
-			if (segment_chunk(live.roads.segs[size_t(sid)], size) == key) keep_gates(cut, live, sid);
+			if (segment_chunk(live.roads.segs[size_t(sid)], size) != key) return;
+			keep_gates(cut, live, sid);
+			keep_leg_rules(cut, live, sid); // what is written on its lanes before each end (road_legends.cpp)
 		});
 		live.roads.node_hash.query(x0, z0, x0 + size, z0 + size, [&](int n) {
 			const RoadNode &nd = live.roads.nodes[size_t(n)];

@@ -80,6 +80,13 @@ struct StreetLook {
 		std::unordered_map<char, std::vector<std::vector<godot::Vector2>>> letters;
 	} legends;
 
+	// A mini-roundabout's painted island (streets.json markings.mini_island, road_node_paint.cpp): its diameter's least and
+	// most, its share of the nearest mouth's setback, the disc's sides.
+	struct MiniIsland {
+		float least_m = 0, most_m = 0, mouth_share = 0;
+		int sides = 0;
+	} mini_island;
+
 	// `t` streets.json; `tn` the catalogue's tuning, whose street group gives the raised strips' heights.
 	bool load(const godot::Dictionary &t, const Tuning &tn, godot::PackedStringArray &errors);
 	// The carriageway's colour: asphalt keeps its class's tone, the other pavings their own.

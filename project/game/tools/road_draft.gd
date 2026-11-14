@@ -27,6 +27,21 @@ static func traveled(d: Dictionary) -> float:
 	return total + samples[-1].distance_to(d.end.position)
 
 
+## Where a stroke begins: {position, lift, adopted}. With the height in hand not set by hand since the last road, a press
+## on a road or a junction begins there whatever its height (`seen`: what the pointer's ray landed on) and `adopted` says
+## the height in hand becomes its `lift`; set by hand, only what stands at that height is taken (`p`: the pointer at that
+## height) and the road passes the rest. `px`: a pixel in metres at p and at seen; `cell`: the grid's cell and offset.
+static func start(p: Vector3, seen: Vector3, px: Array, snap: Dictionary, cell: Array, by_hand: bool) -> Dictionary:
+	if not by_hand:
+		var met: Dictionary = CityStore.query(&"road_start", [seen, px[1], snap.on, snap.grid, cell[0], cell[1], true])
+		if met.taken:
+			met["adopted"] = true
+			return met
+	var plain: Dictionary = CityStore.query(&"road_start", [p, px[0], snap.on, snap.grid, cell[0], cell[1], false])
+	plain["adopted"] = false
+	return plain
+
+
 ## The paint the preview draws: none on a road without lines.
 static func paint(profile: int) -> String:
 	var p: Dictionary = CityStore.cached(&"road_profiles")[profile]

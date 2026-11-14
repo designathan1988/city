@@ -15,6 +15,8 @@ const SPEED_MOST := 130.0
 ## A footway's or a median's paving, by the core's number of it (profile_types.h Paving), and the centre lines the editor offers.
 const PAVING_KEYS := ["profile.materialName.concrete", "profile.materialName.pavers", "profile.materialName.stone", "profile.materialName.grass"]
 const AXIS_LINES := ["auto", "dashed", "solid", "double"]
+## The carriageways the editor offers, by the core's number of each (profile_types.h Surface: a rail's ballast is no choice).
+const CARRIAGEWAY_KEYS := ["profile.materialName.asphalt", "profile.materialName.concrete", "profile.materialName.cobble"]
 
 @export var edit := RoadSpecEdit.new()
 @onready var _view: RoadSectionView
@@ -168,6 +170,9 @@ func _fill_props() -> void:
 	_button(_props, "profileEditor.slower", func() -> void: edit.spec.speed = maxf(edit.spec.speed - PACE_BY, SPEED_LEAST))
 	HudWidgets.label(_props, &"MetaLabel", tr("profileEditor.speedValue").format({"speed": int(edit.spec.speed)}))
 	_button(_props, "profileEditor.faster", func() -> void: edit.spec.speed = minf(edit.spec.speed + PACE_BY, SPEED_MOST))
+	# what the carriageway is paved with: the class's own until another is chosen
+	var paved: int = clampi(int(edit.spec.get("surface", 0)), 0, CARRIAGEWAY_KEYS.size() - 1)
+	_choice(_props, "profile.material.carriageway", CARRIAGEWAY_KEYS[paved], func() -> void: edit.spec.surface = (paved + 1) % CARRIAGEWAY_KEYS.size())
 	# the line between the two directions: the road's own rule, or the one chosen (a road that paints none shows as automatic)
 	var line: int = maxi(0, AXIS_LINES.find(String(edit.spec.get("centre", "auto"))))
 	_choice(_props, "profileEditor.centreLine", "profileEditor.centreLineName." + AXIS_LINES[line],

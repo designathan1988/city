@@ -45,12 +45,6 @@ double crossing_reach(const RoadNetwork &net, int node) {
 
 } // namespace
 
-double arc_of_t(const RoadSegment &g, double t) {
-	const double at = std::max(0.0, std::min(1.0, t)) * (g.table.size() - 1);
-	const size_t i = std::min(size_t(at), g.table.size() - 2);
-	return g.table[i] + (g.table[i + 1] - g.table[i]) * (at - double(i));
-}
-
 bool kerb_standing(const RoadNetwork &net, int sid, double v) {
 	const RoadSegment &g = net.segs[size_t(sid)];
 	return v >= end_clear(net, g.a, g.retreat_a) && v <= g.len - end_clear(net, g.b, g.retreat_b);

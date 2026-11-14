@@ -98,6 +98,7 @@ RoadSpec spec_of(const Profile &p) {
 	s.speed = p.speed;
 	s.priority = p.priority;
 	s.centre = p.centre;
+	s.surface = int8_t(p.surface);
 	const size_t n = p.strips.size();
 	for (size_t i = 0; i < n; i++) { // the catalogue's right to left; a kerb counts in what it borders
 		const Strip &x = p.strips[i];

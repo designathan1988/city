@@ -31,6 +31,8 @@ var bend: Dictionary = {}
 var _last_plan: Dictionary = {}
 var _cell := 0.0 # metres; 0: the fine grid of the core
 var _cell_offset := 0.0
+## The height in hand was set by the player since the last road was laid: a start then takes only what stands at it.
+var _height_by_hand := false
 
 
 func enter() -> void:
@@ -41,6 +43,7 @@ func enter() -> void:
 	_read_cell()
 	alignment = params.get("alignment", Alignment.STRAIGHT)
 	height = CityStore.query(&"road_height")
+	_height_by_hand = not is_zero_approx(height) # a height kept from before was the player's choice
 	CityStore.dispatch(&"set_road_walls", [Settings.road.walls])
 	ctl.hint.emit("", true)
 
@@ -77,7 +80,7 @@ func click(ground: Vector3) -> void:
 		_lay(_pieces(b.start, b.end, true, p, PackedVector3Array()), b.lift)
 		return
 	var chained := chain != Vector3.INF
-	var start: Vector3 = chain if chained else _start_at(p)
+	var start: Vector3 = chain if chained else _start_at(p, ground)
 	draft = {"start": start, "lift": chain_lift if chained else height, "chained": chained, "pressed": p,
 		"samples": PackedVector3Array([start]), "dragged": false, "end": _end_at(start, p)}
 
@@ -157,6 +160,7 @@ func keeps_key(keycode: Key) -> bool:
 ## The road a metre higher or lower, landing on whole metres (roadTool.ts stepHeight); the road in hand goes with it.
 func step_height(metres: int) -> void:
 	height = (floorf(height + WHOLE_M) if metres > 0 else ceilf(height - WHOLE_M)) + metres
+	_height_by_hand = true
 	CityStore.dispatch(&"set_road_height", [height])
 	ctl.road_height_changed.emit()
 	if pointer == Vector3.INF:
@@ -180,9 +184,14 @@ func _snap() -> Dictionary:
 	return Settings.road.snap
 
 
-func _start_at(p: Vector3) -> Vector3:
-	var s := _snap()
-	return CityStore.query(&"road_start", [p, ctl.px_at(p), s.on, s.grid, _cell, _cell_offset]).position
+## Where a stroke begins (RoadDraft.start); a road or a junction taken at its own height gives the height in hand.
+func _start_at(p: Vector3, seen: Vector3) -> Vector3:
+	var met := RoadDraft.start(p, seen, [ctl.px_at(p), ctl.px_at(seen)], _snap(), [_cell, _cell_offset], _height_by_hand)
+	if met.adopted and not is_equal_approx(height, met.lift):
+		height = met.lift
+		CityStore.dispatch(&"set_road_height", [height])
+		ctl.road_height_changed.emit()
+	return met.position
 
 
 func _end_at(start: Vector3, p: Vector3) -> Dictionary:
@@ -230,6 +239,7 @@ func _lay(pieces: PackedVector3Array, from_lift: float) -> void:
 	if not r.get("ok", false): # told by the store's channel
 		return
 	chain = Vector3.INF
+	_height_by_hand = false
 	if laid_plan.has("points"):
 		ctl.flash.flash(laid_plan.points, laid_plan.half_width)
 	ctl.hint.emit(Formatters.format_cost(r.money), true)

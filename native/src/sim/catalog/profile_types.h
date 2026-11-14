@@ -61,12 +61,16 @@ struct SpecElement {
 	Paving pave = Paving::CONCRETE;
 	bool operator==(const SpecElement &o) const { return kind == o.kind && width == o.width && dir == o.dir && bus == o.bus && solid == o.solid && flush == o.flush && pave == o.pave; }
 };
+constexpr int8_t SURFACE_OF_CLASS = -1; // RoadSpec::surface: the carriageway of the class the road is made in
 struct RoadSpec {
 	std::vector<SpecElement> elements;
 	float speed = 0;
 	int priority = 0;
 	std::string centre; // "auto", "none", "dashed", "solid", "double"
-	bool operator==(const RoadSpec &o) const { return elements == o.elements && speed == o.speed && priority == o.priority && centre == o.centre; }
+	int8_t surface = SURFACE_OF_CLASS; // the carriageway's Surface the player chose, or SURFACE_OF_CLASS
+	bool operator==(const RoadSpec &o) const {
+		return elements == o.elements && speed == o.speed && priority == o.priority && centre == o.centre && surface == o.surface;
+	}
 };
 
 // A class road as the tool's options lay it (Roadcraft 4.0 ui/v2/shell.ts): its lanes, total width and what runs by the kerbs.

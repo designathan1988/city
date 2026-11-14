@@ -14,13 +14,6 @@ namespace {
 constexpr int ARMS_WITH_CROSSWALK = 3;
 constexpr float BESIDE_M = 0.05f; // the closest-point search's own error: under this a point is beside the segment
 
-double arc_of(const RoadSegment &g, double t) {
-	if (g.table.size() < 2) return g.len * t;
-	const double f = std::clamp(t, 0.0, 1.0) * double(g.table.size() - 1);
-	const size_t i = std::min(size_t(f), g.table.size() - 2);
-	return g.table[i] + (g.table[i + 1] - g.table[i]) * (f - double(i));
-}
-
 bool strip_at(const Profile &p, float u, StripKind kind, float &centre) {
 	for (const StripEdge &e : p.edges)
 		if (e.strip.kind == kind && u >= e.u0 && u <= e.u1) {
@@ -91,7 +84,7 @@ void segment_place(const RoadNetwork &net, int seg, double x, double z, double &
 	const RoadSegment &g = net.segs[size_t(seg)];
 	double t, d, cx, cz, fx, fz, lx, lz;
 	closest_t(g.q, x, z, t, d);
-	v = arc_of(g, t);
+	v = arc_at(g.table, t); // the one conversion from the curve's parameter to its length (sim/roads/geometry.h)
 	g.q.at(t, cx, cz);
 	segment_frame(net, seg, v, fx, fz, lx, lz);
 	u = float((x - cx) * lx + (z - cz) * lz);

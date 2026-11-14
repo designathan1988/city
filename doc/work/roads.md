@@ -27,9 +27,13 @@
 - The first block closed 4e38bad2 (pushed): verification 2 of 3 passed, 9/9 and lab_test 4/4 ("Read at the first
   verification" and "Coded in the block" below); the register: Proads-3, -4, -5, -8, -10, -33 fixed, Proads-37
   and -38 added, Proads-35, -6, -28 open.
-- State (2026-11-14, 03:20): NO BLOCK OPEN. The board's line of roads is UNCHECKED again (the addendum). THE SECOND
-  BLOCK of roads finishes what the first left out, each read in both games first and compared with file:line
-  under "The second block" below, the better one built, none left for cost:
+- State (2026-11-14, 04:30): THE SECOND BLOCK `roads` IS OPEN (verifications used: 0 of 3). Nothing is built or
+  run until `block verify`. The board's line of roads is unchecked (the addendum). Both games are read and
+  compared with file:line under "The second block" below, each item's design there. CODING ORDER: a (surface), d
+  (the legends' rule), e (the start's height), c (the node's paint), f (the arc's one owner), b (the draft solved
+  alone, its stations, the recorded worth, the save, the overlay), g (the photo plan). Coded so far: under
+  "Coded in the second block" below (a done; next d).
+  The items, none left for cost:
   a. the carriageway's surface (asphalt, concrete, cobble) in the profile editor, saved (a save version with a
      reader of the old ones); it IS drawn already (road_section.cpp:24-31, :140; the first note's "read by no
      renderer" was WRONG, a grep cut at 40 lines: Proads-37 corrected);
@@ -158,6 +162,25 @@
 - The sheet's row 2 also lists "a height edit is free" and "no tunnel for a deep cut": both in this block (the
   worth above; a deep cut bored: the stations' way of building under the bore's depth is a tunnel, drawn bored by
   the render already: road_structures.cpp:296, :310).
+- b, the edits that change a road's build (read): road_bend.cpp:47-70 set_node_lift: the node's lift clamped to
+  what its roads' lengths allow at grade_authored, j_set_lift, NO settle_road_edit: free (the sheet's row);
+  set_road_bend :72-135 takes the road up and lays it again through lay_road and settles the money; no command
+  sets a segment's structure (RoadNetwork::set_structure is called by the probe alone: a road is a bridge only
+  where lay_pieces lays it over water, road_commands.cpp:75); road_edit.cpp:33-48 split_segment (REM_SEG and two
+  ADD_SEG of the halves), :128-132 settle_network (shapes, sync_grade, names). THE CODING OF THE MONEY, by file:
+  road_network.h RoadSegment `worth` (float, metres of plain ground road; 0: not yet known);
+  sim/economy/road_economy.h/.cpp: `BuildWays` (the way of building at a station by deck - ground: the render's
+  depths), `worth_along(stations)` and `segment_worth(s, seg)` from its solved profile and the natural ground
+  (road_grade_sync.cpp ground_of), recorded_value = cost_per_m x rec.worth; road_plan.cpp: each piece solved alone
+  (sim/roads grade_draft), its stations, worth and metres each way; RoadPlan carries the pieces' worths in order;
+  road_commands.cpp lay_pieces writes each laid segment's worth from the plan (j_add_segment takes it);
+  road_edit.cpp split_segment gives each half its share by length; road_commands.cpp merge_joint sums; a new op
+  OpKind::WORTH {seg, from, to} (journal_ops.cpp, edit_history.cpp apply / undo; edit_value_change counts it x the
+  class's cost) written by `reworth(s, segs)` after settle_network in set_node_lift (then settle_road_edit: a
+  height edit is paid or refunded) and wherever a command changes heights of standing roads on purpose; a road
+  only carried by a neighbour's solve is not re-priced (no money moves that the player did not ask for);
+  save_write.cpp / save_read.cpp: the segment's worth under a new save version (save_format.h), an older file's
+  made by segment_worth after the load's first solve.
 - c. The taper's and the mini-roundabout's paint. THE REFERENCE, world/markings.ts (read :404-546):
   transitionMarkings :472-522: at a node of two legs where one road carries on at another width (a transition),
   both two-way and one painted: with a median on either road, two solid lines 0.28 wide following the reservation's
@@ -189,6 +212,24 @@
   native/src/render for a transition's or a mini-roundabout's paint (road_markings.cpp paints segments;
   road_junction.cpp:48-213 draws a node's plate, cut or bulb): both are to build (c), in the node's paint, from
   the reference's behaviour above, in this game's frame (the node's arms: road_node.h ArmEnd).
+- c, this game's node (render/roads/road_junction.cpp read whole, 215 lines; road_node.h): a node is drawn by
+  each_shape :144-153 as a junction (two ends or more, one with a setback: `plated`), a cut or a bulb; junction
+  :48-62 draws the corners and the plate from the arms' ends (ArmEnd: the mouth `p` on the centre line at the
+  road's height, `d` outward, `arm`, `at` its setback, `prof`, `sid`); a width change is a junction of two ends;
+  no paint is drawn on a plate. COMPARED: only the reference paints them; its rule (above) is brought, its cost
+  not (the reference merges every stroke into the map's paint: roadMarks.ts; here the paint is quads of the
+  node's own mesh, near level only, like a segment's lines). DESIGN c: a new render/roads/road_node_paint.cpp,
+  called by `junction` when not e.far: (1) the mini-roundabout's island: node ctl CTL_MINI with three ends or
+  more: one fan of streets.json markings.mini_island.sides sides round the node, radius clamp(share x the least
+  mouth setback, least_m, most_m) + line_m, white, at the plate's height + paint_lift; (2) a transition (two ends,
+  both two-way, either painted): along the axis from a's mouth through the node to b's mouth, in pieces of the
+  look's step, each line's offset eased from a's to b's (the cubic of grade_line's `eased` is sim's: the render
+  has its own smoothstep): with a median on either road two solid lines at +- the eased half median, in that
+  road's centre colour; with none one solid line on the axis, each half in its own road's colour and kind's
+  width; and for k = 1 .. (the lesser lane count a direction) - 1 a dashed line either side at half median + k x
+  the eased lane width, the dashes of the style at the faster road's speed. The widths are the style's
+  (PaintStyle centre_w, lane_w); the island's four numbers go to streets.json with their _doc (the reference's
+  values are its own modelling; MBST vol. IV has a mini-roundabout's central island: to search before the data).
 - e. The start over a raised road, COMPARED by the code. THE REFERENCE, editor/roadTool.ts down :198-237: a stroke
   that begins on a road or a node (not free, not chained) starts at THAT anchor's height (:225 anchorHeight:
   snap.ts:404-417: a node's offset, or the two ends' along the segment plus its structure's clearance) and the
@@ -216,6 +257,55 @@
   the player sees is found by the ray's deck hit already in ctl's ground point: to confirm in tool_controller's
   pick, RoadNetwork::ray_deck); the answer carries the anchor's lift; the tool then sets `height` to it
   (set_road_height, road_height_changed) and the draft's lift is the anchor's.
+
+## Coded in the second block (as each item is written; nothing built or run)
+- a, the carriageway's surface: profile_types.h RoadSpec::surface and SURFACE_OF_CLASS; road_spec.cpp spec_of (the
+  profile's own); road_variants.cpp composed (the chosen one over the class's); city_core_road_spec.cpp read_spec /
+  write_spec "surface" (SURFACES); save_format.h SAVE_VERSION 11 and BUILT_SAVE_VERSION; save_write.cpp
+  write_variants (after the centre line); save_read.cpp read_spec(r, spec, version) (an older file: the class's);
+  tokens.json rc_concrete, rc_cobble; road_section_view.gd CARRIAGEWAY_TOKENS and _colour (a lane in its
+  surface's colour); road_profile_panel.gd CARRIAGEWAY_KEYS and the choice "Carriageway: <name>".
+- d, the legends under any priority: sim/state/city_cut.h CutFacts::leg_rules, keep_leg_rules, leg_rule_of
+  (city_cut.cpp: the live city's traffic::approach_rule, or the cut's fact by (segment, end)); render/roads/
+  road_cut.cpp keeps them for each segment the near road job owns; road_legends.cpp approach reads leg_rule_of
+  (signed_rule gone): the word and the triangle stand wherever the plate does; flow_control.cpp tell_arms marks
+  each arm's surface, so the paint follows a rule the flows changed.
+- e, the start's height: city_core_commands.cpp road_start(..., any_height) gives `taken` and `lift` (city_core.h,
+  city_core_bind.cpp: the new argument defaults false, the tests' calls stand); road_tool.gd `_height_by_hand`
+  (set by step_height, and at enter when a height was kept; cleared when a road is laid), _start_at(p, seen): not
+  by hand, what the pointer's ray landed on is taken at any height and the height in hand becomes its lift
+  (set_road_height, road_height_changed); by hand, the first block's rule. The rule itself is RoadDraft.start
+  (road_draft.gd), the tool's _start_at adopts the height.
+- c, the node's paint: render/roads/road_node_paint.cpp (new; in doc/map.md): node_paint (called by
+  road_junction.cpp junction when not e.far; declared in road_node.h): island (CTL_MINI, three ends or more: one
+  disc, its diameter clamp(mouth_share x the nearest mouth's setback, least_m, most_m)) and taper (two ends, both
+  two-way: Taper::line along a's mouth - node - b's mouth: the median's two lines or the middle line in each
+  road's colour, the shared lanes' dashed lines, offsets eased); road_look.h StreetLook::MiniIsland, road_look.cpp
+  load_marks; streets.json markings.mini_island and `_mini_island_doc` (TD 54/07), streets.schema.json.
+
+- f, the arc's one owner: sim/roads/geometry.cpp arc_at (guarded for a record with no table) is the one conversion
+  from the curve's parameter to its length; footway.cpp arc_of and parking_layout.cpp/.h arc_of_t are gone, their
+  callers (footway.cpp, lot_access.cpp x2, street_commands.cpp, kerb_walkers.cpp, parking_lanes.cpp x2,
+  pedestrians.cpp) call arc_at(g.table, t). STILL OWED for f: the test on a curved graded road (with b's tests).
+- b, THE DESIGN AS IT IS CODED (settled while coding; it replaces "THE CODING OF THE MONEY" above where they
+  differ): (1) sim/roads: `solve_alone` (grade_draft.cpp, declared in road_grade.h): a road solved by itself from
+  its curve, arc table, casing half width, structure and the height each end stands at; gives its stations' deck
+  and the natural ground under each; grade_ground.cpp's ground read split so a segment's and a draft's are one
+  reader (`ground_under`). (2) sim/economy: `way_at` (deck - ground: bored under -(headroom + arch + bore_over),
+  on piers when the structure is raised or over structure.raised_m, filled / cut past economy.fill_from_m),
+  `lengths_along(stations)`, `worth_of(lengths)` = metres weighted by the catalogue's factors, and
+  `worth_alone(s, quad, table, profile, flags, ya, yb)` = the three in a row: THE ONE FUNCTION the preview and the
+  build both call. (3) RoadSegment::worth (0: not recorded): j_add_segment(..., worth = -1): -1 computes
+  worth_alone with its two nodes' heights as they stand (a new node's is terrain + lift, what the preview's free
+  end uses too: the click costs what the draft showed); split_segment passes each half its share by length,
+  merge_joint the sum; recorded_value = the class's cost a metre x worth, and for a record with none (a
+  generated road, an older save) the authored bands as before (build_lengths): no pass over the map. (4) a height
+  edit: set_node_lift, after settle_network, makes each of the node's roads' worth again from its SOLVED profile
+  (`worth_solved`) through a new journal op WORTH {from, to} and settles the money: paid or refunded. (5) the save:
+  the segment's worth after its flags, version 11; older: 0. (6) plan_road: each piece's stations (x, z, deck,
+  ground, way) and the plan's price and metres from them; plan_dict gives them; preview_line.gd draws the fill,
+  the cutting and its top line, the piers, the buried stretch, the vertical at a raised end; road_draft.gd the
+  words and the height label.
 
 ## On the way (done beside the block)
 - The owner, 2026-11-14, with the block open: "Instalei umas skills de godot, veja se elas te ajudam. se sim passe a
@@ -470,6 +560,13 @@
   (flow_step.cpp), so nothing changes there.
 
 ## Sources (the source's own words, for the data's `_doc`)
+- A mini-roundabout's painted island (second block, c): the UK Design Manual for Roads and Bridges, TD 54/07
+  "Design of Mini-Roundabouts" (searched 2026-11-14; its words as the search gave them): "The central circular
+  solid white road marking is referred to as the white circle. The white circle and the associated circulatory
+  arrow markings are to TSRGD diagram 1003.4."; "The marking is between one and four metres in diameter."; "If it
+  is domed it may be up to 125mm at its highest point although this standard recommends it does not exceed
+  100mm." So streets.json markings.mini_island: diameter from 1 m to 4 m (the reference's radius of 2 to 4 m is
+  twice the norm's and is not brought), flat paint here.
 - CONTRAN, Manual Brasileiro de Sinalização de Trânsito, volume IV, Sinalização Horizontal (Resolução 236/2007),
   read from the Ministry of Transport's own PDF (gov.br, manual_vol_iv_2.pdf, its text extracted page by page):
   - 5.5.1 MFE, the exclusive lane: "Branca para Faixas exclusivas no fluxo."; "A marcação de Faixa exclusiva no

@@ -59,6 +59,7 @@ void junction(const RoadEmit &e, int n, const std::vector<ArmEnd> &ends) {
 		draw_corner(e, node, a, b, o, lays[i], lays[(i + 1) % k]);
 	}
 	draw_plate(e, node, ends, rim);
+	if (!e.far) node_paint(e, n, ends); // paint is the near level's (road_markings.cpp)
 }
 
 struct EndFrame {

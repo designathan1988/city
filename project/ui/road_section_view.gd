@@ -10,6 +10,7 @@ signal moved(from: int, to: int)
 const LABEL_LEAST_PX := 34.0
 const WAY_MARK_PX := 7.0
 const HALF := 0.5
+const CARRIAGEWAY_TOKENS := ["rc_asphalt", "rc_concrete", "rc_cobble", "rc_ballast"] # by Surface's number
 
 @export var state := RoadSectionState.new()
 ## Each element's left edge in pixels, and the right edge of the last: worked out once a spec or a size, read by drawing and picking.
@@ -54,10 +55,14 @@ func _left_of(index: int) -> float:
 	return _edges[index]
 
 
+## An element's colour; a lane's is the carriageway the road is paved with (the spec's surface: profile_types.h Surface).
 func _colour(e: Dictionary) -> Color:
 	if e.get("bus", false):
 		return ThemeBuilder.color("rc_bus")
-	return ThemeBuilder.color({"footway": "rc_sidewalk", "lane": "rc_asphalt", "median": "rc_median", "parking": "rc_parking", "cycle": "rc_bike"}[e.kind])
+	if e.kind == "lane":
+		var paved: int = clampi(int(state.spec.get("surface", 0)), 0, CARRIAGEWAY_TOKENS.size() - 1)
+		return ThemeBuilder.color(CARRIAGEWAY_TOKENS[paved])
+	return ThemeBuilder.color({"footway": "rc_sidewalk", "median": "rc_median", "parking": "rc_parking", "cycle": "rc_bike"}[e.kind])
 
 
 func _draw() -> void:

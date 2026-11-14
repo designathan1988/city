@@ -54,6 +54,7 @@ void write_variants(ByteWriter &w, const std::vector<RoadVariant> &list) {
 		w.put<float>(v.spec.speed);
 		w.put<int32_t>(v.spec.priority);
 		w.put<uint8_t>(uint8_t(std::find(CENTRE_LINES, CENTRE_LINES + CENTRE_LINE_COUNT, v.spec.centre) - CENTRE_LINES));
+		w.put<int8_t>(v.spec.surface);
 	}
 }
 

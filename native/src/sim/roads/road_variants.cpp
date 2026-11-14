@@ -134,6 +134,7 @@ Profile composed(const Catalog &c, const Profile &b, const Section &s, const Roa
 	p.speed = spec.speed;
 	p.priority = spec.priority;
 	p.centre = spec_centre(spec);
+	if (spec.surface != SURFACE_OF_CLASS) p.surface = Surface(spec.surface); // the carriageway the player chose; else the class's
 	p.one_way = std::none_of(spec.elements.begin(), spec.elements.end(), [](const SpecElement &e) { return e.kind == SpecKind::LANE && e.dir < 0; })
 			|| std::none_of(spec.elements.begin(), spec.elements.end(), [](const SpecElement &e) { return e.kind == SpecKind::LANE && e.dir > 0; });
 	return p;

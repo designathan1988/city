@@ -16,12 +16,15 @@ namespace city {
 namespace {
 const char *const KIND_NAMES[] = { "footway", "parking", "cycle", "lane", "median" };
 constexpr int KINDS = int(sizeof(KIND_NAMES) / sizeof(KIND_NAMES[0]));
+constexpr int SURFACES = int(Surface::BALLAST) + 1; // every Surface, by its number (profile_types.h)
 
 RoadSpec read_spec(const Dictionary &d) {
 	RoadSpec s;
 	s.speed = float(d.get("speed", 0));
 	s.priority = int(d.get("priority", 0));
 	s.centre = String(d.get("centre", "auto")).utf8().get_data();
+	const int surface = int(d.get("surface", int(SURFACE_OF_CLASS)));
+	s.surface = surface >= 0 && surface < SURFACES ? int8_t(surface) : SURFACE_OF_CLASS; // a number that names no surface: the class's
 	const Array list = d.get("elements", Array());
 	for (int i = 0; i < list.size(); i++) {
 		const Dictionary x = list[i];
@@ -45,6 +48,7 @@ Dictionary write_spec(const RoadSpec &s) {
 	d["speed"] = s.speed;
 	d["priority"] = s.priority;
 	d["centre"] = String(s.centre.c_str());
+	d["surface"] = int(s.surface);
 	Array list;
 	for (const SpecElement &e : s.elements) {
 		Dictionary x;

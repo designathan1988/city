@@ -5,6 +5,7 @@
 
 #include "api/edit_result.h"
 #include "sim/commands/road_blocks.h"
+#include "sim/commands/road_edit.h"
 #include "sim/roads/road_variants.h"
 #include "sim/economy/road_economy.h"
 
@@ -96,7 +97,10 @@ Dictionary plan_dict(const CityState &s, const std::vector<Quad> &pieces, const 
 }
 } // namespace
 
-Dictionary CityCore::road_start(const Vector3 &p, double px, bool on, bool grid, double cell, double offset) {
+// Where a road begins. `any_height`: the road or the node under the pointer is taken whatever its height (a press on what the
+// player sees starts there); else only what stands at the height in hand (set on purpose: the road passes over or under the
+// rest). `taken` says something was, `lift` its height over the grade line: the height the road starts at.
+Dictionary CityCore::road_start(const Vector3 &p, double px, bool on, bool grid, double cell, double offset, bool any_height) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const CityState &s = *state_;
 	if (!s.ready) return Dictionary();
@@ -106,7 +110,12 @@ Dictionary CityCore::road_start(const Vector3 &p, double px, bool on, bool grid,
 	o.px = px;
 	o.cell = cell;
 	o.offset = offset;
-	return anchor_dict(s, snap_road_start(s, find_anchor(s, p.x, p.z, px, s.new_road_lift), o));
+	const std::optional<float> level = any_height ? std::optional<float>() : std::optional<float>(s.new_road_lift);
+	const Anchor start = snap_road_start(s, find_anchor(s, p.x, p.z, px, level), o);
+	Dictionary d = anchor_dict(s, start);
+	d["taken"] = start.node >= 0 || start.seg >= 0;
+	d["lift"] = anchor_lift(s, start);
+	return d;
 }
 
 Dictionary CityCore::road_end(const Vector3 &start, const Vector3 &p, double px, bool on, bool angles, bool grid, double cell, double offset) {

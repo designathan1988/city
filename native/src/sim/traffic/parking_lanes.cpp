@@ -55,7 +55,7 @@ bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out, YardReads *rea
 		}
 		const DirSeg &d = g.ds[size_t(ds)];
 		if (!d.ok || d.len < p.gate_lane_min_m) return;
-		const float foot = d.sign > 0 ? float(arc_of_t(r, t)) - d.at0 : d.at0 - float(arc_of_t(r, t));
+		const float foot = d.sign > 0 ? float(arc_at(r.table, t)) - d.at0 : d.at0 - float(arc_at(r.table, t));
 		const float lo = p.gate_lane_end_m, hi = d.len - p.gate_lane_end_m;
 		const float at = clampf(foot + p.gate_join_past_m, lo, hi), entry = clampf(foot - p.gate_stop_before_m, lo, hi);
 		if (at - entry < p.gate_span_min_m) return; // the gate must lie between where a car stops and where one joins
@@ -71,7 +71,7 @@ bool gate_lane(const CityState &s, const V2 &gate, LaneSpot &out, YardReads *rea
 		best = float(dist);
 		found = true;
 		street = seg;
-		foot_v = arc_of_t(r, t);
+		foot_v = arc_at(r.table, t);
 	});
 	// a car comes and goes by the gate standing at the kerb, so only where a car may stand there: never in a corner nor on a
 	// crosswalk, the stretch the kerb's own bays keep to (parking_layout.h); a gate there has no lane, never the next street's

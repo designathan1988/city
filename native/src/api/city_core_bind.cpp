@@ -44,7 +44,8 @@ void CityCore::_bind_methods() {
 
 // The player's commands and previews: roads, zones, undo, the drawers' edits, the buildings drawn and the save.
 void CityCore::bind_edits() {
-	ClassDB::bind_method(D_METHOD("road_start", "position", "px", "on", "grid", "cell", "offset"), &CityCore::road_start, DEFVAL(0.0), DEFVAL(0.0));
+	ClassDB::bind_method(D_METHOD("road_start", "position", "px", "on", "grid", "cell", "offset", "any_height"), &CityCore::road_start, DEFVAL(0.0), DEFVAL(0.0),
+			DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("road_end", "start", "position", "px", "on", "angles", "grid", "cell", "offset"), &CityCore::road_end, DEFVAL(0.0), DEFVAL(0.0));
 	ClassDB::bind_method(D_METHOD("road_pieces", "start", "end", "alignment", "has_control", "control", "samples", "profile", "px"), &CityCore::road_pieces);
 	ClassDB::bind_method(D_METHOD("preview_road_path", "pieces", "profile", "px", "from_lift"), &CityCore::preview_road_path, DEFVAL(HEIGHT_IN_HAND));

@@ -42,6 +42,7 @@ struct CutFacts {
 	uint32_t kinds_kept = FURNITURE_ALL; // those kinds: every one (keep_furniture), or the lamps alone (keep_lamps)
 	std::unordered_map<int, std::vector<SignStand>> signs; // by node: the plates its rules put up
 	std::unordered_set<int> signalled; // of those nodes, the ones whose junction runs a signal
+	std::unordered_map<int64_t, int> leg_rules; // by (segment, its end): the rule of that approach to its node (SegRule), signed or automatic
 	std::unordered_map<int, std::array<std::vector<ArcSpan>, 2>> gates; // by segment: the car gates facing each side, no margin
 };
 
@@ -75,6 +76,8 @@ void keep_furniture(CityCut &cut, const CityState &live, int sid);
 void keep_lamps(CityCut &cut, const CityState &live, int sid);
 void keep_node(CityCut &cut, const CityState &live, int node);
 void keep_gates(CityCut &cut, const CityState &live, int sid);
+// The rule of segment `sid`'s approach to each of its two nodes (what its plates say: traffic::approach_rule).
+void keep_leg_rules(CityCut &cut, const CityState &live, int sid);
 
 // The cut a job makes: the map taken shared here, for the copy alone; `box_of(s)` says the box once the map is held (a job's
 // box may depend on what stands in its place), and `keep(cut, s)` takes the facts the job reads.
@@ -96,6 +99,9 @@ void furniture_of(const CityView &s, int sid, uint32_t kinds, std::vector<Furnit
 // Whether node `node`'s junction runs a signal, and the plates its rules put up, appended to `out`.
 bool node_signalled(const CityView &s, int node);
 void node_signs(const CityView &s, int node, std::vector<SignStand> &out);
+// The rule of segment `sid`'s approach to `node`, one of its two ends (RULE_NONE, RULE_STOP, RULE_YIELD): the live city's
+// (traffic::approach_rule: the player's signs and the junction's own priority alike), or the one the cut carries.
+int leg_rule_of(const CityView &s, int node, int sid);
 // The car gates of the lots facing each side of segment `sid` (STREET_RIGHT, STREET_LEFT), the gates themselves with no margin, where
 // its kerbs drop: the live city's (sim/buildings/lot_access.h street_gates), or the ones the cut carries.
 void kerb_gates_of(const CityView &s, int sid, std::vector<ArcSpan> out[2]);

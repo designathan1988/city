@@ -43,7 +43,5 @@ bool kerb_standing(const RoadNetwork &net, int sid, double v);
 // traffic.json ped_body_m). A junction's plate and a car's corner clearance are no bar to a person's gate: a lot across a T's stem
 // opens onto the footway between its two crosswalks.
 bool kerb_walkable(const RoadNetwork &net, int sid, double v);
-// The arc of curve point `t` on segment `sid` (the inverse of t_at_length).
-double arc_of_t(const RoadSegment &g, double t);
 
 } // namespace city

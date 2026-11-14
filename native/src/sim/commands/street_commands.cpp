@@ -281,7 +281,7 @@ void carry_kit_along(CityState &s, const std::vector<CarriedPiece> &kit, double 
 		const Profile &p = s.roads.profile_of(on);
 		if (c.side < 0 || !sidewalk_on(p, c.side)) return false;
 		double y;
-		footway_point(s.roads, on, arc_of_t(s.roads.segs[size_t(on)], best_t), sidewalk_u(p, c.side, c.from_kerb), x, z, y);
+		footway_point(s.roads, on, arc_at(s.roads.segs[size_t(on)].table, best_t), sidewalk_u(p, c.side, c.from_kerb), x, z, y);
 		return true;
 	});
 }

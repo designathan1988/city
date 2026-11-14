@@ -231,7 +231,7 @@ void street_gates(const RoadNetwork &net, const BuildingRecords &lots, const Dat
 			g.q.at(t, x, z);
 			g.q.deriv(t, dx, dz);
 			const int side = street_side(dz * (w.x - x) - dx * (w.y - z)); // the gate across the street's frame: +u on the left of a -> b
-			const double at = arc_of_t(g, t), half = e.w * HALF + (e.kind == EL_CAR_GATE ? margin : walk_margin);
+			const double at = arc_at(g.table, t), half = e.w * HALF + (e.kind == EL_CAR_GATE ? margin : walk_margin);
 			gates[side].emplace_back(at - half, at + half);
 		}
 	});
@@ -252,7 +252,7 @@ bool kerb_open_at(const RoadNetwork &net, const V2 &p, double reach, bool car, i
 		if (dist >= best) return;
 		best = dist;
 		street = seg;
-		at = arc_of_t(g, t);
+		at = arc_at(g.table, t);
 	});
 	return street < 0 || (car ? kerb_standing(net, street, at) : kerb_walkable(net, street, at));
 }

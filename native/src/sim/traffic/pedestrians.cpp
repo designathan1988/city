@@ -29,7 +29,7 @@ void where_on_sidewalk(const CityState &s, Pedestrian &w) {
 	const RoadSegment &g = s.roads.segs[size_t(w.seg)];
 	double t, dist;
 	closest_t(g.q, w.cur.x, w.cur.z, t, dist);
-	w.s = float(arc_of_t(g, t));
+	w.s = float(arc_at(g.table, t));
 	Pose mid;
 	sidewalk_pose(s, w.seg, w.side, w.s, 0.f, mid);
 	w.u = (w.cur.x - mid.x) * mid.fz - (w.cur.z - mid.z) * mid.fx;

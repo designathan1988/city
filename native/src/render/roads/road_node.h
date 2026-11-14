@@ -43,6 +43,8 @@ PlateSlice mouth_slice(const godot::Vector3 &node, const godot::Vector3 &p, cons
 // A node's paving, from the node out to its rim (road_plate.cpp): each point in every arm's own asphalt by how near that arm's mouth
 // is, exactly an arm's on its mouth, and knowing how far its kerb is (road_look.h UV2).
 void draw_plate(const RoadEmit &e, const godot::Vector3 &node, const std::vector<ArmEnd> &ends, const std::vector<PlateSlice> &rim);
+// What is painted on a node's paving (road_node_paint.cpp): a mini-roundabout's island, the lines across a change of width.
+void node_paint(const RoadEmit &e, int n, const std::vector<ArmEnd> &ends);
 // One corner's kerb and footway; `la`, `lb` the surfaces of a's and b's segments (road_corner.cpp).
 void draw_corner(const RoadEmit &e, const godot::Vector3 &node, const ArmEnd &a, const ArmEnd &b, const CornerOutline &o, const SurfaceLayout &la,
 		const SurfaceLayout &lb);

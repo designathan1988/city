@@ -150,7 +150,7 @@ int kerb_walker_out(CityState &s, int ds, const V2 &foot) {
 	const RoadSegment &g = s.roads.segs[size_t(d.seg)];
 	double at, dist;
 	closest_t(g.q, foot.x, foot.y, at, dist);
-	return ped_on_footway(s, d.seg, kerb_side(d), float(arc_of_t(g, at)));
+	return ped_on_footway(s, d.seg, kerb_side(d), float(arc_at(g.table, at)));
 }
 
 } // namespace traffic
