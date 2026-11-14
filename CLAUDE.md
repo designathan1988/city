@@ -24,15 +24,22 @@ tool call of any port work, and again after every compaction. What it says in st
 
 - **Defects are found by reading, never by running.** The limits the code must hold are printed at `block open`
   (`tools/gates/rules.json`); the hook reads each file's gates after every edit and they are fixed there. Between `block open`
-  and `block verify` no build, test, measurement, photo or engine. The coding ends with the whole diff read and
-  `block review` (the gates of every changed file): `block verify` is refused before it passes.
-- **A verification is small and takes seconds**: one run of a few checks (the functionality's own test, its photo plan, `e2e`:
-  six tasks at most, named in one command) and one measure (`lab_test`). No whole suite, no second run: the tools refuse them.
-  The run always names the plan `zoom_ladder` (the game's look at six distances): its photos are opened whole and each is
-  looked at, part by part (buildings, roads, vehicles, ground, sky), against the references in `doc/look`; a part that lost
-  detail is a failed check. The hook refuses a block's commit without it, and before each of its photos and each reference
-  was opened after the run. The owner is shown whole photos, never a crop alone.
-  The whole suite, `km24`, `hunt` and `quick --ready` run only on the owner's order.
+  and `block verify` no build, test, measurement, photo or engine. The coding ends with `block review` (the gates of
+  every changed file): `block verify` is refused before it passes.
+- **A verification is small and takes seconds**: one run of a few checks (the functionality's own test, its own photo plan,
+  `e2e`: six tasks at most, named in one command) and one measure (`lab_test`). No whole suite, no second run: the tools
+  refuse them. The whole suite, `km24`, `hunt` and `quick --ready` run only on the owner's order.
+- **Each functionality has its own photos**: a photo plan written for it (`project/tests/visual/<area>_plan.json`, a task of
+  `tools/tasks/suites.json`) that builds a small scene for its cases, drives the game through each one and photographs it
+  from near: the tool in hand, the state before, the action, the result, each variant, how it meets what is around it.
+  What is relevant to photograph is decided from the functionality's cases, listed in the note before the plan is written.
+  After the run each photo is opened whole and judged against its case (one that shows the case wrong, or does not show
+  it, is a failed check), then the photos are sent whole to the owner, never a crop alone. The far views of the generated
+  town (`zoom_ladder`) are the same for every functionality and prove nothing of one: the hook refuses a block's commit,
+  and the tool its close, before the block's own plan passed, each of its photos was opened after the run and the owner
+  was shown them.
+- **No rounds of review**: the code is read once, as it is written (the gates after each edit); `block review` is one
+  command of seconds; what is left is found by the verification's one run and fixed in the code, never by reading again.
 - **With no block open the game is looked at once**: one run of six tasks at most and one measure, between a block's close
   and the next one's opening. A second run to see is trial and error: what is wrong is read in the code and a fix is
   checked in its block. A run past that is had only on the owner's order, given to the tools in the owner's own words
@@ -105,8 +112,17 @@ tool call of any port work, and again after every compaction. What it says in st
 ## Working
 
 - Routine doubts are settled by the standard games' practice and the project's documents; the work does not stop to ask.
-- Processes show their output as they run and have a deadline; tests and captures run hidden through `tools/tasks`; one engine
-  at a time; only your own processes stopped, by PID; `tools/build/free_dll.sh` frees the DLL the owner's open game holds.
+- Every process ends by itself, in seconds, shows its output as it runs, and none is left running. Claude Code ends nothing
+  in this session (a background command has no time limit; the call's `timeout` only moves a foreground one to the
+  background), so the deadline is the process's own: a run carries `--seconds <n>` (`cli.py run ... --seconds 120`,
+  `build.sh core-windows --seconds 300`), `trace.py` too, anything else sent to the background starts as `timeout <n>
+  <command>`; 300 s at most, longer only on the owner's order. Its output is read when it ends; one that did not end is
+  stopped by its ID and its cause read in the code. The hook refuses a process with no deadline of its own, and the end
+  of a turn while one runs (`.claude/hooks/port_deadline.py`).
+- Tests and captures run hidden through `tools/tasks`; one engine at a time; only your own processes stopped, by PID;
+  `tools/build/free_dll.sh` frees the DLL the owner's open game holds.
+- A behaviour of the session the owner corrects is never only noted in memory: it is made impossible by the tools (the
+  hook, the block rule, the skill), each rule with its test (`tools/tasks/tests/test_port_*.py`).
 - A run of the project's tools is one command of its own, in the background, never piped, redirected or joined to another;
   `python tools/tasks/cli.py status` shows it. A file is changed with Edit or Write and a script is a file written with Write:
   nothing is typed into the shell as a heredoc, no file of the project is written by the shell. The hook refuses the rest
@@ -130,8 +146,8 @@ tool call of any port work, and again after every compaction. What it says in st
 | Trace | `python tools/tracer/trace.py <START> --depth N --state --root <feature files>` (`--list` names the starts) |
 | What each game has | `python tools/atlas/cli.py inventory [--area A] [--game reference\|city] [--unpaired]` |
 | A block | `python tools/tasks/cli.py block open <name>` · `block review` · `block verify` · `block open --cause "<check>: <file:line>: <why>"` · `block close` · `block status` · `block order "<the owner's own words>"` |
-| Build both DLLs | `tools/build/build.sh core-windows` |
-| One test or photo plan | `python tools/tasks/cli.py run <task>` (names: `python tools/tasks/cli.py run tests --list`) |
+| Build both DLLs | `tools/build/build.sh core-windows --seconds 300` |
+| One test or photo plan | `python tools/tasks/cli.py run <task> --seconds <n>` (names: `python tools/tasks/cli.py run tests --list`) |
 | Gates of a file · nothing copied | `python tools/gates/run_gates.py --file X` · `python tools/gates/lab_scan.py` |
 | The register | `python tools/atlas/cli.py problems [--area A --status S]`, `add`, `update`, `close`, `drop` |
 | Deliver | `tools/build/deliver.sh export` (`dist/builds/<date>_<time>_<commit>/Roadcraft.exe`) |

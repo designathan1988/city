@@ -11,6 +11,8 @@ for the same event"), so this text has its own room beside the state's. Words th
 order, to WORDS, which the gate has Read after the compaction (port_gate.ungrounded)."""
 
 import json
+import os
+import re
 import time
 from pathlib import Path
 
@@ -18,7 +20,12 @@ import port_looks
 import port_note
 
 ROOT = Path(__file__).resolve().parents[2]
-WORDS = ROOT / "dist" / "block" / "owner_words.md"   # the owner's words of the session, whole, when the hook's text cannot hold them
+# the owner's words of the session, whole, when the hook's text cannot hold them (CITY_OWNER_WORDS: the tests' own place)
+WORDS = Path(os.environ.get("CITY_OWNER_WORDS") or ROOT / "dist" / "block" / "owner_words.md")
+# what wraps a message in the record and is none of its words: a command's name and message, the marks of its arguments
+# and of a pasted text, the command typed before a pasted text
+WRAP = re.compile(r"<command-name>.*?</command-name>|<command-message>.*?</command-message>|</?command-args>"
+                  r"|</?pasted_content[^>]*>|^\s*/[\w:-]+\s", re.DOTALL)
 EDITS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
 SHELLS = ("Bash", "PowerShell")
 COMMANDS = 10          # the last commands given back
@@ -28,12 +35,12 @@ WORK_MOST = 3500       # characters of the work's part (files and commands): the
 
 def owner_words(transcript: str) -> list:
     """The owner's messages in this session, in order, each once (a prompt queued while the session worked is recorded
-    twice): port_looks.owner_texts says what a message of the owner's is."""
+    twice, and a command's again inside its own wrapping): port_looks.owner_texts says what a message of the owner's is."""
     seen, words = set(), []
     for text in port_looks.owner_texts(transcript):
         said = text.strip()
-        key = port_looks.norm(said)
-        if said and key not in seen:
+        key = port_looks.norm(WRAP.sub(" ", said))
+        if said and key and key not in seen:
             seen.add(key)
             words.append(said)
     return words
@@ -54,8 +61,8 @@ def since(transcript: str, after: float) -> tuple:
                 entry = json.loads(line)
             except json.JSONDecodeError:
                 continue   # the line being written now
-            if port_looks.when(entry.get("timestamp")) < after:
-                continue
+            if entry.get("type") != "assistant" or port_looks.when(entry.get("timestamp")) < after:
+                continue   # a call is an assistant's entry with its time; the record's copies of a request have none
             message = entry.get("message")
             content = message.get("content") if isinstance(message, dict) else None
             for part in content if isinstance(content, list) else ():

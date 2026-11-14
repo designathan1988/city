@@ -5,7 +5,7 @@ SKIPPED, and for a run refused while a block is open; 2 for a usage error, an un
 While tasks run, `run` prints each running task's lines as it writes them ("  [task] line") and a line of what the run is
 doing every few seconds; `serve` writes both to stderr (its stdout is the JSON results alone); `status` shows every run
 that lives. print_line and print_progress are the one way the tools print a run (km24.py, hunt.py import them).
-Use: python tools/tasks/cli.py run <suite|task ...> [--all] [--<variant>] [--list] [--json OUT] [--jobs N]
+Use: python tools/tasks/cli.py run <suite|task ...> [--all] [--<variant>] [--list] [--json OUT] [--jobs N] [--seconds N]
      python tools/tasks/cli.py serve [--jobs N]      python tools/tasks/cli.py status [--watch]      python tools/tasks/cli.py --list
      python tools/tasks/cli.py block open <name>|verify|close|status      python tools/tasks/cli.py free-dll
      python tools/tasks/cli.py worktrees [--all]      python tools/tasks/cli.py clean [--dry-run] [--unowned] [--only DIR]"""
@@ -16,12 +16,14 @@ import json
 import sys
 import threading
 import time
+from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tasks import block, cache, clean, lifecycle, verdicts  # noqa: E402
 from tasks.cache import remove, write_atomic  # noqa: E402
+from tasks.deadline import RunDeadline  # noqa: E402
 from tasks.pool import Pool, run  # noqa: E402
 from tasks.runs import RUNS, last_line, live_runs, newest_run  # noqa: E402
 from tasks.suites import Suites, UsageError  # noqa: E402
@@ -107,6 +109,7 @@ def cmd_run(argv: list[str]) -> int:
     ap.add_argument("--list", action="store_true", help="show what would run, run nothing")
     ap.add_argument("--json", help="write the results there")
     ap.add_argument("--jobs", type=int, help="cores the pool may fill (default: all)")
+    ap.add_argument("--seconds", type=float, help="the run's own deadline: past it it ends, its unfinished tasks TIMEOUT")
     ap.add_argument("--suites", help=argparse.SUPPRESS)
     ap.add_argument("--root", help=argparse.SUPPRESS)
     try:
@@ -147,18 +150,15 @@ def cmd_run(argv: list[str]) -> int:
         return FAILED
     for stamp in sel.stamps:
         remove(root / stamp)  # no approval outlives the check that follows
-    capacity = s.doc.get("capacity", {})
     t0 = time.monotonic()
     expected = {t.name: t.params.get("expected_errors", ()) for t in sel.tasks}  # by name: sel.tasks is every task run
-    results = run(sel.tasks, jobs=a.jobs, on_result=lambda r: _print_result(r, expected.get(r.name, ())), root=root,
-                  use_cache=not sel.no_cache, capacity=capacity, label="-".join(names)[:40], on_progress=print_progress,
-                  on_line=print_line)
+    with RunDeadline(a.seconds, [t.name for t in sel.tasks], lambda statuses: block.record(statuses, root)) as late:
+        results = run(sel.tasks, jobs=a.jobs, root=root, use_cache=not sel.no_cache, capacity=s.doc.get("capacity", {}),
+                      on_result=lambda r: (late.done(r), _print_result(r, expected.get(r.name, ()))),
+                      label="-".join(names)[:40], on_progress=print_progress, on_line=print_line)
     block.record({r.name: r.status for r in results}, root)  # a failed check is not run again before its cause is named
     passed = sum(r.status in PASSED for r in results)
-    counts = {}
-    for r in results:
-        counts[r.status] = counts.get(r.status, 0) + 1
-    summary = ", ".join(f"{v} {k}" for k, v in sorted(counts.items()))
+    summary = ", ".join(f"{v} {k}" for k, v in sorted(Counter(r.status for r in results).items()))
     print(f"{passed}/{len(results)} passed ({summary}) in {time.monotonic() - t0:.0f} s; logs in {root / RUNS}")
     if a.json:
         write_atomic(Path(a.json), json.dumps([r.to_json() for r in results], indent=1))

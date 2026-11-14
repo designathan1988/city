@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))  # tools:
 
 from support import RepoCase  # noqa: E402
 from test_block import HISTORY  # noqa: E402
-from test_port_gate import COMPACTED, HOOKS, RUN, GateCase, transcript  # noqa: E402
+from test_port_gate import COMPACTED, DEADLINE, HOOKS, RUN, GateCase, transcript  # noqa: E402
 
 import port_looks  # noqa: E402
 
@@ -32,7 +32,7 @@ def call(name: str, given: dict, at: float | None = None) -> dict:
 
 
 def run(names: str) -> dict:
-    return {"command": f"{RUN} {names}", "run_in_background": True}
+    return {"command": f"{RUN} {names} {DEADLINE}", "run_in_background": True}
 
 
 class Looks(GateCase):
@@ -46,7 +46,8 @@ class Looks(GateCase):
         self.assertTrue(self.refused("Bash", run("far_cars"), self.made), "a second run to see")
         self.assertFalse(self.refused("Bash", run("lab_test --all --jobs 1"), self.made), "the one measure")
         self.assertTrue(self.refused("Bash", run("lab_test"), self.made))
-        self.assertFalse(self.refused("Bash", {"command": "tools/build/build.sh core-windows", "run_in_background": True}, self.made))
+        build = {"command": f"tools/build/build.sh core-windows {DEADLINE}", "run_in_background": True}
+        self.assertFalse(self.refused("Bash", build, self.made))
         self.assertFalse(self.refused("Bash", run("tests --list"), self.made), "naming the tasks runs nothing")
         later = port_looks.STATE.stat().st_mtime + 5
         os.utime(port_looks.STATE, (later, later))
@@ -72,12 +73,16 @@ class Looks(GateCase):
                 {"type": "user", "toolUseResult": {}, "message": {"content": [{"type": "tool_result", "content": ORDER}]}},
                 call("Write", {"file_path": "x.md", "content": ORDER})]
         record = self.folder / "said.jsonl"
+        ended = f'<task-notification>\n<summary>Background command "{ORDER}" completed (exit code 0)</summary>\n</task-notification>'
+        said += [{"type": "queue-operation", "content": ended}, {"type": "attachment", "attachment": {"prompt": ended}},
+                 {"type": "user", "origin": {"kind": "task-notification"}, "message": {"content": f"it said: {ORDER}"}}]
         for owner in ({"type": "queue-operation", "content": f"look: {ORDER.lower()}, let me see it"},
                       {"type": "attachment", "attachment": {"prompt": f"{ORDER},\n  LET ME SEE IT"}},
                       {"type": "user", "message": {"content": f"{ORDER} now"}}):
             with self.subTest(owner=owner["type"]):
                 record.write_text("".join(json.dumps(e) + "\n" for e in said), encoding="utf-8")
-                self.assertTrue(self.refused("Bash", order, str(record)), "a summary, a tool's result and a file are not the owner")
+                self.assertTrue(self.refused("Bash", order, str(record)),
+                                "a summary, a tool's result, a file and the end of a task the session named are not the owner")
                 record.write_text("".join(json.dumps(e) + "\n" for e in said + [owner]), encoding="utf-8")
                 self.assertFalse(self.refused("Bash", order, str(record)))
         self.assertTrue(self.refused("Bash", {"command": 'python tools/tasks/cli.py block order "go on"'}, str(record)))
@@ -96,11 +101,10 @@ class Looks(GateCase):
         skill = ("Skill", {"skill": "superpowers:verification-before-completion"})
         taken = self.shot.stat().st_mtime
         record = self.folder / "seen.jsonl"
-        for reads, refused in (((self.shot, taken + 60), (self.reference, taken + 60)), False), \
-                              (((self.shot, taken - 60), (self.reference, taken + 60)), True), \
-                              (((self.shot, taken + 60),), True), (((self.reference, taken + 60),), True):
+        shown = ("SendUserFile", {"files": [str(self.shot)], "status": "normal"})
+        for reads, refused in (((self.shot, taken + 60),), False), (((self.shot, taken - 60),), True), ((), True):
             with self.subTest(reads=[(f.name, at - taken) for f, at in reads]):
-                calls = [call(name, given) for name, given in (*self.stood, skill)]
+                calls = [call(name, given) for name, given in (*self.stood, skill, shown)]
                 calls += [call("Read", {"file_path": str(f)}, at) for f, at in reads]
                 record.write_text("".join(json.dumps(e) + "\n" for e in calls), encoding="utf-8")
                 self.assertEqual(self.refused("Bash", commit, str(record)), refused)
@@ -186,13 +190,22 @@ class WholeLife(RepoCase):
         self.note.write_text("# roads\n\n## Now\n- in verify; next: its one run.\n", encoding="utf-8")
         self.assertIn("photographed", self.refusal("Bash", commit))
         block.record({"near": "PASS", "zoom_ladder": "PASS"}, self.root)
-        shot = self.root / "dist" / "captures" / "zoom_ladder" / "00-near.png"
-        reference = self.root / "doc" / "look" / "far_town.png"
-        for picture in (shot, reference):
-            picture.parent.mkdir(parents=True)
-            picture.write_bytes(b"png")
+        self.assertIn("show nothing", self.refusal("Bash", commit), "the far views alone are no functionality's own photos")
+        suites = self.root / "tools" / "tasks" / "suites.json"   # its own plan: a task of the suites, its file written in the block
+        suites.parent.mkdir(parents=True, exist_ok=True)
+        (suites.parent / "plans.py").write_bytes((Path(block.__file__).parent / "plans.py").read_bytes())   # the hook reads the plans by it
+        suites.write_text(json.dumps({"tasks": [{"name": "roads_look", "plan": "res://tests/visual/roads_plan.json"}]}), encoding="utf-8")
+        plan = self.root / "project" / "tests" / "visual" / "roads_plan.json"
+        plan.parent.mkdir(parents=True)
+        plan.write_text('{"steps": []}', encoding="utf-8")
+        block.record({"roads_look": "PASS"}, self.root)
+        shot = self.root / "dist" / "captures" / "roads_look" / "00-near.png"
+        shot.parent.mkdir(parents=True)
+        shot.write_bytes(b"png")
         self.assertIn("not looked at", self.refusal("Bash", commit))
-        self.did(call("Read", {"file_path": str(shot)}, time.time() + 5), call("Read", {"file_path": str(reference)}))
+        self.did(call("Read", {"file_path": str(shot)}, time.time() + 5))
+        self.assertIn("SendUserFile", self.refusal("Bash", commit), "the owner is shown the functionality working")
+        self.did(call("SendUserFile", {"files": [str(shot)], "status": "normal"}))
         self.assertIn("verification-before-completion", self.refusal("Bash", commit))
         self.did(call("Skill", {"skill": "superpowers:verification-before-completion"}))
         self.assertEqual(self.refusal("Bash", commit), "")

@@ -11,10 +11,12 @@ note holds (the `## Now` of doc/work/<block>.md), what is uncommitted and the la
                                                   UserPromptSubmit and SubagentStart: one line; PreToolUse: the
                                                   refusals of port_gate.py, and of everything but the hooks' own
                                                   repair when that file does not load;
-                                                  PostToolUse: the gates of the file just edited, and the note asked
+                                                  PostToolUse: a command moved to the background with no deadline
+                                                  named, the gates of the file just edited, and the note asked
                                                   for when it is old; PreCompact: what the summary of a compaction
-                                                  must keep; Stop: refused once while a block is not closed and no
-                                                  run of its own is going)
+                                                  must keep; Stop: refused while a command runs with nothing to end
+                                                  it, and once while a block is not closed and no run of its own is
+                                                  going)
 Nothing read may be lost to a compaction: the note doc/work/<name>.md is what survives one (CLAUDE.md). The gate keeps its
 `## Now` no more than port_note.NOTE_SECONDS behind the work and rewritten whenever the block moves, the summary is told to
 keep what is not in it yet, its `## Now` comes back after (every answer here fits what Claude Code gives a session whole:
@@ -32,6 +34,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 try:
+    import port_deadline  # noqa: E402  every process ends by itself: what still runs with no deadline
     import port_memory  # noqa: E402  what a compaction gives back from the transcript: the owner's words, the work since
     import port_note  # noqa: E402  the work's note: its state, its age, what a compaction keeps
     from port_edits import after_edit  # noqa: E402  the gates of a file right after an edit
@@ -141,8 +144,12 @@ def runs_live() -> bool:
 
 
 def unfinished(payload: dict) -> str:
-    """Why the session may not stop yet: a block that is not closed, with no run of its own still going. Nothing the second
-    time it is asked in a row (the session then says why it stops)."""
+    """Why the session may not stop yet: a command of its own still runs with nothing to end it (each time it is asked:
+    Claude Code itself ends the turn after eight refusals in a row); or a block that is not closed, with no run of its own
+    still going (nothing the second time in a row: the session then says why it stops)."""
+    left = port_deadline.unended(payload.get("background_tasks"))
+    if left:
+        return left
     k = block()
     if payload.get("stop_hook_active") or k["state"] not in ("open", "verify") or runs_live():
         return ""
@@ -171,8 +178,8 @@ def broken(event: str, payload: dict) -> int:
 
 
 def main() -> int:
-    if len(sys.argv) < 2:
-        print(FAULT and f"port_gate.py does not load: {FAULT}" or whole())
+    if len(sys.argv) < 2:   # by hand and by the skill's own command: UTF-8, whatever the console's code page
+        sys.stdout.buffer.write((FAULT and f"port_gate.py does not load: {FAULT}" or whole()).encode("utf-8") + b"\n")
         return 1 if FAULT else 0
     if sys.argv[1] != "hook":
         print(f"port_state.py: unknown argument '{sys.argv[1]}' (none, or 'hook')", file=sys.stderr)
@@ -203,7 +210,8 @@ def main() -> int:
         sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": event, "additionalContext": context}}))
         return 0
     if event == "PostToolUse":
-        asked = "\n".join(said for said in (after_edit(payload), port_note.checkpoint(block())) if said)
+        asked = "\n".join(said for said in (port_deadline.moved(payload), after_edit(payload),
+                                            port_note.checkpoint(block())) if said)
         if asked:
             sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": event, "additionalContext": port_note.fit(asked)}}))
         return 0

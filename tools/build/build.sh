@@ -2,7 +2,8 @@
 # The core's two Windows DLLs. dll-debug and dll-release build one DLL incrementally (its build folder configured the first
 # time): they are the processes of the tasks build_debug and build_release of tools/tasks/suites.json. core-windows is the one
 # way to build both: the orchestrator runs those two tasks, each with its deadline, its lines shown as they come, the dll lock
-# and the cache. Usage: tools/build/build.sh core-windows | dll-debug | dll-release. Env: MINGW (llvm-mingw root), JOBS.
+# and the cache. Usage: tools/build/build.sh core-windows [--seconds N] | dll-debug | dll-release (what follows core-windows is
+# the run's: --seconds N is its own deadline, a build it ends goes on from there at the next call). Env: MINGW, JOBS.
 # The build uses Ninja: on a Windows host CMake would otherwise pick NMake, which is not installed.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -23,7 +24,7 @@ case "${1:-}" in
 esac
 
 case "${1:-}" in
-	core-windows) exec "${PY:-python}" "$ROOT/tools/tasks/cli.py" run build_debug build_release ;;
+	core-windows) exec "${PY:-python}" "$ROOT/tools/tasks/cli.py" run build_debug build_release "${@:2}" ;;
 	dll-debug) dll template_debug "$ROOT/native/build-win-debug" ;;
 	dll-release) dll template_release "$ROOT/native/build-win" ;;
 	*) echo "targets: core-windows | dll-debug | dll-release" >&2; exit 2 ;;

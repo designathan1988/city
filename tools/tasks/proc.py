@@ -17,6 +17,7 @@ if os.name == "nt":
 # console would open a console window of its own on the user's screen.
 NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 KILL_WAIT_S = 30  # after the kill, the wait for the tree to be gone; a tree that outlives it is an error
+_LIVE: set = set()  # the trees this process started and has not closed: what a run that ends at its deadline kills (kill_live)
 
 
 class Process:
@@ -35,6 +36,7 @@ class Process:
                 self._start_posix(argv, cwd, env, hidden, log_file, cores)
         finally:
             log_file.close()  # the child has its own handle
+        _LIVE.add(self)
 
     def _start_posix(self, argv, cwd, env, hidden, log_file, cores):
         args = shlex.split(argv) if isinstance(argv, str) else list(argv)
@@ -83,6 +85,7 @@ class Process:
             return
         self.kill_tree()
         self._done = True
+        _LIVE.discard(self)
         if os.name == "nt":
             self._tree.close()
 
@@ -100,6 +103,20 @@ def run(argv: list[str] | str, timeout_s: float, *, cwd=None, env=None, log=None
     with Process(argv, cwd=cwd, env=env, log=log, hidden=hidden, cores=cores) as p:
         code = p.wait(timeout_s)
         return code, code is None
+
+
+def kill_live() -> list[int]:
+    """Kills every tree this process started and has not closed, and names them (their process ids): a run that ends at
+    its own deadline (deadline.py) leaves nothing running. A tree that cannot be killed is named with the others; the
+    caller ends the process, and on Windows the job that held the tree ends it then (win32.py, KILL_ON_JOB_CLOSE)."""
+    killed = []
+    for tree in list(_LIVE):
+        killed.append(tree.pid)
+        try:
+            tree.kill_tree()
+        except OSError:
+            continue  # the next tree is still killed; this one ends with its job when the process does
+    return killed
 
 
 def usable_cores() -> list[int]:

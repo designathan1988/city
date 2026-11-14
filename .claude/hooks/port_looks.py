@@ -6,10 +6,13 @@ one's opening. A second run, a whole suite, the 24 km measures, the hunt and the
 given in the owner's own words (`python tools/tasks/cli.py block order "<words>"`, or a tool's `--owner "<words>"`): the
 words are looked for in what the owner wrote in this session, so an order is never made up. This binds the session, not the
 owner: a run started by hand passes no hook.
-A block's commit asks the look's photos opened after they were taken, with the references they are compared to."""
+A block's commit asks the functionality's own photos: a photo plan written or changed in the block (never the far views of
+the generated town alone), run in this verification, each of its photos opened after it was taken and put before the owner."""
 
+import importlib.util
 import json
 import re
+import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
@@ -26,12 +29,17 @@ REFS = ROOT / "doc" / "look"                      # the references of the game's
 MOST = 6                                          # tasks a look may name (tools/tasks/block_review.py MAX_CHECKS)
 MEASURES = ("lab_test",)
 WORDS_LEAST = 12                                  # characters of an order: shorter is no sentence of the owner's
-VALUED = ("--jobs", "--json", "--suites", "--root")
+VALUED = ("--jobs", "--json", "--suites", "--root", "--seconds")
 WIDE = ("suites", "groups", "sets")               # names of suites.json that stand for many tasks
 ORDERED = re.compile(r"\b(km24\.py|hunt\.py|quick\.sh)\b")
 FREE = re.compile(r"\b(build\.sh|deliver\.sh)\b")
 NAMED = re.compile(r"cli\.py[\"']?\s+run\b([^;&|\n]*)")
 SAID = re.compile(r"(?:--owner|\bblock\s+order)\s+(?:\"([^\"]*)\"|'([^']*)')")
+REGISTER = re.compile(r"atlas[/\\]cli\.py[\"']?\s+problems\b")   # the register's `--owner` is a problem's owning file, no order
+FAR = "zoom_ladder"                               # the far views of the generated town: no functionality's own photos
+MACHINE = ("task-notification",)                  # the `origin.kind` of a user's entry the tools wrote, not the owner
+NOTICE = re.compile(r"\s*(?:<task-notification>|\[SYSTEM NOTIFICATION\b|<system-reminder>)")   # a text of the tools
+GIT_SECONDS = 5
 HOW = ("What is wrong is found by reading the code, and a fix is checked in its block (`python tools/tasks/cli.py block open "
        "<name>`, then its one verification). On the owner's order only: `python tools/tasks/cli.py block order \"<the owner's "
        "own words>\"`, then this run again.")
@@ -43,13 +51,33 @@ def norm(text: str) -> str:
 
 def claimed(command: str) -> str | None:
     """The owner's words a command carries (`--owner "..."`, `block order "..."`); None when it carries none."""
-    found = SAID.search(command)
+    found = None if REGISTER.search(command) else SAID.search(command)
     return None if not found else (found.group(1) if found.group(1) is not None else found.group(2))
 
 
+def recorded(entry: dict):
+    """The texts an entry of the record holds as a message to the session: a queued prompt, a prompt attached while the
+    session worked, or a user's entry that is no tool's result, no summary of a compaction and no text of the tools."""
+    kind = entry.get("type")
+    if kind == "queue-operation" and isinstance(entry.get("content"), str):
+        yield entry["content"]
+    elif kind == "attachment" and isinstance((entry.get("attachment") or {}).get("prompt"), str):
+        yield entry["attachment"]["prompt"]
+    elif kind == "user" and not (entry.get("isMeta") or entry.get("isCompactSummary") or "toolUseResult" in entry
+                                 or (entry.get("origin") or {}).get("kind") in MACHINE):
+        content = (entry.get("message") or {}).get("content")
+        if isinstance(content, str):
+            yield content
+        for part in content if isinstance(content, list) else ():
+            if isinstance(part, dict) and part.get("type") == "text":
+                yield str(part.get("text", ""))
+
+
 def owner_texts(transcript: str):
-    """What the owner wrote in this session, from its record: a message of the owner's is a queued prompt, a prompt attached
-    while the session worked, or a user's entry that is no tool's result, no summary of a compaction and no text of the tools."""
+    """What the owner wrote in this session, from its record. A notice of the tools is none of it: the end of a
+    background task comes into the record the same way as a prompt (queued, attached, or a user's entry whose origin is
+    the task), and it carries the session's own words (the description it gave the command), so taken for the owner's it
+    would let the session write its own orders."""
     path = Path(transcript) if transcript else None
     if path is None or not path.is_file():
         return
@@ -61,18 +89,9 @@ def owner_texts(transcript: str):
                 entry = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            kind = entry.get("type")
-            if kind == "queue-operation" and isinstance(entry.get("content"), str):
-                yield entry["content"]
-            elif kind == "attachment" and isinstance((entry.get("attachment") or {}).get("prompt"), str):
-                yield entry["attachment"]["prompt"]
-            elif kind == "user" and not (entry.get("isMeta") or entry.get("isCompactSummary") or "toolUseResult" in entry):
-                content = (entry.get("message") or {}).get("content")
-                if isinstance(content, str):
-                    yield content
-                for part in content if isinstance(content, list) else ():
-                    if isinstance(part, dict) and part.get("type") == "text":
-                        yield str(part.get("text", ""))
+            for text in recorded(entry):
+                if not NOTICE.match(text):
+                    yield text
 
 
 def unsaid(transcript: str, words: str) -> str:
@@ -155,18 +174,54 @@ def held(command: str, state: str) -> str:
 
 
 def when(stamp) -> float:
-    """A record's time as seconds; now for a record that has none."""
+    """A record's time as seconds; 0 for a record that has none: it is no proof that something was done after anything
+    (the record's copies of a request carry no time; taken as now, every file ever read counted as read just now)."""
     try:
         return datetime.fromisoformat(str(stamp).replace("Z", "+00:00")).timestamp()
     except ValueError:
-        return time.time()
+        return 0.0
 
 
-def unseen(read: dict, plan: str) -> list:
+def plans() -> dict:
+    """The photo plans of suites.json, each with its plan's file (tools/tasks/plans.py, their one reading, loaded by its path:
+    the hook imports nothing of the tasks' package)."""
+    spec = importlib.util.spec_from_file_location("city_plans", ROOT / "tools" / "tasks" / "plans.py")
+    if spec is None or spec.loader is None or not Path(spec.origin or "").is_file():
+        return {}
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.photo_plans(SUITES)
+
+
+def written(file: str) -> bool:
+    """Whether a file of the project is new or changed in the work tree (written in the work in hand), by git's own word."""
+    try:
+        done = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain", "--", file], capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", timeout=GIT_SECONDS)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return done.returncode == 0 and bool(done.stdout.strip())
+
+
+def own_plans(runs: dict, passed: tuple) -> list:
+    """The photo plans of the functionality in hand that this verification ran and that passed: a plan other than the far
+    views (FAR) whose file was written or changed in this block's work. The same far views of the generated town show nothing
+    of what a block built: each functionality is photographed by a plan of its own, written for its cases."""
+    known = plans()
+    return sorted(n for n, verdict in (runs or {}).items() if n in known and n != FAR and verdict in passed and written(known[n]))
+
+
+def unseen(read: dict, plan: str, references: bool = True) -> list:
     """The pictures a commit asks looked at and that were not, since the session's start or its last compaction: each photo
-    of the plan, opened after it was taken, and each reference of the look."""
+    of the plan, opened after it was taken, and (the far views' plan) each reference of the look."""
     shots = sorted((SHOTS / plan).glob("*.png"))
     if not shots:
         return [f"{port_note.rel(SHOTS / plan)}: no photo there"]
     late = [f for f in shots if read.get(port_note.key(f), 0.0) < f.stat().st_mtime]
-    return [port_note.rel(f) for f in late + [f for f in sorted(REFS.rglob("*.png")) if port_note.key(f) not in read]]
+    refs = [f for f in sorted(REFS.rglob("*.png")) if port_note.key(f) not in read] if references else []
+    return [port_note.rel(f) for f in late + refs]
+
+
+def unshown(sent: set, plan: str) -> bool:
+    """Whether none of a plan's photos was put before the owner (SendUserFile) in this session."""
+    return not any(port_note.key(f) in sent for f in (SHOTS / plan).glob("*.png"))

@@ -3,6 +3,7 @@
 # rewritten when the block moves; every answer fits what Claude Code gives whole; the owner's words and the work since
 # `## Now` come back from the session's own record, the words the text cannot hold kept whole on disk and Read.
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -11,7 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from test_port_gate import COMPACTED, HOOKS, NOTE, RUN, GateCase, transcript  # noqa: E402
+from test_port_gate import COMPACTED, DEADLINE, HOOKS, NOTE, RUN, GateCase, transcript  # noqa: E402
 
 import port_gate  # noqa: E402
 import port_looks  # noqa: E402
@@ -63,7 +64,7 @@ class Compaction(GateCase):
         self.state("open")
         made = transcript(self.folder, *self.stood, *self.SOURCES)
         code = {"file_path": str(port_gate.ROOT / "native" / "src" / "sim" / "x.cpp"), "old_string": "a", "new_string": "b"}
-        run = {"command": f"{RUN} flows_test", "run_in_background": True}
+        run = {"command": f"{RUN} flows_test {DEADLINE}", "run_in_background": True}
         self.assertFalse(self.refused("Edit", code, made))
         self.assertFalse(self.refused("Bash", run, made))
         self.age_now()
@@ -83,7 +84,7 @@ class Compaction(GateCase):
     def test_the_state_is_rewritten_when_the_block_moves(self):
         self.state("open")
         made = transcript(self.folder, *self.stood, *self.SOURCES)
-        run = {"command": f"{RUN} flows_test", "run_in_background": True}
+        run = {"command": f"{RUN} flows_test {DEADLINE}", "run_in_background": True}
         self.assertFalse(self.refused("Bash", run, made))
         self.state("verify")
         self.assertTrue(self.refused("Bash", run, made), "`## Now` written while the block was open, the block in verify")
@@ -134,8 +135,17 @@ class Memory(GateCase):
             called("Edit", {"file_path": str(port_gate.ROOT / "native" / "src" / "old.cpp")}, "2026-11-14T09:40:00Z"),
             {"type": "system", "subtype": "compact_boundary", "timestamp": "2026-11-14T10:30:00Z"},
             called("Edit", {"file_path": str(port_gate.ROOT / "native" / "src" / "new.cpp")}, "2026-11-14T10:40:00Z"),
-            called("Bash", {"command": "git status\nsecond line"}, "2026-11-14T10:41:00Z"))
+            called("Bash", {"command": "git status\nsecond line"}, "2026-11-14T10:41:00Z"),
+            # the record's copy of a request, with no time, is no call; the end of a task is no word of the owner's
+            {"type": "api-request-blob", "message": called("Edit", {"file_path": "native/src/copy.cpp"}, "")["message"]},
+            {"type": "queue-operation", "content": "<task-notification>\n<summary>the run ended</summary>\n</task-notification>"},
+            {"type": "user", "origin": {"kind": "task-notification"}, "message": {"content": "the run ended"}},
+            said("<command-name>/goal</command-name>\n<command-message>goal</command-message>\n"
+                 "<command-args>port the traffic, whole</command-args>", "2026-11-14T10:42:00Z"))
         back = port_memory.given_back(made, port_gate.block(), ["native/src/new.cpp"])
+        self.assertIn("(2 in all)", back, "a command's words again in its wrapping are one message")
+        self.assertNotIn("the run ended", back)
+        self.assertNotIn("copy.cpp", back)
         self.assertLess(back.index("[2] and keep the buses first"), back.index("[1] port the traffic, whole"), "newest first")
         self.assertEqual(back.count("keep the buses first"), 1, "a queued prompt is one message")
         self.assertIn("native/src/new.cpp (1)", back)
@@ -165,16 +175,18 @@ class Entry(unittest.TestCase):
     """port_state.py's second text at a compaction, as Claude Code calls it."""
 
     def test_a_compaction_gives_back_the_record_in_a_text_of_its_own(self):
-        record = Path(tempfile.mkdtemp()) / "record.jsonl"
+        folder = Path(tempfile.mkdtemp())
+        record, words = folder / "record.jsonl", folder / "owner_words.md"   # never the session's own words (dist/block)
         record.write_text(json.dumps(said("x" * 30000, "2026-11-14T09:00:00Z")) + "\n", encoding="utf-8")
         done = subprocess.run([sys.executable, str(HOOKS / "port_state.py"), "hook", "memory"], capture_output=True, timeout=30,
+                              env={**os.environ, "CITY_OWNER_WORDS": str(words)},
                               input=json.dumps({"hook_event_name": "SessionStart", "source": "compact",
                                                 "transcript_path": str(record)}).encode("utf-8"))
         self.assertEqual(done.returncode, 0, done.stderr.decode("utf-8", "replace"))
         given = json.loads(done.stdout)["hookSpecificOutput"]["additionalContext"]
         self.assertLessEqual(len(given), 10000, "Claude Code measures each hook's text on its own")
         self.assertIn("owner_words.md", given, "a word too long for the text is kept whole on disk")
-        port_memory.WORDS.unlink(missing_ok=True)
+        self.assertTrue(words.is_file())
 
 
 if __name__ == "__main__":

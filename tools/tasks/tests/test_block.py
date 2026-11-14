@@ -14,6 +14,7 @@ from support import RepoCase  # noqa: E402
 
 from tasks import block, cli  # noqa: E402
 
+OWN_LOOK = "roads_look"  # the photo plan of the functionality in hand
 HISTORY = "# History: the process\n\n## Block times\n\n" + block.TIMES_HEADER + "\n|---|---|---|---|---|---|\n\n## Later\n"
 
 
@@ -22,6 +23,11 @@ class BlockCase(RepoCase):
         super().setUp()
         (self.root / block.HISTORY).parent.mkdir(parents=True)
         (self.root / block.HISTORY).write_bytes(HISTORY.encode("utf-8"))
+        suites = self.root / "tools" / "tasks" / "suites.json"   # the photo plans a block may close on: its own, and the far views
+        suites.parent.mkdir(parents=True, exist_ok=True)
+        suites.write_text(json.dumps({"tasks": [{"name": OWN_LOOK, "plan": "res://tests/visual/roads_plan.json"},
+                                                {"name": "zoom_ladder", "plan": "res://tests/visual/zoom_ladder_plan.json"}]}),
+                          encoding="utf-8")
 
     def block(self, *args, reviewed: bool = True) -> int:
         if args[0] == "verify" and reviewed:
@@ -43,6 +49,10 @@ class Moves(BlockCase):
         block.record({"build_debug": "PASS"}, self.root)
         self.assertEqual(self.block("close"), 1, "a build is no check")
         block.record({"lane_test": "PASS"}, self.root)
+        self.assertEqual(self.block("close"), 1, "a block closes on its own photos: none was taken")
+        block.record({"zoom_ladder": "PASS"}, self.root)
+        self.assertEqual(self.block("close"), 1, "the far views of the town are no functionality's own photos")
+        block.record({OWN_LOOK: "PASS"}, self.root)
         self.assertEqual(self.block("close"), 0)
         self.assertEqual(block.load(self.root)["state"], block.CLOSED)
 
@@ -87,7 +97,7 @@ class Moves(BlockCase):
     def test_close_appends_the_times_to_the_history(self):
         self.block("open", "signals")
         self.block("verify")
-        block.record({"signals_test": "PASS"}, self.root)
+        block.record({"signals_test": "PASS", OWN_LOOK: "PASS"}, self.root)
         self.block("close")
         text = (self.root / block.HISTORY).read_bytes().decode("utf-8")
         rows = [line for line in text.split("\n") if line.startswith("| signals |")]
@@ -170,7 +180,7 @@ class Brake(BlockCase):
             + json.dumps({"id": "P2", "status": "open", "title": "a story", "symptom": "lane_test failed once"}) + "\n", encoding="utf-8")
         self.block("open", "traffic")
         self.block("verify")
-        block.record({"camera_feel_test": "FAIL"}, self.root)
+        block.record({"camera_feel_test": "FAIL", OWN_LOOK: "PASS"}, self.root)
         self.assertEqual(self.block("close"), 0, "a failure the register owns is not this block's")
         self.block("open", "traffic")
         self.verify()

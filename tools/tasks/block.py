@@ -201,9 +201,7 @@ def enter(target: str, name: str | None = None, root: Path = ROOT, cause: str | 
     else:
         if failed(doc, root):
             raise BlockError(f"checks of this verification failed ({', '.join(failed(doc, root))}): a block closes on checks that pass")
-        if not (doc.get("ran") or {}).get("checks"):
-            raise BlockError("this verification ran no check: a block closes on checks that pass, its one run named in one "
-                             "command (`python tools/tasks/cli.py run <its test>,<its photo plan>,zoom_ladder,e2e`)")
+        _review().closing(doc, root)  # its checks ran, and the functionality was photographed by a plan of its own
         doc["state"] = target
     if target == CLOSED:
         _append_times(doc, root)

@@ -20,6 +20,7 @@ import json
 import re
 from pathlib import Path
 
+import port_deadline
 import port_edits
 import port_looks
 import port_memory
@@ -32,17 +33,12 @@ GAME_CODE = ("native/src/", "project/")      # what the edit gate holds
 SHELLS = ("Bash", "PowerShell")
 AGENTS = ("Agent", "Task")
 OWN = r"(?:\.claude|native[/\\]src|project|tools)[/\\]"   # the project's places a shell does not write into
-START = r"(?:^|[;&|(\n]\s*)"                 # where a command starts inside a command line
+START, RUN, RUNS, LISTED, LEAD = (port_deadline.START, port_deadline.RUN, port_deadline.RUNS, port_deadline.LISTED,
+                                  port_deadline.LEAD)   # a run of the project's tools, as port_deadline.py reads it
 # the engine, the compiler's driver or the build system started as a command of its own (not named inside another's arguments)
 ENGINE = re.compile(r"(?:^|[;&|(]\s*)(?:\"?[\w:/\\.-]*godot[\w.-]*\"?|ninja|cmake)(?:\s|$)", re.IGNORECASE)
-# a run of the project's tools, as a command of its own
-RUN = (START + r"(?:(?:python[\d.]*(?:\s+-\w+)*|bash|sh)\s+)?[\"']?[\w:./\\-]*"
-       r"(?:cli\.py[\"']?\s+run\b|build\.sh|km24\.py|hunt\.py|deliver\.sh|quick\.sh)")
-RUNS = re.compile(RUN)
-LISTED = re.compile(r"\s--list\b")           # a run that only names its tasks
 MUTED = re.compile(RUN + r"[^;&\n]*(?:\||>)")  # its output piped away or sent somewhere
 JOINED = re.compile(r"&&|\|\||;|\n")
-LEAD = re.compile(r"^\s*cd\s+[^;&|\n]+(?:&&|;)\s*")   # the one thing a run may follow: the folder it runs in
 # a script fed to an interpreter from the command line itself, or a file's text laid by a heredoc
 TYPED = re.compile(START + r"(?:python[\d.]*|py|node)\b[^\n;&|]*<<"
                    r"|@['\"]\s*\r?\n[\s\S]*?\r?\n['\"]@\s*\|\s*(?:python[\d.]*|py|node)\b"
@@ -54,10 +50,10 @@ SHELL_WRITE = re.compile(r"(?:\bsed\s+(?:-\w+\s+)*-\w*i\w*|\bperl\s+-\w*i\w*|\bt
                          r"[^;&|\n]*" + OWN + r"|>>?\s*[\"']?(?:[\w:./\\-]*[/\\])?" + OWN, re.IGNORECASE)
 CONTEXT7 = ("ToolSearch `select:mcp__plugin_context7_context7__resolve-library-id,"
             "mcp__plugin_context7_context7__query-docs`")
-MARKS = ("compact_boundary", '"Skill"', '"Read"', '"Write"', "context7__query-docs", "WebSearch", "WebFetch")   # what `used` reads
+MARKS = ("compact_boundary", '"Skill"', '"Read"', '"Write"', "context7__query-docs", "WebSearch", "WebFetch", "SendUserFile",
+         '"is_error"')               # what `used` reads
 WHOLE = ("Read", "Write")            # the calls that leave a file's whole text before the session
 COMMIT = re.compile(r"\bgit\b[^|;&]*\bcommit\b")
-LOOK = "zoom_ladder"                 # the photo plan of the game's look by distance: every verification runs it
 LOOKED = ("PASS", "CACHED_PASS")     # a run's verdicts that count (tools/tasks/block.py PASSED)
 
 
@@ -72,13 +68,17 @@ def block() -> dict:
 
 def used(transcript: str) -> dict:
     """What this session did since its start or its last compaction, from its transcript's own records (a compaction's boundary
-    is a system entry, a call is a tool_use block of an assistant's message; the same words inside a file read or a command's
-    output are no record): the skills invoked, the files Read, whether Context7 was asked, whether the internet was searched
-    or read. None for a transcript that cannot be read: it holds nothing back."""
+    is a system entry, a call is a tool_use block of an `assistant` entry, its answer a tool_result block of a `user` entry;
+    the same words inside a file read, a command's output or the record's copies of a request, which carry no time, are no
+    record): the skills invoked (one whose call answered with an error was not: "A failed command aborts the entire skill
+    invocation", code.claude.com/docs/en/skills), the files Read, what was sent to the owner, whether Context7 was asked,
+    whether the internet was searched or read. None for a transcript that cannot be read: it holds nothing back."""
     path = Path(transcript) if transcript else None
     if path is None or not path.is_file():
         return {}
-    did = {"skills": set(), "read": {}, "docs": False, "web": False, "compacted": False, "record": str(path)}
+    fresh = lambda compacted: {"asked": {}, "read": {}, "sent": set(), "docs": False, "web": False,   # noqa: E731
+                               "compacted": compacted, "record": str(path)}
+    did = fresh(False)
     with path.open(encoding="utf-8", errors="replace") as lines:
         for line in lines:
             if not any(mark in line for mark in MARKS):
@@ -87,21 +87,27 @@ def used(transcript: str) -> dict:
                 entry = json.loads(line)
             except json.JSONDecodeError:
                 continue   # the line being written now
-            if entry.get("type") == "system" and entry.get("subtype") == "compact_boundary":
-                did = {"skills": set(), "read": {}, "docs": False, "web": False, "compacted": True, "record": str(path)}
+            kind = entry.get("type")
+            if kind == "system" and entry.get("subtype") == "compact_boundary":
+                did = fresh(True)
                 continue
             message = entry.get("message")
             content = message.get("content") if isinstance(message, dict) else None
-            for part in content if isinstance(content, list) else ():
-                if not isinstance(part, dict) or part.get("type") != "tool_use":
+            for part in content if isinstance(content, list) and kind in ("assistant", "user") else ():
+                if isinstance(part, dict) and kind == "user" and part.get("type") == "tool_result" and part.get("is_error"):
+                    did["asked"].pop(part.get("tool_use_id"), None)   # a skill whose call failed gave the session nothing
+                if not isinstance(part, dict) or kind != "assistant" or part.get("type") != "tool_use":
                     continue
                 name, given = str(part.get("name", "")), part.get("input") or {}
                 if name == "Skill":
-                    did["skills"].add(str(given.get("skill", "")))
+                    did["asked"][part.get("id") or len(did["asked"])] = str(given.get("skill", ""))
+                if name == "SendUserFile":   # what was put before the owner
+                    did["sent"].update(port_note.key(f) for f in given.get("files") or () if isinstance(f, str))
                 if name in WHOLE and not (given.get("offset") or given.get("limit")):   # a file read or written whole
                     did["read"][port_note.key(given.get("file_path", ""))] = port_looks.when(entry.get("timestamp"))
                 did["docs"] = did["docs"] or name.endswith("context7__query-docs")
                 did["web"] = did["web"] or name in ("WebSearch", "WebFetch")
+    did["skills"] = set(did.pop("asked").values())
     return did
 
 
@@ -114,9 +120,12 @@ def porting(did: dict) -> bool:
     return block()["state"] != "closed" or any(k == "port" or k.endswith(":port") for k in did.get("skills", ()))
 
 
-def shell(command: str, background: bool, did: dict) -> dict | None:
+def shell(command: str, background: bool, did: dict, powershell: bool = False) -> dict | None:
     """What a shell command may not be."""
     skills = did.get("skills", set())
+    late_to_end = port_deadline.undated(command, background, powershell, port_looks.ORDER.is_file())
+    if late_to_end:
+        return deny(late_to_end)
     if ENGINE.search(command):
         return deny("CLAUDE.md: the engine and the compiler are started only by the project's tools, which hold the block's "
                     "rule (nothing runs while code is written, a failed check is not run again as it is): "
@@ -157,18 +166,25 @@ def shell(command: str, background: bool, did: dict) -> dict | None:
         return deny("CLAUDE.md: a failed check's cause is found by the skill superpowers:systematic-debugging (invoke it "
                     "with the Skill tool and follow it: read the failing lines, the code they name, the evidence) before "
                     "it is named at `block open --cause`. A guess is no cause.")
-    if COMMIT.search(command) and block()["state"] == "verify" and (block().get("runs") or {}).get(LOOK) not in LOOKED:
-        return deny(f"CLAUDE.md: a block's work is committed only after the game's look was photographed and looked at: name the "
-                    f"plan `{LOOK}` in this verification's one run, open its six photos whole (Read), and say of each what the "
-                    "buildings, the roads, the vehicles, the ground and the sky show against the references in doc/look (near, "
-                    "middle and far): a part that lost detail is a failed check, read to its cause before any commit.")
-    unseen = port_looks.unseen(did["read"], LOOK) if COMMIT.search(command) and block()["state"] == "verify" else []
+    committing = bool(COMMIT.search(command)) and block()["state"] == "verify"
+    own = port_looks.own_plans(block().get("runs"), LOOKED) if committing else []
+    if committing and not own:
+        return deny("CLAUDE.md: a block's work is committed only after the functionality itself was photographed. Its own "
+                    "photo plan: a plan of project/tests/visual written or changed in this block (a task of suites.json), that "
+                    "drives the game through each case and photographs it from near: the tool in hand, the state before, the "
+                    "action done, the result, each variant. The far views of the generated town (`zoom_ladder`) show nothing "
+                    "of what a block built and are no proof of it. List the cases, write the plan, name it in this "
+                    "verification's one run, then open and judge each photo.")
+    unseen = [f for plan in own for f in port_looks.unseen(did["read"], plan, False)]
     if unseen:
-        return deny(f"CLAUDE.md: the look was photographed and not looked at. Open each of these whole with the Read tool (the "
-                    f"photos of `{LOOK}` as this verification took them, and the references they are compared to), say of each "
-                    "what the buildings, the roads, the vehicles, the ground and the sky show, and only then commit: "
-                    + ", ".join(unseen))
-    if COMMIT.search(command) and block()["state"] == "verify" and not any(
+        return deny("CLAUDE.md: the functionality was photographed and not looked at. Open each of these whole with the Read "
+                    "tool and say of each what it shows of its case (what the player sees working, or what is wrong: a wrong "
+                    "photo is a failed check, its cause read in the code), and only then commit: " + ", ".join(unseen))
+    hidden = [plan for plan in own if port_looks.unshown(did.get("sent", set()), plan)]
+    if hidden:
+        return deny("CLAUDE.md: the owner is shown the functionality working. Send the photos of " + ", ".join(hidden)
+                    + " whole with SendUserFile (dist/captures/<plan>/*.png), each named by what it proves, and only then commit.")
+    if committing and not any(
             "verification-before-completion" in k for k in skills):
         return deny("CLAUDE.md: before a block's work is committed, invoke superpowers:verification-before-completion "
                     "with the Skill tool and follow it (each claim against the output of its check).")
@@ -213,7 +229,7 @@ def gate(payload: dict) -> dict | None:
     if adrift:
         return deny(adrift)
     if tool in SHELLS:
-        return shell(str(data.get("command", "")), bool(data.get("run_in_background")), did)
+        return shell(str(data.get("command", "")), bool(data.get("run_in_background")), did, tool == "PowerShell")
     written = str(data.get("file_path", "")).replace("\\", "/")
     fault = port_edits.left_broken(tool, data, written)
     if fault:

@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -23,15 +24,16 @@ RUN ="python tools/tasks/cli.py run"
 COMPACTED = ("compact", None)   # a compaction's boundary in a session's record
 NOTE = "# traffic\n\n## Now\n- the block is open; next: the far traffic.\n\n## Read\n- a fact.\n"
 # (command, started in the background, refused)
+DEADLINE = "--seconds 60"       # a run's own deadline: what a run carries
 SHELL = [
-    (f"{RUN} tests", True, False),
-    (f"cd /c/Users/x/city && {RUN} near", True, False),
-    (f"{RUN} tests", False, True),                                  # held in the foreground
-    (f"{RUN} tests 2>&1 | grep FAIL", True, True),                  # muted
-    (f"{RUN} lab_test --jobs 1 > out.txt", True, True),
-    ("tools/build/build.sh core-windows | tail -3", True, True),
-    (f"python tools/tasks/cli.py block verify && {RUN} tests", True, True),   # joined
-    (f"{RUN} near; {RUN} lab_test", True, True),
+    (f"{RUN} tests {DEADLINE}", True, False),
+    (f"cd /c/Users/x/city && {RUN} near {DEADLINE}", True, False),
+    (f"{RUN} tests {DEADLINE}", False, True),                       # held in the foreground
+    (f"{RUN} tests {DEADLINE} 2>&1 | grep FAIL", True, True),       # muted
+    (f"{RUN} lab_test --jobs 1 {DEADLINE} > out.txt", True, True),
+    (f"tools/build/build.sh core-windows {DEADLINE} | tail -3", True, True),
+    (f"python tools/tasks/cli.py block verify && {RUN} tests {DEADLINE}", True, True),   # joined
+    (f"{RUN} near {DEADLINE}; {RUN} lab_test {DEADLINE}", True, True),
     (f"{RUN} tests --list", False, False),
     ("python tools/tasks/cli.py status", False, False),
     ("python tools/tasks/cli.py block status | tail -1", False, False),
@@ -55,13 +57,23 @@ SHELL = [
 ]
 
 
-def transcript(folder: Path, *tools: tuple) -> str:
-    """A session's record in which these tools were called: (name, input) each, COMPACTED where it was compacted."""
+PLAN = "flows_look"             # the functionality's own photo plan, in these cases
+
+
+def stamp(at: float | None = None) -> str:
+    """A record's time: `at`, or a moment from now (so a file written before the call was written before it)."""
+    return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(time.time() + 2 if at is None else at)) + ".000Z"
+
+
+def transcript(folder: Path, *tools) -> str:
+    """A session's record in which these tools were called: (name, input) each, COMPACTED where it was compacted, an
+    entry (a dict) as it is."""
     path = folder / "session.jsonl"
     path.write_text("".join(json.dumps(
-        {"type": "system", "subtype": "compact_boundary"} if (name, given) == COMPACTED else
-        {"type": "assistant", "message": {"content": [{"type": "tool_use", "name": name, "input": given}]}}) + "\n"
-        for name, given in tools), encoding="utf-8")
+        tool if isinstance(tool, dict) else {"type": "system", "subtype": "compact_boundary"} if tool == COMPACTED else
+        {"type": "assistant", "timestamp": stamp(),
+         "message": {"content": [{"type": "tool_use", "id": f"call_{n}", "name": tool[0], "input": tool[1]}]}}) + "\n"
+        for n, tool in enumerate(tools)), encoding="utf-8")
     return str(path)
 
 
@@ -75,7 +87,11 @@ class GateCase(unittest.TestCase):
         port_looks.LOOKS, port_looks.ORDER = self.folder / "looks.json", self.folder / "order.json"
         port_looks.SHOTS, port_looks.REFS = self.folder / "captures", self.folder / "look"
         port_looks.SUITES = self.folder / "suites.json"
-        port_looks.SUITES.write_text(json.dumps({"suites": {"tests": {}}, "groups": {"looks": {}}}), encoding="utf-8")
+        port_looks.SUITES.write_text(json.dumps({"suites": {"tests": {}}, "groups": {"looks": {}}, "tasks": [
+            {"name": PLAN, "plan": "res://tests/visual/flows_plan.json"},
+            {"name": port_looks.FAR, "plan": "res://tests/visual/zoom_ladder_plan.json"}]}), encoding="utf-8")
+        self.written = port_looks.written
+        port_looks.written = lambda file: "flows_plan" in file or "zoom_ladder" in file   # both written in the block's work
         # no domain skill on this machine (test_port_skills.py has its own)
         self.skills = port_skills.ROOT, os.environ.get(port_skills.CACHE)
         port_skills.ROOT = self.folder / "none"
@@ -84,17 +100,19 @@ class GateCase(unittest.TestCase):
         port_note.WORK.mkdir()
         self.note = port_note.WORK / "traffic.md"
         self.note.write_text(NOTE, encoding="utf-8")
-        self.shot = port_looks.SHOTS / port_gate.LOOK / "00-near.png"
-        self.reference = port_looks.REFS / "far_town.png"
-        for picture in (self.shot, self.reference):
+        self.shot = port_looks.SHOTS / PLAN / "00-near.png"
+        self.far = port_looks.SHOTS / port_looks.FAR / "00-far.png"
+        for picture in (self.shot, self.far):
             picture.parent.mkdir(parents=True)
             picture.write_bytes(b"png")
         # the session stood on its records: the skill invoked, the block's note Read
         self.stood = (("Skill", {"skill": "port"}), ("Read", {"file_path": str(self.note)}))
-        # and looked at the game: each photo of the look and each reference opened
-        self.seen = (("Read", {"file_path": str(self.shot)}), ("Read", {"file_path": str(self.reference)}))
+        # and looked at the functionality: each photo of its own plan opened, and put before the owner
+        self.opened = (("Read", {"file_path": str(self.shot)}),)
+        self.seen = (*self.opened, ("SendUserFile", {"files": [str(self.shot)], "status": "normal"}))
 
     def tearDown(self):
+        port_looks.written = self.written
         port_gate.BLOCK, port_note.WORK, port_note.NOW_SEEN, port_memory.WORDS = self.held
         for name, value in self.looks.items():
             setattr(port_looks, name, value)
@@ -105,8 +123,8 @@ class GateCase(unittest.TestCase):
             os.environ[port_skills.CACHE] = self.skills[1]
 
     def state(self, state: str, runs: dict | None = None) -> None:
-        """The block in `state`; in verify its run photographed the look, unless `runs` says what ran."""
-        ran = {"zoom_ladder": "PASS"} if runs is None else runs
+        """The block in `state`; in verify its run photographed the functionality by its own plan, unless `runs` says what ran."""
+        ran = {PLAN: "PASS"} if runs is None else runs
         port_gate.BLOCK.write_text(json.dumps({"state": state, "name": "traffic", "runs": ran}), encoding="utf-8")
 
     def refused(self, tool: str, given: dict, record: str = "") -> bool:
@@ -120,6 +138,25 @@ class Shell(GateCase):
                 with self.subTest(tool=tool, command=command):
                     self.assertEqual(self.refused(tool, {"command": command, "run_in_background": background}), refused)
 
+    def test_a_skill_whose_call_failed_was_not_invoked(self):
+        self.state("open")
+        failed = {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "call_0", "is_error": True,
+                                                           "content": "Shell command failed"}]}}
+        copy = {"type": "api-request-blob", "message": {"content": [{"type": "tool_use", "id": "x", "name": "Skill",
+                                                                     "input": {"skill": "port"}}]}}
+        read = ("Read", {"file_path": str(self.note)})
+        look = {"command": "git status"}
+        self.assertTrue(self.refused("Bash", look, transcript(self.folder, ("Skill", {"skill": "port"}), failed, read)))
+        self.assertTrue(self.refused("Bash", look, transcript(self.folder, copy, read)), "a copy of a request is no call")
+        self.assertFalse(self.refused("Bash", look, transcript(self.folder, ("Skill", {"skill": "port"}), failed, read,
+                                                               ("Skill", {"skill": "port"}))), "invoked again, and it answered")
+
+    def test_the_registers_owner_is_no_order_of_the_owners(self):
+        add = {"command": 'python tools/atlas/cli.py problems add --title "x" --owner "native/src/sim/x.cpp" --area lots'}
+        self.assertFalse(self.refused("Bash", add, transcript(self.folder, *self.stood)))
+        order = {"command": 'python tools/tasks/cli.py block order "RUN THE WHOLE SUITE NOW PLEASE"'}
+        self.assertTrue(self.refused("Bash", order, transcript(self.folder, *self.stood)), "words the owner did not write")
+
     def test_a_cause_and_a_commit_ask_their_skills(self):
         self.state("verify")
         bare = transcript(self.folder, *self.stood)
@@ -130,13 +167,22 @@ class Shell(GateCase):
         skills = (("Skill", {"skill": "superpowers:systematic-debugging"}),
                   ("Skill", {"skill": "superpowers:verification-before-completion"}))
         self.assertTrue(self.refused("Bash", commit, transcript(self.folder, *self.stood, *skills)), "the photos not opened")
+        self.assertTrue(self.refused("Bash", commit, transcript(self.folder, *self.stood, *self.opened, *skills)),
+                        "the photos opened and never put before the owner")
         both = transcript(self.folder, *self.stood, *self.seen, *skills)
         self.assertFalse(self.refused("Bash", cause, both))
         self.assertFalse(self.refused("Bash", commit, both))
         self.state("verify", {"flows_test": "PASS"})
-        self.assertTrue(self.refused("Bash", commit, both), "a commit with the look not photographed")
-        self.state("verify", {"zoom_ladder": "FAIL"})
-        self.assertTrue(self.refused("Bash", commit, both), "a commit with the look's plan failed")
+        self.assertTrue(self.refused("Bash", commit, both), "a commit with the functionality not photographed")
+        self.state("verify", {PLAN: "FAIL"})
+        self.assertTrue(self.refused("Bash", commit, both), "a commit with its photo plan failed")
+        self.state("verify", {port_looks.FAR: "PASS"})
+        far = transcript(self.folder, *self.stood, ("Read", {"file_path": str(self.far)}),
+                         ("SendUserFile", {"files": [str(self.far)], "status": "normal"}), *skills)
+        self.assertTrue(self.refused("Bash", commit, far), "the far views of the town are no functionality's own photos")
+        self.state("verify")
+        port_looks.written = lambda file: False
+        self.assertTrue(self.refused("Bash", commit, both), "a plan the block did not write or change is not its own")
 
 
 class Edits(GateCase):
@@ -195,7 +241,7 @@ class Entry(unittest.TestCase):
     def test_a_gate_that_does_not_load_refuses_all_but_its_repair(self):
         hooks = Path(tempfile.mkdtemp()) / ".claude" / "hooks"
         hooks.mkdir(parents=True)
-        for name in ("port_state.py", "port_note.py", "port_looks.py", "port_edits.py", "port_memory.py"):
+        for name in ("port_state.py", "port_note.py", "port_looks.py", "port_edits.py", "port_memory.py", "port_deadline.py"):
             (hooks / name).write_bytes((HOOKS / name).read_bytes())
         (hooks / "port_gate.py").write_text('A = "cut\n', encoding="utf-8")
         said = self.ask(hooks, {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ls"}})
