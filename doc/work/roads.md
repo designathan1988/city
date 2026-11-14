@@ -66,6 +66,49 @@
   project/data/catalog/tuning.json `grade` with its schema and source, none in the code; (f) names and structure of
   this game (no solveGround/solveRaised/... one to one: LAB_COPY).
 
+- Case 1, the design in detail (this game's own building blocks; the contract others read stays: prof[s].{valid,
+  structure, manual, walls, a, b, len, step, half, plate_a, plate_b, h, ylo, yhi}, node[n], nodes[n].y, moved,
+  gone, at, has, pending, the four marks):
+  A. Two exact operations on a line of stations, no pass count in either (Proads-33):
+     - `within_grade(z, step, g)`: the greatest line under z and the least line over z whose slope never passes g
+       (each exact in one sweep forward and one back: the lower envelope of cones z_j + g d and the upper of
+       z_j - g d; Felzenszwalb and Huttenlocher's two-pass distance transform of a sampled function, with the
+       L1 cone), and their mean: within the grade, equal to z wherever z already is, cut balancing fill elsewhere.
+     - `smoothed(y, w, lambda)`: the weighted penalised least-squares line (Whittaker; Eilers 2003): it minimises
+       sum w_i (z_i - y_i)^2 + lambda sum (second differences of z)^2; its system (W + lambda D'D) z = W y is
+       symmetric, positive and five-banded, solved exactly by a banded LDL' in O(n), in double. lambda from a
+       wavelength in metres: the wave the smoother halves, lambda = 1 / (2 - 2 cos(2 pi step / wavelength))^2.
+       A station held (a plate, an end) takes a weight large against 1: the line passes through it and bends
+       smoothly into it.
+  B. The design line of a road (its "ground line"): the mean ground across the casing at each station, smoothed
+     (weights 1, wavelength grade.smooth_wavelength_m: the 36 m moving mean's half-power wave, 1.66 x 72 m, about
+     120 m), then within_grade(grade.ground). A road laid in pieces through joints that carry it on: one line
+     along all of it, as now.
+  C. A span at grade between its two plates at heights ha and hb: target = the design line tied to the two heights
+     (each end's shift carried on over a tie length and eased out; an authored span: the two lifts eased across the
+     whole span); held between the two cones of slope G from its ends (G = the span's grade: grade.ground, or
+     grade.ramp when authored, never under what its two ends need times grade.span_slack); within_grade(G); then
+     smoothed with the plates' stations held (the vertical curve's wavelength: grade.curve_wavelength_m, from the
+     4.8 m reach), which rounds every change of grade and the joins into the level plates in one solve; the plates
+     set to ha and hb exactly.
+  D. A raised span: the deck's floor = the higher of the straight line between what its two ends want and the
+     ground's top plus the room under a deck; the least line over it within the deck's grade (one exact envelope);
+     from an end on land, never over what a ramp climbs from that node (a sag parabola over grade.ramp_sag_m, then
+     grade.ramp), the two met by a rounded crest; the ground stays a floor, relaxed towards each junction; a capped
+     end holds the ramp's line; the plates level at the highest reached. A sunken span: eased ramps from each end
+     down to its depth, the greatest line under them within grade.tunnel, the plates level.
+  E. The nodes as now (a node wants the mean of its at-grade roads' design lines at their plate edges plus its
+     lift; the mean ground over its disc when none; aloft when every one of two or more is raised; an aloft node
+     starts at what its decks want within what a ramp from land climbs), settled in rounds until none rises; the
+     round count is no rule: a guard (grade.rounds_most) that is counted and shown by the probe when met.
+  F. Memory (Proads-8): a profile keeps its heights alone; the ground read under a road (its mean and top) and its
+     design line live in a cache bounded by grade.ground_cache_mb, made again from the ground when missed (for a
+     piece of a chained road: the whole chain's line again, so a miss never changes a height).
+  G. Heights by arc length everywhere (Proads-35: the readers that took the curve's parameter, to find by grep
+     of `q.at(` beside `seg_y` and of the lanes' poses) and every reach, share and wavelength in tuning.json
+     `grade` with its schema and its `_doc` (the vertical curve and ramp values need their sources: to search).
+  The files: sim/roads/grade_line.h/.cpp (A), grade_ground.cpp (the ground read, the cache, B), grade_span.cpp
+  (C, D), road_grade.cpp (E and the solve), road_grade.h (the contract); the three translated files go.
 - Case 2, the design's direction: (a) the plan prices what is in hand: plan_road takes the structure the tool
   holds and prices RoadBuild{that structure, lift_a, lift_b} (road_plan.cpp:213), the one function the commit's
   price already is: what the draft shows is what the click costs; (b) the draft's stretches: a pure reading of the
