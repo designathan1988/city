@@ -66,6 +66,49 @@
   project/data/catalog/tuning.json `grade` with its schema and source, none in the code; (f) names and structure of
   this game (no solveGround/solveRaised/... one to one: LAB_COPY).
 
+- Case 2, the design's direction: (a) the plan prices what is in hand: plan_road takes the structure the tool
+  holds and prices RoadBuild{that structure, lift_a, lift_b} (road_plan.cpp:213), the one function the commit's
+  price already is: what the draft shows is what the click costs; (b) the draft's stretches: a pure reading of the
+  plan (no state touched): stations along the planned curve, the ground under each (ground_of, as the solver reads
+  it), the deck there (the solver's own line between the two ends' heights for a road alone: the functions of case
+  1 on a profile made for the plan), each station's way of building by its lift (a tunnel under the bore's cover,
+  a bridge when raised or past the piers' lift, an embankment or a cutting past fill_from_m, else ground), merged
+  into runs; the plan carries them and their lengths; (c) the draft's words: length, price, then each stretch that
+  is not ground and is 5 m or more, the longest first, in tens of metres, then the refusal (road_draft.gd measure;
+  the stretches' names as i18n keys); the overlay paints the fill, the cutting, the piers and the buried stretch;
+  (d) a grade-limited end: a held connection refused with its own reason (a new key, not "too short"), a free end
+  told by the height label in the warning colour; (e) a start on a raised road takes its height (road_snap.cpp:127);
+  (f) a deep cut becomes a tunnel: where the solved cover over a road at grade passes tunnel.auto_cover_m (the
+  reference's 18 m; a source to be found) the stretch is bored.
+- Case 4, the design's direction (MBST vol. IV, the Sources below): (a) lane arrows (PEM): for each arriving lane
+  whose movements are not all of the approach's (its own turn mask, or the rule by index where the approach has
+  lanes that differ), white, at the lane's centre, two in sequence: the first d before the end of lane changing
+  (the stop line's back), the second d1 before it, d, d1 and the arrow's length by the road's speed (10/30/5.00
+  under 60 km/h; 15/40/5.00 to 80; 15/50/7.50 over 80), only where the road is long enough for the first; the
+  shapes drawn from the manual's own dimensions (the straight arrow's a to f; the turn and combined ones from their
+  tables), this game's own outlines in project/data/render/streets.json; (b) the stop word before a stop line where
+  the approach must stop (DirSeg.must_stop), in every lane, 1.60 m before the line, letters 1.60 m high (2.40 over
+  80 km/h); the give-way triangle where it yields (rank 1), pointing against the traffic, 3.60 x 1.20 (6.00 x 2.00
+  over 60 km/h), within 1.5 to 15 m of the junction; (c) a bus lane: its line continuous, white, 0.20 to 0.30 m
+  wide, broken (the continuity line) along the stretch before a junction where a turn crosses it, and its legend
+  along the lane (the style's word); (d) the words by the city's regional style (the stop word, the bus word) as
+  data; letters drawn as this game's own strokes (a table of its own in the data, not the reference's); (e) the far
+  lines: each line's colour and whether it is dashed carried to the far level (the lane strip's vertex), filtered
+  by the pixel's footprint along the road too, so a dashed line is its duty and a solid one whole, a yellow one
+  yellow; the three numbers out of the shader into the material's data; (f) all of it as M_PAINT geometry of the
+  road's mesh, under the tier's detail cut-off like the rest of the paint.
+- Case 5, the design's direction: the editor gains the road's class, its carriageway's surface (Surface: asphalt,
+  concrete, cobble), each footway's and median's paving (Paving) and the centre line (auto, dashed, solid, double:
+  RoadSpec.centre already carries it); widening changes the picked element alone, or every lane when it is a lane
+  (road_spec_ops.gd with_width compares by index, not by value); the limits of speed from the core; Apply past the
+  core's count of custom roads is told (the refusal's reason shown); Save is refused while a problem stands; a
+  saved road can be deleted (RoadModels); the numbers of the panel in project/data/ui.
+- Case 6, the design's direction: (a) the furniture levels as written under "Read" (street_furniture.cpp:322-333);
+  (b) the inspector: put_road adds the street's name (the first name item of works.names.by_seg[seg]: its given
+  keys or its own text) and its numbers (metres from the street's end nearest the map's origin to the segment's
+  two ends along street_chain, and which side is even); inspector_panel.gd shows "<the street's name> · <the
+  class>" and a line of the numbers (new i18n keys); (c) traffic from the map's edge: to be designed after
+  lot_demand.cpp, street_flows.h and flow_step.cpp are read again for where a flow enters a street.
 - Case 7, the design's direction (sources to be searched before the block: what a general vehicle may do on a bus
   lane to reach a turn or a lot, by the traffic code): native/src/sim/traffic/lane_graph_types.h DirSeg gains, a
   lane: its bus-only flag, whether the line to the next lane bars a change, its turn mask; LaneInfo
