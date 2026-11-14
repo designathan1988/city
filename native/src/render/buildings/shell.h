@@ -142,7 +142,7 @@ struct Shell {
 	const std::vector<Lin> *far_tones = nullptr; // the far level: each finish's colour from afar over the tint, by layer
 	float box_least = 0; // the far level: a box whose bar width (second largest side) is under this is not written (its distance shows none)
 	int boxes_kept = 0, boxes_left = 0; // of the boxes offered while `box_least` is set: written, and left out
-	float quad_least = 0; // the far level: a four-cornered face narrower than this is not written (under the error its distance allows)
+	float quad_least = 0; // the far level: a four-cornered face narrower than this is not written (under the error its distance allows); a cover's piece (SK_GROUND) always is
 	Shell *sheer = nullptr; // where this shell's glass guards go: a surface drawn half seen through
 	Shell *washes = nullptr; // where this shell's lantern light goes: a surface added to what is behind it
 	Shell *lawns = nullptr; // where this shell's lawns go: a surface in the terrain's own grass

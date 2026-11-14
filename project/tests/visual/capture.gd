@@ -6,7 +6,9 @@ extends Node3D
 const SETTLE_FRAMES := 4
 const JUMP_FRAMES := 30 # after a jump the world has not asked for the new view yet, and nothing pending does not mean all drawn
 const JUMP_M := 60.0
-const CHUNK_NEAR_BUILT := 1 # building_renderer.h chunk_flags
+## building_renderer.h chunk_flags: the chunk's own levels are drawn (near or mid, by its distance: the near level is asked only within its
+## reach of the chunk's middle, and a wait that ended with nothing pending means the level that view gets is built).
+const CHUNK_SHOWN := 4
 const NEAR_PER_M := 0.004
 const MIN_NEAR_M := 0.3
 const MAX_NEAR_M := 8.0
@@ -212,8 +214,8 @@ func _civic_tour() -> void:
 		await _shot("12_%s" % CIVIC_SHOTS[fn], from, at + Vector3.UP * CIVIC_LOOK_UP_M)
 		var chunk: int = CityStore.query(&"building_chunk", [at.x, at.z])
 		print("chunk of 12_%s: %d" % [CIVIC_SHOTS[fn], chunk])
-		if chunk & CHUNK_NEAR_BUILT == 0:
-			CaptureWait.mark_incomplete("12_%s came out without the building's near level" % CIVIC_SHOTS[fn])
+		if chunk & CHUNK_SHOWN == 0:
+			CaptureWait.mark_incomplete("12_%s came out with its chunk not drawn in its own detail" % CIVIC_SHOTS[fn])
 
 
 ## Index of the point nearest to `to` (0 when the list is empty).

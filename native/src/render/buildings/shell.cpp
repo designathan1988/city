@@ -97,7 +97,8 @@ Lin Shell::far_tint(const Lin &lin, int8_t fin) const {
 }
 
 void Shell::face(const Vector3 *p, int count, const Vector3 &out, const Lin &lin, int8_t fin, SurfaceKind kind) {
-	if (quad_least > 0 && count == 4 && std::min(p[0].distance_to(p[1]), p[0].distance_to(p[3])) < quad_least) return;
+	// a face lying on the lot is a piece of a cover: its own short side is not the cover's width, so it is never left out by it
+	if (quad_least > 0 && count == 4 && kind != SK_GROUND && std::min(p[0].distance_to(p[1]), p[0].distance_to(p[3])) < quad_least) return;
 	Vector3 n = (p[1] - p[0]).cross(p[2] - p[0]);
 	if (n.length_squared() < DEGENERATE && count == 4) n = (p[2] - p[1]).cross(p[3] - p[1]);
 	if (n.length_squared() < DEGENERATE) return;

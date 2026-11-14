@@ -264,10 +264,8 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 	out.casts.made_with(far_error_m(), material_cast_);
 	b40::Shell &far = out.far_shell;
 	far.far_tones = &look_.finish_far;
-	far.rooms = true; // each side's windows, as the other levels code them
-	far.custom_used = 1;
-	far.box_least = far_part_least(); // what stands on a roof is a box each (far_mass.cpp), held when its distance shows it
-	far.quad_least = far_error_m();
+	far.rooms = true; far.custom_used = 1; // each side's windows, as the other levels code them: that code alone
+	far.box_least = far_part_least(); far.quad_least = far_error_m(); // a box (a roof's piece, a lot's wall) and a face held when its distance shows them
 	const int sx = key_x(super_key) * CHUNKS_PER_SUPER_AXIS, sz = key_y(super_key) * CHUNKS_PER_SUPER_AXIS;
 	for (const Building &rec : in.records) {
 		b40::Placed pl;
@@ -275,6 +273,8 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 		pl.lean = true;
 		const size_t first = far.col.size();
 		b40::emit_far(far, pl, true);
+		pl.coarse = lots_drawn_.load(); // its lot, as the coarse levels lay it and this level's distance shows it: no lot goes bare from afar
+		if (pl.coarse) b40::emit_lot(far, far, pl);
 		// the building's chunk in the superchunk above the kind bits of COLOR.a (building_far.gdshader chunk_mask)
 		const int64_t ck = chunk_of(rec.x, rec.z, CHUNK);
 		const int chunk = (key_y(ck) - sz) * CHUNKS_PER_SUPER_AXIS + (key_x(ck) - sx);

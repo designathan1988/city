@@ -226,14 +226,18 @@ void BuildingRenderer::commit_super(SuperBuilt &b) {
 }
 
 // A chunk whose near level is drawn again with the same buildings (see building_renderer.h).
-// Buildings with or without their lots: the streamed chunks' near and mid levels, the two that draw lots, remeshed in reach as a
-// restyled chunk's (the old meshes stay up till the new land); the far level and the bays have none, and nothing else is touched.
+// Buildings with or without their lots: the streamed chunks' near and mid levels and the superchunks' far meshes, the three that draw
+// lots, remeshed in reach as a restyled chunk's (the old meshes stay up till the new land); the bays have none, and nothing else is touched.
 void BuildingRenderer::set_lots_drawn(bool on) {
 	if (lots_drawn_.exchange(on) == on) return;
 	for (auto &[key, ch] : chunks_) {
 		ch.version++; // a job that read the old switch lands stale and is asked again
 		ch.stale[LEVEL_NEAR] = ch.built[LEVEL_NEAR];
 		ch.stale[LEVEL_MID] = ch.built[LEVEL_MID];
+	}
+	for (auto &[key, sp] : supers_) {
+		if (!sp.dirty) sp.due = building_stream::now_s(); // the switch is the player's hand: no waiting for further changes
+		sp.dirty = true;
 	}
 }
 

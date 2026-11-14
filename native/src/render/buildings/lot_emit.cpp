@@ -21,6 +21,7 @@ constexpr float LAMP_HEAD = 0.44f, LAMP_HEAD_H = 0.12f, GARDEN_LAMP_STEM = 0.12f
 constexpr float BENCH_SEAT = 0.4f, BENCH_SEAT_T = 0.06f, BENCH_BACK = 0.95f, BENCH_BACK_T = 0.06f;
 constexpr float FASCIA_SHADE = 0.95f, FASCIA_H = 0.2f, AWN_SHADE = 0.8f, HALF = 0.5f, GRILLE_T = 0.02f;
 constexpr uint32_t BAND_LIGHT = 0xffe8c8, LAMP_WARM = 0xf1ebdd;
+constexpr float FAR_COVER_RANKS = 16.f; // the far level: the covers of a lot stand its allowed error apart over this many, one on another
 
 struct LotEmit {
 	Shell &shell, &parts;
@@ -51,12 +52,23 @@ struct LotEmit {
 	void element(const LotElement &e);
 };
 
-// A piece of a cover as lot_covers lays it: a lawn in the terrain's grass, any other in its paint.
+// A piece of a cover as lot_covers lays it: a lawn in the terrain's grass, any other in its paint. At the far level (pl.lean) a lawn
+// is left to the land's grass under it, which it is, and a paved cover stands a share of the level's allowed error over the one laid
+// before it: covers lie millimetres apart (tuning lot.cover_step_m), which the depth buffer does not tell apart kilometres away
+// (Godot's manual, 3D rendering limitations: "move the Z-fighting objects further apart without the difference being visible").
 void LotEmit::cover(const CoverPiece &c) {
 	const LotElement &e = pl.b->elements[size_t(c.element)];
 	const bool lawn = e.paint >= 0 && pl.b->paints[size_t(e.paint)].finish == FIN_NONE;
-	Shell &to = lawn && shell.lawns ? *shell.lawns : shell;
-	to.poly(c.p, c.count, pl.lot.e2, paint(e, "paving"), fin(e), lawn ? SK_LAWN : SK_GROUND);
+	if (!pl.lean) {
+		Shell &to = lawn && shell.lawns ? *shell.lawns : shell;
+		to.poly(c.p, c.count, pl.lot.e2, paint(e, "paving"), fin(e), lawn ? SK_LAWN : SK_GROUND);
+		return;
+	}
+	if (lawn || std::min(e.w, e.d) < shell.box_least) return; // nor a cover narrower than the least width still drawn where this level begins
+	Vector3 raised[COVER_POLY_MOST];
+	const Vector3 up = pl.lot.e2 * (float(c.rank) * shell.quad_least / FAR_COVER_RANKS);
+	for (int i = 0; i < c.count; i++) raised[i] = c.p[i] + up;
+	shell.poly(raised, c.count, pl.lot.e2, paint(e, "paving"), fin(e), SK_GROUND);
 }
 
 void LotEmit::wall(const LotElement &e, float x0, float x1, float y0, float y1) {
@@ -218,6 +230,8 @@ void LotEmit::element(const LotElement &e) {
 	bool along_x = e.w >= e.d;
 	float len = along_x ? e.w : e.d;
 	int pieces = std::max(1, int(std::ceil(len / PIECE)));
+	// the far level: a run on ground level within what that level may be off is one piece
+	if (pl.lean && std::fabs(ground(x0, y0) - ground(x1, y1)) < shell.quad_least) pieces = 1;
 	if (pl.coarse && e.kind != EL_SURFACE && e.kind != EL_WALL && e.kind != EL_HEDGE && e.kind != EL_FENCE && e.kind != EL_RAILING && e.kind != EL_POOL) return;
 	if (!pl.coarse && e.kind == EL_HEDGE) return; // near, a hedge is the gardens' plants (render/trees/garden_place.h)
 	switch (e.kind) {

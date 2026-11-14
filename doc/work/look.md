@@ -10,31 +10,49 @@
   TRABALHO DIREITO!". Standing: Portuguese; no stopping to ask (the /goal); no pixel counts to the owner; whole
   photos, never a magnified crop alone; never "it is the same" without the same view looked at; no old tree run to
   photograph; the code is read; no more time lost.
-- No block is open. The guards were checked and mended (2026-11-14, the section "The guards, checked" below): to
-  commit and push now (the hooks, tools/tasks, CLAUDE.md, the skill, doc/map.md, this note).
-- The far look, open, registered ("from far the buildings are pale flat blocks"): past building_mid_end_m (1100 m
-  from the eye, the eye's height counted: building_renderer_view.cpp:51-52) the whole town is drawn by the far level:
-  towers with no window grid, washed colours; on 7 November (same capture `city`, same tier) the far towers had dark
-  window grids and strong colours. The same at the revert dcfd4c7c and now (read): the level switch and distances,
-  the far shader by day (building_far.gdshader:43-91), the window filter (building_lamps.gdshaderinc:62-76 pulse), the
-  far material's values, the far tones (buildings.json finish_far), the tier and the cut-off. Changed since, by their
-  diffs: the far mesh (71b78d05: no coping, a pitched roof as its planes, roof pieces as boxes, quad_least/box_least;
-  then 2ca388ac, fe8811b7, eca6c6de, e8174734), the levels' hand-over (9419745b, 8bfeea46), the daylight (cascades to
-  project/render/sun_cascades.gd, values through project/render/sent_params.gd, `_sun.shadow_enabled = shadows_on`
-  with the moon's `shadow_opacity` lines gone, `horizon_linear`), render_method.gd (ea76da80), palette.json, the
-  town's generation. The air by the eye's height: daylight.gd:149-162 (`density = fog_density * air_height_m / y *
-  (1 - exp(-y / air_height_m))`, `fog_light_color = air`), city_world.gd:170-172 (fog on), sky_view.gd:73-74,
-  :150-155. sun_cascades.gd read whole (the cascades end where the picture ends on the ground: no shadow past it).
-  Not read yet: sent_params.gd, render_method.gd, the sky shader's diff, whether the air's values changed, and
-  far_mass.cpp, shell.cpp, roof_pitched.cpp, roof_plant.cpp against `git show 71b78d05` and the four after it.
-- Next, in order: (1) commit and push the guards; (2) the far look: the files above read until the cause is a
-  file:line (superpowers:systematic-debugging), Context7 and the internet, `block open look`, the fix in the code,
-  `block review`, `block verify`, one run (`city,zoom_ladder,e2e`), each photo opened whole and compared by eye with
-  doc/look (far_town_2026-11-07.png, mid_town_2026-11-07.png, zoom_ladder/00..02), the owner shown the same far view
-  before and after; (3) the board's next line, roads (doc/work/t015-roads.md, sheets/roads.md; its note
-  doc/work/roads.md before its code).
-- The one look with no block open is NOT spent yet (dist/block/looks.json absent). The worktree
-  dist/before/dcfd4c7c stands unused: removing it is a deletion, left for the owner's word.
+- Also: "PORRA, NÃO TÁ VENDO QUE SOME ELEMENTOS NO NIVEL DISTANTE? ... OLHA ESSAS IMAGENS COM ATENÇÃO"; "NÃO DEMORE
+  NISSO, RESOLVA LOGO E VÁ PARA A PROXIMA FUNCIONALIDADE ... RESOLVA NO CODIGO, NADA DE FICAR INVESTIGANDO COM TESTE,
+  MEDIÇÃO".
+- The guards are committed and pushed (6cee0a3e). The block `look`: verification 1 of 3 FAILED (`city` alone),
+  opened again with the causes, both fixed (the section "The far lots" below). Verification 2 of 3: the one run
+  passed 7 of 7 (far_level_test, city, zoom_ladder, e2e and what they stand on); the town's far level holds 148,172
+  triangles (94,682 before the lots; 389,464 at verification 1), 19.1 MB of arrays (12.9 before); the six photos and
+  the five references were opened whole: 00, 01, 02 show what their references show (windows, awnings, roof plant,
+  lane lines, crossings, cars, park paths); 03, 04, 05 (the far level) now show each lot's walls and paved covers
+  beside the houses, the towers their window grids, the roads plain past the detail cut-off as before. lab_test
+  passed: frame 16.65 ms (60.05 fps), CPU 2.54 ms, GPU 6.51 ms, 1 hitch in 177 frames (before the lots: CPU 2.38,
+  GPU 6.34). Prender-285 and Ptools-132 closed in the register. The far photos 03, 04, 05 are kept as references
+  (doc/look/zoom_ladder). To do now: commit, push, `block close`, the owner told; then roads.
+- WHAT VANISHES FROM FAR, seen by enlarging the same photos for my own reading (the towers DO keep their window grids
+  at the far level: my "no window grid" was wrong, the shrunk picture hid them): past building_mid_end_m every LOT
+  loses what lies and stands on it: its paved covers (driveways, paths, patios, parking, courts), its walls and
+  hedges, its pools; the lots are bare grass with the houses on it. On 7 November the far view showed them.
+- CAUSE: native/src/render/buildings/building_renderer_build.cpp:277 (build_super_cpu): the far level of a superchunk
+  is `emit_far(far, pl, true)` alone; the lot is laid by the near level (:176) and the mid level (:194) only, so it
+  goes when a chunk is handed to the far mesh (building_renderer_view.cpp:43-76). The same at the revert (dcfd4c7c
+  building_renderer_build.cpp:270): the photo of 7 November drew those chunks at their mid level.
+- THE FIX (the far level lays the lot, as its nearest distance shows it; nothing run while it is coded):
+  1. building_renderer_build.cpp build_super_cpu: after emit_far, when lots are drawn: `pl.coarse = true;
+     emit_lot(far, far, pl)`, inside the vertex range whose COLOR.a gets the chunk's bits (so chunk_mask folds the
+     lot away where the chunk is drawn in detail). The far shell's own rules hold: a box under box_least is not
+     written (a fence's rails, a pool's rim), a face narrower than quad_least neither (a wall's top and ends).
+  2. lot_emit.cpp LotEmit::cover: at the far level (pl.lean) a lawn is left to the land's grass under it (the far
+     shader has no grass; the lawn IS the land's grass); a paved cover's piece is raised by its rank x
+     (shell.quad_least / FAR_COVER_RANKS): covers lie 2 mm apart (tuning lot.cover_step_m), which the depth buffer
+     does not hold kilometres away. Godot's docs, 3D rendering limitations, Depth buffer precision: "you may also be
+     able to move the Z-fighting objects further apart without the difference being visible to the player."
+  3. lot_emit.cpp LotEmit::element: at the far level a wall or hedge on ground level within the far error
+     (shell.quad_least) is one piece, not one every 4 m.
+  4. shell.cpp Shell::face: a face lying on the lot (SK_GROUND) is a piece of a cover, never left out by its own
+     narrowness (a clipped piece's short side is not the cover's width).
+  5. building_renderer_commit.cpp set_lots_drawn: the far meshes are made again too (FarDraw dirty, due now).
+  6. building_renderer_probe.cpp far_form: thin_quads does not count SK_GROUND faces; far_level_test.gd's words.
+- Next, in order: `block verify` (the second of three); the build; one run `far_level_test,city,zoom_ladder,e2e`;
+  each photo opened whole and compared by eye with doc/look; lab_test; superpowers:verification-before-completion;
+  commit, push, `block close`; the owner shown the same far view before and after, whole, with the cost as it is;
+  then the board's next line, roads (doc/work/t015-roads.md; its note doc/work/roads.md first).
+- The one look with no block open is NOT spent (dist/block/looks.json absent). The worktree dist/before/dcfd4c7c
+  stands unused: removing it is a deletion, left for the owner's word.
 
 ## The guards, checked (2026-11-14)
 - What fired by itself in this session, counted in its own record (the hook's answers only): a script typed into the
@@ -95,3 +113,20 @@
   grid and opening (far_mass.cpp:77-84, :203-214; shell.cpp:265-288; building_renderer_build.cpp:265-270, CUSTOM0).
 - The guard of the look (78feed43): .claude/hooks/port_gate.py refuses a block's commit unless the verification's
   run photographed the plan `zoom_ladder`; the same rule in CLAUDE.md and the skill `port` (step 8b); doc/look kept.
+
+## The far lots (2026-11-14)
+- Verification 1 (far_level_test, zoom_ladder, e2e passed; `city` failed): (a) the far photo shows the lots again
+  (walls, driveways, patios), the same kinds of things as on 7 November; (b) `city`: "12_square came out without
+  the building's near level": capture.gd:215 asked the near level; the chunk's flags were 62 with nothing pending;
+  the near level is asked only when the chunk's middle is within near_reach() of the eye
+  (building_renderer_view.cpp:50-54, building_renderer_reach.cpp:127): the check's premise was wrong, it now asks
+  the chunk shown in its own detail (CHUNK_SHOWN); (c) the cost: the town's far level went from 94,682 to 389,464
+  triangles (12.9 to 53.6 MB of arrays; boxes held 2,447 to 11,295): about 260,000 the covers, clipped cell by cell
+  of a 3 m ground grid (lot_covers.cpp:111-135), 35,000 the walls: too heavy for the large city.
+- Fixed in the second opening: at the far level a cover is its own outline with each corner on the ground
+  (lot_covers.cpp lay; no ground grid read), and a cover narrower than the least width still drawn where the level
+  begins (shell.box_least, 0.96 m) is not laid (lot_emit.cpp cover). By the design: about 95,000 + 35,000 + 15,000.
+- Not measured: the 24 km city (km24 runs on the owner's order). The far level there held 15.7 M triangles
+  (71b78d05's message); the lots add to it in the town's proportion.
+
+- Cause named at `block open` (2026-11-13T23:14 round 1: city: project/tests/visual/capture.gd:215: the civic shot asks the near level of the square's chunk, whose middle stands past near_reach() from the eye (building_renderer_view.cpp:54), so with nothing pending the game rightly draws its mid level (flags 62) and the check calls a whole photo incomplete; and found in far_level_test's own line: native/src/render/buildings/lot_covers.cpp:113: on ground not level to 0.1 mm each cover is clipped cell by cell of a 3 m grid, so the far level went from 94,682 to 389,464 triangles in the town where its distance shows a cover's outline alone)

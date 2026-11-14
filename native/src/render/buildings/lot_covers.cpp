@@ -110,6 +110,11 @@ void send(const Placed &pl, Q *q, int n, float lift, CoverPiece &piece, const st
 // The cover's outline clipped out of the ground's triangles, cell by cell under its box.
 void lay(const Placed &pl, const CoverGround &g, const Outline &o, float lift, CoverPiece &piece, const std::function<void(const CoverPiece &)> &out) {
 	Q a[CLIP_MOST], b[CLIP_MOST];
+	if (pl.lean) { // the far level: the cover's own outline, each corner on the ground under it (its distance shows no relief inside a cover)
+		for (int k = 0; k < o.n; k++) a[k] = { o.p[k].x, o.p[k].y, pl.ground(pl.lot.at(o.p[k].x, o.p[k].y, 0)) - pl.lot.o.y };
+		send(pl, a, o.n, lift, piece, out);
+		return;
+	}
 	if (g.flat) {
 		for (int k = 0; k < o.n; k++) a[k] = { o.p[k].x, o.p[k].y, g.h.front() };
 		send(pl, a, o.n, lift, piece, out);
@@ -153,7 +158,7 @@ void lot_covers(const Placed &pl, const std::function<void(const CoverPiece &)> 
 	if (covers.empty()) return;
 	// the order: by thickness, then as the body lays them; each a step over all before it
 	std::stable_sort(covers.begin(), covers.end(), [&b](int p, int q) { return b.elements[size_t(p)].h < b.elements[size_t(q)].h; });
-	const CoverGround g = ground_under(pl, x0, y0, x1, y1);
+	const CoverGround g = pl.lean ? CoverGround() : ground_under(pl, x0, y0, x1, y1); // the far level reads the ground at each outline's corners alone (lay)
 	for (size_t r = 0; r < covers.size(); r++) {
 		const LotElement &e = b.elements[size_t(covers[r])];
 		CoverPiece piece;

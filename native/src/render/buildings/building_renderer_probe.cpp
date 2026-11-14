@@ -195,7 +195,8 @@ Dictionary BuildingRenderer::far_form() const {
 			const size_t first = size_t(m.idx[i]);
 			const bool quad = i + FACE4 <= m.idx.size() && size_t(m.idx[i + FACE3]) == first;
 			if (m.nrm[first].y < LOOKS_DOWN) down_faces++;
-			if (quad && std::min(m.pos[first].distance_to(m.pos[first + 1]), m.pos[first].distance_to(m.pos[first + LAST_CORNER])) < error) thin_quads++;
+			const bool cover = (int(std::lround(m.col[first].a * BYTE_MAX)) & KIND_MASK) == b40::SK_GROUND; // a piece of a lot's cover: held whole
+			if (quad && !cover && std::min(m.pos[first].distance_to(m.pos[first + 1]), m.pos[first].distance_to(m.pos[first + LAST_CORNER])) < error) thin_quads++;
 			i += quad ? FACE4 : FACE3;
 		}
 		roof_boxes += m.boxes_kept;

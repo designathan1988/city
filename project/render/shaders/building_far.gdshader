@@ -1,4 +1,5 @@
-// Far/HLOD building masses (native/src/render/buildings/building_renderer.cpp, superchunk level): the cheap sibling of
+// Far/HLOD building masses with their lots' paved covers and walls (native/src/render/buildings/building_renderer_build.cpp
+// build_super_cpu, superchunk level): the cheap sibling of
 // building.gdshader. No interior mapping, no finish textures and no vertex UV2: the colour comes from the vertex, the windows
 // from the bay grid in UV (its x carries an offset per building, so two buildings light different rooms) and each side's own
 // opening in CUSTOM0, as the other levels code it (shell.h), filtered so a far block keeps its glass and its share of lit rooms
