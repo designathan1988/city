@@ -39,7 +39,8 @@ struct Painter {
 	}
 };
 
-void lines(const Painter &pt, const Profile &p, double l0, double l1) {
+// `open_a`, `open_b`: how far from each end an exclusive lane's line lets a driver in (a junction there: the entry stretch).
+void lines(const Painter &pt, const Profile &p, double l0, double l1, double open_a, double open_b) {
 	const StreetLook &L = pt.e.L;
 	const StreetLook::PaintStyle &st = L.styles[size_t(pt.e.s.marking_style.load())];
 	const bool fast = p.speed >= st.fast_kmh;
@@ -51,15 +52,20 @@ void lines(const Painter &pt, const Profile &p, double l0, double l1) {
 		Color c = m.color == LineColor::YELLOW && !st.all_white ? L.yellow : L.white;
 		const float w = m.exclusive ? st.exclusive_w : m.centre ? (fast ? st.fast_centre_w : st.centre_w) : (fast ? st.fast_lane_w : st.lane_w);
 		const LineKind kind = m.centre && m.kind == LineKind::SOLID && st.multi_lane_double && many ? LineKind::DOUBLE : m.kind;
+		// An exclusive lane's line is continuous but on the stretch before a junction, where it is the continuity line a
+		// driver crosses to turn (MBST vol. IV 5.5.1; the stretch: traffic.json lane_entry_m).
+		const double whole0 = m.exclusive ? std::min(l1, l0 + open_a) : l0, whole1 = m.exclusive ? std::max(whole0, l1 - open_b) : l1;
 		auto line = [&](float u, float hw) {
-			if (kind != LineKind::DASHED) {
-				if (l1 > l0) pt.rect(u - hw, u + hw, l0, l1, c);
-				return;
-			}
-			for (double v = std::floor(l0 / period) * period; v < l1; v += period) {
-				double a = std::max(v, l0), b = std::min(v + dash, l1);
-				if (b > a) pt.rect(u - hw, u + hw, a, b, c);
-			}
+			const auto dashes = [&](double from, double to) {
+				for (double v = std::floor(from / period) * period; v < to; v += period) {
+					double a = std::max(v, from), b = std::min(v + dash, to);
+					if (b > a) pt.rect(u - hw, u + hw, a, b, c);
+				}
+			};
+			if (kind == LineKind::DASHED) return dashes(l0, l1);
+			dashes(l0, whole0);
+			if (whole1 > whole0) pt.rect(u - hw, u + hw, whole0, whole1, c);
+			dashes(whole1, l1);
 		};
 		if (kind == LineKind::DOUBLE) { // two lines double_gap apart
 			line(m.u - (st.double_w + st.double_gap) / 2, st.double_w / 2);
@@ -169,8 +175,10 @@ void emit_markings(const RoadEmit &e, int sid) {
 	Painter pt{ e, sid };
 	crossings(pt, p, v0, v1, ca, cb, crosswalk_at(e.s, g.a, sid), crosswalk_at(e.s, g.b, sid));
 	if (e.far) return; // the lane lines are filtered by the road's shader there
-	lines(pt, p, v0 + e.s.roads.stop_line_back(g.a, sid), v1 - e.s.roads.stop_line_back(g.b, sid)); // the lines end at the stop lines
+	const double entry = e.s.catalog.traffic.lane_entry_m;
+	lines(pt, p, v0 + e.s.roads.stop_line_back(g.a, sid), v1 - e.s.roads.stop_line_back(g.b, sid), ca ? entry : 0, cb ? entry : 0); // the lines end at the stop lines
 	parking_paint(pt);
+	emit_legends(e, sid);
 }
 
 } // namespace city

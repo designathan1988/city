@@ -31,7 +31,7 @@ bool transit_paved(const CityState &s, const V2 &p, float kerb, float &y, bool &
 		if (carriageway || (!on_road && (paved || d >= std::max(pf.left, pf.right)))) return;
 		paved = true;
 		carriageway = on_road;
-		y = float(s.roads.seg_y(seg, g.len * t)) + (on_road ? 0 : kerb);
+		y = float(s.roads.seg_y(seg, arc_at(g.table, t))) + (on_road ? 0 : kerb); // by arc: the heights' stations are metres along
 	});
 	return paved;
 }

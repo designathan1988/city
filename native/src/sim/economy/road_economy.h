@@ -25,6 +25,7 @@ struct RoadBuild {
 // Metres of a road built each way.
 struct BuildLengths {
 	double ground = 0, embankment = 0, trench = 0, bridge = 0, tunnel = 0;
+	void add(const BuildLengths &o);
 };
 
 // What an edit costs: money taken (positive) or given back (negative), the balance after it, and whether it can be paid.

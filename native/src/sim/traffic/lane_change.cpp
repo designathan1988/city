@@ -138,25 +138,43 @@ int choose(const CityState &s, int id, bool &ready, bool &forced) {
 	ready = forced = false;
 	// the lane it needs: the nearest one its route's next turn leaves from, when its own does not; the lane of its stop
 	int needed = -1;
+	// a bus by its kind: a line's bus and the city's own alike (a bus lane is public transport's: traffic.json _lanes_doc)
+	const bool bus = v.type == VehicleType::BUS, cycle = v.type == VehicleType::BICYCLE;
+	const bool on_entry = d.len - v.s <= p.lane_entry_m; // the stretch before the junction where a lane's line lets one in
+	bool for_turn = false;
 	if (v.ri + 1 < v.route.len) {
 		const int next = route_at(t.route_pool, v.route, v.ri + 1);
 		if (!lane_reaches(s, v.ds, v.lane, next)) needed = lane_toward(s, v.ds, next, v.lane);
+		for_turn = needed >= 0;
 	} else if (v.stop_at >= 0 && v.lane != v.stop_lane) {
 		needed = v.stop_lane;
 	}
+	// a bus lane is the buses': who is no bus leaves it, but on the entry stretch when it is the lane of its turn, and a
+	// bicycle on its kerb edge; a bus off it takes the nearest one that leads where it goes: its line bars the others,
+	// not whom the lane is for (traffic.json _lanes_doc)
+	const bool leaves = !bus && !cycle && d.for_buses(v.lane) && !(on_entry && reaches_next(s, v, v.lane));
+	const bool joins = bus && d.bus_only != 0 && !d.for_buses(v.lane);
+	if (needed < 0 && v.stop_at < 0 && (leaves || joins)) {
+		for (int off = 1; off < d.lanes && needed < 0; off++)
+			for (int at : { v.lane - off, v.lane + off })
+				if (needed < 0 && at >= 0 && at < d.lanes && d.for_buses(at) == joins && (leaves || reaches_next(s, v, at))) needed = at;
+	}
 	if (needed >= 0 && needed != v.lane) {
 		const int cand = v.lane + (needed > v.lane ? 1 : -1);
+		// towards its turn a driver crosses a continuous line, or enters a bus lane, only on the entry stretch
+		if (for_turn && !on_entry && (d.line_between(v.lane, cand) || (!bus && d.for_buses(cand)))) return -1;
 		forced = v.wait > FORCE_AFTER_S;
 		ready = evaluate(w, id, list(v.lane), list(cand), p.lc_mandatory_bias, forced) > p.lc_threshold;
 		forced = forced && ready;
 		return cand;
 	}
-	if (d.len - v.s < p.lc_free_m || v.type == VehicleType::BICYCLE) return -1;
+	if (d.len - v.s < p.lc_free_m || cycle) return -1;
 	const float bias[2] = { p.lc_bias_right, -p.lc_bias_right };
 	const int cands[2] = { v.lane - 1, v.lane + 1 };
 	for (int k = 0; k < 2; k++) {
 		int c = cands[k];
 		if (c < 0 || c >= d.lanes || !reaches_next(s, v, c)) continue;
+		if (d.line_between(v.lane, c) || (!bus && d.for_buses(c))) continue; // no change by choice across a continuous line
 		if (evaluate(w, id, list(v.lane), list(c), bias[k], false) > change_threshold(p, v)) {
 			ready = true;
 			return c;

@@ -29,7 +29,27 @@
    {"id": "eu", "dash_kmh": [], "dash_m": [3], "gap_m": [9], "all_white": true},
    {"id": "classic", "dash_kmh": [], "dash_m": [3.2], "gap_m": [3.2], "all_white": false},
    {"id": "br_norm", "dash_kmh": [60, 80], "dash_m": [2, 3, 3], "gap_m": [4, 6, 9], "all_white": false, "centre_m": 0.1, "divider_m": 0.1, "fast_centre_m": 0.15, "fast_divider_m": 0.15, "exclusive_m": 0.25, "double_line_m": 0.1, "double_gap_m": 0.1, "zebra_period_m": 0.9, "zebra_bar_m": 0.35, "multi_lane_double": true}
-  ]},
+  ],
+  "legends": {
+   "_doc": "What is written on the lanes (native/src/render/roads/road_legends.cpp), white, as CONTRAN's manual of horizontal marking gives it (MBST vol. IV, Res. 236/2007; its words in translation). arrow: the lane arrows (9.1.1, PEM): 'There must be an arrow for each traffic lane, placed at its centre, shaped for the movement allowed on it. At least two in sequence on the same lane are recommended'; urban roads: under 60 km/h the first d = 10 m before the end of lane changing and the second d1 = 30 m before it, 15 and 40 m from 60 to 80 km/h, 15 and 50 m over 80 km/h (first_m, next_m and their fast_ and faster_ values, from_kmh and faster_kmh), the arrow 5.00 m long, 7.50 m over 80 km/h (length_m, fast_length_m). The straight arrow's table reads a 5.00, b 0.75, c 1.50, d 3.50, e 0.15, f 0.30: taken here, without the manual's drawing, as its length, its head's width and length, its shaft's length and the shaft's width at its top and at its foot (head_w_m, head_m, shaft_top_m, shaft_foot_m); the turning and combined arrows are this game's own outlines of the same parts (turn_at: the share of the length where the arm leaves the shaft; arm_share: the arm's reach as a share of the lane). word: the legends (9.3): 'White'; urban roads: letters 1.60 m high to 80 km/h, 2.40 m over it (height_m, fast_height_m, fast_kmh); 'The stop legend must be placed at least 1.60 m before the stop line, centred on the lane it is written on. It must be used to reinforce the regulation sign R-1' (clear_m); lane_share, stroke and gap are the game's own (the word's width in its lane, a stroke's width and the space between letters as shares of a letter's width). give_way: the symbol (9.2.1, SIP): a triangle 3.60 m long and 1.20 m wide to 60 km/h, 6.00 by 2.00 m over it, its band 0.20 and 0.30 m (length_m, width_m, band_m and their fast_ values); 'The triangle must be placed so that it points against the way of the traffic, between 1.50 m and 15.00 m from the intersection' (clear_m). bus: the exclusive lane's legend (5.5.1: 'A legend may be applied all along the exclusive lane to say its use'): first_m from each junction and every_m after it are the game's own. The words themselves are the player's language's, as the plates' (project/data/i18n marking.word.stop and marking.word.bus; the store hands them to the core with this table: game/store/city_store.gd). letters: this game's own drawing of each letter, as strokes in a box one high and 0.8 wide (x to the reader's right, y away from the reader), each stroke its points x0, y0, x1, y1, ...",
+   "arrow": {"length_m": 5.0, "fast_length_m": 7.5, "head_m": 1.5, "head_w_m": 0.75, "shaft_top_m": 0.15, "shaft_foot_m": 0.3, "first_m": 10, "next_m": 30, "from_kmh": 60, "fast_first_m": 15, "fast_next_m": 40, "faster_kmh": 80, "faster_next_m": 50, "turn_at": 0.55, "arm_share": 0.32},
+   "word": {"height_m": 1.6, "fast_height_m": 2.4, "fast_kmh": 80, "clear_m": 1.6, "lane_share": 0.78, "stroke": 0.16, "gap": 0.35},
+   "give_way": {"length_m": 3.6, "width_m": 1.2, "band_m": 0.2, "fast_kmh": 60, "fast_length_m": 6.0, "fast_width_m": 2.0, "fast_band_m": 0.3, "clear_m": 1.5},
+   "bus": {"first_m": 40, "every_m": 80},
+   "letters": {
+    "A": [[0, 0, 0.4, 1, 0.8, 0], [0.15, 0.38, 0.65, 0.38]],
+    "B": [[0, 0, 0, 1, 0.65, 1, 0.65, 0.5, 0, 0.5], [0.65, 0.5, 0.8, 0.5, 0.8, 0, 0, 0]],
+    "E": [[0.8, 0, 0, 0, 0, 1, 0.8, 1], [0, 0.5, 0.6, 0.5]],
+    "I": [[0.4, 0, 0.4, 1]],
+    "N": [[0, 0, 0, 1, 0.8, 0, 0.8, 1]],
+    "O": [[0, 0, 0, 1, 0.8, 1, 0.8, 0, 0, 0]],
+    "P": [[0, 0, 0, 1, 0.8, 1, 0.8, 0.5, 0, 0.5]],
+    "R": [[0, 0, 0, 1, 0.8, 1, 0.8, 0.5, 0, 0.5], [0.35, 0.5, 0.8, 0]],
+    "S": [[0.8, 1, 0, 1, 0, 0.5, 0.8, 0.5, 0.8, 0, 0, 0]],
+    "T": [[0, 1, 0.8, 1], [0.4, 1, 0.4, 0]],
+    "U": [[0, 1, 0, 0, 0.8, 0, 0.8, 1]]
+   }
+  }},
  "dropped_kerb": {
   "_doc": "At a crossing (flare_m, low_m, run_m, min_walk_m: the street's _doc). At a lot's car gate, a vehicle access (ABNT NBR 9050 as the municipal guides state it, the City of Sao Paulo's sidewalk guide): the kerb lowered over the gate's width to a lip of drive_low_m (the 5 cm step kept between the gutter and the kerb at a vehicle entry), its ramp kept in the service strip beside the kerb, drive_band_m wide (NBR 9050:2004's least service strip, 0.75 m; steeper than 1 in 12 is allowed there), the walking strip behind it left level; the kerb rises back to its full height over drive_flare_m along it either side of the gate (no published value: a modelling choice, the crossing's flare).",
   "flare_m": 1.5,

@@ -6,6 +6,7 @@ const DENSE_SAMPLES := 256
 const MOST_SAMPLES := 4096
 const SPARSE_SAMPLE_M := 1.0
 const ROUND_TO_M := 10
+const SHORTEST_STRETCH_M := 5.0 ## a stretch built some way is named from this length on
 
 
 static func sample(draft: Dictionary, p: Vector3) -> void:
@@ -34,7 +35,18 @@ static func paint(profile: int) -> String:
 	return "yellow" if p.yellow else "white"
 
 
-## "120 m · R$ 150.000": the length in tens of metres and its cost (Roadcraft main.ts drawRoadPreview).
+## "120 m · R$ 150.000 · bridge 80 m · embankment 40 m": the length in tens of metres, its cost, then each way it is built
+## that is not plain ground, the longest first (the metres the price counts: the plan's `built`), and whether its end
+## stopped short of the height asked.
 static func measure(plan: Dictionary) -> String:
 	var tens := roundi(plan.length / ROUND_TO_M) * ROUND_TO_M
-	return "%s · %s" % [Formatters.format_length(tens), Formatters.format_cost(plan.price)]
+	var parts := [Formatters.format_length(tens), Formatters.format_cost(plan.price)]
+	var built: Dictionary = plan.get("built", {})
+	var kinds := built.keys().filter(func(k: String) -> bool: return built[k] >= SHORTEST_STRETCH_M)
+	kinds.sort_custom(func(a: String, b: String) -> bool: return built[a] > built[b])
+	for kind: String in kinds:
+		var metres := maxi(ROUND_TO_M, roundi(built[kind] / ROUND_TO_M) * ROUND_TO_M)
+		parts.append(TranslationServer.translate("road.built." + kind).format({"length": Formatters.format_length(metres)}))
+	if plan.get("limited", false):
+		parts.append(TranslationServer.translate("road.built.limited"))
+	return " · ".join(parts)

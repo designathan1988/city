@@ -90,6 +90,8 @@ void flow_owes(StreetFlows &f, int ds); // an inside ds with a vehicle or more o
 // flow_rates.cpp: the start rate and the end share of the ds in [from, to), from the zones beside them at this hour.
 void flow_rates(CityState &s, int from, int to);
 float flow_density(const CityState &s, int ds); // the vehicles a lane metre the demand puts on it at this hour and these levels
+// Whether a node is a road's end at the map's edge: one arm, within traffic.json edge_reach_m of the map's side.
+bool at_map_edge(const CityState &s, int node);
 
 // demand.cpp: how much of the hour's trips a segment's sides start (`origin`) or end, by the zones beside it (0 to 1); and one
 // detailed vehicle made on a ds of the window with a trip of its own, anywhere `along` it or at its mouth (-1: no room, no trip).

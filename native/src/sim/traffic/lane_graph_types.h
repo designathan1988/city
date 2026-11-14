@@ -40,6 +40,15 @@ struct DirSeg {
 	// Where the street curves: its centre line's greatest curvature (1/m, positive turning left of this direction's travel, 0: none a
 	// driver slows for) and the stretch of s at or over the kept share of it (lane_graph.cpp set_bend, vehicle_speed.cpp bend_ahead).
 	float bend = 0, bend_from = 0, bend_to = 0;
+	// What its lanes are for, from the road's profile (lane_graph.cpp build_dir): the turns painted on each (PAINTED_LEFT,
+	// PAINTED_STRAIGHT, PAINTED_RIGHT; 0: by the lane's place), the lanes buses alone travel (a bit a lane) and the continuous
+	// lines nobody changes lanes across (bit k: between lane k and lane k + 1). Read by the junction's connections
+	// (lane_graph.cpp link_node) and by the lane change (lane_change.cpp).
+	uint8_t turns[MAX_LANES] = {};
+	uint8_t bus_only = 0, barred = 0;
+	bool for_buses(int lane) const { return (bus_only >> lane & 1) != 0; }
+	// Whether a continuous line lies between two lanes side by side.
+	bool line_between(int lane, int other) const { return (barred >> (lane < other ? lane : other) & 1) != 0; }
 };
 
 // A lane connector through a node: quadratic Bézier from the end of an in-lane to the start of an out-lane.

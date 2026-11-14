@@ -41,10 +41,14 @@ struct MarkLine {
 	bool centre = false; // between the two directions
 };
 
+// The turns painted on a lane (Strip::turns, LaneInfo::turns): a bit each; 0 = by the lane's place among its direction's.
+constexpr uint8_t PAINTED_LEFT = 1, PAINTED_STRAIGHT = 2, PAINTED_RIGHT = 4;
+
 struct LaneInfo {
 	float u = 0, w = 0;
 	bool bus = false, rail = false;
 	uint8_t turns = 0;
+	bool solid = false; // the line on its kerb side is continuous: nobody changes lanes across it
 };
 
 // A road the player composes (road_spec.h): its elements, the left edge to the right looking from a to b.

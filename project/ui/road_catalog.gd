@@ -133,7 +133,17 @@ func _mine(widest: float) -> void:
 	for m: Dictionary in models:
 		var p := {"id": "%s:%d" % [m.key, hash(m.spec)], "index": -1, "name_key": m.name, "strips": RoadSpecOps.strips(m.spec), "centre": "none", "width": RoadSpecOps.total(m.spec),
 			"cost_per_m": 0.0, "lanes": 0, "one_way": false, "speed": m.spec.speed}
-		_cards_row.add_child(_card(p, widest, _pick_mine.bind(m)))
+		var card := _card(p, widest, _pick_mine.bind(m))
+		var gone := HudWidgets.button(&"Ghost", "", tr("profileEditor.deleteTemplate"), "", "rc_card_w", "tab_h")
+		gone.pressed.connect(_forget.bind(String(m.key)))
+		card.add_child(gone)
+		_cards_row.add_child(card)
+
+
+## A road of the player's taken out of My roads: its file goes, the tab counts and shows what is left.
+func _forget(key: String) -> void:
+	RoadModels.remove(key)
+	saved_one()
 
 
 func _profile_of(id: String) -> Dictionary:

@@ -7,27 +7,23 @@
   NEM PARA PEDIR AUTORIZAÇÃO ... ESCOLHA SEMPRE A MELHOR OPÇÃO"; "RESOLVA NO CODIGO, NADA DE FICAR INVESTIGANDO COM
   TESTE, MEDIÇÃO"; "OLHA COM ATENÇÃO AS IMAGENS A PARTIR DE AGORA"; "CHEGA DE DEMORA! CHEGA DE TRABALHO MAL FEITO!".
   Standing: Portuguese to the owner; no agents; defects found by reading; one small verification; whole photos.
-- The owner, 2026-11-14, with the block open: "Instalei umas skills de godot, veja se elas te ajudam. se sim passe a
-  usa-las e adcione aos hooks e skill e ao claude.md. além disse procure na internet outras melhores para o caso desse
-  probjeto, que cubra godot, c++, shaders e o que mais precisar." DONE (to commit with the block or before it):
-  godot-prompter@skillsmith (the owner's install: 59 skills; of use here: gdextension, shader-basics,
-  rendering-pipeline, godot-optimization, multithreading, godot-ui, godot-testing; its agents, grill, brainstorming and
-  mentor do not apply); searched and added: godot-skills@godot-claude-code-skills (MindsMaster, MIT, every example run
-  against Godot 4.7.2, no hook nor script; enabled in .claude/settings.json) and cpp-pro (Jeffallan/claude-skills, MIT,
-  copied to .claude/skills/cpp-pro); the hook .claude/hooks/port_skills.py refuses an edit of a kind of file before
-  its domain skill was used since the session's start or last compaction (tests: test_port_skills.py, WholeLife);
-  CLAUDE.md and the skill `port` say it. In THIS session the plugins' skills are not in the Skill tool's listing
-  (installed while it ran): each is Read whole from the disk when the hook asks (it names the path).
-- Before it: the block `look` closed (9989db18: the far level lays each lot; the guards 6cee0a3e). Its note:
-  doc/work/look.md.
-- State (2026-11-14, after the third compaction of this work): the reading and the sources are done (everything
-  under "Read", "Sources" and "Design" below); the block `roads` is opened next and every case coded in it, each
-  file read again as it is edited (a compaction keeps none of their text). ORDER OF THE CODING: case 1 (the
-  heights: grade_line.h/.cpp, grade_ground.cpp, grade_span.cpp, road_grade.cpp/.h, the probe; the three translated
-  files deleted; CMake's list and doc/map.md), case 7 (the lanes' rules into DirSeg, link_pair, lane_change), case
-  6 (furniture levels, the inspector's street and numbers, the edge's flows), case 2 (the plan's price and
-  stretches, the draft's words, the limited end, the raised start, the deep cut), case 4 (arrows, words, the bus
-  lane's line and legend, the far lines), case 5 (the editor). Each case's progress is written here as it lands.
+- The owner's /goal of this session (2026-11-14, their words): "termine o bloco `roads` ... leia o diff inteiro e os
+  diagnósticos do editor antes de `block review` ... Depois de fechar, commit e push, siga na hora para a próxima
+  linha desmarcada de doc/port.md ... Só pare se uma terceira verificação de um bloco falhar".
+- Before it: the block `look` closed (9989db18). The domain skills the owner asked for are wired in (f4e95619;
+  "On the way" below).
+- State (2026-11-14, 02:20): VERIFICATION 2 OF 3 PASSED. Verification 1 failed at its build (one error:
+  street_spots.h:19 took the name `StreetPiece` of street_volumes.h:16); the whole diff was then read and four
+  things fixed in one opening ("Read at the first verification" and "Coded in the block" below: StreetLeg; a bus by
+  its type; a bus takes its lane; the guard's spans taken). Then: `block review` 66 files, 0 new findings; the build
+  of both DLLs exit 0; the run dist/tasks/20261114-011043-23512-...: 9/9 passed (road_grade_test,
+  road_commands_test, road_edit_test, city, zoom_ladder, e2e; build, import, scripts); the six photos of zoom_ladder
+  and the eight pictures of doc/look opened and held part by part (buildings, roads, vehicles, ground: the same;
+  no part lost detail); lab_test 4/4. The register: Proads-3, -4, -5, -8, -10, -33 fixed; added Proads-37 (the
+  carriageway's surface is drawn by no renderer) and Proads-38 (no near photo shows a lane legend: the plan city
+  frames none); Proads-35 stays (its six readers are by arc; its criterion also asks one owner of the conversion and
+  a test on a curved graded road); Proads-6 and -28 stay until a photo shows the legends.
+  NEXT: commit; push; `block close`; then the board's next line: junctions (`port.py sheet junctions`).
 - The cases (doc/port.md; doc/specs/003-roadcraft-features/sheets/roads.md has each with its evidence):
   1. the heights of the roads, solved in this game's design (Proads-8, -10, -15, -33, -35; read and researched before:
      doc/work/t015-roads.md: Whittaker-Eilers smoothing, Eilers 2003; exact two-pass envelopes, Felzenszwalb and
@@ -40,12 +36,116 @@
      problems; deleting a saved road;
   6. streets and their life: traffic from the map's edge, street names and house numbers, the basic furniture set;
   7. lanes that obey the road: bus lanes, solid lines, per-lane turns read by the traffic.
-- Next, in order: the tracer's report read; both games' code of each case read whole (facts with file:line written
-  here, case by case, as they are read); Context7 for each API and the internet for each design decision and value;
-  each case's design written here; then `block open roads`, every case coded with nothing run; the whole diff read;
-  `block review`; `block verify`; the build; one run (roads' own tests, a roads photo plan, zoom_ladder, e2e);
-  lab_test; commit; the board's line checked.
 - The one look with no block open is not spent since the block `look` closed.
+
+## On the way (done beside the block)
+- The owner, 2026-11-14, with the block open: "Instalei umas skills de godot, veja se elas te ajudam. se sim passe a
+  usa-las e adcione aos hooks e skill e ao claude.md. além disse procure na internet outras melhores para o caso desse
+  probjeto, que cubra godot, c++, shaders e o que mais precisar." Done (f4e95619): godot-prompter@skillsmith (the
+  owner's install; of use here: gdextension, shader-basics, rendering-pipeline, godot-optimization, multithreading,
+  godot-ui, godot-testing; its agents, grill, brainstorming and mentor do not apply); searched and added:
+  godot-skills@godot-claude-code-skills (MindsMaster, MIT; enabled in .claude/settings.json) and cpp-pro
+  (Jeffallan/claude-skills, MIT, copied to .claude/skills/cpp-pro); the hook .claude/hooks/port_skills.py refuses an
+  edit of a kind of file before its domain skill was used since the session's start or last compaction.
+
+## Read at the first verification (2026-11-14: the whole diff, after the build failed)
+- The build's log (dist/tasks/20261114-005525-38008-build_debug-build_release/build_debug.log:375-384): 347 of 348
+  objects compiled with no warning shown; the one error is the name taken twice (fix 1 of `## Now`).
+- The heights (grade_line.cpp, grade_ground.cpp, grade_span.cpp, grade_settle.cpp, road_grade.cpp, read whole): the
+  two sweeps accumulate from the same station whichever way the line runs; a plate's stations keep their height
+  through within_grade (the cones' clamp at grade_span.cpp:111 holds every station within the grade of both plates);
+  the anatomy of road_grade_test.gd:135-159 on paper: the ramp reaches the deck 39 m past its plate (0.16 x (d - 4)
+  = 5.6), the crest's grade falls under 5.2% over a 1.6 m window from 39.04 m, where the road is 0.093 m under the
+  deck (under the 0.1 m of _level), the ramp 96 to 98 of the 100 U allowed. The ground lines are written by one
+  thread but for read_ground, which writes each segment's own lines (road_grade.cpp:52-56: opened before, closed
+  after the pool).
+- The plan's price (road_plan.cpp price_plan) against the build (road_commands.cpp:57-79 lay_pieces): the same
+  stops, the same count of pieces, the same lift at each piece's ends, the same bridge over water.
+- The legends (road_legends.cpp): Bed::at turns (right, back) by the lane's way; emit_quad (road_emit.cpp:62-72)
+  faces every quad up whatever its winding; the letters of both words of both languages are in streets.json.
+- The far lines: the shader's `across` is v_wear.x, which wear_uv (road_segment.cpp:119-123) counts from the lane's
+  u0: UV.x is the u0 edge's line, UV.y the u1 edge's; nothing else reads a lane's UV (road_body.gdshaderinc:114-131
+  takes the world's xz for a lane).
+- The editor (road_profile_panel.gd, read whole against the design of case 5): the class by HudWidgets.dropdown
+  (hud_widgets.gd:126: items [value, text]), the paving and the centre line cycled, Save off while a problem stands,
+  the refusal's reason shown, with_width by index, the saved road's delete button (road_catalog.gd _forget); every
+  i18n key it names exists (strings_b.csv:221-226, 274-282, 310). The carriageway's surface: Profile::surface is
+  read by no renderer (grep `surface` under native/src: profile_types.h:90 and catalog_loader.cpp:100 alone), a
+  control of it would change nothing the player sees: not brought, to the register.
+
+## Coded in the block (what was written, by case)
+- Case 1, the heights. New: native/src/sim/roads/grade_line.h/.cpp (grade_lowered, grade_raised, within_grade,
+  mean_over, rounded_between, line_at, eased, lower_rounded), grade_parts.h (GradeTune, the parts), grade_ground.cpp
+  (frame_profile, read_ground, design_lines, GroundCache, grade_tune, structure_spec), grade_span.cpp (span_at_grade,
+  span_raised, span_sunken, level_plates, plate_last_a, plate_first_b), grade_settle.h/.cpp (Settling: the nodes'
+  rounds), road_grade.cpp (the solve), road_grade.h (GradeProfile keeps h and q only; GroundLines, GroundCache;
+  RoadGrade::unsettled). Deleted (git rm): road_grade_internal.h, road_grade_profile.cpp, road_grade_solve.cpp.
+  tuning: grade line_reach_m 44, plate_curve_m 4.8, tie_m 44, tie_share 0.4, curve_m 4.8, crest_m 4.8, ramp_sag_m 8,
+  ends_margin 1.1, under_deck_m 0.4, floor_fade_m 16, floor_ramp_share 0.8, rounds_most 64, ground_cache_mb 64
+  (tuning_fields.h). The probe gives `unsettled`, no `ceil`. Renamed: MAX_STATIONS -> STATIONS_MOST.
+- Case 7, lanes that obey the road. profile_types.h (LaneInfo.solid, PAINTED_LEFT/STRAIGHT/RIGHT), profiles.cpp:75,
+  lane_graph_types.h (DirSeg turns[], bus_only, barred, for_buses, line_between), lane_graph.cpp (build_dir fills
+  them; LanePaint: a lane's paint binds at a junction that offers one of its turns, a U-turn by place always;
+  link_pair never leads a general lane into a bus lane: general_lane), lane_change.cpp choose (no change by choice
+  across a continuous line nor into a bus lane; towards a turn only on the entry stretch traffic.json lane_entry_m
+  85; who is no bus leaves a bus lane, but a vehicle stopping there and a bicycle), meso.cpp pick_lane (bus lanes
+  last for who is no bus). traffic.json `_lanes_doc` (CTB art. 184 I, MBST 5.5.1 and 9.1.1, in translation: the gate
+  NON_ENGLISH_TEXT refuses a source's words in Portuguese).
+- Case 6, streets and their life. street_furniture.cpp (basic = lamps and bins; full adds hydrants, benches, trees),
+  street_spots.cpp/.h (whole_street, renamed from street_chain; street_run: the street end to end with each piece's
+  way), street_names.h/.cpp (name_item_of, door_numbers: the city of Sao Paulo's decree 49.346/2008 art. 34),
+  city_core_inspect.cpp put_road (street {text, form, name, ordinal}, doors_from, doors_to, doors_even_right),
+  inspector_rows.gd (road_title, door_numbers: the key inspector.numbers existed), inspector_panel.gd _road;
+  flow_rates.cpp (at_map_edge; the edge's start rate and end share), demand.cpp draw_trip (a through trip from an
+  edge to another), traffic.json edge_reach_m 32, edge_through_share 0.2, `_edge_doc`; traffic.schema.json.
+
+- Case 2, laying a road. What this game is, read in the block: the road tool has no structure in hand (a new road is
+  laid at grade with the furniture set and the cut walls of new_road_flags; a piece over water becomes a bridge as it
+  is laid: road_commands.cpp:75; a deck, piers and a bore are drawn by the render from the solved height over the
+  ground: road_structures.cpp:289-297, structure_raised_m and headroom + arch + structure_bore_over_m). So: (a)
+  road_plan.cpp price_plan prices the plan piece by piece as lay_pieces will lay it (bridge over water, else at grade
+  at its authored height) and sums the metres built each way (RoadPlan::built, BuildLengths::add); (b)
+  road_economy.cpp build_lengths rewritten as bands of authored height, with the bored band under the bore's cover
+  (no new tuning: the render's own depth; the 18 m of the reference is not brought); (c) plan_dict gives `built`
+  {bridge, embankment, trench, tunnel} and `limited`; road_draft.gd measure names each stretch of 5 m or more, the
+  longest first, in tens of metres (i18n road.built.*), and "height held by the grade"; (d) a held connection out of
+  reach of the grade is refused as refuse.road.tooSteep (not tooShort); (e) a start on a raised road: NOT changed:
+  this game lands the pointer on what stands at the height in hand (road_height_cases.gd:82-89 holds it: "at 8 m the
+  start passes over the node"), and a start that takes a node takes its lift (anchor_lift); the player raises the
+  height in hand to the road's. The overlay of fill and cut along the draft: not drawn (the words name them).
+
+- Case 4, markings. native/src/render/roads/road_legends.cpp (new: emit_legends, called by emit_markings at the near
+  level; Bed: a lane as a place to paint for the driver who arrives; arrow, word, give_way; offered_at: the turns a
+  junction offers, by the traffic's own rule; lane_turns; signed_rule: the node's control STOP, YIELD, MINI or the
+  leg's plate, none under a signal: the automatic priority's yields are not painted, the render's cut does not hold
+  them), road_look.h/.cpp (StreetLook::Legends, load_legends), streets.json markings.legends (+ schema), the words
+  from the translations (i18n marking.word.stop, marking.word.bus; city_store.gd boot hands them with the table: the
+  gate refuses Portuguese words in data), road_markings.cpp lines (the continuity line of an exclusive lane over
+  traffic.json lane_entry_m before a junction). The far lines: road_section.h/.cpp (Piece line0, line1 from the
+  profile's MarkLines), road_segment.cpp (Ctx far_line, dashed, yellows; a lane's UV = its two edges' painted share,
+  FAR_YELLOW more when yellow: a lane's UV was read by nothing), road_look.h FAR_YELLOW, road_body.gdshaderinc (the
+  far branch paints by it: FAR_LINE_YELLOW, no FAR_LINE_DUTY). An edge with no line stated keeps the dashes' share
+  (nothing the far level drew is lost). "Plate marks" and "the line before a signal": the stop line exists
+  (road_markings.cpp crossings); the reference's taper and mini-roundabout paint are not brought in this block.
+
+- Case 5, the editor. project/ui/road_profile_panel.gd (the class by a dropdown: any profile of the catalogue as
+  the base, its carriageway comes with it: a carriageway's surface of its own would need a saved field, not
+  brought; a footway's and a median's paving cycled, PAVING_KEYS; the centre line cycled, AXIS_LINES; Save off
+  while a problem stands; a refusal's reason shown in the panel), road_spec_ops.gd with_width by index (a footway
+  and its twin are two elements), road_catalog.gd (a saved road deleted: _forget, RoadModels.remove).
+- The first verification's fixes (2026-11-14, one opening): street_spots.h StreetLeg (street_spots.cpp,
+  street_names.cpp); lane_change.cpp choose: a bus is VehicleType::BUS, `leaves` (who is no bus, off a bus lane) and
+  `joins` (a bus, to the nearest bus lane that leads where it goes); meso.cpp pick_lane: first the lanes that are a
+  vehicle's own (a bus's the buses', the others' the rest), advance tells a bus by its type; grade_settle.cpp rounds:
+  what the guard cut short is taken; traffic.json `_lanes_doc`: CTB art. 184, III (law 13.154/2015), in translation,
+  read at doutormultas.com.br/infracao-7587 and ambitojuridico.com.br (infração 758-70), which give the article's
+  words: "na faixa ou via de trânsito exclusivo, regulamentada com circulação destinada aos veículos de transporte
+  público coletivo de passageiros, salvo casos de força maior e com autorização do poder público competente".
+  Context7 (/websites/cppreference_cpp, language/range-for): "If the range-initializer is a braced-enclosed
+  initializer list, /* range */ is deduced to be a reference to a std::initializer_list."
+- Proads-35: seg_y by arc in transit_ground.cpp:34, overlay_build.cpp:97, road_edit.cpp:37, city_core_edit.cpp:231,
+  road_plan.cpp:71 and :99 (arc_at(table, t) in place of len x t).
+- Tests: road_height_cases.gd (pv.limited; high.built.bridge, flat.built), road_grade_test.gd (r.unsettled == 0).
 
 ## Design, case by case (written as each is settled; nothing coded yet)
 - Case 1, the heights, the behaviour to keep (what the player meets): a road follows the ground it is laid on,
@@ -107,6 +207,28 @@
      `grade` with its schema and its `_doc` (the vertical curve and ramp values need their sources: to search).
   The files: sim/roads/grade_line.h/.cpp (A), grade_ground.cpp (the ground read, the cache, B), grade_span.cpp
   (C, D), road_grade.cpp (E and the solve), road_grade.h (the contract); the three translated files go.
+- Case 1, THE DESIGN AS SETTLED BY CALCULATION (2026-11-14; a paper calculation of the hill crossroads of
+  road_grade_test, scratchpad grade_design.py: no game code run; it replaces B, C and the smoother of A above):
+  - What failed on paper: a second-difference (Whittaker) smoother rings (the line dips 0.1 to 1.4 m under flat
+    ground past a hill) and, with held plates, passes the grade by 21% (z' = g(1 + e^(-pi/2))); a first-difference
+    one has a tail (0.2 m of fill 56 m past a hill). So the Whittaker smoother is NOT used.
+  - The acceptance "much smoother than the ground" (the summed second differences under 0.6 of the ground's) is a
+    bound on the road's steepest grade there: about 0.10. The solver as it stands sits at 0.603 on paper.
+  - The design line: the mean ground across the casing, then its mean over grade.line_reach_m either side (44 m; a
+    positive kernel of bounded reach, exact in one pass by running sums in double; ends held), then within_grade.
+  - A span at grade: level over each plate; past a plate's edge the line's own grade is taken up over
+    grade.plate_curve_m (4.8 m: a smoothstep share of each station's rise), so the road leaves a plate with no
+    break; what that leaves between road and line (the node's height against the line at the edge, plus the grade
+    not taken) is eased out over a tie (grade.tie_m 44, never under 3 |amount| / grade, at most grade.tie_share 0.4
+    of the road); held between the cones of the span's grade from its two plates; within_grade (exact); one mean
+    over grade.curve_m (1.6 m either side, shrinking to nothing at a plate) rounds what is left; plates set exactly.
+    An authored span is the same with the lifts in the nodes' heights and grade.ramp as its grade.
+  - On paper (avenue casing 10 m and plate 19.5 m, boulevard 13 m and 17.5 m): node 4.61 m (over 3.6), cut -2.59 m
+    (earthwork under 4), curvature 0.495 of the ground's (under 0.6), steepest 0.084 (under 0.14), the far end 0.12.
+  - Raised and sunken spans keep their composition (it is the behaviour the acceptance measures: ramps within 40 m,
+    a level deck within 0.1 m), on the exact envelopes; the crest between ramp and deck is a rounded minimum over
+    grade.crest_m 4.8 (the deck is level within 0.1 m where the ramp's grade has fallen under 5%: 0.093 m worst
+    against 0.104 m with the 6.4 m as it stands); the deck starts at its clearance exactly (no rounding allowance).
 - Case 2, the design's direction: (a) the plan prices what is in hand: plan_road takes the structure the tool
   holds and prices RoadBuild{that structure, lift_a, lift_b} (road_plan.cpp:213), the one function the commit's
   price already is: what the draft shows is what the click costs; (b) the draft's stretches: a pure reading of the
@@ -539,3 +661,5 @@
   0.16, deck 0.05, deck_tie 0.05, tunnel 0.13, clearance_m 0.12, clear_elevated_m 5.6, clear_bridge_m 3, the decks
   0.22 / 1.04 / 0.96 / 0.24, tunnel headroom 4.4, arch 0.6, floor 2, lift_on_m 0.6), economy :12-17 (start
   20,000,000, refund 0.25, fill_from_m 1, on_piers_from_m 2.8): the reference's figures, with no source in the data.
+
+- Cause named at `block open` (2026-11-14T01:07 round 0: build_debug, build_release: native/src/sim/street/street_spots.h:19: the new struct of street_run is named StreetPiece, the name sim/traffic/street_volumes.h:16 already gives a piece of street furniture in namespace city; street_volumes.cpp:5 includes both headers (error: redefinition of 'StreetPiece' in both builds))

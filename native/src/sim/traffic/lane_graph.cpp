@@ -150,17 +150,47 @@ bool lane_by_hand(const CityState &s, int node, int seg, int lane) {
 	return false;
 }
 
-// Connections of one turn class from `din` to `dout`.
-void link_pair(CityState &s, int node, int din, int dout, Turn turn, std::vector<int> &made) {
+// The turns painted on the lanes of an arriving direction that hold at this node: a lane's paint binds where the node
+// offers one of its turns (`offered`: the turns to the other roads there, as PAINTED_ bits); a lane painted for turns
+// the node does not have, and every lane at a node that only carries the road on, goes by its place.
+struct LanePaint {
+	uint8_t turns[MAX_LANES] = {};
+	LanePaint(const DirSeg &d, uint8_t offered, int degree) {
+		for (int l = 0; l < d.lanes && degree > 2; l++)
+			if (d.turns[l] & offered) turns[l] = d.turns[l];
+	}
+	// Whether lane `l` of `n` makes turn `t`: by its paint where it binds (a U-turn is never painted: by place always).
+	bool takes(int l, int n, Turn t) const {
+		if (turns[l] == 0 || t == Turn::UTURN) return lane_allows(l, n, t);
+		return (turns[l] & (t == Turn::LEFT ? PAINTED_LEFT : t == Turn::RIGHT ? PAINTED_RIGHT : PAINTED_STRAIGHT)) != 0;
+	}
+};
+
+uint8_t painted_bit(Turn t) { return t == Turn::LEFT ? PAINTED_LEFT : t == Turn::RIGHT ? PAINTED_RIGHT : t == Turn::STRAIGHT ? PAINTED_STRAIGHT : 0; }
+
+// The lane of `d` nearest `lane` that is not the buses' alone; `lane` itself when every lane is.
+int general_lane(const DirSeg &d, int lane) {
+	for (int off = 0; off < d.lanes; off++)
+		for (int at : { lane - off, lane + off })
+			if (at >= 0 && at < d.lanes && !d.for_buses(at)) return at;
+	return lane;
+}
+
+// Connections of one turn class from `din` to `dout`. A lane that is not the buses' is never led into one that is
+// while the road it turns into has a general lane: a driver enters a bus lane to turn or to reach a lot, never to
+// travel (the Brazilian traffic code, art. 184, I: an exclusive lane on the right is entered only to reach a property
+// beside it or to turn right; its words are in traffic.json lane_entry_m).
+void link_pair(CityState &s, int node, int din, int dout, Turn turn, const LanePaint &paint, std::vector<int> &made) {
 	LaneGraph &g = s.traffic.g;
 	const DirSeg &di = g.ds[din], &do_ = g.ds[dout];
 	std::vector<int> ok;
 	for (int l = 0; l < di.lanes; l++)
-		if (lane_allows(l, di.lanes, turn) && !lane_by_hand(s, node, di.seg, l)) ok.push_back(l);
+		if (paint.takes(l, di.lanes, turn) && !lane_by_hand(s, node, di.seg, l)) ok.push_back(l);
 	const int k = do_.lanes, m = int(ok.size());
 	for (int r = 0; r < m; r++) {
 		bool from_left = turn == Turn::LEFT || turn == Turn::UTURN;
-		add_conn(s, node, din, ok[r], dout, from_left ? std::max(0, k - 1 - std::min(m - 1 - r, k - 1)) : std::min(r, k - 1), turn, made);
+		const int by_place = from_left ? std::max(0, k - 1 - std::min(m - 1 - r, k - 1)) : std::min(r, k - 1);
+		add_conn(s, node, din, ok[r], dout, di.for_buses(ok[r]) ? by_place : general_lane(do_, by_place), turn, made);
 	}
 }
 
@@ -208,7 +238,13 @@ void build_dir(CityState &s, int seg) {
 		d.from = dir == 0 ? sg.a : sg.b;
 		d.to = dir == 0 ? sg.b : sg.a;
 		d.lanes = std::min(int(lanes.size()), MAX_LANES);
-		for (int k = 0; k < d.lanes; k++) d.u[k] = lanes[k].u;
+		for (int k = 0; k < d.lanes; k++) {
+			d.u[k] = lanes[k].u;
+			d.turns[k] = lanes[k].turns;
+			if (lanes[k].bus) d.bus_only |= uint8_t(1 << k);
+			// the line between lane k and the one inside it: continuous where the inner lane says so, or one is the buses'
+			if (k + 1 < d.lanes && (lanes[k + 1].solid || lanes[k].bus != lanes[k + 1].bus)) d.barred |= uint8_t(1 << k);
+		}
 		d.bikes = p.walk_left > 0 || p.walk_right > 0;
 		d.cycle_shift = bike_strip_shift(p, d.u[0], dir);
 		if (d.cycle_shift == 0 && d.bikes) d.edge_shift = (dir == 0 ? -1.f : 1.f) * std::max(0.f, lanes[0].w * 0.5f - s.catalog.traffic.bike_edge_m);
@@ -247,6 +283,13 @@ static bool link_node(CityState &s, int n, std::vector<int> &made) {
 		if (!g.ds[din].ok) continue;
 		Pose ph;
 		lane_pose(s, din, 0, g.ds[din].len, ph);
+		// the movements this arrival has, then the lanes of each: a lane's painted turns bind against what the node offers
+		struct Movement {
+			int dout;
+			Turn turn;
+		};
+		std::vector<Movement> movements;
+		uint8_t offered = 0;
 		for (int so : arms) {
 			if ((so == si && degree > 1 && net.uturn_arm(n) != si) || net.movement_banned(n, si, so)) continue;
 			int dout = out_ds(net, so, n);
@@ -254,8 +297,11 @@ static bool link_node(CityState &s, int n, std::vector<int> &made) {
 			Pose po;
 			lane_pose(s, dout, 0, 0.f, po);
 			Turn t = classify(V2(ph.fx, ph.fz), V2(po.fx, po.fz), so == si, degree, s.catalog.traffic.straight_dot);
-			link_pair(s, n, din, dout, t, made);
+			movements.push_back({ dout, t });
+			offered |= painted_bit(t);
 		}
+		const LanePaint paint(g.ds[din], offered, degree);
+		for (const Movement &m : movements) link_pair(s, n, din, m.dout, m.turn, paint, made);
 	}
 	for (const LaneLink &l : net.nodes[n].links) {
 		if (!link_stands(s, n, l)) continue;

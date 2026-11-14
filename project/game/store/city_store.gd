@@ -67,7 +67,10 @@ func boot(terrain: Node, materials: Dictionary, catalog: Dictionary = {}) -> Pac
 	if not errors.is_empty():
 		return errors
 	_core.terrain_path = _core.get_path_to(terrain)
-	var problems: PackedStringArray = _core.setup_render(DataTables.render(), materials)
+	var tables: Dictionary = DataTables.render()
+	# the words painted on the lanes are the player's language's, as the plates' are (render/sign_paper.gd)
+	tables.streets.markings.legends["words"] = {"stop": tr("marking.word.stop"), "bus": tr("marking.word.bus")}
+	var problems: PackedStringArray = _core.setup_render(tables, materials)
 	DataTables.release_boot_tables()
 	return problems
 

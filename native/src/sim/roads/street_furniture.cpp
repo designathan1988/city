@@ -237,7 +237,8 @@ void row_of(Placer &c, FurnitureKind k, float every, float first, float depth) {
 
 // A bin at each corner (the sidewalk at the right of each arm's way out of the node) of a full-furniture street outside
 // industrial zones, on blocks long enough to keep bins bin_spacing_m apart; a bench in the middle of residential blocks.
-void bins_and_benches(Placer &c) {
+// The bins come with the basic kit, the benches (`benches`) with the full one alone.
+void bins_and_benches(Placer &c, bool benches) {
 	const StreetFurnitureDef &d = defs(c.net);
 	const Catalog &cat = *c.net.cat;
 	const float clear = std::max(d.furniture.corner_clear_m, d.crossing.zebra_to_m);
@@ -245,7 +246,7 @@ void bins_and_benches(Placer &c) {
 	const float bench_depth = d.sidewalk.kerb_clear_m + d.footprint[int(FurnitureKind::BENCH)].z_m;
 	if (d.furniture.bin_every_m > 0.f) { // a style that lays them in rows
 		row_of(c, FurnitureKind::BIN, d.furniture.bin_every_m, d.furniture.bin_first_m, bin_depth);
-		row_of(c, FurnitureKind::BENCH, d.furniture.bench_every_m, d.furniture.bench_first_m, bench_depth);
+		if (benches) row_of(c, FurnitureKind::BENCH, d.furniture.bench_every_m, d.furniture.bench_first_m, bench_depth);
 		return;
 	}
 	for (int end = 0; end < 2 && c.v1 - c.v0 >= d.furniture.bin_spacing_m; end++) {
@@ -253,7 +254,7 @@ void bins_and_benches(Placer &c) {
 		if (cat.zone(side == 0 ? c.g.zr : c.g.zl).base != BASE_INDUSTRIAL && c.fits(side, bin_depth))
 			c.place(kerbside(c.net, FurnitureKind::BIN, c.sid, c.p, side, end == 0 ? c.v0 + clear : c.v1 - clear), end == 0 ? 1 : -1);
 	}
-	for (int side = 0; side < 2; side++)
+	for (int side = 0; benches && side < 2; side++)
 		if (cat.zone(side == 0 ? c.g.zr : c.g.zl).base == BASE_RESIDENTIAL && c.fits(side, bench_depth))
 			c.place(kerbside(c.net, FurnitureKind::BENCH, c.sid, c.p, side, (c.v0 + c.v1) / 2), 1);
 }
@@ -327,10 +328,11 @@ void segment_furniture(const RoadNetwork &net, int sid, const bool signalled[2],
 	}
 	// the rules' plates stand whatever the street's kit, after the posts and poles that must be where they are
 	if (plates && (later || (kinds & furniture_bit(FurnitureKind::SIGN)))) stand_plates(c, *plates);
-	if (level != FURNITURE_LEVEL_NONE && later) {
-		hydrants(c);
-		if (level == FURNITURE_LEVEL_FULL) bins_and_benches(c);
-		trees(c);
+	if (level != FURNITURE_LEVEL_NONE && later) { // basic: the lamps and the bins; full: the hydrants, the benches and the trees too
+		const bool full = level == FURNITURE_LEVEL_FULL;
+		if (full) hydrants(c);
+		bins_and_benches(c, full);
+		if (full) trees(c);
 	}
 	float open0 = 0, open1 = 1;
 	const bool open = open_stretch(net, g, open0, open1);

@@ -80,7 +80,8 @@ func _building(col: Control, info: Dictionary) -> void:
 
 
 func _road(col: Control, info: Dictionary) -> void:
-	_head(col, "%s · %s" % [tr("inspector.road"), tr(info.profile)])
+	_head(col, InspectorRows.road_title(info))
+	HudWidgets.label(col, &"BodyLabel", InspectorRows.door_numbers(info))
 	_stats = HudWidgets.vbox(col)
 	_fill_road(_stats, InspectorRows.segment_rows(info))
 	for e in info.get("ends", []):

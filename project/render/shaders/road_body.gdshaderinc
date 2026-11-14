@@ -1,7 +1,8 @@
 // Roads: the mesher (native/src/render/roads/road_look.h) writes the sRGB strip colour in
 // COLOR.rgb, the material id in COLOR.a * 16, texture metres in UV ((u, v) on segments, world xz on plates and
 // corners, (across, along) on a kerb's top, the run along it on any face; the asphalt reads its maps by the world's xz whatever
-// its UV) and the asphalt's wear in UV2 (metres: off the carriageway's
+// its UV, and a lane's UV says the line on each of its two edges: the share of it that is paint, FAR_YELLOW more when yellow)
+// and the asphalt's wear in UV2 (metres: off the carriageway's
 // edge on a node's paving and on a bay; on a lane across itself, and off the nearest mouth on a node's paving). A node's paving
 // comes in each arm's own asphalt on that arm's mouth (render/roads/road_plate.cpp): its strip colour is its tone. The cooked maps
 // are tinted so their mean becomes the strip colour. Everything in linear
@@ -50,8 +51,9 @@ instance uniform float far_pull = 0.0;
 #endif
 
 const float FAR_LINE_M = 0.12; // a lane line's width: from afar it is the share of the pixel it covers
-const float FAR_LINE_DUTY = 0.6; // of a line's length, painted: dashes and solid lines together
 const vec3 FAR_LINE_TONE = vec3(0.78);
+const vec3 FAR_LINE_YELLOW = vec3(0.70, 0.51, 0.10); // streets.json markings.yellow, linear, at the white line's tone
+const float FAR_YELLOW = 2.0; // a lane's UV: each edge's painted share, this much more when its line is yellow (road_look.h)
 
 const int M_ROAD = 0;
 const int M_PLATE = 1;
@@ -144,7 +146,11 @@ void fragment() {
 				float off = min(across, wide_lane - across), wide = max(fwidth(v_wear.x), FAR_LINE_M);
 				float seen = clamp(min(FAR_LINE_M * 0.5, off + wide * 0.5) - max(-FAR_LINE_M * 0.5, off - wide * 0.5), 0.0, FAR_LINE_M) / wide;
 				seen *= step(0.5 * wide_lane, edge + off); // none along the carriageway's own edge
-				albedo = mix(albedo, FAR_LINE_TONE, seen * FAR_LINE_DUTY);
+				// the line of this edge, as the mesh says it: how much of its length is paint (a dashed line its dashes'
+				// share, a continuous one all of it) and whether it is yellow
+				float mark = across * 2.0 < wide_lane ? UV.x : UV.y;
+				bool yellow = mark >= FAR_YELLOW;
+				albedo = mix(albedo, yellow ? FAR_LINE_YELLOW : FAR_LINE_TONE, seen * (yellow ? mark - FAR_YELLOW : mark));
 			}
 #endif
 		} else if (v_mat == M_ROAD || v_mat == M_PLATE) { // a bay, a bike strip, a shoulder, a node's paving: the grime by the kerb

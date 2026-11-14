@@ -16,14 +16,14 @@ with `file:line` on both sides), which the port tool reads: `python tools/tracer
 
 ## 1. Roads (sheets/roads.md; work so far: doc/work/t015-roads.md)
 
-- [ ] roads, complete: every case below, in one block (`python tools/tracer/port.py sheet roads`)
-  - the heights of the roads, solved in this game's design (already read and researched, nothing coded: what was found is in doc/work/t015-roads.md)
-  - laying a road, what it will be and cost (bridge, fill, cut, tunnel stretches and their price in the draft)
+- [x] roads, complete: every case below, in one block (`python tools/tracer/port.py sheet roads`; the note: doc/work/roads.md)
+  - the heights of the roads, solved in this game's design (done: road_grade_test with its seam cases passes)
+  - laying a road, what it will be and cost (done: the draft's price is the build's, its stretches named, the limited end told; the fill and cut are named in words, not painted along the draft)
   - the network's links and bans kept through edits (T037, 90b67e27) (done)
-  - markings (turn arrows, bus legends, words, plate marks; far dashes and colours)
-  - the profile editor
-  - streets and their life (traffic from the map's edge, street names and house numbers, the basic furniture set)
-  - lanes that obey the road (bus lanes, solid lines, per-lane turns read by the traffic)
+  - markings (done in code: turn arrows, the stop word, the give-way triangle, the bus word, far lines by kind and colour; no near photo shows a legend yet: Proads-38; the taper's and the mini-roundabout's paint not brought: Proads-6)
+  - the profile editor (done: class, paving, centre line, each footway its own, Save's problems, a saved road deleted; the carriageway's surface is drawn by no renderer: Proads-37)
+  - streets and their life (done: traffic from the map's edge, street names and house numbers in the inspector, the basic furniture set)
+  - lanes that obey the road (done: bus lanes, solid lines, per-lane turns read by the traffic)
 
 ## 2. Junctions and signals (sheets/junctions.md)
 

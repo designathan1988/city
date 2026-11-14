@@ -13,7 +13,10 @@
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
+#include <godot_cpp/variant/vector2.hpp>
 
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace city {
@@ -33,6 +36,9 @@ inline godot::Color road_color(const godot::Color &srgb, RoadMat m) {
 // width over WEAR_LANE_M, and the class's tone travels in the fraction of the material id.
 constexpr float WEAR_SPAN_M = 25.5f, WEAR_LANE_M = 12.75f;
 constexpr float TONE_SLOTS = 8.f;
+// A lane's UV carries, for each of its two edges, the share of that edge's line that is paint, FAR_YELLOW more when the line
+// is yellow (road_segment.cpp far_line; road_body.gdshaderinc paints the far level's lines by it).
+constexpr float FAR_YELLOW = 2.f;
 inline godot::Color wear_color(float from_a, float from_b, float lane, RoadMat m, int tone) {
 	return godot::Color(from_a / WEAR_SPAN_M, from_b / WEAR_SPAN_M, lane / WEAR_LANE_M, (float(int(m)) + (float(tone) + MAT_HALF) / TONE_SLOTS) / MAT_SCALE);
 }
@@ -62,6 +68,17 @@ struct StreetLook {
 	};
 	std::vector<PaintStyle> styles;
 	float parking_line_w = 0, parking_dash = 1, parking_gap = 1, no_parking_w = 0, no_parking_min = 0; // MER and LPP
+	// What is written on the lanes (streets.json markings.legends, road_legends.cpp): the lane arrows, the word before a stop
+	// line, the give-way triangle, a bus lane's word; each letter as its strokes in a box one high.
+	struct Legends {
+		float arrow_m = 0, arrow_fast_m = 0, head_m = 0, head_w = 0, shaft_top = 0, shaft_foot = 0, turn_at = 0, arm_share = 0;
+		float first_m = 0, next_m = 0, from_kmh = 0, fast_first_m = 0, fast_next_m = 0, faster_kmh = 0, faster_next_m = 0;
+		float word_m = 0, word_fast_m = 0, word_fast_kmh = 0, word_clear = 0, lane_share = 0, stroke = 0, gap = 0;
+		float yield_m = 0, yield_w = 0, yield_band = 0, yield_fast_kmh = 0, yield_fast_m = 0, yield_fast_w = 0, yield_fast_band = 0, yield_clear = 0;
+		float bus_first_m = 0, bus_every_m = 0;
+		std::string stop, bus; // the words, in the player's language
+		std::unordered_map<char, std::vector<std::vector<godot::Vector2>>> letters;
+	} legends;
 
 	// `t` streets.json; `tn` the catalogue's tuning, whose street group gives the raised strips' heights.
 	bool load(const godot::Dictionary &t, const Tuning &tn, godot::PackedStringArray &errors);

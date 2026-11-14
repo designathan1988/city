@@ -54,6 +54,7 @@ func _flat_crossroads() -> void:
 		for v in seg.h:
 			worst = maxf(worst, absf(v - CLEARANCE))
 	judge("flat: a span of clearance over the ground, and no step", worst < 1e-4, worst)
+	judge("flat: the nodes settled before the guard of their rounds", r.unsettled == 0, r.unsettled)
 
 
 func _hill_crossroads() -> void:

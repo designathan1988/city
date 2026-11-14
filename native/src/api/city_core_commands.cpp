@@ -80,6 +80,15 @@ Dictionary plan_dict(const CityState &s, const std::vector<Quad> &pieces, const 
 	d["half_width"] = pf.half();
 	d["asphalt_half"] = std::max(pf.asph_left, pf.asph_right);
 	d["affordable"] = charge_of(s, p.price).affordable;
+	// how its metres are built, as the price counts them (the draft names the ones that are not plain ground), and
+	// whether its end stopped short of the height asked
+	Dictionary built;
+	built["bridge"] = p.built.bridge;
+	built["embankment"] = p.built.embankment;
+	built["trench"] = p.built.trench;
+	built["tunnel"] = p.built.tunnel;
+	d["built"] = built;
+	d["limited"] = p.limited;
 	d["points"] = pts;
 	d["start"] = anchor_dict(s, a);
 	d["end"] = anchor_dict(s, b);

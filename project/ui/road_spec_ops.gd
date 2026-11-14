@@ -78,12 +78,14 @@ static func insertion_index(spec: Dictionary, kind: String, selected: int) -> in
 	return hi if right_free or not left_free else lo
 
 
-## A lane's width goes to every lane of the road.
+## The element picked takes the width, it alone (a footway and its twin of the same width are two elements); a lane's
+## width goes to every lane of the road.
 static func with_width(spec: Dictionary, index: int, metres: float) -> bool:
-	var target: Dictionary = spec.elements[index]
+	var lanes: bool = spec.elements[index].kind == "lane"
 	var changed := false
-	for e: Dictionary in spec.elements:
-		if (e == target or (target.kind == "lane" and e.kind == "lane")) and e.width != metres:
+	for i in spec.elements.size():
+		var e: Dictionary = spec.elements[i]
+		if (i == index or (lanes and e.kind == "lane")) and e.width != metres:
 			e.width = metres
 			changed = true
 	return changed

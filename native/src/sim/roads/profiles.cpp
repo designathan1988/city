@@ -72,7 +72,7 @@ void derive_profile(Profile &p, const RoadPrices &prices) {
 	p.back.clear();
 	for (const StripEdge &e : p.edges) {
 		if (e.strip.kind != StripKind::LANE) continue;
-		LaneInfo li{ (e.u0 + e.u1) / 2, e.u1 - e.u0, e.strip.bus, e.strip.rail, e.strip.turns };
+		LaneInfo li{ (e.u0 + e.u1) / 2, e.u1 - e.u0, e.strip.bus, e.strip.rail, e.strip.turns, e.strip.solid };
 		(e.strip.dir == -1 ? p.back : p.fwd).push_back(li);
 	}
 	std::reverse(p.back.begin(), p.back.end()); // in the b -> a direction, right is the larger u

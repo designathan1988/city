@@ -45,7 +45,7 @@ GroundAt ground_named(const Dictionary &g) {
 } // namespace
 
 // scene: {ground: {kind, ...}, nodes: [[x, z, lift?], ...], segs: [[a, b, profile id, structure], ...]}.
-// Gives {nodes: [height...], segs: [{structure, len, step, plate_a, plate_b, h, ceil}], ground: [[x, z, y]...] at each station}.
+// Gives {nodes: [height...], unsettled, segs: [{structure, len, step, plate_a, plate_b, h, ground: the land under each station}]}.
 Dictionary CityProbes::grade_probe(const Dictionary &scene) {
 	std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
 	const Catalog &cat = state_->catalog;
@@ -77,10 +77,9 @@ Dictionary CityProbes::grade_probe(const Dictionary &scene) {
 	for (int s = 0; s < int(net.segs.size()); s++) {
 		const GradeProfile &p = net.grade.prof[size_t(s)];
 		Dictionary d;
-		PackedFloat32Array h, ceil, under;
+		PackedFloat32Array h, under;
 		for (size_t i = 0; i < p.h.size(); i++) {
 			h.push_back(p.h[i]);
-			ceil.push_back(p.ceil[i]);
 			double x, z;
 			net.segs[size_t(s)].q.at(t_at_length(net.segs[size_t(s)].table, double(p.step) * double(i)), x, z);
 			under.push_back(ground(float(x), float(z)));
@@ -91,10 +90,10 @@ Dictionary CityProbes::grade_probe(const Dictionary &scene) {
 		d["plate_a"] = p.plate_a;
 		d["plate_b"] = p.plate_b;
 		d["h"] = h;
-		d["ceil"] = ceil;
 		d["ground"] = under;
 		list.push_back(d);
 	}
+	out["unsettled"] = net.grade.unsettled; // 0: the nodes' rounds ended by themselves
 	out["nodes"] = heights;
 	out["segs"] = list;
 	return out;

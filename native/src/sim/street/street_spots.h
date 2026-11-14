@@ -12,8 +12,16 @@
 
 namespace city {
 
-// The street of a segment: through the nodes, the straightest continuation (edit_street_cos) with the same profile.
-std::vector<int> street_chain(const RoadNetwork &net, int seg);
+// The street of a segment: through the nodes, the straightest continuation (edit_street_cos) with the same profile. The
+// segment first, then the pieces on from its b end, then those back from its a end.
+std::vector<int> whole_street(const RoadNetwork &net, int seg);
+// The same street walked from one end to the other, the way `seg` runs (a to b): each segment of it and whether it runs
+// that way (a leg of the street: sim/traffic/street_volumes.h's StreetPiece is a piece of its furniture).
+struct StreetLeg {
+	int seg;
+	bool forward;
+};
+std::vector<StreetLeg> street_run(const RoadNetwork &net, int seg);
 // The kind of piece an item is; FurnitureKind::COUNT for the ones with no footprint of their own.
 FurnitureKind item_piece(ItemKind k);
 // Applies the player's records to the derived pieces of segment `sid` (out[first..]), of the kinds in `kinds`.

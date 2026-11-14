@@ -11,7 +11,7 @@ namespace city {
 #define CITY_TRAFFIC_FIELDS(X) \
 	X(density_per_lane_m) X(traffic_share) X(people_share) X(fill_share) \
 	X(route_budget_per_step) X(route_max_expanded) \
-	X(trip_min_m) X(trip_max_m) X(trip_decay_m) X(slot_m) X(car_share) X(bus_share) \
+	X(trip_min_m) X(trip_max_m) X(trip_decay_m) X(edge_reach_m) X(edge_through_share) X(slot_m) X(car_share) X(bus_share) \
 	X(turn_cost_right_s) X(turn_cost_left_s) X(turn_cost_uturn_s) X(signal_cost_s) X(edge_extra_s) X(guess_speed_kmh) \
 	X(straight_dot) X(control_max_m) X(uturn_push_m) \
 	X(body_small_length_m) X(body_small_width_m) X(body_car_length_m) X(body_car_width_m) X(body_heavy_length_m) X(body_heavy_width_m) \
@@ -25,7 +25,7 @@ namespace city {
 	X(temper_accel) X(temper_brake) X(temper_headway) X(temper_gap) X(temper_patience) X(temper_polite) X(temper_threshold) \
 	X(bend_lat_max) X(bend_lat_fall) X(bend_lat_min) X(bend_heavy_share) X(bend_temper) X(bend_keep_share) X(bend_least) \
 	X(lc_politeness) X(lc_signal_s) X(lc_crawl_ms) X(lc_slope) X(signal_ahead_s) X(signal_ahead_m) \
-	X(lc_safe_brake) X(lc_threshold) X(lc_bias_right) X(lc_mandatory_bias) X(lc_free_m) X(lc_gap_front_m) \
+	X(lc_safe_brake) X(lc_threshold) X(lc_bias_right) X(lc_mandatory_bias) X(lc_free_m) X(lane_entry_m) X(lc_gap_front_m) \
 	X(lc_gap_back_m) X(mouth_clear_m) X(lc_duration_s) X(lc_cooldown_s) X(lc_every_ticks) \
 	X(brake_light_accel) X(brake_light_speed) X(body_lift_m) X(heading_chord_m) \
 	X(walk_speed_min) X(walk_speed_max) X(walk_track_min) X(walk_track_max) X(ped_trip_min_m) X(ped_trip_max_m) \

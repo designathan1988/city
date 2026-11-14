@@ -94,7 +94,7 @@ void OverlayRenderer::strip(Ribbon &out, const CityState &s, int seg, float u0, 
 		double l = std::max(MIN_DERIV, std::hypot(dx, dz)), nx = dz / l, nz = -dx / l;
 		auto at = [&](float u) {
 			float px = float(x + nx * u), pz = float(z + nz * u);
-			float y = on_road ? float(s.roads.seg_y(seg, g.len * t)) : s.terrain.height_at(px, pz);
+			float y = on_road ? float(s.roads.seg_y(seg, arc_at(g.table, t))) : s.terrain.height_at(px, pz);
 			return Vector3(px, y + lift_, pz);
 		};
 		Vector3 p0 = at(u0), p1 = at(u1);

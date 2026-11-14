@@ -16,6 +16,7 @@ namespace {
 constexpr double MIN_CHARGE = 1; // an edit worth less than this moves no money
 constexpr double ANY_HEIGHT = std::numeric_limits<double>::infinity();
 constexpr double ANY_BALANCE = std::numeric_limits<double>::infinity();
+constexpr int BANDS = 5; // the ways a road at grade is built, by its authored height: bored, cut, on the ground, filled, on piers
 
 // How a recorded road stands: its structure and the heights authored at its ends.
 RoadBuild built(const RoadNetwork &net, const RoadSegment &g) {
@@ -27,27 +28,40 @@ double recorded_value(const CityState &s, const RoadSegment &g, int profile) {
 }
 } // namespace
 
+void BuildLengths::add(const BuildLengths &o) {
+	ground += o.ground;
+	embankment += o.embankment;
+	trench += o.trench;
+	bridge += o.bridge;
+	tunnel += o.tunnel;
+}
+
+// A road built as a structure is that structure all along. At grade its authored height runs straight from one end to the
+// other, and each band of height takes the share of the length that lies in it: under the cover a bore needs it is bored
+// (the depth the render bores at: road_structures.cpp), down to the fill's depth a cutting, within it the ground, up to
+// the piers' height an embankment, over it a bridge. A height on a band's lower edge is of that band.
 BuildLengths build_lengths(const Tuning &tn, const RoadBuild &b, double len) {
 	BuildLengths out;
-	if (b.structure == Structure::TUNNEL) {
-		out.tunnel = len;
-		return out;
-	}
 	if (b.structure != Structure::GROUND) {
-		out.bridge = len;
+		(b.structure == Structure::TUNNEL ? out.tunnel : out.bridge) = len;
 		return out;
 	}
-	double fill = tn.economy_fill_from_m, piers = tn.economy_on_piers_from_m;
-	// The share of the road whose height lies in [lo, hi).
-	auto share = [&](double lo, double hi) {
-		if (b.height_a == b.height_b) return b.height_a >= lo && b.height_a < hi ? 1.0 : 0.0;
-		double t0 = (lo - b.height_a) / (b.height_b - b.height_a), t1 = (hi - b.height_a) / (b.height_b - b.height_a);
-		return std::max(0.0, std::min(1.0, std::max(t0, t1)) - std::max(0.0, std::min(t0, t1)));
-	};
-	out.trench = len * share(-ANY_HEIGHT, -fill);
-	out.ground = len * share(-fill, fill);
-	out.embankment = len * share(fill, piers);
-	out.bridge = len * share(piers, ANY_HEIGHT);
+	const double bore = double(tn.grade_tunnel_headroom_m) + tn.grade_tunnel_arch_m + tn.structure_bore_over_m;
+	const double tops[BANDS] = { -bore, -double(tn.economy_fill_from_m), tn.economy_fill_from_m, tn.economy_on_piers_from_m, ANY_HEIGHT };
+	double *const bands[BANDS] = { &out.tunnel, &out.trench, &out.ground, &out.embankment, &out.bridge };
+	const double low = std::min(b.height_a, b.height_b), high = std::max(b.height_a, b.height_b);
+	double from = low; // the bands walked upwards
+	for (int k = 0; k < BANDS; k++) {
+		if (high == low) {
+			if (low >= tops[k]) continue;
+			*bands[k] = len;
+			break;
+		}
+		const double to = std::min(high, tops[k]);
+		if (to <= from) continue;
+		*bands[k] = len * (to - from) / (high - low);
+		from = to;
+	}
 	return out;
 }
 

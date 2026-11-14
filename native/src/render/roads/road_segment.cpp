@@ -95,7 +95,17 @@ struct Ctx {
 	const std::vector<Sample> &sm;
 	const KerbDrops &drops;
 	size_t k0 = 0, k1 = 0; // the stretch drawn: samples k0 to k1
+	float dashed = 0; // of a dashed line's length, the share that is paint, by the style's dashes at the road's speed
+	bool yellows = true; // the style paints yellow lines (false: every line white)
 	Vector3 at_u(size_t k, float u, float h) const { return sm[k].f.c + sm[k].f.left * u + Vector3(0, h, 0); }
+	// What the far level paints along a lane's edge (road_body.gdshaderinc reads it from a lane's UV, which nothing else
+	// reads there: the asphalt is laid in the world's frame): the share of the line's length that is paint (a continuous
+	// line whole, a dashed one and an edge with no line stated the dashes' share), FAR_YELLOW more when it is yellow.
+	float far_line(int line) const {
+		const int kind = line % LINE_YELLOW;
+		const bool whole = kind == int(LineKind::SOLID) || kind == int(LineKind::DOUBLE);
+		return (whole ? 1.f : dashed) + (line >= LINE_YELLOW && yellows ? FAR_YELLOW : 0.f);
+	}
 };
 
 // The wear coordinates of a piece at `u`. On a footway edge0 is the kerb's side and edge1 the lot's.
@@ -119,7 +129,10 @@ void tops(const Ctx &c, const Piece &pc) {
 		heights(c.e.L, c.drops, pc, c.sm[k + 1].at, b0, b1);
 		const Vector3 p[4] = { c.at_u(k, pc.u0, a0), c.at_u(k, pc.u1, a1), c.at_u(k + 1, pc.u1, b1), c.at_u(k + 1, pc.u0, b0) };
 		const float ta = c.sm[k].tex, tb = c.sm[k + 1].tex;
-		const Vector2 uv[4] = { Vector2(pc.u0, ta), Vector2(pc.u1, ta), Vector2(pc.u1, tb), Vector2(pc.u0, tb) };
+		const Vector2 lines(c.far_line(pc.line0), c.far_line(pc.line1)); // a lane's UV: its two edges' lines, the same all over it
+		const bool lane = pc.mat == RoadMat::LANE;
+		const Vector2 uv[4] = { lane ? lines : Vector2(pc.u0, ta), lane ? lines : Vector2(pc.u1, ta), lane ? lines : Vector2(pc.u1, tb),
+			lane ? lines : Vector2(pc.u0, tb) };
 		const Color plain = road_color(pc.col, pc.mat);
 		const bool wears = pc.mat == RoadMat::LANE || pc.mat == RoadMat::FOOTWAY;
 		const Color at_u0 = wears ? wear_at(pc, pc.u0) : plain, at_u1 = wears ? wear_at(pc, pc.u1) : plain;
@@ -227,6 +240,11 @@ void stretches(const RoadEmit &e, int sid, const SurfaceLayout &lay, const std::
 		return h;
 	};
 	Ctx c{ e, sm, lay.drops };
+	const StreetLook::PaintStyle &style = e.L.styles[size_t(e.s.marking_style.load())];
+	size_t band = 0; // the dashes of the road's speed, as its paint draws them (road_markings.cpp)
+	while (band < style.dash_kmh.size() && p.speed >= style.dash_kmh[band]) band++;
+	c.dashed = style.dash[band] / (style.dash[band] + style.gap[band]);
+	c.yellows = !style.all_white;
 	for (size_t i = 0; i < n; i++) {
 		c.k0 = cuts[i];
 		c.k1 = cuts[i + 1];

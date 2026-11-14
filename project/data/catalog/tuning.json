@@ -137,7 +137,20 @@
   "tunnel_headroom_m": 4.4,
   "tunnel_arch_m": 0.6,
   "tunnel_floor_m": 2,
-  "lift_on_m": 0.6
+  "lift_on_m": 0.6,
+  "line_reach_m": 44,
+  "plate_curve_m": 4.8,
+  "tie_m": 44,
+  "tie_share": 0.4,
+  "curve_m": 4.8,
+  "crest_m": 4.8,
+  "ramp_sag_m": 8,
+  "ends_margin": 1.1,
+  "under_deck_m": 0.4,
+  "floor_fade_m": 16,
+  "floor_ramp_share": 0.8,
+  "rounds_most": 64,
+  "ground_cache_mb": 64
  },
  "history": {
   "max_entries": 500,

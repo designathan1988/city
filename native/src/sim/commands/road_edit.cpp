@@ -34,7 +34,7 @@ int split_segment(CityState &s, int seg, double t) {
 	RoadNetwork &net = s.roads;
 	RoadSegment rec = net.segs[seg];
 	auto halves = split_quad(rec.q, t);
-	double y = net.seg_y(seg, t * rec.len);
+	double y = net.seg_y(seg, arc_at(rec.table, t));
 	// The new node keeps the road where it was: its authored height the ends' along the road (the crossing reads it so).
 	const double along = rec.len > 0 ? arc_at(rec.table, t) / rec.len : 0; // by length, as the 4.0's segmentOffsetAt
 	const float lift = net.nodes[size_t(rec.a)].lift + (net.nodes[size_t(rec.b)].lift - net.nodes[size_t(rec.a)].lift) * float(along);

@@ -10,7 +10,7 @@ namespace city {
 namespace {
 constexpr int CUT_RINGS = 2; // how many times the arms of the taken records' nodes are taken too (road_network.h cut)
 
-// A segment's solved heights as a reader takes them (RoadGrade::at, has): its stations, not the ground the solve read under it.
+// A segment's solved heights as a reader takes them (RoadGrade::at, has): its stations and its plates.
 GradeProfile heights_of(const GradeProfile &p) {
 	GradeProfile out;
 	out.valid = p.valid;

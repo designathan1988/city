@@ -2,6 +2,7 @@
 #include "render/roads/road_section.h"
 
 #include <algorithm>
+#include <cmath>
 
 using namespace godot;
 
@@ -9,6 +10,7 @@ namespace city {
 
 namespace {
 constexpr float WALK_KEEP = 0.2f;
+constexpr float LINE_AT_M = 0.01f; // a profile's line lies on a lane's edge when it is this near it
 
 RoadMat paving_mat(Paving p) {
 	switch (p) {
@@ -171,6 +173,11 @@ std::vector<Piece> pieces_of(const StreetLook &L, const Profile &p, bool drops) 
 				pc.lane = s.width;
 				pc.lane_u0 = p.edges[i].u0; // the strip's own edge: an island's kerb takes the piece's first centimetres, not the lane's
 				pc.tone = int(p.road_class);
+				for (const MarkLine &m : p.lines) { // the lines on its two edges, for the far level
+					const int line = int(m.kind) + (m.color == LineColor::YELLOW ? LINE_YELLOW : 0);
+					if (std::fabs(m.u - p.edges[i].u0) < LINE_AT_M) pc.line0 = line;
+					if (std::fabs(m.u - p.edges[i].u1) < LINE_AT_M) pc.line1 = line;
+				}
 			}
 		}
 		pc.face = pc.col;

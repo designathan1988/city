@@ -74,16 +74,19 @@ bool replan(CityState &s, Vehicle &v) {
 	return true;
 }
 
-// The least full lane of `to_ds` that can make the turn after it (all lanes when the route has no next turn).
-int pick_lane(const CityState &s, int to_ds, int after, int fallback) {
+// The least full lane of `to_ds` that can make the turn after it (all lanes when the route has no next turn). First
+// among the lanes that are its own: a bus's the buses', the others' the rest; a lane of the other kind only when none
+// of its own makes the turn (lane_graph_types.h DirSeg::bus_only).
+int pick_lane(const CityState &s, int to_ds, int after, int fallback, bool bus) {
 	const TrafficState &t = s.traffic;
 	const DirSeg &d = t.g.ds[size_t(to_ds)];
 	int best = -1, best_n = int(BIG);
-	for (int lane = 0; lane < d.lanes; lane++) {
-		if (after >= 0 && !lane_reaches(s, to_ds, lane, after)) continue;
-		const int n = lane_load(t, to_ds * MAX_LANES + lane);
-		if (n < best_n) { best_n = n; best = lane; }
-	}
+	for (int pass = 0; pass < 2 && best < 0; pass++)
+		for (int lane = 0; lane < d.lanes; lane++) {
+			if ((pass == 0 && d.for_buses(lane) != bus) || (after >= 0 && !lane_reaches(s, to_ds, lane, after))) continue;
+			const int n = lane_load(t, to_ds * MAX_LANES + lane);
+			if (n < best_n) { best_n = n; best = lane; }
+		}
 	if (best < 0 && fallback >= 0 && fallback < d.lanes) return fallback;
 	return best;
 }
@@ -252,7 +255,7 @@ void advance(CityState &s, int id) {
 	const int to = c.to_ds;
 	if (to < 0 || to >= int(g.ds.size()) || !g.ds[size_t(to)].ok) { despawn_vehicle(s, id, false); return; }
 	const int after = v.ri + 2 < v.route.len ? route_at(t.route_pool, v.route, v.ri + 2) : -1;
-	const int to_lane = pick_lane(s, to, after, c.to_lane);
+	const int to_lane = pick_lane(s, to, after, c.to_lane, v.type == VehicleType::BUS);
 	if (to_lane < 0) { despawn_vehicle(s, id, false); return; }
 	const int to_key = to * MAX_LANES + to_lane;
 	const float L = g.ds[size_t(to)].len;

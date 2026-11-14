@@ -76,6 +76,8 @@ inspector.speed,VELOCIDADE,SPEED
 inspector.splitMiddle,Dividir no meio,Split at the middle
 inspector.upgrade,Melhorar classe,Upgrade class
 inspector.vehicles,VEÍCULOS,VEHICLES
+marking.word.bus,ONIBUS,BUS
+marking.word.stop,PARE,STOP
 inspector.volume,VOLUME,VOLUME
 junction.busPriority,Prioridade ao ônibus,Bus priority
 junction.control,Controle do cruzamento,Junction control
@@ -361,6 +363,7 @@ refuse.road.selfLoop,liga o nó a ele mesmo,it links the node to itself
 refuse.road.sharpAngle,ângulo fechado demais com outra via,too sharp an angle with another road
 refuse.road.steep,rampa íngreme demais,ramp too steep
 refuse.road.tooShort,curta demais,too short
+refuse.road.tooSteep,rampa íngreme demais para ligar nessa altura,too steep to connect at that height
 refuse.sign.noRule,o cruzamento tem semáforo ou é rotatória: a placa não muda a regra,the junction has traffic lights or is a roundabout: the sign does not change the rule
 refuse.uturn.median,O retorno precisa de uma via de mão dupla com canteiro central.,The U-turn needs a two-way road with a central median.
 refuse.uturn.narrow,Canteiro estreito demais para um retorno.,Median too narrow for a U-turn.
@@ -369,6 +372,11 @@ road.avenue,Avenida,Avenue
 road.bend.ring,o anel da rotatória não se curva,the ring of a roundabout does not bend
 road.bend.sharp,a via ficaria a {angle}° da vizinha na ponta (menos de 25° não fecha o cruzamento),the road would leave its end {angle}° from its neighbour (under 25° the junction does not close)
 road.boulevard,Bulevar,Boulevard
+road.built.bridge,ponte {length},bridge {length}
+road.built.embankment,aterro {length},embankment {length}
+road.built.limited,altura limitada pela rampa,height held by the grade
+road.built.trench,corte {length},cutting {length}
+road.built.tunnel,túnel {length},tunnel {length}
 road.heightPoint.short,via curta demais para um ponto de altura no meio,too short a road for a height point in its middle
 road.highway,Rodovia,Highway
 road.local,Rua residencial,Residential street

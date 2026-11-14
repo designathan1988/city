@@ -12,14 +12,19 @@ const WIDEN_BY_M := 0.5
 const PACE_BY := 10.0
 const SPEED_LEAST := 10.0
 const SPEED_MOST := 130.0
+## A footway's or a median's paving, by the core's number of it (profile_types.h Paving), and the centre lines the editor offers.
+const PAVING_KEYS := ["profile.materialName.concrete", "profile.materialName.pavers", "profile.materialName.stone", "profile.materialName.grass"]
+const AXIS_LINES := ["auto", "dashed", "solid", "double"]
 
 @export var edit := RoadSpecEdit.new()
 @onready var _view: RoadSectionView
 @onready var _total: Label
 @onready var _problem: Label
 @onready var _props: HBoxContainer
+@onready var _road: VBoxContainer
 @onready var _name: LineEdit
 @onready var _use: Button
+@onready var _keep: Button
 @onready var _street: Button
 
 
@@ -38,7 +43,7 @@ func _ready() -> void:
 	_name.placeholder_text = tr("profile.templateName")
 	_name.custom_minimum_size.x = HudWidgets.px("rp_name_w")
 	head.add_child(_name)
-	_action(head, "profileEditor.saveShort", _save)
+	_keep = _action(head, "profileEditor.saveShort", _save)
 	_use = _action(head, "profileEditor.newRoads", _apply)
 	_street = _action(head, "inspector.toStreet", _apply_street)
 	_street.hide()
@@ -58,6 +63,7 @@ func _ready() -> void:
 	for item: Array in DataTables.ui("drawers").profile_palette:
 		_action(palette, item[1], _add.bind(item[0]))
 	_props = HudWidgets.hbox(col)
+	_road = HudWidgets.vbox(col)
 	_problem = HudWidgets.label(col, &"MetaLabel")
 
 
@@ -67,6 +73,24 @@ func open(profile: Dictionary, spec: Dictionary) -> void:
 	edit.base_id = profile.id
 	edit.spec = spec.duplicate(true)
 	edit.selected = mini(1, edit.spec.elements.size() - 1)
+	_fill_class()
+	_refresh()
+
+
+## The class the road is made in (its carriageway, its rank and what it may carry come with it): any of the catalogue's.
+func _fill_class() -> void:
+	HudWidgets.clear(_road)
+	var picks := []
+	for p: Dictionary in CityStore.cached(&"road_profiles"):
+		picks.append([p.index, tr(p.name_key)])
+	HudWidgets.dropdown(_road, tr("profileEditor.class"), picks, edit.base, _set_class)
+
+
+func _set_class(index: int) -> void:
+	for p: Dictionary in CityStore.cached(&"road_profiles"):
+		if p.index == index:
+			edit.base = index
+			edit.base_id = p.id
 	_refresh()
 
 
@@ -104,6 +128,7 @@ func _refresh() -> void:
 	_total.text = tr("profileEditor.totalWidth").format({"width": Formatters.format_measure(RoadSpecOps.total(edit.spec))})
 	_problem.text = " · ".join(texts) if not issues.is_empty() else tr("profileEditor.ok")
 	_use.disabled = not issues.is_empty()
+	_keep.disabled = not issues.is_empty() # a road with a problem is neither used nor kept
 	_fill_props()
 
 
@@ -111,6 +136,14 @@ func _button(row: Control, key: String, act: Callable) -> void:
 	_action(row, key, func() -> void:
 		act.call()
 		_refresh())
+
+
+## A button that names a choice and its value ("Paving: Stone"); a press takes the next one.
+func _choice(row: Control, name_key: String, value_key: String, act: Callable) -> void:
+	var b := _action(row, name_key, func() -> void:
+		act.call()
+		_refresh())
+	b.text = "%s: %s" % [tr(name_key), tr(value_key)]
 
 
 ## What the element picked can change, then the road's own.
@@ -127,12 +160,18 @@ func _fill_props() -> void:
 			_button(_props, "profileEditor.lineSolid" if not e.get("solid", false) else "profileEditor.lineDashed", func() -> void: e.solid = not e.get("solid", false))
 		if e.kind == "footway" or e.kind == "median":
 			_button(_props, "profileEditor.flush", func() -> void: e.flush = not e.get("flush", false))
+			var pave: int = clampi(int(e.get("pave", 0)), 0, PAVING_KEYS.size() - 1)
+			_choice(_props, "profileEditor.paving", PAVING_KEYS[pave], func() -> void: e.pave = (pave + 1) % PAVING_KEYS.size())
 		_button(_props, "profileEditor.remove", func() -> void:
 			edit.spec.elements.remove_at(edit.selected)
 			edit.selected = mini(edit.selected, edit.spec.elements.size() - 1))
 	_button(_props, "profileEditor.slower", func() -> void: edit.spec.speed = maxf(edit.spec.speed - PACE_BY, SPEED_LEAST))
 	HudWidgets.label(_props, &"MetaLabel", tr("profileEditor.speedValue").format({"speed": int(edit.spec.speed)}))
 	_button(_props, "profileEditor.faster", func() -> void: edit.spec.speed = minf(edit.spec.speed + PACE_BY, SPEED_MOST))
+	# the line between the two directions: the road's own rule, or the one chosen (a road that paints none shows as automatic)
+	var line: int = maxi(0, AXIS_LINES.find(String(edit.spec.get("centre", "auto"))))
+	_choice(_props, "profileEditor.centreLine", "profileEditor.centreLineName." + AXIS_LINES[line],
+		func() -> void: edit.spec.centre = AXIS_LINES[(line + 1) % AXIS_LINES.size()])
 
 
 ## Opened from a road of the city: applied to it or to its whole street, instead of the road tool's.
@@ -146,6 +185,7 @@ func on_road() -> void:
 func _apply() -> void:
 	var made: Dictionary = CityStore.dispatch(&"road_spec_make", [edit.base, edit.spec])
 	if not made.get("ok", false):
+		_problem.text = tr(String(made.get("error", ""))) # why it was not made: a problem, or no room for another road of the player's
 		return
 	if edit.on_road:
 		applied.emit(int(made.index), false)
@@ -157,8 +197,11 @@ func _apply_street() -> void:
 	var made: Dictionary = CityStore.dispatch(&"road_spec_make", [edit.base, edit.spec])
 	if made.get("ok", false):
 		applied.emit(int(made.index), true)
+	else:
+		_problem.text = tr(String(made.get("error", "")))
 
 
+## Kept under My roads: never a road with a problem (the button is off while one stands).
 func _save() -> void:
-	if RoadModels.save(_name.text, edit.base_id, edit.spec):
+	if not _keep.disabled and RoadModels.save(_name.text, edit.base_id, edit.spec):
 		saved.emit()

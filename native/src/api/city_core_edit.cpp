@@ -228,7 +228,7 @@ Dictionary CityCore::segment_at(const Vector3 &p) {
 	for (int i = 0; i <= SEG_PREVIEW_STEPS; i++) {
 		double x, z;
 		g.q.at(double(i) / SEG_PREVIEW_STEPS, x, z);
-		pts.push_back(Vector3(float(x), float(s.roads.seg_y(seg, g.len * i / SEG_PREVIEW_STEPS)), float(z)));
+		pts.push_back(Vector3(float(x), float(s.roads.seg_y(seg, arc_at(g.table, double(i) / SEG_PREVIEW_STEPS))), float(z)));
 	}
 	double px, pz;
 	g.q.at(t, px, pz);

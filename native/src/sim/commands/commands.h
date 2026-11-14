@@ -4,6 +4,7 @@
 // lane graph to the traffic, which drains the ChangeLog's net lists. Callers hold map_mutex exclusively.
 #pragma once
 
+#include "sim/economy/road_economy.h"
 #include "sim/lots/lot_book.h"
 #include "sim/roads/road_network.h"
 #include "sim/catalog/furniture_types.h"
@@ -42,9 +43,11 @@ struct RoadPlan {
 	std::string reason;
 	Quad q;
 	double len = 0;
-	double price = 0; // what building it costs (R$)
+	double price = 0; // what building it costs (R$): piece by piece, as the build lays and charges it
+	BuildLengths built; // the metres of it built each way (what the price counts: the draft names them)
 	std::vector<Crossing> crossings;
 	float lift_a = 0, lift_b = 0; // its ends' height over the grade line, the end held to the steepest grade drawn
+	bool limited = false; // its end stopped short of the height asked: the grade drawn at allows no more in this length
 	std::vector<float> lifts; // of a path: the height at each joint of its pieces
 	float lift_at(double t) const { return lift_a + (lift_b - lift_a) * float(t); }
 };

@@ -19,6 +19,26 @@ static func _traffic(t: Dictionary) -> Array:
 		["inspector.volume", Formatters.format_int(t.volume)]]
 
 
+## A road's name in the panel: its street's (the player's words, or a given name's form and name in the player's language,
+## as the plates read it: render/sign_paper.gd), else the word for a road; then its class.
+static func road_title(info: Dictionary) -> String:
+	var street: Dictionary = info.get("street", {})
+	var shown := tr_key("inspector.road")
+	if not String(street.get("text", "")).is_empty():
+		shown = street.text
+	elif not String(street.get("name", "")).is_empty():
+		var given := tr_key(street.name)
+		if int(street.get("ordinal", 0)) > 0:
+			given = "%s %d" % [given, int(street.ordinal)]
+		shown = tr_key(street.form) % given
+	return "%s · %s" % [shown, tr_key(info.profile)]
+
+
+## The numbers of the doors along the road: metres from the start of its street.
+static func door_numbers(info: Dictionary) -> String:
+	return tr_key("inspector.numbers").format({"from": info.get("doors_from", 0), "to": info.get("doors_to", 0)})
+
+
 ## Length, lanes, limit, then what the traffic does there.
 static func segment_rows(info: Dictionary) -> Array:
 	var t: Dictionary = CityStore.query(&"segment_traffic", [info.id])

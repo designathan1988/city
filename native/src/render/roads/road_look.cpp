@@ -70,6 +70,60 @@ void load_shape(StreetLook &L, const Dictionary &t, const Tuning &tn, PackedStri
 	L.drive_flare = float(r["drive_flare_m"]);
 }
 
+// What is written on the lanes (streets.json markings.legends); the words come with the table, in the player's language.
+void load_legends(StreetLook::Legends &g, const Dictionary &t, PackedStringArray &errors) {
+	const Dictionary arrow = sub(t, "arrow", errors), word = sub(t, "word", errors), yield = sub(t, "give_way", errors), bus = sub(t, "bus", errors);
+	g.arrow_m = float(arrow["length_m"]);
+	g.arrow_fast_m = float(arrow["fast_length_m"]);
+	g.head_m = float(arrow["head_m"]);
+	g.head_w = float(arrow["head_w_m"]);
+	g.shaft_top = float(arrow["shaft_top_m"]);
+	g.shaft_foot = float(arrow["shaft_foot_m"]);
+	g.turn_at = float(arrow["turn_at"]);
+	g.arm_share = float(arrow["arm_share"]);
+	g.first_m = float(arrow["first_m"]);
+	g.next_m = float(arrow["next_m"]);
+	g.from_kmh = float(arrow["from_kmh"]);
+	g.fast_first_m = float(arrow["fast_first_m"]);
+	g.fast_next_m = float(arrow["fast_next_m"]);
+	g.faster_kmh = float(arrow["faster_kmh"]);
+	g.faster_next_m = float(arrow["faster_next_m"]);
+	g.word_m = float(word["height_m"]);
+	g.word_fast_m = float(word["fast_height_m"]);
+	g.word_fast_kmh = float(word["fast_kmh"]);
+	g.word_clear = float(word["clear_m"]);
+	g.lane_share = float(word["lane_share"]);
+	g.stroke = float(word["stroke"]);
+	g.gap = float(word["gap"]);
+	g.yield_m = float(yield["length_m"]);
+	g.yield_w = float(yield["width_m"]);
+	g.yield_band = float(yield["band_m"]);
+	g.yield_fast_kmh = float(yield["fast_kmh"]);
+	g.yield_fast_m = float(yield["fast_length_m"]);
+	g.yield_fast_w = float(yield["fast_width_m"]);
+	g.yield_fast_band = float(yield["fast_band_m"]);
+	g.yield_clear = float(yield["clear_m"]);
+	g.bus_first_m = float(bus["first_m"]);
+	g.bus_every_m = float(bus["every_m"]);
+	const Dictionary words = t.get("words", Dictionary());
+	g.stop = String(words.get("stop", "")).utf8().get_data();
+	g.bus = String(words.get("bus", "")).utf8().get_data();
+	const Dictionary letters = sub(t, "letters", errors);
+	const Array names = letters.keys();
+	g.letters.clear();
+	for (int k = 0; k < names.size(); k++) {
+		const CharString name = String(names[k]).utf8();
+		const Array strokes = letters[names[k]];
+		std::vector<std::vector<Vector2>> &drawn = g.letters[name.get_data()[0]];
+		for (int i = 0; i < strokes.size(); i++) {
+			const Array at = strokes[i];
+			std::vector<Vector2> stroke;
+			for (int j = 0; j + 1 < at.size(); j += 2) stroke.emplace_back(float(at[j]), float(at[j + 1]));
+			drawn.push_back(std::move(stroke));
+		}
+	}
+}
+
 void load_marks(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	Dictionary m = sub(t, "markings", errors);
 	L.white = hexc(m["white"]);
@@ -111,6 +165,7 @@ void load_marks(StreetLook &L, const Dictionary &t, PackedStringArray &errors) {
 	L.parking_gap = float(m["mer_gap_m"]);
 	L.no_parking_w = float(m["lpp_line_m"]);
 	L.no_parking_min = float(m["lpp_run_min_m"]);
+	load_legends(L.legends, sub(m, "legends", errors), errors);
 }
 } // namespace
 

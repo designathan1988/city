@@ -30,33 +30,58 @@ bool in_the_way(const StandingBody &placed, const std::vector<StandingBody> &pla
 }
 } // namespace
 
-std::vector<int> street_chain(const RoadNetwork &net, int s0) {
-	int prof = net.segs[s0].profile;
+namespace {
+// A piece a street goes on with, and the end of it the street comes in at (0: its a).
+struct Onward {
+	int seg, entered;
+};
+
+// The pieces the street of s0 goes on with past one of s0's ends (`from_end`: 1 its b, 0 its a), in order: each the
+// straightest continuation of the same profile. `in`: the pieces the street already holds (it meets itself only by a loop).
+std::vector<Onward> street_past(const RoadNetwork &net, int s0, int from_end, std::unordered_set<int> &in) {
+	const int prof = net.segs[s0].profile;
 	const Profile &p = net.cat->profile(prof);
-	std::vector<int> out{ s0 };
-	std::unordered_set<int> in{ s0 }; // what `out` holds: a street meets itself only by a loop
-	for (int start_end : { 1, 0 }) {
-		int sg = s0, end = start_end;
-		for (int guard = 0; guard < CHAIN_GUARD; guard++) {
-			int n = end == 1 ? net.segs[sg].b : net.segs[sg].a;
-			Arm here = arm_of(net.segs[sg].q, p, end);
-			double best_dot = net.cat->tune.edit_street_cos;
-			int best = -1, best_end = 0;
-			for (int t : net.nodes[n].segs) {
-				if (in.count(t) || net.segs[t].profile != prof || net.cat->profile(prof).ring) continue;
-				int t_end = net.segs[t].a == n ? 0 : 1;
-				if (p.one_way && t_end != (end == 1 ? 0 : 1)) continue;
-				Arm arm = arm_of(net.segs[t].q, p, t_end);
-				double d = -(arm.dx * here.dx + arm.dz * here.dz);
-				if (d > best_dot) { best_dot = d; best = t; best_end = t_end; }
-			}
-			if (best < 0) break;
-			out.push_back(best);
-			in.insert(best);
-			sg = best;
-			end = best_end == 0 ? 1 : 0;
+	std::vector<Onward> out;
+	int sg = s0, end = from_end;
+	for (int guard = 0; guard < CHAIN_GUARD; guard++) {
+		int n = end == 1 ? net.segs[sg].b : net.segs[sg].a;
+		Arm here = arm_of(net.segs[sg].q, p, end);
+		double best_dot = net.cat->tune.edit_street_cos;
+		int best = -1, best_end = 0;
+		for (int t : net.nodes[n].segs) {
+			if (in.count(t) || net.segs[t].profile != prof || net.cat->profile(prof).ring) continue;
+			int t_end = net.segs[t].a == n ? 0 : 1;
+			if (p.one_way && t_end != (end == 1 ? 0 : 1)) continue;
+			Arm arm = arm_of(net.segs[t].q, p, t_end);
+			double d = -(arm.dx * here.dx + arm.dz * here.dz);
+			if (d > best_dot) { best_dot = d; best = t; best_end = t_end; }
 		}
+		if (best < 0) break;
+		out.push_back({ best, best_end });
+		in.insert(best);
+		sg = best;
+		end = best_end == 0 ? 1 : 0;
 	}
+	return out;
+}
+} // namespace
+
+std::vector<int> whole_street(const RoadNetwork &net, int s0) {
+	std::vector<int> out{ s0 };
+	std::unordered_set<int> in{ s0 };
+	for (int from_end : { 1, 0 })
+		for (const Onward &o : street_past(net, s0, from_end, in)) out.push_back(o.seg);
+	return out;
+}
+
+std::vector<StreetLeg> street_run(const RoadNetwork &net, int s0) {
+	std::unordered_set<int> in{ s0 };
+	const std::vector<Onward> ahead = street_past(net, s0, 1, in), behind = street_past(net, s0, 0, in);
+	std::vector<StreetLeg> out;
+	// a piece runs the way s0 does when the street, going s0's way, comes in at its a; walked back from s0, at its b
+	for (auto o = behind.rbegin(); o != behind.rend(); ++o) out.push_back({ o->seg, o->entered == 1 });
+	out.push_back({ s0, true });
+	for (const Onward &o : ahead) out.push_back({ o.seg, o.entered == 0 });
 	return out;
 }
 

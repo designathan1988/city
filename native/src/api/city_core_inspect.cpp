@@ -6,6 +6,7 @@
 #include "sim/buildings/b40/record.h"
 #include "sim/commands/commands.h"
 #include "sim/roads/junction.h"
+#include "sim/street/street_names.h"
 #include "sim/traffic/traffic_system.h"
 
 #include <godot_cpp/variant/array.hpp>
@@ -69,6 +70,20 @@ void put_road(const CityState &s, Dictionary &d, int seg) {
 	d["bend_m"] = bend.height;
 	d["bend_at"] = bend.at;
 	d["median"] = std::any_of(p.strips.begin(), p.strips.end(), [](const Strip &st) { return st.kind == StripKind::MEDIAN; }) && !p.one_way;
+	// the street it is a piece of: its name (the player's words, or the keys of a given one: sign_paper.gd reads them the
+	// same) and the numbers of its doors
+	if (const StreetItem *name = name_item_of(s.street, seg)) {
+		Dictionary street;
+		street["text"] = String::utf8(name->text.c_str());
+		street["form"] = String::utf8(name->given.form.c_str());
+		street["name"] = String::utf8(name->given.name.c_str());
+		street["ordinal"] = int64_t(name->given.ordinal);
+		d["street"] = street;
+	}
+	const DoorNumbers doors = door_numbers(s.roads, seg);
+	d["doors_from"] = doors.from;
+	d["doors_to"] = doors.to;
+	d["doors_even_right"] = doors.even_right;
 }
 
 // A node: what it is, and when a signal rules it what the player set on it (a change shows at once, the traffic takes it up on its

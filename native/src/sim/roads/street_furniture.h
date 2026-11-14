@@ -15,7 +15,8 @@
 namespace city {
 
 constexpr uint8_t ROW_HEAD = 1, ROW_TAIL = 2; // FurnitureSpot::row_ends: the main row's first pole (at node a), its last (at node b)
-// A segment's furniture level (SEG_FURNITURE_MASK): 0 the full kit, 1 basic, 2 none.
+// A segment's furniture level (SEG_FURNITURE_MASK): 0 the full kit (lamps, bins, hydrants, benches, trees), 1 basic (the
+// lamps and the bins), 2 none. The junction's signals and the rules' plates stand whatever the level.
 constexpr int FURNITURE_LEVEL_FULL = 0, FURNITURE_LEVEL_NONE = 2;
 inline int furniture_level(const RoadSegment &g) { return (g.flags & SEG_FURNITURE_MASK) >> SEG_FURNITURE_SHIFT; }
 

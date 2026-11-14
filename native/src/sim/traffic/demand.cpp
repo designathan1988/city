@@ -96,6 +96,16 @@ bool draw_trip(CityState &s, VehicleType type, int from, bool leaving, std::vect
 		goal = 1; // it drives the way out to its end: the far traffic takes it on that street
 		return true;
 	}
+	// who came in at the map's edge may be passing through, bound for another of its edges (traffic.json _edge_doc)
+	if (at_map_edge(s, t.g.ds[size_t(from)].from) && t.rng.f() < p.edge_through_share) {
+		for (int k = 0; k < PICK_TRIES && !t.window_ds.empty(); k++) {
+			const int out = t.window_ds[size_t(t.rng.next() % uint32_t(t.window_ds.size()))];
+			if (out == from || size_t(out) >= t.g.ds.size() || !t.g.ds[size_t(out)].ok || !at_map_edge(s, t.g.ds[size_t(out)].to)) continue;
+			if (!find_route(s, from, out, route, type) || route.size() < 2) break;
+			goal = 1;
+			return true;
+		}
+	}
 	const float *w = type == VehicleType::TRUCK ? p.zone_truck : weights_now(p, float(s.clock.hour()), false);
 	for (int k = 0; k < DEST_TRIES; k++) {
 		const int c = pick_ds(s, w);

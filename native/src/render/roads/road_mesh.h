@@ -37,6 +37,8 @@ void emit_quad(MeshBuilder &mb, const godot::Vector3 p[4], const godot::Vector2 
 
 void emit_segment(const RoadEmit &e, int sid);
 void emit_markings(const RoadEmit &e, int sid);
+// What is written on a segment's lanes (road_legends.cpp): lane arrows, the stop word, the give-way triangle, a bus lane's word.
+void emit_legends(const RoadEmit &e, int sid);
 void emit_node(const RoadEmit &e, int node);
 // All a chunk owns: its segments with their paint and its nodes.
 void emit_chunk(const RoadEmit &e, int64_t chunk);

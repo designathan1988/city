@@ -98,6 +98,7 @@ func _steepest(a: Vector3) -> void:
 	var tip := points[-1]
 	var reached: float = tip.y - float(CityStore.query(&"height_at", [tip.x, tip.z]))
 	t.check(absf(reached - SHORT_M * GRADE) < NEAR_M, "the end is held to the steepest grade (%.2f m)" % reached)
+	t.check(pv.limited, "and the draft is told its end stopped short of the height asked")
 
 
 ## A road on piers costs what it is built as: more than the same road on the ground, the preview's price paid, a quarter back when it goes.
@@ -108,6 +109,8 @@ func _price(a: Vector3) -> void:
 	_set_height(DECK_M)
 	var high: Dictionary = CityStore.dispatch(&"preview_road", [a, e, false, Vector3.ZERO, PROFILE, PX, DECK_M])
 	t.check(high.price > flat.price, "on piers it costs more: %s against %s" % [high.price, flat.price])
+	t.check(high.built.bridge > LEG_M * 0.9 and flat.built.bridge == 0.0 and not flat.limited,
+		"the draft names what it is built as: %s on piers, %s on the ground" % [high.built, flat.built])
 	var r := _road(a, e, DECK_M)
 	t.check(r.ok and absf(r.money - high.price) <= MONEY_ROUNDING, "the preview's price is paid: %s against %s" % [r.money, high.price])
 

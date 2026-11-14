@@ -17,6 +17,8 @@
 	X(flow, stop_major) X(flow, stop_minor) X(flow, signal_major) X(flow, signal_minor) X(flow, signal_major_b) X(flow, signal_minor_b) \
 	X(flow, step_down) X(flow, trend_window) \
 	X(grade, tunnel_headroom_m) X(grade, tunnel_arch_m) X(grade, tunnel_floor_m) X(grade, lift_on_m) \
+	X(grade, line_reach_m) X(grade, plate_curve_m) X(grade, tie_m) X(grade, tie_share) X(grade, curve_m) X(grade, crest_m) X(grade, ramp_sag_m) \
+	X(grade, ends_margin) X(grade, under_deck_m) X(grade, floor_fade_m) X(grade, floor_ramp_share) X(grade, rounds_most) X(grade, ground_cache_mb) \
 	X(structure, span_from_m) X(structure, span_every_m) X(structure, cable_step_m) X(structure, cable_first_m) X(structure, tower_over_m) X(structure, tower_leg_m) X(structure, raised_m) X(structure, buried_m) X(structure, wall_thick_m) X(structure, wall_coping_m) X(structure, wall_foot_m) X(structure, wall_step_m) X(structure, bore_over_m) X(structure, pier_spacing_elevated_m) X(structure, pier_spacing_bridge_m) \
 	X(structure, pier_radius_elevated_m) X(structure, pier_radius_bridge_m) X(structure, bearing_m) X(structure, pier_slenderness) \
 	X(structure, pier_max_width) X(structure, min_support_m) X(structure, bent_spread) X(structure, cap_depth) X(structure, cap_height_m) \

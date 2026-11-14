@@ -134,6 +134,8 @@ RoadPlan plan_path(const CityState &s, const std::vector<Quad> &pieces, const An
 		total.lifts.push_back(p.lift_b);
 		total.len += p.len;
 		total.price += p.price;
+		total.built.add(p.built);
+		total.limited = total.limited || p.limited;
 		total.crossings.insert(total.crossings.end(), p.crossings.begin(), p.crossings.end());
 		if (!p.ok && total.ok) {
 			total.ok = false;
