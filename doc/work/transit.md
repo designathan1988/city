@@ -62,6 +62,17 @@
   by nothing); a bus at its stop dwells and serves its call (traffic::bus_call :109); send_bus :121-142 routes
   it to the next stop it can reach; hold_ahead :158-184 (a closed crossing three lanes ahead, a crossing near
   the stop line, the bus's stop).
+- native/src/sim/traffic/kerb_stops.cpp (350, whole; at the file's limit: a bus's errand goes in a file of its
+  own): assign_errand :323-329 gives a car DROP or PICK and a truck DELIVER, a bus of the traffic's own mix
+  (demand.cpp:59-63 draw_type: bus_share) NOTHING: it never stops (case 1); plan :93-134 plans one stop on the
+  kerb lane (lane 0), clear of the ends, with a footway; step_stop :232-320 the phases; a line's bus boards by
+  traffic::bus_call (bus_call.h) from transit_sim.cpp:109, a different path.
+- THE REFERENCE, sim/vehicles/kerbStops.ts: assignOccupancy :137-142: a city bus "is never empty and always
+  calls at stops" (errand 'service', 2 riders or more); planBusStop :365-397: no stop before BUS_HEADWAY 35 s
+  of the bus's own age since the last (:59, :366); it stops 0.3 of the way along the free stretch (:367), by a
+  footway, with no queue ahead; one or two riders get off by the middle door (:373-378), up to two people
+  walking alone within 0.7 x BUS_FETCH 45 m of the front door get on (:379-392); `abandon` keeps a bus's
+  service for the next stop (:285-286).
 - native/src/sim/commands/transit_commands.cpp (204), whole: every command copies the whole plan and hands it to
   the journal (j_transit); transit_place_stop :81-93, transit_place_station :104-122, transit_remove_at
   :156-168 pick with stop_near / nearest_track (the whole-plan walks of case 3); transit_snap_track :193-202
