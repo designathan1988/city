@@ -113,6 +113,36 @@
     (strings.csv:361, strings_c.csv:344-349), the rest of project/data/render/transit.json (its head read: radius_m
     900, items_per_frame 8, run_m 256, car_m [17.5, 3.6, 2.9]); the reference's world/transit.ts (368),
     editor/transitTools.ts (249).
+- THE REFERENCE, editor/transitTools.ts (249 lines), read whole on 2026-11-14: the kinds are stop, terminal, track,
+  station and line, the rail train or metro (:16, :34). A click (:86-137): Shift+click REMOVES the stop under it, or
+  else the track, and says so (`hint.transit.removed`, :88-93); stop: the footway nearest within STOP_REACH 18 m
+  (:97; "DO NOT build the walking network of the whole map for a click", :63), refused with its reason
+  (`noStreet`, `taken`); terminal: a click on a bus stop turns its terminal on or off (:103-109; `noStop`); station:
+  the track nearest within PICK x 1.5 (PICK 8 m, :28, :111; `noTrack`, `taken`), a metro's way down opened on the
+  nearest footway clear of buildings within 120 m (:115, `built` :54-61 asks the buildings near, never all); track: a
+  point snapped to a track point or a track within JOIN x 2 (:77-83: "the track points round the pointer only"), a
+  double click ends it; line: only stops of the first one's mode (:128-129), a double click ends it. Keys (:142-149):
+  Enter ends a run or a line, Backspace takes the last point back AND redraws at once (:146), Escape drops it.
+  finishTrack :151-164: points a metre apart at least, two at least (`trackShort`), a train's track may not run down
+  a road for more than ALONG_ROAD (`trackOnRoad`, :158). finishLine :166-173 (`lineShort`, `lineMade`). The plan
+  drawn (:188-243): the stops and stations ALWAYS, tool on or off (:209-225: a letter B, M or T, a terminal square),
+  the lines only with the tool on (:193-208), the line being made through its stops on to the pointer (:234-241);
+  the run being laid is built in the scene as real track (`preview` :176-179). Case 2 here: transit_tool.gd shows
+  one hint whatever the kind and the stops' marks only while the tool is on, and Backspace shows nothing until the
+  next move: the reference tells each refusal by its own text, keeps the stops marked and redraws at once.
+- THE REFERENCE, world/transit.ts (368 lines), read whole on 2026-11-14: normalizeTransit :63-101 drops what is
+  malformed, keeps of a line only the stops that exist and are of its mode (under two: the line goes), a colour only
+  when it is a hex colour, and its vehicles `clamp(1, 20, round)` or 2 when the save has none (:95: case 6; here
+  transit_data.cpp:107-117 leaves `vehicles` as read). addLine :134-140: a bus line starts with 3 vehicles, a rail
+  with 2, a colour of eight in turn, a name by mode and count; setLineVehicles :146-148 clamps 1 to 20; removeStop
+  :113-116 takes the stop out of every line and a line left with fewer than two goes; removeTrack :128-132 takes its
+  stations. The picks are filed (case 3): the tracks' stretches by 25 m cell, made once a version of the data
+  (`trackCells` :209-228), read by nearestTrack :231-242, stretchesNear :245-254 and trackPointNear :257-263 ("DO
+  NOT walk every point of every track for each move of the pointer"); the stops by id and by 25 m cell (`stopIndex`
+  :266-278; stopById :281, stopNear :284-299). railGraph :164-204 joins points within JOIN 3 m by cells. railPath
+  :302-349: `onEdge` walks EVERY edge of the graph for each end of a leg (:303-314, the reference's own cost; the
+  same walk as transit_data.cpp:32-45 here: case 4 takes it off both), then Dijkstra with a heap. ALONG_ROAD 12 m
+  and longestOnRoad :355-368 (a sample each metre).
 - native/src/sim/transit/rail_net.h (40) and .cpp (53), whole (2026-11-14): one mode's tracks as a graph, made again
   only when the mode's tracks (point for point, `same_tracks` :12-23, a compare of every point of the mode at each
   making of the loops) or the joining reach change (`ready_net` :27-37); the legs found on it kept by their two end
