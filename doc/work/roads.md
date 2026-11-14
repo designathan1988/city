@@ -223,6 +223,17 @@
   change and a lane's painted turns bind nobody. To read next: lane_allows, the lane-change rule (the model's
   files), how a vehicle picks its lane, what a bus is (v.bus), the reference's rules (world/roadSection.ts
   laneTurnAllowed, world/roads/rules.ts, sim graph laneUsable).
+- Case 7, the reference's rules (read at their places): world/lanelets.ts:48-52 a lane may be `use: 'bus'` (buses
+  only) and carry solidInner / solidOuter (no lane change across the line to the lane on that side: a solid line,
+  or a bus lane's); :861-864 laneUsable(lane, shape) = not a bus lane, or the vehicle is a bus; changeTargets: the
+  lanes of the same carriageway a vehicle may change into, across dashed lines only; the rule is asked when a car
+  is put on the map (spawn.ts:172), when a way is searched (routing/router.ts:150, :156, :249: a movement whose
+  arrival lane the vehicle may not use is no movement) and when a lane change is weighed (drive/tactical.ts:31);
+  world/roadSection.ts:238-243 laneTurnAllowed(rule, turn): no rule or "all" allows everything, a rule never a
+  U-turn, else the rule's own turns (left, through, right, leftThrough, throughRight); world/junctionBuild.ts:172:
+  a movement from a lane its rule does not allow is not made. This game's lane_allows
+  (native/src/sim/traffic/lane_graph.cpp:38-42): a U-turn from the last lane, straight on from any, right from lane
+  0, left from the last: by the index alone.
 - What reads the grade (from doc/work/t015-roads.md, to be read again): at(), ylo/yhi, structure, plates,
   len/step/half: road_network.cpp:245, road_network_deck.cpp:30, road_network_cut.cpp:14, road_grade_sync.cpp:29,
   city_core_state_probe.cpp:101, city_core_grade_probe.cpp.
