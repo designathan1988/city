@@ -180,6 +180,20 @@
   pierFrom 2.8; tunnel autoCover 18; piers every 29.6 (elevated) and 38.4 (bridge); economy: start 20,000,000,
   per m2 carriageway 150, median 40, footway 80, structure x1 / 1.4 / 1.8 / 2.5 / 6, fillFrom 1 m, refund 0.25
   (this game's tuning.json holds its own of these already: to be compared key by key before the block).
+- Case 6, the inspector: the reference, ui/inspector.ts:226-241: a road's title is "<its street's name, or Road> ·
+  <the class's name>", and under its numbers a line "No. <from> to <to>" (streetNumbers). This game,
+  project/ui/inspector_panel.gd:82-104 _road: the title is "Road · <profile>" (:83), no street name, no numbers;
+  the names themselves exist here (native/src/sim/street/street_names.h: names_for, name_segment,
+  settle_name_plates; the list and forms in street_furniture.json street_names, furniture_loader.cpp:149-157).
+- Case 6, traffic from the map's edge: the reference, sim/vehicles/spawn.ts:86-158: an entry is a link of 12 m or
+  more that starts at a node on the map's edge (doc.mapEdge); each entry has a Poisson stream (ENTRY_RATE x the
+  traffic's intensity x the demand's multiplier, or a fill rate towards a chosen number of cars), its arrivals wait
+  in a queue of ENTRY_QUEUE at most (the rest counted lost), the oldest waiting arrival anywhere is admitted first,
+  ADMIT_PER_TICK a tick, while the fleet is under its target; spawnAt :167-226: at the lane's start when there is
+  room behind what is on it and nobody on foot there, a bus never on a lane it cannot use nor at a junction none of
+  whose movements its body takes; its trip ends at a map exit (:219, :228); none of it while the city's residents
+  drive their own cars (:99-100) or the meso traffic feeds the entries (:101-102). Cars leave at a node on the edge
+  (:296-318). This game: to be read (the demand is the lots': lot_demand.cpp; the far flows: street_flows.h).
 - What reads the grade (from doc/work/t015-roads.md, to be read again): at(), ylo/yhi, structure, plates,
   len/step/half: road_network.cpp:245, road_network_deck.cpp:30, road_network_cut.cpp:14, road_grade_sync.cpp:29,
   city_core_state_probe.cpp:101, city_core_grade_probe.cpp.
