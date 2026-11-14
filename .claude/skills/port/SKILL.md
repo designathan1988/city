@@ -1,7 +1,7 @@
 ---
 name: port
 description: Use when the owner asks to port, bring or continue a functionality of the reference game into City (to port, to do the port, to continue, the next functionality, the traffic, the roads), when a block is open or in verify, when game code under native/src or project/ is about to be edited, when a check failed, or after a compaction during such work.
-when_to_use: Invoke it before the first tool call of any port work and again after every compaction. The hook refuses an edit of the game's code until this skill was invoked in the session.
+when_to_use: Invoke it before the first tool call of any port work and again after every compaction. With a block not closed the hook refuses every edit and command until this skill was invoked and the block's note Read, since the session's start or its last compaction.
 ---
 
 # Port one whole functionality
@@ -36,8 +36,13 @@ when_to_use: Invoke it before the first tool call of any port work and again aft
    `_doc` cites. A figure written from memory is a defect.
 7. **You do the reading.** No agent reads, traces or codes the port.
 8. **The note `doc/work/<area>.md` is written before the first line of code** and as each case is coded: the owner's orders
-   in their words, facts with `file:line`, each case's design, what is done, what is left. After a compaction the work goes
-   on from the note, never from memory.
+   in their words, facts with `file:line`, each case's design, what is done, what is left. Its first section, `## Now`, is
+   the state at this moment (the owner's standing orders, where the block stands, what is in hand, the next steps),
+   rewritten each time, never appended to: it is what the hook gives back whole. The hook refuses the game's code, a run
+   and a commit while the note is fifteen minutes behind.
+9. **After a compaction, and at a session's start with a block not closed: this skill, then the note Read whole, before
+   anything else.** The hook refuses every edit and command until both are done. The summary of a compaction is no source:
+   a fact is in the note, or it is read again in the code.
 
 ## The steps, in order
 

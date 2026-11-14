@@ -1,5 +1,50 @@
 # traffic: the complete traffic, ported in one block (doc/port.md, section 3)
 
+## Now
+(The state at this moment, rewritten at each step; everything below it is the history: what was read, designed, done.)
+- The owner's standing orders, their words: "acha no código os defeitos e corrige de uma vez, revisa"; "não aceito mais
+  teste, medição, antes de corrigir o código completo, verificar, reverificar, corrigir de novo"; "um pequeno teste de
+  validação de segundos e não minutos ... foto também tem que ser de segundos. Chega de suítes completas"; "quero mecanismos
+  que impeçam"; no agent; the functionality whole; nothing of the reference copied; the owner is answered in Portuguese.
+  Latest (2026-11-13): "Ao compactar a sessão você perde contexto ... perde as instruções do claude.md e do comportamento
+  que deve seguir e também das skills que deve utilizar. De uma vez por todas resolva isso."
+- That last order, done in the tools (to commit as `process:`): .claude/hooks/port_note.py (new), port_gate.py,
+  port_state.py, tools/tasks/tests/test_port_gate.py (12 tests pass), CLAUDE.md, the skill `port`, doc/map.md. The cause
+  found: Claude Code cuts a hook's text over 10,000 characters to a preview of 2,000 and tells nobody to read the rest
+  (code.claude.com/docs/en/hooks); the hook answered 10.5 KB after each compaction, so the note never came back, and what
+  it gave was the note's head, its oldest part, with a stale `## Next`. Now: this section comes back whole (every answer
+  under 9,500 characters); with a block not closed, every edit and command is refused until the skill `port` is invoked
+  and this note Read, since the session's start or its last compaction; the game's code, a run and a commit are refused
+  while this note is 15 minutes behind; a note may not be left with no `## Now` or one over 6,000 characters. The docs
+  also say: the project's CLAUDE.md is read again from disk after a compaction (code.claude.com/docs/en/memory).
+- The block `traffic` is in verify: verifications 1 of 3 used, failed rounds 1 of 2 (`block status`). Cases A to G are
+  committed (5cc4ff0d). Case H (far traffic as flows, an adaptive window, far cars drawn) is coded and uncommitted (49
+  files); its sections below: "H, the owner's orders of 2026-11-14 and what changed for good" and those before it.
+- This verification's one run of checks is used (flows_test, flow_control_test, records_traffic_test, driving_test, e2e,
+  far_cars: 7 of 9 tasks, 45 s; output C:\Users\Jonathan\AppData\Local\Temp\claude\a030f034ab8116e4\ae4e4915-424d-4fb6-abd7-37e736c0505b\tasks\bxpzf5p70.output).
+  Passed: flows_test (12 checks), driving_test, e2e, far_cars. Its measure (lab_test) was not run. Failed:
+  1. records_traffic_test "the town's bays let go behind the camera: 2 lots, 0 kerbs read" (records_traffic_test.gd:59; the
+     camera stands 1500 m east of the town, 60 reads of 20 ticks);
+  2. flow_control_test "the flow puts the signal at the junction" and "the signal the flows chose stands on the posts of
+     its arm 447: 0 -> 0" (its other checks pass).
+- In hand: the cause of each, by reading only (nothing is run to find it). Read so far for 1: parking_sources.cpp:127-146
+  drop_source keeps a source while a dock is awaited or a bay's holder is not at rest; :158-173 drop_far and look_round;
+  :248-259 the parking looks round when the camera moved park_window_step_m. A vehicle off the lanes has v.ds = -1 and is
+  off t.micro_list (lot_traffic.cpp:141-148, lorry_traffic.cpp:125-131, lot_demand.cpp:52-58), so flow_begin never sees
+  it. Not read yet: who holds the two lots' bays (a lot's car COMING or LEAVING whose vehicle hand_back despawned? the
+  lots' own count?), lot_traffic.cpp's phases and what despawn_vehicle does to a lot's car; for 2: flow_control_test.gd,
+  flow_control.cpp (line 22 reads in_window, now flows.inside), city_core_flow_probe.cpp:60-110.
+- Next, in order: (1) both causes to a file:line; (2) open the photos dist/captures/far_cars/00-day_1.png, 01-day_2.png,
+  02-night.png (what moves between the two day shots: scratchpad diff.py); (3) superpowers:systematic-debugging, then
+  `block open --cause "<checks>: <file:line>: <why>"`, with Context7 and the internet asked again before the game's code;
+  everything found fixed in that one opening, each edit's gates fixed at the edit; (4) the diff read, `block review`;
+  (5) `block verify`, the build, ONE run of at most six tasks of seconds (the two failed tests, flows_test, e2e,
+  far_cars, driving_test), each photo opened, then the measure `python tools/tasks/cli.py run lab_test --all --jobs 1`;
+  (6) superpowers:verification-before-completion, commit and push H, the traffic line of doc/port.md checked,
+  `block close`; then the next board line, roads.
+- Not run and not to be run without the owner's order: the whole suite, km24, hunt. window_traffic_test, transit_test and
+  lamp_light_test@forward_plus (minutes each) stay unverified since their causes were fixed: said plainly in the report.
+
 ## The owner's orders (2026-11-13, their words)
 - "pega uma funcionalidade inteira e faça o porte completo ... funcionalidade não é um botão, é a funcionalidade inteira, por
   exemplo: trânsito completo". Trace with the tool, read the code whole myself (no agent), code everything with nothing run, at
@@ -330,6 +375,41 @@ H. Far traffic as flows, an adaptive window (row 8): NOT in this block. It repla
   (city_state.h camera_*), the catalog's meso_* params, render/agents far level and fleet_shadow_, the tests
   window_traffic_test and traffic_hash_test.
 
+## H, the owner's orders of 2026-11-14 and what changed for good
+- "O que adianta ficar rodando tantas vezes uma atrás da outra e não ter fim? ... acha no código os defeitos e corrige de
+  uma vez, revisa." "Quero mecanismos que impeçam de uma vez por todas essa tentativa e erro de forma velada." "Não aceito
+  mais teste, medição, antes de corrigir o código completo, verificar, reverificar, corrigir de novo." "Tem que ter um
+  pequeno teste de validação de segundos e não minutos, que testa o que você implementou e ponto, vê se funcionou e não
+  quebrou nada. Foto também tem que ser de segundos. Chega de suítes completas."
+- In the tools (commit 9bc49ebd): the hook reads a file's gates after every edit; `block open` prints the limits; `block
+  verify` refused before `block review` (the gates of every changed file); one run of at most six checks and one measure
+  a verification; a whole suite only on the owner's order; a block opens again only with a cause at a file:line and is
+  verified three times at most.
+- H's first verification (the last whole suite, 64 of 72) and the first static reading (16 gate findings) gave, read to
+  their causes in the code and fixed in ONE opening (nothing run in between):
+  1. a street coming into the window handed floor(count): most streets carry under one vehicle and handed none
+     (flow_window.cpp:35): now flow_whole (the fraction is one more with that chance);
+  2. the flows were seeded at the opening's hour and never followed the clock set afterwards (the tests set the hour after
+     opening; the HUD's clock jumps): now seed_flows when CityClock::day_shift moved (flow_step.cpp step_flows);
+  3. a vehicle off the lanes (a lot's car, a lorry) on a street outside the window was skipped, never handed back, its lot
+     never let go (flow_window.cpp flow_begin): the skip is gone;
+  4. window_min_m 350 was under the bays' window (park_window_out_m 1100) and the published radius (900): now 1100, and
+     window_shrink_share 0.8 (with 0.7 the window could never shrink from its most to its least). The window therefore
+     moves between 1100 and 1500 m only: the bays', the walkers' and the published windows are fixed sizes and bound it;
+  5. a trip ending inside the window kept its car there for ever (new_trip to a street inside): now, out of sight the car
+     has arrived and is gone; seen, its next trip takes it out of the window (demand.cpp new_trip, draw_trip `leaving`);
+  6. the gates: street_flows.cpp split (street_flows.cpp the streets, flow_step.cpp the step, flow_nodes.cpp the nodes,
+     flow_parts.h what they share); FlowPhase by one setter and table (enter_flow_phase, FLOW_PHASES, rules.json states);
+     names the reference defines renamed (street_offers, lane_peak, advance_curves, track_view, car_limit, hull_half); the
+     two literals named; apply_network_changes calls refit_flows; the render's drain moved to FarTraffic::collect, called
+     from city_core.cpp (render_world.cpp and .h back within their sizes); draw_far called from RenderWorld::update_agents.
+  `block review`: 49 changed files, 0 new findings (1 registered: agent_renderer.cpp update, 92 lines before this block).
+- The verification of this opening, ONE run: flows_test (rewritten: the view beside the town through the probe
+  far_traffic(at, reach); the window carries half of what its lanes ask; the hour set is followed), flow_control_test and
+  records_traffic_test (two of the checks that failed), driving_test, e2e, the photo plan far_cars (the town, three shots).
+  Not run, minutes each, left for the owner's order of the suite: window_traffic_test, transit_test,
+  lamp_light_test@forward_plus (they failed in the last suite for causes 1 and 2).
+
 ## H, the sources opened (2026-11-13 night)
 - The link model: tabenchmark's design note ADR-016 "ltm: Yperman (2007) link transmission model"
   (tabenchmark.readthedocs.io/en/latest/_sources/docs/design/adr-016-ltm.md.txt), its own lines: "sending(k) =
@@ -385,12 +465,123 @@ H. Far traffic as flows, an adaptive window (row 8): NOT in this block. It repla
 - Costs kept out: no walk of the map's segments on a tick, an edit or a window's move (lists by chunk; the budget); no
   allocation in the step (arrays sized with the graph); the publication by change.
 
-## Next
-- The whole suite's result; commit and push cases A to G.
-- The tracer's `--cost` case, then H by the skill's steps (trace both games: reference src/sim/meso/*.ts; here
-  native/src/sim/traffic/meso.cpp, window.cpp; read whole; Context7 and the internet; the design written here; `block open`;
-  coded whole; verified once).
-- Commit and push cases A to G; the traffic line of doc/port.md stays unchecked until H is coded.
-- H, by the skill's steps: trace both games (reference src/sim/meso/*.ts; here native/src/sim/traffic/meso.cpp, window.cpp),
-  read whole, Context7 and the internet, the design written here, `block open`, coded whole, verified once.
-- Open with the register: shoot_test, yard_test, the unsourced values.
+## H, decided after reading the render (2026-11-13 night)
+- The render has what the far cars need (read whole: render/agents/fleet_shadow.cpp; rs_util.h:76-200 MultiMeshDraw;
+  instance_rows.h InstanceRows, mm_row): a MultiMesh a sector of the map (cell_key(i, j) of core/grid.h), its rows kept and
+  sent only when set, its custom box given (no walk of instances), room grown in steps of 32. The far cars' renderer is a
+  second user of that pattern: `render/agents/far_traffic.h/.cpp`, a sector's rows written again only when a ds filed in it
+  changed.
+- A far car is one instance of 20 floats read as data by its own shader (`project/render/shaders/far_cars.gdshader`, render
+  mode skip_vertex_transform, the sector's box the only culling): the transform's columns carry its street's curve (start,
+  control, end of the directed segment's centre between its mouths; a road segment is one quadratic curve, so three points
+  are the street itself and no texture of lines is needed), the free column its offset across (its lane) and its body's
+  scale; the colour its paint and seed; the custom data its place along at time 0, its speed, the stretch it moves round
+  (0: standing in the queue) and the stretch's start. The shader places it at mod(place + speed x TIME, stretch) along the
+  curve, heading along the curve's tangent. Nothing is written a frame.
+- The body: the fleet shadow's hull (a plain painted hull, FleetShadow::init's `hull`) baked with the far cars' material:
+  beyond the window a car is a few pixels.
+- From the simulation to the render: by the ChangeLog (the one dirty channel), never the pose frames (a frame may be
+  skipped, a delta would be lost): the ds whose drawn numbers changed (rounded count, rounded queue, speed by more than
+  flow_speed_step, inside or not) appended with those numbers under the log's mutex; the render drains them each frame,
+  files each ds in the sector of its middle and marks the sector; with no render (tests) the log's entry is cleared as the
+  rest is. The street's curve is read from the road network under the shared map lock when a ds is first told or its road
+  changed (the roads' own change entries).
+- The api gives the simulation the view's reach each frame (CityState::camera_reach, beside camera_x, camera_z: the eye's
+  distance to the ground point looked at).
+- More decided (2026-11-13 night), with what was read after: change_log.h read whole (a list appended under its mutex
+  by the simulation as damage_events are, swapped out by the render, cleared by clear_render, carried by absorb): the
+  flows' marks are one more list, `flow_marks` (a ds, its count, queue, speed, flags; and, when its line changed, its
+  three points, its lanes and the step between them), filled in the simulation's own vector during the step and moved to
+  the log under its mutex once a step. The line is worked out by the simulation (lane_pose at 0, half and the whole of
+  the ds: control = 2 x middle - (start + end) / 2), so the render reads neither the lane graph nor the traffic.
+  Users of the window found by grep: transit_sim.cpp:87 and flow_control.cpp:22 (in_window), lot_traffic.cpp:326
+  (fleet_target, kept: the demand of the window's lane metres), city_core_probe.cpp:265 (the probe's `window`).
+  in_window(ds) becomes "the flows hold it as inside": a ds comes in when its middle is within the window's radius and
+  goes out past radius x meso_window_out_m / meso_window_m (no flapping at the edge).
+  The cumulative curves are floats re-based when they grow (both rings of a ds less their floor), so a difference of
+  counts keeps its precision. Turn lists: a fixed room a ds (the most arms a node has), the connectors out of its lanes
+  counted by the ds they lead onto, a U-turn only when nothing else. The node phase walks the nodes by index and takes a
+  node's approaches from its road segments (in_ds).
+  The window's cars: those handed with a street coming in are made anywhere along it (they stand for the far cars drawn
+  there a moment before); those born of an inside street's own sides are made only out of sight, else not made (its
+  origin's queue stays full); a made car's trip goes out by a way out of the window (a ds outside whose start is the end
+  of an inside one) with the chance exp(-distance / trip_decay_m), else to a street inside by the zones (new_trip); at a
+  trip's end inside, as now, it leaves out of sight or drives on. A detailed vehicle found on a ds outside the window is
+  taken off and counted in at that ds's start (a bus goes to its lane's far queue as now). The credit that filled the
+  window (spawn_vehicles, fill_window, micro_spawn_m) goes.
+- H, coded so far (block open, nothing run): traffic.json params window_min_m, window_view_share, window_recentre_share,
+  window_shrink_share, flow_dt_s, flow_wave_kmh, flow_green_share, flow_links_per_tick, flow_origin_queue,
+  flow_admit_per_tick, flow_speed_step and `_flow_doc` with the sources; micro_spawn_m taken out; traffic_params.h's
+  list; traffic.schema.json `_flow_doc`. Next files, in order: sim/traffic/street_flows.h/.cpp (the model), flow_rates
+  (start rates and end shares), window.cpp and the handover, demand.cpp, traffic_system.cpp's step and reset, the graph's
+  edits, change_log.h's marks, the api's camera_reach, render/agents/far_traffic and far_cars.gdshader with its
+  materials.json entry, the tests (flows_test, the photo plan far_cars), meso.cpp for buses only, doc/map.md.
+- H, written since (2026-11-13 late; nothing run): sim/state/flow_mark.h (FlowMark, FLOW_LIVE, FLOW_INSIDE, FLOW_LINE);
+  sim/traffic/street_flows.h (StreetFlows, FlowPhase, the functions' declarations: reset_flows, fit_flow, fit_turns,
+  step_flows, flow_count, flow_queued, flow_speed, flow_vehicles, lay_flow, flow_take, flow_owes, flow_rates,
+  flow_density, side_weight, make_vehicle, flow_enters, flow_leaves, flow_begin, flow_admit); street_flows.cpp whole (the
+  rings, link_flows, node_flows with a node's approaches in a local array, origin_flows, move_counts, tell and line_of,
+  work by budget, the marks moved to the log at a step's end); flow_rates.cpp (flow_rates, flow_density);
+  change_log.h (flow_marks, in absorb and clear_render); traffic_state.h (StreetFlows flows; win_r, look_x, look_z,
+  window_out_ds; fill_ds gone); lane_graph_edit.cpp apply_network_changes (fit_flow for the removed and changed
+  segments and the approaches of the touched nodes, fit_turns for those nodes).
+  Written after that (still nothing run): flow_window.cpp (flow_enters, flow_leaves, flow_begin with hand_back,
+  flow_admit); window.cpp (wanted_radius: with no camera, reach 0, the window stands at meso_window_m, so the tests keep
+  their scale; follow_view; look_at_segments with the ways out; in_window = flows.inside; window_lane_metres = the
+  window's own sum); demand.cpp (side_weight, draw_trip, make_vehicle; spawn_one, fill_window, spawn_vehicles gone;
+  params fleet_tau_s, spawn_attempts_per_step, spawn_fill_attempts and spawn_credit gone); traffic_system.cpp
+  (step_flows in the step, reset_flows in reset_traffic); city_state.h (camera_reach; flows_untold, set by the render's
+  full rebuild so every street is told again) and city_core.cpp:199; the render: agents.json far_traffic (most_cars,
+  reach_m) and its schema, materials.json far_cars, project/render/shaders/far_cars.gdshader (the instance's transform is
+  the street: the point (2u - u*u, 0, u*u) of its space is the street's centre at the share u, so only MODEL_MATRIX's
+  documented meaning is used; custom = share at clock 0, shares a second, stretch of shares, metres to the right; colour
+  = paint; the ends burn by night), render/agents/far_traffic.h/.cpp (streets filed by sector, a sector written when
+  dirty, the clock from the pose frame's stamps), agent_renderer.h/.cpp (far_traffic_, far_cars_, far_hull_, draw_far),
+  agent_looks.cpp (paint_colours_), render_world.h/.cpp (flow_marks_ drained and taken, cleared at a full rebuild).
+  Written last (2026-11-13/14, nothing run): city_world.gd NATIVE_SHADERS (far_cars); meso.cpp's head (buses only);
+  native/src/api/city_core_far_probe.cpp (probe far_traffic(reach): sets the view's reach when 0 or more), city_probes.h,
+  city_core_jobs.cpp binding, store_api.gd route; project/tests/core/flows_test.gd + .tscn and its task in suites.json;
+  project/tests/visual/far_cars_plan.json and its `far_cars` item in `looks` (the far cars show only where the view sees
+  past the window, so the photos look low along the city); doc/map.md lines for all the new files.
+  H's verification (2026-11-14): `block verify`; both DLLs built at the first build (59.9 s, 63.2 s, no error, no
+  warning line); flows_test at its first run: PASS 4.5 s, FAILURES 0: "368 vehicles on 876 streets" at the opening; the
+  window 350 m with a close view, "276 inside, 600 far, 40 ways out"; "220 vehicles, 2 of them queued, 0 streets over";
+  "136 handed, 145 drive in it"; "64 taken back"; "60 steps, 0 late"; the window 900 m with the wide view (876 streets),
+  stays 900 m a little closer, 450 m much closer (600 streets), 0 streets over. Next: the whole suite once, the photo
+  plans far_cars and signal, lab_test --all --jobs 1 alone, gates, lab_scan, traffic_hash_test's digest.
+  (the list as it stood before the verification:) read the diagnostics of every file once more (the editor shows them without a build);
+  window_traffic_test.gd's head still speaks of the opening's fill (its check stands: half of what the window's lanes
+  carry); traffic_hash_test's digest moves (the fleet now comes from the flows: bless with that cause, once the other
+  checks pass); the gates may ask: unused params (fill_share is still read by pedestrians.cpp:277), the schemas.
+  Then: `block verify`, build, flows_test, the traffic's ten tests, the whole suite once, the photo plans far_cars and
+  signal, lab_test --all --jobs 1 alone, the 24 km measure only on the owner's order, gates, lab_scan, commit.
+  (earlier list, kept for the record:) project/render/city_world.gd (the far_cars shader in its list, if the materials are listed there);
+  meso.cpp's head (buses only now); the probe (the flows' census) and the tests (flows_test: vehicles kept, a queue
+  forms and clears, the window follows the view, the handover keeps the count; the photo plan far_cars); the tests that
+  read the old demand (window_traffic_test's comment, traffic_hash_test's digest moves: bless with the cause);
+  doc/map.md for the new files (flow_mark.h, street_flows.h/.cpp, flow_rates.cpp, flow_window.cpp, far_traffic.h/.cpp,
+  far_cars.gdshader, the tests).
+  The map's edge: a street leaving a dead-end node takes only its sides' starts; the entry from off the map is the roads'
+  case "traffic from the map's edge" (doc/port.md, roads), not written here.
+- Still to read before those files: the road segment's curve
+  (RoadSegment::q, at0, the lanes' offsets u), render_world.h (where AgentRenderer and FleetShadow are made: scenario,
+  material, sector size), lot_demand.cpp and step_governor (who reads fleet_target), transit's bus in the far queue,
+  lane_graph_internal.h apply_network_changes (where the flows' turn lists are rebuilt for a touched node).
+
+## H, the second verification's run (2026-11-13, 21:08; one run, 45 s)
+- flows_test PASS 3.1 s: "368 vehicles on 876 streets"; the window 1100 m, "746 inside, 130 far, 26 ways out"; "28
+  vehicles, 1 of them queued, 0 streets over"; "419 handed, 525 drive in it of the 441 its lanes ask"; "45 steps, 0 late";
+  "12 vehicles by night, 28 in the morning"; grows to 1500 m (876 streets), stays, shrinks to 1100 m (868 streets); "34
+  taken back"; 0 over. e2e PASS 10.2 s. driving_test PASS 8.7 s.
+- far_cars PASS 27.3 s: at the far view 876 streets, 670 far, window_streets 206, ways_out 22, on_far 324.4, queued 29.6,
+  owed 10.5, over_room 0, detailed 108, window [1545.05, 0, 1100], steps 20, late 0, handed_out 407.9, handed_in 323. Its
+  three photos are not opened yet.
+- records_traffic_test and flow_control_test failed (the checks in `## Now`).
+- Facts read while looking for the cause: tools/tasks/runs.py:122 a run "lives" while the PID in its folder's name is
+  alive (Pprocess-19); a look plan runs in real time (look.gd:71 stops the clock only with --frozen), so two runs of a
+  plan pick different vehicles; the tests with a real Camera3D (records_traffic_test.gd:47-59, yard_test.gd:126-137) move
+  the camera and tick until traffic_probe.lots_read is 0.
+
+## Causes named at the block's openings (written by `block open --cause`)
+
+- Cause named at `block open` (2026-11-13T20:58 round 1: window_traffic_test, transit_test, flow_control_test, lamp_light_test@forward_plus: native/src/sim/traffic/flow_window.cpp:35: a street coming into the window hands floor(count) vehicles, so every street under one vehicle hands none, and native/src/sim/traffic/street_flows.cpp:509: the flows are seeded at the opening's hour and never follow a jump of the clock (the tests set the hour after opening), so the window has no fleet. records_traffic_test: native/src/sim/traffic/flow_window.cpp:75: a vehicle off the lanes (a lot's car) on a street outside the window is skipped, never handed back, so its lot is never let go. Read too, with no check failing: the 16 gate findings of the block's files (file and function sizes, names the reference defines, two literals, FlowPhase with no setter and table); window_min_m 350 is under the bays' window (park_window_out_m 1100) and what is published (900); a trip that ends inside the window keeps its car there for ever (vehicle_motion.cpp), so the window only fills.)

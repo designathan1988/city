@@ -39,8 +39,12 @@ tool call of any port work, and again after every compaction. What it says in st
   `superpowers:verification-before-completion` before a commit, the `speckit-*` skills when the owner asks for a
   specification. A skill's step that runs a test while coding, writes a plan document or stops to ask does not apply here.
 - **The note `doc/work/<name>.md`** holds the owner's orders in their words, what was read (facts with `file:line`), each
-  case's design, what is done and what is left. Written before the first line of code and as the work goes; after a
-  compaction the work goes on from it, never from memory. No other document is written on the way.
+  case's design, what is done and what is left. Written before the first line of code and as the work goes, never more
+  than fifteen minutes behind it. Its first section, `## Now`, is the state at this moment, rewritten each time: the
+  owner's standing orders, where the block stands, what is in hand, the next steps. No other document is written on the way.
+- **A compaction keeps a summary, and a summary is no source.** After one (and at a session's start with a block not
+  closed) nothing is edited or run before the skill `port` is invoked again and the note is Read whole: the hook refuses
+  it. The orders are this file (Claude Code gives it again whole), the procedure is the skill, the facts are the note.
 - **The session does its own work**: no agent reads, traces or codes the port.
 
 ## Focus
