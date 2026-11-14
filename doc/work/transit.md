@@ -15,10 +15,27 @@
   SEGUNDOS, ANALISE E COMPREENSÃO, CODIFICAÇÃO, TESTE E FOTOS COM PROCESSOS DE SEGUNDOS ... ANALISE, CORREÇÃO SE
   PRECISAR NO CODIGO, PROXIMA FUNCIONALIDADE ... NADA DEVE FICAR ABERTO OU SER IGNORADO". Every process: a deadline
   of seconds (the Bash tool's timeout, the tool's own), its output read when it ends.
-- STATE (2026-11-14): NO BLOCK OPEN. The block before (zones-lots-growth) closed: commit aa8dd236, pushed. The
+  Since then the two rules are in the tools (commit fb0835c2; CLAUDE.md, the skill `port` rules 4 and 10): a run
+  carries `--seconds <n>` (`python tools/tasks/cli.py run <tasks> --seconds 180`, `tools/build/build.sh core-windows
+  --seconds 300`), anything else in the background starts as `timeout <n> <command>`; a block is committed and closed
+  only on its own photo plan, each photo opened after the run and sent to the owner.
+- The owner, 2026-11-14 (their words): "Cada funcionalidade exige fotos próprias ... você tem que verificar o que é
+  relevante ser fotografado e fotografar!"; "quando encontrar um problema de comportamento seu, jamais registre apenas
+  na memoria, mas garanta que todos os mecanismos impeçam de acontecer novamente"; "Sempre pergunte a você mesmo: Qual
+  o objetivo do que estou fazendo?; O mecanismo atual cumpre isso ou não?; Caso não, explique o por quê.; Como devo
+  resolver o problema na causa?".
+- STATE (2026-11-14, 16:00): NO BLOCK OPEN. The blocks before closed and pushed: zones-lots-growth (aa8dd236) and
+  zones-photos (fa3adcb3, record 72ee3d0e: the zones' own photo plan, and four defects it showed, fixed). The
   trace ran in 26 s (`python tools/tracer/port.py sheet transit`: the reference whole, 14 files; this game
   partial at its share of the time; report dist/port/transit.json, thin). The sheet
   doc/specs/003-roadcraft-features/sheets/transit.md read whole.
+- TO BE PHOTOGRAPHED (the block's own plan, project/tests/visual/transit_plan.json, written with the code; a first
+  list, to be made exact when each case is designed): the Transit tool in hand with its help for each kind (bus stop,
+  bus line, rail, station, metro); a bus stop placed on a street, before and after; a bus line drawn through stops,
+  its buses running, one at its stop with its doors and the people boarding; a city bus of the traffic's own mix
+  stopped at a kerb to board (case 1); a rail track and a station placed, a train on it, a level crossing closed with
+  the cars held; a line's vehicles changed in its panel; a stop and a track removed; the same line seen from afar
+  (the cars culled by the view, case 7).
 - The cases (doc/port.md, with the sheet's evidence): 1. random city buses stop to board (demand.cpp:63,
   kerb_stops.cpp:326-327; reference kerbStops.ts:59-141,365-398); 2. the transit tools' help (strings.csv:361,
   transit_tool.gd:22-39,105-107, strings_c.csv:344-349); 3. picking and previewing without whole-plan walks
@@ -73,6 +90,28 @@
   footway, with no queue ahead; one or two riders get off by the middle door (:373-378), up to two people
   walking alone within 0.7 x BUS_FETCH 45 m of the front door get on (:379-392); `abandon` keeps a bus's
   service for the next stop (:285-286).
+- READ BEFORE A COMPACTION AND WRITTEN HERE FROM THE SESSION'S RECORD (2026-11-14): each line below is read again in
+  the code before it is built on.
+  - native/src/sim/transit/transit_plan.cpp (182 lines): lane_beside :19-32 (the kerb lane beside a stop: the
+    direction of its road with the stop's footway on its right, lane 0); place_buses :35-64 (a line's buses kept,
+    more waiting at its terminal `bus_spacing_s` apart; a line with fewer than 2 served stops gets none);
+    place_all_buses :68-87 (buses whose line went leave the road); rebuild :90-122 (stop_index, stops_on_seg,
+    lines_at_stop, stop_lanes, place_all_buses, place_rails; plan_seen, roads_seen); follow_roads :129-161 (after
+    an edit of the roads alone: only the stops on changed segments, only the lines calling at a stop whose lane
+    moved, refresh_crossings); stop_of :165-168; line_of :171-173; read_plan :175-179.
+  - THE REFERENCE, sim/transit/transit.ts (lines 60-389): rebuild :122-158 (bus stops filed by place in a
+    CellFiling :118, :131); placeBuses :161-182; placeRails :185-240: a line's trains are kept only when
+    `was.trains.length === line.vehicles && samePoints(was.points, points)` and every station's stop and distance
+    are the same (:223-224) (case 6: this game keeps them by point count and length alone, rail_run.cpp:132);
+    crossingsByLane :243; followLanes :246-293; takeOff :296-312; step :315-324; stepBus :331-370: a bus not on the
+    road waits its time, a stop out of the focus reach is passed by the timetable (:341), a bus on the road is
+    taken off only by `awayFromView` when `bus.dwell === 0 && !v.kerbStop` and every door is shut (:357);
+    awayFromView :373-382: off the road only when its pose is outside `w.inFocusReach(pose.p.x, pose.p.y,
+    AWAY_MARGIN)` (case 5: out of sight with a margin; here transit_sim.cpp:96-99 takes it off as it leaves the
+    near window and traffic_params.h:63 bus_away_margin_m is read by nothing); stopPoint :385 on.
+  - STILL TO READ: rail_net.*, render/transit/transit_parts.cpp, transit_overlay.gd, the texts (strings.csv:361,
+    strings_c.csv:344-349), transit.json; the reference's world/transit.ts, editor/transitTools.ts, transit.ts from
+    :389 on (trains, crossings :486-585).
 - native/src/sim/commands/transit_commands.cpp (204), whole: every command copies the whole plan and hands it to
   the journal (j_transit); transit_place_stop :81-93, transit_place_station :104-122, transit_remove_at
   :156-168 pick with stop_near / nearest_track (the whole-plan walks of case 3); transit_snap_track :193-202
