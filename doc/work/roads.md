@@ -212,6 +212,17 @@
   a median's paving (MEDIAN_MATERIALS) and flush (:546-548); the road's class (:560), carriageway material (:562),
   speed (:565), centre line auto, dashed, solid or double (:572); each problem a line with a link to its element
   (:456); save under a name (:612-616); draw with it (:628) or apply it to the road (:639).
+- Case 7, this game (read): native/src/sim/catalog/profile_types.h:22-29 Strip holds `bus`, `solid` and `turns`
+  (left 1, straight 2, right 4; 0 automatic), :44-48 LaneInfo holds `bus`, `rail`, `turns`, :36-42 MarkLine
+  `exclusive`; sim/roads/profiles.cpp:29 makes the line between two lanes solid where either says so or their bus
+  use differs, :75 fills LaneInfo; the paint draws them (road_markings.cpp). The traffic reads NONE of it:
+  native/src/sim/traffic/lane_graph.cpp:191-230 build_dir takes each lane's place and width alone (:210-214: no
+  bus, no turns into DirSeg); link_pair :154-165 gives a turn class to the lanes lane_allows(l, lanes, turn) picks
+  by the lane's index alone, unless the player linked the lane by hand (lane_by_hand :147-151); no reader of
+  `.solid` or `.turns` anywhere under sim/traffic (grep). So a bus lane takes any car, a solid line stops no lane
+  change and a lane's painted turns bind nobody. To read next: lane_allows, the lane-change rule (the model's
+  files), how a vehicle picks its lane, what a bus is (v.bus), the reference's rules (world/roadSection.ts
+  laneTurnAllowed, world/roads/rules.ts, sim graph laneUsable).
 - What reads the grade (from doc/work/t015-roads.md, to be read again): at(), ylo/yhi, structure, plates,
   len/step/half: road_network.cpp:245, road_network_deck.cpp:30, road_network_cut.cpp:14, road_grade_sync.cpp:29,
   city_core_state_probe.cpp:101, city_core_grade_probe.cpp.
