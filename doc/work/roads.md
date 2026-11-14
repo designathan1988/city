@@ -52,6 +52,17 @@
   project/data/catalog/tuning.json `grade` with its schema and source, none in the code; (f) names and structure of
   this game (no solveGround/solveRaised/... one to one: LAB_COPY).
 
+- Case 7, the design's direction (sources to be searched before the block: what a general vehicle may do on a bus
+  lane to reach a turn or a lot, by the traffic code): native/src/sim/traffic/lane_graph_types.h DirSeg gains, a
+  lane: its bus-only flag, whether the line to the next lane bars a change, its turn mask; LaneInfo
+  (profile_types.h) gains the bar to the next lane, filled where profiles.cpp:29 already decides the line;
+  lane_graph.cpp build_dir fills them; link_pair gives a lane with a turn mask only its own turns (never a U-turn),
+  the other lanes the rule by index, and never leads a general lane's movement into a bus-only lane where a general
+  one stands; lane_change.cpp choose: no change by choice across a barred line nor into a bus-only lane for a
+  vehicle that is no bus (v.bus < 0), a mandatory one waits for the end of the bar or its forced gap (its wait at
+  the line: FORCE_AFTER_S, so no vehicle is held for ever); the far flows keep counting cars a street, not lanes
+  (flow_step.cpp), so nothing changes there.
+
 ## Read (facts with file:line)
 - native/src/sim/roads/road_grade.h:1-114: GradeProfile keeps four float lines a segment for good (h, ceil, base,
   raw: :61) besides q and read_half (:64-65): Proads-8; Structure {GROUND, ELEVATED, BRIDGE, TUNNEL} (:24);
@@ -234,6 +245,15 @@
   a movement from a lane its rule does not allow is not made. This game's lane_allows
   (native/src/sim/traffic/lane_graph.cpp:38-42): a U-turn from the last lane, straight on from any, right from lane
   0, left from the last: by the index alone.
+- Case 7, this game's lane change and graph (read whole): native/src/sim/traffic/lane_graph_types.h:25-43 DirSeg
+  (lanes, u[MAX_LANES 4], len, speed, stage, rank, must_stop, stop_back, cycle_shift, edge_shift, bikes, bend:
+  nothing of a lane's use, line or turns), :48-69 Conn (from_ds, from_lane, to_ds, to_lane, turn, max_class,
+  conflicts, forks); native/src/sim/traffic/lane_change.cpp (211 lines, MOBIL): choose :131-166 (a mandatory change
+  one lane towards lane_toward(next) when the own lane does not reach the route's next road or towards the stop's
+  lane, forced after FORCE_AFTER_S 5 s at the line; a change by choice to lane - 1 or lane + 1 when it reaches the
+  next road and its incentive passes the driver's threshold, never within lc_free_m of the end nor on a bicycle),
+  evaluate :89-114 (gaps, the body out of its lane before its leader, the new follower's braking, the politeness),
+  change_lanes :175-208 (only the detailed vehicles, signalled first: lc_want, lc_lead).
 - What reads the grade (from doc/work/t015-roads.md, to be read again): at(), ylo/yhi, structure, plates,
   len/step/half: road_network.cpp:245, road_network_deck.cpp:30, road_network_cut.cpp:14, road_grade_sync.cpp:29,
   city_core_state_probe.cpp:101, city_core_grade_probe.cpp.
