@@ -268,6 +268,26 @@
   next road and its incentive passes the driver's threshold, never within lc_free_m of the end nor on a bicycle),
   evaluate :89-114 (gaps, the body out of its lane before its leader, the new follower's braking, the politeness),
   change_lanes :175-208 (only the detailed vehicles, signalled first: lc_want, lc_lead).
-- What reads the grade (from doc/work/t015-roads.md, to be read again): at(), ylo/yhi, structure, plates,
-  len/step/half: road_network.cpp:245, road_network_deck.cpp:30, road_network_cut.cpp:14, road_grade_sync.cpp:29,
-  city_core_state_probe.cpp:101, city_core_grade_probe.cpp.
+- What reads the grade (read): RoadNetwork::seg_y (road_network.cpp:240-245: grade.at(s, arc), else the straight
+  line between the nodes' y); set_lift :247-252 marks the node and its roads; ray_deck
+  (road_network_deck.cpp:28-32: prof.ylo, prof.yhi); RoadNetwork::cut (road_network_cut.cpp:14-31 heights_of: a
+  reader's copy takes valid, structure, manual, walls, a, b, len, step, half, plates, h, ylo, yhi: never ceil, base,
+  raw); sync_grade (sim/commands/road_grade_sync.cpp:60-82: the ground moved marks its roads, solve, each moved
+  road's shape = its stations at their heights with half and kind (shape_of :27-47) put to the terrain, mark_ground,
+  mark_heights, settle_sites); ground_of :19-24 (the natural height, the water standing as a floor, the sea);
+  the probes (city_core_grade_probe.cpp, city_core_state_probe.cpp:101). So the solver's outputs others hold to are:
+  prof[s].{valid, structure, manual, walls, a, b, len, step, half, plate_a, plate_b, h, ylo, yhi}, node[n],
+  net.nodes[n].y, `moved`, `gone`, at(), has(), pending() and the four marks.
+- The acceptance of case 1: project/tests/core/road_grade_test.gd (226 lines, read whole; the probe grade_probe
+  solves a scene of nodes and roads on a named ground): a flat crossroads at the clearance exactly (1e-4); a
+  crossroads over a hill: cut under -0.4 m and fill over 0.08 m, the earthwork within 4 m, the road's summed second
+  differences under 0.6 of the ground's, the centre over 3.6 m and an end under 1.2 m, no grade past 0.14; an
+  elevated span lands exactly on the ground roads it joins, reaches 0.9 of 5.6 m on a long span, never steeper than
+  0.165 on a short one; its anatomy: each ramp within 40 m, the deck 0.6 of the span or more and level within
+  0.1 m, no grade past 0.162; over rolling ground a straight deck (within 0.12 m of its chord) more than 3.2 m
+  clear; landings sunk 0, 1.6 and 3.2 m; a span too short for two ramps lowers and never steepens; a bridge
+  crosses a valley level; and RoadGradeSeamCases (to read). A design of this game's own must hold every one.
+- The tuning here, project/data/catalog/tuning.json: grade :122-141 (ground 0.12, authored 0.12, join_m 0.3, ramp
+  0.16, deck 0.05, deck_tie 0.05, tunnel 0.13, clearance_m 0.12, clear_elevated_m 5.6, clear_bridge_m 3, the decks
+  0.22 / 1.04 / 0.96 / 0.24, tunnel headroom 4.4, arch 0.6, floor 2, lift_on_m 0.6), economy :12-17 (start
+  20,000,000, refund 0.25, fill_from_m 1, on_piers_from_m 2.8): the reference's figures, with no source in the data.
