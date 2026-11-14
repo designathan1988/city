@@ -31,7 +31,8 @@
   BLOCK of roads finishes what the first left out, each read in both games first and compared with file:line
   under "The second block" below, the better one built, none left for cost:
   a. the carriageway's surface (asphalt, concrete, cobble) in the profile editor, saved (a save version with a
-     reader of the old ones) and DRAWN (Profile::surface is read by no renderer today: Proads-37);
+     reader of the old ones); it IS drawn already (road_section.cpp:24-31, :140; the first note's "read by no
+     renderer" was WRONG, a grep cut at 40 lines: Proads-37 corrected);
   b. the fill, the cutting, the piers and the buried stretch drawn over the draft;
   c. the paint of a width transition (a taper) and of a mini-roundabout's island;
   d. the stop word and the triangle on automatic priorities (the legends read the player's signs only);
@@ -55,6 +56,166 @@
   6. streets and their life: traffic from the map's edge, street names and house numbers, the basic furniture set;
   7. lanes that obey the road: bus lanes, solid lines, per-lane turns read by the traffic.
 - The one look with no block open is not spent since the block `look` closed.
+
+## The second block (what the first left out: both games read, compared, the better built)
+- a. The carriageway's surface. THIS GAME: Profile::surface (profile_types.h:15, :90: ASPHALT, CONCRETE, COBBLE,
+  BALLAST) is read from the catalogue (catalog_loader.cpp:100; road_profiles_b.json has cobble :190, concrete
+  :212, ballast :234) and DRAWN: road_section.cpp:24-31 surface_mat, :140-141 (each piece's material and colour:
+  StreetLook::carriage, road_look.h:86-88), the shader's cobble and concrete (road_body.gdshaderinc:210-214); only
+  an asphalt lane wears and takes the far lines (road_section.cpp:169-181). What is missing is the choice: RoadSpec
+  has no surface (profile_types.h:64-70), spec_of / composed take the base's (road_spec.cpp:96-127,
+  road_variants.cpp:123-140), the editor's dictionaries (city_core_road_spec.cpp:20-62) and the save
+  (save_write.cpp:38-58, save_read.cpp:157-190, SPEC_SAVE_VERSION) carry none. THE REFERENCE:
+  world/roadSection.ts:7 CARRIAGEWAY_MATERIALS asphalt, concrete, cobble, a field of the profile
+  (roadSection.ts:153), chosen in the editor (ui/roads/profileEditor.ts:562), drawn in the editor's section as a
+  colour and, for cobble, joints (ui/roads/crossSection.ts:175-176, :211-213). COMPARED: the two agree on the
+  behaviour (a road's carriageway is one of three surfaces, the player's choice); this game's drawing is the
+  richer (a material and a shader a surface); nothing of the reference's is better here. DESIGN: RoadSpec gains
+  `surface` (int8: -1 the class's own, else a Surface but BALLAST, which is a rail bed's); spec_of gives the
+  profile's; composed() sets Profile::surface from it; read_spec / write_spec carry "surface"; the save writes it
+  after the centre line under a new save version, an older file reading -1; the editor cycles it
+  (road_profile_panel.gd, the names profile.materialName.asphalt / concrete / cobble exist: strings_b.csv:221-223)
+  and its section view draws the surface's colour; RoadModels' saved roads carry it (the spec dictionary whole).
+
+- b. The draft's build drawn. THE REFERENCE, main.ts:3270-3470 (read): once the pointer rests the draft is judged
+  and `roadTool.stations()` gives the road AS IT WILL BE BUILT: stations along it, each with its SOLVED deck, the
+  natural ground and its way of building (world/roads/buildMode.ts:13-21: by deck - ground: a tunnel under the
+  bore's depth, a bridge when the structure is raised or the lift passes 2 m, an embankment or a cutting past
+  fillFrom, else ground; :82-107 the draft laid in a trial copy and solved); drawn (:3347, drawBuildModes
+  :3482-3520): an embankment and a cutting filled between deck and ground in their colours (BUILD_FILL :3474-3480),
+  the cutting's top line on the ground, a pier every PIER_EVERY 14 stations of a bridge, a tunnel's stretch dimmed
+  along the road (drawTunnelStretches :3522-3536); before the judgement, a road authored off the ground is a
+  dashed casing on the ground and the area between it and the ground tinted (:3348-3357); the words (:3397-3404,
+  buildSummary :3539-3547: "cutting with walls" when walls are chosen); a dashed vertical from the ground to the
+  raised end and a ring on the ground (:3418-3431); the height label "+3.0 m · 4%" with a small sketch of the line
+  from the start's height to the end's, in the warning colour when the grade limited it (:3433-3468). Its cost:
+  the trial copy solves the WHOLE map's heights at each rest of the pointer (architecture.md: editRules.ts:66,
+  roadTool.ts:412: never brought). THIS GAME (first block): plan_road prices the pieces by their AUTHORED lift in
+  bands (road_plan.cpp price_plan, road_economy.cpp build_lengths), no solved deck, so a road at grade through a
+  hill shows and prices no cutting, one over a valley no embankment; the words name the bands; nothing is drawn
+  between deck and ground; plan_dict's points are the ground plus the authored lift (city_core_commands.cpp:65-88).
+  COMPARED: the reference's measure (the solved deck against the natural ground) is what the road will be and is
+  the better; its way of getting it (a whole-map solve a pointer rest) is the forbidden cost. THE THIRD DESIGN, to
+  write with file:line once RoadGrade's use on a draft is read: the draft solved ALONE on its own reach (a scratch
+  RoadGrade of the draft's pieces between its two ends' heights: the nodes it joins keep the heights they stand
+  at, a free end its ground and lift), its stations (deck, ground, way of building by the render's own depths:
+  road_structures.cpp:289-297) carried by the plan; the price and the metres from those stations, and the commit's
+  charge from the SAME function on the laid road's solved profile (the click costs what the draft showed); the
+  overlay draws the fill, the cutting with its top line, the piers and the buried stretch from the stations; the
+  height label with its grade and the limited colour; the vertical at a raised end.
+
+- b, this game's preview (read): project/render/preview_line.gd:120-135 show_road draws the plan's `points` as
+  bands (casing, footway, kerb, asphalt), the dashes and the two rings, in an immediate mesh; nothing between the
+  road and the ground. api/city_core_grade_probe.cpp shows a road solved alone (a scratch RoadNetwork, init,
+  add_node, add_segment, set_structure, refresh_all, grade.everything, grade.solve). DESIGN b in steps: (1)
+  sim/roads gains "a road solved alone" (grade_draft.cpp, declared in road_grade.h): from a curve, its arc table,
+  its casing's half width, how it is built and the height at each end (given: the node it joins stands there; or
+  free: its design line plus the lift), the ground handed in: the frame (stations), the ground read across the
+  casing (the same reader as a segment's, taking the curve: grade_ground.cpp read_ground split so both use it),
+  the design line, one span (span_at_grade / span_raised / span_sunken): its stations' heights and the natural
+  ground under each; nothing of the network is solved (the cost is the draft's own stations: the reference's
+  whole-map solve is not brought); (2) sim/economy gains the ways of building along stations (by deck - ground,
+  with the render's own depths: road_structures.cpp:289-297 to read) and build_value from them; (3) plan_road
+  solves each piece so, prices it and carries the stations (x, z, deck, ground, way) and the metres each way;
+  (4) the commit charges the plan's price (the same function the same instant: the click costs what the draft
+  showed) and a road's recorded value (refunds, edits) is the same function on its solved profile; (5) plan_dict
+  gives the stations; preview_line.gd draws, from them, the embankment and the cutting as faces between deck and
+  ground in their colours, the cutting's top line, a pier every structure.pier_spacing along a bridge, the buried
+  stretch dimmed, a dashed vertical and a ring on the ground at a raised end; road_draft.gd's words from the
+  stations ("cutting with walls" when the tool lays walls) and the height label "+3.0 m · 4%" in the warning
+  colour when limited. To read before coding: road_economy.cpp whole, road_commands.cpp place_road and where the
+  charge is taken, road_structures.cpp:280-300, grade_ground.cpp read_ground's callers, tool_controller's tag
+  (ctl.tagged) for the label's colour.
+- b, the money here (road_economy.cpp read whole, 120 lines): a road's value = cost_per_m x the metres each way x
+  the catalogue's factors (build_value :68-73; StructureCost ground, embankment, trench, bridge, tunnel); an
+  edit's charge = the value of what its journal entry added less what it removed (edit_value_change :92-105:
+  ADD_SEG, REM_SEG, PROFILE ops, each by recorded_value :26-28 = its structure and its two ends' AUTHORED lifts),
+  settled by settle_road_edit :107-118 (a refund is economy_refund_share of the value); nothing keeps a sum of
+  the map. The render calls a stretch raised where the deck stands more than structure_raised_m over the terrain
+  and bored under -(tunnel headroom + arch + structure_bore_over_m) (road_structures.cpp:289-297). So step (4) of
+  b: recorded_value becomes the ways along the segment's SOLVED profile against the natural ground
+  (RoadGrade::prof[s].h, the ground handed to the solve: road_grade_sync.cpp ground_of); an ADD_SEG settled
+  before the heights are solved has no profile yet: the order in the command (lay, sync_grade, settle) to read in
+  road_commands.cpp place_road before coding, and the preview's price is the draft solved alone (near, not equal,
+  when the nodes it joins move: the test road_height_cases.gd _price holds the two within MONEY_ROUNDING: to keep
+  them EQUAL the build solves first and charges by the same stations function; the preview solves the draft
+  between the heights its ends will settle on).
+- b, the command's order (road_commands.cpp:95-214 read): build_road :126-131 = place_road then settle_road_edit
+  over the journal's ops of this road; lay_road :178-214: plan_road, the stops (the two ends and each crossing's
+  node: a crossed road is split: REM_SEG + two ADD_SEG of ITS halves in the same entry), lay_pieces, clear_under,
+  merge_stubs (a stub and the piece beyond it removed and added again as one), settle_network (the heights solved
+  here, before the money is settled). So a value read from SOLVED heights at settle time would (1) not be had for
+  a removed segment (its profile is gone), (2) move for a crossed road's halves (their heights changed with the
+  new node): a split would cost money. THE DESIGN OF THE MONEY (third, neither game's): a segment RECORDS what it
+  was built as: `RoadSegment::worth` = its metres each way weighted by the catalogue's factors (one float: metres
+  of plain ground road it is worth), written when it is laid from the draft's stations (the preview's own
+  function on the same stations: the click costs exactly what the draft showed), divided by length when it is
+  split, summed when two are joined, kept through a change of class (value = the class's cost a metre x worth),
+  made again from its solved profile, and the difference charged, when the player changes its build or its
+  heights (the sheet's "a height edit is free": road_bend.cpp:46-68, set_lift, set_structure: to read); saved
+  with the segment under a new save version, an older file's made from the solved profile on load; the journal's
+  ADD_SEG / REM_SEG records carry it, so undo, redo and refunds need nothing else.
+- The sheet's row 2 also lists "a height edit is free" and "no tunnel for a deep cut": both in this block (the
+  worth above; a deep cut bored: the stations' way of building under the bore's depth is a tunnel, drawn bored by
+  the render already: road_structures.cpp:296, :310).
+- c. The taper's and the mini-roundabout's paint. THE REFERENCE, world/markings.ts (read :404-546):
+  transitionMarkings :472-522: at a node of two legs where one road carries on at another width (a transition),
+  both two-way and one painted: with a median on either road, two solid lines 0.28 wide following the reservation's
+  half width as it eases from one road's to the other's, in the colour of the road that has the median; with none,
+  one solid line 0.16 wide along the axis, each half in its own road's colour; and for each lane both roads have
+  (the lesser lane count a direction) a dashed line 0.128 wide either side at median + lane width x k, the widths
+  eased across the taper (taperEase); miniRoundaboutIsland :524-546: at a node under "mini" of three legs or more,
+  one painted disc of 40 sides at the node, radius clamp(0.4 x the nearest mouth, 2 m, 4 m) plus a 0.1 m line,
+  in the lane lines' white (one disc, never rings: 720 shapes). THIS GAME: to read (how a transition node is drawn:
+  render/roads/road_plate.cpp or road_junction.cpp; whether a mini-roundabout draws anything; road_markings.cpp
+  paints segments only: emit_markings :169-182).
+- d. The legends under automatic priority. THIS GAME, road_legends.cpp:135-143 signed_rule: STOP for CTL_STOP,
+  YIELD for CTL_YIELD and CTL_MINI, the leg's plate otherwise; RULE_NONE under CTL_AUTO though
+  traffic::approach_rule (junction_control.cpp:231-239) gives RULE_YIELD to every arm off the main road of an
+  automatic junction by priority and RULE_STOP under the flows' all-stop (street_signs.cpp:92-95), and arm_plates
+  (street_signs.cpp:37-43) puts the plate there: so an automatic give-way has its plate and no triangle. The first
+  block wrote "the render's cut does not hold them": to read what the render's CityView holds (the plates are
+  drawn from it: how the prop renderer gets approach_rule) and give the legends the same rule the plates have.
+  THE REFERENCE: world/markings.ts approachLegends :213-254 (the first block's note): on each leg that arrives
+  with a stop or a yield rule, whoever set it.
+- c and d, this game's render (read): a mesh job reads a CityView: the live city, or a CUT whose facts carry what
+  the traffic's rules decide (sim/state/city_cut.h:40-46 CutFacts: furniture by segment, `signs` by node (the
+  plates its rules put up: keep_node, city_cut.cpp:61-66, traffic::junction_signs), `signalled`); node_signs and
+  node_signalled read either (city_cut.h:96-98). No approach rule a leg is kept: so the legends could only read
+  the node's own control. DESIGN d: CutFacts gains the rule of each arriving leg of a kept node (by node: its
+  arms' segments and their traffic::approach_rule, taken in keep_node beside the plates) and a reader
+  `leg_rule_of(view, node, seg)` (live: approach_rule; a cut: the fact); road_legends.cpp signed_rule becomes that
+  reader: the word and the triangle stand wherever the plate does, automatic or signed. No grep hit in
+  native/src/render for a transition's or a mini-roundabout's paint (road_markings.cpp paints segments;
+  road_junction.cpp:48-213 draws a node's plate, cut or bulb): both are to build (c), in the node's paint, from
+  the reference's behaviour above, in this game's frame (the node's arms: road_node.h ArmEnd).
+- e. The start over a raised road, COMPARED by the code. THE REFERENCE, editor/roadTool.ts down :198-237: a stroke
+  that begins on a road or a node (not free, not chained) starts at THAT anchor's height (:225 anchorHeight:
+  snap.ts:404-417: a node's offset, or the two ends' along the segment plus its structure's clearance) and the
+  tool's height in hand becomes it (:226 setHeight "road starts at an existing point") unless the player set the
+  height by hand since the last stroke (heightEdited :116, :160, :313: then the hand's height stays for the END
+  and the road ramps from the anchor's); the end joins only what stands within 0.3 m of the height in hand
+  (snap.ts:111-112, :147-152, anchorForHeight :421-424: "a nearby road at another height is a crossing, not an
+  accidental junction"). THIS GAME: road_start (city_core_commands.cpp:99-109) = find_anchor with the height in
+  hand as a filter (road_snap.cpp:121-162, level :127: within grade.join_m), so a press on a deck the player sees,
+  with another height in hand, starts a free road at the hand's height under or over it, and the height in hand
+  never follows what was pressed; the end's rule is the reference's (:173). WHICH IS BETTER: for the start, the
+  reference's: the player presses what is seen and the road begins there, at its height; this game's rule serves
+  only who set a height on purpose, which the reference also keeps apart (heightEdited). But the reference then
+  still starts at the anchor's height, so with a height set by hand one cannot begin a road passing under or over
+  what stands at the press. THE THIRD, built: a press with the height NOT set by hand since the last stroke takes
+  whatever road or node is under the pointer, whatever its height, starts there and makes the height in hand its
+  lift; with the height set by hand since, only what stands at that height is taken (this game's filter: the
+  road passes over or under the rest: road_height_cases.gd:82-89 holds it). project/game/tools/road_tool.gd (read
+  whole, 235 lines): `height` is the height in hand (:21, read at enter :43, moved by step_height :158-167, which
+  dispatches set_road_height); a stroke begins in click :69-82: `_start_at(p)` (:183-185 road_start) and the
+  draft's `lift` = the chain's or `height` (:81); _aim :171-176 puts the pointer at the height in hand along its
+  ray. DESIGN e: the tool keeps `_height_by_hand` (set by step_height and by the options' height control, cleared
+  when a road is laid or the tool entered); road_start takes `any_height` (true when not by hand): find_anchor with
+  no lift filter, the pick at the ground point under the pointer's ray (`pointer`, not the aimed point: the deck
+  the player sees is found by the ray's deck hit already in ctl's ground point: to confirm in tool_controller's
+  pick, RoadNetwork::ray_deck); the answer carries the anchor's lift; the tool then sets `height` to it
+  (set_road_height, road_height_changed) and the draft's lift is the anchor's.
 
 ## On the way (done beside the block)
 - The owner, 2026-11-14, with the block open: "Instalei umas skills de godot, veja se elas te ajudam. se sim passe a
