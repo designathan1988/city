@@ -109,9 +109,37 @@
     awayFromView :373-382: off the road only when its pose is outside `w.inFocusReach(pose.p.x, pose.p.y,
     AWAY_MARGIN)` (case 5: out of sight with a margin; here transit_sim.cpp:96-99 takes it off as it leaves the
     near window and traffic_params.h:63 bus_away_margin_m is read by nothing); stopPoint :385 on.
-  - STILL TO READ: rail_net.*, render/transit/transit_parts.cpp, transit_overlay.gd, the texts (strings.csv:361,
-    strings_c.csv:344-349), transit.json; the reference's world/transit.ts, editor/transitTools.ts, transit.ts from
-    :389 on (trains, crossings :486-585).
+  - STILL TO READ: render/transit/transit_parts.* (322 lines), project/ui/transit_strip.gd (58), the texts
+    (strings.csv:361, strings_c.csv:344-349), the rest of project/data/render/transit.json (its head read: radius_m
+    900, items_per_frame 8, run_m 256, car_m [17.5, 3.6, 2.9]); the reference's world/transit.ts (368),
+    editor/transitTools.ts (249).
+- native/src/sim/transit/rail_net.h (40) and .cpp (53), whole (2026-11-14): one mode's tracks as a graph, made again
+  only when the mode's tracks (point for point, `same_tracks` :12-23, a compare of every point of the mode at each
+  making of the loops) or the joining reach change (`ready_net` :27-37); the legs found on it kept by their two end
+  points and let go when a making did not ask for them (`leg_of` :39-47, `drop_unused_legs` :49-51). Nothing to
+  change for case 4 here: the search is made once a leg.
+- native/src/sim/transit/transit_ground.h (25) and .cpp (78), whole: `transit_paved` :22-38 asks the segments near a
+  point (the spatial file, no whole walk); `transit_stop_frame` :40-61 walks EVERY track of the plan to find the stop's
+  own by its id (:42-43), and every point of it for the nearest piece (case 3: a walk of the plan for each stop's
+  frame, asked by the renderer's signature and the commands); `transit_stop_by_road` :63-69; `transit_built` :71-75.
+- THE REFERENCE, sim/transit/transit.ts :385-653, read whole on 2026-11-14 (after the zones-photos block):
+  stopPoint :385-396 (a stop's point on its lane; a stop out of the focus reach by its own place and its road's
+  limit); passStopAway :399-405 (the timetable: dwell, turn at the ends, the time to drive there); sendBus
+  :408-424 (the way planned ONCE, a stop it cannot reach skipped; "DO NOT search the way there twice");
+  leaveTowards :427-438 (a stop beyond the window: the bus drives out to the hand-off lane nearest it and the
+  timetable takes it there); spawnBus :440-463 (a way back from the stop, APPROACH, only with the lane clear from
+  there to the stop; the line's colour). Trains: stepTrain :467-497: the gap to the train ahead is a walk of every
+  train of the line (:487: the reference's own cost, the same as rail_run.cpp:200-205 here); the headway
+  `min(TRAIN_GAP, max(length + 10, 0.6 * loop / trains))` (:491); at an end of the line the last car leads (:476);
+  pointAt :500-515 a binary search by distance along the loop; crossingNearEnd :518-524, crossingNear :527-530,
+  closedOn :533-544 read `crossingsByLane` (a lane's own crossings; closed while a train is within CROSSING_WARN
+  ahead or still across); trainZones :547-585 makes the walkers' discs anew on each call, a map and arrays (an
+  allocation a call), left out when a train cannot reach the walkers' box (:551-555); trains() :588-600 hands
+  EVERY train's cars to the drawing, no cull (case 7: the reference's cost); levelCrossings :614-634: each leg of
+  the loop against the lanes in its box (`lanesInBox`), each lane's own centre line: a crossing a LANE at that
+  lane's own arc (:627-628). This game crosses the road's MIDDLE line and files one arc for every lane of both
+  directions (rail_run.cpp:55-83): on a skewed crossing or a wide road each lane's stop line is off by the skew;
+  the reference's way is the better (case 4), built here off the road's lanes with no whole-map walk.
 - native/src/sim/commands/transit_commands.cpp (204), whole: every command copies the whole plan and hands it to
   the journal (j_transit); transit_place_stop :81-93, transit_place_station :104-122, transit_remove_at
   :156-168 pick with stop_near / nearest_track (the whole-plan walks of case 3); transit_snap_track :193-202
