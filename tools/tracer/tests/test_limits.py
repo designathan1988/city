@@ -12,7 +12,9 @@ import json
 import os
 import random
 import shutil
+import sys
 import tempfile
+import time
 import unittest
 from fractions import Fraction
 from pathlib import Path
@@ -228,6 +230,32 @@ class PortDriver(unittest.TestCase):
                 self.assertEqual([(ref / f"{rule}.ts", ref_line)], found["reference"])
                 self.assertEqual(["nowhere.cpp:4"], found["unresolved"])
                 self.assertEqual(("3", " x | y "), port.ROW.match("| 3 | x | y |").groups())
+
+    def test_a_file_at_the_top_of_a_program_is_a_root_alone_never_the_whole_program(self):
+        import port
+        rng = random.Random(SEED + 8)
+        n = Names(rng)
+        top, deep, other = n(), n(), n()
+        with Folder() as folder:
+            src = folder / "src"
+            points = [[(src / f"{top}.ts", 5), (src / "world" / f"{deep}.ts", None)], [(src / "sim" / f"{other}.ts", 9)]]
+            with self.subTest(seed=SEED):
+                self.assertEqual(tuple(sorted([(src / f"{top}.ts").as_posix(), (src / "world").as_posix(),
+                                               (src / "sim").as_posix()])), port.roots_of(points))
+                self.assertEqual(((src / "world").as_posix(),), port.roots_of([[(src / "world" / f"{deep}.ts", 2)]]))
+
+    def test_a_run_past_its_deadline_is_ended_and_says_the_step_it_was_in(self):
+        import subprocess
+        import port
+        code = ("import sys, time; sys.path.insert(0, sys.argv[1]); import port; port.GRACE = 0.0; "
+                "w = port.Watch(0.2); w.say('the slow step'); time.sleep(30)")
+        began = time.monotonic()
+        done = subprocess.run([sys.executable, "-c", code, str(Path(port.__file__).parent)], capture_output=True,
+                              text=True, timeout=20)
+        self.assertEqual(port.PAST_DEADLINE, done.returncode)
+        self.assertIn("PAST THE DEADLINE", done.stderr)
+        self.assertIn("the slow step", done.stderr)
+        self.assertLess(time.monotonic() - began, 10)
 
 
 class CallableDispatch(unittest.TestCase):

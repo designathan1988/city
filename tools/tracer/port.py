@@ -6,7 +6,9 @@ analysed once, every question asked of it in memory), so a port is read off both
         its evidence names (`file:line` in its cells), found in both games; the tracer's sheet of each side from those
         points (outputs, conditions, state read and written, constants, data); what one side holds that the other does not;
         the cost of each side's functions (loops and their order: the reference's faults never to bring). The report:
-        dist/port/<area>.json; the summary on the console.
+        dist/port/<area>.json; the summary on the console. The run has a deadline (`--seconds`, the whole of it): each
+        step is said as it ends with the time so far, an analysis past its share stops and is said partial, and a run
+        past the deadline is ended there, saying the step it was in (exit 3). It never waits without saying.
     python tools/tracer/port.py check [DIR]
         Every comparison pair under DIR (default project/tests/port): the reference's map and this game's (`trace.py
         --compare` maps) run in the same situations, swept; a pair passes only where no band differs but in the ways it
@@ -20,8 +22,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -30,7 +34,7 @@ REPO = HERE.parents[1]
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(REPO / "tools"))
 
-from tracer import analyse, compare, cost, feature  # noqa: E402
+from tracer import analyse, compare, cost, feature, limits  # noqa: E402
 
 SHEETS = REPO / "doc" / "specs" / "003-roadcraft-features" / "sheets"
 REPORTS = REPO / "dist" / "port"
@@ -43,6 +47,38 @@ REF_TOKEN = re.compile(r"([\w./-]+\.(?:ts|tsx|mts|js|cpp|h|gd|gdshader|gdshaderi
 ROW = re.compile(r"^\|\s*(\d+)\s*\|(.+)\|\s*$")
 PROBLEM = re.compile(r"\bP[a-z]+-\d+\b")     # a problem's id in the register
 SHOWN = 12                       # how many of each list the console summary shows
+SECONDS = 60.0                   # the longest a sheet's whole run may take, where the one running it asks no other
+SHARES = 3                       # the run's time in equal parts: each side's analysis one, the features' questions one
+GRACE = 5.0                      # how long past the deadline a step may still end by itself before the run is ended
+PAST_DEADLINE = 3                # the exit code of a run ended at its deadline
+
+
+class Watch:
+    """The run seen as it goes: each step said with the time so far, and the run ended at its deadline (never left
+    waiting), saying the step it was in."""
+    def __init__(self, seconds: float):
+        self.began = time.monotonic()
+        self.seconds = seconds
+        self.step = "starting"
+        self.timer = threading.Timer(seconds + GRACE, self.end)
+        self.timer.daemon = True
+        self.timer.start()
+
+    def say(self, words: str) -> None:
+        self.step = words
+        print(f"  [{time.monotonic() - self.began:5.1f} s] {words}", file=sys.stderr, flush=True)
+
+    def share(self) -> "limits.Ceiling":
+        """One part of the run's time, for one analysis: past it the analysis stops and is said partial."""
+        return limits.Ceiling(self.seconds / SHARES)
+
+    def end(self) -> None:
+        print(f"PAST THE DEADLINE of {self.seconds:.0f} s, ended in the step after: {self.step}", file=sys.stderr,
+              flush=True)
+        os._exit(PAST_DEADLINE)
+
+    def done(self) -> None:
+        self.timer.cancel()
 
 
 def reference_root() -> Path:
@@ -117,15 +153,24 @@ def code_points(points: list) -> list:
 
 def roots_of(rows: list) -> tuple:
     """One side's roots for the whole area: every folder its evidence is in (one analysis per side, every feature of
-    the area asked of it, a call from one of its folders to another linked)."""
-    return tuple(sorted({p.parent.as_posix() for points in rows for p, _ in code_points(points)}))
+    the area asked of it, a call from one of its folders to another linked). A folder that holds another of these
+    folders gives its cited files alone: a file at the top of a program is not the whole program under it."""
+    files = {p for points in rows for p, _ in code_points(points)}
+    folders = {p.parent for p in files}
+    out = set()
+    for folder in folders:
+        if any(folder in other.parents for other in folders):
+            out |= {p.as_posix() for p in files if p.parent == folder}
+        else:
+            out.add(folder.as_posix())
+    return tuple(sorted(out))
 
 
-def analysed(roots: tuple):
+def analysed(roots: tuple, watch: Watch):
     began = time.monotonic()
-    result = analyse(list(roots), keep=True)
-    print(f"  analysed {len(roots)} folder(s), {len(result.program.files)} files, in {time.monotonic() - began:.1f} s"
-          + (f" (stopped: {result.cut})" if result.cut else ""), file=sys.stderr, flush=True)
+    result = analyse(list(roots), say=watch.say, keep=True, ceiling=watch.share())
+    watch.say(f"analysed {len(roots)} root(s), {len(result.program.files)} files, in {time.monotonic() - began:.1f} s"
+              + (f" (STOPPED at its share of the time, {result.cut}: PARTIAL)" if result.cut else ""))
     return result
 
 
@@ -163,7 +208,15 @@ def differences(one: dict, two: dict) -> dict:
     return out
 
 
-def sheet(area: str, only: int | None, as_json: bool) -> int:
+def sheet(area: str, only: int | None, as_json: bool, seconds: float = SECONDS) -> int:
+    watch = Watch(seconds)
+    try:
+        return sheet_within(area, only, as_json, watch)
+    finally:
+        watch.done()
+
+
+def sheet_within(area: str, only: int | None, as_json: bool, watch: Watch) -> int:
     city = files_by_name([REPO / t for t in CITY_TREES])
     reference = files_by_name([reference_root()])
     problems = register()
@@ -176,12 +229,13 @@ def sheet(area: str, only: int | None, as_json: bool) -> int:
     results = {}
     for side in ("reference", "city"):
         roots = roots_of([found[side] for _, _, found in rows])
-        print(f"{side}: {len(roots)} folder(s)", file=sys.stderr, flush=True)
-        results[side] = analysed(roots) if roots else None
+        watch.say(f"{side}: {len(roots)} root(s): {', '.join(Path(r).name for r in roots)}")
+        results[side] = analysed(roots, watch) if roots else None
     report = {"area": area, "roots": {side: list(roots_of([f[side] for _, _, f in rows])) for side in results},
+              "partial": {side: r.cut for side, r in results.items() if r is not None and r.cut},
               "features": []}
     for number, cells, found in rows:
-        print(f"feature {number}: {cells[0][:90]}", file=sys.stderr, flush=True)
+        watch.say(f"feature {number}: {cells[0][:90]}")
         one = side_sheet(results["reference"], found["reference"])
         two = side_sheet(results["city"], found["city"])
         report["features"].append({"number": number, "feature": cells[0], "reference": one, "this game": two,
@@ -206,6 +260,9 @@ def sheet(area: str, only: int | None, as_json: bool) -> int:
                                               else ""))
         if f["unresolved"]:
             print(f"   not found in either game: {f['unresolved'][:SHOWN]}")
+    for side, why in report["partial"].items():
+        print(f"\nPARTIAL: the analysis of {side} stopped at its share of the time ({why}); what is above is what it "
+              "reached. `--feature N` asks one row, `--seconds` gives more time.")
     print(f"\nreport: {out}")
     return 0
 
@@ -256,11 +313,13 @@ def main(argv=None) -> int:
     s.add_argument("area")
     s.add_argument("--feature", type=int, help="only this row of the sheet")
     s.add_argument("--json", action="store_true")
+    s.add_argument("--seconds", type=float, default=SECONDS,
+                   help=f"the run's deadline, the whole of it (default {SECONDS:.0f}): past it the run is ended")
     c = sub.add_parser("check", help="every comparison pair proved by --compare")
     c.add_argument("folder", nargs="?", default=str(PAIRS))
     args = parser.parse_args(argv)
     if args.action == "sheet":
-        return sheet(args.area, args.feature, args.json)
+        return sheet(args.area, args.feature, args.json, args.seconds)
     return check(Path(args.folder))
 
 
