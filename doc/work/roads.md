@@ -194,6 +194,24 @@
   whose movements its body takes; its trip ends at a map exit (:219, :228); none of it while the city's residents
   drive their own cars (:99-100) or the meso traffic feeds the entries (:101-102). Cars leave at a node on the edge
   (:296-318). This game: to be read (the demand is the lots': lot_demand.cpp; the far flows: street_flows.h).
+- Case 5, this game (read whole): project/ui/road_profile_panel.gd (164 lines): the elements shown and picked
+  (RoadSectionView), added from a palette, moved, widened by 0.5 m within the core's limits (road_spec_limits),
+  removed; a lane's direction, bus use and solid line (:124-127), a footway's or a median's flush (:128-129); the
+  road's speed by 10 km/h between 10 and 130 (:133-135, numbers in the interface: to the data); the problems asked
+  of the core (road_spec_issues :97) and "use" disabled on any; _apply :146-153 = road_spec_make (refused past the
+  core's count of custom roads: told only by command_failed); _save :162-164 = RoadModels.save whatever the
+  problems. project/ui/road_spec_ops.gd (113 lines): with_width :82-89 widens every element EQUAL to the target
+  (`e == target` compares two dictionaries by value: a footway and its twin of the same width are both widened)
+  and every lane with a lane; insertion_index :41-78; no class, no carriageway material, no paving of a footway or
+  a median, no centre line anywhere; no way to delete a saved road.
+- Case 5, the reference, ui/roads/profileEditor.ts (754 lines; its controls listed by their labels): the saved
+  roads as cards, a user's card with a delete button (:407, :422, deleteTemplate) and a blank card (:424); the
+  picked element moved left or right (:483-485), removed (:487), its width by a stepper ("all lanes" for a lane
+  :499; a fixed width told :505), a lane's direction (:509), use all or bus (:513), the line on its right dashed
+  or solid, solid by rule beside a bus lane (:522-530), a footway's paving (FOOTWAY_MATERIALS) and flush (:538-540),
+  a median's paving (MEDIAN_MATERIALS) and flush (:546-548); the road's class (:560), carriageway material (:562),
+  speed (:565), centre line auto, dashed, solid or double (:572); each problem a line with a link to its element
+  (:456); save under a name (:612-616); draw with it (:628) or apply it to the road (:639).
 - What reads the grade (from doc/work/t015-roads.md, to be read again): at(), ylo/yhi, structure, plates,
   len/step/half: road_network.cpp:245, road_network_deck.cpp:30, road_network_cut.cpp:14, road_grade_sync.cpp:29,
   city_core_state_probe.cpp:101, city_core_grade_probe.cpp.
