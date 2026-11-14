@@ -271,7 +271,7 @@ void drop_pedestrians_on_seg(CityState &s, int seg) {
 void step_pedestrians(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
 	const TrafficParams &p = s.catalog.traffic;
-	// the crowd follows the sidewalk metres inside ped_window_m, so it has a natural ceiling
+	// the crowd follows the sidewalk metres inside the walkers' window (walk_window_m), so it has a natural ceiling
 	const PeopleNow now = people_now(p, float(s.clock.hour()));
 	const double target = people_wanted(s, now) * s.traffic_levels.people * s.traffic_levels.population;
 	const bool filling = t.ped_count < p.fill_share * target; // a street just opened: the crowd is on it already
@@ -280,7 +280,7 @@ void step_pedestrians(CityState &s, float dt) {
 	read_doors(s);
 	look_at_shocks(s);
 	const float cx = s.camera_x.load(), cz = s.camera_z.load();
-	const float out = p.ped_window_m * p.ped_despawn_window_share, out2 = out * out; // beyond it: gone, not lost
+	const float out = walk_window_m(s) * p.ped_despawn_window_share, out2 = out * out; // beyond it: gone, not lost
 	t.ped_waiting = 0;
 	file_swaths(s); // the vehicles off the lanes have moved (step_lots): where their swaths are this tick
 	crowd_step(s, dt);

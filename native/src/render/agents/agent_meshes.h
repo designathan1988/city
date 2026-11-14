@@ -25,7 +25,9 @@ constexpr int AGENT_HULL_LEVEL = AGENT_LEVELS; // the car with no wheels, what t
 
 enum class AgentTag : int { FIXED, PAINT, HEAD, TAIL, GLASS, SIGN, ROOF, GLOSS, SIGNAL_LEFT, SIGNAL_RIGHT }; // the last two: an indicator's lens, by its side
 // Parts that move in the shader: WHEEL turns about X round its hub (UV = hub y, z) by the roll angle.
-enum class Limb : int { NONE = 0, WHEEL = 1, DOOR = 2, DOOR_BACK = 3 }; // what the vertex stage moves: UV its axle or its hinge; a door hung at its front edge, at its back edge
+// What the vertex stage moves: UV its axle or its hinge; a door hung at its front edge, at its back edge; LENS an indicator's lens,
+// UV its centre (x, y) on its end: lit, the shader keeps it a least size on the screen (agents.gdshader signal_least_px).
+enum class Limb : int { NONE = 0, WHEEL = 1, DOOR = 2, DOOR_BACK = 3, LENS = 4 };
 
 // Fixed colours of the parts that are not painted (agents.json "trim").
 struct AgentTrim {
@@ -107,6 +109,9 @@ AgentTrim read_trim(const godot::Dictionary &t);
 CabinPaint read_cabin_paint(const godot::Dictionary &d);
 // A box with a tag; colour white for tinted tags.
 void agent_box(MeshBuilder &mb, const godot::Vector3 &mn, const godot::Vector3 &mx, const godot::Color &c, AgentTag tag, Limb limb = Limb::NONE);
+// An indicator's lens on an end of the body: a box `w` wide, `h` high and `depth` deep round `centre`, every vertex carrying the
+// centre (Limb::LENS); `tag` SIGNAL_LEFT or SIGNAL_RIGHT, the vehicle's side it stands on.
+void agent_lens(MeshBuilder &mb, const godot::Vector3 &centre, float w, float h, float depth, const godot::Color &c, AgentTag tag);
 // A housing as a mirror's is: a rounded shell `depth` long towards +Z, closing to a blunt nose, flat at its back (`centre`, `half` wide and high).
 void agent_pod(MeshBuilder &mb, const godot::Vector3 &centre, const godot::Vector2 &half, float depth, const godot::Color &c, AgentTag tag);
 // The flat of that shape, facing -Z: its back, or the glass set in it.
@@ -176,8 +181,8 @@ struct Running {
 };
 Running heavy_running(const godot::Dictionary &d, float length);
 void heavy_wheels(MeshBuilder &mb, const Running &g, int sides, const AgentTrim &trim);
-// Headlamps and tail lamps on the ends (agents.json lamps_m: their centres' height over the road, their outer edges in
-// from the sides, their faces [w, h]).
+// Headlamps, tail lamps and the indicators beside them on the ends (agents.json lamps_m: their centres' height over the road,
+// their outer edges in from the sides, their faces [w, h]).
 void heavy_lamps(MeshBuilder &mb, const godot::Dictionary &lamps, float width, float length, const AgentTrim &trim);
 // A mirror each side on an arm out from the body at z: the glass's bottom at y, its outer edge `out` beyond the side.
 void heavy_mirrors(MeshBuilder &mb, float half_w, float z, float y, float out, const AgentTrim &trim);

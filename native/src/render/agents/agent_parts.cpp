@@ -127,6 +127,22 @@ void agent_box(MeshBuilder &mb, const Vector3 &mn, const Vector3 &mx, const Colo
 	mb.box(lo, hi, c, agent_tag(tag, limb), true);
 }
 
+void agent_lens(MeshBuilder &mb, const Vector3 &centre, float w, float h, float depth, const Color &c, AgentTag tag) {
+	const Vector3 half(w * 0.5f, h * 0.5f, depth * 0.5f);
+	const Vector2 at(centre.x, centre.y), t2 = agent_tag(tag, Limb::LENS);
+	const Vector2 uvs[4] = { at, at, at, at };
+	for (int axis = 0; axis < 3; axis++) {
+		for (float side : { -1.f, 1.f }) {
+			Vector3 out, u, v;
+			out[axis] = side;
+			u[(axis + 1) % 3] = half[(axis + 1) % 3];
+			v[(axis + 2) % 3] = half[(axis + 2) % 3];
+			const Vector3 mid = centre + out * half[axis];
+			mb.quad(mid - u - v, mid + u - v, mid + u + v, mid - u + v, c, out, uvs, t2);
+		}
+	}
+}
+
 void agent_strut(MeshBuilder &mb, const Vector3 &a, const Vector3 &b, float w, float thick, const Color &c, AgentTag tag, Limb limb) {
 	const Vector3 d = (b - a).normalized();
 	Vector3 u = Vector3(1, 0, 0) - d * d.x; // X square to the bar

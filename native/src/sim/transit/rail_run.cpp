@@ -257,7 +257,7 @@ void train_zones(CityState &s) {
 		const int cars = cars_of(s, r);
 		for (const Train &t : r.trains) {
 			const float ahead = std::max(p.train_clear_ahead_m, t.v * p.train_clear_time_s), reach = float(cars) * p.train_car_m + ahead;
-			if ((point_at(r, t.s).at - cam).len() > p.ped_window_m + reach) continue;
+			if ((point_at(r, t.s).at - cam).len() > traffic::walk_window_m(s) + reach) continue;
 			TrainZone z;
 			z.x0 = z.z0 = FREE_LINE_M;
 			z.x1 = z.z1 = -FREE_LINE_M;

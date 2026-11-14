@@ -139,8 +139,8 @@ bool spawn_walker(CityState &s, const PeopleNow &now, bool from_door) {
 		if (seg < 0) return false;
 		const RoadSegment &e = s.roads.segs[size_t(seg)];
 		const RoadNode &na = s.roads.nodes[size_t(e.a)];
-		const float cx = t.win_x, cz = t.win_z; // the walking window's middle, as window.cpp listed its edge
-		const bool a_out = (float(na.x) - cx) * (float(na.x) - cx) + (float(na.z) - cz) * (float(na.z) - cz) >= p.ped_window_m * p.ped_window_m;
+		const float cx = t.look_x, cz = t.look_z, reach = walk_window_m(s); // the walkers' window as window.cpp listed its edge: round the look point
+		const bool a_out = (float(na.x) - cx) * (float(na.x) - cx) + (float(na.z) - cz) * (float(na.z) - cz) >= reach * reach;
 		w.dir = a_out ? 0 : 1; // walking in, from the end outside
 		w.side = has_side(s.roads.profile_of(seg), 0) && (!has_side(s.roads.profile_of(seg), 1) || (t.rng.next() & 1)) ? 0 : 1;
 	}

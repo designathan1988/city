@@ -1,7 +1,7 @@
 // Vehicles (native/src/render/agents). UV2.x tags each part (AgentTag in agent_meshes.h): 0 fixed colour, 1 paint,
 // 2 headlamp, 3 tail lamp (brake), 4 glass (opaque: the far level; the near one's is agent_glass.gdshader),
 // 5 a lit sign (the bus's destination, day and night), 6 a roof (the paint, or black on a share of the cars), 7 the gloss black round
-// the glass, 8 and 9 the left and the right indicator (lit on the side INSTANCE_CUSTOM.a names: 1 left, 2 right). The lenses of a vehicle standing with nobody aboard are off, their vertex colours; on anything else they burn, day and
+// the glass, 8 and 9 the left and the right indicator (lit on the side INSTANCE_CUSTOM.a names: 1 left, 2 right; lit, its lens keeps a least size on the screen: lens_grow). The lenses of a vehicle standing with nobody aboard are off, their vertex colours; on anything else they burn, day and
 // night. UV2.y = 1 marks wheel vertices: they turn about X round their hub (UV = hub y, z). INSTANCE_CUSTOM = (paint index, wheel roll
 // angle + 8 when braking, passengers, 0); COLOR.a is the vehicle's seed. The Compatibility renderer stores instance custom data as half
 // floats: whole numbers below 2048 exactly. Who rides is drawn by PeopleRenderer.
@@ -21,8 +21,10 @@ uniform vec3 brake_lit;
 uniform vec3 signal_lit; // an indicator flashing, by day
 uniform float signal_hz; // flashes a second
 uniform float signal_duty; // the share of a flash it is lit
-uniform vec3 black_roof : source_color;
-uniform float black_roof_share;
+uniform float signal_least_px; // a lit indicator's lens covers at least this many pixels
+uniform float signal_most_m; // and is never drawn larger than this, metres
+uniform vec3 dark_roof : source_color;
+uniform float dark_roof_share;
 uniform vec3 sign_glow : source_color;
 uniform float sign_power;
 // roughness by surface (materials.json agent: sources there); every surface is a dielectric
@@ -34,6 +36,8 @@ uniform float lens_roughness;
 uniform float trim_roughness;
 
 const float BRAKE_FLAG = 8.0;
+const float NEAREST_DEPTH_M = 0.05; // nothing is measured nearer the eye than this
+const float LENS_MARK = 3.5; // UV2.y over this: an indicator's lens, UV its centre (x, y) on its end (agent_meshes.h Limb::LENS)
 #include "res://render/shaders/agent_door.gdshaderinc"
 // the paints as numbers (vec3, not colours): used as they are, like the parts' own vertex colours; the riders' helmets too
 uniform vec3 paints[24]; // the paints, then the colours of the transport lines
@@ -45,11 +49,37 @@ float pick(float seed, float seat, float what) {
 	return fract(sin(dot(vec3(seed * 251.0, seat, what), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
 }
 
+// An indicator's lens that is lit now keeps a least size on the screen, as a light point does: a lamp is seen by its light, not by
+// its lens's size. Its vertices carry its centre on its end (`centre`, x and y); it grows round it until its larger side covers
+// signal_least_px pixels, never past signal_most_m; grown, it faces the eye (its corners laid on the view's own axes: from above
+// the end it stands on is edge-on) and comes toward the eye by its grown half size, clear of the body's curve.
+void lens_grow(inout vec3 p, vec2 centre, mat4 model_view, mat4 projection, vec2 viewport) {
+	float side = max(abs(p.x - centre.x), abs(p.y - centre.y)) * 2.0;
+	vec3 seen = (model_view * vec4(centre, p.z, 1.0)).xyz; // its centre in the view's space
+	bool parallel = projection[3][3] != 0.0;
+	// a metre there on the screen, in pixels: the projection's scale (its magnitude: the renderer may flip Y) over the view's depth,
+	// or as it is in a parallel view
+	float depth = parallel ? 1.0 : max(-seen.z, NEAREST_DEPTH_M);
+	float px_per_m = viewport.y * 0.5 * abs(projection[1][1]) / depth;
+	float grow = min(signal_least_px / max(side * px_per_m, 0.001), signal_most_m / max(side, 0.001));
+	if (grow <= 1.0) {
+		return;
+	}
+	vec3 to_eye = parallel ? vec3(0.0, 0.0, 1.0) : normalize(-seen);
+	vec3 laid = vec3((p.xy - centre) * grow, 0.0) + to_eye * (side * 0.5 * grow); // in the view's space, from its centre
+	p = vec3(centre, p.z) + laid * mat3(model_view); // back to the model's (the instance is turned and moved, never scaled)
+}
+
 void vertex() {
 	v_tag = UV2.x;
 	v_custom = INSTANCE_CUSTOM;
 	v_seed = COLOR.a;
-	if (UV2.y > DOOR_MARK) {
+	if (UV2.y > LENS_MARK) {
+		// never in the shadow pass: the sun's projection is no screen
+		if (!IN_SHADOW_PASS && INSTANCE_CUSTOM.b > -0.5 && int(INSTANCE_CUSTOM.a + 0.5) == int(UV2.x + 0.5) - 7 && fract(TIME * signal_hz + COLOR.a) < signal_duty) {
+			lens_grow(VERTEX, UV, MODELVIEW_MATRIX, PROJECTION_MATRIX, VIEWPORT_SIZE);
+		}
+	} else if (UV2.y > DOOR_MARK) {
 		door_swing(VERTEX, NORMAL, UV, INSTANCE_CUSTOM.g, UV2.y);
 	} else if (UV2.y > 0.5) {
 		float a = mod(INSTANCE_CUSTOM.g, BRAKE_FLAG);
@@ -81,7 +111,7 @@ void fragment() {
 		rough = paint_roughness;
 		emit = coat;
 	} else if (tag == 6) {
-		c = pick(v_seed, 0.0, 9.0) < black_roof_share ? source_linear(black_roof) : srgb_to_linear(paints[int(v_custom.r + 0.5)]);
+		c = pick(v_seed, 0.0, 9.0) < dark_roof_share ? source_linear(dark_roof) : srgb_to_linear(paints[int(v_custom.r + 0.5)]);
 		rough = paint_roughness;
 		emit = coat;
 	} else if (tag == 7) {

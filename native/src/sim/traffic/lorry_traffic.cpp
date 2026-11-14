@@ -278,6 +278,7 @@ void call(CityState &s) {
 	if (!ways && pk.planner && pk.planner_building == bay.source) { pk.lorry_calls[CALL_PLANNING]++; return; }
 	if (!ways || ways->gate < 0) { pk.lorry_calls[CALL_NO_WAY]++; return; }
 	const YardGate &gate = plan->gates[size_t(ways->gate)];
+	if (!in_window(s, gate.ds)) { pk.lorry_calls[CALL_NO_TRUCK]++; return; } // its street is the flows': no lorry drives there as a body
 	const int id = passing_truck(s, gate);
 	if (id < 0) { pk.lorry_calls[CALL_NO_TRUCK]++; return; }
 	Vehicle &v = t.vehicles[size_t(id)];

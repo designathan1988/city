@@ -31,13 +31,206 @@
   (the reference's laneChange.ts has no bicycle); the buses with no line are transit's first case (the board,
   section 5); demand by the zones beside a street instead of 250 m cells is this game's one owner of the demand.
   Seen beside it and registered, not this functionality's: Ptraffic-90, -93, -94.
-- NEXT, in order: the board's traffic line unchecked with T1 to T4; both games read for T2 (window.cpp,
-  parking_sources.cpp, pedestrians.cpp's window, traffic_system.cpp publish_poses; the reference's
-  meso/memory.ts:14-27) and T4 (agents.json indicator_m, car_parts.cpp:134-146; the reference's lens); the
-  sources for T3 and T4; each item's comparison and design written here; `block open traffic`; code all; the
-  item-by-item file:line; the diff read; `block review`; `block verify`; build; ONE run (driving_test,
-  flows_test, window_traffic_test or records_traffic_test, signal, zoom_ladder, e2e); photos; lab_test; commit;
-  push; `block close`. Then junctions.
+- THE LEFTOVERS' BLOCK `traffic` PASSED ITS THIRD VERIFICATION (2026-11-14; the first two failed by a photo of
+  the plan `signal`, every test 9/9 each time): T1 to T4 are in the game. The designs: "The leftovers' block, the
+  designs as they are coded"; each item's file:line: "Every item of the leftovers, where it is done"; the runs,
+  the photos, the causes read and the fixes: "Verification 1", "2" and "3 of the leftovers' block", all below.
+  The measure: `run lab_test --all --jobs 1` 4/4, frame 16.66 ms (60.0 fps, bound "headroom"), CPU 2.75 ms, GPU
+  6.10 ms, 1 hitch in 176 frames. The board's traffic line is checked; the register: Ptraffic-91 and -92 fixed;
+  a doubt on wires.gdshader:51 (the same unsigned term) registered beside.
+  NOT VERIFIED by this block's one run and said to the owner: the tests with a camera near a street (people's
+  tests, yard_test, window_traffic_test, transit_test), which now get a window and a walkers' window that follow
+  that view: they run on the owner's order of the suite.
+- NEXT: commit; push; `block close`. Then junctions, the board's first unchecked line (doc/work/junctions.md
+  keeps its reading so far): the skill `port`, both games read, sources, the note, `block open junctions`.
+
+## The leftovers' block (T1 to T4): both games read, compared, the better built
+- T2, the window, COMPARED by the code. THE REFERENCE, sim/meso/memory.ts:14-27 (read whole): the detailed
+  window's radius = min(most, max(300 m, 1.35 x max(the focus's radius, how far the camera sees: focus.view.far))),
+  at most 750 m; resized when the view outgrows it or shrinks under 3/4 of it, moved past a third of it. THIS GAME,
+  window.cpp:68-72 wanted_radius = clamp(camera_reach x window_view_share 1.5, window_min_m 1100, meso_window_m
+  1500), camera_reach = the eye's distance to the ground point looked at (city_core.cpp:196-199); traffic.json
+  `_flow_doc`: "window_min_m is the bays' window (park_window_out_m): a lot's car drives to its bay as a detailed
+  vehicle, so the window of detailed traffic holds every lot that is read, and everything published". So here the
+  window is at its least for every view under 733 m and spans 1100 to 1500 only: with the eye 100 m over a street
+  the detailed traffic of 3.8 km2 is stepped for a picture that shows a few blocks (the reference: 0.28 km2). The
+  users of the fixed reaches (grep): parking_sources.cpp:170-173, :251-253 (park_window_m 900 read, 1100 let
+  go, round the look point), lot_demand.cpp:92 and lorry_traffic.cpp:265 (park_let_go), traffic_system.cpp:114-115
+  and :179-180, unseen_exit.cpp:10-11, flow_step.cpp:143-144 (publish_radius_m 900 round the look point),
+  agent_renderer.cpp:53-62 (vehicle_radius_m 900 round the eye), pedestrians.cpp:274-283, ped_spawn.cpp:143,
+  window.cpp:33-59 (ped_window_m 600), rail_run.cpp:260.
+  WHICH IS BETTER: the reference's rule (the window no larger than what the view shows, down to a few blocks) costs
+  less a tick for the same picture; its measure of the view (how far the camera sees, not the eye's height) is the
+  right one: a low, tilted view sees far and keeps the window wide, a view from above sees little and lets it
+  shrink. This game's reason for 1100 m is another window's fixed size, which the addendum does not accept.
+  DESIGN (to finish after parking_sources.cpp, lot_demand.cpp, lot_traffic.cpp and lorry_traffic.cpp are read
+  whole): (a) the api gives the simulation how far the view sees on the ground from the look point (the frame's
+  corners cast on the ground, a ray over the horizon counting as the most), in place of the eye's distance;
+  (b) window_min_m becomes the few blocks a close view keeps (its value with its reason in `_flow_doc`); (c) the
+  bays are still READ and drawn within park_window_m, but a lot or a kerb sends and takes cars and lorries only
+  while its street is inside the window of detailed traffic (the one rule in place of the equal sizes); what is
+  published stays the detailed vehicles there are; (d) flows_test's checks follow the data's window_min_m.
+
+- T2, read after: parking_sources.cpp:158-190 (drop_far, look_round: lots and kerbs read within park_window_m of
+  the look point, let go past park_window_out_m, a source kept until its cars are done :127-146), :248-272;
+  lot_demand.cpp:89-93 lot_let_go, :99-121 lot_depart, :124-161 lot_call (both read the bay's way first:
+  bay.lane.ds is its street); lorry_traffic.cpp:256-289 call (the gate's street: gate.ds). So (c) is one rule at
+  three places: a bay's lot sends a car out (lot_depart), takes one (lot_call) and a dock takes a lorry (call)
+  only while in_window(s, the bay's or the gate's street); what is on its way when the window leaves a street is
+  already handed back by flow_begin (flow_window.cpp). (e) THE WALKERS' WINDOW follows too: its radius =
+  min(ped_window_m, the traffic window's radius) through one reader (window.cpp:33-59 grow_ped_window,
+  pedestrians.cpp:283, ped_spawn.cpp:143, rail_run.cpp:260): a view from above that shows a few blocks steps the
+  walkers of those blocks, not of 600 m round; with no camera the traffic window is at its most and the walkers'
+  stays 600 m (the tests keep their scale).
+- T4, the indicator, COMPARED. THE REFERENCE: a lens of 4 to 6 cm on a car, 10 to 16 cm on a bus or a lorry
+  (render/carBody.ts:838-839, vehicleModels.ts:992-993, :1193-1194), drawn only on the signalling side
+  (agents.ts:1341-1346), amber by day and, after dark, raised over the bloom's threshold to "150 cd, within
+  R6's 50-200" (lightLevels.ts:4-20, agents.ts:246-253): by day it is as small as here; by night its bloom
+  shows it. THIS GAME: the lens 8 x 4.5 x 6 cm (agents.json indicator_m), lit by agents.gdshader:101-105
+  (signal_lit + sign_glow x tail_power x night), no bloom in the game's post-process (grep glow under
+  project/render and project/game/settings: nothing): one pixel at the mid view, by day and by night
+  (Ptraffic-92). NEITHER is good enough: a lamp is seen by its light, not by its lens's size. THE THIRD: a lit
+  indicator keeps a least size on the screen (the practice of light points in simulators: to cite, e.g.
+  OpenSceneGraph osgSim::LightPoint's minimum pixel size): the lens's vertices carry their lens's centre
+  (car_parts.cpp lens_pair, a vertex attribute), and the vertex shader, for a lens that is lit, grows it round
+  that centre until it covers materials.json agents signal_least_px pixels; the plan `signal` shows it at the
+  mid view by day and by night.
+- T1, the bend's check: driving_test gains a curved street laid by the test (build_road with a control point)
+  and reads driving_census for a car on it: its speed on the bend under the bend's pace and under its speed on
+  the straight before it (DirSeg::bend, vehicle_speed.cpp bend_ahead). To read: driving_test.gd, the probe.
+- T3: each value of Ptraffic-91 searched on the internet, its source's words into traffic.json `_drive_doc`.
+  FOUND (2026-11-14):
+  - the pedal's rate (jerk_up, jerk_brake) and the comfortable limits: A. Hadjigeorgiou and S. Timotheou, "Energy
+    Consumption Optimization for Autonomous Vehicles via Positive Control Input Minimization", arXiv 2506.04685
+    (its PDF's text extracted), their words: "The ISO 15622:2018 standard for adaptive cruise control specifies
+    that the average acceleration over one second should be limited to 2 m/s2, while deceleration should not
+    exceed -3.5 m/s2 [56]. Additionally, it mentions a limit on negative jerk of -2.5 m/s3. However,
+    experimental studies, such as [57], indicate that acceptable levels for passenger comfort are even lower."
+    ([56] ISO 15622:2018(E); [57] de Winkel, Irmak, Happee, Shyrokau, "Standards for passenger comfort in
+    automated vehicles: Acceleration and jerk", Applied Ergonomics 106, 2023).
+  - the bend's lateral acceleration (bend_lat_max, bend_lat_fall, bend_lat_min): Iowa DOT, Design Manual,
+    chapter 2, 2B Superelevation (iowadot.gov/design-manual/chapter-2-alignments/2b-superelevation; the page
+    refuses a fetch, its table as the search gave it), citing AASHTO's Green Book Table 3-7: maximum side
+    friction factors by design speed: 15 mph 0.32, 20 mph 0.27, 25 mph 0.23, 30 mph 0.20, 35 mph 0.18, 40 mph
+    0.16, 45 mph 0.15; "Method 2 is well suited for low speed urban roadways, since it relies first on side
+    friction, then on superelevation to control lateral acceleration." In m/s2 (x 9.81): 3.14 at 6.7 m/s to
+    1.47 at 20.1 m/s: the line 4.0 - 0.125 v with the floor 1.4 of the data is within 0.2 m/s2 of each row.
+  - the truck's acceleration: S. Washburn, Freight curriculum, 4.1.3 Practical Acceleration Values
+    (swash17.github.io/FreightCurriculum/acceleration.html), its words: "For heavily loaded trucks, in the range of
+    60-80,000 lbs, maximum acceleration rates from rest (i.e., a stopped condition) and on level terrain are on the
+    order of 3.5 ft/s/s." (1.07 m/s2: the data's 0.9 is under that most, an ordinary pull-away).
+  - a brake every driver uses: AASHTO's stopping sight distance, as the search of FHWA's and the states' manuals
+    gives it: "AASHTO recommends using 11.2 ft/s2" (3.4 m/s2), a rate "approximately 90% of drivers decelerate at
+    or above": the classes' comfortable brakes (1.5 to 2) are well under it, the truck's 1.8 with them.
+  - SEARCHED AND NOT FOUND AS A FIGURE (said so in `_drive_doc`, no number invented): the spread between drivers
+    (Kurtc and Treiber, arXiv 1610.03124: "different parameter values can be attributed to each individual
+    driver-vehicle unit"; its distributions are figures, no table of spreads: temper_* stay this game's choice);
+    bend_heavy_share (UMTRI, "Rollover of Heavy Commercial Vehicles", 1999, as the search gives it: "The rollover
+    thresholds of passenger cars are virtually always greater than 1 g", a loaded heavy truck's "often falls well
+    below 0.5 g": a heavy body takes a bend with less lateral acceleration; the share 0.7 is a choice).
+  - T4's sources: the practice of light points, OpenGL Performer Programmer's Guide, chapter 21 "Light Points"
+    (tech-pubs.net/sgi_developer/books/007-1680-100/ch21.html): "The apparent size of a light point can only range
+    between the minimum and maximum sizes" (PFLPS_SIZE_MIN_PIXEL), "fading avoids the aliasing problems that occur
+    when light points become too small"; OpenSceneGraph's osgSim::LightPointNode has setMinPixelSize. The lens's
+    size: FMVSS 108 as NHTSA's interpretation letters give it: a single compartment rear turn signal lamp has at
+    least 50 square centimetres of effective projected luminous lens area: indicator_m becomes 10 x 5 cm.
+
+## The leftovers' block, the designs as they are coded (2026-11-14)
+- T2a the view's reach (api): city_core.cpp gives camera_reach = the farthest of the frame's four corners cast on
+  the ground (y 0, as ground_seen), measured from the look point; a corner's ray at or over the horizon counts as
+  beyond every window. Camera3D project_ray_origin / project_ray_normal at the viewport's corners (Context7).
+- T2b window_min_m 350 (it stood at 350 in H's first verification: "the window 350 m with a close view, 276 inside,
+  600 far ... 136 handed, 145 drive in it"; the reference's is 300): a close view's few blocks. `_flow_doc` says so.
+- T2c one rule at three places: a lot sends a car out, takes one, a dock takes a lorry only while the bay's or the
+  gate's street is inside the window of detailed traffic (in_window), after the bay's way is read (the order at
+  lot_demand.cpp:119 read the let-go first: the way is read before its street is asked).
+- T2d flows_test: the least window from the data; "much closer, it shrinks" expects clamp(reach x window_view_share,
+  window_min_m, meso_window_m) from the data (with a least of 350 a reach of 500 m gives 750 m, not the least: the
+  check's expected value follows the rule, no constant moved); the probe's `reach` is "how far the view sees".
+- T2e the walkers' window: one reader walk_window_m(s) = min(ped_window_m, the traffic window's radius), used by
+  grow_ped_window, step_pedestrians, spawn_walker's edge and train_zones; the edge test of ped_spawn.cpp:142 read
+  the traffic window's middle (win_x) where window.cpp listed the edge round the look point: now look_x, look_z.
+- T4 the indicator: Limb::LENS marks a lens's vertices, UV = its centre (x, y) on its end; agents.gdshader's
+  vertex(), for a lens lit now, grows it round that centre until its larger side covers signal_least_px pixels
+  (materials.json agent params) and lifts it toward the eye by its grown half size (so the body's curve does not
+  bury it); buses and trucks get indicator lenses too (agents.json lamps_m "signal": the reference's have them,
+  vehicleModels.ts:992, :1193; here they had none). The plan `signal` gains a mid view (the player's usual one).
+- T1 a curved street carrying traffic, in driving_test: the probe counts the vehicles on a curved street's bend
+  stretch and the worst speed over their own pace for it (street_bends, over_street_bend_ms).
+
+## Every item of the leftovers, where it is done (file:line, 2026-11-14)
+- T1 a curved street's bend checked: the probe counts who drives on a curved street's bend against its own pace
+  (native/src/api/city_core_drive_probe.cpp:30 street_bends) and sets cars on a test's own streets (:77 drive_from,
+  bound city_core_jobs.cpp, city_probes.h, store_api.gd); project/tests/core/driving_test.gd:81 _street_bends, :115
+  _ring (four straights of an avenue joined by four corners of 40 m legs, each one curved street).
+- T2 the window follows the view down to a few blocks: the view's reach is how far the frame's corners see on the
+  ground (native/src/api/city_core.cpp:56 ground_reach, :218); the least window 350 m
+  (project/data/catalog/traffic.json:413, its reason :436 `_flow_doc`); the bays' use follows the window
+  (native/src/sim/traffic/lot_demand.cpp:91 bay_served, :122 a car sent out, :145 a car called;
+  lorry_traffic.cpp:281 a lorry called); the walkers' window follows it (window.cpp:149 walk_window_m, read at
+  window.cpp:35, pedestrians.cpp:283, ped_spawn.cpp:142, transit/rail_run.cpp:260); what is published needs no
+  change (the vehicles there are; beyond the window the far cars are drawn: far_traffic.cpp, as H built);
+  flows_test.gd:68 the shrink's expected radius by the rule.
+- T3 the driving values' sources: project/data/catalog/traffic.json `_drive_doc` (line 6): jerk (ISO 15622 as
+  arXiv 2506.04685 words it), the bend's lateral acceleration (AASHTO Table 3-7 as Iowa DOT lists it), the truck
+  (Washburn's 3.5 ft/s/s; AASHTO's 11.2 ft/s2), and, said plainly, searched and not found as a figure: the
+  spread between drivers and bend_heavy_share (their nearest sources cited).
+- T4 an indicator the player sees: a lens carries its centre (native/src/render/agents/agent_meshes.h:30
+  Limb::LENS, agent_parts.cpp:130 agent_lens, car_parts.cpp:134); lit, the shader keeps it 4 px wide, at most
+  0.6 m (project/render/shaders/agents.gdshader:54 lens_grow, :71; project/data/render/materials.json:206-207 and
+  its `_doc` :193); the car's lens 10 x 5 cm (agents.json:28 indicator_m); the bus and the truck have indicator
+  lenses now (heavy_meshes.cpp:162; agents.json:51, :59 lamps_m signal_front, signal_rear; the schema); the plan
+  `signal` shows the usual view by day and by night (project/tests/visual/signal_plan.json:11, :18).
+- Changed on the way: agents.json car_body `black_roof` -> `dark_roof` (the gate: a name the reference defines, on
+  a line the block changed), with agent_looks.cpp:58-60, agents.gdshader's uniforms and the schema.
+- NOT VERIFIED BY THIS BLOCK'S ONE RUN (said to the owner): the tests with a camera near a street now have a
+  window and a walkers' window that follow that view (people's tests, yard_test, window_traffic_test): they run
+  only on the owner's order of the suite.
+
+## Verification 1 of the leftovers' block (2026-11-14: failed by a photo)
+- Review 28 files, 0 new; build 2/2 (101 s); the run 9/9 in 103 s
+  (`run driving_test,flows_test,records_traffic_test,signal,zoom_ladder,e2e`): driving_test "a ring with curved
+  corners carries cars: 6 set on it, 8 directed streets curve", "an ordinary one takes the sharpest at 9.0 m/s on a
+  street of 16.7 m/s", "442 seen on the bends, the worst 0.19 m/s over", "the straights ... up to 17.4 m/s";
+  flows_test "a close view keeps the window at its least: 350 m", "276 inside, 600 far, 30 ways out", "259 handed,
+  263 drive in it of the 160 its lanes ask", "much closer, it shrinks: 750 m", "746 drawn, 747 on the far
+  streets"; records_traffic_test and e2e pass.
+- FAILED BY ITS PHOTOS (signal 04-day_rear_2, 13-night_rear_2, opened whole): at 150 px a metre the lit rear lens
+  is a plate 0.6 m wide off the body's corner. At the mid view (06 to 08, 15 to 17; the shots compared by number
+  and enlarged for my own reading) the right lenses flash as dots of some 5 px on a right turn, the left ones stay
+  dark: the chain works.
+- CAUSE (superpowers:systematic-debugging, read): project/render/shaders/agents.gdshader:57, the lens's size on
+  the screen took projection[1][1] and clip.w with their sign: drawn at the cap at 150 px a metre, the value came
+  out under 6.7 px a metre or under zero. The project's shaders that measure a metre on the screen take the
+  magnitude over the view's depth (occlusion.gdshader:68, wires.gdshader:50). FIXED in the second opening: that
+  form, a parallel view by its own scale, and no growth in the shadow pass (wires.gdshader:45-46: the sun's
+  projection is no screen).
+- zoom_ladder 00 to 03 against doc/look's: buildings, roads, vehicles, ground the same, part by part.
+
+## Verification 2 of the leftovers' block (2026-11-14: failed by a photo)
+- Review 30 files, 0 new; build cached (no C++ changed); the run 9/9 in 102 s. The near photos (03 to 05, 12 to
+  14, opened whole): the lit lens is its own size on the body's corner, the plate of verification 1 is gone.
+- FAILED BY ITS PHOTOS: 06 to 08 day_mid and 15 to 17 night_mid show a tower's roof in the picture's middle and
+  no signalling vehicle ("signalling at (-51.6, 20.14, 106.6): its left indicator": another vehicle than the
+  first run's, among towers); 0 pixels change between the three shots round the middle. No proof at the mid view.
+- CAUSE (systematic-debugging, read): project/tests/visual/signal_plan.json:10 (and :17): the mid view looked
+  from 45 degrees up at 220 degrees off the vehicle's heading (look_aim.gd:58, :174), across the block beside
+  the junction. FIXED: from 75 degrees up, from behind along the vehicle's own heading (over the street).
+  Read too and fixed: agents.gdshader's lens grew in the plane of its end, edge-on from above: grown, it is laid
+  on the view's own axes (it faces the eye), from the model-view matrix alone.
+
+## Verification 3 of the leftovers' block (2026-11-14: passed)
+- Review 30 files, 0 new; build cached; the run 9/9 in 102 s (driving_test "442 seen on the bends, the worst 0.19
+  m/s over"; flows_test "the window at its least: 350 m", "it shrinks: 750 m"; records_traffic_test, e2e, signal,
+  zoom_ladder).
+- The photos of `signal`, opened whole ("signalling at (62.3, 20.14, -39.0): its right indicator"): 06 to 08
+  day_mid and 15 to 17 night_mid show the vehicle in the middle of its junction from above, nothing over it; the
+  shots compared by number and enlarged for my own reading: by day the front right and the rear right lenses
+  come on as orange dots some 4 px wide and go off, by night as bright amber dots; the left lenses never. 04
+  day_rear_2 (near): the lens its own size on the body's corner.
+- zoom_ladder 00 to 05 against doc/look/zoom_ladder 00 to 05, each pair opened whole after the run, and
+  doc/look's far_town and mid_town: buildings, roads and their paint, vehicles, the ground and its trees the same
+  at each distance (384 vehicles against 389, 798 to 804 walkers against 793 to 799: the clock runs).
 
 ## Now, as it stood when the first traffic blocks closed (2026-11-13; history)
 (The state at this moment, rewritten at each step; everything below it is the history: what was read, designed, done.)

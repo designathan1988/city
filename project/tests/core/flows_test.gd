@@ -14,14 +14,14 @@ const ASIDE_SHARE := 0.6 # the view stands this share of the least window off th
 const CLOSE_REACH_M := 100.0 # a street view: the window at its least
 const WIDE_REACH_M := 1000.0 # the window at its most
 const NEAR_WIDE_M := 850.0 # a little closer than the wide view: the window stays
-const MID_REACH_M := 500.0 # much closer: it shrinks to its least
+const MID_REACH_M := 500.0 # much closer: it shrinks to what that view asks
 const WARM_TICKS := 900
 const LOOK_TICKS := 120 # past the window's own look (a second) and the flows' step
 const RADIUS_SLACK_M := 1.0
 const CARRIED_SHARE := 0.5 # the window carries at least this share of what its lanes ask
 const NIGHT_SHARE := 0.6 # by night the far streets carry at most this share of the morning's
 const AWAY_M := 3000.0 # the last view's ground point, east of the town's middle: past the window's out radius from every street
-const AWAY_UP_M := 500.0 # the eye over it: a reach under the least window's
+const AWAY_UP_M := 500.0 # the eye over it: its frame's corners reach well short of the town
 const STRAIGHT_DOWN_DEG := -90.0
 const TOLD_ROUNDS := 2 # the view taken and the streets told, then what the first frames asked told again (the render's rebuild)
 const DRAW_FRAMES := 3 # a frame takes what was told, the next draws it
@@ -65,7 +65,8 @@ func _ready() -> void:
 	check(absf(held.window[2] - p.meso_window_m) <= RADIUS_SLACK_M, "a little closer, the window stays as it is: %.0f m" % held.window[2])
 	ticks(LOOK_TICKS)
 	var shrunk: Dictionary = CityStore.query(&"far_traffic", [at, -1.0])
-	check(absf(shrunk.window[2] - p.window_min_m) <= RADIUS_SLACK_M and shrunk.window_streets < wide.window_streets,
+	var asked := clampf(MID_REACH_M * float(p.window_view_share), p.window_min_m, p.meso_window_m) # the window's rule (window.cpp wanted_radius)
+	check(absf(shrunk.window[2] - asked) <= RADIUS_SLACK_M and shrunk.window_streets < wide.window_streets,
 			"much closer, it shrinks: %.0f m, %d streets" % [shrunk.window[2], shrunk.window_streets])
 	check(shrunk.handed_in > 0.0, "the vehicles on the streets that left the window are the flows' again: %.0f taken back" % shrunk.handed_in)
 	check(shrunk.over_room == 0, "no far street holds more than its room after the window's moves: %d over" % shrunk.over_room)

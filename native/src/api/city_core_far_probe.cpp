@@ -2,7 +2,7 @@
 // (project/tests/core/flows_test.gd): the streets the flows hold and those the window holds, the vehicles on the far streets, in
 // their queues, waiting at their origins and owed to the window, the streets holding more than their room, where the window
 // stands and how far it reaches, and the flows' tallies since the city opened. `reach` (0 or more) sets the view as a camera
-// would (the ground looked at, `at`, and how far the eye stands from it), so a test moves the window without one.
+// would (the ground looked at, `at`, and how far the view sees on the ground from it), so a test moves the window without one.
 #include "api/city_probes.h"
 
 #include "sim/state/city_state.h"

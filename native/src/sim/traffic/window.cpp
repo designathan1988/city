@@ -1,8 +1,8 @@
 // The window of detailed traffic round the view: it follows the view (its radius the view's reach by window_view_share, moved and
 // resized with a slack so it does not breathe with the camera); its streets are those the far traffic's flows hold as inside
 // (flow_window.cpp hands their vehicles over and takes them back). A bus of a far queue (meso.cpp) on a lane that came inside
-// becomes a drawn one, where its timing says it is and behind the queue already drawn. Walkers exist only inside `ped_window_m`,
-// which also sets how many sidewalk metres their demand may fill.
+// becomes a drawn one, where its timing says it is and behind the queue already drawn. Walkers exist only inside their own window
+// (walk_window_m: `ped_window_m`, never past the traffic's), which also sets how many sidewalk metres their demand may fill.
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/traffic/lane_closures.h"
@@ -32,7 +32,7 @@ float mid_dist2(const CityState &s, int seg, float cx, float cz) {
 
 void grow_ped_window(CityState &s, float cx, float cz) {
 	TrafficState &t = s.traffic;
-	const float w = s.catalog.traffic.ped_window_m, w2 = w * w;
+	const float w = walk_window_m(s), w2 = w * w;
 	std::fill(std::begin(t.ped_kind_m), std::end(t.ped_kind_m), 0.0);
 	t.ped_segs.clear();
 	t.ped_edge_segs.clear();
@@ -63,7 +63,7 @@ void grow_ped_window(CityState &s, float cx, float cz) {
 namespace {
 constexpr uint8_t WAS_IN = 1, STAYS = 2, WAY_OUT = 3; // TrafficState::in_win during a look (zero between looks)
 
-// The radius the window should have now: the view's reach (how far the eye stands from the ground it looks at) by
+// The radius the window should have now: the view's reach (how far it sees on the ground from where it looks) by
 // window_view_share, between window_min_m and meso_window_m; with no view to follow (a run with no camera) it stands at its most.
 float wanted_radius(const CityState &s) {
 	const TrafficParams &p = s.catalog.traffic;
@@ -142,6 +142,13 @@ double window_lane_metres(const CityState &s) { return s.traffic.window_lane_m; 
 bool in_window(const CityState &s, int ds) {
 	const StreetFlows &f = s.traffic.flows;
 	return ds >= 0 && size_t(ds) < f.inside.size() && f.inside[size_t(ds)] != 0;
+}
+
+// The walkers live round the look point within ped_window_m, and never past the window of detailed traffic: a view that shows a
+// few blocks steps the walkers of those blocks. Before the window's first look, and with no view, it is ped_window_m.
+float walk_window_m(const CityState &s) {
+	const float most = s.catalog.traffic.ped_window_m, traffic = s.traffic.win_r;
+	return traffic > 0 ? std::min(most, traffic) : most;
 }
 
 void materialize(CityState &s, int key) {

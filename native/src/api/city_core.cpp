@@ -48,6 +48,25 @@ Vector3 ground_seen(const Camera3D &cam) {
 	return ahead.y < -LEVEL_VIEW ? t.origin + ahead * (t.origin.y / -ahead.y) : t.origin;
 }
 
+// A corner of the frame whose ray never comes down to the ground sees past every window of the simulation, metres.
+constexpr float BEYOND_M = 1.0e6f;
+
+// How far the view sees on the ground from where it looks: the farthest of the frame's four corners cast on the ground. A view
+// from above sees a few blocks and a low, tilted one sees to the horizon: the window of detailed traffic follows this (window.cpp).
+float ground_reach(const Camera3D &cam, const Vector3 &look) {
+	const Viewport *vp = cam.get_viewport();
+	if (!vp) return 0;
+	const Vector2 size = vp->get_visible_rect().size;
+	const Vector2 corners[] = { Vector2(0, 0), Vector2(size.x, 0), Vector2(0, size.y), size };
+	float reach = 0;
+	for (const Vector2 &corner : corners) {
+		const Vector3 from = cam.project_ray_origin(corner), dir = cam.project_ray_normal(corner);
+		if (dir.y >= -LEVEL_VIEW || from.y <= 0) return BEYOND_M;
+		reach = std::max(reach, float((from + dir * (from.y / -dir.y)).distance_to(look)));
+	}
+	return reach;
+}
+
 } // namespace
 
 CityCore::~CityCore() {
@@ -196,7 +215,7 @@ void CityCore::_process(double delta) {
 	const Vector3 look = cam ? ground_seen(*cam) : cam_;
 	state_->camera_x.store(look.x);
 	state_->camera_z.store(look.z);
-	state_->camera_reach.store(cam_.distance_to(look));
+	state_->camera_reach.store(cam ? ground_reach(*cam, look) : 0.f);
 	render_.far_traffic().look_at(look); // where the detailed vehicles are published round: the far cars stand in elsewhere
 	bool fresh = false;
 	const PoseFrame &poses = state_->poses.acquire(fresh);

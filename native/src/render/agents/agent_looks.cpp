@@ -55,9 +55,9 @@ bool AgentRenderer::push_palettes(const Dictionary &t, const std::vector<uint32_
 		raw.push_back(Vector3(c.r, c.g, c.b));
 	}
 	rs->material_set_param(material_, "paints", raw);
-	const Dictionary roof = Dictionary(t["car_body"])["black_roof"];
-	rs->material_set_param(material_, "black_roof", agent_hex(roof["colour"]));
-	rs->material_set_param(material_, "black_roof_share", float(roof["share"]));
+	const Dictionary roof = Dictionary(t["car_body"])["dark_roof"];
+	rs->material_set_param(material_, "dark_roof", agent_hex(roof["colour"]));
+	rs->material_set_param(material_, "dark_roof_share", float(roof["share"]));
 	paints_ = int(paints.size());
 	return errors.is_empty();
 }

@@ -124,7 +124,7 @@ struct CityState : CityData {
 	PoseBuffer poses; // published by the simulation, read by the render without a lock
 	std::shared_ptr<JobPool> jobs{ std::make_shared<JobPool>() }; // shared worker pool (lot cells, later mesh jobs)
 	std::atomic<float> camera_x{ 0 }, camera_z{ 0 }; // the ground the player is looking at, set by the api each frame: the traffic's and walkers' windows
-	std::atomic<float> camera_reach{ 0 }; // how far the eye stands from that ground, metres: the window of detailed traffic follows it (window.cpp)
+	std::atomic<float> camera_reach{ 0 }; // how far the view sees on the ground from there, metres (0: no view): the window of detailed traffic follows it (window.cpp)
 	// Set by the api when the render draws the city anew: the far traffic tells it every street again (flow_step.cpp step_flows).
 	std::atomic<bool> flows_untold{ false };
 	checks::BrokenSink broken_sink; // the tests' DLL: the broken records its passes found, until the api drains them (sim/checks/records.h)

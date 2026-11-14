@@ -149,12 +149,18 @@ void heavy_wheels(MeshBuilder &mb, const Running &g, int sides, const AgentTrim 
 
 void heavy_lamps(MeshBuilder &mb, const Dictionary &lamps, float W, float L, const AgentTrim &trim) {
 	const Array head = lamps["head"], tail = lamps["tail"]; // [centre height, outer edge in from the side, w, h]
+	const Array front = lamps["signal_front"], rear = lamps["signal_rear"]; // the indicators' lenses, the same four
 	for (int side : { -1, 1 })
 		for (int end : { 1, -1 }) {
 			const Array &l = end > 0 ? head : tail;
 			const float y = l[0], w = l[2], h = l[3], x = side * (W * 0.5f - float(l[1]) - w * 0.5f), z = end * L * 0.5f;
 			agent_box(mb, Vector3(x - w * 0.5f, y - h * 0.5f, z - HEAVY_PROUD_M), Vector3(x + w * 0.5f, y + h * 0.5f, z + HEAVY_PROUD_M),
 					end > 0 ? trim.headlamp : trim.tail, end > 0 ? AgentTag::HEAD : AgentTag::TAIL);
+			// the indicator beside it, by its side: +x is the vehicle's left
+			const Array &f = end > 0 ? front : rear;
+			const float fw = f[2], fh = f[3];
+			agent_lens(mb, Vector3(side * (W * 0.5f - float(f[1]) - fw * 0.5f), float(f[0]), z), fw, fh, 2 * HEAVY_PROUD_M, trim.indicator,
+					side > 0 ? AgentTag::SIGNAL_LEFT : AgentTag::SIGNAL_RIGHT);
 		}
 }
 

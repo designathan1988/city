@@ -130,9 +130,9 @@ static void lens_pair(MeshBuilder &mb, const CarStyle &s, float half, float y, f
 	const float z = end_surface(s, half, dir) - dir * sink;
 	for (int side : { -1, 1 }) {
 		const float x = side * half;
-		// an indicator's lens is tagged by its side: +x is the vehicle's left, its front looking along +z
-		const AgentTag own = tag == AgentTag::SIGNAL_LEFT ? (side > 0 ? AgentTag::SIGNAL_LEFT : AgentTag::SIGNAL_RIGHT) : tag;
-		agent_box(mb, Vector3(x - w * 0.5f, y - h * 0.5f, z - LAMP_DEPTH_M * 0.5f), Vector3(x + w * 0.5f, y + h * 0.5f, z + LAMP_DEPTH_M * 0.5f), c, own);
+		// an indicator's lens is tagged by its side (+x is the vehicle's left, its front looking along +z) and carries its centre
+		if (tag == AgentTag::SIGNAL_LEFT) agent_lens(mb, Vector3(x, y, z), w, h, LAMP_DEPTH_M, c, side > 0 ? AgentTag::SIGNAL_LEFT : AgentTag::SIGNAL_RIGHT);
+		else agent_box(mb, Vector3(x - w * 0.5f, y - h * 0.5f, z - LAMP_DEPTH_M * 0.5f), Vector3(x + w * 0.5f, y + h * 0.5f, z + LAMP_DEPTH_M * 0.5f), c, tag);
 	}
 }
 

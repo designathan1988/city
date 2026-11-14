@@ -86,10 +86,13 @@ int passing_car(const CityState &s, const Bay &bay) {
 	return best;
 }
 
-// The bay's lot is one the parking's window let go of (parking_state.h park_let_go): no car is called to it or sent out of it.
-bool lot_let_go(const CityState &s, const Bay &bay) {
+// A bay takes a car or sends one out only while its lot is one the parking still reads (parking_state.h park_let_go), its way to
+// the street is read and that street is inside the window of detailed traffic: beyond it the cars are the flows', no bodies.
+bool bay_served(CityState &s, int b) {
+	const Bay &bay = s.traffic.park.bays[size_t(b)];
 	const Building &lot = s.buildings.items[size_t(bay.source)];
-	return park_let_go(s.traffic.park, V2(lot.x, lot.z), s.catalog.traffic.park_window_out_m);
+	if (park_let_go(s.traffic.park, V2(lot.x, lot.z), s.catalog.traffic.park_window_out_m)) return false;
+	return read_bay_way(s, b) && in_window(s, s.traffic.park.bays[size_t(b)].lane.ds);
 }
 
 } // namespace
@@ -115,8 +118,8 @@ void lot_depart(CityState &s, double target) {
 		while (kind + 1 < PLACE_KINDS && roll >= w[kind]) roll -= w[kind++];
 		if (pk.row_of[kind].empty()) continue;
 		const int b = pk.row_of[kind][size_t(t.rng.next() % uint32_t(pk.row_of[kind].size()))];
-		// a car that has not stood its stay is left there, and one of a lot let go of: the draw goes to another next look
-		if (t.time >= pk.bays[size_t(b)].stay_until && !lot_let_go(s, pk.bays[size_t(b)]) && read_bay_way(s, b)) take_row(s, b);
+		// a car that has not stood its stay is left there, and one of a bay not served: the draw goes to another next look
+		if (t.time >= pk.bays[size_t(b)].stay_until && bay_served(s, b)) take_row(s, b);
 	}
 }
 
@@ -139,7 +142,7 @@ bool lot_call(CityState &s) {
 	while (kind + 1 < PLACE_KINDS && roll >= w[kind]) roll -= w[kind++];
 	if (pk.free_of[kind].empty()) return false;
 	const int b = pk.free_of[kind][size_t(t.rng.next() % uint32_t(pk.free_of[kind].size()))];
-	if (lot_let_go(s, pk.bays[size_t(b)]) || !read_bay_way(s, b)) return false;
+	if (!bay_served(s, b)) return false;
 	const int id = passing_car(s, pk.bays[size_t(b)]);
 	if (id < 0) return false;
 	Bay &bay = pk.bays[size_t(b)];

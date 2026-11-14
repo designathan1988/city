@@ -98,6 +98,7 @@ void meso_unlink(CityState &s, int id);
 void meso_enter(CityState &s, int id, int key, bool spawned); // the only way into the far model (leaves lane + micro lists)
 void meso_process(CityState &s);
 bool in_window(const CityState &s, int ds);
+float walk_window_m(const CityState &s); // the walkers' window round the look point: ped_window_m, never past the traffic's window
 double window_lane_metres(const CityState &s); // the lane metres of the directed segments whose middle is in the window
 void check_window(CityState &s);
 void materialize(CityState &s, int key);
