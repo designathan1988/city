@@ -77,6 +77,39 @@
   the line: FORCE_AFTER_S, so no vehicle is held for ever); the far flows keep counting cars a street, not lanes
   (flow_step.cpp), so nothing changes there.
 
+## Sources (the source's own words, for the data's `_doc`)
+- CONTRAN, Manual Brasileiro de Sinalização de Trânsito, volume IV, Sinalização Horizontal (Resolução 236/2007),
+  read from the Ministry of Transport's own PDF (gov.br, manual_vol_iv_2.pdf, its text extracted page by page):
+  - 5.5.1 MFE, the exclusive lane: "Branca para Faixas exclusivas no fluxo."; "A marcação de Faixa exclusiva no
+    fluxo é constituída por uma linha contínua, com largura (l) que varia entre 0,20 m e 0,30 m."; "Deve ser
+    contínua em toda a extensão, exceto nos trechos onde for permitida a entrada ou saída da Faixa exclusiva, ou
+    onde houver interseção ou movimento de conversão, onde deve ser utilizada linha de continuidade."; "Pode ser
+    aplicada legenda ao longo de toda a extensão da faixa exclusiva de forma a identificar o seu uso."
+  - 9.1.1 PEM, the lane arrows: "Cor Branca."; "Deve existir uma seta para cada faixa de trânsito, posicionada no
+    centro da mesma, com a conformação adequada ao movimento nela permitido. Recomenda-se implantar pelo menos
+    duas em seqüência na mesma faixa, sendo opcional a colocação de uma terceira."; seven shapes ("Siga em
+    Frente; Vire à Esquerda; Vire à Direita; Siga em Frente ou Vire à Esquerda; Siga em Frente ou Vire à Direita;
+    Retorne à Esquerda; Retorne à Direita"); urban roads, by the regulated speed: v < 60: d 10 m, d1 30 m, d2
+    45 m, the arrow 5.00 m long; 60 <= v <= 80: 15, 40, 60, 5.00; v > 80: 15, 50, 75, 7.50; "d = distância
+    considerada a partir do ponto de saída da faixa de trânsito, onde não pode mais haver transposição de faixa
+    (início da linha simples contínua de aproximação). d1 = distância entre a primeira e a segunda fileira."; the
+    straight arrow's table: a 5.00, b 0.75, c 1.50, d 3.50, e 0.15, f 0.30 (7.50: 0.75, 2.25, 5.25, 0.15, 0.30).
+  - 9.2.1 SIP, give way: "A SIP é utilizada como reforço ao sinal de regulamentação R-2"; "Cor Branca."; v <= 60:
+    a 3.60, b 1.20, c 0.20, d 0.55; v > 60: 6.00, 2.00, 0.30, 1.00; "O triângulo deve ser colocado de forma que
+    aponte contra o sentido de circulação, inscrito entre 1,50 m a 15,00 m de distância da interseção, a partir
+    do prolongamento do meio fio da via transversal, no centro da faixa onde estiver inserido."
+  - 9.3 Legendas: "Cor Branca."; urban roads: v <= 80: 1.60 m; v > 80: 2.40 m; "As legendas devem conter
+    mensagens simples e curtas."; "A legenda “PARE” deve ser posicionada, no mínimo, a 1,60 m antes da linha de
+    retenção, centralizada na faixa de circulação em que está inscrita. Deve ser utilizada como reforço ao sinal
+    de regulamentação R-1 – “Parada obrigatória”."
+- A general vehicle on a bus lane (searched; the Curitiba page refused the fetch, 403; to be read from an official
+  text before the data is written): the enforcement's rule reported by several sources: no infraction for who
+  enters the exclusive lane on the right to turn right or to reach a property beside it, on the stretch marked
+  with the continuity line; which is what MBST 5.5.1 above says of the marking itself.
+- P. H. C. Eilers, "A Perfect Smoother", Analytical Chemistry 75 (14), 2003, 3631-3636, doi 10.1021/ac034173t:
+  a smoother by penalised least squares after Whittaker (1923), its system sparse and banded, solved by a
+  Cholesky decomposition (the paper's full text still to be read for the equations and the choice of lambda).
+
 ## Read (facts with file:line)
 - native/src/sim/roads/road_grade.h:1-114: GradeProfile keeps four float lines a segment for good (h, ceil, base,
   raw: :61) besides q and read_half (:64-65): Proads-8; Structure {GROUND, ELEVATED, BRIDGE, TUNNEL} (:24);
