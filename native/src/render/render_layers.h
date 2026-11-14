@@ -26,6 +26,9 @@ enum RenderLayer : uint32_t {
 	LAYER_PEOPLE = LAYER_VEHICLES << 1,
 	LAYER_OVERLAYS = LAYER_PEOPLE << 1,
 	LAYER_BUILDING_FLAGS = LAYER_OVERLAYS << 1, // the masts' cloths (the 4.0 draws them in a layer of their own)
+	// The far traffic's cars (far_traffic.h): apart from the vehicles', which the camera stops seeing past the tier's detail
+	// cut-off (game/settings/render_switches.gd): there the far cars are the only traffic drawn.
+	LAYER_FAR_TRAFFIC = LAYER_BUILDING_FLAGS << 1,
 };
 
 struct RenderLayerName {
@@ -39,7 +42,7 @@ inline constexpr RenderLayerName RENDER_LAYERS[] = {
 	{ "building_shells", LAYER_BUILDING_SHELLS }, { "building_parts", LAYER_BUILDING_PARTS },
 	{ "building_details", LAYER_BUILDING_DETAILS }, { "vegetation", LAYER_VEGETATION }, { "furniture", LAYER_FURNITURE },
 	{ "signals", LAYER_SIGNALS }, { "vehicles", LAYER_VEHICLES }, { "people", LAYER_PEOPLE }, { "overlays", LAYER_OVERLAYS },
-	{ "building_flags", LAYER_BUILDING_FLAGS },
+	{ "building_flags", LAYER_BUILDING_FLAGS }, { "far_traffic", LAYER_FAR_TRAFFIC },
 };
 
 } // namespace city

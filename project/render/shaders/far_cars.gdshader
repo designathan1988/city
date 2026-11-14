@@ -5,13 +5,15 @@
 // it moves round (0: it stands in the queue), its metres to the right of the centre); the instance's colour is its paint. The
 // mesh is a car's hull, its front along +Z, its left along +X.
 // A street of the window of detailed traffic has its pace written negative: its cars stand in for the detailed vehicles, which
-// are drawn only within seen_reach of the point looked at and drawn_reach of the eye; there the stand-in is folded to nothing.
+// are drawn only within seen_reach of the point looked at and drawn_reach of the eye, and only while the camera is not past the
+// graphics tier's detail cut-off (own_cars_shown, game/settings/render_switches.gd); there the stand-in is folded to nothing.
 shader_type spatial;
 render_mode skip_vertex_transform;
 
 #include "res://render/shaders/color_space.gdshaderinc"
 
 global uniform float night;
+global uniform float own_cars_shown; // 0: the camera is past the detail cut-off and draws no vehicle as itself
 uniform float clock; // the simulation's seconds, wrapped (far_traffic.cpp)
 uniform float hull_half; // half the hull's length, metres
 uniform vec2 seen_at; // the ground point the view looks at (x, z), each frame
@@ -37,7 +39,7 @@ void vertex() {
 	v_along = VERTEX.z / max(hull_half, 0.01);
 	// a car of the window's street where the detailed vehicle is drawn as itself: every vertex at one point, nothing drawn
 	vec3 eye = INV_VIEW_MATRIX[3].xyz;
-	bool stood_for = INSTANCE_CUSTOM.y < 0.0 && distance(at.xz, seen_at) <= seen_reach && distance(at.xz, eye.xz) <= drawn_reach;
+	bool stood_for = own_cars_shown > 0.5 &&INSTANCE_CUSTOM.y < 0.0 && distance(at.xz, seen_at) <= seen_reach && distance(at.xz, eye.xz) <= drawn_reach;
 	float shown = stood_for ? 0.0 : 1.0;
 	vec3 world = at + (left * (VERTEX.x - INSTANCE_CUSTOM.w) + vec3(0.0, VERTEX.y, 0.0) + ahead * VERTEX.z) * shown;
 	VERTEX = (VIEW_MATRIX * vec4(world, 1.0)).xyz;

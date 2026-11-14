@@ -47,6 +47,10 @@ road_paint={
 "type": "float",
 "value": 1.0
 }
+own_cars_shown={
+"type": "float",
+"value": 1.0
+}
 building_glass={
 "type": "float",
 "value": 1.0

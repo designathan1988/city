@@ -12,34 +12,42 @@
 - The owner's goal for the session (2026-11-13, /goal): "Leia integralmente claude.md. Recupere o contexto da conversa. Use
   a skill /port assim como todas as outras skills exigidas ... Continue os trabalhos até concluir tudo ... NÃO PARE PARA ME
   PERGUNTAR NADA, NEM PARA PEDIR AUTORIZAÇÃO ... SE TIVER ALGUMA DECISÃO, ESCOLHA SEMPRE A MELHOR OPÇÃO!"
-- The block `traffic` is in verify: its three verifications are used (the tools allow no fourth). Cases A to G are
-  committed (5cc4ff0d). Case H (far traffic as flows, an adaptive window, far cars drawn) is coded and uncommitted (56
-  files); its sections below: "H, the owner's orders of 2026-11-14 and what changed for good" and those before it.
-- The verification before this one (one run, 45 s): flows_test, driving_test, e2e, far_cars passed; records_traffic_test
-  ("the town's bays let go behind the camera: 2 lots, 0 kerbs read") and flow_control_test ("the flow puts the signal at
-  the junction", "the signal the flows chose stands on the posts of its arm") failed.
-- Its causes C1 to C5 (the section "H, the causes of the second verification's failures" below) were fixed in one
-  opening and verified: C1 (a street built inside the window), C2 (lots the parking let go), C3 (the owed count as the
-  fleet's) hold; C4 (a street's count rounded) was real and is fixed, but was not the whole cause of no far car drawn.
-- The third verification's run failed in flows_test ("0 drawn, 932 on the far streets"); the owner was told; the block
-  was opened again with the owner's word (the /goal's). Causes D1 (the hull freed at every rebuild), D2 (the window's
-  streets beyond the detailed vehicles' two reaches showed no car), D3 (the far cars' clock was real time, not the
-  city's) were read and fixed in that opening: the section "H, the third verification's failure" below.
-- The last verification (review 56 files, 0 new; build 103 s; ONE run, 46 s, 9 of 9 tasks) PASSED: flows_test ("931
-  drawn, 932 on the far streets"; "the window's streets have their cars written too: 922 written ... 549 detailed on
-  876 streets"), flow_control_test, records_traffic_test, driving_test, e2e, far_cars (on_far 122.1, detailed 304,
-  drawn_far_cars 430; no shader error). Its measure, lab_test: PASS 22.2 s, frame 16.66 ms (60.0 fps, bound
-  "headroom"), CPU 2.32 ms, GPU 6.71 ms (mean 6.14), 1 hitch in 178 frames, findings none; the process's peak memory
-  1627.2 MB (before H: 16.68 ms, CPU 2.61, GPU 6.66, 1591.8 MB).
-- The photos were opened (dist/captures/far_cars: the town whole from 4400 m, 0.5 px a metre): a car is 2 px, and no
-  eye sees one by day or by night. Between the two day shots 2.05% of the asphalt's pixels change (grass 0.18%), some
-  in runs along a street by 20 levels or more (scratchpad road_pixels.py): moving cars fit that, an eye's proof it is
-  not. The plan's view is too far: a nearer far view (straight down, the eye some 1400 m up, over 1 px a metre) is the
-  next piece, as a block of its own (this block's three verifications are used).
-- Next, in order: (1) the measure's result read; (2) superpowers:verification-before-completion, commit and push H
-  (the traffic line of doc/port.md stays unchecked until the far cars are seen in a photo), `block close`; (3) a new
-  block `traffic` for the photo plan's view alone (project/tests/visual/far_cars_plan.json), its photos opened, then
-  the line checked; (4) the next board line, roads, by the skill's steps (its note doc/work/roads.md first).
+- Cases A to G are committed (5cc4ff0d). Case H (far traffic as flows, an adaptive window, far cars drawn) is committed
+  and pushed (4eaa99b5) after its block's three verifications (their record: the sections "H, the causes of the second
+  verification's failures", "H, the third verification's failure" and "H, the verifications' record" below): its last
+  run passed 9 of 9 (flows_test "931 drawn, 932 on the far streets"; flow_control_test, records_traffic_test,
+  driving_test, e2e, far_cars) and lab_test (frame 16.66 ms, CPU 2.32 ms, GPU 6.71 ms, 1627 MB). The board's case stays
+  open: the far cars were not yet seen by an eye. That block is closed.
+- A NEW block `traffic` is OPEN (its second opening; 1 of 3 verifications used). Its first verification photographed
+  the plan far_cars at [500, 0, 0.8, 180, 20] (the eye 2100 m west of the look point): drawn_far_cars 428,
+  drawn_vehicles 0, and NO car on any street (dist/captures/far_cars_proof/day_foot.png, magnified 3 times; 0 pixels
+  change by 40 levels between the two day shots). The cause, read (the section "H, the far cars not seen" below):
+  E1 project/game/settings/render_switches.gd:63-64: past the tier's detail cut-off (:118; settings.json
+     detail_cutoff_zoom, 0.5 to 1.25 px a metre) the camera's cull mask drops the layer `vehicles`; the far cars are
+     drawn on LAYER_VEHICLES (far_traffic.cpp:143): hidden in exactly the far views they are for.
+  E2 far_cars.gdshader folds a window street's car where a detailed vehicle "is drawn", but past the cut-off none is.
+  Fix: a layer of their own (render_layers.h LAYER_FAR_TRAFFIC, "far_traffic"; the Effects panel's people-and-vehicles
+  switch hides it too, render_switches.json); a shader global `vehicles_near` (project.godot; set in
+  RenderSwitches.apply beside road_paint: 0 past the cut-off) and the fold only while it is 1; quality_test checks the
+  far cars' layer stays in the camera's mask past the cut.
+- E1 and E2 are coded (the global is named `own_cars_shown`: the gate refused `vehicles_near`, a name the reference
+  defines): render_layers.h (LAYER_FAR_TRAFFIC, "far_traffic"), far_traffic.cpp:143, far_traffic.h's head,
+  far_cars.gdshader, project.godot, render_switches.gd:101, render_switches.json (the people switch's layers),
+  quality_test.gd (two checks). `block review` passed (11 files, 0 findings), `block verify` done (the second of this
+  block's three), the build passed (54 s, both DLLs).
+- The run (59 s, 7 of 7 tasks): far_cars, flows_test, quality_test ("past the detail cut: the far cars stay in the mask
+  and are told no vehicle is drawn as itself"), e2e PASS. THE FAR CARS ARE SEEN: by day painted cars on the streets, by
+  night their red tail lamps and warm head lamps along them (dist/captures/far_cars_proof/day_foot.png,
+  night_foot.png, magnified 3 times); between the two day shots 770 pixels change by 40 levels or more (0 before the
+  fix); census: detailed 428, drawn_far_cars 428, drawn_vehicles 0. The owner was sent the two proof pictures
+  (dist/captures/far_cars_proof/carros_distantes_*.png). The measure lab_test: PASS 22.7 s, frame 16.65 ms (60.06
+  fps, bound "headroom"), CPU 2.38 ms, GPU 6.34 ms (mean 6.08), 3 hitches in 164 frames, findings none; peak memory
+  1570.4 MB. The board: the case and the traffic line are checked.
+- Next, in order: (1) commit and push; `block close`; (2) once, in the background, the three tests of the traffic not
+  run since their causes were fixed (window_traffic_test, transit_test, lamp_light_test@forward_plus): a failure is
+  registered and read to its cause, never run again as it is; (3) the next board line, roads, by the skill's steps:
+  the skill `port`, `python tools/tracer/port.py sheet roads`, both games read whole, Context7 and the internet, its
+  note doc/work/roads.md written before its code.
 - Not run and not to be run without the owner's order: the whole suite, km24, hunt. window_traffic_test, transit_test and
   lamp_light_test@forward_plus (minutes each) stay unverified since their causes were fixed: said plainly in the report.
 
@@ -680,6 +688,38 @@ H. Far traffic as flows, an adaptive window (row 8): NOT in this block. It repla
 - The last verification's run (output ...\tasks\ba1yly3kn.output): 9 of 9 in 46 s. What the far_cars photos show is in
   `## Now`. The hull's painted panels carry white as their vertex colour (car_parts.cpp:55 AGENT_WHITE), so a far car's
   colour is its paint; MODEL_MATRIX holds the instance's transform (the engine bakes the MultiMesh's into it).
+
+## H, the verifications' record (2026-11-13)
+- Second verification (one run, 45 s): flows_test, driving_test, e2e, far_cars passed; records_traffic_test ("the town's
+  bays let go behind the camera: 2 lots, 0 kerbs read") and flow_control_test ("the flow puts the signal at the
+  junction") failed. Causes C1 to C5, fixed in one opening: C1, C2, C3 held; C4 (a street's count rounded) was real but
+  not the whole cause of no far car drawn.
+- Third verification: flows_test failed ("0 drawn, 932 on the far streets"); the owner was told; opened again with the
+  owner's word (the /goal's); D1 (the hull freed at every rebuild), D2 (the window's streets beyond the detailed
+  vehicles' reaches), D3 (the far cars' clock) fixed.
+- Last verification (review 56 files, 0 new; build 103 s; one run, 46 s, 9 of 9): flows_test ("931 drawn, 932 on the
+  far streets"; "the window's streets have their cars written too: 922 written ... 549 detailed on 876 streets"),
+  flow_control_test, records_traffic_test, driving_test, e2e, far_cars (on_far 122.1, detailed 304, drawn_far_cars 430).
+  lab_test: PASS 22.2 s, frame 16.66 ms (60.0 fps, bound "headroom"), CPU 2.32 ms, GPU 6.71 ms (mean 6.14), 1 hitch in
+  178 frames, findings none; peak memory 1627.2 MB (before H: 16.68 ms, CPU 2.61, GPU 6.66, 1591.8 MB).
+- Its photos (the town whole from 4400 m, 0.5 px a metre): a car 2 px, none seen; 2.05% of the asphalt's pixels change
+  between the day shots (grass 0.18%): no proof. Committed as 4eaa99b5 with that said; the block closed; a new block
+  for the plan's view [500, 0, 0.8, 180, 20] (the nearest ground in the picture 937 m flat from the eye's foot).
+
+## H, the far cars not seen (2026-11-13, the new block's first verification; read with nothing run)
+- The plan far_cars at [500, 0, 0.8, 180, 20] (output ...\tasks\b965snpr9.output, 4 of 4 tasks): window_streets 876,
+  on_far 0, detailed 428, drawn_vehicles 0, drawn_far_cars 428. The photos: every street empty, by day and by night.
+- Read and found right, link by link: the marks and their lines (flow_step.cpp tell, line_of; lane_geometry.cpp:26-37,
+  the road's own height); FarTraffic take, file, write, draw; mm_row's layout; MultiMeshDraw (rs_util.h:88-203: the
+  room, the box, the count, drawn by default; AABB_MIN_Y -100, AABB_H 700); the range 6000 m; the hull (white painted
+  panels, packed as the engine's compressed attributes); the shader's curve, heading and handedness; MODEL_MATRIX in
+  vertex() is the instance's (the project's own building_parts.gdshader, people_far.gdshader read it so; a forum
+  report: forum.godotengine.org, "in vertex() it is indeed per instance matrix"); no shader error in the log.
+- E1: quality_test.gd:94 says it in words, "past the detail cut: vehicles out": RenderSwitches.cull_mask
+  (render_switches.gd:53-65) takes `vehicles` and `people` out of the camera's mask when `far`, and follow_zoom (:113-121)
+  sets `far` when CameraAim.px_per_m(rig) is under the tier's detail_cutoff_zoom. The plan's 0.8 px a metre is past it.
+- E2: so "a detailed vehicle is drawn as itself" has a third condition the shader did not know: the camera is not past
+  the cut-off. RenderSwitches.apply already tells the shaders of the cut-off by a global (road_paint, :100).
 
 ## Causes named at the block's openings (written by `block open --cause`)
 

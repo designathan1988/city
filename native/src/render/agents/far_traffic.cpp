@@ -140,7 +140,7 @@ void FarTraffic::write(int64_t key, Sector &sector) {
 	sector.dirty = false;
 	const float pad = sector.reach + SECTOR_PAD_M, side = sector_m_ + pad * 2;
 	const AABB box(Vector3(float(key_x(key)) * sector_m_ - pad, AABB_MIN_Y, float(key_y(key)) * sector_m_ - pad), Vector3(side, AABB_H, side));
-	sector.draw.set(scenario_, hull_.rid, sector.rows, box, false, LAYER_VEHICLES);
+	sector.draw.set(scenario_, hull_.rid, sector.rows, box, false, LAYER_FAR_TRAFFIC); // a layer the far views keep (render_layers.h)
 	sector.draw.range(reach_m_);
 }
 

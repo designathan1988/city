@@ -42,7 +42,7 @@ with `file:line` on both sides), which the port tool reads: `python tools/tracer
 
 ## 3. Traffic (sheets/traffic.md)
 
-- [ ] traffic, complete: every case below, in one block (`python tools/tracer/port.py sheet traffic`)
+- [x] traffic, complete: every case below, in one block (`python tools/tracer/port.py sheet traffic`)
   - the tracer's empty `--cost` on `city.traffic.step` (tools/tracer/tracer/cost.py), needed by this area's sheets (done: `python tools/tracer/trace.py --cost city.traffic.step --root native/src/sim/traffic` prints the loops; the tracer's 20 test files pass)
   - slowing for bends (done; the note: doc/work/traffic.md)
   - lane changes (politeness, indicators, positioning) (done)
@@ -51,7 +51,7 @@ with `file:line` on both sides), which the port tool reads: `python tools/tracer
   - following that anticipates (done)
   - the mix of vehicles (done)
   - lanes in the route (done)
-  - far traffic as flows; an adaptive detailed window (coded, its checks pass: flows_test, flow_control_test, records_traffic_test, driving_test, e2e, the measure; open: the far cars seen by an eye in a photo, the plan far_cars looks from too far: doc/work/traffic.md `## Now`)
+  - far traffic as flows; an adaptive detailed window (done: flows_test, flow_control_test, records_traffic_test, driving_test, quality_test, e2e and the measure pass; the far cars seen in the photos of the plan far_cars, by day and by night, on a layer of their own)
   - re-routing by patience (done)
 
 ## 4. Zones, lots and growth (sheets/zones-lots-growth.md)

@@ -92,10 +92,12 @@ func _tiers(rig: CityCamera) -> void:
 	await _frames(2)
 	check(rig.camera.cull_mask & int(names.people) == 0, "past the detail cut: people out")
 	check(rig.camera.cull_mask & int(names.vehicles) == 0, "past the detail cut: vehicles out")
+	check(rig.camera.cull_mask & int(names.far_traffic) != 0 and Settings.switches.globals[&"own_cars_shown"] == 0.0, "past the detail cut: the far cars stay in the mask and are told no vehicle is drawn as itself")
 	check(Settings.switches.globals[&"road_paint"] == 0.0, "past the cut: paint out")
 	rig.jump(rig.focus, 0.0, 60.0, NEAR_DISTANCE)
 	await _frames(2)
 	check(Settings.switches.globals[&"road_paint"] == 1.0, "back: paint again")
+	check(Settings.switches.globals[&"own_cars_shown"] == 1.0, "back: the vehicles drawn as themselves again")
 
 
 ## Instances per level, close to the street: what the tiers change is what is drawn.

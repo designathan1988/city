@@ -98,6 +98,7 @@ func apply(world: CityWorld, viewport: Viewport, tier: Dictionary) -> void:
 	world.environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY if is_on("environmentMap") else Environment.REFLECTION_SOURCE_DISABLED
 	world.daylight.relight()
 	set_global(&"road_paint", 0.0 if far else 1.0)
+	set_global(&"own_cars_shown", 0.0 if far else 1.0) # past the cut-off no vehicle is drawn as itself: the far cars stand in (far_cars.gdshader)
 	for g: Dictionary in DataTables.game("render_switches").groups:
 		for item: Dictionary in g.items:
 			if item.has("sim"):

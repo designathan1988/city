@@ -121,7 +121,8 @@
      "key": "people",
      "layers": [
       "people",
-      "vehicles"
+      "vehicles",
+      "far_traffic"
      ]
     },
     {

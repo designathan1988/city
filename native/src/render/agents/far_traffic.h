@@ -3,7 +3,8 @@
 // stretch before it and moving round that stretch at the street's speed, each car placed by the shader from the clock
 // (far_cars.gdshader): nothing is written a frame. The window's own streets are written too, from the vehicles they hold: a
 // detailed vehicle is drawn as itself only near the point looked at and near the eye (detailed_within), and the shader shows
-// the stand-in wherever it is not, so no street in view is ever empty of the cars it carries. The streets are filed by the
+// the stand-in wherever it is not, so no street in view is ever empty of the cars it carries. They are drawn on a layer of
+// their own (LAYER_FAR_TRAFFIC): the camera stops seeing the vehicles' layer past the detail cut-off. The streets are filed by the
 // sector of the map their middle is in; a sector is one MultiMesh with a box of its own, written again only when a street
 // of it changed. Sizes and bounds: agents.json far_traffic, far_shadow.sector_m.
 #pragma once
