@@ -15,12 +15,14 @@
   PELO CÓDIGO ... QUAL É MELHOR SE DECIDE LENDO O CÓDIGO DOS DOIS, NUNCA RODANDO ... Escreva na nota a comparação
   com file:line dos dois lados e o porquê da escolha ... ANTES de `block review`, em todo bloco: releia cada caso,
   item por item, e escreva na nota o file:line onde cada item está feito ... APLIQUE AO QUE JÁ FOI FECHADO, antes
-  de seguir adiante". So THIS NOTE WAITS: roads is finished first in a second block (doc/work/roads.md `## Now`);
-  the reading below is kept for when junctions is taken up again.
-- Before it: the first block of `roads` closed (4e38bad2, pushed; its note doc/work/roads.md).
-- State (2026-11-14, 02:30): NO BLOCK OPEN. The one look with no block open is not spent. The tracer's sheet was
-  asked (`python tools/tracer/port.py sheet junctions`, report dist/port/junctions.json: to read). Read whole so
-  far, this game: junction_gate.cpp, junction_control.cpp, signal_timing.cpp ("Read" below).
+  de seguir adiante". Applied: roads' second block closed (391e7306) and the traffic's leftovers' block closed
+  (03e3a9e7, pushed; doc/work/traffic.md); T036 and T037 had nothing left out.
+- State (2026-11-14, after the traffic block closed): JUNCTIONS IS IN HAND, NO BLOCK OPEN. The one look with no
+  block open is not spent. Read so far, both games: everything under "Read" below (this game's gate, control,
+  timing, admission, crossings, signs, panels, flows' control; the reference's params, plan, fsm, admission,
+  cycles, spillback, query, panel). Still to read: the list at the end of "Read". No design is written yet.
+  Since the traffic block: the window of detailed traffic follows the view down to 350 m (window.cpp), a
+  junction's flows are judged only inside it (flow_control.cpp look_at).
 - The cases (doc/port.md; doc/specs/003-roadcraft-features/sheets/junctions.md has each with its evidence):
   1. gap acceptance by turn; 2. signal stages from conflicts, protected turns; 3. demand-driven signals;
   4. walkers' calls at signals; 5. bus priority at signals; 6. drivers give way to people waiting at a zebra;
@@ -36,6 +38,138 @@
   `block open junctions`, every case coded with nothing run; the whole diff read; `block review`; `block verify`;
   the build; ONE run (the junctions' own tests named by `run tests --list`, a photo plan, zoom_ladder, e2e);
   lab_test; commit; push; `block close`.
+
+## Designs (a draft written 2026-11-14 after the traffic block; each is finished, with its sources, before its code)
+- 1 gap by turn (junction_gate.cpp may_enter :63-72, in place of the one look-ahead max(yield_near_m, v x
+  yield_look_s)): a movement that gives way goes only when each outranking head (bound for the conflicting
+  connector, not red, able to go) arrives at its line later than MY CLEARING TIME + MY CRITICAL GAP. Clearing
+  time = (my distance to the line + the arc of my way past which I am clear of that connector: the other
+  connector's conflict_clear entry for mine, junction_sweeps.cpp :245-254) over my pace through the turn.
+  Critical gap = the turn's (data: through, right, left, U-turn; HCM's critical headways to cite) x the driver's
+  own factor (temper, driver.h) less the impatience of the wait (a rate a second, capped), never under a floor;
+  the wait's ceiling stays the claim (claim_after_s). A head standing at its own line with nowhere to go is
+  skipped as now; two standing: first come as now. One read a head a tick, as now.
+- 2 stages from conflicts (junction_control.cpp make_stages :135-150): the approaches are grouped as now (an arm
+  and the arm most opposite it), then an approach left alone joins a stage none of whose movements any of its
+  connectors conflicts with (Conn::conflicts across different approaches; the reference: plan.ts:225-278
+  conflictFreeStages, greedy by the most opposite); each movement of a stage is PROTECTED when no green
+  movement of another approach that outranks it (straight > right > left > U-turn) conflicts with it
+  (plan.ts:87-97); an approach with a turn protected in no stage gets one more stage of its own (that approach
+  alone green), run only on the demand of those turns, short (data: its target and its most; plan.ts:101-121),
+  with no walk for its crossings.
+- 3 demand-driven (signal_timing.cpp advance :69-88): a green ends from its least on when another stage has
+  demand and its own has none (gap out), or at its target with another's demand, or at its most; with nobody
+  else asking it rests in green; the next stage: one with demand not served for starve cycles first, then a
+  crossing whose walkers waited past their limit, then the stage with demand of the greatest age weighted by
+  what waits, a stage with no demand skipped (fsm.ts:214-241, :268-319). THE COST KEPT OUT: the demand of a
+  stage is a counter kept as vehicles cross the detection section and leave the line (signal_call, the lane's
+  head), never a walk of the lanes of every stage a tick.
+- 4 walkers' calls: a (node, arm) keeps how many walkers wait there and since when (entered and left where a
+  walker enters and leaves PedMode::WAIT at a crossing: ped_ways.cpp :76-88, despawn, fright); a stage's
+  walkers' demand is its crossings' counts; a wait past ped_wait_limit_s is served next; a green is held while
+  people are on its crossings (node_crossers), at most ped_hold_limit_s past its most; the lamp is walk / flash /
+  don't walk (query.ts: walk while what is left protected covers the crossing at the design pace plus the start
+  lag; flash when it does not; don't walk in any other stage): PedLamp in the pose frame for the render's
+  walkers' heads if they exist (to read: signal_lamps), and walk_ok starts a walker only on walk.
+- 5 bus priority: SignalSettings::bus_priority (saved under a new save version, older files false), the panel's
+  switch (set_signal); where set: the green held up to bus_extension_s past its most for a bus within reach of
+  its line on a green approach, cut after its least green for a bus waiting on another stage, that stage taken
+  next (fsm.ts:201-211, :253-258); a bus near = a counter a signalled approach of the buses inside its detection
+  reach (kept where signal_call is, vehicle_motion.cpp :205).
+- 6 people waiting at a zebra: peds_in_way also gives way to the walkers WAITING at the kerb of a painted
+  crossing the movement drives over, when the driver can still stop comfortably: at an uncontrolled crossing
+  those waiting (the (node, arm) count of case 4), at a signal those whose lamp says walk; a driver who waited
+  ped_courtesy_s is owed its turn (admission.ts:1069-1100).
+- 7 ring metering and the zipper: a ring (the segments of a roundabout: Profile::ring arms; to read how the
+  roundabout tool marks them) keeps the length of bodies on it against its storage; nobody enters from outside
+  while the bodies on it plus the newcomer pass ring_meter_share of its length (cycles.ts:38-52), the count kept
+  as vehicles enter and leave its lanes (no search a request). The zipper: where two lanes run into one (two
+  connectors of different lanes into one lane at a node with no control), the heads take turns: a head leaves the
+  next place to the other lane's head when it is that lane's turn and that head is ready (near its line or
+  standing), for at most zip_patience_s (admission.ts:350-397).
+- 8 mini-roundabout and "none": at CTL_MINI every leg gives way to who comes from the LEFT (who is on the
+  circle), not from the right (junction_gate.cpp outranks :33-34 by the junction's side); at CTL_NONE nobody is
+  ranked but a highway over the road it meets (CTB art. 29 III; Profile's class), else from the right.
+- 9 spillback and deadlock: has_exit's room is where the tail's rear will come to REST when the exit lane runs
+  into a signal or its queue is going to stand (each vehicle stops where what stands ahead holds it:
+  spillback.ts:65-77), not the rolling tail's credit (junction_admission.cpp :49); a tail discharging elsewhere
+  is room as now; jam_release stays the last resort.
+- 10 the panel: the control's buttons (automatic, signal, signs, stop, mini, none) through a command of its own,
+  the automatic choice's note and the lock / unlock, each leg's flow an hour and its main-road tag
+  (FlowStats::rate; main_legs), the leg rules' reset, bus priority's switch; keys of this game's own.
+- 11 turn classes, walkers-only stages, replanning: the turn's class by the angle with the reference's limits
+  (lane_graph.cpp :32-35 to read against the reference's), a U-turn also between two segments nearly back on
+  each other; a walkers-only stage for any crossing no vehicle stage can share (plan.ts:207-218), not only
+  mid-block; a rebuilt plan keeps the stage that holds most of what was green, else goes through all-red
+  (fsm.ts:363-402), not only when the stage count stays.
+
+## The signal's controller as it will be coded (cases 2, 3, 4, 5, 11; decided 2026-11-14 with signal_timing.cpp,
+## junction_control.cpp and the reference's plan.ts :76-323 and fsm.ts :150-330 read again)
+- The reference's stages (plan.ts:225-278): groups that share a green have NO movement conflicting with another
+  group's, so its stages are an approach group and whatever joins it conflict-free; a turn crossed by a green
+  movement of higher rank is "permitted", and a group whose turns are protected in no stage gets a short stage of
+  its own on their demand (:101-121). This game pairs opposite arms (make_stages :139-150): a left across the
+  opposite straight is permitted the same way. KEPT: the pairing by the most opposite arm (the MBST's two-stage
+  plan); BROUGHT: (a) an arm left alone joins a stage when none of its connectors conflicts with a connector of
+  that stage's approaches (Conn::conflicts); (b) the protected mark and the turn stage; (c) a walkers-only stage
+  for any crossing no stage can walk.
+- Junction (lane_graph_types.h) gains, a stage: `turn_of` (the approach a turn stage serves, -1: an ordinary
+  stage; a turn stage's demand is that approach's heads bound for a turn protected nowhere else), `walks` (the
+  arms' segments whose crossing walks in it: no approach of the stage arrives by that arm and none of its
+  straight movements leaves by it; a turning one gives way to the walkers: plan.ts:347-367), `served` (when its
+  green last ended); and `bus_priority` (the node's setting).
+- advance (signal_timing.cpp :69-88), an actuated junction: a green runs its least; then it ENDS when another
+  stage has demand and (its own has none, or it reached its most), never while people are on its crossings
+  (node_crossers of its `walks`) until ped_hold_limit_s past its most; with nobody else asking it RESTS in
+  green. Bus priority, where set: held up to bus_extension_s past its most while a bus is inside the detection
+  reach of one of its approaches; ended after its least for a bus standing on another stage. After the
+  intergreen the next stage is: a stage with demand unserved for signal_starve_cycles x the cycle; else the
+  stage whose walkers waited ped_wait_limit_s (the longest wait first); else the stage with demand whose age,
+  weighted by its queue (1 + vehicles in its detection reach / signal_queue_weight), is the greatest; a bus's
+  stage first where priority is set; a stage with no demand is skipped. A fixed plan runs as now (run_fixed).
+- A stage's demand, with no walk of the map: for each of its approaches, a call still standing (green_wanted,
+  signal_call) or a vehicle inside the detection reach of a lane (the lane's own list, from its head back: a
+  handful); a turn stage: only heads bound for its turns; its walkers: the (node, arm) waiting counts of case 4.
+  Asked only when a green may end or a stage is picked, at signalled junctions only (LaneGraph::signal_nodes).
+- The lamp (case 4): walk while the stage walks that arm and what is left of its protection (to its most, the
+  amber, the all-red) covers the crossing at the design pace plus the start lag; flash when it does not; don't
+  walk otherwise (query.ts); walk_ok starts a walker only on walk.
+- A rebuilt plan (replan_signal :241-254) keeps running the stage that holds most of the approaches that were
+  green, at least its least green and its intergreen; with none, the junction goes through an all-red.
+
+## Sources (opened 2026-11-14; each value's words go to the data's `_doc`)
+- Critical gaps by turn (case 1): HCM's base critical headways at a two-way stop, as the PTOE study guide's table
+  gives them (open-exam-prep.com/study-guides/ptoe/managed-lanes-tsmo-its/unsignalized-intersections-roundabouts):
+  major-street left turn "4.1 s (2-lane major) / 4.1 s (4-lane major)", minor-street right turn "6.2 s (2-lane
+  major) / 6.9 s (4-lane major)", minor-street through "6.5 s (2-lane major) / 7.3 s (4-lane major)",
+  minor-street left turn "7.1 s (2-lane major) / 8.1 s (4-lane major)"; follow-up 2.2, 3.3, 4.0, 3.5 s. The
+  reference's are 4.5 through, 4.0 right, 5.5 left, 6.5 U-turn (its own, params.ts:61-66). DECIDED: the HCM's
+  (a source): right 6.2, straight over 6.5, left across 7.1 for who comes off the lesser road; a left off the
+  road that has the way 4.1; a U-turn as the left (no row of its own in the HCM: a choice).
+- Impatience (case 1): the critical gap falls with the wait: A. Polus, S. Shmueli Lazar, M. Livneh, "Critical Gap
+  as a Function of Waiting Time in Determining Roundabout Capacity", Journal of Transportation Engineering 129(5),
+  2003, as the search gives its abstract: "The main hypothesis is that an increase in drivers' average waiting
+  times reduces the average accepted gap and, consequently, the critical gap", "The model for a change in the
+  critical gap was found to be logistic" (between a most and a least gap). No rate a second was found: the rate,
+  its cap and the floor are choices (the reference's: 0.06 a second, 1.5 s, 3.0 s), said so in the `_doc`.
+- Bus priority (case 5): RTIG, "How does traffic signal bus priority work" (RTIG-T065), as the search gives it:
+  "Stage Extensions are where the current green stage is extended, usually to a preset maximum (typically 3-5
+  secs)"; a study of limits "sometimes as little as 5 s" (Northeastern, 2025); the reference's 10 s is its own.
+  The PDF itself did not open (over the fetch's size). DECIDED: bus_extension_s 5 (the source's most).
+- Who has the way with no sign (case 8): CTB (Lei 9.503/1997) art. 29, III, as legjur.com and the commentaries
+  give it: vehicles that, "transitando por fluxos que se cruzem, se aproximarem de local não sinalizado", the
+  way is: a) "no caso de apenas um fluxo ser proveniente de rodovia, aquele que estiver circulando por ela";
+  b) "no caso de rotatória, aquele que estiver circulando por ela"; c) "nos demais casos, o que vier pela
+  direita do condutor". So: "none" = a highway's flow over the road that meets it, else from the right; a
+  mini-roundabout = who is circulating (who comes from the left in right-hand traffic).
+- The walkers' wait at a signal (case 4): no figure of MBST vol. V was reached (its appendix 5, "TESP: Tempo de
+  Espera de Pedestres", is named in its index; the text did not open); a local rule as the press gives it:
+  Belo Horizonte "o tempo máximo de espera em sinais vermelhos hoje é de 1 minuto e 30 segundos", São Paulo "a
+  regra do um minuto e meio, limite de espera do pedestre nos semáforos da cidade". DECIDED: a walker's wait past
+  ped_wait_limit_s is served next: 45 s (the reference's; half the cities' 90 s ceiling, so the ceiling is never
+  reached at a junction with demand: a choice, said so).
+- STILL TO SEARCH: the hold for people on the crossing (CTB art. 70, the walker who began has the way to the
+  end), a ring's metering share, the zipper's rule (practice), a protected turn stage's length (MBST vol. V).
 
 ## Read (facts with file:line)
 - native/src/sim/traffic/junction_gate.cpp (read whole, 123 lines): may_enter :39-75: a splice lets through; the
@@ -234,5 +368,16 @@
   time), connector_motion.cpp (where may_enter and jam_release are called), traffic.json's junction keys, the tests
   of the area (`run tests --list`: junction, signal, flow_control, driving), the save of SignalSettings
   (save_read.cpp / save_write.cpp), the reference's crossings/permission.ts and claims.ts.
+- native/src/sim/traffic/junction_sweeps.cpp (read whole, 260 lines): find_conflicts :196-257: each connector's
+  way swept by the three body classes; a pair that meets keeps, per pair of classes, `conflict_clear`
+  [theirs x BODY_CLASSES + mine] = the arc along THAT connector's way (0 at its curve's start, negative on the
+  lane before) past which a body of `theirs` there is clear of mine (:245-254). So case 1's clearing time is
+  already in the graph: my own way has left the conflict with connector k once my body's middle is past
+  k's entry for me (the clear arc kept on k's side for my connector), no new sweep needed. max_class :212.
+  lane_graph_types.h (read whole, 123 lines): DirSeg stage, rank, must_stop, stop_back, detector, extension
+  (:32-39); Conn turn, conflicts, conflict_clear, forks (:57-78); Junction green, green_max, amber, all_red,
+  least, approaches a stage, cycle, run, run_start, run_green, fixed, offset, settle, degree (:80-94);
+  LaneGraph signal_nodes, signal_at (:104-107). The area's tests (run tests --list): flow_control_test,
+  junction_sweep_test, street_crossing_test; e2e's amber and red checks.
 - native/src/sim/traffic/light_rule.cpp (read whole, 111 lines; this game's own): amber_stops :43-48,
   light_recalls :50-63, light_stops :65-67, lights_ahead :69-108 (the stop a vehicle sees down its route).
