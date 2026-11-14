@@ -268,6 +268,19 @@
   next road and its incentive passes the driver's threshold, never within lc_free_m of the end nor on a bicycle),
   evaluate :89-114 (gaps, the body out of its lane before its leader, the new follower's braking, the politeness),
   change_lanes :175-208 (only the detailed vehicles, signalled first: lc_want, lc_lead).
+- Case 6, the furniture a new road is built with: the reference, world/roads/furnitureSets.ts (read whole, 164
+  lines) and furnitureCatalog.ts (28): the player picks a set for the roads drawn: complete, basic or none; basic =
+  lamps (every 30 m from 6 m) and bins (every 60 m from 9 m); complete adds hydrants (every 100 m from 20 m, the
+  right side only), benches (every 60 m from 24 m) and trees (every 10 m from 12 m; down a planted median every
+  10 m instead, :125-136); on both sides in the furnishing zone, the left side's lamps staggered 15 m (:145), no
+  lamp column on the side a power line's poles light (:148), nothing where the piece would leave under 1.2 m of
+  clear walk (NBR 9050 6.12.3, :17-18, :151), each piece where the landscaping tool would accept it (snapLandscape).
+  This game, project/data/catalog/street_furniture.json styles :169-220: the furniture follows the city's regional
+  style, not a set picked for a road: roadcraft (columns every 30 m from 6 m, bins every 60 from 9, benches every 60
+  from 24, rows ending 4 m short, hydrants by a reach of 100 m, no tree in the generated city), brazil (no bins or
+  benches rows, hydrants by 300 m, trees in the generated city); the code: native/src/sim/roads/street_furniture.cpp
+  (345 lines), street_furniture_places.cpp (95), street_furniture_posts.cpp (134): to read, with whether the road
+  tool offers a set (project/ui/road_options.gd).
 - What reads the grade (read): RoadNetwork::seg_y (road_network.cpp:240-245: grade.at(s, arc), else the straight
   line between the nodes' y); set_lift :247-252 marks the node and its roads; ray_deck
   (road_network_deck.cpp:28-32: prof.ylo, prof.yhi); RoadNetwork::cut (road_network_cut.cpp:14-31 heights_of: a
