@@ -9,13 +9,27 @@
   Standing: Portuguese to the owner; no agents; defects found by reading; one small verification; whole photos.
 - Before it: the block `look` closed (9989db18: the far level lays each lot; the guards 6cee0a3e). Its note:
   doc/work/look.md.
-- State: no block open. The tracer's sheet ran (report dist/port/roads.json; its output names differences for
-  feature 1 only: the other features' rows in the sheet carry no file:line the tracer can start from, so each is
-  read from its files directly). This game's grade code was read whole (the five road_grade files: the section Read
-  below). In hand: the reference's world/elevation.ts (1,566 lines), world/rampRise.ts (100), then the consumers of
-  the grade here; then cases 2, 4, 5, 6, 7 in both games (the reference: world/structures.ts, world/economy.ts 169,
-  editor/roadTool.ts, editor/roadPath.ts, world/markings.ts 547, ui/roads/profileEditor.ts and profilePanel.ts,
-  world/streetFurniture.ts, world/roads, sim/roads).
+- State (2026-11-14): no block open; nothing coded. The tracer's sheet ran (dist/port/roads.json: differences
+  named for case 1 only; the other rows carry no file:line it can start from, so each was read from its files).
+  READ AND WRITTEN BELOW, both games: case 1 (the five road_grade files here; the reference's elevation.ts to :660
+  and its functions' list), case 2 (road_plan.cpp, road_economy.cpp/.h, road_draft.gd; the reference's buildMode.ts,
+  economy.ts, structures.ts, main.ts:3360-3547), case 4 (road_markings.cpp; the reference's markings.ts whole,
+  markingStyle.ts), case 5 (road_profile_panel.gd, road_spec_ops.gd; the reference's profileEditor.ts by its
+  controls), case 6 (street_names.h, inspector_panel.gd; the reference's streetNames.ts, inspector.ts:210-254,
+  vehicles/spawn.ts:80-230), case 7 (profile_types.h, lane_graph.cpp, lane_graph_types.h, lane_change.cpp; the
+  reference's rules at their places), the reference's tuning.ts.
+- STILL TO READ before the block: the consumers of the grade here (road_network.cpp:245, road_network_deck.cpp,
+  road_network_cut.cpp, road_grade_sync.cpp, the probes) and road_grade_test; this game's tuning.json `grade` and
+  `economy` keys against the reference's; city_core_commands.cpp:60-90 (the preview's heights) and road_bend.cpp,
+  road_snap.cpp:127 (a start on a raised road); the far lines (project/render/shaders/road_far.gdshader, the
+  reference's render/roadPaint.ts); the basic furniture set (street_furniture*.cpp here; the reference's
+  world/roads/furnitureSets.ts, world/streetFurniture.ts); where this game's demand could take cars in at the map's
+  edge (lot_demand.cpp, street_flows.h, flow_step.cpp); way_search.cpp (does a way know the lanes); road_spec.cpp
+  and city_core_road_spec.cpp (the editor's core: limits, issues, the 256 customs), RoadModels (saved roads).
+- THEN: Context7 for each API the code calls (Godot's UI nodes of the editor, ImmediateMesh or the draft's
+  overlay, shader derivatives for the far dashes); the internet for each design decision and value (the smoother
+  and the envelopes of case 1; the legends' sizes and the arrows by the signage manual; what a general vehicle may
+  do on a bus lane; the entry rates at a town's edge); each case's design written under "Design".
 - The cases (doc/port.md; doc/specs/003-roadcraft-features/sheets/roads.md has each with its evidence):
   1. the heights of the roads, solved in this game's design (Proads-8, -10, -15, -33, -35; read and researched before:
      doc/work/t015-roads.md: Whittaker-Eilers smoothing, Eilers 2003; exact two-pass envelopes, Felzenszwalb and
