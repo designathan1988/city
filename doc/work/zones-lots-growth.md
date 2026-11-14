@@ -25,7 +25,11 @@
   CORREÇÃO SE PRECISAR NO CODIGO, PROXIMA FUNCIONALIDADE ... NADA DEVE FICAR ABERTO OU SER IGNORADO". Why: the
   tracer below sat 7 hours with no deadline. Every process from here: a deadline of seconds, its output read
   when it ends, stopped by its ID when it passes the deadline.
-- STATE (2026-11-14): THE BLOCK zones-lots-growth IS IN VERIFY, VERIFICATION 2 OF 3 PASSED: the run
+- STATE (2026-11-14): THE BLOCK zones-lots-growth IS CLOSED: commit aa8dd236, pushed; `block closed
+  (zones-lots-growth)`; 2 of 3 verifications used. The next line of the board is 5. transit (its own note).
+  NOT REGISTERED: the open item of the 24 km opening (settle_sites serial, window_traffic_test not run) is on
+  the board's line and here; `problems add` needs `--owner <file>`, which the hook reads as the owner's words
+  and refuses: told to the owner. VERIFICATION 2 OF 3 PASSED: the run
   `growth_test,zoom_ladder,e2e` 6/6 in 12 s (growth_test 3.3 s, FAILURES 0: the town opens in 0.13 s with 1162
   buildings, 20 grew on the zoned road, no record broken, another zone removed 0, low industry is a zone, a new
   building's wear 0%, the zone taken off removed 56); zoom_ladder's six photos opened against doc/look's: no
