@@ -21,6 +21,7 @@ inline int out_ds(const RoadNetwork &net, int seg, int node) { return seg * 2 + 
 
 // traffic_system.cpp
 void step(CityState &s, float dt); // applies the network changes, then advances everything near and far
+void follow_edit(CityState &s); // the same changes applied with the clock standing: nothing advances (Simulation::settle)
 // After each tick: poses near the camera into CityState::poses, stamped with the tick's scheduled time.
 void publish_poses(CityState &s, int64_t stamp_ns);
 // vehicle_pose.cpp: where a vehicle on the lanes is drawn (its middle, heading and pitch into `out`), from its path.

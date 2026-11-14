@@ -5,7 +5,6 @@
 // and posts.
 #include "render/buildings/lot_covers.h"
 
-#include "core/polygon_ops.h"
 #include "sim/buildings/b40/bench.h"
 
 #include <cmath>
@@ -58,6 +57,10 @@ struct LotEmit {
 // before it: covers lie millimetres apart (tuning lot.cover_step_m), which the depth buffer does not tell apart kilometres away
 // (Godot's manual, 3D rendering limitations: "move the Z-fighting objects further apart without the difference being visible").
 void LotEmit::cover(const CoverPiece &c) {
+	if (c.element == LOT_LAWN) { // the lawn of a lot that is no rectangle, to its own outline: in the terrain's grass, as the plan's lawns
+		if (!pl.lean && shell.lawns) shell.lawns->poly(c.p, c.count, pl.lot.e2, paint_lin(pl.data->color("lawn")), FIN_NONE, SK_LAWN);
+		return;
+	}
 	const LotElement &e = pl.b->elements[size_t(c.element)];
 	const bool lawn = e.paint >= 0 && pl.b->paints[size_t(e.paint)].finish == FIN_NONE;
 	if (!pl.lean) {
@@ -264,34 +267,12 @@ void turned_element(Shell &shell, Shell &parts, const Placed &pl, const LotEleme
 	local.angle = 0; // in its own frame the piece lies straight: who reads its outline there (element_shape.h) reads it unturned
 	LotEmit{ shell, parts, at, pl.lot.o.y }.element(local);
 }
-
-// The lawn of a lot that is no rectangle (Body::lot_ring), laid to the lot's own outline on its ground, under every cover the plan
-// laid on its rectangle: the land between the plan and the lot's lines is the lot's garden, not bare ground. In the terrain's grass,
-// as the plan's lawns are; the far level leaves it to the land's own grass.
-void outline_lawn(Shell &lawns, const Placed &pl, const LotEmit &le) {
-	const std::vector<Point2> &ring = pl.b->lot_ring;
-	std::vector<double> x, y;
-	for (const Point2 &p : ring) {
-		x.push_back(p.x);
-		y.push_back(p.y);
-	}
-	const std::vector<int> tris = ring_triangles(x, y);
-	for (size_t t = 0; t + 2 < tris.size(); t += 3) {
-		Vector3 corner[3];
-		for (int k = 0; k < 3; k++) {
-			const Point2 &p = ring[size_t(tris[t + size_t(k)])];
-			corner[k] = pl.lot.at(p.x, p.y, le.ground(p.x, p.y) + pl.look->lot_plate);
-		}
-		lawns.poly(corner, 3, pl.lot.e2, paint_lin(pl.data->color("lawn")), FIN_NONE, SK_LAWN);
-	}
-}
 } // namespace
 
 void emit_lot(Shell &shell, Shell &parts, const Placed &pl) {
 	LotEmit le{ shell, parts, pl, pl.lot.o.y };
 	const Body &b = *pl.b;
-	if (!b.lot_ring.empty() && !pl.lean && shell.lawns) outline_lawn(*shell.lawns, pl, le);
-	lot_covers(pl, [&le](const CoverPiece &c) { le.cover(c); });
+	lot_covers(pl, [&le](const CoverPiece &c) { le.cover(c); }); // the lawn of a lot that is no rectangle among them (lot_covers.h LOT_LAWN)
 	for (const LotElement &e : b.elements) {
 		if (cut_away(b, e)) continue; // cut open: what hangs above the floor seen is gone
 		if (e.angle != 0) turned_element(shell, parts, pl, e);

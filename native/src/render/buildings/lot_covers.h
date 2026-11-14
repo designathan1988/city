@@ -13,6 +13,9 @@
 namespace city::b40 {
 
 constexpr int COVER_POLY_MOST = 8; // a piece's corners at the most: what is laid with more is handed as pieces fanned from one corner
+// A piece's element and rank when it is the lot's own lawn: a lot that is no rectangle (Body::lot_ring) is lawn to its outline under
+// every cover its plan lays, and every cover of it is held to that outline, so nothing of a lot is drawn past its own line.
+constexpr int LOT_LAWN = -1;
 
 // One piece of a cover: its element's index in the body, the cover's place in the order (the higher lies over), and its corners in
 // the world, a convex polygon facing up. The pieces of one polygon share their corners, so they share their edges.

@@ -209,6 +209,14 @@ void CityCore::_process(double delta) {
 		state_->log.lot_cells.clear();
 		return;
 	}
+	if (sim_.speed() == SimSpeed::PAUSED) { // an edit made with the clock standing: the traffic's picture follows it (Simulation::settle)
+		bool owed = false;
+		{
+			std::shared_lock<std::shared_mutex> lk(state_->map_mutex);
+			owed = state_->log.traffic_owed();
+		}
+		if (owed) sim_.settle(*state_);
+	}
 	Laps total, laps;
 	Camera3D *cam = get_viewport() ? get_viewport()->get_camera_3d() : nullptr;
 	if (cam) cam_ = cam->get_global_position();

@@ -8,7 +8,6 @@
 #include "core/units.h"
 
 #include <chrono>
-#include <cmath>
 
 using namespace godot;
 
@@ -111,6 +110,7 @@ void RenderWorld::full_rebuild(const CityState &s, ChangeLog &log, Object *terra
 			overlays_.mark_dirty(k);
 		}
 	props_stream_.adopt_known(road_stream_);
+	overlays_.know_lots(s.lot_book); // the lots of a city just opened: the chunks they lie in
 	for (const UtilityPole &p : s.street.poles.items)
 		if (p.alive && p.lamp) pools_stream_.mark(super_of(chunk_of(p.x, p.z))); // a lit pole the player put up away from any street
 	for (const Building &b : s.buildings.items)
@@ -131,6 +131,7 @@ void RenderWorld::drain_log(const CityState &s, ChangeLog &log) {
 	paint_rects_.swap(log.paint_rects);
 	nature_keys_.swap(log.nature_chunks);
 	water_keys_.swap(log.water_chunks);
+	overlays_.take_lots(log.overlay_chunks); // a lot of the player's changed there: the overlay colours it, road or no road
 	lot_boxes_.swap(log.lot_boxes);
 	if (!building_keys_.empty()) canyon_.touch(building_keys_);
 	if (!water_keys_.empty() || !terrain_rects_.empty()) shore_.touch();
@@ -198,10 +199,7 @@ void RenderWorld::mark_changed(const CityState &s) {
 	transit_.touch(road_keys_);
 	transit_.touch_terrain(s, terrain_rects_);
 	for (int64_t k : view_keys_) buildings_.restyle_chunk(k);
-	road_keys_.clear();
-	building_keys_.clear();
-	view_keys_.clear();
-	prop_keys_.clear();
+	for (std::vector<int64_t> *keys : { &road_keys_, &building_keys_, &view_keys_, &prop_keys_ }) keys->clear();
 }
 
 int64_t RenderWorld::baking() const {

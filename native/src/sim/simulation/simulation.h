@@ -33,6 +33,10 @@ public:
 	// `ticks` ticks on the caller's thread (tests), only when hold_still(); refused (false) while the clock runs. Takes its
 	// own locks: the caller must not hold map_mutex.
 	bool step(CityState &s, int ticks);
+	// The traffic follows an edit made with the clock standing (the player builds and razes with the game paused): what the edit
+	// took or changed is drained and the picture published again; no time passes and nothing moves. On the caller's thread, with
+	// its own locks (the caller must not hold map_mutex); refused (false) unless the clock is PAUSED.
+	bool settle(CityState &s);
 	~Simulation() { stop(); }
 
 private:

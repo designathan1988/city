@@ -64,11 +64,7 @@ void run_traffic_checks(const CityState &s, const CheckScope &scope, Broken &bro
 
 // Every list traffic::apply_network_changes drains. Read without the log's mutex: its producers hold the map exclusively, and
 // the callers hold it (shared or exclusive) while they ask.
-bool traffic_drained(const CityState &s) {
-	const ChangeLog &l = s.log;
-	return l.net_nodes.empty() && l.net_nodes_removed.empty() && l.net_segs_removed.empty() && l.net_segs_changed.empty() &&
-			l.furniture_segs.empty() && l.lots_changed.empty() && l.lot_fronts.empty() && l.signal_nodes.empty();
-}
+bool traffic_drained(const CityState &s) { return !s.log.traffic_owed(); }
 
 void after_command(CityState &s, const char *cause, bool refused) {
 	BrokenSink &sink = s.broken_sink;

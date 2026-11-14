@@ -131,6 +131,18 @@ bool Simulation::step(CityState &s, int ticks) {
 	return true;
 }
 
+// Paused, the tick thread steps nothing (run), so nothing drains what an edit leaves for the traffic nor publishes what the render
+// draws of it: the parked cars of a building razed, the kerb's cars of a street taken off, stood where they were until the clock
+// ran again. The picture follows the edit: the same drain a step begins with, and one publication, at the time the clock stands.
+bool Simulation::settle(CityState &s) {
+	if (speed_.load() != SimSpeed::PAUSED || !hold_still()) return false;
+	std::shared_lock<std::shared_mutex> map(s.map_mutex);
+	std::lock_guard<std::mutex> tr(s.traffic_mutex);
+	traffic::follow_edit(s);
+	traffic::publish_poses(s, now_ns());
+	return true;
+}
+
 void Simulation::run() {
 	constexpr int MAX_CATCHUP_TICKS = 2;
 	int64_t deadline = now_ns();

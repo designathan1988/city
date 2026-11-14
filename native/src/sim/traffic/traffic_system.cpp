@@ -194,6 +194,20 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	t.step_ms[STAGE_PUBLISH] += lap.lap();
 }
 
+// What an edit took or changed, followed with the clock standing (Simulation::settle): the network's changes drained as a step
+// drains them, and every parking source the edit dropped inside the window read again (a step reads a few; here all, since no
+// step follows). No time passes and nothing moves.
+void follow_edit(CityState &s) {
+	apply_network_changes(s);
+	const ParkingState &p = s.traffic.park;
+	step_parking_sources(s); // looks round again where the edit dropped a source, and reads the first few
+	for (size_t left = p.lots_wanted.size() + p.kerbs_wanted.size(), was = left + 1; left > 0 && left < was;) { // while a read is made
+		was = left;
+		step_parking_sources(s);
+		left = p.lots_wanted.size() + p.kerbs_wanted.size();
+	}
+}
+
 void step(CityState &s, float dt) {
 	TrafficState &t = s.traffic;
 	apply_network_changes(s);

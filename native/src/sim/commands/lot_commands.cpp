@@ -27,9 +27,14 @@ void bounds(const std::vector<LotPoint> &q, double &x0, double &z0, double &x1, 
 	}
 }
 
+// The chunks a lot's box lies in: their proposed lots are worked out again (the lot cache), and their zone overlay is laid again
+// (the render: a lot's outline or zone is drawn there, road or no road).
 void mark_box(CityState &s, double x0, double z0, double x1, double z1) {
 	for (int j = int(std::floor(z0 / CHUNK)); j <= int(std::floor(z1 / CHUNK)); j++)
-		for (int i = int(std::floor(x0 / CHUNK)); i <= int(std::floor(x1 / CHUNK)); i++) s.log.lot_cells.push_back(cell_key(i, j));
+		for (int i = int(std::floor(x0 / CHUNK)); i <= int(std::floor(x1 / CHUNK)); i++) {
+			s.log.lot_cells.push_back(cell_key(i, j));
+			s.log.overlay_chunks.push_back(cell_key(i, j));
+		}
 }
 
 // The land of `rings` read again (the book was changed record by record before); the command ends in EditHistory::end.

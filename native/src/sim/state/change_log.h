@@ -45,6 +45,9 @@ struct ChangeLog {
 	std::vector<int> paint_rects; // x0, z0, x1, z1: the same samples, their painted ground changed
 	std::vector<int64_t> nature_chunks; // CHUNK keys whose trees and ground cover must be placed again
 	std::vector<int64_t> water_chunks; // CHUNK keys whose water surface must be built again
+	// CHUNK keys whose zone overlay must be laid again though no road changed: a lot of the player's came, went, moved or took a zone
+	// (lot_commands.cpp mark_box). The overlay colours a zoned lot on the ground, in chunks that may hold no road at all.
+	std::vector<int64_t> overlay_chunks;
 	// The lane graph's incremental work: drained by the traffic (not by the render). `net_nodes` are the nodes whose
 	// connectors and junction must be rebuilt; the segment lists are the ids added, removed or reprofiled.
 	std::vector<int> net_nodes, net_segs_removed, net_segs_changed;
@@ -73,6 +76,13 @@ struct ChangeLog {
 	// The far traffic's streets whose drawn numbers changed (flow_mark.h): appended by the traffic's step under `mutex`, drained
 	// with the other render lists.
 	std::vector<FlowMark> flow_marks;
+
+	// Whether the traffic has something of an edit still to drain (every list traffic::apply_network_changes takes). Asked with the
+	// map held (shared or exclusive: the producers hold it exclusively), as the lists are read without `mutex`.
+	bool traffic_owed() const {
+		return !(net_nodes.empty() && net_nodes_removed.empty() && net_segs_removed.empty() && net_segs_changed.empty() &&
+				furniture_segs.empty() && lots_changed.empty() && lot_fronts.empty() && signal_nodes.empty());
+	}
 
 	static void dedup(std::vector<int64_t> &v) {
 		std::sort(v.begin(), v.end());
@@ -148,6 +158,7 @@ struct ChangeLog {
 		paint_rects.clear();
 		nature_chunks.clear();
 		water_chunks.clear();
+		overlay_chunks.clear();
 		lot_boxes.clear();
 		flow_marks.clear();
 	}

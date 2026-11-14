@@ -59,6 +59,7 @@ void OverlayRenderer::reset() {
 	congestion_.clear();
 	lanes_.clear();
 	roads_known_.clear();
+	lots_known_.clear();
 	zones_all_ = true;
 	since_ = refresh_;
 	zone_queue_.clear();
@@ -73,7 +74,8 @@ void OverlayRenderer::set(Overlay o, bool on) {
 	if (o == Overlay::ZONES) {
 		if (on) zones_all_ = true;
 		else
-			for (int64_t key : roads_known_) zone_queue_.revs.unwant(key);
+			for (const auto *known : { &roads_known_, &lots_known_ })
+				for (int64_t key : *known) zone_queue_.revs.unwant(key);
 		for (auto &kv : zones_) kv.second.visible(on);
 	} else {
 		if (on) since_ = refresh_;
@@ -85,6 +87,33 @@ void OverlayRenderer::mark_dirty(int64_t key) {
 	roads_known_.insert(key);
 	lanes_.erase(key); // its roads changed: the congestion ribbons are laid again
 	if (on_[int(Overlay::ZONES)]) zone_queue_.revs.mark(key);
+}
+
+// The chunk is known by its lot (it may hold no road): its zone mesh is laid again now when the overlay shows, and with every
+// other known chunk when it is next switched on. The congestion ribbons follow the roads alone: they stay.
+void OverlayRenderer::mark_lot(int64_t key) {
+	lots_known_.insert(key);
+	if (on_[int(Overlay::ZONES)]) zone_queue_.revs.mark(key);
+}
+
+void OverlayRenderer::take_lots(std::vector<int64_t> &keys) {
+	for (int64_t key : keys) mark_lot(key);
+	keys.clear();
+}
+
+// A lot lies in the chunks of its box (lot_cover leaves the chunks its corners do not reach).
+void OverlayRenderer::know_lots(const LotBook &book) {
+	for (const PlayerLot &lot : book.lots) {
+		if (lot.corners.empty()) continue;
+		double x0 = lot.corners.front().x, x1 = x0, z0 = lot.corners.front().z, z1 = z0;
+		for (const LotPoint &p : lot.corners) {
+			x0 = std::min(x0, p.x);
+			x1 = std::max(x1, p.x);
+			z0 = std::min(z0, p.z);
+			z1 = std::max(z1, p.z);
+		}
+		for_chunks(x0, z0, x1, z1, [this](int64_t key) { mark_lot(key); });
+	}
 }
 
 void OverlayRenderer::submit_zone(const CityState &s, int64_t key, float priority) {
@@ -156,7 +185,8 @@ void OverlayRenderer::update_congestion(const CityState &s, const PoseFrame &f, 
 void OverlayRenderer::update(const CityState &s, const PoseFrame &f, double dt, FrameAdmission &admission) {
 	if (on_[int(Overlay::ZONES)]) {
 		if (zones_all_) {
-			for (int64_t key : roads_known_) zone_queue_.revs.mark(key);
+			for (const auto *known : { &roads_known_, &lots_known_ })
+				for (int64_t key : *known) zone_queue_.revs.mark(key);
 			zones_all_ = false;
 		}
 		// The marked chunks nearest first, a credit each while the frame has them; a chunk whose result is on its way keeps its

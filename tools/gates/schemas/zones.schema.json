@@ -1,6 +1,7 @@
 {
  "type": "object",
  "properties": {
+  "_doc": { "type": "string" },
   "zones": {
    "type": "array",
    "items": {

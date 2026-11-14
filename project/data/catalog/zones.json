@@ -1,16 +1,17 @@
 {
+ "_doc": "The zones' colours as the overlay shows them. One hue a use, by the genre's convention: residential, commercial and industrial zones are green, blue and yellow, \"as in SimCity\" (tvtropes.org, VideoGame/CitiesSkylines); the density is told by the tone of that hue, the low density a lighter tint and the high a darker shade (\"Light Green- low density housing, Dark Green- high density housing\", a players' post on the zones of Cities: Skylines, forum.paradoxplaza.com; read 2026-11-14). With one colour for the three densities the player could not tell on the ground which density he had painted (doc/work/zones-photos.md, photos 01 and 02).",
  "zones": [
   { "id": "none", "code": 0, "name_key": "zone.none", "base": 0, "density": 1, "color": "#888888" },
   { "id": "residential", "code": 1, "name_key": "zone.residential", "base": 1, "density": 1, "color": "#56bb73" },
   { "id": "commercial", "code": 2, "name_key": "zone.commercial", "base": 2, "density": 1, "color": "#5da9e9" },
   { "id": "industrial", "code": 3, "name_key": "zone.industrial", "base": 3, "density": 1, "color": "#d9b254" },
   { "id": "mixed", "code": 4, "name_key": "zone.mixed", "base": 4, "density": 1, "color": "#b05fd0" },
-  { "id": "res_low", "code": 5, "name_key": "zone.resLow", "base": 1, "density": 0, "color": "#56bb73" },
-  { "id": "res_high", "code": 6, "name_key": "zone.resHigh", "base": 1, "density": 2, "color": "#56bb73" },
-  { "id": "com_low", "code": 7, "name_key": "zone.comLow", "base": 2, "density": 0, "color": "#5da9e9" },
-  { "id": "com_high", "code": 8, "name_key": "zone.comHigh", "base": 2, "density": 2, "color": "#5da9e9" },
-  { "id": "ind_low", "code": 9, "name_key": "zone.indLow", "base": 3, "density": 0, "color": "#d9b254" },
-  { "id": "ind_high", "code": 10, "name_key": "zone.indHigh", "base": 3, "density": 2, "color": "#d9b254" }
+  { "id": "res_low", "code": 5, "name_key": "zone.resLow", "base": 1, "density": 0, "color": "#a6e3b5" },
+  { "id": "res_high", "code": 6, "name_key": "zone.resHigh", "base": 1, "density": 2, "color": "#1f7a41" },
+  { "id": "com_low", "code": 7, "name_key": "zone.comLow", "base": 2, "density": 0, "color": "#aed3f5" },
+  { "id": "com_high", "code": 8, "name_key": "zone.comHigh", "base": 2, "density": 2, "color": "#2468b0" },
+  { "id": "ind_low", "code": 9, "name_key": "zone.indLow", "base": 3, "density": 0, "color": "#eed9a0" },
+  { "id": "ind_high", "code": 10, "name_key": "zone.indHigh", "base": 3, "density": 2, "color": "#a67d1f" }
  ],
  "residents": { "floor_share": 0.6, "m2_per_resident": 28, "m2_per_job_commercial": 18, "m2_per_job_industrial": 45, "m2_per_person_mixed": 40 }
 }

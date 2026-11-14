@@ -7,7 +7,7 @@
 ## (the highest roof within radius of the point), {"setViewNear": [kind, x, y, zoom, azimuth, elevation]} (the nearest walker, vehicle,
 ## lamp, pole, sign or building to the point), {"shot": name} (after the world is drawn),
 ## {"frames": n}, {"hour": h} (light and clock together), {"dispatch": command, "args": [...]},
-## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says"}, {"blastShot": name, "at": s, "timeout": ms}, {"walker": [zoom, azimuth, elevation]}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
+## {"query": name, "args": [...]} (its answer printed), {"key": "Escape"}, {"click": [x, z]}, {"tap": [screen x, y]}, {"control": "what it says, or the key of its words"}, {"blastShot": name, "at": s, "timeout": ms}, {"walker": [zoom, azimuth, elevation]}, {"global": [name, value]} (a shader global: an A/B inside one run, so what else loads the GPU falls on both), {"drag": [[x, z], [x, z]]}.
 ## Args: look_args.gd ({"at": [x, z]} the ground there, {"pair": [x, z]} between two walkers together, {"profile": id}, {"v3"}, {"path"}).
 ## Measures (look_measure.gd): {"record": name} … {"recordEnd": true} (the frames between: intervals, hitches, vsyncs missed,
 ## CPU and GPU), {"usage": seconds} (peak, mean and least), {"info": true} (what the last frame drew and what is held),
@@ -174,7 +174,7 @@ func _pointer_step(step: Dictionary) -> bool:
 	elif step.has("drag"):
 		await ui.drag(args.point(step.drag[0]), args.point(step.drag[1]))
 	elif step.has("control"): # the `press` of scripts/look.mjs: a control found by what it says, pressed with the mouse where it stands
-		await _press_control(str(step.control))
+		await _press_control(tr(str(step.control))) # its words, or their key in the texts (a plan names a control in no language)
 	else:
 		return false
 	return true

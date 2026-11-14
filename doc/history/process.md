@@ -178,6 +178,7 @@ Appended by `python tools/tasks/cli.py block close` (FR-050: the time each step 
 | roads | 2026-11-14T01:28 | 2026-11-14T02:50 | 2026-11-14T02:54 | 82 | 4 |
 | traffic | 2026-11-14T03:07 | 2026-11-14T03:33 | 2026-11-14T03:38 | 26 | 5 |
 | junctions | 2026-11-14T03:45 | 2026-11-14T04:24 | 2026-11-14T04:31 | 39 | 7 |
+| zones-lots-growth | 2026-11-14T11:43 | 2026-11-14T12:22 | 2026-11-14T12:24 | 39 | 2 |
 
 ## 2026-11-12: the audit of 2026-11-07 (log/review.md) folded into the register
 

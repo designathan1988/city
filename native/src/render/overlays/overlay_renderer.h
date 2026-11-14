@@ -33,6 +33,9 @@ public:
 	void show_every_zone(bool on); // the brush in hand: every zoned side, not only the player's
 	bool is_on(Overlay o) const { return on_[int(o)]; }
 	void mark_dirty(int64_t key); // a road chunk changed: its zone mesh is stale
+	void mark_lot(int64_t key); // a lot of the player's changed in this chunk (its outline, its zone): its zone mesh is stale
+	void take_lots(std::vector<int64_t> &keys); // the change log's chunks of changed lots, each marked; the list left empty
+	void know_lots(const LotBook &book); // a city just opened: the chunks its lots lie in
 	void update(const CityState &s, const PoseFrame &f, double dt, FrameAdmission &admission);
 
 private:
@@ -69,6 +72,7 @@ private:
 	godot::RID scenario_, material_;
 	std::unordered_map<int64_t, MeshDraw> zones_, congestion_;
 	std::unordered_set<int64_t> roads_known_;
+	std::unordered_set<int64_t> lots_known_; // the chunks a lot of the player's lies in: the zone mesh covers a zoned lot, road or no road
 	std::unordered_map<int64_t, Lanes> lanes_; // the congestion ribbons laid, by chunk (dropped when its roads change)
 	bool zones_all_ = false;
 	std::atomic<bool> every_zone_{ false };

@@ -434,6 +434,7 @@
     {"name": "zoom_ladder", "plan": "res://tests/visual/zoom_ladder_plan.json", "resolution": "1920x1080", "timeout_s": 120},
     {"name": "highway", "plan": "res://tests/visual/highway_plan.json", "resolution": "1920x1080", "timeout_s": 300},
     {"name": "road_paint", "plan": "res://tests/visual/road_paint_plan.json", "resolution": "1920x1080", "timeout_s": 300},
+    {"name": "zones", "plan": "res://tests/visual/zones_plan.json", "resolution": "1920x1080", "timeout_s": 120},
     {"name": "fallen", "plan": "res://tests/visual/fallen_plan.json", "resolution": "1920x1080", "timeout_s": 300},
     {"name": "stampede", "plan": "res://tests/visual/stampede_plan.json", "resolution": "1920x1080", "timeout_s": 300},
     {"name": "torn", "plan": "res://tests/visual/torn_plan.json", "resolution": "1920x1080", "timeout_s": 300},
