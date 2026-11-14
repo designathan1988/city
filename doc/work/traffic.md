@@ -43,11 +43,15 @@
   (dist/captures/far_cars_proof/carros_distantes_*.png). The measure lab_test: PASS 22.7 s, frame 16.65 ms (60.06
   fps, bound "headroom"), CPU 2.38 ms, GPU 6.34 ms (mean 6.08), 3 hitches in 164 frames, findings none; peak memory
   1570.4 MB. The board: the case and the traffic line are checked.
-- Next, in order: (1) commit and push; `block close`; (2) once, in the background, the three tests of the traffic not
-  run since their causes were fixed (window_traffic_test, transit_test, lamp_light_test@forward_plus): a failure is
-  registered and read to its cause, never run again as it is; (3) the next board line, roads, by the skill's steps:
-  the skill `port`, `python tools/tracer/port.py sheet roads`, both games read whole, Context7 and the internet, its
-  note doc/work/roads.md written before its code.
+- Committed and pushed (a761fe0a); the block is closed; the traffic line of doc/port.md is checked. The three tests not
+  run since their causes were fixed ran once and pass: window_traffic_test 84.7 s, transit_test 47.0 s,
+  lamp_light_test@forward_plus 19.8 s.
+- The owner, on seeing the proof picture (a crop magnified 4 times of the view from 2100 m): "O JOGO NÃO ESTAVA ASSIM
+  ... OS PRÉDIOS ESTAVAM SUPER BEM FEITOS ... PEGUE AS FOTOS DE ANTES E VEJA". Done: no building file changed since
+  the traffic work began (git diff ef7e16f9..HEAD); the plan `roofs` photographed again (22:20) against its photos of
+  03:38 (dist/captures/antes/roofs_1113_0338): 0.02% to 0.38% of the pixels differ by more than 24 levels (sheets in
+  dist/captures/antes_e_agora, sent). A magnified crop is never sent again without the whole picture beside it.
+- Next: the board's next line, roads, by the skill's steps (its note doc/work/roads.md written before its code).
 - Not run and not to be run without the owner's order: the whole suite, km24, hunt. window_traffic_test, transit_test and
   lamp_light_test@forward_plus (minutes each) stay unverified since their causes were fixed: said plainly in the report.
 
