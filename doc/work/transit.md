@@ -143,6 +143,18 @@
   :302-349: `onEdge` walks EVERY edge of the graph for each end of a leg (:303-314, the reference's own cost; the
   same walk as transit_data.cpp:32-45 here: case 4 takes it off both), then Dijkstra with a heap. ALONG_ROAD 12 m
   and longestOnRoad :355-368 (a sample each metre).
+- THE TEXTS (2026-11-14): project/data/i18n/strings.csv:364 `game.hint.transit` says "Clique na calçada para pôr
+  paradas na linha; clique numa parada para tirar; Shift+clique torna a parada terminal": the tool does neither
+  (transit_tool.gd:34-39: Shift+click REMOVES; a terminal is its own kind). strings_c.csv:344-349 hold a help for
+  each kind (`ui.transit.help.stop`, `.terminal`, `.trainTrack`, `.trainStation`, `.metroTrack`, `.metroStation`)
+  that the tool never shows (it shows `game.hint.transit` whatever the kind, transit_tool.gd:18-25); `.help.stop`
+  also says a click on a stop removes it; there is no help for the kind `line` (`transit.tool.line`,
+  strings_c.csv:113). The refusals' texts exist, one each (strings_c.csv:488-496: `hint.transit.noStreet`, `taken`,
+  `noStop`, `noTrack`, `trackShort`, `trackOnRoad`, `lineShort`, `removed`, `lineMade`) and the marks
+  (`transit.mark.bus`, `.train`, `.metro`, :498-500).
+- project/ui/transit_strip.gd (58 lines), whole: the Make a line tab's list: each line with its colour, name, mode
+  and stops, its vehicles with fewer and more (`transit_vehicles`), and its removal (`transit_drop_line`); filled
+  again when the plan changes (`plan_changed`, one shot). Nothing to change but what case 6's clamp shows.
 - native/src/sim/transit/rail_net.h (40) and .cpp (53), whole (2026-11-14): one mode's tracks as a graph, made again
   only when the mode's tracks (point for point, `same_tracks` :12-23, a compare of every point of the mode at each
   making of the loops) or the joining reach change (`ready_net` :27-37); the legs found on it kept by their two end
