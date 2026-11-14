@@ -329,6 +329,18 @@
   (FAR_LINE_DUTY 0.6 :53), none along the carriageway's edge (:146); FAR_LINE_M 0.12 :52: three numbers in the
   shader. Between the near paint's end and the far level the dashes are quads with no filter (road_markings.cpp
   lines :59-62: a quad a dash).
+- Case 6, what the inspector can read here (read whole): native/src/api/city_core_inspect.cpp:37-72 put_road (kind,
+  id, profile, profile_id, lanes, one_way, speed_ms, width_m, cost_per_m, length_m over pieces_of, ends, node_a/b,
+  lift_a/b, bend_m, bend_at, median: no street, no numbers); native/src/sim/street/street_names.cpp: a name item
+  names the nearest segment within street_names.reach_m (name_segment :45-48) and its whole street
+  (street_chain(net, seg) :116); NamePlates keeps by_item (seg, chain, plates, chunks), by_seg (the name items whose
+  street holds a segment :125-127) and by_chunk; a given name is keys (GivenName form, name, ordinal: translated by
+  the interface), picked by a hash of the segment's id among the style's names not in use (:30-41, :50-75);
+  native/src/sim/roads/road_network_runs.cpp: pieces_of :9-32 (one road the player laid, through its cuts),
+  settle_runs :34-85 (StreetRun: the run's first segment, this segment's start along it and the run's length,
+  through joints only). So the street's name of a segment = the first name item (by id) of works.names.by_seg[seg],
+  and its numbers come from where the segment lies along street_chain (to read: sim/street/street_spots.h
+  street_chain: its order and whether it crosses junctions).
 - What reads the grade (read): RoadNetwork::seg_y (road_network.cpp:240-245: grade.at(s, arc), else the straight
   line between the nodes' y); set_lift :247-252 marks the node and its roads; ray_deck
   (road_network_deck.cpp:28-32: prof.ylo, prof.yhi); RoadNetwork::cut (road_network_cut.cpp:14-31 heights_of: a
