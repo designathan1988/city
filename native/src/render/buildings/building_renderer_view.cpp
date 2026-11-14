@@ -50,6 +50,10 @@ void BuildingRenderer::visit_super(int64_t key, Super &sp, const Vector3 &cam, f
 		const float dc = horizontal(cam, ch.centre); // streaming of the levels: the ground distance
 		const float d = std::sqrt(dc * dc + eye * eye); // the switch: with the eye height, as visibility ranges measure
 		ch.detail = ch.cut || (ch.detail ? d < leave : d < mid_end_);
+		if (ch.wear_due > 0 && bodies_.now_min() >= ch.wear_due) { // its buildings have aged since it was drawn: its levels in reach are drawn again
+			ch.wear_due = 0;
+			for (int l = 0; l < LEVELS; l++) ch.stale[l] = ch.built[l];
+		}
 		uint8_t levels = 0;
 		if ((!ch.built[LEVEL_NEAR] || ch.stale[LEVEL_NEAR]) && (dc < near_reach() || ch.cut)) levels = uint8_t(levels | BAND_BIT_NEAR);
 		else if (ch.built[LEVEL_NEAR] && !ch.cut && dc > near_reach() * FREED_PAST) drop(ch, LEVEL_NEAR);
@@ -79,6 +83,7 @@ void BuildingRenderer::update_view(const Vector3 &cam, BuildBudget &budget) {
 	if (!state_) return;
 	// RenderWorld::sync calls this under the shared map lock (the ground height is a map read)
 	const float eye = std::max(0.f, cam.y - state_->terrain.height_at(cam.x, cam.z));
+	bodies_.age_at(state_->clock.minutes.load(), state_->catalog.growth); // the minute every placement of this frame's jobs is aged at
 	const float far_reach = far_end_ + eye * look_.far_per_eye; // from up there the ground in view runs on past the data's end
 	const double now = now_s();
 	std::vector<Want> want, want_super;

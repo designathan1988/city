@@ -92,8 +92,10 @@ GeneratedRoads generate_roads(uint32_t seed, double map_half, double radius, Ter
 		int profile = l.level == AVENUE ? prof.avenue : l.level == COLLECTOR ? prof.collector : prof.local;
 		march(l, profile, map_half, terrain, pieces);
 	}
-	GeneratedRoads g = road_gen::build_graph(pieces, R * CENTRE_SHARE, seed, terrain, prof, plan_city(seed & ~TerrainGen::FLAT_BIT, R, plan));
-	return road_gen::without_spurs(road_gen::dry_crossings(g, terrain));
+	const CityPlan made = plan_city(seed & ~TerrainGen::FLAT_BIT, R, plan);
+	GeneratedRoads g = road_gen::without_spurs(road_gen::dry_crossings(road_gen::build_graph(pieces, R * CENTRE_SHARE, seed, terrain, prof, made), terrain));
+	g.plan = made;
+	return g;
 }
 
 GeneratedRoads road_gen::dry_crossings(const GeneratedRoads &r, TerrainGen &terrain) {

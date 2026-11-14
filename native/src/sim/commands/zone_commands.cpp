@@ -1,9 +1,8 @@
-// Zone brush (Roadcraft src/features/zones/zoneTool.ts dab + clearSide): paints the zone on the road sides whose
-// frontage the brush touches; a building of another base zone facing a repainted side is knocked down.
+// The zone brush: paints the zone on the road sides whose frontage the brush touches. A side painted another zone keeps what
+// stands on it (the next building there grows for the new zone); a side whose zone is taken off loses what grew on it.
 #include "sim/commands/commands.h"
 #include "sim/commands/road_edit.h"
 
-#include "sim/buildings/growth.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -40,14 +39,14 @@ bool side_hit(const CityState &s, int seg, int side, double x, double z, double 
 	return false;
 }
 
-// Knocks down the buildings on this side of the segment (nearest street = this one) whose base zone differs.
-int clear_side(CityState &s, int seg, int side, int keep_zone) {
+// Knocks down the zoned buildings on this side of the segment (nearest street = this one): its zone was taken off.
+int clear_side(CityState &s, int seg, int side) {
 	const RoadSegment &g = s.roads.segs[seg];
 	std::vector<int> doomed;
 	float r = float(FRONT_REACH_M);
 	s.buildings.query(g.minx - r, g.minz - r, g.maxx + r, g.maxz + r, [&](int id) {
 		const Building &b = s.buildings.items[id];
-		if (b.zone == 0 || (keep_zone != 0 && base_zone(b.zone) == base_zone(keep_zone))) return;
+		if (b.zone == 0) return;
 		double t, d, nt, nd;
 		closest_t(g.q, b.x, b.z, t, d);
 		if (d > FRONT_REACH_M || s.roads.find_segment_near(b.x, b.z, d, nt, nd) != seg) return;
@@ -80,7 +79,7 @@ EditResult paint_zone(CityState &s, double x, double z, double radius, int zone)
 		const RoadSegment &g = net.segs[h.first];
 		int cur = h.second == SIDE_LEFT ? g.zl : g.zr;
 		if (cur == zone) continue;
-		if (cur != 0) r.buildings_removed += clear_side(s, h.first, h.second, zone);
+		if (cur != 0 && zone == 0) r.buildings_removed += clear_side(s, h.first, h.second);
 		j_set_zone(s, h.first, h.second, zone);
 		r.zoned_sides++;
 	}

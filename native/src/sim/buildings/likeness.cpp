@@ -34,6 +34,7 @@ float channel_gap(uint32_t a, uint32_t b, uint32_t shift) { return float(int((a 
 BodyLook body_look(const b40::Body &b, int fn) {
 	BodyLook look;
 	look.form = hash_combine(FORM_SALT, hash_combine(uint32_t(fn), uint32_t(b.use)));
+	look.room = std::max(0.f, std::min(b.plan.x1 - b.plan.x0, b.plan.y1 - b.plan.y0));
 	if (b.volumes.empty()) return look;
 	float x0 = b.volumes[0].x, x1 = x0, y0 = b.volumes[0].y;
 	const b40::Volume *main = &b.volumes[0];

@@ -18,11 +18,23 @@ constexpr size_t LOT_SERIAL_MAX = 4; // below this, the pool's hand-off costs mo
 
 namespace {
 constexpr uint32_t PLAYER_LOT_SALT = 0x10755eedu;
+constexpr double CORNER_IN = 0.9; // a proposed lot's corners are asked this share of the way out from its middle: lots that share a line do not meet
 
-// The lots the streets propose give way to those the player drew, and a zoned one of the player's whose middle is in the cell joins them.
+// Whether a proposed lot's middle or one of its corners (a hair inside it) stands on a lot the player drew.
+bool on_player_lot(const Lot &l, const LotIndex &players) {
+	if (players.at(l.x, l.z) != 0) return true;
+	const double cs = std::cos(l.rot), sn = std::sin(l.rot), hw = l.w / 2 * CORNER_IN, hd = l.d / 2 * CORNER_IN;
+	for (double u : { -hw, hw })
+		for (double v : { -hd, hd })
+			if (players.at(l.x + cs * u + sn * v, l.z - sn * u + cs * v) != 0) return true;
+	return false;
+}
+
+// The lots the streets propose give way to those the player drew (wherever one lies over the other, not by the middle alone), and a
+// zoned one of the player's whose middle is in the cell joins them.
 std::vector<Lot> with_player_lots(std::vector<Lot> lots, int64_t key, const LotIndex &players) {
 	if (players.empty()) return lots;
-	lots.erase(std::remove_if(lots.begin(), lots.end(), [&](const Lot &l) { return players.at(l.x, l.z) != 0; }), lots.end());
+	lots.erase(std::remove_if(lots.begin(), lots.end(), [&](const Lot &l) { return on_player_lot(l, players); }), lots.end());
 	players.zoned_in(key, [&](const PlayerLot &p, const LotStand &st) {
 		Lot l;
 		l.x = st.x;

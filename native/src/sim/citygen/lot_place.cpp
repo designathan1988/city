@@ -40,8 +40,7 @@ void LotStrips::place_blocks() {
 	for (const lot_gen::BlockLot &b : lot_gen::block_lots(g_, prof_, tables_, cx0_, cz0_, facing_fn)) {
 		double lx = -std::sin(b.rot), lz = -std::cos(b.rot);
 		Frame f{ b.x, b.z, lz, -lx, lx, lz, b.w, b.d };
-		if (unfit(f)) continue;
-		keep(f, b.zone, b.profile);
+		if (on_land(f)) keep(f, b.zone, b.profile);
 	}
 }
 
@@ -79,7 +78,7 @@ void LotStrips::place_side(int s, int side, int zone) {
 	const Profile &info = prof_[g_.profile[s]];
 	// The front on the footway's outer edge: the side's half width (a generated street is straight, its edge a line along it).
 	const double sign = side == 0 ? 1 : -1, face = side == 0 ? info.left : info.right, length = len(s);
-	const bool works = zone == ZONE_IND;
+	const bool works = zone_use(zone) == ZONE_IND;
 	const double depth = works ? WORKS_DEPTH : STRIP_DEPTH, frontage = works ? WORKS_FRONTAGE : STRIP_FRONTAGE;
 	const auto clear = [&](double at) {
 		const Along a = along(s, at, sign);
@@ -100,7 +99,7 @@ void LotStrips::place_side(int s, int side, int zone) {
 	}
 }
 
-// A run cut in equal lots, each kept where its ground will take it.
+// A run cut in equal lots, each kept where its ground will take it, cut back to the land where its back does not (on_land).
 void LotStrips::cut_run(const Strip &strip, double from, double to) {
 	if (to - from < STRIP_LEAST) return;
 	const int parts = std::max(1, int(js_round((to - from) / strip.frontage)));
@@ -108,8 +107,8 @@ void LotStrips::cut_run(const Strip &strip, double from, double to) {
 	for (int k = 0; k < parts; k++) {
 		const Along a = along(strip.s, from + (k + 0.5) * w, strip.sign);
 		const double middle = strip.face + strip.depth / 2;
-		const Frame f{ a.px + a.lx * middle, a.pz + a.lz * middle, a.tx, a.tz, a.lx, a.lz, w, strip.depth };
-		if (!unfit(f)) keep(f, strip.zone, g_.profile[strip.s]);
+		Frame f{ a.px + a.lx * middle, a.pz + a.lz * middle, a.tx, a.tz, a.lx, a.lz, w, strip.depth };
+		if (on_land(f)) keep(f, strip.zone, g_.profile[strip.s]);
 	}
 }
 

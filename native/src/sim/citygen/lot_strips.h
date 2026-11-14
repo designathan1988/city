@@ -37,6 +37,7 @@ private:
 	double stops_short(int s, int n, const std::vector<int> &arms) const;
 	void facing(double fx, double fz, double ox, double oz, int &zone, int &profile) const;
 	bool unfit(const Frame &f) const;
+	bool on_land(Frame &f) const; // the lot cut back to its fit ground, its front kept on its street; false when under half of it is fit
 	void mark_lot(const Frame &f);
 	bool lot_free(double x, double z) const; // no paving and no lot there
 	void keep(const Frame &f, int zone, int profile);

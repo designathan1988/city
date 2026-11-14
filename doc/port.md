@@ -56,7 +56,7 @@ with `file:line` on both sides), which the port tool reads: `python tools/tracer
 
 ## 4. Zones, lots and growth (sheets/zones-lots-growth.md)
 
-- [ ] zones-lots-growth, complete: every case below, in one block (`python tools/tracer/port.py sheet zones-lots-growth`)
+- [x] zones-lots-growth, complete: every case below (`python tools/tracer/port.py sheet zones-lots-growth`; the note: doc/work/zones-lots-growth.md, "Coded in the block"; the check: growth_test). Coded and built, and not driven by a check: the 24 km city's opening time (`window_traffic_test` was not run; `settle_sites` after `fill_all` is still serial: research R4's third part), a lot's tries set back and at a lower density, a polygon lot's outline, the wear on the walls, the parks' share of the land
   - growth's order and pace
   - the 24 km city opens fast (research.md R4: a candidate's look from its massing; `fill_all` in a 2 x 2 checkerboard of 256 m cells over the job pool, the same city for any pool size; `settle_sites` in parallel); `window_traffic_test` under 60 s with the same check
   - rezoning keeps the building

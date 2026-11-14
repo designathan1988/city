@@ -47,6 +47,20 @@
   "decay_span_min": {
    "type": "integer"
   },
+  "quarters": {
+   "type": "object", "strict": true,
+   "required": ["_doc", "frontage_cell_m", "era_cell_m", "old_core_m", "core_eras", "edge_eras"],
+   "properties": {"_doc": {"type": "string"}, "frontage_cell_m": {"type": "number", "exclusiveMinimum": 0},
+                  "era_cell_m": {"type": "number", "exclusiveMinimum": 0}, "old_core_m": {"type": "number", "minimum": 0},
+                  "core_eras": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number", "minimum": 0, "maximum": 1}},
+                  "edge_eras": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number", "minimum": 0, "maximum": 1}}}
+  },
+  "fit": {
+   "type": "object", "strict": true, "required": ["_doc", "least_room_m", "tries"],
+   "properties": {"_doc": {"type": "string"}, "least_room_m": {"type": "number", "exclusiveMinimum": 0},
+                  "tries": {"type": "array", "minItems": 1,
+                            "items": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number", "minimum": 0}}}}
+  },
   "plan": {
    "type": "object",
    "description": "the shape of a generated city: shares, angles, counts and distances (citygen/city_plan.cpp)",
@@ -65,7 +79,9 @@
   "organic_extra_floors",
   "decay_grace_min",
   "decay_span_min",
-  "plan"
+  "plan",
+  "quarters",
+  "fit"
  ],
  "strict": true
 }

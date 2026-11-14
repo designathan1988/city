@@ -179,6 +179,7 @@ void BuildingRenderer::commit_one(Built &b) {
 		ch.built[LEVEL_BAYS] = true;
 		ch.stale[LEVEL_BAYS] = !current;
 	}
+	ch.wear_due = b.ageing ? bodies_.now_min() + double(look_.wear_redraw_min) : 0; // drawn again then, its buildings older
 	fit_reach(ch, b);
 	ranges(ch);
 	show(ch, ch.shown); // the bands' MultiMeshes come up visible: the chunk's state decides

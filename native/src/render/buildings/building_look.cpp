@@ -24,6 +24,13 @@ bool BuildingLook::load(const Dictionary &t, PackedStringArray &errors) {
 	hull_error_m = float(at(lod, "hull_error_m"));
 	far_rebuild_delay_s = float(at(lod, "far_rebuild_delay_s"));
 	far_rebuild_interval_s = float(at(lod, "far_rebuild_interval_s"));
+	Dictionary wear = at(t, "wear");
+	wear_shade = float(at(wear, "shade"));
+	wear_grime = float(at(wear, "grime"));
+	wear_reach = float(at(wear, "reach"));
+	wear_blotch = float(at(wear, "blotch"));
+	wear_redraw_min = float(at(wear, "redraw_min"));
+	if (wear_redraw_min <= 0) errors.push_back("buildings.json: wear.redraw_min must be over 0");
 	const Dictionary region = region_table(t);
 	Dictionary parts = at(region, "parts");
 	part_frame_bar_m = float(at(parts, "frame_bar_m"));

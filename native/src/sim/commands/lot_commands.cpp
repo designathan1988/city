@@ -48,9 +48,17 @@ EditResult refused(const char *why) {
 	return r;
 }
 
+// No lot of the book lies over the ring. A lot whose box is clear of the ring's is not weighed further: a command costs the lots
+// beside what it draws, not a polygon test against every lot the player ever drew.
 bool free_of_lots(const LotBook &book, const std::vector<LotPoint> &q) {
-	for (const PlayerLot &l : book.lots)
+	double x0 = FAR_OFF_M, z0 = FAR_OFF_M, x1 = -FAR_OFF_M, z1 = -FAR_OFF_M;
+	bounds(q, x0, z0, x1, z1);
+	for (const PlayerLot &l : book.lots) {
+		double lx0 = FAR_OFF_M, lz0 = FAR_OFF_M, lx1 = -FAR_OFF_M, lz1 = -FAR_OFF_M;
+		bounds(l.corners, lx0, lz0, lx1, lz1);
+		if (lx1 < x0 || lx0 > x1 || lz1 < z0 || lz0 > z1) continue;
 		if (lots_overlap(q, l.corners)) return false;
+	}
 	return true;
 }
 
@@ -242,7 +250,7 @@ EditResult zone_lot(CityState &s, int id, int zone) {
 	}
 	PlayerLot l = *found;
 	EditResult razed;
-	if (l.zone != 0) raze(s, l.corners, razed); // what grew for the old zone goes
+	if (zone == 0) raze(s, l.corners, razed); // the zone taken off takes what grew on it; another zone keeps the building
 	l.zone = zone;
 	j_edit_lot(s, id, l);
 	EditResult r = commit(s, { l.corners });

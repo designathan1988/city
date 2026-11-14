@@ -333,8 +333,10 @@ void j_remove_building(CityState &s, int id) {
 		record(s, OpKind::REM_BLD, id, b);
 		grow_point(s, b.x, b.z, std::max(b.w, b.d));
 	}
+	const int64_t cell = chunk_of(b.x, b.z);
 	s.buildings.remove(id);
 	building_gone(s, id); // what named the building goes with it (building_refs.h)
+	if (s.lots.lots_of(cell)) s.growth.push(cell); // its lot is open again: growth weighs the cell's lots anew (city_growth.h)
 }
 
 void j_edit_building(CityState &s, int id, const Building &after) {

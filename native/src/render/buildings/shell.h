@@ -134,6 +134,9 @@ struct Shell {
 	std::vector<uint32_t> custom[CUSTOM_ARRAYS]; // RGBA8 per vertex, in the near and mid shells (`rooms`)
 	float grime_floor = -FAR_AWAY; // world height of the current block's floor (walls darken over its first 1.2 m)
 	float shade = 1.f; // extra multiplier (rain streak tops)
+	// The building being laid, run down (Placed::wear x BuildingLook's wear_grime, wear_reach, wear_blotch; all 0 as new): the grime
+	// at its walls' foot darker and higher, its blotches wider. Set by the job before each building (lay_worn).
+	float worn_grime = 0, worn_reach = 0, worn_blotch = 0;
 	bool tone = true;
 	bool instanced = false; // boxes become unit-cube instances; quads/tris still become geometry
 	Shell *box_sink = nullptr; // where this shell's boxes go, as instances: a row of a band in place of a dozen triangles in the mesh

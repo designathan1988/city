@@ -1,5 +1,6 @@
-// The squares of a generated city (squares.h): lots that touch make a block; a block of the right size on a main road that reaches
-// every line of its box may be a square, one per neighbourhood, the nearest its middle. The square is a body of its own: a lawn, two
+// The squares and parks of a generated city (squares.h): lots that touch make a block; a block of the right size on a main road that
+// reaches every line of its box may be a square, one per neighbourhood, the nearest its middle; a block whose middle lies in one of the
+// plan's park patches and reaches every line of its box is a park, whatever its size. Either is a body of its own: a lawn, two
 // walks crossing at a plaza, and trees on a lattice through the crossing, each an element whose rectangle is the room of its crown.
 #include "sim/citygen/squares.h"
 
@@ -248,7 +249,7 @@ bool square_on(const CityPlanDef &plan, const Data &data, const std::vector<Lot>
 	return true;
 }
 
-int plan_squares(CityState &s, uint32_t seed) {
+int lay_greens(CityState &s, uint32_t seed, const CityPlan &plan) {
 	const CityPlanDef &d = s.catalog.growth.plan;
 	std::vector<int64_t> keys;
 	for (const auto &kv : s.lots.by_cell) keys.push_back(kv.first);
@@ -259,11 +260,17 @@ int plan_squares(CityState &s, uint32_t seed) {
 	std::vector<int> mains;
 	for (const std::string &name : d.square_main_roads) mains.push_back(s.catalog.profile_id(name.c_str()));
 	std::map<std::pair<int, int>, Chosen> by_cell;
+	std::vector<Chosen> parks; // every whole block of a park patch, beside the one square a neighbourhood
 	const float cell = float(d.square_cell_m);
 	for (std::vector<int> &block : blocks_of(plots, float(d.square_touch_m))) {
 		const Middle middle = middle_of(plots, block);
 		const float area = middle.area;
 		const V2 centre = middle.at;
+		if (park_at(plan, centre.x, centre.y)) {
+			const SquareSite site = site_of(plots, block, middle);
+			if (site.whole) parks.push_back(Chosen{ site, plots[size_t(block[0])].lot, 0 });
+			continue;
+		}
 		bool fronting = false;
 		for (int i : block) fronting = fronting || on_main_road(s, mains, plots[size_t(i)].front, float(d.square_front_m));
 		if (area < d.square_area_low || area > d.square_area_high || !fronting) continue;
@@ -276,6 +283,7 @@ int plan_squares(CityState &s, uint32_t seed) {
 	}
 	std::vector<const Chosen *> chosen;
 	for (const auto &e : by_cell) chosen.push_back(&e.second);
+	for (const Chosen &park : parks) chosen.push_back(&park);
 	std::sort(chosen.begin(), chosen.end(), [](const Chosen *a, const Chosen *b) {
 		return a->site.centre.x != b->site.centre.x ? a->site.centre.x < b->site.centre.x : a->site.centre.y < b->site.centre.y;
 	});

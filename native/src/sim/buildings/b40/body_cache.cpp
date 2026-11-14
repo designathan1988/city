@@ -28,8 +28,12 @@ std::shared_ptr<const Body> BodyCache::mass(const Data &data, const Building &re
 }
 
 std::shared_ptr<const BodyLook> BodyCache::look(const Data &data, const Building &rec) {
-	return looks_.get(body_key(rec), [&]() { return std::make_shared<const BodyLook>(body_look(*body(data, rec), rec.fn)); },
-			[](const BodyLook &) { return sizeof(BodyLook); });
+	return looks_.get(body_key(rec), [&]() {
+		if (rec.body) return std::make_shared<const BodyLook>(body_look(*rec.body.shared(), rec.fn)); // the player's version: as it stands
+		Body blocks; // a look reads the blocks, their roofs and paints: nothing the facades or the lot's layout make, so they are not made
+		make_seed_body(data, rec, blocks, true);
+		return std::make_shared<const BodyLook>(body_look(blocks, rec.fn));
+	}, [](const BodyLook &) { return sizeof(BodyLook); });
 }
 
 std::shared_ptr<const std::vector<LotElement>> BodyCache::elements(const Data &data, const Building &rec) {

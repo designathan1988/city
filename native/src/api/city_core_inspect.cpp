@@ -4,6 +4,7 @@
 
 #include "core/units.h"
 #include "sim/buildings/b40/record.h"
+#include "sim/buildings/growth.h"
 #include "sim/commands/commands.h"
 #include "sim/roads/junction.h"
 #include "sim/street/street_names.h"
@@ -20,7 +21,7 @@ namespace city {
 
 namespace {
 constexpr float INSPECT_RADIUS_M = 30.f;
-constexpr float HALF = 0.5f;
+constexpr float HALF = 0.5f, PERCENT = 100.f;
 
 // What the traffic published for a segment or a node (TrafficView): no traffic_mutex, the panel never waits for a step.
 void put_tally(Dictionary &d, const TrafficTally &t, int volume) {
@@ -128,6 +129,7 @@ void put_building(const CityState &s, Dictionary &d, int id) {
 	BuildingStore::occupancy(b, o.floor_share, per, residents, jobs);
 	d["residents"] = residents;
 	d["jobs"] = jobs;
+	d["wear_percent"] = int(std::lround(decay_of(s.catalog.growth, b.built, s.clock.minutes.load()) * PERCENT)); // how run-down it stands now
 }
 
 // The building whose lot centre is nearest within reach, or -1.

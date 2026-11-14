@@ -33,8 +33,9 @@ public:
 	std::shared_ptr<const Body> body(const Data &data, const Building &rec);
 	// That body as what stands: its blocks resolved into solid ones (blocks.h).
 	std::shared_ptr<const Body> mass(const Data &data, const Building &rec);
-	// How the record's body looks (likeness.h body_look of the body above, under the record's function), kept beside it by the
-	// same key: the look of what stands, asked by growth for every neighbour of a lot, on any thread.
+	// How the record's body looks (likeness.h body_look, under the record's function), kept by the body's key: asked by growth for
+	// every neighbour of a lot and for every candidate of a lot, on any thread. It is read off the body's blocks alone (record.h
+	// make_seed_body, blocks_only), for a standing record and for a candidate alike: the body itself is neither made nor kept for it.
 	std::shared_ptr<const BodyLook> look(const Data &data, const Building &rec);
 	// The record's lot elements (the body's `elements`). A body made only for them is not kept: it pushes no kept body out.
 	std::shared_ptr<const std::vector<LotElement>> elements(const Data &data, const Building &rec);

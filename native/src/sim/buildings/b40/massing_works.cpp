@@ -2,13 +2,20 @@
 // shed, flat or gable roof, and an office annex in front.
 #include "sim/buildings/b40/massing.h"
 
+#include <algorithm>
+
 namespace city::b40 {
 
 namespace {
-// The hall clears the 3.50 m a lorry needs (Sao Paulo COE, Decreto 57.776/2017 Anexo I 8.D.II); its 7-9 m has no primary
-// source yet. The office annex storey leaves the 2.50 m clear of a workplace (5.A.6) over its slab.
-constexpr int PALETTES = 7;
-constexpr float HALL_LO = 7.f, HALL_HI = 9.f, OFFICE_STOREY = 3.4f, ANNEX_D = 20.f, ANNEX_W = 12.f, ANNEX_ROOM = 4.f;
+// The hall clears the 3.50 m a lorry needs (Sao Paulo COE, Decreto 57.776/2017 Anexo I 8.D.II). Its height to the eaves by the
+// district's density (low, medium, high): "small local warehouses can work with 18 to 24 feet" of clear height (5.5-7.3 m),
+// "mid-bay warehouses" 24 to 28 feet (7.3-8.5 m), "most modern warehouses need a warehouse clear height of 28 to 36 feet"
+// (8.5-11 m) (Address Advisors, "Warehouse Ceiling Height: Ideal Clear Height Standards for Different Industries",
+// addressadvisors.com/blog/warehouse-ceiling-height-ideal-clear-height-standards, read 2026-11-14). The office annex storey leaves
+// the 2.50 m clear of a workplace (5.A.6) over its slab.
+constexpr int PALETTES = 7, DENSITIES = 3;
+constexpr float HALL_LO[DENSITIES] = { 6.f, 7.f, 8.5f }, HALL_HI[DENSITIES] = { 7.3f, 8.5f, 10.f };
+constexpr float OFFICE_STOREY = 3.4f, ANNEX_D = 20.f, ANNEX_W = 12.f, ANNEX_ROOM = 4.f;
 constexpr float ANNEX_W_LO = 6.f, ANNEX_W_HI = 9.f, ANNEX_D_LO = 5.f, ANNEX_D_HI = 7.f, HALF = 0.5f;
 constexpr int LOADING_EVERY = 2;
 } // namespace
@@ -17,7 +24,8 @@ void works(const Data &data, Body &b, const Envelope &env, Xoshiro128 &r) {
 	b.style = STYLE_INDUSTRIAL;
 	Paint wall, trim;
 	paints_of(data, b.style, r, wall, trim);
-	float hall_h = mixr(r, HALL_LO, HALL_HI);
+	const size_t step = size_t(std::clamp(env.density, 0, DENSITIES - 1));
+	float hall_h = mixr(r, HALL_LO[step], HALL_HI[step]);
 	b.palette = r.irange(0, PALETTES);
 	b.ground_h = hall_h;
 	b.storey_h = OFFICE_STOREY;

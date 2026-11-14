@@ -111,8 +111,8 @@ private:
 		bool built[LEVELS] = {};
 		bool stale[LEVELS] = {}; // built, but the chunk changed since: remeshed when in reach
 		uint32_t version = 0; // bumped by every change; a mesh built from an older one leaves the level stale
-		bool detail = false; // within the detail switch (hysteresis)
-		bool shown = false; // its instances are visible (drawn in detail); the far mesh hides it then
+		bool detail = false, shown = false; // within the detail switch (hysteresis); its instances are visible (drawn in detail): the far mesh hides it then
+		double wear_due = 0; // the city minute its levels are drawn again to show its buildings older (BuildingLook::wear_redraw_min); 0: none of them ages
 		int64_t key = 0;
 		bool cut = false; // its near level has a building cut open: drawn whatever the distance, the mid level and the far mesh stand aside
 		godot::Vector3 centre;
@@ -154,7 +154,7 @@ private:
 		int flag_count = 0;
 		godot::RID unit_flag; // the flags' cloth
 		OccluderWalls walls;
-		bool has_near = false, has_mid = false, has_bays = false, baked = false;
+		bool has_near = false, has_mid = false, has_bays = false, baked = false, ageing = false; // ageing: a building it drew has not run down whole
 		bool cut = false; // a building of the near level is cut open
 		std::array<Held, HELD_KINDS> held;
 		ChunkMaterials with; // what its meshes are made with (the renderer's, copied by the job that built it)

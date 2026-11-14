@@ -222,6 +222,7 @@ struct Body {
 	int wall = -1, roof = -1, trim = -1; // building defaults (paint indices)
 	std::vector<Volume> volumes;
 	std::vector<LotElement> elements;
+	std::vector<Point2> lot_ring; // the lot's own outline where it is no rectangle (lot_outline.h), lot frame, its first side the front; empty: the plan's rectangle
 	std::vector<Core> cores;
 	std::map<int, std::vector<PlacedPiece>> furnishing; // by level: the floors the player arranged
 	float entrance_x = 0;

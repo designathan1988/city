@@ -461,6 +461,8 @@ zone.name.5,Residencial baixa,Low-density residential
 zone.name.6,Residencial alta,High-density residential
 zone.name.7,Comercial baixa,Low-density commercial
 zone.name.8,Comercial alta,High-density commercial
+zone.name.9,Industrial baixa,Low-density industrial
+zone.name.10,Industrial alta,High-density industrial
 zone.remove,Tirar zona,Remove zone
 zone.residential,Residencial,Residential
 zone.split.horizontal,Frente e fundos,Front and back

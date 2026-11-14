@@ -262,7 +262,7 @@ private:
 		double n = fbm2(x / DISTRICT_SCALE_N, z / DISTRICT_SCALE_N, seed_ + NOISE_N, 2), m = fbm2(x / NOISE_M_SCALE, z / NOISE_M_SCALE, seed_ + NOISE_M, 2);
 		if (p == prof_.local) {
 			if (zone == ZONE_COM) return n > AVENUE_SHARE_N ? prof_.wide : n > URBAN_N ? prof_.urban : prof_.local;
-			if (zone == ZONE_IND) return prof_.concrete;
+			if (zone_use(zone) == ZONE_IND) return prof_.concrete;
 			if (zone == ZONE_MIXED) return n > BIKE_N ? prof_.bike : n < -BIKE_N ? prof_.green : prof_.local;
 			if (d > COBBLE_D && m > COBBLE_M) return prof_.cobble;
 			return n > URBAN_LOCAL_N ? prof_.urban : p;

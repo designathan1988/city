@@ -75,7 +75,7 @@ func _building(col: Control, info: Dictionary) -> void:
 	var name := tr(fn_keys[fn]) if fn > 0 and fn < fn_keys.size() else tr("zone.name.%d" % info.zone)
 	_head(col, name)
 	HudWidgets.label(col, &"BodyLabel", tr("ui.floors.other").format({"count": info.floors}))
-	_rows(col, [["ui.metric.residents", Formatters.format_int(info.residents)], ["ui.metric.jobs", Formatters.format_int(info.jobs)]])
+	_rows(col, [["ui.metric.residents", Formatters.format_int(info.residents)], ["ui.metric.jobs", Formatters.format_int(info.jobs)], ["ui.metric.wear", tr("ui.percent").format({"value": info.wear_percent})]])
 	_demolish_button(_actions(col))
 
 

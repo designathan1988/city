@@ -8,6 +8,7 @@
 #include "sim/catalog/profile_types.h"
 #include "sim/catalog/tuning_fields.h"
 #include "sim/catalog/traffic_params.h"
+#include "sim/catalog/zone_codes.h"
 
 #include <atomic>
 #include <cstdint>
@@ -37,7 +38,6 @@ struct ZoneDef {
 	int density = 1; // 0 low, 1 medium, 2 high
 	uint32_t color = 0; // RGBA8
 };
-constexpr int ZONE_CODES = 9;
 constexpr int BASE_ZONE_SLOTS = 5; // none, residential, commercial, industrial, mixed
 
 // Residents and jobs of a building: floor area = w * d * floor_share * floors (Roadcraft world/world.ts).
@@ -59,16 +59,29 @@ struct IntRange {
 struct CityPlanDef {
 	double main_offset = 0, centre_turn = 0, second_from = 0, second_to = 0, second_pull = 0;
 	double density = 0, density_pull = 0, noise_cell_m = 0, noise_heat = 0, high_heat = 0, medium_heat = 0, commerce_heat = 0, main_commerce_heat = 0;
-	double industry_from = 0, industry_half_angle = 0;
+	double industry_from = 0, industry_half_angle = 0, industry_high_from = 0;
+	double park_share = 0, park_cell_m = 0, park_from = 0; // the share of the plan's patches that are parks, a patch's side, and how near a centre one may be
 	double square_cell_m = 0, square_touch_m = 0, square_front_m = 0, square_area_low = 0, square_area_high = 0, square_walk_half_m = 0, square_plaza_m = 0;
 	double square_tree_grid_m = 0, square_tree_edge_m = 0, square_tree_low_m = 0, square_tree_high_m = 0;
 	std::vector<std::string> square_main_roads;
 	int centres = 0;
 };
 
+// One way a building is tried on a lot something stands partly over, or too small for its plan: set back from the lot's front, in
+// from each side, and made of a share of what is left (data/catalog/growth.json "fit").
+struct LotTry {
+	float front_m = 0, side_m = 0, share = 1;
+};
+
 // Which lots become civic buildings and how a building's height answers its neighbours' (data/catalog/growth.json).
 struct GrowthDef {
 	CityPlanDef plan;
+	// "quarters": the side of the cells one street side's character and one quarter's era are drawn in, how far from the map's
+	// middle the old core reaches, and the shares of old, middle and new quarters in the core and outside it.
+	static constexpr int ERAS = 3;
+	float frontage_cell_m = 0, era_cell_m = 0, old_core_m = 0, core_eras[ERAS] = {}, edge_eras[ERAS] = {};
+	std::vector<LotTry> tries; // "fit": tried in order, each at the lot's density, then at each lower one
+	float least_room_m = 0; // the least side of the room a lot's plan must leave a building's blocks
 	float civic_min_area = 0, civic_chance = 0;
 	std::vector<std::pair<int, int>> civic_by_zone[BASE_ZONE_SLOTS]; // (fn, weight) per base zone
 	float organic_reach_m = 0;

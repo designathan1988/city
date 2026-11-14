@@ -8,7 +8,9 @@
   { "id": "res_low", "code": 5, "name_key": "zone.resLow", "base": 1, "density": 0, "color": "#56bb73" },
   { "id": "res_high", "code": 6, "name_key": "zone.resHigh", "base": 1, "density": 2, "color": "#56bb73" },
   { "id": "com_low", "code": 7, "name_key": "zone.comLow", "base": 2, "density": 0, "color": "#5da9e9" },
-  { "id": "com_high", "code": 8, "name_key": "zone.comHigh", "base": 2, "density": 2, "color": "#5da9e9" }
+  { "id": "com_high", "code": 8, "name_key": "zone.comHigh", "base": 2, "density": 2, "color": "#5da9e9" },
+  { "id": "ind_low", "code": 9, "name_key": "zone.indLow", "base": 3, "density": 0, "color": "#d9b254" },
+  { "id": "ind_high", "code": 10, "name_key": "zone.indHigh", "base": 3, "density": 2, "color": "#d9b254" }
  ],
  "residents": { "floor_share": 0.6, "m2_per_resident": 28, "m2_per_job_commercial": 18, "m2_per_job_industrial": 45, "m2_per_person_mixed": 40 }
 }

@@ -38,6 +38,9 @@ struct BuildingLook {
 	float far_per_eye = 0; // metres of far reach each metre of eye height adds: the view from up there runs that much further
 	float far_hysteresis = 0; // superchunk far switch band around building_mid_end_m (a share of it)
 	float far_rebuild_delay_s = 0, far_rebuild_interval_s = 0; // deferred far rebuilds
+	// A building run down ("wear"): how much duller its paint is all over, how much darker and how many times higher the grime at its
+	// walls' foot, how much wider its blotches; and the city minutes a chunk drawn with ageing buildings stands before it is drawn again.
+	float wear_shade = 0, wear_grime = 0, wear_reach = 0, wear_blotch = 0, wear_redraw_min = 0;
 	BayPropLook bay; // bay_props.json
 
 	bool load(const godot::Dictionary &t, godot::PackedStringArray &errors);

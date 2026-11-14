@@ -20,6 +20,7 @@ constexpr uint8_t ROADWAY = 1, TAKEN = 2; // what the grid says of a cell
 constexpr double LOT_END_IN = 3; // a cell and a half: past any rounding of a point to its cell
 constexpr int MIN_THROUGH_ARMS = 3;
 constexpr float STRAIGHT_ON = -0.95f; // two ways out of a node this opposed are one street
+constexpr double LAND_SHARES[] = { 1, 0.75, 0.5 }; // of a lot's depth, tried in turn where its ground does not take it whole
 } // namespace
 
 double lot_gen::curve_distance(const Quad &q, double x, double z) {
@@ -137,6 +138,21 @@ bool LotStrips::unfit(const Frame &f) const {
 			if (ground_.water(px, pz) > y - WET_CLEAR) return true;
 		}
 	return hi - lo > MAX_RELIEF;
+}
+
+// A lot whose back lies on water or on a slope too steep is cut back to the land that takes it, its front where it was: its depth
+// whole, else each lesser share, down to the half under which what is left is no lot (LAND_SHARES).
+bool LotStrips::on_land(Frame &f) const {
+	for (double share : LAND_SHARES) {
+		Frame cut = f;
+		cut.d = f.d * share;
+		cut.cx = f.cx - f.lx * (f.d - cut.d) / 2;
+		cut.cz = f.cz - f.lz * (f.d - cut.d) / 2;
+		if (unfit(cut)) continue;
+		f = cut;
+		return true;
+	}
+	return false;
 }
 
 void LotStrips::mark_lot(const Frame &f) {

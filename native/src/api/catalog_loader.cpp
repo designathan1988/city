@@ -163,6 +163,10 @@ void load_growth(const Dictionary &t, GrowthDef &g, PackedStringArray &errors) {
 	d.main_commerce_heat = r.num(p, "main_commerce_heat");
 	d.industry_from = r.num(p, "industry_from");
 	d.industry_half_angle = r.num(p, "industry_half_angle");
+	d.industry_high_from = r.num(p, "industry_high_from");
+	d.park_share = r.num(p, "park_share");
+	d.park_cell_m = r.num(p, "park_cell_m");
+	d.park_from = r.num(p, "park_from");
 	Dictionary sq = r.dict(p, "squares");
 	d.square_cell_m = r.num(sq, "green_cell_m");
 	d.square_touch_m = r.num(sq, "green_touch_m");
@@ -186,6 +190,24 @@ void load_growth(const Dictionary &t, GrowthDef &g, PackedStringArray &errors) {
 	g.organic_extra_floors = r.integer(t, "organic_extra_floors");
 	g.decay_grace_min = r.num(t, "decay_grace_min");
 	g.decay_span_min = r.num(t, "decay_span_min");
+	Dictionary q = r.dict(t, "quarters");
+	g.frontage_cell_m = r.num(q, "frontage_cell_m");
+	g.era_cell_m = r.num(q, "era_cell_m");
+	g.old_core_m = r.num(q, "old_core_m");
+	const Array core = r.arr(q, "core_eras"), edge = r.arr(q, "edge_eras");
+	if (core.size() != GrowthDef::ERAS || edge.size() != GrowthDef::ERAS) errors.push_back("growth: quarters.core_eras and edge_eras take one share an era");
+	for (int e = 0; e < GrowthDef::ERAS && e < core.size() && e < edge.size(); e++) {
+		g.core_eras[e] = float(core[e]);
+		g.edge_eras[e] = float(edge[e]);
+	}
+	Dictionary fit = r.dict(t, "fit");
+	g.least_room_m = r.num(fit, "least_room_m");
+	for (const Variant &row : r.arr(fit, "tries")) {
+		const Array one = row;
+		if (one.size() == 3) g.tries.push_back({ float(one[0]), float(one[1]), float(one[2]) });
+		else errors.push_back("growth: fit.tries takes [front_m, side_m, share]");
+	}
+	if (g.tries.empty()) errors.push_back("growth: fit.tries needs one try at least");
 }
 
 void load_maps(const Dictionary &t, Catalog &c, PackedStringArray &errors) {

@@ -10,6 +10,7 @@
 #include "sim/state/change_log.h"
 
 #include <cstdint>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -48,6 +49,10 @@ struct Building {
 	// of them is a change of its body (BuildingStore::set_edges). Never saved: a record read from a file has its storeys from the file
 	// and its edges still to read.
 	bool edges_read = false;
+	// The outline of the lot it stands on where that is no rectangle (a lot the player drew), in the lot's frame, its first side the
+	// front: its body is fitted to it (b40/lot_outline.h). Derived from the lot book and settled with the edges, never saved; none for
+	// a lot the streets cut. Shared: a copy of the record costs a count.
+	std::shared_ptr<const std::vector<b40::Point2>> ring;
 };
 
 // The records and their filing by place: what a reader takes of the buildings, the live city's store or a cut of it (a job's
@@ -134,6 +139,8 @@ public:
 	// The lot's edges settled (sim/commands/lot_sites.h): a body made from the seed is made to them, so the record is drawn again and the
 	// traffic and the furniture told, as by `mark`, its ground left to the site that settles it now.
 	void set_edges(int id, const b40::LotEdges &edges);
+	// The lot's own outline settled (lot_sites.h lot_ring): the record's body is fitted to it, so the record is drawn again.
+	void set_ring(int id, std::shared_ptr<const std::vector<b40::Point2>> ring);
 	void mark_look(int id) const; // its chunks drawn again though it did not change: another look (Interior layer)
 	// Residents and jobs from the floor area.
 	static void occupancy(const Building &b, float floor_share, const float per_m2[4], int &residents, int &jobs);

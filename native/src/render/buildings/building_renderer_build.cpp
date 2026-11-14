@@ -133,15 +133,13 @@ void BuildingRenderer::link_shells(Built &out, std::array<b40::Shell, SUB_COUNT>
 		out.mid_shell[i].cards = &out.mid_cards[i];
 		out.mid_shell[i].veiled = true;
 		out.mid_shell[i].glass = &out.mid_glass[i];
+		out.flat_glass[i].rooms = true;
+		out.flat_shell[i].glass = &out.flat_glass[i];
 	}
 	for (b40::Shell &p : out.parts_shell) p.instanced = true;
 	for (size_t i = 0; i < SUB_COUNT; i++) out.parts_shell[i].cards = &out.near_cards[i];
 	for (b40::Shell &p : mid_parts) p.instanced = p.veiled = true;
 	for (size_t i = 0; i < SUB_COUNT; i++) mid_parts[i].cards = &out.mid_cards[i];
-	for (size_t i = 0; i < SUB_COUNT; i++) {
-		out.flat_glass[i].rooms = true;
-		out.flat_shell[i].glass = &out.flat_glass[i];
-	}
 }
 
 BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t key, bool near, bool mid, bool bays) const {
@@ -161,6 +159,7 @@ BuildingRenderer::Built BuildingRenderer::build_cpu(const Inputs &in, int64_t ke
 		b40::Placed pl;
 		bodies.place(designs(), look_, in.ground, rec, pl, cut ? &in.view.cut : nullptr);
 		int sub = sub_index(rec, key);
+		out.ageing |= b40::lay_worn(look_,pl.wear, { &near_shells[size_t(sub)], &parts_shells[size_t(sub)], &mid_shells[size_t(sub)], &mid_parts[size_t(sub)], &out.near_glass[size_t(sub)], &out.mid_glass[size_t(sub)], &out.flat_shell[size_t(sub)], &out.flat_glass[size_t(sub)] });
 		const bool own_design = pl.b->signature != 0 && !cut; // cut open it is the shell that shows its floors
 		const bool broken = in.broken->count(rec.seed) > 0; // what stands of it is in pieces: its lot is still drawn here
 		if (own_design) {
@@ -271,6 +270,7 @@ BuildingRenderer::SuperBuilt BuildingRenderer::build_super_cpu(const Inputs &in,
 		b40::Placed pl;
 		bodies.place(designs(), look_, in.ground, rec, pl, nullptr, false); // the far level lays no pane: no rooms
 		pl.lean = true;
+		b40::lay_worn(look_, pl.wear, { &far });
 		const size_t first = far.col.size();
 		b40::emit_far(far, pl, true);
 		pl.coarse = lots_drawn_.load(); // its lot, as the coarse levels lay it and this level's distance shows it: no lot goes bare from afar

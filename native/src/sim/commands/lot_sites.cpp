@@ -1,6 +1,7 @@
 // The lots graded to their streets (lot_sites.h).
 #include "sim/commands/lot_sites.h"
 
+#include "sim/buildings/b40/lot_outline.h"
 #include "sim/buildings/b40/record.h"
 #include "sim/roads/parking_layout.h"
 #include "sim/state/city_state.h"
@@ -216,6 +217,19 @@ b40::LotEdges lot_edges(const CityState &s, const Building &rec) {
 	return e;
 }
 
+std::shared_ptr<const std::vector<b40::Point2>> lot_ring(const CityState &s, const Building &rec) {
+	if (s.lot_book.empty()) return nullptr;
+	const PlayerLot *lot = s.lot_book.find(s.lot_book.at(rec.x, rec.z));
+	if (!lot) return nullptr;
+	const b40::LotFrame f = b40::lot_frame(rec);
+	auto ring = std::make_shared<std::vector<b40::Point2>>();
+	for (const LotPoint &p : lot->corners) {
+		const V2 off = V2(float(p.x), float(p.z)) - f.o;
+		ring->push_back({ off.dot(f.e0), off.dot(f.e1) }); // the body's frame: x along the front from its middle, y away from the street
+	}
+	return ring;
+}
+
 void settle_sites(CityState &s, const std::vector<int> &streets) {
 	std::vector<int> due;
 	due.swap(s.buildings.sites_due);
@@ -233,6 +247,10 @@ void settle_sites(CityState &s, const std::vector<int> &streets) {
 		if (rec.alive) { // what its edges meet, as the streets now stand: its body is made to them
 			const b40::LotEdges edges = lot_edges(s, rec);
 			if (edges != rec.edges || !rec.edges_read) s.buildings.set_edges(id, edges); // a record read from a file reads its edges now
+			// its lot's own outline, as the lot book now has it (a grown building alone is fitted to one: a drawn one keeps its plan)
+			const std::shared_ptr<const std::vector<b40::Point2>> ring = rec.fn == FN_NONE && !rec.body ? lot_ring(s, rec) : nullptr;
+			const Building &now = s.buildings.items[size_t(id)];
+			if ((ring ? b40::ring_stamp(*ring) : 0) != (now.ring ? b40::ring_stamp(*now.ring) : 0)) s.buildings.set_ring(id, ring);
 		}
 		const std::vector<LotShape> &shapes = s.terrain.lots.shapes;
 		const LotShape *was = id < int(shapes.size()) && shapes[size_t(id)].alive ? &shapes[size_t(id)] : nullptr;

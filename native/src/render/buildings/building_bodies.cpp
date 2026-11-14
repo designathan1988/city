@@ -80,7 +80,9 @@ void BuildingBodies::place(const b40::Data &data, const b40::BuildingLook &look,
 	}
 	pl.lot = b40::Basis{ o + e2 * floor, e0, e1, e2 };
 	pl.id = rec.seed;
-	pl.shade = SHADE_BASE + std::fmod(float(rec.seed * GOLDEN), SHADE_MOD) / SHADE_MOD * SHADE_SPAN;
+	pl.wear = wear_of(rec);
+	// a run-down building's paint has gone duller all over; its blotches and the grime at its foot are the shell's (shell.cpp shaded)
+	pl.shade = (SHADE_BASE + std::fmod(float(rec.seed * GOLDEN), SHADE_MOD) / SHADE_MOD * SHADE_SPAN) * (1 - look.wear_shade * pl.wear);
 	pl.ground_lo = lo - floor;
 	const HeightPatch *patch = &ground;
 	pl.ground = [patch](const Vector3 &p) { return patch->height_at(p.x, p.z); };

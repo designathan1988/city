@@ -7,6 +7,7 @@
 
 #include "sim/buildings/b40/types.h"
 
+#include <memory>
 #include <vector>
 
 namespace city {
@@ -25,5 +26,9 @@ void settle_sites(CityState &s, const std::vector<int> &streets);
 // body is made (growth, a drawn building), and the probes hold the bodies against it. Read from the record's rectangle alone: one not
 // yet in the store is read the same.
 b40::LotEdges lot_edges(const CityState &s, const Building &rec);
+// The outline of the lot building `rec` stands on, in the record's lot frame (b40::LotFrame: x from the front's middle along it, y
+// away from the street), where a lot the player drew holds its middle; none on a lot the streets cut. The one reading of it:
+// growth reads it for the record it makes, settle_sites keeps every record's own (Building::ring) so after an edit and a load.
+std::shared_ptr<const std::vector<b40::Point2>> lot_ring(const CityState &s, const Building &rec);
 
 } // namespace city

@@ -12,9 +12,7 @@
 
 namespace city {
 
-// Zone ids written on segment sides (Roadcraft src/roads/zones.ts); their look and names are data (zones.json).
-enum Zone : int { ZONE_NONE = 0, ZONE_RES = 1, ZONE_COM = 2, ZONE_IND = 3, ZONE_MIXED = 4, ZONE_RES_LOW = ZONE_MIXED + 1, ZONE_RES_HIGH = ZONE_MIXED + 2,
-	ZONE_COM_LOW = ZONE_RES_HIGH + 1, ZONE_COM_HIGH = ZONE_RES_HIGH + 2, ZONE_COUNT = ZONE_COM_HIGH + 1 };
+// The zone codes written on segment sides: sim/catalog/zone_codes.h (through city_plan.h's catalogue).
 
 // The profile ids the generator uses, looked up by name in the catalogue (data/catalog/road_profiles.json).
 struct GenProfiles {
@@ -29,6 +27,7 @@ struct GeneratedRoads {
 	std::vector<double> nodes; // x, z, y per node
 	std::vector<int> segs; // a, b, profile, zone left, zone right per segment
 	double centre_r = 0; // the one centre's radius (0.85 R)
+	CityPlan plan; // what zoned them: the city's parks are read from it (squares.h)
 	int node_count() const { return int(nodes.size() / NODE_FIELDS); }
 	int seg_count() const { return int(segs.size() / SEG_FIELDS); }
 };

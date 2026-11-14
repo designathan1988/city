@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <initializer_list>
 #include <memory>
 #include <vector>
 
@@ -32,12 +33,24 @@ struct Placed {
 	Basis lot; // o: middle of the lot front at floor height; e0 lot x, e1 lot y (away from the street), e2 up
 	uint32_t id = 0; // the record seed (bay hashes, roof plant, flat roof pick)
 	float shade = 1; // a building's own shade on its walls
+	float wear = 0; // how run-down it is at the minute it is drawn, 0 as new to 1 (BuildingBodies::wear_of): the shells it is laid in carry it
 	float ground_lo = 0; // lowest ground under the ground volumes, relative to the floor (<= 0)
 	std::function<float(const godot::Vector3 &)> ground; // terrain height under a world point
 	bool coarse = false; // mid level: emit_far draws walls, slabs and parapets; roofs/lot add only the big pieces
 	bool lean = false; // far level: what its nearest distance shows (far_mass.cpp): no coping, roof planes alone, a box a roof piece
 	PlacedHold hold; // set by BuildingBodies::place: `b`, `whole` and `rooms` point into it
 };
+
+// The shells a building is about to be laid in told how run-down it is (Shell::worn_*); true while it has not run down whole: its
+// chunk is drawn again later to show it older.
+inline bool lay_worn(const BuildingLook &look, float wear, std::initializer_list<Shell *> shells) {
+	for (Shell *s : shells) {
+		s->worn_grime = look.wear_grime * wear;
+		s->worn_reach = look.wear_reach * wear;
+		s->worn_blotch = look.wear_blotch * wear;
+	}
+	return wear < 1;
+}
 
 // A body placed alone at the world's origin, its lot's frame the world's axes (x along the front, z away from the street), on the
 // ground `ground` gives: what a probe draws a body made on the spot on.

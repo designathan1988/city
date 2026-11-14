@@ -127,7 +127,7 @@ CityGenReport generate_map(CityState &s, int map_index, uint32_t seed, bool with
 		mark_all_lot_cells(s);
 		s.lots.process_dirty(s);
 		rep.lots = int(s.lots.total());
-		rep.squares = plan_squares(s, seed);
+		rep.squares = lay_greens(s, seed, r.plan);
 		rep.buildings = fill_all(s);
 		settle_sites(s, {}); // every lot just grown graded to its street
 		name_streets(s);

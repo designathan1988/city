@@ -15,6 +15,9 @@ struct BodyLook {
 	uint64_t form = 0, roof = 0;
 	uint32_t colour = 0;
 	int storeys = 0;
+	// The least side of the room its lot's plan left its blocks (b40 LotPlan's envelope), metres; 0 for a body with no plan. Not a
+	// thing the eye compares (look_distance leaves it out): growth asks it of a candidate before it builds on a lot.
+	float room = 0;
 };
 BodyLook body_look(const b40::Body &body, int fn);
 // How unlike two looks are: 0 the same building, up to about 4.

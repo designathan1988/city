@@ -10,10 +10,6 @@
 
 namespace city {
 
-namespace {
-constexpr uint8_t ZONE_RES_LOW = 5, ZONE_RES_HIGH = 6, ZONE_IND_LOW = 7, ZONE_IND_HIGH = 8;
-} // namespace
-
 void BuildingStore::init(ChangeLog *l, const OccupancyDef *occupancy) {
 	log = l;
 	occupancy_ = occupancy;
@@ -134,6 +130,11 @@ void BuildingStore::set_edges(int id, const b40::LotEdges &edges) {
 	changed(id);
 }
 
+void BuildingStore::set_ring(int id, std::shared_ptr<const std::vector<b40::Point2>> ring) {
+	items[size_t(id)].ring = std::move(ring);
+	changed(id);
+}
+
 void BuildingStore::changed(int id) {
 	const Building &b = items[size_t(id)];
 	const float r = reach(b);
@@ -162,12 +163,11 @@ void BuildingStore::mark_into(int id, std::vector<int64_t> &out) const {
 void BuildingStore::occupancy(const Building &b, float floor_share, const float per_m2[4], int &residents, int &jobs) {
 	float area = b.w * b.d * floor_share * b.floors;
 	residents = jobs = 0;
-	int base = b.zone == ZONE_RES_LOW || b.zone == ZONE_RES_HIGH ? 1 : b.zone == ZONE_IND_LOW || b.zone == ZONE_IND_HIGH ? 2 : b.zone;
-	switch (base) {
-		case 1: residents = int(std::lround(area / per_m2[0])); break;
-		case 2: jobs = int(std::lround(area / per_m2[1])); break;
-		case 3: jobs = int(std::lround(area / per_m2[2])); break;
-		case 4: residents = jobs = int(std::lround(area / per_m2[3])); break;
+	switch (zone_use(b.zone)) {
+		case ZONE_RES: residents = int(std::lround(area / per_m2[0])); break;
+		case ZONE_COM: jobs = int(std::lround(area / per_m2[1])); break;
+		case ZONE_IND: jobs = int(std::lround(area / per_m2[2])); break;
+		case ZONE_MIXED: residents = jobs = int(std::lround(area / per_m2[3])); break;
 		default: break;
 	}
 }

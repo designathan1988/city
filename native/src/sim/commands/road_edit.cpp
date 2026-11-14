@@ -159,8 +159,10 @@ void finish_command(CityState &s, bool recorded) {
 	std::vector<int64_t> cells = s.log.lot_cells;
 	ChangeLog::dedup(cells);
 	s.lots.process_dirty(s);
-	for (int64_t k : cells)
-		if (s.lots.lots_of(k)) s.growth.push(k);
+	for (int64_t k : cells) {
+		if (s.lots.lots_of(k)) s.growth.push(k); // cut again: its open lots are found again
+		else s.growth.drop(k); // no lot is left there
+	}
 	if (!recorded && !derived) return;
 	s.edit_revision++;
 	s.touch();

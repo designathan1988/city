@@ -25,8 +25,26 @@
   CORREÇÃO SE PRECISAR NO CODIGO, PROXIMA FUNCIONALIDADE ... NADA DEVE FICAR ABERTO OU SER IGNORADO". Why: the
   tracer below sat 7 hours with no deadline. Every process from here: a deadline of seconds, its output read
   when it ends, stopped by its ID when it passes the deadline.
-- State (2026-11-14): NO BLOCK OPEN. The block before (junctions) closed: commit 49500272, pushed
-  (doc/work/junctions.md). The tracer's sheet (`python tools/tracer/port.py sheet zones-lots-growth`, task
+- STATE (2026-11-14): THE BLOCK zones-lots-growth IS IN VERIFY, VERIFICATION 2 OF 3 PASSED: the run
+  `growth_test,zoom_ladder,e2e` 6/6 in 12 s (growth_test 3.3 s, FAILURES 0: the town opens in 0.13 s with 1162
+  buildings, 20 grew on the zoned road, no record broken, another zone removed 0, low industry is a zone, a new
+  building's wear 0%, the zone taken off removed 56); zoom_ladder's six photos opened against doc/look's: no
+  part lost detail, the town has more greens (the parks) and other styles (the quarters); `lab_test` 4/4
+  (16.67 ms a frame, CPU 2.59 ms, GPU 6.79 ms, 1 hitch). LEFT: the commit of this block's files only, push,
+  `block close`, the next line (5. transit). Verification 1 had failed on the test's own line: Verification 1: the build passed (148 s, no warning); the run gave 8/9: e2e, zoom_ladder,
+  square_test, lot_front_test, city_mass_test PASS; growth_test TIMEOUT at 60 s. CAUSE, read in the log and the
+  code: project/tests/core/growth_test.gd:34 asked `CityStore.query(&"constants")`, which is no query ("unknown
+  query: constants"); the zone codes are `CityStore.constants` (project/game/store/city_store.gd:29,46;
+  native/src/api/city_core_query.cpp:93-99). The test's own fault; the game's code is as it was. The town
+  opened in 0.15 s (1162 buildings) before the script stopped. Checked before the fix: a command's answer has
+  buildings_removed and zoned_sides (api/edit_result.h:22-23); inspect answers the nearest building within
+  30 m off a road (api/city_core_inspect.cpp:136-175). IN HAND, in order: the test's line fixed; `block
+  review`; `block verify`; ONE run `python tools/tasks/cli.py run growth_test,zoom_ladder,e2e` (the build's
+  DLLs stand: only a test's script changed); its output read; zoom_ladder's photos opened whole against
+  doc/look/zoom_ladder; `run lab_test --all --jobs 1`; the board's line checked; the commit of THIS block's
+  files only (the owner is changing .claude/hooks, .claude/settings.json and tools/tasks/tests meanwhile:
+  left alone); push; `block close`; the next line (5. transit).
+- Before the block: the tracer's sheet (`python tools/tracer/port.py sheet zones-lots-growth`, task
   b42jrh624) printed "reference: 3 folder(s)" and nothing more for 7 hours: STOPPED by its ID. Its cause, read:
   tools/tracer/port.py (was :126) called `analyse` with no ceiling (tracer/limits.py:13-15: no limit unless
   asked) and no `say` (no step printed), and `roots_of` (was :118-121) took the whole folder of every cited file:
@@ -42,11 +60,6 @@
   under 60 s with the same check); 3. rezoning keeps the building; 4. lots cut to the land and kept;
   5. buildings that age into decay; 6. a polygon lot's building fits its outline, set-backs and lower densities
   tried, eras by quarter; 7. industrial densities, the generator's parks.
-- NEXT, in order: the tracer's report read; this game's code read whole (below, "Read": what is still to
-  read); the reference's (world/zoning.ts, world/lots.ts, world/growth.ts, decayWatch.ts, plan.ts, zoneGrid.ts,
-  growthFeed.ts, main.ts:2656-2667); research.md R4 read; the sources (the internet) for each real value;
-  each case's design written here with the comparison of both sides by file:line; then `block open
-  zones-lots-growth` and the coding.
 
 ## Read (facts with file:line)
 - native/src/sim/simulation/city_growth.cpp (read whole, 116 lines; its header names the reference's
@@ -179,8 +192,93 @@
    park. Zones 9, 10 = industrial low, high (ZONE_CODES 11, zones.json, texts), the hall's height by the
    density, the generator's sector high past 0.85 of the radius and medium inside; parks = the plan's
    coarse noise (growth.json plan.parks): a block it marks is laid as a green (squares.cpp's own body).
+
+## Coded in the block (opened 2026-11-14, 0 of 3 verifications used; nothing built or run yet)
+- Sources read: warehouse heights (Address Advisors, in massing_works.cpp's comment); parks 9.8% of a city's land
+  (Trust for Public Land as KVIA reports it, in growth.json plan._doc); cppreference unordered_map erase.
+- CASE 3 DONE: commands/zone_commands.cpp clear_side (no keep_zone) called only where the new zone is none
+  (paint_zone `cur != 0 && zone == 0`); commands/lot_commands.cpp zone_lot razes only where `zone == 0`.
+- CASE 7 DONE: sim/catalog/zone_codes.h (new, in doc/map.md): the Zone enum moved from road_gen.h, ZONE_IND_LOW 9,
+  ZONE_IND_HIGH 10, ZONE_CODES 11, zone_use / zone_step (the one reading of a code; growth.h's base_zone and
+  zone_density are gone, building_store.cpp occupancy and growth.cpp civic read zone_use); zones.json + its
+  schema (code up to 10) + texts zone.indLow/indHigh (strings_e.csv), zone.name.9/10 (strings_c.csv); the
+  drawer's density row reads the table, so industry's low and high are picked there with no interface edit;
+  b40/massing_core.cpp kind_of (9, 10 = works), Envelope::density (gen.h), massing_works.cpp HALL_LO/HI by
+  density; lot_place.cpp works lots and road_gen_graph.cpp concrete streets by zone_use; city_plan.cpp zone_at:
+  ZONE_IND_HIGH past plan.industry_high_from (0.85), centre_share shared; PARKS: city_plan.h/.cpp park_at
+  (cells of park_cell_m, park_share of them by hash2 of the cell and the seed, none within park_from),
+  catalog.h CityPlanDef + catalog_loader.cpp + growth.json (industry_high_from, park_share 0.1, park_cell_m
+  140, park_from 0.15), GeneratedRoads::plan (road_gen.h/.cpp), squares.h/.cpp lay_greens(s, seed, plan)
+  (was plan_squares): a whole block whose middle is park_at is laid as a green, city_gen.cpp passes r.plan.
+  gen.h seed_character / seed_era (the seed's bits, for case 6's quarters).
+- CASE 1 DONE: sim/simulation/city_growth.h/.cpp rewritten: GrowthQueue::open (a queued cell's open lots,
+  found once by find_open, FILED_A_LOOK 16 cells a look, near the last grown first), nearest_open (the cells
+  within tuning sim.growth_reach_m 70, tuning_fields.h + tuning.json), drawn_open (a draw by the seed, the
+  count grown and the lots shut), look (the lot picked checked once more; taken or unfit lots shut),
+  GrowthQueue push / drop / file / shut, grow_step writes all under the writer's hold; a bulldozed building's
+  cell is queued again (commands/journal_ops.cpp j_remove_building), a cell left with no lot leaves the queue
+  (commands/road_edit.cpp). record_for is to answer an optional (case 6): look already takes one.
+- CASE 5 DONE, the design CHANGED while coding (the mesh's UV2 is 16-bit under ARRAY_FLAG_COMPRESS_ATTRIBUTES,
+  shell.cpp:329, and the shell already bakes its tone and grime into the vertex colour, shell.cpp shaded):
+  the wear is BAKED when a chunk is drawn, from decay_of(growth def, built, the clock) (growth.h/.cpp), and a
+  chunk in view whose buildings still age is drawn again every wear.redraw_min city minutes: no queue, no
+  state in the simulation, no record written. render/buildings: BuildingBodies::age_at / wear_of / now_min
+  (building_bodies.h), Placed::wear and the duller shade (building_bodies.cpp place, facade.h), lay_worn
+  (facade.h) sets Shell::worn_grime / worn_reach / worn_blotch (shell.h) read by Shell::shaded (shell.cpp),
+  called before each building in build_cpu and build_super_cpu (building_renderer_build.cpp), Built::ageing and
+  Chunk::wear_due (building_renderer.h), set at commit (building_renderer_commit.cpp), read in visit_super and
+  the clock given in update_view (building_renderer_view.cpp); BuildingLook wear_* (building_look.h/.cpp),
+  data render/buildings.json "wear" + its schema. The inspector: api/city_core_inspect.cpp wear_percent,
+  project/ui/inspector_panel.gd row, texts ui.metric.wear, ui.percent (strings_e.csv).
+- CASE 2 DONE: b40 blocks alone (gen.h Envelope::blocks_only, make_body's `blocks_only`; massing_core.cpp
+  finish_body returns after the roofs and membranes, make_body skips lay_out_lot; record.h/.cpp
+  make_seed_body's flag); a record's look is ALWAYS read off its blocks (b40/body_cache.cpp look, .h), for a
+  standing record and a candidate alike (lay_out_lot adds only a carport's block, lot_cars.cpp:34: the look
+  of what stands and of a candidate are the same function, and the storeys are the blocks'); likeness.h/.cpp
+  BodyLook::room (the least side of the plan's envelope). simulation/growth.cpp rewritten: draw_candidate
+  makes blocks alone, with no cache; best_candidate serial. simulation/growth_fill.cpp (new, doc/map.md):
+  fill_all in four passes (pass_of: the parity of the cell's two coordinates), cells over
+  JobPool::parallel_for (job_pool.cpp:148: serial when asked from inside the pool), fill_cell reads the store,
+  the cell's own made list and the looks by id (growth.h GrowthBeside), nothing written in a pass, the
+  records added after it in the cells' order. settle_sites is still serial after it (city_gen.cpp:132): R4's
+  third part (sites made in parallel) is LEFT.
+- CASE 4, coded: lot_occupied by the rectangles (a building's lot holds the lot's middle or the lot holds its
+  middle; one `meeting` query, squares and ruins with it); record_for tries the lot set back and narrower
+  where a standing lot lies partly over it (lots_over, rects_meet), so a cell cut again builds round what
+  stands; citygen/lot_gen.cpp LotStrips::on_land (lot_strips.h): a lot whose back is wet or too steep is cut
+  back to 3/4 or 1/2 of its depth, its front on its street (LAND_SHARES), called by lot_place.cpp
+  place_blocks and cut_run instead of refusing it whole. The player's lots: with_player_lots (lot_cache.cpp)
+  still drops a proposed lot only where its middle is in a player's lot: LEFT to check against lots_over.
+- CASE 6, coded so far: growth.h/.cpp quarter_seed (growth.json "quarters" + schema + catalog.h GrowthDef +
+  catalog_loader.cpp): the frontage's character and the quarter's era in the seed's bits (gen.h
+  seed_character / seed_era, read by massing_core.cpp make_body); record_for's tries (growth.json "fit":
+  tries [front_m, side_m, share], least_room_m; catalog.h LotTry) at the lot's density then each lower
+  (zone_codes.h zone_of), nullopt when nothing fits: city_growth.cpp look shuts such a lot until its cell is
+  cut again. LEFT of case 6: the player's polygon lot's outline (the record names its ring, the lot's layout
+  runs the boundary along the ring's sides, the lawn to the outline).
+- NOT MINE, seen in the tree at 12:09 (the owner is changing the tools while this block is open; left alone
+  and not committed by this block): .claude/hooks/port_*.py, .claude/settings.json,
+  tools/tasks/tests/test_port_gate.py, tools/tasks/tests/test_port_memory.py (new: the gates name it for
+  doc/map.md and for code doubled with test_port_gate.py).
+- CASE 6's OUTLINE DONE: b40/lot_outline.h/.cpp (new, doc/map.md): fit_outline (the side and back runs leave
+  the plan's rectangle and run along the ring's sides but the front, pieces of 20 m at most, what falls
+  outside left out, Body::lot_ring kept, types.h), ring_stamp, in_ring; BodyKey::ring (body_table.h, record.cpp
+  body_key); record.cpp make_seed_body fits a grown body to Building::ring (building_store.h, set_ring in
+  .cpp); commands/lot_sites.h/.cpp lot_ring (the player's lot under the record, in its frame) read by
+  record_for (growth.cpp) and kept by settle_sites after an edit and a load (never saved);
+  render/buildings/lot_emit.cpp outline_lawn (the lot's lawn to its outline, under the plan's covers).
+- CASE 4's player lots DONE: lots/lot_cache.cpp on_player_lot (middle or a corner on a player's lot);
+  commands/lot_commands.cpp free_of_lots rejects by the boxes first (the sheet's fault).
+- THE TEST: project/tests/core/growth_test.gd/.tscn (tools/tasks/suites.json growth_test, 60 s; doc/map.md).
+- OPEN, said to the owner at the end: R4's third part (settle_sites' sites made in parallel) is not coded:
+  city_gen.cpp:132 settles serially after fill_all; whether it matters is what the run's opening time shows.
+- LEFT, in order: `block review`; `block verify`; build; ONE run (growth_test, square_test, lot_front_test,
+  city_mass_test, zoom_ladder, e2e); the photos looked at; lab_test; commit of this block's files only (the
+  owner's tool files left alone); push; `block close`.
 - STILL TO READ (this game): sim/commands/zone_commands.cpp, lot_commands.cpp, lot_sites.*, sim/lots/lot_cache.cpp,
   lot_book.*, sim/citygen/lot_gen.*, lot_land.*, lot_place.cpp, block_lots.cpp, city_plan.cpp, squares.*,
   sim/buildings/growth.h, city_growth.h, the save of lots and zones, project/data/catalog/growth.json,
   zones.json, tuning.json's growth keys, project/ui drawer_strips.gd, lots_tool.gd, zone_tool.gd, the area's
   tests (`run tests --list`: growth, lots, zone, city_mass, window_traffic), doc/research.md R4.
+
+- Cause named at `block open` (2026-11-14T12:21 round 1: growth_test: project/tests/core/growth_test.gd:34: the test asks CityStore.query(&"constants"), which is no query (the core answers 'unknown query: constants'); the zone codes are CityStore.constants (city_store.gd:29,46), so the script stopped there and ran to its 60 s deadline)

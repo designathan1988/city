@@ -28,8 +28,9 @@ std::shared_ptr<const Body> record_mass(const Data &data, const Building &rec);
 // What stands on the record's lot round the building (the body's elements: plants, gates, stalls, docks), kept as a list of its
 // own (body_cache.h): whoever reads only these asks this, never the body.
 std::shared_ptr<const std::vector<LotElement>> record_elements(const Data &data, const Building &rec);
-// The generator behind both, which only the cache calls: the body of a record that holds no edited version.
-void make_seed_body(const Data &data, const Building &rec, Body &b);
+// The generator behind both, which only the cache calls: the body of a record that holds no edited version. `blocks_only`: a grown
+// building's plan and blocks alone (gen.h make_body); a civic building or an open lot is made whole either way.
+void make_seed_body(const Data &data, const Building &rec, Body &b, bool blocks_only = false);
 // What names that body exactly (body_table.h BodyKey): an edited one by its version's stamp, one made from the seed by all it is
 // made from. Two records with the same key have the same body, wherever they stand.
 BodyKey body_key(const Building &rec);

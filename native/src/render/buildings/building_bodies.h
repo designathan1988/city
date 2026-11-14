@@ -13,8 +13,10 @@
 #include "sim/buildings/b40/record.h"
 #include "sim/buildings/interior/cut.h"
 #include "sim/buildings/building_store.h"
+#include "sim/buildings/growth.h"
 #include "sim/terrain/height_patch.h"
 
+#include <atomic>
 #include <cstdint>
 #include <memory>
 
@@ -31,6 +33,14 @@ public:
 	void place(const b40::Data &data, const b40::BuildingLook &look, const HeightPatch &ground, const Building &rec, b40::Placed &pl,
 			const b40::CutView *cut = nullptr, bool with_rooms = true);
 	void clear();
+	// The city's clock and how its buildings age (sim/buildings/growth.h decay_of), set by the renderer each frame and read by every
+	// job that places a record: a placement carries how run-down its building is at the minute it is drawn (Placed::wear).
+	void age_at(double now_min, const GrowthDef &ageing) {
+		ageing_ = &ageing;
+		now_min_.store(now_min, std::memory_order_relaxed);
+	}
+	double now_min() const { return now_min_.load(std::memory_order_relaxed); }
+	float wear_of(const Building &rec) const { return ageing_ ? decay_of(*ageing_, rec.built, now_min()) : 0.f; }
 
 private:
 	// The body's key (the record's function and seed, which the rooms read, are in it) and the tables' generation.
@@ -50,6 +60,8 @@ private:
 		size_t operator()(const Key &k) const;
 		size_t operator()(const CutKey &k) const;
 	};
+	const GrowthDef *ageing_ = nullptr; // the catalogue's (the session's, set once and never moved)
+	std::atomic<double> now_min_{ 0 };
 	LruCache<Key, b40::PaneRooms, KeyHash> rooms_;
 	LruCache<CutKey, const b40::Body, KeyHash> cuts_;
 	static Key key_of(const b40::Data &data, const Building &rec) { return Key{ b40::body_key(rec), data.generation }; }

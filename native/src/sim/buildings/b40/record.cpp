@@ -3,6 +3,7 @@
 #include "sim/buildings/b40/record.h"
 
 #include "sim/buildings/b40/civic.h"
+#include "sim/buildings/b40/lot_outline.h"
 
 #include <algorithm>
 #include <cmath>
@@ -22,10 +23,13 @@ std::shared_ptr<const Body> record_mass(const Data &data, const Building &rec) {
 
 std::shared_ptr<const std::vector<LotElement>> record_elements(const Data &data, const Building &rec) { return data.made->elements(data, rec); }
 
-void make_seed_body(const Data &data, const Building &rec, Body &b) {
+void make_seed_body(const Data &data, const Building &rec, Body &b, bool blocks_only) {
 	if (is_open_lot(rec.fn)) open_lot_body(data, b, rec.fn, rec.w, rec.d, rec.seed, rec.edges);
 	else if (is_civic(rec.fn)) civic_body(data, b, rec.fn, rec.cap, rec.w, rec.d, rec.seed, rec.edges);
-	else make_body(data, b, rec.zone, rec.cap, rec.w, rec.d, rec.seed, rec.edges);
+	else {
+		make_body(data, b, rec.zone, rec.cap, rec.w, rec.d, rec.seed, rec.edges, blocks_only);
+		if (rec.ring && !blocks_only) fit_outline(b, *rec.ring); // a lot the player drew: the body takes its outline
+	}
 }
 
 BodyKey body_key(const Building &r) {
@@ -38,6 +42,7 @@ BodyKey body_key(const Building &r) {
 	}
 	k.zone = r.zone;
 	k.cap = r.cap;
+	k.ring = r.ring ? ring_stamp(*r.ring) : 0;
 	std::memcpy(&k.w, &r.w, sizeof k.w);
 	std::memcpy(&k.d, &r.d, sizeof k.d);
 	static_assert(sizeof r.edges.from + sizeof r.edges.to == sizeof k.shut, "the key holds every stretch's bits");

@@ -84,8 +84,8 @@ int Shell::vert(const Vector3 &p, const Vector3 &n, const Color &c, const Vector
 Color Shell::shaded(const Vector3 &p, const Lin &lin, bool wall, SurfaceKind kind) const {
 	float k = shade;
 	if (tone) {
-		k *= TONE_BASE + TONE_SPAN * macro_noise(p);
-		if (wall) k *= GRIME_FLOOR + GRIME_SPAN * smooth(std::clamp((p.y - grime_floor) / GRIME_M, 0.f, 1.f));
+		k *= TONE_BASE - worn_blotch + (TONE_SPAN + worn_blotch) * macro_noise(p);
+		if (wall) k *= GRIME_FLOOR - worn_grime + (GRIME_SPAN + worn_grime) * smooth(std::clamp((p.y - grime_floor) / (GRIME_M * (1 + worn_reach)), 0.f, 1.f));
 	}
 	return Color(gamma(lin.r * k), gamma(lin.g * k), gamma(lin.b * k), float(kind) / BYTE);
 }

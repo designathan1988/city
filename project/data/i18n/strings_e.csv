@@ -448,3 +448,7 @@ zone.resLow,Residencial de baixa densidade,Low-density residential
 zone.resHigh,Residencial de alta densidade,High-density residential
 zone.comLow,Comercial de baixa densidade,Low-density commercial
 zone.comHigh,Comercial de alta densidade,High-density commercial
+zone.indLow,Industrial de baixa densidade,Low-density industrial
+ui.metric.wear,Desgaste,Wear
+ui.percent,{value}%,{value}%
+zone.indHigh,Industrial de alta densidade,High-density industrial

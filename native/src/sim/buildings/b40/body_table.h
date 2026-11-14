@@ -61,6 +61,7 @@ private:
 struct BodyKey {
 	static constexpr int SHUT_WORDS = 2 * LotEdges::KINDS * LotEdges::SPANS;
 	uint64_t stamp = 0; // the edited version (BodyRef::stamp), 0 for a body made from the seed
+	uint64_t ring = 0; // the lot's own outline where it is no rectangle (lot_outline.h ring_stamp), 0 for none: a body is fitted to it
 	uint32_t seed = 0;
 	uint32_t w = 0, d = 0; // frontage and depth: the floats' bits
 	uint32_t shut[SHUT_WORDS] = {}; // the edges' stretches (their starts, then their ends): the floats' bits
@@ -69,7 +70,7 @@ struct BodyKey {
 	bool operator==(const BodyKey &o) const {
 		for (int k = 0; k < SHUT_WORDS; k++)
 			if (shut[k] != o.shut[k]) return false;
-		return stamp == o.stamp && seed == o.seed && w == o.w && d == o.d && cap == o.cap && zone == o.zone && fn == o.fn &&
+		return stamp == o.stamp && ring == o.ring && seed == o.seed && w == o.w && d == o.d && cap == o.cap && zone == o.zone && fn == o.fn &&
 				street == o.street;
 	}
 	bool operator!=(const BodyKey &o) const { return !(*this == o); }
@@ -83,7 +84,7 @@ struct BodyKeyHash {
 	}
 	size_t operator()(const BodyKey &k) const {
 		uint64_t h = mix(k.stamp, uint64_t(k.seed) | (uint64_t(uint32_t(k.w)) << HALF_BITS));
-		h = mix(h, uint64_t(uint32_t(k.d)) | (uint64_t(k.cap) << HALF_BITS));
+		h = mix(mix(h, uint64_t(uint32_t(k.d)) | (uint64_t(k.cap) << HALF_BITS)), k.ring);
 		for (int i = 0; i + 1 < BodyKey::SHUT_WORDS; i += 2) h = mix(h, uint64_t(k.shut[i]) | (uint64_t(k.shut[i + 1]) << HALF_BITS));
 		return size_t(mix(h, uint64_t(k.zone) | (uint64_t(k.fn) << BYTE_BITS) | (uint64_t(k.street) << STREET_SHIFT)));
 	}
