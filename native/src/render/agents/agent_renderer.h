@@ -6,6 +6,7 @@
 #pragma once
 
 #include "render/agents/agent_meshes.h"
+#include "render/agents/far_traffic.h"
 #include "render/agents/head_lights.h"
 #include "render/agents/fleet_shadow.h"
 #include "render/view_cull.h"
@@ -33,6 +34,8 @@ public:
 	int drawn_people() const { return drawn_people_; }
 	godot::Array people_clips() const { return people_.clips(); }
 	PeopleRenderer &people() { return people_; }
+	FarTraffic &far_traffic() { return far_traffic_; } // the cars of the streets outside the window, drawn from the flows
+	void draw_far(const PoseFrame &f, const PoseSample &at); // its sectors that changed, and its clock: the moment the frame draws
 	bool show_people_clip(const godot::String &name) { return people_.show_clip(name); }
 	// Per vehicle type and level: the triangles of its body and glass surfaces, the instances drawn last frame and the
 	// draws (surfaces of the shown MultiMeshes): counts, no clock (city_core_probe agent_cost).
@@ -95,6 +98,10 @@ private:
 	int rows_lost_ = 0; // seen on the last frame and with no row: never, or a vehicle goes undrawn with its driver at the wheel
 	MultiMeshDraw shadow_draws_[AGENT_MODELS][DRAWS]; // a level's instances with a lighter mesh; none for the far level, FleetShadow's
 	FleetShadow fleet_shadow_; // what the far level casts
+	FarTraffic far_traffic_; // the far traffic's cars (far_traffic.h)
+	godot::RID far_cars_; // their material
+	MeshBuilder far_hull_; // their body, from build_meshes until init hands it over
+	std::vector<godot::Color> paint_colours_; // the paints, as push_palettes read them
 	float reach_m_[AGENT_MODELS] = {}; // from a model's origin to its farthest corner
 	float view_slack_ = 0; // agents.json view_slack
 	float cabin_close_m_ = 0; // agents.json lod.cabin_close_m

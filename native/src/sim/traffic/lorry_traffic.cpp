@@ -261,6 +261,8 @@ void call(CityState &s) {
 	for (int b = 0; b < int(pk.bays.size()); b++) {
 		const Bay &bay = pk.bays[size_t(b)];
 		if (!bay.alive || !bay.dock || bay.holder >= 0) continue;
+		const Building &lot = s.buildings.items[size_t(bay.source)];
+		if (park_let_go(pk, V2(lot.x, lot.z), p.park_window_out_m)) continue; // a lot the parking let go of takes no new lorry
 		bool busy = false;
 		for (const Lorry &l : pk.lorries) busy = busy || l.building == bay.source;
 		if (!busy) docks.push_back(b);

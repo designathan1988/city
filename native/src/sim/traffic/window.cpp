@@ -1,8 +1,8 @@
-// The micro window around the camera (Roadcraft traffic.ts checkWindow/materialize): vehicles far from the camera
-// leave the near model and join their lane's meso queue; vehicles of a meso lane that came inside the window become
-// drawn ones, each where its timing says it is and behind the queue already drawn. The far list is kept only as far
-// as `meso_window_out_m`, so the window never holds an invisible vehicle in a queue. Walkers exist only inside
-// `ped_window_m`, which also sets how many sidewalk metres demand may fill.
+// The window of detailed traffic round the view: it follows the view (its radius the view's reach by window_view_share, moved and
+// resized with a slack so it does not breathe with the camera); its streets are those the far traffic's flows hold as inside
+// (flow_window.cpp hands their vehicles over and takes them back). A bus of a far queue (meso.cpp) on a lane that came inside
+// becomes a drawn one, where its timing says it is and behind the queue already drawn. Walkers exist only inside `ped_window_m`,
+// which also sets how many sidewalk metres their demand may fill.
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/traffic/lane_closures.h"
@@ -61,54 +61,87 @@ void grow_ped_window(CityState &s, float cx, float cz) {
 } // namespace
 
 namespace {
-// Each directed segment whose middle is within the window round (cx, cz), handed to `each` with its lane metres.
-template <typename F>
-void window_segments(const CityState &s, float cx, float cz, F &&each) {
-	const TrafficState &t = s.traffic;
-	const float w = s.catalog.traffic.meso_window_m, w2 = w * w;
-	s.roads.for_segments_near(cx - w, cz - w, cx + w, cz + w, [&](int seg) {
-		if (mid_dist2(s, seg, cx, cz) >= w2) return;
-		for (int dir = 0; dir < 2; dir++) {
-			const int ds = seg * 2 + dir;
-			if (ds < int(t.g.ds.size()) && t.g.ds[size_t(ds)].ok) each(ds, double(t.g.ds[size_t(ds)].len) * double(t.g.ds[size_t(ds)].lanes));
-		}
-	});
+constexpr uint8_t WAS_IN = 1, STAYS = 2, WAY_OUT = 3; // TrafficState::in_win during a look (zero between looks)
+
+// The radius the window should have now: the view's reach (how far the eye stands from the ground it looks at) by
+// window_view_share, between window_min_m and meso_window_m; with no view to follow (a run with no camera) it stands at its most.
+float wanted_radius(const CityState &s) {
+	const TrafficParams &p = s.catalog.traffic;
+	const float reach = s.camera_reach.load();
+	return reach > 0 ? clampf(reach * p.window_view_share, p.window_min_m, p.meso_window_m) : p.meso_window_m;
 }
 
-// The window's segments as the demand reads them: those in it now, their lane metres, and those that came in since the last look
-// (to be filled to their share); those that left are no longer the window's.
-void look_at_segments(CityState &s, float cx, float cz) {
+// The window's streets after it moved or was resized: a directed segment comes in when its middle is within the window's radius
+// and goes out only past the out radius (it does not flap at the edge); the flows hand each one that comes in to the detailed
+// simulation and take back each one that goes out (flow_window.cpp). Only the streets near where the window was and is are looked
+// at. Then the ways out: the streets outside that start where one inside ends.
+void look_at_segments(CityState &s) {
 	TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
+	const StreetFlows &f = t.flows;
 	if (t.in_win.size() != t.g.ds.size()) t.in_win.assign(t.g.ds.size(), 0);
 	for (int ds : t.window_ds)
-		if (size_t(ds) < t.in_win.size()) t.in_win[size_t(ds)] = 2; // was in: stays 2 unless seen again
-	t.window_ds.clear();
+		if (size_t(ds) < t.in_win.size()) t.in_win[size_t(ds)] = WAS_IN;
+	std::vector<int> was;
+	was.swap(t.window_ds);
 	t.window_lane_m = 0;
-	window_segments(s, cx, cz, [&](int ds, double metres) {
-		if (t.in_win[size_t(ds)] == 0) t.fill_ds.push_back(ds); // came in
-		t.in_win[size_t(ds)] = 1;
-		t.window_ds.push_back(ds);
-		t.window_lane_m += metres;
+	const float in = t.win_r, out = t.win_r * p.meso_window_out_m / p.meso_window_m;
+	s.roads.for_segments_near(t.win_x - out, t.win_z - out, t.win_x + out, t.win_z + out, [&](int seg) {
+		const float d2 = mid_dist2(s, seg, t.win_x, t.win_z);
+		for (int dir = 0; dir < 2; dir++) {
+			const int ds = seg * 2 + dir;
+			if (size_t(ds) >= f.live.size() || !f.live[size_t(ds)]) continue;
+			const float reach = f.inside[size_t(ds)] ? out : in;
+			if (d2 >= reach * reach) continue;
+			flow_enters(s, ds); // nothing when it is inside already
+			t.in_win[size_t(ds)] = STAYS;
+			t.window_ds.push_back(ds);
+			t.window_lane_m += double(t.g.ds[size_t(ds)].len) * double(t.g.ds[size_t(ds)].lanes);
+		}
 	});
-	for (uint8_t &k : t.in_win) k = k == 1 ? 1 : 0;
+	for (int ds : was) {
+		if (size_t(ds) >= t.in_win.size()) continue;
+		if (t.in_win[size_t(ds)] == WAS_IN) flow_leaves(s, ds);
+		t.in_win[size_t(ds)] = 0;
+	}
+	for (int ds : t.window_ds) t.in_win[size_t(ds)] = 0;
+	for (int ds : t.window_out_ds)
+		if (size_t(ds) < t.in_win.size()) t.in_win[size_t(ds)] = 0;
+	t.window_out_ds.clear();
+	for (int ds : t.window_ds) {
+		const int node = t.g.ds[size_t(ds)].to;
+		if (node < 0 || size_t(node) >= s.roads.nodes.size()) continue;
+		for (int seg : s.roads.nodes[size_t(node)].segs) {
+			const int way = out_ds(s.roads, seg, node);
+			if (size_t(way) >= f.live.size() || !f.live[size_t(way)] || f.inside[size_t(way)] || t.in_win[size_t(way)] == WAY_OUT) continue;
+			t.in_win[size_t(way)] = WAY_OUT;
+			t.window_out_ds.push_back(way);
+		}
+	}
+	for (int ds : t.window_out_ds) t.in_win[size_t(ds)] = 0;
+}
+
+// The window follows the view: moved when the camera is past window_recentre_share of its radius from its middle, resized when
+// the view outgrows it or shrinks under window_shrink_share of it. True when it moved or was resized.
+bool track_view(CityState &s, float cx, float cz) {
+	TrafficState &t = s.traffic;
+	const TrafficParams &p = s.catalog.traffic;
+	const float want = wanted_radius(s);
+	const bool resized = t.win_r <= 0 || want > t.win_r || want < t.win_r * p.window_shrink_share;
+	const float away = (V2(cx, cz) - V2(t.win_x, t.win_z)).len();
+	if (!resized && away <= t.win_r * p.window_recentre_share) return false;
+	t.win_x = cx;
+	t.win_z = cz;
+	if (resized) t.win_r = want;
+	return true;
 }
 } // namespace
 
-double window_lane_metres(const CityState &s) {
-	double metres = 0;
-	window_segments(s, s.camera_x.load(), s.camera_z.load(), [&](int, double m) { metres += m; });
-	return metres;
-}
+double window_lane_metres(const CityState &s) { return s.traffic.window_lane_m; }
 
 bool in_window(const CityState &s, int ds) {
-	const TrafficState &t = s.traffic;
-	if (ds < 0 || ds >= int(t.g.ds.size()) || !t.g.ds[size_t(ds)].ok) return false;
-	const DirSeg &d = t.g.ds[size_t(ds)];
-	Pose p;
-	lane_pose(s, ds, 0, d.len * 0.5f, p);
-	const float cx = s.camera_x.load(), cz = s.camera_z.load(), w = s.catalog.traffic.meso_window_m;
-	const float dx = p.x - cx, dz = p.z - cz;
-	return dx * dx + dz * dz < w * w;
+	const StreetFlows &f = s.traffic.flows;
+	return ds >= 0 && size_t(ds) < f.inside.size() && f.inside[size_t(ds)] != 0;
 }
 
 void materialize(CityState &s, int key) {
@@ -159,27 +192,18 @@ void materialize(CityState &s, int key) {
 void check_window(CityState &s) {
 	TrafficState &t = s.traffic;
 	const float cx = s.camera_x.load(), cz = s.camera_z.load();
-	const float dx = cx - t.win_x, dz = cz - t.win_z;
-	if (t.win_t > -double(BIG) && dx * dx + dz * dz < MESO_VIEW_STEP * MESO_VIEW_STEP && t.time - t.win_t < WINDOW_EVERY_S) return;
-	t.win_x = cx;
-	t.win_z = cz;
+	const float dx = cx - t.look_x, dz = cz - t.look_z;
+	const bool same_view = t.win_t > -double(BIG) && dx * dx + dz * dz < MESO_VIEW_STEP * MESO_VIEW_STEP && t.time - t.win_t < WINDOW_EVERY_S;
+	if (same_view && !t.flows.relook) return; // nothing to look at: the view as it was a moment ago, the streets as they were
+	t.look_x = cx;
+	t.look_z = cz;
 	t.win_t = t.time;
-	look_at_segments(s, cx, cz);
-	// near vehicles now outside the out radius leave the scene there, out of sight (the window's demand makes the traffic round the
-	// view, as the reference's far model takes its cars back at the window's edge); a bus keeps its timetable in its lane's far queue
-	const float out = s.catalog.traffic.meso_window_out_m, out2 = out * out;
-	for (int i = int(t.micro_list.size()) - 1; i >= 0; i--) {
-		const int id = t.micro_list[size_t(i)];
-		Vehicle &v = t.vehicles[size_t(id)];
-		if (!v.alive || v.conn >= 0 || v.ds < 0 || v.ds >= int(t.g.ds.size())) continue;
-		const DirSeg &d = t.g.ds[size_t(v.ds)];
-		Pose p;
-		lane_pose(s, v.ds, v.lane, d.len * 0.5f, p);
-		if ((p.x - cx) * (p.x - cx) + (p.z - cz) * (p.z - cz) <= out2) continue;
-		if (v.bus >= 0) meso_enter(s, id, v.ds * MAX_LANES + v.lane, true); // leaves its lane list and micro_list there
-		else despawn_vehicle(s, id, false, false);
-	}
-	// far vehicles on lanes now inside the window become drawn ones (whoever is inside is never invisible)
+	// the window of detailed traffic follows the view; whoever drives out of it is the far traffic's (flow_window.cpp flow_begin).
+	// Its streets are looked at again when it moved or was resized, and when the streets themselves changed (refit_flows)
+	const bool moved = track_view(s, cx, cz);
+	if (moved || t.flows.relook || t.window_ds.empty()) look_at_segments(s);
+	t.flows.relook = false;
+	// the buses of the far queues on lanes now inside the window become drawn ones (whoever is inside is never invisible)
 	for (int ds : t.window_ds)
 		for (int lane = 0; lane < t.g.ds[size_t(ds)].lanes; lane++) {
 			const int key = ds * MAX_LANES + lane;

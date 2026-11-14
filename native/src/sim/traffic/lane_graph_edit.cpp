@@ -231,6 +231,7 @@ void apply_network_changes(CityState &s) {
 			file_signal(t.g, n);
 		}
 	}
+	refit_flows(s, removed, changed, nodes); // the far traffic's flows follow the same streets and nodes, and no others
 	t.g.version = s.roads.version;
 	s.lane_graph_serial++;
 	if constexpr (CHECKS) { // the tests' DLL (core/checks.h); the scoped traffic.lane_graph check follows at the batch's end

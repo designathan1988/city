@@ -9,6 +9,7 @@
 #pragma once
 
 #include "sim/demolition/damage_event.h"
+#include "sim/state/flow_mark.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -69,6 +70,9 @@ struct ChangeLog {
 	std::vector<int> signal_nodes;
 	// Blows, shots and falls for the render to play once (damage_event.h): drained with the other render lists.
 	std::vector<DamageEvent> damage_events;
+	// The far traffic's streets whose drawn numbers changed (flow_mark.h): appended by the traffic's step under `mutex`, drained
+	// with the other render lists.
+	std::vector<FlowMark> flow_marks;
 
 	static void dedup(std::vector<int64_t> &v) {
 		std::sort(v.begin(), v.end());
@@ -125,6 +129,7 @@ struct ChangeLog {
 		add(lot_fronts, from.lot_fronts);
 		add(signal_nodes, from.signal_nodes);
 		add(damage_events, from.damage_events);
+		add(flow_marks, from.flow_marks);
 	}
 	// The blows of a city that is gone (a new map, a load), dropped where it goes: made before it, they would play on nothing. Those made
 	// after are the new city's, kept for the render to play. The map held exclusively; takes `mutex` itself.
@@ -144,6 +149,7 @@ struct ChangeLog {
 		nature_chunks.clear();
 		water_chunks.clear();
 		lot_boxes.clear();
+		flow_marks.clear();
 	}
 };
 

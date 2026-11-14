@@ -143,14 +143,13 @@ void step_lane(CityState &s, int ds, int lane, float dt, std::vector<int> &leavi
 		const bool head = lane_leads(s, ds, lane, list, k, l);
 		bool through = v.ri + 1 < v.route.len; // it crosses this lane's junction
 		if (!through && v.s >= v.goal_s) {
-			// its trip ends here, on a street in the window: it drives on, on its next trip from here (a trip ends out of the
-			// window, in the far model, or in a lot); a car with nowhere to go (goal_s 0) leaves here. With no trip found it
-			// leaves only out of sight: seen, it drives on by a way its lane has, or stands at its lane's end, asking again on
-			// its turn (never every tick)
-			if (v.goal_s <= 0) { leaving.push_back(-1 - id); continue; }
+			// its trip ends here, on a street in the window. Where nobody sees it, it has arrived and is gone (the streets' sides
+			// start as many trips out of sight as end there: flow_rates.cpp), as a car with nowhere to go (goal_s 0). Seen, it
+			// drives on, on a next trip from here that takes it out of the window (demand.cpp new_trip); with no trip found it
+			// drives on by a way its lane has, or stands at its lane's end, asking again on its turn (never every tick)
+			if (v.goal_s <= 0 || (v.bus < 0 && !window_shows(s, v))) { leaving.push_back(-1 - id); continue; }
 			const bool asks = v.v >= WAIT_SPEED || (t.tick + uint64_t(id)) % uint64_t(std::max(1.f, p.lc_every_ticks)) == 0;
 			if (asks && new_trip(s, id, ds)) t.arrived++;
-			else if (!window_shows(s, v)) { leaving.push_back(-1 - id); continue; }
 			else if (!asks || !drive_on(s, id)) l.take(std::max(0.f, L - v.s), 0.f);
 			through = v.ri + 1 < v.route.len;
 		}

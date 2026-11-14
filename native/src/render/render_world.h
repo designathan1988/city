@@ -74,8 +74,10 @@ public:
 	void update_agents(const PoseFrame &f, const godot::Vector3 &cam, const ViewCull &view, const PoseSample &at) {
 		agents_.people().set_view(view_); // the people's card by the pixels a figure takes on this frame's lens
 		agents_.update(f, cam, view, at);
+		agents_.draw_far(f, at);
 		transit_.update(f, cam, at);
 	}
+	FarTraffic &far_traffic() { return agents_.far_traffic(); } // the far streets' cars, drawn from what the flows tell (far_traffic.h)
 	int drawn_cars() const { return transit_.drawn_cars(); }
 	void transit_xray(bool on) { transit_.set_xray(on); }
 	void transit_preview(const CityState &s, const std::vector<V2> &points, TransitMode mode) { transit_.set_preview(s, points, mode); }

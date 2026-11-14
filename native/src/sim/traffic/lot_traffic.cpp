@@ -324,7 +324,7 @@ void step_lots(CityState &s, float dt) {
 	Laps lap;
 	settle_parked(s);
 	const double target = fleet_target(s);
-	lot_depart(s, target);
+	lot_depart(s, target - double(flow_owed(t.flows))); // the vehicles the flows still owe the window are its fleet's already
 	t.step_ms[STAGE_LOT_OUT] += lap.lap();
 	// trips ending in a lot at the rate a trip ends; as many on their way as that brings in while a called car drives there
 	const float most = std::max(p.parker_coming_min, std::ceil(float(target) * p.parker_coming_s / p.parker_trip_s));

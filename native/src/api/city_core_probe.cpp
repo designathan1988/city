@@ -265,6 +265,7 @@ Dictionary CityCore::traffic_probe(int sample) {
 	const double window_m = traffic::window_lane_metres(*state_);
 	d["window"] = Array::make(window_m, traffic::demand_for(*state_, window_m), on_lanes); // its lane metres, what they carry now, how many drive there
 	d["drawn_vehicles"] = render_.drawn_vehicles();
+	d["drawn_far_cars"] = render_.far_traffic().cars(); // the far streets' cars drawn from the flows, over the whole map
 	d["drawn_people"] = render_.drawn_people();
 	d["drawn_signal_lenses"] = render_.lit_lenses(); // lit on the signal posts, from the published lights
 	graph_probe(t, d);

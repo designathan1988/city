@@ -213,6 +213,7 @@ void CityProbes::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("vehicles_near", "at", "radius"), &CityProbes::vehicles_near);
 	ClassDB::bind_method(D_METHOD("vehicle_bodies", "at", "radius"), &CityProbes::vehicle_bodies);
 	ClassDB::bind_method(D_METHOD("driving_census", "at", "radius"), &CityProbes::driving_census);
+	ClassDB::bind_method(D_METHOD("far_traffic", "at", "reach"), &CityProbes::far_traffic);
 	ClassDB::bind_method(D_METHOD("footway_under", "at"), &CityProbes::footway_under);
 	ClassDB::bind_method(D_METHOD("people_census", "at", "radius"), &CityProbes::people_census);
 	ClassDB::bind_method(D_METHOD("walker_bodies", "at", "radius"), &CityProbes::walker_bodies);

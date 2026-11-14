@@ -224,6 +224,18 @@
   "params": {}
  },
  "shadow_caster": { "shader": "res://render/shaders/shadow_caster.gdshader", "params": {} },
+ "far_cars": {
+  "_doc": "The far traffic's cars (far_cars.gdshader, render/agents/far_traffic.h): a hull in its paint, as rough as the near cars' trim; by night its two ends burn as the near cars' lamps do (head_glow and tail_glow, the agent's own values), lamp_share of its half length from each end. Choices, no source: body_roughness, lamp_share.",
+  "shader": "res://render/shaders/far_cars.gdshader",
+  "params": {
+   "body_roughness": 0.5,
+   "head_glow": "#ffbf7a",
+   "tail_glow": "#ff0000",
+   "head_power": 4.0,
+   "tail_power": 1.5,
+   "lamp_share": 0.12
+  }
+ },
  "agent_glass": {
   "_doc": "Vehicle glass (agent_glass.gdshader): transmittance 0.70, the least a windscreen and the windows the driver needs may let through (CONTRAN Resolução 960/2022 art. 4º I); ior 1.52, soda-lime glass, roughness 0 (physicallybased.info Glass); tint the 4.0's cool grey-blue (#7896a2), no source behind it, at 40 % in linear light: this sun lights it more than the 4.0's, and at its own value the panes showed milky over a dark cabin (par-hatch-frente).",
   "shader": "res://render/shaders/agent_glass.gdshader",

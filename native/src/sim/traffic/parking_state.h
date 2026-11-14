@@ -156,4 +156,9 @@ struct ParkingState {
 	int lorry_calls[LORRY_CALLS] = {};
 };
 
+// A source whose middle is `mid` has been let go of by the parking's window: past `out` (park_window_out_m) of where the parking
+// last looked, it is kept only until its cars and lorries are done (parking_sources.cpp drop_far). It takes no new car or lorry
+// and sends none, or the traffic still passing it would hold it for ever.
+inline bool park_let_go(const ParkingState &p, const V2 &mid, float out) { return (mid - V2(p.win_x, p.win_z)).len2() > out * out; }
+
 } // namespace city

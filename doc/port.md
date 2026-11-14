@@ -51,7 +51,7 @@ with `file:line` on both sides), which the port tool reads: `python tools/tracer
   - following that anticipates (done)
   - the mix of vehicles (done)
   - lanes in the route (done)
-  - far traffic as flows; an adaptive detailed window (open: not coded)
+  - far traffic as flows; an adaptive detailed window (coded, its checks pass: flows_test, flow_control_test, records_traffic_test, driving_test, e2e, the measure; open: the far cars seen by an eye in a photo, the plan far_cars looks from too far: doc/work/traffic.md `## Now`)
   - re-routing by patience (done)
 
 ## 4. Zones, lots and growth (sheets/zones-lots-growth.md)

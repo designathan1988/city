@@ -45,7 +45,11 @@ bool AgentRenderer::push_palettes(const Dictionary &t, const std::vector<uint32_
 	const Array paints = style["paints"];
 	// as numbers: a Color array would be turned linear on the way (the parts' vertex colours are not)
 	PackedVector3Array raw;
-	for (const Color &c : palette(paints, PAINT_MAX, "paints", errors)) raw.push_back(Vector3(c.r, c.g, c.b));
+	paint_colours_.clear();
+	for (const Color &c : palette(paints, PAINT_MAX, "paints", errors)) {
+		raw.push_back(Vector3(c.r, c.g, c.b));
+		paint_colours_.push_back(c); // the far traffic's cars are painted from the same list (far_traffic.h)
+	}
 	for (size_t i = 0; i < lines.size() && i < size_t(LINE_PAINTS); i++) { // after them: a bus's line (traffic_state.h LINE_PAINT)
 		const Color c = rgb8_to_color(lines[i]);
 		raw.push_back(Vector3(c.r, c.g, c.b));

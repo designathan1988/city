@@ -1,8 +1,8 @@
-// The far (meso) traffic model, ported from Roadcraft src/sim/traffic/meso.ts: one queue per lane in order of entry,
-// one event per vehicle at the end of its lane, and no loop over the fleet per step. A vehicle leaves its lane when
-// its event is due: it picks the next lane (waiting at a red or behind a full queue), enters the micro window as a
-// drawn vehicle when it gets there, and otherwise queues on the next lane with a fresh event. The pace is the near
-// model's (meso_alpha) and a full lane slows it (meso_crowd), so the camera does not change how fast the city drives.
+// The far run of a vehicle that keeps its own trip outside the window: a bus on its timetable (the rest of the far traffic is
+// flows, street_flows.cpp). One queue per lane in order of entry, one event per vehicle at the end of its lane, and no loop over
+// the fleet per step. A vehicle leaves its lane when its event is due: it picks the next lane (waiting at a red or behind a full
+// queue), enters the window as a drawn vehicle when it gets there, and otherwise queues on the next lane with a fresh event. The
+// pace is the near model's (meso_alpha) and a full lane slows it (meso_crowd), so the camera does not change how fast it runs.
 #include "sim/traffic/traffic_system.h"
 
 #include "sim/traffic/lane_closures.h"

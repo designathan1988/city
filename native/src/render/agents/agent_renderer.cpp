@@ -12,6 +12,7 @@
 
 #include "core/grid.h"
 #include "core/random.h"
+#include "core/units.h"
 
 #include <godot_cpp/classes/rendering_server.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -45,6 +46,7 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 	heads_.init(scenario_, ctx.catalog->tune, RenderingServer::get_singleton()->material_get_param(material_, "head_glow"));
 	glass_ = ctx.material("agent_glass", errors);
 	shadow_ = ctx.material("shadow_caster", errors);
+	far_cars_ = ctx.material("far_cars", errors);
 	Dictionary t = ctx.table("agents", errors);
 	if (!errors.is_empty() || !build_meshes(t, errors)) return false;
 	if (!push_palettes(t, ctx.catalog->traffic.line_colours, errors) || !read_loads(Dictionary(t["occupants"])["load"], errors)) return false;
@@ -53,6 +55,12 @@ bool AgentRenderer::init(const RenderContext &ctx, PackedStringArray &errors) {
 		errors.push_back("agents.json: vehicle_radius_m must be positive");
 		return false;
 	}
+	const Dictionary far = t["far_traffic"];
+	far_traffic_.init(scenario_, far_cars_, far_hull_, Dictionary(t["far_shadow"])["sector_m"], ctx.catalog->traffic.slot_m, int(far["car_limit"]), far["reach_m"],
+			paint_colours_);
+	// a vehicle is drawn as itself where the simulation publishes it and the render draws it: the far cars stand in elsewhere
+	far_traffic_.detailed_within(ctx.catalog->traffic.publish_radius_m, vehicle_r_);
+	far_hull_ = MeshBuilder();
 	cabin_r_ = float(t["cabin_radius_m"]);
 	far_r_ = float(t["far_radius_m"]);
 	level_hold_ = float(Dictionary(t["lod"])["hold"]);
@@ -80,7 +88,8 @@ bool AgentRenderer::build_meshes(const Dictionary &t, PackedStringArray &errors)
 	const float cabin_error = lod["cabin_error_m"], body_error = lod["body_error_m"], far_error = lod["far_error_m"];
 	MeshBuilder hull;
 	build_car(hull, cars[0], body, inside, nullptr, trim, AGENT_HULL_LEVEL);
-	fleet_shadow_.init(scenario_, shadow_, simplify_parts(hull, far_error), far_shadow["sector_m"], far_shadow["inset"], AGENT_MODELS);
+	far_hull_ = simplify_parts(hull, far_error);
+	fleet_shadow_.init(scenario_, shadow_, far_hull_, far_shadow["sector_m"], far_shadow["inset"], AGENT_MODELS);
 	for (int i = 0; i < AGENT_MODELS; i++)
 		for (int level = 0; level < LEVELS; level++) {
 			MeshBuilder mb;
@@ -153,6 +162,7 @@ void AgentRenderer::riders(int type, uint32_t id, float &passengers, float &orde
 void AgentRenderer::reset() {
 	heads_.reset();
 	fleet_shadow_.free();
+	far_traffic_.clear(); // another city: its streets go, its hull stays (baked once, in init: a reset comes with every rebuild)
 	for (auto &levels : shadow_draws_)
 		for (MultiMeshDraw &m : levels) m.free();
 	for (auto &levels : draws_)
@@ -312,6 +322,15 @@ void AgentRenderer::draw_rows(const Vector3 &cam) {
 			shadow_draws_[i][level].set(scenario_, casters_[i][level == BODY_LEVEL ? FAR_LEVEL : BODY_LEVEL].rid, casts[i][level], box, true, LAYER_VEHICLES);
 		}
 	fleet_shadow_.draw();
+}
+
+// The far traffic's cars: the sectors a street's numbers changed in written again, the shader's clock the moment the frame draws.
+void AgentRenderer::draw_far(const PoseFrame &f, const PoseSample &at) {
+	const int64_t from = f.stamp_ns[at.first], to = f.stamp_ns[std::min(at.first + 1, POSE_TRAIL - 1)];
+	// the city's clock at the moment drawn: its seconds at the newest publication, less what the city runs in the time the frame
+	// stands behind it (the game's speed: at twice the speed the far cars run twice as fast, paused they stand)
+	const double behind_s = (double(f.stamp_ns[POSE_TRAIL - 1]) - (double(from) + double(to - from) * double(at.t))) / double(NS_PER_S);
+	far_traffic_.draw(f.city_s - behind_s * double(f.city_rate));
 }
 
 } // namespace city

@@ -9,8 +9,8 @@ namespace city {
 
 // Scalar keys of traffic.json "params" (X-macro: declared here, required by the loader).
 #define CITY_TRAFFIC_FIELDS(X) \
-	X(density_per_lane_m) X(traffic_share) X(people_share) X(fill_share) X(fleet_tau_s) \
-	X(spawn_attempts_per_step) X(spawn_fill_attempts) X(route_budget_per_step) X(route_max_expanded) \
+	X(density_per_lane_m) X(traffic_share) X(people_share) X(fill_share) \
+	X(route_budget_per_step) X(route_max_expanded) \
 	X(trip_min_m) X(trip_max_m) X(trip_decay_m) X(slot_m) X(car_share) X(bus_share) \
 	X(turn_cost_right_s) X(turn_cost_left_s) X(turn_cost_uturn_s) X(signal_cost_s) X(edge_extra_s) X(guess_speed_kmh) \
 	X(straight_dot) X(control_max_m) X(uturn_push_m) \
@@ -65,7 +65,9 @@ namespace city {
 	X(parker_look_ticks) X(bike_share) X(bike_speed_kmh) X(bike_edge_m) X(cycle_ease_m) X(cycle_clear_share) \
 	X(transit_pick_m) X(transit_stop_reach_m) X(transit_join_m) X(transit_along_road_m) X(transit_entrance_reach_m) X(transit_most_vehicles) X(transit_bus_vehicles) X(transit_rail_vehicles) X(bus_dwell_s) X(bus_terminal_s) X(bus_spacing_s) X(bus_approach_m) X(bus_at_stop_m) X(bus_stopped_ms) X(bus_detour) X(bus_pace) X(bus_away_margin_m) X(train_dwell_s) X(train_top_ms) X(metro_top_ms) X(train_accel) X(train_brake) X(train_gap_m) X(train_cars) X(metro_cars) X(train_car_m) X(crossing_stop_m) X(crossing_warn_m) X(crossing_keep_clear_m) X(train_clear_ahead_m) X(train_clear_time_s) X(train_clear_from_m) X(train_clear_step_m) X(train_clear_disc_m) X(train_car_disc_m) X(train_car_step_m) X(train_car_margin_m) X(train_idle_ms) X(train_walker_look_m) \
 	X(meso_alpha) X(meso_crowd) X(meso_s0_m) X(meso_head_s) X(meso_dwell_s) \
-	X(meso_window_m) X(meso_window_out_m) X(micro_spawn_m) X(ped_window_m) X(ped_despawn_window_share)
+	X(meso_window_m) X(meso_window_out_m) X(window_min_m) X(window_view_share) X(window_recentre_share) X(window_shrink_share) \
+	X(flow_dt_s) X(flow_wave_kmh) X(flow_green_share) X(flow_links_per_tick) X(flow_origin_queue) X(flow_admit_per_tick) X(flow_speed_step) \
+	X(ped_window_m) X(ped_despawn_window_share)
 
 #define CITY_TRAFFIC_DECLARE(name) float name = 0;
 

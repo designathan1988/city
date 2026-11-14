@@ -455,6 +455,7 @@
       {"enum": "SimSpeed", "declared": "native/src/sim/simulation/simulation.h", "file": "native/src/sim/simulation/simulation.cpp", "holder": "Simulation", "member": "speed_", "setter": "enter", "table": "SPEED_MOVES"},
       {"enum": "PedMode", "declared": "native/src/sim/traffic/ped_state.h", "file": "native/src/sim/traffic/ped_mode.cpp", "holder": "Pedestrian", "member": "mode", "setter": "enter_mode", "table": "PED_MODES"},
       {"enum": "CarPhase", "declared": "native/src/sim/traffic/parking_state.h", "file": "native/src/sim/traffic/car_phase.cpp", "holder": "LotCar", "member": "phase", "setter": "enter_car_phase", "table": "CAR_PHASES"},
+      {"enum": "FlowPhase", "declared": "native/src/sim/traffic/street_flows.h", "file": "native/src/sim/traffic/flow_step.cpp", "holder": "StreetFlows", "member": "phase", "setter": "enter_flow_phase", "table": "FLOW_PHASES"},
       {"enum": "LorryPhase", "declared": "native/src/sim/traffic/parking_state.h", "file": "native/src/sim/traffic/lorry_phase.cpp", "holder": "Lorry", "member": "phase", "setter": "enter_lorry_phase", "table": "LORRY_PHASES"},
       {"enum": "KerbPhase", "declared": "native/src/sim/traffic/kerb_state.h", "file": "native/src/sim/traffic/kerb_phase.cpp", "holder": "KerbStop", "member": "phase", "setter": "enter_kerb_phase", "table": "KERB_PHASES"},
       {"enum": "State", "declared": "native/src/render/buildings/signature_bodies.h", "file": "native/src/render/buildings/signature_load.cpp", "holder": "SignatureBodies", "member": "state_", "setter": "enter", "table": "DESIGN_MOVES"}

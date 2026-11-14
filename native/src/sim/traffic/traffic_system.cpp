@@ -1,6 +1,6 @@
 // The traffic step called by Simulation::step: applies the lane-graph changes the journal announced (only the segments
-// and nodes an edit touched), then runs the far model, demand, lane changes, motion and pedestrians, and publishes the
-// poses render/agents draws (each vehicle's from its path: vehicle_pose.cpp).
+// and nodes an edit touched), then runs the far traffic's flows (street_flows.cpp), the buses' far queues, lane changes, motion
+// and pedestrians, and publishes the poses render/agents draws (each vehicle's from its path: vehicle_pose.cpp).
 #include "sim/traffic/kerb_stops.h"
 
 #include "sim/traffic/lane_closures.h"
@@ -47,6 +47,7 @@ void reset_traffic(CityState &s) {
 	t.conn_vehicles.assign(t.g.conns.size(), {});
 	t.conn_active.assign(t.g.conns.size(), 0);
 	meso_clear(t);
+	reset_flows(s);
 	t.light_now.assign(t.g.ds.size(), uint8_t(Light::GREEN));
 	reset_admission(s);
 	const size_t arms = s.roads.nodes.size() * NODE_ARMS_MAX * CROSS_CACHE_KINDS;
@@ -115,6 +116,10 @@ void publish_poses(CityState &s, int64_t stamp_ns) {
 	PoseFrame &f = s.poses.back();
 	f.vehicles.clear();
 	f.people.clear();
+	// the city's clock for what the render moves by itself (the far cars): at the game's speed, not the stamps' real time
+	f.city_s = t.time;
+	f.city_rate = before > 0 && stamp_ns > before ? float((t.time - t.flows.published_s) * NS_PER_S / double(stamp_ns - before)) : 0.f;
+	t.flows.published_s = t.time;
 	// per segment: the speeds and limits of the vehicles on it, zero between passes but where this pass puts some (pub_segs)
 	const size_t segs = s.roads.segs.size();
 	std::vector<float> &sum = t.pub_sum, &lim = t.pub_lim;
@@ -194,7 +199,7 @@ void step(CityState &s, float dt) {
 	t.step_ms[STAGE_BAYS] += lap.lap();
 	step_governor(s, dt);
 	if (s.traffic_levels.vehicles_on) {
-		spawn_vehicles(s, dt);
+		step_flows(s, dt); // the far traffic's flows, and the vehicles they owe the window
 		meso_process(s);
 		change_lanes(s);
 		step_vehicles(s, dt);

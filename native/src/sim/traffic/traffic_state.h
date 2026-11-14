@@ -13,6 +13,7 @@
 #include "sim/traffic/parking_state.h"
 #include "sim/traffic/ped_apart.h"
 #include "sim/traffic/ped_state.h"
+#include "sim/traffic/street_flows.h"
 #include "sim/traffic/traffic_view.h"
 
 #include <cstdint>
@@ -155,16 +156,16 @@ struct TrafficState {
 	std::vector<int> lane_active, conn_active; // per lane key / connector: its place in the active list plus one, 0 when off it
 	std::vector<int> step_lanes, step_conns; // per-step snapshot of the active lists
 	std::vector<int> sliders; // vehicles whose bodies still stand over the lane they changed out of (Vehicle::slid_from)
-	// Micro window (Roadcraft traffic.ts checkWindow/materialize): last camera position and time, sidewalk metres and
-	// the walkable segments inside ped_window_m.
-	float win_x = 0, win_z = 0;
+	StreetFlows flows; // the far traffic of the whole map (street_flows.h)
+	// The window of detailed traffic (window.cpp): where it stands and how far it reaches (it follows the view), where the camera
+	// was at the last look and when; then the walkers' window: its sidewalk metres and the walkable segments inside ped_window_m.
+	float win_x = 0, win_z = 0, win_r = 0, look_x = 0, look_z = 0;
 	double win_t = -double(BIG);
-	// The window owns the demand (window.cpp, demand.cpp): its directed segments (their middle within meso_window_m) and their lane
-	// metres at the last look, which of them are in it (by ds), and those that came in since and are still to be filled to their
-	// share.
+	// The window's directed segments (those the flows hold as inside) and their lane metres; `in_win` the look's scratch by ds;
+	// `window_out_ds` the ways out: the streets outside it that start where one inside ends.
 	std::vector<int> window_ds;
 	std::vector<uint8_t> in_win;
-	std::vector<int> fill_ds;
+	std::vector<int> window_out_ds;
 	double window_lane_m = 0;
 	double ped_kind_m[PLACE_KINDS] = {}; // metres of street of each kind of place inside the window
 	std::vector<int> ped_segs;
@@ -200,7 +201,6 @@ struct TrafficState {
 	int vehicle_count = 0, ped_count = 0, arrived = 0, lost = 0, ped_arrived = 0, ped_waiting = 0, stuck_lost = 0;
 	double time = 0; // simulated seconds
 	uint64_t tick = 0;
-	float spawn_credit = 0;
 	// Where a step goes (traffic_probe step_ms, summed since the start): the bays read, the fleet (demand, far model, lane
 	// changes, motion), the lots, the walkers; then, of the lots, the bays' ways and the routes of a look, and the publication.
 	double step_ms[TIMED_STAGES] = {};

@@ -187,7 +187,6 @@ bool detour(CityState &s, int vehicle, int blocked, bool need_room);
 bool reconsider(CityState &s, int vehicle);
 
 // demand.cpp
-void spawn_vehicles(CityState &s, float dt);
 double fleet_target(const CityState &s); // how many vehicles the demand asks for now
 double demand_for(const CityState &s, double lane_metres); // the vehicles these lane metres carry at this hour and these levels
 void free_vehicle(TrafficState &t, int id); // the slot of a vehicle off the lanes, out of the fleet count

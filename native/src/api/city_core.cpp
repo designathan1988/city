@@ -196,6 +196,8 @@ void CityCore::_process(double delta) {
 	const Vector3 look = cam ? ground_seen(*cam) : cam_;
 	state_->camera_x.store(look.x);
 	state_->camera_z.store(look.z);
+	state_->camera_reach.store(cam_.distance_to(look));
+	render_.far_traffic().look_at(look); // where the detailed vehicles are published round: the far cars stand in elsewhere
 	bool fresh = false;
 	const PoseFrame &poses = state_->poses.acquire(fresh);
 	const int64_t now = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -216,8 +218,10 @@ void CityCore::_process(double delta) {
 	if (need_full_rebuild_) {
 		std::shared_lock<std::shared_mutex> lk(state_->map_mutex); // reads the map; the log has its own mutex
 		render_.full_rebuild(*state_, state_->log, terrain3d());
+		state_->flows_untold.store(true); // the far cars went with the rebuild: the flows tell every street again (street_flows.h)
 		need_full_rebuild_ = false;
 	}
+	render_.far_traffic().collect(state_->log);
 	render_.sync(*state_, state_->log, terrain3d(), cam_, delta); // takes the map shared (never exclusive: render_world.h)
 	laps.lap();
 	{
