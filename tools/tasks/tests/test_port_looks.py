@@ -122,6 +122,13 @@ class WholeLife(RepoCase):
         self.record = self.root / "session.jsonl"
         self.entries = [{"type": "user", "message": {"content": "port the complete roads"}}]
         self.code = {"file_path": str(self.root / "native" / "src" / "sim" / "x.cpp"), "old_string": "a", "new_string": "b"}
+        # the project's machine holds one domain skill: the C++ one, in the project's own folder
+        held = os.environ.get("CITY_PLUGINS")
+        os.environ["CITY_PLUGINS"] = str(self.root / "no_plugins")
+        self.addCleanup(lambda: os.environ.pop("CITY_PLUGINS") if held is None else os.environ.update(CITY_PLUGINS=held))
+        self.skill = self.root / ".claude" / "skills" / "cpp-pro" / "SKILL.md"
+        self.skill.parent.mkdir(parents=True)
+        self.skill.write_text("---\nname: cpp-pro\n---\n", encoding="utf-8")
 
     def did(self, *entries: dict) -> None:
         self.entries += entries
@@ -164,6 +171,8 @@ class WholeLife(RepoCase):
         self.did(call("Read", {"file_path": str(self.note)}))
         self.assertIn("Context7", self.refusal("Edit", self.code))
         self.did(call("mcp__plugin_context7_context7__query-docs", {}), call("WebSearch", {}))
+        self.assertIn("cpp-pro", self.refusal("Edit", self.code), "the domain skill of the file's kind")
+        self.did(call("Read", {"file_path": str(self.skill)}))
         self.assertEqual(self.refusal("Edit", self.code), "")
         self.assertIn("refused", block.refusal("run near", self.root, ["near"]) or "", "the tool runs nothing while it is open")
         self.assertIn("the session does its own work", self.refusal("Agent", {"prompt": "read the roads"}))

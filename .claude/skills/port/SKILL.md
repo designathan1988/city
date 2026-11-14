@@ -33,7 +33,10 @@ when_to_use: Invoke it before the first tool call of any port work and again aft
 5. **Two verifications may fail. A third stops the work**: tell the owner what failed and why each fix did not hold.
 6. **Your own knowledge is not a source.** Every API the code calls is asked of Context7 first; every value of the real
    world and every design decision is searched on the internet first, and the source's own sentence is what the data's
-   `_doc` cites. A figure written from memory is a defect.
+   `_doc` cites. A figure written from memory is a defect. A kind of file is written with its domain skill, used before
+   its first edit and again after a compaction (Skill tool, or its SKILL.md Read whole; the hook names it and its path
+   when it refuses the edit): a shader, the interface, a test of the game, the renderer, the extension's boundary, every
+   C++ file (CLAUDE.md lists each). Its rules and pitfalls are held to; a step of it that runs, plans or asks does not apply.
 7. **You do the reading.** No agent reads, traces or codes the port.
 8. **The note `doc/work/<area>.md` is written before the first line of code** and as each case is coded: the owner's orders
    in their words, facts with `file:line`, each case's design, what is done, what is left. Its first section, `## Now`, is
@@ -52,7 +55,7 @@ when_to_use: Invoke it before the first tool call of any port work and again aft
 | 2 | One look, once: the functionality's state now (the hook refuses a second run with no block open; more only on the owner's order: `block order "<the owner's own words>"`) | `python tools/tasks/cli.py run <task>` |
 | 3 | Both games traced | `python tools/tracer/port.py sheet <area>` (report: `dist/port/<area>.json`); closer: `python tools/tracer/trace.py <START> --depth N --state --root <files>` |
 | 4 | Its code read whole, in both games, by you | Read; the reference: `C:\Users\Jonathan\Documents\Projects\lab\roadcraft\src` |
-| 5 | Context7 for each API; the internet for each design decision and real value | `resolve-library-id`, `query-docs`, WebSearch, WebFetch |
+| 5 | Context7 for each API; the internet for each design decision and real value; the domain skill of each kind of file the work will write | `resolve-library-id`, `query-docs`, WebSearch, WebFetch; Skill `godot-skills:godot-shaders-vfx`, `godot-prompter:godot-ui`, `godot-skills:godot-performance`, `godot-prompter:gdextension`, `cpp-pro`, ... |
 | 6 | The note written | `doc/work/<area>.md` |
 | 7 | The whole functionality coded, every case | `python tools/tasks/cli.py block open <area>` |
 | 8 | Read, then reviewed | the whole diff read by you; `python tools/tasks/cli.py block review` |

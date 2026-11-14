@@ -17,8 +17,9 @@ sys.path.insert(0, str(HOOKS))
 import port_gate  # noqa: E402
 import port_looks  # noqa: E402
 import port_note  # noqa: E402
+import port_skills  # noqa: E402
 
-RUN = "python tools/tasks/cli.py run"
+RUN ="python tools/tasks/cli.py run"
 COMPACTED = ("compact", None)   # a compaction's boundary in a session's record
 NOTE = "# traffic\n\n## Now\n- the block is open; next: the far traffic.\n\n## Read\n- a fact.\n"
 # (command, started in the background, refused)
@@ -74,6 +75,10 @@ class GateCase(unittest.TestCase):
         port_looks.SHOTS, port_looks.REFS = self.folder / "captures", self.folder / "look"
         port_looks.SUITES = self.folder / "suites.json"
         port_looks.SUITES.write_text(json.dumps({"suites": {"tests": {}}, "groups": {"looks": {}}}), encoding="utf-8")
+        # no domain skill on this machine (test_port_skills.py has its own)
+        self.skills = port_skills.ROOT, os.environ.get(port_skills.CACHE)
+        port_skills.ROOT = self.folder / "none"
+        os.environ[port_skills.CACHE] = str(self.folder / "none")
         port_note.WORK = self.folder / "work"
         port_note.WORK.mkdir()
         self.note = port_note.WORK / "traffic.md"
@@ -92,6 +97,11 @@ class GateCase(unittest.TestCase):
         port_gate.BLOCK, port_note.WORK = self.held
         for name, value in self.looks.items():
             setattr(port_looks, name, value)
+        port_skills.ROOT = self.skills[0]
+        if self.skills[1] is None:
+            del os.environ[port_skills.CACHE]
+        else:
+            os.environ[port_skills.CACHE] = self.skills[1]
 
     def state(self, state: str, runs: dict | None = None) -> None:
         """The block in `state`; in verify its run photographed the look, unless `runs` says what ran."""

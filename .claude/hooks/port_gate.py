@@ -6,7 +6,7 @@ the project's tools muted (piped, redirected), joined to another command or kept
 cause named before the debugging skill was followed; a block's work committed before the verification skill was.
 An edit (Edit, Write): a Python or JSON file left unreadable by it; a work's note left with no `## Now` or one too long to be
 given back whole; the game's code with no block open, or before the skill `port`, Context7 and the internet were used in the
-session.
+session, or before the domain skill of the file's kind was (port_skills.py: a shader, the interface, the renderer, ...).
 Any edit or command, while a block is not closed, before the session stood on its records again: since its start or its last
 compaction the skill `port` was not invoked or the block's note was not Read (a compaction keeps a summary; the note is what
 was read and decided). The game's code, a run of the project's tools and a commit, while the note is older than the work.
@@ -21,8 +21,9 @@ from pathlib import Path
 import port_edits
 import port_looks
 import port_note
+import port_skills
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT =Path(__file__).resolve().parents[2]
 BLOCK = ROOT / "dist" / "block" / "state.json"
 GAME_CODE = ("native/src/", "project/")      # what the edit gate holds
 SHELLS = ("Bash", "PowerShell")
@@ -229,4 +230,7 @@ def gate(payload: dict) -> dict | None:
         (f"load Context7 ({CONTEXT7}) and ask it (query-docs) about the APIs this code calls", did["docs"]),
         ("search the internet (WebSearch, WebFetch) for the design decision and for each value of the real world this code "
          "takes from a norm or a published method", did["web"])) if not done]
-    return deny("CLAUDE.md, before the game's code is edited: " + "; ".join(owed) + ". Then make this edit again.") if owed else None
+    if owed:
+        return deny("CLAUDE.md, before the game's code is edited: " + "; ".join(owed) + ". Then make this edit again.")
+    unskilled = port_skills.owed(inside, did)
+    return deny(unskilled) if unskilled else None

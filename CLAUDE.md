@@ -48,6 +48,15 @@ tool call of any port work, and again after every compaction. What it says in st
 - **Skills are used, not named**: `port` for the procedure, `superpowers:systematic-debugging` on a failure,
   `superpowers:verification-before-completion` before a commit, the `speckit-*` skills when the owner asks for a
   specification. A skill's step that runs a test while coding, writes a plan document or stops to ask does not apply here.
+- **A kind of file is written with its domain skill**, used before the first edit of that kind and again after every
+  compaction (invoked with the Skill tool, or its SKILL.md Read whole; the hook refuses the edit before it,
+  `.claude/hooks/port_skills.py`): a shader `godot-skills:godot-shaders-vfx` or `godot-prompter:shader-basics`; the
+  interface (`project/ui`) `godot-ui`; a test or a capture of the game `godot-skills:godot-headless-testing` or
+  `godot-prompter:godot-testing`; the renderer (`native/src/render`) `godot-skills:godot-performance`,
+  `godot-prompter:rendering-pipeline` or `godot-prompter:godot-optimization`; the extension's boundary
+  (`native/src/api`) `godot-prompter:gdextension`; every C++ file the project's `cpp-pro` (its references for memory,
+  threads and CMake as the work asks). Their rules and pitfalls are held to; they are no source for an API (Context7 is)
+  and none of their agents, mentor, grill or brainstorming steps apply (the session does its own work and does not ask).
 - **The note `doc/work/<name>.md`** holds the owner's orders in their words, what was read (facts with `file:line`), each
   case's design, what is done and what is left. Written before the first line of code and as the work goes, never more
   than fifteen minutes behind it. Its first section, `## Now`, is the state at this moment, rewritten each time: the
@@ -129,4 +138,8 @@ tool call of any port work, and again after every compaction. What it says in st
 | Only on the owner's order | the whole suite (`python tools/tasks/cli.py run tests`), measurements at scale (`python tools/tasks/km24.py`), `tools/build/quick.sh --ready`, the whole gates, `python tools/hunt/hunt.py` |
 
 The DLLs in `project/bin` are versioned. A clone needs Godot 4.7.2, llvm-mingw `20261020-ucrt-x86_64`, CMake 4.4, Python 3.12, Node
-23.6+ (`npm ci` in `tools/tracer/tracer/tools`), an x86-64-v3 processor.
+23.6+ (`npm ci` in `tools/tracer/tracer/tools`), an x86-64-v3 processor. The domain skills: the plugin
+`godot-skills@godot-claude-code-skills` (enabled in `.claude/settings.json`; `claude plugin marketplace add
+MindsMaster/godot-claude-code-skills`, then `claude plugin install godot-skills@godot-claude-code-skills --scope project`)
+and `godot-prompter@skillsmith` (`claude plugin marketplace add jame581/skillsmith`, `claude plugin install
+godot-prompter@skillsmith`); `cpp-pro` is in `.claude/skills`.

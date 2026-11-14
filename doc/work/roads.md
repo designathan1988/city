@@ -7,29 +7,27 @@
   NEM PARA PEDIR AUTORIZAÇÃO ... ESCOLHA SEMPRE A MELHOR OPÇÃO"; "RESOLVA NO CODIGO, NADA DE FICAR INVESTIGANDO COM
   TESTE, MEDIÇÃO"; "OLHA COM ATENÇÃO AS IMAGENS A PARTIR DE AGORA"; "CHEGA DE DEMORA! CHEGA DE TRABALHO MAL FEITO!".
   Standing: Portuguese to the owner; no agents; defects found by reading; one small verification; whole photos.
+- The owner, 2026-11-14, with the block open: "Instalei umas skills de godot, veja se elas te ajudam. se sim passe a
+  usa-las e adcione aos hooks e skill e ao claude.md. além disse procure na internet outras melhores para o caso desse
+  probjeto, que cubra godot, c++, shaders e o que mais precisar." DONE (to commit with the block or before it):
+  godot-prompter@skillsmith (the owner's install: 59 skills; of use here: gdextension, shader-basics,
+  rendering-pipeline, godot-optimization, multithreading, godot-ui, godot-testing; its agents, grill, brainstorming and
+  mentor do not apply); searched and added: godot-skills@godot-claude-code-skills (MindsMaster, MIT, every example run
+  against Godot 4.7.2, no hook nor script; enabled in .claude/settings.json) and cpp-pro (Jeffallan/claude-skills, MIT,
+  copied to .claude/skills/cpp-pro); the hook .claude/hooks/port_skills.py refuses an edit of a kind of file before
+  its domain skill was used since the session's start or last compaction (tests: test_port_skills.py, WholeLife);
+  CLAUDE.md and the skill `port` say it. In THIS session the plugins' skills are not in the Skill tool's listing
+  (installed while it ran): each is Read whole from the disk when the hook asks (it names the path).
 - Before it: the block `look` closed (9989db18: the far level lays each lot; the guards 6cee0a3e). Its note:
   doc/work/look.md.
-- State (2026-11-14): no block open; nothing coded. The tracer's sheet ran (dist/port/roads.json: differences
-  named for case 1 only; the other rows carry no file:line it can start from, so each was read from its files).
-  READ AND WRITTEN BELOW, both games: case 1 (the five road_grade files here; the reference's elevation.ts to :660
-  and its functions' list), case 2 (road_plan.cpp, road_economy.cpp/.h, road_draft.gd; the reference's buildMode.ts,
-  economy.ts, structures.ts, main.ts:3360-3547), case 4 (road_markings.cpp; the reference's markings.ts whole,
-  markingStyle.ts), case 5 (road_profile_panel.gd, road_spec_ops.gd; the reference's profileEditor.ts by its
-  controls), case 6 (street_names.h, inspector_panel.gd; the reference's streetNames.ts, inspector.ts:210-254,
-  vehicles/spawn.ts:80-230), case 7 (profile_types.h, lane_graph.cpp, lane_graph_types.h, lane_change.cpp; the
-  reference's rules at their places), the reference's tuning.ts.
-- STILL TO READ before the block: the consumers of the grade here (road_network.cpp:245, road_network_deck.cpp,
-  road_network_cut.cpp, road_grade_sync.cpp, the probes) and road_grade_test; this game's tuning.json `grade` and
-  `economy` keys against the reference's; city_core_commands.cpp:60-90 (the preview's heights) and road_bend.cpp,
-  road_snap.cpp:127 (a start on a raised road); the far lines (project/render/shaders/road_far.gdshader, the
-  reference's render/roadPaint.ts); the basic furniture set (street_furniture*.cpp here; the reference's
-  world/roads/furnitureSets.ts, world/streetFurniture.ts); where this game's demand could take cars in at the map's
-  edge (lot_demand.cpp, street_flows.h, flow_step.cpp); way_search.cpp (does a way know the lanes); road_spec.cpp
-  and city_core_road_spec.cpp (the editor's core: limits, issues, the 256 customs), RoadModels (saved roads).
-- THEN: Context7 for each API the code calls (Godot's UI nodes of the editor, ImmediateMesh or the draft's
-  overlay, shader derivatives for the far dashes); the internet for each design decision and value (the smoother
-  and the envelopes of case 1; the legends' sizes and the arrows by the signage manual; what a general vehicle may
-  do on a bus lane; the entry rates at a town's edge); each case's design written under "Design".
+- State (2026-11-14, after the third compaction of this work): the reading and the sources are done (everything
+  under "Read", "Sources" and "Design" below); the block `roads` is opened next and every case coded in it, each
+  file read again as it is edited (a compaction keeps none of their text). ORDER OF THE CODING: case 1 (the
+  heights: grade_line.h/.cpp, grade_ground.cpp, grade_span.cpp, road_grade.cpp/.h, the probe; the three translated
+  files deleted; CMake's list and doc/map.md), case 7 (the lanes' rules into DirSeg, link_pair, lane_change), case
+  6 (furniture levels, the inspector's street and numbers, the edge's flows), case 2 (the plan's price and
+  stretches, the draft's words, the limited end, the raised start, the deep cut), case 4 (arrows, words, the bus
+  lane's line and legend, the far lines), case 5 (the editor). Each case's progress is written here as it lands.
 - The cases (doc/port.md; doc/specs/003-roadcraft-features/sheets/roads.md has each with its evidence):
   1. the heights of the roads, solved in this game's design (Proads-8, -10, -15, -33, -35; read and researched before:
      doc/work/t015-roads.md: Whittaker-Eilers smoothing, Eilers 2003; exact two-pass envelopes, Felzenszwalb and
@@ -195,10 +193,32 @@
     mensagens simples e curtas."; "A legenda “PARE” deve ser posicionada, no mínimo, a 1,60 m antes da linha de
     retenção, centralizada na faixa de circulação em que está inscrita. Deve ser utilizada como reforço ao sinal
     de regulamentação R-1 – “Parada obrigatória”."
-- A general vehicle on a bus lane (searched; the Curitiba page refused the fetch, 403; to be read from an official
-  text before the data is written): the enforcement's rule reported by several sources: no infraction for who
-  enters the exclusive lane on the right to turn right or to reach a property beside it, on the stretch marked
-  with the continuity line; which is what MBST 5.5.1 above says of the marking itself.
+- A general vehicle on a bus lane: Código de Trânsito Brasileiro (Lei 9.503/1997), art. 184, read at
+  ctbdigital.com.br/artigo/art184: "Transitar com o veículo: I - na faixa ou pista da direita, regulamentada como
+  de circulação exclusiva para determinado tipo de veículo, exceto para acesso a imóveis lindeiros ou conversões à
+  direita"; II (the left lane) and III (public transport's own way) carry no such exception. So: a vehicle that is
+  no bus enters a bus lane on the kerb side only to turn at the next junction or to reach a lot beside it, on the
+  stretch MBST 5.5.1 marks with the continuity line; never to travel along it.
+- Through traffic at a town's edge: Minnesota DOT, TH 14 New Ulm to Mankato corridor study, appendix B (a licence
+  plate survey, 24,735 plates; dot.state.mn.us/d7/projects/14newulmtonmankato/documents/corridor/appendixb.pdf):
+  "About 20 percent of the passenger vehicle trips entering New Ulm pass directly through the town and about 80
+  percent of entering passenger vehicle trips stop in town for one or more purposes." (traffic.json
+  edge_through_share 0.2: of what enters at an edge, the share bound for another edge).
+- How deep an open cut goes before a bore: railsystem.net, "Cut and cover" (searched 2026-11-14): "For depths of 30
+  to 40 feet (about 10 m to 12 m), cut-and-cover is usually more economical and more practical than mined or bored
+  tunneling."; "depths to 60 feet (18 m) are not uncommon; depths rarely exceed 100 feet (30 m)." (grade
+  bore_from_cover_m 18: a cutting deeper than this is bored).
+- Godot's shading language (Context7 /websites/godotengine_en, shader_functions): "fwidth: Sum of absolute
+  derivative in x and y."; dFdx / dFdy "Available only in the fragment shader"; smoothstep's "Results are undefined
+  if a >= b". OptionButton (class_optionbutton): add_item(label, id = -1) "New items are appended at the end. Note:
+  The item will be selected if there are no other items."; select(idx) "Selects an item by index and makes it the
+  current item"; signal item_selected(index) "Emitted when the current item has been changed by the user"; Button's
+  `pressed` signal connected with `button.pressed.connect(...)`.
+- The vertical curve and ramp figures of `grade` (0.12, 0.16, 0.05, 0.13, the 8 m sag, the 4.8 m curve): the
+  DNIT manuals' tables were searched (Manual de Projeto Geométrico de Travessias Urbanas, IPR 740) and not
+  reached; these are the game's modelling values, kept as they stand, said so in their `_doc`; the two new ones
+  (smooth_wavelength_m, curve_wavelength_m) are derived from them under "Design" (the wave a moving mean of 2 x 36 m
+  halves: 1.66 x 72 m; of 2 x 4.8 m: 1.66 x 9.6 m, 16 m).
 - P. H. C. Eilers, "A Perfect Smoother", Analytical Chemistry 75 (14), 2003, 3631-3636, doi 10.1021/ac034173t:
   a smoother by penalised least squares after Whittaker, its system sparse, solved by a Cholesky decomposition (the
   paper itself is behind its publisher's door; what was read of it: its abstract and two implementations' notes).
@@ -503,6 +523,18 @@
   0.1 m, no grade past 0.162; over rolling ground a straight deck (within 0.12 m of its chord) more than 3.2 m
   clear; landings sunk 0, 1.6 and 3.2 m; a span too short for two ramps lowers and never steepens; a bridge
   crosses a valley level; and RoadGradeSeamCases (to read). A design of this game's own must hold every one.
+- The probe of case 1, native/src/api/city_core_grade_probe.cpp (103 lines, read whole): grade_probe(scene) builds
+  a scratch RoadNetwork (init, add_node, add_segment(a, b, Quad::straight, profile, 0, 0, 0), set_structure,
+  refresh_all), a ground by name (ground_named :26-44: flat, hill, valley, rolling, hilly, sunk), then
+  net.grade.everything() and net.grade.solve; it returns `nodes` (each y) and, a segment: structure, len, step,
+  plate_a, plate_b, h, ceil, ground. It reads p.ceil at :83: the only reader of ceil, base or raw outside the
+  solver's own files (grep), and no test reads the key `ceil` (road_grade_test.gd reads h, ground, step, len,
+  plate_a, plate_b, nodes): the key goes with the line. project/tests/core/road_grade_seam_cases.gd (74 lines, read
+  whole): tunnels (the cover over a bore through a hill of 40 U over 900 U, the portals within 1.5 U of the ground
+  plus the clearance, the middle 20 U under the same road at grade, no grade past 0.13 x 2.5, shallower the shorter:
+  900 > 180 > 90 U and the 90 U one under the bore's cover) and plates (every station within plate_a / plate_b of a
+  crossroads of chains at its node's height within 1e-3 U, for ground, all raised, raised over ground, raised
+  landing on the streets, on flat and hilly ground, boulevard and avenue).
 - The tuning here, project/data/catalog/tuning.json: grade :122-141 (ground 0.12, authored 0.12, join_m 0.3, ramp
   0.16, deck 0.05, deck_tie 0.05, tunnel 0.13, clearance_m 0.12, clear_elevated_m 5.6, clear_bridge_m 3, the decks
   0.22 / 1.04 / 0.96 / 0.24, tunnel headroom 4.4, arch 0.6, floor 2, lift_on_m 0.6), economy :12-17 (start
