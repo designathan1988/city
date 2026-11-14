@@ -35,14 +35,17 @@ int split_segment(CityState &s, int seg, double t) {
 	RoadSegment rec = net.segs[seg];
 	auto halves = split_quad(rec.q, t);
 	double y = net.seg_y(seg, arc_at(rec.table, t));
-	// The new node keeps the road where it was: its authored height the ends' along the road (the crossing reads it so).
-	const double along = rec.len > 0 ? arc_at(rec.table, t) / rec.len : 0; // by length, as the 4.0's segmentOffsetAt
-	const float lift = net.nodes[size_t(rec.a)].lift + (net.nodes[size_t(rec.b)].lift - net.nodes[size_t(rec.a)].lift) * float(along);
+	// The new node keeps the road where it was: its authored height the road's own there (RoadNetwork::lift_on, the one
+	// owner: by the length run, on the one grade the heights' solver carries an authored span by: grade_span.cpp).
+	const double along = rec.len > 0 ? arc_at(rec.table, t) / rec.len : 0; // each half's share of the road's worth
+	const float lift = net.lift_on(seg, t);
 	RoadRefs refs = refs_of(s, { seg }); // the first half takes the id again: what node b named it by goes to the second
 	j_remove_segment(s, seg);
 	int n = j_add_node(s, halves[0].x1, halves[0].z1, y, lift);
-	const int first = j_add_segment(s, rec.a, n, halves[0], rec.profile, rec.zl, rec.zr, uint16_t(rec.flags & ~SEG_RUNS_ON_B)); // a node of the player's: the road ends there
-	const int second = j_add_segment(s, n, rec.b, halves[1], rec.profile, rec.zl, rec.zr, uint16_t(rec.flags & ~SEG_RUNS_ON_A));
+	// each half is worth its share of the road by length: a cut moves no money
+	const float worth_first = rec.worth * float(along), worth_second = rec.worth - worth_first;
+	const int first = j_add_segment(s, rec.a, n, halves[0], rec.profile, rec.zl, rec.zr, uint16_t(rec.flags & ~SEG_RUNS_ON_B), worth_first); // a node of the player's: the road ends there
+	const int second = j_add_segment(s, n, rec.b, halves[1], rec.profile, rec.zl, rec.zr, uint16_t(rec.flags & ~SEG_RUNS_ON_A), worth_second);
 	carry_refs(s, refs, seg, { first, second });
 	return n;
 }

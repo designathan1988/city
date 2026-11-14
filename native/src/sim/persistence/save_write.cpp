@@ -80,6 +80,7 @@ void write_roads(ByteWriter &w, const RoadNetwork &net) {
 		w.put<uint8_t>(g.zl);
 		w.put<uint8_t>(g.zr);
 		w.put<uint16_t>(g.flags);
+		w.put<float>(g.worth); // what it was built as: what it cost and gives back (road_network.h)
 	}
 }
 

@@ -29,6 +29,7 @@ static func apply(theme: Theme) -> void:
 	_label(&"TagLabel", "font_row", "muted")
 	_label(&"PreviewTagLabel", "font_preview_tag", "preview_tag_ink")
 	_label(&"PreviewDangerLabel", "font_preview_tag", "preview_tag_danger_ink")
+	_label(&"PreviewWarnLabel", "font_preview_tag", "warn")
 	_label(&"SideTitle", "font_meta", "muted")
 	_label(&"StatName", "font_stat_name", "muted")
 	_label(&"StatValue", "font_body", "text")

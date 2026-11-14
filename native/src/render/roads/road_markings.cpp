@@ -7,6 +7,7 @@
 
 #include "sim/buildings/lot_access.h"
 #include "sim/roads/profiles.h"
+#include "sim/state/city_cut.h"
 
 #include <algorithm>
 #include <cmath>
@@ -23,10 +24,11 @@ struct Painter {
 	const RoadEmit &e;
 	int sid;
 
-	// A rectangle u0..u1 across, va..vb metres along from node a, in pieces of at most one sample step.
+	// A rectangle u0..u1 across, va..vb metres along from node a, in as many pieces as the surface it is painted on is drawn
+	// in over that stretch (surface_steps: one only where the road is straight and on one grade): a long line laid as one
+	// flat piece between its two ends' heights sinks under a road that rises between them.
 	void rect(float u0, float u1, double va, double vb, const Color &c) const {
-		bool straight = e.s.roads.segs[sid].q.is_straight(STRAIGHT_TOL);
-		int n = straight ? 1 : std::max(1, int(std::ceil((vb - va) / e.L.step)));
+		const int n = surface_steps(e, sid, va, vb);
 		Color col = road_color(c, RoadMat::PAINT);
 		for (int k = 0; k < n; k++) {
 			double a = va + (vb - va) * k / n, b = va + (vb - va) * (k + 1) / n;
@@ -39,8 +41,14 @@ struct Painter {
 	}
 };
 
-// `open_a`, `open_b`: how far from each end an exclusive lane's line lets a driver in (a junction there: the entry stretch).
-void lines(const Painter &pt, const Profile &p, double l0, double l1, double open_a, double open_b) {
+// What the two ends of a road ask of its lines: `open`, how far from that end an exclusive lane's line lets a driver in (a
+// junction there: the entry stretch); `held`, how far before that end's stop line the lines between the lanes that arrive
+// there are continuous (a signal there: the approach line, MBST vol. IV LMS-1; traffic.json approach_line_m).
+struct LinesAtEnds {
+	double open_a = 0, open_b = 0, held_a = 0, held_b = 0;
+};
+
+void lines(const Painter &pt, const Profile &p, double l0, double l1, const LinesAtEnds &ends) {
 	const StreetLook &L = pt.e.L;
 	const StreetLook::PaintStyle &st = L.styles[size_t(pt.e.s.marking_style.load())];
 	const bool fast = p.speed >= st.fast_kmh;
@@ -54,7 +62,16 @@ void lines(const Painter &pt, const Profile &p, double l0, double l1, double ope
 		const LineKind kind = m.centre && m.kind == LineKind::SOLID && st.multi_lane_double && many ? LineKind::DOUBLE : m.kind;
 		// An exclusive lane's line is continuous but on the stretch before a junction, where it is the continuity line a
 		// driver crosses to turn (MBST vol. IV 5.5.1; the stretch: traffic.json lane_entry_m).
-		const double whole0 = m.exclusive ? std::min(l1, l0 + open_a) : l0, whole1 = m.exclusive ? std::max(whole0, l1 - open_b) : l1;
+		// the stretch it is continuous on: a continuous line's whole length; a dashed one's approach to a signal, at the end its
+		// two lanes arrive at (none: dashed all along)
+		double whole0 = l0, whole1 = l1;
+		if (m.exclusive) {
+			whole0 = std::min(l1, l0 + ends.open_a);
+			whole1 = std::max(whole0, l1 - ends.open_b);
+		} else if (kind == LineKind::DASHED) {
+			whole0 = m.way > 0 ? std::max(l0, l1 - ends.held_b) : l0;
+			whole1 = m.way > 0 ? l1 : std::min(l1, l0 + (m.way < 0 ? ends.held_a : 0));
+		}
 		auto line = [&](float u, float hw) {
 			const auto dashes = [&](double from, double to) {
 				for (double v = std::floor(from / period) * period; v < to; v += period) {
@@ -62,7 +79,6 @@ void lines(const Painter &pt, const Profile &p, double l0, double l1, double ope
 					if (b > a) pt.rect(u - hw, u + hw, a, b, c);
 				}
 			};
-			if (kind == LineKind::DASHED) return dashes(l0, l1);
 			dashes(l0, whole0);
 			if (whole1 > whole0) pt.rect(u - hw, u + hw, whole0, whole1, c);
 			dashes(whole1, l1);
@@ -175,8 +191,9 @@ void emit_markings(const RoadEmit &e, int sid) {
 	Painter pt{ e, sid };
 	crossings(pt, p, v0, v1, ca, cb, crosswalk_at(e.s, g.a, sid), crosswalk_at(e.s, g.b, sid));
 	if (e.far) return; // the lane lines are filtered by the road's shader there
-	const double entry = e.s.catalog.traffic.lane_entry_m;
-	lines(pt, p, v0 + e.s.roads.stop_line_back(g.a, sid), v1 - e.s.roads.stop_line_back(g.b, sid), ca ? entry : 0, cb ? entry : 0); // the lines end at the stop lines
+	const double entry = e.s.catalog.traffic.lane_entry_m, held = e.s.catalog.traffic.approach_line_m;
+	const LinesAtEnds ends{ ca ? entry : 0, cb ? entry : 0, ca && leg_at_signal(e.s, g.a, sid) ? held : 0, cb && leg_at_signal(e.s, g.b, sid) ? held : 0 };
+	lines(pt, p, v0 + e.s.roads.stop_line_back(g.a, sid), v1 - e.s.roads.stop_line_back(g.b, sid), ends); // the lines end at the stop lines
 	parking_paint(pt);
 	emit_legends(e, sid);
 }

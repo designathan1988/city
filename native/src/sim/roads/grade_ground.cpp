@@ -167,18 +167,20 @@ void frame_profile(RoadGrade &grade, const RoadNetwork &net, int s) {
 
 void read_ground(RoadGrade &grade, const RoadNetwork &net, int s, const GroundAt &ground_at, const GradeTune &t) {
 	const RoadSegment &g = net.segs[size_t(s)];
-	const GradeProfile &p = grade.prof[size_t(s)];
-	GroundLines &l = grade.ground.by_seg[size_t(s)];
+	ground_under(g.q, g.table, grade.prof[size_t(s)], ground_at, t, grade.ground.by_seg[size_t(s)]);
+}
+
+void ground_under(const Quad &q, const std::vector<double> &table, const GradeProfile &p, const GroundAt &ground_at, const GradeTune &t, GroundLines &l) {
 	const size_t count = p.h.size();
 	thread_local std::vector<float> highest;
 	highest.assign(count, 0.f);
 	l.mean.assign(count, 0.f);
 	l.line.clear();
 	for (size_t i = 0; i < count; i++) {
-		const double at = t_at_length(g.table, double(p.step) * double(i));
+		const double at = t_at_length(table, double(p.step) * double(i));
 		double x, z, dx, dz;
-		g.q.at(at, x, z);
-		g.q.deriv(at, dx, dz);
+		q.at(at, x, z);
+		q.deriv(at, dx, dz);
 		const double run = std::hypot(dx, dz);
 		const double nx = run > 0 ? dz / run : 0, nz = run > 0 ? -dx / run : 0; // across the way
 		float high = -std::numeric_limits<float>::max(), sum = 0;

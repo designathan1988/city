@@ -39,6 +39,7 @@ struct MarkLine {
 	LineKind kind = LineKind::NONE;
 	LineColor color = LineColor::WHITE;
 	bool centre = false; // between the two directions
+	int8_t way = 0; // of the two lanes of one direction it divides (1: towards node b, -1: towards a); 0 for any other line
 };
 
 // The turns painted on a lane (Strip::turns, LaneInfo::turns): a bit each; 0 = by the lane's place among its direction's.

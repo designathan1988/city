@@ -28,6 +28,7 @@ struct Anchor {
 	int node = -1, seg = -1;
 	double t = 0;
 	std::optional<float> lift; // a free end's height over the grade line, when it is not the one being drawn at
+	std::optional<float> stand; // a path's joint: the height the piece before it was priced as ending at
 };
 
 // A crossing of the new road with an existing segment at grade: t on the new road, the segment and t on it.
@@ -49,6 +50,9 @@ struct RoadPlan {
 	float lift_a = 0, lift_b = 0; // its ends' height over the grade line, the end held to the steepest grade drawn
 	bool limited = false; // its end stopped short of the height asked: the grade drawn at allows no more in this length
 	std::vector<float> lifts; // of a path: the height at each joint of its pieces
+	float stand_a = 0, stand_b = 0; // the height each end stands at: what it joins as it stands, or its ground and lift
+	std::vector<DraftStation> stations; // the road as it will be built, piece by piece: what the draft draws and the price counts
+	// its authored height at share t of its LENGTH (never of the curve's parameter: on a bend the two part)
 	float lift_at(double t) const { return lift_a + (lift_b - lift_a) * float(t); }
 };
 

@@ -19,6 +19,7 @@ var _edge_ok: StandardMaterial3D
 var _edge_bad: StandardMaterial3D
 var _ring_ok: StandardMaterial3D
 var _ring_bad: StandardMaterial3D
+var _build := {} # PreviewBuild's materials, by part
 var _outlines: MeshInstance3D # show_outlines: one surface for every ring
 var _outline_mat: ShaderMaterial
 
@@ -36,6 +37,8 @@ func _ready() -> void:
 	_paint_yellow = _material("preview_paint_yellow", _bands.size() + 1)
 	_ring_ok = _material("preview_edge_ok", _bands.size() + 2)
 	_ring_bad = _material("preview_edge_bad", _bands.size() + 2)
+	for part in ["fill", "cut", "rim", "buried", "pier", "post"]: # how the road in hand is built (PreviewBuild), over its bands
+		_build[part] = _material("preview_" + part, _bands.size() + 1)
 	_outline_mat = ShaderMaterial.new()
 	_outline_mat.shader = load(OUTLINE_SHADER)
 	_outline_mat.set_shader_parameter("colour", ThemeBuilder.color("preview_ok"))
@@ -115,8 +118,9 @@ func show_ribbon(points: PackedVector3Array, half_width: float, ok: bool) -> voi
 		_band(points, half_width, _ok_mat if ok else _bad_mat)
 
 
-## The road as it will be laid. plan: the core's plan (points, half_width, asphalt_half). line: "" for an unpainted road,
-## else "white" or "yellow". px: metres a screen pixel covers at each end.
+## The road as it will be laid. plan: the core's plan (points: the road at its solved heights; half_width, asphalt_half;
+## its stations: PreviewBuild). line: "" for an unpainted road, else "white" or "yellow". px: metres a screen pixel covers
+## at each end. A ring marks each end on the ground, under the road when it is drawn off it.
 func show_road(plan: Dictionary, line: String, ok: bool, px_start: float, px_end: float) -> void:
 	_mesh.clear_surfaces()
 	var points: PackedVector3Array = plan.points
@@ -130,9 +134,10 @@ func show_road(plan: Dictionary, line: String, ok: bool, px_start: float, px_end
 	_band(points, plan.asphalt_half, _bands[3])
 	if line != "":
 		_dashes(points, _paint_yellow if line == "yellow" else _paint)
+	PreviewBuild.draw(_mesh, plan, _build)
 	var ring := _ring_ok if ok else _ring_bad
-	_ring(points[0], px_start, ring)
-	_ring(points[-1], px_end, ring)
+	_ring(PreviewBuild.foot(plan, false), px_start, ring)
+	_ring(PreviewBuild.foot(plan, true), px_end, ring)
 
 
 ## The roads a tool is moving: [{points, half_width}].

@@ -1,0 +1,33 @@
+{
+ "_doc": "The roads' paint from near, for an eye (doc/port.md roads, markings; Proads-38): on the bare land of the town's map, with its trees cleared and the roads laid with the basic furniture kit (no street tree over the paint), an avenue from west to east is crossed by a street at the map's middle (no control set: a crossing of four arms runs on signals until its flows speak), by another 120 m west, set to stop (the stop word in every arriving lane) and by a second avenue 130 m east, set to a signal (the lines between its lanes continuous over the last 15 m before each stop line, the arrows before them); far south a street ends on another in a T (no control set: the automatic priority, the stem gives way and carries the triangle its plate stands for); south a street with a kerb-side bus lane crosses the first street (the bus word along the lane, 40 m back from the stop line, where its picture looks; its line broken on the stretch before the junction); north-east a crossroads of two streets is a mini-roundabout (its white circle); north an avenue runs on as a street (the lines across the change of width). Eleven pictures at noon, from 60 to 65 degrees over the ground: each junction whole (14 to 25 px a metre), then an arm of it at 30 to 40 px a metre, where a letter 1.6 m high is 50 px and an arrow 5 m long 150 px.",
+ "city": {"map": 0, "seed": 1, "generate": false},
+ "steps": [
+  {"hour": 12}, {"dispatch": "clear_trees"}, {"dispatch": "set_road_furniture", "args": [1]},
+  {"dispatch": "build_road", "args": [{"at": [-220, 0]}, {"at": [220, 0]}, false, {"v3": [0, 0, 0]}, {"profile": "avenue"}, 0.25, 0.0]},
+  {"dispatch": "build_road", "args": [{"at": [0, -330]}, {"at": [0, 150]}, false, {"v3": [0, 0, 0]}, {"profile": "urbanStreet"}, 0.25, 0.0]},
+  {"dispatch": "build_road", "args": [{"at": [-120, -130]}, {"at": [-120, 130]}, false, {"v3": [0, 0, 0]}, {"profile": "urbanStreet"}, 0.25, 0.0]},
+  {"dispatch": "set_node_control", "args": [{"node": [-120, 0]}, 3]},
+  {"dispatch": "build_road", "args": [{"at": [130, -130]}, {"at": [130, 130]}, false, {"v3": [0, 0, 0]}, {"profile": "avenue"}, 0.25, 0.0]},
+  {"dispatch": "set_node_control", "args": [{"node": [130, 0]}, 1]},
+  {"dispatch": "build_road", "args": [{"at": [-220, -250]}, {"at": [220, -250]}, false, {"v3": [0, 0, 0]}, {"profile": "curbsideBusLane"}, 0.25, 0.0]},
+  {"dispatch": "build_road", "args": [{"at": [-220, -420]}, {"at": [220, -420]}, false, {"v3": [0, 0, 0]}, {"profile": "urbanStreet"}, 0.25, 0.0]},
+  {"dispatch": "build_road", "args": [{"at": [0, -420]}, {"at": [0, -520]}, false, {"v3": [0, 0, 0]}, {"profile": "urbanStreet"}, 0.25, 0.0]},
+  {"dispatch": "build_road", "args": [{"at": [60, 250]}, {"at": [240, 250]}, false, {"v3": [0, 0, 0]}, {"profile": "urbanStreet"}, 0.25, 0.0]},
+  {"dispatch": "build_road", "args": [{"at": [150, 160]}, {"at": [150, 340]}, false, {"v3": [0, 0, 0]}, {"profile": "urbanStreet"}, 0.25, 0.0]},
+  {"dispatch": "set_node_control", "args": [{"node": [150, 250]}, 6]},
+  {"dispatch": "build_road", "args": [{"at": [-220, 400]}, {"at": [0, 400]}, false, {"v3": [0, 0, 0]}, {"profile": "avenue"}, 0.25, 0.0]},
+  {"dispatch": "build_road", "args": [{"at": [0, 400]}, {"at": [220, 400]}, false, {"v3": [0, 0, 0]}, {"profile": "urbanStreet"}, 0.25, 0.0]},
+  {"dispatch": "set_speed", "args": [1]}, {"frames": 30},
+  {"setView": [0, 0, 14, 30, 60]}, {"frames": 30}, {"until": "render_pending", "equals": 0}, {"shot": "auto_signal_crossing"},
+  {"setView": [35, 0, 30, 30, 65]}, {"frames": 30}, {"until": "render_pending", "equals": 0}, {"shot": "arrows_near"},
+  {"setView": [-120, 0, 14, 30, 60]}, {"frames": 30}, {"until": "render_pending", "equals": 0}, {"shot": "stop_crossing"},
+  {"setView": [-120, -20, 40, 30, 65]}, {"frames": 30}, {"until": "render_pending", "equals": 0}, {"shot": "stop_near"},
+  {"setView": [130, 0, 14, 30, 60]}, {"frames": 30}, {"until": "render_pending", "equals": 0}, {"shot": "signal_crossing"},
+  {"setView": [105, 0, 30, 30, 65]}, {"frames": 30}, {"until": "render_pending", "equals": 0}, {"shot": "signal_approach"},
+  {"setView": [0, 420, 14, 30, 60]}, {"frames": 30}, {"until": "render_pending", "equals": 0}, {"shot": "priority_t"},
+  {"setView": [0, 440, 40, 30, 65]}, {"frames": 30}, {"until": "render_pending", "equals": 0}, {"shot": "give_way_near"},
+  {"setView": [52, 250, 30, 30, 65]}, {"frames": 30}, {"until": "render_pending", "equals": 0}, {"shot": "bus_lane"},
+  {"setView": [150, -250, 25, 30, 65]}, {"frames": 30}, {"until": "render_pending", "equals": 0}, {"shot": "mini_roundabout"},
+  {"setView": [0, -400, 25, 30, 65]}, {"frames": 30}, {"until": "render_pending", "equals": 0}, {"shot": "width_change"}
+ ]
+}

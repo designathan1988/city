@@ -376,7 +376,9 @@ road.built.bridge,ponte {length},bridge {length}
 road.built.embankment,aterro {length},embankment {length}
 road.built.limited,altura limitada pela rampa,height held by the grade
 road.built.trench,corte {length},cutting {length}
+road.built.trench_walls,corte com muros {length},cutting with walls {length}
 road.built.tunnel,túnel {length},tunnel {length}
+road.draft.height,{height} · {grade},{height} · {grade}
 road.heightPoint.short,via curta demais para um ponto de altura no meio,too short a road for a height point in its middle
 road.highway,Rodovia,Highway
 road.local,Rua residencial,Residential street

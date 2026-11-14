@@ -33,10 +33,18 @@ double dir_turn(const Quad &first, const Quad &second) {
 
 constexpr int ARC_STEPS = 64;
 
+// A place the road being laid passes through a node: an end of it, or a road it crosses. `stand`: the height it was
+// priced as standing at there (the plan's for its two ends; the node's own at a crossing, as the plan read it).
 struct Stop {
 	double t = 0;
 	int node = -1;
+	float stand = 0;
 };
+
+PieceEnd end_at(const RoadNetwork &net, const Stop &stop) {
+	const RoadNode &n = net.nodes[size_t(stop.node)];
+	return { n.x, n.z, stop.stand, n.lift, stop.node };
+}
 
 // The node where the new road meets a crossed segment: its end when close, else a split (the segment may already have
 // been split by an earlier stop: the piece under the point is searched again).
@@ -53,27 +61,15 @@ int crossing_node(CityState &s, const Quad &q, const Crossing &c) {
 	return split_segment(s, seg, t);
 }
 
-// Lays the road from stop a to stop b in pieces no longer than road_max_seg_m (execute.ts refine, at grade).
+// Lays the road from stop a to stop b in the pieces its plan was priced by (road_edit.h pieces_between), each recorded
+// with the worth the draft showed for it; a joint between two pieces is a new node on the ground at the road's height.
 void lay_pieces(CityState &s, const RoadPlan &plan, const std::vector<double> &table, const Stop &a, const Stop &b, int profile,
 		const RoadKeeps &keeps, std::vector<int> &out) {
-	const Quad &q = plan.q;
-	RoadNetwork &net = s.roads;
-	double sa = arc_at(table, a.t), sb = arc_at(table, b.t);
-	int pieces = std::max(1, int(std::ceil((sb - sa) / s.catalog.tune.road_max_seg_m)));
 	int prev = a.node;
-	for (int k = 1; k <= pieces; k++) {
-		double t0 = t_at_length(table, sa + (sb - sa) * (k - 1) / pieces), t1 = k == pieces ? b.t : t_at_length(table, sa + (sb - sa) * k / pieces);
-		Quad sub = sub_quad(q, t0, t1);
-		const float lift = plan.lift_at(t1);
-		int next = k == pieces ? b.node : j_add_node(s, sub.x1, sub.z1, s.terrain.height_at(float(sub.x1), float(sub.z1)) + lift, lift);
-		const RoadNode &np = net.nodes[prev], &nn = net.nodes[next];
-		sub.cx += ((np.x - sub.x0) + (nn.x - sub.x1)) / 2;
-		sub.cz += ((np.z - sub.z0) + (nn.z - sub.z1)) / 2;
-		sub.x0 = np.x; sub.z0 = np.z; sub.x1 = nn.x; sub.z1 = nn.z;
-		// A road laid at grade over water is a bridge, decided as it is laid so the journal keeps it (road_grade_sync.h).
-		const uint16_t kept = uint16_t((keeps.flags & ~(SEG_RUNS_ON_A | SEG_RUNS_ON_B)) | (k > 1 ? SEG_RUNS_ON_A : 0) | (k < pieces ? SEG_RUNS_ON_B : 0));
-		const uint16_t flags = structure_of(kept) == Structure::GROUND && crosses_water(s, sub) ? with_structure(kept, Structure::BRIDGE) : kept;
-		out.push_back(j_add_segment(s, prev, next, sub, profile, keeps.zl, keeps.zr, flags));
+	for (const LaidPiece &piece : pieces_between(s, plan, table, a.t, end_at(s.roads, a), b.t, end_at(s.roads, b), profile, keeps.flags)) {
+		const PieceEnd &to = piece.to;
+		const int next = to.node >= 0 ? to.node : j_add_node(s, to.x, to.z, s.terrain.height_at(float(to.x), float(to.z)) + to.lift, to.lift);
+		out.push_back(j_add_segment(s, prev, next, piece.q, profile, keeps.zl, keeps.zr, piece.flags, float(piece.built.worth)));
 		prev = next;
 	}
 }
@@ -92,7 +88,7 @@ void name_streets(CityState &s, const std::vector<int> &laid) {
 
 } // namespace
 
-EditResult place_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile) {
+EditResult place_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, float *stood_b) {
 	RoadBox box;
 	box.add(a.x, a.z);
 	box.add(b.x, b.z);
@@ -100,7 +96,7 @@ EditResult place_road(CityState &s, const Anchor &a, bool has_control, double cx
 	RoadKeeps fresh;
 	fresh.flags = s.new_road_flags; // the street furniture set chosen for new roads
 	std::vector<int> laid;
-	EditResult r = lay_road(s, a, has_control, cx, cz, b, profile, fresh, &laid);
+	EditResult r = lay_road(s, a, has_control, cx, cz, b, profile, fresh, &laid, stood_b);
 	if (r.ok && squeezed_worse(s, before, box)) {
 		r = EditResult{};
 		r.error = "hint.rule.squeezed";
@@ -163,7 +159,9 @@ bool merge_joint(CityState &s, int far, int past, RoadBox &box, std::vector<int>
 		j_remove_segment(s, seg);
 		j_remove_segment(s, other);
 		const uint16_t runs = uint16_t((first.flags & SEG_RUNS_ON_A) | (second.flags & SEG_RUNS_ON_B));
-		const int merged = j_add_segment(s, first.a, second.b, q, g.profile, g.zl, g.zr, uint16_t((g.flags & ~(SEG_RUNS_ON_A | SEG_RUNS_ON_B)) | runs));
+		// the two made one are worth what both were (unrecorded with either unrecorded): a joint taken out moves no money
+		const float worth = g.worth > 0 && o.worth > 0 ? g.worth + o.worth : 0.f;
+		const int merged = j_add_segment(s, first.a, second.b, q, g.profile, g.zl, g.zr, uint16_t((g.flags & ~(SEG_RUNS_ON_A | SEG_RUNS_ON_B)) | runs), worth);
 		carry_refs(s, refs, seg, { merged });
 		carry_refs(s, refs, other, { merged });
 		const size_t was = made.size();
@@ -176,20 +174,21 @@ bool merge_joint(CityState &s, int far, int past, RoadBox &box, std::vector<int>
 }
 
 EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, const RoadKeeps &keeps,
-		std::vector<int> *laid) {
+		std::vector<int> *laid, float *stood_b) {
 	EditResult r;
 	RoadPlan plan = plan_road(s, a, has_control, cx, cz, b, profile);
 	if (!plan.ok) {
 		r.error = plan.reason;
 		return r;
 	}
+	if (stood_b) *stood_b = plan.stand_b;
 	std::vector<Stop> stops;
-	stops.push_back({ 0, anchor_node(s, a, plan.lift_a) });
+	stops.push_back({ 0, anchor_node(s, a, plan.lift_a), plan.stand_a });
 	for (const Crossing &c : plan.crossings) {
 		int n = crossing_node(s, plan.q, c);
-		if (n >= 0 && n != stops.back().node) stops.push_back({ c.t_new, n });
+		if (n >= 0 && n != stops.back().node) stops.push_back({ c.t_new, n, float(s.roads.nodes[size_t(n)].y) }); // the crossed road's height there
 	}
-	stops.push_back({ 1, anchor_node(s, b, plan.lift_b) });
+	stops.push_back({ 1, anchor_node(s, b, plan.lift_b), plan.stand_b });
 	std::vector<double> table = arc_table(plan.q, ARC_STEPS);
 	std::vector<int> made;
 	for (size_t i = 0; i + 1 < stops.size(); i++)

@@ -222,12 +222,13 @@ func _preview(pieces: PackedVector3Array, from_lift: float) -> void:
 		return
 	var ok: bool = _last_plan.ok and _last_plan.affordable
 	ctl.preview.show_road(_last_plan, RoadDraft.paint(drawn), ok, ctl.px_at(pieces[0]), ctl.px_at(pieces[-1]))
-	var text := RoadDraft.measure(_last_plan)
+	var text := RoadDraft.measure(_last_plan, Settings.road.walls)
 	if not _last_plan.ok:
 		text += " · " + Refusals.reason(_last_plan)
 	elif not _last_plan.affordable:
 		text += " · " + tr("rule.short.funds")
 	ctl.tagged.emit(text, pieces[-1], ok)
+	ctl.tag_height.emit(RoadDraft.height_label(_last_plan), _last_plan.limited)
 
 
 func _lay(pieces: PackedVector3Array, from_lift: float) -> void:

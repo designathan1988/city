@@ -4,6 +4,7 @@
 
 #include "sim/commands/building_refs.h"
 #include "sim/commands/road_edit.h"
+#include "sim/economy/road_economy.h"
 #include "sim/state/city_state.h"
 
 #include <algorithm>
@@ -230,8 +231,15 @@ void j_set_signal(CityState &s, int n, const SignalSettings &to) {
 	s.log.signal_nodes.push_back(n);
 }
 
-int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags) {
+int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags, float worth) {
 	int id = s.roads.add_segment(a, b, q, profile, zl, zr, flags);
+	{
+		// what it is built as, recorded with it: handed in (a road that only changes hands: split, joined, turned), else as it is
+		// laid by itself between the heights its two nodes stand at: the function the draft was priced by (road_economy.h)
+		RoadSegment &g = s.roads.segs[id];
+		const RoadNode &na = s.roads.nodes[size_t(a)], &nb = s.roads.nodes[size_t(b)];
+		g.worth = worth >= 0 ? worth : float(built_alone(s, g.q, g.table, profile, flags, float(na.y), float(nb.y), na.lift != 0 || nb.lift != 0).worth);
+	}
 	s.log.net_seg(id);
 	s.log.net_node(a);
 	s.log.net_node(b);
@@ -268,6 +276,13 @@ void j_remove_segment(CityState &s, int seg) {
 	s.log.net_node(g.a);
 	s.log.net_node(g.b);
 	s.roads.remove_segment(seg);
+}
+
+void j_set_worth(CityState &s, int seg, float worth) {
+	RoadSegment &g = s.roads.segs[size_t(seg)];
+	if (g.worth == worth) return;
+	if (s.history.recording) record(s, OpKind::SEG_WORTH, seg, LiftChange{ g.worth, worth });
+	g.worth = worth;
 }
 
 void j_set_marking(CityState &s, int style) {

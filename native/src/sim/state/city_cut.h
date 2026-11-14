@@ -43,6 +43,7 @@ struct CutFacts {
 	std::unordered_map<int, std::vector<SignStand>> signs; // by node: the plates its rules put up
 	std::unordered_set<int> signalled; // of those nodes, the ones whose junction runs a signal
 	std::unordered_map<int64_t, int> leg_rules; // by (segment, its end): the rule of that approach to its node (SegRule), signed or automatic
+	std::unordered_set<int64_t> signal_legs; // of those ends, the ones that arrive at a junction run by a signal
 	std::unordered_map<int, std::array<std::vector<ArcSpan>, 2>> gates; // by segment: the car gates facing each side, no margin
 };
 
@@ -102,6 +103,8 @@ void node_signs(const CityView &s, int node, std::vector<SignStand> &out);
 // The rule of segment `sid`'s approach to `node`, one of its two ends (RULE_NONE, RULE_STOP, RULE_YIELD): the live city's
 // (traffic::approach_rule: the player's signs and the junction's own priority alike), or the one the cut carries.
 int leg_rule_of(const CityView &s, int node, int sid);
+// Whether that approach arrives at a signal (its lanes' lines are continuous before the stop line): kept with the rules.
+bool leg_at_signal(const CityView &s, int node, int sid);
 // The car gates of the lots facing each side of segment `sid` (STREET_RIGHT, STREET_LEFT), the gates themselves with no margin, where
 // its kerbs drop: the live city's (sim/buildings/lot_access.h street_gates), or the ones the cut carries.
 void kerb_gates_of(const CityView &s, int sid, std::vector<ArcSpan> out[2]);

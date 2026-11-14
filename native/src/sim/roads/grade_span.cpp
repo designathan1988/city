@@ -1,8 +1,8 @@
 // One span of a road solved between the heights its two nodes stand at (grade_parts.h), on the operations of
 // grade_line.h. At grade: level over each plate, the design line's own grade taken up past it over a curve's length, what
-// stands between road and line there eased out along a tie, held within the span's grade (exact), its changes of grade
-// rounded. Raised: the least deck over its chord and over the ground's top with the room a deck needs, met from each
-// land end by a ramp (a sag, a straight, a rounded crest), never under the ground. Sunken: an eased ramp down from each
+// stands between road and line there eased out along a tie (an authored span: carried from one end's to the other's on one
+// grade, with a vertical curve past a plate), held within the span's grade (exact), its changes of grade rounded. Raised:
+// the least deck over its chord and over the ground's top with the room a deck needs, met from each land end by a ramp (a sag, a straight, a rounded crest), never under the ground. Sunken: an eased ramp down from each
 // portal to the deepest floor the two ramps fit in the run, no deeper than the bore's depth.
 #include "sim/roads/grade_parts.h"
 
@@ -38,6 +38,23 @@ void grade_left(const std::vector<float> &line, int from, int to, float step, fl
 		sum -= (line[size_t(i + way)] - line[size_t(i)]) * (1.f - eased(mid / curve));
 		left[size_t(i + way)] = sum;
 	}
+}
+
+// By station between the two plates, the share of an authored rise the road has gained: one grade from one end to the
+// other, as a road's authored height reads along its length (RoadNetwork::lift_on, a cut's new node), taken up past an
+// end that has a plate as a vertical curve does (a parabola: the grade growing evenly over `curve`) and at once at an end
+// with none (a joint that carries the road on: the ramp goes through it). A ramp laid in pieces is one line.
+void rise_shares(const GradeProfile &p, const Stations &st, float curve, std::vector<float> &share) {
+	share.assign(p.h.size(), 0.f);
+	const float free = float(st.first_b - st.last_a) * p.step;
+	const auto grade_share = [&](float from, bool plated) { return plated && curve > 0 ? std::min(1.f, from / curve) : 1.f; };
+	float sum = 0;
+	for (int i = st.last_a; i < st.first_b; i++) {
+		const float mid = (float(i - st.last_a) + HALF) * p.step;
+		sum += std::min(grade_share(mid, p.plate_a > 0), grade_share(free - mid, p.plate_b > 0));
+		share[size_t(i + 1)] = sum;
+	}
+	for (int i = st.last_a + 1; i < int(share.size()); i++) share[size_t(i)] = i < st.first_b && sum > 0 ? share[size_t(i)] / sum : 1.f;
 }
 
 // Both plates level at the highest the span reached over each, never under its node.
@@ -98,15 +115,20 @@ void span_at_grade(GradeProfile &p, const GroundLines &g, float ha, float hb, fl
 	// what stands between road and line at each plate: the node's height against the line, and the grade not taken up
 	const float off_a = ha - line[size_t(st.last_a)], off_b = hb - line[size_t(st.first_b)];
 	const auto tie = [&](float amount) {
-		if (p.manual) return free; // an authored height is carried across the whole span
+		if (p.manual) return free; // what is left of the line's own grade is eased out across the whole span
 		return std::min(std::max(LEAST_TIE_M, p.len * t.tie_share), std::max(t.tie, TIE_PER_GRADE * std::fabs(amount) / t.ground));
 	};
 	const float tie_a = tie(off_a + left_a[size_t(st.first_b)]), tie_b = tie(off_b + left_b[size_t(st.last_a)]);
 	const float most = std::max(grade, std::fabs(hb - ha) / free * t.ends_margin); // never under what its two ends need
+	// an authored span carries its two ends' heights over the line on one grade (rise_shares); any other eases each end's out
+	thread_local std::vector<float> rise;
+	if (p.manual) rise_shares(p, st, curve, rise);
 	for (int i = st.last_a + 1; i < st.first_b; i++) {
 		const float from_a = float(i - st.last_a) * p.step, from_b = float(st.first_b - i) * p.step;
-		const float want = line[size_t(i)] + (off_a + left_a[size_t(i)]) * (1.f - eased(from_a / tie_a)) +
-				(off_b + left_b[size_t(i)]) * (1.f - eased(from_b / tie_b));
+		const float ease_a = 1.f - eased(from_a / tie_a), ease_b = 1.f - eased(from_b / tie_b);
+		const float want = p.manual
+				? line[size_t(i)] + off_a + (off_b - off_a) * rise[size_t(i)] + left_a[size_t(i)] * ease_a + left_b[size_t(i)] * ease_b
+				: line[size_t(i)] + (off_a + left_a[size_t(i)]) * ease_a + (off_b + left_b[size_t(i)]) * ease_b;
 		// within the cones of the span's grade from its two plates: what the exact envelopes then leave the plates at
 		const float low = std::max(ha - most * from_a, hb - most * from_b), high = std::min(ha + most * from_a, hb + most * from_b);
 		p.h[size_t(i)] = std::min(high, std::max(low, want));

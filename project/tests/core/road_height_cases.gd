@@ -16,6 +16,14 @@ const NEAR_M := 0.7 # the deck stands the road's build-up off the height asked
 const RAY_FROM_M := 400.0
 const NO_NODE := -1
 const MONEY_ROUNDING := 1.0 # each piece of a road is priced to the unit
+const WAY_GROUND := 0 # the core's BuildWay (sim/economy/road_economy.h): plain ground
+const WAY_BRIDGE := 3 # on piers
+const JOINT_NEAR_M := 5.0 # either side of a ramp's joint: on its grade the road gains twice the half of this there
+const LIFT_EDIT_M := 6.0
+const CURVE_OUT_M := 60.0
+const CURVE_LEAN := 0.85 # the bend's control point this far along the chord: the curve's parameter and its length part
+const CUT_AT := 0.3
+const SAME_M := 0.3 # a cut leaves the road where it was but for the level plate of the new node
 
 var t: Node # the test (TestCase): its check and ticks
 
@@ -32,6 +40,9 @@ func run(b: Dictionary) -> void:
 	_steepest(a + Vector3(0, 0, LEG_M * 2))
 	_walls(a + Vector3(0, 0, LEG_M * 4))
 	_price(a + Vector3(0, 0, LEG_M * 6))
+	_stations(a - Vector3(0, 0, LEG_M * 2))
+	_height_paid(a - Vector3(0, 0, LEG_M * 4))
+	_curve_cut(a - Vector3(0, 0, LEG_M * 6))
 	_set_height(0)
 
 
@@ -47,6 +58,12 @@ func _road(from: Vector3, to: Vector3, from_lift: float) -> Dictionary:
 func _over_ground(p: Vector3) -> float:
 	var hit: Dictionary = CityStore.query(&"raycast", [Vector3(p.x, RAY_FROM_M, p.z), Vector3.DOWN])
 	return hit.position.y - float(CityStore.query(&"height_at", [p.x, p.z])) if hit.hit else 0.0
+
+
+## The height of the road's surface at a point, by what a ray lands on.
+func _deck_y(p: Vector3) -> float:
+	var hit: Dictionary = CityStore.query(&"raycast", [Vector3(p.x, RAY_FROM_M, p.z), Vector3.DOWN])
+	return hit.position.y if hit.hit else NAN
 
 
 ## A road begun on the ground and ended at 8 m climbs all the way, and its preview is drawn along the same ramp.
@@ -66,6 +83,9 @@ func _ramp(a: Vector3) -> void:
 	t.check(absf(mid - DECK_M * 0.5) < DECK_M * 0.25, "halfway up the ramp the road stands half way (%.2f m)" % mid)
 	var top := _over_ground(e - Vector3(1, 0, 0))
 	t.check(absf(top - DECK_M) < NEAR_M * 2, "the ramp ends at the height asked (%.2f m)" % top)
+	# a ramp laid in pieces is one line: through the joint in its middle it climbs on its grade, with no level step there
+	var across := _over_ground(m.lerp(e, 0.5) + Vector3(JOINT_NEAR_M, 0, 0)) - _over_ground(m.lerp(e, 0.5) - Vector3(JOINT_NEAR_M, 0, 0))
+	t.check(across > DECK_M / LEG_M * JOINT_NEAR_M, "the ramp goes through its middle on its grade (%.2f m gained in %d m)" % [across, int(JOINT_NEAR_M * 2)])
 
 
 ## Under a deck at 8 m a street passes with no junction; under the ramp at 3 m it can neither pass nor join.
@@ -87,6 +107,13 @@ func _landing(a: Vector3) -> void:
 	_set_height(DECK_M)
 	var over: Dictionary = CityStore.query(&"road_start", [a, PX, true, false])
 	t.check(over.node == NO_NODE, "at 8 m the start passes over the node")
+	# a press on what is seen, with no height set by hand, starts there at its height: the ramp's end stands at 8 m
+	_set_height(0)
+	var top := a + Vector3(LEG_M * 2, 0, 0)
+	var seen: Dictionary = CityStore.query(&"road_start", [top, PX, true, false, 0.0, 0.0, true])
+	t.check(seen.taken and absf(seen.lift - DECK_M) < NEAR_M, "a press on the deck's end starts there, at its height: %s" % [seen])
+	var by_hand: Dictionary = CityStore.query(&"road_start", [top, PX, true, false, 0.0, 0.0, false])
+	t.check(not by_hand.taken, "with the height set by hand at 0 m the start passes under the deck's end")
 
 
 ## A free end stops short of a height too steep to reach.
@@ -113,6 +140,63 @@ func _price(a: Vector3) -> void:
 		"the draft names what it is built as: %s on piers, %s on the ground" % [high.built, flat.built])
 	var r := _road(a, e, DECK_M)
 	t.check(r.ok and absf(r.money - high.price) <= MONEY_ROUNDING, "the preview's price is paid: %s against %s" % [r.money, high.price])
+
+
+## The draft carries the road as it will be built: each station's deck, the ground under it and its way of building; a road
+## drawn at 8 m stands on piers, with its piers under it, and one on the ground is ground all along.
+func _stations(a: Vector3) -> void:
+	var e := a + Vector3(LEG_M, 0, 0)
+	_set_height(DECK_M)
+	var high: Dictionary = CityStore.dispatch(&"preview_road", [a, e, false, Vector3.ZERO, PROFILE, PX, DECK_M])
+	var deck: PackedVector3Array = high.deck
+	var ground: PackedFloat32Array = high.ground
+	var ways: PackedByteArray = high.ways
+	t.check(deck.size() > 2 and deck.size() == ground.size() and deck.size() == ways.size(), "the draft has its stations: %d" % deck.size())
+	var mid := deck.size() >> 1
+	var over := deck[mid].y - ground[mid]
+	t.check(ways[mid] == WAY_BRIDGE and absf(over - DECK_M) < NEAR_M, "its middle stands on piers at the height in hand: way %d, %.2f m" % [ways[mid], over])
+	var piers: PackedVector3Array = high.piers
+	t.check(piers.size() >= 2 and piers.size() % 2 == 0 and piers[1].y > piers[0].y, "with piers from the ground to the deck: %d" % (piers.size() >> 1))
+	t.check(is_equal_approx(high.lift_a, DECK_M) and is_equal_approx(high.lift_b, DECK_M), "and it tells the height of its two ends: %s, %s" % [high.lift_a, high.lift_b])
+	_set_height(0)
+	var flat: Dictionary = CityStore.dispatch(&"preview_road", [a, e, false, Vector3.ZERO, PROFILE, PX, 0.0])
+	var plain := true
+	for way in flat.ways:
+		plain = plain and way == WAY_GROUND
+	t.check(plain and flat.piers.is_empty(), "a road on the ground is plain ground all along, with no pier")
+
+
+## A road's height changed by hand is paid for: its end raised 6 m, part of it stands on a fill and on piers, and the
+## difference is charged; undo gives it back.
+func _height_paid(a: Vector3) -> void:
+	var e := a + Vector3(LEG_M, 0, 0)
+	_set_height(0)
+	t.check(_road(a, e, 0).ok, "a road is laid on the ground")
+	var end: Dictionary = CityStore.query(&"road_start", [e, PX, true, false])
+	CityStore.refresh()
+	var before: float = CityStore.snapshot.money
+	var r: Dictionary = CityStore.dispatch(&"set_node_height", [end.node, LIFT_EDIT_M])
+	CityStore.refresh()
+	t.check(r.get("ok", false) and r.money > 0.0 and is_equal_approx(before - CityStore.snapshot.money, r.money), "raising its end is paid for: %s" % [r])
+	CityStore.dispatch(&"undo")
+	CityStore.refresh()
+	t.check(is_equal_approx(CityStore.snapshot.money, before), "and undo gives the money back: %s" % CityStore.snapshot.money)
+
+
+## A curved road on a ramp stays where it was when it is cut: a height along a road is read by the length run, and on a
+## bend whose control point leans to one end the length and the curve's parameter part (here by a seventh of the road).
+func _curve_cut(a: Vector3) -> void:
+	var e := a + Vector3(LEG_M, 0, 0)
+	var control := a + Vector3(LEG_M * CURVE_LEAN, 0, CURVE_OUT_M)
+	_set_height(DECK_M)
+	t.check(CityStore.dispatch(&"build_road", [a, e, true, control, PROFILE, PX, 0.0]).ok, "a curved ramp is laid")
+	var p := a.lerp(control, CUT_AT).lerp(control.lerp(e, CUT_AT), CUT_AT) # the curve at CUT_AT of its parameter
+	var before := _deck_y(p)
+	var climbed := before - _deck_y(a.lerp(control, 0.01))
+	t.check(climbed > NEAR_M and climbed < DECK_M - NEAR_M, "part way up, the ramp has climbed part of the height (%.2f m)" % climbed)
+	t.check(CityStore.dispatch(&"split_road", [p]).get("ok", false), "the curved ramp is cut there")
+	var after := _deck_y(p)
+	t.check(absf(after - before) < SAME_M, "the cut leaves the road at its height: %.2f m against %.2f m" % [after, before])
 
 
 ## The sides of a cutting are the road tool's choice, and the furniture set leaves it alone.

@@ -64,7 +64,22 @@ EditResult set_node_lift(CityState &s, int node, float metres) {
 		r.error = "refuse.road.steep";
 		return r;
 	}
+	// a road whose height the player changes is built otherwise (a deeper cutting, a longer bridge): each road of the node
+	// is worth, from here on, what it was worth and what its solved heights changed by, read the same way before the edit
+	// and after it, and that difference is paid or given back
+	const std::vector<int> roads = n.segs;
+	std::vector<double> before;
+	for (int sid : roads) {
+		j_set_worth(s, sid, float(worth_recorded(s, sid))); // one with none recorded takes the worth it had: no money
+		before.push_back(worth_solved(s, sid));
+	}
 	j_set_lift(s, node, height);
+	settle_network(s); // the heights the worth is read from
+	for (size_t i = 0; i < roads.size(); i++) {
+		const double now = worth_recorded(s, roads[i]) + worth_solved(s, roads[i]) - before[i];
+		j_set_worth(s, roads[i], std::max(std::numeric_limits<float>::min(), float(now))); // never none: a worth of 0 says "not recorded"
+	}
+	if (!settle_road_edit(s, r)) return r; // the caller rolls the journal back
 	r.ok = true;
 	return r;
 }

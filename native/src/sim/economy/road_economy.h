@@ -28,6 +28,46 @@ struct BuildLengths {
 	void add(const BuildLengths &o);
 };
 
+// The way a stretch of road is built, by where its deck stands over the natural ground.
+enum class BuildWay : uint8_t { GROUND, EMBANKMENT, TRENCH, BRIDGE, TUNNEL };
+// The way at a station whose deck stands `over` metres over the ground (negative: under it), on a road built as
+// `structure`: a raised road is on piers and a sunken one bored all along; at grade it is bored under the cover a bore
+// needs (the depth the render bores at: render/roads/road_structures.cpp), on piers past economy.on_piers_from_m (where
+// the ground stops being shaped to it: sim/terrain/road_shape.cpp), filled or cut past economy.fill_from_m.
+BuildWay way_at(const Tuning &tn, Structure structure, float over);
+// The metres built each way along a road's stations (a station stands for the half step either side of it).
+BuildLengths lengths_along(const Tuning &tn, Structure structure, const AloneStations &st);
+// What those metres are worth: metres of the same road on plain ground (the catalogue's factor a way).
+double worth_of(const CityState &s, const BuildLengths &l);
+
+// A road as it is built when laid by itself along `q` between the heights its two ends stand at: its stations, the metres
+// each way and its worth. The one function the road tool's draft and the build both call: the click costs what the draft
+// showed.
+struct Quad;
+struct BuiltAlone {
+	AloneStations stations;
+	BuildLengths lengths;
+	double worth = 0;
+};
+BuiltAlone built_alone(const CityState &s, const Quad &q, const std::vector<double> &table, int profile, uint16_t flags, float stand_a, float stand_b,
+		bool authored);
+// A station of a road built alone, where it stands on the map: its deck, the natural ground under it and the way it is
+// built there. What the road tool's draft draws between the road and the ground.
+struct DraftStation {
+	float x = 0, z = 0, deck = 0, ground = 0;
+	BuildWay way = BuildWay::GROUND;
+	Structure structure = Structure::GROUND; // of the piece it is a station of
+};
+// Adds the stations of a road built alone along `q` to `out`, each placed and told its way of building.
+void place_stations(const Tuning &tn, const Quad &q, const std::vector<double> &table, Structure structure, const AloneStations &st,
+		std::vector<DraftStation> &out);
+// The worth of standing segment `seg` from its solved heights (a road whose heights the player changed is worth what it
+// now is); its recorded worth when it has no solved profile.
+double worth_solved(const CityState &s, int seg);
+// What standing segment `seg` is worth as it stands recorded: its worth, or with none (a generated road, an older save's)
+// its authored heights' bands (build_lengths), as it was always valued.
+double worth_recorded(const CityState &s, int seg);
+
 // What an edit costs: money taken (positive) or given back (negative), the balance after it, and whether it can be paid.
 struct RoadCharge {
 	double amount = 0, balance = 0;

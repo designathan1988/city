@@ -48,7 +48,6 @@ void intersect_quads(const Quad &a, const Quad &b, std::vector<std::pair<double,
 
 bool overlaps_road(const CityState &s, const RoadPlan &plan, const std::vector<double> &table, int profile, const Anchor &a, const Anchor &b) {
 	const Quad &q = plan.q;
-	const auto lift_at = [&](double t) { return plan.lift_at(t); };
 	const RoadNetwork &net = s.roads;
 	const Tuning &tn = s.catalog.tune;
 	const EndMouth from = end_mouth(s, a, q, 0, profile), to_end = end_mouth(s, b, q, 1, profile);
@@ -68,7 +67,7 @@ bool overlaps_road(const CityState &s, const RoadPlan &plan, const std::vector<d
 			if (dist >= (half + net.profile_of(o).right) * tn.road_overlap_share) continue;
 			if (dir_cos(q, t, net.segs[o].q, to) < tn.road_parallel_cos) continue;
 			if (from.covers(net, o, to, SIDE_BY_SIDE_STRIDE_M) || to_end.covers(net, o, to, SIDE_BY_SIDE_STRIDE_M)) continue;
-			if (std::fabs(s.terrain.height_at(float(px), float(pz)) + lift_at(t) - net.seg_y(o, arc_at(net.segs[o].table, to))) >= tn.road_level_dy_m) continue;
+			if (std::fabs(s.terrain.height_at(float(px), float(pz)) + plan.lift_at(at / len) - net.seg_y(o, arc_at(net.segs[o].table, to))) >= tn.road_level_dy_m) continue;
 			over = true;
 			break;
 		}
@@ -79,7 +78,7 @@ bool overlaps_road(const CityState &s, const RoadPlan &plan, const std::vector<d
 }
 
 // The crossings at grade with the roads the new curve passes over (plan.ts: junctions), sorted along the new road.
-bool find_crossings(const CityState &s, const Anchor &a, const Anchor &b, RoadPlan &p) {
+bool find_crossings(const CityState &s, const std::vector<double> &table, const Anchor &a, const Anchor &b, RoadPlan &p) {
 	const RoadNetwork &net = s.roads;
 	const Tuning &tn = s.catalog.tune;
 	std::vector<int> skip;
@@ -96,11 +95,10 @@ bool find_crossings(const CityState &s, const Anchor &a, const Anchor &b, RoadPl
 				for (auto &h : hits) {
 					double px, pz;
 					q.at(h.first, px, pz);
-					if (std::fabs(s.terrain.height_at(float(px), float(pz)) + p.lift_at(h.first) - net.seg_y(o, arc_at(net.segs[o].table, h.second))) >= tn.road_level_dy_m) continue;
+					const float ours = p.lift_at(arc_at(table, h.first) / p.len); // its height there, by the length run
+					if (std::fabs(s.terrain.height_at(float(px), float(pz)) + ours - net.seg_y(o, arc_at(net.segs[o].table, h.second))) >= tn.road_level_dy_m) continue;
 					// Heights authored apart: past the clearance one passes over the other, under the join's they meet, and between them neither can (commit.ts).
-					const RoadSegment &og = net.segs[size_t(o)];
-					const float theirs = net.nodes[size_t(og.a)].lift + (net.nodes[size_t(og.b)].lift - net.nodes[size_t(og.a)].lift) * float(h.second);
-					const float gap = std::fabs(p.lift_at(h.first) - theirs);
+					const float gap = std::fabs(ours - net.lift_on(o, h.second));
 					if (gap > tn.grade_clear_elevated_m) continue;
 					if (gap > tn.grade_join_m) { p.reason = "hint.road.clearance"; return; }
 					if (dir_cos(q, h.first, net.segs[o].q, h.second) > tn.road_sharp_cos) { p.reason = "refuse.road.sharpAngle"; return; }
@@ -157,29 +155,111 @@ bool sharp_at(const CityState &s, const Anchor &e, double dx, double dz) {
 	return false;
 }
 
-// What the plan costs and how its metres are built, piece by piece as the build will lay and charge them (road_commands.cpp
-// lay_pieces: between its crossings no piece longer than road_max_seg_m, a piece over water a bridge, the rest at grade at
-// its authored height): what the draft shows is what the click costs.
-void price_plan(const CityState &s, const std::vector<double> &table, int profile, RoadPlan &p) {
-	std::vector<double> stops{ 0.0 };
-	for (const Crossing &c : p.crossings) stops.push_back(c.t_new);
-	stops.push_back(1.0);
+PieceEnd at_node(const RoadNetwork &net, int node) {
+	const RoadNode &n = net.nodes[size_t(node)];
+	return { n.x, n.z, float(n.y), n.lift, node };
+}
+
+// Where an end of the road in hand will stand, before anything is laid: what anchor_node (road_edit.cpp) will make of it
+// (its node; the point of the road it lands on, at that road's height; on open ground what stands within road_merge_m at
+// its height, else the natural ground and its lift). A path's joint stands where the piece before it was priced to end.
+PieceEnd end_of(const CityState &s, const Anchor &e, float lift) {
+	const RoadNetwork &net = s.roads;
+	PieceEnd at{ e.x, e.z, road_ground(s)(float(e.x), float(e.z)) + lift, lift, -1 };
+	if (e.node >= 0) {
+		at = at_node(net, e.node);
+	} else if (e.seg >= 0) {
+		at.stand = float(net.seg_y(e.seg, arc_at(net.segs[size_t(e.seg)].table, e.t)));
+	} else {
+		const Anchor met = snap_point(s, e.x, e.z, s.catalog.tune.road_merge_m);
+		const float join = s.catalog.tune.grade_join_m;
+		if (met.node >= 0 && std::fabs(net.nodes[size_t(met.node)].lift - lift) <= join) {
+			at = at_node(net, met.node);
+		} else if (met.seg >= 0 && std::fabs(net.lift_on(met.seg, met.t) - lift) <= join) {
+			at.x = met.x;
+			at.z = met.z;
+			at.stand = float(net.seg_y(met.seg, arc_at(net.segs[size_t(met.seg)].table, met.t)));
+		}
+	}
+	at.stand = e.stand.value_or(at.stand);
+	return at;
+}
+
+// Where the road in hand meets a road it crosses: that road's end node when close to it, else the point it will be cut
+// at, standing at that road's height there (road_commands.cpp crossing_node, road_edit.cpp split_segment).
+PieceEnd crossing_end(const CityState &s, const Crossing &c) {
+	const RoadNetwork &net = s.roads;
+	const RoadSegment &g = net.segs[size_t(c.seg)];
+	const double close = s.catalog.tune.road_snap_end_m;
+	if (c.t_old * g.len < close) return at_node(net, g.a);
+	if ((1 - c.t_old) * g.len < close) return at_node(net, g.b);
+	PieceEnd at{ 0, 0, float(net.seg_y(c.seg, arc_at(g.table, c.t_old))), net.lift_on(c.seg, c.t_old), -1 };
+	g.q.at(c.t_old, at.x, at.z);
+	return at;
+}
+
+// What the plan costs, how its metres are built and its stations, piece by piece as the build will lay and charge them
+// (road_commands.cpp lay_road: the same stops, the same pieces between them, each built alone between the heights its
+// ends stand at): what the draft shows is what the click costs. A recorded worth is a float: the price counts it so.
+void price_plan(const CityState &s, const std::vector<double> &table, const Anchor &a, const Anchor &b, int profile, RoadPlan &p) {
+	struct Stop {
+		double t = 0;
+		PieceEnd at;
+	};
+	std::vector<Stop> stops{ { 0.0, end_of(s, a, p.lift_a) } };
+	for (const Crossing &c : p.crossings) {
+		const PieceEnd at = crossing_end(s, c);
+		if (at.node < 0 || at.node != stops.back().at.node) stops.push_back({ c.t_new, at });
+	}
+	stops.push_back({ 1.0, end_of(s, b, p.lift_b) });
+	p.stand_a = stops.front().at.stand;
+	p.stand_b = stops.back().at.stand;
+	const double a_metre = s.catalog.profile(profile).cost_per_m;
 	double value = 0;
 	for (size_t i = 0; i + 1 < stops.size(); i++) {
-		const double from = arc_at(table, stops[i]), run = arc_at(table, stops[i + 1]) - from;
-		const int pieces = std::max(1, int(std::ceil(run / s.catalog.tune.road_max_seg_m)));
-		for (int k = 0; k < pieces; k++) {
-			const double t0 = k == 0 ? stops[i] : t_at_length(table, from + run * k / pieces);
-			const double t1 = k + 1 == pieces ? stops[i + 1] : t_at_length(table, from + run * (k + 1) / pieces);
-			const Structure how = crosses_water(s, sub_quad(p.q, t0, t1)) ? Structure::BRIDGE : Structure::GROUND;
-			const RoadBuild piece{ how, p.lift_at(t0), p.lift_at(t1) };
-			value += build_value(s, profile, run / pieces, piece);
-			p.built.add(build_lengths(s.catalog.tune, piece, run / pieces));
+		const Stop &from = stops[i], &to = stops[i + 1];
+		if (from.at.node >= 0 && from.at.node == to.at.node) continue;
+		for (const LaidPiece &piece : pieces_between(s, p, table, from.t, from.at, to.t, to.at, profile, s.new_road_flags)) {
+			value += a_metre * double(float(piece.built.worth));
+			p.built.add(piece.built.lengths);
+			place_stations(s.catalog.tune, piece.q, piece.table, structure_of(piece.flags), piece.built.stations, p.stations);
 		}
 	}
 	p.price = std::round(value);
 }
 } // namespace
+
+std::vector<LaidPiece> pieces_between(const CityState &s, const RoadPlan &plan, const std::vector<double> &table, double t_a, const PieceEnd &a,
+		double t_b, const PieceEnd &b, int profile, uint16_t kept) {
+	const double from_m = arc_at(table, t_a), run = arc_at(table, t_b) - from_m;
+	const int pieces = std::max(1, int(std::ceil(run / s.catalog.tune.road_max_seg_m)));
+	const GroundAt ground = road_ground(s);
+	std::vector<LaidPiece> out(static_cast<size_t>(pieces));
+	PieceEnd from = a;
+	for (int k = 1; k <= pieces; k++) {
+		const double t0 = k == 1 ? t_a : t_at_length(table, from_m + run * (k - 1) / pieces);
+		const double t1 = k == pieces ? t_b : t_at_length(table, from_m + run * k / pieces);
+		LaidPiece &piece = out[size_t(k - 1)];
+		Quad sub = sub_quad(plan.q, t0, t1);
+		const float lift = plan.lift_at((from_m + run * k / pieces) / table.back()); // by the length run, as every height along a road
+		piece.to = k == pieces ? b : PieceEnd{ sub.x1, sub.z1, ground(float(sub.x1), float(sub.z1)) + lift, lift, -1 };
+		// the curve between the points its two ends stand on
+		sub.cx += ((from.x - sub.x0) + (piece.to.x - sub.x1)) / 2;
+		sub.cz += ((from.z - sub.z0) + (piece.to.z - sub.z1)) / 2;
+		sub.x0 = from.x;
+		sub.z0 = from.z;
+		sub.x1 = piece.to.x;
+		sub.z1 = piece.to.z;
+		// A road laid at grade over water is a bridge, decided as it is laid so the journal keeps it (road_grade_sync.h).
+		const uint16_t runs = uint16_t((kept & ~(SEG_RUNS_ON_A | SEG_RUNS_ON_B)) | (k > 1 ? SEG_RUNS_ON_A : 0) | (k < pieces ? SEG_RUNS_ON_B : 0));
+		piece.flags = structure_of(runs) == Structure::GROUND && crosses_water(s, sub) ? with_structure(runs, Structure::BRIDGE) : runs;
+		piece.q = sub;
+		piece.table = arc_table(sub, ROAD_ARC_STEPS);
+		piece.built = built_alone(s, sub, piece.table, profile, piece.flags, from.stand, piece.to.stand, from.lift != 0 || piece.to.lift != 0);
+		from = piece.to;
+	}
+	return out;
+}
 
 Anchor snap_point(const CityState &s, double x, double z, double radius) {
 	const RoadNetwork &net = s.roads;
@@ -222,7 +302,7 @@ RoadPlan plan_road(const CityState &s, const Anchor &a, bool has_control, double
 	p.lift_b = std::max(p.lift_a - rise, std::min(p.lift_a + rise, want));
 	p.limited = p.lift_b != want; // a free end is told so by the draft; a connection cannot move: refused by its own name
 	if (p.reason.empty() && p.limited && (b.node >= 0 || b.seg >= 0)) p.reason = "refuse.road.tooSteep";
-	if (!p.reason.empty() || !find_crossings(s, a, b, p)) return p;
+	if (!p.reason.empty() || !find_crossings(s, table, a, b, p)) return p;
 	if (sharp_at(s, a, p.q.cx - a.x, p.q.cz - a.z) || sharp_at(s, b, p.q.cx - b.x, p.q.cz - b.z)) p.reason = "refuse.road.sharpAngle";
 	else if (overlaps_road(s, p, table, profile, a, b)) p.reason = "road.reason.overlap";
 	else if (!degrees_fit(s, a, b, p)) p.reason = "road.reason.fullNode";
@@ -235,7 +315,7 @@ RoadPlan plan_road(const CityState &s, const Anchor &a, bool has_control, double
 	}
 	if (p.len - prev < tn.road_fixed_gap_m) p.reason = "refuse.road.junctionsClose";
 	if (!p.reason.empty()) return p;
-	price_plan(s, table, profile, p);
+	price_plan(s, table, a, b, profile, p);
 	p.ok = true;
 	return p;
 }

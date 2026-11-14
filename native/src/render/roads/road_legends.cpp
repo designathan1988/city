@@ -149,9 +149,12 @@ void approach(const RoadEmit &e, int sid, const Profile &p, const std::vector<Be
 	const bool fast = p.speed >= g.from_kmh, faster = p.speed > g.faster_kmh;
 	const float length = faster ? g.arrow_fast_m : g.arrow_m, first = fast ? g.fast_first_m : g.first_m;
 	const float next = faster ? g.faster_next_m : fast ? g.fast_next_m : g.next_m;
+	// the rows are counted from where lanes can no longer be changed: before a signal, the start of its approach line
+	// (road_markings.cpp; MBST vol. IV 9.1.1: 'the start of the single continuous approach line')
+	const float held = leg_at_signal(e.s, node, sid) ? float(e.s.catalog.traffic.approach_line_m) : 0.f;
 	for (int k = 0; k < n; k++)
 		for (int row = 0; row < ARROW_ROWS && turns[size_t(k)]; row++) {
-			const float tip = first + next * float(row);
+			const float tip = held + first + next * float(row);
 			if (beds[size_t(k)].fits(tip + length)) arrow(beds[size_t(k)], turns[size_t(k)], tip, length);
 		}
 }

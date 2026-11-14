@@ -13,6 +13,7 @@
 #include "sim/street/street_names.h"
 #include "sim/state/city_state.h"
 
+#include <algorithm>
 #include <cmath>
 #include <memory>
 
@@ -88,6 +89,8 @@ bool read_roads(ByteReader &r, RoadNetwork &net, uint32_t version) {
 		g.profile = r.get<int32_t>();
 		g.zl = r.get<uint8_t>(); g.zr = r.get<uint8_t>();
 		g.flags = r.get<uint16_t>();
+		// an older file recorded no worth: its roads are worth their authored heights, as they were (road_economy.cpp)
+		g.worth = version >= BUILT_SAVE_VERSION ? std::max(0.f, r.get<float>()) : 0.f;
 		bool ends_ok = g.a >= 0 && g.b >= 0 && g.a < int(net.nodes.size()) && g.b < int(net.nodes.size()) &&
 				net.nodes[g.a].alive && net.nodes[g.b].alive && size_t(g.profile) < net.cat->profiles.size();
 		if (!ends_ok) return false;

@@ -27,7 +27,7 @@ void derive_lines(Profile &p) {
 				if (centre_kind(p.centre) != LineKind::NONE) p.lines.push_back({ at, false, centre_kind(p.centre), LineColor::YELLOW, true });
 			} else {
 				bool solid = (a.dir == 1 ? b.solid : a.solid) || a.bus != b.bus;
-				p.lines.push_back({ at, a.bus != b.bus, solid ? LineKind::SOLID : LineKind::DASHED, LineColor::WHITE });
+				p.lines.push_back({ at, a.bus != b.bus, solid ? LineKind::SOLID : LineKind::DASHED, LineColor::WHITE, false, int8_t(a.dir) });
 			}
 		} else if (a.kind == StripKind::MEDIAN && a.flush && i > 0) {
 			p.lines.push_back({ p.edges[i].u0, false, LineKind::SOLID, LineColor::YELLOW });

@@ -47,6 +47,8 @@ RoadShape shape_of(const RoadNetwork &net, int s) {
 }
 } // namespace
 
+GroundAt road_ground(const CityState &s) { return ground_of(s.terrain); }
+
 bool crosses_water(const CityState &s, const Quad &q) {
 	const int n = std::max(1, int(std::ceil(quad_length(q) / WATER_STEP_M)));
 	for (int i = 0; i <= n; i++) {

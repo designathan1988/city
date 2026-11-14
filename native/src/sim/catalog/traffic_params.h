@@ -25,7 +25,7 @@ namespace city {
 	X(temper_accel) X(temper_brake) X(temper_headway) X(temper_gap) X(temper_patience) X(temper_polite) X(temper_threshold) \
 	X(bend_lat_max) X(bend_lat_fall) X(bend_lat_min) X(bend_heavy_share) X(bend_temper) X(bend_keep_share) X(bend_least) \
 	X(lc_politeness) X(lc_signal_s) X(lc_crawl_ms) X(lc_slope) X(signal_ahead_s) X(signal_ahead_m) \
-	X(lc_safe_brake) X(lc_threshold) X(lc_bias_right) X(lc_mandatory_bias) X(lc_free_m) X(lane_entry_m) X(lc_gap_front_m) \
+	X(lc_safe_brake) X(lc_threshold) X(lc_bias_right) X(lc_mandatory_bias) X(lc_free_m) X(lane_entry_m) X(approach_line_m) X(lc_gap_front_m) \
 	X(lc_gap_back_m) X(mouth_clear_m) X(lc_duration_s) X(lc_cooldown_s) X(lc_every_ticks) \
 	X(brake_light_accel) X(brake_light_speed) X(body_lift_m) X(heading_chord_m) \
 	X(walk_speed_min) X(walk_speed_max) X(walk_track_min) X(walk_track_max) X(ped_trip_min_m) X(ped_trip_max_m) \

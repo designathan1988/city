@@ -9,6 +9,8 @@
 #include "sim/roads/road_variants.h"
 #include "sim/economy/road_economy.h"
 
+#include <godot_cpp/variant/packed_byte_array.hpp>
+#include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 
 #include <algorithm>
@@ -22,6 +24,7 @@ namespace {
 constexpr int PREVIEW_STEPS = 32; // points of each piece of the preview polyline (on the ground; the ribbon lifts itself)
 constexpr double RAD_TO_DEG = 180 / 3.14159265358979323846;
 constexpr int PIECE_POINTS = 3; // a piece crosses the API as its start, control and end
+constexpr double HALF = 0.5;
 
 Dictionary anchor_dict(const CityState &s, const Anchor &a) {
 	Dictionary d;
@@ -63,15 +66,67 @@ void road_ends(const CityState &s, const std::vector<Quad> &q, double px, float 
 	a.lift = start;
 }
 
-Dictionary plan_dict(const CityState &s, const std::vector<Quad> &pieces, const RoadPlan &p, const Anchor &a, const Anchor &b, int profile) {
-	Dictionary d;
+// The road in hand as it will be built, for the draft's drawing: `deck` (each station at its solved height), `ground`
+// (the natural ground under it), `ways` (BuildWay) and `piers` (foot and head of each: along what stands on piers the
+// first half a spacing in, then one a spacing, at the bridge's or the raised road's own spacing).
+void put_stations(Dictionary &d, const Tuning &tn, const std::vector<DraftStation> &st) {
+	PackedVector3Array deck, piers;
+	PackedFloat32Array ground;
+	PackedByteArray ways;
+	double along = 0, next = 0;
+	bool on_piers = false;
+	for (size_t i = 0; i < st.size(); i++) {
+		const DraftStation &p = st[i];
+		deck.push_back(Vector3(p.x, p.deck, p.z));
+		ground.push_back(p.ground);
+		ways.push_back(uint8_t(p.way));
+		const double spacing = p.structure == Structure::BRIDGE ? tn.structure_pier_spacing_bridge_m : tn.structure_pier_spacing_elevated_m;
+		if (p.way != BuildWay::BRIDGE) {
+			on_piers = false;
+			continue;
+		}
+		along = on_piers ? along + std::hypot(double(p.x) - st[i - 1].x, double(p.z) - st[i - 1].z) : 0;
+		if (!on_piers) next = spacing * HALF;
+		on_piers = true;
+		if (along < next) continue;
+		next += spacing;
+		piers.push_back(Vector3(p.x, p.ground, p.z));
+		piers.push_back(Vector3(p.x, p.deck, p.z));
+	}
+	d["deck"] = deck;
+	d["ground"] = ground;
+	d["ways"] = ways;
+	d["piers"] = piers;
+}
+
+// The line the draft's ribbon follows: the road's stations at their solved heights, thinned to the count a curve is drawn
+// with; a plan refused before it was solved has none, and is drawn on the ground at its authored height.
+PackedVector3Array ribbon_of(const CityState &s, const std::vector<Quad> &pieces, const RoadPlan &p) {
 	PackedVector3Array pts;
-	for (const Quad &q : pieces)
+	const size_t count = p.ok ? p.stations.size() : 0, stride = std::max<size_t>(1, count / (size_t(PREVIEW_STEPS) * pieces.size()));
+	for (size_t i = 0; i < count; i += stride) {
+		const DraftStation &st = p.stations[i + stride < count ? i : count - 1]; // the last one is the road's end
+		pts.push_back(Vector3(st.x, st.deck, st.z));
+	}
+	if (count > 0) return pts;
+	for (const Quad &q : pieces) {
+		const std::vector<double> run = arc_table(q, PREVIEW_STEPS); // a height along a road goes by the length run, not the curve's parameter
 		for (int i = pts.is_empty() ? 0 : 1; i <= PREVIEW_STEPS; i++) {
 			double x, z;
 			q.at(double(i) / PREVIEW_STEPS, x, z);
-			pts.push_back(Vector3(float(x), s.terrain.height_at(float(x), float(z)) + lift_along(p, size_t(&q - pieces.data()), double(i) / PREVIEW_STEPS), float(z)));
+			const double along = run.back() > 0 ? run[size_t(i)] / run.back() : 0;
+			pts.push_back(Vector3(float(x), s.terrain.height_at(float(x), float(z)) + lift_along(p, size_t(&q - pieces.data()), along), float(z)));
 		}
+	}
+	return pts;
+}
+
+Dictionary plan_dict(const CityState &s, const std::vector<Quad> &pieces, const RoadPlan &p, const Anchor &a, const Anchor &b, int profile) {
+	Dictionary d;
+	const PackedVector3Array pts = ribbon_of(s, pieces, p);
+	put_stations(d, s.catalog.tune, p.ok ? p.stations : std::vector<DraftStation>()); // a path refused part way shows none of it built
+	d["lift_a"] = p.lifts.empty() ? 0.f : p.lifts.front(); // its ends' heights over the grade line: the draft's height label
+	d["lift_b"] = p.lifts.empty() ? 0.f : p.lifts.back();
 	d["ok"] = p.ok;
 	d["error"] = String(p.reason.c_str());
 	d["price"] = p.price;

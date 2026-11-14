@@ -30,7 +30,7 @@ EditResult reverse_road(CityState &s, int seg) {
 		const RoadSegment rec = s.roads.segs[size_t(piece)];
 		j_remove_segment(s, piece);
 		const Quad q{ rec.q.x1, rec.q.z1, rec.q.cx, rec.q.cz, rec.q.x0, rec.q.z0 };
-		const int turned = j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, flags_reversed(rec.flags));
+		const int turned = j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, flags_reversed(rec.flags), rec.worth); // the same road, turned
 		carry_refs(s, refs, piece, { turned });
 	}
 	r.ok = true;

@@ -14,6 +14,8 @@ signal tool_changed(tool: Tool, params: Dictionary)
 signal hint(text: String, ok: bool)
 ## The text beside the road in hand (ui/preview_tag.gd): empty hides it.
 signal tagged(text: String, at: Vector3, ok: bool)
+## A second line of that text, after it: the height the road in hand ends at; held = the grade stopped it short of the one asked.
+signal tag_height(text: String, held: bool)
 signal plan_changed # the transport tool laid something the drawer lists
 signal road_height_changed # the road tool draws at another height
 ## Inspect result (CityStore query "inspect") or {} when the selection is cleared.

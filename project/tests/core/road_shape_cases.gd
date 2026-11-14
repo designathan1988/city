@@ -20,6 +20,7 @@ const RING_RADIUS_M := 40.0
 const RING_STUB_M := 4.0 # from the ring to the junction: nothing of a road
 const RING_CLEAR_M := 80.0
 const QUARTER := 0.3 # clear of the cut in the middle of a road this long
+const CONCRETE := 1 # the core's Surface (sim/catalog/profile_types.h): a concrete carriageway
 
 const STUB_OFF_M := 900.0
 const STUB_LEN_M := 300.0
@@ -151,6 +152,11 @@ func _movement(e: Vector3) -> void:
 	t.check(turned.get("ok", false) and CityStore.query(&"inspect", [along]).one_way, "two-way becomes one-way: %s" % [turned])
 	CityStore.dispatch(&"undo")
 	t.check(not CityStore.query(&"inspect", [along]).one_way, "undone, it is two-way again")
+	var paved: Dictionary = spec.duplicate(true)
+	paved["surface"] = CONCRETE
+	var concrete: int = CityStore.dispatch(&"road_spec_make", [two.profile_id, paved]).get("index", -1)
+	var read: int = CityStore.query(&"road_spec", [concrete]).get("surface", -1) if concrete >= 0 else -1
+	t.check(read == CONCRETE and int(spec.surface) != CONCRETE, "a road of the player's keeps the carriageway's surface chosen: %d (the class's: %d)" % [read, spec.surface])
 	var gone: Dictionary = CityStore.dispatch(&"remove_node", [node])
 	t.check(gone.get("ok", false), "taking the node with its roads: %s" % [gone])
 	CityStore.dispatch(&"undo")

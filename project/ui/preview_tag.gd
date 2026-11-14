@@ -1,27 +1,42 @@
 ## The length, price and refusal of the road in hand, beside its end, in the reference's box (Roadcraft main.ts drawRoadPreview): it follows the
-## world point on the screen and stays inside it. The road tool fills it through ToolController.tagged.
+## world point on the screen and stays inside it. The road tool fills it through ToolController.tagged, and its second line (the height the
+## road ends at and its grade, in the warning's ink when the grade held it) through ToolController.tag_height, sent after it.
 class_name PreviewTag
 extends PanelContainer
 
 @onready var _label: Label
+@onready var _height: Label
 @onready var _at := Vector3.ZERO
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	theme_type_variation = &"PreviewTag"
-	_label = HudWidgets.label(self, &"PreviewTagLabel")
+	var lines := HudWidgets.vbox(self)
+	_label = HudWidgets.label(lines, &"PreviewTagLabel")
+	_height = HudWidgets.label(lines, &"PreviewTagLabel")
+	_height.hide()
 	hide()
 	var tools: ToolController = get_tree().get_first_node_in_group(&"tools")
 	if tools:
 		tools.tagged.connect(show_at)
+		tools.tag_height.connect(show_height)
 
 
 func show_at(text: String, at: Vector3, ok: bool) -> void:
 	visible = text != ""
 	_label.theme_type_variation = &"PreviewTagLabel" if ok else &"PreviewDangerLabel" # a refusal only changes the ink
 	_label.text = text
+	_height.hide() # a tool with no height to tell leaves the line out
 	_at = at
+	reset_size()
+	_place()
+
+
+func show_height(text: String, held: bool) -> void:
+	_height.visible = text != ""
+	_height.theme_type_variation = &"PreviewWarnLabel" if held else &"PreviewTagLabel"
+	_height.text = text
 	reset_size()
 	_place()
 

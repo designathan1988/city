@@ -27,26 +27,24 @@
 - The first block closed 4e38bad2 (pushed): verification 2 of 3 passed, 9/9 and lab_test 4/4 ("Read at the first
   verification" and "Coded in the block" below); the register: Proads-3, -4, -5, -8, -10, -33 fixed, Proads-37
   and -38 added, Proads-35, -6, -28 open.
-- State (2026-11-14, 04:30): THE SECOND BLOCK `roads` IS OPEN (verifications used: 0 of 3). Nothing is built or
-  run until `block verify`. The board's line of roads is unchecked (the addendum). Both games are read and
-  compared with file:line under "The second block" below, each item's design there. CODING ORDER: a (surface), d
-  (the legends' rule), e (the start's height), c (the node's paint), f (the arc's one owner), b (the draft solved
-  alone, its stations, the recorded worth, the save, the overlay), g (the photo plan). Coded so far: under
-  "Coded in the second block" below (a done; next d).
-  The items, none left for cost:
-  a. the carriageway's surface (asphalt, concrete, cobble) in the profile editor, saved (a save version with a
-     reader of the old ones); it IS drawn already (road_section.cpp:24-31, :140; the first note's "read by no
-     renderer" was WRONG, a grep cut at 40 lines: Proads-37 corrected);
-  b. the fill, the cutting, the piers and the buried stretch drawn over the draft;
-  c. the paint of a width transition (a taper) and of a mini-roundabout's island;
-  d. the stop word and the triangle on automatic priorities (the legends read the player's signs only);
-  e. the start over a raised road: which rule is better, by the code of both;
-  f. Proads-35 whole: one owner of the arc conversion (arc_at, arc_of, arc_of_t) and a test on a curved graded road;
-  g. a near photo of each legend in the block's photo plan (Proads-38), Proads-6 and -28 closed by it.
-  Also to re-read for what was left out: doc/work/traffic.md (the board's line 3) and the notes of T036 and T037.
-  NEXT: read both games for a to e; sources; the design; `block open roads`; code all; each item's file:line
-  written here; the whole diff read; `block review`; `block verify`; build; ONE run with zoom_ladder; photos;
-  lab_test; commit; push; `block close`. Then junctions (doc/work/junctions.md keeps its reading so far).
+- State (2026-11-14): THE SECOND BLOCK `roads`; VERIFICATIONS USED: 2 OF 3 (the first failed, the second
+  passed). The board's line of roads is unchecked (the addendum). Items a to h are coded (a, d, e, c, f in commit
+  0363a023, local; the rest uncommitted): below, "Coded in the second block", "Every item, where it is done"
+  (each item's file:line), "READ IN THE WHOLE DIFF", "Verification 1" (its failed check, the causes read, the
+  fixes: an authored span on one grade, painted lines in the surface's pieces, the photo plan) and
+  "Verification 2" (9/9 passed; the eleven photos of road_paint right but 08-bus_lane, whose frame ends just
+  before the lane's word: the word stands legends.bus.first_m = 40 m back from the stop line).
+  VERIFICATION 3 OF 3 (the bus lane's view alone, moved to 52 m east of its junction) PASSED: `block review`
+  (54 files, 0 new), the build 2/2, the run 9/9
+  (`python tools/tasks/cli.py run road_commands_test,road_edit_test,road_grade_test,road_paint,zoom_ladder,e2e`);
+  08-bus_lane now shows the lane's word whole; the six photos of zoom_ladder and the eight pictures of doc/look
+  opened after the run: buildings, roads, vehicles, ground the same, part by part ("Verification 3" below).
+  The measure passed (`run lab_test --all --jobs 1`: 4/4, lab_test FAILURES 0). The board's line is checked;
+  the register: Proads-6, -35, -37, -38 fixed, Proads-39 added (the ramp's grade across a joint, not
+  understood), Proads-28 left open (its voids, widths by style and stair zebra are not this block's).
+  IN HAND: the commit, the push, `block close`. Done before them: superpowers:verification-before-completion; the board's line; the register (Proads-35, -37,
+  -38, -6, -28 closed; the ramp's grade at a joint, not understood, added); commit; push; `block close`. Then, by the addendum: doc/work/traffic.md and the notes of T036
+  and T037 re-read for what was left out; then junctions (doc/work/junctions.md keeps its reading so far).
 - The cases (doc/port.md; doc/specs/003-roadcraft-features/sheets/roads.md has each with its evidence):
   1. the heights of the roads, solved in this game's design (Proads-8, -10, -15, -33, -35; read and researched before:
      doc/work/t015-roads.md: Whittaker-Eilers smoothing, Eilers 2003; exact two-pass envelopes, Felzenszwalb and
@@ -307,6 +305,210 @@
   the cutting and its top line, the piers, the buried stretch, the vertical at a raised end; road_draft.gd the
   words and the height label.
 
+- b, CODED so far: sim/roads/grade_draft.cpp solve_alone (road_grade.h RoadAlone, AloneStations; in doc/map.md);
+  grade_ground.cpp ground_under (read_ground calls it; grade_parts.h); road_grade_sync.h/.cpp road_ground(s);
+  road_economy.h/.cpp BuildWay, way_at, lengths_along, worth_of, built_alone, worth_solved, worth_recorded,
+  recorded_value by worth (bands when none), build_value through worth_of; road_network.h RoadSegment::worth;
+  journal_ops.cpp j_add_segment(..., worth = WORTH_AS_LAID) (edit_journal.h) and j_set_worth; OpKind::SEG_WORTH
+  (edit_journal.h; edit_history.cpp exec; road_economy.cpp edit_value_change); road_edit.cpp split_segment (each
+  half its share), road_commands.cpp merge_joint (the sum), road_copies.cpp and road_tabs.cpp (a road turned keeps
+  its worth); road_bend.cpp set_node_lift (worth again from the solved heights, the money settled);
+  save_write.cpp / save_read.cpp (a segment's worth, version 11). STILL TO CODE for b: road_plan.cpp price_plan by
+  built_alone a piece (the stands as lay_pieces will have them: an existing node's y, a split point's seg_y, a
+  free end's and a joint's terrain height + lift) with the stations kept in the plan; plan_dict's stations;
+  preview_line.gd's drawing; road_draft.gd's words ("cutting with walls") and the height label; the tests
+  (road_height_cases.gd: a height edit is paid, the draft's stations, the surface, the start's height; the curved
+  graded road of f); the photo plan (g).
+
+- b, CODED after the second compaction (the plan and the draft): THE PRICE IS THE BUILD'S OWN WALK. road_edit.h
+  PieceEnd (a piece's end: point, the height it stands at, lift, node), LaidPiece (curve, flags, far end, table,
+  BuiltAlone) and pieces_between (road_plan.cpp): the pieces a planned road is laid as between two stops, each
+  built alone between its ends' stands (a joint's: the natural ground + lift); price_plan (road_plan.cpp) and
+  lay_pieces (road_commands.cpp) both walk it: the plan's stops mirror lay_road's (end_of = what anchor_node will
+  make of an end; crossing_end = crossing_node / split_segment), lay_pieces records each segment with the piece's
+  worth (j_add_segment's explicit worth), the price sums cost_per_m x float(worth) as the record keeps it.
+  RoadPlan::stand_a / stand_b, ::stations (commands.h); Anchor::stand: a path's joint is priced from where the
+  piece before it was priced to end (plan_path sets it from its own total; build_path from lay_road's `stood_b`,
+  since the joint's node is solved by then). road_economy.h DraftStation {x, z, deck, ground, way, structure} and
+  place_stations. city_core_commands.cpp plan_dict: `points` = the stations at their solved deck thinned
+  (ribbon_of; a refused plan: the ground + authored lift as before), put_stations: `deck`, `ground`, `ways`,
+  `piers` (foot, head: the first half a spacing into what stands on piers, then one a spacing, the bridge's or the
+  raised road's), `lift_a`, `lift_b`. project/render/preview_build.gd (new, in doc/map.md) PreviewBuild.draw: the
+  skirts of a fill and of a cutting from the road's two edges to the ground, the cutting's rim on the ground, the
+  bored stretch dimmed, the piers, a dashed post at an end drawn off the ground; PreviewBuild.foot: the ring on
+  the ground under each end; preview_line.gd show_road calls both; tokens.json preview_fill, _cut, _rim, _buried,
+  _pier, _post, preview_rim_m, _pier_m, _post_m, _post_dash_m. The reference's small sketch of the line beside
+  its height label (main.ts:3433-3468) exists there because its draft is flat on the map: here the ribbon itself
+  is drawn at its solved heights with its skirts and posts, which shows the line; the label's words are brought.
+
+- b, the interface: road_draft.gd measure(plan, walls) ("cutting with walls" when the tool lays them: i18n
+  road.built.trench_walls) and height_label(plan) ("+3.0 m · 4%": i18n road.draft.height; Formatters
+  format_length_tenths and format_percent); tool_controller.gd signal tag_height(text, held); road_tool.gd
+  _preview emits it after `tagged`; preview_tag.gd: a second label under the first (show_height), in
+  PreviewWarnLabel (theme_text.gd: the `warn` token) when the grade held the end.
+- FOUND BY READING while writing f's test, and fixed: a road's AUTHORED height along a curve went by the curve's
+  parameter, not by the length run (Proads-35's family): RoadPlan::lift_at took the parameter in
+  road_plan.cpp overlaps_road, find_crossings and the joints of the laid pieces, and RoadNetwork::lift_on
+  (road_network.cpp) was linear in the parameter for its five callers (road_edit.cpp anchor_lift, anchor_node,
+  road_snap.cpp:142, road_plan.cpp). Now lift_on converts by arc_at(table, t) / len, lift_at is given the share
+  of the length everywhere (find_crossings takes the plan's table), and plan_dict's fallback ribbon reads the
+  height by its own arc table.
+- The tests: road_height_cases.gd: _landing (a press on the deck's end, no height set by hand, starts there at
+  its height; set by hand at 0 m it passes under), _stations (deck, ground, ways, piers, lift_a / lift_b of a
+  draft at 8 m; a flat one plain ground), _height_paid (set_node_height charges and undo gives it back),
+  _curve_cut (a curved ramp whose control leans to one end keeps its height where it is cut: f's test on a
+  curved graded road); road_shape_cases.gd _movement (a road of the player's keeps the surface chosen).
+  The checks that stood are read against the new price: road_money_cases.gd _paying holds r.money == pv.price
+  exactly: the plan and the build walk the same pieces and both count cost_per_m x double(float(worth)).
+- g, the photo plan: project/tests/visual/road_paint_plan.json (the `road_paint` item of `looks` in
+  tools/tasks/suites.json; in doc/map.md): on bare land, eight near pictures: the crossing under the automatic
+  priority (d's triangle), the stop crossing (the word), an avenue's arm (the arrows), the bus lane (its word
+  and broken line), the mini-roundabout's circle and the width change (c). look_args.gd gains {"node": [x, z]}
+  (the road node standing there: what set_node_control takes).
+
+- h, FOUND AT THE ITEM-BY-ITEM READING, and built: "no continuous line before a signal" (the sheet's row 4;
+  Proads-6 closes on "solid lines before a signal"). The first block took it for the stop line
+  (road_markings.cpp:147-151, which stands at every crossing); it is the APPROACH LINE. THE REFERENCE has none
+  (world/markings.ts:109-133: a lane line is dashed or solid by the section alone; grep `signal` there: nothing
+  of a line). THIS GAME had none (road_markings.cpp lines: a dashed divider dashed to the stop line). THE THIRD,
+  from the norm (Sources: MBST vol. IV, LMS-1): the lines between two lanes of one direction are continuous over
+  traffic.json approach_line_m (15 m) before the stop line of an approach that arrives at a signal. Coded:
+  profile_types.h MarkLine::way and profiles.cpp derive_lines (which direction's lanes a line divides);
+  city_cut.h CutFacts::signal_legs, leg_at_signal (city_cut.cpp: kept with the leg rules; live: control_of);
+  road_markings.cpp LinesAtEnds and lines (the continuous stretch at the end the line's lanes arrive at),
+  emit_markings; road_legends.cpp approach: the rows of arrows counted from the approach line's start (MBST
+  9.1.1: d from "the start of the single continuous approach line"); lane_change.cpp choose: on that stretch a
+  change towards a turn or a stop is made only by who has waited at the line (FORCE_AFTER_S), never on the move
+  (a change by choice was already barred there: lc_free_m 60); traffic_params.h approach_line_m; traffic.json
+  with the source in `_lanes_doc`; the photo plan's signal crossing and its approach (road_paint_plan.json).
+
+- READ IN THE WHOLE DIFF (git diff 34902130, every file, 2026-11-14), and fixed there: set_node_lift charged
+  worth_solved - the recorded worth, which mixed the edit with whatever the road's solve in the network differs
+  from its solve alone by (a road on rough ground would pay for that at its first height edit): now each road of
+  the node is worth what it was plus worth_solved after - worth_solved before, the same reading either side of
+  the edit (road_bend.cpp:67-82); PreviewBuild.foot typed its points. Read and found right: the plan's stops
+  against lay_road's (the same condition, the same order), the worth as a float on both sides, lift_on's five
+  callers all handing the curve's parameter, the cut's facts kept for every segment whose markings a job draws
+  (road_cut.cpp:38-42), the dashed and the continuous stretches of `lines` for each kind of line.
+
+## Verification 1 of the second block (2026-11-14 02:23: what failed, the causes by reading, what the photos showed)
+- The run: dist/tasks/20261114-022310-41832-road_commands_test-road_edit_test-road_g; 8/9. The other new checks
+  passed: the preview's price paid (610000 against 610000), the draft's stations (128, way 3, 8.00 m, 7 piers),
+  a height edit paid (111059) and given back by undo, the start on the deck's end (lift 8.0), the surface.
+- FAILED, road_commands_test "the cut leaves the road at its height: 23.59 m against 23.91 m" (the ramp had
+  climbed 3.79 m there). CAUSE (superpowers:systematic-debugging, read, not guessed): two owners of a road's
+  authored height along its length that disagree. native/src/sim/commands/road_edit.cpp:39-40 (split_segment)
+  and RoadNetwork::lift_on (road_network.cpp:226-231) give a point the STRAIGHT line between the two ends' lifts
+  by the share of the length; the heights' solver carries an authored span's two lifts across it by the EASED
+  cubic (grade_span.cpp:100-109: `tie` = the whole free run when p.manual, each end's offset x (1 - eased)).
+  The test's ramp: 0 to 8 m over 214 m in two pieces (the joint at 4 m); the cut at 0.875 of the first piece:
+  eased(0.875) x 4 = 3.83 m (the 3.79 measured), straight 0.875 x 4 = 3.50 m: the new node is put 0.33 m under
+  the road (the 0.32 measured). The same easing makes a ramp laid in pieces a stair: each piece an S of its
+  own, level at every joint though a joint carries the road on with no plate. THE FIX (the design, not the
+  check): an authored span carries its two lifts on ONE grade between its plates, taken up over
+  grade.plate_curve_m past an end that has a plate and with no curve at a joint that carries the road on
+  (plate 0): the road's authored height is then straight along its length, as lift_on and split_segment read
+  it, a ramp through its joints is one line, and a cut leaves the road where it was but for the new node's
+  plate. Source to cite (to search before the code): a road's vertical alignment is tangent grades joined by
+  vertical curves.
+- SEEN IN THE PHOTOS of road_paint (each opened whole; regions enlarged for my own reading only):
+  (1) A long continuous line on a straight road that is not on one grade is drawn as ONE flat quad between
+  its two ends' heights and sinks under the asphalt: the avenue's yellow centre line is gone between the two
+  signalled junctions but for 1.5 m at each end (02-arrows_near, 05-signal_crossing, 06-signal_approach), and
+  the 15 m approach line shows in fragments on the arms where the road rises (00, the west arm). CAUSE:
+  native/src/render/roads/road_markings.cpp:29-30 (Painter::rect: `n = straight ? 1 : ...`), while the surface
+  it is painted on is drawn in surface_steps(e, sid, v0, v1) stretches (road_emit.cpp:29-40: one only when the
+  road is on one grade). Older than this block (the town is nearly flat), found by its near photos. FIX: rect's
+  pieces = surface_steps over its own range.
+  (2) The plan's first crossing is no automatic priority: a crossing of four arms, or one with an avenue, runs
+  on signals until its flows speak (junction_control.cpp:128-131), so 00 and 01 show a signal and no triangle.
+  The triangle under the automatic priority needs a T of two streets (the stem gives way: approach_rule
+  :231-239). FIX: the plan gains that T and its near picture.
+  (3) 07-bus_lane: the street's own trees (the full furniture kit) hide the lane and its word. FIX: the plan
+  lays its roads with the basic kit (set_road_furniture 1) and looks at the lane from nearer.
+  RIGHT in the photos: the stop word on every arriving lane of the four arms (03, 04), the arrows in two rows
+  with their hooks (02, 03, 05), the mini-roundabout's white circle 4 m across with a triangle on each arm
+  (08), the yellow line carried across the change of width with the avenue's lane lines ended before it (09),
+  the approach line continuous over 15 m before the signal's stop line where the road is level (05, 06).
+
+## Verification 2 of the second block (2026-11-14: passed; what its photos showed)
+- The run 9/9 (dist/tasks, the run after 20261114-022310): every check of verification 1 and the two it failed
+  or lacked: the cut on the curved ramp (23.59 m against 23.57 m), the ramp through its middle joint (0.21 m
+  gained in 10 m against the 0.20 asked; under the eased span it was 0.06 by calculation).
+- NOT UNDERSTOOD, to the register: on one grade those 10 m should gain 0.42 m (8 m in 200 m, less the curve at
+  each plated end), and the check reads 0.21. Read and found right: rise_shares (grade_span.cpp), the joint's
+  plate (grade_ground.cpp:40-52 carries_on: none), within_grade and rounded_between (grade_line.cpp:41-72, both
+  keep a straight line), the ground under a road over 2.8 m (road_shape.cpp:64: natural). What was not read:
+  the solved stations of the two pieces at their joint (the grade probe takes lifts: city_core_grade_probe.cpp
+  :47-59).
+- The photos of road_paint, each opened whole: 00 the avenue's crossing on its automatic signal: the yellow
+  centre line whole on both arms and the approach line continuous on both (the sunk lines of verification 1
+  are gone); 01 the arrows in two rows, the approach line, the centre line; 02 and 03 the stop word on every
+  arriving lane; 04 and 05 the signal: the approach line on its four arms, the arrows before it; 06 and 07 the
+  T of two streets under the automatic priority: the triangle on the stem alone, its point towards who
+  arrives; 09 the mini-roundabout's white circle and a triangle an arm; 10 the centre line across the change
+  of width. 08 the bus lane: the lane's line broken on the entry stretch, the cars, the arrows, and only the
+  first stroke of the lane's word at the frame's lower edge: the view was 30 m from the junction and the word
+  stands 40 m back from the stop line (streets.json legends.bus.first_m).
+
+## Verification 3 of the second block (2026-11-14: passed)
+- Opened with the cause at project/tests/visual/road_paint_plan.json:29 (the bus lane's view 30 m from the
+  junction, the word 40 m back from the stop line); the one change: setView [52, 250, 30, 30, 65]. `block
+  review` 54 files, 0 new; the build 2/2 (no C++ changed); the run 9/9 (road_paint ran again, the five others
+  kept their pass of verification 2: no input of theirs changed).
+- 08-bus_lane.png, opened whole: the bus word painted in the kerb lane, read by the driver who arrives, the two
+  rows' arrows ahead of it, the lane's line by the kerb lane, the planted median.
+- zoom_ladder 00 to 05 against doc/look/zoom_ladder 00 to 05, each pair opened whole, and doc/look's far_town
+  and mid_town: buildings, roads and their paint, vehicles, the ground and its trees the same at each distance
+  (the walkers' count differs by a few, 798 against 793: the clock runs); nothing lost detail.
+
+## Every item, where it is done (the board's line and the sheet's rows, re-read before `block review`)
+- Row 1, the heights. Solved in this game's design (Proads-10, -15): grade_line.cpp:41 within_grade, :49
+  mean_over, :63 rounded_between; grade_span.cpp:88 span_at_grade, :120 span_raised, :162 span_sunken;
+  grade_settle.cpp:197-207 (the nodes' rounds). One line a segment kept, the ground lines in a bounded cache
+  (Proads-8): road_grade.h:52 GradeProfile, :81 GroundCache, grade_ground.cpp:274. No pass count decides
+  (Proads-33): grade_line.cpp:27-47 (the exact two sweeps), grade_settle.cpp:200 (rounds_most a guard, counted:
+  :207 unsettled). A height read by the length run (Proads-35): geometry.cpp:40 arc_at the one owner
+  (footway.cpp:87, lot_access.cpp:234 and :255, street_commands.cpp:284, kerb_walkers.cpp:153,
+  parking_lanes.cpp:58 and :74, pedestrians.cpp:32), road_network.cpp:226 lift_on, commands.h RoadPlan::lift_at
+  by the share of the length (road_plan.cpp:70, :98, :244); its test road_height_cases.gd:184 _curve_cut.
+- Row 2, laying a road. The draft shows bridge, fill, cut and tunnel stretches: road_plan.cpp:204 price_plan
+  (the stations), road_economy.cpp:74 way_at, :116 place_stations, city_core_commands.cpp:72 put_stations,
+  preview_build.gd:37 _earth (fill, cutting, its rim, the bored stretch), :70 _uprights (piers, the post of a
+  raised end), preview_line.gd:137-140; the words road_draft.gd:56 measure. Priced as it is built, the click
+  costing what the draft showed: road_plan.cpp:232 pieces_between (the one walk), road_commands.cpp:66
+  lay_pieces, road_economy.cpp:99 built_alone, grade_draft.cpp:20 solve_alone; road_path.cpp:125 plan_path and
+  :156 build_path (a path's joint). A tunnel for a deep cut: road_economy.cpp:77 (bored under the bore's
+  cover), drawn by road_structures.cpp:289-296. The grade-limited end told: road_plan.cpp:303 (limited), :304
+  (refuse.road.tooSteep), road_draft.gd:56 (road.built.limited), :73 height_label and preview_tag.gd:36 (the
+  warning's ink). A height edit paid: road_bend.cpp:47 set_node_lift (:67-82), road_economy.cpp:130
+  worth_solved, :178-182 (SEG_WORTH counted), journal_ops.cpp:281 j_set_worth, edit_history.cpp:123; the worth
+  saved: save_write.cpp:83, save_read.cpp:92-93 (version 11, save_format.h:21-24). A start on a raised road
+  takes its height: road_draft.gd:34 start, road_tool.gd:188 _start_at, city_core_commands.cpp:158 road_start.
+- Row 3: T037 (90b67e27).
+- Row 4, markings. Turn arrows: road_legends.cpp:59 arrow, :127 lane_turns, :136 approach. Words (stop) and
+  the give-way symbol, under any priority: road_legends.cpp:77 word, :93 give_way, :139 (leg_rule_of:
+  city_cut.cpp:92, kept :78; flow_control.cpp:85 repaints). Bus legends: road_legends.cpp:176-180. Plate marks:
+  the stop line road_markings.cpp:148-152; the mini-roundabout's island road_node_paint.cpp:85, the taper
+  :105, called road_junction.cpp:62. Far dashes and far colours: road_segment.cpp:104 far_line, :132,
+  road_body.gdshaderinc:146-153. The continuous line before a signal: item h above (road_markings.cpp:50
+  lines, :184 emit_markings). The exclusive lane's continuity line: road_markings.cpp:50 lines (open_a/b).
+- Row 5, the profile editor. Class: road_profile_panel.gd:88. Carriageway: :175 (road_spec.cpp:101,
+  road_variants.cpp:137, save_write.cpp:57, save_read.cpp:180-181). Paving: :166. Centre line: :178-179.
+  Each footway its own: road_spec_ops.gd:83 with_width. Past the customs' room: city_core_road_spec.cpp:115
+  told at road_profile_panel.gd:193, :206. Save's problems: :132-133. A saved road deleted:
+  road_catalog.gd:144-145.
+- Row 6, streets and their life. Traffic from the map's edge: flow_rates.cpp:18 at_map_edge, :36, :38,
+  demand.cpp:100-103. Street name and house numbers: city_core_inspect.cpp:81-86, inspector_rows.gd:24, :38.
+  The basic furniture set: street_furniture.cpp:240, :331.
+- Row 7, lanes that obey the road. Bus lanes, solid lines, per-lane turns: lane_graph.cpp:156 LanePaint, :172
+  general_lane, :243-246; lane_change.cpp:131 choose (:152-170, :177, the approach line's hold); meso.cpp:80
+  pick_lane.
+- The addendum's list: the surface (row 5); the draft's fill, cutting, piers and bored stretch (row 2); the
+  taper's and the island's paint (row 4); the word and the triangle on automatic priorities (row 4); the start
+  over a raised road (row 2); the arc's one owner with its test (row 1); a near photo of each legend:
+  project/tests/visual/road_paint_plan.json (ten pictures), tools/tasks/suites.json `road_paint`.
+
 ## On the way (done beside the block)
 - The owner, 2026-11-14, with the block open: "Instalei umas skills de godot, veja se elas te ajudam. se sim passe a
   usa-las e adcione aos hooks e skill e ao claude.md. além disse procure na internet outras melhores para o caso desse
@@ -560,6 +762,19 @@
   (flow_step.cpp), so nothing changes there.
 
 ## Sources (the source's own words, for the data's `_doc`)
+- An authored ramp's line (verification 1's fix): Texas DOT, Roadway Design Manual, chapter 4, section 4.8
+  Vertical Alignment (txdot.gov/manuals/des/rdw/chapter-4--basic-design-criteria/4-8-vertical-alignment.html,
+  read 2026-11-14): "The two basic elements of vertical alignment are: Grades; and Vertical curves."; 4.8.2:
+  "Vertical curves provide gradual changes between tangents of different grades."; "The simple parabola shown
+  in Figure 4-5 is used in the highway profile design of vertical curves." So: one grade between a span's two
+  ends, and at an end with a plate a parabola (the grade growing evenly) over grade.plate_curve_m.
+- The approach line before a signal (second block, h): CONTRAN, MBST vol. IV, Sinalização Horizontal, the
+  LMS-1 (linha simples contínua, divisão de fluxos de mesmo sentido), "Princípios de utilização", page 23 of the
+  Ministry of Transport's PDF (manual_vol_iv_2.pdf, its text extracted with pypdf, 2026-11-14): "A LMS-1 deve
+  ser utilizada nos seguintes casos: – aproximação de interseções semaforizadas, com comprimento (L) mínimo de
+  15,00 m e máximo de 30,00 m, contado a partir da linha de retenção, exceto quando estudos de engenharia
+  indiquem maior ou menor dimensão; – interseções ou locais com faixa específica para movimento de conversão ou
+  de retorno, dando continuidade à marca de canalização utilizada nessas situações, com comprimento de 30,00 m".
 - A mini-roundabout's painted island (second block, c): the UK Design Manual for Roads and Bridges, TD 54/07
   "Design of Mini-Roundabouts" (searched 2026-11-14; its words as the search gave them): "The central circular
   solid white road marking is referred to as the white circle. The white circle and the associated circulatory

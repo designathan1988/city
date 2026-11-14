@@ -128,13 +128,21 @@ RoadPlan plan_path(const CityState &s, const std::vector<Quad> &pieces, const An
 	for (size_t i = 0; i < pieces.size(); i++) {
 		const Quad &q = pieces[i];
 		Anchor from = i == 0 ? a : free_anchor(q.x0, q.z0), to = i + 1 == pieces.size() ? b : free_anchor(q.x1, q.z1);
-		if (i > 0) from.lift = total.lifts.back();
+		if (i > 0) {
+			from.lift = total.lifts.back();
+			from.stand = total.stand_b; // a joint stands where the piece before it was priced to end (build_path the same)
+		}
 		RoadPlan p = plan_road(s, from, true, q.cx, q.cz, to, profile);
-		if (i == 0) total.lifts.push_back(p.lift_a);
+		if (i == 0) {
+			total.lifts.push_back(p.lift_a);
+			total.stand_a = p.stand_a;
+		}
 		total.lifts.push_back(p.lift_b);
+		total.stand_b = p.stand_b;
 		total.len += p.len;
 		total.price += p.price;
 		total.built.add(p.built);
+		total.stations.insert(total.stations.end(), p.stations.begin(), p.stations.end());
 		total.limited = total.limited || p.limited;
 		total.crossings.insert(total.crossings.end(), p.crossings.begin(), p.crossings.end());
 		if (!p.ok && total.ok) {
@@ -152,12 +160,14 @@ EditResult build_path(CityState &s, const std::vector<Quad> &pieces, const Ancho
 	for (size_t i = 0; i < pieces.size(); i++) {
 		const Quad &q = pieces[i];
 		Anchor to = i + 1 == pieces.size() ? b : free_anchor(q.x1, q.z1);
-		EditResult r = place_road(s, from, true, q.cx, q.cz, to, profile);
+		float stood = 0;
+		EditResult r = place_road(s, from, true, q.cx, q.cz, to, profile, &stood);
 		if (!r.ok) return r; // the undo entry rolls the pieces already laid back
 		total.segments += r.segments;
 		total.buildings_removed += r.buildings_removed;
 		from = free_anchor(q.x1, q.z1);
 		from.node = s.roads.find_node_near(q.x1, q.z1, NODE_FOUND_M);
+		from.stand = stood; // the next piece is priced from where this one was priced to end, as the draft priced it (plan_path)
 	}
 	if (pieces.empty() || !settle_road_edit(s, total)) return total; // the caller rolls the journal back
 	total.ok = true;

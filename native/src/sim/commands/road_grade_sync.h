@@ -4,11 +4,18 @@
 // (sim/terrain/road_shape.h) and tell the lanes, the furniture and the render (the ChangeLog).
 #pragma once
 
+#include "sim/roads/road_grade.h"
+
 namespace city {
 
 struct CityState;
 
 struct Quad;
+
+// The ground the roads of this city are laid over: the natural heights (the player's sculpting included, the roads' shaping
+// not), the water of a river or a lake standing as a floor, and the sea's level. What the solve reads, and a road solved
+// alone (road_grade.h solve_alone).
+GroundAt road_ground(const CityState &s);
 
 // Solves what changed since the last call and carries the heights on.
 void sync_grade(CityState &s);

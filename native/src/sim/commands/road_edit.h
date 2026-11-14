@@ -41,10 +41,32 @@ struct RoadKeeps {
 	uint16_t flags = 0;
 };
 // A road laid as build_road lays it, with `keeps` on every piece, and no money moved: the command it is part of settles once.
+// stood_b: the height its end was priced as standing at (the next piece of a path begins there: Anchor::stand).
 EditResult lay_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, const RoadKeeps &keeps,
-		std::vector<int> *laid = nullptr); // laid: the segments it leaves standing
+		std::vector<int> *laid = nullptr, float *stood_b = nullptr); // laid: the segments it leaves standing
 // build_road without the money: laid and checked (a stretch squeezed between junctions refused); the command settles.
-EditResult place_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile);
+EditResult place_road(CityState &s, const Anchor &a, bool has_control, double cx, double cz, const Anchor &b, int profile, float *stood_b = nullptr);
+// Where a piece of a road being laid begins or ends: the point, the height it stands at there (what it joins, as that
+// stands; on open ground the natural ground and its lift), its height over the grade line and the node standing there
+// (-1: the build makes one).
+struct PieceEnd {
+	double x = 0, z = 0;
+	float stand = 0, lift = 0;
+	int node = -1;
+};
+// One piece of a planned road as it is laid: its curve between the points its two ends stand on, its flags (a piece
+// over water is a bridge), its far end, and how it is built by itself between its ends' heights (road_economy.h).
+struct LaidPiece {
+	Quad q;
+	uint16_t flags = 0;
+	PieceEnd to;
+	std::vector<double> table;
+	BuiltAlone built;
+};
+// The pieces a planned road is laid as from share t_a of its curve to t_b, none longer than road_max_seg_m, `kept` its
+// flags: the one walk the draft's price and the build both take, so the click costs what the draft showed.
+std::vector<LaidPiece> pieces_between(const CityState &s, const RoadPlan &plan, const std::vector<double> &table, double t_a, const PieceEnd &a,
+		double t_b, const PieceEnd &b, int profile, uint16_t kept);
 // The curve through both ends of two pieces of one road, false where their tangents never meet.
 bool joined_quad(const Quad &first, const Quad &second, Quad &out);
 // The area an edit touches.

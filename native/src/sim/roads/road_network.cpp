@@ -221,9 +221,12 @@ int RoadNetwork::find_node_near(double x, double z, double radius, const std::fu
 	return best;
 }
 
+// At the curve's parameter t, by the share of the road's length run there: on a bend the two part, and a road's
+// authored height runs straight along its length (split_segment gives a new node the same).
 float RoadNetwork::lift_on(int seg, double t) const {
 	const RoadSegment &g = segs[size_t(seg)];
-	return nodes[size_t(g.a)].lift + (nodes[size_t(g.b)].lift - nodes[size_t(g.a)].lift) * float(t);
+	const float along = g.len > 0 ? float(arc_at(g.table, t) / g.len) : float(t);
+	return nodes[size_t(g.a)].lift + (nodes[size_t(g.b)].lift - nodes[size_t(g.a)].lift) * along;
 }
 
 int RoadNetwork::find_segment_near(double x, double z, double radius, double &t_out, double &d_out) const {

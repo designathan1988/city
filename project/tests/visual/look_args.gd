@@ -5,8 +5,9 @@
 ## ground at the walker with the most others within m metres (LookAim.busiest), moved by `off`, {"roundAt"}, {"poleRound"} and
 ## {"legRound": [x, z]} a round's origin and direction (at a head; at a head by a post; level at the legs), {"deadRound": [x, z]} one
 ## straight down into the dead body lying nearest there, {"profile": id} the index of that road
-## class, {"v3": [x, y, z]} a vector, {"path": [[x, z], ...]} the ground's points, the rest as the JSON gives it. What cannot be found
-## is said and counted in `failures`.
+## class, {"node": [x, z]} the road node standing there (a junction a plan laid: what a command by node takes), {"v3": [x, y, z]} a
+## vector, {"path": [[x, z], ...]} the ground's points, the rest as the JSON gives it. What cannot be found is said and counted in
+## `failures`.
 class_name LookArgs
 extends RefCounted
 
@@ -17,6 +18,7 @@ const LIE_AIM_M := 0.15 # somebody lying: the round at the body on the ground
 const LEGS_LIE_M := 0.6 # from the middle of somebody lying towards the feet
 const LEVEL_STANDOFF_M := 4.0 # a level round's origin east of its mark (shoot_test.gd)
 const DEAD_ABOVE_M := 4.0 # a round straight down from this far over a dead body's middle meets its trunk (shoot_lying_cases.gd)
+const NODE_PX := 1.0 # a node is found as the pointer finds one a metre a pixel away (node_at)
 
 var ui: UiDriver
 var failures := 0
@@ -45,6 +47,8 @@ func decode(raw: Array) -> Array:
 			out.append_array(_dead_round(a.deadRound))
 		elif a is Dictionary and a.has("profile"):
 			out.push_back(_profile(a.profile))
+		elif a is Dictionary and a.has("node"):
+			out.push_back(_node(a.node))
 		elif a is Dictionary and a.has("v3"):
 			out.push_back(Vector3(a.v3[0], a.v3[1], a.v3[2]))
 		elif a is Dictionary and a.has("path"):
@@ -174,6 +178,14 @@ func _pair(xz: Array, off: Array, reach: float) -> Vector3:
 		return point(xz)
 	print("walkers' pair at ", middle[0])
 	return point([middle[0].x + float(off[0]), middle[0].z + float(off[1])])
+
+
+func _node(xz: Array) -> int:
+	var node: int = CityStore.query(&"node_at", [point(xz), NODE_PX]).get("node", -1)
+	if node < 0:
+		failures += 1
+		print("FAIL no road node at ", xz)
+	return node
 
 
 func _profile(id: String) -> int:

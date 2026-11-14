@@ -109,6 +109,25 @@ struct GradeNode {
 	bool aloft = false, capped = false, known = false;
 };
 
+// A road solved by itself (grade_draft.cpp): the road tool's draft before it is laid, a segment as it is laid. Nothing of
+// the network is solved: the work is the road's own stations. `stand_a`, `stand_b`: the height each end stands at (the
+// node it joins, or the ground there and its lift); `half`: its casing's half width (the profile's half and the band).
+struct Quad;
+struct RoadAlone {
+	const Quad *q = nullptr;
+	const std::vector<double> *table = nullptr; // its arc table (geometry.h arc_table)
+	float half = 0;
+	Structure structure = Structure::GROUND;
+	bool authored = false; // an end of it has a height of its own: it takes the ramp's grade
+	float stand_a = 0, stand_b = 0;
+};
+// Its stations `step` apart from its a end: the deck's height at each and the natural ground under its centre line.
+struct AloneStations {
+	float step = 0;
+	std::vector<float> deck, ground;
+};
+AloneStations solve_alone(const RoadAlone &road, const GroundAt &ground_at, const Tuning &tn);
+
 class RoadGrade {
 public:
 	IdTable<GradeProfile> prof; // by segment id

@@ -118,6 +118,11 @@ void exec(CityState &s, const EditOp &op, bool fwd) {
 			s.log.net_node(op.id);
 			break;
 		}
+		case OpKind::SEG_WORTH: {
+			const LiftChange &c = op.get<LiftChange>();
+			net.segs[size_t(op.id)].worth = fwd ? c.to : c.from;
+			break;
+		}
 		case OpKind::NODE_CTL: {
 			const Change &c = op.get<Change>();
 			net.nodes[op.id].ctl = uint8_t(fwd ? c.to : c.from);

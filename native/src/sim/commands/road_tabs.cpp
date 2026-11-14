@@ -102,7 +102,7 @@ EditResult change_profile_at(CityState &s, double x, double z, int profile, bool
 			const int was = sg;
 			j_remove_segment(s, sg);
 			Quad q{ rec.q.x1, rec.q.z1, rec.q.cx, rec.q.cz, rec.q.x0, rec.q.z0 };
-			sg = j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, flags_reversed(rec.flags));
+			sg = j_add_segment(s, rec.b, rec.a, q, rec.profile, rec.zr, rec.zl, flags_reversed(rec.flags), rec.worth); // the same road, turned
 			carry_refs(s, refs, was, { sg });
 		}
 		const std::vector<CarriedPiece> kit = street_kit_of(s, sg);

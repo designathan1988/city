@@ -79,6 +79,14 @@ void keep_leg_rules(CityCut &cut, const CityState &live, int sid) {
 	const RoadSegment &g = live.roads.segs[size_t(sid)];
 	cut.facts.leg_rules[leg_key(sid, false)] = traffic::approach_rule(live, g.a, sid);
 	cut.facts.leg_rules[leg_key(sid, true)] = traffic::approach_rule(live, g.b, sid);
+	if (traffic::control_of(live, g.a) == Control::SIGNAL) cut.facts.signal_legs.insert(leg_key(sid, false));
+	if (traffic::control_of(live, g.b) == Control::SIGNAL) cut.facts.signal_legs.insert(leg_key(sid, true));
+}
+
+bool leg_at_signal(const CityView &s, int node, int sid) {
+	if (s.live) return traffic::control_of(*s.live, node) == Control::SIGNAL;
+	if (CHECKS && !s.facts->leg_rules.count(leg_key(sid, false))) city_stop("the control of an approach the job's cut did not keep");
+	return s.facts->signal_legs.count(leg_key(sid, s.roads.segs[size_t(sid)].b == node)) != 0;
 }
 
 int leg_rule_of(const CityView &s, int node, int sid) {

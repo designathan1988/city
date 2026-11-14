@@ -51,9 +51,9 @@ static func paint(profile: int) -> String:
 
 
 ## "120 m · R$ 150.000 · bridge 80 m · embankment 40 m": the length in tens of metres, its cost, then each way it is built
-## that is not plain ground, the longest first (the metres the price counts: the plan's `built`), and whether its end
-## stopped short of the height asked.
-static func measure(plan: Dictionary) -> String:
+## that is not plain ground, the longest first (the metres the price counts: the plan's `built`; a cutting is "with
+## walls" when the tool lays them: `walls`), and whether its end stopped short of the height asked.
+static func measure(plan: Dictionary, walls: bool) -> String:
 	var tens := roundi(plan.length / ROUND_TO_M) * ROUND_TO_M
 	var parts := [Formatters.format_length(tens), Formatters.format_cost(plan.price)]
 	var built: Dictionary = plan.get("built", {})
@@ -61,7 +61,19 @@ static func measure(plan: Dictionary) -> String:
 	kinds.sort_custom(func(a: String, b: String) -> bool: return built[a] > built[b])
 	for kind: String in kinds:
 		var metres := maxi(ROUND_TO_M, roundi(built[kind] / ROUND_TO_M) * ROUND_TO_M)
-		parts.append(TranslationServer.translate("road.built." + kind).format({"length": Formatters.format_length(metres)}))
+		var key := "road.built.trench_walls" if kind == "trench" and walls else "road.built." + kind
+		parts.append(TranslationServer.translate(key).format({"length": Formatters.format_length(metres)}))
 	if plan.get("limited", false):
 		parts.append(TranslationServer.translate("road.built.limited"))
 	return " · ".join(parts)
+
+
+## "+3.0 m · 4%": the height the road in hand ends at over the grade line and the grade between its two ends' heights; ""
+## for a road drawn on the ground at both ends. The tag shows it in the warning's ink when the grade held the end (`limited`).
+static func height_label(plan: Dictionary) -> String:
+	var from: float = plan.get("lift_a", 0.0)
+	var to: float = plan.get("lift_b", 0.0)
+	if (is_zero_approx(from) and is_zero_approx(to)) or plan.length <= 0.0:
+		return ""
+	var height := ("+" if to > 0.0 else "") + Formatters.format_length_tenths(to)
+	return TranslationServer.translate("road.draft.height").format({"height": height, "grade": Formatters.format_percent(absf(to - from) / plan.length)})

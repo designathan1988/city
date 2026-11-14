@@ -164,7 +164,10 @@ int choose(const CityState &s, int id, bool &ready, bool &forced) {
 		// towards its turn a driver crosses a continuous line, or enters a bus lane, only on the entry stretch
 		if (for_turn && !on_entry && (d.line_between(v.lane, cand) || (!bus && d.for_buses(cand)))) return -1;
 		forced = v.wait > FORCE_AFTER_S;
-		ready = evaluate(w, id, list(v.lane), list(cand), p.lc_mandatory_bias, forced) > p.lc_threshold;
+		// before a signal's stop line the lanes' lines are continuous (traffic.json approach_line_m): the change that was
+		// not made in time is made only by who has waited at the line, never on the move
+		const bool held = d.stage >= 0 && d.len - v.s <= d.stop_back + p.approach_line_m;
+		ready = (!held || forced) && evaluate(w, id, list(v.lane), list(cand), p.lc_mandatory_bias, forced) > p.lc_threshold;
 		forced = forced && ready;
 		return cand;
 	}

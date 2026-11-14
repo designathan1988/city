@@ -3,6 +3,7 @@
 // ground read under it and its design line; one span solved between its two nodes' heights (grade_span.cpp).
 #pragma once
 
+#include "sim/roads/geometry.h"
 #include "sim/roads/road_grade.h"
 
 #include <array>
@@ -39,6 +40,9 @@ GradeTune grade_tune(const Tuning &t);
 void frame_profile(RoadGrade &grade, const RoadNetwork &net, int s);
 // The ground under segment s read into its lines (top and mean); its design line is made by design_lines.
 void read_ground(RoadGrade &grade, const RoadNetwork &net, int s, const GroundAt &ground_at, const GradeTune &t);
+// The ground under a road's stations, read across its casing along curve `q` (its arc table `table`) for the frame `p`
+// (its stations, its casing's half width): the one reader of a segment's ground and of a road solved alone.
+void ground_under(const Quad &q, const std::vector<double> &table, const GradeProfile &p, const GroundAt &ground_at, const GradeTune &t, GroundLines &l);
 // The design line of segment s and of every piece of the road it is a piece of (a joint that carries one road on makes one
 // line along all of it: made piece by piece it would disagree at every cut and the road break there to meet itself). The
 // ground of a piece whose lines were let go is read again. `pieces` takes every segment whose line was made.

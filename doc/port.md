@@ -16,12 +16,12 @@ with `file:line` on both sides), which the port tool reads: `python tools/tracer
 
 ## 1. Roads (sheets/roads.md; work so far: doc/work/t015-roads.md)
 
-- [ ] roads, complete: every case below (`python tools/tracer/port.py sheet roads`; the note: doc/work/roads.md). The first block closed 4e38bad2 with parts left out; by the owner's addendum of 2026-11-14 (nothing is left out for cost) the line is unchecked until each is in the game, in a block of its own: the carriageway's surface in the profile editor (a versioned save) and drawn; the fill, cutting, piers and buried stretch drawn over the draft; the paint of a width transition and of a mini-roundabout's island; the stop word and the triangle on automatic priorities; the start over a raised road (the better rule, decided by the code); one owner of the arc conversion with its test (Proads-35); a near photo of the legends (Proads-38)
-  - the heights of the roads, solved in this game's design (done: road_grade_test with its seam cases passes)
-  - laying a road, what it will be and cost (done: the draft's price is the build's, its stretches named, the limited end told; the fill and cut are named in words, not painted along the draft)
+- [x] roads, complete: every case below (`python tools/tracer/port.py sheet roads`; the note: doc/work/roads.md, "Every item, where it is done"). The first block closed 4e38bad2; the second, by the owner's addendum of 2026-11-14 (nothing is left out for cost), brought what it had left out
+  - the heights of the roads, solved in this game's design (done: road_grade_test with its seam cases passes; a height along a road read by the length run, one owner; an authored ramp on one grade, a cut leaves the road where it was)
+  - laying a road, what it will be and cost (done: the draft is the road solved alone, its fill, cutting, piers and bored stretch drawn over it, the click costs what the draft showed, a road records what it was built as (save version 11), a height edit is paid, a start on a road seen takes its height)
   - the network's links and bans kept through edits (T037, 90b67e27) (done)
-  - markings (done in code: turn arrows, the stop word, the give-way triangle, the bus word, far lines by kind and colour; no near photo shows a legend yet: Proads-38; the taper's and the mini-roundabout's paint not brought: Proads-6)
-  - the profile editor (done: class, paving, centre line, each footway its own, Save's problems, a saved road deleted; the carriageway's surface is drawn by no renderer: Proads-37)
+  - markings (done: turn arrows, the stop word and the give-way triangle wherever the plate stands, the bus word, the mini-roundabout's circle, the lines across a change of width, the continuous approach line before a signal, far lines by kind and colour; the near photos: the look plan road_paint)
+  - the profile editor (done: class, carriageway surface, paving, centre line, each footway its own, Save's problems, a saved road deleted)
   - streets and their life (done: traffic from the map's edge, street names and house numbers in the inspector, the basic furniture set)
   - lanes that obey the road (done: bus lanes, solid lines, per-lane turns read by the traffic)
 

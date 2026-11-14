@@ -32,6 +32,7 @@ struct CityState;
 enum class OpKind : uint8_t { ADD_NODE, REM_NODE, NODE_PLAIN, NODE_CTL, NODE_SIGNAL, ADD_SEG, REM_SEG, PROFILE, ZONE, ADD_BLD, REM_BLD, EDIT_BLD, ADD_MOD,
 	MONEY, MARKING, NATURE, DMG_CRATER, DMG_RUIN, DMG_GONE, DMG_HURT, ADD_ITEM, REM_ITEM, ADD_POLE, REM_POLE, ADD_SPAN, REM_SPAN,
 	ADD_BARRIER, REM_BARRIER, ADD_CUT, REM_CUT, SEG_RULE, NODE_LINKS, NODE_LIFT, NODE_CROSSING, NODE_UTURN,
+	SEG_WORTH, // what a standing road is built as, made again (its heights were changed)
 	ADD_LOT, REM_LOT, EDIT_LOT, // the player's lots, one record each (LotBook)
 	ADD_STOP, REM_STOP, EDIT_STOP, ADD_TRACK, REM_TRACK, EDIT_TRACK, ADD_LINE, REM_LINE, EDIT_LINE, TRANSIT_NEXT }; // the transport plan, one record each
 
@@ -47,7 +48,7 @@ struct ProfileChange { // PROFILE: the segment as it was (what the change is wor
 	int from = 0, to = 0;
 	RoadSegment seg;
 };
-struct LiftChange { // NODE_LIFT
+struct LiftChange { // NODE_LIFT; SEG_WORTH: what a standing road is built as (RoadSegment::worth; from 0: it had none recorded)
 	float from = 0, to = 0;
 };
 struct SignalChange { // NODE_SIGNAL
@@ -197,7 +198,11 @@ void j_set_crossing(CityState &s, int n, uint8_t kind);
 void j_set_uturn(CityState &s, int n, uint8_t kind);
 void j_set_control(CityState &s, int n, uint8_t ctl);
 void j_set_signal(CityState &s, int n, const SignalSettings &to);
-int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags);
+// `worth`: what the segment is built as (RoadSegment::worth), handed on from the road it comes of; WORTH_AS_LAID: priced as
+// it is laid by itself now (sim/economy/road_economy.h built_alone).
+constexpr float WORTH_AS_LAID = -1.f;
+void j_set_worth(CityState &s, int seg, float worth); // a standing road built otherwise now (its heights were changed)
+int j_add_segment(CityState &s, int a, int b, const Quad &q, int profile, int zl, int zr, uint16_t flags, float worth = WORTH_AS_LAID);
 void j_remove_segment(CityState &s, int seg); // the links and bans naming it dropped, its bus stops left on no road
 void j_set_profile(CityState &s, int seg, int profile);
 void j_set_marking(CityState &s, int style);

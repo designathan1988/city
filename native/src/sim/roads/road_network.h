@@ -35,8 +35,7 @@ constexpr int SEG_FURNITURE_SHIFT = 1, SEG_STRUCTURE_SHIFT = 14;
 // ray_deck: a ray is marched over a deck in steps of this, horizontal metres, then the crossing bisected this many times.
 constexpr double DECK_RAY_STEP_M = 0.5;
 constexpr int DECK_RAY_REFINE = 16;
-constexpr double RAY_PARALLEL_EPS = 1e-12; // a ray this near parallel to a slab never crosses it
-constexpr double RAY_RUN_EPS = 1e-9; // a ray whose ground run is shorter is vertical
+constexpr double RAY_PARALLEL_EPS = 1e-12, RAY_RUN_EPS = 1e-9; // a ray this near parallel to a slab never crosses it; one whose ground run is shorter is vertical
 constexpr Structure structure_of(uint16_t flags) { return Structure((flags & SEG_STRUCTURE_MASK) >> SEG_STRUCTURE_SHIFT); }
 constexpr uint16_t with_structure(uint16_t flags, Structure s) {
 	return uint16_t((flags & ~SEG_STRUCTURE_MASK) | (uint16_t(s) << SEG_STRUCTURE_SHIFT));
@@ -101,6 +100,7 @@ struct RoadSegment {
 	int profile = 0;
 	uint8_t zl = 0, zr = 0; // zone on the left (+u) and right side
 	uint16_t flags = 0;
+	float worth = 0; // what it was built as, in metres of the same road on plain ground (sim/economy/road_economy.h): its cost and its refund; 0: not recorded
 	std::vector<double> table; // arc length at t = i / ARC_STEPS
 	double len = 0;
 	double retreat_a = 0, retreat_b = 0; // the mouths: metres before each node
