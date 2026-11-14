@@ -56,7 +56,7 @@ when_to_use: Invoke it before the first tool call of any port work and again aft
 | 6 | The note written | `doc/work/<area>.md` |
 | 7 | The whole functionality coded, every case | `python tools/tasks/cli.py block open <area>` |
 | 8 | Read, then reviewed | the whole diff read by you; `python tools/tasks/cli.py block review` |
-| 8b | Checked once, in seconds | `python tools/tasks/cli.py block verify`; `tools/build/build.sh core-windows`; one run: `python tools/tasks/cli.py run <its test>,<its photo plan>,e2e`; each photo opened; one measure: `python tools/tasks/cli.py run lab_test --all --jobs 1` |
+| 8b | Checked once, in seconds | `python tools/tasks/cli.py block verify`; `tools/build/build.sh core-windows`; one run: `python tools/tasks/cli.py run <its test>,<its photo plan>,zoom_ladder,e2e`; each photo opened whole and looked at, part by part (buildings, roads, vehicles, ground, sky), against `doc/look`: a part that lost detail is a failed check (the hook refuses the commit without `zoom_ladder`); one measure: `python tools/tasks/cli.py run lab_test --all --jobs 1` |
 | 9 | A pass | `superpowers:verification-before-completion`; the line checked in `doc/port.md`; commit and push; `python tools/tasks/cli.py block close`; the next line at once |
 
 ## What the design must hold (CLAUDE.md, Architecture and Never)

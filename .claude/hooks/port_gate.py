@@ -55,6 +55,8 @@ CONTEXT7 = ("ToolSearch `select:mcp__plugin_context7_context7__resolve-library-i
             "mcp__plugin_context7_context7__query-docs`")
 MARKS = ("compact_boundary", '"Skill"', '"Read"', "context7__query-docs", "WebSearch", "WebFetch")   # a record `used` reads
 COMMIT = re.compile(r"\bgit\b[^|;&]*\bcommit\b")
+LOOK = "zoom_ladder"                 # the photo plan of the game's look by distance: every verification runs it
+LOOKED = ("PASS", "CACHED_PASS")     # a run's verdicts that count (tools/tasks/block.py PASSED)
 
 
 def block() -> dict:
@@ -145,6 +147,11 @@ def shell(command: str, background: bool, did: dict) -> dict | None:
         return deny("CLAUDE.md: a failed check's cause is found by the skill superpowers:systematic-debugging (invoke it "
                     "with the Skill tool and follow it: read the failing lines, the code they name, the evidence) before "
                     "it is named at `block open --cause`. A guess is no cause.")
+    if COMMIT.search(command) and block()["state"] == "verify" and (block().get("runs") or {}).get(LOOK) not in LOOKED:
+        return deny(f"CLAUDE.md: a block's work is committed only after the game's look was photographed and looked at: name the "
+                    f"plan `{LOOK}` in this verification's one run, open its six photos whole (Read), and say of each what the "
+                    "buildings, the roads, the vehicles, the ground and the sky show against the references in doc/look (near, "
+                    "middle and far): a part that lost detail is a failed check, read to its cause before any commit.")
     if COMMIT.search(command) and block()["state"] == "verify" and not any(
             "verification-before-completion" in k for k in skills):
         return deny("CLAUDE.md: before a block's work is committed, invoke superpowers:verification-before-completion "

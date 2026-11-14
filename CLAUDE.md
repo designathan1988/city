@@ -28,6 +28,9 @@ tool call of any port work, and again after every compaction. What it says in st
   `block review` (the gates of every changed file): `block verify` is refused before it passes.
 - **A verification is small and takes seconds**: one run of a few checks (the functionality's own test, its photo plan, `e2e`:
   six tasks at most, named in one command) and one measure (`lab_test`). No whole suite, no second run: the tools refuse them.
+  The run always names the plan `zoom_ladder` (the game's look at six distances): its photos are opened whole and each is
+  looked at, part by part (buildings, roads, vehicles, ground, sky), against the references in `doc/look`; a part that lost
+  detail is a failed check. The hook refuses a block's commit without it. The owner is shown whole photos, never a crop alone.
   The whole suite, `km24`, `hunt` and `quick --ready` run only on the owner's order.
 - **A block is verified three times at most**, failed or not. It opens again only with a cause at a `file:line`
   (`block open --cause "<check or what was found>: <file:line>: <why>"`), read in the code (`superpowers:systematic-debugging`),

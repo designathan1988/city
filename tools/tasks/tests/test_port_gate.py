@@ -78,8 +78,10 @@ class GateCase(unittest.TestCase):
     def tearDown(self):
         port_gate.BLOCK, port_note.WORK = self.held
 
-    def state(self, state: str) -> None:
-        port_gate.BLOCK.write_text(json.dumps({"state": state, "name": "traffic"}), encoding="utf-8")
+    def state(self, state: str, runs: dict | None = None) -> None:
+        """The block in `state`; in verify its run photographed the look, unless `runs` says what ran."""
+        ran = {"zoom_ladder": "PASS"} if runs is None else runs
+        port_gate.BLOCK.write_text(json.dumps({"state": state, "name": "traffic", "runs": ran}), encoding="utf-8")
 
     def refused(self, tool: str, given: dict, record: str = "") -> bool:
         return port_gate.gate({"tool_name": tool, "tool_input": given, "transcript_path": record}) is not None
@@ -103,6 +105,10 @@ class Shell(GateCase):
                           ("Skill", {"skill": "superpowers:verification-before-completion"}))
         self.assertFalse(self.refused("Bash", cause, both))
         self.assertFalse(self.refused("Bash", commit, both))
+        self.state("verify", {"flows_test": "PASS"})
+        self.assertTrue(self.refused("Bash", commit, both), "a commit with the look not photographed")
+        self.state("verify", {"zoom_ladder": "FAIL"})
+        self.assertTrue(self.refused("Bash", commit, both), "a commit with the look's plan failed")
 
 
 class Edits(GateCase):
