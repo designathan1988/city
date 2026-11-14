@@ -106,6 +106,36 @@
   reference also has there and this game has elsewhere: the ground shaped by the roads (shapeAt :867-914: SHAPE_INNER
   1.2, SHAPE_SHOULDER 18, BATTER 2.5, SHAPE_SHOULDER_MAX 36, CUT_SHOULDER 10, SHAPE_DROP 0.6 :216-228), a solve by
   scope (SolveScope :173-209: the roads round the view first), summaries and digests.
+- Case 2, this game (read whole): native/src/sim/commands/road_plan.cpp:185-216 plan_road: the curve, its length,
+  the refusals (tool.failed, refuse.road.tooShort, refuse.road.selfLoop, hint.road.clearance,
+  refuse.road.sharpAngle, road.reason.overlap, road.reason.fullNode, refuse.road.junctionsClose); the end's lift
+  held to len x grade_authored (:194-198) and, when a connection cannot move, refused as "refuse.road.tooShort"
+  (:199: the wrong word for it, and a free end clamped is never told); the price :213 =
+  build_value(profile, len, RoadBuild{GROUND, lift_a, lift_b}): by the lifts alone, never by the ground under the
+  road nor by the structure in hand. native/src/sim/economy/road_economy.cpp:30-52 build_lengths: a tunnel and a
+  raised structure whole; at grade the shares of the length whose authored height lies under -fill_from (trench),
+  within it (ground), up to on_piers_from (embankment), past it (bridge), on the straight line between the two
+  lifts; build_value :54-59 = cost_per_m x the lengths x the structure's factors; charge_for :63-72 (refund share);
+  edit_value_change :78-91 from the journal's ops. project/game/tools/road_draft.gd:37-40 measure: "120 m · R$
+  150.000" only: no stretch named.
+- Case 2, the reference (read): world/roads/buildMode.ts:13-21 buildModeAt(structure, lift = deck - natural
+  ground): tunnel when lift < -TUNNEL_BORE, bridge when the structure is raised or lift > RAISED_LIFT (2 m),
+  embankment at lift >= fillFrom, cutting at lift <= -fillFrom, else ground; stationsAlong :82-107 (the road in hand
+  laid in a trial copy, its SOLVED deck read every step against the natural ground); buildRuns :110-124 (a stretch
+  changes half way between two stations built different ways). main.ts:3397-3404: the label "120 m · R$ ... · ponte
+  120 m · aterro 40 m · <the refusal's short reason>"; buildSummary :3539-3547 (stretches of 5 m or more, the longest
+  first, in tens of metres, "cutting with walls" when chosen); drawBuildModes :3482-3520 (embankment and cutting
+  filled between deck and ground, the cut's top line, a pier every 14 stations of a bridge); drawTunnelStretches
+  :3522-3536 (the buried stretch dimmed); the height label "+3.0 m · 4%" with a small sketch of the line, in the
+  warning colour when the grade limited it (:3418-3468, `limited` :3288-3297). world/structures.ts:29-53:
+  TUNNEL_HEADROOM 4.4, TUNNEL_ARCH 0.6, TUNNEL_DEPTH = headroom + arch + 2, TUNNEL_CLOSE = headroom + arch + 0.4,
+  TUNNEL_ROOF/BORE = close -/+ 0.16, TUNNEL_PORTAL_COVER 0.6, RAISED_LIFT 2, ROAD_GROUND_CLEARANCE 0.12; decks
+  0.22 / 1.04 / 0.96 / 0.24. world/economy.ts:44-60 buildLengths and :160-169 chargeFor: this game's
+  road_economy.cpp is these, line for line (the lab scan's 45%): to be this game's own in the block.
+- Case 2, what is wrong here, by the reading: the preview prices the road as Structure::GROUND whatever is in hand
+  (road_plan.cpp:213) while the commit prices the recorded structure (road_economy.cpp:21-27): a bridge shown
+  affordable is refused at the click; no stretch is shown; a grade-limited free end is not told and a held
+  connection is told "too short".
 - What reads the grade (from doc/work/t015-roads.md, to be read again): at(), ylo/yhi, structure, plates,
   len/step/half: road_network.cpp:245, road_network_deck.cpp:30, road_network_cut.cpp:14, road_grade_sync.cpp:29,
   city_core_state_probe.cpp:101, city_core_grade_probe.cpp.
